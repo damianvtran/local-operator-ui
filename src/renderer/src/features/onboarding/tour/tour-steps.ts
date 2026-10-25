@@ -1,7 +1,7 @@
 import { t } from "@shared/i18n";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import type { StepOptions } from "shepherd.js";
-import { TOUR_BODIES, renderTourBody } from "./tour-copy";
+import type { StepOptions, Tour } from "shepherd.js";
+import { TOUR_BODIES, renderTourBody, tourLabel } from "./tour-copy";
 
 /**
  * The element carrying a tour tag that the user can actually see.
@@ -50,11 +50,11 @@ const pressTourAction = (action: string): void => {
 export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "welcome",
-		title: t("ui.onboarding.tour.welcome.title"),
+		title: tourLabel("ui.onboarding.tour.welcome.title"),
 		text: renderTourBody(TOUR_BODIES.welcome),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -65,18 +65,18 @@ export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "agent-list",
 		attachTo: { element: '[data-tour-tag="agent-list-panel"]', on: "right" },
-		title: t("ui.onboarding.tour.agent_list.title"),
+		title: tourLabel("ui.onboarding.tour.agent_list.title"),
 		text: renderTourBody(TOUR_BODIES.agent_list),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -91,18 +91,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="agent-list-item-button-0"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.select_agent.title"),
+		title: tourLabel("ui.onboarding.tour.select_agent.title"),
 		text: renderTourBody(TOUR_BODIES.select_agent),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -125,18 +125,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="chat-input-textarea"]',
 			on: "top",
 		},
-		title: t("ui.onboarding.tour.chat_input.title"),
+		title: tourLabel("ui.onboarding.tour.chat_input.title"),
 		text: renderTourBody(TOUR_BODIES.chat_input),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -150,18 +150,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'button[data-tour-tag="chat-input-attach-file-button"]',
 			on: "top",
 		},
-		title: t("ui.onboarding.tour.attachments.title"),
+		title: tourLabel("ui.onboarding.tour.attachments.title"),
 		text: renderTourBody(TOUR_BODIES.attachments),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -172,18 +172,18 @@ export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "agent-capabilities",
 		attachTo: { element: '[data-tour-tag="chat-header"]', on: "top" },
-		title: t("ui.onboarding.tour.agent_capabilities.title"),
+		title: tourLabel("ui.onboarding.tour.agent_capabilities.title"),
 		text: renderTourBody(TOUR_BODIES.agent_capabilities),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const { openCommandPalette } = useUiPreferencesStore.getState();
@@ -198,7 +198,9 @@ export const createTourSteps = (): StepOptions[] => [
 	},
 	{
 		id: "pre-command-palette-open-canvas",
-		title: t("ui.onboarding.tour.pre_command_palette_open_canvas.title"),
+		title: tourLabel(
+			"ui.onboarding.tour.pre_command_palette_open_canvas.title",
+		),
 		attachTo: {
 			element: '[data-tour-tag="command-palette-dialog"]',
 			on: "right",
@@ -206,7 +208,7 @@ export const createTourSteps = (): StepOptions[] => [
 		text: renderTourBody(TOUR_BODIES.pre_command_palette_open_canvas),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const { closeCommandPalette } = useUiPreferencesStore.getState();
@@ -218,7 +220,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const { closeCommandPalette } = useUiPreferencesStore.getState();
@@ -237,11 +239,11 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'button[data-tour-tag="open-canvas-button"]',
 			on: "left",
 		},
-		title: t("ui.onboarding.tour.canvas_open_button.title"),
+		title: tourLabel("ui.onboarding.tour.canvas_open_button.title"),
 		text: renderTourBody(TOUR_BODIES.canvas_open_button),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const { openCommandPalette } = useUiPreferencesStore.getState();
@@ -253,7 +255,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -272,11 +274,11 @@ export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "canvas-feature",
 		attachTo: { element: '[data-tour-tag="canvas-container"]', on: "left" },
-		title: t("ui.onboarding.tour.canvas_feature.title"),
+		title: tourLabel("ui.onboarding.tour.canvas_feature.title"),
 		text: renderTourBody(TOUR_BODIES.canvas_feature),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -291,7 +293,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -313,18 +315,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'button[data-tour-tag="canvas-documents-view-button"]',
 			on: "top",
 		},
-		title: t("ui.onboarding.tour.canvas_documents_view.title"),
+		title: tourLabel("ui.onboarding.tour.canvas_documents_view.title"),
 		text: renderTourBody(TOUR_BODIES.canvas_documents_view),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -346,11 +348,11 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'button[data-tour-tag="canvas-files-view-button"]',
 			on: "top",
 		},
-		title: t("ui.onboarding.tour.canvas_files_view.title"),
+		title: tourLabel("ui.onboarding.tour.canvas_files_view.title"),
 		text: renderTourBody(TOUR_BODIES.canvas_files_view),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -365,7 +367,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -387,11 +389,11 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'button[data-tour-tag="canvas-variables-view-button"]',
 			on: "top",
 		},
-		title: t("ui.onboarding.tour.canvas_variables_view.title"),
+		title: tourLabel("ui.onboarding.tour.canvas_variables_view.title"),
 		text: renderTourBody(TOUR_BODIES.canvas_variables_view),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -406,7 +408,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const closeButton = document.querySelector(
@@ -428,11 +430,11 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'button[data-tour-tag="agent-options-button"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.agent_options.title"),
+		title: tourLabel("ui.onboarding.tour.agent_options.title"),
 		text: renderTourBody(TOUR_BODIES.agent_options),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -447,7 +449,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -472,18 +474,18 @@ export const createTourSteps = (): StepOptions[] => [
 				'[role="menuitem"][data-tour-tag="view-agent-settings-menu-item"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.click_view_settings_from_chat.title"),
+		title: tourLabel("ui.onboarding.tour.click_view_settings_from_chat.title"),
 		text: renderTourBody(TOUR_BODIES.click_view_settings_from_chat),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -507,11 +509,11 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'div[data-tour-tag="agent-settings-details-paper"]',
 			on: "left",
 		},
-		title: t("ui.onboarding.tour.view_agent_settings.title"),
+		title: tourLabel("ui.onboarding.tour.view_agent_settings.title"),
 		text: renderTourBody(TOUR_BODIES.view_agent_settings),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -537,7 +539,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -551,18 +553,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="agent-settings-hosting-select"]',
 			on: "left",
 		},
-		title: t("ui.onboarding.tour.select_provider.title"),
+		title: tourLabel("ui.onboarding.tour.select_provider.title"),
 		text: renderTourBody(TOUR_BODIES.select_provider),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			}, // Goes to view-agent-settings
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -576,18 +578,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="agent-settings-model-select"]',
 			on: "left",
 		},
-		title: t("ui.onboarding.tour.select_model.title"),
+		title: tourLabel("ui.onboarding.tour.select_model.title"),
 		text: renderTourBody(TOUR_BODIES.select_model),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			}, // Goes to select-provider
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -601,18 +603,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="agent-settings-security"]',
 			on: "left",
 		}, // Attaching to the broader "Model Settings" card as a proxy
-		title: t("ui.onboarding.tour.modify_security_prompt.title"),
+		title: tourLabel("ui.onboarding.tour.modify_security_prompt.title"),
 		text: renderTourBody(TOUR_BODIES.modify_security_prompt),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			}, // Goes to select-model
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -626,18 +628,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="agent-settings-system-prompt"]',
 			on: "left",
 		},
-		title: t("ui.onboarding.tour.modify_agent_prompt.title"),
+		title: tourLabel("ui.onboarding.tour.modify_agent_prompt.title"),
 		text: renderTourBody(TOUR_BODIES.modify_agent_prompt),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			}, // Goes to modify-security-prompt
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -651,11 +653,11 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'button[data-tour-tag="create-new-agent-button"]',
 			on: "bottom",
 		},
-		title: t("ui.onboarding.tour.create_new_agent.title"),
+		title: tourLabel("ui.onboarding.tour.create_new_agent.title"),
 		text: renderTourBody(TOUR_BODIES.create_new_agent),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					// We are on the main page (agent list/chat). Need to go to agent settings page.
@@ -695,7 +697,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -715,11 +717,11 @@ export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "agent-naming-guidelines",
 		attachTo: { element: '[data-tour-tag="create-agent-dialog"]', on: "right" },
-		title: t("ui.onboarding.tour.agent_naming_guidelines.title"),
+		title: tourLabel("ui.onboarding.tour.agent_naming_guidelines.title"),
 		text: renderTourBody(TOUR_BODIES.agent_naming_guidelines),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -735,7 +737,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -756,11 +758,11 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "navigate-agent-hub",
 		// Targets the NavItemButton for Agent Hub via its icon's aria-label
 		attachTo: { element: '[data-tour-tag="nav-item-agent-hub"]', on: "right" },
-		title: t("ui.onboarding.tour.navigate_agent_hub.title"),
+		title: tourLabel("ui.onboarding.tour.navigate_agent_hub.title"),
 		text: renderTourBody(TOUR_BODIES.navigate_agent_hub),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -784,7 +786,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -808,18 +810,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="agent-hub-sidebar-container"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.agent_hub_view.title"),
+		title: tourLabel("ui.onboarding.tour.agent_hub_view.title"),
 		text: renderTourBody(TOUR_BODIES.agent_hub_view),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -834,18 +836,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'button[data-tour-tag="agent-hub-download-button"]',
 			on: "bottom",
 		},
-		title: t("ui.onboarding.tour.download_agent.title"),
+		title: tourLabel("ui.onboarding.tour.download_agent.title"),
 		text: renderTourBody(TOUR_BODIES.download_agent),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -868,11 +870,11 @@ export const createTourSteps = (): StepOptions[] => [
 			element: () => visibleTourTarget("upload-to-hub-header-button"),
 			on: "bottom",
 		},
-		title: t("ui.onboarding.tour.upload_agent_hub.title"),
+		title: tourLabel("ui.onboarding.tour.upload_agent_hub.title"),
 		text: renderTourBody(TOUR_BODIES.upload_agent_hub),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -887,7 +889,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					pressTourAction("open-upload-dialog");
@@ -902,7 +904,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "upload-agent-hub-dialog",
 		// Targets the UploadAgentDialog modal, which should be open after clicking "Upload to Hub"
 		attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: "right" },
-		title: t("ui.onboarding.tour.upload_agent_hub_dialog.title"),
+		title: tourLabel("ui.onboarding.tour.upload_agent_hub_dialog.title"),
 		/*
 		 * The same correction the dialog itself carries: this step used to
 		 * promise that "any conversation history and learnings for this agent
@@ -915,7 +917,7 @@ export const createTourSteps = (): StepOptions[] => [
 		text: renderTourBody(TOUR_BODIES.upload_agent_hub_dialog),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -931,7 +933,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -951,11 +953,11 @@ export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "navigate-schedules",
 		attachTo: { element: '[data-tour-tag="nav-item-schedules"]', on: "right" },
-		title: t("ui.onboarding.tour.navigate_schedules.title"),
+		title: tourLabel("ui.onboarding.tour.navigate_schedules.title"),
 		text: renderTourBody(TOUR_BODIES.navigate_schedules),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -973,7 +975,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -992,18 +994,18 @@ export const createTourSteps = (): StepOptions[] => [
 	},
 	{
 		id: "schedules-overview",
-		title: t("ui.onboarding.tour.schedules_overview.title"),
+		title: tourLabel("ui.onboarding.tour.schedules_overview.title"),
 		text: renderTourBody(TOUR_BODIES.schedules_overview),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1018,18 +1020,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'button[data-tour-tag="create-schedule-button"]',
 			on: "bottom",
 		},
-		title: t("ui.onboarding.tour.create_schedule.title"),
+		title: tourLabel("ui.onboarding.tour.create_schedule.title"),
 		text: renderTourBody(TOUR_BODIES.create_schedule),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -1051,11 +1053,11 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="create-schedule-dialog"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.create_schedule_dialog.title"),
+		title: tourLabel("ui.onboarding.tour.create_schedule_dialog.title"),
 		text: renderTourBody(TOUR_BODIES.create_schedule_dialog),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					// Close dialog if open, then go back
@@ -1071,7 +1073,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					// Optionally close dialog before moving on
@@ -1091,11 +1093,11 @@ export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "navigate-settings",
 		attachTo: { element: '[data-tour-tag="nav-item-settings"]', on: "right" },
-		title: t("ui.onboarding.tour.navigate_settings.title"),
+		title: tourLabel("ui.onboarding.tour.navigate_settings.title"),
 		text: renderTourBody(TOUR_BODIES.navigate_settings),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -1119,7 +1121,7 @@ export const createTourSteps = (): StepOptions[] => [
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -1143,18 +1145,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: 'div[data-tour-tag="settings-general-section"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.general_settings.title"),
+		title: tourLabel("ui.onboarding.tour.general_settings.title"),
 		text: renderTourBody(TOUR_BODIES.general_settings),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1168,18 +1170,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="settings-appearance-section"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.appearance_settings.title"),
+		title: tourLabel("ui.onboarding.tour.appearance_settings.title"),
 		text: renderTourBody(TOUR_BODIES.appearance_settings),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1193,18 +1195,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="settings-radient-account-section"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.radient_account_settings.title"),
+		title: tourLabel("ui.onboarding.tour.radient_account_settings.title"),
 		text: renderTourBody(TOUR_BODIES.radient_account_settings),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1218,18 +1220,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="settings-integrations-section"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.integrations_settings.title"),
+		title: tourLabel("ui.onboarding.tour.integrations_settings.title"),
 		text: renderTourBody(TOUR_BODIES.integrations_settings),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1243,18 +1245,18 @@ export const createTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="settings-app-updates-section"]',
 			on: "right",
 		},
-		title: t("ui.onboarding.tour.application_updates_settings.title"),
+		title: tourLabel("ui.onboarding.tour.application_updates_settings.title"),
 		text: renderTourBody(TOUR_BODIES.application_updates_settings),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.back"),
+				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: t("ui.onboarding.tour.action.next"),
+				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1264,11 +1266,11 @@ export const createTourSteps = (): StepOptions[] => [
 	},
 	{
 		id: "tour-complete",
-		title: t("ui.onboarding.tour.tour_complete.title"),
+		title: tourLabel("ui.onboarding.tour.tour_complete.title"),
 		text: renderTourBody(TOUR_BODIES.tour_complete),
 		buttons: [
 			{
-				text: t("ui.onboarding.tour.action.finish"),
+				text: tourLabel("ui.onboarding.tour.action.finish"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.complete();
@@ -1277,3 +1279,69 @@ export const createTourSteps = (): StepOptions[] => [
 		],
 	},
 ];
+
+/**
+ * The close icon's accessible name, resolved in the active language.
+ *
+ * Shepherd sets `cancelIcon.label` with `setAttribute`, not `innerHTML`, so it
+ * takes the raw `t()` value - an HTML-escaped entity would be announced
+ * literally by a screen reader. The title/button sinks use `tourLabel` instead.
+ */
+export const tourCancelIcon = (): NonNullable<StepOptions["cancelIcon"]> => ({
+	enabled: true,
+	label: t("ui.onboarding.tour.action.close"),
+});
+
+const appliedLocaleByTour = new WeakMap<Tour, string>();
+
+/**
+ * Record the locale a tour's steps were just built in.
+ *
+ * `applyTourLocale` is idempotent per (tour, locale); without this, a tour
+ * restarted after a locale round would keep the OLD entry and skip the first
+ * transition back to that locale, leaving the new steps in the wrong language.
+ */
+export const rememberTourLocale = (tour: Tour, locale: string): void => {
+	appliedLocaleByTour.set(tour, locale);
+};
+
+/**
+ * Re-render an OPEN tour in the current language without restarting it.
+ *
+ * Locale can change while the walkthrough is open: the settings door writes the
+ * backend setting, and another window can change it through the desktop feed.
+ * Rebuilding the tour would lose the user's position, so this updates each
+ * existing step's copy in place through Shepherd's supported
+ * `Step.updateStepOptions`. The step object, its id and the step list stay
+ * untouched; the footer's button elements are updated in place (their action
+ * closures are rebuilt from the same definitions), so keyboard focus stays
+ * where the user left it. Only the copy-bearing fields and the close label are
+ * assigned; `attachTo`, `when` and the step list are not touched.
+ *
+ * Keyed by tour and locale because `useOnboardingTour` has two consumers (the
+ * app-root initiator and Settings); neither may apply one transition twice.
+ */
+export const applyTourLocale = (tour: Tour, locale: string): void => {
+	if (appliedLocaleByTour.get(tour) === locale) return;
+	const fresh = new Map(
+		createTourSteps()
+			.filter((step) => step.id)
+			.map((step) => [step.id as string, step]),
+	);
+	const cancelIcon = tourCancelIcon();
+	for (const step of tour.steps) {
+		const next = step.id ? fresh.get(step.id) : undefined;
+		if (!next) continue;
+		step.updateStepOptions({
+			title: next.title,
+			text: next.text,
+			buttons: next.buttons,
+			cancelIcon,
+		});
+	}
+	tour.options.defaultStepOptions = {
+		...tour.options.defaultStepOptions,
+		cancelIcon,
+	};
+	appliedLocaleByTour.set(tour, locale);
+};

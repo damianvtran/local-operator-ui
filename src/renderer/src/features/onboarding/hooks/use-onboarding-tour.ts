@@ -1,9 +1,16 @@
+import { currentLocale } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useOnboardingStore } from "@shared/store/onboarding-store";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShepherdJourneyContext } from "react-shepherd";
 import type { StepOptions, Tour } from "shepherd.js";
-import { createTourSteps } from "../tour/tour-steps";
+import {
+	applyTourLocale,
+	createTourSteps,
+	rememberTourLocale,
+	tourCancelIcon,
+} from "../tour/tour-steps";
 
 export const useOnboardingTour = () => {
 	const navigate = useNavigate();
@@ -12,12 +19,15 @@ export const useOnboardingTour = () => {
 	// The actual context value might be the tour instance itself or an object containing it.
 	// biome-ignore lint/suspicious/noExplicitAny: ShepherdContextType is not exported by react-shepherd, making it difficult to type precisely.
 	const shepherdContext = useContext(ShepherdJourneyContext) as any;
+	// Subscribing here is what repaints an OPEN tour when the negotiated locale
+	// changes; `t()` itself is a plain call-time read and does not subscribe.
+	const locale = useI18nLocale();
 
 	// These are Shepherd.js tour options.
 	// The `when` part is handled by attaching event listeners manually.
 	const defaultStepOptions: StepOptions = {
 		// Use StepOptions type
-		cancelIcon: { enabled: true },
+		cancelIcon: tourCancelIcon(),
 		scrollTo: { behavior: "smooth", block: "center" },
 	};
 	const useModalOverlay = true;
@@ -137,6 +147,13 @@ export const useOnboardingTour = () => {
 			tourInstance.addSteps(tourSteps);
 		}
 
+		/*
+		 * These steps were built in the locale current right now; record it so
+		 * the first locale transition after a restart is not mistaken for a
+		 * repeat of the locale the tour was built in.
+		 */
+		rememberTourLocale(tourInstance, currentLocale());
+
 		if (typeof tourInstance.start === "function") {
 			// Navigate to home page if all conditions to start the tour are met
 			navigate("/");
@@ -148,6 +165,19 @@ export const useOnboardingTour = () => {
 			);
 		}
 	};
+
+	/**
+	 * Follow a locale change while the tour is open. The store notifies both
+	 * consumers of this hook; `applyTourLocale` is idempotent per tour+locale
+	 * and keeps the current step, its id and its focus. When no tour is active
+	 * this is a no-op, so negotiation before a tour starts still opens in the
+	 * language current at `startTour`.
+	 */
+	useEffect(() => {
+		const activeTour: Tour | undefined =
+			shepherdContext?.tour ?? shepherdContext?.Shepherd?.activeTour;
+		if (activeTour?.isActive()) applyTourLocale(activeTour, locale);
+	}, [locale, shepherdContext]);
 
 	return {
 		startTour,

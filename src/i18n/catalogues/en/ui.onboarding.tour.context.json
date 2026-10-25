@@ -5,6 +5,12 @@
 		"role": "Tour footer button label",
 		"tone": "Imperative button label in sentence case."
 	},
+	"ui.onboarding.tour.action.close": {
+		"length": "Short accessible label; English is 10 characters. Keep within about 1.5x.",
+		"note": "Accessible name of the tour's close (X) button, announced by screen readers rather than shown as visible text. It cancels the walkthrough; the label must say it closes or exits the tour, not the application.",
+		"role": "Accessible label for the tour close button",
+		"tone": "Imperative button label in sentence case."
+	},
 	"ui.onboarding.tour.action.finish": {
 		"length": "Footer button label; English is 6 characters. Keep within about 1.5x.",
 		"note": "Footer button on the last step that closes the tour.",
@@ -19,7 +25,7 @@
 	},
 	"ui.onboarding.tour.agent_capabilities.body.1": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 457 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 6 of 37 (\"More than just chat\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names. Quoted UI label(s) \"tools\" must match the control label in the app.",
+		"note": "Paragraph 1 of the body in step 6 of 37 (\"More than just chat\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names. The quoted word \"tools\" is ordinary prose, not a UI control label: translate it naturally and use the locale's quotation marks.",
 		"role": "Body paragraph in tour step 6 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
@@ -30,10 +36,10 @@
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.agent_capabilities.image.1.alt": {
-		"length": "Short descriptive phrase in the image alt attribute; English is 16 characters.",
-		"note": "Alt text for the tour screenshot agentic-sequence.png shown in step 6 (\"More than just chat\"). It describes what the screenshot shows; the same words may appear in the step prose.",
-		"role": "Alternative text for screenshot 1 in tour step 6 of 37",
-		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+		"length": "Short descriptive phrase in the figure's accessible label; English is 44 characters.",
+		"note": "Accessible label for the wordless structural figure shown in step 6 (\"More than just chat\"). The figure has no text; this label is its only description. It depicts three agent work steps connected in sequence, standing for multi-step work with tool use. It is not a screenshot.",
+		"role": "Alternative text for the structural figure in tour step 6 of 37",
+		"tone": "Plain descriptive label; do not start with \"Image of\"."
 	},
 	"ui.onboarding.tour.agent_capabilities.title": {
 		"length": "Tour panel heading, one line; English is 19 characters. Keep within about 1.5x.",
@@ -72,8 +78,8 @@
 		"tone": "Short sentence-case heading; no terminal period."
 	},
 	"ui.onboarding.tour.agent_naming_guidelines.body.1": {
-		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 330 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 21 of 37 (\"Naming and describing your agent\"). Plain paragraph; no tags. Quoted UI label(s) \"File Organizer\", \"Web Researcher\" must match the control label in the app.",
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 329 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 21 of 37 (\"Naming and describing your agent\"). Plain paragraph; no tags. \"File Organizer\" and \"Web Researcher\" are example agent names in prose, not UI control labels: translate them naturally and use the locale's quotation marks.",
 		"role": "Body paragraph in tour step 21 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
@@ -149,12 +155,6 @@
 		"role": "Body paragraph in tour step 5 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
-	"ui.onboarding.tour.attachments.image.1.alt": {
-		"length": "Short descriptive phrase in the image alt attribute; English is 16 characters.",
-		"note": "Alt text for the tour screenshot chat-attachments.png shown in step 5 (\"Attach files to your message\"). It describes what the screenshot shows; the same words may appear in the step prose.",
-		"role": "Alternative text for screenshot 1 in tour step 5 of 37",
-		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
-	},
 	"ui.onboarding.tour.attachments.title": {
 		"length": "Tour panel heading, one line; English is 28 characters. Keep within about 1.5x.",
 		"note": "Heading of step 5 of 37 in the Shepherd walkthrough. Step id: attachments.",
@@ -174,7 +174,7 @@
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.canvas_documents_view.body.3": {
-		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 135 characters. No length cap; keep every fact.",
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 128 characters. No length cap; keep every fact.",
 		"note": "Paragraph 3 of the body in step 10 of 37 (\"Documents view\"). Plain paragraph; no tags. Cmd/Ctrl+K is a literal keyboard shortcut used by the app; do not translate or reformat it.",
 		"role": "Body paragraph in tour step 10 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
@@ -184,18 +184,6 @@
 		"note": "Paragraph 4 of the body in step 10 of 37 (\"Documents view\"). Plain paragraph; no tags.",
 		"role": "Body paragraph in tour step 10 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
-	},
-	"ui.onboarding.tour.canvas_documents_view.image.1.alt": {
-		"length": "Short descriptive phrase in the image alt attribute; English is 18 characters.",
-		"note": "Alt text for the tour screenshot inline-edit-canvas.png shown in step 10 (\"Documents view\"). It describes what the screenshot shows; the same words may appear in the step prose.",
-		"role": "Alternative text for screenshot 1 in tour step 10 of 37",
-		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
-	},
-	"ui.onboarding.tour.canvas_documents_view.image.2.alt": {
-		"length": "Short descriptive phrase in the image alt attribute; English is 23 characters.",
-		"note": "Alt text for the tour screenshot canvas-code-inline-edit.png shown in step 10 (\"Documents view\"). It describes what the screenshot shows; the same words may appear in the step prose.",
-		"role": "Alternative text for screenshot 2 in tour step 10 of 37",
-		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
 	},
 	"ui.onboarding.tour.canvas_documents_view.title": {
 		"length": "Tour panel heading, one line; English is 14 characters. Keep within about 1.5x.",
@@ -214,12 +202,6 @@
 		"note": "Paragraph 2 of the body in step 9 of 37 (\"The canvas: your visual workspace\"). Plain paragraph; no tags. Product/feature names present: HTML. Keep Local Operator and Radient as product names.",
 		"role": "Body paragraph in tour step 9 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
-	},
-	"ui.onboarding.tour.canvas_feature.image.1.alt": {
-		"length": "Short descriptive phrase in the image alt attribute; English is 15 characters.",
-		"note": "Alt text for the tour screenshot canvas-overview.png shown in step 9 (\"The canvas: your visual workspace\"). It describes what the screenshot shows; the same words may appear in the step prose.",
-		"role": "Alternative text for screenshot 1 in tour step 9 of 37",
-		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
 	},
 	"ui.onboarding.tour.canvas_feature.title": {
 		"length": "Tour panel heading, one line; English is 33 characters. Keep within about 1.5x.",
@@ -253,7 +235,7 @@
 	},
 	"ui.onboarding.tour.canvas_variables_view.body.1": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 259 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 12 of 37 (\"Variables view\"). Plain paragraph; no tags. Quoted UI label(s) \"code memory\" must match the control label in the app.",
+		"note": "Paragraph 1 of the body in step 12 of 37 (\"Variables view\"). Plain paragraph; no tags. The quoted phrase \"code memory\" is prose describing the concept, not a UI control label: translate it naturally and use the locale's quotation marks.",
 		"role": "Body paragraph in tour step 12 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
@@ -262,12 +244,6 @@
 		"note": "Paragraph 2 of the body in step 12 of 37 (\"Variables view\"). Plain paragraph; no tags.",
 		"role": "Body paragraph in tour step 12 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
-	},
-	"ui.onboarding.tour.canvas_variables_view.image.1.alt": {
-		"length": "Short descriptive phrase in the image alt attribute; English is 16 characters.",
-		"note": "Alt text for the tour screenshot canvas-variables-view.png shown in step 12 (\"Variables view\"). It describes what the screenshot shows; the same words may appear in the step prose.",
-		"role": "Alternative text for screenshot 1 in tour step 12 of 37",
-		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
 	},
 	"ui.onboarding.tour.canvas_variables_view.title": {
 		"length": "Tour panel heading, one line; English is 14 characters. Keep within about 1.5x.",
@@ -292,12 +268,6 @@
 		"note": "Paragraph 3 of the body in step 4 of 37 (\"Ask your agent anything\"). Plain paragraph; no tags.",
 		"role": "Body paragraph in tour step 4 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
-	},
-	"ui.onboarding.tour.chat_input.image.1.alt": {
-		"length": "Short descriptive phrase in the image alt attribute; English is 10 characters.",
-		"note": "Alt text for the tour screenshot chat-input.png shown in step 4 (\"Ask your agent anything\"). It describes what the screenshot shows; the same words may appear in the step prose.",
-		"role": "Alternative text for screenshot 1 in tour step 4 of 37",
-		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
 	},
 	"ui.onboarding.tour.chat_input.list.1.item.1": {
 		"length": "Single bullet line in the tour panel; English is 82 characters. Keep within about 1.5x.",
@@ -493,61 +463,61 @@
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.1": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 117 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Product/feature names present: Command Palette. Keep Local Operator and Radient as product names.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name. Product/feature names present: Command Palette. Keep Local Operator and Radient as product names.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 372 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Product/feature names present: Windows, Linux. Keep Local Operator and Radient as product names.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name. Product/feature names present: Windows, Linux. Keep Local Operator and Radient as product names.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.4": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 12 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 23 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.6": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 19 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.7": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 24 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 37 characters. No length cap; keep every fact.",
-		"note": "Paragraph 2 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"note": "Paragraph 2 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.3": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 111 characters. No length cap; keep every fact.",
-		"note": "Paragraph 2 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Product/feature names present: Windows, Linux. Keep Local Operator and Radient as product names.",
+		"note": "Paragraph 2 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name. Product/feature names present: Windows, Linux. Keep Local Operator and Radient as product names.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.5": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 156 characters. No length cap; keep every fact.",
-		"note": "Paragraph 2 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Product/feature names present: Windows, Linux. Keep Local Operator and Radient as product names.",
+		"note": "Paragraph 2 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name. Product/feature names present: Windows, Linux. Keep Local Operator and Radient as product names.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.connector.on_mac_and": {
 		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 12 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Connector between two keyboard shortcuts, reused three times in this step; it replaces an inline <code> span and must keep its leading and trailing spaces. Product/feature names present: Mac. Keep Local Operator and Radient as product names.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). Connector between two keyboard shortcuts, reused three times in this step and rendered between two inline <code> spans. Give it the separator its grammar needs: spaces on both sides where the language separates words with spaces, so the Latin key names are never glued to the connector; CJK may omit them. Hindi and Urdu may place the verb after the second shortcut and use this fragment accordingly. Do not change either key name. Product/feature names present: Mac. Keep Local Operator and Radient as product names.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
@@ -714,10 +684,10 @@
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.welcome.image.1.alt": {
-		"length": "Short descriptive phrase in the image alt attribute; English is 14 characters.",
-		"note": "Alt text for the tour screenshot chat-full-view.png shown in step 1 (\"Welcome to Local Operator\"). It describes what the screenshot shows; the same words may appear in the step prose.",
-		"role": "Alternative text for screenshot 1 in tour step 1 of 37",
-		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+		"length": "Short descriptive phrase in the figure's accessible label; English is 60 characters.",
+		"note": "Accessible label for the wordless structural figure shown in step 1 (\"Welcome to Local Operator\"). The figure has no text; this label is its only description. It depicts a chat window with a sidebar, message thread and composer, not a screenshot; do not refer to product copy or a captured screen.",
+		"role": "Alternative text for the structural figure in tour step 1 of 37",
+		"tone": "Plain descriptive label; do not start with \"Image of\"."
 	},
 	"ui.onboarding.tour.welcome.list.1.item.1": {
 		"length": "Single bullet line in the tour panel; English is 15 characters. Keep within about 1.5x.",

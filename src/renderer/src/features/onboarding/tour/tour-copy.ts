@@ -1,11 +1,3 @@
-import tourAgenticSequenceImage from "@assets/images/tour/agentic-sequence.png";
-import tourCanvasCodeInlineEditImage from "@assets/images/tour/canvas-code-inline-edit.png";
-import tourCanvasOverviewImage from "@assets/images/tour/canvas-overview.png";
-import tourCanvasVariablesImage from "@assets/images/tour/canvas-variables-view.png";
-import tourChatAttachmentsImage from "@assets/images/tour/chat-attachments.png";
-import tourChatFullViewImage from "@assets/images/tour/chat-full-view.png";
-import tourChatInputImage from "@assets/images/tour/chat-input.png";
-import tourInlineEditCanvasImage from "@assets/images/tour/inline-edit-canvas.png";
 import { paletteDoorLabel } from "@features/command-palette/palette-shortcut";
 import { t } from "@shared/i18n";
 import type { WithoutParams } from "@shared/i18n";
@@ -14,19 +6,21 @@ import type { WithoutParams } from "@shared/i18n";
  * The walkthrough tour's copy and body structure.
  *
  * WHY THE BODIES ARE DATA, NOT PROSE WITH MARKUP. A tour body is a document —
- * paragraphs, bulleted lists, screenshots and inline keyboard shortcuts — and
- * the catalogue forbids markup in a message. So the catalogue holds the words
- * (one key per translatable run) and this module holds the structure: block
- * order, image sources, and the literal key names/symbols rendered inside
- * `<code>`. The renderer below puts them back together; moving a paragraph or
- * a screenshot is an edit here, never a change to a translated sentence.
+ * paragraphs, bulleted lists, structural figures and inline keyboard
+ * shortcuts — and the catalogue forbids markup in a message. So the catalogue
+ * holds the words (one key per translatable run) and this module holds the
+ * structure: block order, figure choice, and the literal key names/symbols
+ * rendered inside `<code>`. The renderer below puts them back together; moving
+ * a paragraph or choosing a figure is an edit here, never a change to a
+ * translated sentence.
  *
  * WHY FRAGMENTS AROUND `<code>` SPANS. The repository has no rich-text tag
  * convention (`<Trans>` or tag-bearing ICU messages); its demonstrated pattern
  * for emphasised runs is a message per fragment, with the component inserting
  * the element between them (see `project-delete-dialog.tsx`). These runs
- * follow that pattern, and each fragment's context sidecar states that its
- * leading/trailing spaces are load-bearing.
+ * follow that pattern; each fragment's context sidecar tells the translator
+ * how to supply the separator its own script needs, because the English
+ * value's leading/trailing spaces are structure rather than copy.
  *
  * `breaks` reproduces the source's `<br>` count after a block, so the rendered
  * body keeps the spacing the tour had before extraction. It is presentation,
@@ -41,10 +35,13 @@ import type { WithoutParams } from "@shared/i18n";
  * it. Every tour message is parameterless: structure and literal key names stay
  * in this module rather than becoming ICU arguments.
  */
-type TourKey = Extract<WithoutParams, `ui.onboarding.tour.${string}`>;
+export type TourKey = Extract<WithoutParams, `ui.onboarding.tour.${string}`>;
 
 /** One inline run: catalogue copy, or a literal rendered as `<code>`. */
 export type TourRun = { readonly key: TourKey } | { readonly code: string };
+
+/** The wordless structural figures the tour can draw. */
+export type TourFigure = "welcome" | "agent-capabilities";
 
 /** One block of a step body, with the source's `<br>` count after it. */
 export type TourBlock =
@@ -59,11 +56,11 @@ export type TourBlock =
 			readonly breaks?: 0 | 1 | 2;
 	  }
 	| {
-			readonly kind: "image";
-			readonly src: string;
+			readonly kind: "figure";
+			/** Which wordless structural figure to draw; see `TOUR_FIGURES`. */
+			readonly figure: TourFigure;
+			/** The figure's accessible label; the only words it carries. */
 			readonly altKey: TourKey;
-			/** The screenshot's source inline style, kept verbatim from the tour. */
-			readonly style: string;
 			readonly breaks?: 0 | 1 | 2;
 	  };
 
@@ -81,6 +78,73 @@ const escapeHtml = (value: string): string =>
 
 const escapeAttribute = (value: string): string =>
 	escapeHtml(value).replace(/"/g, "&quot;");
+
+/**
+ * Resolve a catalogue message for one of Shepherd's HTML sinks: a step title
+ * or a footer button label.
+ *
+ * Shepherd assigns both to `innerHTML`, so they need the same escaping as body
+ * copy; every title and button call site goes through this one helper. It is
+ * deliberately NOT used for `cancelIcon.label`: Shepherd sets that with
+ * `setAttribute`, where an escaped `&amp;` would be read aloud as literal
+ * characters, so that label is the raw `t()` value.
+ */
+export const tourLabel = (key: TourKey): string => escapeHtml(t(key));
+
+/*
+ * The structural figures.
+ *
+ * WHY NO IMAGE ELEMENT AND NO TEXT NODES. The tour used to show product screenshots:
+ * English pixels that went stale between releases and needed six extra alt keys.
+ * The live spotlight already shows each real surface, so the two remaining
+ * figures only have to establish the shape of the product - a chat window, then
+ * a chain of agent steps - without a word to translate. Every colour is a role
+ * token and the layout is flex plus logical properties (`onboarding-tour.css`),
+ * so both figures follow the theme and mirror under RTL.
+ */
+const WELCOME_FIGURE = [
+	'<div class="tour-figure-rail" aria-hidden="true">',
+	'<span class="tour-figure-dot"></span>',
+	'<span class="tour-figure-dot"></span>',
+	'<span class="tour-figure-dot"></span>',
+	'<span class="tour-figure-rail-line"></span>',
+	"</div>",
+	'<div class="tour-figure-main" aria-hidden="true">',
+	'<span class="tour-figure-bubble tour-figure-bubble-in"></span>',
+	'<span class="tour-figure-bubble tour-figure-bubble-out"></span>',
+	'<span class="tour-figure-composer">',
+	'<span class="tour-figure-composer-line"></span>',
+	'<span class="tour-figure-send"></span>',
+	"</span>",
+	"</div>",
+].join("");
+
+const AGENT_CAPABILITIES_FIGURE = [
+	'<div class="tour-figure-flow" aria-hidden="true">',
+	'<div class="tour-figure-node">',
+	'<span class="tour-figure-node-icon"></span>',
+	'<span class="tour-figure-node-bar"></span>',
+	'<span class="tour-figure-node-bar tour-figure-node-bar-short"></span>',
+	"</div>",
+	'<span class="tour-figure-connector"></span>',
+	'<div class="tour-figure-node">',
+	'<span class="tour-figure-node-icon tour-figure-node-icon-round"></span>',
+	'<span class="tour-figure-node-bar"></span>',
+	'<span class="tour-figure-node-bar tour-figure-node-bar-short"></span>',
+	"</div>",
+	'<span class="tour-figure-connector"></span>',
+	'<div class="tour-figure-node">',
+	'<span class="tour-figure-node-icon tour-figure-node-icon-end"></span>',
+	'<span class="tour-figure-node-bar"></span>',
+	'<span class="tour-figure-node-bar tour-figure-node-bar-short"></span>',
+	"</div>",
+	"</div>",
+].join("");
+
+const TOUR_FIGURES: Record<TourFigure, string> = {
+	welcome: WELCOME_FIGURE,
+	"agent-capabilities": AGENT_CAPABILITIES_FIGURE,
+};
 
 const renderRuns = (runs: readonly TourRun[]): string =>
 	runs
@@ -100,7 +164,7 @@ const renderBlock = (block: TourBlock): string => {
 			.join("");
 		return `<ul>${items}</ul>${breaks}`;
 	}
-	return `<img src="${block.src}" alt="${escapeAttribute(t(block.altKey))}" style="${block.style}"/>${breaks}`;
+	return `<div class="tour-figure tour-figure-${block.figure}" role="img" aria-label="${escapeAttribute(t(block.altKey))}">${TOUR_FIGURES[block.figure]}</div>${breaks}`;
 };
 
 /** Build the HTML Shepherd renders for one step body. */
@@ -116,11 +180,9 @@ export const TOUR_BODIES = {
 			breaks: 1,
 		},
 		{
-			kind: "image",
-			src: tourChatFullViewImage,
+			kind: "figure",
+			figure: "welcome",
 			altKey: "ui.onboarding.tour.welcome.image.1.alt",
-			style:
-				"width: 100%; height: 350px; object-fit: contain; border-radius: 8px;",
 			breaks: 1,
 		},
 		{
@@ -192,14 +254,6 @@ export const TOUR_BODIES = {
 			breaks: 1,
 		},
 		{
-			kind: "image",
-			src: tourChatInputImage,
-			altKey: "ui.onboarding.tour.chat_input.image.1.alt",
-			style:
-				"width: 100%; height: 200px; object-fit: contain; border-radius: 8px;",
-			breaks: 1,
-		},
-		{
 			kind: "paragraph",
 			runs: [{ key: "ui.onboarding.tour.chat_input.body.3" }],
 			breaks: 0,
@@ -214,14 +268,6 @@ export const TOUR_BODIES = {
 		{
 			kind: "paragraph",
 			runs: [{ key: "ui.onboarding.tour.attachments.body.2" }],
-			breaks: 1,
-		},
-		{
-			kind: "image",
-			src: tourChatAttachmentsImage,
-			altKey: "ui.onboarding.tour.attachments.image.1.alt",
-			style:
-				"width: 100%; height: 200px; object-fit: contain; border-radius: 8px;",
 			breaks: 1,
 		},
 		{
@@ -242,11 +288,9 @@ export const TOUR_BODIES = {
 			breaks: 1,
 		},
 		{
-			kind: "image",
-			src: tourAgenticSequenceImage,
+			kind: "figure",
+			figure: "agent-capabilities",
 			altKey: "ui.onboarding.tour.agent_capabilities.image.1.alt",
-			style:
-				"width: 100%; height: 350px; object-fit: contain; border-radius: 8px;",
 			breaks: 1,
 		},
 		{
@@ -313,14 +357,6 @@ export const TOUR_BODIES = {
 		{
 			kind: "paragraph",
 			runs: [{ key: "ui.onboarding.tour.canvas_feature.body.2" }],
-			breaks: 1,
-		},
-		{
-			kind: "image",
-			src: tourCanvasOverviewImage,
-			altKey: "ui.onboarding.tour.canvas_feature.image.1.alt",
-			style:
-				"width: 100%; height: 300px; object-fit: contain; border-radius: 8px;",
 			breaks: 0,
 		},
 	],
@@ -336,24 +372,8 @@ export const TOUR_BODIES = {
 			breaks: 1,
 		},
 		{
-			kind: "image",
-			src: tourInlineEditCanvasImage,
-			altKey: "ui.onboarding.tour.canvas_documents_view.image.1.alt",
-			style:
-				"width: 100%; height: 200px; object-fit: contain; border-radius: 8px;",
-			breaks: 1,
-		},
-		{
 			kind: "paragraph",
 			runs: [{ key: "ui.onboarding.tour.canvas_documents_view.body.3" }],
-			breaks: 1,
-		},
-		{
-			kind: "image",
-			src: tourCanvasCodeInlineEditImage,
-			altKey: "ui.onboarding.tour.canvas_documents_view.image.2.alt",
-			style:
-				"width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 8px;",
 			breaks: 1,
 		},
 		{
@@ -378,14 +398,6 @@ export const TOUR_BODIES = {
 		{
 			kind: "paragraph",
 			runs: [{ key: "ui.onboarding.tour.canvas_variables_view.body.2" }],
-			breaks: 1,
-		},
-		{
-			kind: "image",
-			src: tourCanvasVariablesImage,
-			altKey: "ui.onboarding.tour.canvas_variables_view.image.1.alt",
-			style:
-				"width: 100%; height: 350px; object-fit: contain; border-radius: 8px;",
 			breaks: 0,
 		},
 	],
