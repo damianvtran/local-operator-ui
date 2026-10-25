@@ -44,6 +44,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { isEntryPoint } from "./entry-point.mjs";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 const OUT = resolve("artifacts/notifications-native");
 const SESSION = "aaaaaaaaaaa1";
@@ -107,17 +108,24 @@ async function waitForHealth(base, deadlineMs = 120_000) {
 	}
 }
 
-/** Seed and read through the pinned core's own store, never through a fixture. */
+/**
+ * Seed and read through the pinned core's own store, never through a fixture.
+ *
+ * The environment is `pythonChildEnv`'s, like every harness python here: it
+ * drops every inherited `PYTHON*` (so no ambient `PYTHONPATH` can shadow the
+ * pinned core, and no inherited `PYTHONPYCACHEPREFIX` can aim bytecode at an
+ * installed app - the incident `python-bytecode-cache.test.mjs` exists for) and
+ * gives the child a scratch cache with bytecode writes off. The config dir is
+ * the scene's isolated one, stated last so nothing inherited can replace it.
+ */
 function coreStore(configDir, expression) {
 	return execFileSync(
 		process.env.LOCAL_OPERATOR_CORE_PYTHON,
 		["-c", expression],
 		{
-			env: {
-				...process.env,
-				LOCAL_OPERATOR_CONFIG_DIR: configDir,
-				PYTHONPATH: "",
-			},
+			env: pythonChildEnv({
+				extra: { LOCAL_OPERATOR_CONFIG_DIR: configDir },
+			}),
 			encoding: "utf8",
 		},
 	);
@@ -208,13 +216,19 @@ async function main() {
 		process.env.LOCAL_OPERATOR_CORE_BIN,
 		["serve", "--host", "127.0.0.1", "--port", String(port)],
 		{
-			env: {
-				...process.env,
-				HOME: home,
-				LOCAL_OPERATOR_CONFIG_DIR: config,
-				LOCAL_OPERATOR_DESKTOP_TOKEN: token,
-				LOCAL_OPERATOR_UI_TELEMETRY: "off",
-			},
+			/*
+			 * `local-operator` is the pinned core's python entry script, so it gets
+			 * the same `pythonChildEnv` as `coreStore` above, and its row in
+			 * `python-bytecode-cache.test.mjs` pins that.
+			 */
+			env: pythonChildEnv({
+				extra: {
+					HOME: home,
+					LOCAL_OPERATOR_CONFIG_DIR: config,
+					LOCAL_OPERATOR_DESKTOP_TOKEN: token,
+					LOCAL_OPERATOR_UI_TELEMETRY: "off",
+				},
+			}),
 			stdio: ["ignore", "pipe", "pipe"],
 		},
 	);
