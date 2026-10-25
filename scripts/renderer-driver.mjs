@@ -42851,6 +42851,10 @@ async function sceneRouteTops(cdp) {
 		 */
 		["projects", "/projects"],
 		["browser", "/browser"],
+		/* The Notifications page (features.notifications); below the capability
+		   the route is not mounted and this frame is the catch-all, which is the
+		   gate's own answer rather than a failure of the scene. */
+		["notifications", "/notifications"],
 	];
 	/*
 	 * The palette this run photographs, through the app's own preference (the same

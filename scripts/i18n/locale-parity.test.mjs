@@ -46,6 +46,23 @@ const IDENTICAL_OK = new Map([
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
 	],
 	[
+		"ui.notifications.row.chip.repeat",
+		// `×{count}`: the repeat chip on a collapsed reel row (notifications design
+		// section 4). A multiplication sign and a placeholder, no words; its context
+		// note requires every locale to keep it identical, so a differing value
+		// would be invented punctuation rather than a translation.
+		"language-neutral counter: only '×' and a placeholder, no words",
+	],
+	[
+		"ui.notifications.filter.chip",
+		// `{label}: {value}`: a filter chip's "Kind: All", two placeholders and a
+		// colon. It is ONE message so a locale owns its punctuation (French puts a
+		// space before the colon, Chinese uses a full-width one), which is why a
+		// locale MAY differ; where the locale's punctuation is the same as
+		// English, identical is the correct translation, not a stub.
+		"format string: two placeholders and a colon, punctuation only",
+	],
+	[
 		"ui.console.pane.label",
 		// A shared UI term, not a copy of untranslated English: French uses
 		// « Console » for this surface verbatim, and the English string IS that same
