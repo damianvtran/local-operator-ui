@@ -14,6 +14,11 @@
 		"plain, product name",
 		"The surface's own name in the app's navigation vocabulary; 'Agent Hub' is the shipped English name and the sidebar uses it too."
 	],
+	"ui.hub.pages.orgs_below_version": {
+		"note": "Local Operator is a product name. The remedy is an update, not a retry: an older backend answers the same refusal forever. Two sentences; wraps under the key alert title.",
+		"role": "alert body when the backend predates org operations",
+		"tone": "calm, names the remedy that works"
+	},
 	"ui.hub.pages.orgs_unavailable": [
 		"alert title",
 		"calm, specific",

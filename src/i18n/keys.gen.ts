@@ -5277,6 +5277,7 @@ export type MessageParams = {
 	"ui.hub.pages.browse_aria": undefined;
 	"ui.hub.pages.header.subtitle": undefined;
 	"ui.hub.pages.header.title": undefined;
+	"ui.hub.pages.orgs_below_version": undefined;
 	"ui.hub.pages.orgs_unavailable": undefined;
 	"ui.hub.pages.publish": undefined;
 	"ui.hub.pages.scope.org_label": undefined;
