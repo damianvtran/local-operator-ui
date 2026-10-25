@@ -27,7 +27,7 @@
 	"ui.chat.directory.label.moving_session": "Moviendo la sesión",
 	"ui.chat.directory.label.working_directory": "Directorio de trabajo",
 	"ui.chat.directory.label.working_directory_value": "Directorio de trabajo: {path}",
-	"ui.chat.directory.menu.browse": "Buscar directorio...",
+	"ui.chat.directory.menu.browse": "Examinar directorio…",
 	"ui.chat.directory.menu.custom": "Directorio personalizado",
 	"ui.chat.directory.menu.default": "Directorios predeterminados",
 	"ui.chat.directory.menu.enter_custom": "Escribir una ruta personalizada...",
