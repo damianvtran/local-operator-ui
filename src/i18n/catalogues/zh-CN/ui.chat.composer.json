@@ -36,7 +36,7 @@
 	"ui.chat.composer.secret_fill_unavailable": "无法访问敏感信息字段。文本已保留。",
 	"ui.chat.composer.secret_fill_multi": "此请求需要多项敏感信息。文本已保留，请在请求面板中选择要填写的字段。",
 	"ui.chat.composer.placeholder.answer": "输入你自己的回答……",
-	"ui.chat.composer.placeholder.aside": "不留记录地提问 — Esc关闭旁支对话",
+	"ui.chat.composer.placeholder.aside": "不留记录地提问——Esc关闭旁支对话",
 	"ui.chat.composer.placeholder.busy": "智能体正忙",
 	"ui.chat.composer.placeholder.idle": "有问题尽管问。@添加文件，/运行命令",
 	"ui.chat.composer.placeholder.no_provider": "连接提供商即可开始聊天",
