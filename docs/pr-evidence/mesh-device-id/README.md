@@ -140,3 +140,81 @@ fixture assertion incorrectly expected two visible chip facts; the diagnostic
 frame showed the canvas chip's established title/ARIA-only contract, so the
 play was corrected to test that actual contract before the passing capture.
 No failed frame is claimed as evidence.
+
+## UX review round 1 — U1 move-option caption
+
+The recall confirmation's preselected option said "the copy here is deleted once
+it arrives", directly under a body naming the **remote** copy as deleted. The
+caption now follows the plan's direction (`moveOptionCaption`, `mesh-drop.ts`).
+The 42 frames in `ux-r1/` pair the same harness story on both trees:
+
+- **before**: `main` at `20225f33d0`, in a detached worktree sharing the primary
+  checkout's dependencies (lockfile identical to the PR head).
+- **after**: the PR at `86d5100d62`.
+
+**Rig.** One Storybook at a time, using the repository's own `.storybook` config,
+so the app's real stylesheet compiles once (`.storybook/` unmodified). Served
+`index.css`: 280,832 bytes. It contains `.bg-scrim { background-color:
+var(--color-scrim) }` and `.bg-elevated { background-color:
+var(--color-elevated) }`; both rules are present on both trees.
+
+The harness story `harness/ux-r1-caption.stories.tsx` was copied untracked into
+`src/renderer/src/features/mesh/` for each run and then removed. It renders the
+real `MoveConfirmDialog` fed by the real `resolveDrop` over
+`networkTopology`/`peerList` -> `meshGraph`.
+
+A fixed-size page frames the iframe at the exact layout size. The harness desktop
+browser (one tab) captured it: no custom Chromium, no Electron. 1380x900 is
+`DEFAULT_WINDOW_WIDTH`/`HEIGHT`, and 800x600 is `WINDOW_MIN_*`. The tab viewport
+was 1280x720 CSS px, so the 1380x900 layout is shown scaled 0.8 (layout
+unchanged). The 800x600 layout is shown at 1.0.
+
+After each paint the story writes a receipt with the computed styles and caption
+geometry. A frame was shot only once that receipt matched the requested state,
+theme, viewport and expected caption text. Every frame's numbers and sha256 are
+in `ux-r1/measurements.json`.
+
+**Computed dialog and scrim** (all 42 frames, both trees):
+
+| Theme | `[role=dialog]` background | scrim background |
+| --- | --- | --- |
+| localOperatorDark | `rgb(50, 45, 34)` | `rgba(0, 0, 0, 0.6)` |
+| localOperatorLight | `rgb(254, 253, 250)` | `rgba(20, 17, 12, 0.35)` |
+
+**States** (each in dark and light, at 1380x900 and 800x600):
+
+| State | before (`main`) caption | after caption |
+| --- | --- | --- |
+| `recall` (preselected move, remote copy lost) | the copy here is deleted once it arrives — **contradicts the body** | the copy there is deleted once it arrives here |
+| `absent` (owner not in graph) | same contradiction; body names `shared-node` with no id | same as `recall`; body names `"shared-node" d_111…111` (full id) |
+| `outbound` (move to peer) | the copy here is deleted once it arrives | unchanged |
+| `copy` (keep chosen) | the original stays where it is | unchanged |
+
+On `main`, the before body shows raw `shared-node` because it predates this PR's
+identity fix. That difference comes from the earlier commits, not from U1.
+
+**Width and fit of the new recall caption** at the 800x600 narrow width,
+measured in the caption's own computed font:
+
+| Locale | text width (CSS px) | caption box / container | line boxes | text right vs box right | horizontal overflow |
+| --- | --- | --- | --- | --- | --- |
+| fr (longest) | 272.60 | 351 / 398 | 1 | 507.60 <= 586 | 0 |
+| es | 256.97 | 351 / 398 | 1 | 491.97 <= 586 | 0 |
+| ru | 255.00 | 351 / 398 | 1 | 490.00 <= 586 | 0 |
+| en | 252.48 | 351 / 398 | 1 | 487.48 <= 586 | 0 |
+| ur | 230.89 | 351 / 398 | 1 | 465.89 <= 586 | 0 |
+| hi | 202.45 | 351 / 398 | 1 | 437.45 <= 586 | 0 |
+| zh-CN | 172.73 | measured only | - | - | - |
+| vi | 171.77 | measured only | - | - | - |
+
+The dialog is `max-w-md` (448 px wide) at every width, so 800x600 does not
+narrow the caption box. Every captured locale fits on one line with no wrap
+and no clip. Even French, the longest, leaves 78 px of the 351 px box. vi and
+zh-CN were measured but not photographed, because both are the narrowest.
+Captured: fr, es, ru, hi and ur, each in both themes. ur renders RTL text
+inside the LTR dialog. The audits own the translations; this table owns only
+the fit.
+
+**What these frames do not prove:** the Mesh tab's own menu path to the dialog
+(the earlier `after-duplicate-source-recall.png` covers that). Nor do they show
+a packaged-app window: this is Storybook in the harness browser.
