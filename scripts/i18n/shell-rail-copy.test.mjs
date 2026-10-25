@@ -77,12 +77,19 @@ test("ask scope and tooltip stay delegated to their chat-owned derivation", () =
 });
 
 test("tooltip action select and English missing-key fallback use the live locale", () => {
+	/*
+	 * `xx`, not `fr`: the French catalogue now ships `ui.shell.rail.browser.aria`
+	 * ("Navigateur"), so a partial `fr` registration would render the bundled
+	 * translation and the fallback assertion below would be testing nothing. The
+	 * synthetic tag carries no bundled catalogue, so a miss is a real miss - the
+	 * same premise `keyed-copy-behaviour.test.mjs` states with `xx` (888e1859c4).
+	 */
 	try {
-		model.registerCatalogue("fr", {
+		model.registerCatalogue("xx", {
 			"ui.shell.rail.browser.tooltip":
 				"{state, select, open {fixture close{chord}} other {fixture open{chord}}}",
 		});
-		model.setLocale("fr");
+		model.setLocale("xx");
 		assert.equal(
 			model.browserRailLabels(true, 0, null).tooltip,
 			"fixture close",

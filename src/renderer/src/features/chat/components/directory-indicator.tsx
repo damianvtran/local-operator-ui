@@ -951,7 +951,13 @@ export const DirectoryIndicator = forwardRef<
 					<button
 						type="button"
 						aria-disabled="true"
-						aria-label={`${t("ui.chat.directory.label.working_directory")}: ${shown}`}
+						// The NAME is the catalogue's full phrase, so the locale's own
+						// punctuation (fr's narrow no-break space, zh's full-width colon)
+						// reaches a screen reader. The visible slot keeps the label/path
+						// split because the path is what truncates.
+						aria-label={t("ui.chat.directory.label.working_directory_value", {
+							path: shown,
+						})}
 						// The reason is a DESCRIPTION, not the name: naming the chip
 						// after the rule told a screen-reader user why they could not
 						// change the directory without ever telling them what it is.
