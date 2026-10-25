@@ -973,7 +973,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 												value={org.tenant_id}
 												disabled
 											>
-												{org.tenant_name || "Organization"}{" "}
+												{org.tenant_name || t("ui.hub.pages.scope.org_label")}{" "}
 												{t("ui.agents.upload.target.upgrade")}
 											</SelectItem>
 										))}

@@ -1164,6 +1164,7 @@ export function AgentDetail({
 							</p>
 							<p className="text-body-sm text-ink-muted">
 								{t("ui.agents.detail.read.effort_label")}{" "}
+								{/* i18n: ignore effort fallback - "inherit" is the wire's tier id, not copy */}
 								{profile.effort ?? "inherit"}
 							</p>
 							{/*
