@@ -1,10 +1,14 @@
 {
-	"ui.common.viewer.image_lightbox.asset_of": "Mục {index, number, ::group-off} / {count, number, ::group-off}",
-	"ui.common.viewer.image_lightbox.close": "Đóng {medialabel}",
-	"ui.common.viewer.image_lightbox.next": "{medialabel} tiếp theo",
-	"ui.common.viewer.image_lightbox.previous": "{medialabel} trước",
+	"ui.common.viewer.close": "{kind, select, image {Đóng ảnh} asset {Đóng tệp} other {Đóng}}",
+	"ui.common.viewer.next": "{kind, select, image {Ảnh tiếp theo} asset {Tệp tiếp theo} other {Tiếp theo}}",
 	"ui.common.viewer.opening": "Đang mở…",
+	"ui.common.viewer.position": "{kind, select, image {Ảnh {index, number, ::group-off} trên {count, number, ::group-off}} asset {Tệp {index, number, ::group-off} trên {count, number, ::group-off}} other {Ảnh {index, number, ::group-off} trên {count, number, ::group-off}}}",
+	"ui.common.viewer.previous": "{kind, select, image {Ảnh trước} asset {Tệp trước} other {Trước}}",
 	"ui.common.viewer.reset_view": "Đặt lại chế độ xem",
 	"ui.common.viewer.zoom_in": "Phóng to",
-	"ui.common.viewer.zoom_out": "Thu nhỏ"
+	"ui.common.viewer.zoom_out": "Thu nhỏ",
+	"ui.common.viewer.image_lightbox.previous": "{medialabel} trước",
+	"ui.common.viewer.image_lightbox.next": "{medialabel} tiếp theo",
+	"ui.common.viewer.image_lightbox.close": "Đóng {medialabel}",
+	"ui.common.viewer.image_lightbox.asset_of": "Mục {index, number, ::group-off} / {count, number, ::group-off}"
 }

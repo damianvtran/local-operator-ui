@@ -66,6 +66,7 @@
 
 import type { SidebarBasis } from "@features/chat/chat-list-sections";
 import {
+	SIDEBAR_SECTION_LABEL,
 	type SidebarGroupBy,
 	type SidebarOrderBy,
 	type SidebarSectionKey,
@@ -79,7 +80,7 @@ import {
 } from "@features/chat/chat-sidebar-view";
 import { Button } from "@shared/components/ui";
 import { Switch } from "@shared/components/ui/switch";
-import { type WithoutParams, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -97,18 +98,11 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-// Stable model IDs stay separate from copy: store order/hidden state must not
-// become translated strings. Resolve these keys only while rendering the menu.
-const SECTION_MESSAGE_KEYS = {
-	pinned: "ui.chat.sidebar_view.section.pinned",
-	running: "ui.chat.sidebar_view.section.running",
-	today: "ui.chat.sidebar_view.section.today",
-	week: "ui.chat.sidebar_view.section.week",
-	older: "ui.chat.sidebar_view.section.older",
-	agents: "ui.chat.sidebar_view.section.agents",
-	teams: "ui.chat.sidebar_view.section.teams",
-} as const satisfies Record<SidebarSectionKey, WithoutParams>;
-const sectionLabel = (key: SidebarSectionKey) => t(SECTION_MESSAGE_KEYS[key]);
+// Section labels are drawn from the ONE table `chat-sidebar-view.ts` exports, so
+// the popover row and the sidebar heading cannot name one section two ways. The
+// keys are resolved only while rendering the menu, never stored as copy: a
+// module-scope English table would freeze at import and ignore a language switch.
+const sectionLabel = (key: SidebarSectionKey) => t(SIDEBAR_SECTION_LABEL[key]);
 
 /** A row's trailing count, when the caller has one. `undefined` draws nothing. */
 export type ViewMenuCounts = Partial<Record<SidebarSectionKey, number>>;

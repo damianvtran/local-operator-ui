@@ -1,0 +1,154 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "es",
+  "namespace": "ui.common.viewer",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "date": "2026-10-25",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "instance": "es-bind-4342bf1a6706",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator on any parent wave",
+    "instance": "es-bind-4342bf1a6706",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Session banner reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run.",
+    "independence": "This session authored no catalogue, ledger, allowance or code change for PR #1403 or its parent waves. It writes only this receipt and its three sibling locale receipts. Parent receipts cited here were produced by other translation-auditor runs; this run re-read and re-bound the current head bytes."
+  },
+  "status": "passed",
+  "result": "clean",
+  "binding": "Convergence re-bind audit for the post-merge head: the receipt binds the exact current English, context and Spanish bytes, proves key/ICU parity and the parent-union provenance, and carries forward only findings that are still true on these bytes. It is not a translation of anything.",
+  "en_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+  "context_sha256": "c105c548706f46e9e247437c16352074c245ff07551a8edf360a4a8e666a4d73",
+  "target_sha256": "4342bf1a6706d05a48eaf8f2773859dfeec50d3fde41431a5ea13b422ab334a0",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "path_note": "Core guidance read in the shared core checkout; the three hashes match the es-extract-a815d841bd5d-r2 audit's references, so the guidance revision is unchanged since the parent audit."
+  },
+  "limitations": [
+    "Static catalogue audit only: no browser, build, install, heavy suite or rendered frame was produced; width checks are code-point arithmetic against the English context sidecar hints, not measured pixels.",
+    "No native-speaker sign-off is claimed; the catalogue values are the subject, and component call sites were read only to establish UI role and placeholder meaning.",
+    "No catalogue, context, generator, ledger or allowance file was edited by this run. The receipt is written under i18n/receipts/ for the implementer to bind."
+  ],
+  "scope": "Full ui.common.viewer namespace (12 keys): the merged union of main's 8 keys (4 image_lightbox plus opening/reset/zoom) and the branch's 8 (4 select/position keys plus the same 4 shared), in English key order, read at PR #1403 head 0adbb37b94.",
+  "revisions": {
+    "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+    "main_at_merge": "91aa8f5f10797184d01c41143d1a3645176b566b",
+    "branch_pre_merge_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+    "note": "Main's 8 es values are byte-identical to origin/main; the branch's 8 es values are byte-identical to d082bd9595; the head is exactly their 12-key union in English key order."
+  },
+  "checks": {
+    "keys": {
+      "merged": 12,
+      "main": 8,
+      "branch": 8,
+      "shared": 4,
+      "only_main": 4,
+      "only_branch": 4,
+      "union": 12
+    },
+    "key_set_equals_english": true,
+    "key_order_equals_english": true,
+    "key_set_equals_parent_union": true,
+    "missing_vs_english": [],
+    "extra_vs_english": [],
+    "merged_values_equal_main": {
+      "keys": 8,
+      "equal": 8,
+      "mismatches": []
+    },
+    "merged_values_equal_branch_parent": {
+      "keys": 8,
+      "equal": 8,
+      "mismatches": []
+    },
+    "main_line_provenance": {
+      "strictly_identical_es_lines": 6,
+      "comma_only_es_lines": [
+        "ui.common.viewer.zoom_out",
+        "ui.common.viewer.image_lightbox.asset_of"
+      ],
+      "value_identical_after_json_parse": true,
+      "english_lines_strictly_identical": 8,
+      "note": "zoom_out gained the trailing comma and asset_of lost it because the file moved to English key order; values are unchanged."
+    },
+    "unused_key_note": "main's image_lightbox.* keys have no t() call site at the PR head: the rewritten image-lightbox.tsx and image-viewer-model.ts call the four new select/position keys, while main's component still called the image_lightbox keys. The merge keeps them as the union so main's audited values are preserved; their values are byte-identical to main.",
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "messages_parsed": 12,
+      "messages_total": 12,
+      "plural_messages": 0,
+      "select_messages": 4,
+      "argument_mismatches": [],
+      "structural_deltas": [
+        "image_lightbox.previous/next reorder {medialabel} before the adjective, permitted by the context's word-order note"
+      ],
+      "findings": []
+    },
+    "renders": {
+      "close": {
+        "image": "Cerrar imagen",
+        "asset": "Cerrar recurso",
+        "other": "Cerrar"
+      },
+      "next": {
+        "image": "Imagen siguiente",
+        "asset": "Recurso siguiente",
+        "other": "Siguiente"
+      },
+      "previous": {
+        "image": "Imagen anterior",
+        "asset": "Recurso anterior",
+        "other": "Anterior"
+      },
+      "position": {
+        "image": "Imagen 1 de 10",
+        "asset": "Recurso 3000 de 4000"
+      },
+      "asset_of": "Recurso 3000 de 4000",
+      "lightbox_previous": "Foto anterior",
+      "lightbox_next": "Foto siguiente",
+      "lightbox_close": "Cerrar Foto"
+    },
+    "format_bytes": {
+      "utf8": true,
+      "bom": false,
+      "crlf": false,
+      "trailing_newline": true,
+      "duplicate_keys": [],
+      "tab_indented": true
+    },
+    "prior_audit_provenance": {
+      "branch_8_keys": "i18n/receipts/es-extract-a815d841bd5d-r2.json at d082bd9595 (clean; the ledger's current es/ui.common.viewer row)",
+      "main_8_keys": "main ledger row es/ui.common.viewer, receipt i18n/receipts/3ac75cca27a3.json (clean)"
+    }
+  },
+  "findings": [],
+  "observations": [
+    "Asset is rendered recurso, matching the es library surface; image is imagen; the select arms are complete for image, asset and other.",
+    "The 4 image_lightbox keys are the values audited on main; the 4 select/position keys are the values audited at d082; this is the first audit of their merged 12-key file.",
+    "{kind}, {index}, {count} and {medialabel} are preserved exactly; the ::group-off skeletons in position and asset_of match English byte-for-byte.",
+    "No value is identical to English; no straight quotes, double spaces, control characters or bidi controls were found."
+  ],
+  "method": [
+    "Read the English source, its .context sidecar and the Spanish target from git objects; no checkout or catalogue file was modified.",
+    "Proved the merged key set equals the union of main and branch parents and equals English, in English key order; compared every merged value with both parents after JSON parsing, and compared the main-key es lines byte-for-byte (6 strict, 2 trailing-comma-only).",
+    "Parsed all 12 messages with @formatjs/icu-messageformat-parser 3.5.21 and compared argument/select/skeleton trees with English; the only structural deltas are the permitted word-order changes in image_lightbox.previous/next.",
+    "Rendered the four select messages for kind image/asset/other and the two numeric messages at 1/10 and 3000/4000 with Intl.PluralRules/Intl.NumberFormat es; all arms render without error.",
+    "Checked byte hygiene: UTF-8, no BOM, LF only, trailing newline, no duplicate keys; read idiom and role against the context sidecar and es style guide."
+  ],
+  "verdict": "clean — 12 keys read; 0 blocker, 0 major, 0 minor, 0 nit. The merged union equals English, all 8 main values are byte-identical after trailing-comma normalization, and every select and numeric arm renders correctly for image/asset/other."
+}

@@ -30,8 +30,10 @@ const source = bundle.outputFiles[0].text;
  */
 const refusalContractBundle = await build({
 	stdin: {
-		contents:
-			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE, DESKTOP_MACHINE_DETAIL } from "./src/shared/desktop-contract";',
+		contents: [
+			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_COPY_KEY, DESKTOP_MACHINE_DETAIL } from "./src/shared/desktop-contract";',
+			'export { t } from "./src/i18n";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -43,8 +45,9 @@ const refusalContractBundle = await build({
 });
 const {
 	DESKTOP_REFUSAL_CODE,
-	DESKTOP_REFUSAL_SENTENCE,
+	DESKTOP_REFUSAL_COPY_KEY,
 	DESKTOP_MACHINE_DETAIL,
+	t,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(refusalContractBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1872,7 +1875,7 @@ test("a plane's refusal is coded, and the sentence is this app's rather than the
 			daemonProse,
 			"the server's own words are retained on the error for machine-voice detail",
 		);
-		assert.equal(rendered, DESKTOP_REFUSAL_SENTENCE[code]);
+		assert.equal(rendered, t(DESKTOP_REFUSAL_COPY_KEY[code]));
 		assert.notEqual(
 			rendered,
 			daemonProse,
@@ -1911,7 +1914,7 @@ test("a code main declared wins, so the app's own refusal is not read as the pla
 		}
 		assert.equal(caught.code, code);
 		const rendered = userFacingMessage(caught, "fallback");
-		assert.equal(rendered, DESKTOP_REFUSAL_SENTENCE[code]);
+		assert.equal(rendered, t(DESKTOP_REFUSAL_COPY_KEY[code]));
 		assert.doesNotMatch(
 			rendered,
 			/manage its own server|desktop-managed backend/i,

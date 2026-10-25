@@ -1,0 +1,16 @@
+{
+	"ui.chat.device.label.moving_to": "Moviendo a {name}",
+	"ui.chat.device.label.new_on": "Nueva en {name}",
+	"ui.chat.device.label.new_on_this_device": "Nueva aquí",
+	"ui.chat.device.label.on": "En {name}",
+	"ui.chat.device.label.on_this_device": "En este dispositivo",
+	"ui.chat.device.sentence.draft_elsewhere": "Las conversaciones nuevas se crean en {name}. Haz clic para elegir otro dispositivo.",
+	"ui.chat.device.sentence.draft_here": "Las conversaciones nuevas se crean en este dispositivo. Haz clic para elegir otro dispositivo.",
+	"ui.chat.device.sentence.gone": "Esta conversación se movió a {name}. La copia que había aquí se borró. Haz clic para traerla de vuelta aquí.",
+	"ui.chat.device.sentence.gone_did_not_answer": "Esta conversación se movió a {name}, que no respondió a la última lectura. La copia que había aquí se borró. Haz clic para traerla de vuelta aquí.",
+	"ui.chat.device.sentence.local": "Esta conversación se ejecuta en este dispositivo. Haz clic para moverla a otro dispositivo o traerla de vuelta más tarde.",
+	"ui.chat.device.sentence.moving": "Moviendo esta conversación a {name}.",
+	"ui.chat.device.sentence.remote": "Esta conversación se ejecuta en {name}. Haz clic para traerla aquí o moverla a otro dispositivo.",
+	"ui.chat.device.sentence.remote_did_not_answer": "Esta conversación se ejecuta en {name}, que no respondió a la última lectura.",
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "Esta conversación se ejecuta en {name}, que no respondió a la última lectura ({reason})."
+}

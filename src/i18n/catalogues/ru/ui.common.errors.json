@@ -2,5 +2,9 @@
 	"ui.common.errors.error_boundary.error_details": "Подробности ошибки",
 	"ui.common.errors.error_boundary.something_went_wrong": "Что-то пошло не так",
 	"ui.common.errors.error_boundary.stack_trace": "Трассировка стека",
-	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": "Приложение столкнулось с ошибкой. Повторите попытку или обратитесь в поддержку, если проблема не исчезнет."
+	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": "Приложение столкнулось с ошибкой. Повторите попытку или обратитесь в поддержку, если проблема не исчезнет.",
+	"ui.common.errors.desktop_refusal.no_credential": "Это приложение не сопряжено с запущенным сервером Local Operator, поэтому этот элемент управления недоступен.",
+	"ui.common.errors.desktop_refusal.refused": "Запущенный сервер Local Operator отклонил учётные данные этого приложения, поэтому этот элемент управления недоступен.",
+	"ui.common.errors.desktop_refusal.plane_closed": "Запущенный сервер Local Operator не принимает управляющие команды этого приложения.",
+	"ui.common.errors.desktop_refusal.transport_failed": "Сервер Local Operator не ответил на этот запрос."
 }

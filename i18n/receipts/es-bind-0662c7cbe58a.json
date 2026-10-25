@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "es",
+  "namespace": "ui.chat.header",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "date": "2026-10-25",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "instance": "es-bind-0662c7cbe58a",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator on any parent wave",
+    "instance": "es-bind-0662c7cbe58a",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Session banner reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run.",
+    "independence": "This session authored no catalogue, ledger, allowance or code change for PR #1403 or its parent waves. It writes only this receipt and its three sibling locale receipts. Parent receipts cited here were produced by other translation-auditor runs; this run re-read and re-bound the current head bytes."
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Convergence re-bind audit for the post-merge head: the receipt binds the exact current English, context and Spanish bytes, proves key/ICU parity and the parent-union provenance, and carries forward only findings that are still true on these bytes. It is not a translation of anything.",
+  "en_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+  "context_sha256": "39558b26f12ae22908a146f61c8c40795ac9e3b19e41a6ebed7ada883e7281bf",
+  "target_sha256": "0662c7cbe58aec6ccfe17e48fb6f0e257f53a948ef6dcbfcedd28a5f821a52f5",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "path_note": "Core guidance read in the shared core checkout; the three hashes match the es-extract-a815d841bd5d-r2 audit's references, so the guidance revision is unchanged since the parent audit."
+  },
+  "limitations": [
+    "Static catalogue audit only: no browser, build, install, heavy suite or rendered frame was produced; width checks are code-point arithmetic against the English context sidecar hints, not measured pixels.",
+    "No native-speaker sign-off is claimed; the catalogue values are the subject, and component call sites were read only to establish UI role and placeholder meaning.",
+    "No catalogue, context, generator, ledger or allowance file was edited by this run. The receipt is written under i18n/receipts/ for the implementer to bind."
+  ],
+  "scope": "Full ui.chat.header namespace (12 keys; main's 10 plus new_chat and new_chat_with), read at PR #1403 head 0adbb37b94 against the English source and the en context sidecar.",
+  "revisions": {
+    "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+    "main_at_merge": "91aa8f5f10797184d01c41143d1a3645176b566b",
+    "branch_pre_merge_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+    "last_content_head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+    "note": "The en/context/es blobs are byte-identical to d784571d90 (the es-final audit head) and the merge touched no es header bytes; main's 10 values are unchanged."
+  },
+  "checks": {
+    "keys": {
+      "merged": 12,
+      "main": 10,
+      "added_by_branch_commits": 2,
+      "shared": 10,
+      "only_main": 0,
+      "only_branch": 2
+    },
+    "key_set_equals_english": true,
+    "key_order_equals_english": true,
+    "missing_vs_english": [],
+    "extra_vs_english": [],
+    "main_values_changed": [],
+    "english_values_changed": [],
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21 (generator's parser)",
+      "messages_parsed": 12,
+      "messages_total": 12,
+      "plural_messages": 0,
+      "select_messages": 0,
+      "argument_mismatches": [],
+      "placeholder_checks": [
+        "{target} preserved exactly in new_chat_with (1/1)"
+      ],
+      "findings": []
+    },
+    "format_bytes": {
+      "utf8": true,
+      "bom": false,
+      "crlf": false,
+      "trailing_newline": true,
+      "duplicate_keys": [],
+      "tab_indented": true
+    },
+    "widths": {
+      "maxCells_hints_checked": 11,
+      "new_keys_inside_budget": true,
+      "new_chat": "10/16 cells",
+      "new_chat_with": "23/32 cells including {target}"
+    },
+    "prior_audit_provenance": {
+      "last_full_12_key_audit": "working-tree prior pass i18n/receipts/es-final-c7acf4522dbc-ui.chat.header.json (untracked at the PR head) at d784571d90 (clean)",
+      "current_ledger_receipt": "i18n/receipts/bf867ef95b69.json binds the pre-merge main bytes (clean-with-findings; ES-T1-02)",
+      "earlier_receipt_at_main_bytes": "i18n/receipts/bf867ef95b69.json (clean-with-findings; ES-T1-02)"
+    }
+  },
+  "findings": [
+    {
+      "id": "ES-T1-02",
+      "severity": "minor",
+      "namespace": "ui.chat.header",
+      "key": "ui.chat.header.close_run_details",
+      "keys": [
+        "ui.chat.header.close_run_details",
+        "ui.chat.header.open_run_details"
+      ],
+      "lines": [
+        10,
+        11
+      ],
+      "current": [
+        "Cerrar detalles de ejecución",
+        "Abrir detalles de ejecución"
+      ],
+      "proposed": [
+        "Cerrar detalles",
+        "Abrir detalles"
+      ],
+      "reason": "The run-details overflow-menu labels materially exceed their advisory 20-cell budgets (28 and 27 cells, 1.65x/1.69x the English source) and Spanish runs long in menu labels. The finding is unchanged from the main-bytes audit and is carried so this re-bind does not silently drop it.",
+      "evidence": "Cerrar detalles de ejecución: 28/20 cells; Abrir detalles de ejecución: 27/20 cells. Shortened forms are 15 and 14 cells. No rendered menu was built in this pass, so clipping is a source-level risk, not an observed defect.",
+      "carried_from": "i18n/receipts/bf867ef95b69.json (ES-T1-02), same values at the current bytes; the es-final delta pass noted the same overruns as pre-existing advisory notes.",
+      "disposition": "open non-blocking note"
+    }
+  ],
+  "observations": [
+    "conversation_name is 25/24 advisory cells; it is an accessible input name, not a visible menu label, and the prior pass judged it not a clipping defect.",
+    "new_chat and new_chat_with are inside their budgets and use the audited house noun chat; {target} is kept verbatim for an agent or team's own display name.",
+    "No value is identical to English; no straight quotes, double spaces, control characters or bidi controls were found."
+  ],
+  "method": [
+    "Read the English source, its .context sidecar and the Spanish target from git objects (git show) at the PR head; no checkout or catalogue file was modified.",
+    "Compared key sets and order: es equals the English 12-key set in English order; main's 10 keys are all present and unchanged.",
+    "Parsed all 12 messages with @formatjs/icu-messageformat-parser 3.5.21 and compared argument/type trees with English: one argument in new_chat_with, preserved byte-exactly.",
+    "Checked byte hygiene: UTF-8, no BOM, LF only, trailing newline, no duplicate keys, tab-indented one-key-per-line JSON.",
+    "Checked widths against the context sidecar maxCells hints and code-point lengths; read register, idiom and glossary against the es style guide and programme glossary."
+  ],
+  "verdict": "clean-with-findings — 12 keys read; 0 blocker, 0 major, 1 minor (carried ES-T1-02), 0 nit. Both added header titles are accurate, idiomatic and within budget; the two run-details labels retain their previously recorded advisory overrun."
+}

@@ -76,10 +76,23 @@
  * the padding should shrink.
  */
 
-export const DEFAULT_MESSAGE_SUGGESTIONS: readonly string[] = [
+/**
+ * The pool holds MESSAGE KEYS, not sentences.
+ *
+ * A module-scope array of English labels is resolved once, at import, so the
+ * empty chat would keep showing English after a language switch and the labels
+ * would sit outside the catalogue every other sentence of the composer comes
+ * from. Keys are resolved by `t()` where the chips are drawn; the sampler below
+ * only ever permutes keys, so a draw is locale-independent and the same sample
+ * survives a language change.
+ */
+
+import type { WithoutParams } from "@shared/i18n";
+
+export const DEFAULT_MESSAGE_SUGGESTIONS: readonly WithoutParams[] = [
 	// The pinned opening four: one verb each, four different capabilities.
-	"Set up Linear MCP for me",
-	"Create a team of agents",
+	"ui.chat.composer.suggestion.linear_mcp",
+	"ui.chat.composer.suggestion.create_team",
 	/*
 	 * Shortened from the recommended "Turn on phone access for this session".
 	 * Measured at the 550px column floor, the longer wording put the pinned four
@@ -89,14 +102,14 @@ export const DEFAULT_MESSAGE_SUGGESTIONS: readonly string[] = [
 	 * band still says what phone access is for, and the 810px measure is
 	 * unaffected either way.
 	 */
-	"Turn on phone access",
-	"Show me what the agent did last turn",
+	"ui.chat.composer.suggestion.phone_access",
+	"ui.chat.composer.suggestion.last_turn",
 	// The tail, sampled after the first draw: still one verb each, still four
 	// different jobs.
-	"Build a code-review agent",
-	"Wake me tomorrow morning with a summary",
-	"Schedule a task that runs every morning",
-	"Review this repo and open a pull request",
+	"ui.chat.composer.suggestion.code_review_agent",
+	"ui.chat.composer.suggestion.wake_with_summary",
+	"ui.chat.composer.suggestion.schedule_mornings",
+	"ui.chat.composer.suggestion.review_repo_pr",
 ];
 
 /**
@@ -115,7 +128,10 @@ export const MAX_SUGGESTIONS = 4;
  * `random` is a parameter rather than `Math.random` inline so the order is
  * reproducible under a seeded source — see the module comment.
  */
-const shuffled = (items: readonly string[], random: () => number): string[] => {
+const shuffled = (
+	items: readonly WithoutParams[],
+	random: () => number,
+): WithoutParams[] => {
 	const copy = [...items];
 	for (let i = copy.length - 1; i > 0; i--) {
 		const j = Math.floor(random() * (i + 1));
@@ -132,10 +148,10 @@ const shuffled = (items: readonly string[], random: () => number): string[] => {
  * the behaviour the seven-chip version had for its short pools.
  */
 export const pickSuggestions = (
-	pool: readonly string[],
+	pool: readonly WithoutParams[],
 	count: number = MAX_SUGGESTIONS,
 	random: () => number = Math.random,
-): string[] => {
+): WithoutParams[] => {
 	if (pool.length <= count) return [...pool];
 	return shuffled(pool, random).slice(0, count);
 };
@@ -175,11 +191,11 @@ export const sessionSuggestionSample: SuggestionSampleState = {
  * a committed frame of this surface reproducible.
  */
 export const sampleSuggestions = (
-	pool: readonly string[],
+	pool: readonly WithoutParams[],
 	count: number = MAX_SUGGESTIONS,
 	random: () => number = Math.random,
 	state: SuggestionSampleState = sessionSuggestionSample,
-): string[] => {
+): WithoutParams[] => {
 	if (pool.length === 0) return [];
 	if (pool.length <= count) return [...pool];
 	if (!state.opening) return pickSuggestions(pool, count, random);

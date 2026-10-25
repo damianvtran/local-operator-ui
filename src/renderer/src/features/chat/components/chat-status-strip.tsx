@@ -1,6 +1,8 @@
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Alert, Button } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type OfflineConfirmation,
@@ -70,6 +72,7 @@ export const ChatStatusStripView = ({
 	outcome = null,
 	onRetry,
 }: ChatStatusStripViewProps) => {
+	useI18nLocale();
 	const key = chatStatusKey(display);
 	const collapsed = key !== null && dismissedKey === key;
 
@@ -186,7 +189,7 @@ export const ChatStatusStripView = ({
 									"text-ink-muted hover:text-ink",
 									"focus-visible:outline-2 focus-visible:outline-accent",
 								)}
-								aria-label="Dismiss"
+								aria-label={t("ui.chat.status_strip.dismiss")}
 							>
 								<X aria-hidden="true" className="size-3.5" />
 							</button>
