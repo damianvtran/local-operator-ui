@@ -114,7 +114,9 @@ test("Waiting on you is first in both groupings and holds only live asks", () =>
 			[live.id],
 		);
 		assert.ok(
-			groups.slice(1).every((group) => group.items.every((row) => !isLiveAsk(row))),
+			groups
+				.slice(1)
+				.every((group) => group.items.every((row) => !isLiveAsk(row))),
 			`${grouping}: a live ask must not appear outside Waiting on you`,
 		);
 	}
@@ -130,9 +132,18 @@ test("Waiting on you is first in both groupings and holds only live asks", () =>
 });
 
 test("conversation grouping orders sessions by their newest item", () => {
-	const a = item({ session: { id: "s-a", title: "A" }, updated_at: NOW - 5 * HOUR });
-	const b = item({ session: { id: "s-b", title: "B" }, updated_at: NOW - HOUR });
-	const a2 = item({ session: { id: "s-a", title: "A" }, updated_at: NOW - 3 * HOUR });
+	const a = item({
+		session: { id: "s-a", title: "A" },
+		updated_at: NOW - 5 * HOUR,
+	});
+	const b = item({
+		session: { id: "s-b", title: "B" },
+		updated_at: NOW - HOUR,
+	});
+	const a2 = item({
+		session: { id: "s-a", title: "A" },
+		updated_at: NOW - 3 * HOUR,
+	});
 	const groups = groupItems([a, b, a2], [], "conversation", NOW);
 	assert.deepEqual(
 		groups.map((group) => group.title),
@@ -153,7 +164,10 @@ test("a bulk dismiss skips live asks and says how many stay", () => {
 	// An answered ask is an ordinary record once settled (not live).
 	assert.equal(isLiveAsk(ask({ ask: { status: "answered" } })), false);
 	assert.equal(
-		sessionDismissCount([...rows, ask({ session: { id: "s-fraud", title: "x" } })], "s-fraud"),
+		sessionDismissCount(
+			[...rows, ask({ session: { id: "s-fraud", title: "x" } })],
+			"s-fraud",
+		),
 		3,
 	);
 });
@@ -169,11 +183,15 @@ test("filters: kind, priority and source narrow the loaded set", () => {
 		[live.id],
 	);
 	assert.deepEqual(
-		filterItems(all, { ...DEFAULT_FILTERS, priority: "normal_up" }).map((row) => row.id),
+		filterItems(all, { ...DEFAULT_FILTERS, priority: "normal_up" }).map(
+			(row) => row.id,
+		),
 		[high.id, live.id],
 	);
 	assert.deepEqual(
-		filterItems(all, { ...DEFAULT_FILTERS, from: "s-aida" }).map((row) => row.id),
+		filterItems(all, { ...DEFAULT_FILTERS, from: "s-aida" }).map(
+			(row) => row.id,
+		),
 		[live.id],
 	);
 });
@@ -181,19 +199,31 @@ test("filters: kind, priority and source narrow the loaded set", () => {
 test("range selection spans the row order in either direction", () => {
 	const rows = [item(), item(), item(), item()];
 	const picked = rangeSelect(rows, rows[3].id, rows[1].id, new Set());
-	assert.deepEqual([...picked].sort(), [rows[1].id, rows[2].id, rows[3].id].sort());
-	assert.deepEqual([...rangeSelect(rows, null, rows[0].id, new Set())], [rows[0].id]);
+	assert.deepEqual(
+		[...picked].sort(),
+		[rows[1].id, rows[2].id, rows[3].id].sort(),
+	);
+	assert.deepEqual(
+		[...rangeSelect(rows, null, rows[0].id, new Set())],
+		[rows[0].id],
+	);
 });
 
 test("the badge is unread plus waiting, and absence is zero", () => {
-	assert.equal(badgeCountOf({ unread_count: 3, waiting_count: 2, high_water: 9 }), 5);
+	assert.equal(
+		badgeCountOf({ unread_count: 3, waiting_count: 2, high_water: 9 }),
+		5,
+	);
 	assert.equal(badgeCountOf(undefined), 0);
 	assert.equal(badgeCountOf(null), 0);
 });
 
 test("provenance marks follow read_via, and an unread row has none", () => {
 	assert.equal(seenMarkOf(item({ read: true, read_via: "watching" })), "live");
-	assert.equal(seenMarkOf(item({ read: true, read_via: "in_view" })), "in_view");
+	assert.equal(
+		seenMarkOf(item({ read: true, read_via: "in_view" })),
+		"in_view",
+	);
 	assert.equal(seenMarkOf(item({ read: true, read_via: "explicit" })), null);
 	assert.equal(seenMarkOf(item({ read: false, read_via: "in_view" })), null);
 });
@@ -204,16 +234,24 @@ test("the wire: list, detail, read, dismiss and seen reach the contract's routes
 		{ path: "/v1/desktop/notifications?state=unread&limit=100", method: "GET" },
 	);
 	assert.deepEqual(
-		desktopEndpoint({ op: "notifications.list", state: "all", sessionId: "abc123", source: "notify" }),
+		desktopEndpoint({
+			op: "notifications.list",
+			state: "all",
+			sessionId: "abc123",
+			source: "notify",
+		}),
 		{
 			path: "/v1/desktop/notifications?state=all&source=notify&session_id=abc123",
 			method: "GET",
 		},
 	);
-	assert.deepEqual(desktopEndpoint({ op: "notifications.get", id: "ask:s1:a-1" }), {
-		path: "/v1/desktop/notifications/ask%3As1%3Aa-1",
-		method: "GET",
-	});
+	assert.deepEqual(
+		desktopEndpoint({ op: "notifications.get", id: "ask:s1:a-1" }),
+		{
+			path: "/v1/desktop/notifications/ask%3As1%3Aa-1",
+			method: "GET",
+		},
+	);
 	assert.deepEqual(desktopEndpoint({ op: "notifications.count" }), {
 		path: "/v1/desktop/notifications/count",
 		method: "GET",
@@ -249,7 +287,12 @@ test("the wire: list, detail, read, dismiss and seen reach the contract's routes
 	const seen = desktopEndpoint({
 		op: "notifications.seen",
 		items: [{ id: "n_abcdefghijklmnop", revision: 2, anchorId: "toolu_1" }],
-		evidence: { sessionId: "abc123", inputKind: "key", inputAtMs: 10, visibleSinceMs: 5 },
+		evidence: {
+			sessionId: "abc123",
+			inputKind: "key",
+			inputAtMs: 10,
+			visibleSinceMs: 5,
+		},
 	});
 	assert.equal(seen.path, "/v1/desktop/notifications/seen");
 	assert.deepEqual(seen.body, {
@@ -272,14 +315,15 @@ test("the schema refuses a sweep with no high-water mark and a path-bearing id",
 		"mark-all without throughSeq would clear items that arrive after the click",
 	);
 	assert.equal(
-		parse({ op: "notifications.read", verb: "dismiss", target: { all: true, throughSeq: 1 } }),
+		parse({
+			op: "notifications.read",
+			verb: "dismiss",
+			target: { all: true, throughSeq: 1 },
+		}),
 		false,
 		"the read op never carries a dismiss verb: the foreground guard names ops, not verbs",
 	);
-	assert.equal(
-		parse({ op: "notifications.get", id: "../../etc" }),
-		false,
-	);
+	assert.equal(parse({ op: "notifications.get", id: "../../etc" }), false);
 	assert.equal(
 		parse({ op: "notifications.get", id: "n_abcdefghijklmnop" }),
 		true,
@@ -296,7 +340,12 @@ test("the schema refuses a sweep with no high-water mark and a path-bearing id",
 });
 
 test("in-view read: every one of the five conditions is required (contract section 6.4)", () => {
-	const base = { visibleSinceMs: 1_000, uncovered: true, updatedAtMs: 500, unread: true };
+	const base = {
+		visibleSinceMs: 1_000,
+		uncovered: true,
+		updatedAtMs: 500,
+		unread: true,
+	};
 	const edge = 2_000;
 	const fired = edge + IN_VIEW_DWELL_MS;
 	assert.equal(qualifiesInView(base, edge, fired), true, "all five hold");

@@ -177,7 +177,13 @@ test("stripUnadvertisedIds removes a gated id only when its feature is absent", 
 	const old = stripUnadvertisedIds(value, () => false);
 	assert.equal(old.visible.includes("notifications"), false);
 	assert.equal(old.more.includes("notifications"), false);
-	assert.deepEqual(old.visible, ["aida", "library", "projects", "agents", "browser"]);
+	assert.deepEqual(old.visible, [
+		"aida",
+		"library",
+		"projects",
+		"agents",
+		"browser",
+	]);
 	assert.deepEqual(old.more, DEFAULT_MORE);
 	// A backend that advertises it receives the layout unchanged.
 	const current = stripUnadvertisedIds(
