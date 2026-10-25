@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * Hook for gating React Query hooks based on connectivity status
  *
@@ -155,7 +156,7 @@ export const useConnectivityGate = () => {
 		// Only return an error for server offline issues
 		// This is the only condition that should prevent queries to the backend
 		if (!isServerOnline) {
-			return new Error("Server is offline. Please check your connection.");
+			return new Error(t("ui.common.errors.server_offline"));
 		}
 
 		// Internet connectivity issues should show a banner but not return an error

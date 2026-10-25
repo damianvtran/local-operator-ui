@@ -40,7 +40,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const forest: ThemeDefinition = {
 	id: "forest",
 	name: "Forest",
-	description: "Deep pine shadow lit by moss-green light through the canopy.",
+	descriptionKey: "ui.settings.appearance.theme.forest",
 	palette: {
 		mode: "dark",
 		/*

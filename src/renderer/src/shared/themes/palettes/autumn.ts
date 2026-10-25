@@ -38,7 +38,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const autumn: ThemeDefinition = {
 	id: "autumn",
 	name: "Autumn",
-	description: "Dark oak under maple red and harvest amber.",
+	descriptionKey: "ui.settings.appearance.theme.autumn",
 	palette: {
 		mode: "dark",
 		/*

@@ -28,5 +28,22 @@
 	"ui.chat.canonical.transcript.source_unavailable": "This conversation is readable, but its message order couldn't be confirmed with the source just now.",
 	"ui.chat.canonical.transcript.stale_caption": "Showing the last saved view — checking for newer messages.",
 	"ui.chat.canonical.transcript.start_new_chat": "Start a new chat",
-	"ui.chat.canonical.transcript.stopped_before_finishing": "Stopped before finishing"
+	"ui.chat.canonical.transcript.stopped_before_finishing": "Stopped before finishing",
+	"ui.chat.canonical.send_failure.unconfirmed": "Couldn't confirm your message was sent. Sending it again is safe.",
+	"ui.chat.canonical.send_failure.unreachable": "Couldn't reach Local Operator. Your message may not have been sent.",
+	"ui.chat.canonical.send_failure.busy": "The agent is busy, so your message wasn't sent.",
+	"ui.chat.canonical.send_failure.aside_not_answered": "The aside was not answered.",
+	"ui.chat.canonical.send_failure.aside_still_answering": "The aside is still answering. Press Enter again once the answer is in.",
+	"ui.chat.canonical.send_failure.retiring": "Local Operator is restarting, so your message wasn't sent. Try again in a moment.",
+	"ui.chat.canonical.send_failure.not_ready": "This chat isn't ready yet, so your message wasn't sent.",
+	"ui.chat.canonical.send_failure.generic": "Your message wasn't sent.",
+	"ui.chat.canonical.send_failure.gone": "This conversation no longer exists, so your message wasn't sent.",
+	"ui.chat.canonical.send_failure.send_lock": "Your last message is still sending.",
+	"ui.chat.canonical.send_failure.gate_lock": "Answer the question above first.",
+	"ui.chat.canonical.send_failure.queued_send": "Your message will send as soon as the conversation is ready.",
+	"ui.chat.canonical.send_failure.late_delivery": "Your earlier message was delivered.",
+	"ui.chat.canonical.send_failure.late_delivery_draft": "Your earlier message was delivered. What's here now hasn't been sent.",
+	"ui.chat.canonical.send_failure.late_delivery_overlap": "Your earlier message was delivered. Its words are still in the box, so sending again would repeat them.",
+	"ui.chat.canonical.untitled": "Untitled chat",
+	"ui.chat.canonical.this_chat": "this chat"
 }

@@ -403,7 +403,12 @@ const MediaViewer: FC<{
 	}, [asset.kind, source]);
 	if (loading) return <Loading />;
 	if (error || !source)
-		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
+		return (
+			<Failure
+				detail={error || t("ui.library.errors.empty_bytes")}
+				asset={asset}
+			/>
+		);
 	/*
 	 * ALWAYS MOUNTED, opened and closed through `open`. See
 	 * `LibraryMediaLightboxProps.open`: unmounting the dialog from the close
@@ -531,7 +536,12 @@ const FrameViewer: FC<{ asset: DesktopLibraryAsset; revision: number }> = ({
 	const source = useObjectUrl(bytes, mimeType || asset.ref.content_type);
 	if (loading) return <Loading />;
 	if (error || !source)
-		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
+		return (
+			<Failure
+				detail={error || t("ui.library.errors.empty_bytes")}
+				asset={asset}
+			/>
+		);
 	return (
 		<iframe
 			title={asset.name || asset.derived_name}
@@ -668,7 +678,12 @@ const TextViewer: FC<{
 	const { bytes, error, loading } = useAssetContent(asset, revision);
 	if (loading) return <Loading />;
 	if (error || !bytes)
-		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
+		return (
+			<Failure
+				detail={error || t("ui.library.errors.empty_bytes")}
+				asset={asset}
+			/>
+		);
 	const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 	if (asset.kind === "markdown") {
 		return (
@@ -709,7 +724,12 @@ const SpreadsheetViewer: FC<{
 	const { bytes, error, loading } = useAssetContent(asset, revision);
 	if (loading) return <Loading />;
 	if (error || !bytes)
-		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
+		return (
+			<Failure
+				detail={error || t("ui.library.errors.empty_bytes")}
+				asset={asset}
+			/>
+		);
 	return <SpreadsheetTable asset={asset} bytes={bytes} />;
 };
 
@@ -906,7 +926,12 @@ const PptxPreview: FC<{
 	const { bytes, error, loading } = useAssetContent(asset, revision);
 	if (loading) return <Loading label={t("ui.library.preview.pptx_opening")} />;
 	if (error || !bytes)
-		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
+		return (
+			<Failure
+				detail={error || t("ui.library.errors.empty_bytes")}
+				asset={asset}
+			/>
+		);
 	return (
 		<PptxViewer asset={asset} bytes={bytes} dense={dense} expanded={expanded} />
 	);

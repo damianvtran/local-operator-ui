@@ -60,17 +60,27 @@ import { useId, useMemo, useRef, useState } from "react";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import { SettingsSection } from "./settings-section";
 
-/**
- * The row label: the action's own name with the verb dropped.
- *
- * "Open console" is the sentence a trigger's tooltip needs; the settings list's
- * field already says what pressing the chord does, so the list reads the panel
- * names ("Console", "Canvas") without a second copy of them — the registry
- * stays the one place either spelling comes from.
+/*
+ * Tooltips use an imperative ("Open console") while these rows name the
+ * destination ("Console"). Keep those as separate messages: stripping an
+ * English prefix would produce the wrong grammar as soon as the action is
+ * translated, and would silently fall back to the whole imperative.
  */
 const rowLabel = (action: KeymapAction): string => {
-	const noun = action.label.replace(/^Open\s+/, "");
-	return noun.charAt(0).toUpperCase() + noun.slice(1);
+	switch (action.id) {
+		case "panel.console":
+			return t("ui.settings.shortcuts.row.console");
+		case "panel.canvas":
+			return t("ui.settings.shortcuts.row.canvas");
+		case "panel.run":
+			return t("ui.settings.shortcuts.row.execution");
+		case "panel.ask":
+			return t("ui.settings.shortcuts.row.asks");
+		case "panel.browser":
+			return t("ui.settings.shortcuts.row.browser");
+		case "panel.code":
+			return t("ui.settings.shortcuts.row.code_review");
+	}
 };
 
 const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {

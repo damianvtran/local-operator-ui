@@ -66,7 +66,7 @@ export const neonNoir: ThemeDefinition = {
 	   come to grep for it. */
 	id: "neonNoir",
 	name: "Neon Noir",
-	description: "Rain-dimmed cyan and magenta signs over 3am charcoal.",
+	descriptionKey: "ui.settings.appearance.theme.neon_noir",
 	palette: {
 		mode: "dark",
 

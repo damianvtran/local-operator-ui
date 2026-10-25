@@ -10,5 +10,6 @@
 	"ui.common.viewer.image_lightbox.previous": "پچھلا {medialabel}",
 	"ui.common.viewer.image_lightbox.next": "اگلا {medialabel}",
 	"ui.common.viewer.image_lightbox.close": "{medialabel} بند کریں",
-	"ui.common.viewer.image_lightbox.asset_of": "اثاثہ {index, number, ::group-off} / {count, number, ::group-off}"
+	"ui.common.viewer.image_lightbox.asset_of": "اثاثہ {index, number, ::group-off} / {count, number, ::group-off}",
+	"ui.common.viewer.image_progress": "{count, number, ::group-off} میں سے تصویر {index, number, ::group-off}"
 }

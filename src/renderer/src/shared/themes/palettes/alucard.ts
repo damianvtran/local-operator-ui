@@ -44,7 +44,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const alucard: ThemeDefinition = {
 	id: "alucard",
 	name: "Alucard",
-	description: "Dracula's daylight: warm parchment under an indigo accent.",
+	descriptionKey: "ui.settings.appearance.theme.alucard",
 	palette: {
 		mode: "light",
 

@@ -63,7 +63,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const synthwave: ThemeDefinition = {
 	id: "synthwave",
 	name: "Synthwave '84",
-	description: "Hot pink and cyan on a deep purple-navy night drive.",
+	descriptionKey: "ui.settings.appearance.theme.synthwave",
 	palette: {
 		mode: "dark",
 

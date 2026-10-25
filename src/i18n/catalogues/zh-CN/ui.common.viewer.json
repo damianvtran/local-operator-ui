@@ -10,5 +10,6 @@
 	"ui.common.viewer.image_lightbox.previous": "上一个{medialabel}",
 	"ui.common.viewer.image_lightbox.next": "下一个{medialabel}",
 	"ui.common.viewer.image_lightbox.close": "关闭{medialabel}",
-	"ui.common.viewer.image_lightbox.asset_of": "第{index, number, ::group-off}项，共{count, number, ::group-off}项"
+	"ui.common.viewer.image_lightbox.asset_of": "第{index, number, ::group-off}项，共{count, number, ::group-off}项",
+	"ui.common.viewer.image_progress": "第{index, number, ::group-off}张，共{count, number, ::group-off}张"
 }

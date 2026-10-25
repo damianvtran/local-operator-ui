@@ -1,0 +1,372 @@
+{
+	"locale": "fr",
+	"translator": "translator",
+	"session": "f707a5a88dbb",
+	"served_model": "radient/auto",
+	"model_note": "The parent model changed from openrouter/moonshotai/kimi-k3.1-pro to radient/auto between the round-1 translation and this remediation; radient/auto executed every remediation edit and every validation below.",
+	"date": "2026-10-24",
+	"status": "remediated",
+	"round": 2,
+	"awaiting": "independent round-2 audits scoped to this remediation delta; no audit verdict, ledger row or allowance change is claimed",
+	"previous_receipt": {
+		"path": "i18n/receipts/fr-surface-extraction-20261024.json",
+		"sha256": "24406e347efd3e54b393be45293de37d73dfbac97403e4425cf61709e233bfd7",
+		"translation_head": "e64adacd4c937a8e57f03447d53102a0e6541163"
+	},
+	"audits_addressed": [
+		{
+			"path": "/Users/damian/.local-operator/sessions/37b58fd63a32/scratchpad/fr-surface-round1-audit-37b58fd63a32.json",
+			"sha256": "8fa08ed180a51e597da8cbcee76e939a599117405c0328cb871a197d5e623d91"
+		},
+		{
+			"path": "/Users/damian/.local-operator/sessions/0cf3c0ed2c7b/scratchpad/fr-surface-audit-second-0cf3c0ed2c7b/fr-surface-round1-second-audit-0cf3c0ed2c7b.json",
+			"sha256": "91143c26dbe360e1e662c16963085cab030495803e5fe2c083102de13493d6bf"
+		}
+	],
+	"source_head": "82393f2110b1e0c18acecf0dca1bd8699e688e13",
+	"remediation_commit": "12e143d542ba99faa33b07936b6bf0a499a2ac6d",
+	"scope": "29 changed values across 8 namespaces; the other 442 assigned values are byte-identical to e64adacd4c; no key added or removed; no English or other-locale file touched",
+	"assigned_keys": 471,
+	"changed_values": 29,
+	"finding_counts": {
+		"blocker": 0,
+		"major": 4,
+		"minor": 9,
+		"nit": 7,
+		"info": 3
+	},
+	"disposition_counts": {
+		"fixed": 19,
+		"superseded": 1,
+		"not applied": 1,
+		"deferred": 2
+	},
+	"findings": [
+		{
+			"id": "FR-SURF-M1",
+			"severity": "major",
+			"namespace": "ui.miniView",
+			"keys": [
+				"ui.miniView.context",
+				"ui.miniView.context_estimated",
+				"ui.miniView.context_window",
+				"ui.miniView.context_window_estimated"
+			],
+			"status": "fixed",
+			"note": "Category-labelled forms (\"Tokens de contexte : {used}…\") so no plural is forced on 0/1."
+		},
+		{
+			"id": "FR-SURF-M2",
+			"severity": "major",
+			"namespace": "ui.projects",
+			"keys": ["ui.projects.project_model.milestone_summary"],
+			"status": "fixed",
+			"note": "Plural one/other as proposed; both arms keep ::group-off."
+		},
+		{
+			"id": "FR-SURF-M3",
+			"severity": "major",
+			"namespace": "ui.projects",
+			"keys": ["ui.projects.project_model.todos_summary"],
+			"status": "fixed",
+			"note": "Plural one/other as proposed; both arms keep ::group-off."
+		},
+		{
+			"id": "FR2-HUB-CLDR",
+			"severity": "major",
+			"namespace": "ui.hub.updates",
+			"keys": [
+				"ui.hub.updates.ago.minutes",
+				"ui.hub.updates.ago.hours",
+				"ui.hub.updates.rollup.updated",
+				"ui.hub.updates.rollup.ready",
+				"ui.hub.updates.rollup.review",
+				"ui.hub.updates.rollup.failed",
+				"ui.hub.updates.rollup.skipped",
+				"ui.hub.updates.check.waiting"
+			],
+			"status": "fixed",
+			"note": "many added to all eight. One deviation: check.waiting’s many arm names a counted noun, so the fr style guide requires the partitive \"de mises à jour\"; the receipt’s proposal omitted \"de\"."
+		},
+		{
+			"id": "FR-SURF-m1",
+			"severity": "minor",
+			"namespace": "ui.common.errors",
+			"keys": ["ui.common.errors.file_preview_cap"],
+			"status": "fixed",
+			"note": "one/many/other on both byte counts; \"d’octets\" in the many arm; ::group-off preserved."
+		},
+		{
+			"id": "FR-SURF-m2",
+			"severity": "minor",
+			"namespace": "ui.miniView",
+			"keys": ["ui.miniView.hint"],
+			"status": "fixed",
+			"note": "Entrée / Maj+Entrée keycaps, matching existing fr composer copy."
+		},
+		{
+			"id": "FR2-MINI-FIT",
+			"severity": "minor",
+			"namespace": "ui.miniView",
+			"keys": ["ui.miniView.recording"],
+			"status": "fixed",
+			"note": "Shortened; \"Arrêter\" rather than \"Arrêt\" because the stop control is ui.chat.composer.stop = « Arrêter »."
+		},
+		{
+			"id": "FR-SURF-m3",
+			"severity": "minor",
+			"namespace": "ui.settings.shortcuts",
+			"keys": ["ui.settings.shortcuts.row.canvas"],
+			"status": "fixed",
+			"note": "Shipped as \"canvas\", not the receipt’s \"Canvas\": the capitalised form is byte-identical to en and fails the no-stub guard."
+		},
+		{
+			"id": "FR-SURF-m4",
+			"severity": "minor",
+			"namespace": "ui.settings.shortcuts",
+			"keys": ["ui.settings.shortcuts.row.console"],
+			"status": "fixed",
+			"note": "Shipped as \"console\" for the same parity reason; the added qualifier is gone."
+		},
+		{
+			"id": "FR2-SHORTCUT-FIT",
+			"severity": "minor",
+			"namespace": "ui.settings.shortcuts",
+			"keys": [
+				"ui.settings.shortcuts.row.canvas",
+				"ui.settings.shortcuts.row.console",
+				"ui.settings.shortcuts.row.execution"
+			],
+			"status": "fixed",
+			"note": "Both qualifiers removed; execution row is \"Détails d’exécution\". Rendered fit still unmeasured."
+		},
+		{
+			"id": "FR2-HUB-READY",
+			"severity": "minor",
+			"namespace": "ui.hub.updates",
+			"keys": ["ui.hub.updates.report.would_merge"],
+			"status": "fixed",
+			"note": "Readiness now matches the English (ready to be updated)."
+		},
+		{
+			"id": "FR2-THEME-PINE",
+			"severity": "minor",
+			"namespace": "ui.settings.appearance",
+			"keys": [
+				"ui.settings.appearance.theme.rose_pine",
+				"ui.settings.appearance.theme.rose_pine_dawn"
+			],
+			"status": "fixed",
+			"note": "vert pin for the colour, not the tree."
+		},
+		{
+			"id": "FR2-PROJECT-AGREEMENT",
+			"severity": "minor",
+			"namespace": "ui.projects",
+			"keys": [
+				"ui.projects.project_model.milestone_summary",
+				"ui.projects.project_model.todos_summary"
+			],
+			"status": "superseded",
+			"note": "The label alternative was one way to avoid the agreement bug; the specified one/other arms (FR-SURF-M2/M3) fix it without changing the message shape."
+		},
+		{
+			"id": "FR-SURF-n1",
+			"severity": "nit",
+			"namespace": "ui.common.connection",
+			"keys": ["ui.common.connection.backend.pairing_pre_handshake"],
+			"status": "fixed",
+			"note": "« opérations exécutées sur celui-ci depuis le terminal »."
+		},
+		{
+			"id": "FR-SURF-n2",
+			"severity": "nit",
+			"namespace": "ui.common.updates",
+			"keys": ["ui.common.updates.install.verifying"],
+			"status": "fixed",
+			"note": "« par rapport à l’application qu’elle remplacera »."
+		},
+		{
+			"id": "FR-SURF-n3",
+			"severity": "nit",
+			"namespace": "ui.common.errors",
+			"keys": ["ui.common.errors.providers_list"],
+			"status": "fixed",
+			"note": "« Échec de la récupération de la liste des fournisseurs »."
+		},
+		{
+			"id": "FR-SURF-n4",
+			"severity": "nit",
+			"namespace": "ui.common.errors",
+			"keys": ["ui.common.errors.models_list"],
+			"status": "fixed",
+			"note": "« Échec de la récupération de la liste des modèles »."
+		},
+		{
+			"id": "FR-SURF-n5",
+			"severity": "nit",
+			"namespace": "ui.settings.appearance",
+			"keys": ["ui.settings.appearance.theme.outrun"],
+			"status": "fixed",
+			"note": "« Magenta crépusculaire … »."
+		},
+		{
+			"id": "FR2-MINI-YET",
+			"severity": "nit",
+			"namespace": "ui.miniView",
+			"keys": ["ui.miniView.context_no_reading"],
+			"status": "fixed",
+			"note": "« Tokens de contexte : pas encore de mesure. » restores the not-yet nuance and keeps the meter label introduced by FR-SURF-M1 consistent across the four rows."
+		},
+		{
+			"id": "FR2-HUB-CASE",
+			"severity": "nit",
+			"namespace": "ui.hub.updates",
+			"keys": ["ui.hub.updates.kind.agent"],
+			"status": "not applied",
+			"note": "The proposed lowercase \"agent\" is byte-identical to the English source, so the no-stub guard rejects it without an IDENTICAL_OK entry; the value stays \"Agent\", which keeps the guard green. This is a gate-test change for the owning lane."
+		},
+		{
+			"id": "FR-SURF-i1",
+			"severity": "info",
+			"namespace": "ui.chat.canonical",
+			"keys": ["ui.chat.canonical.untitled"],
+			"status": "deferred",
+			"note": "Static-fit only: shortening to \"Sans titre\" is a rendered-check decision."
+		},
+		{
+			"id": "FR-SURF-i2",
+			"severity": "info",
+			"namespace": "ui.chat.composer",
+			"keys": ["ui.chat.composer.placeholder.idle"],
+			"status": "deferred",
+			"note": "Static-fit only: shortening the idle placeholder needs a rendered frame."
+		},
+		{
+			"id": "FR-SURF-i3",
+			"severity": "info",
+			"namespace": "ui.settings.shortcuts",
+			"keys": ["ui.settings.shortcuts.row.execution"],
+			"status": "fixed",
+			"note": "Applied with the row-label fix; rendered fit still unmeasured."
+		}
+	],
+	"validation": {
+		"structure": "471/471 keep the English argument names/order, selector kinds, every English plural branch (only many added) and ::group-off skeletons; French adds a plural where English has none in exactly 3 messages (file_preview_cap, milestone_summary, todos_summary)",
+		"render": "2355 real IntlMessageFormat renders (471 x 0/1/2/1000000/1500000), no unresolved placeholder; fr categories one/one/other/many/other; 16 branch-wording assertions including the partitive de only at 1,000,000",
+		"parity": "[fr] 6 tests: 5 pass, 1 expected failure limited to the pre-existing out-of-scope backfill (ui.chat.canonical 30 keys, ui.common.viewer 4 keys); no-stub, placeholder, unknown-key and duplicate checks pass",
+		"targeted_suite": "90 tests: 83 pass, 7 fail — all seven are the cross-locale \"carries EVERY key\" completeness gate, the same profile as the round-1 head",
+		"generation": "generate.mjs --check byte-identical to a fresh generation",
+		"strings": "check-strings.mjs ok — 1343 files scanned, 600 literals at or below baseline",
+		"context_parity": "ok — every English key covered apart from 131 allowed gaps in 4 namespaces (shrink-only)",
+		"formatting": "biome check over the French catalogue tree: 75 files, no fixes",
+		"pseudo": "every message was pseudo-expanded in the render pass; this is not rendered-fit evidence",
+		"rendered_fit": "not performed and not claimed; the two static-fit INFO items remain deferred"
+	},
+	"namespaces": {
+		"ui.common.errors": {
+			"keys_changed": 3,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.errors.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.errors.json",
+				"context": "src/i18n/catalogues/en/ui.common.errors.context.json"
+			},
+			"sha256": {
+				"en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+				"fr": "d905b4356277a0810c8f88ef4251ca3e83bcff53b11d350ea9c75ed57c49d55d",
+				"context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+			}
+		},
+		"ui.common.updates": {
+			"keys_changed": 1,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.updates.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.updates.json",
+				"context": "src/i18n/catalogues/en/ui.common.updates.context.json"
+			},
+			"sha256": {
+				"en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+				"fr": "2eb6633209a88e8bdc2c19b454b7688763dfd0b200c8cfe625b0f6f9a0e42f0d",
+				"context": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+			}
+		},
+		"ui.common.connection": {
+			"keys_changed": 1,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.connection.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.connection.json",
+				"context": "src/i18n/catalogues/en/ui.common.connection.context.json"
+			},
+			"sha256": {
+				"en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+				"fr": "9531dbd77c4462d9b1ef23d707f54cd33a1b1d74943d51fef7cd514580a3eb5c",
+				"context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+			}
+		},
+		"ui.hub.updates": {
+			"keys_changed": 9,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.hub.updates.json",
+				"fr": "src/i18n/catalogues/fr/ui.hub.updates.json",
+				"context": "src/i18n/catalogues/en/ui.hub.updates.context.json"
+			},
+			"sha256": {
+				"en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+				"fr": "c544c37c48de1c1042c4063ae9da2525ebc8091ec759811ecdc4d6e17c4308f0",
+				"context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
+			}
+		},
+		"ui.miniView": {
+			"keys_changed": 7,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.miniView.json",
+				"fr": "src/i18n/catalogues/fr/ui.miniView.json",
+				"context": "src/i18n/catalogues/en/ui.miniView.context.json"
+			},
+			"sha256": {
+				"en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+				"fr": "7e171186248b6d4b1d75e7919225bcd3daacbecd80d56f39c4ae5765b697c2ef",
+				"context": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
+			}
+		},
+		"ui.projects": {
+			"keys_changed": 2,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.projects.json",
+				"fr": "src/i18n/catalogues/fr/ui.projects.json",
+				"context": "src/i18n/catalogues/en/ui.projects.context.json"
+			},
+			"sha256": {
+				"en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+				"fr": "06eb8d1ccf57ab4f3b69debe3efae5672358be06e58cf3f6e7998f4dfcc67c48",
+				"context": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
+			}
+		},
+		"ui.settings.appearance": {
+			"keys_changed": 3,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.settings.appearance.json",
+				"fr": "src/i18n/catalogues/fr/ui.settings.appearance.json",
+				"context": "src/i18n/catalogues/en/ui.settings.appearance.context.json"
+			},
+			"sha256": {
+				"en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+				"fr": "53810f97f857d42993f4ee6b15e68be0cfe6dda1e0892262f6c6ea134ced2651",
+				"context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
+			}
+		},
+		"ui.settings.shortcuts": {
+			"keys_changed": 3,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.settings.shortcuts.json",
+				"fr": "src/i18n/catalogues/fr/ui.settings.shortcuts.json",
+				"context": "src/i18n/catalogues/en/ui.settings.shortcuts.context.json"
+			},
+			"sha256": {
+				"en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+				"fr": "44385a5e62798e571e456f6e54b44ffe5ab3ab9bf04b0c3d741367ccaa288e36",
+				"context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+			}
+		}
+	}
+}

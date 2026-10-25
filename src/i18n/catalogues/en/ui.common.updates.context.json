@@ -1,9 +1,4 @@
 {
-	"ui.common.updates.check_for_updates_button.at_an_unknown_time": {
-		"role": "interface copy",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in check-for-updates-button.tsx; interface copy in the check for updates button surface."
-	},
 	"ui.common.updates.check_for_updates_button.check_for_updates": {
 		"role": "button",
 		"tone": "Direct action; retain the distinction between checking, downloading, installing and restarting.",
@@ -105,33 +100,11 @@
 		"note": "Shown in update-foot-icon.tsx inside span as content. Inline fragment: its leading/trailing space joins sibling version/count labels. It is not a standalone sentence; preserve the boundary spacing.",
 		"length": "One control or heading; avoid adding a sentence."
 	},
-	"ui.common.updates.update_foot_icon.available_show_the_update_notice": {
-		"role": "interface copy",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in update-foot-icon.tsx; interface copy in the update foot icon surface.",
-		"placeholders": {
-			"joined": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
-		}
-	},
-	"ui.common.updates.update_foot_icon.in_progress": {
-		"role": "interface copy",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in update-foot-icon.tsx; interface copy in the update foot icon surface.",
-		"placeholders": {
-			"subject": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller.",
-			"percent": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
-		}
-	},
 	"ui.common.updates.update_foot_icon.show_the_update_notice": {
 		"role": "tooltip",
 		"tone": "Concise explanation of the control.",
 		"note": "Shown in update-foot-icon.tsx inside span as content.",
 		"length": "One control or heading; avoid adding a sentence."
-	},
-	"ui.common.updates.update_foot_icon.subject_join": {
-		"role": "interface copy",
-		"tone": "Plain, concise product language; preserve technical tokens.",
-		"note": "Complete message for the updates surface."
 	},
 	"ui.common.updates.update_notification.a_newer_build": {
 		"role": "status explanation",
@@ -254,204 +227,6 @@
 			"detail": "Existing display value from updateMessageOf(err); retain verbatim, never use as a translation key."
 		}
 	},
-	"ui.common.updates.update_notification.failure_cause_disk": {
-		"role": "status explanation",
-		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
-		"note": "Cause line for a disk-space failure.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_cause_lock": {
-		"role": "status explanation",
-		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
-		"note": "Cause line when another update held the lock.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_cause_network": {
-		"role": "status explanation",
-		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
-		"note": "Cause line for a network failure.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_cause_ownership": {
-		"role": "status explanation",
-		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
-		"note": "Cause line when the install belongs to a different account.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_cause_publication": {
-		"role": "status explanation",
-		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
-		"note": "Cause line when the updater stopped because PyPI had not served the target version yet. Shown in update-notification.tsx.",
-		"length": "One short sentence; keep {target} intact.",
-		"placeholders": {
-			"target": "Version the update was moving to, e.g. 0.89.0."
-		}
-	},
-	"ui.common.updates.update_notification.failure_cause_publication_no_version": {
-		"role": "status explanation",
-		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
-		"note": "Cause line for a publication failure when the target version could not be named.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_cause_refused": {
-		"role": "status explanation",
-		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
-		"note": "Cause line when the updater refused to continue.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_cause_serve": {
-		"role": "status explanation",
-		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
-		"note": "Cause line when the install landed but the serving process did not move. Shown in update-notification.tsx.",
-		"length": "One short sentence; keep {version} intact.",
-		"placeholders": {
-			"version": "Version the server is still running, e.g. 0.88.4."
-		}
-	},
-	"ui.common.updates.update_notification.failure_cause_serve_no_version": {
-		"role": "status explanation",
-		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
-		"note": "Cause line for a serve failure when the running version could not be read.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_cause_unknown": {
-		"role": "status explanation",
-		"tone": "Honest, not evasive; says the updater did not classify the failure.",
-		"note": "Cause line for an unclassified failure.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_consequence_group_survived": {
-		"role": "status explanation",
-		"tone": "Safety clause; factual, not alarming, and subordinate to the remedy.",
-		"note": "Shown when the stopped updater's process group was still alive after the stop signal (groupSurvived). This is the structured arm's equivalent of the legacy sentence's 'the updater was stopped; something it started may still be replacing the install' clause.",
-		"length": "One sentence."
-	},
-	"ui.common.updates.update_notification.failure_consequence_nothing_restarted": {
-		"role": "status explanation",
-		"tone": "Quiet, factual consequence; subordinate to the remedy.",
-		"note": "Consequence line, shown only when the failure happened before the install landed (not for step services/report or kind serve).",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_heading_serve": {
-		"role": "heading",
-		"tone": "Plain-language statement of the state; not a failure verdict about the install.",
-		"note": "Panel heading for a serve failure, where the install landed but the server did not move.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_remedy_disk": {
-		"role": "status explanation",
-		"tone": "Direct, one action.",
-		"note": "Remedy line for a disk-space failure.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_remedy_lock": {
-		"role": "status explanation",
-		"tone": "Direct, one action; names the competing update and the wait.",
-		"note": "Remedy line when another update holds the lock.",
-		"length": "Two short sentences."
-	},
-	"ui.common.updates.update_notification.failure_remedy_network": {
-		"role": "status explanation",
-		"tone": "Direct, one action; no command jargon.",
-		"note": "Remedy line directly under the cause for a network failure.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_remedy_ownership": {
-		"role": "status explanation",
-		"tone": "Direct and usable; names the account route rather than an abstract ownership fix.",
-		"note": "Remedy line when the install belongs to another account.",
-		"length": "One or two short sentences."
-	},
-	"ui.common.updates.update_notification.failure_remedy_publication": {
-		"role": "status explanation",
-		"tone": "Direct, one action; says to wait rather than retry now.",
-		"note": "Remedy line for a publication delay.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_remedy_refused": {
-		"role": "status explanation",
-		"tone": "Direct; points outside the app without offering a bypass.",
-		"note": "Fallback remedy when the updater refused for a reason the structured cause does not map.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_remedy_refused_checkout": {
-		"role": "status explanation",
-		"tone": "Direct; names the checkout repair.",
-		"note": "Remedy for a refused source rebuild whose error names a stale ref.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_remedy_serve_external": {
-		"role": "status explanation",
-		"tone": "Direct; names the account route when the app cannot restart the server.",
-		"note": "Remedy line when the server was not started by the app and no restart control is offered.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_remedy_serve_restartable": {
-		"role": "status explanation",
-		"tone": "Direct; explains why the app can perform the restart offered beside it.",
-		"note": "Remedy line when the app owns the server and the primary control restarts it.",
-		"length": "One short sentence."
-	},
-	"ui.common.updates.update_notification.failure_remedy_unknown": {
-		"role": "status explanation",
-		"tone": "Honest fallback; says what to copy, when to retry, and where the full output is.",
-		"note": "Remedy for an unclassified failure; the only arm that names the log instead of a cause-specific action.",
-		"length": "Two short sentences."
-	},
-	"ui.common.updates.update_notification.failure_step_check": {
-		"role": "status label",
-		"tone": "Neutral, orienting; names the stage without blaming the user.",
-		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
-		"length": "1-2 words."
-	},
-	"ui.common.updates.update_notification.failure_step_download": {
-		"role": "status label",
-		"tone": "Neutral, orienting; names the stage without blaming the user.",
-		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
-		"length": "1-2 words."
-	},
-	"ui.common.updates.update_notification.failure_step_environment": {
-		"role": "status label",
-		"tone": "Neutral, orienting; names the stage without blaming the user.",
-		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
-		"length": "1-2 words."
-	},
-	"ui.common.updates.update_notification.failure_step_install": {
-		"role": "status label",
-		"tone": "Neutral, orienting; names the stage without blaming the user.",
-		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
-		"length": "1-2 words."
-	},
-	"ui.common.updates.update_notification.failure_step_lock": {
-		"role": "status label",
-		"tone": "Neutral, orienting; names the stage without blaming the user.",
-		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
-		"length": "1-2 words."
-	},
-	"ui.common.updates.update_notification.failure_step_promote": {
-		"role": "status label",
-		"tone": "Neutral, orienting; names the stage without blaming the user.",
-		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
-		"length": "1-2 words."
-	},
-	"ui.common.updates.update_notification.failure_step_publish": {
-		"role": "status label",
-		"tone": "Neutral, orienting; names the stage without blaming the user.",
-		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
-		"length": "1-2 words."
-	},
-	"ui.common.updates.update_notification.failure_step_report": {
-		"role": "status label",
-		"tone": "Neutral, orienting; names the stage without blaming the user.",
-		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
-		"length": "1-2 words."
-	},
-	"ui.common.updates.update_notification.failure_step_services": {
-		"role": "status label",
-		"tone": "Neutral, orienting; names the stage without blaming the user.",
-		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
-		"length": "1-2 words."
-	},
 	"ui.common.updates.update_notification.has_been_downloaded_you_are_currently_using_version": {
 		"role": "status explanation",
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
@@ -530,11 +305,6 @@
 		"tone": "Direct action; retain the distinction between checking, downloading, installing and restarting.",
 		"note": "Shown in update-notification.tsx inside Button. Control invokes {() => void quitForInFlightInstall()}.",
 		"length": "Keep within a short action button; aim for the English word count."
-	},
-	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": {
-		"role": "interface copy",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in update-notification.tsx; interface copy in the update notification surface."
 	},
 	"ui.common.updates.update_notification.release_notes": {
 		"role": "status explanation",
@@ -707,11 +477,6 @@
 		"role": "status explanation",
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
 		"note": "Shown in update-notification.tsx inside UpdateHeading."
-	},
-	"ui.common.updates.update_notification.the_new_build": {
-		"role": "status explanation",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in update-notification.tsx; status explanation in the update notification surface."
 	},
 	"ui.common.updates.update_notification.the_new_build_has_landed_nothing_in_flight_was_cut_off_the_turns_": {
 		"role": "status explanation",
@@ -966,26 +731,10 @@
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
 		"note": "Shown in update-quiet-indicator.tsx."
 	},
-	"ui.common.updates.update_quiet_indicator.available": {
-		"role": "interface copy",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in update-quiet-indicator.tsx; interface copy in the update quiet indicator surface.",
-		"placeholders": {
-			"quietoffersubject": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
-		}
-	},
 	"ui.common.updates.update_quiet_indicator.dismiss_update_notice": {
 		"role": "button accessible name",
 		"tone": "Actionable accessible name; keep the named surface explicit.",
 		"note": "Shown in update-quiet-indicator.tsx inside button as aria-label. Control invokes {onDismiss}."
-	},
-	"ui.common.updates.update_quiet_indicator.open_release_details": {
-		"role": "accessible label",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in update-quiet-indicator.tsx; accessible label in the update quiet indicator surface.",
-		"placeholders": {
-			"quietoffertext": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
-		}
 	},
 	"ui.common.updates.update_quiet_indicator.server_update": {
 		"role": "status explanation",
@@ -1022,5 +771,325 @@
 			"seconds": "Elapsed seconds cardinal; pluralize second/seconds."
 		},
 		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.common.updates.update_notification.failure_step_check": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_publish": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_download": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_environment": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_install": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_promote": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_services": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_lock": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_report": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_cause_publication": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when the updater stopped because PyPI had not served the target version yet. Shown in update-notification.tsx.",
+		"length": "One short sentence; keep {target} intact.",
+		"placeholders": {
+			"target": "Version the update was moving to, e.g. 0.89.0."
+		}
+	},
+	"ui.common.updates.update_notification.failure_cause_publication_no_version": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line for a publication failure when the target version could not be named.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_serve": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when the install landed but the serving process did not move. Shown in update-notification.tsx.",
+		"length": "One short sentence; keep {version} intact.",
+		"placeholders": {
+			"version": "Version the server is still running, e.g. 0.88.4."
+		}
+	},
+	"ui.common.updates.update_notification.failure_cause_serve_no_version": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line for a serve failure when the running version could not be read.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_network": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line for a network failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_lock": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when another update held the lock.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_disk": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line for a disk-space failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_ownership": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when the install belongs to a different account.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_refused": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when the updater refused to continue.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_unknown": {
+		"role": "status explanation",
+		"tone": "Honest, not evasive; says the updater did not classify the failure.",
+		"note": "Cause line for an unclassified failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_network": {
+		"role": "status explanation",
+		"tone": "Direct, one action; no command jargon.",
+		"note": "Remedy line directly under the cause for a network failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_publication": {
+		"role": "status explanation",
+		"tone": "Direct, one action; says to wait rather than retry now.",
+		"note": "Remedy line for a publication delay.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_lock": {
+		"role": "status explanation",
+		"tone": "Direct, one action; names the competing update and the wait.",
+		"note": "Remedy line when another update holds the lock.",
+		"length": "Two short sentences."
+	},
+	"ui.common.updates.update_notification.failure_remedy_disk": {
+		"role": "status explanation",
+		"tone": "Direct, one action.",
+		"note": "Remedy line for a disk-space failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_ownership": {
+		"role": "status explanation",
+		"tone": "Direct and usable; names the account route rather than an abstract ownership fix.",
+		"note": "Remedy line when the install belongs to another account.",
+		"length": "One or two short sentences."
+	},
+	"ui.common.updates.update_notification.failure_remedy_serve_restartable": {
+		"role": "status explanation",
+		"tone": "Direct; explains why the app can perform the restart offered beside it.",
+		"note": "Remedy line when the app owns the server and the primary control restarts it.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_serve_external": {
+		"role": "status explanation",
+		"tone": "Direct; names the account route when the app cannot restart the server.",
+		"note": "Remedy line when the server was not started by the app and no restart control is offered.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_refused": {
+		"role": "status explanation",
+		"tone": "Direct; points outside the app without offering a bypass.",
+		"note": "Fallback remedy when the updater refused for a reason the structured cause does not map.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_refused_checkout": {
+		"role": "status explanation",
+		"tone": "Direct; names the checkout repair.",
+		"note": "Remedy for a refused source rebuild whose error names a stale ref.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_unknown": {
+		"role": "status explanation",
+		"tone": "Honest fallback; says what to copy, when to retry, and where the full output is.",
+		"note": "Remedy for an unclassified failure; the only arm that names the log instead of a cause-specific action.",
+		"length": "Two short sentences."
+	},
+	"ui.common.updates.update_notification.failure_consequence_nothing_restarted": {
+		"role": "status explanation",
+		"tone": "Quiet, factual consequence; subordinate to the remedy.",
+		"note": "Consequence line, shown only when the failure happened before the install landed (not for step services/report or kind serve).",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_heading_serve": {
+		"role": "heading",
+		"tone": "Plain-language statement of the state; not a failure verdict about the install.",
+		"note": "Panel heading for a serve failure, where the install landed but the server did not move.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_consequence_group_survived": {
+		"role": "status explanation",
+		"tone": "Safety clause; factual, not alarming, and subordinate to the remedy.",
+		"note": "Shown when the stopped updater's process group was still alive after the stop signal (groupSurvived). This is the structured arm's equivalent of the legacy sentence's 'the updater was stopped; something it started may still be replacing the install' clause.",
+		"length": "One sentence."
+	},
+	"ui.common.updates.check_for_updates_button.at_an_unknown_time": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in check-for-updates-button.tsx; interface copy in the check for updates button surface."
+	},
+	"ui.common.updates.update_foot_icon.available_show_the_update_notice": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in update-foot-icon.tsx; interface copy in the update foot icon surface.",
+		"placeholders": {
+			"joined": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.updates.update_foot_icon.in_progress": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in update-foot-icon.tsx; interface copy in the update foot icon surface.",
+		"placeholders": {
+			"subject": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller.",
+			"percent": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.updates.update_foot_icon.subject_join": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the updates surface."
+	},
+	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in update-notification.tsx; interface copy in the update notification surface."
+	},
+	"ui.common.updates.update_notification.the_new_build": {
+		"role": "status explanation",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in update-notification.tsx; status explanation in the update notification surface."
+	},
+	"ui.common.updates.update_quiet_indicator.available": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in update-quiet-indicator.tsx; interface copy in the update quiet indicator surface.",
+		"placeholders": {
+			"quietoffersubject": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.updates.update_quiet_indicator.open_release_details": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in update-quiet-indicator.tsx; accessible label in the update quiet indicator surface.",
+		"placeholders": {
+			"quietoffertext": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.updates.install.verifying": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Verifying the update against the app it will replace…"
+	},
+	"ui.common.updates.install.staging": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Staging the update next to the app it will replace…"
+	},
+	"ui.common.updates.install.starting": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Starting the installer. The app closes for a moment…"
+	},
+	"ui.common.updates.install.preparing": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Preparing to install…"
+	},
+	"ui.common.updates.install.succeeded": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Local Operator updated to v{version}.",
+		"placeholders": {
+			"version": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.common.updates.error.server_unreachable": {
+		"role": "Hub update chable",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The app could not reach the update server. Check this machine's connection, then try again."
+	},
+	"ui.common.updates.error.download": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The update could not be downloaded. Check this machine's connection, then start the download again."
+	},
+	"ui.common.updates.error.install": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The update could not be installed. Check this machine's connection, then start it again from the update panel."
+	},
+	"ui.common.updates.error.quit": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The app could not quit to finish the install. Quit the app yourself, then let the update finish."
+	},
+	"ui.common.updates.error.check_incomplete": {
+		"role": "Hub update lete",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The update check could not finish. The app will try again at its next check."
+	},
+	"ui.common.updates.error.version_unknown_required": {
+		"role": "Hub update own_required",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Unknown (update required)"
 	}
 }

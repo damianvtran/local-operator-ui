@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * @file use-radient-user-query.ts
  * @description
@@ -537,13 +538,15 @@ export const useRadientUserQuery = ({
 			 */
 			forgetAccountReadFailure();
 			queryClient.invalidateQueries({ queryKey: desktopKeys.accounts });
-			showSuccessToast("Successfully signed out");
+			showSuccessToast(t("ui.common.account.signed_out"));
 			setIsSigningOut(false);
 		},
 		onError: (error) => {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			showErrorToast(`Failed to sign out: ${errorMessage}`);
+			showErrorToast(
+				t("ui.common.account.sign_out_failed", { error: errorMessage }),
+			);
 			setIsSigningOut(false);
 			// A partial account removal cannot restore old private authority by
 			// assumption. Commission the real account read to establish it again.

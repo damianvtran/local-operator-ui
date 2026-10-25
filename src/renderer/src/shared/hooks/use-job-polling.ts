@@ -18,6 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
  * and the user has internet connectivity if required by the hosting provider.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { t } from "../../../../i18n/messages";
 import { agentsQueryKey } from "./use-agents";
 import { useConnectivityGate } from "./use-connectivity-gate";
 import { convertToMessage } from "./use-conversation-messages";
@@ -241,7 +242,7 @@ export const useJobPolling = ({
 
 				if (response.status >= 400 || !response.result) {
 					throw new Error(
-						response.message || "Failed to fetch execution history",
+						response.message || t("ui.common.errors.execution_history_fetch"),
 					);
 				}
 
@@ -307,12 +308,12 @@ export const useJobPolling = ({
 				// Extract error message from job result if available
 				const errorDetails = job.result?.error
 					? job.result.error
-					: "No error details available";
+					: t("ui.common.errors.no_details");
 
 				const errorMessage: Message = {
 					id: Date.now().toString(),
 					role: "assistant",
-					message: "Sorry, there was an error processing your request.",
+					message: t("ui.common.errors.job_processing"),
 					stderr: errorDetails,
 					timestamp: new Date(),
 					status: "error",

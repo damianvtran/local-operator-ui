@@ -27,7 +27,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const neon: ThemeDefinition = {
 	id: "neon",
 	name: "Neon",
-	description: "Tron: near-black blue with cyan and cyberpunk pink.",
+	descriptionKey: "ui.settings.appearance.theme.neon",
 	palette: {
 		mode: "dark",
 

@@ -164,7 +164,7 @@ export const useConsoleSession = (
 			// and saying so is better than an empty list that claims there are none.
 			setLoading(false);
 			setSnapshot({ ...EMPTY_SNAPSHOT });
-			setError("This window cannot reach the console.");
+			setError(t("ui.console.errors.console_unavailable"));
 			return { ...EMPTY_SNAPSHOT };
 		}
 		try {

@@ -10,5 +10,6 @@
 	"ui.common.viewer.image_lightbox.previous": "पिछला {medialabel}",
 	"ui.common.viewer.image_lightbox.next": "अगला {medialabel}",
 	"ui.common.viewer.image_lightbox.close": "{medialabel} बंद करें",
-	"ui.common.viewer.image_lightbox.asset_of": "कुल {count, number, ::group-off} में से एसेट {index, number, ::group-off}"
+	"ui.common.viewer.image_lightbox.asset_of": "कुल {count, number, ::group-off} में से एसेट {index, number, ::group-off}",
+	"ui.common.viewer.image_progress": "कुल {count, number, ::group-off} में से छवि {index, number, ::group-off}"
 }

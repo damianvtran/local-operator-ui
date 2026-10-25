@@ -378,7 +378,8 @@ const bundle = await build({
 			 * rendered conditionally. The app supplies the provider app-wide; a harness
 			 * that mounts the shipped sidebar bare has to supply it itself.
 			 */
-			' export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
+			' export { QueryClient, QueryClientProvider } from "@tanstack/react-query";' +
+			' export { registerCatalogue, setLocale } from "./src/i18n";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -437,6 +438,8 @@ const {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	QueryClient,
 	QueryClientProvider,
+	registerCatalogue,
+	setLocale,
 } = await import(bundlePath.href);
 const { createRoot } = await import("react-dom/client");
 
@@ -695,6 +698,66 @@ const PILE = [
 		attention: unread(OTHER),
 	},
 ];
+
+test("ordinary and held sidebar rows localize empty titles without writing them into state", async () => {
+	const ordinaryId = "111111111111";
+	const heldId = "333333333333";
+	registerCatalogue("fr", { "ui.chat.canonical.untitled": "fixture untitled" });
+	store.setState({
+		pinFacts: {
+			[heldId]: {
+				pinned: true,
+				title: "",
+				updated_at: "2026-01-01T00:00:00Z",
+			},
+		},
+	});
+	const rows = [
+		{
+			session_id: ordinaryId,
+			title: "",
+			updated_at: "2026-01-01T00:00:00Z",
+		},
+	];
+	const previousAck = globalThis.__ack;
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: rows, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	const harness = await mount(rows);
+	const assertRenderedTitles = (expected, locale) => {
+		const text = harness.container.textContent;
+		assert.equal(
+			text.split(expected).length - 1,
+			2,
+			`ordinary and held rows did not both present ${expected} in ${locale}: ${text}`,
+		);
+	};
+	try {
+		for (const [locale, expected] of [
+			["en", "Untitled chat"],
+			["fr", "fixture untitled"],
+			["en", "Untitled chat"],
+		]) {
+			await act(async () => {
+				setLocale(locale);
+			});
+			assertRenderedTitles(expected, locale);
+		}
+		assert.equal(store.getState().sessions[0].title, "");
+		assert.equal(store.getState().pinFacts[heldId].title, "");
+	} finally {
+		await act(async () => {
+			setLocale("en");
+		});
+		store.setState({ pinFacts: {} });
+		globalThis.__ack = previousAck;
+		harness.unmount();
+	}
+});
 
 test("the control is a stop in the ↑/↓ walk, before the section's first row", async () => {
 	/*

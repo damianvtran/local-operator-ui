@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * Hook for fetching and managing agents from the Local Operator API
  *
@@ -71,7 +72,9 @@ export const useAgents = (
 				);
 
 				if (response.status >= 400 || !response.result) {
-					throw new Error(response.message || "Failed to fetch agents");
+					throw new Error(
+						response.message || t("ui.common.errors.agents_fetch"),
+					);
 				}
 
 				// Return the full result including pagination info
@@ -80,7 +83,7 @@ export const useAgents = (
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while fetching agents";
+						: t("ui.common.errors.agents_fetch_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -131,7 +134,7 @@ export const useAgent = (agentId: string | undefined) => {
 
 				if (response.status >= 400) {
 					throw new Error(
-						response.message || `Failed to fetch agent ${agentId}`,
+						response.message || t("ui.common.errors.agent_fetch", { agentId }),
 					);
 				}
 
@@ -149,7 +152,7 @@ export const useAgent = (agentId: string | undefined) => {
 					const errorMessage =
 						error instanceof Error
 							? error.message
-							: `An unknown error occurred while fetching agent ${agentId}`;
+							: t("ui.common.errors.agent_fetch_unknown", { agentId });
 
 					showErrorToast(errorMessage);
 				}

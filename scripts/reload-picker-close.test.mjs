@@ -632,7 +632,7 @@ test("an in-flight failure after the dialog is gone is raised as a toast", async
  * display fallback into a conversation's real name.
  *
  * The defect this pins is a write, not a wording: `row.title` is optional, the
- * row menu sends `row.title || "Untitled chat"`, and the dialog opens with the
+ * row menu presents an untitled fallback, and the dialog opens with the
  * submit enabled - so before the guard, pressing Rename on an untitled row
  * stored `Untitled chat` as the conversation's explicit, user-set name and
  * retired the naming errand (`chat-title.ts`'s constraint). Pure comparisons,

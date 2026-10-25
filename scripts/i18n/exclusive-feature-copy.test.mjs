@@ -199,6 +199,8 @@ test("display headings read current locale without translating scope identifiers
 			"ui.command_palette.palette_search.chats": "fixture chats",
 			"ui.command_palette.palette_search.commands_and_pages":
 				"fixture commands",
+			"ui.command_palette.palette_search.no_conversations_yet":
+				"fixture no conversations",
 		});
 		runtime.setLocale("xx");
 		assert.equal(runtime.PALETTE_SECTION_TITLES.chats, "fixture chats");
@@ -212,7 +214,7 @@ test("display headings read current locale without translating scope identifiers
 				awaiting: false,
 				catalogue: "ready",
 			}).line,
-			"No conversations yet",
+			"fixture no conversations",
 		);
 	} finally {
 		runtime.clearRegisteredCatalogues();

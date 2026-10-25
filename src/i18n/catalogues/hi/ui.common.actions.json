@@ -34,5 +34,19 @@
 	"ui.common.actions.text_selection_controls.open_in_browser": "ब्राउज़र में खोलें",
 	"ui.common.actions.confirmation_modal.confirm": "पुष्टि करें",
 	"ui.common.actions.confirmation_modal.cancel": "रद्द करें",
-	"ui.common.actions.find_replace_widget.of": "कुल {matchcount, number, ::group-off} में से {currentmatch, number, ::group-off}"
+	"ui.common.actions.find_replace_widget.of": "कुल {matchcount, number, ::group-off} में से {currentmatch, number, ::group-off}",
+	"ui.common.actions.agent_created": "एजेंट बनाया गया",
+	"ui.common.actions.agent_deleted": "एजेंट हटाया गया",
+	"ui.common.actions.agent_imported": "एजेंट इम्पोर्ट किया गया",
+	"ui.common.actions.agent_exported": "एजेंट एक्सपोर्ट किया गया",
+	"ui.common.actions.agent_updated": "एजेंट अपडेट किया गया",
+	"ui.common.actions.agent_system_prompt_updated": "एजेंट का सिस्टम प्रॉम्प्ट अपडेट हुआ",
+	"ui.common.actions.conversation_cleared": "बातचीत साफ़ की गई",
+	"ui.common.actions.variable_created": "वेरिएबल बनाया गया",
+	"ui.common.actions.variable_updated": "वेरिएबल अपडेट किया गया",
+	"ui.common.actions.variable_deleted": "वेरिएबल हटाया गया",
+	"ui.common.actions.configuration_updated": "कॉन्फ़िगरेशन अपडेट हुआ",
+	"ui.common.actions.system_prompt_updated": "सिस्टम प्रॉम्प्ट अपडेट हुआ",
+	"ui.common.actions.credential_updated": "क्रेडेंशियल “{key}” सफलतापूर्वक अपडेट हुआ",
+	"ui.common.actions.clear": "साफ़ करें"
 }

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Save one Library asset's bytes to disk through the browser's download path.
  *
@@ -39,7 +40,7 @@ export async function saveAssetCopy(asset: DesktopLibraryAsset): Promise<void> {
 		throw new Error(
 			response.kind === "error"
 				? response.detail
-				: "The asset content could not be read.",
+				: t("ui.library.errors.asset_read"),
 		);
 	}
 	const blob = new Blob([response.data as BlobPart], {

@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "ru",
+  "namespace": "ui.common.speech",
+  "pr": 1389,
+  "date": "2026-10-25",
+  "head": "404902650faad7cf753cef2cbd5ab2e6df6cd8a8",
+  "instance": "ru-ui-common-speech-unionbind-962ed8cbd864",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator on either parent wave",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Session banner reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run.",
+    "independence": "This session authored no catalogue, ledger, allowance or code change for PR #1389 or either parent wave. It writes only the 28 receipts of this union-bind round. The values in scope were produced by the branch and main waves; this run re-binds their bytes and does not re-translate or edit them.",
+    "instance": "ru-ui-common-speech-unionbind-962ed8cbd864"
+  },
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Convergence re-bind audit, not a fresh translation review: every merged value must be byte-identical to the corresponding value in one of the two merge parents, the key set must equal English and the parent union, and the inherited ICU/placeholder structure must match the English source.",
+  "scope": "ui.common.speech for ru: all 16 merged keys at PR head 404902650f, read against the English source at the same head, the English context sidecar, and both parents (A=d696dea4ec branch tip, B=91aa8f5f10 main). No other namespace is in scope; no catalogue file was edited.",
+  "revisions": {
+    "merge": "404902650faad7cf753cef2cbd5ab2e6df6cd8a8",
+    "parent_a": "d696dea4ecb4a58aa0a6c4c68935e7b31a7986c4",
+    "parent_b": "91aa8f5f10797184d01c41143d1a3645176b566b",
+    "branch_tip": "d696dea4ecb4a58aa0a6c4c68935e7b31a7986c4",
+    "main_at_merge": "91aa8f5f10797184d01c41143d1a3645176b566b"
+  },
+  "en_sha256": "bb2374781dbadb335a53d7183ec24291cb6178b28a7c42d21a6293df184cfb09",
+  "context_sha256": "5c0ff0f7e179894e3b0e41f6d4b9949bb82bb897b2d596d09d16e4055e0c0191",
+  "target_sha256": "962ed8cbd8648cad2d4bda6a139fe7ebedc09e57efce85fb52f98285f9608330",
+  "parents": {
+    "A": {
+      "rev": "d696dea4ecb4a58aa0a6c4c68935e7b31a7986c4",
+      "role": "branch pre-merge head (d696dea4ec)",
+      "en_sha256": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+      "target_sha256": "5b667cc74bb28563edf7feeb6fe1a91021348a038a9474e986776bfb4becaf66",
+      "context_sha256": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b",
+      "receipt": null,
+      "exact_bytes_named_by": [
+        "0f5238900a89-surfaces.json",
+        "23463a773a32-surfaces.json",
+        "ui-ru-surface-extraction-20261024.json"
+      ]
+    },
+    "B": {
+      "rev": "91aa8f5f10797184d01c41143d1a3645176b566b",
+      "role": "main at merge (91aa8f5f10)",
+      "en_sha256": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+      "target_sha256": "0cae5d5f726c1d3c606ca09730345b3c08b02234e083809151de4b84d29f9d3f",
+      "context_sha256": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a",
+      "receipt": null,
+      "exact_bytes_named_by": [
+        "0f5238900a89-canvas.json",
+        "23463a773a32-canvas.json",
+        "ui-ru-canvas-batch.json"
+      ]
+    }
+  },
+  "checks": {
+    "keys": {
+      "merged": 16,
+      "parent_a": 11,
+      "parent_b": 5,
+      "shared": 0,
+      "only_a": 11,
+      "only_b": 5,
+      "union": 16
+    },
+    "key_set_equals_english": true,
+    "duplicate_keys": [],
+    "key_set_equals_parent_union": true,
+    "missing_vs_english": [],
+    "extra_vs_english": [],
+    "shared_values_identical_in_both_parents": true,
+    "every_merged_value_equals_its_parent_value": true,
+    "value_attribution": {
+      "both": 0,
+      "fromA": 11,
+      "fromB": 5,
+      "neither": 0
+    },
+    "line_provenance_strict": {
+      "fromB": 4,
+      "neither": 1,
+      "fromA": 11
+    },
+    "line_provenance_after_trailing_comma_normalisation": {
+      "fromB": 5,
+      "fromA": 11
+    },
+    "strict_exceptions": [
+      {
+        "key": "ui.common.speech.speak_control.stop",
+        "normalised_from": "B",
+        "difference": "comma added: the parent record was final in its file and the merged file places another record after it; value bytes are identical",
+        "line_sha256": "62b5ab6a5cdfb397da26628f5af220f2587bb3186e1d9ba9c3f141bfeafa855f"
+      }
+    ],
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21 (the catalogue generator's parser)",
+      "messages_parsed": 16,
+      "messages_total": 16,
+      "plural_messages": 0,
+      "plural_categories_cldr": [
+        "few",
+        "many",
+        "one",
+        "other"
+      ],
+      "plural_categories_observed": [],
+      "findings": [],
+      "argument_and_skeleton_parity": true
+    },
+    "english_source": {
+      "key_set_equals_target": true,
+      "key_set_equals_parent_union": true,
+      "parent_keys": {
+        "A": 11,
+        "B": 5
+      },
+      "merged_keys": 16,
+      "shared_keys": 0,
+      "only_a": 11,
+      "only_b": 5,
+      "shared_value_mismatches": [],
+      "line_provenance_strict": {
+        "fromB": 4,
+        "neither": 1,
+        "fromA": 11
+      },
+      "line_provenance_after_trailing_comma_normalisation": {
+        "fromB": 5,
+        "fromA": 11
+      },
+      "strict_exceptions": [
+        "ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud"
+      ]
+    },
+    "context_sidecar": {
+      "sha256": "5c0ff0f7e179894e3b0e41f6d4b9949bb82bb897b2d596d09d16e4055e0c0191",
+      "parent_a_sha256": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b",
+      "parent_b_sha256": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a",
+      "keys": 16,
+      "parent_a_keys": 11,
+      "parent_b_keys": 5,
+      "key_set_equals_english": true,
+      "line_provenance_strict": {
+        "fromB": 4,
+        "neither": 1,
+        "fromA": 11
+      },
+      "line_provenance_after_trailing_comma_normalisation": {
+        "fromB": 5,
+        "fromA": 11
+      },
+      "strict_exceptions": [
+        {
+          "key": "ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud",
+          "normalised_from": "B",
+          "difference": "trailing comma on the closing brace only: the record stopped being the final record in the sidecar, so JSON syntax requires a separator; block bytes are otherwise identical"
+        }
+      ]
+    },
+    "union_parity_tool": {
+      "command": "node scripts/i18n/catalogue-union-parity.mjs --pr 1389 --head <HEAD> --old-head <A> --base <B> --file <this file> --json",
+      "ok": true,
+      "base_count": 5,
+      "pr_count": 11,
+      "merged_count": 16,
+      "union_count": 16,
+      "missing_from_base": [],
+      "missing_from_pr": [],
+      "value_differences": []
+    },
+    "ledger_state_at_head": {
+      "status": "pending",
+      "auditors": 0,
+      "target_sha256_matches_head": true,
+      "note": "Read-only observation; this audit does not edit i18n/ledger.json."
+    }
+  },
+  "verdict": "passed — convergence re-bind, not a fresh translation review: 16/16 keys bind to one of the two parents (0 shared, 11 branch-only, 5 main-only), 0 value changes, 0 invented keys, 0 lost keys; key set equals English and equals the parent union; ICU/placeholder parity 16/16 messages with 0 plural messages at the locale's exact CLDR categories (few, many, one, other); 1 comma-only structural exception(s); 0 blocker, 0 major, 0 minor, 0 nit.",
+  "method": [
+    "Read the PR head and both parents from Git objects (git show), never from a checkout; no catalogue file was modified.",
+    "Split each merged file into its one-key-per-line records and attributed all 16 keys: exact line match first, then a single trailing-comma normalisation, against both parents independently.",
+    "Confirmed the merged key set equals the English key set and the union of the two parent key sets (A 11, B 5, shared 0), with no missing, extra or duplicate key.",
+    "Compared every merged value with the parent value(s) after JSON parsing: shared keys are identical in both parents, and each parent-only key equals its single parent.",
+    "Checked format invariants: tab-indented one-record-per-line JSON, LF, trailing newline, no BOM, unique keys, and exactly one optional trailing comma on the final record.",
+    "Parsed every merged and English message with @formatjs/icu-messageformat-parser 3.5.21, compared argument names, argument node types and number/date skeletons, plural category sets against Intl.PluralRules CLDR output for the locale, and companion argument references inside plural branches.",
+    "Ran parser negative controls: a dropped placeholder, renamed placeholder, changed skeleton, changed plural category set, dropped in-branch skeleton and malformed ICU each produced a finding, so the parity check is not vacuous.",
+    "Ran scripts/i18n/catalogue-union-parity.mjs against Git objects for this file (head, old-head A, base B): no key missing from either side and no value difference."
+  ],
+  "notes": [
+    "Convergence re-bind only: this receipt proves provenance of bytes, not translation quality. Accuracy, idiom, register and glossary were not re-adjudicated in this round; those judgements belong to the audited parent waves.",
+    "The merge commit is a two-parent merge: 404902650f = d696dea4ec (branch) + 91aa8f5f10 (main). Every merged value is byte-identical to one of those two parents.",
+    "Key order is not globally lexicographic: the catalogue preserves each side's sorted core plus appended late keys. Ordering is not part of this rebind's binding rule.",
+    "This row carries comma-only structural exceptions, all separator insertions/removals required by record position; values are byte-identical.",
+    "Exact parent bytes are referenced by existing receipts in i18n/receipts (see parents.A/B.exact_bytes_named_by). Those references have mixed scopes — translator records, delta/batch audits and, for ui.common.updates, the preceding convergence re-bind — so this receipt proves byte provenance, not an inherited whole-file quality verdict."
+  ]
+}

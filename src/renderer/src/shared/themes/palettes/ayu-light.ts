@@ -39,7 +39,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const ayuLight: ThemeDefinition = {
 	id: "ayuLight",
 	name: "Ayu Light",
-	description: "Ayu's daylight: white-grey paper with a deep azure accent.",
+	descriptionKey: "ui.settings.appearance.theme.ayu_light",
 	palette: {
 		mode: "light",
 
