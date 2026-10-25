@@ -1,0 +1,659 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "round": 2,
+  "locale": "fr",
+  "locale_name": "French",
+  "batch": "remaining-copy extraction batch (134 new keys, 7 namespaces)",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+  "previous_head": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+  "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "audited_heads": {
+    "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+    "round1": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+    "round2": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f"
+  },
+  "date": "2026-10-24",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev) — did not translate this batch and holds no catalogue, ledger, allowance or code change for it",
+    "team": "lopdev",
+    "instance": "fr-extract-da12aa6ade20-r2",
+    "session": "da12aa6ade20",
+    "model": "deepseek/deepseek-flash",
+    "served_model": "deepseek/deepseek-flash",
+    "fallback_used": false,
+    "model_note": "Session banner reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run.",
+    "independence": "This session is distinct from the fr translator session and from the round-1 auditor run (fr-extract-b6b8aea1e47a). It authored no catalogue value in this batch; every applied value was read from the catalogue bytes at the audited heads. The translator's commit message was read only after the delta was established from the diff, and its claims were checked against the bytes rather than accepted."
+  },
+  "prior_receipt": {
+    "path": "i18n/receipts/fr-extract-audit-b6b8aea1e47a.json",
+    "sha256": "cea9728be656cf422ce9b8ce64c3997246e8a5a0046aa6ef2011b58fdc0fd449",
+    "verdict": "changes_requested — 0 blocker, 1 major, 5 minor, 3 nit across 7 namespaces; 134 values read."
+  },
+  "guidance": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "contracts": [
+      "~/local-operator-ui/docs/I18N.md (sha256 34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca)",
+      "~/local-operator-ui/AGENTS.md § Internationalization",
+      "docs/design/composer-suggestions.md §8"
+    ]
+  },
+  "scope": "Delta-only re-audit of the 17 fr values changed by the remediation (commit c7a92602d0, integrated at d082bd95) across 4 of the 7 namespaces. All nine round-1 findings were re-checked against the applied bytes. The three unchanged namespaces (ui.chat 44, ui.chat.dialogs 10, ui.chat.sidebar 44) were not re-read; their fr files are byte-identical to the round-1 receipt's hashes. All seven en and context files are byte-identical to round 1; the fr delta is exactly 17 values. No key, order, placeholder, ledger, allowance or generated file was touched by this audit.",
+  "method": [
+    "Located the fr remediation commit c7a92602d0 and the current head d082bd95; enumerated the 17 changed values by byte diff f517ec48..d082bd95 rather than from the translator's summary.",
+    "Re-read each of the 17 changed values against its en source and its en context sidecar (role, tone, length, note, placeholders, maxCells).",
+    "Parsed all 229 values in the seven namespaces with @formatjs/icu-messageformat-parser (v3.5.21, the repo's own copy) and compared normalised ASTs: argument names, select-arm names, plural categories and offset, number skeletons (::group-off), tag names and pound nodes. 227/229 identical; the 2 differences are on keys whose bytes are identical at base and both heads (ui.chat.composer.secret_confirm_chars has the correct extra fr `many` arm; ui.chat.skill_invocation.trigger_label moves {token} to the end), both pre-existing and outside the 134-key batch. The 17 changed values are 17/17 structurally identical.",
+    "Checked key parity and JSON member order per namespace: 66/44/10/14/43/44/8, identical both ways, 0 missing, 0 extra, 0 reordered.",
+    "Re-derived SHA-256 for en, fr and context at d082bd95 for all seven namespaces; compared with the round-1 receipt and with f517ec48. All en/context hashes are unchanged; the three unchanged fr files are byte-identical; the four changed fr files differ only by the 17 values in the delta.",
+    "Typography scan of the 17 changed values: U+2019 apostrophes, U+2026 ellipses, em dash with spaces, U+202F before high punctuation. Found two plain-space colons (FR-EXT-11); no ASCII apostrophes, no ASCII ellipses, no double or edge spaces, no bidi controls.",
+    "Register scan of the whole 3,813-key fr catalogue: 0 hits for tu/te/ton/ta/tes/toi; the changed values use vous-imperative prose (Posez, Infléchissez) and lowercase imperative tips, matching the style guide.",
+    "Glossary sweeps across the 3,813 aligned keys: steer (3 rows, all infléchir), read/lecture (3 changed device rows + 2 pre-existing mesh/skills rows; 0 interrogation), canvas (10 rows; the new tip joins the 3 name-form rows; 3 lowercase rows are pre-existing), device determiner (25 cet appareil vs 4 l’appareil for the device; the new row is the sole this-device exception), close labels (30+ Fermer vs 1 Fermeture, a progress status).",
+    "Width: read the chip component (chat-header-device.tsx: inline-flex h-5 max-w-full shrink-0, span.truncate with ellipsis; 12px icon + 12px chevron + gap-1 + pe-1, text-body-sm = 13px) and the header/story bands (1000/800/620/560). Measured the strings in the harness browser on a fixture that reproduces the chip CSS at 13px system-ui; the fixture's English chip is 154.64px without its 2px border, matching the repository's own rendered measurement of 154.6px, so the geometry is calibrated. Measured natural widths and ellipsis thresholds at 40/56/80/96/120/144/160/188/220/324px.",
+    "Read the viewer call sites (image-lightbox.tsx: all four labels are aria-label + title on icon buttons) and the device chip model/call sites (chat-device-model.ts placementLabel, chat-device-slot.tsx, chat-header.tsx deviceSlot inside the title block).",
+    "Read the ledger read-only: fr rows exist only for ui.chat, ui.chat.composer and ui.chat.dialogs; the other four namespaces have no row, and the composer row's recorded target is stale against both round-1 and round-2 heads. Ledger assembly is out of scope for this task and the file was not edited.",
+    "Wrote only this receipt. No catalogue (any locale), English source, context sidecar, ledger, allowance, generated file or code file was edited."
+  ],
+  "self_corrections": [
+    "FR-EXT-02's round-1 proposed_by_key repeated the browse value for ui.chat.directory.menu.enter_custom. The finding and reason were right; the proposal map was wrong. The applied value (« Saisir un chemin personnalisé… ») is the correct application and is verified here.",
+    "FR-EXT-03's round-1 proposed_by_key for gone_did_not_answer replaced the whole three-sentence value with the one-sentence remote wording, and its remote_did_not_answer_reason proposal dropped the ({reason}) parenthetical. The applied values keep both; the finding's intended change was the term only, and the applied values are correct.",
+    "FR-EXT-09 offered « close could go nominal » as an option without checking the catalogue-wide close convention. The applied nominal close resolves the intra-toolbar mix but puts the lightbox at odds with 30+ « Fermer » labels and the close sidecar's verb-phrase tone; FR-EXT-10 records the consequence.",
+    "Round 1 measured string widths with ImageMagick at SFNS 13px and reported the fr label as 139px; round 2 uses the browser's system-ui at 13px and measures 133.4px, with the English chip matching the repository's own 154.6px rendered measurement. The round-2 numbers are the calibrated ones and are used for the FR-EXT-06/12 dispositions; the round-1 conclusion (the chip fits at the reference width, boundary at the 480px floor) is unchanged in direction."
+  ],
+  "delta": {
+    "ui.chat.composer": {
+      "ui.chat.composer.placeholder.aside": {
+        "before": "Posez une question hors enregistrement — Échap ferme l’aparté",
+        "after": "Posez une question en aparté — Échap ferme l’aparté"
+      },
+      "ui.chat.composer.placeholder.waiting": {
+        "before": "Orientez l’agent. Entrée envoie maintenant · Échap arrête",
+        "after": "Infléchissez l’agent. Entrée envoie maintenant · Échap arrête"
+      },
+      "ui.chat.composer.tip.approvals": {
+        "before": "saisissez /approvals pour choisir si les outils demandent",
+        "after": "choisissez avec /approvals si les outils demandent d’abord"
+      },
+      "ui.chat.composer.tip.ask_for_a_team": {
+        "before": "demandez une équipe et plusieurs agents partagent une requête",
+        "after": "demandez une équipe : plusieurs agents partagent la requête"
+      },
+      "ui.chat.composer.tip.canvas": {
+        "before": "ouvrez un document dans le canvas pour le garder près de la conversation",
+        "after": "ouvrez un document dans Canvas, près de la conversation"
+      },
+      "ui.chat.composer.tip.mcp_tools": {
+        "before": "connectez des serveurs MCP dans les paramètres pour outiller l’agent",
+        "after": "connectez des serveurs MCP pour outiller l’agent"
+      },
+      "ui.chat.composer.tip.mention_file": {
+        "before": "saisissez @ pour indiquer un fichier de ce dossier à l’agent",
+        "after": "saisissez @ pour indiquer un fichier du dossier à l’agent"
+      },
+      "ui.chat.composer.tip.parallel_work": {
+        "before": "demandez du travail en parallèle et l’agent répartit des sous-agents",
+        "after": "demandez plusieurs tâches, l’agent lance des sous-agents"
+      },
+      "ui.chat.composer.tip.phone_access": {
+        "before": "demandez l’accès téléphone pour piloter la session à distance",
+        "after": "demandez l’accès téléphone pour piloter la session"
+      },
+      "ui.chat.composer.tip.run_panel": {
+        "before": "ouvrez le panneau d’exécution pour voir le plan et les sous-agents",
+        "after": "ouvrez le panneau d’exécution : plan et sous-agents"
+      }
+    },
+    "ui.chat.device": {
+      "ui.chat.device.label.new_on_this_device": {
+        "before": "Nouvelle sur cet appareil",
+        "after": "Nouvelle sur l’appareil"
+      },
+      "ui.chat.device.sentence.gone_did_not_answer": {
+        "before": "Cette conversation a été déplacée vers {name}, qui n’a pas répondu à la dernière interrogation. La copie qui se trouvait ici a été supprimée. Cliquez pour la ramener ici.",
+        "after": "Cette conversation a été déplacée vers {name}, qui n’a pas répondu à la dernière lecture. La copie qui se trouvait ici a été supprimée. Cliquez pour la ramener ici."
+      },
+      "ui.chat.device.sentence.remote_did_not_answer": {
+        "before": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière interrogation.",
+        "after": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture."
+      },
+      "ui.chat.device.sentence.remote_did_not_answer_reason": {
+        "before": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière interrogation ({reason}).",
+        "after": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture ({reason})."
+      }
+    },
+    "ui.chat.directory": {
+      "ui.chat.directory.menu.browse": {
+        "before": "Parcourir les dossiers...",
+        "after": "Parcourir les dossiers…"
+      },
+      "ui.chat.directory.menu.enter_custom": {
+        "before": "Saisir un chemin personnalisé...",
+        "after": "Saisir un chemin personnalisé…"
+      }
+    },
+    "ui.common.viewer": {
+      "ui.common.viewer.close": {
+        "before": "{kind, select, image {Fermer l’image} asset {Fermer l’élément} other {Fermer}}",
+        "after": "{kind, select, image {Fermeture de l’image} asset {Fermeture de l’élément} other {Fermeture}}"
+      }
+    }
+  },
+  "namespaces": {
+    "ui.chat.composer": {
+      "namespace": "ui.chat.composer",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean-with-findings — 10 changed values re-read; FR-EXT-01/04/05/07/08 verified; all 11 tips are within the 59-cell pin (max 59); FR-EXT-11 (minor) records two plain-space colons in the two new tips.",
+      "keys_total": 66,
+      "keys_in_batch_delta": 30,
+      "keys_audited_in_round2": 10,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.composer.json",
+        "target": "src/i18n/catalogues/fr/ui.chat.composer.json",
+        "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+      },
+      "sha256": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "fr": "944d792aafbbbba2b0e2c75336ab6d1f6a38323cd22bf7f54fb51045d1c5daec",
+        "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c"
+      },
+      "round1": {
+        "fr_sha256": "fa2fbd7b94bf531ac3950e9ba1c30f987784ff0aab297a362bf6f690e8ce142c",
+        "fr_unchanged_since_round1": false
+      },
+      "findings": [
+        {
+          "id": "FR-EXT-11",
+          "severity": "minor",
+          "namespace": "ui.chat.composer",
+          "key": "ui.chat.composer.tip.ask_for_a_team",
+          "keys": [
+            "ui.chat.composer.tip.ask_for_a_team",
+            "ui.chat.composer.tip.run_panel"
+          ],
+          "current_by_key": {
+            "ui.chat.composer.tip.ask_for_a_team": "demandez une équipe : plusieurs agents partagent la requête",
+            "ui.chat.composer.tip.run_panel": "ouvrez le panneau d’exécution : plan et sous-agents"
+          },
+          "proposed_by_key": {
+            "ui.chat.composer.tip.ask_for_a_team": "demandez une équipe : plusieurs agents partagent la requête",
+            "ui.chat.composer.tip.run_panel": "ouvrez le panneau d’exécution : plan et sous-agents"
+          },
+          "reason": "Both new tips put an ASCII space before the colon. The fr style guide's punctuation section requires espace fine insécable U+202F before : ; ! ? in prose; the catalogue uses U+202F in the other eight prose values that carry a colon, and before this round only one pre-existing value (ui.chat.asks.dismiss.refused) used a plain space. These two are new outliers in the same commit that removed the two ASCII ellipses, so the typography rule is being enforced in one place and missed in another. The fix is a punctuation swap only: the cell count is unchanged because U+202F counts one cell.",
+          "disposition": "new in round 2 — introduced by the FR-EXT-04/05 remediation; non-gating minor"
+        }
+      ],
+      "round1_findings_verified": [
+        {
+          "id": "FR-EXT-01",
+          "prior_severity": "major",
+          "status": "fixed",
+          "keys": [
+            "ui.chat.composer.placeholder.waiting"
+          ],
+          "applied": "Infléchissez l’agent. Entrée envoie maintenant · Échap arrête",
+          "note": "Matches the round-1 proposal byte-for-byte. Glossary sweep: all 3 fr rows rendering English « steer » now use « infléchir » (this value plus ui.mesh.mesh_approvals.steer_a_running_turn_there and ui.projects.project_quick_send.the_session_is_working_this_message_steers_the_running_turn); 0 rows use « orienter » for steer."
+        },
+        {
+          "id": "FR-EXT-04",
+          "prior_severity": "minor",
+          "status": "fixed",
+          "keys": [
+            "ui.chat.composer.tip.canvas"
+          ],
+          "applied": "ouvrez un document dans Canvas, près de la conversation",
+          "note": "72 → 55 cells, inside the 59-cell tip pin. The value applies the round-1 proposal and takes the Canvas name form, which is FR-EXT-08."
+        },
+        {
+          "id": "FR-EXT-05",
+          "prior_severity": "minor",
+          "status": "fixed",
+          "keys": [
+            "ui.chat.composer.tip.approvals"
+          ],
+          "applied": "choisissez avec /approvals si les outils demandent d’abord",
+          "note": "Matches the round-1 proposal byte-for-byte; « d’abord » restored and 58 cells, inside the pin."
+        },
+        {
+          "id": "FR-EXT-07",
+          "prior_severity": "nit",
+          "status": "fixed",
+          "keys": [
+            "ui.chat.composer.placeholder.aside"
+          ],
+          "applied": "Posez une question en aparté — Échap ferme l’aparté",
+          "note": "Matches the round-1 proposal byte-for-byte; « en aparté » names the mode and « l’aparté » the aside, the same repetition the English makes with « aside »."
+        },
+        {
+          "id": "FR-EXT-08",
+          "prior_severity": "nit",
+          "status": "addressed",
+          "keys": [
+            "ui.chat.composer.tip.canvas"
+          ],
+          "applied": "ouvrez un document dans Canvas, près de la conversation",
+          "note": "The new row uses « dans Canvas », the name form already shipped in ui.chat.canonical.supplement.file_actions.open_in_canvas (« Ouvrir dans Canvas »), ui.common.file_actions.show_in_canvas (« Afficher dans Canvas ») and the rail label « Canvas{chord} ». The four pre-existing lowercase values (command palette open/close, the rail tooltip and its count variant, « le canvas ») are unchanged and out of this batch; the split predates the batch, and the new row joins the name form rather than adding another variant. No further action required for this batch; a future locale pass may settle the four residual values."
+        }
+      ]
+    },
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — 0 changed values; the 36 batch values are byte-identical to round 1 and were not re-read; 44/44 keys and JSON order match en; ICU structure 44/44.",
+      "keys_total": 44,
+      "keys_in_batch_delta": 36,
+      "keys_audited_in_round2": 0,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.json",
+        "target": "src/i18n/catalogues/fr/ui.chat.json",
+        "context": "src/i18n/catalogues/en/ui.chat.context.json"
+      },
+      "sha256": {
+        "en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+        "fr": "618801abecb508e8c75ff0fe1a0c3573f756a778b597b44323fe089ee6224101",
+        "context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424"
+      },
+      "round1": {
+        "fr_sha256": "618801abecb508e8c75ff0fe1a0c3573f756a778b597b44323fe089ee6224101",
+        "fr_unchanged_since_round1": true
+      },
+      "findings": [],
+      "round1_findings_verified": []
+    },
+    "ui.chat.dialogs": {
+      "namespace": "ui.chat.dialogs",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — 0 changed values; the 6 batch values are byte-identical to round 1; 10/10 keys and order match en.",
+      "keys_total": 10,
+      "keys_in_batch_delta": 6,
+      "keys_audited_in_round2": 0,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.dialogs.json",
+        "target": "src/i18n/catalogues/fr/ui.chat.dialogs.json",
+        "context": "src/i18n/catalogues/en/ui.chat.dialogs.context.json"
+      },
+      "sha256": {
+        "en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+        "fr": "fbde39fcf3e9eeace365debb33c26690bd4937bcd64e59e23eb3f1ad52f4810c",
+        "context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299"
+      },
+      "round1": {
+        "fr_sha256": "fbde39fcf3e9eeace365debb33c26690bd4937bcd64e59e23eb3f1ad52f4810c",
+        "fr_unchanged_since_round1": true
+      },
+      "findings": [],
+      "round1_findings_verified": []
+    },
+    "ui.chat.device": {
+      "namespace": "ui.chat.device",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean-with-findings — 4 changed values re-read; FR-EXT-03 fixed in all three sentences; FR-EXT-06 width accepted on measurement; FR-EXT-12 (nit) records the « l’appareil » vs « cet appareil » determiner drift. 14/14 keys and order match en.",
+      "keys_total": 14,
+      "keys_in_batch_delta": 14,
+      "keys_audited_in_round2": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.device.json",
+        "target": "src/i18n/catalogues/fr/ui.chat.device.json",
+        "context": "src/i18n/catalogues/en/ui.chat.device.context.json"
+      },
+      "sha256": {
+        "en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+        "fr": "a8125151c300799fb731f67dd760f07925b02d17c3ced18d315afa78f1ec5d2d",
+        "context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce"
+      },
+      "round1": {
+        "fr_sha256": "28619de780d8c290c08fa10b630de540692fbb527b744ad5c23fe98a4aee988e",
+        "fr_unchanged_since_round1": false
+      },
+      "findings": [
+        {
+          "id": "FR-EXT-12",
+          "severity": "nit",
+          "namespace": "ui.chat.device",
+          "key": "ui.chat.device.label.new_on_this_device",
+          "keys": [
+            "ui.chat.device.label.new_on_this_device"
+          ],
+          "current": "Nouvelle sur l’appareil",
+          "proposed": "Nouvelle ici",
+          "proposed_alt": "Nouvelle sur cet appareil",
+          "reason": "Width is accepted (see width_evidence): the ellipsis always takes the tail, « Nouvelle » is the last token to be cut and is intact at every width where the full label paints, and at the designed bands the whole 173.4px chip fits. The wording point is separate: English « this device » maps to « cet appareil » in 25 fr rows, while « l’appareil » renders « the device » in the four mesh rows that mean a specific or generic device; this new chip is the only row that maps « this device » to « l’appareil », and its paired live label is « Sur cet appareil ». The commit also notes that 23 cells still misses the 20-cell advisory target, so the two-cell saving does not buy compliance — it buys ~16px at the narrowest band. If the lane wants the target, « Nouvelle ici » (13 cells, the round-1 proposal) meets it and matches the es/ru pattern; if it wants the device word, « Nouvelle sur cet appareil » (25 cells) is the consistent form and still fits at every designed band (191.9px chip vs the ~324px title block at the 560px band). Recorded as a nit, not a gate.",
+          "disposition": "new in round 2 — introduced by the FR-EXT-06 remediation; non-gating nit. The width concern in FR-EXT-06 is accepted; this nit is the wording trade, not a truncation."
+        }
+      ],
+      "round1_findings_verified": [
+        {
+          "id": "FR-EXT-03",
+          "prior_severity": "minor",
+          "status": "fixed",
+          "keys": [
+            "ui.chat.device.sentence.gone_did_not_answer",
+            "ui.chat.device.sentence.remote_did_not_answer",
+            "ui.chat.device.sentence.remote_did_not_answer_reason"
+          ],
+          "applied": {
+            "ui.chat.device.sentence.gone_did_not_answer": "Cette conversation a été déplacée vers {name}, qui n’a pas répondu à la dernière lecture. La copie qui se trouvait ici a été supprimée. Cliquez pour la ramener ici.",
+            "ui.chat.device.sentence.remote_did_not_answer": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture.",
+            "ui.chat.device.sentence.remote_did_not_answer_reason": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture ({reason})."
+          },
+          "note": "All three now use « la dernière lecture »; 0 rows with « interrogation » remain in the 3,813-key fr catalogue. The two mesh rows that already used « lecture » (ui.mesh.mesh_list.answered_the_peer_read_but_is_in, ui.hub.skills.session_selection) are unchanged, so the term is now one rendering. The applied values keep the two sentences and the ({reason}) parenthetical that the round-1 proposed_by_key had accidentally dropped; see self_corrections."
+        },
+        {
+          "id": "FR-EXT-06",
+          "prior_severity": "minor",
+          "status": "accepted_with_recorded_reason",
+          "keys": [
+            "ui.chat.device.label.new_on_this_device"
+          ],
+          "applied": "Nouvelle sur l’appareil",
+          "note": "25 → 23 cells against the 20-cell advisory maxCells. Width accepted on measurement: the label span is truncate (tail ellipsis), the chip is 173.4px naturally, the designed bands give the title block ~324px at the narrowest (560px header), so the chip fits whole there; where it is width-constrained the ellipsis eats the tail (« Nouvelle sur l’ap… », « Nouvelle s… », « Nouvel… ») and the leading distinguishing word « Nouvelle » is the last thing to go; at the pane-open minimum-window fold the whole label is clipped in English and French alike. The wording trade (l’appareil vs cet appareil) is recorded separately as FR-EXT-12, a nit."
+        }
+      ]
+    },
+    "ui.chat.directory": {
+      "namespace": "ui.chat.directory",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — 2 changed values re-read; FR-EXT-02 fixed both; 43/43 keys and order match en; the whole fr catalogue is now free of ASCII ellipses.",
+      "keys_total": 43,
+      "keys_in_batch_delta": 43,
+      "keys_audited_in_round2": 2,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.directory.json",
+        "target": "src/i18n/catalogues/fr/ui.chat.directory.json",
+        "context": "src/i18n/catalogues/en/ui.chat.directory.context.json"
+      },
+      "sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "fr": "f2bc95305fbd48a9ae73b5189bc0e6539d99f2e18fe283806389562a9cc06de7",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+      },
+      "round1": {
+        "fr_sha256": "96cb2fd67e0d69fa5cd4325e5b26e284f4702a68c62be5830c1c6fa010644033",
+        "fr_unchanged_since_round1": false
+      },
+      "findings": [],
+      "round1_findings_verified": [
+        {
+          "id": "FR-EXT-02",
+          "prior_severity": "minor",
+          "status": "fixed",
+          "keys": [
+            "ui.chat.directory.menu.browse",
+            "ui.chat.directory.menu.enter_custom"
+          ],
+          "applied": {
+            "ui.chat.directory.menu.browse": "Parcourir les dossiers…",
+            "ui.chat.directory.menu.enter_custom": "Saisir un chemin personnalisé…"
+          },
+          "note": "Both are U+2026; the whole 3,813-key fr catalogue now has 0 values spelling the ellipsis as ASCII dots. The round-1 proposed_by_key for enter_custom repeated the browse value; the applied value is the correct application of the finding, see self_corrections."
+        }
+      ]
+    },
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — 0 changed values; the single batch value is byte-identical to round 1; 44/44 keys and order match en.",
+      "keys_total": 44,
+      "keys_in_batch_delta": 1,
+      "keys_audited_in_round2": 0,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "target": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "sha256": {
+        "en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+        "fr": "2ee131c8d07a4892f327af6ff2b87a8b7d565526e976475bd523131398d5d28c",
+        "context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de"
+      },
+      "round1": {
+        "fr_sha256": "2ee131c8d07a4892f327af6ff2b87a8b7d565526e976475bd523131398d5d28c",
+        "fr_unchanged_since_round1": true
+      },
+      "findings": [],
+      "round1_findings_verified": []
+    },
+    "ui.common.viewer": {
+      "namespace": "ui.common.viewer",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean-with-findings — 1 changed value re-read; FR-EXT-09's intra-toolbar mix resolved (all four labels nominal); FR-EXT-10 (minor) records the resulting cross-catalogue register point. 8/8 keys and order match en; all four arms preserved.",
+      "keys_total": 8,
+      "keys_in_batch_delta": 4,
+      "keys_audited_in_round2": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "target": "src/i18n/catalogues/fr/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "fr": "7434486d50fc318ef2c2014a66c48974a93aef1c73fb95278beef3b6f5400f82",
+        "context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5"
+      },
+      "round1": {
+        "fr_sha256": "658889b1282a5220026faa9b872124a1ae984f1474531c8852b66c203ada1f81",
+        "fr_unchanged_since_round1": false
+      },
+      "findings": [
+        {
+          "id": "FR-EXT-10",
+          "severity": "minor",
+          "namespace": "ui.common.viewer",
+          "key": "ui.common.viewer.close",
+          "keys": [
+            "ui.common.viewer.close"
+          ],
+          "current": "{kind, select, image {Fermeture de l’image} asset {Fermeture de l’élément} other {Fermeture}}",
+          "proposed": "{kind, select, image {Fermer l’image} asset {Fermer l’élément} other {Fermer}}",
+          "proposed_set": {
+            "ui.common.viewer.close": "{kind, select, image {Fermer l’image} asset {Fermer l’élément} other {Fermer}}",
+            "ui.common.viewer.previous": "{kind, select, image {Afficher l’image précédente} asset {Afficher l’élément précédent} other {Précédent}}",
+            "ui.common.viewer.next": "{kind, select, image {Afficher l’image suivante} asset {Afficher l’élément suivant} other {Suivant}}"
+          },
+          "reason": "The remediation removed the intra-toolbar mix by making close nominal, but the sidecar's own tone for this key is « short verb phrase with its object, sentence case ». The fr catalogue names the close action with the infinitive in every other control (Fermer le navigateur, Fermer l’aperçu, Fermer la console, Fermer le terminal, Fermer les approbations, Fermer le fil, … — 30+ values); the only « Fermeture » in the whole 3,813-key catalogue is ui.console.close.busy, a progress status (« Fermeture… »). The lightbox is now the only close control that names the state rather than the action, and it is also the only one that contradicts its sidecar tone. Proposed: restore the infinitive on close and put next/previous in the same verb-phrase shape (« Afficher l’image suivante »), which satisfies all three sidecars and keeps the toolbar uniform. If the lane prefers the nominal set, it should record an explicit exception to the close sidecar; no width constraint applies — these are aria-label/title strings with no maxCells.",
+          "disposition": "new in round 2 — introduced by the FR-EXT-09 remediation; non-gating minor",
+          "evidence": "image-lightbox.tsx lines 917-1000: all four labels are aria-label + title on icon buttons (no visible text, no maxCells)."
+        }
+      ],
+      "round1_findings_verified": [
+        {
+          "id": "FR-EXT-09",
+          "prior_severity": "nit",
+          "status": "resolved_with_new_finding",
+          "keys": [
+            "ui.common.viewer.close",
+            "ui.common.viewer.next",
+            "ui.common.viewer.previous"
+          ],
+          "applied": "{kind, select, image {Fermeture de l’image} asset {Fermeture de l’élément} other {Fermeture}}",
+          "note": "The intra-toolbar mix is gone: close now takes the nominal form its next/previous neighbours use, so the four aria-labels are one shape. The direction chosen creates a cross-catalogue register point instead, recorded as FR-EXT-10 (minor): the sidecar asks close for a verb phrase, and every other close control in the fr catalogue uses the infinitive « Fermer ». The round-1 option that allowed a nominal close is disclosed as under-informed in self_corrections."
+        }
+      ]
+    }
+  },
+  "hash_verification": {
+    "note": "Byte-identical comparisons against i18n/receipts/fr-extract-audit-b6b8aea1e47a.json (round 1) and the current head.",
+    "all_en_unchanged": true,
+    "all_context_unchanged": true,
+    "unchanged_fr_namespaces": [
+      "ui.chat",
+      "ui.chat.dialogs",
+      "ui.chat.sidebar"
+    ],
+    "changed_fr_namespaces": [
+      "ui.chat.composer",
+      "ui.chat.device",
+      "ui.chat.directory",
+      "ui.common.viewer"
+    ],
+    "changed_value_count": 17,
+    "per_namespace": {
+      "ui.chat.composer": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c",
+        "fr_round2": "944d792aafbbbba2b0e2c75336ab6d1f6a38323cd22bf7f54fb51045d1c5daec",
+        "fr_round1": "fa2fbd7b94bf531ac3950e9ba1c30f987784ff0aab297a362bf6f690e8ce142c",
+        "fr_unchanged": false
+      },
+      "ui.chat": {
+        "en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+        "context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424",
+        "fr_round2": "618801abecb508e8c75ff0fe1a0c3573f756a778b597b44323fe089ee6224101",
+        "fr_round1": "618801abecb508e8c75ff0fe1a0c3573f756a778b597b44323fe089ee6224101",
+        "fr_unchanged": true
+      },
+      "ui.chat.dialogs": {
+        "en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+        "context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299",
+        "fr_round2": "fbde39fcf3e9eeace365debb33c26690bd4937bcd64e59e23eb3f1ad52f4810c",
+        "fr_round1": "fbde39fcf3e9eeace365debb33c26690bd4937bcd64e59e23eb3f1ad52f4810c",
+        "fr_unchanged": true
+      },
+      "ui.chat.device": {
+        "en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+        "context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce",
+        "fr_round2": "a8125151c300799fb731f67dd760f07925b02d17c3ced18d315afa78f1ec5d2d",
+        "fr_round1": "28619de780d8c290c08fa10b630de540692fbb527b744ad5c23fe98a4aee988e",
+        "fr_unchanged": false
+      },
+      "ui.chat.directory": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8",
+        "fr_round2": "f2bc95305fbd48a9ae73b5189bc0e6539d99f2e18fe283806389562a9cc06de7",
+        "fr_round1": "96cb2fd67e0d69fa5cd4325e5b26e284f4702a68c62be5830c1c6fa010644033",
+        "fr_unchanged": false
+      },
+      "ui.chat.sidebar": {
+        "en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+        "context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de",
+        "fr_round2": "2ee131c8d07a4892f327af6ff2b87a8b7d565526e976475bd523131398d5d28c",
+        "fr_round1": "2ee131c8d07a4892f327af6ff2b87a8b7d565526e976475bd523131398d5d28c",
+        "fr_unchanged": true
+      },
+      "ui.common.viewer": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5",
+        "fr_round2": "7434486d50fc318ef2c2014a66c48974a93aef1c73fb95278beef3b6f5400f82",
+        "fr_round1": "658889b1282a5220026faa9b872124a1ae984f1474531c8852b66c203ada1f81",
+        "fr_unchanged": false
+      }
+    }
+  },
+  "width_evidence": {
+    "method": "Harness browser, local fixture reproducing the chip's own CSS: display inline-flex; height 20px; max-width 100%; flex-shrink 0; align-items center; gap 4px; padding-right 4px; white-space nowrap; font 13px system-ui/-apple-system; label span overflow hidden, text-overflow ellipsis, white-space nowrap; 12px icon + 12px chevron.",
+    "calibration": {
+      "repo_measured_english_chip_px": 154.6,
+      "fixture_english_chip_px_without_border": 154.64,
+      "note": "The fixture's 156.64px includes a 2px border; subtracting it matches the repository's own measured 154.6px exactly."
+    },
+    "natural_px": {
+      "fr_current": {
+        "chip": 173.39,
+        "label": 133.39,
+        "text": "Nouvelle sur l’appareil"
+      },
+      "fr_alt_cet_appareil": {
+        "chip": 189.88,
+        "label": 149.88,
+        "text": "Nouvelle sur cet appareil"
+      },
+      "fr_short_ici": {
+        "chip": 109.58,
+        "label": 69.58,
+        "text": "Nouvelle ici"
+      },
+      "en": {
+        "chip": 154.64,
+        "label": 114.64,
+        "text": "New on this device"
+      }
+    },
+    "truncation_thresholds": {
+      "note": "The label span ellipsizes at the tail; the leading word is the last thing cut.",
+      "160px_chip": {
+        "fr": "Nouvelle sur l’ap…",
+        "en": "full"
+      },
+      "120px_chip": {
+        "fr": "Nouvelle s…",
+        "en": "New on thi…"
+      },
+      "96px_chip": {
+        "fr": "Nouvel…",
+        "en": "New o…"
+      },
+      "80px_chip": {
+        "fr": "Nou…",
+        "en": "New…"
+      },
+      "56px_chip": {
+        "fr": "label box 14px, no visible word",
+        "en": "label box 14px, no visible word"
+      }
+    },
+    "designed_bands": {
+      "band_widths_px": [
+        1000,
+        800,
+        620,
+        560
+      ],
+      "title_block_px_conservative": {
+        "1000": 764,
+        "800": 564,
+        "620": 384,
+        "560": 324
+      },
+      "note": "Computed from the header row (px-4 = 32px, gap-3 = 12px) minus the 192px five-button action cluster measured at 1000px; the shed ladder only shrinks that cluster, so these are lower bounds. The 173.4px current chip fits whole at every band; the 189.9px « cet appareil » alternative also fits at every band.",
+      "560_band": "The identity pair (69.2 + 76.4px) + gap + 173.4px chip can exceed the ~324px block by a few pixels; the block's tail clip then shaves the chip's right edge (chevron/padding), which sits 20px beyond the label, so the label remains intact."
+    },
+    "pane_open_minimum": {
+      "window_min_width_px": 800,
+      "header_px": 220,
+      "title_block_px": 40,
+      "note": "At this documented fold the whole chip is clipped, in English and French alike; it is the chip's first-to-fold state, not a French text overflow."
+    },
+    "conclusion": "The 23-cell value is accepted on width: the ellipsis always takes the tail, the distinguishing word « Nouvelle » is the last token cut and is intact at every width where the full label paints, and at every designed band the chip fits whole. The 20-cell maxCells is advisory and missed by 3 cells; the two-cell saving from « cet » to « l’ » buys ~16px at the narrowest band but does not meet the target. The wording trade is recorded as FR-EXT-12 (nit)."
+  },
+  "observations": [
+    "The brief says ten tips were shortened; the byte diff shows eight changed tips (approvals, ask_for_a_team, canvas, mcp_tools, mention_file, parallel_work, phone_access, run_panel) and three unchanged (attach_a_file 49 cells, schedule 43, search_past_work 59). All eleven were re-measured: all are ≤ the 59-cell pin, the maximum is 59 (ask_for_a_team and search_past_work). The eight changed tips run 48–59 cells.",
+    "The shortened tips trade some source detail for the pin, each recorded rather than churned: mcp_tools drops « dans les paramètres » (the round-1 proposed trade), mention_file drops « ce » (the working-directory context carries it), phone_access drops « à distance » (accès téléphone carries the remote sense), run_panel drops « d’un tour » and parallel_work drops « en parallèle » (plural tasks + subagents carry it). Each remains an accurate action sentence with its leading verb; none becomes a fragment that misdescribes the control.",
+    "tip.canvas now uses « dans Canvas », the name form already shipped in five other values (the two file actions, the mesh page label and the rail aria pair); the four pre-existing lowercase values are untouched. The capital is a pre-existing locale split being joined, not a new variant.",
+    "ICU pre-existing differences, disclosed: ui.chat.composer.secret_confirm_chars carries a correct fr `many` arm (French CLDR needs it for exact multiples of 10^6; the style guide records the same example), and ui.chat.skill_invocation.trigger_label places {token} after the noun, which is the natural French order. Both values are byte-identical at base and both heads, outside the 134-key batch, and no remediation touched them.",
+    "The ledger is stale/absent for this batch: fr rows exist for ui.chat, ui.chat.composer and ui.chat.dialogs, with composer's recorded target already stale at round 1; ui.chat.device, ui.chat.directory, ui.chat.sidebar and ui.common.viewer have no fr row. Ledger assembly is outside this task; the current hashes above are what an assembler should bind.",
+    "No repository file was edited by this audit: catalogues (any locale), English source, context sidecars, ledger, allowances, generated files and the parity gate are untouched. This receipt is the only artefact."
+  ],
+  "totals": {
+    "keys_audited_in_round2": 17,
+    "keys_structurally_parsed": 229,
+    "keys_carried_byte_identical": 98,
+    "namespaces": 7,
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1,
+    "prior_findings_reaudited": 9,
+    "fixed_exactly": 6,
+    "accepted_with_recorded_reason": 2,
+    "resolved_with_new_finding": 1,
+    "open_blocker_or_major": 0
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings — all nine round-1 findings are resolved on d082bd95: FR-EXT-01/02/03/04/05/07 fixed exactly, FR-EXT-06 accepted on measured width with a recorded wording nit, FR-EXT-08's new row joins the Canvas name form (the residual lowercase values are pre-existing and out of batch), and FR-EXT-09's intra-toolbar mix is resolved. There is no blocker or major: the 17 changed values are 17/17 structurally identical to their English sources, key parity and order are intact in all seven namespaces, the three unchanged namespaces are byte-identical to round 1, and all en/context hashes are unchanged. Two new non-gating minors and one nit are recorded rather than churned: FR-EXT-10 (viewer close is now the only nominal close label in a catalogue that uses « Fermer » 30+ times, against its sidecar's verb-phrase tone), FR-EXT-11 (two new tips use a plain space before the colon where the fr guide requires U+202F), and FR-EXT-12 (the draft chip's « l’appareil » is the only « this device » row not using « cet appareil »; the width itself is accepted). 17 values re-read, 229 parsed, 98 carried byte-identical."
+}

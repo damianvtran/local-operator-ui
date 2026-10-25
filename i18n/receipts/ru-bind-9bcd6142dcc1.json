@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-namespace-bind-reaudit",
+  "date": "2026-10-25",
+  "locale": "ru",
+  "namespace": "ui.common.viewer",
+  "batch": "ru-bind-1403",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "audited_head_short": "0adbb37b94",
+  "requested_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "instance": "ru-bind-9bcd6142dcc1",
+  "instance_note": "Per-namespace bind instance; the 12-hex suffix is the first 12 hex of the current ru target sha256, so the id names the bytes it audited.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "0c5590aa68a9",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback selected or observed",
+    "fallback": null,
+    "independent_from_translator": true,
+    "independence_basis": "Independent translation-auditor session 0c5590aa68a9, separate from the translator (i18n-translator in the ledger). Bytes were read from git at 0adbb37b94; no catalogue or ledger file was edited by this run.",
+    "instance": "ru-bind-9bcd6142dcc1"
+  },
+  "independence": "Independent translation-auditor session 0c5590aa68a9; translator was i18n-translator per the ledger. The audit read en and ru bytes from git at 0adbb37b94, edited no catalogue and no ledger row, and writes only this receipt.",
+  "scope": "Full re-audit of ui.common.viewer at the current bytes (bind audit): every key, not a delta.",
+  "method": "Read the en and ru JSON from git; compared key sets, ICU AST (arguments, number skeletons, select arms, plural categories, pound usage), rendered the ru messages with intl-messageformat (the same class used by src/i18n/messages) at 1/2/5/21 plus 0/3/4/6/11/22/1.5, and read the en context sidecars for role/tone/length. Catalogue-level audit only: no browser, no rendered-frame pass, no native-speaker sign-off is claimed.",
+  "source_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+  "target_sha256": "9bcd6142dcc132be0850ec6f7e9854ed47425d9f0073613ba0485a88e1ff1032",
+  "context_sha256": "c105c548706f46e9e247437c16352074c245ff07551a8edf360a4a8e666a4d73",
+  "checks": {
+    "en_keys": 12,
+    "ru_keys": 12,
+    "key_set_exact": true,
+    "icu_parsed": 12,
+    "icu_failures": 0,
+    "placeholders_exact": true,
+    "select_arms_exact": true,
+    "number_skeletons_exact": true,
+    "union": "en/ru key order identical after the merge; all 12 union values are ru (no English left); kind select renders image/asset/other for close/next/previous/position",
+    "renders": {
+      "close": {
+        "image": "Закрыть изображение",
+        "asset": "Закрыть файл",
+        "other": "Закрыть"
+      },
+      "next": {
+        "image": "Следующее изображение",
+        "asset": "Следующий файл",
+        "other": "Далее"
+      },
+      "previous": {
+        "image": "Предыдущее изображение",
+        "asset": "Предыдущий файл",
+        "other": "Назад"
+      },
+      "position": {
+        "image": "Изображение 3 из 10",
+        "asset": "Файл 3 из 10",
+        "other": "Изображение 3 из 10"
+      },
+      "asset_of": "Материал 3 из 10"
+    }
+  },
+  "findings": [
+    {
+      "id": "RU-BIND-V-01",
+      "severity": "minor",
+      "category": "glossary-consistency",
+      "key": "ui.common.viewer.image_lightbox.asset_of",
+      "current": "Материал {index, number, ::group-off} из {count, number, ::group-off}",
+      "proposed": "Файл {index, number, ::group-off} из {count, number, ::group-off}",
+      "reason": "The four new kind-select arms render 'asset' as «файл» (Закрыть файл, Следующий файл, Предыдущий файл, Файл {index} из {count}), while the pre-existing asset_of says «Материал {index} из {count}»; the merged namespace now uses two local terms for one English term, so align asset_of to the four new arms.",
+      "introduced_by": "merge ab9bd739c2 (branch kind-select arms unioned with main's image_lightbox copy)"
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed — 12/12 union keys, 0 blocker/major; the merge's four kind-select arms are coherent and render image/asset/other correctly, but 'asset' drifts between «файл» and «Материал» (the one minor); ICU select arms and number skeletons are exact."
+}

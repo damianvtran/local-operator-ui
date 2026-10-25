@@ -6,8 +6,13 @@
 	"ui.chat.sidebar.agents.filter": "筛选智能体",
 	"ui.chat.sidebar.agents.loading": "正在加载智能体……",
 	"ui.chat.sidebar.agents.no_match": "没有匹配的智能体",
+	"ui.chat.sidebar.agents.builtin_offer": "{count, plural, =0 {没有可安装的内置智能体——{list}。安装后即可编辑。} other {有{count, number, ::group-off}个内置智能体可安装——{list}。安装后即可编辑。}}",
+	"ui.chat.sidebar.catalogue.total": "显示{shown, number, ::group-off}/{total, number, ::group-off}个对话",
+	"ui.chat.sidebar.catalogue.total_search": "显示{shown, plural, other {{shown, number, ::group-off}个匹配}}，共{total, number, ::group-off}个对话",
+	"ui.chat.sidebar.catalogue.total_search_clipped": "显示{shown, plural, other {{shown, number, ::group-off}+个匹配}}，共{total, number, ::group-off}个对话",
 	"ui.chat.sidebar.drafts.clear_all": "全部清除",
 	"ui.chat.sidebar.drafts.clear_all_label": "清除所有草稿",
+	"ui.chat.sidebar.groups.badge": "{badge, plural, other {此分组中有{badge, number, ::group-off}个对话}}",
 	"ui.chat.sidebar.header.create": "新建智能体或团队",
 	"ui.chat.sidebar.header.create_agent": "新建智能体",
 	"ui.chat.sidebar.header.create_team": "新建团队",
@@ -41,5 +46,6 @@
 	"ui.chat.sidebar.search.too_long": "搜索词最多{max, number, ::group-off}个字符。当前搜索词超出限制，因此仅搜索对话名称。",
 	"ui.chat.sidebar.search.unavailable": "对话搜索不可用，当前结果仅为名称匹配。",
 	"ui.chat.sidebar.teams.create": "创建团队",
-	"ui.chat.sidebar.teams.loading": "正在加载团队……"
+	"ui.chat.sidebar.teams.loading": "正在加载团队……",
+	"ui.chat.sidebar.section.current_chat": "当前对话"
 }

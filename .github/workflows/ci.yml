@@ -581,7 +581,20 @@ jobs:
       !cancelled() &&
       needs.changes.outputs.unit != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    # RAISED FROM 50 TO 75 on 2026-10-25, measured a third time. The cap is per
+    # SHARD, and the partitions are balanced by file COUNT, not by runtime:
+    # shard 2/3 took 428 s on an M-series host, while the same shard on the CI
+    # runner ran past the 50-minute ceiling on three consecutive attempts (runs
+    # 40160038927, 40169799731 and 40169840176, cancelled at the cap). Two PRs
+    # were blocked at once; on the two later runs shards 0 and 1 were green with
+    # no failing tests, and the earliest run's shard-1 failures were a separate
+    # harness race since fixed at its source.
+    # 75 minutes gives the job room to finish instead of being cut mid-suite:
+    # the same shard takes well under this on other branches, so this is
+    # headroom for the runner's slower jsdom lanes, not a claim about a general
+    # slowdown. Balancing shards by measured runtime is the real fix and a
+    # follow-up, not a guess made here.
+    timeout-minutes: 75
 
     strategy:
       fail-fast: false

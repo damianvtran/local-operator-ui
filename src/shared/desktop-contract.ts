@@ -11,6 +11,7 @@ export type TagRegistry = { tags: TagCategory[] };
 export type DesiredTag = { id?: string; name: string };
 
 import { z } from "zod";
+import type { WithoutParams } from "../i18n";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
 import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
 // The sidebar's destination vocabulary is the same list the route validates
@@ -4942,9 +4943,18 @@ export function asideAdoptRefusedReason(
 }
 
 /**
- * The sentences a refusal composes into, one per code.
+ * The catalogue message a refusal composes into, one per code.
  *
- * NO sentence here names an update, and none tells the user to change what the
+ * WHY KEYS AND NOT SENTENCES. This table is the one place that says which
+ * pairing fact a refused control reports, and that mapping is shared contract -
+ * but the sentence a user reads is the renderer's copy and follows the active
+ * locale. Holding English prose here would make the shared half a second source
+ * of truth for wording the catalogue already owns (and a translation could
+ * never be reached through it). So the contract carries IDs and the renderer's
+ * `desktopRefusalSentence()` resolves them at draw time; `DESKTOP_MACHINE_DETAIL`
+ * below stays prose precisely because it is compared, never rendered.
+ *
+ * NO message here names an update, and none tells the user to change what the
  * app manages: every one of these codes is a PAIRING condition, and pairing is
  * the app's own business to re-establish (design § 3.1, § 4's falsifiable
  * prediction). The two that can only be repaired by re-claiming say so; the two
@@ -4959,15 +4969,17 @@ export function asideAdoptRefusedReason(
  * verbatim. Removing it is what keeps "which table words this condition" a
  * question with one answer (review round 1, MINOR-3; design round 1, D4).
  */
-export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
+export const DESKTOP_REFUSAL_COPY_KEY: Record<
+	DesktopRefusalCode,
+	WithoutParams
+> = {
 	[DESKTOP_REFUSAL_CODE.noCredential]:
-		"This app is not paired with the running Local Operator server, so this control is unavailable.",
-	[DESKTOP_REFUSAL_CODE.refused]:
-		"This app's credential for the running Local Operator server was refused, so this control is unavailable.",
+		"ui.common.errors.desktop_refusal.no_credential",
+	[DESKTOP_REFUSAL_CODE.refused]: "ui.common.errors.desktop_refusal.refused",
 	[DESKTOP_REFUSAL_CODE.planeClosed]:
-		"The running Local Operator server does not accept this app's desktop controls.",
+		"ui.common.errors.desktop_refusal.plane_closed",
 	[DESKTOP_REFUSAL_CODE.transportFailed]:
-		"The Local Operator server did not answer this request.",
+		"ui.common.errors.desktop_refusal.transport_failed",
 };
 
 /**
@@ -4977,7 +4989,7 @@ export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
  * machine vocabulary rather than copy: main emits them, and the renderer has to
  * tell them apart from the DAEMON's own 503 so that "the app holds no credential"
  * is never reported as "the server's plane is shut". They are carried in
- * `detail.message` and rendered only by {@link DESKTOP_REFUSAL_SENTENCE}.
+ * `detail.message` and rendered only through {@link DESKTOP_REFUSAL_COPY_KEY}.
  */
 export const DESKTOP_MACHINE_DETAIL = {
 	/*

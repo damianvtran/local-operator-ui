@@ -426,9 +426,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	const isVideo = mediaKind === "video";
 	const positionLabel = (index: number, count: number) =>
 		mediaLabel === "asset"
-			? t("ui.common.viewer.image_lightbox.asset_of", {
+			? t("ui.common.viewer.position", {
+					kind: "asset",
 					index: index + 1,
-					count: count,
+					count,
 				})
 			: groupPositionLabel(index, count);
 	/*
@@ -913,12 +914,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={t("ui.common.viewer.image_lightbox.previous", {
-									medialabel: mediaLabel,
+								aria-label={t("ui.common.viewer.previous", {
+									kind: mediaLabel,
 								})}
-								title={t("ui.common.viewer.image_lightbox.previous", {
-									medialabel: mediaLabel,
-								})}
+								title={t("ui.common.viewer.previous", { kind: mediaLabel })}
 								onClick={group?.onPrev}
 								className={cn(
 									"pointer-events-auto fixed top-0 bottom-0 left-4 my-auto",
@@ -931,12 +930,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={t("ui.common.viewer.image_lightbox.next", {
-									medialabel: mediaLabel,
-								})}
-								title={t("ui.common.viewer.image_lightbox.next", {
-									medialabel: mediaLabel,
-								})}
+								aria-label={t("ui.common.viewer.next", { kind: mediaLabel })}
+								title={t("ui.common.viewer.next", { kind: mediaLabel })}
 								onClick={group?.onNext}
 								className={cn(
 									"pointer-events-auto fixed top-0 right-4 bottom-0 my-auto",
@@ -1001,12 +996,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								"pointer-events-auto fixed top-4 right-4",
 								CHROME_PLATE,
 							)}
-							aria-label={t("ui.common.viewer.image_lightbox.close", {
-								medialabel: mediaLabel,
-							})}
-							title={t("ui.common.viewer.image_lightbox.close", {
-								medialabel: mediaLabel,
-							})}
+							aria-label={t("ui.common.viewer.close", { kind: mediaLabel })}
+							title={t("ui.common.viewer.close", { kind: mediaLabel })}
 						>
 							<X aria-hidden="true" />
 						</Button>

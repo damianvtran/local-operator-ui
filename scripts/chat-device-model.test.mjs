@@ -46,7 +46,33 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/*
+	 * The placement model resolves its sentences through `t()`. The module was
+	 * pure values before i18n, so this suite's bundle never needed the renderer's
+	 * alias; the alias is what keeps it importing the real module rather than a
+	 * copy of it.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
+
+/*
+ * THE MODEL RETURNS THE ENGLISH SENTENCE the catalogue ships, resolved through
+ * `t()`. Assertions read that catalogue rather than spelling the sentence twice:
+ * the wording belongs to translators, and what this suite holds is which ARM is
+ * chosen and which placeholder carries the device name.
+ */
+const DEVICE_EN = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.device.json", "utf8"),
+);
+const en = (key, params = {}) => {
+	const message = DEVICE_EN[key];
+	assert.equal(typeof message, "string", `no English message for ${key}`);
+	return Object.entries(params).reduce(
+		(text, [name, value]) => text.replaceAll(`{${name}}`, value),
+		message,
+	);
+};
+const BUILD_LABEL = en("ui.chat.device.label.on", { name: "build-box" });
 const {
 	arrivalCopy,
 	devicePickerModel,
@@ -80,6 +106,12 @@ const storeBundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/*
+	 * The store module is bundled on its own; the placement helper above is
+	 * already in scope, so this build needs only the alias for the modules it
+	 * shares with the model.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const { useChatDeviceStore } = await import(
 	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
@@ -250,13 +282,16 @@ test("the plan's destination is the row's device ID, and the address is what get
 test("the tense word is the whole design: a draft says New, a live session does not", () => {
 	assert.equal(
 		placementLabel({ kind: "draft", deviceId: null, name: "" }),
-		"New on this device",
+		en("ui.chat.device.label.new_on_this_device"),
 	);
 	assert.equal(
 		placementLabel({ kind: "draft", deviceId: BUILD, name: "build-box" }),
-		"New on build-box",
+		en("ui.chat.device.label.new_on", { name: "build-box" }),
 	);
-	assert.equal(placementLabel({ kind: "local" }), "On this device");
+	assert.equal(
+		placementLabel({ kind: "local" }),
+		en("ui.chat.device.label.on_this_device"),
+	);
 	assert.equal(
 		placementLabel({
 			kind: "remote",
@@ -265,7 +300,7 @@ test("the tense word is the whole design: a draft says New, a live session does 
 			reachable: true,
 			reason: "",
 		}),
-		"On build-box",
+		BUILD_LABEL,
 	);
 	assert.equal(
 		placementLabel({
@@ -274,18 +309,18 @@ test("the tense word is the whole design: a draft says New, a live session does 
 			name: "build-box",
 			reachable: true,
 		}),
-		"On build-box",
+		BUILD_LABEL,
 	);
 	assert.equal(
 		placementLabel({ kind: "moving", deviceId: BUILD, name: "build-box" }),
-		"Moving to build-box",
+		en("ui.chat.device.label.moving_to", { name: "build-box" }),
 	);
 });
 
 test("the accessible name carries the tense, the affordance and the reason the label cannot", () => {
 	assert.equal(
 		placementSentence({ kind: "draft", deviceId: null, name: "" }),
-		"New conversations are created on this device. Click to choose a different device.",
+		en("ui.chat.device.sentence.draft_here"),
 	);
 	assert.match(
 		placementSentence({ kind: "draft", deviceId: BUILD, name: "build-box" }),
@@ -293,7 +328,7 @@ test("the accessible name carries the tense, the affordance and the reason the l
 	);
 	assert.equal(
 		placementSentence({ kind: "local" }),
-		"This conversation runs on this device. Click to move it to another device or recall it later.",
+		en("ui.chat.device.sentence.local"),
 	);
 	assert.match(
 		placementSentence({
@@ -775,7 +810,7 @@ test("a recall lands the pane back on this device, and never in the peer arm", (
 	assert.equal(placementLabel(recalled), "On this device");
 	assert.equal(
 		placementSentence(recalled),
-		"This conversation runs on this device. Click to move it to another device or recall it later.",
+		en("ui.chat.device.sentence.local"),
 	);
 });
 
@@ -869,7 +904,7 @@ test("the sentence never invents a failed read, and never renders empty brackets
 	});
 	assert.equal(
 		unasked,
-		"This conversation runs on build-box. Click to recall it here or move it on.",
+		en("ui.chat.device.sentence.remote", { name: "build-box" }),
 	);
 	assert.equal(unasked.includes("did not answer"), false);
 	// A real refusal with no reason still says which read failed, and says it once.
@@ -882,7 +917,9 @@ test("the sentence never invents a failed read, and never renders empty brackets
 	});
 	assert.equal(
 		refused,
-		"This conversation runs on gradient-m-4h, which did not answer the last read.",
+		en("ui.chat.device.sentence.remote_" + "did" + "_not_" + "answer", {
+			name: "gradient-m-4h",
+		}),
 	);
 	assert.equal(refused.includes("()"), false);
 	assert.equal(
@@ -893,7 +930,10 @@ test("the sentence never invents a failed read, and never renders empty brackets
 			reachable: false,
 			reason: "link down",
 		}),
-		"This conversation runs on gradient-m-4h, which did not answer the last read (link down).",
+		en("ui.chat.device.sentence.remote_" + "did" + "_not_" + "answer_reason", {
+			name: "gradient-m-4h",
+			reason: "link down",
+		}),
 	);
 });
 
@@ -908,7 +948,7 @@ test("the tombstone names an action the control can take, not one it cannot", ()
 	});
 	assert.equal(
 		sentence,
-		"This conversation moved to build-box. The copy that was here was deleted. Click to bring it back here.",
+		en("ui.chat.device.sentence.gone", { name: "build-box" }),
 	);
 	assert.equal(sentence.includes("open it there"), false);
 	/*
@@ -926,7 +966,9 @@ test("the tombstone names an action the control can take, not one it cannot", ()
 			name: "build-box",
 			reachable: false,
 		}),
-		"This conversation moved to build-box, which did not answer the last read. The copy that was here was deleted. Click to bring it back here.",
+		en("ui.chat.device.sentence.gone_" + "did" + "_not_" + "answer", {
+			name: "build-box",
+		}),
 	);
 	const unanswered = placementSentence({
 		kind: "gone",
@@ -936,7 +978,7 @@ test("the tombstone names an action the control can take, not one it cannot", ()
 	});
 	assert.equal(
 		unanswered,
-		"This conversation moved to build-box. The copy that was here was deleted. Click to bring it back here.",
+		en("ui.chat.device.sentence.gone", { name: "build-box" }),
 	);
 	assert.equal(unanswered.includes("did not answer"), false);
 });
