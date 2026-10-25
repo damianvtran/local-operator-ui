@@ -12,7 +12,7 @@
 	"ui.chat.sidebar.catalogue.total_search_clipped": "Đang hiển thị {shown, number, ::group-off}+ {shown, plural, other {kết quả khớp}} trên {total, number, ::group-off} cuộc trò chuyện",
 	"ui.chat.sidebar.drafts.clear_all": "Xóa tất cả",
 	"ui.chat.sidebar.drafts.clear_all_label": "Xóa tất cả bản nháp",
-	"ui.chat.sidebar.groups.badge": "{badge, number, ::group-off} cuộc trò chuyện trong nhóm này",
+	"ui.chat.sidebar.groups.badge": "{badge, plural, other {{badge, number, ::group-off} cuộc trò chuyện trong nhóm này}}",
 	"ui.chat.sidebar.header.create": "Tác nhân hoặc nhóm mới",
 	"ui.chat.sidebar.header.create_agent": "Tác nhân mới",
 	"ui.chat.sidebar.header.create_team": "Nhóm mới",
