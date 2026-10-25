@@ -33,6 +33,7 @@ import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
+import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
@@ -721,6 +722,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
 	...enUiAgentsStarters,
+	...enUiAgentsTeams,
 	...enUiBrowserChrome,
 	...enUiBrowserErrors,
 	...enUiBrowser,
@@ -1573,6 +1575,7 @@ export type MessageParams = {
 	"ui.agents.detail.delegate.label": undefined;
 	"ui.agents.detail.empty.used_by": undefined;
 	"ui.agents.detail.field.effort_placeholder": undefined;
+	"ui.agents.detail.field.name": undefined;
 	"ui.agents.detail.kind.role": undefined;
 	"ui.agents.detail.kind.specialist": undefined;
 	"ui.agents.detail.no_description": undefined;
@@ -1815,6 +1818,29 @@ export type MessageParams = {
 	"ui.agents.starters.summary.sentence": { parts: string };
 	"ui.agents.starters.summary.separator": undefined;
 	"ui.agents.starters.summary.skipped": { count: number };
+	"ui.agents.teams.action.add_member": undefined;
+	"ui.agents.teams.action.collaboration_aria": undefined;
+	"ui.agents.teams.action.new_chat": undefined;
+	"ui.agents.teams.action.project_brief_aria": undefined;
+	"ui.agents.teams.action.remove": undefined;
+	"ui.agents.teams.col.count": undefined;
+	"ui.agents.teams.col.member": undefined;
+	"ui.agents.teams.col.type": undefined;
+	"ui.agents.teams.empty.not_found": undefined;
+	"ui.agents.teams.empty.not_found_name": { name: string };
+	"ui.agents.teams.field.manager_aria": undefined;
+	"ui.agents.teams.field.manager_placeholder": undefined;
+	"ui.agents.teams.field.member_placeholder": undefined;
+	"ui.agents.teams.kind.agent": undefined;
+	"ui.agents.teams.kind.team": undefined;
+	"ui.agents.teams.member_count": { count: number };
+	"ui.agents.teams.section.collaboration": undefined;
+	"ui.agents.teams.section.description": undefined;
+	"ui.agents.teams.section.manager": undefined;
+	"ui.agents.teams.section.members": undefined;
+	"ui.agents.teams.section.members_aria": undefined;
+	"ui.agents.teams.section.project_brief": undefined;
+	"ui.agents.teams.section.what_for": undefined;
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;

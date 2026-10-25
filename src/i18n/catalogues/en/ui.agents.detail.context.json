@@ -129,6 +129,11 @@
 		"role": "select placeholder",
 		"tone": "plain"
 	},
+	"ui.agents.detail.field.name": {
+		"note": "Names the definition's name field in the editor. The value is the agent's or team's own name; this is only its label.",
+		"role": "field label",
+		"tone": "plain, one word"
+	},
 	"ui.agents.detail.kind.role": {
 		"note": "The wire value `role`, said in the operator's terms: they can start a chat with it. Pairs with kind.specialist.",
 		"role": "select option label",

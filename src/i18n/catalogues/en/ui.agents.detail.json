@@ -25,6 +25,7 @@
 	"ui.agents.detail.delegate.label": "May delegate to subagents",
 	"ui.agents.detail.empty.used_by": "No team uses it yet.",
 	"ui.agents.detail.field.effort_placeholder": "Choose an effort tier",
+	"ui.agents.detail.field.name": "Name",
 	"ui.agents.detail.kind.role": "You can chat with it directly",
 	"ui.agents.detail.kind.specialist": "Other agents can call on it",
 	"ui.agents.detail.no_description": "No description",

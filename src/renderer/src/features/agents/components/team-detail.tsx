@@ -199,8 +199,7 @@ export function memberCountOf(member: Pick<TeamMember, "count">): number {
 export function memberCountLabel(
 	members: readonly TeamMember[] | undefined,
 ): string {
-	const total = memberCount(members);
-	return total === 1 ? "1 member" : `${total} members`;
+	return t("ui.agents.teams.member_count", { count: memberCount(members) });
 }
 
 /**
@@ -415,6 +414,7 @@ export function TeamDetail({
 	 */
 	belowHeader?: ReactNode;
 }) {
+	useI18nLocale();
 	const creating = !team;
 	const [editing, setEditing] = useState(creating);
 	const [name, setName] = useState(team?.name ?? "");
@@ -802,7 +802,7 @@ export function TeamDetail({
 									navigate("/chat");
 								}}
 							>
-								New team chat
+								{t("ui.agents.teams.action.new_chat")}
 							</Button>
 							<HubTeamPublication team={team} />
 							<Button
@@ -813,14 +813,14 @@ export function TeamDetail({
 									setEditing(true);
 								}}
 							>
-								Edit
+								{t("ui.agents.detail.action.edit")}
 							</Button>
 							{askEnabled ? (
 								<Button
 									variant="ghost"
 									onClick={() => onAskAgent(`Change the team ${team.name}: `)}
 								>
-									Ask for a change
+									{t("ui.agents.detail.action.ask_change")}
 								</Button>
 							) : null}
 						</div>
@@ -836,7 +836,9 @@ export function TeamDetail({
 				 */}
 				{error && !errorField ? (
 					<Alert variant="danger" role="alert" data-testid="team-save-error">
-						<AlertTitle>That did not save</AlertTitle>
+						<AlertTitle>
+							{t("ui.agents.detail.alert.save_failed_title")}
+						</AlertTitle>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				) : null}
@@ -892,7 +894,7 @@ export function TeamDetail({
 					<>
 						{creating ? (
 							<Section
-								title="Name"
+								title={t("ui.agents.detail.field.name")}
 								description="How you and your chats will refer to this team."
 							>
 								<FieldLabel
@@ -914,7 +916,7 @@ export function TeamDetail({
 							</Section>
 						) : null}
 						<Section
-							title="Manager"
+							title={t("ui.agents.teams.section.manager")}
 							description="The agent that leads the chat and decides who works on what."
 						>
 							<div className="space-y-2">
@@ -926,7 +928,7 @@ export function TeamDetail({
 								<SearchableSelect
 									ariaLabel="Manager agent"
 									showLabel={false}
-									placeholder="Choose a manager"
+									placeholder={t("ui.agents.teams.field.manager_placeholder")}
 									busyLabel="Loading agents"
 									options={managerOptions(agents, teams)}
 									selected={
@@ -946,13 +948,15 @@ export function TeamDetail({
 									(option) => option.id === draft.manager,
 								) ? (
 									<Badge variant="warning" data-testid="team-manager-missing">
-										Not found: {draft.manager}
+										{t("ui.agents.teams.empty.not_found_name", {
+											name: draft.manager,
+										})}
 									</Badge>
 								) : null}
 							</div>
 						</Section>
 						<Section
-							title="Members"
+							title={t("ui.agents.teams.section.members")}
 							description="Who the manager can delegate to, how many of each, and the model each runs on."
 						>
 							{/*
@@ -1040,7 +1044,9 @@ export function TeamDetail({
 												<SearchableSelect
 													ariaLabel={`Member ${index + 1}`}
 													showLabel={false}
-													placeholder="Choose an agent or team"
+													placeholder={t(
+														"ui.agents.teams.field.member_placeholder",
+													)}
 													busyLabel="Loading agents"
 													options={[
 														...managerOptions(agents, teams).filter((option) =>
@@ -1080,8 +1086,12 @@ export function TeamDetail({
 													<SelectValue />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="agent">Agent</SelectItem>
-													<SelectItem value="team">Team</SelectItem>
+													<SelectItem value="agent">
+														{t("ui.agents.teams.kind.agent")}
+													</SelectItem>
+													<SelectItem value="team">
+														{t("ui.agents.teams.kind.team")}
+													</SelectItem>
 												</SelectContent>
 											</Select>
 											{/*
@@ -1130,7 +1140,7 @@ export function TeamDetail({
 													}))
 												}
 											>
-												Remove
+												{t("ui.agents.teams.action.remove")}
 											</Button>
 											{missing ? (
 												// Own grid row, so the warning never pushes a column.
@@ -1138,7 +1148,9 @@ export function TeamDetail({
 													variant="warning"
 													className="col-span-full w-fit"
 												>
-													Not found: {member.role}
+													{t("ui.agents.teams.empty.not_found_name", {
+														name: member.role,
+													})}
 												</Badge>
 											) : null}
 											{/*
@@ -1326,11 +1338,11 @@ export function TeamDetail({
 										}));
 									}}
 								>
-									Add member
+									{t("ui.agents.teams.action.add_member")}
 								</Button>
 							</div>
 						</Section>
-						<Section title="Description">
+						<Section title={t("ui.agents.teams.section.description")}>
 							<FieldLabel
 								label="What this team is for"
 								htmlFor="team-description"
@@ -1347,7 +1359,7 @@ export function TeamDetail({
 								}
 							/>
 						</Section>
-						<Section title="Collaboration instructions">
+						<Section title={t("ui.agents.teams.section.collaboration")}>
 							{/*
 							 * THE REFUSAL LANDS ON THE FIELD (design review round 3, D16).
 							 * The sentence used to live only in the top banner, 300-plus px
@@ -1366,7 +1378,7 @@ export function TeamDetail({
 							) : null}
 							<Textarea
 								ref={teamInstructionsRef}
-								aria-label="Collaboration instructions"
+								aria-label={t("ui.agents.teams.action.collaboration_aria")}
 								aria-invalid={errorField === "instructions"}
 								className="min-h-36"
 								maxLength={8000}
@@ -1379,9 +1391,9 @@ export function TeamDetail({
 								}
 							/>
 						</Section>
-						<Section title="Project brief">
+						<Section title={t("ui.agents.teams.section.project_brief")}>
 							<Textarea
-								aria-label="Project brief"
+								aria-label={t("ui.agents.teams.action.project_brief_aria")}
 								className="min-h-36"
 								maxLength={8000}
 								value={draft.project}
@@ -1408,7 +1420,7 @@ export function TeamDetail({
 					</>
 				) : (
 					<>
-						<Section title="Manager">
+						<Section title={t("ui.agents.teams.section.manager")}>
 							{/*
 							 * THE MANAGER ROW IS THE MEMBERS' ROW (design spec s4; design review
 							 * round 1 D5). Same `<colgroup>`, same `py-2` cells, same sr-only head:
@@ -1424,14 +1436,14 @@ export function TeamDetail({
 							 */}
 							<Table
 								className="table-fixed"
-								aria-label="Manager: the agent that leads the chat"
+								aria-label={t("ui.agents.teams.field.manager_aria")}
 							>
 								<MemberCols />
 								<TableHeader className="sr-only">
 									<TableRow>
-										<TableHead>Member</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead>Count</TableHead>
+										<TableHead>{t("ui.agents.teams.col.member")}</TableHead>
+										<TableHead>{t("ui.agents.teams.col.type")}</TableHead>
+										<TableHead>{t("ui.agents.teams.col.count")}</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -1464,21 +1476,21 @@ export function TeamDetail({
 														variant="warning"
 														data-testid="team-manager-missing"
 													>
-														Not found
+														{t("ui.agents.teams.empty.not_found")}
 													</Badge>
 												) : null}
 											</div>
 										</TableCell>
 										<TableCell className="px-2 py-2 text-ink-dim text-meta">
 											{/* The type is a fact about the row; the manager is an agent. */}
-											Agent
+											{t("ui.agents.teams.kind.agent")}
 										</TableCell>
 										<TableCell />
 									</TableRow>
 								</TableBody>
 							</Table>
 						</Section>
-						<Section title="Members">
+						<Section title={t("ui.agents.teams.section.members")}>
 							{/*
 							 * A REAL TABLE (design spec D7): the three columns are the same on
 							 * every row, so the type word and the count share an x whatever the
@@ -1488,13 +1500,16 @@ export function TeamDetail({
 							 * five-row list. Rows are separated by the hairline, which is the
 							 * token's stated job; the last row drops it.
 							 */}
-							<Table className="table-fixed" aria-label="Members">
+							<Table
+								className="table-fixed"
+								aria-label={t("ui.agents.teams.section.members_aria")}
+							>
 								<MemberCols />
 								<TableHeader className="sr-only">
 									<TableRow>
-										<TableHead>Member</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead>Count</TableHead>
+										<TableHead>{t("ui.agents.teams.col.member")}</TableHead>
+										<TableHead>{t("ui.agents.teams.col.type")}</TableHead>
+										<TableHead>{t("ui.agents.teams.col.count")}</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -1513,7 +1528,7 @@ export function TeamDetail({
 															variant="warning"
 															data-testid="team-member-missing"
 														>
-															Not found
+															{t("ui.agents.teams.empty.not_found")}
 														</Badge>
 													) : null}
 												</div>
@@ -1713,14 +1728,14 @@ export function TeamDetail({
 								</Table>
 							</Section>
 						) : null}
-						<Section title="What it is for">
+						<Section title={t("ui.agents.teams.section.what_for")}>
 							<ReadBlock
 								text={team?.description ?? ""}
 								empty="No description yet."
 							/>
 						</Section>
 						{team?.instructions ? (
-							<Section title="Collaboration instructions">
+							<Section title={t("ui.agents.teams.section.collaboration")}>
 								<ReadBlock text={team.instructions} />
 							</Section>
 						) : null}
