@@ -1,0 +1,292 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-second-audit",
+ "date": "2026-10-25",
+ "locale": "hi",
+ "namespace": "ui.onboarding.tour",
+ "instance": "hi-onboarding-tour-second-audit-18b1a47b6b83",
+ "instance_basis": "This run's own session id (18b1a47b6b83) plus the audit's purpose; the file name carries the audited target's 12-hex prefix instead, so the record and the target can each be identified from the other.",
+ "status": "clean-with-findings",
+ "keys": 123,
+ "source": {
+  "repo": "damianvtran/local-operator-ui",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-onboarding",
+  "target_commit": "405e69c012654900f454fa4ca023100290369555",
+  "target_commit_provenance": "Declared by the delegating manager as the committed, manager-verified remote-equal head. At the time of reading, git log -1 reported that commit and git status showed no tracked modifications (only other auditors' untracked receipts); no remote fetch was run under the hold.",
+  "en_path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+  "context_path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+  "target_path": "src/i18n/catalogues/hi/ui.onboarding.tour.json"
+ },
+ "sha256": {
+  "en": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+  "hi": "cc19dcba2a867fb2e7a64266a3c53b4d5c82722919da9323532337488d82cfb7"
+ },
+ "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+ "bytes": {
+  "en": 20065,
+  "context": 61441,
+  "hi": 39036
+ },
+ "previous_receipts": [
+  {
+   "receipt": "i18n/receipts/hi-onboarding-tour-e38c1c237313.json",
+   "relation": "Round 1 (changes_requested: T1 major, T2-T7 minors, T8-T12 nits). Read after this auditor's own list was formed; every finding was remediated in Round 2 and none is re-raised here."
+  },
+  {
+   "receipt": "i18n/receipts/hi-onboarding-tour-r2-cc19dcba2a86.json",
+   "relation": "Round 2 delta audit of the same target bytes (cc19dcba...), clean with 12/12 remediated. Read after this pass's own list was formed; its O4 (memory split) and O8 (परिचय polysemy) independently agree with this pass."
+  }
+ ],
+ "translator": {
+  "agent": "translator",
+  "session": "1a52ed60d4b5",
+  "job": "1a52ed60d4b5 / session 14d8806aa603 (declared by the delegating manager)",
+  "model": "radient/auto",
+  "provenance": "Identities declared by the delegating manager; this auditor did not observe the translator run and does not infer its served model."
+ },
+ "first_auditor": {
+  "agent": "translation-auditor",
+  "session": "7f5e35dd3eb0",
+  "model": "radient/auto",
+  "provenance": "Read from the two immutable earlier receipts for this locale and namespace; not observed by this run."
+ },
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "18b1a47b6b83",
+  "model": "radient/auto",
+  "model_provenance": "The harness session header shows the route label radient/auto. The served model is not exposed to this session, so no served-model claim is made and none is inferred; no fallback was used or observed.",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independent_from_first_auditor": true,
+  "independence_basis": "A new run (session 18b1a47b6b83), distinct from translator session 1a52ed60d4b5 and first-auditor session 7f5e35dd3eb0. This run authored no catalogue value, edited no earlier receipt and wrote only this record; all commands were reads."
+ },
+ "scope": "All 123 keys read afresh - English source, .context sidecar and hi target side by side, namespace by namespace - before either earlier receipt was consulted. The findings below are this pass's own; no earlier finding text was copied.",
+ "checks": [
+  {
+   "check": "coverage, order and structure",
+   "command": "duplicate-aware JSON parse of the en, hi and en-context files",
+   "actual": "123 keys in each file; identical key sets and identical order; no en-only or hi-only key; every value a non-empty string",
+   "result": "PASS"
+  },
+  {
+   "check": "placeholder and ICU integrity",
+   "command": "regex scan of every value for {..}, plural/select branches, <tag>, %s and ${..}",
+   "actual": "0 brace-bearing values in en (the source is parameterless), 0 in hi, 0 ICU plural/select branches, no markup or printf token introduced",
+   "result": "PASS - CLDR plural categories are genuinely N/A here, verified rather than assumed"
+  },
+  {
+   "check": "fragment edge whitespace (joined runs)",
+   "command": "compare leading/trailing whitespace of each run, then re-render both paragraphs",
+   "expected": "every fragment keeps the separator the layout needs",
+   "actual": "10 English keys carry leading or trailing spaces; all 10 keep them in Hindi; zero double spaces in any hi value",
+   "result": "PASS"
+  },
+  {
+   "check": "encoding, NFC, invisible characters and script direction",
+   "command": "byte read, UTF-8 decode, unicodedata NFC compare, BOM/ZWSP/ZWNJ/ZWJ scan, direction review",
+   "actual": "valid UTF-8, no BOM, 0 non-NFC sequences, 0 ZWSP/ZWNJ/ZWJ; hi is LTR, so no bidi reordering applies and the Latin runs (Cmd/Ctrl+K is the only one in copy; the ⌘ keycaps are code, not catalogue text) sit in logical order",
+   "result": "PASS"
+  },
+  {
+   "check": "locale punctuation and typography",
+   "command": "terminal-character, quote and colon scan",
+   "actual": "0 values end in ASCII '.'; 60 end in danda ।; 0 '!'; 14 opening and 14 closing “ ” quotes; 0 straight quotes; ASCII ':' appears only where en uses one (5 values)",
+   "result": "PASS"
+  },
+  {
+   "check": "nukta and orthography",
+   "command": "substring scan for non-nukta spellings",
+   "actual": "0 occurrences of the nukta-less spellings जरूरी, ज्यादा, फाइल and ताजा in this namespace; the two bare-खास hits in the locale are in other namespaces",
+   "result": "PASS"
+  },
+  {
+   "check": "glossary consistency (in-namespace)",
+   "command": "term inventory over all 123 values",
+   "actual": "the harness-masked English noun for the canvas container → कार्यक्षेत्र 5/5; schedule → शेड्यूल 10; prompt → प्रॉम्प्ट 5; agent → एजेंट in 66 values; team → टीम 2; model → मॉडल 9; surface → सरफ़ेस 1; feature → सुविधा 5 (फ़ीचर 0); proactive → पहल करने वाला 4 (सक्रिय 0); tour → परिचय (टूर and वॉकथ्रू 0); chat → चैट 10 and conversation → बातचीत 8 kept distinct",
+   "result": "PASS"
+  },
+  {
+   "check": "quoted control names against shipped labels",
+   "command": "cross-read the hi value of the key each quote names",
+   "actual": "View agent settings → “एजेंट की सेटिंग्स देखें” = ui.agents.dialogs.menu.settings; Agent Hub → “एजेंट हब” = ui.shell.sidebar_navigation.agent_hub; Create schedule → “शेड्यूल बनाएँ” = ui.schedules.schedule_form_dialog.create_schedule; Search → “खोजें” = ui.shell.sidebar_navigation.search; Recommended → “सुझाया गया” = ui.common.models.model_select.recommended; “Get” stays Latin, matching the hardcoded control (see O1)",
+   "result": "PASS - five quotes match catalogue labels and “Get” matches the hardcoded control (O1)"
+  },
+  {
+   "check": "joined shortcut paragraphs",
+   "command": "recompose both paragraphs in tour-copy.ts run order with paletteDoorLabel(): everything=⌘P/Ctrl+P, chats=⌘K/Ctrl+K, commands=⌘⇧P/Ctrl+Shift+P",
+   "actual": "P1: चलिए एक और शक्तिशाली सुविधा पर जल्दी से नज़र डालें: कमांड पैलेट। आप ऐप में कहीं से भी ⌘P Mac पर, और Ctrl+P Windows या Linux पर दबाकर खोल सकते हैं। यह एक उपयोगी विंडो है जिसे आप ऐप में कहीं से भी खोल सकते हैं, ताकि कीबोर्ड से अपनी चैट, एजेंट, सेटिंग्स, पेज, कार्रवाइयाँ और बहुत कुछ पा सकें। मेन्यू में क्लिक करते हुए जाने की तुलना में अक्सर इस तरह ऐप के सेक्शन तक पहुँचना तेज़ होता है। सब कुछ एक साथ खोजने के लिए कोई शब्द लिखें, या दायरा छोटा करने के लिए किसी प्रीफ़िक्स से शुरू करें: # चैट के लिए, @ एजेंट और टीमों के लिए, , सेटिंग्स के लिए, और > कमांड और पेजों के लिए। || P2: किसी बातचीत की जल्दी में हैं? दबाएँ ⌘K Mac पर, और Ctrl+K Windows या Linux पर — पैलेट सीधे आपकी चैट खोजते हुए खुलता है, ताकि आप सीधे किसी एक पर पहुँच जाएँ — और ⌘⇧P Mac पर, और Ctrl+Shift+P Windows या Linux पर यह ऐप के अपने कमांड और पेजों पर खुलता है, जब आपको यही चाहिए हो। आप साइडबार में “खोजें” पर क्लिक करके भी इसे खोल सकते हैं।",
+   "result": "PASS with F3 - no double space, no Latin token glued to a Hindi word, every keycap keeps a space on both sides"
+  },
+  {
+   "check": "figure alternate text",
+   "command": "read both .alt values against the figure declarations in tour-copy.ts",
+   "actual": "2 alts: the welcome figure described as a chat window with sidebar, message bubbles and composer; the agent-capabilities figure as three work steps connected in sequence. Neither starts with an image-of phrase",
+   "result": "PASS, with F7 a plural nit"
+  },
+  {
+   "check": "width budget (cells, not pixels)",
+   "command": "cell count with combining marks (Mn/Mc/Me) as 0, compared with the en sidecar budgets",
+   "actual": "max ratio 1.08x (welcome.title, 27 vs 25 cells); no key exceeds the 1.5x budget; welcome.list.1.item.7 is the one materially longer bullet in code points (35 vs 26) but measures 24 vs 26 cells",
+   "result": "PASS as a cell measure only - no fit, truncation or line-height claim without a rendered pass"
+  },
+  {
+   "check": "register and address",
+   "command": "pronoun, imperative-ending and politeness-marker scan",
+   "actual": "आप throughout; no तुम/तू forms; 57 values carry the polite -एँ/-ें imperative; 0 -इए forms; no कृपया where the English has none",
+   "result": "PASS"
+  }
+ ],
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "minor",
+   "category": "accuracy",
+   "keys": [
+    "ui.onboarding.tour.canvas_feature.body.1",
+    "ui.onboarding.tour.canvas_open_button.body.1"
+   ],
+   "current": "canvas_feature.body.1: “जहाँ आप अपने एजेंट के साथ ज़्यादा लचीले ढंग से काम कर सकते हैं, योजना बना सकते हैं और उनसे जुड़ सकते हैं।” · canvas_open_button.body.1: “जहाँ आप अपने एजेंट के साथ ज़्यादा लचीले ढंग से काम कर सकते हैं, योजना बना सकते हैं और उनसे जुड़ सकते हैं।”",
+   "proposed": "जहाँ आप अपने एजेंट के साथ ज़्यादा लचीले ढंग से चीज़ें व्यवस्थित कर सकते हैं, योजना बना सकते हैं और उनसे जुड़ सकते हैं।",
+   "reason": "The English lists three capabilities - organize, plan, interact; the target renders the first as काम करना (work) and keeps जुड़ना for interact, so the offer to organize files and visualizations is absent from both keys."
+  },
+  {
+   "id": "F2",
+   "severity": "minor",
+   "category": "accuracy/grammar",
+   "keys": [
+    "ui.onboarding.tour.agent_capabilities.body.1"
+   ],
+   "current": "एजेंट के पास बातचीत की याद, पिछले चरण और सीखें रहती हैं",
+   "proposed": "एजेंट के पास बातचीत की याद, पिछले चरणों की जानकारी और सीखें रहती हैं",
+   "reason": "The source's previous steps is plural; पिछले चरण is singular, and the coordination (याद f., चरण m., सीखें f.pl.) then leans on the nearest conjunct for रहती हैं - the oblique plural fixes number and agreement at once."
+  },
+  {
+   "id": "F3",
+   "severity": "minor",
+   "category": "joining/word order",
+   "keys": [
+    "ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1",
+    "ui.onboarding.tour.pre_command_palette_open_canvas.body.2.3"
+   ],
+   "current": "किसी बातचीत की जल्दी में हैं? दबाएँ ⌘K Mac पर, और Ctrl+K Windows या Linux पर — …",
+   "proposed": "2.1 “किसी बातचीत की जल्दी में हैं? ” + ⌘K + “ Mac पर, और ” + Ctrl+K + 2.3 “ Windows या Linux पर दबाएँ — पैलेट सीधे आपकी चैट खोजते हुए खुलता है, ताकि …”",
+   "reason": "दबाएँ before the keycap leaves the locative Mac पर hanging after the Latin token, reading as 'press ⌘K Mac on'; the sidecar permits putting the verb in the after-fragment (paragraph 1 already does this with दबाकर खोल सकते हैं), so moving it there fixes the join without touching any keycap."
+  },
+  {
+   "id": "F4",
+   "severity": "minor",
+   "category": "register",
+   "keys": [
+    "ui.onboarding.tour.modify_security_prompt.body.1"
+   ],
+   "current": "अगर सुरक्षा की ओर से बार-बार हस्तक्षेप होते हैं, तो सुरक्षा एजेंट के लिए यहाँ एक नोट जोड़ें।",
+   "proposed": "अगर सुरक्षा की ओर से बार-बार हस्तक्षेप होते हैं, तो सुरक्षा एजेंट के लिए यहाँ एक नोट जोड़ने पर विचार करें।",
+   "reason": "The English offers a suggestion for a symptom the reader may not have; the imperative tells the reader to do it, strengthening the advice beyond the source."
+  },
+  {
+   "id": "F5",
+   "severity": "minor",
+   "category": "grammar",
+   "keys": [
+    "ui.onboarding.tour.canvas_variables_view.body.1"
+   ],
+   "current": "आप यहाँ इन वेरिएबल को देख और संभाल सकते हैं।",
+   "proposed": "आप यहाँ इन वेरिएबलों को देख और संभाल सकते हैं।",
+   "reason": "With the demonstrative इन the noun takes the oblique plural (वेरिएबलों); the direct form is colloquial, and the hi style guide asks for standard Hindi."
+  },
+  {
+   "id": "F6",
+   "severity": "nit",
+   "category": "accuracy",
+   "keys": [
+    "ui.onboarding.tour.select_model.body.1"
+   ],
+   "current": "प्रोवाइडर चुनने के बाद AI मॉडल चुनें। “सुझाया गया” के रूप में चिह्नित मॉडल Local Operator के साथ अच्छी तरह चलते हैं।",
+   "proposed": "“सुझाया गया” के रूप में चिह्नित मॉडल Local Operator के साथ अच्छी तरह चलने के लिए जाने जाते हैं।",
+   "reason": "The source reports community experience (are known to work well); the flat assertion turns a recommendation into a guarantee."
+  },
+  {
+   "id": "F7",
+   "severity": "nit",
+   "category": "grammar/accessibility",
+   "keys": [
+    "ui.onboarding.tour.welcome.image.1.alt"
+   ],
+   "current": "साइडबार, संदेश के बबल और कंपोज़र वाली चैट विंडो",
+   "proposed": "साइडबार, संदेश बबल और कंपोज़र वाली चैट विंडो",
+   "reason": "The source says message bubbles (plural); संदेश के बबल reads as 'the bubble of the message' in an accessibility label where precision matters."
+  },
+  {
+   "id": "F8",
+   "severity": "nit",
+   "category": "accuracy",
+   "keys": [
+    "ui.onboarding.tour.canvas_documents_view.body.3"
+   ],
+   "current": "अपने दस्तावेज़ों में जिस भी टेक्स्ट को सुधारना चाहते हैं उसे हाइलाइट करें",
+   "proposed": "अपने दस्तावेज़ों में जिस भी टेक्स्ट को अपने एजेंट से सुधारना चाहते हैं उसे हाइलाइट करें",
+   "reason": "The English says you want your agent to improve the text; the target says only that you want it improved, dropping who does it in a step that teaches the agentic workflow."
+  }
+ ],
+ "findings_summary": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 5,
+  "nit": 3
+ },
+ "observations": [
+  {
+   "id": "O1",
+   "kind": "INFO",
+   "text": "Known source observations, carried rather than waived, and verified on this tree: (a) the “Get” control is a hardcoded English literal in agent-card.tsx (the button text at the download control; its aria-label is an interpolated Download string), so the tour's Latin quote is accurate but the control itself is untranslated outside this namespace; (b) the tour quotes “Create schedule”, while the Schedules page's own call to action is ui.schedules.scheduled_task_dialog.new_scheduled_task = “New scheduled task” / hi “नया शेड्यूल कार्य”, so the quoted control may not exist on the spotlighted surface; (c) the settings prefix is the bare comma glyph from SCOPE_PREFIXES (\",\" → setting in palette-search.ts), so the joined sentence carries ', सेटिंग्स के लिए' inside a comma-separated list. All three are source/authoring questions; the target cannot resolve them by rewriting a quote or a keycap."
+  },
+  {
+   "id": "O2",
+   "kind": "INFO",
+   "text": "The harness masks one English noun in tool output (the canvas container term). The committed bytes for this run were readable in full - no value was reconstructed from context and no masked value was decoded - so the glossary check names that noun descriptively rather than quoting it."
+  },
+  {
+   "id": "O3",
+   "kind": "INFO",
+   "text": "Terminology assessed, not drift: memory is मेमोरी for the stored technical object (code memory, published-fields list) and याद/यादें for conversational recollection; context is कॉन्टेक्स्ट in both occurrences in this namespace; Canvas is कैनवस in all 5 occurrences, and the locale's other namespaces use कैनवस 21 times with no Latin Canvas. None of the three has a glossary row, so there is no canonical row to drift from, and each is internally consistent here."
+  },
+  {
+   "id": "O4",
+   "kind": "INFO",
+   "text": "Locale-wide context noted, not audited here: across the hi catalogue set context also appears as संदर्भ (7 values) beside कॉन्टेक्स्ट (18). The tour uses only कॉन्टेक्स्ट, so this pass records no finding; a locale-wide terminology decision would be its own scope."
+  },
+  {
+   "id": "O5",
+   "kind": "INFO",
+   "text": "The tour term परिचय (established in Round 2 from Settings' “ऐप का परिचय”) also occurs in its ordinary introduce/describe sense at upload_agent_hub_dialog.body.1 (“जो एजेंट का परिचय देता है”). Assessed as polysemy, not a term conflict; a future grep for परिचय should not read it as drift."
+  },
+  {
+   "id": "O6",
+   "kind": "INFO",
+   "text": "Width: Devanagari measures shorter than its code-point count suggests, so the budget is checked in cells (combining marks 0). The largest ratio is 1.08x (welcome.title), and no string is materially longer than its source; a rendered pass of the 37-step panel remains the only way to confirm fit."
+  },
+  {
+   "id": "O7",
+   "kind": "INFO",
+   "text": "Access: the sanctioned masked-value reader refuses this repository's paths (it serves local_operator/i18n/... only). No value needed it this run; if a future read is masked there is no sanctioned UI route, and this auditor would report the gap rather than decode around it."
+  },
+  {
+   "id": "O8",
+   "kind": "INFO",
+   "text": "Prior dispositions were consulted only after this pass's list was formed. None of F1-F8 duplicates a T1-T12 item: F1 concerns a dropped verb in keys T3 touched for a different word, and F2-F8 name untouched keys."
+  }
+ ],
+ "verdict": {
+  "namespace": "clean-with-findings - 0 blocker, 0 major, 5 minor, 3 nit across 123/123 keys read independently",
+  "overall": "Second independent pass: the namespace is semantically sound, idiomatic and consistently formal (आप, -एँ/-ें imperatives), keeps product and technical tokens deliberately, preserves all structure (no ICU, no placeholders, fragment edges intact) and is typographically clean (danda, curly quotes, nukta, NFC). Five minor and three nit findings are recorded for a future batched round; none blocks. The three source-side observations are carried as source defects, not charged to the translator."
+ },
+ "limits": [
+  "Cells, not pixels: no browser host and no OS launch under this run's hold, so no width, truncation, line-height or rendered-fit claim is made for the 37-step Shepherd panel.",
+  "No build, no test suite, no dependency install and no alternate browser: this record evidences a reading of committed bytes plus static cross-reads, not runtime rendering.",
+  "One namespace only; other hi namespaces were read solely to resolve quoted control labels and glossary terms, not audited.",
+  "The worktree is shared with other auditors: tracked modifications to the fr and ur tour catalogues appeared while this run was open and were left untouched. The hi target hash stayed cc19dcba2a86 throughout and is what the receipt names.",
+  "An audited read is not native-speaker certification: the register and idiom judgements are this auditor's, recorded so a human reviewer can weigh them.",
+  "The target commit and translator identity are manager-declared; this run verified the local commit id and that the hi bytes match the declared target hash, but did not fetch from the remote.",
+  "Earlier-round dispositions (T1-T12) were read after this pass's own list was formed; no finding here duplicates a remediated item and no earlier observation is waived."
+ ]
+}

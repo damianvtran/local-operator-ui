@@ -3944,6 +3944,23 @@
 					"receipt_sha256": "b932fbe6b539a4141c193829fc427fe66c8882e4ac122f57e7ff5f750a7bc737",
 					"scope": "Full first independent audit of ui.onboarding.tour for es: 123 English/context/target values; text-only, rendered fit unverified.",
 					"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "7464d37a829a",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 7
+					},
+					"receipt": "i18n/receipts/7464d37a829a.json",
+					"receipt_sha256": "92d8fa599d99f5dab4e9bdf1329fbd7fc309a90a98fd528b383b8b2d4cd4be23",
+					"scope": "Second independent audit of the unchanged final bytes. First audit 699cfe87308b-es-onboarding-tour remains on the row; two distinct instances now evidence the high-visibility rule. 4 minor/7 nit, no blocker or major.",
+					"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
 				}
 			],
 			"status": "audited"
@@ -9458,7 +9475,7 @@
 			"locale": "fr",
 			"namespace": "ui.onboarding.tour",
 			"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
-			"target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+			"target_sha256": "5099b1bab0b5c78f723ef41abb3b83acc9f4716d0fc9739fd60dbad0102d5e5b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -9471,21 +9488,47 @@
 					"agent": "translation-auditor",
 					"model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
 					"date": "2026-10-25",
-					"result": "clean-with-findings",
-					"instance": "59527dfbb84b",
+					"result": "clean",
+					"instance": "339c96eeb7b8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/59527dfbb84b.json",
-					"receipt_sha256": "90c11dfe6c0a92103e42730ee1fc61de25e4478d1a4b3c38e7f05fbc45a2bcd9",
-					"scope": "Round 2 pass on the final bytes: 12 remediated values, 111 unchanged retained byte-identically from round 1. Round 1 receipt i18n/receipts/59527dfbb84b-fr.json (sha256 d190c87856141e2a91364358112784f3798a421452b69a6118b0d5395215a922) requested changes and remains immutable evidence. First-independent-audit scope only; rendered fit unverified.",
-					"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+					"receipt": "i18n/receipts/339c96eeb7b8.json",
+					"receipt_sha256": "358ba31ffa70d6c5b5e9a0896bad01a543a949f093d3146743ef2d7565e23f85",
+					"scope": "Second independent confirmation of the 4-byte remediated final file (vous forms and one nit). Earlier audits of prior bytes are superseded history, not current evidence. Clean: 0 blocker/major/minor/nit. FR masked-source access gap remains recorded in the evidence record.",
+					"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "59527dfbb84b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/59527dfbb84b.json",
+							"receipt_sha256": "90c11dfe6c0a92103e42730ee1fc61de25e4478d1a4b3c38e7f05fbc45a2bcd9",
+							"scope": "Round 2 pass on the final bytes: 12 remediated values, 111 unchanged retained byte-identically from round 1. Round 1 receipt i18n/receipts/59527dfbb84b-fr.json (sha256 d190c87856141e2a91364358112784f3798a421452b69a6118b0d5395215a922) requested changes and remains immutable evidence. First-independent-audit scope only; rendered fit unverified.",
+							"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -15325,6 +15368,23 @@
 					"receipt_sha256": "54921db331360122f64bbb810fbba8476bcca45589555192677eddbbfeb6e526",
 					"scope": "Round 2 delta pass on the final bytes: all 12 round-1 findings fixed, 19 changed keys and 104 unchanged retained byte-identically. Round 1 receipt i18n/receipts/hi-onboarding-tour-e38c1c237313.json remains immutable evidence. First-independent-audit scope only; rendered fit unverified.",
 					"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "hi-onboarding-tour-second-audit-18b1a47b6b83",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 5,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/hi-onboarding-tour-second-audit-18b1a47b6b83.json",
+					"receipt_sha256": "a489e5f7b2e021b04c40c55b70adf054583020b9b1e39b41a0fe978087125087",
+					"scope": "Second independent audit of the unchanged final bytes. First audit hi-onboarding-tour-r2-cc19dcba2a86 remains on the row; two distinct instances now evidence the high-visibility rule. 5 minor/3 nit.",
+					"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
 				}
 			],
 			"status": "audited"
@@ -20809,6 +20869,23 @@
 					"receipt_sha256": "b050b84db6e055b8defc647c588c11fe72dc44f179a3d03ca6357f8399c0b65c",
 					"scope": "Full first independent audit of ui.onboarding.tour for ru: 123 English/context/target values; text-only, rendered fit unverified.",
 					"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "cf459d9af371",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 7
+					},
+					"receipt": "i18n/receipts/cf459d9af371.json",
+					"receipt_sha256": "4c5a60c88ff7c4f315c3da8755461aba68a09187cbc914f4ed6828a6080a5bb4",
+					"scope": "Second independent audit of the unchanged final bytes. First audit 96a4e04e86fe remains on the row; two distinct instances now evidence the high-visibility rule. 4 minor/7 nit.",
+					"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
 				}
 			],
 			"status": "audited"
@@ -26311,7 +26388,7 @@
 			"locale": "ur",
 			"namespace": "ui.onboarding.tour",
 			"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
-			"target_sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+			"target_sha256": "75eebcf042bdcf233f7dbaf734c8e4ba5663993729bddf7cc649effd2f12e83e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -26323,21 +26400,47 @@
 					"agent": "translation-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-25",
-					"result": "clean-with-findings",
-					"instance": "c62009d5ecba",
+					"result": "clean",
+					"instance": "de447a030b3b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 8,
-						"nit": 4
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/c62009d5ecba.json",
-					"receipt_sha256": "141274f656cac2590eb4abff1d743b6d1f8d6cbd317ba44e0a221089e9861c1e",
-					"scope": "Full first independent audit of ui.onboarding.tour for ur: 123 English/context/target values; text-only, rendered fit unverified.",
-					"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+					"receipt": "i18n/receipts/de447a030b3b.json",
+					"receipt_sha256": "ef2088c051e243e35165aeea4ab7f699dea7379cbad91e0def50bc4487c9844a",
+					"scope": "Second independent confirmation of the 17-value remediation after the second audit changes_requested verdict. Prior audits are superseded history, not current evidence. Clean: 0 blocker/major/minor/nit.",
+					"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "c62009d5ecba",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 8,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/c62009d5ecba.json",
+							"receipt_sha256": "141274f656cac2590eb4abff1d743b6d1f8d6cbd317ba44e0a221089e9861c1e",
+							"scope": "Full first independent audit of ui.onboarding.tour for ur: 123 English/context/target values; text-only, rendered fit unverified.",
+							"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -31843,6 +31946,23 @@
 					"receipt_sha256": "adb1548bacc3a40fae025fe88fcf88ea1a7a058a0783cd933544a175131dddc9",
 					"scope": "Full first independent audit of ui.onboarding.tour for vi: 123 English/context/target values; text-only, rendered fit unverified.",
 					"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "2bad1ea1affc",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 9
+					},
+					"receipt": "i18n/receipts/2bad1ea1affc.json",
+					"receipt_sha256": "7f6777d302fb4e1bd086dc3e137399721280a83e05bf026276a1a8bd5683e649",
+					"scope": "Second independent audit of the unchanged final bytes. First audit be8c92d95eae remains on the row; two distinct instances now evidence the high-visibility rule. 2 minor/9 nit.",
+					"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
 				}
 			],
 			"status": "audited"
@@ -37985,6 +38105,23 @@
 					"receipt_sha256": "81abd05c8477e0c08fa09c48a8498963ca0c84dd6846eb51aa1c722295091060",
 					"scope": "Full first independent audit of ui.onboarding.tour for zh-CN: 123 English/context/target values; text-only, rendered fit unverified.",
 					"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto (harness launch route exposed by this session; the concrete upstream provider/model is not exposed; no fallback was selected by the auditor)",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "423f3dcdf741-zh-onboarding-tour-second",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 5,
+						"nit": 6
+					},
+					"receipt": "i18n/receipts/423f3dcdf741-zh-onboarding-tour-second.json",
+					"receipt_sha256": "09f57d3e65ec31535a59af7ed47bc2d56f277a2cce951d4110409c97d4719545",
+					"scope": "Second independent audit of the unchanged final bytes. First audit 8e3ddc335bf2-zh-onboarding-tour remains on the row; two distinct instances now evidence the high-visibility rule. 5 minor/6 nit.",
+					"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
 				}
 			],
 			"status": "audited"
