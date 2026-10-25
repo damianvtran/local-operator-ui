@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "radient/auto",
+  "instance": "3d5cd52608eb",
+  "locale": "ru",
+  "namespace": "ui.notices",
+  "status": "clean",
+  "result": "clean",
+  "date": "2026-10-25",
+  "round": 4,
+  "remediation_round": 2,
+  "audit_type": "remediation_delta",
+  "branch": "feat/i18n-toasts",
+  "head": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+  "head_short": "7b32fd2704",
+  "source_state": "English source and context sidecar are unchanged and committed at the head above; the candidate Russian target is UNCOMMITTED working-tree bytes named by hash 93d4c923… — no target commit exists.",
+  "scope": "R2 delta audit of the TWO keys changed to answer the R1 minor + nit (watchdog_app_wait_fallback, watchdog_taking_longer). The other 100 values (94 prior + 6 unchanged new keys) were retained without semantic re-audit, with byte/value retention proved against HEAD and the R1 capture.",
+  "keys_read": 102,
+  "keys_audited": 2,
+  "retained_unchanged_keys": 100,
+  "changed_keys": [
+    "ui.notices.main.watchdog_app_wait_fallback",
+    "ui.notices.main.watchdog_taking_longer"
+  ],
+  "remediation": {
+    "R1_minor": "Fixed. Both keys now render quit as «завершите Local Operator»; the window-closing «закройте» no longer appears in either string.",
+    "R1_nit": "Fixed. The fallback now names the OS command as «выберите «Завершить принудительно»» — quoted label plus a verb, so the reader can find the menu item.",
+    "extra_change": "watchdog_taking_longer replaced the pronoun with the explicit noun («пока установка не завершится»); no semantic change.",
+    "os_label_source": "«Завершить принудительно» is the Apple Russian label per Apple documentation, as reported by the translator/manager; no Russian macOS frame was observed in this audit, and no native rendering was performed."
+  },
+  "sha256": {
+    "en": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+    "ru": "93d4c92363313dc89ea639ba6e22e0f96f4c8812ee207325c447c875c51127f5"
+  },
+  "context_sha256": "9a536d75dec597c27281380946b807abdca8ad5c1f7c4e02ba54852a4568c5ee",
+  "findings": [],
+  "checks": {
+    "meaning": "Both strings keep every English instruction: the update is still waiting for the app to close; the fallback says quit the app, Force Quit if unresponsive, and leave it closed until it reopens by itself; taking_longer keeps the honest status, the reopen-so-you-are-not-left-without-it clause and the conditional quit instruction, without promising the install finished.",
+    "grammar": "Formal plural imperatives («завершите», «выберите», «не открывайте») agree with the locale's вы register; «пока он снова не откроется сам» and «пока установка не завершится» are grammatical; no calque or word-for-word artifact introduced.",
+    "elapsed": "Exactly one {elapsed} in ui.notices.main.watchdog_app_wait and one in ui.notices.main.watchdog_app_wait_fallback; zero in the other six new keys. Not touched by this round.",
+    "retention": "Current ru file has 102 keys; the 94 keys at HEAD compare byte-equal; the six new keys not in scope compare byte-equal to the R1 capture; only the two named keys differ, and only by the announced remediation.",
+    "structural": "Both changed messages parse with @formatjs/icu-messageformat-parser; all eight new values are NFC, carry no stray braces, and contain no %, $, $(), backtick, CR/LF — the shell-data path stays hostile-safe.",
+    "rendered_samples": [
+      "0 s → Обновление всё ещё ждёт закрытия Local Operator (0 s ожидания). Если ничего не происходит, завершите Local Operator (если он не реагирует, выберите «Завершить принудительно») и не открывайте его, пока он снова не откроется сам.",
+      "2 min 30 s → Обновление всё ещё ждёт закрытия Local Operator (2 min 30 s ожидания). Если ничего не происходит, завершите Local Operator (если он не реагирует, выберите «Завершить принудительно») и не открывайте его, пока он снова не откроется сам."
+    ],
+    "overflow": "Fallback 233 characters (was 215-222 at R1) and taking_longer 232, both still inside the context sidecar's ~250-character OS-banner budget; app_wait unchanged at 108-115 vs ~170. Character-count estimate only — no banner rendered."
+  },
+  "prior_audit": {
+    "path": "i18n/receipts/ru-ui-notices-delta-audit-7b32fd2704.json",
+    "sha256": "afa86eff6b8efe674d107f322089cf2b07dcbba6e0cd96ca735ff7070f2a4305",
+    "verdict": "clean-with-findings (1 minor, 1 nit)",
+    "keys_audited": 8,
+    "disposition": "Answered in full by this round; the R1 target hash 9d529cba… is superseded by 93d4c923…, and only the two remediated keys differ from it."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    }
+  },
+  "provenance": {
+    "independent_of_translator": true,
+    "translator": {
+      "instance": "93401c08a1e5",
+      "model": "radient/auto",
+      "source": "as reported in the dispatch; not independently observable from catalogue bytes"
+    },
+    "requested_route": "radient/auto",
+    "actual_fallback": "none observed — no host 402 or model fallback in this audit run",
+    "model_note": "The session header reports radient/auto; this run executed as the translation-auditor subagent. The receipt claims nothing beyond the reported route.",
+    "method_note": "Read-only: no catalogue, code, ledger, generated or git writes; this receipt is the only file written. deriveReceiptAudit was executed against these bytes with the real catalogue hashes before acceptance was claimed."
+  },
+  "limits": [
+    "No native macOS notification was raised and no browser was driven; the Apple label is documentation-sourced, not observed on a Russian OS frame.",
+    "The target is uncommitted working-tree bytes; any later edit invalidates hash 93d4c923….",
+    "Only the two remediated keys were semantically re-audited; the other 100 rest on the prior verdict plus the byte/value retention checks."
+  ]
+}

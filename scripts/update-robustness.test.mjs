@@ -2144,9 +2144,22 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 		/value\.length/,
 		"the hold guard must not fall back to a non-empty test: that is the split round 3 unified",
 	);
-	// Backgrounded with its status dropped, so a notifier that fails, hangs or
-	// does not exist cannot decide anything or hold the script open.
-	assert.match(plan.script, /"Local Operator" >\/dev\/null 2>&1 &/);
+	/*
+	 * Backgrounded with its status dropped, so a notifier that fails, hangs or
+	 * does not exist cannot decide anything or hold the script open. The fixed
+	 * title is the FIRST operand and the translated body the second (R3-1):
+	 * osascript parses a leading "-" argument as its own option, so the title is
+	 * what ends option parsing before the translator-authored sentence; the body
+	 * must stay the second argument and the mapping must swap accordingly.
+	 */
+	assert.match(
+		plan.script,
+		/-e 'end run' "Local Operator" "\$1" >\/dev\/null 2>&1 &/,
+	);
+	assert.match(
+		plan.script,
+		/display notification \(item 2 of argv\) with title \(item 1 of argv\)/,
+	);
 
 	const bounded = buildWatchdogPlan({
 		appBundlePath: "/Applications/Local Operator.app",

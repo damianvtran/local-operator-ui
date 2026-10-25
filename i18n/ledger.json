@@ -39563,6 +39563,219 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.notices",
+			"source_sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+			"target_sha256": "b0edca2561c719068213c36ef7dc5bcfe73d471c5a8a50328f212bac088645eb",
+			"translator": {
+				"agent": "translator",
+				"model": "deepseek/deepseek-flash (baseline 94 keys); openai/gpt-6-astra (last es fix); radient/auto (8-key delta, receipt-declared route)",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "2d79dbe88d25",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2d79dbe88d25.json",
+					"receipt_sha256": "47db7d1f0606bbb71ce8076e3882d7c95de66c7e9df2ee0774826815a3580983",
+					"scope": "Eight-key ui.notices delta against frozen English at 7b32fd2704; the prior 94 values retained by byte proof; full 102-key structural checks."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.notices",
+			"source_sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+			"target_sha256": "7757c584d6d0f0f29af5a57df9cd386603c87c04c7a769830992b3af7f4f500f",
+			"translator": {
+				"agent": "translator",
+				"model": "deepseek/deepseek-flash (baseline 94 keys); openai/gpt-6-astra (three fr fixes); unreported-by-delegating-agent (8-key delta)",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "0bab01014b00",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/0bab01014b00.json",
+					"receipt_sha256": "e65251041fb075ab77fcfe4e97b8b56cc08175ccb96c80ce034480a9f3873662",
+					"scope": "Eight-key ui.notices delta against frozen English at 7b32fd2704; the prior 94 values retained by byte proof; full 102-key structural checks.",
+					"note": "2 minor width-risk findings accepted as non-gating; recorded in the receipt."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.notices",
+			"source_sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+			"target_sha256": "5bc4f61bbbd080bc3b59e907084f0fb10a05fcb8fb1d46c7f467d563bed566d1",
+			"translator": {
+				"agent": "translator",
+				"model": "deepseek/deepseek-flash (baseline 94 keys); radient/auto (8-key delta, receipt-declared route)",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "ecbec53ac31a",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/ecbec53ac31a.json",
+					"receipt_sha256": "71be5f34703827dfe295d8fa9747ab07711ee4de64b84d240076c4bf60c9b0f6",
+					"scope": "Eight-key delta plus one corrected key; previously passed keys preserved byte-for-byte.",
+					"note": "1 minor and 2 nit findings carried from the prior audit; non-gating, recorded in the receipt."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.notices",
+			"source_sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+			"target_sha256": "93d4c92363313dc89ea639ba6e22e0f96f4c8812ee207325c447c875c51127f5",
+			"translator": {
+				"agent": "translator",
+				"model": "deepseek/deepseek-flash (baseline 94 keys); radient/auto (8-key delta, receipt-declared route)",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "3d5cd52608eb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3d5cd52608eb.json",
+					"receipt_sha256": "2e83ce481755800113c276b8979438057b0221dd99f5c0a745e39cb2985fdcae",
+					"scope": "Eight-key ui.notices delta against frozen English at 7b32fd2704; prior values retained by byte proof."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.notices",
+			"source_sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+			"target_sha256": "201731e0cf8d02051a88b5f73087cf4111ec95c8d220f05e9e874e65d90dff12",
+			"translator": {
+				"agent": "translator",
+				"model": "deepseek/deepseek-flash (baseline 94 keys); claude-sonnet-5-5 (8-key delta, after radient/auto HTTP 402); openai/gpt-6.1-sol (final 1 key, after radient/auto HTTP 402)",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "c8a0c7b274eb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c8a0c7b274eb.json",
+					"receipt_sha256": "572cca4bc531abb9d98722b3664686a4aa8259dd28f3ba61a63edbddc9d69681",
+					"scope": "Independent R2 audit of the one changed key against the R1 receipt; 101 retained values proved by byte-level inverse replacement."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.notices",
+			"source_sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+			"target_sha256": "3f94db7780caf50f0a291ff001e0783b614c969db0e56640d7cd4958e973e589",
+			"translator": {
+				"agent": "translator",
+				"model": "deepseek/deepseek-flash (baseline 94 keys); radient/auto (8-key delta, receipt-declared route)",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "690b4cc65158",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/690b4cc65158.json",
+					"receipt_sha256": "cf2dd55959c8024acd450e88588546261d5514e598f1a0470fb26e7b98fcae9b",
+					"scope": "Eight-key delta against frozen English at 7b32fd2704; prior 94 values byte-identical.",
+					"note": "1 minor glossary-consistency finding deferred; recorded in the receipt."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.notices",
+			"source_sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+			"target_sha256": "64d9bba7cd8d2535f9f764d68ad5cfcc1895012ca580e322827085f9c9adec44",
+			"translator": {
+				"agent": "translator",
+				"model": "deepseek/deepseek-flash (baseline 94 keys); unreported-by-delegating-agent (8-key delta)",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "5db22ea6a072",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5db22ea6a072.json",
+					"receipt_sha256": "413fe74d5f0ffdb1a56e316d618ef069cf28d8805a3c24709458e3270191bdc3",
+					"scope": "Round-2 narrow single-key verification against the frozen 102-key source; R1 retained for the other 101 keys."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
