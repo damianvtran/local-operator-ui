@@ -251,20 +251,28 @@ test("a translated catalogue changes what is painted and nothing else", () => {
 });
 
 test("a key the locale does not carry still falls back to English per key", () => {
-	registerCatalogue("fr", FR);
-	setLocale("fr");
+	/*
+	 * A SYNTHETIC TAG, deliberately. The shipped locales now carry every key of
+	 * every namespace this branch touches, so registering a partial catalogue
+	 * over one of them would still find the bundled value on a miss and the test
+	 * would prove nothing. `xx` has no bundled catalogue at all, which is the
+	 * only condition under which "this locale has no message for this key" can
+	 * be stated - and it is exactly the state a locale-in-progress is in.
+	 */
+	registerCatalogue("xx", {
+		"ui.chat.composer.suggestion.linear_mcp": "XX linear MCP",
+	});
+	setLocale("xx");
 	try {
-		// `ui.chat.composer.suggestion.linear_mcp` is deliberately absent from
-		// the fixture: the per-key fallback is what keeps a partial locale
-		// readable, and it must not depend on the keys that ARE translated.
 		assert.equal(
 			t("ui.chat.composer.suggestion.linear_mcp"),
-			"Set up Linear MCP for me",
+			"XX linear MCP",
+			"the key the fixture carries is painted",
 		);
 		assert.equal(
 			t("ui.chat.composer.suggestion.create_team"),
-			"FR create a team",
-			"its neighbour in the same pool is translated",
+			"Create a team of agents",
+			"its neighbour in the same pool falls back to the English source",
 		);
 		// And the sampler still draws the same keys while the fallback is in play.
 		assert.deepEqual(
