@@ -12,7 +12,7 @@
 	"ui.chat.sidebar.catalogue.total_search_clipped": "कुल {total, number, ::group-off} चैट में से {shown, number, ::group-off}+ मिलान {shown, plural, one {दिखाया जा रहा है} other {दिखाए जा रहे हैं}}",
 	"ui.chat.sidebar.drafts.clear_all": "सभी मिटाएँ",
 	"ui.chat.sidebar.drafts.clear_all_label": "सभी ड्राफ़्ट मिटाएँ",
-	"ui.chat.sidebar.groups.badge": "इस समूह में {badge, number, ::group-off} चैट",
+	"ui.chat.sidebar.groups.badge": "इस समूह में {badge, plural, one {{badge, number, ::group-off} चैट} other {{badge, number, ::group-off} चैट}}",
 	"ui.chat.sidebar.header.create": "नया एजेंट या नई टीम",
 	"ui.chat.sidebar.header.create_agent": "नया एजेंट",
 	"ui.chat.sidebar.header.create_team": "नई टीम",
