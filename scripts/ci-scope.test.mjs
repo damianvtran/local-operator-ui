@@ -2420,4 +2420,16 @@ test("A17e: three protected workers feed one exact fail-closed Desktop Tests res
 		payloadScan.if.includes("steps.desktop_suite.outcome != 'skipped'"),
 	);
 	assert.equal("continue-on-error" in payloadScan, false);
+	/*
+	 * ...and the suite step carries its own LOWER ceiling, which is what makes the
+	 * scan reachable: a job cancelled at `timeout-minutes` runs no further steps,
+	 * so without a step ceiling a stall is exactly the case the scan never sees.
+	 */
+	const suiteStep = worker.steps.find(
+		(step) =>
+			typeof step.run === "string" &&
+			step.run.includes("node scripts/desktop-test-shards.mjs run"),
+	);
+	assert.equal(suiteStep["timeout-minutes"], 45);
+	assert.ok(suiteStep["timeout-minutes"] < worker["timeout-minutes"]);
 });

@@ -713,6 +713,14 @@ jobs:
 
       - name: Run the desktop suite and assert it actually ran
         id: desktop_suite
+        # A STEP ceiling below the job's, because a job cancelled at its own
+        # `timeout-minutes` runs no further steps: without this, the payload
+        # scan below is skipped in exactly the case it exists for. A step
+        # timeout kills this step's process and the job continues, so a stall
+        # ends at 45 minutes and the scan reads the truncated tee file. 45 is
+        # ~1.9x the slowest measured shard (23.9 minutes, run 40182194704) and
+        # leaves the job's last five minutes for the scan.
+        timeout-minutes: 45
         # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
         # once for its exit status and again inside its own count assertions,
         # which doubled the dominant cost of the job for no signal. `pipefail`

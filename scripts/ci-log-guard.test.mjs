@@ -103,17 +103,64 @@ test("the word `data:` in prose is not a URI", () => {
 	assert.equal(result.status, 0, result.stdout + result.stderr);
 });
 
-test("a quoted source statement is exempt; a diagnostic about the module is not", () => {
-	const source = run([
+/*
+ * THE EXEMPTION IS ONLY REAL IF IT MATCHES THE FORMAT THIS SUITE PRINTS, and a
+ * shard log is TAP: a test's own output arrives `# `-prefixed (and a fetched job
+ * log wraps that in the runner's timestamp again). The first version of this
+ * rule knew only the un-prefixed spec-reporter shape, so every real TAP source
+ * echo was a finding — a false red on a printed source line (review round 1,
+ * Q-1). Each shape below must stay exempt; removing one fails a case here,
+ * which is what stops the exemption from narrowing again.
+ */
+const QUOTED_SHAPES_IN_A_LOG = [
+	[
+		"spec-reporter code frame",
 		'  12 |   const mod = await import("data:text/javascript;base64,QUJD");',
-	]);
-	assert.equal(source.status, 0, source.stdout + source.stderr);
+	],
+	[
+		"TAP-prefixed code frame",
+		'#   12 | const mod = await import("data:text/javascript;base64,QUJD");',
+	],
+	[
+		"offending-line gutter",
+		'# > 12 | const mod = await import("data:text/javascript;base64,QUJD");',
+	],
+	[
+		"runner timestamp plus TAP prefix",
+		'2026-10-25T10:00:00.0000000Z #   12 | const mod = await import("data:text/javascript;base64,QUJD");',
+	],
+	[
+		"uncaught source echo",
+		'  const mod = await import("data:text/javascript;base64,QUJD");',
+	],
+	["TAP YAML actual", "  actual: 'data:text/javascript;base64,QUJD'"],
+	["assert diff quoting a fixture", "+ 'data:text/javascript;base64,QUJD'"],
+	[
+		"AssertionError message",
+		"AssertionError [ERR_ASSERTION]: 'data:text/javascript;base64,QUJD' !== 'x'",
+	],
+];
 
-	const diagnostic = run([
+test("every shape that quotes source or a fixture is exempt", () => {
+	for (const [name, line] of QUOTED_SHAPES_IN_A_LOG) {
+		const result = run([line]);
+		assert.equal(
+			result.status,
+			0,
+			`${name} was treated as a payload: ${result.stdout}`,
+		);
+	}
+});
+
+test("a diagnostic that names the module is still a finding", () => {
+	for (const line of [
+		"#     at desktopResult (data:text/javascript;base64,QUJD:50450:21)",
 		"Error: cannot import 'data:text/javascript;base64,QUJD'",
-	]);
-	assert.equal(diagnostic.status, 1, diagnostic.stdout + diagnostic.stderr);
-	assert.match(diagnostic.stdout, /\[data-uri\]/);
+	]) {
+		const result = run([line]);
+		assert.equal(result.status, 1, `${line}: ${result.stdout}`);
+		assert.match(result.stdout, /\[data-uri\]/);
+	}
 });
 
 test("a missing log is a usage error, not a pass", () => {

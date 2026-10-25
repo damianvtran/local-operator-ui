@@ -37,17 +37,21 @@
  * a `data:` specifier are invisible to it - that is a known class, listed on
  * the PR that introduced this guard, not a finding here. What it catches is a
  * data URI that REACHED OUTPUT, because output is what the runner streams and
- * what a reader has to be able to read. A log line that is visibly a quoted
- * SOURCE statement (a ` 12 | await import("data:...")` code frame, or a line
- * beginning with `const`/`let`/`import`/`export`) is exempted for the same
- * reason: that is the 302-file class being echoed, not a diagnostic about it.
+ * what a reader has to be able to read. A line that QUOTES source or a fixture
+ * is exempted for the same reason: a `12 | await import("data:...")` code frame
+ * (with or without a `>` gutter), a bare `const`/`let`/`import` statement, TAP
+ * YAML's `actual:`/`expected:`, an assert diff quoting a value, or an
+ * `AssertionError` message. Those are the 302-file class being echoed, not a
+ * diagnostic that named the module - and a shard log is TAP, so they arrive
+ * `# `-prefixed and are read after that prefix is stripped.
  *
- * WHAT IT CANNOT DO, so nobody expects it to: the scan runs as a step AFTER the
- * suite, and GitHub runs no further steps for a job cancelled at
- * `timeout-minutes`. A run that stalls on its own log output therefore cannot
- * be diagnosed by this guard - it can only be prevented from happening twice,
- * which is why the emitter is fixed rather than only detected. For a run that
- * survives, this names the file, the test and the frame in minutes.
+ * WHAT IT CANNOT DO, said plainly because the alternative is overstating it:
+ * the scan is a step AFTER the suite, and a job cancelled at its own
+ * `timeout-minutes` runs no further steps - so a recurrence big enough to stall
+ * the JOB is precisely the case this cannot scan. That is why the suite step
+ * carries a lower ceiling than the job (45 against 50): a stall ends at the
+ * step, the job continues, and this reads the truncated tee file. Either way
+ * the prevention is the emitter fix, not this scan.
  *
  * Usage:
  *   node scripts/ci-log-guard.mjs check <log> [<log>...] [--max-line-bytes N]
@@ -69,9 +73,32 @@ const CONTEXT_BYTES = 4096;
 /* A real data URI, not the word "data:" in prose: a media type, optional
  * parameters, then the comma that starts the payload. */
 const DATA_URI = /data:[a-z0-9.+-]+\/[a-z0-9.+-]+(?:;[a-z0-9=.+-]+)*,/i;
-/* Visibly-quoted source text: a code frame with a gutter, or a statement. */
-const SOURCE_CITATION =
-	/^\s*(?:\d+\s*[|:]|(?:const|let|var|import|export|await|return)\b)/;
+/* TAP's reporter prefixes every line a test writes with `# `, so a code frame
+ * or a source echo inside a shard's log arrives as `#   12 | ...` — a rule that
+ * only knows the spec-reporter shape misses every one of them. The job log also
+ * wraps each line in the runner's own timestamp; the tee file does not, and the
+ * guard reads both. */
+const ECHO_PREFIX =
+	/^(?:\uFEFF)?(?:\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z\s?|#\s?)/;
+
+/*
+ * The shapes a QUOTATION takes, as opposed to a diagnostic that NAMED the
+ * module. Each is a rendering of something the test already contained - its own
+ * source, or the fixture values an assertion compared - so none of them is the
+ * hazard this guard exists for. They are exempt from the content rule and left
+ * to the size backstop, which has no exemptions.
+ *
+ * The first three are what a TAP log actually contains, and the TAP `# ` prefix
+ * is why the shape has to be read AFTER stripping it.
+ */
+const QUOTED_SHAPES = [
+	/^\s*>?\s*\d+\s*\|\s/, // code frame: `12 | ...`, `> 12 | ...`
+	/^\s*(?:const|let|var|import|export|await|return)\b/, // source echo
+	/^\s*(?:actual|expected)\s*:/, // TAP YAML comparison
+	/^\s*[+-]\s*['"`]/, // assert diff quoting a value
+	/^\s*['"`]/, // a bare quoted fixture
+	/^AssertionError\b/, // the assertion's own message
+];
 /* The test file a diagnostic names, with or without a file:// URL prefix. */
 const SCRIPT_PATH = /scripts\/[A-Za-z0-9._/-]+\.m?js/;
 const SUBTEST = /# Subtest: (.+)$/;
@@ -80,6 +107,13 @@ const FRAME = /at\s+([A-Za-z0-9_$.[\]]+)\s+\(data:/;
 /** `1234567` -> `8,264,707`-style grouping, without Intl surprises in output. */
 function group(value) {
 	return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+/** Is this line a quotation of source or of a fixture, rather than a report? */
+function isQuotation(line) {
+	/* Two prefixes can stack: the runner's timestamp, then TAP's `# `. */
+	const body = line.replace(ECHO_PREFIX, "").replace(ECHO_PREFIX, "");
+	return QUOTED_SHAPES.some((shape) => shape.test(body));
 }
 
 function excerptOf(text) {
@@ -117,8 +151,7 @@ async function scanFile(path, { maxLineBytes }, onFinding) {
 		overflow = false;
 
 		const rules = [];
-		if (!SOURCE_CITATION.test(line) && DATA_URI.test(line))
-			rules.push("data-uri");
+		if (!isQuotation(line) && DATA_URI.test(line)) rules.push("data-uri");
 		if (bytes > maxLineBytes) rules.push("oversized-line");
 		for (const rule of rules) {
 			onFinding({
