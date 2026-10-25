@@ -5,6 +5,7 @@
 	"ui.mesh.mesh_actions.which_operation": "कौन-सी कार्रवाई",
 	"ui.mesh.mesh_actions.the_original_stays_where_it_is": "मूल कॉपी जहाँ है, वहीं रहती है",
 	"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it": "पहुँचने के बाद यहाँ की कॉपी हट जाती है",
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": "यहाँ पहुँचने के बाद वहाँ की कॉपी हट जाती है",
 	"ui.mesh.mesh_actions.it_is_open_on_the_other_end": "यह दूसरे छोर पर खुली है, और कॉपी बनाने से उसमें रुकावट नहीं आती।",
 	"ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever": "यह अभी कहीं और खुली है: उस रनटाइम में मौजूद जानकारी साथ नहीं आती।",
 	"ui.mesh.mesh_actions.cancel": "रद्द करें",

@@ -201,6 +201,25 @@ export function planConfirm(
 	};
 }
 
+/**
+ * The one-line consequence under each option in the move confirmation.
+ *
+ * DIRECTION DECIDES WHICH COPY IS "HERE" (UX review round 1, U1). An outbound move
+ * deletes the copy on this device; a recall (`to === "local"`) deletes the copy on
+ * the OWNER, and this device is the one gaining the conversation. A direction-blind
+ * caption told a recall's reader that the local copy goes, directly under a body
+ * that names the remote owner's copy as the one deleted - two opposite claims about
+ * a destructive action, on the option preselected for them to press. A copy deletes
+ * nothing in either direction.
+ */
+export function moveOptionCaption(option: MovePlan): string {
+	if (option.keep)
+		return t("ui.mesh.mesh_actions.the_original_stays_where_it_is");
+	return option.to === "local"
+		? t("ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it")
+		: t("ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it");
+}
+
 /** The sentence a destructive move reads out before it is sent. */
 /**
  * What a move costs, in one sentence, naming BOTH ends.

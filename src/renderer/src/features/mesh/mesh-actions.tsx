@@ -51,7 +51,7 @@ import { type FC, useEffect, useId, useState } from "react";
 // language-writing capabilities; the locale subscription is the separate hook leaf.
 import { t } from "../../../../i18n/messages";
 import type { MovePlan } from "./mesh-drop";
-import { planConfirm } from "./mesh-drop";
+import { moveOptionCaption, planConfirm } from "./mesh-drop";
 import { INVITE_ROLES, type InviteRole } from "./mesh-store";
 import { type MeshRefusal, deviceIdentityText } from "./mesh-types";
 
@@ -147,11 +147,7 @@ export const MoveConfirmDialog: FC<{
 									 * that the user can see where their work is going.
 									 */}
 									<span className="mt-0.5 block text-meta text-ink-dim">
-										{option.keep
-											? t("ui.mesh.mesh_actions.the_original_stays_where_it_is")
-											: t(
-													"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it",
-												)}
+										{moveOptionCaption(option)}
 									</span>
 								</span>
 							</label>

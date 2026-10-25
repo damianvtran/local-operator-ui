@@ -163,6 +163,7 @@ const {
 	deviceSessionTotal,
 	resolveDrop,
 	planConfirm,
+	moveOptionCaption,
 	hoverSentence,
 	DRAG_THRESHOLD_PX,
 	IDLE_DRAG,
@@ -3506,6 +3507,63 @@ test("duplicate recall sources have distinct destructive loss sentences", () => 
 			`${file} must not reintroduce the raw owner-label bypass`,
 		);
 	}
+});
+
+test("each move option's caption names the copy its own direction deletes (UX U1)", () => {
+	// UX review round 1, U1: the recall dialog's body named the OWNER's copy as
+	// deleted while the preselected option said "the copy here is deleted" - here
+	// being the device that gains it. Each caption is pinned from a real resolver
+	// verdict, so a direction-blind caption cannot pass on either arm.
+	const context = duplicateDropContext();
+	const recall = resolveDrop(
+		drag(
+			session({
+				locality: "remote",
+				owner_device: PEER,
+				owner_device_name: "shared-node",
+			}),
+			PEER,
+			"shared-node",
+		),
+		{ kind: "device", deviceId: SELF },
+		context,
+	);
+	const outbound = resolveDrop(
+		drag(session(), SELF, "studio-mac"),
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(recall.kind, "plan");
+	assert.equal(outbound.kind, "plan");
+	assert.equal(recall.plan.to, "local");
+	assert.notEqual(outbound.plan.to, "local");
+
+	const captions = (verdict) =>
+		[verdict.plan, ...verdict.alternatives].map((option) => [
+			option.keep ? "copy" : "move",
+			moveOptionCaption(option),
+		]);
+	assert.deepEqual(captions(recall), [
+		["move", "the copy there is deleted once it arrives here"],
+		["copy", "the original stays where it is"],
+	]);
+	assert.deepEqual(captions(outbound), [
+		["move", "the copy here is deleted once it arrives"],
+		["copy", "the original stays where it is"],
+	]);
+	// The recall caption and the body it sits under name the same, remote copy.
+	assert.match(
+		recall.plan.lost,
+		/^The copy on "shared-node" d_bbbbbbbb… is deleted/,
+	);
+
+	// The dialog paints the helper, not a second, direction-blind branch.
+	const actions = source("src/renderer/src/features/mesh/mesh-actions.tsx");
+	assert.match(actions, /\{moveOptionCaption\(option\)\}/);
+	assert.ok(
+		!actions.includes("ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it"),
+		"mesh-actions.tsx must not pick a deletion caption without the plan's direction",
+	);
 });
 
 test("absent recall owners are named by their full id, not the caller's text", () => {

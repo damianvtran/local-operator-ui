@@ -5,6 +5,7 @@
 	"ui.mesh.mesh_actions.which_operation": "Qué operación",
 	"ui.mesh.mesh_actions.the_original_stays_where_it_is": "el original se queda donde está",
 	"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it": "la copia de aquí se elimina en cuanto llega",
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": "la copia de allí se elimina en cuanto llega aquí",
 	"ui.mesh.mesh_actions.it_is_open_on_the_other_end": "Está abierto en el otro extremo y la copia no lo interrumpe.",
 	"ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever": "Está abierto en otro sitio ahora mismo: lo que ese runtime tenga en curso no se traslada.",
 	"ui.mesh.mesh_actions.cancel": "Cancelar",

@@ -30,6 +30,7 @@
 	"ui.mesh.mesh_actions.removed_the_membership_epoch_is_now": "Удалено. Эпоха членства теперь ",
 	"ui.mesh.mesh_actions.role_the_device_will_have": "Роль устройства",
 	"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it": "копия здесь удаляется после прибытия",
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": "копия там удаляется после прибытия сюда",
 	"ui.mesh.mesh_actions.the_device": "устройство",
 	"ui.mesh.mesh_actions.the_original_stays_where_it_is": "оригинал остаётся на месте",
 	"ui.mesh.mesh_actions.the_other_device_keeps": "у другого устройства остаётся",

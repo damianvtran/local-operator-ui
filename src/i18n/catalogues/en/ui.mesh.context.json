@@ -29,6 +29,11 @@
 		"tone": "Factual and restrained",
 		"note": "Move/invite/removal dialog and outcome notice: names/explains the copy here is deleted once it. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
 	},
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Recall confirmation (the conversation comes TO this device): caption under the preselected recall option. 'there' is the remote device that currently holds the conversation and LOSES its copy; 'here' is this device, which RECEIVES it. It must never read as this device's copy being deleted; it is the direction-mirror of ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it, used for outbound moves. Keep the here/there wording consistent with ui.mesh.mesh_card.copy_here_leave_it_there. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
 	"ui.mesh.mesh_actions.it_is_open_on_the_other_end": {
 		"role": "warning/error explanation — move/invite/removal dialog and outcome notice",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",

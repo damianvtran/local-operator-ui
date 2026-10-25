@@ -5,6 +5,7 @@
 	"ui.mesh.mesh_actions.which_operation": "选择操作",
 	"ui.mesh.mesh_actions.the_original_stays_where_it_is": "原对话留在原处",
 	"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it": "送达后，此处的副本会被删除",
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": "送达此处后，原处的副本会被删除",
 	"ui.mesh.mesh_actions.it_is_open_on_the_other_end": "对话正在另一端打开，复制不会中断它。",
 	"ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever": "对话目前在其他设备上打开，该运行实例当前持有的运行时状态不会一并转移。",
 	"ui.mesh.mesh_actions.cancel": "取消",

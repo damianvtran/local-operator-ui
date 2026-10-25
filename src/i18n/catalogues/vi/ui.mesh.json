@@ -5,6 +5,7 @@
 	"ui.mesh.mesh_actions.which_operation": "Chọn thao tác",
 	"ui.mesh.mesh_actions.the_original_stays_where_it_is": "bản gốc vẫn ở nguyên chỗ",
 	"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it": "bản ở đây sẽ bị xóa khi đến nơi",
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": "bản ở đó sẽ bị xóa khi đến đây",
 	"ui.mesh.mesh_actions.it_is_open_on_the_other_end": "Phiên đang mở ở đầu kia, và việc sao chép không làm gián đoạn phiên.",
 	"ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever": "Phiên đang mở ở nơi khác: những gì tiến trình đang giữ sẽ không được chuyển sang.",
 	"ui.mesh.mesh_actions.cancel": "Hủy",

@@ -5238,6 +5238,7 @@ export type MessageParams = {
 	"ui.mesh.mesh_actions.removed_the_membership_epoch_is_now": undefined;
 	"ui.mesh.mesh_actions.role_the_device_will_have": undefined;
 	"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it": undefined;
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": undefined;
 	"ui.mesh.mesh_actions.the_device": undefined;
 	"ui.mesh.mesh_actions.the_original_stays_where_it_is": undefined;
 	"ui.mesh.mesh_actions.the_other_device_keeps": undefined;
