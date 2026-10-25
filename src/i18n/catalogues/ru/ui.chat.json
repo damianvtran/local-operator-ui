@@ -25,7 +25,7 @@
 	"ui.chat.provider_error.headline.out_of_credits_refused": "Кредиты закончились{status}: Radient отклонил запрос",
 	"ui.chat.question_dock.asking": "Агент задаёт вопрос",
 	"ui.chat.question_dock.from_agent_label": "Вопрос от агента",
-	"ui.chat.question_dock.secret_answer_label": "Ответ с секретом",
+	"ui.chat.question_dock.secret_answer_label": "Секретный ответ",
 	"ui.chat.question_dock.secret_note": "Скрыто при вводе — уходит агенту и не попадает в транскрипт.",
 	"ui.chat.question_dock.secret_placeholder": "Вставьте секрет",
 	"ui.chat.question_dock.secret_value_label": "Значение секрета",
@@ -38,9 +38,9 @@
 	"ui.chat.session_status.choose_model": "Выбрать модель",
 	"ui.chat.session_status.choose_model_tooltip": "Выберите модель, на которой будет работать этот разговор",
 	"ui.chat.session_status.estimate": "оценка",
-	"ui.chat.session_status.last_reading": "Последнее измерение",
+	"ui.chat.session_status.last_reading": "Последний замер",
 	"ui.chat.session_status.no_model_resolved": "Модель ещё не определена",
 	"ui.chat.status_strip.dismiss": "Скрыть",
 	"ui.chat.tabs.chat": "Чат",
-	"ui.chat.tabs.raw": "Исходные данные"
+	"ui.chat.tabs.raw": "Сырые данные"
 }

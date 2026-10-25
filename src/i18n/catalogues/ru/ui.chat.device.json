@@ -1,7 +1,7 @@
 {
 	"ui.chat.device.label.moving_to": "Перемещение на {name}",
 	"ui.chat.device.label.new_on": "Новое на {name}",
-	"ui.chat.device.label.new_on_this_device": "Новое на этом устройстве",
+	"ui.chat.device.label.new_on_this_device": "Новое здесь",
 	"ui.chat.device.label.on": "На {name}",
 	"ui.chat.device.label.on_this_device": "На этом устройстве",
 	"ui.chat.device.sentence.draft_elsewhere": "Новые разговоры создаются на {name}. Нажмите, чтобы выбрать другое устройство.",
