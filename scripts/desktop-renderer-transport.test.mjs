@@ -788,6 +788,86 @@ test("bounding never returns an image larger than the one it was given", async (
 	}
 });
 
+/**
+ * A PNG that no downscale can shrink: a 2 px black/white checkerboard. As a PNG
+ * it deflates to almost nothing, but resampling turns every edge into grey
+ * ramps, so the 1024 px re-encode is LARGER on both rungs (measured with this
+ * sharp build at 2400x1600: source 25 KB, PNG 97 KB, JPEG 36 KB). Plain random
+ * noise is the wrong fixture: its downscaled JPEG comes out smaller (715 KB ->
+ * 388 KB), so the never-grow rule never fires. This is the shape of QA round 1's
+ * Q1 reproduction (a 102 KB 2400x1600 PNG served back at native size).
+ */
+async function resampleGrowsPng(width, height) {
+	const pixels = Buffer.alloc(width * height * 3);
+	for (let y = 0; y < height; y += 1)
+		for (let x = 0; x < width; x += 1)
+			pixels.fill(
+				((x >> 1) + (y >> 1)) & 1 ? 255 : 0,
+				(y * width + x) * 3,
+				(y * width + x) * 3 + 3,
+			);
+	return sharp(pixels, { raw: { width, height, channels: 3 } })
+		.png({ compressionLevel: 9 })
+		.toBuffer();
+}
+
+test("edgeIsHard (Team Bridge) always bounds the edge; chat keeps never-grow", async () => {
+	const {
+		boundImageForWire,
+		base64ByteLength,
+		IMAGE_MAX_EDGE,
+		IMAGE_JPEG_QUALITY,
+	} = await loadImageBounding();
+	const source = await resampleGrowsPng(2400, 1600);
+	const input = { data_b64: source.toString("base64"), mime_type: "image/png" };
+
+	// Precondition, so this test cannot pass vacuously: for this fixture the
+	// default (chat) path DOES hand back the over-edge original.
+	const chat = await boundImageForWire(input);
+	const chatMeta = await sharp(Buffer.from(chat.data_b64, "base64")).metadata();
+	assert.equal(
+		Math.max(chatMeta.width, chatMeta.height),
+		2400,
+		"chat path: an over-edge image whose downscale grows is returned as is (never-grow)",
+	);
+	assert.ok(base64ByteLength(chat.data_b64) <= source.byteLength);
+
+	const bridge = await boundImageForWire(
+		input,
+		IMAGE_MAX_EDGE,
+		IMAGE_JPEG_QUALITY,
+		{
+			edgeIsHard: true,
+		},
+	);
+	const bridgeMeta = await sharp(
+		Buffer.from(bridge.data_b64, "base64"),
+	).metadata();
+	assert.ok(
+		Math.max(bridgeMeta.width, bridgeMeta.height) <= IMAGE_MAX_EDGE,
+		`Team Bridge path: edge ${Math.max(bridgeMeta.width, bridgeMeta.height)} must be <= ${IMAGE_MAX_EDGE}`,
+	);
+	assert.ok(["image/png", "image/jpeg"].includes(bridge.mime_type));
+	// <= 1 MiB in practice (r7 M1): the hard cap is the capability's, upstream.
+	assert.ok(
+		base64ByteLength(bridge.data_b64) <= 1024 * 1024,
+		`Team Bridge path bytes ${base64ByteLength(bridge.data_b64)} must be <= 1 MiB`,
+	);
+
+	// An in-bounds image is still returned verbatim with the flag on.
+	const small = await resampleGrowsPng(300, 200);
+	const smallInput = {
+		data_b64: small.toString("base64"),
+		mime_type: "image/png",
+	};
+	assert.deepEqual(
+		await boundImageForWire(smallInput, IMAGE_MAX_EDGE, IMAGE_JPEG_QUALITY, {
+			edgeIsHard: true,
+		}),
+		smallInput,
+	);
+});
+
 test("the ladder returns the smallest set BY THE MEASURE IT WAS GIVEN, not the last rung", async () => {
 	const { boundImagesForBudget } = await loadImageBounding();
 	// `best`-as-minimum is a DEFENSIVE invariant, and testing it needs a rung

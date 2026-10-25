@@ -1025,6 +1025,248 @@
 		"placeholders": {},
 		"note": "Replays the previously confirmed scheduling request with its original delivery time and idempotency key, even if the time has since passed. Never creates a new schedule key on an ambiguous failure."
 	},
+	"ui.teamBridge.replies.action": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.title": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.close": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.count": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"count": "Number of replies"
+		},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.last": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"time": "Localized clock time"
+		},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.empty": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.placeholder": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.more": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.attachments.add": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Icon button in the message composer that opens a file picker for images."
+	},
+	"ui.teamBridge.attachments.strip": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Accessible name of the row of image thumbnails waiting above the message field."
+	},
+	"ui.teamBridge.attachments.position": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"index": "1-based position",
+			"count": "total images"
+		},
+		"note": "Positional label for one image in a message or in the composer; used as alt text instead of a file name."
+	},
+	"ui.teamBridge.attachments.in_message": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"count": "number of images"
+		},
+		"note": "Accessible name of the image group inside a sent message."
+	},
+	"ui.teamBridge.attachments.open": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"index": "1-based position",
+			"count": "total images"
+		},
+		"note": "Button on an image thumbnail in a message; opens the full-size viewer."
+	},
+	"ui.teamBridge.attachments.remove": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"label": "positional label such as 'Image 1 of 2'"
+		},
+		"note": "Small button on a composer thumbnail that removes that image from the message being written."
+	},
+	"ui.teamBridge.attachments.retry": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"label": "positional label such as 'Image 1 of 2'"
+		},
+		"note": "Small button on a failed composer thumbnail that uploads that image again."
+	},
+	"ui.teamBridge.attachments.uploading": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Status while one image is being prepared and uploaded; there is no percentage."
+	},
+	"ui.teamBridge.attachments.limit": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {
+			"max": "maximum number of images"
+		},
+		"note": "Shown when the author tries to add more images than one message allows."
+	},
+	"ui.teamBridge.attachments.unsupported": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown when the author pastes, drops or picks an image but the server does not support image attachments. Any text in the same paste still goes into the field; no image is added."
+	},
+	"ui.teamBridge.attachments.error_type": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Upload refused because the file is not a supported picture. HEIC may also fail if this computer cannot decode it."
+	},
+	"ui.teamBridge.attachments.error_size": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Upload refused because the image is over the size limit even after shrinking."
+	},
+	"ui.teamBridge.attachments.error_invalid": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Upload refused because the image data is corrupt or its dimensions are not allowed."
+	},
+	"ui.teamBridge.attachments.error_rate": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Upload refused by a rate limit."
+	},
+	"ui.teamBridge.attachments.error_quota": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Upload refused because the author's pending-image allowance is used up."
+	},
+	"ui.teamBridge.attachments.error_account_changed": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise, not alarmed",
+		"length": "One or two sentences.",
+		"placeholders": {},
+		"note": "The captured-owner guard refused an upload because the signed-in account is no longer the one this composer was authorised under. States the change and the action (sign in again); never a quota, never a sign-out."
+	},
+	"ui.teamBridge.attachments.error_offline": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Upload failed because the local service or network did not answer."
+	},
+	"ui.teamBridge.attachments.error_upload": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Generic upload failure."
+	},
+	"ui.teamBridge.attachments.expired_staged": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "An uploaded-but-unsent image expired on the server (after about 3 days) or was refused at send time, and this device no longer holds its bytes, so the only action is to remove the chip and add the picture again. Shown on the chip (screen readers) and in the note under the composer's images, after the image's position label."
+	},
+	"ui.teamBridge.attachments.expired": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Placeholder inside a sent message where an image used to be; the stored copy was deleted by retention."
+	},
+	"ui.teamBridge.attachments.unavailable": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Placeholder inside a sent message when the image cannot be shown to this reader (withheld, deleted or failed to load)."
+	},
+	"ui.teamBridge.attachments.retry_load": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Link under an image placeholder that loads the image again after a failure."
+	},
+	"ui.teamBridge.attachments.send_blocked": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown when Send is pressed while a composer image failed; the message is not sent without it."
+	},
+	"ui.teamBridge.attachments.remove_all": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Button in the reschedule dialog that removes every image from a scheduled message. Images cannot be added here."
+	},
 	"ui.teamBridge.schedule.held": {
 		"role": "Held scheduling attempt recovery explanation",
 		"tone": "Clear, calm, explicit about uncertainty and user acknowledgement",
@@ -1038,6 +1280,29 @@
 		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
 		"placeholders": {},
 		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
+	},
+	"ui.teamBridge.attachments.expired_staged_retry": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Same situation as attachments.expired_staged, but this device still holds the image, so a Retry button is shown on the chip next to Remove. 'Retry' re-uploads the same picture."
+	},
+	"ui.teamBridge.attachments.preview_unavailable": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "Two or three words.",
+		"placeholders": {},
+		"note": "Tooltip and screen-reader status on an image that IS attached (to a draft or a scheduled message) but cannot be drawn on this device because its bytes were not kept. Not an error."
+	},
+	"ui.teamBridge.attachments.failed_count": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short sentence.",
+		"placeholders": {
+			"count": "number of staged images (2-4) that failed or expired and must be retried or removed"
+		},
+		"note": "Shown first, in medium weight, in the one-line note under the composer's images when MORE THAN ONE image cannot be sent; the first image's own reason follows as a separate sentence. With a single failure the image's position (attachments.position) is shown instead."
 	},
 	"ui.teamBridge.sender.unknown_person": {
 		"role": "placeholder sender name",
@@ -1192,66 +1457,6 @@
 		"length": "Short",
 		"placeholders": {},
 		"note": "Accessible picker label or empty search state."
-	},
-	"ui.teamBridge.replies.action": {
-		"role": "thread pane action or status",
-		"tone": "plain, concise",
-		"length": "One short line.",
-		"placeholders": {},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
-	},
-	"ui.teamBridge.replies.title": {
-		"role": "thread pane action or status",
-		"tone": "plain, concise",
-		"length": "One short line.",
-		"placeholders": {},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
-	},
-	"ui.teamBridge.replies.close": {
-		"role": "thread pane action or status",
-		"tone": "plain, concise",
-		"length": "One short line.",
-		"placeholders": {},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
-	},
-	"ui.teamBridge.replies.count": {
-		"role": "thread pane action or status",
-		"tone": "plain, concise",
-		"length": "One short line.",
-		"placeholders": {
-			"count": "Number of replies"
-		},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
-	},
-	"ui.teamBridge.replies.last": {
-		"role": "thread pane action or status",
-		"tone": "plain, concise",
-		"length": "One short line.",
-		"placeholders": {
-			"time": "Localized clock time"
-		},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
-	},
-	"ui.teamBridge.replies.empty": {
-		"role": "thread pane action or status",
-		"tone": "plain, concise",
-		"length": "One short line.",
-		"placeholders": {},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
-	},
-	"ui.teamBridge.replies.placeholder": {
-		"role": "thread pane action or status",
-		"tone": "plain, concise",
-		"length": "One short line.",
-		"placeholders": {},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
-	},
-	"ui.teamBridge.replies.more": {
-		"role": "thread pane action or status",
-		"tone": "plain, concise",
-		"length": "One short line.",
-		"placeholders": {},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
 	},
 	"ui.teamBridge.actions.label": {
 		"role": "accessible name of the message toolbar",

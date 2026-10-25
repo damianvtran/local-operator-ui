@@ -12,7 +12,11 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
-import type { TeamBridgeScheduledMessage } from "../../../../shared/team-bridge-contract";
+import type {
+	TeamBridgeAttachment,
+	TeamBridgeScheduledMessage,
+} from "../../../../shared/team-bridge-contract";
+import { TeamBridgeScheduledAttachments } from "./team-bridge-attachments";
 import { scheduledSendAt } from "./team-bridge-drafts";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import {
@@ -28,18 +32,28 @@ export function TeamBridgeScheduleDialog({
 	onSchedule,
 	initialBody,
 	initialSendAt,
+	initialAttachments,
+	accountId,
 	returnFocus,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	busy: boolean;
-	onSchedule: (sendAt: string, body?: string) => Promise<unknown>;
+	onSchedule: (
+		sendAt: string,
+		body?: string,
+		attachmentIds?: readonly string[],
+	) => Promise<unknown>;
 	initialBody?: string;
 	initialSendAt?: string;
-	/* The control that opened this dialog. Explicit rather than read back from
-	   `document.activeElement`: by the time an effect runs, Radix has already
-	   moved focus INTO the content, so the active element is the dialog itself
-	   (design review round 1, D33). */
+	/*
+	 * An edited schedule's images (descriptors; no bytes are fetched for a
+	 * reserved image). The edit can REMOVE images - the hub releases them in
+	 * the same update - but not add: adding means staging bytes, which belongs
+	 * to the composer, and the schedule keeps its reserved set otherwise.
+	 */
+	initialAttachments?: readonly TeamBridgeAttachment[];
+	accountId?: string;
 	returnFocus?: { current: HTMLElement | null };
 }) {
 	const locale = useI18nLocale();
@@ -48,6 +62,9 @@ export function TeamBridgeScheduleDialog({
 		initialSendAt ? scheduledLocalInput(initialSendAt) : "",
 	);
 	const [body, setBody] = useState(initialBody ?? "");
+	const [kept, setKept] = useState<readonly TeamBridgeAttachment[]>(
+		initialAttachments ?? [],
+	);
 	const [failed, setFailed] = useState(false);
 	const [confirming, setConfirming] = useState<string | null>(null);
 	/*
@@ -84,20 +101,25 @@ export function TeamBridgeScheduleDialog({
 		initialSendAt && value === scheduledLocalInput(initialSendAt),
 	);
 	const at = unchangedTime ? initialSendAt : scheduledSendAt(value);
+	const imagesChanged = kept.length !== (initialAttachments?.length ?? 0);
 	const changed =
-		initialBody === undefined || body.trim() !== initialBody || !unchangedTime;
+		initialBody === undefined ||
+		body.trim() !== initialBody ||
+		!unchangedTime ||
+		imagesChanged;
 	const wasOpen = useRef(false);
 	useEffect(() => {
 		// Refreshes may update the row while a failed edit is still open. Preserve
 		// those edits, but reopening must start from the latest server post-state.
 		if (open && !wasOpen.current) {
 			setBody(initialBody ?? "");
+			setKept(initialAttachments ?? []);
 			setValue(initialSendAt ? scheduledLocalInput(initialSendAt) : "");
 			setConfirming(null);
 			setFailed(false);
 		}
 		wasOpen.current = open;
-	}, [open, initialBody, initialSendAt]);
+	}, [open, initialBody, initialSendAt, initialAttachments]);
 	const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	return (
 		<Dialog
@@ -138,6 +160,25 @@ export function TeamBridgeScheduleDialog({
 							className="rounded-md border border-control bg-surface p-2 text-ink"
 						/>
 					</label>
+				)}
+				{kept.length > 0 && (
+					<div className="flex flex-col gap-1">
+						<TeamBridgeScheduledAttachments
+							attachments={kept}
+							accountId={accountId}
+						/>
+						<Button
+							variant="ghost"
+							size="sm"
+							disabled={busy}
+							onClick={() => {
+								setKept([]);
+								setConfirming(null);
+							}}
+						>
+							{t("ui.teamBridge.attachments.remove_all")}
+						</Button>
+					</div>
 				)}
 				<label htmlFor={id} className="text-sm text-ink">
 					{t("ui.teamBridge.schedule.when")}
@@ -182,7 +223,7 @@ export function TeamBridgeScheduleDialog({
 						!at ||
 						!changed ||
 						busy ||
-						(initialBody !== undefined && !body.trim())
+						(initialBody !== undefined && !body.trim() && kept.length === 0)
 					}
 					onClick={() => {
 						const currentAt = unchangedTime
@@ -200,6 +241,9 @@ export function TeamBridgeScheduleDialog({
 						void onSchedule(
 							currentAt,
 							initialBody === undefined ? undefined : body.trim(),
+							initialAttachments === undefined
+								? undefined
+								: kept.map((row) => row.id),
 						)
 							.then(() => {
 								onOpenChange(false);
@@ -255,6 +299,7 @@ export function TeamBridgeScheduledList({
 			conversationNames={conversationNames}
 			readOnly={readOnly}
 			refresh={() => query.refetch()}
+			accountId={accountId}
 		/>
 	);
 }
@@ -269,6 +314,7 @@ export function TeamBridgeScheduledListView({
 	conversationNames = {},
 	readOnly = false,
 	refresh,
+	accountId,
 }: {
 	state: "loading" | "error" | "ready";
 	messages: TeamBridgeScheduledMessage[];
@@ -277,6 +323,7 @@ export function TeamBridgeScheduledListView({
 	conversationNames?: Readonly<Record<string, string>>;
 	readOnly?: boolean;
 	refresh: () => Promise<unknown>;
+	accountId?: string;
 }) {
 	/*
 	 * The failure names the ROW it belongs to, so there is exactly one notice
@@ -346,6 +393,7 @@ export function TeamBridgeScheduledListView({
 						onCancelFailure={() => setCancelFailure(message.id)}
 						onCancelSuccess={() => setCancelFailure(null)}
 						readOnly={readOnly}
+						accountId={accountId}
 					/>
 				))
 			)}
@@ -360,6 +408,7 @@ export function TeamBridgeScheduledRow({
 	organizationNames = {},
 	conversationNames = {},
 	onCancelFailure,
+	accountId,
 	onCancelSuccess,
 }: {
 	message: TeamBridgeScheduledMessage;
@@ -368,6 +417,8 @@ export function TeamBridgeScheduledRow({
 	organizationNames?: Readonly<Record<string, string>>;
 	conversationNames?: Readonly<Record<string, string>>;
 	onCancelFailure?: () => void;
+	/* Whose in-memory upload previews this row may show (account-fenced). */
+	accountId?: string;
 	onCancelSuccess?: () => void;
 }) {
 	const locale = useI18nLocale();
@@ -409,7 +460,15 @@ export function TeamBridgeScheduledRow({
 					{destination}
 				</p>
 			)}
-			<TeamBridgeMarkdown>{message.body}</TeamBridgeMarkdown>
+			{message.body.trim() !== "" && (
+				<TeamBridgeMarkdown>{message.body}</TeamBridgeMarkdown>
+			)}
+			{(message.attachments?.length ?? 0) > 0 && (
+				<TeamBridgeScheduledAttachments
+					attachments={message.attachments ?? []}
+					accountId={accountId}
+				/>
+			)}
 			{message.status === "sending" ? (
 				<p aria-live="polite">{t("ui.teamBridge.schedule.sending")}</p>
 			) : (
@@ -453,13 +512,15 @@ export function TeamBridgeScheduledRow({
 				busy={busy}
 				initialBody={message.body}
 				initialSendAt={message.send_at}
-				onSchedule={async (sendAt, body) => {
+				initialAttachments={message.attachments}
+				accountId={accountId}
+				onSchedule={async (sendAt, body, attachmentIds) => {
 					setBusy(true);
 					try {
 						await TeamBridgeApi.scheduledUpdate(
 							message.tenant_id,
 							message.id,
-							scheduledEditPatch(message, sendAt, body),
+							scheduledEditPatch(message, sendAt, body, attachmentIds),
 						);
 						await refresh();
 					} catch (error) {

@@ -3,6 +3,21 @@
 export const TEAM_BRIDGE_DRAFT_PREFIX = "team-bridge-authored-drafts:v1:";
 const PREFIX = TEAM_BRIDGE_DRAFT_PREFIX;
 const epochs = new Map<string, number>();
+/*
+ * Other account-owned, in-memory draft state (the composer's image previews)
+ * registers here so the SAME fence that erases stored drafts also drops it:
+ * a signed-out or replaced account must not leave its pictures in a module
+ * map for the next account to read. Listeners receive nothing - they drop
+ * everything - so no account id has to leave this module.
+ */
+const revocationListeners = new Set<() => void>();
+export function onDraftRevocation(listener: () => void): () => void {
+	revocationListeners.add(listener);
+	return () => revocationListeners.delete(listener);
+}
+const notifyRevocation = () => {
+	for (const listener of revocationListeners) listener();
+};
 export function draftAccountEpoch(accountId: string): number {
 	if (!epochs.has(accountId)) epochs.set(accountId, 0);
 	return epochs.get(accountId) ?? 0;
@@ -18,6 +33,7 @@ export function eraseAccountDrafts(
 ): void {
 	// Revocation still holds if browser storage itself refuses deletion.
 	epochs.set(accountId, draftAccountEpoch(accountId) + 1);
+	notifyRevocation();
 	const prefix = `${PREFIX}${encodeURIComponent(accountId)}:`;
 	if (!storage) return;
 	try {
@@ -53,8 +69,15 @@ export function reconcileDraftAccount(
 		status.state === "signed_out" ? null : (status.account_id ?? null);
 	// Revocation precedes disk cleanup: promises from an unmounted editor must
 	// not resurrect bodies even if storage removal fails or the account logs in again.
+	let revoked = false;
 	for (const [account, epoch] of epochs)
-		if (account !== next) epochs.set(account, epoch + 1);
+		if (account !== next) {
+			epochs.set(account, epoch + 1);
+			revoked = true;
+		}
+	if (revoked || next === null) notifyRevocation();
+	// No storage means nothing on disk to clean; the revocation above (epochs
+	// and the in-memory preview listeners) has already happened regardless.
 	if (!storage) return;
 	try {
 		const allowed = next ? `${PREFIX}${encodeURIComponent(next)}:` : null;

@@ -1,0 +1,20 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6-astra",
+  "instance": "ec3e15580372-landed-1314-ur",
+  "session": "ec3e15580372",
+  "job": "63722faf9ecd",
+  "task_label": "audit-landed-hi-ur",
+  "date": "2026-10-22",
+  "locale": "ur",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 199,
+  "scope": "Landing union only, PR #1314 at b2ad9e3265261299d7059866b5df134204d69cb1; 21 newly joined keys substantively audited with unchanged namespace context (199 keys read); not a new full-surface/native-fit approval.",
+  "sha256": {
+    "en": "cfd8ffd72a69c143c996691f0434051968cf0411c885c65bd22cfaf118846b53",
+    "ur": "74ebe4111f31e489d37a0ae473d68185e2cfd4dff7077fea1a97769f8a51ebc9",
+    "context": "2175d3b0a1d8a68ed794039e4151d58e53a99e48965af3e3df776cacb3cbafaa"
+  },
+  "findings": []
+}

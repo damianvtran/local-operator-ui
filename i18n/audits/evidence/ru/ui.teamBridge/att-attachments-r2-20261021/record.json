@@ -1,0 +1,129 @@
+{
+ "audit_id": "att-attachments-r2-20261021",
+ "date": "2026-10-21",
+ "locale": "ru",
+ "namespace": "ui.teamBridge",
+ "source_commit": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "scope": "Round-2 delta of #1314 (cf1d7c616c..8cf05961d6): 4 ru values changed/added applying att-r1-ru and design D1, including the changed en attachments.expired_staged and new attachments.expired_staged_retry / attachments.preview_unavailable. Other 167 values byte-unchanged and inherited from att-r1-ru.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "bc0c4b952eaa",
+  "commit": "cedfe88fc6"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean",
+   "instance": "att-r2-ru",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/att-r2-ru.json",
+   "receipt_sha256": "2d06c4188b43a4d165521f9f9c877d705e55231732ee001ce0b3044799cb9d8c",
+   "scope": "Team Bridge image attachments round 2: remediation delta (4 keys) independently audited at head 8cf05961d6; all att-r1-ru findings verified applied or superseded by the D1 source change. Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 2: no findings. All round-1 findings closed. No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-ru",
+   "session": "562d30c4b655",
+   "job": "b56e1ae2d95e",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "33a931af827ba2d475c46ad82f96e2a851d0686d0e788350db8e1baa99ac0a8d",
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.expired_staged"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.error_quota"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-ru.json",
+    "sha256": "8d72369fc69f6033efd26eb0d75d5baf7c087fef8e816839976ecd37fb1a9984"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "att-r2-ru",
+   "session": "12aab7b684ab",
+   "job": "d8717b64c01a",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 4,
+   "target_sha256": "4f8908284652b26099e70fea80497be38e9728a1848634cff3c8e57b711c02aa",
+   "findings": [],
+   "round1_dispositions": [
+    {
+     "finding": "r1 MINOR (no id)",
+     "keys": "expired_staged",
+     "verified": "applied in substance: first sentence now 'больше не готово к отправке' (the absolute 'больше нельзя отправить' is gone); the preview/«превью» clause is removed by the D1 source rewrite"
+    },
+    {
+     "finding": "r1 NIT (no id)",
+     "keys": "error_quota",
+     "verified": "applied verbatim: singular 'ожидает'"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r2-ru.json",
+    "sha256": "2d06c4188b43a4d165521f9f9c877d705e55231732ee001ce0b3044799cb9d8c"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+   "sha256": "4f8908284652b26099e70fea80497be38e9728a1848634cff3c8e57b711c02aa"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  }
+ },
+ "independence": "Translator (coder session 03594b2dcc02, job bc0c4b952eaa) and round-2 auditor (translation-auditor session 12aab7b684ab, job d8717b64c01a) are different agents in different sessions; the round-2 auditor is also distinct from the round-1 auditor session 562d30c4b655. The auditor never edited catalogues, ran no git operations and did not run ledger-assemble.",
+ "limitations": [
+  "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+  "Round 2 covers the remediation delta and direct regression surfaces only; unchanged values rely on att-r1 and its inherited receipts."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-ru.json",
+   "sha256": "8d72369fc69f6033efd26eb0d75d5baf7c087fef8e816839976ecd37fb1a9984"
+  },
+  {
+   "path": "i18n/receipts/att-r2-ru.json",
+   "sha256": "2d06c4188b43a4d165521f9f9c877d705e55231732ee001ce0b3044799cb9d8c"
+  }
+ ]
+}

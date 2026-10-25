@@ -1,0 +1,122 @@
+{
+  "audit_id": "att-attachments-20261021",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "namespace": "ui.teamBridge",
+  "source_commit": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+  "source_base": "5005cfe8b6",
+  "scope": "23 ui.teamBridge.attachments.* keys introduced by 715c864171/b8aad1066b (en; unsupported shortened at 0906d747e5) and translated at 0906d747e5 (vi), per git diff 5005cfe8b6..cf1d7c616c of en filtered to attachments. The other 146 values (8 replies.* from #1304 at 8913528, 138 from #1309 at 5005cfe) are out of scope and verified byte-unchanged.",
+  "status": "audited",
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "03594b2dcc02",
+    "job": "bc0c4b952eaa",
+    "commit": "0906d747e5",
+    "date": "2026-10-21"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-21",
+      "result": "clean-with-findings",
+      "instance": "att-r1-vi",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/att-r1-vi.json",
+      "receipt_sha256": "a8f1ceb71bfbd5481e4a81842d1f9aacef58e286f98e25ee5ec38a4d0499a5b0",
+      "scope": "Team Bridge image attachments: 23-key attachments.* delta independently audited at head cf1d7c616c; non-attachment values inherited unchanged from the merged #1304/#1309 stacks (out of scope). Catalogue audit only, not rendered-fit, activation or release approval.",
+      "note": "Round 1: ATT-VI-01 MINOR (Remove → «Xóa» vs app «Gỡ»/«Bỏ»; 6 keys), ATT-VI-02 NIT (image → «Hình» in position/open vs «hình ảnh»). No rendered-fit claim."
+    }
+  ],
+  "audit_rounds": [
+    {
+      "round": 1,
+      "instance": "att-r1-vi",
+      "session": "b7f054029a3f",
+      "job": "76b8498e2a54",
+      "model": "anthropic/claude-opus-5-5",
+      "status": "passed",
+      "keys_audited": 23,
+      "target_sha256": "608e2f506070968878a48fdbbf2a10ddc174de7c0e0db872bc6ade21b938bc03",
+      "findings": [
+        {
+          "id": "ATT-VI-01",
+          "severity": "MINOR",
+          "key": "ui.teamBridge.attachments.remove"
+        },
+        {
+          "id": "ATT-VI-02",
+          "severity": "NIT",
+          "key": "ui.teamBridge.attachments.position"
+        }
+      ],
+      "receipt": {
+        "path": "i18n/receipts/att-r1-vi.json",
+        "sha256": "a8f1ceb71bfbd5481e4a81842d1f9aacef58e286f98e25ee5ec38a4d0499a5b0"
+      }
+    }
+  ],
+  "inherited_receipt": {
+    "base": "5005cfe8b6",
+    "path": "i18n/receipts/tbh-r1-vi.json",
+    "sha256": "6bdc2b3a8750028e0529f5526063213564c1762cece8fe38cdfaad1e673e7245",
+    "keys_inherited": 138,
+    "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+    "base_target_sha256": "0b6d510710c29488180fc315a4f44fdb62bf9e24a76fe172cb893964a09eaab8",
+    "unchanged_values_verified": 138,
+    "note": "#1309 stack (out of scope); its own audit chain owns these values."
+  },
+  "merged_in_receipt": {
+    "base": "8913528e50",
+    "path": "i18n/receipts/threads1304-r2-vi.json",
+    "sha256": "a0d50e3ba858afd34391677f602cd757f2e5bf25318d716c84b67ab50c24d1d0",
+    "keys_inherited": 8,
+    "base_source_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+    "base_target_sha256": "409c2e8a9e2f92d2c3590ec02033c6b1174fa27ad07a9813f399b33761d782fd",
+    "unchanged_values_verified": 8,
+    "note": "#1304 replies.* keys (out of scope); en and vi values byte-identical to 8913528e50."
+  },
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+      "sha256": "608e2f506070968878a48fdbbf2a10ddc174de7c0e0db872bc6ade21b938bc03"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+    }
+  },
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    }
+  },
+  "independence": "Translator (coder tb-att-ui, job bc0c4b952eaa, session 03594b2dcc02) and auditor (translation-auditor session b7f054029a3f, job 76b8498e2a54) are different agents in different sessions; the auditor never edited catalogues and did not run ledger-assemble.",
+  "limitations": [
+    "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+    "expired/unavailable placeholder copy likely wraps to two lines in the 144px tile (en fits one); flagged for a rendered check that has not been performed.",
+    "Minor/nit findings are open pending the coder's remediation disposition; a round 2 delta audit applies if values change."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/att-r1-vi.json",
+      "sha256": "a8f1ceb71bfbd5481e4a81842d1f9aacef58e286f98e25ee5ec38a4d0499a5b0"
+    }
+  ]
+}

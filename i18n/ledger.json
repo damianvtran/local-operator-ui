@@ -4752,8 +4752,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
-			"target_sha256": "742358df7b88d3e731006c9e632bc371c0e6a957ca6b545669c3733c8addb11d",
+			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+			"target_sha256": "af79c6c9021ce398e9665520bfe9fb70ea6b5fa78c91103637529e360794cc09",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -4764,19 +4764,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6-astra",
-					"date": "2026-10-22",
+					"model": "unreported-by-delegating-agent",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "f39d0c2ada5e-landed-1309-es",
+					"instance": "d1-account-changed-20261025-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f39d0c2ada5e-landed-1309-es.json",
-					"receipt_sha256": "785d2d0e1e250ba1b35de9a66988a5d15692d9b9dd172c3d0bf67e7d435be8ac",
-					"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
+					"receipt": "i18n/receipts/d1-account-changed-20261025-es.json",
+					"receipt_sha256": "bc8f961592deac220244f758f10edd4e137f212722abfe2a4b55da8ea4fed1ee",
+					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 				}
 			],
 			"status": "audited",
@@ -4907,6 +4907,52 @@
 					"status": "audited"
 				},
 				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-es.json",
+							"receipt_sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "34ebfffbe978805ce0afa8a5e92cbfea3743587485494b3cb86c4cd4af51b8c9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-es.json",
+							"receipt_sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
+				},
+				{
 					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
 					"target_sha256": "23b17040807c59c54240eb97a30841b41697a985d104ca94f09994c1e0d04361",
 					"auditors": [
@@ -4929,6 +4975,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+					"target_sha256": "83e665e3cd26a36db5bb0afd203f90d23a1a31de88f6f88d01a0d57813fa6750",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r3-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r3-es.json",
+							"receipt_sha256": "c7a00e37c43623c3b8a58a906c88571b41f4a2c678b05b2b15ef63a4a67fd96f",
+							"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+					"target_sha256": "83f83edf103c94c8f6cdbb4c678853fbcfb1d23a207adc9143dfb6497eea0bdd",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbd-r4-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-r4-es.json",
+							"receipt_sha256": "b06e9c976f832eeeba013442147c81173bf6c15122f9031e3c58c563edc58782",
+							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-10-21",
+						"session": "28b7e95e4a5d",
+						"remediation_job": "829b5b70a7aa"
+					}
 				},
 				{
 					"source_sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
@@ -4996,6 +5096,35 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309-es.json",
 							"receipt_sha256": "f6d6f390e597559444ba26de55ac5e6e94a30af1695a9039e6ef7d651507d2c9",
 							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1309 3751b6750b)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+					"target_sha256": "43a19903125fda6373a30520d7bb7c9bac2558ce6ffd5ee97749286f5285a551",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+					"target_sha256": "eababe1ff4f0443a4d3b60fb882a7e4a4db1a19b8867a64dd9ea26007c64534b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "tbstack-r1-1314-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314-es.json",
+							"receipt_sha256": "d05e810d40cb929285f25070cbf94dc5960a8279e60366d735be4a40a39e427a",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1314 bbf4d1c0cc)"
 						}
 					],
 					"status": "audited"
@@ -5165,6 +5294,58 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309m-es.json",
 							"receipt_sha256": "dbd6d08199dcd99d466c9725f6374241dc621ab847d30f10ceeb02bd59313197",
 							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+					"target_sha256": "742358df7b88d3e731006c9e632bc371c0e6a957ca6b545669c3733c8addb11d",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+					"target_sha256": "e6aa45ed725fa7fecac64ca1e56977361a6c0b1e67e2e4e96e2e1125db76123b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "tbstack-r1-1314m-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314m-es.json",
+							"receipt_sha256": "7465f59e43d0ccad7dde135e8d8c59e990d6edaa8fedd59dc659a9963ba36ea2",
+							"note": "Independent main-merge union audit. Existing fr/es attachment plural NIT remains rejected as unreachable (count 2–4)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cfd8ffd72a69c143c996691f0434051968cf0411c885c65bd22cfaf118846b53",
+					"target_sha256": "ec258598add4170a5e2bad38adc2da259d0bbcd239fc65cf13c41ad2bd41d5f7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "f39d0c2ada5e-landed-1314-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/f39d0c2ada5e-landed-1314-es.json",
+							"receipt_sha256": "08ea58e6eb547cdca48e555b4e55918722fbb2250b10fef93f70930ba4ed8934",
+							"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
 						}
 					],
 					"status": "audited"
@@ -10315,8 +10496,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
-			"target_sha256": "726c74126ec69a856d914ee3aa98d02ef97232b3ac704fa5e7310e965c9035ea",
+			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+			"target_sha256": "f681b60f5d966e6b62163f92f115fc4a8f5a7cfb1a48d8f980de66b435b56f9f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -10328,19 +10509,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6-astra",
-					"date": "2026-10-22",
+					"model": "unreported-by-delegating-agent",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "f39d0c2ada5e-landed-1309-fr",
+					"instance": "d1-account-changed-20261025-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f39d0c2ada5e-landed-1309-fr.json",
-					"receipt_sha256": "6aa43dfb328f98beb7ff3dbd7d87fae55cf454998e7abec03e6adb48c15936f6",
-					"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
+					"receipt": "i18n/receipts/d1-account-changed-20261025-fr.json",
+					"receipt_sha256": "8c8159d44028a20869cfe736fd6ea488eeb3774679507a4890312d51d3d2bf86",
+					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 				}
 			],
 			"status": "audited",
@@ -10495,6 +10676,52 @@
 					"status": "audited"
 				},
 				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-fr.json",
+							"receipt_sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "64093579763efc8c0c1b3edf81b35b22ea0021181241cdade19e4d2aa2b3f6db",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-fr.json",
+							"receipt_sha256": "13c3adee6e328f0605d8be8a43478c4ad7df39ea0c9065e2a2dffa1f975b01c5",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
+				},
+				{
 					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
 					"target_sha256": "9a9cab08059a8572e7aaab55449476e7293c35ed288bc989920176fddcdfa463",
 					"auditors": [
@@ -10517,6 +10744,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+					"target_sha256": "8b41ea984ccf319fd8c5ce7c3a237e4576c7d1097c0a825247db1fc2df635e11",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r3-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r3-fr.json",
+							"receipt_sha256": "a758272ea2d66753f5ca97cc9decdae27679817c617fa894e1aec80548ac6958",
+							"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+					"target_sha256": "b28cfcd21792bd85822daffe240797f932dbf2c6fa9e11b1917c1c20759438fb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbd-r3-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-r3-fr.json",
+							"receipt_sha256": "fe0341dd78a19bfe03e02625f56ec08e77aab77f27123a57b00e3cd4a045fbcd",
+							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-10-21",
+						"session": "d3285bf04767",
+						"remediation_job": "4ecadc4327d8"
+					}
 				},
 				{
 					"source_sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
@@ -10584,6 +10865,35 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309-fr.json",
 							"receipt_sha256": "6254c40d48c10f54d15d1367fa685684222f4d321eb9ecce5b4ca4ed10fed394",
 							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1309 3751b6750b)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+					"target_sha256": "ae29837b879f3df0900fcdd71e7c47f7d62ba95bc5f6c5a55109ac98b2dced8a",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+					"target_sha256": "09dd8d32bf579264e8f8fff71f478746d0b2955b6944d6771ab773f7e02fe1bb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "tbstack-r1-1314-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314-fr.json",
+							"receipt_sha256": "dc814ee9b677314352c7aec3ff4e55dd35f26bd0a081385d984d954a6c1a7030",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1314 bbf4d1c0cc)"
 						}
 					],
 					"status": "audited"
@@ -10753,6 +11063,58 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309m-fr.json",
 							"receipt_sha256": "91a9e90a9bc4a9eb4e78ec1be954f8a72319d11844fb521f44c00132dc0c9011",
 							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+					"target_sha256": "726c74126ec69a856d914ee3aa98d02ef97232b3ac704fa5e7310e965c9035ea",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+					"target_sha256": "b705fef45e370adcb8a74a678955d0fe3d48951df8d09d0937ceada301d1a585",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "tbstack-r1-1314m-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314m-fr.json",
+							"receipt_sha256": "b25dec001b1fad7f23d3ce7f131df4484e6edd9a82a7eb19ab088869ec7a92dc",
+							"note": "Independent main-merge union audit. Existing fr/es attachment plural NIT remains rejected as unreachable (count 2–4)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cfd8ffd72a69c143c996691f0434051968cf0411c885c65bd22cfaf118846b53",
+					"target_sha256": "4c14fab3c733cb12546786693f2372b01e14006299649abf11b4fb80f0e4c627",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "f39d0c2ada5e-landed-1314-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/f39d0c2ada5e-landed-1314-fr.json",
+							"receipt_sha256": "86f7e36f71f4457b768902c0db90b6f8d3cf060d22e45656fa5719713052c939",
+							"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
 						}
 					],
 					"status": "audited"
@@ -15811,8 +16173,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
-			"target_sha256": "f982b9f54ec19fdc690a4891030492380dc9dbfa63f91125612d9003ef654f15",
+			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+			"target_sha256": "9e99a05e61266bb001e19d448f7a2c72b48b04f392a1bb90b6691aeeb978d94d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -15823,19 +16185,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6-astra",
-					"date": "2026-10-22",
+					"model": "unreported-by-delegating-agent",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "ec3e15580372-landed-1309-hi",
+					"instance": "d1-account-changed-20261025-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ec3e15580372-landed-1309-hi.json",
-					"receipt_sha256": "a727a53936fa1ac7379d5f62053245609200414c53ccc13b91732aaf44bf5b5c",
-					"scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3; 29 newly joined keys substantively audited with unchanged namespace context (173 keys read); not a new full-surface/native-fit approval."
+					"receipt": "i18n/receipts/d1-account-changed-20261025-hi.json",
+					"receipt_sha256": "23c3745502c1d2b48c531ace8e193c9c2a9a9d4015a32f263453d9fef59ef28d",
+					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 				}
 			],
 			"status": "audited",
@@ -15913,6 +16275,52 @@
 					"status": "audited"
 				},
 				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "81800a16e68bad3511726b517d74cc7648daf3696c76409e33dd7a8a30bfa78d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/att-r1-hi.json",
+							"receipt_sha256": "81f022991c2c2d6ddd7fc82194a9f278e1049f8c403b56a6f0075a03a0000653",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "3189d728113b51462c092b51d8ff41d26c1c26fd8e96e661179dfd3630f794b1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-hi.json",
+							"receipt_sha256": "f6e3bae43c1fb792e25c9d24d9412b7cec756ec3aa0bceed0c6dcaaa92244a58",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
+				},
+				{
 					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
 					"target_sha256": "4c98c32e473622f9aee3e1241e4b5b4b5085411e18c9d92f7e30a2fdc0ef5b4b",
 					"auditors": [
@@ -15935,6 +16343,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+					"target_sha256": "9ad93c48a0e90a7ce640c3db8d1ee1910df73720778f96ba631dc53ddcfd22f3",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r3-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r3-hi.json",
+							"receipt_sha256": "fe1e39e87fc29a74670841768e588052737ec222297f38b7507d66f30ce7b8fd",
+							"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+					"target_sha256": "78ff808697020fdde224fe7609a18d4aee9ab63f1f8719d2447d204a39933b7c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbd-r3-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-r3-hi.json",
+							"receipt_sha256": "b0a3d96a6fce52dab28f89094ee16997846e8301cedbe06d90733e8d450b0313",
+							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-10-21",
+						"session": "9560f0b857c1",
+						"remediation_job": "5e1d1a302ea0"
+					}
 				},
 				{
 					"source_sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
@@ -16002,6 +16464,35 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309-hi.json",
 							"receipt_sha256": "6a97747bba05a0447aa4d21f023c7fee42dc0edc56fa7056f7f8e62e5085872d",
 							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1309 3751b6750b)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+					"target_sha256": "d98840058cd2302437d30a83fe3904e4d75a79ec652f01b7efc6b8f22922d14f",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+					"target_sha256": "2a9806e351c0318d853a74079b6467173e03e1bc40ed2b1d787b47f47df93d25",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314-hi.json",
+							"receipt_sha256": "b01453143f4fb43ba081ee03812602bcd2ad0323c1ed000dc913037cd7c0d8e5",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1314 bbf4d1c0cc)"
 						}
 					],
 					"status": "audited"
@@ -16171,6 +16662,58 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309m-hi.json",
 							"receipt_sha256": "54b198ecdebb3d6330ad435875063c1ea8264e0521db12c0febbf029d66dc47b",
 							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+					"target_sha256": "f982b9f54ec19fdc690a4891030492380dc9dbfa63f91125612d9003ef654f15",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+					"target_sha256": "5b76445c1f4b4ae8b27250a8188fa8d12b9d233de918d10c2abcac7882dadd09",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314m-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314m-hi.json",
+							"receipt_sha256": "382e449159498777e6b3eed7ca801fa6c5b4bf9df0674927586543076646d8b0",
+							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cfd8ffd72a69c143c996691f0434051968cf0411c885c65bd22cfaf118846b53",
+					"target_sha256": "0fdf75bcf650538d703b24c14403b69ee15bfd434c775152ce8b321228aa81ba",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "ec3e15580372-landed-1314-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ec3e15580372-landed-1314-hi.json",
+							"receipt_sha256": "13c529a329c628e17ceff3d45147c928ea4b087acd84274f6e1f2af9ca91e80e",
+							"scope": "Landing union only, PR #1314 at b2ad9e3265261299d7059866b5df134204d69cb1; 21 newly joined keys substantively audited with unchanged namespace context (199 keys read); not a new full-surface/native-fit approval."
 						}
 					],
 					"status": "audited"
@@ -21003,8 +21546,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
-			"target_sha256": "f9fda9d7602e31e508642e6cba18f487217589d0457f90c01aeec73c525a2da4",
+			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+			"target_sha256": "b5496424a9a00ef9514cb00da561147d5bcba202c137b54c4cef54bc3854cef5",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -21016,19 +21559,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6-astra",
-					"date": "2026-10-22",
+					"model": "unreported-by-delegating-agent",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "055fbd3ce084-landed-1309-ru",
+					"instance": "d1-account-changed-20261025-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/055fbd3ce084-landed-1309-ru.json",
-					"receipt_sha256": "331fbf1d59b043d83c88b3f772237340326d3a504e32f8fc21c5fa86066d5228",
-					"scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3: 173 English/target keys read side by side; 29 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval."
+					"receipt": "i18n/receipts/d1-account-changed-20261025-ru.json",
+					"receipt_sha256": "2c14caaaf3d817f6e605763e75164999b1fd52726b0766601abc66728bd9af9b",
+					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 				}
 			],
 			"status": "audited",
@@ -21106,6 +21649,52 @@
 					"status": "audited"
 				},
 				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "33a931af827ba2d475c46ad82f96e2a851d0686d0e788350db8e1baa99ac0a8d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-ru.json",
+							"receipt_sha256": "8d72369fc69f6033efd26eb0d75d5baf7c087fef8e816839976ecd37fb1a9984",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "4f8908284652b26099e70fea80497be38e9728a1848634cff3c8e57b711c02aa",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-ru.json",
+							"receipt_sha256": "2d06c4188b43a4d165521f9f9c877d705e55231732ee001ce0b3044799cb9d8c",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
+				},
+				{
 					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
 					"target_sha256": "090f49174aebbb63085c1d91d54af51c6223e870f53f7052f393b5e3bbb25722",
 					"auditors": [
@@ -21128,6 +21717,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+					"target_sha256": "41d7e425b067e53fa9098da9279787dc23df235cf5ae13ea88fb184461f49721",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r3-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r3-ru.json",
+							"receipt_sha256": "69e8409ba80bc7c1619e6f52d29a3a86ca5997a5bbd01838363e6b84cf4b6205",
+							"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+					"target_sha256": "cd1c54f380c8e15c394e7dbec468cae2ed1c54073464f841072cdede69702cce",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbd-r3-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-r3-ru.json",
+							"receipt_sha256": "7a53ac8b7187dd88eaeca49cc456ba89ee53fc72f441fa894b6fc204fee39445",
+							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-10-21",
+						"session": "11ad72b65a40",
+						"remediation_job": "c5b203ce8ab7"
+					}
 				},
 				{
 					"source_sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
@@ -21195,6 +21838,35 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309-ru.json",
 							"receipt_sha256": "369e7818b00beed2ff80ee1b245cb46fe17d63ad34761fa3d69961cd99e1a243",
 							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1309 3751b6750b)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+					"target_sha256": "49cc192fbc1eed523e5bf310e435117176749130b72cdaa412770ff1771fc941",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+					"target_sha256": "ae8efc1c6f5f6f44f2e0e0a92b233b4d9825093e337035a1319cc72396d678b7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314-ru.json",
+							"receipt_sha256": "c5a1377d282b17b63ff4ecff8e1dd74f903599571e35a6bd12495fbd09ec9a58",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1314 bbf4d1c0cc)"
 						}
 					],
 					"status": "audited"
@@ -21395,6 +22067,58 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309m-ru.json",
 							"receipt_sha256": "40cfe19f3c936933a115cc3e5804574f2c73b7c919f9c1afbace15ce17d5c2ff",
 							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+					"target_sha256": "f9fda9d7602e31e508642e6cba18f487217589d0457f90c01aeec73c525a2da4",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+					"target_sha256": "d597416f7119be2d9e1970d9a823cb1863f19d2f59e171bbe6f89558c0b401cb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314m-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314m-ru.json",
+							"receipt_sha256": "620a6d7584ec15b8401207f18b60e36d1a1e9a191717f7ff188b843389e8f4c8",
+							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cfd8ffd72a69c143c996691f0434051968cf0411c885c65bd22cfaf118846b53",
+					"target_sha256": "a3dacc1fcd3e6194e5c506de6c997fb43564d887808bc49a6f6c32580468b2e4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "055fbd3ce084-landed-1314-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/055fbd3ce084-landed-1314-ru.json",
+							"receipt_sha256": "07f8abfd87773d94afdb362ee049bccb35fa11d492b9df9dbeecf69ecab2eee8",
+							"scope": "Landing union only, PR #1314 at b2ad9e3265261299d7059866b5df134204d69cb1: 199 English/target keys read side by side; 21 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval."
 						}
 					],
 					"status": "audited"
@@ -26310,8 +27034,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
-			"target_sha256": "27d1d20b095e923abd6e5973f77bdb9801a117b2d580965f4ec164bab7396e6b",
+			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+			"target_sha256": "f4c3632ed372e50656a80ff5eb6c28648de6c389d4aae293a8176108c98866a0",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -26322,19 +27046,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6-astra",
-					"date": "2026-10-22",
+					"model": "unreported-by-delegating-agent",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "ec3e15580372-landed-1309-ur",
+					"instance": "d1-account-changed-20261025-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ec3e15580372-landed-1309-ur.json",
-					"receipt_sha256": "d8f2dc8c84ec4991f6174f459d35662c4ab1f86fb772dcc318038827abf512f3",
-					"scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3; 29 newly joined keys substantively audited with unchanged namespace context (173 keys read); not a new full-surface/native-fit approval."
+					"receipt": "i18n/receipts/d1-account-changed-20261025-ur.json",
+					"receipt_sha256": "5a7570715b94041233d37cb0ca87150e96f867dc84e393708c62ad20b2a17b1b",
+					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 				}
 			],
 			"status": "audited",
@@ -26412,6 +27136,52 @@
 					"status": "audited"
 				},
 				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "47bccf3a65d5ad9ccba4b375fba35c67d3c00ec689bd209fcb06361a655a6d99",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/att-r1-ur.json",
+							"receipt_sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "f9b0ae461b2e8cba71e0000e24e37b0f09aa932f65ba77be381a336ce98e411e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-ur.json",
+							"receipt_sha256": "5f9baf25801f94b9af402007278a2255d99386008cf91d34e7282aa44fbcc091",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
+				},
+				{
 					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
 					"target_sha256": "d450e7167746c3e80789b58dbf8f165aa1a2b6581e114fa70a56e353058cc52b",
 					"auditors": [
@@ -26434,6 +27204,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+					"target_sha256": "42fb7f345410eb56211049be9aa4277ef7380e4a4df41473a407ab85671a6dae",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r3-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r3-ur.json",
+							"receipt_sha256": "2d284222439b4c5a3f1b248520b6648782ea3cfe2df95f7a8d038e035d899ffb",
+							"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+					"target_sha256": "76bfaa1fa565994bbeeb8c76450042111a405525442a1ba2e0a956e1ba2e5397",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbd-r3-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-r3-ur.json",
+							"receipt_sha256": "84aef64e4d8e735ad57713e54ec6f5b514ad89ba3d02b387e44a67c68b26a0a4",
+							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-10-21",
+						"session": "19f8ac2970ae",
+						"remediation_job": "0188f13ef5aa"
+					}
 				},
 				{
 					"source_sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
@@ -26501,6 +27325,35 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309-ur.json",
 							"receipt_sha256": "3b7d6b251d5a4093fe03be27aa7d5280688da4233644d3babc364b70d10c971d",
 							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1309 3751b6750b)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+					"target_sha256": "be7bfbeb9c7a2b4a458592241d6ffd01e4f3fd8bb73ab6847014a0e594173ce5",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+					"target_sha256": "a8b1dfc9ba8767a507a8a45360c6559491ccbf9fe681621f9b56a19cc1a0d4d1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314-ur.json",
+							"receipt_sha256": "9d73c09c6f09b5683dd2b848965e21a193d3b9472df1c9cc2d2ed6e080124b32",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1314 bbf4d1c0cc)"
 						}
 					],
 					"status": "audited"
@@ -26670,6 +27523,58 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309m-ur.json",
 							"receipt_sha256": "95f5a387d94d84f0ba06caac24f03a508781296bbf4aa5b9cfa126eaf5582180",
 							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+					"target_sha256": "27d1d20b095e923abd6e5973f77bdb9801a117b2d580965f4ec164bab7396e6b",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+					"target_sha256": "6296391c69bf9433bb7cd31b04a7d373ca941837b3cc4b4ae77aa445f64249a4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314m-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314m-ur.json",
+							"receipt_sha256": "68f17b4e1fed9db04526d20291e69f3abf296273616150592d34c78cc5188549",
+							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cfd8ffd72a69c143c996691f0434051968cf0411c885c65bd22cfaf118846b53",
+					"target_sha256": "74ebe4111f31e489d37a0ae473d68185e2cfd4dff7077fea1a97769f8a51ebc9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "ec3e15580372-landed-1314-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ec3e15580372-landed-1314-ur.json",
+							"receipt_sha256": "67690880718cd5124ab4515a793375ff3a7e16f467d5f24a58fd3e481740c2a8",
+							"scope": "Landing union only, PR #1314 at b2ad9e3265261299d7059866b5df134204d69cb1; 21 newly joined keys substantively audited with unchanged namespace context (199 keys read); not a new full-surface/native-fit approval."
 						}
 					],
 					"status": "audited"
@@ -31781,8 +32686,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
-			"target_sha256": "291883bf26f884cae277fd11ca7046eb5108ab85c47874d8ab88c410cf578f8e",
+			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+			"target_sha256": "36081d7fd2d8d17b463f1d139839478e543cd23db689382ecb3ac758256e0d78",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -31793,19 +32698,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6-astra",
-					"date": "2026-10-22",
+					"model": "unreported-by-delegating-agent",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "f39d0c2ada5e-landed-1309-vi",
+					"instance": "d1-account-changed-20261025-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f39d0c2ada5e-landed-1309-vi.json",
-					"receipt_sha256": "1d408a966590ae4a9adeea9f8e389a9db4fd8a4bfdd33d0e03f7d3c985737e7f",
-					"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
+					"receipt": "i18n/receipts/d1-account-changed-20261025-vi.json",
+					"receipt_sha256": "f15e563bb45ed37ede38734551c4d774a505b69da30c54c48e8cf21362e9d2a8",
+					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 				}
 			],
 			"status": "audited",
@@ -31883,6 +32788,52 @@
 					"status": "audited"
 				},
 				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "608e2f506070968878a48fdbbf2a10ddc174de7c0e0db872bc6ade21b938bc03",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-vi.json",
+							"receipt_sha256": "a8f1ceb71bfbd5481e4a81842d1f9aacef58e286f98e25ee5ec38a4d0499a5b0",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "4853986bbd7c5c9e48a4616723878d948efd4ad7ce55e59e21aa9ad2d8a8c362",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-vi.json",
+							"receipt_sha256": "4249fef08a9c6e6d876646d9147502135a11d0373e35a40d2cd1ffbd52f639df",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
+				},
+				{
 					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
 					"target_sha256": "998baa1266abfdd624ec0bb0f37f286bf17873ed1c7603f9d599dfed8e9aa8c3",
 					"auditors": [
@@ -31905,6 +32856,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+					"target_sha256": "51afb668e31af62fb2050dd50ad3e62e607a8e310f651e69baa5b51bd69880d8",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r3-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r3-vi.json",
+							"receipt_sha256": "2f74b6bd1ec0a4d2ac393c0edee267c40144bedafadcdc2eb581bd6bc0a70f2a",
+							"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+					"target_sha256": "71339f089127558ebe551d701ab8fbb394322a61bb44843002310cb294195fdc",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbd-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-r2-vi.json",
+							"receipt_sha256": "b06b33c45ad38222050412836b2f095a369eab4905066f0e96b9443045851bd8",
+							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-10-21",
+						"session": "c95bd671fb4a",
+						"remediation_job": "8a1b9c8937ae"
+					}
 				},
 				{
 					"source_sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
@@ -31972,6 +32977,35 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309-vi.json",
 							"receipt_sha256": "704c264e6d9931d5e2f9e6ac7967c416aa0b5ec146a45557850ad07431cd509d",
 							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1309 3751b6750b)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+					"target_sha256": "79fb46a6f2029437dab260fd9eaee5d5d4e179edb3cfe578682de5a6a904247b",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+					"target_sha256": "b261333a19d24a4cca31f80b8397e002d6c26ae02b2c1621e19bfb3ec6a0787f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314-vi.json",
+							"receipt_sha256": "1b19f95df1dbe4431769c5b541fb353199decba8edb10e5e63c63963508ae8a3",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1314 bbf4d1c0cc)"
 						}
 					],
 					"status": "audited"
@@ -32172,6 +33206,58 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309m-vi.json",
 							"receipt_sha256": "8cf514cab61b3f615b01c7581d41d2a7067c0dcb27e0c2ec4841c1122ad8ae65",
 							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+					"target_sha256": "291883bf26f884cae277fd11ca7046eb5108ab85c47874d8ab88c410cf578f8e",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+					"target_sha256": "aba7a79245dce54517187a868ff57862faef04ecd4b288ce3a3ef058b4c7f22c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314m-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314m-vi.json",
+							"receipt_sha256": "1f66038df15a394ee2eb272daa82143709762232ed52e38fc170bf85b2068272",
+							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cfd8ffd72a69c143c996691f0434051968cf0411c885c65bd22cfaf118846b53",
+					"target_sha256": "4823a5730eb91153fdaca18a5dc26789059b0fee8d4015b788e55824c69ae5e8",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "f39d0c2ada5e-landed-1314-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f39d0c2ada5e-landed-1314-vi.json",
+							"receipt_sha256": "b3f03f68bd0890f63ba00fd9a8d32cc00c080ebbf6738fc7563be8d2a28ac8d8",
+							"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
 						}
 					],
 					"status": "audited"
@@ -37878,8 +38964,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
-			"target_sha256": "ed8d9440c833914c161fc975edd7931608df6b12fc8aaefaf1b8bcd28bee9694",
+			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+			"target_sha256": "e11b6e6c3732d4fddf424af58a8d9ab24eb6501c62a112f40719916162eccec5",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -37890,19 +38976,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6-astra",
-					"date": "2026-10-22",
+					"model": "unreported-by-delegating-agent",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "055fbd3ce084-landed-1309-zh-cn",
+					"instance": "d1-account-changed-20261025-zhcn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/055fbd3ce084-landed-1309-zh-cn.json",
-					"receipt_sha256": "c5c4ff8b63f1bb50ee0a496f1793d2d83779fe0313b4f37957e1b86855f4a1e1",
-					"scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3: 173 English/target keys read side by side; 29 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval."
+					"receipt": "i18n/receipts/d1-account-changed-20261025-zhcn.json",
+					"receipt_sha256": "d086a407d7fdf135acee93109b6083ddaf34cba4c47f922368ee0709f3877b60",
+					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 				}
 			],
 			"status": "audited",
@@ -38033,6 +39119,52 @@
 					"status": "audited"
 				},
 				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "941547bb3bd80e153820fbd9c6a2ba680f626e2f908e629240a8a9ace3bf13d0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-zh-cn.json",
+							"receipt_sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "9a66cc5265c438481620c908d75ea93399da3dad5dc0ffa46cc9b75f63cdec40",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r2-zh-cn.json",
+							"receipt_sha256": "98f1329f08c9f78585937671507db2f5d50a7f020860657e69dab82375be56ab",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
+				},
+				{
 					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
 					"target_sha256": "764ad74c15e1d0e4eadeb4338a06eb42721dd995e8aa4b33110e2c56bfb581ca",
 					"auditors": [
@@ -38055,6 +39187,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+					"target_sha256": "6de951c7cacb6a061dffb7c1825def627562ff03cfd8205cd96044a8ac9dd820",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r3-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r3-zh-cn.json",
+							"receipt_sha256": "9be3fb576d4502b4ffa191f065dd31f48935f391c28cefb68cffe82b536c8d2f",
+							"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+					"target_sha256": "a461bd1121e50a3091f42da7ec75196ff94efa0eecc3e87bd99ea352d3e33672",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbd-r4-zhcn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-r4-zhcn.json",
+							"receipt_sha256": "85d1f0e0870d1a20d82e242187fbb7fba745a88189d98965e51010bd0e7125e9",
+							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-10-21",
+						"session": "2dc29b01117d",
+						"remediation_job": "5f2f08349f3a"
+					}
 				},
 				{
 					"source_sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
@@ -38122,6 +39308,35 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309-zh-cn.json",
 							"receipt_sha256": "86e2b7cb4a92f6a375a28ad11a7102137cc96fa04c6aca7ee9b78b23541e4a6e",
 							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1309 3751b6750b)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+					"target_sha256": "aa501e32d7a34a49c116e0256dd330fdaf7cd1a04e11316f6028ae512baeda3f",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+					"target_sha256": "6b3884974055801e53dbb00acc20c54aaf450bfec21a37dc1a5393f42e478f24",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314-zh-cn.json",
+							"receipt_sha256": "2baed9fec680a4caf65222168742c8648d7be56ccc3dccab7947e6bf295f3b16",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1314 bbf4d1c0cc)"
 						}
 					],
 					"status": "audited"
@@ -38291,6 +39506,58 @@
 							"receipt": "i18n/receipts/tbstack-r1-1309m-zh-cn.json",
 							"receipt_sha256": "03235a1c63a3b23e2c4be4e67e672194636ad7f4a2fe810ae4ff0e2d3aa482de",
 							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+					"target_sha256": "ed8d9440c833914c161fc975edd7931608df6b12fc8aaefaf1b8bcd28bee9694",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+					"target_sha256": "7a2c17230262e8de457fa572e4ef8a085801e3ccd7931986ae827a7fc10ecb35",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1314m-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1314m-zh-cn.json",
+							"receipt_sha256": "2c43f8d9e416276ebb76b3f4d25bf0eaca6995efb21511ead65321a35f0f2dba",
+							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cfd8ffd72a69c143c996691f0434051968cf0411c885c65bd22cfaf118846b53",
+					"target_sha256": "cd3fe30f8aa5a54a574d90e1d73fe9f6184730b5e03e30b731a117726c8326b2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "055fbd3ce084-landed-1314-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/055fbd3ce084-landed-1314-zh-cn.json",
+							"receipt_sha256": "dfe9604dd3620116d789c5a381cc4eef3c09f03682482db3555d41345b4e48c9",
+							"scope": "Landing union only, PR #1314 at b2ad9e3265261299d7059866b5df134204d69cb1: 199 English/target keys read side by side; 21 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval."
 						}
 					],
 					"status": "audited"
