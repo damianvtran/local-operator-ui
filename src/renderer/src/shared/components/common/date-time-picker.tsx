@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Combined date and time field.
  *
@@ -166,6 +168,7 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 	disabled,
 	helperText,
 }) => {
+	useI18nLocale();
 	const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 	const [selectedTime, setSelectedTime] = useState<Date | null>(null);
 	const [dateOpen, setDateOpen] = useState(initialOpen);
@@ -271,10 +274,15 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 							slotProps={{
 								textField: {
 									id: `${baseId}-date-field`,
-									placeholder: "Select date",
+									placeholder: t(
+										"ui.common.actions.date_time_picker.select_date",
+									),
 								},
 								openPickerButton: {
-									"aria-label": `Choose ${label} date`,
+									"aria-label": t(
+										"ui.common.actions.date_time_picker.choose_date",
+										{ label: label },
+									),
 									size: "small",
 								},
 							}}
@@ -293,22 +301,34 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 							slotProps={{
 								textField: {
 									id: `${baseId}-time-field`,
-									placeholder: "Select time",
+									placeholder: t(
+										"ui.common.actions.date_time_picker.select_time",
+									),
 								},
 								openPickerButton: {
-									"aria-label": `Choose ${label} time`,
+									"aria-label": t(
+										"ui.common.actions.date_time_picker.choose_time",
+										{ label: label },
+									),
 									size: "small",
 								},
 							}}
 						/>
 					</div>
-					<Tooltip content="Set to current time">
+					<Tooltip
+						content={t(
+							"ui.common.actions.date_time_picker.set_to_current_time",
+						)}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							onClick={handleSetToCurrent}
 							disabled={disabled}
-							aria-label={`Set ${label} to current time`}
+							aria-label={t(
+								"ui.common.actions.date_time_picker.set_to_current_time369877",
+								{ label: label },
+							)}
 						>
 							<History />
 						</Button>

@@ -88,11 +88,11 @@ const { conversationRows } = await bundleInto(
  */
 const WIRING_FLEET_CALL = /const fleet = data \? fleetFacts\(data\) : null;/;
 const WIRING_SECTION =
-	/<PanelSection title="Agents and subagents" meta=\{fleet\?\.meta\}>/;
+	/<PanelSection\s+title=\{t\("ui\.chat\.pickers\.info_panel\.agents_and_subagents"\)\}\s+meta=\{fleet\?\.meta\}/;
 const WIRING_FACTS = /fleet\.facts\.map\(/;
 const WIRING_CAVEATS = /fleet\.caveats\.map\(/;
 /** The registry notice is spelled ONCE and used at both call sites (M2). */
-const WIRING_NOTICE_USES = /text=\{REGISTRY_UNAVAILABLE_NOTICE\}/g;
+const WIRING_NOTICE_USES = /text=\{REGISTRY_UNAVAILABLE_NOTICE\(\)\}/g;
 const WIRING_NOTICE_LITERAL = /Could not scan the session registry/;
 /** A breakable clause separator, which is what the note must NOT contain. */
 const BREAKABLE_SEPARATOR = / · /;
@@ -435,12 +435,15 @@ test("the refused-count note inflects its own noun", () => {
 });
 
 test("the irregular plural is inflected once, for both the meta and the rows", () => {
-	assert.equal(plural(1, "runtime"), "1 runtime");
-	assert.equal(plural(21, "runtime"), "21 runtimes");
-	assert.equal(plural(1, "trajectory"), "1 trajectory");
-	assert.equal(plural(42, "trajectory"), "42 trajectories");
-	assert.equal(plural(1, "session"), "1 session");
-	assert.equal(plural(0, "subagent"), "0 subagents");
+	// `plural` takes both noun spellings because the ICU message owns the
+	// inflected shape per locale; the call sites still pass one pair, not two
+	// separate number+noun concatenations.
+	assert.equal(plural(1, "runtime", "runtimes"), "1 runtime");
+	assert.equal(plural(21, "runtime", "runtimes"), "21 runtimes");
+	assert.equal(plural(1, "trajectory", "trajectories"), "1 trajectory");
+	assert.equal(plural(42, "trajectory", "trajectories"), "42 trajectories");
+	assert.equal(plural(1, "session", "sessions"), "1 session");
+	assert.equal(plural(0, "subagent", "subagents"), "0 subagents");
 	// And the model actually uses it, rather than a second spelling beside it.
 	const section = fleet({ live: 1, total: 1, subagents_reporting: 1 });
 	assert.equal(section.meta, "1 runtime · 42 trajectories");
@@ -467,7 +470,7 @@ test("the registry notice is one spelling, used by both sections", () => {
 	 * thing keeping them in step (review round 1, M2).
 	 */
 	assert.equal(
-		REGISTRY_UNAVAILABLE_NOTICE,
+		REGISTRY_UNAVAILABLE_NOTICE(),
 		"Could not scan the session registry. Close and reopen this panel to try again.",
 	);
 	const source = readFileSync(join(ROOT, PANEL), "utf8");

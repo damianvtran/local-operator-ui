@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Category picker rendered as dismissible chips.
  *
@@ -22,17 +24,14 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FC, KeyboardEvent } from "react";
 
 /**
- * Map snake_case category to Normal Capital Case for display.
+ * Raw category ids remain the form values. Only lookup maps the real `other` id
+ * to `other_category`, leaving ICU's mandatory `other` arm free to preserve a
+ * genuinely unknown future id verbatim instead of printing the raw `other` id.
  */
-const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
-	ALLOWED_AGENT_CATEGORIES.map((cat) => [
-		cat,
-		cat
-			.split("_")
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-			.join(" "),
-	]),
-);
+const categoryLabel = (category: string): string =>
+	t("ui.common.forms.categories_input_chips.category", {
+		category: category === "other" ? "other_category" : category,
+	});
 
 type CategoriesInputChipsProps = {
 	/** Current categories */
@@ -53,10 +52,11 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 	value,
 	label,
 	onChange,
-	placeholder = "Add category...",
+	placeholder = t("ui.common.forms.categories_input_chips.add_category"),
 	disabled = false,
 	icon,
 }) => {
+	const locale = useI18nLocale();
 	const [inputValue, setInputValue] = useState("");
 	const [isOpen, setIsOpen] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(0);
@@ -67,13 +67,15 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 	const listboxId = useId();
 
 	const availableOptions = useMemo(() => {
+		// Localized search must recompute even when the raw category ids are unchanged.
+		void locale;
 		const query = inputValue.trim().toLowerCase();
 		return ALLOWED_AGENT_CATEGORIES.filter(
 			(opt) =>
 				!value.includes(opt) &&
-				(!query || CATEGORY_LABELS[opt].toLowerCase().includes(query)),
+				(!query || categoryLabel(opt).toLowerCase().includes(query)),
 		);
-	}, [value, inputValue]);
+	}, [value, inputValue, locale]);
 
 	// Keep the active row inside the scroll viewport.
 	useEffect(() => {
@@ -199,10 +201,13 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 			>
 				{value.map((cat) => (
 					<Badge key={cat} className="gap-1 pe-1 text-ink">
-						{CATEGORY_LABELS[cat] || cat}
+						{categoryLabel(cat)}
 						<button
 							type="button"
-							aria-label={`Remove category ${CATEGORY_LABELS[cat] || cat}`}
+							aria-label={t(
+								"ui.common.forms.categories_input_chips.remove_category",
+								{ value: categoryLabel(cat) },
+							)}
 							disabled={disabled}
 							onClick={() => handleDelete(cat)}
 							className={cn(
@@ -279,7 +284,7 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 										"text-ink",
 									)}
 								>
-									{CATEGORY_LABELS[option] || option}
+									{categoryLabel(option)}
 								</div>
 							))}
 						</div>
@@ -288,7 +293,7 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 			</div>
 			{value.length === 0 && (
 				<span className="mt-1 ms-1 block text-ink-dim text-meta">
-					No categories selected
+					{t("ui.common.forms.categories_input_chips.no_categories_selected")}
 				</span>
 			)}
 		</div>
