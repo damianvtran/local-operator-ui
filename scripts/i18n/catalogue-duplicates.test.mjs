@@ -35,6 +35,9 @@ test("the detector catches a duplicate that JSON.parse would swallow", () => {
 
 	// Duplicates are found at any depth, not only at the top level.
 	assert.deepEqual(duplicateKeys('{"a":{"b":{"c":1,"c":2}}}'), ["c"]);
+
+	// ...including inside an array of objects, where a merge can also land one.
+	assert.deepEqual(duplicateKeys('{"list":[{"k":1,"k":2},{"k":3}]}'), ["k"]);
 });
 
 test("no shipped catalogue contains a duplicate key", () => {

@@ -85,14 +85,49 @@ export function duplicateKeys(text) {
 }
 
 /**
- * Decode the escapes a JSON key may carry, so `"\u0061"` and `"a"` are the same
- * key. JSON.parse would collapse them; this scanner compares raw text, so it
- * has to normalise them itself or a `\u`-escaped duplicate is a false negative.
+ * Decode a key's escapes exactly as JSON does.
+ *
+ * A regex for `\uXXXX` alone is wrong in both directions: it leaves `\t` and
+ * `\/` undecoded (false negatives) and it mis-reads `\\u0061`, which is a
+ * literal backslash followed by `u0061`, as the single character `a` (false
+ * positive). Re-parsing the raw token as a JSON string is the only spelling-faithful
+ * decode, because it is the same algorithm that produced the key at parse time.
  */
 function decodeKey(raw) {
-	return raw.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
-		String.fromCharCode(Number.parseInt(hex, 16)),
-	);
+	try {
+		return JSON.parse(`"${raw}"`);
+	} catch {
+		return raw;
+	}
+}
+
+/**
+ * Prove the detector before trusting its verdict.
+ *
+ * CI only ever sees a CLEAN scan, so a detector that silently returned `[]` —
+ * or a CLI that always exited 0 — would stay green forever. These fixtures make
+ * every run exercise both answers: a planted duplicate that `JSON.parse` hides
+ * must be found, and clean input must stay clean. There is no flag: a guard
+ * that has to be asked to check itself will not be asked.
+ */
+export function selfTest() {
+	const dup = duplicateKeys('{"a":1,"b":{"c":"first","c":"second"}}');
+	if (dup.length !== 1 || dup[0] !== "c") {
+		throw new Error(
+			`detector missed a planted duplicate (got ${JSON.stringify(dup)})`,
+		);
+	}
+	if (JSON.parse('{"b":{"c":"first","c":"second"}}').b.c !== "second") {
+		throw new Error(
+			"fixture no longer demonstrates the parser collapsing a duplicate",
+		);
+	}
+	if (duplicateKeys('{"a":{"title":"x"},"b":{"title":"y"}}').length) {
+		throw new Error("detector reported a duplicate across different objects");
+	}
+	if (duplicateKeys('{"a":1,"\u0061":2}').length !== 1) {
+		throw new Error("detector missed an escaped duplicate");
+	}
 }
 
 export function catalogueFiles(dir = DEFAULT_CATALOGUES) {
@@ -131,6 +166,12 @@ if (
 	if (dirFlag !== -1 && !dir) {
 		console.error("check-duplicates: --dir needs a path");
 		process.exit(2);
+	}
+	try {
+		selfTest();
+	} catch (error) {
+		console.error(`check-duplicates: FAILED self-test — ${error.message}`);
+		process.exit(3);
 	}
 	const { scanned, offenders } = findDuplicates(
 		dir ? catalogueFiles(dir) : undefined,
