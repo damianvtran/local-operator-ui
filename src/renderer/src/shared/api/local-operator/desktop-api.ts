@@ -11,7 +11,6 @@ import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
-	DESKTOP_REFUSAL_SENTENCE,
 	desktopEndpoint,
 	desktopRefusalCodeForStatus,
 	desktopRequestDeadlineDetail,
@@ -28,6 +27,7 @@ import {
 	parseDelegatedCleanupNotice,
 	useDelegatedCleanupNoticeStore,
 } from "../../store/delegated-cleanup-notice-store";
+import { desktopRefusalSentence } from "./desktop-refusal-copy";
 
 export type {
 	AuthOperation,
@@ -90,7 +90,7 @@ export async function desktopRequest(
 				);
 			throw new DesktopControlError(
 				null,
-				t("ui.common.errors.desktop_backend_offline"),
+				"Desktop controls could not reach the backend process.",
 				cause,
 			);
 		}
@@ -107,14 +107,14 @@ export async function desktopRequest(
 	} catch (cause) {
 		throw new DesktopControlError(
 			null,
-			t("ui.common.errors.desktop_backend_offline"),
+			"Desktop controls could not reach the backend process.",
 			cause,
 		);
 	}
 	if (!response.ok)
 		throw new DesktopControlError(
 			response.status,
-			t("ui.common.errors.desktop_backend_compatibility"),
+			"Desktop controls need a compatible backend connection.",
 		);
 	return response.json();
 }
@@ -322,7 +322,7 @@ export function userFacingMessage(error: unknown, fallback: string): string {
 		 * rather than at nine call sites.
 		 */
 		if (isDesktopRefusalCode(error.code))
-			return DESKTOP_REFUSAL_SENTENCE[error.code];
+			return desktopRefusalSentence(error.code);
 		if (error.message === DESKTOP_REFUSAL_PLACEHOLDER)
 			return desktopRefusalPlaceholder();
 		return error.message;
@@ -637,7 +637,7 @@ export async function openAuthorization(
 		id: operationId,
 	});
 	if (!operation.auth_url)
-		throw new Error(t("ui.common.errors.sign_in_not_waiting"));
+		throw new Error("This sign-in is no longer waiting for a browser.");
 	const url = new URL(operation.auth_url);
 	if (
 		url.username ||
@@ -648,7 +648,7 @@ export async function openAuthorization(
 				["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)
 			))
 	) {
-		throw new Error(t("ui.common.errors.sign_in_invalid_address"));
+		throw new Error("The provider returned an invalid sign-in address.");
 	}
 	window.open(url.href, "_blank", "noopener,noreferrer");
 }
@@ -785,7 +785,7 @@ export async function desktopMedia(
 	});
 	const type = response.headers.get("content-type") ?? "";
 	if (!response.ok) {
-		let detail = t("ui.common.errors.media_request");
+		let detail = "The media request failed.";
 		let declaredCode: string | undefined;
 		if (type.includes("application/json")) {
 			try {
@@ -867,10 +867,10 @@ export function mediaError(result: DesktopMediaResponse): Error {
 		 */
 		if (isDesktopRefusalCode(result.code))
 			return new UserFacingError(
-				DESKTOP_REFUSAL_SENTENCE[result.code],
+				desktopRefusalSentence(result.code),
 				result.code,
 			);
 		return new Error(result.detail);
 	}
-	return new Error(t("ui.common.errors.media_unexpected_response"));
+	return new Error("The media request returned an unexpected response.");
 }

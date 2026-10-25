@@ -8,5 +8,7 @@
 	"ui.chat.header.transcript_display": "ट्रांसक्रिप्ट प्रदर्शन",
 	"ui.chat.header.delete": "बातचीत हटाएँ…",
 	"ui.chat.header.close_run_details": "रन का विवरण बंद करें",
-	"ui.chat.header.open_run_details": "रन का विवरण खोलें"
+	"ui.chat.header.open_run_details": "रन का विवरण खोलें",
+	"ui.chat.header.new_chat": "नई चैट",
+	"ui.chat.header.new_chat_with": "{target} के साथ नई चैट"
 }

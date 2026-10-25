@@ -1,4 +1,8 @@
 {
+	"ui.common.errors.desktop_refusal.no_credential": "Esta app no está vinculada al servidor de Local Operator en ejecución, así que este control no está disponible.",
+	"ui.common.errors.desktop_refusal.refused": "El servidor de Local Operator en ejecución rechazó la credencial de esta app, así que este control no está disponible.",
+	"ui.common.errors.desktop_refusal.plane_closed": "El servidor de Local Operator en ejecución no acepta los controles de escritorio de esta app.",
+	"ui.common.errors.desktop_refusal.transport_failed": "El servidor de Local Operator no respondió a esta solicitud.",
 	"ui.common.errors.error_boundary.error_details": "Detalles del error",
 	"ui.common.errors.error_boundary.something_went_wrong": "Algo salió mal",
 	"ui.common.errors.error_boundary.stack_trace": "Traza de pila",

@@ -45,6 +45,8 @@
  * to leave the existing name alone.
  */
 
+import { t } from "@shared/i18n";
+
 /**
  * What a conversation reads as before anyone has named it.
  *
@@ -97,7 +99,9 @@ export function resolveChatTitle(input: {
 	const { draftKey, draftSessionId, draftTarget, liveTitle, catalogueTitle } =
 		input;
 	if (draftKey && !draftSessionId)
-		return draftTarget ? `New chat with ${draftTarget}` : "New chat";
+		return draftTarget
+			? t("ui.chat.header.new_chat_with", { target: draftTarget })
+			: t("ui.chat.header.new_chat");
 	if (!isBlankTitle(liveTitle)) return liveTitle as string;
 	if (!isBlankTitle(catalogueTitle)) return catalogueTitle as string;
 	/*
@@ -112,7 +116,7 @@ export function resolveChatTitle(input: {
 	 * send: "New chat". "Untitled chat" is for a conversation that exists and has
 	 * no name, which is not this.
 	 */
-	if (draftKey) return draftTarget ?? "New chat";
+	if (draftKey) return draftTarget ?? t("ui.chat.header.new_chat");
 	return UNTITLED_CHAT;
 }
 

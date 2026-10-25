@@ -1,0 +1,156 @@
+{
+  "schema": "local-operator-ui/i18n-audit-receipt",
+  "kind": "translation-audit-receipt",
+  "round": 1,
+  "locale": "vi",
+  "locale_name": "Tiếng Việt",
+  "batch": "final-eleven-keys",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+  "audited_head": "566fed884558fa38c662b6e4b55c7915f56798a8",
+  "head_note": "The PR head advanced from 566fed8845 to d784571d90 (a revert of a2be7769's chat-counter pluralization) after the audit read; git diff 566fed8845..d784571d90 is empty, so the three vi files and every hash in this receipt are byte-identical at both heads.",
+  "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "merge_base_main": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "previous_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+  "translation_commit": "5f7e78e7904355c3c76f5e1afd815e728e592c84",
+  "badge_fix_commit": "29bd499ed3d76ab662a049670f49a9f2cf7328af",
+  "integration_commit": "a3ba65ee90eea448f0fc256574ac3e8c0346eab3",
+  "date": "2026-10-25",
+  "model": "deepseek/deepseek-flash",
+  "translator": {
+    "agent": "not recorded on the branch",
+    "commits": [
+      "5f7e78e7904355c3c76f5e1afd815e728e592c84",
+      "29bd499ed3d76ab662a049670f49a9f2cf7328af"
+    ],
+    "author": "Damian Tran <damian@gominerva.com>",
+    "note": "The translation and badge-fix commits record no translator agent/model; the branch is authored under the shared account. The manager must supply --translator-agent/--translator-model when creating the absent ledger rows."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "status": "clean",
+  "verdict": "clean — 8/8 error keys read; the four refusal sentences are distinct, accurate and instruction-free; 0 findings. The batch overall is clean-with-findings: 2 minor across header and sidebar, 0 blocker/major/nit.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "4354691259e5",
+    "instance": "vi-final-c6082f69de5b",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session header reports deepseek/deepseek-flash; no narrower underlying id and no fallback were exposed. No other model is claimed.",
+    "independence": "This run audited the Vietnamese bytes at 566fed8845 (translation 5f7e78e790, badge fix 29bd499ed3, integration a3ba65ee90); it authored or edited no catalogue, English, other-locale, ledger, allowance or generated file. Only these three new untracked receipts under i18n/receipts/ were written. The commits record no translator agent/model, so no translator identity is claimed; independence is established by this run reading only the committed bytes.",
+    "date": "2026-10-25"
+  },
+  "instance": "vi-final-c6082f69de5b",
+  "instance_basis": "'vi-final-' plus the first 12 hex of this namespace's current target sha256",
+  "scope": {
+    "batch_keys": 11,
+    "batch_keys_by_namespace": {
+      "ui.chat.header": 2,
+      "ui.chat.sidebar": 5,
+      "ui.common.errors": 4
+    },
+    "namespaces_audited": 3,
+    "namespace_keys_read": 69,
+    "whole_locale_keys": 3824,
+    "whole_locale_namespaces": 75,
+    "whole_locale_missing": 0,
+    "whole_locale_extra": 0,
+    "placeholder_diffs": 0,
+    "icu_parse_failures": 0,
+    "description": "Final-keys audit for vi at 566fed8845 (tree-identical to d784571d90): the eleven batch keys (header 2, sidebar 5, errors 4) plus every other key in the three namespaces, all read semantically against English and the context sidecar. Since the previous vi receipt head d082bd9595, only these eleven vi values changed (three files); no other vi value changed. The badge plural fix (29bd499ed3, merged in a3ba65ee90) is included. Mechanical verification: 3824/3824 whole-locale keys present, 0 extra, 0 placeholder-name differences, 0 ICU parse failures across the three namespaces; all three namespace files and the eleven batch keys were read in full.",
+    "namespace_scope": {
+      "ui.chat.header": {
+        "batch_keys": 2,
+        "head_keys": 12,
+        "changed_keys": 2,
+        "delta_since_d082bd": 2
+      },
+      "ui.chat.sidebar": {
+        "batch_keys": 5,
+        "head_keys": 49,
+        "changed_keys": 5,
+        "delta_since_d082bd": 5
+      },
+      "ui.common.errors": {
+        "batch_keys": 4,
+        "head_keys": 8,
+        "changed_keys": 4,
+        "delta_since_d082bd": 4
+      }
+    }
+  },
+  "namespaces": {
+    "ui.common.errors": {
+      "namespace": "ui.common.errors",
+      "batch_keys": 4,
+      "batch_key_list": [
+        "ui.common.errors.desktop_refusal.no_credential",
+        "ui.common.errors.desktop_refusal.refused",
+        "ui.common.errors.desktop_refusal.plane_closed",
+        "ui.common.errors.desktop_refusal.transport_failed"
+      ],
+      "head_keys": 8,
+      "changed_keys": 4,
+      "sha256": {
+        "en": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+        "context": "33432e29556ed7d91eac12edeff1998b623da3fcb48e3515b045e1e0b5c84049",
+        "target": "c6082f69de5b1ad6f63f6579dec81cb0a24c736cef65478af9b8dcaa7748d8c0"
+      },
+      "status": "clean",
+      "findings": [],
+      "summary": "8/8 keys read, including all four new desktop_refusal sentences. The four diagnoses remain distinct: no credential / not paired; credential refused; running server does not accept the app’s desktop controls; the server did not answer the request. All four keep «Local Operator», add no restart or reconfigure instruction, and use the calm sentence-case register the sidecar asks for. No placeholders in this namespace. The four error_boundary values are accurate; «Dấu vết ngăn xếp» is the standard Vietnamese CS term and the trace body stays untranslated.",
+      "verdict": "clean — 8/8 error keys read; the four refusal sentences are distinct, accurate and instruction-free; 0 findings."
+    }
+  },
+  "findings": [],
+  "observations": [
+    {
+      "key": "ui.common.errors.desktop_refusal.refused",
+      "issue": "«Thông tin xác thực của ứng dụng này cho máy chủ Local Operator đang chạy đã bị từ chối» is accurate; «cho máy chủ» is slightly heavy, and «với máy chủ» or «mà ứng dụng này dùng cho máy chủ» would be smoother.",
+      "recommendation": "No change required; the four refusal codes stay distinct and the sentence names the credential as this app’s own."
+    },
+    {
+      "key": "ui.common.errors.desktop_refusal.plane_closed",
+      "issue": "«các điều khiển máy tính để bàn» renders «desktop controls» literally, matching the es/fr/hi choice for the same code; it describes the app’s desktop controls, not the macOS Desktop folder.",
+      "recommendation": "No change; keep the literal rendering consistent with the other locales."
+    },
+    {
+      "key": "ui.common.errors.error_boundary.stack_trace",
+      "issue": "«Dấu vết ngăn xếp» is the standard Vietnamese CS term for stack trace (ngăn xếp = stack, dấu vết = trace); the trace body below stays untranslated per the sidecar.",
+      "recommendation": "No change."
+    }
+  ],
+  "totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "keys_read": 8,
+    "batch_keys": 4
+  },
+  "limitations": [
+    "No rendered app frame was captured; the width finding is a character-cell measurement against the sidecar budgets, not a screenshot or a measured overflow.",
+    "No native-speaker sign-off is claimed; this is an independent agent audit against the vi style guide and glossary.",
+    "The repository’s full pnpm check-i18n gate was not run; the mechanical checks (whole-locale key parity, ICU parse, placeholder names, NFC, token counts, plural rendering with intl-messageformat) were run directly on the committed bytes at 566fed8845 (tree-identical to d784571d90).",
+    "The translation and badge-fix commits record no translator agent/model; the branch is authored under the shared account."
+  ],
+  "run_receipts": [
+    "i18n/receipts/vi-final-bae711b8664e.json (ui.chat.header)",
+    "i18n/receipts/vi-final-6e9c1ff48a0b.json (ui.chat.sidebar)",
+    "i18n/receipts/vi-final-c6082f69de5b.json (ui.common.errors)"
+  ]
+}

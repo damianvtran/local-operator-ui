@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "es",
+  "namespace": "ui.common.errors",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "date": "2026-10-25",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "instance": "es-bind-9f3835e7f6fc",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator on any parent wave",
+    "instance": "es-bind-9f3835e7f6fc",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Session banner reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run.",
+    "independence": "This session authored no catalogue, ledger, allowance or code change for PR #1403 or its parent waves. It writes only this receipt and its three sibling locale receipts. Parent receipts cited here were produced by other translation-auditor runs; this run re-read and re-bound the current head bytes."
+  },
+  "status": "passed",
+  "result": "clean",
+  "binding": "Convergence re-bind audit for the post-merge head: the receipt binds the exact current English, context and Spanish bytes, proves key/ICU parity and the parent-union provenance, and carries forward only findings that are still true on these bytes. It is not a translation of anything.",
+  "en_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+  "context_sha256": "33432e29556ed7d91eac12edeff1998b623da3fcb48e3515b045e1e0b5c84049",
+  "target_sha256": "9f3835e7f6fcd60f2753e472be46da0470a6016b0f2fd8d0556978145a598633",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "path_note": "Core guidance read in the shared core checkout; the three hashes match the es-extract-a815d841bd5d-r2 audit's references, so the guidance revision is unchanged since the parent audit."
+  },
+  "limitations": [
+    "Static catalogue audit only: no browser, build, install, heavy suite or rendered frame was produced; width checks are code-point arithmetic against the English context sidecar hints, not measured pixels.",
+    "No native-speaker sign-off is claimed; the catalogue values are the subject, and component call sites were read only to establish UI role and placeholder meaning.",
+    "No catalogue, context, generator, ledger or allowance file was edited by this run. The receipt is written under i18n/receipts/ for the implementer to bind."
+  ],
+  "scope": "Full ui.common.errors namespace (8 keys; main's 4 error-boundary keys plus 4 new desktop_refusal sentences), read at PR #1403 head 0adbb37b94 against the English source and the en context sidecar.",
+  "revisions": {
+    "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+    "main_at_merge": "91aa8f5f10797184d01c41143d1a3645176b566b",
+    "branch_pre_merge_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+    "last_content_head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+    "note": "The en/context/es blobs are byte-identical to d784571d90; the merge touched no es errors bytes."
+  },
+  "checks": {
+    "keys": {
+      "merged": 8,
+      "main": 4,
+      "added_by_branch_commits": 4,
+      "shared": 4,
+      "only_main": 0,
+      "only_branch": 4
+    },
+    "key_set_equals_english": true,
+    "key_order_equals_english": true,
+    "missing_vs_english": [],
+    "extra_vs_english": [],
+    "main_values_changed": [],
+    "english_values_changed": [],
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "messages_parsed": 8,
+      "messages_total": 8,
+      "plural_messages": 0,
+      "select_messages": 0,
+      "placeholders": 0,
+      "findings": []
+    },
+    "format_bytes": {
+      "utf8": true,
+      "bom": false,
+      "crlf": false,
+      "trailing_newline": true,
+      "duplicate_keys": [],
+      "tab_indented": true
+    },
+    "terminology_matches_established_es_reuse": {
+      "vinculada": "ui.projects.projects_page.this_app_is_not_paired_with_the_local_operator_server_so_projects",
+      "servidor no respondió": "ui.agents.starters.server_unanswered",
+      "rechazó": "ui.projects.project_detail.the_link_was_refused",
+      "credencial": "ui.providers.phone.account; ui.common.models.hosting_select.detail"
+    },
+    "prior_audit_provenance": {
+      "last_full_8_key_audit": "working-tree prior pass i18n/receipts/es-final-4a33077e20ef-ui.common.errors.json (untracked at the PR head) at d784571d90 (clean)",
+      "current_ledger_receipt": "i18n/receipts/bf867ef95b69.json binds the pre-merge main bytes (clean)",
+      "earlier_receipt_at_main_bytes": "i18n/receipts/bf867ef95b69.json (clean)"
+    }
+  },
+  "findings": [],
+  "observations": [
+    "All four desktop_refusal sentences are calm factual diagnoses in the second person (tú), sentence case, full stop, no instruction or blame; app, vinculada, servidor and control are the audited house terms.",
+    "No names, flags, paths or identifiers inside the sentences were translated; Local Operator is kept exactly.",
+    "No value is identical to English. The four new desktop_refusal sentences run 1.11-1.19x their English length, inside the es 15-25% norm; the pre-existing error_details heading is 18 characters against 13 but has no sidecar budget and no clipping risk."
+  ],
+  "method": [
+    "Read the English source, its .context sidecar and the Spanish target from git objects at the PR head; no catalogue or ledger file was modified.",
+    "Compared key sets and order: es equals the English 8-key set in English order; main's 4 keys are unchanged.",
+    "Parsed all 8 messages with @formatjs/icu-messageformat-parser 3.5.21: no placeholders, plurals, selects or number/date skeletons, so no ICU surface exists in this namespace.",
+    "Compared the four new sentences value-by-value against English and against the app's existing es pairing, refusal and credential strings; read register and typography against the es style guide.",
+    "Checked byte hygiene: UTF-8, no BOM, LF only, trailing newline, no duplicate keys."
+  ],
+  "verdict": "clean — 8 keys read; 0 blocker, 0 major, 0 minor, 0 nit. All four new desktop_refusal sentences are accurate and match the app's established pairing and refusal voice, with no instruction or blame added."
+}

@@ -1,4 +1,24 @@
 {
+	"ui.common.errors.desktop_refusal.no_credential": {
+		"role": "diagnosis shown when the app holds no credential for the running server",
+		"tone": "calm factual explanation, sentence case, full stop",
+		"note": "Composed from the refusal CODE by the renderer transport, never from the daemon's own prose. It states a pairing fact about this app and the server it is talking to; it is not an instruction to restart or reconfigure anything. 'Local Operator' is the product name and stays in English."
+	},
+	"ui.common.errors.desktop_refusal.refused": {
+		"role": "diagnosis shown when the running server refused this app's credential",
+		"tone": "calm factual explanation, sentence case, full stop",
+		"note": "Composed from the refusal code. Names the credential as this app's own and the server as the one running: the fact is that the pairing was rejected, not that the app was never paired. 'Local Operator' is the product name and stays in English."
+	},
+	"ui.common.errors.desktop_refusal.plane_closed": {
+		"role": "diagnosis shown when the running server does not serve the desktop control plane",
+		"tone": "calm factual statement, sentence case, full stop",
+		"note": "Composed from the refusal code; it describes a server started without the desktop controls, which a restart by hand may change - the sentence deliberately gives no instruction. 'Local Operator' is the product name and stays in English."
+	},
+	"ui.common.errors.desktop_refusal.transport_failed": {
+		"role": "diagnosis shown when a desktop control got no answer from the server",
+		"tone": "calm factual statement, sentence case, full stop",
+		"note": "Composed from the refusal code when the request never completed: nothing was established about the server's pairing state, so the sentence claims only that no answer arrived. 'Local Operator' is the product name and stays in English."
+	},
 	"ui.common.errors.error_boundary.error_details": {
 		"role": "heading",
 		"tone": "Technical noun phrase.",

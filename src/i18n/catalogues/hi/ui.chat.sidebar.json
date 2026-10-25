@@ -6,8 +6,13 @@
 	"ui.chat.sidebar.agents.filter": "एजेंट फ़िल्टर करें",
 	"ui.chat.sidebar.agents.loading": "एजेंट लोड हो रहे हैं…",
 	"ui.chat.sidebar.agents.no_match": "कोई एजेंट मेल नहीं खाता",
+	"ui.chat.sidebar.agents.builtin_offer": "{count, plural, =0 {कोई अंतर्निहित एजेंट इंस्टॉल के लिए तैयार नहीं है — {list}। इंस्टॉल होने के बाद आप उन्हें संपादित कर सकते हैं।} one {एक अंतर्निहित एजेंट इंस्टॉल के लिए तैयार है — {list}। इंस्टॉल होने के बाद आप उसे संपादित कर सकते हैं।} =2 {दो अंतर्निहित एजेंट इंस्टॉल के लिए तैयार हैं — {list}। इंस्टॉल होने के बाद आप उन्हें संपादित कर सकते हैं।} =3 {तीन अंतर्निहित एजेंट इंस्टॉल के लिए तैयार हैं — {list}। इंस्टॉल होने के बाद आप उन्हें संपादित कर सकते हैं।} =4 {चार अंतर्निहित एजेंट इंस्टॉल के लिए तैयार हैं — {list}। इंस्टॉल होने के बाद आप उन्हें संपादित कर सकते हैं।} =5 {पाँच अंतर्निहित एजेंट इंस्टॉल के लिए तैयार हैं — {list}। इंस्टॉल होने के बाद आप उन्हें संपादित कर सकते हैं।} =6 {छह अंतर्निहित एजेंट इंस्टॉल के लिए तैयार हैं — {list}। इंस्टॉल होने के बाद आप उन्हें संपादित कर सकते हैं।} other {{count, number, ::group-off} अंतर्निहित एजेंट इंस्टॉल के लिए तैयार हैं — {list}। इंस्टॉल होने के बाद आप उन्हें संपादित कर सकते हैं।}}",
+	"ui.chat.sidebar.catalogue.total": "कुल {total, number, ::group-off} चैट में से {shown, number, ::group-off} दिखाई जा रही हैं",
+	"ui.chat.sidebar.catalogue.total_search": "कुल {total, number, ::group-off} चैट में से {shown, number, ::group-off} मिलान {shown, plural, one {दिखाया जा रहा है} other {दिखाए जा रहे हैं}}",
+	"ui.chat.sidebar.catalogue.total_search_clipped": "कुल {total, number, ::group-off} चैट में से {shown, number, ::group-off}+ मिलान {shown, plural, one {दिखाया जा रहा है} other {दिखाए जा रहे हैं}}",
 	"ui.chat.sidebar.drafts.clear_all": "सभी मिटाएँ",
 	"ui.chat.sidebar.drafts.clear_all_label": "सभी ड्राफ़्ट मिटाएँ",
+	"ui.chat.sidebar.groups.badge": "इस समूह में {badge, plural, one {{badge, number, ::group-off} चैट} other {{badge, number, ::group-off} चैट}}",
 	"ui.chat.sidebar.header.create": "नया एजेंट या नई टीम",
 	"ui.chat.sidebar.header.create_agent": "नया एजेंट",
 	"ui.chat.sidebar.header.create_team": "नई टीम",
@@ -40,6 +45,7 @@
 	"ui.chat.sidebar.search.searching": "बातचीतें खोजी जा रही हैं…",
 	"ui.chat.sidebar.search.too_long": "खोज में अधिकतम {max, number, ::group-off} अक्षर हो सकते हैं। यह खोज लंबी है, इसलिए सिर्फ़ चैट के नाम खोजे जा रहे हैं।",
 	"ui.chat.sidebar.search.unavailable": "बातचीत खोज उपलब्ध नहीं है, इसलिए ये परिणाम नामों के मिलान हैं।",
+	"ui.chat.sidebar.section.current_chat": "मौजूदा चैट",
 	"ui.chat.sidebar.teams.create": "टीम बनाएँ",
 	"ui.chat.sidebar.teams.loading": "टीमें लोड हो रही हैं…"
 }

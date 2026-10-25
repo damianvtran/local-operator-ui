@@ -1,4 +1,8 @@
 {
+	"ui.common.errors.desktop_refusal.no_credential": "This app is not paired with the running Local Operator server, so this control is unavailable.",
+	"ui.common.errors.desktop_refusal.refused": "This app's credential for the running Local Operator server was refused, so this control is unavailable.",
+	"ui.common.errors.desktop_refusal.plane_closed": "The running Local Operator server does not accept this app's desktop controls.",
+	"ui.common.errors.desktop_refusal.transport_failed": "The Local Operator server did not answer this request.",
 	"ui.common.errors.error_boundary.error_details": "Error details",
 	"ui.common.errors.error_boundary.something_went_wrong": "Something went wrong",
 	"ui.common.errors.error_boundary.stack_trace": "Stack trace",

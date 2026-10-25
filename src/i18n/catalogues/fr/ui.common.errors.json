@@ -1,4 +1,8 @@
 {
+	"ui.common.errors.desktop_refusal.no_credential": "Cette application n’est pas appairée avec le serveur Local Operator en cours d’exécution, donc ce contrôle est indisponible.",
+	"ui.common.errors.desktop_refusal.refused": "L’identifiant de cette application auprès du serveur Local Operator en cours d’exécution a été refusé, donc ce contrôle est indisponible.",
+	"ui.common.errors.desktop_refusal.plane_closed": "Le serveur Local Operator en cours d’exécution n’accepte pas les contrôles de bureau de cette application.",
+	"ui.common.errors.desktop_refusal.transport_failed": "Le serveur Local Operator n’a pas répondu à cette requête.",
 	"ui.common.errors.error_boundary.error_details": "Détails de l’erreur",
 	"ui.common.errors.error_boundary.something_went_wrong": "Un problème est survenu",
 	"ui.common.errors.error_boundary.stack_trace": "Trace de la pile",

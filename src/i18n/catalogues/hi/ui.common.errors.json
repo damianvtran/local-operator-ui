@@ -1,4 +1,8 @@
 {
+	"ui.common.errors.desktop_refusal.no_credential": "यह ऐप चल रहे Local Operator सर्वर से पेयर नहीं है, इसलिए यह नियंत्रण उपलब्ध नहीं है।",
+	"ui.common.errors.desktop_refusal.refused": "चल रहे Local Operator सर्वर ने इस ऐप का क्रेडेंशियल अस्वीकार कर दिया, इसलिए यह नियंत्रण उपलब्ध नहीं है।",
+	"ui.common.errors.desktop_refusal.plane_closed": "चल रहा Local Operator सर्वर इस ऐप के डेस्कटॉप नियंत्रण स्वीकार नहीं करता।",
+	"ui.common.errors.desktop_refusal.transport_failed": "Local Operator सर्वर ने इस अनुरोध का जवाब नहीं दिया।",
 	"ui.common.errors.error_boundary.error_details": "त्रुटि का विवरण",
 	"ui.common.errors.error_boundary.something_went_wrong": "कुछ गड़बड़ हुई",
 	"ui.common.errors.error_boundary.stack_trace": "स्टैक ट्रेस",

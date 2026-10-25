@@ -101,6 +101,16 @@ const bundle = await build({
 				 * resolution for this suite's shape - it reads a plain document with no
 				 * provider, exactly the condition the module exists for.
 				 */
+				/*
+				 * THE I18N CORE, resolved to its REAL file and to the CORE rather than the
+				 * renderer door: the paging model paints catalogue copy now, and the door
+				 * pulls `desktop-hooks` (a query client this node harness has no use for),
+				 * while `t` is the framework-free module's own export. The rendering suites
+				 * that paint through React keep using the door.
+				 */
+				builder.onResolve({ filter: /^@shared\/i18n$/ }, () => ({
+					path: `${process.cwd()}/src/i18n/index.ts`,
+				}));
 				builder.onResolve(
 					{ filter: /^@shared\/hooks\/use-optional-query-client$/ },
 					() => ({

@@ -1,0 +1,16 @@
+{
+	"ui.chat.device.label.moving_to": "Перемещение на {name}",
+	"ui.chat.device.label.new_on": "Новое на {name}",
+	"ui.chat.device.label.new_on_this_device": "Новое здесь",
+	"ui.chat.device.label.on": "На {name}",
+	"ui.chat.device.label.on_this_device": "На этом устройстве",
+	"ui.chat.device.sentence.draft_elsewhere": "Новые разговоры создаются на {name}. Нажмите, чтобы выбрать другое устройство.",
+	"ui.chat.device.sentence.draft_here": "Новые разговоры создаются на этом устройстве. Нажмите, чтобы выбрать другое устройство.",
+	"ui.chat.device.sentence.gone": "Этот разговор перемещён на {name}. Копия, которая была здесь, удалена. Нажмите, чтобы вернуть его сюда.",
+	"ui.chat.device.sentence.gone_did_not_answer": "Этот разговор перемещён на {name}: последний запрос чтения остался без ответа. Копия, которая была здесь, удалена. Нажмите, чтобы вернуть его сюда.",
+	"ui.chat.device.sentence.local": "Этот разговор выполняется на этом устройстве. Нажмите, чтобы переместить его на другое устройство или вернуть позже.",
+	"ui.chat.device.sentence.moving": "Перемещение этого разговора на {name}.",
+	"ui.chat.device.sentence.remote": "Этот разговор выполняется на {name}. Нажмите, чтобы вернуть его сюда или переместить дальше.",
+	"ui.chat.device.sentence.remote_did_not_answer": "Этот разговор выполняется на {name}: последний запрос чтения остался без ответа.",
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "Этот разговор выполняется на {name}: последний запрос чтения остался без ответа ({reason})."
+}

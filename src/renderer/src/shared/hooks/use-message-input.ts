@@ -1,4 +1,3 @@
-import { t } from "../../../../i18n/messages";
 /**
  * Whether this composer has to be SEEDED from the conversation it is showing.
  *
@@ -35,8 +34,18 @@ export const shouldReinitialiseComposer = (
  * Hook for managing message input with robust per-conversation persistence and log-based history navigation.
  */
 
+/*
+ * THE CORE, BY A RELATIVE SPECIFIER (this file's existing reason, one door
+ * along): `@shared/i18n` re-exports the renderer's query-client writer, so a
+ * suite that bundles THIS hook by hand - `echo-delivery.test.mjs` does, with a
+ * minimal React stub - would drag the query client and `useContext` into its
+ * bundle for a `t()` that needs neither. The singular formatter entry point is
+ * the core module itself, which imports nothing from the renderer.
+ */
+import type { MessageKey } from "@shared/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+import { t } from "../../../../i18n/messages";
 // The chip objects this module writes back when a refusal hands a payload over
 // are minted here rather than carried from the send, exactly as the composer's
 // own restore writes them (`message-input.tsx`'s `addAttachment(conversationId,
@@ -283,16 +292,19 @@ export const joinTranscript = (draft: string, text: string): string => {
  * for the two grammars the box accepts (`@` and `/`), which nothing on screen
  * mentioned before.
  */
+/**
+ * The table holds MESSAGE KEYS; `composerPlaceholder` resolves the one it
+ * returns with `t()`.
+ *
+ * KEYS RATHER THAN COPY, because this module is loaded once: an English table
+ * here froze the empty box's sentence in whatever language the renderer started
+ * in, and it is the sentence a reader sees more often than any other. The
+ * ladder's ORDER is unchanged and stays locale-independent.
+ */
 export const COMPOSER_PLACEHOLDER = {
-	get unavailable() {
-		return t("ui.chat.composer.placeholder.unavailable");
-	},
-	get busy() {
-		return t("ui.chat.composer.placeholder.busy");
-	},
-	get answer() {
-		return t("ui.chat.composer.placeholder.answer");
-	},
+	unavailable: "ui.chat.composer.placeholder.unavailable",
+	busy: "ui.chat.composer.placeholder.busy",
+	answer: "ui.chat.composer.placeholder.answer",
 	/*
 	 * A SECRET ASK'S OWN SENTENCE, and it is not `answer`'s: the ordinary
 	 * answer arm invites typing into this box, which is exactly what a secret
@@ -309,19 +321,13 @@ export const COMPOSER_PLACEHOLDER = {
 	 * question dock, and both are the ask's own panel, which is why the copy names the
 	 * panel rather than this box's neighbourhood.
 	 */
-	get secretAnswer() {
-		return t("ui.chat.composer.placeholder.secret_answer");
-	},
+	secretAnswer: "ui.chat.composer.placeholder.secret_answer",
 	/*
 	 * The exit is named beside the verb for the reason the `@` list's own line
 	 * names its ("Nothing to insert · Esc closes").
 	 */
-	get aside() {
-		return t("ui.chat.composer.placeholder.aside");
-	},
-	get sending() {
-		return t("ui.chat.composer.placeholder.sending");
-	},
+	aside: "ui.chat.composer.placeholder.aside",
+	sending: "ui.chat.composer.placeholder.sending",
 	/*
 	 * THE PRESS GETS ITS ANSWER WHERE THE FINGER IS (design round 1, D6): during
 	 * the press's own window the stop square is pixel-identical and the rung is
@@ -330,9 +336,7 @@ export const COMPOSER_PLACEHOLDER = {
 	 * composer's existing idiom, with the transcript's line still the turn's one
 	 * liveness element (`waiting`'s sibling rule).
 	 */
-	get stopping() {
-		return t("ui.chat.composer.placeholder.stopping");
-	},
+	stopping: "ui.chat.composer.placeholder.stopping",
 	/**
 	 * WHILE A TAKE IS LIVE, THE BOX'S OWN KEYS ARE THE RECORDING'S (UX round 1,
 	 * U1). Enter confirms the take and Esc cancels it - rung 4 of the interrupt
@@ -349,23 +353,15 @@ export const COMPOSER_PLACEHOLDER = {
 	 * label row is the one, stable place for the affordance; this placeholder
 	 * keeps only the state's name.
 	 */
-	get recording() {
-		return t("ui.chat.composer.placeholder.recording");
-	},
-	get waiting() {
-		return t("ui.chat.composer.placeholder.waiting");
-	},
+	recording: "ui.chat.composer.placeholder.recording",
+	waiting: "ui.chat.composer.placeholder.waiting",
 	/**
 	 * Nothing connected: the invitation would be a lie, and this is the one
 	 * sentence that names the action instead (design audit section 6).
 	 */
-	get noProvider() {
-		return t("ui.chat.composer.placeholder.no_provider");
-	},
-	get idle() {
-		return t("ui.chat.composer.placeholder.idle");
-	},
-} as const;
+	noProvider: "ui.chat.composer.placeholder.no_provider",
+	idle: "ui.chat.composer.placeholder.idle",
+} as const satisfies Record<string, MessageKey>;
 
 /**
  * The one sentence the box's placeholder slot carries, first match wins.
@@ -457,21 +453,21 @@ export const composerPlaceholder = (state: {
 	 */
 	hostLine?: string | null;
 }): string => {
-	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
-	if (state.secretAnswer) return COMPOSER_PLACEHOLDER.secretAnswer;
+	if (state.unavailable) return t(COMPOSER_PLACEHOLDER.unavailable);
+	if (state.secretAnswer) return t(COMPOSER_PLACEHOLDER.secretAnswer);
 	if (
 		state.hostLine &&
 		(state.inputDisabled || state.sendingUnsettled || state.awaitingReply)
 	)
 		return state.hostLine;
-	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
-	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
-	if (state.asideAttached) return COMPOSER_PLACEHOLDER.aside;
-	if (state.stopping) return COMPOSER_PLACEHOLDER.stopping;
-	if (state.sendingUnsettled) return COMPOSER_PLACEHOLDER.sending;
-	if (state.awaitingReply) return COMPOSER_PLACEHOLDER.waiting;
-	if (state.noProvider) return COMPOSER_PLACEHOLDER.noProvider;
-	return state.idle ?? COMPOSER_PLACEHOLDER.idle;
+	if (state.inputDisabled) return t(COMPOSER_PLACEHOLDER.busy);
+	if (state.awaitingAnswer) return t(COMPOSER_PLACEHOLDER.answer);
+	if (state.asideAttached) return t(COMPOSER_PLACEHOLDER.aside);
+	if (state.stopping) return t(COMPOSER_PLACEHOLDER.stopping);
+	if (state.sendingUnsettled) return t(COMPOSER_PLACEHOLDER.sending);
+	if (state.awaitingReply) return t(COMPOSER_PLACEHOLDER.waiting);
+	if (state.noProvider) return t(COMPOSER_PLACEHOLDER.noProvider);
+	return state.idle ?? t(COMPOSER_PLACEHOLDER.idle);
 };
 
 /**

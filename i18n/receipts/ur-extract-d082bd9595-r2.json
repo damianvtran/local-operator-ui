@@ -1,0 +1,251 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-receipt",
+	"locale": "ur",
+	"locale_name": "Urdu",
+	"batch": "extract",
+	"pr": 1403,
+	"branch": "feat/i18n-key-remaining-copy",
+	"head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+	"base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+	"date": "2026-10-24",
+	"round": 2,
+	"auditor": {
+		"agent": "translation-auditor",
+		"harness": "Local Operator",
+		"team": "lopdev",
+		"session": "1a4ce3c4462e",
+		"instance": "ur-extract-d082bd9595-r2",
+		"model": "deepseek/deepseek-flash",
+		"model_provenance": "Harness session model tag deepseek/deepseek-flash; no fallback was observed and no role or default pin was changed. No other model is claimed.",
+		"independence": "Independent auditor, a different session from both the round-1 auditor and the implementer/translator. Read-only pass over git objects at the recorded head; this session edited no catalogue value and made no commit. The receipt file is the only artefact written.",
+		"date": "2026-10-24"
+	},
+	"model": "deepseek/deepseek-flash",
+	"instance": "ur-extract-d082bd9595-r2",
+	"status": "passed",
+	"reference": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		}
+	},
+	"round_1_reference": {
+		"receipt": "i18n/receipts/ur-extract-9b95e02e2843.json",
+		"head": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+		"sha256": "8eb0a57a6f95bb47c891e6c27cd5d16fb7ed0d745a8d78c219a0a33dff0af6a4"
+	},
+	"audit_scope": "Round 2 re-audit of the same 134 English keys this PR adds across the 7 namespaces, at head d082bd95 after the round-1 remediation. All 87 keys in the three changed namespaces (ui.chat.composer 30, ui.chat.device 14, ui.chat.directory 43) were re-read against their en value and en .context.json sidecar. The other 47 keys in ui.chat, ui.chat.dialogs, ui.chat.sidebar and ui.common.viewer were carried only after their en, ur and context bytes proved identical to the round-1 receipt.",
+	"method": "Re-read the changed keys manually; verified the ur diff f517ec48..d082bd95 is exactly 5 insertions and 5 deletions across the three changed files, matching the five round-1 proposals with no other ur catalogue change. Mechanically recomputed key parity, ICU structure with @formatjs/icu-messageformat-parser, placeholder names, manual bidi controls, ZWNJ/ZWJ, forbidden script/punctuation, NFC and maxCells; recomputed all en/context/target sha256 values from git blobs at head and compared the four unchanged namespaces with the round-1 receipt. Ran the locale/activation and coverage gates in a throwaway worktree pinned to head with the primary checkout's node_modules linked.",
+	"mechanical_checks": {
+		"keys_audited": 134,
+		"namespaces": 7,
+		"keys_reread_in_changed_namespaces": 87,
+		"unchanged_namespaces_byte_identical": 4,
+		"key_parity_missing": 0,
+		"key_parity_extra": 0,
+		"icu_argument_sets_identical": "134/134",
+		"icu_select_messages_checked": 14,
+		"icu_plural_messages_in_batch": 0,
+		"placeholder_names_missing_or_renamed": 0,
+		"manual_bidi_controls": 0,
+		"control_set_diffs_vs_round_1": 0,
+		"zwj_zwnj": 0,
+		"forbidden_script_or_punctuation": 0,
+		"nfc_normalised": "134/134",
+		"ascii_question_semicolon_bang": 0,
+		"terminal_punctuation_class_changes": 0,
+		"punctuation_note": "Urdu ۔ is the locale's full stop and was not counted as a punctuation-class change against English '.'; the two menu ellipses stay U+2026 as established in round 1.",
+		"maxCells_keys_checked": 7,
+		"maxCells_over_budget": 0,
+		"changed_value_widths": {
+			"ui.chat.composer.tip.approvals": {
+				"en_cells": 46,
+				"ur_cells": 54
+			},
+			"ui.chat.device.label.moving_to": {
+				"en_cells": 16,
+				"ur_cells": 16,
+				"maxCells": 24
+			},
+			"ui.chat.directory.enter_path_label": {
+				"en_cells": 22,
+				"ur_cells": 24
+			},
+			"ui.chat.directory.enter_path_placeholder": {
+				"en_cells": 20,
+				"ur_cells": 27
+			},
+			"ui.chat.directory.menu.enter_custom": {
+				"en_cells": 20,
+				"ur_cells": 25
+			}
+		},
+		"rendered_fit": "not performed in this pass: widths are cell counts only, no browser or Electron frame was captured"
+	},
+	"remediation": [
+		{
+			"finding": "UR-EXTRACT-05",
+			"status": "fixed",
+			"namespace": "ui.chat.composer",
+			"key": "ui.chat.composer.tip.approvals",
+			"previous": "لکھیں /approvals تاکہ طے ہو کہ ٹول پہلے پوچھیں یا نہیں",
+			"current": "/approvals لکھیں تاکہ طے ہو کہ ٹول پہلے پوچھیں یا نہیں",
+			"verification": "Matches the round-1 proposal byte-for-byte; the command now leads the clause and the Urdu object-first order is idiomatic."
+		},
+		{
+			"finding": "UR-EXTRACT-04",
+			"status": "fixed",
+			"namespace": "ui.chat.device",
+			"key": "ui.chat.device.label.moving_to",
+			"previous": "{name} پر منتقلی جاری ہے",
+			"current": "{name} پر منتقلی",
+			"verification": "Matches the round-1 proposal byte-for-byte; width is now 16 cells, the same as English, against maxCells 24."
+		},
+		{
+			"finding": "UR-EXTRACT-01",
+			"status": "fixed",
+			"namespace": "ui.chat.directory",
+			"key": "ui.chat.directory.enter_path_label",
+			"previous": "ورکنگ ڈائریکٹری کا پاتھ",
+			"current": "ورکنگ ڈائریکٹری کا راستہ",
+			"verification": "Matches the round-1 proposal; راستہ is now the term in all 12 path-bearing ur values except one pre-existing outlier outside this batch."
+		},
+		{
+			"finding": "UR-EXTRACT-02",
+			"status": "fixed",
+			"namespace": "ui.chat.directory",
+			"key": "ui.chat.directory.enter_path_placeholder",
+			"previous": "ڈائریکٹری کا پاتھ درج کریں",
+			"current": "ڈائریکٹری کا راستہ درج کریں",
+			"verification": "Matches the round-1 proposal; same راستہ term as the label beside it."
+		},
+		{
+			"finding": "UR-EXTRACT-03",
+			"status": "fixed",
+			"namespace": "ui.chat.directory",
+			"key": "ui.chat.directory.menu.enter_custom",
+			"previous": "حسب ضرورت پاتھ درج کریں…",
+			"current": "حسب ضرورت راستہ درج کریں…",
+			"verification": "Matches the round-1 proposal; same راستہ term as the two field strings above."
+		}
+	],
+	"namespaces": {
+		"ui.chat.composer": {
+			"status": "passed",
+			"keys": 30,
+			"en_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+			"ur_sha256": "73b1d6ee3b51609d1571611a2c588171d2be01816dfaea71f1585eb9f568d270",
+			"context_sha256": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c",
+			"findings": [],
+			"round_1_bytes_identical": false,
+			"round_1_ur_sha256": "7220bd7a17206b1fc239d6b432d78f9c6365392b254f6c98c7974fb2e7d62045"
+		},
+		"ui.chat": {
+			"status": "passed",
+			"keys": 36,
+			"en_sha256": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+			"ur_sha256": "c6d08385cb342f4e4df838b8a770d0e57f2a7588b87ffcdf0b4c154e487a5299",
+			"context_sha256": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424",
+			"findings": [],
+			"round_1_bytes_identical": true,
+			"round_1_ur_sha256": "c6d08385cb342f4e4df838b8a770d0e57f2a7588b87ffcdf0b4c154e487a5299"
+		},
+		"ui.chat.device": {
+			"status": "passed",
+			"keys": 14,
+			"en_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+			"ur_sha256": "9b33549c6af41911f599f77a7d6b648b398ce153256dcc3cac388b3fe26456ad",
+			"context_sha256": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce",
+			"findings": [],
+			"round_1_bytes_identical": false,
+			"round_1_ur_sha256": "c8771b11f9e5da56a6f9ccd62de256fe44d3a759bdf98bdc292220a5f665149b"
+		},
+		"ui.chat.dialogs": {
+			"status": "passed",
+			"keys": 6,
+			"en_sha256": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+			"ur_sha256": "f10a8633804b790aa3ded67ba1845923a3290b0bb501f0211bc3efa7a1648413",
+			"context_sha256": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299",
+			"findings": [],
+			"round_1_bytes_identical": true,
+			"round_1_ur_sha256": "f10a8633804b790aa3ded67ba1845923a3290b0bb501f0211bc3efa7a1648413"
+		},
+		"ui.chat.directory": {
+			"status": "passed",
+			"keys": 43,
+			"en_sha256": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+			"ur_sha256": "04e3bc9b5265b5d1e371e5727d61c95b8a0133dd09ee22f9d566ec4e5e83810d",
+			"context_sha256": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8",
+			"findings": [],
+			"round_1_bytes_identical": false,
+			"round_1_ur_sha256": "f8d1b6ebb6b1def9937d459da848b9bc55d520265260736e647b34549df565fd"
+		},
+		"ui.chat.sidebar": {
+			"status": "passed",
+			"keys": 1,
+			"en_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+			"ur_sha256": "b0f865f4a7dbbb405a2fcdfa1676659ed6544ce33f9396002836bff1faeaf19c",
+			"context_sha256": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de",
+			"findings": [],
+			"round_1_bytes_identical": true,
+			"round_1_ur_sha256": "b0f865f4a7dbbb405a2fcdfa1676659ed6544ce33f9396002836bff1faeaf19c"
+		},
+		"ui.common.viewer": {
+			"status": "passed",
+			"keys": 4,
+			"en_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+			"ur_sha256": "118e8cf4bd36a8d9e115d8214d26cac59483b708ab2a0909f4fc49877819e29b",
+			"context_sha256": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5",
+			"findings": [],
+			"round_1_bytes_identical": true,
+			"round_1_ur_sha256": "118e8cf4bd36a8d9e115d8214d26cac59483b708ab2a0909f4fc49877819e29b"
+		}
+	},
+	"findings": [],
+	"observations": [
+		{
+			"class": "glossary-outlier-outside-batch",
+			"key": "ui.chat.highlights.file_resolution_failed",
+			"note": "This pre-existing ur value still uses پاتھ. It was outside the 134-key batch in round 1 and is unchanged here, so it is carried as an observation for the lane, not counted as a round-2 finding."
+		},
+		{
+			"class": "rendered-fit",
+			"note": "Cell counts are advisory; no rendered frame was captured, consistent with round 1."
+		}
+	],
+	"verdict": {
+		"ui.chat.composer": "clean (30 keys; round-1 minor UR-EXTRACT-05 fixed)",
+		"ui.chat": "clean (36 keys; bytes identical to round 1)",
+		"ui.chat.device": "clean (14 keys; round-1 nit UR-EXTRACT-04 fixed)",
+		"ui.chat.dialogs": "clean (6 keys; bytes identical to round 1)",
+		"ui.chat.directory": "clean (43 keys; round-1 minors UR-EXTRACT-01/02/03 fixed)",
+		"ui.chat.sidebar": "clean (1 key; bytes identical to round 1)",
+		"ui.common.viewer": "clean (4 keys; bytes identical to round 1)",
+		"overall": "clean: 0 blocker, 0 major, 0 minor, 0 nit across 134 keys"
+	},
+	"gate_runs": [
+		{
+			"command": "node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/ur-activation.test.mjs",
+			"at": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+			"result": "47/47 pass, 0 fail; ur bundled values 3813; 'the bundled Urdu catalogue carries no manual bidi controls or forbidden script' passes"
+		},
+		{
+			"command": "node scripts/i18n/check-coverage.mjs",
+			"at": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+			"result": "coverage-check: ok — 7 gated language(s) over 75 namespace(s); 0 allowed key(s) remain across 0 pair(s)"
+		},
+		{
+			"command": "node scripts/i18n/context-parity.mjs",
+			"at": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+			"result": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s)"
+		},
+		{
+			"note": "All gate runs were executed in a throwaway worktree pinned to d082bd95 with the primary checkout's node_modules linked, so they exercised the PR head rather than this checkout's detached HEAD."
+		}
+	]
+}

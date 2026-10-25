@@ -8,5 +8,7 @@
 	"ui.chat.header.transcript_display": "Hiển thị bản ghi",
 	"ui.chat.header.delete": "Xóa cuộc trò chuyện…",
 	"ui.chat.header.close_run_details": "Đóng chi tiết lượt chạy",
-	"ui.chat.header.open_run_details": "Mở chi tiết lượt chạy"
+	"ui.chat.header.open_run_details": "Mở chi tiết lượt chạy",
+	"ui.chat.header.new_chat": "Cuộc trò chuyện mới",
+	"ui.chat.header.new_chat_with": "Cuộc trò chuyện mới với {target}"
 }

@@ -1,5 +1,3 @@
-import { t } from "../../../../i18n/messages";
-
 /**
  * The image viewer's arithmetic, as one module: which picture a left/right step
  * lands on, the zoom ladder a zoom press walks, and what a pan is allowed to
@@ -19,6 +17,8 @@ import { t } from "../../../../i18n/messages";
  * viewer's own note refuses, so the clamp is a hard wall with zero slack —
  * the picture's edge may reach the frame's, and no more.
  */
+
+import { t } from "@shared/i18n";
 
 /**
  * The zoom ladder, in multiples of the fitted size.
@@ -89,7 +89,11 @@ export const wrapGroupIndex = (
  * and the announcement cannot drift apart.
  */
 export const groupPositionLabel = (index: number, count: number): string =>
-	t("ui.common.viewer.image_progress", { index: index + 1, count });
+	t("ui.common.viewer.position", {
+		kind: "image",
+		index: index + 1,
+		count,
+	});
 
 /**
  * Clamp a pan so the picture never shows a gap between its edge and the frame's.

@@ -1,0 +1,224 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "es",
+  "namespace": "ui.chat.sidebar",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "date": "2026-10-25",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "instance": "es-bind-dcf7a90d4488",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator on any parent wave",
+    "instance": "es-bind-dcf7a90d4488",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Session banner reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run.",
+    "independence": "This session authored no catalogue, ledger, allowance or code change for PR #1403 or its parent waves. It writes only this receipt and its three sibling locale receipts. Parent receipts cited here were produced by other translation-auditor runs; this run re-read and re-bound the current head bytes."
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Convergence re-bind audit for the post-merge head: the receipt binds the exact current English, context and Spanish bytes, proves key/ICU parity and the parent-union provenance, and carries forward only findings that are still true on these bytes. It is not a translation of anything.",
+  "en_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+  "context_sha256": "0a5a1fc27e8d0cab8dfe9b086144a19969268403afded5a7a68036eaf5485339",
+  "target_sha256": "dcf7a90d4488229bb88db0627be92b659308e5d692e8ded2b7ad3f1c4f9d368a",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "path_note": "Core guidance read in the shared core checkout; the three hashes match the es-extract-a815d841bd5d-r2 audit's references, so the guidance revision is unchanged since the parent audit."
+  },
+  "limitations": [
+    "Static catalogue audit only: no browser, build, install, heavy suite or rendered frame was produced; width checks are code-point arithmetic against the English context sidecar hints, not measured pixels.",
+    "No native-speaker sign-off is claimed; the catalogue values are the subject, and component call sites were read only to establish UI role and placeholder meaning.",
+    "No catalogue, context, generator, ledger or allowance file was edited by this run. The receipt is written under i18n/receipts/ for the implementer to bind."
+  ],
+  "scope": "Full ui.chat.sidebar namespace (49 keys; main's 43 plus 6 added by the extraction wave: builtin_offer, catalogue.total, catalogue.total_search, catalogue.total_search_clipped, groups.badge, section.current_chat), read at PR #1403 head 0adbb37b94 against the English source and the en context sidecar.",
+  "revisions": {
+    "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+    "main_at_merge": "91aa8f5f10797184d01c41143d1a3645176b566b",
+    "branch_pre_merge_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+    "last_content_head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+    "note": "The en/context/es blobs are byte-identical to d784571d90; the merge touched no es sidebar bytes. d082bd9595 had 44 keys (main 43 + section.current_chat); the other 5 keys were added by 9b0148d53c and d8de019762 after that audit."
+  },
+  "checks": {
+    "keys": {
+      "merged": 49,
+      "main": 43,
+      "branch_pre_merge": 44,
+      "shared_with_main": 43,
+      "branch_only_at_merge": 1,
+      "added_after_last_audit": 5
+    },
+    "key_set_equals_english": true,
+    "key_order_equals_english": false,
+    "key_order_note": "es keeps alphabetical file order while en appends agents.builtin_offer after agents.no_match; keys.gen sorts every bundle, so there is no runtime effect (same note as the prior final pass).",
+    "missing_vs_english": [],
+    "extra_vs_english": [],
+    "main_values_changed": [],
+    "english_values_changed": [],
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "messages_parsed": 49,
+      "messages_total": 49,
+      "plural_messages": 4,
+      "select_messages": 1,
+      "cldr_categories_es": [
+        "one",
+        "many",
+        "other"
+      ],
+      "argument_mismatches": [],
+      "structural_deltas": [
+        "catalogue.total_search and catalogue.total_search_clipped add a many arm for {shown} (required for exact 10^6; 1,500,000 uses other)",
+        "groups.badge adds a many arm and uses {badge, number, ::group-off} per arm instead of # (see observations)"
+      ],
+      "findings": []
+    },
+    "counter_renders": {
+      "catalogue.total": {
+        "0": "Mostrando 0 de 0 chats",
+        "1": "Mostrando 1 de 1 chats",
+        "2": "Mostrando 2 de 2 chats",
+        "1000000": "Mostrando 1000000 de 1000000 chats"
+      },
+      "catalogue.total_search": {
+        "0": "Mostrando 0 coincidencias de 5 chats",
+        "1": "Mostrando 1 coincidencia de 5 chats",
+        "2": "Mostrando 2 coincidencias de 5 chats",
+        "1000000": "Mostrando 1000000 de coincidencias de 5 chats"
+      },
+      "catalogue.total_search_clipped": {
+        "0": "Mostrando 0+ coincidencias de 5 chats",
+        "1": "Mostrando 1+ coincidencia de 5 chats",
+        "2": "Mostrando 2+ coincidencias de 5 chats",
+        "1000000": "Mostrando 1000000+ de coincidencias de 5 chats"
+      },
+      "groups.badge": {
+        "0": "0 chats en este grupo",
+        "1": "1 chat en este grupo",
+        "2": "2 chats en este grupo",
+        "1000000": "1000000 de chats en este grupo",
+        "1500000": "1500000 chats en este grupo"
+      },
+      "agents.builtin_offer": {
+        "0": "No hay agentes integrados listos para instalar — …",
+        "1": "Un agente integrado está listo para instalar — …",
+        "2": "Dos agentes integrados están listos para instalar — …",
+        "6": "Seis agentes integrados están listos para instalar — …",
+        "7": "7 agentes integrados están listos para instalar — …",
+        "1000000": "1000000 agentes integrados están listos para instalar — …"
+      }
+    },
+    "format_bytes": {
+      "utf8": true,
+      "bom": false,
+      "crlf": false,
+      "trailing_newline": true,
+      "duplicate_keys": [],
+      "tab_indented": true
+    },
+    "prior_audit_provenance": {
+      "current_bytes_full_audit": "working-tree prior pass i18n/receipts/es-final-31a1e4ddb7a4-ui.chat.sidebar.json (untracked at the PR head) at d784571d90 (clean-with-findings; S1 minor, S2 nit)",
+      "current_ledger_receipt": "i18n/receipts/es-extract-a815d841bd5d-r2.json binds d082bd9595 (44 keys, clean)",
+      "earlier_audits": [
+        "i18n/receipts/d3918ef5d0bb.json",
+        "i18n/receipts/c1bfed9bf84b.json (ES-COMPLETION-001 / ES2-1 on main bytes)"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "S1",
+      "severity": "minor",
+      "namespace": "ui.chat.sidebar",
+      "key": "ui.chat.sidebar.catalogue.total",
+      "keys": [
+        "ui.chat.sidebar.catalogue.total",
+        "ui.chat.sidebar.catalogue.total_search",
+        "ui.chat.sidebar.catalogue.total_search_clipped"
+      ],
+      "lines": [
+        10,
+        11,
+        12
+      ],
+      "current": [
+        "Mostrando {shown, number, ::group-off} de {total, number, ::group-off} chats",
+        "Mostrando {shown, number, ::group-off} {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, number, ::group-off} chats",
+        "Mostrando {shown, number, ::group-off}+ {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, number, ::group-off} chats"
+      ],
+      "proposed": [
+        "Mostrando {shown, number, ::group-off} de {total, plural, one {{total, number, ::group-off} chat} many {{total, number, ::group-off} de chats} other {{total, number, ::group-off} chats}}",
+        "Mostrando {shown, number, ::group-off} {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, plural, one {{total, number, ::group-off} chat} many {{total, number, ::group-off} de chats} other {{total, number, ::group-off} chats}}",
+        "Mostrando {shown, number, ::group-off}+ {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, plural, one {{total, number, ::group-off} chat} many {{total, number, ::group-off} de chats} other {{total, number, ::group-off} chats}}"
+      ],
+      "reason": "The denominator is a bare number followed by a fixed noun, so at an exact multiple of 10^6 it reads 'de 1000000 chats'. Spanish requires the 'de' complement after the numeral noun millón at exact millions (RAE: '1.000.000 de personas' but '1.200.000 personas'). The numerator already carries the many arm; only the denominator lacks it. The locale already uses this exact total-plural shape in ui.mesh.mesh_node.shown_conversations and ui.schedules.count.list_truncated, both with a many arm and 'de conversaciones'. Minor: no count is lost and the value is an edge of the census domain, not a normal catalogue size.",
+      "evidence": "Rendered with Intl.PluralRules/Intl.NumberFormat es: current catalogue.total total=1000000 -> 'Mostrando 5 de 1000000 chats'; proposed -> 'Mostrando 5 de 1000000 de chats'; total=1500000 stays 'Mostrando 5 de 1500000 chats'; total=1 -> proposed 'Mostrando 1 de 1 chat'. Same shape for total_search and total_search_clipped. The English source keeps the bare form (the branch's a2be7769e7 total-plural experiment was reverted at d784571d90), so this is a locale-side plural, not a source change.",
+      "carried_from": "i18n/receipts/es-final-31a1e4ddb7a4-ui.chat.sidebar.json (S1), same bytes at d784571d90",
+      "disposition": "open non-blocking note"
+    },
+    {
+      "id": "S2",
+      "severity": "nit",
+      "namespace": "ui.chat.sidebar",
+      "key": "ui.chat.sidebar.agents.builtin_offer",
+      "keys": [
+        "ui.chat.sidebar.agents.builtin_offer"
+      ],
+      "lines": [
+        2
+      ],
+      "current": "{count, plural, =0 {No hay agentes integrados listos para instalar — {list}. Puedes editarlos una vez instalados.} one {Un agente integrado está listo para instalar — {list}. Puedes editarlo una vez instalado.} =2 {Dos agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =3 {Tres agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =4 {Cuatro agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =5 {Cinco agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =6 {Seis agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} other {{count, number, ::group-off} agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.}}",
+      "proposed": "{count, plural, =0 {No hay agentes integrados listos para instalar — {list}. Puedes editarlos una vez instalados.} one {Un agente integrado está listo para instalar — {list}. Puedes editarlo una vez instalado.} =2 {Dos agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =3 {Tres agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =4 {Cuatro agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =5 {Cinco agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =6 {Seis agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} many {{count, number, ::group-off} de agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} other {{count, number, ::group-off} agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.}}",
+      "reason": "Spanish CLDR selects many at exact multiples of 10^6; this message has no many arm, so ICU falls back to other and 1,000,000 renders '1000000 agentes integrados' instead of '1000000 de agentes integrados'. The sibling ui.agents.starters.available, counting the same packaged built-ins, already carries 'de agentes integrados'. The packaged profile count is single-digit today, so this arm cannot occur with the shipped set; recorded for CLDR completeness, not as a user-facing defect.",
+      "evidence": "Rendered es: current count=1000000 -> '1000000 agentes integrados están listos para instalar — …'; proposed -> '1000000 de agentes integrados están listos para instalar — …'. count=1500000 stays without 'de' in both.",
+      "carried_from": "i18n/receipts/es-final-31a1e4ddb7a4-ui.chat.sidebar.json (S2), same bytes at d784571d90",
+      "disposition": "open non-blocking note"
+    },
+    {
+      "id": "ES-COMPLETION-001",
+      "severity": "minor",
+      "namespace": "ui.chat.sidebar",
+      "key": "ui.chat.sidebar.nav.chats",
+      "keys": [
+        "ui.chat.sidebar.nav.chats"
+      ],
+      "lines": [
+        28
+      ],
+      "current": "Conversaciones",
+      "proposed": "Chats",
+      "reason": "The same standalone English label is 'Chats' in ui.command_palette.palette_search.chats, and this namespace otherwise renders chat/chats as chat/chats (list.empty, list.truncated_legacy, search.names_only, search.placeholder, catalogue.*); 'Conversaciones' introduces navigation terminology drift for the same English term. It is a screen-reader-only landmark label, so no meaning or count is lost.",
+      "evidence": "Current ui.chat.sidebar.nav.chats = 'Conversaciones'; ui.command_palette.palette_search.chats = 'Chats'; list.empty/list.truncated_legacy/search.* all keep chat/chats. Two earlier independent passes recorded the same drift (d3918ef5d0bb ES-COMPLETION-001 and c1bfed9bf84b ES2-1) at main bytes; it is still present at the current bytes.",
+      "carried_from": "i18n/receipts/d3918ef5d0bb.json (ES-COMPLETION-001) and i18n/receipts/c1bfed9bf84b.json (ES2-1); both audited main bytes bd0bf045/797a6f9b",
+      "disposition": "open non-blocking note"
+    }
+  ],
+  "observations": [
+    "groups.badge arms use explicit {badge, number, ::group-off} instead of the source's #; this is the same counter convention as the parallel fr/ru/hi/ur/zh-CN badge pluralizations in this PR and the prior es final pass accepted it as the way to keep the compact badge ungrouped. It renders '1000 chats' where the locale formatter would render '1.000'; recorded as an observation, not a finding, because the number, category and grammar are correct.",
+    "catalogue.total_search's many arm is correct: at shown=1,000,000 it renders 'de coincidencias'; at 1,500,000 the other arm correctly renders 'coincidencias' without 'de'.",
+    "The clipped form's '1000000+ de coincidencias' at an exact-million floor is the same 'millón de' grammar as the unclipped form; no separate finding.",
+    "agents.builtin_offer's =0..=6 arms, pronouns (editarlo/editarlos) and {list} names are correct; the only gap is the unreachable many arm S2.",
+    "No value is identical to English; no straight quotes, double spaces, control characters or bidi controls were found; curly quotes and the spaced em dash follow the es style guide."
+  ],
+  "method": [
+    "Read the English source, its .context sidecar and the Spanish target from git objects at the PR head; no catalogue, context or ledger file was modified.",
+    "Compared key sets: es equals the English 49-key set; main's 43 keys are all present and unchanged; the 6 new keys are the extraction wave's, 5 of them added after the last audited head d082bd9595.",
+    "Parsed all 49 messages with @formatjs/icu-messageformat-parser 3.5.21 and compared argument/plural/select/skeleton trees with English. Intended es deltas: the many arms on total_search, total_search_clipped and groups.badge, and groups.badge's explicit group-off skeleton; every other argument and skeleton matches.",
+    "Rendered every counter/plural message with Intl.PluralRules('es') and Intl.NumberFormat('es') at 0, 1, 2, 1000, 1,000,000, 1,500,000 and 2,000,000; checked each against RAE's cardinal agreement and the es style guide's one/many/other categories.",
+    "Checked register and glossary: tú imperatives (Elige, Actualiza, Arrastrar), house nouns chat/chats and conversación, agentes integrados (matches dismiss_offer and ui.agents.starters), and the untouched identifiers Esc, ID, backend and terminal.",
+    "Checked byte hygiene: UTF-8, no BOM, LF only, trailing newline, no duplicate keys, tab-indented one-key-per-line JSON; key order is alphabetical in es (generator sorts), not English append order."
+  ],
+  "verdict": "clean-with-findings — 49 keys read; 0 blocker, 0 major, 2 minor (S1 counters, ES-COMPLETION-001 nav drift), 1 nit (S2 builtin_offer). All six new keys are accurate and idiomatic; the counters render correctly at 0/1/2 and at 10^6 except the denominator's missing 'de' complement (S1, non-blocking); the badge's many arm and the search many arms are correct."
+}

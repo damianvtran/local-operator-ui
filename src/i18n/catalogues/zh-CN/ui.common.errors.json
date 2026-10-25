@@ -1,4 +1,8 @@
 {
+	"ui.common.errors.desktop_refusal.no_credential": "此应用尚未与正在运行的Local Operator服务器配对，因此该控件不可用。",
+	"ui.common.errors.desktop_refusal.refused": "正在运行的Local Operator服务器拒绝了此应用的凭据，因此该控件不可用。",
+	"ui.common.errors.desktop_refusal.plane_closed": "正在运行的Local Operator服务器不接受此应用的桌面控件。",
+	"ui.common.errors.desktop_refusal.transport_failed": "Local Operator服务器未响应此请求。",
 	"ui.common.errors.error_boundary.error_details": "错误详情",
 	"ui.common.errors.error_boundary.something_went_wrong": "出现了问题",
 	"ui.common.errors.error_boundary.stack_trace": "堆栈轨迹",

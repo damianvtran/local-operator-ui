@@ -77,12 +77,20 @@ test("ask scope and tooltip stay delegated to their chat-owned derivation", () =
 });
 
 test("tooltip action select and English missing-key fallback use the live locale", () => {
+	/*
+	 * A SYNTHETIC TAG, deliberately (`keyed-copy-behaviour.test.mjs`'s pattern):
+	 * the missing-key assertion must be real, and `fr` no longer gives it one.
+	 * The shipped French catalogue now translates the browser rail's aria label,
+	 * so registering a partial `fr` map would still resolve the bundled French
+	 * value on a miss — the fixture would prove fr's completeness rather than the
+	 * per-key English fallback. `xx` carries no bundled catalogue at all.
+	 */
 	try {
-		model.registerCatalogue("xx-missing", {
+		model.registerCatalogue("xx", {
 			"ui.shell.rail.browser.tooltip":
 				"{state, select, open {fixture close{chord}} other {fixture open{chord}}}",
 		});
-		model.setLocale("xx-missing");
+		model.setLocale("xx");
 		assert.equal(
 			model.browserRailLabels(true, 0, null).tooltip,
 			"fixture close",

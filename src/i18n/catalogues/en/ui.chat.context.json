@@ -1,4 +1,220 @@
 {
+	"ui.chat.action.stopped": {
+		"role": "status word after a turn was stopped",
+		"tone": "past participle, sentence case, no trailing punctuation",
+		"note": "Follows the turn's own stop control, so it names what the reader did rather than a failure.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.session_goal": {
+		"role": "accessible name of the region that holds the authored session goal",
+		"tone": "noun phrase, sentence case",
+		"note": "A group name, not a heading: the goal is one authored paragraph that a keyboard reader must be able to scroll.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.loading": {
+		"role": "loading line under the header identity search",
+		"tone": "present participle plus the item kind, trailing ellipsis",
+		"note": "`kind` selects agents or teams. Live region is the parent's; this is the visible sentence.",
+		"placeholders": {
+			"kind": "selects the item kind: `agents` or `teams`. Keep every arm."
+		}
+	},
+	"ui.chat.header_identity.no_matches": {
+		"role": "empty state under the header identity search",
+		"tone": "one sentence in the app's quoted-query style",
+		"note": "`{query}` is the reader's own search text, echoed verbatim between curly quotes. Do not translate the query.",
+		"placeholders": {
+			"query": "the reader's own search text, echoed verbatim. Never translate or trim it."
+		}
+	},
+	"ui.chat.header_identity.search": {
+		"role": "accessible name and placeholder of the header identity search field",
+		"tone": "verb plus the item kind",
+		"note": "`kind` selects agents or teams so the noun and its article can inflect. Names what the field searches, not the page it lives on.",
+		"placeholders": {
+			"kind": "selects the item kind: `agents` or `teams`. Keep every arm."
+		}
+	},
+	"ui.chat.hub_update.check_now": {
+		"role": "tooltip and accessible name of the hub refresh control",
+		"tone": "short imperative, sentence case",
+		"note": "Re-reads the hub for newer agent, team and skill versions; it downloads nothing by itself.",
+		"placeholders": {}
+	},
+	"ui.chat.hub_update.dismiss": {
+		"role": "visible caption of the control that dismisses the hub update summary",
+		"tone": "one word, sentence case",
+		"note": "Removes the summary line from the sidebar; it does not cancel an update in flight.",
+		"placeholders": {}
+	},
+	"ui.chat.hub_update.dismiss_summary": {
+		"role": "accessible name of the control that dismisses the hub update summary",
+		"tone": "verb phrase, sentence case",
+		"note": "The visible control says Dismiss; this name says what is being dismissed.",
+		"placeholders": {}
+	},
+	"ui.chat.hub_update.update_all": {
+		"role": "update-all control caption",
+		"tone": "verb phrase with a count, sentence case",
+		"note": "The count is how many updates the press would apply. Keep the parentheses.",
+		"placeholders": {
+			"count": "number of updates the press would apply."
+		}
+	},
+	"ui.chat.hub_update.update_all_label": {
+		"role": "accessible name of the update-all control",
+		"tone": "verb phrase with a count and the item kind",
+		"note": "`kind` selects the noun (agents, teams, skills) so each language can inflect it; the count is how many updates would be applied. Everything in ONE message because the noun and the count agree with each other.",
+		"placeholders": {
+			"count": "number of updates the press would apply.",
+			"kind": "selects the item kind: `agents`, `teams` or `skills`."
+		}
+	},
+	"ui.chat.hub_update.updating": {
+		"role": "update-all control caption while the update runs",
+		"tone": "present participle, sentence case, trailing ellipsis",
+		"note": "Shown in place of the count while a hub update is in flight.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.open_provider_settings": {
+		"role": "action on any other provider error",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Opens the provider settings grid. The subject is a per-provider setting surface, not the reader's account.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.open_radient_account": {
+		"role": "action on a Radient billing error",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Opens the account surface that shows the balance and the top-up entry. `Radient` is the product name and stays untranslated; `account` is the reader's own account.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.sign_in_radient": {
+		"role": "action on a provider error that is Radient's own sign-in failure",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "`Radient` is the product name and stays untranslated; `Sign in` is the action. Only shown when the failing provider is Radient itself.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.headline.out_of_credits": {
+		"role": "headline on an out-of-credits provider error",
+		"tone": "statement with the vendor's own body",
+		"note": "`{status}` already carries its leading space and parentheses (` (HTTP 402)`), so do not add punctuation around it. `{body}` is the provider's own sentence, shown verbatim and never translated. `Out of credits` is the app's own diagnosis.",
+		"placeholders": {
+			"status": "the HTTP status with its own parentheses and a leading space, or an empty string.",
+			"body": "the provider's own sentence, taken from the wire. Never translate or paraphrase it."
+		}
+	},
+	"ui.chat.provider_error.headline.out_of_credits_refused": {
+		"role": "headline on an out-of-credits error with no body",
+		"tone": "statement",
+		"note": "Used when the relay gave a status but no body. `Radient` is the product name and stays untranslated. `{status}` carries its own leading space and parentheses.",
+		"placeholders": {
+			"status": "the HTTP status with its own parentheses and a leading space, or an empty string."
+		}
+	},
+	"ui.chat.question_dock.asking": {
+		"role": "collapsed question pill caption",
+		"tone": "short status sentence, no trailing punctuation",
+		"note": "Says the agent is waiting on an answer. The pill also carries `Show` beside it.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.from_agent_label": {
+		"role": "accessible name of the expanded question card",
+		"tone": "noun phrase, sentence case",
+		"note": "Landmark name for the card holding the agent's question and its options.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_answer_label": {
+		"role": "accessible name of the secret-answer form",
+		"tone": "noun phrase, sentence case",
+		"note": "This form appears only when the agent has asked for a secret; the value is masked and never written to the transcript.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_note": {
+		"role": "reassurance line above the secret field",
+		"tone": "one sentence, sentence case, trailing period",
+		"note": "Claims three checkable things: the field masks the value, the value goes only to the asking agent, and the app keeps no record of it in the transcript. The em dash separates the masking claim from where the value goes.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_placeholder": {
+		"role": "placeholder inside the masked secret field",
+		"tone": "short imperative, sentence case",
+		"note": "The value is pasted rather than typed on purpose: the clipboard path is the one the dock is designed around.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_value_label": {
+		"role": "accessible name of the masked secret field",
+		"tone": "short noun phrase",
+		"note": "The field is a password input; its content is masked as typed.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.send": {
+		"role": "submit control under the secret field",
+		"tone": "one word, sentence case",
+		"note": "Sends the secret answer to the asking agent.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.show": {
+		"role": "collapsed question pill action word",
+		"tone": "one word, sentence case",
+		"note": "Second half of the pill: what pressing it does.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.show_question_label": {
+		"role": "accessible name of the collapsed question pill",
+		"tone": "verb phrase, sentence case",
+		"note": "Expands the agent's question back into the dock; it does not answer it.",
+		"placeholders": {}
+	},
+	"ui.chat.quota_notice.dismiss": {
+		"role": "control that dismisses the quota notice",
+		"tone": "one word, sentence case",
+		"note": "Dismisses the notice for this conversation; it does not change the quota.",
+		"placeholders": {}
+	},
+	"ui.chat.reply.remove": {
+		"role": "accessible name of the control that removes a staged reply",
+		"tone": "verb phrase, sentence case",
+		"note": "The control is an X icon; it removes this quoted reply from the draft, not from the transcript.",
+		"placeholders": {}
+	},
+	"ui.chat.reply.replying_to": {
+		"role": "label on a quoted reply staged above the composer",
+		"tone": "gerund phrase, sentence case, no trailing punctuation",
+		"note": "Announces that the message being sent quotes another message.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.choose_model": {
+		"role": "model chip caption when no model is resolved",
+		"tone": "verb phrase, sentence case",
+		"note": "Invites the reader to pick the model this conversation will run on; the chip opens the model picker. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 18
+	},
+	"ui.chat.session_status.choose_model_tooltip": {
+		"role": "tooltip on the model chip when no model is resolved",
+		"tone": "imperative sentence, sentence case",
+		"note": "Explains what the chip's press does: opens the picker for this conversation's model.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.estimate": {
+		"role": "qualifier on an estimated reading",
+		"tone": "one word, lowercase",
+		"note": "Marks a number the app estimated rather than read from the provider. Lowercase on purpose: it sits inline after the figure.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.last_reading": {
+		"role": "mark beside a reading taken before a reconnect",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Qualifies the numbers beside it: they were measured before the connection dropped and are not live. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 16
+	},
+	"ui.chat.session_status.no_model_resolved": {
+		"role": "tooltip when a conversation has no model yet",
+		"tone": "short statement, sentence case",
+		"note": "Shown on the model chip in a new conversation before the backend has resolved a model.",
+		"placeholders": {}
+	},
 	"ui.chat.skill_invocation.instructions_label": {
 		"role": "label above the skill instructions a `$name` invocation sent",
 		"tone": "noun phrase, sentence case, no trailing punctuation",
@@ -8,5 +224,23 @@
 		"role": "accessible name of the control that expands a `$name` invocation's header (a button whose visible summary is the token, a separator and the skill's one-line purpose)",
 		"tone": "noun phrase naming the control's content, sentence case, no trailing punctuation",
 		"note": "Read by a screen reader INSTEAD of the visible summary, which is a token plus a purpose sentence that can run to 150 characters - the name says what the press opens. `{token}` is the invocation's resolved skill token including its leading `$` (for example `$seal-demo`), so the translation keeps the placeholder and does not add or drop the sign. The purpose sentence stays visible on the row and in its `title`."
+	},
+	"ui.chat.status_strip.dismiss": {
+		"role": "accessible name of the control that dismisses a status strip notice",
+		"tone": "one word, sentence case",
+		"note": "The control is an X icon; it hides this notice and does not fix what it reports.",
+		"placeholders": {}
+	},
+	"ui.chat.tabs.chat": {
+		"role": "tab label",
+		"tone": "one word, sentence case",
+		"note": "Switches the conversation pane to the rendered conversation.",
+		"placeholders": {}
+	},
+	"ui.chat.tabs.raw": {
+		"role": "tab label",
+		"tone": "one word, sentence case",
+		"note": "Switches the conversation pane to the raw message payload; `Raw` is the app's established word for machine JSON.",
+		"placeholders": {}
 	}
 }
