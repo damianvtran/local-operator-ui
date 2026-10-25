@@ -2399,4 +2399,25 @@ test("A17e: three protected workers feed one exact fail-closed Desktop Tests res
 			.find((step) => step.name === "Upload isolated native QA bundle")
 			.if.includes("steps.qa_bundle.outcome == 'success'"),
 	);
+	/*
+	 * THE LOG-PAYLOAD GUARD: a ceiling cannot name a multi-megabyte line, so the
+	 * scan is the guard and this pins what makes it a guard rather than a note.
+	 * It must read the suite's own tee file, run even when the suite is red
+	 * (`always()` — a red suite's log is exactly the one worth reading), stay
+	 * separate from the extracted suite step, and be allowed to fail the job
+	 * (`continue-on-error` would make a finding advisory).
+	 */
+	const payloadScan = worker.steps.find(
+		(step) => step.name === "Scan the suite log for payload lines",
+	);
+	assert.ok(payloadScan, "the shard job has no step that scans the suite log");
+	assert.match(
+		payloadScan.run,
+		/scripts\/ci-log-guard\.mjs check \/tmp\/desktop-tests\.log/,
+	);
+	assert.ok(payloadScan.if.includes("always()"));
+	assert.ok(
+		payloadScan.if.includes("steps.desktop_suite.outcome != 'skipped'"),
+	);
+	assert.equal("continue-on-error" in payloadScan, false);
 });
