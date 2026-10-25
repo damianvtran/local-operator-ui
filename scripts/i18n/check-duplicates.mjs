@@ -23,9 +23,8 @@
  *
  * WHAT IT DOES NOT COVER, stated rather than implied:
  *   - it does not validate JSON — `JSON.parse` in the other gates does that;
- *   - it does not scan context sidecars (`.context.json` are not shipped copy,
- *     but they are scanned anyway because a duplicate there loses a translator
- *     note just as silently);
+ *   - it scans context sidecars (`.context.json`) too, even though they are not
+ *     shipped copy: a duplicate there loses a translator note just as silently;
  *   - it does not scan `src/i18n/keys.gen.ts`, which is generated and covered by
  *     `generate.mjs --check`.
  */
@@ -34,7 +33,7 @@ import { join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
-const CATALOGUES = join(REPO, "src", "i18n", "catalogues");
+const DEFAULT_CATALOGUES = join(REPO, "src", "i18n", "catalogues");
 
 /**
  * Return every key that appears more than once inside the same object.
@@ -73,8 +72,9 @@ export function duplicateKeys(text) {
 			while (k < text.length && " \t\r\n".includes(text[k])) k += 1;
 			if (k < text.length && text[k] === ":" && stack.length) {
 				const keys = stack[stack.length - 1];
-				if (keys.has(value)) duplicates.push(value);
-				keys.add(value);
+				const key = decodeKey(value);
+				if (keys.has(key)) duplicates.push(key);
+				keys.add(key);
 			}
 			i = j + 1;
 		} else {
@@ -84,7 +84,18 @@ export function duplicateKeys(text) {
 	return duplicates;
 }
 
-export function catalogueFiles(dir = CATALOGUES) {
+/**
+ * Decode the escapes a JSON key may carry, so `"\u0061"` and `"a"` are the same
+ * key. JSON.parse would collapse them; this scanner compares raw text, so it
+ * has to normalise them itself or a `\u`-escaped duplicate is a false negative.
+ */
+function decodeKey(raw) {
+	return raw.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
+		String.fromCharCode(Number.parseInt(hex, 16)),
+	);
+}
+
+export function catalogueFiles(dir = DEFAULT_CATALOGUES) {
 	const out = [];
 	for (const entry of readdirSync(dir)) {
 		const full = join(dir, entry);
@@ -112,10 +123,21 @@ if (
 	process.argv[1] &&
 	import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
-	const { scanned, offenders } = findDuplicates();
+	// `--dir` exists so the FAILURE path is testable: the suite plants a
+	// duplicate in a scratch directory and asserts this exits non-zero, which a
+	// guard that only ever runs against clean data can never prove.
+	const dirFlag = process.argv.indexOf("--dir");
+	const dir = dirFlag === -1 ? undefined : process.argv[dirFlag + 1];
+	if (dirFlag !== -1 && !dir) {
+		console.error("check-duplicates: --dir needs a path");
+		process.exit(2);
+	}
+	const { scanned, offenders } = findDuplicates(
+		dir ? catalogueFiles(dir) : undefined,
+	);
 	if (!scanned) {
 		console.error(
-			`check-duplicates: FAILED — no catalogue files found under ${CATALOGUES}`,
+			`check-duplicates: FAILED — no catalogue files found under ${dir ?? DEFAULT_CATALOGUES}`,
 		);
 		process.exit(1);
 	}

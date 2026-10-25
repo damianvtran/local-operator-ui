@@ -45,3 +45,46 @@ test("no shipped catalogue contains a duplicate key", () => {
 	assert.ok(scanned > 0, "the scan reached zero files, which is not a pass");
 	assert.deepEqual(offenders, [], "catalogue files with duplicate keys");
 });
+
+test("a backslash-u escaped key is the same key", () => {
+	// JSON.parse folds these two into one key; the raw-text scan must too, or a
+	// duplicate written with an escape is a false negative.
+	assert.deepEqual(duplicateKeys('{"a":1,"\\u0061":2}'), ["a"]);
+});
+
+test("the CLI fails on a planted duplicate and passes on clean input", async () => {
+	// The exit decision is the whole gate, and no CI job runs this suite — so the
+	// failure path is exercised here rather than assumed. `--dir` exists for
+	// this test; without it the guard would only ever see clean catalogues.
+	const { spawnSync } = await import("node:child_process");
+	const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+	const { tmpdir } = await import("node:os");
+	const { join } = await import("node:path");
+
+	const scratch = mkdtempSync(join(tmpdir(), "dupes-"));
+	const checker = new URL("./check-duplicates.mjs", import.meta.url).pathname;
+	const run = (dir) =>
+		spawnSync(process.execPath, [checker, "--dir", dir], { encoding: "utf8" });
+
+	try {
+		const dirty = join(scratch, "dirty");
+		const clean = join(scratch, "clean");
+		rmSync(dirty, { recursive: true, force: true });
+		rmSync(clean, { recursive: true, force: true });
+		// mkdtemp already made `scratch`; create the two children.
+		const { mkdirSync } = await import("node:fs");
+		mkdirSync(dirty);
+		mkdirSync(clean);
+		writeFileSync(join(dirty, "ui.x.json"), '{"a":1,"a":2}');
+		writeFileSync(join(clean, "ui.x.json"), '{"a":1,"b":2}');
+
+		const dirtyRun = run(dirty);
+		assert.equal(dirtyRun.status, 1, dirtyRun.stderr);
+		assert.match(dirtyRun.stderr, /duplicate key\(s\) a/);
+
+		const cleanRun = run(clean);
+		assert.equal(cleanRun.status, 0, cleanRun.stderr);
+	} finally {
+		rmSync(scratch, { recursive: true, force: true });
+	}
+});
