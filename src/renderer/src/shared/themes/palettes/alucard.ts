@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -45,9 +44,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const alucard: ThemeDefinition = {
 	id: "alucard",
 	name: "Alucard",
-	get description() {
-		return t("ui.settings.appearance.theme.alucard");
-	},
+	descriptionKey: "ui.settings.appearance.theme.alucard",
 	palette: {
 		mode: "light",
 

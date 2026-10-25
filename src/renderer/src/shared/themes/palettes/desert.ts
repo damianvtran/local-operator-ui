@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -41,9 +40,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const desert: ThemeDefinition = {
 	id: "desert",
 	name: "Desert",
-	get description() {
-		return t("ui.settings.appearance.theme.desert");
-	},
+	descriptionKey: "ui.settings.appearance.theme.desert",
 	palette: {
 		mode: "dark",
 		/*

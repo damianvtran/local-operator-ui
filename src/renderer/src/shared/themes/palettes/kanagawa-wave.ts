@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -35,9 +34,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const kanagawaWave: ThemeDefinition = {
 	id: "kanagawaWave",
 	name: "Kanagawa Wave",
-	get description() {
-		return t("ui.settings.appearance.theme.kanagawa_wave");
-	},
+	descriptionKey: "ui.settings.appearance.theme.kanagawa_wave",
 	palette: {
 		mode: "dark",
 

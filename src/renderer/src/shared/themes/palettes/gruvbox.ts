@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -41,9 +40,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const gruvbox: ThemeDefinition = {
 	id: "gruvbox",
 	name: "Gruvbox",
-	get description() {
-		return t("ui.settings.appearance.theme.gruvbox");
-	},
+	descriptionKey: "ui.settings.appearance.theme.gruvbox",
 	palette: {
 		mode: "dark",
 

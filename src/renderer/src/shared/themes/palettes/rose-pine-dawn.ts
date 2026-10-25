@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -53,9 +52,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const rosePineDawn: ThemeDefinition = {
 	id: "rosePineDawn",
 	name: "Rosé Pine Dawn",
-	get description() {
-		return t("ui.settings.appearance.theme.rose_pine_dawn");
-	},
+	descriptionKey: "ui.settings.appearance.theme.rose_pine_dawn",
 	palette: {
 		mode: "light",
 

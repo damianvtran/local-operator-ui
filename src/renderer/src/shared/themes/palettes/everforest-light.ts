@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -45,9 +44,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const everforestLight: ThemeDefinition = {
 	id: "everforestLight",
 	name: "Everforest Light",
-	get description() {
-		return t("ui.settings.appearance.theme.everforest_light");
-	},
+	descriptionKey: "ui.settings.appearance.theme.everforest_light",
 	palette: {
 		mode: "light",
 

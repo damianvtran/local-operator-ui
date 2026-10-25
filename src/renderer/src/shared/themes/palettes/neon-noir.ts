@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -67,9 +66,7 @@ export const neonNoir: ThemeDefinition = {
 	   come to grep for it. */
 	id: "neonNoir",
 	name: "Neon Noir",
-	get description() {
-		return t("ui.settings.appearance.theme.neon_noir");
-	},
+	descriptionKey: "ui.settings.appearance.theme.neon_noir",
 	palette: {
 		mode: "dark",
 

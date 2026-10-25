@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -46,9 +45,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const oneLight: ThemeDefinition = {
 	id: "oneLight",
 	name: "One Light",
-	get description() {
-		return t("ui.settings.appearance.theme.one_light");
-	},
+	descriptionKey: "ui.settings.appearance.theme.one_light",
 	palette: {
 		mode: "light",
 

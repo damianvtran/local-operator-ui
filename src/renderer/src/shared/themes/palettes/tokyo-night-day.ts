@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -49,9 +48,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const tokyoNightDay: ThemeDefinition = {
 	id: "tokyoNightDay",
 	name: "Tokyo Night Day",
-	get description() {
-		return t("ui.settings.appearance.theme.tokyo_night_day");
-	},
+	descriptionKey: "ui.settings.appearance.theme.tokyo_night_day",
 	palette: {
 		mode: "light",
 

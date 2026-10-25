@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -42,9 +41,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const paper: ThemeDefinition = {
 	id: "paper",
 	name: "Paper",
-	get description() {
-		return t("ui.settings.appearance.theme.paper");
-	},
+	descriptionKey: "ui.settings.appearance.theme.paper",
 	palette: {
 		mode: "light",
 		canvas: "#E8E0CD",

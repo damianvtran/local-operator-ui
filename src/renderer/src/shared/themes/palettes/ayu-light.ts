@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -40,9 +39,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const ayuLight: ThemeDefinition = {
 	id: "ayuLight",
 	name: "Ayu Light",
-	get description() {
-		return t("ui.settings.appearance.theme.ayu_light");
-	},
+	descriptionKey: "ui.settings.appearance.theme.ayu_light",
 	palette: {
 		mode: "light",
 

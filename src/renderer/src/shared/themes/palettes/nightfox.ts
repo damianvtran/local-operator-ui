@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -42,9 +41,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const nightfox: ThemeDefinition = {
 	id: "nightfox",
 	name: "Nightfox",
-	get description() {
-		return t("ui.settings.appearance.theme.nightfox");
-	},
+	descriptionKey: "ui.settings.appearance.theme.nightfox",
 	palette: {
 		mode: "dark",
 

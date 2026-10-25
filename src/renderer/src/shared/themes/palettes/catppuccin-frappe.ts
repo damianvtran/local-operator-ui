@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -40,9 +39,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const catppuccinFrappe: ThemeDefinition = {
 	id: "catppuccinFrappe",
 	name: "Catppuccin Frappé",
-	get description() {
-		return t("ui.settings.appearance.theme.catppuccin_frappe");
-	},
+	descriptionKey: "ui.settings.appearance.theme.catppuccin_frappe",
 	palette: {
 		mode: "dark",
 

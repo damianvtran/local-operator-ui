@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -28,9 +27,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const monokai: ThemeDefinition = {
 	id: "monokai",
 	name: "Monokai",
-	get description() {
-		return t("ui.settings.appearance.theme.monokai");
-	},
+	descriptionKey: "ui.settings.appearance.theme.monokai",
 	palette: {
 		mode: "dark",
 

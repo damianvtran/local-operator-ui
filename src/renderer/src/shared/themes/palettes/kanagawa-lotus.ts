@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -37,9 +36,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const kanagawaLotus: ThemeDefinition = {
 	id: "kanagawaLotus",
 	name: "Kanagawa Lotus",
-	get description() {
-		return t("ui.settings.appearance.theme.kanagawa_lotus");
-	},
+	descriptionKey: "ui.settings.appearance.theme.kanagawa_lotus",
 	palette: {
 		mode: "light",
 

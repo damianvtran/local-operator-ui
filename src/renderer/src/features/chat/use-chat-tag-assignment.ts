@@ -150,6 +150,15 @@ export function useChatTagAssignment({
 	const announce = (nextIds: string[], nextPrimary: string | null) =>
 		setNotice(
 			t("ui.chat.tags.selection_status", {
+				/*
+				 * A numeric STRING, because the key's shape is derived from English's
+				 * `{count}` placeholder (`count: string` in the generated key map).
+				 * The Hindi catalogue renders that argument through
+				 * `{count, plural, ...}`, and ICU coerces a numeric string there - so
+				 * `String(nextIds.length)` above is what keeps it from rendering NaN.
+				 * A future caller passing anything that is not digits must use a
+				 * different key, not this one (review round 1, F3).
+				 */
 				count: String(nextIds.length),
 				name:
 					categories.find((tag) => tag.id === nextPrimary)?.name ??

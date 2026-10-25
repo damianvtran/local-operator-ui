@@ -21,7 +21,8 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/settings/model-setting-options";',
+			'export * from "./src/renderer/src/features/settings/model-setting-options";' +
+			'export { t } from "./src/i18n/messages";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -38,17 +39,27 @@ const bundle = await build({
 	write: false,
 });
 const {
-	CURRENT_VALUE_GROUP,
-	SIGN_IN_UNKNOWN_GROUP,
+	CURRENT_VALUE_GROUP_KEY,
+	SIGN_IN_UNKNOWN_GROUP_KEY,
 	compareModelRows,
 	modelOptions,
 	modelScopeNotice,
 	providerOptions,
 	scopedModelRows,
 	selectedOption,
+	t: translate,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+
+/*
+ * The headings are resolved once here, through the same `t` the shipped builder
+ * calls: the module exports their KEYS now (a module-scope `t()` would freeze
+ * the import-time locale), and a test knows the English wording it asserts
+ * against by resolving the key, not by copying the sentence.
+ */
+const CURRENT_VALUE_GROUP = translate(CURRENT_VALUE_GROUP_KEY);
+const SIGN_IN_UNKNOWN_GROUP = translate(SIGN_IN_UNKNOWN_GROUP_KEY);
 
 /* --------------------------------------------------------------- fixtures */
 

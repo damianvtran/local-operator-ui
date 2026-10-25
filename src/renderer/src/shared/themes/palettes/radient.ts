@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -28,9 +27,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const radient: ThemeDefinition = {
 	id: "radient",
 	name: "Radient",
-	get description() {
-		return t("ui.settings.appearance.theme.radient");
-	},
+	descriptionKey: "ui.settings.appearance.theme.radient",
 	palette: {
 		mode: "dark",
 

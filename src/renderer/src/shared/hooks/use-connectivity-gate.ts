@@ -1,4 +1,4 @@
-import { t } from "@shared/i18n";
+import { t } from "../../../../i18n/messages";
 /**
  * Hook for gating React Query hooks based on connectivity status
  *

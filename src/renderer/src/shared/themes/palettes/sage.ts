@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -29,9 +28,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const sage: ThemeDefinition = {
 	id: "sage",
 	name: "Sage",
-	get description() {
-		return t("ui.settings.appearance.theme.sage");
-	},
+	descriptionKey: "ui.settings.appearance.theme.sage",
 	palette: {
 		mode: "light",
 

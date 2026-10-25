@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -63,9 +62,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const vaporwave: ThemeDefinition = {
 	id: "vaporwave",
 	name: "Vaporwave",
-	get description() {
-		return t("ui.settings.appearance.theme.vaporwave");
-	},
+	descriptionKey: "ui.settings.appearance.theme.vaporwave",
 	palette: {
 		mode: "dark",
 

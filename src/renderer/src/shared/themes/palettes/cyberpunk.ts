@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -62,9 +61,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const cyberpunk: ThemeDefinition = {
 	id: "cyberpunk",
 	name: "Cyberpunk",
-	get description() {
-		return t("ui.settings.appearance.theme.cyberpunk");
-	},
+	descriptionKey: "ui.settings.appearance.theme.cyberpunk",
 	palette: {
 		mode: "dark",
 

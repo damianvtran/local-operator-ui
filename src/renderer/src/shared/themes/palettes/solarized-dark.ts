@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -43,9 +42,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const solarizedDark: ThemeDefinition = {
 	id: "solarizedDark",
 	name: "Solarized Dark",
-	get description() {
-		return t("ui.settings.appearance.theme.solarized_dark");
-	},
+	descriptionKey: "ui.settings.appearance.theme.solarized_dark",
 	palette: {
 		mode: "dark",
 

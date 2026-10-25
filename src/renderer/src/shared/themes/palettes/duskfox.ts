@@ -1,4 +1,3 @@
-import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -32,9 +31,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const duskfox: ThemeDefinition = {
 	id: "duskfox",
 	name: "Duskfox",
-	get description() {
-		return t("ui.settings.appearance.theme.duskfox");
-	},
+	descriptionKey: "ui.settings.appearance.theme.duskfox",
 	palette: {
 		mode: "dark",
 
