@@ -27,6 +27,7 @@ import {
 	isModerationCategory,
 	isPublicationError,
 } from "@shared/api/local-operator/publication-errors";
+import { t } from "@shared/i18n";
 import {
 	PUBLICATION_INSTRUCTIONS_MAX_CHARS,
 	publicationNameKey,
@@ -97,33 +98,50 @@ export type PublicationContext = {
  * the reviewer itself does with output it cannot place.
  */
 const MODERATION_CATEGORY_LINE: Record<ModerationCategory, string> = {
-	malware_or_exploitation:
-		"Instructions to build or spread malware, or to attack systems you do not own, cannot be published.",
-	credential_theft:
-		"Instructions to obtain someone else's credentials or tokens cannot be published.",
-	fraud_or_deception:
-		"Instructions to deceive or defraud people cannot be published.",
-	harassment_or_hate:
-		"Instructions to harass, threaten or target people cannot be published.",
-	sexual_content_minors:
-		"This agent cannot be published. If you believe this is a mistake, contact support.",
-	sexual_content: "Explicit sexual content cannot be published.",
-	violence_or_weapons:
-		"Instructions to build weapons or to injure people cannot be published.",
-	drugs_or_controlled_substances:
-		"Instructions to make or traffic illegal drugs cannot be published.",
-	self_harm:
-		"This agent cannot be published. If you believe this is a mistake, contact support.",
-	mass_surveillance_or_privacy_abuse:
-		"Instructions to surveil or profile people without their consent cannot be published.",
-	evasion_or_abuse_tooling:
-		"Instructions to evade or defeat safety and anti-abuse systems cannot be published.",
-	prompt_injection:
-		"This instruction set tries to instruct the reviewer rather than describe an agent, so it cannot be published.",
-	unclear_dual_use:
-		"We could not tell whether this is aimed at your own systems or someone else's. Add a sentence stating the scope and target, then publish again.",
-	other_harmful:
-		"This agent was rejected because its instructions would cause harm.",
+	get malware_or_exploitation() {
+		return t("ui.agents.publication.category.malware_or_exploitation");
+	},
+	get credential_theft() {
+		return t("ui.agents.publication.category.credential_theft");
+	},
+	get fraud_or_deception() {
+		return t("ui.agents.publication.category.fraud_or_deception");
+	},
+	get harassment_or_hate() {
+		return t("ui.agents.publication.category.harassment_or_hate");
+	},
+	get sexual_content_minors() {
+		return t("ui.agents.publication.category.sexual_content_minors");
+	},
+	get sexual_content() {
+		return t("ui.agents.publication.category.sexual_content");
+	},
+	get violence_or_weapons() {
+		return t("ui.agents.publication.category.violence_or_weapons");
+	},
+	get drugs_or_controlled_substances() {
+		return t("ui.agents.publication.category.drugs_or_controlled_substances");
+	},
+	get self_harm() {
+		return t("ui.agents.publication.category.self_harm");
+	},
+	get mass_surveillance_or_privacy_abuse() {
+		return t(
+			"ui.agents.publication.category.mass_surveillance_or_privacy_abuse",
+		);
+	},
+	get evasion_or_abuse_tooling() {
+		return t("ui.agents.publication.category.evasion_or_abuse_tooling");
+	},
+	get prompt_injection() {
+		return t("ui.agents.publication.category.prompt_injection");
+	},
+	get unclear_dual_use() {
+		return t("ui.agents.publication.category.unclear_dual_use");
+	},
+	get other_harmful() {
+		return t("ui.agents.publication.category.other_harmful");
+	},
 };
 
 /**
@@ -713,7 +731,8 @@ export const pullRefusalMessage = (
  * It asserts no cause on its own: `backendLoadErrorMessage` appends the diagnosis
  * and the remedy for whatever the LOCAL server did.
  */
-const OTHER_ACTION_LEAD = "The action did not complete.";
+const otherActionLead = (): string =>
+	t("ui.agents.publication.other_action_lead");
 
 /**
  * The sentence for a failed action on an agent, by which action failed.
@@ -749,7 +768,7 @@ export const agentActionFailureMessage = (
 ): string =>
 	action === "download"
 		? pullRefusalMessage(error, agentName)
-		: backendLoadErrorMessage(OTHER_ACTION_LEAD, error);
+		: backendLoadErrorMessage(otherActionLead(), error);
 
 /**
  * The label one treatment action renders with.
@@ -761,13 +780,31 @@ export const agentActionFailureMessage = (
  * two ways on two surfaces, which is the shape this file exists to prevent.
  */
 export const PUBLICATION_ACTION_LABEL: Record<PublicationAction, string> = {
-	"focus-name": "Choose another name",
-	"update-listing": "Update the existing listing",
-	"install-builtin": "Install the built-in instead",
-	retry: "Try again",
-	"edit-instructions": "Edit the instructions",
-	"edit-agent": "Edit the agent",
-	"publish-as-new": "Publish as a new listing",
-	"sign-in": "Sign in again",
-	"refresh-hub": "Refresh the hub",
+	get "focus-name"() {
+		return t("ui.agents.publication.action.focus_name");
+	},
+	get "update-listing"() {
+		return t("ui.agents.publication.action.update_listing");
+	},
+	get "install-builtin"() {
+		return t("ui.agents.publication.action.install_builtin");
+	},
+	get retry() {
+		return t("ui.agents.publication.action.retry");
+	},
+	get "edit-instructions"() {
+		return t("ui.agents.publication.action.edit_instructions");
+	},
+	get "edit-agent"() {
+		return t("ui.agents.publication.action.edit_agent");
+	},
+	get "publish-as-new"() {
+		return t("ui.agents.publication.action.publish_as_new");
+	},
+	get "sign-in"() {
+		return t("ui.agents.publication.action.sign_in");
+	},
+	get "refresh-hub"() {
+		return t("ui.agents.publication.action.refresh_hub");
+	},
 };

@@ -30,6 +30,7 @@ import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
+import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
@@ -720,6 +721,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsModels,
 	...enUiAgentsNavigation,
 	...enUiAgentsPages,
+	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
 	...enUiAgentsStarters,
@@ -1726,6 +1728,30 @@ export type MessageParams = {
 	"ui.agents.pages.search_aria": undefined;
 	"ui.agents.pages.tab.agents": undefined;
 	"ui.agents.pages.tab.teams": undefined;
+	"ui.agents.publication.action.edit_agent": undefined;
+	"ui.agents.publication.action.edit_instructions": undefined;
+	"ui.agents.publication.action.focus_name": undefined;
+	"ui.agents.publication.action.install_builtin": undefined;
+	"ui.agents.publication.action.publish_as_new": undefined;
+	"ui.agents.publication.action.refresh_hub": undefined;
+	"ui.agents.publication.action.retry": undefined;
+	"ui.agents.publication.action.sign_in": undefined;
+	"ui.agents.publication.action.update_listing": undefined;
+	"ui.agents.publication.category.credential_theft": undefined;
+	"ui.agents.publication.category.drugs_or_controlled_substances": undefined;
+	"ui.agents.publication.category.evasion_or_abuse_tooling": undefined;
+	"ui.agents.publication.category.fraud_or_deception": undefined;
+	"ui.agents.publication.category.harassment_or_hate": undefined;
+	"ui.agents.publication.category.malware_or_exploitation": undefined;
+	"ui.agents.publication.category.mass_surveillance_or_privacy_abuse": undefined;
+	"ui.agents.publication.category.other_harmful": undefined;
+	"ui.agents.publication.category.prompt_injection": undefined;
+	"ui.agents.publication.category.self_harm": undefined;
+	"ui.agents.publication.category.sexual_content": undefined;
+	"ui.agents.publication.category.sexual_content_minors": undefined;
+	"ui.agents.publication.category.unclear_dual_use": undefined;
+	"ui.agents.publication.category.violence_or_weapons": undefined;
+	"ui.agents.publication.other_action_lead": undefined;
 	"ui.agents.refusals.class.effect.proactive": undefined;
 	"ui.agents.refusals.class.effect.reactive": undefined;
 	"ui.agents.refusals.class.error.install_landed": { reason: string };

@@ -1,0 +1,122 @@
+{
+	"ui.agents.publication.action.edit_agent": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.edit_instructions": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.focus_name": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.install_builtin": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.publish_as_new": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.refresh_hub": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.retry": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.sign_in": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.update_listing": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.category.credential_theft": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.drugs_or_controlled_substances": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.evasion_or_abuse_tooling": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.fraud_or_deception": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.harassment_or_hate": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.malware_or_exploitation": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.mass_surveillance_or_privacy_abuse": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.other_harmful": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.prompt_injection": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.self_harm": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.sexual_content": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.sexual_content_minors": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.unclear_dual_use": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.violence_or_weapons": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.other_action_lead": {
+		"note": "Prefixes the reason for an action that failed without a coded treatment. Followed by the local server's own sentence, so this must end with a full stop.",
+		"role": "lead sentence of a failure explanation",
+		"tone": "plain, factual, no blame"
+	}
+}
