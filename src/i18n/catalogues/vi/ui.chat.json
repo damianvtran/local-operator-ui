@@ -13,8 +13,8 @@
 	"ui.chat.header_identity.no_matches": "Không có gì khớp với “{query}”.",
 	"ui.chat.header_identity.search": "{kind, select, agents {Tìm tác nhân} teams {Tìm nhóm} other {Tìm}}",
 	"ui.chat.hub_update.check_now": "Kiểm tra cập nhật từ trung tâm ngay",
-	"ui.chat.hub_update.dismiss": "Bỏ qua",
-	"ui.chat.hub_update.dismiss_summary": "Bỏ qua tóm tắt cập nhật",
+	"ui.chat.hub_update.dismiss": "Ẩn",
+	"ui.chat.hub_update.dismiss_summary": "Ẩn tóm tắt cập nhật",
 	"ui.chat.hub_update.update_all": "Cập nhật tất cả ({count, number, ::group-off})",
 	"ui.chat.hub_update.update_all_label": "{kind, select, agents {Cập nhật tất cả {count, number, ::group-off} bản cập nhật tác nhân từ trung tâm} teams {Cập nhật tất cả {count, number, ::group-off} bản cập nhật nhóm từ trung tâm} skills {Cập nhật tất cả {count, number, ::group-off} bản cập nhật kỹ năng từ trung tâm} other {Cập nhật tất cả {count, number, ::group-off} bản cập nhật từ trung tâm}}",
 	"ui.chat.hub_update.updating": "Đang cập nhật…",
@@ -32,7 +32,7 @@
 	"ui.chat.question_dock.send": "Gửi",
 	"ui.chat.question_dock.show": "Hiện",
 	"ui.chat.question_dock.show_question_label": "Hiện câu hỏi của tác nhân",
-	"ui.chat.quota_notice.dismiss": "Bỏ qua",
+	"ui.chat.quota_notice.dismiss": "Ẩn",
 	"ui.chat.reply.remove": "Gỡ trả lời",
 	"ui.chat.reply.replying_to": "Đang trả lời",
 	"ui.chat.session_status.choose_model": "Chọn mô hình",
@@ -40,7 +40,7 @@
 	"ui.chat.session_status.estimate": "ước tính",
 	"ui.chat.session_status.last_reading": "Lần đọc trước",
 	"ui.chat.session_status.no_model_resolved": "Chưa xác định được mô hình",
-	"ui.chat.status_strip.dismiss": "Bỏ qua",
+	"ui.chat.status_strip.dismiss": "Ẩn",
 	"ui.chat.tabs.chat": "Trò chuyện",
 	"ui.chat.tabs.raw": "Thô"
 }

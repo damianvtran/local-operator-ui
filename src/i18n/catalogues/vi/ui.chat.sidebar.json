@@ -42,5 +42,5 @@
 	"ui.chat.sidebar.search.unavailable": "Không thể tìm trong nội dung cuộc trò chuyện, nên chỉ có kết quả khớp theo tên.",
 	"ui.chat.sidebar.teams.create": "Tạo nhóm",
 	"ui.chat.sidebar.teams.loading": "Đang tải nhóm…",
-	"ui.chat.sidebar.section.current_chat": "Cuộc trò chuyện hiện tại"
+	"ui.chat.sidebar.section.current_chat": "Đang mở"
 }
