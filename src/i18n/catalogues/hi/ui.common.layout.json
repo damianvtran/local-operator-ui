@@ -1,0 +1,9 @@
+{
+	"ui.common.layout.chat_layout.resize_the_sidebar": "साइडबार का आकार बदलें ({sidebartogglecap})",
+	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "सवाल पैन का आकार बदलें। साझा पेन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।",
+	"ui.common.layout.sidebar_header.search_agents": "एजेंट खोजें",
+	"ui.common.layout.sidebar_header.create_a_new_agent": "नया एजेंट बनाएँ",
+	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "ZIP फ़ाइल से एजेंट इम्पोर्ट करें",
+	"ui.common.layout.sidebar_header.import_agent": "एजेंट इम्पोर्ट करें",
+	"ui.common.layout.sidebar_header.new_agent": "नया एजेंट"
+}

@@ -1,4 +1,5 @@
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { memo, useMemo } from "react";
 import { t } from "../../../../../../i18n";
@@ -52,6 +53,8 @@ const FinderArtifactSound = memo(function FinderArtifactSound({
 	 * `artifact`: the resolver depends on the ids, and a new object identity per
 	 * render would be noise it already documents it ignores.
 	 */
+
+	useI18nLocale();
 	const sessionId = artifact.sessionId;
 	const childId = artifact.childId ?? null;
 	const scope = useMemo(() => ({ sessionId, childId }), [sessionId, childId]);
@@ -96,6 +99,7 @@ const FinderPathSound = memo(function FinderPathSound({
 	doc: CanvasDocument;
 	label: string;
 }) {
+	useI18nLocale();
 	const state = useFileBlobUrl(doc.path, {
 		mtimeMs: doc.lastAgentModified,
 		mimeType: mimeTypeForPath(doc.path),

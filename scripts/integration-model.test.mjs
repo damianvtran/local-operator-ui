@@ -189,12 +189,20 @@ test("a running sign-in reads as signing in, not as still needing one", () => {
 
 test("meta names how it runs, scope only when a project file exists, and the source", () => {
 	const local = row("a", { transport: "local_command" });
-	assert.deepEqual(m.integrationMeta(local, false), ["Local command"]);
-	assert.deepEqual(m.integrationMeta(local, true), ["Local command", "Global"]);
-	assert.deepEqual(m.integrationMeta(row("a", { scope: "project" }), true), [
-		"Remote URL",
-		"This project",
-	]);
+	assert.deepEqual(
+		m.integrationMeta(local, false).map((part) => part.text),
+		["Local command"],
+	);
+	assert.deepEqual(
+		m.integrationMeta(local, true).map((part) => part.text),
+		["Local command", "Global"],
+	);
+	assert.deepEqual(
+		m
+			.integrationMeta(row("a", { scope: "project" }), true)
+			.map((part) => part.text),
+		["Remote URL", "This project"],
+	);
 	const codex = row("a", {
 		source: {
 			kind: "codex",
@@ -203,15 +211,20 @@ test("meta names how it runs, scope only when a project file exists, and the sou
 			owned_scope: null,
 		},
 	});
-	assert.deepEqual(m.integrationMeta(codex, false), [
-		"Remote URL",
-		"Imported from Codex CLI",
-	]);
+	assert.deepEqual(
+		m.integrationMeta(codex, false).map((part) => part.text),
+		["Remote URL", "Imported from Codex CLI"],
+	);
+	// Only the imported part carries the source-path flag the row's tooltip keys on.
+	assert.deepEqual(
+		m.integrationMeta(codex, false).map((part) => part.importSource),
+		[false, true],
+	);
 	const lastSeen = row("a", { tool_count: 3, tool_count_basis: "last_seen" });
-	assert.deepEqual(m.integrationMeta(lastSeen, false), [
-		"Remote URL",
-		"3 tools when last checked",
-	]);
+	assert.deepEqual(
+		m.integrationMeta(lastSeen, false).map((part) => part.text),
+		["Remote URL", "3 tools when last checked"],
+	);
 });
 
 /* ---------------------------------------------------------- actions */

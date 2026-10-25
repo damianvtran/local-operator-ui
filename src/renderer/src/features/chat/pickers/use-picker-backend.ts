@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Shared backend plumbing for the destination adapters.
  *
@@ -47,7 +48,10 @@ export function toResult(result: SlashOutcome): PickerResult {
 	if (isNativeAction(result)) {
 		return {
 			tone: "info",
-			text: `The backend needs more input for ${result.destination}.`,
+			text: t(
+				"ui.chat.pickers.use_picker_backend.the_backend_needs_more_input_for",
+				{ destination: result.destination },
+			),
 		};
 	}
 	const style = result.style;
@@ -74,9 +78,12 @@ export function toResult(result: SlashOutcome): PickerResult {
 				completed?: number;
 				iterations?: number | null;
 			};
-			text = `Loop ${loop.status ?? "started"}: ${loop.completed ?? 0}${
-				loop.iterations ? ` of ${loop.iterations}` : ""
-			} turns`;
+			text = t("ui.chat.pickers.use_picker_backend.loop_turns", {
+				status: loop.status ?? "started",
+				completed: loop.completed ?? 0,
+				iterations: loop.iterations ?? 0,
+				of: loop.iterations ? "set" : "none",
+			});
 		} else {
 			text = JSON.stringify(result.data, null, 2);
 		}
@@ -85,7 +92,9 @@ export function toResult(result: SlashOutcome): PickerResult {
 }
 
 export function errorText(error: unknown): string {
-	return error instanceof Error ? error.message : "the backend refused it";
+	return error instanceof Error
+		? error.message
+		: t("ui.chat.pickers.use_picker_backend.the_backend_refused_it");
 }
 
 /**
@@ -131,7 +140,7 @@ export function useSessionCommand(sessionId: string) {
 			} catch (error) {
 				const result: PickerResult = {
 					tone: "error",
-					text: `${failure ?? `/${command} did not run`}: ${errorText(error)}`,
+					text: `${failure ?? t("ui.chat.pickers.use_picker_backend.did_not_run", { command: command })}: ${errorText(error)}`,
 				};
 				setResult(result);
 				return { outcome: null, result };

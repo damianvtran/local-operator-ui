@@ -540,7 +540,9 @@ export const CheckForUpdatesButton = ({
 						{t("ui.common.updates.check_for_updates_button.detected")}{" "}
 						{lastAttempt.detectedAt
 							? new Date(lastAttempt.detectedAt).toLocaleString()
-							: "at an unknown time"}
+							: t(
+									"ui.common.updates.check_for_updates_button.at_an_unknown_time",
+								)}
 						. {lastAttempt.detail}
 					</p>
 					<Button

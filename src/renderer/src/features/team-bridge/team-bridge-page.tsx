@@ -505,6 +505,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const [scheduledSuccess, setScheduledSuccess] = useState(false);
 	const [scheduleFailed, setScheduleFailed] = useState(false);
 	const writing = useRef(false);
+	/* Escape from the schedule dialog must land back on the clock (D33). */
+	const clockRef = useRef<HTMLButtonElement>(null);
 	const heldReasonId = useId();
 	const draftTenant =
 		scope === TEAM_BRIDGE_ALL_SCOPE && target?.type === "conversation"
@@ -543,6 +545,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		if (!isDraftCurrent()) return;
 		setDraftState(value);
 		if (draftJournal) draftJournal.body = value;
+		// "Message scheduled" describes ONE message; a fresh edit is not it
+		// (review round 12, n1).
+		if (scheduledSuccess) setScheduledSuccess(false);
 	};
 	/*
 	 * The composer's staged images. Keyed to the same draft identity as the
@@ -864,20 +869,30 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				pendingSend.current = null;
 				if (draftJournal) draftJournal.pending = null;
 			}
-			// The durable store's setter takes a VALUE, not an updater: read the body
-			// from this render and clear only if it is still what was sent.
-			if (draft.trim() === body) setDraft("");
+		};
+		/*
+		 * THE CLEAR IS DELEGATED TO THE STORES, NEVER DECIDED FROM THIS RENDER.
+		 * `draft` and `body` both come from the submit render, so comparing them
+		 * here is a tautology that wrote "" over text typed while the request was
+		 * in flight (review round 12, B1). `clearSent` re-reads the DURABLE row,
+		 * so a mid-flight edit keeps that row and the box keeps its text.
+		 */
+		const finish = (bound: readonly string[] = []) => {
+			// The journal lives ABOVE the keyed view, so a body left there reseeds
+			// the sent text on remount (review round 12, M1). Clear it under the
+			// same condition the durable store uses: still exactly what was sent.
+			if (draftJournal && draftJournal.body.trim() === body)
+				draftJournal.body = "";
+			// Chips first (still fenced by `writing`, so the key holds), then the
+			// draft entry, which by then carries no bound ids (R1-02). A text-only
+			// send passes no ids, so this is the single clear path for both.
+			images.clearSent(bound);
+			draftState.clearSent(entryKey, body, clientRef, bound);
+			settle();
 		};
 		if (result instanceof Promise) {
 			void result
-				.then(() => {
-					const bound = carried.ids();
-					// Chips first (still fenced by `writing`, so the key holds), then the
-					// draft entry, which by then carries no bound ids (R1-02).
-					images.clearSent(bound);
-					draftState.clearSent(entryKey, body, clientRef, bound);
-					settle();
-				})
+				.then(() => finish(carried.ids()))
 				.catch((error) => {
 					// The hub's uniform 404 for a staged id that no longer binds (72 h
 					// TTL, or bound elsewhere): the chips flip to "expired" so the
@@ -891,7 +906,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		} else {
 			// A synchronous send has already resolved: main's journal must not
 			// keep naming an attempt that is over.
-			settle();
+			finish();
 		}
 	};
 	const schedule = async (sendAt: string) => {
@@ -958,7 +973,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				},
 			);
 			const reserved = carried.ids();
-			// Same order as send: chips, then the entry (R1-02).
+			// Same two-store clear as a send, in the same order: the journal first
+			// (it lives above the keyed view, round 12 M1), then the chips, then the
+			// durable row with exactly the ids this request reserved (R1-02).
+			if (draftJournal && draftJournal.body.trim() === body)
+				draftJournal.body = "";
 			images.clearSent(reserved);
 			draftState.clearSent(entryKey, body, clientRef, reserved);
 			setScheduledSuccess(true);
@@ -1353,6 +1372,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						accountId={selfAccountId}
 						organizationNames={Object.fromEntries(
 							organizations.map((row) => [row.tenantId, row.name]),
+						)}
+						/* A destructive cancel names its destination (design round 1,
+						   D32); the list already holds the titles the rail uses. */
+						conversationNames={Object.fromEntries(
+							conversations.flatMap((row) => {
+								const title = conversationTitle(row, selfAccountId);
+								return title ? [[row.id, title]] : [];
+							}),
 						)}
 						tenantIds={
 							mergedView ? organizations.map((row) => row.tenantId) : [scope]
@@ -1767,6 +1794,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											/>
 											{onSchedule && (
 												<Button
+													ref={clockRef}
 													variant="ghost"
 													size="icon"
 													aria-label={t("ui.teamBridge.schedule.title")}
@@ -1793,6 +1821,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											)}
 											<TeamBridgeScheduleDialog
 												open={scheduleOpen}
+												returnFocus={clockRef}
 												onOpenChange={setScheduleOpen}
 												busy={scheduling}
 												onSchedule={schedule}

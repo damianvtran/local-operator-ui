@@ -99,6 +99,7 @@ export const TeamBridgeApi = {
 		send_at: string;
 		/* Staged ids the schedule RESERVES until delivery (D2: send_at + 7 d). */
 		attachment_ids?: string[];
+		thread_root_id?: string;
 	}) {
 		return teamBridgeScheduledMessageSchema.parse(
 			await desktopResult<unknown>({

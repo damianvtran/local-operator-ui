@@ -1,0 +1,9 @@
+{
+	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "Изменить ширину запросов. Двойной щелчок восстанавливает общую ширину панели.",
+	"ui.common.layout.chat_layout.resize_the_sidebar": "Изменить ширину боковой панели ({sidebartogglecap})",
+	"ui.common.layout.sidebar_header.create_a_new_agent": "Создать агента",
+	"ui.common.layout.sidebar_header.import_agent": "Импортировать агента",
+	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "Импортировать агента из ZIP-файла",
+	"ui.common.layout.sidebar_header.new_agent": "Новый агент",
+	"ui.common.layout.sidebar_header.search_agents": "Поиск агентов"
+}

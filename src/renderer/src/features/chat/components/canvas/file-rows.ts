@@ -18,6 +18,7 @@ import { getFileName } from "@features/chat/utils/get-file-name";
  * one string function; the direct import is the same shipped code.
  */
 import { fold } from "@shared/components/ui/searchable-select";
+import { t } from "@shared/i18n";
 import { formatByteSize } from "@shared/lib/format-bytes";
 
 /**
@@ -177,20 +178,67 @@ export function displayParent(
  * not know the format), so no call site gets to re-decide what "code" means.
  */
 export const FILE_KIND_GROUPS = [
-	{ id: "images", label: "Images" },
-	{ id: "video", label: "Video" },
+	// Label getters retain the exported array and id union while avoiding a
+	// module-load locale snapshot.
+	{
+		id: "images",
+		get label() {
+			return t("ui.canvas.file_rows.images");
+		},
+	},
+	{
+		id: "video",
+		get label() {
+			return t("ui.canvas.file_rows.video");
+		},
+	},
 	// "Sounds", not "Audio": the brief's word for the group, and the same word
 	// the Finder's own section header uses (`finder-layout.ts`'s sectionKind) -
 	// one group, one label, so the filter menu and the section list cannot read
 	// as two different taxonomies. `ui.canvas.files.audio`'s value is the same
 	// "Sounds" for the same reason (see the catalogue).
-	{ id: "audio", label: "Sounds" },
-	{ id: "documents", label: "Documents" },
-	{ id: "spreadsheets", label: "Spreadsheets" },
-	{ id: "presentations", label: "Presentations" },
-	{ id: "code", label: "Code" },
-	{ id: "archives", label: "Archives" },
-	{ id: "other", label: "Other" },
+	{
+		id: "audio",
+		get label() {
+			return t("ui.canvas.file_rows.sounds");
+		},
+	},
+	{
+		id: "documents",
+		get label() {
+			return t("ui.canvas.file_rows.documents");
+		},
+	},
+	{
+		id: "spreadsheets",
+		get label() {
+			return t("ui.canvas.file_rows.spreadsheets");
+		},
+	},
+	{
+		id: "presentations",
+		get label() {
+			return t("ui.canvas.file_rows.presentations");
+		},
+	},
+	{
+		id: "code",
+		get label() {
+			return t("ui.canvas.file_rows.code");
+		},
+	},
+	{
+		id: "archives",
+		get label() {
+			return t("ui.canvas.file_rows.archives");
+		},
+	},
+	{
+		id: "other",
+		get label() {
+			return t("ui.canvas.file_rows.other");
+		},
+	},
 ] as const;
 
 export type FileKindGroup = (typeof FILE_KIND_GROUPS)[number]["id"];
@@ -318,8 +366,12 @@ export function countLabel(
 	total: number,
 	narrowed: boolean,
 ): string {
-	const files = total === 1 ? "file" : "files";
-	return narrowed ? `${visible} of ${total} ${files}` : `${total} ${files}`;
+	return narrowed
+		? t("ui.canvas.file_rows.narrow_count", {
+				visible: visible,
+				total: total,
+			})
+		: t("ui.canvas.file_rows.count", { total: total });
 }
 
 /**
