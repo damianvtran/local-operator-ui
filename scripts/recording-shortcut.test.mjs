@@ -247,7 +247,7 @@ test("only one non-repeating keyDown can toggle", () => {
 });
 
 test("config reads cache default, saved and invalid states without per-key disk reads", () => {
-	const binding = new RecordingShortcutCoordinator(env);
+	const binding = new RecordingShortcutCoordinator(env, "darwin");
 	assert.equal(binding.matches(press({ meta: true, shift: true })), true);
 	writeFileSync(
 		configPath,
@@ -283,7 +283,7 @@ test("config reads cache default, saved and invalid states without per-key disk 
 });
 
 test("negative control: another action's saved chord never starts recording", () => {
-	const binding = new RecordingShortcutCoordinator(env);
+	const binding = new RecordingShortcutCoordinator(env, "darwin");
 	writeFileSync(configPath, "values:\n  keymap.push_to_talk: primary+alt+r\n");
 	binding.refresh(env);
 	assert.equal(
@@ -348,7 +348,7 @@ test("claims admit edits and resets, reject stale revisions, and clear shadow st
 });
 
 test("pending claims and invalid shapes fail closed", () => {
-	const binding = new RecordingShortcutCoordinator(env);
+	const binding = new RecordingShortcutCoordinator(env, "darwin");
 	binding.markPending("primary+shift+s");
 	assert.equal(
 		binding.admit({ op: "settings.reset", key: "keymap.start_recording" }),
@@ -400,7 +400,7 @@ test("independent watcher observes changes without hotkeys and stops cleanly", a
 		"values:\n  keymap.start_recording: primary+alt+r\n",
 	);
 	let reads = 0;
-	const binding = new RecordingShortcutCoordinator(env);
+	const binding = new RecordingShortcutCoordinator(env, "darwin");
 	const original = binding.refresh.bind(binding);
 	binding.refresh = () => {
 		reads += 1;
@@ -584,7 +584,7 @@ test("primary conflicts cover literal Ctrl and Meta in both directions", () => {
 });
 
 test("the untrusted IPC claim boundary rejects malformed containers and members", () => {
-	const binding = new RecordingShortcutCoordinator(env);
+	const binding = new RecordingShortcutCoordinator(env, "darwin");
 	for (const claims of [
 		null,
 		{},
@@ -608,7 +608,7 @@ test("duplicate file signals publish one effective config change", async () => {
 	const config = join(temp, "config.yml");
 	writeFileSync(config, "values:\n  keymap.start_recording: ctrl+alt+r\n");
 	let revisions = 0;
-	const binding = new RecordingShortcutCoordinator(env);
+	const binding = new RecordingShortcutCoordinator(env, "darwin");
 	const watcher = watchLocalConfig({
 		env,
 		intervalMs: 10,
