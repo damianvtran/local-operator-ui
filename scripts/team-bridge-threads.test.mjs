@@ -56,8 +56,16 @@ test("thread rollup accepts old messages and bounds participant facepile", () =>
 		mod.teamBridgeMessageSchema.parse({ ...root, reply_count: -1 }),
 	);
 });
-for (const state of ["ready", "loading", "error"])
-	test(`thread pane renders ${state} without fake reply actions`, () => {
+/*
+ * THE HOLD AT THE PANE'S OWN DOOR. `TeamBridgeThreadPaneView` is the export a
+ * story or rig mounts directly, and it now renders nothing while the thread
+ * surface is held: no root body, no state copy (so no invented reply count) and
+ * no markdown/image path. These three states used to assert the pane's copy;
+ * the copy is unreachable until the constant flips, and asserting it here would
+ * be an assertion about a surface no build mounts.
+ */
+test("the held pane view renders nothing in every state", () => {
+	for (const state of ["ready", "loading", "error"]) {
 		const html = mod.renderToStaticMarkup(
 			mod.createElement(mod.TeamBridgeThreadPaneView, {
 				root,
@@ -69,21 +77,11 @@ for (const state of ["ready", "loading", "error"])
 				onSend: async () => {},
 			}),
 		);
-		assert.match(html, /Root question/);
-		assert.match(html, /Close thread/);
-		assert.match(
-			html,
-			state === "ready"
-				? /No replies yet/
-				: state === "loading"
-					? /Loading messages/
-					: /Messages could not be loaded/,
-		);
-		// The composer's textbox legitimately carries this name; a reply BUTTON
-		// (the toolbar's) must not exist in the pane.
-		assert.doesNotMatch(html, /<button[^>]*aria-label="Reply in thread"/);
-	});
-test("populated thread renders reply through safe markdown, never image requests", () => {
+		assert.equal(html, "", `${state}: the held view renders no body`);
+	}
+});
+
+test("a held pane reaches no markdown or image path either", () => {
 	const html = mod.renderToStaticMarkup(
 		mod.createElement(mod.TeamBridgeThreadPaneView, {
 			root,
@@ -103,8 +101,8 @@ test("populated thread renders reply through safe markdown, never image requests
 			onSend: async () => {},
 		}),
 	);
-	assert.match(html, /I claim this/);
-	assert.doesNotMatch(html, /<img/);
+	assert.equal(html, "");
+	assert.doesNotMatch(html, /I claim this|tracking|<img/);
 });
 
 test("displayed replies acknowledge only visible seqs in an active pane, with a cleanup fence", async () => {
@@ -178,7 +176,7 @@ test("displayed replies acknowledge only visible seqs in an active pane, with a 
 	}
 });
 
-test("an old-root notification link fetches its root directly, preserves tenant and refuses foreign responses", async () => {
+test("the held open path carries no thread, while the loader still addresses the root and refuses foreign responses", async () => {
 	const target = {
 		tenantId: "tenant_a",
 		conversationId: root.conversation_id,
@@ -189,19 +187,12 @@ test("an old-root notification link fetches its root directly, preserves tenant 
 		conversationId: target.conversationId,
 		threadId: target.rootId,
 	});
-	assert.deepEqual(
-		mod.threadTargetFromSearch(new URL(url, "http://localhost").searchParams),
-		target,
-	);
+	// THE HOLD: the conversation is routable, the thread lane is not.
 	assert.equal(
-		mod.threadTargetFromSearch(
-			new URLSearchParams({
-				conversation: target.conversationId,
-				thread: target.rootId,
-			}),
-		),
+		mod.threadTargetFromSearch(new URL(url, "http://localhost").searchParams),
 		null,
 	);
+	assert.doesNotMatch(url, /thread=|bcmsg_root0001/);
 	const calls = [];
 	const original = mod.TeamBridgeApi.listReplies;
 	try {
@@ -239,7 +230,7 @@ test("an old-root notification link fetches its root directly, preserves tenant 
 	}
 });
 
-test("old-root pane load, visible-reply read clears badge, and late old-target responses cannot paint or ack", async () => {
+test("the held container mounts nothing and issues no thread read or acknowledgement", async () => {
 	const dom = new JSDOM('<div id="app"></div>', {
 		url: "http://localhost/",
 		pretendToBeVisual: true,
@@ -253,40 +244,34 @@ test("old-root pane load, visible-reply read clears badge, and late old-target r
 	globalThis.window = dom.window;
 	globalThis.document = dom.window.document;
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-	dom.window.document.hasFocus = () => true;
-	const observers = [];
-	globalThis.IntersectionObserver = class {
-		constructor(cb) {
-			this.cb = cb;
-			observers.push(this);
-		}
-		observe() {}
-		disconnect() {}
-	};
 	const api = mod.TeamBridgeApi;
 	const originalRead = api.markRead;
 	const originalReplies = api.listReplies;
 	const calls = [];
-	let badge = 1;
-	let finishOld;
 	const client = new mod.QueryClient({
 		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
 	});
 	const app = mod.createRoot(dom.window.document.getElementById("app"));
-	const target = {
-		tenantId: "tenant_a",
-		conversationId: root.conversation_id,
-		rootId: root.id,
-	};
-	const render = async (identity) =>
-		mod.act(async () => {
+	try {
+		api.markRead = async (...args) => {
+			calls.push(["markRead", ...args]);
+			return { last_read_seq: 2, unread_count: 0 };
+		};
+		api.listReplies = async (...args) => {
+			calls.push(["listReplies", ...args]);
+			return { root, replies: [], has_more: false };
+		};
+		await mod.act(async () => {
 			app.render(
 				mod.createElement(
 					mod.QueryClientProvider,
 					{ client },
 					mod.createElement(mod.TeamBridgeThreadPane, {
-						key: identity.rootId,
-						target: identity,
+						target: {
+							tenantId: "tenant_a",
+							conversationId: root.conversation_id,
+							rootId: root.id,
+						},
 						readOnly: false,
 						labelFor: (s) => s.display_label,
 						onClose() {},
@@ -294,90 +279,11 @@ test("old-root pane load, visible-reply read clears badge, and late old-target r
 				),
 			);
 		});
-	try {
-		api.markRead = async (conversationId, input) => {
-			calls.push({ conversationId, ...input });
-			if (input.seq >= 2) badge = 0;
-			return { last_read_seq: input.seq, unread_count: badge };
-		};
-		api.listReplies = async () => ({
-			root: { ...root, reply_count: 1 },
-			replies: [
-				{
-					...root,
-					id: "reply_visible",
-					seq: 2,
-					thread_root_id: root.id,
-					body: "Visible answer",
-				},
-			],
-			has_more: false,
-		});
-		await render(target);
 		await mod.act(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 30));
 		});
-		const row = dom.window.document.querySelector(
-			'[data-message-id="reply_visible"]',
-		);
-		assert.ok(
-			row,
-			"direct replies fetch resolves a root not present in any timeline page",
-		);
-		assert.equal(badge, 1, "loading alone does not acknowledge");
-		await mod.act(async () => {
-			observers.at(-1).cb([
-				{
-					target: row,
-					isIntersecting: true,
-					intersectionRect: { height: 20 },
-				},
-			]);
-		});
-		assert.equal(
-			badge,
-			0,
-			"actually displayed reply acknowledges seq2 for this follower",
-		);
-		assert.deepEqual(calls, [
-			{ conversationId: root.conversation_id, tenantId: "tenant_a", seq: 2 },
-		]);
-		const oldObserver = observers.at(-1);
-		api.listReplies = () =>
-			new Promise((resolve) => {
-				finishOld = resolve;
-			});
-		await render({ ...target, rootId: "bcmsg_pending" });
-		await mod.act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 10));
-		});
-		api.listReplies = async () => ({
-			root: { ...root, id: "bcmsg_new", body: "Current target" },
-			replies: [],
-			has_more: false,
-		});
-		await render({ ...target, rootId: "bcmsg_new" });
-		await mod.act(async () => {
-			finishOld({
-				root: { ...root, id: "bcmsg_pending", body: "Stale old target" },
-				replies: [],
-				has_more: false,
-			});
-			await new Promise((resolve) => setTimeout(resolve, 30));
-		});
-		assert.ok(dom.window.document.body.textContent.includes("Current target"));
-		assert.equal(
-			dom.window.document.body.textContent.includes("Stale old target"),
-			false,
-		);
-		oldObserver.cb([
-			{ target: row, isIntersecting: true, intersectionRect: { height: 20 } },
-		]);
-		assert.equal(
-			calls.length,
-			1,
-			"old observer and late fetch cannot acknowledge a new selection",
-		);
+		assert.deepEqual(calls, [], "the held mount must not touch the transport");
+		assert.equal(dom.window.document.body.textContent.trim(), "");
 	} finally {
 		await mod.act(async () => app.unmount());
 		client.clear();
@@ -385,31 +291,6 @@ test("old-root pane load, visible-reply read clears badge, and late old-target r
 		api.listReplies = originalReplies;
 		for (const [name, value] of Object.entries(saved)) globalThis[name] = value;
 		dom.window.close();
-	}
-});
-
-test("loading/error pane does not invent zero replies; a known root count remains honest", () => {
-	for (const state of ["loading", "error"]) {
-		const props = {
-			root,
-			replies: [],
-			state,
-			labelFor: (s) => s.display_label,
-			onClose() {},
-			onRetry() {},
-			onSend: async () => {},
-		};
-		const unknown = mod.renderToStaticMarkup(
-			mod.createElement(mod.TeamBridgeThreadPaneView, props),
-		);
-		assert.equal(unknown.includes("0 replies"), false);
-		const known = mod.renderToStaticMarkup(
-			mod.createElement(mod.TeamBridgeThreadPaneView, {
-				...props,
-				root: { ...root, reply_count: 3 },
-			}),
-		);
-		assert.ok(known.includes("3 replies"));
 	}
 });
 
@@ -452,7 +333,7 @@ test("opening a thread focuses close; Escape respects menus and close restores t
 	dom.window.close();
 });
 
-test("reply hover tool and summary initials have no nested ladder plates", () => {
+test("a held row renders no reply control or summary, so neither can nest a plate", () => {
 	const html = mod.renderToStaticMarkup(
 		mod.createElement(mod.TeamBridgeMessageList, {
 			messages: [
@@ -464,37 +345,19 @@ test("reply hover tool and summary initials have no nested ladder plates", () =>
 	);
 	const dom = new JSDOM(html);
 	try {
-		const reply = dom.window.document.querySelector(
-			'button[aria-label="Reply in thread"]',
-		);
-		assert.ok(reply);
+		// The body still renders; the thread affordances do not.
+		assert.match(html, /Root question/);
 		assert.equal(
-			reply.classList.contains("bg-elevated"),
-			false,
-			"the shared ghost control has no independent resting ground",
+			dom.window.document.querySelector('button[aria-label="Reply in thread"]'),
+			null,
 		);
-		/* The reveal moved to the message toolbar (one per row), which shows on
-		   the row's hover AND focus-within; the button itself is the ghost. */
-		const toolbar = reply.closest('[role="toolbar"]');
-		assert.ok(toolbar);
-		assert.ok(
-			toolbar.className.includes("group-focus-within/message:opacity-100"),
-		);
+		assert.equal(dom.window.document.querySelector('[role="toolbar"]'), null);
 		assert.equal(
-			reply.classList.contains("hover:bg-accent-wash"),
-			true,
-			"the established ghost primitive owns interaction feedback",
-		);
-		const initials = [
-			...dom.window.document.querySelectorAll(
+			dom.window.document.querySelectorAll(
 				'button span[aria-hidden="true"] span',
-			),
-		];
-		assert.equal(initials.length, 2);
-		assert.equal(
-			initials.some((span) => span.classList.contains("bg-sunken")),
-			false,
-			"initials are ink on the summary action, not another plate inside its hover",
+			).length,
+			0,
+			"no summary initials without a summary action",
 		);
 	} finally {
 		dom.window.close();

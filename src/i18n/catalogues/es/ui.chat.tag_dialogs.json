@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_dialogs.deleted_name": "Se eliminó “{name}”",
+	"ui.chat.tag_dialogs.created_assigned": "Se creó “{name}” y se añadió a esta conversación",
+	"ui.chat.tag_dialogs.assign_created_failed": "Se creó “{name}”, pero no se pudo añadir a esta conversación. Selecciónala en la lista para añadirla.",
+	"ui.chat.tag_dialogs.changed_elsewhere": "Las etiquetas cambiaron en otro lugar. La lista ya muestra las actuales; vuelve a seleccionar para aplicar tu cambio."
+}

@@ -570,7 +570,7 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 							 * without `flex` the `gap-1` between the icons would not apply.
 							 */
 							"absolute z-10 flex h-8 items-center gap-1",
-							"-top-2 right-0",
+							"-top-2 end-0",
 							actionRowVisibility(pinned),
 							overlayClassName,
 						)

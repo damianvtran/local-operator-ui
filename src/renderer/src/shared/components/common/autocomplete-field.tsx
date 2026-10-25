@@ -355,11 +355,11 @@ export const AutocompleteField = ({
 								"h-8 w-full rounded-md border border-control bg-surface px-3",
 								"text-body-sm text-ink placeholder:text-ink-dim",
 								"transition-colors duration-fast ease-out-quart",
-								showActions ? "pr-18" : isSaving ? "pr-10" : "pr-3",
+								showActions ? "pe-18" : isSaving ? "pe-10" : "pe-3",
 							)}
 						/>
 
-						<div className="absolute top-1/2 right-1.5 z-10 flex -translate-y-1/2 items-center gap-1">
+						<div className="absolute top-1/2 end-1.5 z-10 flex -translate-y-1/2 items-center gap-1">
 							{isSaving ? (
 								<Spinner
 									size="sm"

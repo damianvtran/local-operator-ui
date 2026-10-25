@@ -369,7 +369,7 @@ const ViewSwitcher: FC<{
 					>
 						<Icon aria-hidden="true" />
 						{value === "files" && (
-							<span className={cn("ml-1 text-meta")}>
+							<span className={cn("ms-1 text-meta")}>
 								{label}
 								{counted === null ? "" : ` ${formatNumber(counted)}`}
 							</span>
@@ -865,7 +865,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 							onClick={onClose}
 							data-tour-tag="close-canvas-button"
 						>
-							<PanelRightClose aria-hidden="true" />
+							<PanelRightClose
+								aria-hidden="true"
+								className="rtl:-scale-x-100"
+							/>
 						</Button>
 					</Tooltip>
 				</div>

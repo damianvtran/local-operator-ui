@@ -258,11 +258,23 @@ test("the dispatcher presents a flagged picker with no session, and posts nothin
 		/if \(destinationNeedsSession\(spec\.destination\)\) \{/,
 		"the gate still asks the predicate first",
 	);
-	const refusalAt = gate.indexOf("needs an open conversation");
+	/*
+	 * The refusal precedes the presenter. The sentence itself is now the dispatcher's
+	 * one helper (`draftRouteRefusal`, design review round 1, D2 and agent review
+	 * round 1, F1: three correct answers instead of one false one), so the anchor is
+	 * that helper's call rather than a copy of its text — the text lives in one
+	 * place and this pin is about POSITION.
+	 */
+	const refusalAt = gate.indexOf("draftRouteRefusal(");
 	const presentAt = gate.indexOf("presentSessionlessPicker(spec, args);");
 	assert.ok(
 		refusalAt >= 0 && presentAt >= 0 && refusalAt < presentAt,
 		`the refusal precedes the presenter (refusal@${refusalAt}, presenter@${presentAt}), so a destination the predicate did not exempt keeps its own sentence`,
+	);
+	assert.match(
+		gate,
+		/note\(\s*draftRouteRefusal\(/,
+		"the gate's refusal is the one helper's sentence, not a second copy of it",
 	);
 	assert.match(
 		gate,
@@ -589,7 +601,7 @@ test("the picker host hides the native browser view while it is open", () => {
 	 */
 	assert.match(
 		code(HOST),
-		/useSuppressBrowserView\(open, "panel-picker"\);/,
+		/useSuppressBrowserView\(open, "dialog", "panel-picker"\);/,
 		"PickerHost must register with the browser-view policy",
 	);
 });

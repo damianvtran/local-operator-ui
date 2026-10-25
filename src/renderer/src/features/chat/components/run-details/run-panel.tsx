@@ -855,7 +855,7 @@ export const RunPanel = ({
 												className={cn(
 													"truncate rounded-sm px-1 text-meta",
 													current
-														? "min-w-0 flex-1 text-left text-ink"
+														? "min-w-0 flex-1 text-start text-ink"
 														: "min-w-0 text-ink-muted hover:text-ink",
 												)}
 												title={crumb.label}
@@ -936,7 +936,10 @@ export const RunPanel = ({
 							onClick={onClose}
 							data-tour-tag="close-run-panel-button"
 						>
-							<PanelRightClose aria-hidden="true" />
+							<PanelRightClose
+								aria-hidden="true"
+								className="rtl:-scale-x-100"
+							/>
 						</Button>
 					</Tooltip>
 				</div>

@@ -436,6 +436,22 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "inkMuted",
 	},
+	/*
+	 * The S6a approvals card: another native child over live page content. Its
+	 * ground is the page underneath, which no palette enumeration can know, so
+	 * this row pins what the card controls itself — its elevated fill, its
+	 * control edge and its muted brand/detail ink — the same way the find row
+	 * pins its band. The count's accent ink and the title's `ink` are measured
+	 * by the elevated-ground ink loop; without this row a green run would say
+	 * nothing about the surface the card paints.
+	 */
+	{
+		name: "browser approvals card",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "inkMuted",
+	},
 	{
 		name: "primary button",
 		on: GROUNDS,

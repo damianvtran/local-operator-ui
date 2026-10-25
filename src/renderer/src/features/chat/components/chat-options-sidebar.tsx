@@ -118,7 +118,7 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 	return (
 		<Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
 			<SheetContent
-				side="right"
+				side="end"
 				showClose={false}
 				className="w-[380px] max-w-[380px] gap-0 bg-surface p-0"
 			>

@@ -183,8 +183,11 @@ export function destinationsWithVerdicts(
 			 * for the turn to finish - is only reachable by asking. Disabling it here would take
 			 * that remedy off the accessible path on every destination at once, which is the
 			 * opposite of what the menu is for. A destination that can only refuse FOR ITS OWN
-			 * REASON (`third_device`, `unreachable`, `suspect_device`, `revoked_membership`) is
+			 * REASON (`third_device`, `unreachable`, `suspect_device`) is
 			 * annotated, and the menu renders it disabled with the route's sentence.
+			 * `revoked_membership` used to be listed here; the tombstone change removed the
+			 * code with the nodes it targeted, and a stale revoked id now resolves as
+			 * `unknown_device` like any other identity no membership admits.
 			 */
 			refused:
 				verdict.kind === "refused" && verdict.code !== "busy"
@@ -360,10 +363,14 @@ export const DevicePanel: FC<{
 	 * frame): the shipped header read `3 conversations · seen 9m ago`, which printed the
 	 * rotation stamp under a heartbeat's name AND printed it a second time in the section
 	 * below. One fact, one place - so the header carries the member-record fact where there
-	 * is one (a revoked membership, a suspect identity) beside the reach, and the age lives
-	 * in the Status section that labels it.
+	 * is one (a suspect identity) beside the reach, and the age lives in the Status section
+	 * that labels it.
+	 *
+	 * THE REVOKED BRANCH IS GONE WITH THE TOMBSTONE NODES: `meshGraph` builds a device
+	 * from live memberships only, so a panel can no longer be opened on a revoked id and
+	 * every membership this header could read is `active`. The audit fact lives under the
+	 * list's revoked count, where it is read rather than dressed as a device.
 	 */
-	const revoked = device.memberships.every((membership) => !membership.active);
 	const countWords =
 		device.sessionCount === null
 			? conversationUnit(null)
@@ -377,12 +384,7 @@ export const DevicePanel: FC<{
 	 */
 	const headWords = device.suspect
 		? suspectWords()
-		: [
-				revoked ? t("ui.mesh.mesh_card.revoked_membership") : countWords,
-				reachWords(reach),
-			]
-				.filter(Boolean)
-				.join(" · ");
+		: [countWords, reachWords(reach)].filter(Boolean).join(" · ");
 	const shownOf =
 		sessionTotal > sessions.rows.length
 			? t("ui.mesh.mesh_card.shown_of", {
@@ -454,9 +456,8 @@ export const DevicePanel: FC<{
 								{membership.capabilities.length > 0
 									? ` · ${membership.capabilities.join(", ")}`
 									: ""}
-								{membership.active ? "" : t("ui.mesh.mesh_card.revoked")}
 							</span>
-							{canInvite && membership.active && (
+							{canInvite && (
 								<Button
 									size="sm"
 									variant="ghost"

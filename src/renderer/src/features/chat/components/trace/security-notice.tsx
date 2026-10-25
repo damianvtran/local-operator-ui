@@ -48,7 +48,7 @@ export const SecurityNotice = ({
 	<section
 		aria-label="Security notice"
 		className={cn(
-			"flex gap-3 border-warning border-l-2 py-0.5 pl-3",
+			"flex gap-3 border-warning border-s-2 py-0.5 ps-3",
 			className,
 		)}
 	>

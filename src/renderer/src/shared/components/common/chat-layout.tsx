@@ -8,20 +8,18 @@ import {
 	CANVAS_PANE_MIN_PX,
 	PANEL_RAIL_WIDTH_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
-	SIDEBAR_DOCK_MIN_PX,
-	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
 	type SidebarLayout,
 	canvasDockWidth,
 	canvasPaneMode,
 	isSidebarTogglePress,
 	resolveSidebarLayout,
+	sidebarDockCapacity,
 	sidebarToggleCap,
 } from "@features/chat/chat-sidebar-layout";
 import { FleetAskDrawer } from "@features/chat/components/asks/fleet-ask-drawer";
 import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
 import { UpdateQuietIndicator } from "@shared/components/common/update-quiet-indicator";
-import { Sheet, SheetContent, SheetTitle } from "@shared/components/ui/sheet";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import {
@@ -98,34 +96,20 @@ function useMeasuredBox(
  * The old `styled` wrapper's `width: 280` was dead for the same reason - the
  * inline style always overrode it.
  *
- * WHERE IT SITS AT NARROW WIDTHS is `resolveSidebarLayout`'s decision and not
- * this component's: docked at >= 1024, the 56px icon strip from 880 to 1023,
- * and below 1024 with the sheet asked for, a 260px overlay over the pane. The
- * module carries the arithmetic; what lives here is the three things that need
- * a DOM - the measurement, the divider, and the two ways the sheet is opened
- * and closed.
+ * DOCKED VERSUS STRIP IS `resolveSidebarLayout`'s READ OF THE USER'S
+ * PREFERENCE AT EVERY WIDTH (#1077). The module also owns the render-only width
+ * cap that keeps the chat's 480px floor and the right-edge rail inside an 800px
+ * window. What lives here is what needs a DOM: the measurement, the divider,
+ * and the keyboard/pointer controls that write the one persisted preference.
  *
- * THE AUTO-COLLAPSE BAND IS AN OVERRIDE, NOT A WRITE. Below 1024 the module
- * returns a strip whatever `isSidebarCollapsed` says, and the preference is
- * left alone: closing a window must not be how a user loses the sidebar they
- * had open on the monitor next to it.
+ * THE CANVAS/ASK FIT-YIELD IS THE ONLY AUTOMATIC COLLAPSE. It is temporary and
+ * does not rewrite `isSidebarCollapsed`; closing the canvas-family pane restores
+ * the user's dock without a resize or reload changing their choice.
  */
 type ChatLayoutProps = {
 	sidebar: ReactNode;
 	content: ReactNode;
 };
-
-/**
- * The sheet's own scope marker.
- *
- * The ⌘B handler below asks `pressLandsOnOverlay` whether a press belongs to a
- * dialog before the shell answers it - and the shell's OWN sheet is a dialog,
- * which would make the chord that closed it the one chord it could not hear.
- * The marker is how a press from inside this sheet is told apart from a press
- * inside somebody else's menu, so the toggle still works while the sheet has
- * focus and a Radix menu keeps its own keys.
- */
-const SIDEBAR_SHEET_SCOPE = "data-sidebar-sheet";
 
 /**
  * What the sidebar itself needs to know about where it is drawn.
@@ -137,19 +121,9 @@ const SIDEBAR_SHEET_SCOPE = "data-sidebar-sheet";
  * written and drift on the first edit to one of them.
  */
 type SidebarFrame = {
-	/** Whether the full sidebar is drawn (docked, or the sheet's contents). */
+	/** Whether the full sidebar is docked rather than drawn as the icon strip. */
 	expanded: boolean;
-	/**
-	 * WHERE it is drawn, because the one toggle's glyph depends on it (design
-	 * round 1, D3): a docked column collapses (`‹`), a sheet closes (`×`), and a
-	 * strip expands (`›`). Deriving the glyph from `expanded` alone is what drew
-	 * the docked chevron inside the sheet beside the primitive's own close.
-	 */
-	mode: "docked" | "strip" | "overlay";
-	/**
-	 * The one control that changes the sidebar's shape: collapse the dock, close
-	 * the sheet, or - from the strip - expand (the dock at >=1024, the sheet below).
-	 */
+	/** The one control that toggles the user's persisted open/closed preference. */
 	onCollapse: () => void;
 };
 
@@ -157,8 +131,8 @@ const SidebarFrameContext = createContext<SidebarFrame | null>(null);
 
 /**
  * The sidebar's own view of the layout. Throws rather than defaulting: a
- * sidebar rendered outside this shell has no width and no sheet, and a silent
- * fallback would draw a docked column inside whatever else mounted it.
+ * sidebar rendered outside this shell has no width, and a silent fallback would
+ * draw a docked column inside whatever else mounted it.
  */
 export const useSidebarFrame = (): SidebarFrame => {
 	const frame = useContext(SidebarFrameContext);
@@ -172,11 +146,9 @@ export const useSidebarFrame = (): SidebarFrame => {
 
 export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	/*
-	 * The sidebar's sheet edge is LOGICAL: it is the sidebar, so it enters from
-	 * the inline-start edge — left in LTR, right in RTL. Radix names the edge
-	 * physically, hence the one translation here rather than a flipped class.
-	 * The docked column needs none: it is a flex child, and the row follows
-	 * `dir` by itself.
+	 * The measured boxes and pane stop are physical coordinates, while the
+	 * sidebar's leading edge is logical: inline-start is left in LTR and right in
+	 * RTL. This one direction read keeps those geometry calculations aligned.
 	 */
 	const direction = useTextDirection();
 	// Clamp pre-redesign saved widths through the module rather than rewriting
@@ -191,12 +163,6 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const [viewportWidth, setViewportWidth] = useState(() =>
 		typeof window === "undefined" ? 1380 : window.innerWidth,
 	);
-	/*
-	 * The sheet is TRANSIENT state and deliberately not a preference: it is the
-	 * narrow window's way of seeing the list for a moment, not a shape the user
-	 * chose the app in. Reopening the window does not reopen it.
-	 */
-	const [sheetRequested, setSheetRequested] = useState(false);
 	/* The strip the OS's controls sit over. It is an OVERLAY for every route, so
 	   the columns behind it keep y0 and paint their own grounds through it. */
 	const laneRef = useRef<HTMLDivElement | null>(null);
@@ -275,7 +241,6 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const layout: SidebarLayout = resolveSidebarLayout(
 		viewportWidth,
 		collapsedPref,
-		sheetRequested,
 		savedWidth,
 		/*
 		 * THE SIDEBAR YIELDS TO THE ASK DRAWER AS IT DOES TO THE CANVAS, in EITHER
@@ -289,37 +254,16 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		railWidth,
 	);
 
-	/*
-	 * A sheet request that the layout refuses (the window was widened while the
-	 * sheet was up, or the sidebar was docked from the settings route) is cleared
-	 * rather than remembered: otherwise widening the window and narrowing it again
-	 * would spring a sheet open on a press the user made minutes ago.
-	 */
-	useEffect(() => {
-		if (sheetRequested && !layout.sheetOpen) setSheetRequested(false);
-	}, [sheetRequested, layout.sheetOpen]);
-
 	const onToggle = useCallback(
 		(event: KeyboardEvent) => {
 			if (!isSidebarTogglePress(event)) return;
-			const target = event.target as Element | null;
-			const ownSheet = Boolean(
-				typeof target?.closest === "function" &&
-					target.closest(`[${SIDEBAR_SHEET_SCOPE}]`),
-			);
 			// A foreign overlay - a dialog, a menu, a listbox - owns its own keys.
-			if (!ownSheet && pressLandsOnOverlay(event.target)) return;
+			if (pressLandsOnOverlay(event.target)) return;
 			event.preventDefault();
-			/*
-			 * ONE SPELLING OF THE THRESHOLD, from the module that owns it: the strip's
-			 * own expand control reads the SAME constant (below), and two copies of
-			 * "the width at which the dock is free" is how a chord and a control start
-			 * disagreeing about what a narrow window is.
-			 */
-			if (viewportWidth >= SIDEBAR_DOCK_MIN_PX) toggleSidebar();
-			else setSheetRequested((open) => !open);
+			/* The chord and the strip control write the same preference at every width. */
+			toggleSidebar();
 		},
-		[toggleSidebar, viewportWidth],
+		[toggleSidebar],
 	);
 
 	useEffect(() => {
@@ -370,15 +314,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	}, [onRegionKey]);
 
 	/*
-	 * ONE TREE FOR ALL THREE MODES, and that is the fix for a measured bug rather
-	 * than tidiness (design round 1, D2). The overlay used to be its own `return`,
-	 * which rendered the sheet and NOTHING ELSE: no strip and no `content` - so
-	 * opening the list below 1024 unmounted the conversation, and the frame right
-	 * of the 260px sheet was one flat colour (std-dev 0.0 over 800x900 device px,
-	 * with header, transcript and composer all measuring `null`). A sheet is a
-	 * layer OVER the pane (§B1/§C1): the strip and the conversation stay mounted
-	 * exactly as they were, and the sheet is drawn on top of them, dimmed by the
-	 * scrim, with the pane itself as the outside press that closes it.
+	 * ONE TREE FOR BOTH MODES. The sidebar stays mounted while its width changes,
+	 * so toggling the preference or crossing a window size cannot remount the
+	 * conversation or duplicate the list's stores and timers.
 	 *
 	 * THE LANE PAINTS NOTHING ANY MORE. It used to be a reserved row carrying a
 	 * hard-stop gradient that mirrored the columns' grounds - the sidebar's
@@ -394,7 +332,6 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 */
 	const columnWidth =
 		layout.mode === "docked" ? layout.width : SIDEBAR_COLLAPSED_WIDTH;
-	/*
 	/*
 	 * THE SLOT'S LEADING EDGE, EXPOSED ONCE (design round, D3). `slotRowWidth` is
 	 * the row the pane shares with the conversation — the content column's own
@@ -503,21 +440,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					<SidebarFrameContext.Provider
 						value={{
 							expanded: layout.mode === "docked",
-							mode: layout.mode === "docked" ? "docked" : "strip",
-							onCollapse:
-								viewportWidth >= SIDEBAR_DOCK_MIN_PX
-									? toggleSidebar
-									: () => setSheetRequested(true),
+							onCollapse: toggleSidebar,
 						}}
 					>
-						{/*
-						 * While the sheet is up the sheet holds the ONE render of the sidebar,
-						 * and this column keeps the strip's ground in its place. Nothing here
-						 * needs to be taken out of the tab order by hand: the sheet is a Radix
-						 * modal, which already hides everything outside it from assistive tech
-						 * and traps focus inside it.
-						 */}
-						{layout.sheetOpen ? <SidebarStripOnly /> : sidebar}
+						{sidebar}
 					</SidebarFrameContext.Provider>
 				</div>
 				{layout.resizable && (
@@ -525,7 +451,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 						sidebarWidth={layout.width}
 						onSidebarWidthChange={setSidebarWidth}
 						minWidth={SIDEBAR_MIN_WIDTH}
-						maxWidth={SIDEBAR_MAX_WIDTH}
+						maxWidth={sidebarDockCapacity(viewportWidth, railWidth)}
 						onDoubleClick={restoreDefaultSidebarWidth}
 						label={`Resize the sidebar (${sidebarToggleCap(isMacPlatform())})`}
 					/>
@@ -660,92 +586,14 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			 * is not being offered anything. Its reasoning, and why it is a band rather
 			 * than a corner chip, are in the component's own header.
 			 *
-			 * BELOW the lane and the two columns, and above nothing: the sheet below is a
-			 * portal, so in flow this row is the column's last child and the band reads as
-			 * the window's own status row rather than as part of either column.
+			 * BELOW the lane and the two columns, and above nothing: in flow this row
+			 * is the column's last child and the band reads as the window's own
+			 * status row rather than as part of either column.
 			 */}
 			<UpdateQuietIndicator />
-			<Sheet
-				open={layout.sheetOpen}
-				onOpenChange={(open) => {
-					if (!open) setSheetRequested(false);
-				}}
-			>
-				<SheetContent
-					side={direction === "rtl" ? "right" : "left"}
-					data-sidebar-sheet=""
-					/*
-					 * The sidebar draws its own `×` (the one control that closes it, D3), so
-					 * the primitive's corner close is off: two close glyphs in one 40px corner
-					 * were the `‹`-over-`×` the design round photographed.
-					 */
-					showClose={false}
-					/*
-					 * `w-[260px] max-w-none` overrides the primitive's own left-edge width
-					 * (`w-3/4 max-w-sm`): 3/4 of an 880px window is 660 and `max-w-sm` is 384,
-					 * so neither number is the sheet this column wants, and both would make the
-					 * overlay wider than the dock it replaces. `bg-surface` because the sheet
-					 * IS the sidebar, on the sidebar's own ground, not a dialog on `elevated`.
-					 */
-					className={cn(
-						"w-[260px] max-w-none gap-0 border-0 bg-surface p-0",
-						/*
-						 * The lane's height, so the sheet's brand row sits on the line the
-						 * docked one does and the OS's controls keep their clear band.
-						 *
-						 * Applied UNCONDITIONALLY now, where it used to be behind a
-						 * `navigator.platform` read: the chrome attributes live on the
-						 * document element, so the rule reaches a PORTALED element - and the
-						 * sheet is portal to `<body>`, which is why it needed its own
-						 * platform read before. `--chrome-strip-h` is 0 wherever the OS is
-						 * not drawing over the app (every `native` launch, and Windows and
-						 * Linux with trailing buttons), so the padding is absent exactly
-						 * where it should be.
-						 */
-						"panel-top-pad",
-					)}
-					aria-describedby={undefined}
-				>
-					{/*
-					 * The sheet needs a name, and the sidebar's own `<nav>` is already
-					 * labelled inside it - so the title is the sheet's, `sr-only` rather
-					 * than drawn, because a visible "Sidebar" heading above a brand row
-					 * that already says who the app is would be a third name for one
-					 * thing.
-					 */}
-					<SheetTitle className="sr-only">Chats and destinations</SheetTitle>
-					<SidebarFrameContext.Provider
-						value={{
-							expanded: true,
-							mode: "overlay",
-							onCollapse: () => setSheetRequested(false),
-						}}
-					>
-						{sidebar}
-					</SidebarFrameContext.Provider>
-				</SheetContent>
-			</Sheet>
 		</div>
 	);
 };
-
-/**
- * The strip, drawn BEHIND an open sheet.
- *
- * The sheet renders the one full sidebar, and the list inside it must be the
- * only mounted copy (the rig and the driver find `[data-sidebar-region="chats"]`
- * as exactly one region, and the list owns stores and timers a second mount
- * would duplicate). So while the sheet is up the column keeps a quiet 56px
- * ground in its place: the strip's own width and colour, with nothing in it
- * that could take a press or a focus the scrim above it would hide anyway.
- */
-const SidebarStripOnly: FC = () => (
-	<div
-		aria-hidden="true"
-		data-glass-region="sidebar"
-		className="h-full bg-surface"
-	/>
-);
 
 /**
  * Whether this is macOS, for the one caption the divider prints.

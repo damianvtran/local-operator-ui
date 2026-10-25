@@ -771,5 +771,203 @@
 			"seconds": "Elapsed seconds cardinal; pluralize second/seconds."
 		},
 		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.common.updates.update_notification.failure_step_check": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_publish": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_download": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_environment": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_install": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_promote": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_services": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_lock": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_step_report": {
+		"role": "status label",
+		"tone": "Neutral, orienting; names the stage without blaming the user.",
+		"note": "Failure step label above the cause line in the server-update failure panel (update-notification.tsx).",
+		"length": "1-2 words."
+	},
+	"ui.common.updates.update_notification.failure_cause_publication": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when the updater stopped because PyPI had not served the target version yet. Shown in update-notification.tsx.",
+		"length": "One short sentence; keep {target} intact.",
+		"placeholders": {
+			"target": "Version the update was moving to, e.g. 0.89.0."
+		}
+	},
+	"ui.common.updates.update_notification.failure_cause_publication_no_version": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line for a publication failure when the target version could not be named.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_serve": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when the install landed but the serving process did not move. Shown in update-notification.tsx.",
+		"length": "One short sentence; keep {version} intact.",
+		"placeholders": {
+			"version": "Version the server is still running, e.g. 0.88.4."
+		}
+	},
+	"ui.common.updates.update_notification.failure_cause_serve_no_version": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line for a serve failure when the running version could not be read.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_network": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line for a network failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_lock": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when another update held the lock.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_disk": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line for a disk-space failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_ownership": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when the install belongs to a different account.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_refused": {
+		"role": "status explanation",
+		"tone": "Plain-language cause, primary ink; factual, not apologetic.",
+		"note": "Cause line when the updater refused to continue.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_cause_unknown": {
+		"role": "status explanation",
+		"tone": "Honest, not evasive; says the updater did not classify the failure.",
+		"note": "Cause line for an unclassified failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_network": {
+		"role": "status explanation",
+		"tone": "Direct, one action; no command jargon.",
+		"note": "Remedy line directly under the cause for a network failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_publication": {
+		"role": "status explanation",
+		"tone": "Direct, one action; says to wait rather than retry now.",
+		"note": "Remedy line for a publication delay.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_lock": {
+		"role": "status explanation",
+		"tone": "Direct, one action; names the competing update and the wait.",
+		"note": "Remedy line when another update holds the lock.",
+		"length": "Two short sentences."
+	},
+	"ui.common.updates.update_notification.failure_remedy_disk": {
+		"role": "status explanation",
+		"tone": "Direct, one action.",
+		"note": "Remedy line for a disk-space failure.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_ownership": {
+		"role": "status explanation",
+		"tone": "Direct and usable; names the account route rather than an abstract ownership fix.",
+		"note": "Remedy line when the install belongs to another account.",
+		"length": "One or two short sentences."
+	},
+	"ui.common.updates.update_notification.failure_remedy_serve_restartable": {
+		"role": "status explanation",
+		"tone": "Direct; explains why the app can perform the restart offered beside it.",
+		"note": "Remedy line when the app owns the server and the primary control restarts it.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_serve_external": {
+		"role": "status explanation",
+		"tone": "Direct; names the account route when the app cannot restart the server.",
+		"note": "Remedy line when the server was not started by the app and no restart control is offered.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_refused": {
+		"role": "status explanation",
+		"tone": "Direct; points outside the app without offering a bypass.",
+		"note": "Fallback remedy when the updater refused for a reason the structured cause does not map.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_refused_checkout": {
+		"role": "status explanation",
+		"tone": "Direct; names the checkout repair.",
+		"note": "Remedy for a refused source rebuild whose error names a stale ref.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_remedy_unknown": {
+		"role": "status explanation",
+		"tone": "Honest fallback; says what to copy, when to retry, and where the full output is.",
+		"note": "Remedy for an unclassified failure; the only arm that names the log instead of a cause-specific action.",
+		"length": "Two short sentences."
+	},
+	"ui.common.updates.update_notification.failure_consequence_nothing_restarted": {
+		"role": "status explanation",
+		"tone": "Quiet, factual consequence; subordinate to the remedy.",
+		"note": "Consequence line, shown only when the failure happened before the install landed (not for step services/report or kind serve).",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_heading_serve": {
+		"role": "heading",
+		"tone": "Plain-language statement of the state; not a failure verdict about the install.",
+		"note": "Panel heading for a serve failure, where the install landed but the server did not move.",
+		"length": "One short sentence."
+	},
+	"ui.common.updates.update_notification.failure_consequence_group_survived": {
+		"role": "status explanation",
+		"tone": "Safety clause; factual, not alarming, and subordinate to the remedy.",
+		"note": "Shown when the stopped updater's process group was still alive after the stop signal (groupSurvived). This is the structured arm's equivalent of the legacy sentence's 'the updater was stopped; something it started may still be replacing the install' clause.",
+		"length": "One sentence."
 	}
 }

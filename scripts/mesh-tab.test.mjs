@@ -2900,12 +2900,18 @@ test("the page keeps the last good read painted and never zeroes a fact", () => 
 
 /* --------------------------------------------- the facts the frames taught */
 
-test("one quantity, one number: a network's members and the device nodes agree", () => {
+test("one quantity, one number: a network's LIVE members are the device nodes", () => {
 	/*
 	 * Caught by LOOKING at the first capture of this set, which is why it is a test
 	 * now: the network node read "3 devices" beside a summary line reading "4 devices"
-	 * on one screen, because the node counted ACTIVE memberships and the summary counts
-	 * device nodes. Both now count members, and the revoked ones are named as such.
+	 * on one screen, because the node counted one set of memberships and the summary
+	 * counted another. The lane must count the device nodes drawn under it.
+	 *
+	 * AND A REVOKED MEMBERSHIP IS NOT ONE OF THOSE NODES (the revoked-tombstone
+	 * change): the tab drew a tombstone as a peer that had not answered, which is a
+	 * claim the wire never made. `memberCount` is the live set, `revokedCount` carries
+	 * the tombstones, and `graph.revoked` names each one - so the audit fact survives
+	 * while the false impression does not.
 	 */
 	const graph = meshGraph({
 		topology: networkTopology({
@@ -2914,44 +2920,88 @@ test("one quantity, one number: a network's members and the device nodes agree",
 				network(NET_ONE, [
 					member(DEVICE_A),
 					member(DEVICE_B),
-					member(DEVICE_C, { active: false }),
+					member(DEVICE_C, {
+						active: false,
+						name: "cloud-node-1",
+					}),
 				]),
 			],
 		}),
 		peers: peerList({ self_device_id: DEVICE_A, peers: [] }),
 	});
-	assert.equal(graph.networks[0].memberCount, 3, "members, revoked included");
+	assert.equal(
+		graph.networks[0].memberCount,
+		2,
+		"live members: the nodes drawn",
+	);
 	assert.equal(graph.networks[0].revokedCount, 1);
 	assert.equal(
 		graph.devices.length,
 		graph.networks[0].memberCount,
-		"the node count and the member count are the same quantity said twice",
+		"the node count and the live member count are the same quantity said twice",
+	);
+	assert.deepEqual(
+		graph.revoked.map((member) => [
+			member.deviceId,
+			member.label,
+			member.networkId,
+		]),
+		[[DEVICE_C, "cloud-node-1", NET_ONE]],
+		"the tombstone is an audit row that still names the burned id and its network",
 	);
 });
 
-test("a device whose every membership is revoked says so, not 'no sessions'", () => {
+test("a revoked membership is an audit row, not a device that failed to answer", () => {
 	const graph = meshGraph({
 		topology: networkTopology({
 			self_device_id: DEVICE_A,
 			networks: [
 				network(NET_ONE, [
 					member(DEVICE_A),
-					member(DEVICE_C, { active: false }),
+					member(DEVICE_C, { active: false, name: "cloud-node-1" }),
 				]),
 			],
 		}),
-		peers: peerList({ self_device_id: DEVICE_A, peers: [] }),
+		peers: peerList({
+			self_device_id: DEVICE_A,
+			peers: [
+				peer(DEVICE_C, {
+					name: "cloud-node-1",
+					reachable: false,
+					unreachable_reason: "no route to it",
+					session_count: 0,
+				}),
+			],
+		}),
 	});
-	const revoked = graph.devices.find((device) => device.id === DEVICE_C);
-	assert.ok(revoked);
 	assert.equal(
-		deviceStatLine(revoked, 1_700_000_000),
-		"revoked membership",
-		"a burned device id is never admitted again, so this is the state the node must name",
+		graph.devices.some((device) => device.id === DEVICE_C),
+		false,
+		"a tombstone must not be drawn as a device: the id is burned and nothing dials it",
+	);
+	assert.equal(
+		graph.edges.some((edge) => edge.deviceId === DEVICE_C),
+		false,
+		"and no edge may join it to a network it left",
 	);
 	/*
-	 * And the same device with one live membership elsewhere is NOT revoked: the
-	 * membership is per network, so the node may only claim what every membership says.
+	 * THE PEER ROW IS NOT 'UNMATCHED' EITHER. The relay's peer read still names a
+	 * tombstone; before this change that row matched the node. Filing it under
+	 * `unmatchedPeers` now would claim this device's records lack a device whose
+	 * revoked membership is exactly the record of it.
+	 */
+	assert.equal(
+		graph.unmatchedPeers.some((row) => row.device_id === DEVICE_C),
+		false,
+		"the tombstone's peer row is answered by the revoked membership, not unmatched",
+	);
+	assert.equal(graph.revoked[0].label, "cloud-node-1");
+	assert.equal(graph.revoked[0].role, "drive");
+
+	/*
+	 * AND A DEVICE WITH ONE LIVE MEMBERSHIP ELSEWHERE IS A NODE: the membership is per
+	 * network, so the node exists for the live one and the revoked one is still filed
+	 * as an audit row rather than silently dropped.
 	 */
 	const mixed = meshGraph({
 		topology: networkTopology({
@@ -2967,9 +3017,22 @@ test("a device whose every membership is revoked says so, not 'no sessions'", ()
 		peers: peerList({ self_device_id: DEVICE_A, peers: [] }),
 	});
 	const alive = mixed.devices.find((device) => device.id === DEVICE_C);
-	assert.ok(alive);
-	assert.notEqual(deviceStatLine(alive, 1_700_000_000), "revoked membership");
-	assert.equal(alive.memberships.length, 2);
+	assert.ok(alive, "a live membership keeps the device a node");
+	assert.deepEqual(
+		alive.memberships.map((membership) => membership.networkId),
+		[NET_TWO],
+		"the node's memberships are the live ones; a revoked network is not a link",
+	);
+	assert.deepEqual(
+		mixed.revoked.map((member) => [member.deviceId, member.networkId]),
+		[[DEVICE_C, NET_ONE]],
+		"and the revoked membership is still on the record",
+	);
+	assert.equal(
+		mixed.edges.filter((edge) => edge.deviceId === DEVICE_C).length,
+		1,
+		"one edge for the one live membership",
+	);
 });
 
 /* ---------------------------------------------------- the review-round fixes */
@@ -3287,10 +3350,9 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 	);
 });
 
-test("the two facts that outrank reachability refuse the drop before the route is asked", () => {
+test("a suspect identity refuses the drop before the route is asked, and a burned id is not a device", () => {
 	const { context } = dropFixture();
 	const payload = drag(session(), SELF, SELF_LABEL);
-	const local = session();
 	const suspect = resolveDrop(
 		payload,
 		{ kind: "device", deviceId: SUSPECT },
@@ -3301,24 +3363,31 @@ test("the two facts that outrank reachability refuse the drop before the route i
 		"suspect_device",
 		"a duplicated key is a security fact",
 	);
+	/*
+	 * `revoked_membership` WAS THE SECOND CLIENT-LOCAL REFUSAL and is gone with the
+	 * tombstone nodes: a revoked id is no longer a target the canvas draws, so a
+	 * drop on one cannot happen. If a stale id reaches this model it resolves as
+	 * `unknown_device` - the same answer as any identity no membership admits - and
+	 * that is the truthful one, not a refusal about a membership the reader cannot
+	 * see.
+	 */
 	const burned = resolveDrop(
 		payload,
 		{ kind: "device", deviceId: BURNED },
 		context,
 	);
-	assert.equal(burned.code, "revoked_membership");
+	assert.equal(burned.code, "unknown_device");
 	/*
-	 * The client's two are NOT spelled as move codes: `MOVE_REFUSAL_CODES` has no
-	 * `suspect_device` and no `revoked_membership`, so a reader can tell which side
-	 * decided - the route saying no, or this app refusing to ask.
-	 */
-	/*
-	 * The two client-local codes are the APP's, and the file says so where it names
-	 * them: the alternative - a mirrored copy of the backend's `MOVE_REFUSAL_CODES` -
-	 * is a list that drifts silently, and the route is the only thing that owns it.
+	 * `suspect_device` is NOT spelled as a move code: `MOVE_REFUSAL_CODES` has no
+	 * such entry, so a reader can tell which side decided - the route saying no, or
+	 * this app refusing to ask.
+	 *
+	 * The client-local code is the APP's, and the file says so where it names it: the
+	 * alternative - a mirrored copy of the backend's `MOVE_REFUSAL_CODES` - is a list
+	 * that drifts silently, and the route is the only thing that owns it.
 	 */
 	const drop = source("src/renderer/src/features/mesh/mesh-drop.ts");
-	assert.match(drop, /client-side two are named/);
+	assert.match(drop, /this client's/);
 	assert.match(drop, /not_a_device/);
 });
 

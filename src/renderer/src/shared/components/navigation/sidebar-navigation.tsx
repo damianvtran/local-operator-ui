@@ -61,7 +61,7 @@ import {
 	renderedRegion,
 } from "@shared/components/navigation/sidebar-destinations";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
-import { Badge, Button, Tooltip } from "@shared/components/ui";
+import { Badge, BrowserSafeTooltip, Button } from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -99,7 +99,6 @@ import {
 	Search,
 	Settings,
 	Store,
-	X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FC, ReactNode, PointerEvent as ReactPointerEvent } from "react";
@@ -365,7 +364,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const rtl = useTextDirection() === "rtl";
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
-	const { expanded, mode, onCollapse } = useSidebarFrame();
+	const { expanded, onCollapse } = useSidebarFrame();
 	const openCommandPalette = useUiPreferencesStore(
 		(state) => state.openCommandPalette,
 	);
@@ -1734,13 +1733,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				{expanded ? (
 					button
 				) : (
-					<Tooltip
+					<BrowserSafeTooltip
 						content={rowName(item)}
 						side={menuSide}
 						suppressed={dragId !== null}
 					>
 						{button}
-					</Tooltip>
+					</BrowserSafeTooltip>
 				)}
 				{menu}
 				{/*
@@ -1838,7 +1837,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			/* The strip has no room for a sentence; its language is the tooltip. Its
 			   side follows the column (design round 1, D5): in RTL the strip is on the
 			   window's right edge and a right-opening panel would cover it. */
-			<Tooltip content={bandLabel} side={rtl ? "left" : "right"}>
+			<BrowserSafeTooltip content={bandLabel} side={rtl ? "left" : "right"}>
 				<div
 					data-sidebar-drop-band=""
 					className="absolute inset-x-0 top-full z-20 mx-auto mt-1 flex h-6 w-8 items-center justify-center rounded-sm border border-dashed border-control bg-surface"
@@ -1848,7 +1847,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						className="h-0.5 w-4 rounded-full bg-ink-dim"
 					/>
 				</div>
-			</Tooltip>
+			</BrowserSafeTooltip>
 		);
 	/*
 	 * THE LIVE REGION (design § 6, § 5): polite, so a move is never urgent - and
@@ -1863,30 +1862,20 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	);
 
 	/*
-	 * THE ONE TOGGLE, and its glyph follows WHERE the sidebar is drawn (design
-	 * round 1, D3). Docked, it collapses to the strip: `‹`. In the sheet it
-	 * closes the sheet: `×`, because the sheet is a layer that goes away rather
-	 * than a column that narrows. In the strip it expands: `›` (the dock at
-	 * >=1024, the sheet below - the shell decides which, `chat-layout.tsx`). The
-	 * sheet used to draw the docked `‹` beside the dialog primitive's own `×`,
-	 * one over the other in a single focus-ringed box.
+	 * THE ONE TOGGLE. Docked, it collapses to the strip (`‹`); in the strip it
+	 * expands the dock (`›`). Both directions write the same persisted preference
+	 * at every window width, so the glyph never depends on a viewport threshold.
 	 */
-	const toggleLabel =
-		mode === "overlay"
-			? t("ui.shell.sidebar_navigation.close_sidebar")
-			: expanded
-				? t("ui.shell.sidebar_navigation.collapse_sidebar")
-				: t("ui.shell.sidebar_navigation.expand_sidebar");
-	const ToggleGlyph =
-		mode === "overlay"
-			? X
-			: expanded
-				? rtl
-					? ChevronRight
-					: ChevronLeft
-				: rtl
-					? ChevronLeft
-					: ChevronRight;
+	const toggleLabel = expanded
+		? t("ui.shell.sidebar_navigation.collapse_sidebar")
+		: t("ui.shell.sidebar_navigation.expand_sidebar");
+	const ToggleGlyph = expanded
+		? rtl
+			? ChevronRight
+			: ChevronLeft
+		: rtl
+			? ChevronLeft
+			: ChevronRight;
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const catalogueReady = desktopFeatureEnabled(
 		capabilities.data,
@@ -2057,7 +2046,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	) => {
 		const Icon = icon;
 		return (
-			<Tooltip content={label} side="right">
+			<BrowserSafeTooltip content={label} side={rtl ? "left" : "right"}>
 				<button
 					type="button"
 					{...props.attrs}
@@ -2097,16 +2086,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						)}
 					</span>
 				</button>
-			</Tooltip>
+			</BrowserSafeTooltip>
 		);
 	};
 
 	/*
-	 * The collapse/close control in the brand row, revealed when the column is
-	 * pointed at or contains focus - Linear, Notion and Slack all put it in the
-	 * header and reveal it on hover. In the SHEET it is always drawn: it is the
-	 * sheet's one visible close, and a close that appears only on hover in a layer
-	 * the user just opened is a close they have to hunt for.
+	 * The collapse control in the brand row, revealed when the column is pointed
+	 * at or contains focus - Linear, Notion and Slack all put it in the header
+	 * and reveal it on hover.
 	 *
 	 * `pointer-events-none` gates the mouse only; focus is unaffected, so the
 	 * button keeps its place in the tab order and reveals itself with
@@ -2118,26 +2105,23 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const collapseToggle = (
 		<div
 			className={cn(
-				mode !== "overlay" &&
-					cn(
-						"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
-						"group-hover/sidebar:pointer-events-auto group-hover/sidebar:opacity-100",
-						"group-focus-within/sidebar:pointer-events-auto group-focus-within/sidebar:opacity-100",
-					),
+				"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
+				"group-hover/sidebar:pointer-events-auto group-hover/sidebar:opacity-100",
+				"group-focus-within/sidebar:pointer-events-auto group-focus-within/sidebar:opacity-100",
 			)}
 		>
-			<Tooltip content={toggleLabel} side="right">
+			<BrowserSafeTooltip content={toggleLabel} side={rtl ? "left" : "right"}>
 				<Button
 					variant="ghost"
 					size="icon-sm"
 					onClick={onCollapse}
 					aria-label={toggleLabel}
-					aria-expanded={mode === "overlay" ? undefined : expanded}
+					aria-expanded={expanded}
 					aria-keyshortcuts={sidebarToggleCap(isMac)}
 				>
 					<ToggleGlyph aria-hidden="true" />
 				</Button>
-			</Tooltip>
+			</BrowserSafeTooltip>
 		</div>
 	);
 
@@ -2277,7 +2261,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	};
 
 	const settingsGear = (
-		<Tooltip content={t("ui.shell.sidebar_navigation.settings")} side="top">
+		<BrowserSafeTooltip
+			content={t("ui.shell.sidebar_navigation.settings")}
+			side="top"
+		>
 			<button
 				type="button"
 				data-tour-tag="nav-item-settings"
@@ -2293,7 +2280,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			>
 				<Settings size={16} aria-hidden="true" />
 			</button>
-		</Tooltip>
+		</BrowserSafeTooltip>
 	);
 
 	if (!expanded) {

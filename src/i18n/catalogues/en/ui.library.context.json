@@ -865,6 +865,12 @@
 		"note": "English source: Library results. Dynamic values are bindings; do not translate their names.",
 		"length": "English is 15 source characters. Keep the same shape and a comparable width."
 	},
+	"ui.library.page.resize_preview": {
+		"role": "Accessible name for the details drawer's left-edge resize separator",
+		"tone": "Direct action verb, concise desktop UI copy, sentence case.",
+		"note": "English source: Resize details drawer. Double-click to reset. Keep the reset instruction because Enter also resets for keyboard users.",
+		"length": "English is 45 source characters. Comparable width is preferred, but clarity comes first."
+	},
 	"ui.library.preview.unavailable": {
 		"role": "Library preview: control, state or viewer copy",
 		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",

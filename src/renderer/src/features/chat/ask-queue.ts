@@ -1103,7 +1103,31 @@ export const askWaitedText = (seconds: number): string => {
 export const askResponseSummary = (receipt: {
 	askId: string;
 	status: string;
+	/**
+	 * Which surface settled it (`by.surface` on the `ask_response` row), and the
+	 * operator's reason on a dismissal. Both are read only for the `dismissed`
+	 * sentence; every other status keeps the contract's own words.
+	 */
+	by?: { surface?: string; [key: string]: unknown } | null;
+	reason?: string | null;
 }): string => {
+	if (receipt.status === "dismissed") {
+		/*
+		 * Word for word `harness/rows.ask_response_notice`'s dismissed branch: who,
+		 * through which surface, and why. Without it a dismissal would fall through
+		 * to "Answered — delivering", which is false for an ask nobody answered.
+		 */
+		const raw =
+			typeof receipt.by?.surface === "string" ? receipt.by.surface : "";
+		const surface =
+			raw === "remote" ? "phone" : raw === "tui" ? "terminal" : raw;
+		const via = surface ? ` (${surface})` : "";
+		const reason =
+			receipt.reason === "answered_in_chat"
+				? "settled in chat"
+				: "no longer needed";
+		return `Dismissed by you${via} — ${reason} (ask ${receipt.askId})`;
+	}
 	if (receipt.status === "declined")
 		return `Ask ${receipt.askId} declined — the agent was told`;
 	if (receipt.status === "late")
@@ -1161,6 +1185,16 @@ export type AskOutcome = {
 	refused: string | null;
 	/** A CHANGE that landed, per the owner's own acceptance (design §10, #1936). */
 	changed?: boolean;
+	/**
+	 * A DISMISSAL that landed, and the reason the operator chose (harness SA-D5).
+	 *
+	 * The card's own receipt, for the reason `changed` exists: the wire folds the
+	 * ask to `dismissed` with no marker for WHICH reason a surface sent, so a row
+	 * that only read the frame could not say "Dismissed — no longer needed" rather
+	 * than "Dismissed". The reason is the client's own record rather than a claim
+	 * about the backend.
+	 */
+	dismissed?: AskDismissReason;
 	/**
 	 * Whether the refusal above is the OWNER's own verdict on this ask - a sentence
 	 * that crossed the wire, or a status/code the app reads as one of the ask's own
@@ -2327,6 +2361,55 @@ export const askDeclineRequest = (
 	sessionId,
 	askId: ask.ask_id,
 	decline: true,
+});
+
+/**
+ * The operator's own word for putting an open ask away (harness SA-D5).
+ *
+ * `answered_in_chat` says the conversation already settled it; `moot` says it is
+ * no longer needed. The pair is the wire's whole vocabulary (`Answer.reason` in
+ * `server/routes/desktop_sessions.py`), and the labels below are the harness's
+ * own (`asks/render.py`'s `DISMISS_REASON_LABELS`), so a receipt reads the same
+ * on every surface.
+ */
+export type AskDismissReason = "answered_in_chat" | "moot";
+
+/**
+ * The wire's dismissal reason, narrowed: `answered_in_chat` | `moot`, or null.
+ *
+ * ONE reader for the two directions the value travels (the request body this app
+ * composes, and the settled row harness PR-4c publishes): a string the enum does not
+ * name is not a reason this surface can print, and guessing the nearest one would be
+ * the app inventing what the operator chose. `null` says "cannot say", which every
+ * caller renders as the contract's own no-reason sentence.
+ */
+export const askDismissReason = (value: unknown): AskDismissReason | null =>
+	value === "moot" || value === "answered_in_chat" ? value : null;
+
+/**
+ * The `sessions.answer` body for a dismissal: put an OPEN ask away without
+ * answering it (`{ask_id, dismiss: true, reason?}`).
+ *
+ * The sibling of `askDeclineRequest`, and a constructor of its own for the same
+ * reason: a dismissal is the alternative TO an answer, not a modifier the client
+ * could accidentally send on one — the route refuses the two shapes together.
+ */
+export const askDismissRequest = (
+	ask: PendingAsk,
+	sessionId: string,
+	reason: AskDismissReason,
+): {
+	op: "sessions.answer";
+	sessionId: string;
+	askId: string;
+	dismiss: true;
+	reason: AskDismissReason;
+} => ({
+	op: "sessions.answer",
+	sessionId,
+	askId: ask.ask_id,
+	dismiss: true,
+	reason,
 });
 
 /**

@@ -1,0 +1,14 @@
+{
+	"ui.chat.attachments.pending_caption": "尚未发送",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "已移动或删除",
+	"ui.chat.attachments.file_retained": "仍保留在附件存储中（{digest}）",
+	"ui.chat.attachments.file_unnamed": "附件",
+	"ui.chat.attachments.copy_path": "复制路径",
+	"ui.chat.attachments.path_copied": "路径已复制",
+	"ui.chat.attachments.file_missing_recovery": "该文件已不在这个路径。",
+	"ui.chat.attachments.file_type_unknown": "文件",
+	"ui.chat.attachments.copy_saved_path": "复制已保存副本的路径",
+	"ui.chat.attachments.saved_path_copied": "已复制保存副本的路径",
+	"ui.chat.attachments.saved_copy_label": "保存的副本"
+}

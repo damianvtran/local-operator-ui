@@ -1,0 +1,87 @@
+{
+ "auditor": "task",
+ "model": "anthropic/claude-opus-5-5",
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-5 pass. No provider fallback occurred. The session runtime restarted at the start of this round (Python kernel reset), but the model did not change.",
+ "instance": "pr5-20261023-r5-fr",
+ "session": "fb125765ab49",
+ "parent_session": "1cfce255 (team lopdev manager; id prefix as exposed in this session's spawn chain)",
+ "date": "2026-10-23",
+ "locale": "fr",
+ "namespace": "ui.chat.asks",
+ "round": 5,
+ "status": "passed",
+ "result": "clean-with-findings",
+ "keys_audited": 12,
+ "keys_substantive": 1,
+ "keys_verified_unchanged": 11,
+ "source_head": "5de3195e703d76b8ebbb744be1e8e46e5f48faa5",
+ "previous_head": "dfb45ee7d5474369dcaeba8de893d000da7e810d",
+ "scope": "PR #1363 round-5 delta audit of ui.chat.asks for fr at 5de3195e7: new key dismiss.refused (no placeholders; the panel appends the owner's refusal sentence after it with a space). Key-by-key and raw-line comparison against the prior audited head dfb45ee7d (round 4): the only change is the one added line, and the other 11 values are identical. The en catalogue changed only by the same added key; the en context changed only by the new dismiss.refused entry. ICU/CLDR (messages_since rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run over all 12 keys. No rendered-fit claim.",
+ "sha256": {
+  "en": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+  "fr": "5d343faf3f9236d29761f12c3a5585403d9933d982e1b1a4f9a4ae3afbc5f38b",
+  "context": "62e3940bc5374489c12b498d6b4cbee94ee0f3340ef67fc67f1a67ea4ba7697f"
+ },
+ "findings": [
+  {
+   "id": "fr-r5-m1",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.refused",
+   "issue": "An ordinary breaking space (U+0020) precedes « : ». The fr style guide requires the narrow no-break space U+202F before : ; ! ? in prose. The refusal band wraps, so a breaking space can push the colon to the start of the next line. The fr desktop corpus is mixed (401 ordinary spaces, 163 U+202F), which is why this is minor and not major.",
+   "current": "Impossible d’ignorer cette demande : rien n’a été envoyé.",
+   "proposed": "Impossible d’ignorer cette demande : rien n’a été envoyé.",
+   "proposed_note": "Only change: U+0020 → U+202F before the colon. Verified to parse and to be NFC."
+  },
+  {
+   "id": "fr-r5-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.refused",
+   "issue": "Meaning is right: « Impossible d’ignorer cette demande » reuses « Ignorer » and « demande » (rounds 1/4), and « rien n’a été envoyé » states that nothing was sent. « Impossible de … » is the fr corpus pattern (57 uses). Apostrophes are U+2019. ask-panel.tsx joins this sentence and the owner's refusal sentence with join(\" \"), so a following sentence starts after one ASCII space. That is fine for all locales (zh-CN after 。 reads acceptably; ur sentence order stays logical under dir=rtl). Code-level, not a catalogue defect. Not counted."
+  }
+ ],
+ "history": [
+  {
+   "round": 4,
+   "path": "i18n/receipts/pr5-fr-r4.json",
+   "sha256": "2f3a9d354340adef85a7a4e8491a7390009e549dea594b6f4b7194fe4fa19262",
+   "instance": "pr5-20261023-r4-fr",
+   "result": "clean",
+   "target_sha256": "dca9ae6d9d4c629d5bdc9c7efa1b3170ff50e670873c097eb6398b66be1e17b6",
+   "en_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+   "context_sha256": "218cc05ebbb63f375875be61cd418caa2d0aac8043bcc9346e19b521d3d37d7c",
+   "record": "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023-r4/record.json"
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "one",
+   "many",
+   "other"
+  ],
+  "cldr_categories": [
+   "one",
+   "many",
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "new_key_placeholders": [],
+  "key_parity": "12/12",
+  "nfc": true,
+  "bidi_controls": 0,
+  "ascii_apostrophes": 0,
+  "plural_samples": {
+   "1": "1 message de votre part depuis cette demande (dernier message à 19:36)",
+   "2": "2 messages de votre part depuis cette demande (dernier message à 19:36)",
+   "5": "5 messages de votre part depuis cette demande (dernier message à 19:36)",
+   "1000000": "1 000 000 de messages de votre part depuis cette demande (dernier message à 19:36)"
+  }
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39",
+  "contract_docs_I18N_md_origin_main": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as rounds 1-4. This session produced none of the reviewed copy: the new key was written by the coder in 5de3195e7. It did not edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used. ICU parsing ran the worktree's existing intl-messageformat as validation."
+}

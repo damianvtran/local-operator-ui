@@ -217,7 +217,14 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 					className,
 				)}
 			>
-				{formatTurnTimestamp(date, now)}
+				{/*
+				 * THE STAMP IS TWO RUNS, EACH ISOLATED (design round 1, D4a). In Urdu the
+				 * `<time>` sat in an RTL paragraph with no isolation, so the neutral space
+				 * between the digits and the Latin `AM` took the paragraph's level and the
+				 * two LTR runs swapped (`AM 4:07`). `<bdi>` gives the formatted stamp its own
+				 * base direction without changing the locale's format.
+				 */}
+				<bdi>{formatTurnTimestamp(date, now)}</bdi>
 			</time>
 		</Tooltip>
 	);

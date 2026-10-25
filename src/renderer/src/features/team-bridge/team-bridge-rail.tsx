@@ -64,7 +64,7 @@ import {
  */
 
 const ROW =
-	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors duration-fast ease-out-quart";
+	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-start text-[13px] transition-colors duration-fast ease-out-quart";
 
 /** The unread pill every row shares, the sidebar's quiet attention badge. */
 const Unread: FC<{ count: number; yieldsToMenu?: boolean }> = ({
@@ -111,7 +111,7 @@ export const RailSection: FC<{
 	useI18nLocale();
 	return (
 		<section aria-labelledby={id} className="px-1 pb-1">
-			<div className="group/section flex items-center pt-3 pr-1 pb-1 pl-2">
+			<div className="group/section flex items-center pt-3 pe-1 pb-1 ps-2">
 				<h2
 					id={id}
 					className="min-w-0 flex-1 truncate font-medium text-meta text-ink-dim tracking-wide"
@@ -135,7 +135,7 @@ export const RailSection: FC<{
 					<button
 						type="button"
 						onClick={empty.onCreate}
-						className="w-full rounded-md px-2 py-1 text-left text-[12px] text-ink-dim leading-snug transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink-muted"
+						className="w-full rounded-md px-2 py-1 text-start text-[12px] text-ink-dim leading-snug transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink-muted"
 					>
 						{empty.text}
 					</button>
@@ -261,7 +261,7 @@ const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
 			<button
 				type="button"
 				aria-label={t("ui.teamBridge.row.menu", { name: label })}
-				className="absolute right-1.5 flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
+				className="absolute end-1.5 flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
 			>
 				<MoreHorizontal size={14} aria-hidden="true" />
 			</button>

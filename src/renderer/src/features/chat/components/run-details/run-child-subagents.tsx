@@ -80,7 +80,7 @@ import { SubagentRowView } from "./run-detail-subagents";
  * puts the word within ~0.5px of the run's baseline and the glyph on the line's
  * centre, which is the joint D2 is about.
  *
- * `ml-1` on top of the line's `gap-2` is the other half of D2: the run separates
+ * `ms-1` on top of the line's `gap-2` is the other half of D2: the run separates
  * its own figures by ~11px around their `·` (measured in
  * `reader-descendants/localOperatorDark`: `reviewer` to `1m7s`), so a different
  * KIND of fact arriving at 8px — the line's tightest joint — was what made the
@@ -106,12 +106,12 @@ const ChildCount = ({
 	return (
 		<span
 			className={cn(
-				"ml-1 flex shrink-0 items-center gap-1 self-center text-meta text-ink-muted",
+				"ms-1 flex shrink-0 items-center gap-1 self-center text-meta text-ink-muted",
 			)}
 		>
 			<ChevronRight
 				aria-hidden={true}
-				className={cn("size-3.5 shrink-0 text-ink-dim")}
+				className={cn("size-3.5 shrink-0 text-ink-dim rtl:-scale-x-100")}
 			/>
 			{label}
 		</span>

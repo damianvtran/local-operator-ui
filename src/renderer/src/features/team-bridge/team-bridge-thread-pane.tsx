@@ -23,6 +23,7 @@ import {
 import { isAttachmentNotFound } from "./team-bridge-attachments-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import { manageThreadFocus } from "./team-bridge-thread-focus";
+import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import {
 	type ThreadTarget,
 	loadThreadPage,
@@ -71,11 +72,21 @@ export type ThreadPaneProps = {
 	forceToolbar?: boolean;
 };
 
+/**
+ * THE HOLD, AT THE VIEW'S FRONT DOOR (a hook-safe wrapper: no hook runs on the
+ * closed path, so no story or rig can mount the unsafe body by importing this
+ * component directly). The full rationale is in `team-bridge-thread-gate.ts`.
+ */
+export function TeamBridgeThreadPaneView(props: ThreadPaneProps) {
+	if (!TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD) return null;
+	return <TeamBridgeThreadPaneBody {...props} />;
+}
+
 /** A sibling surface, not a dialog: the channel stays visible beside its thread.
  * The ground step is the separator (no panel border). Its own composer retains
  * a refused draft and reuses the idempotency key when that same draft is retried.
  */
-export function TeamBridgeThreadPaneView({
+function TeamBridgeThreadPaneBody({
 	root,
 	replies,
 	state,
@@ -295,7 +306,7 @@ export function TeamBridgeThreadPaneView({
 							className="block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim"
 						/>
 						<div className="flex items-center gap-2 px-2 pb-2">
-							<span className="min-w-0 flex-1 pl-1.5 text-meta-sm text-ink-dim">
+							<span className="min-w-0 flex-1 ps-1.5 text-meta-sm text-ink-dim">
 								{t("ui.teamBridge.composer.hint")}
 							</span>
 							<TeamBridgeAttachButton
@@ -325,8 +336,32 @@ export function TeamBridgeThreadPaneView({
 /** Query identity includes tenant, conversation AND root; a scope change cannot
  * reuse another thread's body. Infinite pages keep long threads readable; send
  * invalidates both the pane and timeline rollup, never inserts replies there.
+ *
+ * THE HOLD IS CHECKED BEFORE ANY HOOK MOUNTS. The exported name is a wrapper
+ * that renders nothing while the thread surface is held; the mount below is the
+ * only place its hooks run. An early return inside the body after its queries
+ * would make the hook count conditional, which is why the guard is a separate
+ * component rather than a first line.
  */
-export function TeamBridgeThreadPane({
+export type ThreadPaneMountProps = {
+	target: ThreadTarget;
+	initialRoot?: TeamBridgeMessage;
+	readOnly: boolean;
+	labelFor: ThreadPaneProps["labelFor"];
+	onClose: () => void;
+	reactionContext?: ThreadPaneProps["reactionContext"];
+	/* The attachment lane's two additions ride the mount props, so the shipped-
+	   build gate wrapper passes them through untouched. */
+	accountId?: string;
+	attachmentCapability?: TeamBridgeAttachmentCapability | null;
+};
+
+export function TeamBridgeThreadPane(props: ThreadPaneMountProps) {
+	if (!TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD) return null;
+	return <TeamBridgeThreadPaneMount {...props} />;
+}
+
+function TeamBridgeThreadPaneMount({
 	target,
 	initialRoot,
 	readOnly,
@@ -335,16 +370,7 @@ export function TeamBridgeThreadPane({
 	reactionContext,
 	accountId,
 	attachmentCapability,
-}: {
-	target: ThreadTarget;
-	initialRoot?: TeamBridgeMessage;
-	readOnly: boolean;
-	labelFor: ThreadPaneProps["labelFor"];
-	onClose: () => void;
-	reactionContext?: ThreadPaneProps["reactionContext"];
-	accountId?: string;
-	attachmentCapability?: TeamBridgeAttachmentCapability | null;
-}) {
+}: ThreadPaneMountProps) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
 	const read = useMarkTeamBridgeRead(conversationId, tenantId);

@@ -420,3 +420,51 @@ with the frames each run's scratchpad keeps. **Still not claimed:** native
 composite pixels, native hit routing, a focused-window page-focus dismissal,
 real macOS IME, VoiceOver, and Windows/Linux. Those rows are BLOCKED, not passed,
 exactly as in S3.
+
+## S5 amendment (2026-10-22) — the popout is gone; the row is permanent
+
+This section SUPERSEDES every "popout", "raise/lower" and "Tier 2" statement
+above. The S4b amendment remains as the record of what was measured then; the
+product no longer behaves that way.
+
+- **One address row, in flow, 37px.** Tab strip (tabs + `+`) → address row →
+  page, with 0px between both seams. The row is `Back · Forward · Reload↔Stop ·
+  Home · [site mark | URL field] · Approvals · ⋯`, and it is the only address
+  input in the window. Measured target at 1380×900: strip y=32 h=37, row y=69
+  h=37, page y=106 h=794.
+- **Deleted:** the 28px strip trigger, the strip's trailing cluster and hairline,
+  the popout wrapper, `addressFallback`/Tier 2 and its 300ms focus-health effect,
+  `planAddressRaise`/`model/address-raise.ts`, `model/floating-chrome.ts`, the
+  strip's `inert`/`invisible` state, and the start page's own field and Go
+  button. `AddressController.close()` is gone with them: nothing is raised, so
+  nothing is lowered. A raise is a nonce the always-mounted row applies (focus,
+  then seed or select-all).
+- **Suggestions** are the same native child, anchored to the ROW's x/width with
+  its top at the row's bottom (which is the page's top). Main's bounds math did
+  not change. The child never pauses the page: it is a native sibling above a
+  live view (`address-suggestions-native` is `never` in the kind table), because
+  pausing would blank the page the list floats over.
+- **Overflow** carries only what has no row control: Find, Print, Reset zoom
+  (only when ≠100%), Open downloads folder (only when known), Approvals — plus
+  Forward/Home ONLY when a narrow pane has folded them out of the row.
+- **Site mark:** the field's own register, exact per kind. The trigger's loopback
+  exception is gone (LOH-13 ruling 6), so an `http://127.0.0.1:5173` page shows
+  the same open padlock as any plain-http origin; there is no neutral globe.
+- **Start page:** brand mark, wordmark and the two sentences only. The row is
+  focused when the start state becomes current and is seeded from `refusedUrl`
+  after a refusal. Known limitation (unchanged in kind): the native child refuses
+  projections while the start page hides the view, so typing in the row there
+  shows no list.
+- **Overlay policy:** overlay kinds are a table in
+  `src/renderer/src/shared/browser-view-policy.ts` (dialog/sheet/palette/
+  onboarding/lightbox pause modal; menu/popover/select/context-menu/notice-card
+  pause only on a measured intersection; tooltip/hover-card/toast never pause;
+  the browser's own state pages are `own-state`). The shared `Tooltip` no longer
+  imports the policy. Placement is the tooltip channel: the conversation flyout
+  opens below its row inside the sidebar, the panel rail drops its tooltip in
+  favour of its `aria-label`, and hub marks open upward. `data-suppressed-by`
+  therefore cannot name a tooltip, and a test enforces the sweep.
+
+Evidence for S5 is the native probe (`scripts/browser-chrome-s4b-probe.mjs`, S5
+rows) plus the design/QA rounds' frames; the S4b numbers above are history, not a
+claim about this build.

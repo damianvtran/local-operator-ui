@@ -1,0 +1,67 @@
+{
+ "auditor": "task",
+ "model": "anthropic/claude-opus-5-5",
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole pass (skill reading, contract reading, catalogue review, ICU validation and artifacts). No provider fallback occurred.",
+ "instance": "pr5-20261023-zh-cn",
+ "session": "fb125765ab49",
+ "parent_session": "1cfce255 (team lopdev manager; id prefix as exposed in this session's spawn chain)",
+ "date": "2026-10-23",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.asks",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "keys_audited": 10,
+ "keys_substantive": 10,
+ "source_head": "9571f33c537c9ce5d9432f691f969f0b3f86b37a",
+ "requested_head": "5b10cb570b555752ec714d45a777c93bd5925c38",
+ "scope": "PR5 ask-dismiss copy: full fresh audit of all 10 ui.chat.asks keys for zh-CN, read side by side with en and the en context. Requested head 5b10cb570 had moved to 9571f33c5 by audit time; `git diff 5b10cb570 9571f33c5 -- src/i18n i18n` is empty, so the audited bytes are those of both heads. Cross-surface comparison against harness tui.asks/relay.ask at 93f798ddb (lo-stale-ask-surfaces, unmerged branch). No rendered-fit claim.",
+ "sha256": {
+  "en": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+  "zh-CN": "cc3043de9670cc18b807ca3e5bb26fccd47523b926d908f0e62495f472c36f15",
+  "context": "f5e2f62d5630e4873ee3084265c8e487beac4854a690df4e824ce0a6135747ea"
+ },
+ "findings": [
+  {
+   "id": "zh-m1",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.trigger",
+   "issue": "The zh-CN style guide says 'Ellipsis is …… (two marks)'. The desktop corpus uses …… 111 times and a single … once.",
+   "current": "关闭…",
+   "proposed": "关闭……"
+  },
+  {
+   "id": "zh-m2",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.context.messages_since",
+   "issue": "The style guide says 'No space inserted between Chinese text and Latin/digit runs'; the corpus writes «#条消息» 9 times and «# 条» 0 times. «最近 19:36» is also loose: «最近» means 'recent'. The corpus pattern for the last item's time is «最后…于{time}» (e.g. «最后回复于{time}»).",
+   "current": "{count, plural, other {自提出这个请求以来你发来了 # 条消息}}（最近 {time}）",
+   "proposed": "{count, plural, other {自提出这个请求以来你发来了#条消息}}（最后一条于{time}）"
+  },
+  {
+   "id": "zh-n1",
+   "severity": "NIT",
+   "key": "ui.chat.asks.dismiss.receipt.moot",
+   "issue": "A half-width spaced em dash inside Chinese text; full-width «——» is mainland convention. The corpus is mixed (6 « — », 7 «——»). Also applies to dismiss.receipt.answered_in_chat.",
+   "current": "已关闭 — 不再需要 | 已关闭 — 已在对话中解决",
+   "proposed": "已关闭——不再需要 | 已关闭——已在对话中解决"
+  },
+  {
+   "id": "zh-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "«无需继续等待» is impersonal and does not make the operator the one waiting, so the defect raised in the other six locales does not apply. The harness has no zh-CN tui.asks/relay.ask at 93f798ddb, so there is no cross-surface comparison. Not counted."
+  }
+ ],
+ "proposed_values": {
+  "ui.chat.asks.dismiss.trigger": "关闭……",
+  "ui.chat.asks.context.messages_since": "{count, plural, other {自提出这个请求以来你发来了#条消息}}（最后一条于{time}）",
+  "ui.chat.asks.dismiss.receipt.moot": "已关闭——不再需要",
+  "ui.chat.asks.dismiss.receipt.answered_in_chat": "已关闭——已在对话中解决"
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+  "contract_docs_I18N_md_origin_main": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager. This session produced none of the reviewed copy: it did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used; all linguistic judgement is the auditor's own. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation."
+}

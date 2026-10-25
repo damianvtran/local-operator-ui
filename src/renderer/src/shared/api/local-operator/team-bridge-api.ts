@@ -65,6 +65,23 @@ export class TeamBridgeAttachmentError extends Error {
 	}
 }
 
+/** An old runtime cannot atomically bind a private write to its captured author.
+ * Fail closed, rather than claiming a renderer status check closes that race.
+ * Target tenant is explicit and may differ from the OAuth token's default org. */
+export async function teamBridgeWriteOwner(
+	accountId: string | undefined,
+	tenantId: string | undefined,
+) {
+	if (!accountId || !tenantId)
+		throw new Error("Team Bridge write owner and tenant required");
+	const capabilities = await desktopResult<{
+		features?: Record<string, number>;
+	}>({ op: "capabilities" });
+	if ((capabilities.features?.team_bridge_conversation_owner_guard ?? 0) < 1)
+		throw new Error("Team Bridge runtime owner guard unavailable");
+	return { expected_account_id: accountId, tenant_id: tenantId };
+}
+
 export const TeamBridgeApi = {
 	async scheduledList(tenantId: string) {
 		return teamBridgeScheduledListSchema.parse(
@@ -169,9 +186,11 @@ export const TeamBridgeApi = {
 		agentCapable?: boolean;
 		members: TeamBridgeMemberInput[];
 		tenantId?: string;
+		expectedAccountId?: string;
 	}): Promise<TeamBridgeConversation> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.create",
+			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
 			kind: input.kind,
 			...(input.tenantId ? { tenant_id: input.tenantId } : {}),
 			...(input.name ? { name: input.name } : {}),
@@ -225,6 +244,7 @@ export const TeamBridgeApi = {
 		input: {
 			clientRef: string;
 			body: string;
+			expectedAccountId?: string;
 			tenantId?: string;
 			/* Set to reply in that root's thread; omitted for a channel-level post. */
 			threadRootId?: string;
@@ -235,6 +255,11 @@ export const TeamBridgeApi = {
 	): Promise<unknown> {
 		return desktopResult<unknown>({
 			op: "team_bridge.messages.send",
+			// Threads retain the renderer fence, but are not advertised by the
+			// conversation-owner capability until their runtime feature adopts it.
+			...(!input.threadRootId
+				? await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)
+				: {}),
 			conversation_id: conversationId,
 			client_ref: input.clientRef,
 			body: input.body,
@@ -312,10 +337,16 @@ export const TeamBridgeApi = {
 
 	async markRead(
 		conversationId: string,
-		input: { seq?: number; muted?: boolean; tenantId?: string },
+		input: {
+			seq?: number;
+			muted?: boolean;
+			tenantId?: string;
+			expectedAccountId?: string;
+		},
 	): Promise<TeamBridgeReadState> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.read",
+			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
 			conversation_id: conversationId,
 			...(input.tenantId ? { tenant_id: input.tenantId } : {}),
 			...(input.seq === undefined ? {} : { seq: input.seq }),
@@ -394,19 +425,27 @@ export const TeamBridgeApi = {
 	async setArchived(
 		conversationId: string,
 		archive: boolean,
+		tenantId?: string,
+		expectedAccountId?: string,
 	): Promise<unknown> {
 		return desktopResult<unknown>({
 			op: "team_bridge.conversations.lifecycle",
 			conversation_id: conversationId,
 			action: archive ? "archive" : "unarchive",
+			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
 		});
 	},
 
-	async leave(conversationId: string): Promise<unknown> {
+	async leave(
+		conversationId: string,
+		tenantId?: string,
+		expectedAccountId?: string,
+	): Promise<unknown> {
 		return desktopResult<unknown>({
 			op: "team_bridge.conversations.lifecycle",
 			conversation_id: conversationId,
 			action: "leave",
+			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
 		});
 	},
 
@@ -422,9 +461,11 @@ export const TeamBridgeApi = {
 	async join(
 		conversationId: string,
 		tenantId?: string,
+		expectedAccountId?: string,
 	): Promise<TeamBridgeConversation> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.join",
+			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
 			conversation_id: conversationId,
 			...(tenantId ? { tenant_id: tenantId } : {}),
 		});
@@ -443,9 +484,11 @@ export const TeamBridgeApi = {
 		conversationId: string,
 		notify: TeamBridgeNotify,
 		tenantId?: string,
+		expectedAccountId?: string,
 	): Promise<TeamBridgeReadState> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.notify",
+			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
 			conversation_id: conversationId,
 			...(tenantId ? { tenant_id: tenantId } : {}),
 			notify,

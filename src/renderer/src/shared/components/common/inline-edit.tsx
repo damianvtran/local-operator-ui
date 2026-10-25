@@ -623,7 +623,7 @@ export const InlineTagEditor: FC<InlineTagEditorProps> = ({
 					key={tag}
 					variant="neutral"
 					shape="pill"
-					className="gap-1 pr-1 text-ink"
+					className="gap-1 pe-1 text-ink"
 				>
 					{tag}
 					<button

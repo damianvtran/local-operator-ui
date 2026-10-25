@@ -18,6 +18,7 @@
  * offer writes the route cannot accept.
  */
 
+import { SoundPlayer } from "@features/chat/canonical/sound-player";
 import { probeLocalFile } from "@features/chat/components/canvas/file-freshness";
 import { WysiwygMarkdownEditor } from "@features/chat/components/canvas/wysiwyg-markdown-editor";
 import type { CanvasDocument } from "@features/chat/types/canvas";
@@ -33,7 +34,11 @@ import remarkGfm from "remark-gfm";
 import * as XLSX from "xlsx";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
 import { isPathBacked } from "../hooks/use-library-file-watch";
-import { useLibraryBytes, useObjectUrl } from "../hooks/use-library-queries";
+import {
+	useLibraryBytes,
+	useLibraryWaveform,
+	useObjectUrl,
+} from "../hooks/use-library-queries";
 import { saveAssetCopy } from "../library-download";
 import { libraryMarkdownDocument } from "../library-markdown";
 import { assetDisplayName } from "../library-model";
@@ -266,6 +271,16 @@ const MediaViewer: FC<{
 }> = ({ asset, mediaSiblings, revision, expanded }) => {
 	const { bytes, mimeType, error, loading } = useAssetContent(asset, revision);
 	const source = useObjectUrl(bytes, mimeType || asset.ref.content_type);
+	/*
+	 * THE DRAWER'S AUDIO IS THE SHARED PLAYER, not a native control. The same
+	 * asset id is the owner id the grid card uses, so the card and the drawer
+	 * are one playback slot: pressing either moves the one you can see, and the
+	 * drawer never mounts an `<audio controls>` that would be a second transport
+	 * with its own clock, its own position and its own idea of what is playing.
+	 * The peaks come from the same asset-scoped sidecar the card reads (one
+	 * cached request per id, see `useLibraryWaveform`).
+	 */
+	const peaks = useLibraryWaveform(asset.id, asset.kind === "audio");
 	const imageTriggerRef = useRef<HTMLButtonElement>(null);
 	const videoTriggerRef = useRef<HTMLButtonElement>(null);
 	const videoPaneRef = useRef<HTMLDivElement>(null);
@@ -432,15 +447,19 @@ const MediaViewer: FC<{
 			);
 		case "audio":
 			return (
-				<div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
+				<div className="flex w-full max-w-100 flex-1 flex-col items-center justify-center gap-3 p-6">
 					<KindGlyph kind="audio" size={32} className="text-ink-dim" />
-					<audio
+					{/* The shared player in both drawer widths; main's expanded
+					 * viewer keeps the wider box, the docked one stays at max-w-100. */}
+					<SoundPlayer
+						variant="full"
+						ownerId={`sound:library:${asset.id}`}
 						src={source}
-						controls
-						className={cn("w-full", expanded ? undefined : "max-w-100")}
-					>
-						<track kind="captions" />
-					</audio>
+						label={assetDisplayName(asset)}
+						peaks={peaks}
+						durationHint={asset.duration_s}
+						className={expanded ? undefined : "max-w-100"}
+					/>
 				</div>
 			);
 		default:
@@ -492,7 +511,7 @@ const MediaViewer: FC<{
 							title={fullScreenLabel}
 							onClick={() => setLightboxIndex(position)}
 							data-library-media-trigger="video"
-							className="absolute top-2 right-2 z-[2]"
+							className="absolute top-2 end-2 z-[2]"
 						>
 							<Maximize2 aria-hidden="true" />
 						</Button>
@@ -593,7 +612,7 @@ const MarkdownAssetView: FC<{
 		return (
 			<div
 				data-lo-pane-edge-cues
-				className="min-h-0 flex-1 overflow-y-auto bg-canvas"
+				className="min-h-0 flex-1 overflow-y-auto bg-sunken"
 			>
 				{/* The centered reading column is Library chrome; the shared editor
 				    inside it is untouched, so Canvas keeps the same component and
@@ -763,7 +782,7 @@ const SpreadsheetTable: FC<{
 							 * are different cases, and the census measured them
 							 * as such.
 							 */
-							className="sticky top-0 bg-sunken px-2 py-1 text-left text-ink-muted"
+							className="sticky top-0 bg-sunken px-2 py-1 text-start text-ink-muted"
 						>
 							#
 						</th>
@@ -771,7 +790,7 @@ const SpreadsheetTable: FC<{
 							<th
 								// biome-ignore lint/suspicious/noArrayIndexKey: a column is its index.
 								key={index}
-								className="sticky top-0 border-b border-hairline bg-sunken px-2 py-1 text-left font-medium text-ink-muted"
+								className="sticky top-0 border-b border-hairline bg-sunken px-2 py-1 text-start font-medium text-ink-muted"
 							>
 								{String.fromCharCode(65 + (index % 26))}
 							</th>

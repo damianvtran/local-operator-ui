@@ -16,6 +16,8 @@
 	"ui.chat.composer.starting_recording": "रिकॉर्डिंग शुरू हो रही है",
 	"ui.chat.composer.start_recording_hint": "रिकॉर्डिंग शुरू करें ({shortcut} या {pushToTalk} दबाए रखें)",
 	"ui.chat.composer.processing_audio": "ऑडियो प्रोसेस हो रहा है",
+	"ui.chat.composer.dictation_failed_transient": "डिक्टेशन विफल: ट्रांसक्रिप्शन सेवा में अस्थायी खराबी आई। फिर कोशिश करें।",
+	"ui.chat.composer.dictation_failed_transient_take_kept": "डिक्टेशन विफल: ट्रांसक्रिप्शन सेवा में अस्थायी खराबी आई। आपकी रिकॉर्डिंग सुरक्षित है — “फिर कोशिश करें” उसे दोबारा भेज देता है।",
 	"ui.chat.composer.welcome": "आज मैं आपकी किस काम में मदद करूँ?",
 	"ui.chat.composer.delivery_remedies_hint": "जो संदेश नहीं पहुँचा, उसके फिर भेजें और संपादित करें बटन इस बॉक्स के ऊपर बातचीत में हैं: उन तक पहुँचने के लिए Shift+Tab दबाएँ।",
 	"ui.chat.composer.secret_ask_notice": "एजेंट कोई गोपनीय जानकारी माँग रहा है। इसे सवालों के पैनल में दर्ज करें — इस बीच आप चैट जारी रख सकते हैं।",

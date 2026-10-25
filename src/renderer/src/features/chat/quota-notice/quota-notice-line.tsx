@@ -218,11 +218,11 @@ export const QuotaNoticeLine: FC<{ selection?: QuotaNoticeSelection }> = ({
 					 * word (no whitespace between the span and the text), so it always
 					 * introduces "Sent."/"Requested…" on whichever line the sentence
 					 * starts; the sentence itself still wraps naturally after later words.
-					 * Decorative, so `aria-hidden`; the sentence's own `mr-2` matches the
+					 * Decorative, so `aria-hidden`; the sentence's own `me-2` matches the
 					 * row's `gap-x-2`.
 					 */
 					<output ref={statusRef} tabIndex={-1} data-quota-notice-status="">
-						<span aria-hidden="true" className="mr-2">
+						<span aria-hidden="true" className="me-2">
 							·
 						</span>
 						{model.statusSentence}

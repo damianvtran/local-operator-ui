@@ -1,0 +1,11 @@
+{
+	"ui.presence.unknown": "неизвестно",
+	"ui.presence.link_down_last_seen": "связь потеряна · последний раз в сети {age}",
+	"ui.presence.device_link_down": "Связь потеряна · {reason} · последний раз в сети {age}",
+	"ui.presence.device_unreachable": "устройство недоступно",
+	"ui.presence.just_now": "только что",
+	"ui.presence.minutes_ago": "{count, number} мин назад",
+	"ui.presence.hours_ago": "{count, number} ч назад",
+	"ui.presence.days_ago": "{count, number} дн. назад",
+	"ui.presence.link_down_compact": "Связь потеряна · {age}"
+}

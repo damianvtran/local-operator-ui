@@ -198,7 +198,7 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 				)}
 			>
 				{value.map((cat) => (
-					<Badge key={cat} className="gap-1 pr-1 text-ink">
+					<Badge key={cat} className="gap-1 pe-1 text-ink">
 						{CATEGORY_LABELS[cat] || cat}
 						<button
 							type="button"
@@ -287,7 +287,7 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 				</Popover>
 			</div>
 			{value.length === 0 && (
-				<span className="mt-1 ml-1 block text-ink-dim text-meta">
+				<span className="mt-1 ms-1 block text-ink-dim text-meta">
 					No categories selected
 				</span>
 			)}

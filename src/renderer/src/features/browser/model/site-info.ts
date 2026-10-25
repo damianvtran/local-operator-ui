@@ -42,9 +42,6 @@
  */
 
 const SECURITY_FAILURE_DESCRIPTION = /CERT|SSL|TLS/i;
-/** IPv4 loopback, one test for every 127.0.0.0/8 address (see `isLoopbackHost`). */
-const LOOPBACK_V4 = /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-
 export type SiteInfoKind =
 	| "secure"
 	| "not-secure"
@@ -126,52 +123,4 @@ export function siteInfoForUrl(
 	// `about:blank`, `about:*`, `data:`, `chrome:` and every other non-web
 	// scheme the host can surface are the app's own pages, not a remote origin.
 	return { kind: "internal", origin: "" };
-}
-
-/**
- * True for the addresses a local development server uses: `localhost`,
- * `127.0.0.1`, `0.0.0.0` and IPv6 loopback.
- *
- * WHY IT IS ITS OWN FACT (design round 1, D4). `http:` is classified
- * `not-secure`, and that is correct — the transport is not encrypted. But the
- * trigger drew the same open padlock for `http://127.0.0.1:5173` as for a
- * remote plain-http page, so the most common local case wore a permanent
- * warning glyph and trained the user to ignore the register. The class stays
- * `not-secure`; only the at-rest GLYPH goes neutral for a loopback host, and
- * the field's own lock keeps saying what the transport is.
- */
-export function isLoopbackHost(host: string): boolean {
-	const bare = host.replace(/^\[|\]$/g, "").toLowerCase();
-	return (
-		bare === "localhost" ||
-		bare === "::1" ||
-		bare === "0.0.0.0" ||
-		LOOPBACK_V4.test(bare)
-	);
-}
-
-/**
- * The at-rest trigger's host, elided where the user can still recognise it.
- *
- * A CSS `truncate` clips the TAIL, and the registrable domain is the tail — the
- * part that says whose page this is (design round 1, D3: a long subdomain
- * rendered `very-long-subdomain.exa…`). This drops LEADING subdomain labels
- * first, then middle-elides only what is still too long, so
- * `very-long-subdomain.example.com` reads `example.com` and the port survives.
- */
-export function compactHost(host: string, budget = 22): string {
-	if (host.length <= budget) return host;
-	const portAt = host.lastIndexOf(":");
-	const bracketed = host.startsWith("[");
-	const name = portAt > 0 && !bracketed ? host.slice(0, portAt) : host;
-	const port = portAt > 0 && !bracketed ? host.slice(portAt) : "";
-	const labels = name.split(".");
-	while (labels.length > 2 && labels.join(".").length + port.length > budget)
-		labels.shift();
-	const kept = `${labels.join(".")}${port}`;
-	if (kept.length <= budget) return kept;
-	// Still too long: keep the start and the registrable tail, which is the
-	// half an ellipsis at the end would have thrown away.
-	const tail = kept.slice(-Math.max(6, budget - 2));
-	return `…${tail.slice(tail.indexOf(".") + 1)}`;
 }

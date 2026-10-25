@@ -508,7 +508,7 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 			 */}
 			{model.note && (
 				<span
-					className="max-w-56 truncate pl-1 text-ink-dim text-meta"
+					className="max-w-56 truncate ps-1 text-ink-dim text-meta"
 					title={model.noteTitle ?? model.note}
 				>
 					{model.note}

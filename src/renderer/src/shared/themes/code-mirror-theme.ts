@@ -103,6 +103,9 @@ const editorSpec = {
 	},
 	".cm-content": {
 		caretColor: "var(--color-accent)",
+		// Source text keeps its own bidi ordering inside an RTL document; the
+		// editor chrome may mirror, but code never inherits that direction.
+		direction: "ltr",
 		fontFamily: fontFamily,
 	},
 	".cm-content *": {

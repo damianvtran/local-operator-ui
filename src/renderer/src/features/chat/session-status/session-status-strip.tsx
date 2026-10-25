@@ -1852,7 +1852,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						 * distinction between a measurement and a guess.
 						 */}
 						{reading.status === "estimate" && (
-							<span className="ml-1 text-ink-dim">estimate</span>
+							<span className="ms-1 text-ink-dim">estimate</span>
 						)}
 					</span>
 				)}

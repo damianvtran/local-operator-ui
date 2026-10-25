@@ -164,7 +164,7 @@ const choice = (
 		{...dataAttribute}
 		onClick={onPress}
 		className={cn(
-			"flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm",
+			"flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm",
 			"transition-colors duration-fast ease-out-quart",
 			active ? "text-ink" : "text-ink-muted hover:bg-row-hover hover:text-ink",
 		)}
@@ -455,7 +455,7 @@ export function ChatSidebarViewMenu({
 					return (
 						<div
 							key={key}
-							className="flex h-7 items-center gap-1 rounded-md pl-1 text-body-sm"
+							className="flex h-7 items-center gap-1 rounded-md ps-1 text-body-sm"
 						>
 							<button
 								type="button"
@@ -464,7 +464,7 @@ export function ChatSidebarViewMenu({
 								data-sidebar-view-section={key}
 								onClick={() => onView(toggleSection(view, key))}
 								className={cn(
-									"flex h-7 min-w-0 flex-1 items-center gap-2 text-left",
+									"flex h-7 min-w-0 flex-1 items-center gap-2 text-start",
 									on ? "text-ink" : "text-ink-muted",
 								)}
 							>

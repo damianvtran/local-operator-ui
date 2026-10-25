@@ -269,6 +269,12 @@ export function copyTextForRecord(record: TranscriptRecord): string {
 		case "compaction":
 			return record.text;
 		case "ask_response": {
+			/*
+			 * A dismissal has no answers to list; the harness renders it as one
+			 * sentence for the same reason (`asks/render.py` refuses to pass a
+			 * dismissed ask through the answer report).
+			 */
+			if (record.status === "dismissed") return askResponseSummary(record);
 			const answered = record.questions.flatMap((question) => {
 				const answers = record.answers[question.id] ?? [];
 				return [

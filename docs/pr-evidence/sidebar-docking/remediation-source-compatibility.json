@@ -1,0 +1,27 @@
+{
+  "baseHead": "6f2fb31ff81332c64a7be7c19396c7e594870581",
+  "remediationHead": "e323c1ac06498a1b57bc73ef9294300cbc414979",
+  "applicationFilesChanged": [
+    "src/renderer/src/app.tsx",
+    "src/renderer/src/features/agents/config-run/config-composer.tsx"
+  ],
+  "otherApplicationFilesChanged": false,
+  "freshBuildByteIdentical": false,
+  "proof": "Only the two application edits are comment-only; no bundle identity is claimed. The evidence addendum after the remediation commit is docs-only.",
+  "results": [
+    {
+      "file": "src/renderer/src/app.tsx",
+      "method": "esbuild TSX whitespace/comment-stripped transform",
+      "beforeBytes": 12924,
+      "afterBytes": 12924,
+      "transformedEquivalent": true
+    },
+    {
+      "file": "src/renderer/src/features/agents/config-run/config-composer.tsx",
+      "method": "esbuild TSX whitespace/comment-stripped transform",
+      "beforeBytes": 13878,
+      "afterBytes": 13878,
+      "transformedEquivalent": true
+    }
+  ]
+}

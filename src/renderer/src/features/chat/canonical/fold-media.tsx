@@ -321,7 +321,7 @@ export const FoldMedia = ({
 				gridded
 					? "grid grid-cols-[repeat(4,max-content)] items-start"
 					: "flex flex-wrap items-center",
-				indent === "content" ? "ml-5" : "ml-0",
+				indent === "content" ? "ms-5" : "ms-0",
 			)}
 		>
 			{tiles}

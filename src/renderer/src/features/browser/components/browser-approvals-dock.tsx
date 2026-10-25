@@ -12,6 +12,7 @@ import {
 	type ResolvedRow,
 	approvalScopeLabel,
 } from "../model/approval-queue-model";
+import { approvalsDockClasses } from "../model/approvals-dock-layout";
 import { requesterLabel } from "./browser-consent-request";
 import {
 	BrowserConsentRequest,
@@ -65,6 +66,15 @@ import {
 
 export interface BrowserApprovalsDockProps {
 	open: boolean;
+	/**
+	 * The measured row says the side-by-side layout cannot keep both the panel
+	 * and the page. The dock then takes the full width IN FLOW; the surface
+	 * shrinks the content element, it never overlays it.
+	 */
+	fullWidth?: boolean;
+	/** Bumped when a caller needs the heading focused after an external close
+	 * sequence (the folded ⋯ menu closes after this component mounts). */
+	focusRequest?: number;
 	rows: ApprovalRow[];
 	resolved: ResolvedRow[];
 	selectedEntryId: string | null;
@@ -105,6 +115,8 @@ function grantedWhen(grantedAt: number): string {
 
 export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 	open,
+	fullWidth = false,
+	focusRequest = 0,
 	rows,
 	resolved,
 	selectedEntryId,
@@ -131,6 +143,12 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 		if (!open) return;
 		headingRef.current?.focus();
 	}, [open]);
+	/* A second focus on an explicit request: the folded menu closes after this
+	   component mounts, so its heading focus must be re-requested afterwards. */
+	useEffect(() => {
+		if (!open || focusRequest === 0) return;
+		headingRef.current?.focus();
+	}, [open, focusRequest]);
 
 	// Escape closes the dock, BOUND ON THE DOCUMENT rather than on the section (UX
 	// round 1, U1). The section handler looked equivalent and was not: deciding on
@@ -192,28 +210,19 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 		<section
 			aria-label={t("ui.browser.browser_approvals_dock.approvals")}
 			data-tour-tag={surfaceTag}
+			data-dock-layout={fullWidth ? "full" : "side"}
 			className={cn(
 				"flex shrink-0 flex-col gap-4 overflow-y-auto px-3 py-3",
-				// The sole boundary between this chrome and a live page (§4.2).
+				// The sole boundary between chrome and a live page (§4.2). It stays
+				// floored at full width too: the panel then meets the chrome at the
+				// row's edge, and the contrast contract's structural check treats this
+				// call site's edge as load-bearing rather than as decoration.
 				"border-control border-l bg-surface",
-				// A fixed width rather than a drag handle: the canvas dock needs
-				// resizing because its content has no natural size, while a list of rows
-				// does (§4.2). 24rem at a 1280px surface and above, 20rem below it.
-				// CAPPED SO THE PAGE KEEPS A PAGE (design round 1, D7). The dock is a
-				// flex SIBLING of the content element, so its width comes straight out of
-				// the page: at the pane's 480 floor a fixed 24rem left the page 160px, and
-				// 96px when the window was wide enough for the 24rem form - the broken
-				// mobile column section 7.3's own floor exists to prevent, and the one
-				// failure a native-view pane cannot signal, because a page 160px wide looks
-				// exactly like a pane that is laid out correctly (measured in
-				// `docs/evidence/browser-pane/pane-dock-narrow`: 160x531 reported).
-				//
-				// The 15rem reserved here is the 240px page floor the surface names as the
-				// design's own, so the two numbers AGREE rather than contradicting each
-				// other: the page never goes below 240px and the dock gives way, never the
-				// page. At 640 - the pane's default - the cap cannot fire (400px is on
-				// offer for a 320px dock), so the default state is untouched.
-				"w-80 max-w-[calc(100%-15rem)] min-[1280px]:w-96",
+				// The side form is a fixed width rather than a drag handle: a list of
+				// rows has a natural size (§4.2), 24rem at a 1280px surface and 20rem
+				// below. The cap keeps the 240px page floor; the full form arrives when
+				// that arithmetic can no longer keep both (approvals-dock-layout.ts).
+				approvalsDockClasses(fullWidth),
 			)}
 		>
 			<div className="flex items-start justify-between gap-2">
@@ -321,7 +330,13 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 										onClick={() => onSelect(row.request.entryId)}
 										aria-expanded={selected}
 										data-tour-tag="browser-approvals-waiting-row"
-										className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
+										// The row's own content can exceed a 264px (or 281px side)
+										// button once the authority, requester and expiry are all
+										// present: the rollup used to spill sideways and the panel's
+										// overflow-y resolved to a horizontal scrollbar. Wrap the
+										// expiry instead of clipping it; `ms-auto` keeps it at the
+										// inline end on both one- and two-line rows.
+										className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1.5 text-start"
 									>
 										{/* The ordinal the tray's chip and the tab's `Waiting n` chip
 										    both carry (§5.2) — the same number, from the same model. */}
@@ -370,7 +385,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 											)}
 										</span>
 										{row.remaining && (
-											<span className="shrink-0 text-meta text-ink-dim">
+											<span className="ms-auto shrink-0 text-meta text-ink-dim">
 												{row.remaining}
 											</span>
 										)}

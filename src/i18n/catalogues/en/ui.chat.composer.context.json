@@ -201,5 +201,17 @@
 		"tone": "plain sentence, second person; says the value is kept and where to choose",
 		"note": "Resolved during render; maxCells is an advisory translation target, not measured fit.",
 		"maxCells": 120
+	},
+	"ui.chat.composer.dictation_failed_transient": {
+		"role": "dictation failure toast",
+		"tone": "failure sentence with one closing action, sentence case",
+		"note": "A transient transcription fault after the automatic retries are spent. The toast has no control, so it names the retry itself. Shown only on surfaces with no retained-take row.",
+		"maxCells": 120
+	},
+	"ui.chat.composer.dictation_failed_transient_take_kept": {
+		"role": "dictation failure row beside a Retry control",
+		"tone": "failure sentence that states the take survived, then names the control",
+		"note": "Rendered in the composer and the canvas inline editor next to a control labelled ui.common.actions.retry. Say that the recording is kept and that this control sends it again; do not repeat the toast's imperative on its own. The control label must stay recognisable in the sentence.",
+		"maxCells": 150
 	}
 }

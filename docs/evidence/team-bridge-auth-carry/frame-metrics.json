@@ -1,0 +1,45 @@
+{
+  "b-status-pending": {
+    "source_size": [
+      2560,
+      1440
+    ],
+    "changed_bbox": [
+      1263,
+      747,
+      1297,
+      781
+    ]
+  },
+  "b-history-refused": {
+    "source_size": [
+      2560,
+      1440
+    ],
+    "changed_bbox": [
+      618,
+      122,
+      1585,
+      289
+    ]
+  },
+  "b-populated": {
+    "source_size": [
+      2560,
+      1440
+    ],
+    "changed_bbox": [
+      52,
+      130,
+      53,
+      131
+    ]
+  },
+  "a-return-draft": {
+    "source_size": [
+      2560,
+      1440
+    ],
+    "changed_bbox": null
+  }
+}

@@ -13,6 +13,7 @@ import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
 import { config, telemetryEnabled } from "@shared/config";
+import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installScrollbarActivity } from "@shared/lib/scrollbar-activity";
 import type { PostHogConfig } from "posthog-js";
@@ -177,7 +178,15 @@ document.addEventListener("DOMContentLoaded", () => {
 						<GlobalScrollbarStyles />
 						<ErrorBoundary>
 							<HashRouter>
-								<App />
+								{/*
+								 * Radix reads direction from this context, not from `<html dir>`:
+								 * its content portals leave the DOM subtree that inherits the root
+								 * attribute. Mounted here so every route's menus inherit the locale
+								 * direction (see the provider's own note).
+								 */}
+								<LocaleDirectionProvider>
+									<App />
+								</LocaleDirectionProvider>
 							</HashRouter>
 						</ErrorBoundary>
 						<ThemedToastContainer />

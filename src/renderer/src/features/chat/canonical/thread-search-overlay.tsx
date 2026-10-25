@@ -432,7 +432,7 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 					<KeyboardShortcut shortcut="esc" />
 					<span>close</span>
 				</span>
-				<span className="ml-auto text-ink-dim text-meta">
+				<span className="ms-auto text-ink-dim text-meta">
 					{threadSearchCap(isMac)}
 				</span>
 			</div>
@@ -564,14 +564,14 @@ export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
 		 * a browser's find bar sits over its page. `pointer-events-none` on the
 		 * wrapper so the slot itself never eats a press outside the panel.
 		 *
-		 * `right-6` (24px), not `right-3`: at 12px the panel covered the checkpoint
+		 * `end-6` (24px), not `right-3`: at 12px the panel covered the checkpoint
 		 * rail's ticks for most of a three-result list (design D1 measured 13 of 26
 		 * ticks covered at 600/1499 on a 1500-row conversation, each keeping a 12px
 		 * sliver). 24px clears the rail exactly and matches the toast inset.
 		 */
 		<div
 			ref={panelRef}
-			className="pointer-events-none absolute top-3 right-6 z-20 max-w-[calc(100%-1.5rem)]"
+			className="pointer-events-none absolute top-3 end-6 z-20 max-w-[calc(100%-1.5rem)]"
 		>
 			<ThreadSearchPanel
 				query={search.query}

@@ -132,11 +132,11 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 	const settledResult = useDebouncedValue(resultText ?? "", 300);
 	const showCount = query.trim() !== "" || !isFilterEmpty(filters);
 	return (
-		<div className="ml-auto flex min-w-0 items-center gap-3">
+		<div className="ms-auto flex min-w-0 items-center gap-3">
 			<div className="relative w-full min-w-0 max-w-[400px]">
 				<Search
 					size={16}
-					className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
+					className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-ink-dim"
 					aria-hidden="true"
 				/>
 				<Input
@@ -159,13 +159,13 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 					aria-label={t("ui.projects.projects_toolbar.search_projects")}
 					autoComplete="off"
 					spellCheck={false}
-					className="pl-9"
+					className="ps-9"
 				/>
 				{query ? (
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						className="absolute top-1/2 right-1 -translate-y-1/2"
+						className="absolute top-1/2 end-1 -translate-y-1/2"
 						onClick={() => clearSearch(searchFieldRef.current, onQueryChange)}
 						aria-label={t("ui.projects.projects_toolbar.clear_search")}
 					>
@@ -179,7 +179,7 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 					 * without moving anything — the clear control takes the slot the
 					 * moment there is something to clear.
 					 */
-					<span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-ink-dim">
+					<span className="pointer-events-none absolute top-1/2 end-2 -translate-y-1/2 text-ink-dim">
 						<KeyboardShortcut shortcut="/" />
 					</span>
 				)}
@@ -412,7 +412,7 @@ export const ProjectsFilterChips: FC<ProjectsFilterChipsProps> = ({
 					key={chip.kind === "facet" ? chip.facet : "sort"}
 					asChild
 					variant="neutral"
-					className="gap-1 pr-1 text-ink"
+					className="gap-1 pe-1 text-ink"
 				>
 					<button
 						type="button"

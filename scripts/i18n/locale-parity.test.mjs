@@ -58,6 +58,14 @@ const IDENTICAL_OK = new Map([
 		"language-neutral counter: only placeholders and '/', no words to translate",
 	],
 	[
+		"ui.chat.attachments.file_meta",
+		// `{type} · {size}`: placeholders and a middle dot, no words. The type is a
+		// filename-derived token (PDF, PNG) and the size is formatted by the caller;
+		// there is nothing for a locale to translate, and a differing value would
+		// only invent punctuation per language.
+		"language-neutral format string: only placeholders and '·', no words",
+	],
+	[
 		"ui.settings.account.settings_page.radient_pass",
 		"Product name, preserved verbatim by the programme glossary.",
 	],
@@ -699,6 +707,381 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.shell.sidebar_navigation.agent_hub",
 		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
+	],
+	// --- Audit-classified identical values: canvas and surfaces batches --------
+	// Seven independent auditors classified every value below as legitimately
+	// identical to English at canvas head 936e3a48 / surfaces head 7a1fdf20; the
+	// receipts are i18n/receipts/*-canvas*.json and *-surfaces*.json, and none of
+	// these keys was classified as an untranslated stub. One entry serves every
+	// locale that keeps the value byte-identical; the reason names the class that
+	// makes identical the correct translation rather than a skipped string.
+	[
+		"ui.canvas.create_file_dialog.c_c",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.c_cpp",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.c_cs",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.configuration",
+		"French cognate: « configuration » has the same spelling",
+	],
+	[
+		"ui.canvas.create_file_dialog.css_css",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.dockerfile",
+		"file-name token: the conventional file name is not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.env",
+		"file-name token: the dot-file name is not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.general",
+		"same form in Spanish: the word is spelled identically",
+	],
+	[
+		"ui.canvas.create_file_dialog.go_go",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.html_html",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.ini_ini",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.java_java",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.javascript_js",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.json_json",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.jsx_jsx",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.kotlin_kt",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.markdown_md",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.php_php",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.python_py",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.ruby_rb",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.rust_rs",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.scala_scala",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.swift_swift",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.toml_toml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.tsx_tsx",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.typescript_ts",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.xml_xml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.yaml_yaml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.yaml_yml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.file_rows.archives",
+		"French cognate: « archives » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.code",
+		"French cognate: « code » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.documents",
+		"French cognate: « documents » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.images",
+		"French cognate: « images » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.video",
+		"Vietnamese loanword: « Video » is the standard media-kind label",
+	],
+	[
+		"ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+		"sample path: a literal filesystem path stays byte-identical",
+	],
+	[
+		"ui.canvas.insert_link_dialog.https_example_com",
+		"sample URL: the literal example must stay byte-identical",
+	],
+	[
+		"ui.canvas.insert_link_dialog.url",
+		"technical abbreviation: URL is not translated",
+	],
+	[
+		"ui.canvas.pdf_preview.pdf",
+		"format acronym plus placeholder: PDF is not translated",
+	],
+	[
+		"ui.canvas.shell.canvas",
+		"product surface name: Canvas is preserved verbatim by the glossary",
+	],
+	[
+		"ui.canvas.shell.documents",
+		"French cognate: « documents » has the same spelling",
+	],
+	[
+		"ui.canvas.shell.variables",
+		"French and Spanish cognate: « variables » has the same spelling in both",
+	],
+	[
+		"ui.canvas.variable_form_dialog.example_key_example_value",
+		"format example: JSON syntax must stay byte-identical",
+	],
+	[
+		"ui.canvas.variable_form_dialog.item1_item2",
+		"format example: JSON array syntax must stay byte-identical",
+	],
+	[
+		"ui.canvas.variable_form_dialog.type",
+		"French cognate: « type » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_model.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.sessionf7f199",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.sessions",
+		"French cognate: « sessions » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.analytics_session_state.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_session_state.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.context_model.instructions",
+		"French cognate: « instructions » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.context_model.messages",
+		"French cognate: « messages » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.context_panel.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.context_panel.total",
+		"French and Spanish cognate: « total » has the same spelling in both",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.code",
+		"French cognate: « (code) » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.completed_only",
+		"language-neutral counter: only a formatted number, no words",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.desktop",
+		"Vietnamese loanword: « desktop » is the established platform label",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.k",
+		"unit suffix: « k » is a compact counter marker, not prose",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.message",
+		"French cognate: « message » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.messages",
+		"French cognate: « messages » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.my_api_key",
+		"identifier literal: credential names stay verbatim",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.ports",
+		"French cognate: « ports » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.skill",
+		"URI scheme token: a machine value, never translated",
+	],
+	[
+		"ui.chat.pickers.info_model.agent",
+		"kept-English term: the French glossary renders « agent » as « agent »",
+	],
+	[
+		"ui.chat.pickers.info_model.colorterm",
+		"environment-variable name: identifiers are never translated",
+	],
+	[
+		"ui.chat.pickers.info_model.conversation",
+		"French cognate: « conversation » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.count_noun",
+		"language-neutral ICU skeleton: caller-supplied nouns, no prose",
+	],
+	[
+		"ui.chat.pickers.info_model.no",
+		"same form in Spanish: « no » is spelled identically",
+	],
+	[
+		"ui.chat.pickers.info_model.pid",
+		"technical identifier: « pid » is a token; only the number is formatted",
+	],
+	[
+		"ui.chat.pickers.info_model.pid_7837d5",
+		"technical identifier: « pid » is a token; only the number is formatted",
+	],
+	[
+		"ui.chat.pickers.info_model.python",
+		"product name plus placeholder: the language name is kept verbatim",
+	],
+	[
+		"ui.chat.pickers.info_model.runtime",
+		"kept-English technical term: « runtime » stays English by the style guides",
+	],
+	[
+		"ui.chat.pickers.info_model.runtime_trajectories",
+		"language-neutral composition: placeholders and a separator only",
+	],
+	[
+		"ui.chat.pickers.info_model.runtimes",
+		"kept-English technical term: « runtime » stays English by the style guides",
+	],
+	[
+		"ui.chat.pickers.info_model.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.sessionfcbdc4",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.sessions",
+		"French cognate: « sessions » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.term",
+		"environment-variable name: identifiers are never translated",
+	],
+	[
+		"ui.chat.pickers.info_panel.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_panel.version",
+		"French cognate: « version » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_panel.ok",
+		"status token / interjection: « ok » is conventional in French and Vietnamese",
+	],
+	[
+		"ui.chat.pickers.session_panel.phase",
+		"French cognate: « phase » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_panel.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_panel.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.session_report_model.conversation",
+		"French cognate: « conversation » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_report_model.images_est",
+		"French cognate: « Images » and the « est. » abbreviation are unchanged",
+	],
+	[
+		"ui.chat.pickers.session_report_model.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.usage_view_model.note_with_period",
+		"language-neutral composition: a placeholder and a full stop",
+	],
+	[
+		"ui.chat.pickers.usage_view_model.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.common.layout.chat_layout.mac",
+		"platform-detection token: the value is compared against navigator.platform",
+	],
+	[
+		"ui.settings.shortcuts.row.canvas",
+		"product surface name: Canvas is preserved verbatim by the glossary",
 	],
 ]);
 

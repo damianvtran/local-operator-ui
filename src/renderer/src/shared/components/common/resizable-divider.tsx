@@ -234,13 +234,15 @@ export const ResizableDivider = ({
 	const [hovering, setHovering] = useState(false);
 	const [dragging, setDragging] = useState(false);
 	const draggingRef = useRef(false);
+	const dragCleanupRef = useRef<(() => void) | null>(null);
 	const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	// A pending hover timer that fires after unmount would set state on a dead
-	// component; clearing it on unmount is the whole lifecycle this needs.
 	useEffect(
 		() => () => {
 			if (hoverTimer.current) clearTimeout(hoverTimer.current);
+			/* A route change mid-drag must not leave window listeners, a cursor
+			 * overlay, or text selection disabled after the separator unmounts. */
+			dragCleanupRef.current?.();
 		},
 		[],
 	);
@@ -324,11 +326,13 @@ export const ResizableDivider = ({
 			);
 		};
 
-		const onMouseUp = () => {
+		const endDrag = (updateState: boolean) => {
 			if (!draggingRef.current) return;
 			draggingRef.current = false;
-			setDragging(false);
-			setHovering(false);
+			if (updateState) {
+				setDragging(false);
+				setHovering(false);
+			}
 
 			// Re-enable text selection and remove cursor overlay
 			document.body.style.userSelect = "";
@@ -338,12 +342,15 @@ export const ResizableDivider = ({
 			window.removeEventListener("mouseup", onMouseUp);
 			window.removeEventListener("blur", onMouseUp);
 			document.documentElement.removeEventListener("mouseleave", onMouseUp);
+			dragCleanupRef.current = null;
 		};
+		const onMouseUp = () => endDrag(true);
 
 		window.addEventListener("mousemove", onMouseMove);
 		window.addEventListener("mouseup", onMouseUp);
 		window.addEventListener("blur", onMouseUp);
 		document.documentElement.addEventListener("mouseleave", onMouseUp);
+		dragCleanupRef.current = () => endDrag(false);
 	};
 
 	const lit = hovering || dragging;

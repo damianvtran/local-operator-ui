@@ -2803,6 +2803,13 @@ function makeHost(overrides = {}) {
 				};
 			}
 			if (method === "Page.captureScreenshot") return { data: "iVBORw0KGgo=" };
+			// The scoped snapshot asks for the scope's document before it asks for the
+			// scope itself; a fixture that answers `{}` to the first makes every scoped
+			// call fail with "the page has no document to query" — how this surfaced
+			// (the once-grant test drives `snapshot` with a selector).
+			if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+			if (method === "DOM.querySelector") return { nodeId: 2 };
+			if (method === "DOM.describeNode") return { node: { backendNodeId: 7 } };
 			return {};
 		},
 		calls: [],
@@ -3187,6 +3194,38 @@ test("a document round trip cannot return the unapproved document's text", async
 	};
 	await assert.rejects(
 		() => host.dispatch("read", { ...params, tab: opened.tab }, "round-trip"),
+		(error) =>
+			error.code === "origin_not_allowed" && error.data.reason === "changed",
+	);
+});
+
+test("a query is document-scoped: a navigation it did not cause discards it", async () => {
+	// Agent review round 2 on the query slice: `query` was in NEITHER action set,
+	// so it skipped document authorization and the per-tab lane. Same round-trip
+	// shape as the read above — the answer must not be described as coming from a
+	// document the call did not enter on.
+	const { host, registry } = makeHost();
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	record.view.webContents.executeJavaScriptInIsolatedWorld = async () => {
+		record.view.webContents.url = "https://forbidden.example/";
+		registry.bumpEpoch(record.tabId);
+		record.view.webContents.url = "https://approved.example/";
+		return { count: 1, matches: [{ tag: "input", id: "secret" }] };
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"query",
+				{ ...params, tab: opened.tab, selector: "input" },
+				"q1",
+			),
 		(error) =>
 			error.code === "origin_not_allowed" && error.data.reason === "changed",
 	);
@@ -4118,12 +4157,11 @@ test("allow once authorizes one requester document until the next navigation", a
 	await host.dispatch("request_access", owner, "request");
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
 	const opened = await host.dispatch("open", owner, "open");
+	// No `selector`: this test is about the once grant surviving across three
+	// document-scoped verbs, not about scoping (which has its own test). A scoped
+	// snapshot here would need a fixture subtree and would test `ax-compact`.
 	for (const method of ["read", "snapshot", "screenshot"]) {
-		await host.dispatch(
-			method,
-			{ ...owner, tab: opened.tab, selector: "input", text: "synthetic" },
-			method,
-		);
+		await host.dispatch(method, { ...owner, tab: opened.tab }, method);
 	}
 	registry.bumpEpoch(registry.requireSurface(opened.tab).tabId);
 	await assert.rejects(
@@ -4414,6 +4452,311 @@ test("read runs in an isolated world, and snapshot refs carry the tab's epoch", 
 	assert.equal(snap.refs, 1);
 	assert.match(snap.snapshot, /button "Submit" \[e1\]/);
 	assert.equal(registry.requireSurface(opened.tab).refs.e1.epoch, snap.epoch);
+});
+
+/* R1-3: the locator route in `actions/input.ts` had no test at this layer. This
+ * drives the same stubbed CDP the extension's `input-locator.test.mjs` does and
+ * pins the two things only the app host can get wrong: the backend-id push and
+ * the `resolved` shape, and a miss that is typed with candidates. */
+test("a locator click pushes the matched backend id and reports what it resolved", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const calls = [];
+	const send = async (_contents, method, params) => {
+		calls.push({ method, params });
+		switch (method) {
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return {
+					nodes: [
+						{
+							nodeId: "1",
+							role: { value: "RootWebArea" },
+							name: { value: "" },
+							childIds: ["2"],
+						},
+						{
+							nodeId: "2",
+							backendDOMNodeId: 41,
+							role: { value: "checkbox" },
+							name: { value: "Active" },
+							properties: [{ name: "checked", value: { value: "true" } }],
+							childIds: [],
+						},
+					],
+				};
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.pushNodesByBackendIdsToFrontend":
+				return { nodeIds: [77] };
+			case "DOM.scrollIntoViewIfNeeded":
+			case "Runtime.callFunctionOn":
+				return {};
+			case "DOM.resolveNode":
+				return { object: { objectId: "object:1" } };
+			default:
+				return {};
+		}
+	};
+	const record = {
+		epoch: 1,
+		refs: {},
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/",
+				getTitle: () => "Create App",
+				isDestroyed: () => false,
+				on: () => undefined,
+				removeListener: () => undefined,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+
+	const out = await FRAMES_ACTIONS.click(ctx, {
+		tab: "ui:1:nonce",
+		selector: 'role=checkbox[name="Active"]',
+	});
+
+	assert.deepEqual(
+		calls.find((call) => call.method === "DOM.pushNodesByBackendIdsToFrontend")
+			.params,
+		{ backendNodeIds: [41] },
+	);
+	assert.ok(
+		!calls.some((call) => call.method === "DOM.querySelector"),
+		"a locator never reaches the CSS path",
+	);
+	assert.deepEqual(out.resolved, {
+		by: "locator",
+		role: "checkbox",
+		name: "Active",
+		matched: 1,
+	});
+});
+
+/* The diagnostics half: a selector that matches nothing names the elements that
+ * DO exist, with the locator for each — the measured loop (nine CSS guesses, each
+ * a whole tool call) is what this turns into one correction. */
+test("a CSS miss carries candidates from the accessibility tree", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const send = async (_contents, method) => {
+		switch (method) {
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.querySelector":
+				return { nodeId: 0 };
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return {
+					nodes: [
+						{
+							nodeId: "1",
+							role: { value: "checkbox" },
+							name: { value: "Active" },
+							backendDOMNodeId: 5,
+						},
+					],
+				};
+			default:
+				return {};
+		}
+	};
+	const record = {
+		epoch: 1,
+		refs: {},
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/",
+				getTitle: () => "Create App",
+				isDestroyed: () => false,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.click(ctx, {
+				tab: "ui:1:nonce",
+				selector: "#hook_active",
+			}),
+		(error) => {
+			assert.equal(error.code, "element_not_found");
+			assert.ok(
+				Array.isArray(error.data?.candidates),
+				JSON.stringify(error.data),
+			);
+			assert.ok(error.data.candidates.some((entry) => entry.name === "Active"));
+			assert.match(error.data.candidates[0].locator, /^role=/);
+			return true;
+		},
+	);
+});
+
+/* R1-4: the host path this lane added had no test at this layer. These pin the
+ * three decisions that only exist in `page.ts`: the scope is resolved BEFORE the
+ * a11y read, a scoped read is windowed by the shared driver, and a scoped read
+ * whose page contains frames SAYS so instead of silently dropping them. */
+test("a scoped snapshot resolves the scope first, windows the tree, and names skipped frames", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const calls = [];
+	const TREE = [
+		{
+			nodeId: "1",
+			role: { value: "RootWebArea" },
+			name: { value: "" },
+			childIds: ["2"],
+		},
+		{
+			nodeId: "2",
+			backendDOMNodeId: 500,
+			role: { value: "form" },
+			name: { value: "" },
+			childIds: ["3", "4"],
+		},
+		{
+			nodeId: "3",
+			backendDOMNodeId: 501,
+			role: { value: "checkbox" },
+			name: { value: "Active" },
+			properties: [{ name: "checked", value: { value: "true" } }],
+			childIds: [],
+		},
+		{
+			nodeId: "4",
+			backendDOMNodeId: 502,
+			role: { value: "Iframe" },
+			name: { value: "Payment" },
+			childIds: [],
+		},
+		{
+			nodeId: "5",
+			backendDOMNodeId: 503,
+			role: { value: "button" },
+			name: { value: "Outside" },
+			childIds: [],
+		},
+		{
+			nodeId: "6",
+			backendDOMNodeId: 504,
+			role: { value: "region" },
+			name: { value: "Inner" },
+			childIds: ["7"],
+		},
+		{
+			nodeId: "7",
+			backendDOMNodeId: 505,
+			role: { value: "button" },
+			name: { value: "Inside" },
+			childIds: [],
+		},
+	];
+	// The button sits under the root, OUTSIDE the scope: the scoped read does not
+	// RENDER it, but — per R1-1 — the whole-tree mint still gives it a ref, so a
+	// remembered `e2` keeps naming this button and can never be re-pointed at the
+	// scope's first node.
+	TREE[0].childIds.push("5");
+	TREE[1].childIds.push("6");
+	const send = async (_contents, method, params) => {
+		calls.push({ method, params });
+		switch (method) {
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.querySelector":
+				// Two scopes are driven: the form (500) and its frameless
+				// subsections (504), so the skip note can be told apart from a
+				// page-level frame count.
+				return { nodeId: params.selector === "#inner" ? 9 : 7 };
+			case "DOM.describeNode":
+				return { node: { backendNodeId: params.nodeId === 9 ? 504 : 500 } };
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return { nodes: TREE };
+			default:
+				return {};
+		}
+	};
+	const record = {
+		epoch: 4,
+		refs: {},
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/",
+				getTitle: () => "Create App",
+				isDestroyed: () => false,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+
+	const out = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#new_app",
+	});
+
+	const methods = calls.map((call) => call.method);
+	// R1-3: the selector is resolved before any a11y command crosses.
+	assert.ok(
+		methods.indexOf("DOM.querySelector") <
+			methods.indexOf("Accessibility.enable"),
+		methods.join(","),
+	);
+	assert.equal(out.scoped, true);
+	// The skip note is a REMARK about the scope, appended after the window: it is
+	// not a tree line, so `total_lines` counts the scope's own lines only.
+	assert.equal(out.total_lines, 5, "form, checkbox, Iframe, Inner, Inside");
+	assert.equal(out.returned_lines, 5);
+	assert.ok(
+		!out.snapshot.includes("Outside"),
+		"a node outside the scope is not rendered",
+	);
+	assert.ok(
+		out.snapshot.includes("skipped") ||
+			out.snapshot.includes("does not read frames"),
+		out.snapshot,
+	);
+	assert.ok(
+		!calls.some((call) => call.method === "Runtime.callFunctionOn"),
+		"a scoped read never walks frames",
+	);
+
+	// R2-1: a scope that contains NO frame must not claim one was skipped.
+	const frameless = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#inner",
+	});
+	assert.equal(frameless.scoped, true);
+	assert.ok(
+		!frameless.snapshot.includes("does not read frames"),
+		frameless.snapshot,
+	);
+	assert.equal(frameless.frames_in_scope, 0);
+
+	// The window is applied to the SCOPED text, after refs are minted, so a ref
+	// read on page 2 names the same element as the full read.
+	const page2 = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#new_app",
+		start: 2,
+		limit: 1,
+	});
+	assert.equal(page2.returned_lines, 1);
+	assert.equal(page2.snapshot.split("\n")[0], out.snapshot.split("\n")[1]);
 });
 
 test("the structured reads run the vendored page functions in read's isolated world", async () => {
@@ -4756,6 +5099,77 @@ test("a driven view is sized before it is ever hidden", () => {
 		);
 	assert.notEqual(swapped, source, "the swap must have changed the source");
 	assert.throws(() => assertSizedBeforeHidden(swapped));
+});
+
+/**
+ * The page's press must reach the address overlay's `dismissForTab`.
+ *
+ * WHY A SOURCE SCAN: the wiring is a closure inside `startBrowserHost`'s
+ * `wireView`, and no harness in this file can boot Electron to deliver a native
+ * mouse event into a page. The controller's own tab scoping and reason are
+ * exercised against the real controller in
+ * `scripts/browser-address-overlay.test.mjs`; this pins the two links that make
+ * the press reach it — the page contents' `before-mouse-event` (not the child's)
+ * and the `page_pointer` reason the renderer's abandonment is keyed on.
+ */
+function assertPagePointerDismissal(source) {
+	const wireView = source.slice(source.indexOf("function wireView("));
+	assert.notEqual(wireView.length, 0, "no `wireView` in browser/index.ts");
+	// Anchor on the call itself, then walk back to the page handler that owns it:
+	// a fixed-character window goes stale on any comment edit above the call.
+	const call = wireView.indexOf('dismissForTab(tabId, "page_pointer")');
+	assert.notEqual(
+		call,
+		-1,
+		"a page mouse-down must dismiss the bound tab's overlay as page_pointer",
+	);
+	const handler = wireView.lastIndexOf(
+		'contents.on("before-mouse-event"',
+		call,
+	);
+	assert.notEqual(
+		handler,
+		-1,
+		"the page contents must observe its own mouse events",
+	);
+	assert.match(
+		wireView.slice(handler, call),
+		/if \(mouse\.type === "mouseDown"\)/,
+		"the dismissal must be the mouse-down arm of the page handler",
+	);
+}
+
+test("a page pointer press dismisses the address field even when the page has focus", () => {
+	const source = readFileSync(
+		new URL("../src/main/browser/index.ts", import.meta.url),
+		"utf8",
+	);
+	assertPagePointerDismissal(source);
+	// The check has bite: the plausible wrong wiring is the focus event's reason,
+	// which would also make the renderer's dismissal indistinguishable from a
+	// focus move — the case that already missed a second click into the page.
+	const wrongReason = source.replace(
+		'dismissForTab(tabId, "page_pointer")',
+		'dismissForTab(tabId, "page_focus")',
+	);
+	assert.notEqual(
+		wrongReason,
+		source,
+		"the reason swap must have changed the source",
+	);
+	assert.throws(() => assertPagePointerDismissal(wrongReason));
+	const removed = source.replace(
+		'contents.on("before-mouse-event", (_event, mouse) => {',
+		'contents.on("unused-mouse-event", (_event, mouse) => {',
+	);
+	assert.throws(() => assertPagePointerDismissal(removed));
+	// A mouse-up would also fire on hover-less releases and would dismiss after
+	// the page had already handled the press; only the down arm is the fact.
+	const wrongArm = source.replace(
+		'if (mouse.type === "mouseDown")',
+		'if (mouse.type === "mouseUp")',
+	);
+	assert.throws(() => assertPagePointerDismissal(wrongArm));
 });
 
 test("a background capture retries a stalled attempt, and does not retry a real failure", async () => {
@@ -5960,6 +6374,44 @@ test("a hydration that never commits a page is marked failed, and the next navig
 	// statement about the restore, not a verdict on the tab.
 	host.clearLoadFailure(tabId);
 	assert.equal(host.failedTabIds().size, 0, "the next navigation retires it");
+});
+
+test("a restore superseded mid-flight, then stopped, is not marked failed (F7)", async () => {
+	// The restore rejects ERR_ABORTED before the superseding page commits; if the
+	// superseding load is then stopped, no did-navigate ever arrives to clear a
+	// mark. The abort is ordinary navigation, not a restore failure.
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			view.webContents.loadURL = () =>
+				Promise.reject(
+					new Error("ERR_ABORTED (-3) loading 'http://127.0.0.1:3691/second'"),
+				);
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	const { host } = makeHost({ registry, log: () => {} });
+	host.restoreTabs([
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "http://127.0.0.1:3691/first", title: "first" }],
+			activeIndex: 0,
+		},
+	]);
+	await host.whenRestored();
+	assert.equal(
+		host.failedTabIds().size,
+		0,
+		"a superseded restore is not a Failed tab, even when its successor is stopped",
+	);
+	assert.equal(
+		host.chromeState().navFailure,
+		null,
+		"no restore-failure panel is published for the abort",
+	);
 });
 
 test("a hydration that failed after a commit is not marked failed", async () => {
@@ -7168,6 +7620,7 @@ test("/health carries the capabilities this build serves", async () => {
 		"styles",
 		"hit_test",
 		"ancestors",
+		"query",
 		"download",
 		"upload",
 	]);
@@ -8415,7 +8868,15 @@ class FramePage {
 			case "DOM.describeNode": {
 				const node = this.nodeIn(sessionId, params.nodeId);
 				if (!node?.frame)
-					return { node: { nodeName: node?.nodeName ?? "INPUT" } };
+					return {
+						node: {
+							nodeName: node?.nodeName ?? "INPUT",
+							// The scoped snapshot translates a frontend node id into the
+							// BACKEND id the a11y tree indexes by; a fake that omitted it
+							// would make every scoped read fail as "no backend node id".
+							backendNodeId: node?.backendNodeId,
+						},
+					};
 				if (node.frame.inProcess) {
 					return {
 						node: {
@@ -10032,4 +10493,39 @@ test("duplicate source disappearing during URL read resolves a typed failure", a
 	assert.equal(result.tabId, null);
 	assert.equal(result.error.code, "navigation_failed");
 	assert.equal(registry.count(), 1);
+});
+
+test("page controls work while an app overlay hides the view, and only then (Q2-F1)", async () => {
+	const { host } = makeHost();
+	await host.newTab();
+	host.setContentRect({ x: 0, y: 0, width: 1000, height: 700 });
+	const id = host.registry.activeTab.tabId;
+	// Find, Print and Reset zoom are chrome-initiated: the menu that pauses the
+	// page must not make its own items dead. `false` = our overlay asked the view
+	// to stand down, `contentRect` still laid out.
+	host.setViewVisible(false);
+	await host.controlPage(id, "open");
+	assert.equal(host.chromeState().pageControls.find?.tabId, id);
+	await host.controlPage(id, "reset");
+	assert.equal(host.chromeState().pageControls.notice, null);
+	// An own-state page (start/failure) is not a page to control, and it stays
+	// refused while an overlay ALSO hides it (Q3-1): true in the third slot means
+	// "the browser's own content, whatever else is over it".
+	host.setViewVisible(false, false, true);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
+	host.setViewVisible(false, true);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
+	// A route teardown drops the rect entirely: not presented, no overlay excuse.
+	host.setViewVisible(true);
+	host.setContentRect(null);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
 });
