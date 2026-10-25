@@ -379,4 +379,27 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 			if (wasVisible) sendHide();
 		};
 	}, [input.enabled, input.visible, input.tabId]);
+
+	/*
+	 * DISMISSALS ARRIVE WHILE THE LIST IS NOT VISIBLE TOO (review round 1, R1-1).
+	 *
+	 * `visible` is false during IME composition and before the first history
+	 * answer, and the projection effect above returns before it subscribes then.
+	 * A main dismissal in that window (page focus, page pointer, navigation) used
+	 * to be lost, so the late answer or `compositionend` re-raised the child after
+	 * focus had already left. This subscription handles the dismissal half only
+	 * and schedules no frame: the projection loop stays gated on visibility, and
+	 * only one of the two effects holds a subscription at a time, so an event is
+	 * handled once (the visible effect also carries commits).
+	 */
+	useEffect(() => {
+		if (!input.enabled || input.visible) return;
+		const port = addressOverlayPort();
+		if (!port) return;
+		return port.onEvent((event) => {
+			if (!event || typeof event !== "object") return;
+			if (event.type !== "dismiss" || typeof event.reason !== "string") return;
+			latest.current.onDismiss(event.reason);
+		});
+	}, [input.enabled, input.visible]);
 }
