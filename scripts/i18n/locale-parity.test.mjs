@@ -1168,14 +1168,6 @@ const IDENTICAL_OK = new Map([
 		"Windows system folder name Explorer shows in English under every UI language",
 	],
 	[
-		"ui.chat.directory.folder.program_files",
-		"Windows system folder name Explorer shows in English under every UI language",
-	],
-	[
-		"ui.chat.directory.folder.program_files_x86",
-		"Windows system folder name Explorer shows in English under every UI language",
-	],
-	[
 		"fr:ui.chat.directory.folder.applications",
 		"French cognate: « Applications » has the same spelling; scoped to fr so the other locales still translate it",
 	],
@@ -1186,6 +1178,54 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.chat.directory.folder.volumes",
 		"French cognate: « Volumes » has the same spelling; scoped to fr so the other locales still translate it",
+	],
+	[
+		"fr:ui.chat.directory.folder.program_files",
+		"French Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"fr:ui.chat.directory.folder.program_files_x86",
+		"French Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"hi:ui.chat.directory.folder.program_files",
+		"Hindi Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"hi:ui.chat.directory.folder.program_files_x86",
+		"Hindi Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ru:ui.chat.directory.folder.program_files",
+		"Russian Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ru:ui.chat.directory.folder.program_files_x86",
+		"Russian Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"vi:ui.chat.directory.folder.program_files",
+		"Vietnamese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"vi:ui.chat.directory.folder.program_files_x86",
+		"Vietnamese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ur:ui.chat.directory.folder.program_files",
+		"Urdu Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ur:ui.chat.directory.folder.program_files_x86",
+		"Urdu Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"zh-CN:ui.chat.directory.folder.program_files",
+		"Chinese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"zh-CN:ui.chat.directory.folder.program_files_x86",
+		"Chinese Windows shows this folder name verbatim; the path beside it is never translated.",
 	],
 ]);
 
