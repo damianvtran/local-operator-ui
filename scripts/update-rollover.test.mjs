@@ -134,6 +134,92 @@ test("the report line parses out of the updater's own prose, and malformed lines
 	);
 });
 
+test("the failure block is additive, and a malformed one is dropped without losing the report", () => {
+	/*
+	 * THE OLDER-BUILD PATH IS BYTE-FOR-BYTE THE OLD SHAPE. The contract is additive
+	 * (2026-10-24), so a payload with neither field must produce exactly the report
+	 * it produced before: same keys, no `ok`/`failure` placeholders. This is the
+	 * assertion that lets every caller keep its pre-contract behaviour.
+	 */
+	const legacy = parseUpdateReport(reportLine());
+	assert.ok(legacy);
+	assert.deepEqual(Object.keys(legacy).sort(), [
+		"daemons",
+		"install_version",
+		"schema",
+		"serve",
+		"target",
+	]);
+
+	// A failing run carries `ok: false` and the cause; a success may carry `ok: true`.
+	const failure = {
+		step: "publish",
+		kind: "publication",
+		exit_code: 1,
+		error: "fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+		detail: "",
+	};
+	const failing = parseUpdateReport(reportLine({ ok: false, failure }));
+	assert.ok(failing);
+	assert.equal(failing.ok, false);
+	assert.deepEqual(failing.failure, failure);
+	assert.equal(
+		failing.serve[0].instance,
+		"i-after",
+		"the existing fields survive",
+	);
+	assert.equal(parseUpdateReport(reportLine({ ok: true }))?.ok, true);
+
+	/*
+	 * A MALFORMED FAILURE BLOCK MUST NOT INVALIDATE THE REST. The caller already
+	 * knows the run failed; what the report adds is the cause. Dropping only the
+	 * block means a build that emits a shape this app cannot read still carries
+	 * its install/serve/daemon evidence, and the panel degrades to the raw output
+	 * exactly as an older backend does.
+	 */
+	for (const [why, broken] of [
+		["an unknown step", { ...failure, step: "sideways" }],
+		["an unknown kind", { ...failure, kind: "cosmic" }],
+		["a message-string exit code", { ...failure, exit_code: "1" }],
+		["a fractional exit code", { ...failure, exit_code: 1.5 }],
+		["an empty error", { ...failure, error: "   " }],
+		["a non-string error", { ...failure, error: 7 }],
+		["a non-string detail", { ...failure, detail: 5 }],
+		["a missing kind", { step: "publish", exit_code: 1, error: "boom" }],
+		["a null block", null],
+		["an array block", []],
+	]) {
+		const report = parseUpdateReport(
+			reportLine({ ok: false, failure: broken }),
+		);
+		assert.ok(report, `${why}: the report must still parse`);
+		assert.equal(
+			report.failure,
+			undefined,
+			`${why}: only the block is dropped`,
+		);
+		assert.equal(report.ok, false, `${why}: the verdict beside it survives`);
+		assert.equal(
+			report.install_version,
+			"0.56.0",
+			`${why}: the readings survive`,
+		);
+	}
+
+	// `ok` is additive too: a malformed value is dropped, not fatal.
+	const oddOk = parseUpdateReport(reportLine({ ok: "yes" }));
+	assert.ok(oddOk);
+	assert.equal(oddOk.ok, undefined);
+	assert.equal(oddOk.target, "0.56.0");
+
+	// An absent detail is allowed by the contract's "maybe empty" and reads as absent.
+	const { detail: _detail, ...withoutDetail } = failure;
+	assert.equal(
+		parseUpdateReport(reportLine({ failure: withoutDetail }))?.failure?.detail,
+		undefined,
+	);
+});
+
 test("the daemons' verdict comes from the report alone, and no report is no evidence", () => {
 	assert.equal(daemonMoveOutcome(null), null, "no report, no evidence");
 

@@ -79,6 +79,7 @@ const PROBE = `
 	import { BrowserConsentRequest, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-request";
 	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
+	import { approvalsDockFullWidth, approvalsDockClasses, APPROVALS_DOCK_FULL_WIDTH_MAX } from "./src/renderer/src/features/browser/model/approvals-dock-layout";
 	import { BrowserTabStrip, stateChips, tabFloor } from "./src/renderer/src/features/browser/components/browser-tab-strip";
 	import { approvalRows, approvalScopeLabel, liveApprovalCount, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { closeConversationIntent, closeFailedIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
@@ -111,6 +112,9 @@ const PROBE = `
 		BrowserConsentRequest,
 		BrowserApprovalsTray,
 		BrowserApprovalsDock,
+		approvalsDockFullWidth,
+		approvalsDockClasses,
+		APPROVALS_DOCK_FULL_WIDTH_MAX,
 		BrowserTabStrip,
 		stateChips,
 		tabFloor,
@@ -3420,6 +3424,74 @@ test("each host stamps its own dock tag, so a run can say which dock it drove", 
 		routeTags[0],
 		"the two hosts cannot share one dock tag, or a run could not say which dock its frames show",
 	);
+});
+
+test("the narrow approvals dock is a full-width in-flow panel at 264", () => {
+	// The side-by-side layout gives the dock 320px and the page a 240px floor.
+	// At 264 there is no arithmetic in which both fit, so the dock takes the
+	// whole row and the content element is the thing that yields. The helper is
+	// the one place the threshold lives; the real-app measurement rig checks the
+	// pixels against it.
+	assert.equal(mod.approvalsDockFullWidth(264), true);
+	assert.equal(mod.approvalsDockFullWidth(480), true);
+	assert.equal(mod.approvalsDockFullWidth(520), true);
+	assert.equal(mod.approvalsDockFullWidth(521), false);
+	assert.equal(mod.approvalsDockFullWidth(640), false);
+	assert.equal(mod.approvalsDockFullWidth(0), false);
+	assert.equal(mod.APPROVALS_DOCK_FULL_WIDTH_MAX, 520);
+	const full = mod.approvalsDockClasses(true);
+	assert.match(full, /w-full/);
+	assert.match(full, /max-w-full/);
+	assert.doesNotMatch(full, /w-80/);
+	assert.doesNotMatch(full, /absolute|fixed/);
+	const side = mod.approvalsDockClasses(false);
+	assert.match(side, /w-80/);
+	assert.match(side, /max-w-\[calc\(100%-15rem\)\]/);
+});
+
+test("the dock's full-width state is a rendered state, not a CSS afterthought", () => {
+	const props = {
+		open: true,
+		focusRequest: 0,
+		rows: [],
+		resolved: [],
+		selectedEntryId: null,
+		onSelect: () => {},
+		busy: false,
+		onDecide: () => {},
+		approvals: [],
+		currentOrigin: null,
+		onRevoke: () => {},
+		onRevokeAll: () => {},
+		onForgetSite: () => {},
+		onClearData: () => {},
+		onClose: () => {},
+		surfaceTag: "browser-approvals-dock",
+	};
+	const full = mod.render(
+		mod.el(mod.BrowserApprovalsDock, { ...props, fullWidth: true }),
+	);
+	assert.match(full, /data-dock-layout="full"/);
+	assert.match(full, /w-full/);
+	assert.doesNotMatch(full, /w-80/);
+	const side = mod.render(
+		mod.el(mod.BrowserApprovalsDock, { ...props, fullWidth: false }),
+	);
+	assert.match(side, /data-dock-layout="side"/);
+	assert.match(side, /w-80/);
+});
+
+test("the dock's row observer is a callback ref, so a remount re-measures", () => {
+	// The row exists only on the ready return. The availability branch (cold
+	// start, host retry) unmounts it; a one-shot mount effect would have observed
+	// null and never fired again, leaving a narrow pane on the side form. The
+	// callback ref is the mechanism that re-attaches on the remount.
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	assert.match(surface, /ref=\{attachDockRow\}/);
+	assert.match(surface, /useApprovalsDockWidth\(\)/);
+	assert.doesNotMatch(surface, /const element = dockRowRef\.current/);
 });
 
 test("the app-wide count includes the requests no conversation owns, and drops the expired", () => {

@@ -265,6 +265,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-approvals-narrow-panel-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless at 264px to measure the full-width approvals panel and its controls, so the notification kill switch must ride the launch env like every app rig",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-approvals-s6a-probe.mjs",
 		"spawn",
 		1,
