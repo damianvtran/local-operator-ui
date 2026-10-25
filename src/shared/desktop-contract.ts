@@ -4326,6 +4326,8 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 			) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
+					// i18n: ignore schema diagnostic for a malformed desktop request; it is
+					// never rendered — no UI path parses with this refine's failure text.
 					message: "A message needs text or an image",
 					path: ["body"],
 				});
