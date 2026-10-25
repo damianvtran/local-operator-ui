@@ -1,0 +1,185 @@
+Actual bounded CI remediation receipts. Production src byte-identical to 7a98; ICNS integration byte-identical to main952; all13 image hashes equal original Git blobs and private archive. No new frame/runtime proof.
+
+--- carrier-structure-red.log ---
+FAIL  docs/evidence/team-bridge-auth-carry/a-populated-draft.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/a-return-draft-first.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/a-return-draft-pair.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/a-return-draft-settled.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/b-history-poll-later.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/b-history-refused-first.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/b-history-refused-pair.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/b-populated-first.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/b-populated-pair.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/b-populated-settled.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/b-status-pending-first.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/b-status-pending-pair.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+FAIL  docs/evidence/team-bridge-auth-carry/b-status-pending-settled.png: a frame is COMMITTED. Frames are rig output and belong in the ignored docs/evidence-frames/ (see .gitignore); a rig writing them here again is the regression this gate exists to stop. Untrack it with `git rm --cached` and let the rig write the frames tree.
+
+Evidence structure FAILED: 13 assertion(s). The pixel sweep is NOT run here - it is the release path's step (AGENTS.md).
+
+--- carrier-structure-green.log ---
+Evidence structure holds: 1504 tracked files under docs/evidence/, 237 declared set(s), 0 committed frames, 4 named proof artefact(s). The pixel sweep runs at release.
+
+--- carrier-release-validation.log ---
+--- Input validation ---
+PASS: empty tag
+PASS: tag without v
+PASS: incomplete version
+PASS: prerelease suffix supported
+PASS: short SHA
+PASS: empty SHA manual
+PASS: empty SHA release event valid
+PASS: invalid SHA release event
+PASS: missing token
+PASS: missing token release
+PASS: valid manual inputs
+PASS: valid release inputs
+--- Tag resolution ---
+PASS: wrong ref format
+PASS: non-commit ref
+PASS: lightweight tag resolution
+PASS: annotated tag peeling
+--- Release validation ---
+Tag v0.14.1 resolves to commit 3becfb9c462f6adb1f47f9815767f5522755f849
+Release v0.14.1 (id 383131955) state: published, prerelease: false
+package.json name=local-operator-ui version=0.14.1 OK
+PASS: happy path manual
+Tag v0.14.1 resolves to commit 3becfb9c462f6adb1f47f9815767f5522755f849
+Release v0.14.1 (id 383131955) state: published, prerelease: false
+package.json name=local-operator-ui version=0.14.1 OK
+PASS: release body carried through
+Tag v0.14.1 resolves to commit 3becfb9c462f6adb1f47f9815767f5522755f849
+Release v0.14.1 (id 383131955) state: published, prerelease: false
+package.json name=local-operator-ui version=0.14.1 OK
+PASS: happy path release event
+Tag v0.14.1 resolves to commit 3becfb9c462f6adb1f47f9815767f5522755f849
+PASS: draft release rejected
+Tag v0.14.1 resolves to commit 3becfb9c462f6adb1f47f9815767f5522755f849
+PASS: tag_name mismatch rejected
+Tag v0.14.1 resolves to commit 3becfb9c462f6adb1f47f9815767f5522755f849
+Release v0.14.1 (id 383131955) state: published, prerelease: false
+PASS: package name mismatch rejected
+Tag v0.14.1 resolves to commit 3becfb9c462f6adb1f47f9815767f5522755f849
+Release v0.14.1 (id 383131955) state: published, prerelease: false
+PASS: package version mismatch rejected
+Tag v0.14.1 resolves to commit 3becfb9c462f6adb1f47f9815767f5522755f849
+Release v0.14.1 (id 383131955) state: published, prerelease: false
+PASS: SHA mismatch manual rejected
+
+24 passed, 0 failed
+All validation tests passed
+
+--- carrier-picker-green.log ---
+✔ a completed Radient credential write commissions the account read (3.329916ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 831.673875
+
+--- carrier-ci-remediation-tests.log ---
+✔ the container this gate refuses is the one the sweep judges (0.639083ms)
+✔ the passing fixture passes (165.775875ms)
+✔ the shipped checkout's structure holds (231.122666ms)
+✔ a committed frame is refused, in the tracked tree and in the ignored one (420.587458ms)
+✔ a declared set owes provenance, a sound path and a count (164.402292ms)
+✔ a missing or unparsable manifest fails closed (301.602709ms)
+✔ a named proof artefact that stopped being tracked is refused (203.682333ms)
+✔ a count that is not a number is refused (150.480875ms)
+✔ the runbook is part of the structure, because it says where the sweep went (151.386042ms)
+✔ a git read that cannot answer is a failure, not a pass (119.642875ms)
+✔ every release script runs when it is reached through a symlinked path (7292.830667ms)
+✔ a script reached through a symlinked NAME answers too, not just a symlinked directory (231.409291ms)
+✔ a script this file drives produces its answer, not a silent zero (3591.380916ms)
+✔ onboarding diagnostic distinguishes driven CLI from import through physical and symlinked paths (645.499791ms)
+✔ no script anywhere resolves its own entry point by anything but the shared helper (72.547667ms)
+✔ every script a workflow invokes is driven here, or says why it needs no entry-point (197.676667ms)
+✔ desktop shard invalid-mode CLI refuses through physical and symlink paths (221.534709ms)
+✔ desktop shard import stays neutral through physical and symlink paths (220.244625ms)
+✔ a partial run that adds a surface satisfies the guard (2.671916ms)
+✔ counts a fold hand-wrote as JSON strings still add, instead of concatenating (1.239084ms)
+✔ a partial run that only refreshes does not move the count (1.187625ms)
+✔ a stray undeclared directory still fails the guard (2.2385ms)
+✔ a stray beside a genuinely added surface is still caught (2.065458ms)
+✔ declared supplementary sets are excluded from the swept count (2.473583ms)
+✔ a manifest whose counts describe the tree under review passes (0.570958ms)
+✔ a head that is merely RESOLVABLE is not good enough (0.116917ms)
+✔ a head that resolves to nothing at all fails (0.091291ms)
+✔ a tree-stamp pair is IGNORED, stored in the file or absent (T2) (0.377708ms)
+✔ a supplementary set's capturedAtHead is held to the same bar (0.08525ms)
+✔ a missing head is a failure, not a pass by omission (0.060583ms)
+✔ partialCapture's own head citations are checked too (0.276958ms)
+✔ a pass that added no frames does not claim to have added them (1.273917ms)
+✔ a set whose story file moved outside its capturedAtHead reads as an advisory (1.442375ms)
+✔ an agreeing stamp is silent, and a harness name resolves beside its frames (1.39375ms)
+✔ a set that names no story file stays silent, and a glob is not a name (1.199417ms)
+✔ a set naming a story file this tree cannot resolve reads as an advisory (7.421417ms)
+✔ a stamp this history cannot answer does not read as drift (1.576542ms)
+✔ an exact repository-relative mention resolves as written (1.414834ms)
+✔ a tally that accounts for the pass's own diff passes (0.434875ms)
+✔ a tally below the pass's own diff fails, and says by how much (0.080334ms)
+✔ a story list that lost a directory the pass rewrote fails (0.081875ms)
+✔ a width-suffixed directory is the story it belongs to (0.04875ms)
+✔ frames inside a declared set are not demanded of the pass's tally (0.038ms)
+✔ a repository git cannot read is not a failure (0.039ms)
+✔ a tally below the frames HEAD holds in the directories it names fails (0.078584ms)
+✔ an honest tally passes on HEAD's tree alone (0.068833ms)
+✔ frames HEAD holds outside the named directories are not this field's (0.0505ms)
+✔ frames inside a declared set are not demanded of the tally on HEAD's tree either (0.037625ms)
+✔ an entry that only prefixes a directory does not name it (0.079958ms)
+✔ the capturer's own dir override still names the directory it writes (0.049625ms)
+✔ a clone with history asks both questions, and a mutated tally answers both (0.076375ms)
+✔ the SHIPPED manifest's counts describe the tree it ships in (151.605125ms)
+✔ an EMPTY frames tree stands the count guards down, like an absent one (0.8295ms)
+✔ the SHIPPED manifest carries no tree stamp (5.353292ms)
+✔ the SHIPPED manifest's countsMean leads carry no fold label (5.342042ms)
+✔ a spliced entry's duplicated keys are caught by the walker (0.171875ms)
+✔ the SHIPPED manifest carries no duplicated key in any object (38.895917ms)
+✔ a note must not bind itself to a tree stamp (14.02675ms)
+✔ the `previousTopLevel` snapshots carry no stamp token (10.904458ms)
+﹣ the SHIPPED manifest's head citations lie in the history it ships in (0.031041ms) # a shallow clone has no ancestor of HEAD to check
+✔ a truncated clone has no verdict on the citations it cannot resolve (0.138416ms)
+✔ a countsMean paragraph leading with the walk's numbers passes (2.708542ms)
+✔ a paragraph left behind by a fold fails, and carries the sentence to paste (2.005ms)
+✔ a paragraph with no reading in it fails rather than passing by omission (1.594458ms)
+✔ the older paragraphs under the leading one are not this tree's to answer for (1.498542ms)
+✔ a stale surfaces paragraph fails on the literal the field names (1.456333ms)
+✔ a manifest with no countsMean is not this guard's failure (2.034083ms)
+✔ a countsMean cell that repeats a paragraph verbatim fails (0.19875ms)
+✔ the SHIPPED manifest repeats no paragraph in any countsMean cell (4.463666ms)
+✔ the manifest carries every top-level record this branch wrote (4.739792ms)
+﹣ every declared evidence set holds exactly the palettes its record documents (0.07175ms) # no captured frames: docs/evidence-frames is rig output, so run node scripts/capture-evidence.mjs first
+✔ a frame the walk does not judge is accounted for, and moving one fails (2.573541ms)
+✔ only a plain vX.Y.Z tag names a version (0.4665ms)
+✔ versions compare numerically, not as strings (0.1105ms)
+✔ drafts and unpublished releases are not releases (0.32425ms)
+✔ the incumbent anchor is the newest release a user could be running (0.187958ms)
+✔ a tag no user could reach is not an incumbent anchor (0.073791ms)
+✔ a Release with no architecture-matched archive is not an incumbent anchor (0.05525ms)
+✔ the version anchor is the newest tag of any kind, so no number is reused (0.063584ms)
+✔ no anchor at all is a refusal, not a default (0.054083ms)
+✔ the bump replaces the version line and nothing else (0.323667ms)
+✔ a bump that is not one version line is refused (0.105459ms)
+✔ an ambiguous or malformed version surface is refused rather than guessed (0.219583ms)
+✔ the real package.json is bumpable in exactly one line (0.913083ms)
+✔ the verification's incumbent is the release a user upgrades from (0.856042ms)
+✔ a verification input that cannot be established is refused (0.272916ms)
+✔ a gate that answers is passed through untouched (64.256292ms)
+✔ a gate that succeeds and says nothing is refused, not read as a pass (39.066084ms)
+✔ a gate's refusal keeps its reason and its own status (37.953541ms)
+✔ a silent FAILURE is not re-read as a silence (39.728208ms)
+✔ a gate that dies with output keeps both (39.7365ms)
+✔ the helper refuses to be called wrong rather than passing silently (13.775042ms)
+✔ the real Runtime Dependencies gate runs through the helper (135.262375ms)
+✔ every workflow step that runs a status-only gate goes through the helper (10.157917ms)
+ℹ tests 94
+ℹ suites 0
+ℹ pass 92
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 2
+ℹ todo 0
+ℹ duration_ms 15956.011333

@@ -53,16 +53,6 @@ export type TeamBridgeOrganization = {
  * header come to disagree about what a conversation is called.
  */
 
-/** A member's stored name; an agent's never repeats its owner ("X (X)"). */
-function memberStoredName(member: {
-	kind: "human" | "agent";
-	display_label: string;
-}): string | null {
-	return member.kind === "agent"
-		? storedAgentName(member.display_label, null)
-		: storedLabel(member.display_label);
-}
-
 /**
  * The name to render for a conversation.
  *
@@ -90,11 +80,11 @@ export function conversationTitle(
 	if (conversation.kind === "dm") {
 		const other =
 			others.find((member) => member.state === "active") ?? others[0];
-		return other ? memberStoredName(other) : null;
+		return other ? storedLabel(other.display_label) : null;
 	}
 	const labels = others
 		.filter((member) => member.state === "active")
-		.map(memberStoredName)
+		.map((member) => storedLabel(member.display_label))
 		.filter((label): label is string => label !== null);
 	if (labels.length === 0) return null;
 	if (labels.length <= 3) return labels.join(", ");
@@ -191,11 +181,12 @@ export function withNotificationPreference(
 	page: TeamBridgeConversationList,
 	conversationId: string,
 	notify: TeamBridgeNotify,
+	tenantId?: string,
 ): TeamBridgeConversationList {
 	return {
 		...page,
 		conversations: page.conversations.map((row) =>
-			row.id === conversationId
+			row.id === conversationId && (!tenantId || row.tenant_id === tenantId)
 				? { ...row, notify, muted: notify === "mute" }
 				: row,
 		),
@@ -223,17 +214,24 @@ export function notifyFailureIsVisible(
 /**
  * The count the thread header states.
  *
- * Current membership includes active AND invited identities, not historical
- * left/removed rows. The populated participant array is authoritative; a
- * discoverable preview withholds it and instead supplies `member_count`.
- * This is presentation only: an invitation never grants active-member access.
+ * Insiders keep the live member array and count its ACTIVE rows: the server's
+ * `member_count` also includes invitees (agent-server counts active + invited),
+ * so preferring it for an insider would make the header disagree with both the
+ * avatars beside it and the previous UI's number. A discoverable non-member has
+ * no `members` rows at all — membership is the fact the preview withholds — so
+ * `member_count` is the only metadata there, and its invited-inclusive total is
+ * the honest number the preview can state.
+ *
+ * Invitees are still VISIBLE: `conversationMembershipCounts` states them
+ * separately for the header badge, so counting them here would state the same
+ * fact twice in two different totals.
  */
 export function conversationMemberCount(
 	conversation: Pick<TeamBridgeConversation, "member_count" | "members">,
 ): number {
 	if (conversation.members.length > 0) {
-		const { active, invited } = conversationMembershipCounts(conversation);
-		return active + invited;
+		return conversation.members.filter((member) => member.state === "active")
+			.length;
 	}
 	return conversation.member_count ?? 0;
 }
@@ -306,12 +304,7 @@ export function shouldNotify(
 export function chronological(
 	messages: readonly TeamBridgeMessage[],
 ): TeamBridgeMessage[] {
-	// Equal seqs only happen among PENDING messages (they all carry
-	// `PENDING_SEQ`); they keep the order they were typed in.
-	return [...messages].sort(
-		(a, b) =>
-			a.seq - b.seq || Date.parse(a.created_at) - Date.parse(b.created_at) || 0,
-	);
+	return [...messages].sort((a, b) => a.seq - b.seq);
 }
 
 /**
@@ -875,20 +868,7 @@ export type TeamBridgeTarget =
 /** One addressee of a draft: a person, or a person's chief of staff. */
 export type TeamBridgeRecipient =
 	| { kind: "human"; accountId: string; label: string }
-	| {
-			kind: "agent";
-			accountId: string;
-			endpointId: string;
-			/** What the picker and rail show (composed; never stored). */
-			label: string;
-			/**
-			 * The agent's own name (empty when it has none) and its owner's name,
-			 * so the create payload stores a NAME, not the composed display label
-			 * (`recipientMemberInput`). Absent on a hand-built recipient.
-			 */
-			agentName?: string;
-			ownerLabel?: string;
-	  };
+	| { kind: "agent"; accountId: string; endpointId: string; label: string };
 
 export function recipientKey(recipient: TeamBridgeRecipient): string {
 	return `${recipient.kind}:${recipient.accountId}`;
@@ -925,37 +905,14 @@ export function targetConversation(
 	}
 }
 
-/** "X (X)" collapses to "X"; any other label is returned unchanged. */
-function dedupedAgentLabel(label: string): string {
-	const twice = COMPOSED_LABEL.exec(label.trim());
-	return twice && nameKey(twice[1]) === nameKey(twice[2])
-		? twice[1].trim()
-		: label;
-}
-
 /**
- * What an agent member's `display_label` is stored as.
+ * The create request a draft's first send makes.
  *
- * THE SERVER STORES THIS VERBATIM and every client reads it back, so it must be
- * a NAME, never the composed display label: storing "Ben Tran's chief of
- * staff" made the read path compose it AGAIN ("Ben Tran's chief of staff (Ben
- * Tran)", review R1-1 on #1334). So: the agent's own name when it has one;
- * otherwise the OWNER's name, which every reader already treats as "no agent
- * name" (`storedAgentName`) and resolves from the directory, in the reader's
- * own language. A recipient without those fields (hand-built) falls back to
- * its label with a doubled "X (X)" collapsed.
+ * One recipient is a DM (find-or-create on the server, so a retry or a race
+ * with another window lands on the same row); two or more is a private group,
+ * agent-capable exactly when a chief of staff is among them. Returns null for
+ * an empty draft: there is no one to send to.
  */
-function storedAgentLabel(
-	recipient: Extract<TeamBridgeRecipient, { kind: "agent" }>,
-): string {
-	const owner = recipient.ownerLabel?.trim();
-	if (recipient.agentName !== undefined && owner) {
-		const agent = recipient.agentName.trim();
-		return agent !== "" && nameKey(agent) !== nameKey(owner) ? agent : owner;
-	}
-	return dedupedAgentLabel(recipient.label);
-}
-
 /**
  * One addressed recipient as the create op's STRICT member shape: exactly the
  * wire keys, never a UI field (the `rowId` that refused every dialog create is
@@ -970,7 +927,7 @@ export function recipientMemberInput(
 				account_id: recipient.accountId,
 				kind: "agent",
 				endpoint_id: recipient.endpointId,
-				display_label: storedAgentLabel(recipient).slice(0, 64),
+				display_label: recipient.label.slice(0, 64),
 			}
 		: {
 				account_id: recipient.accountId,
@@ -984,13 +941,13 @@ export function recipientMemberInput(
  * reachable person except the reader, then every chief of staff, labelled the
  * way the rail labels them. A bridge-off person is not offered, because a
  * conversation with them would hold messages they cannot receive; they stay
- * visible on the rail with the reason. `chiefLabels` is injected because the
- * composition is a catalogue string (`composeChiefLabel`).
+ * visible on the rail with the reason. `chiefLabel` is injected because the
+ * "{agent} ({person})" composition is a catalogue string.
  */
 export function recipientCandidates(
 	people: readonly TeamBridgeDirectoryMember[],
 	selfAccountId: string | undefined,
-	chiefLabels: ChiefLabels,
+	chiefLabel: (agent: string, person: string) => string,
 ): TeamBridgeRecipient[] {
 	const humans: TeamBridgeRecipient[] = people
 		.filter((member) => {
@@ -1009,25 +966,11 @@ export function recipientCandidates(
 		kind: "agent",
 		accountId: chief.person.account_id,
 		endpointId: chief.endpointId,
-		agentName: chief.agentName,
-		ownerLabel: personDisplayLabel(chief.person),
-		label: composeChiefLabel(
-			chief.agentName,
-			personDisplayLabel(chief.person),
-			chiefLabels,
-		),
+		label: chiefLabel(chief.agentName, personDisplayLabel(chief.person)),
 	}));
 	return [...humans, ...agents];
 }
 
-/**
- * The create request a draft's first send makes.
- *
- * One recipient is a DM (find-or-create on the server, so a retry or a race
- * with another window lands on the same row); two or more is a private group,
- * agent-capable exactly when a chief of staff is among them. Returns null for
- * an empty draft: there is no one to send to.
- */
 export function draftCreateInput(recipients: readonly TeamBridgeRecipient[]): {
 	kind: "dm" | "group";
 	visibility: "private";
@@ -1068,85 +1011,6 @@ export function storedLabel(label: string): string | null {
 		: trimmed;
 }
 
-/**
- * The two catalogue strings a chief-of-staff label is composed from. Injected
- * because both are translatable ("{agent} ({person})" and "{person}'s chief of
- * staff" reorder and re-punctuate per locale).
- */
-export type ChiefLabels = {
-	/** "Aida (Ben Tran)": the agent's own name, the person as context. */
-	named: (agent: string, person: string) => string;
-	/** "Ben Tran's chief of staff": used when the agent has no name of its own. */
-	unnamed: (person: string) => string;
-};
-
-/**
- * "Agent (Owner)": the composed display form. Older clients stored it as the
- * agent member's `display_label`, so the read path must recognise it (and "X
- * (X)") in existing rows; this client now stores a bare name (`storedAgentLabel`).
- */
-const COMPOSED_LABEL = /^(.+?)\s*\((.+)\)$/;
-
-/** Case-, space- and accent-insensitive form for "is this the same name". */
-function nameKey(name: string): string {
-	return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
-}
-
-/**
- * THE ONE PLACE a chief-of-staff label is composed (operator report,
- * 2026-10-22: "Ben Tran (Ben Tran)" on the rail, the thread header and the
- * composer placeholder, and persisted by the server verbatim as the agent
- * member's `display_label`).
- *
- * WHY IT HAPPENED. The directory's `agent.name` is the endpoint's agent name,
- * else its label, and an endpoint enrolled without an agent name was labelled
- * with its OWNER's name. Composing "{agent} ({person})" from that repeated the
- * person. So an agent name that is empty, or the same as the person's
- * (normalised), is no name at all: the label is then "{person}'s chief of
- * staff", and the person's name never appears twice.
- */
-export function composeChiefLabel(
-	agentName: string,
-	personName: string,
-	labels: ChiefLabels,
-): string {
-	const agent = agentName.trim();
-	const person = personName.trim();
-	return agent === "" || nameKey(agent) === nameKey(person)
-		? labels.unnamed(person)
-		: labels.named(agent, person);
-}
-
-/**
- * The agent half of a STORED agent `display_label`, or null when the row holds
- * no agent name.
- *
- * Rows written before the composition fix hold "X (X)", the person's own name,
- * or an already composed "Aida (Ben Tran)". The first two are no name; the
- * third is stripped back to "Aida" so it is not composed a second time.
- * `personName` is null when the directory does not list the owner; a label of
- * the form "X (X)" is still recognised then.
- */
-export function storedAgentName(
-	label: string,
-	personName: string | null,
-): string | null {
-	const stored = storedLabel(label);
-	if (stored === null) return null;
-	if (personName !== null && nameKey(stored) === nameKey(personName)) {
-		return null;
-	}
-	const composed = COMPOSED_LABEL.exec(stored);
-	if (composed) {
-		const [, agent, owner] = composed;
-		if (nameKey(agent) === nameKey(owner)) return null;
-		if (personName !== null && nameKey(owner) === nameKey(personName)) {
-			return agent.trim();
-		}
-	}
-	return stored;
-}
-
 /** The signed-in reader, when the account read has answered with a name. */
 export type TeamBridgeSelf = { accountId: string; name: string };
 
@@ -1176,33 +1040,24 @@ export function participantLabel(
 		display_label: string;
 	},
 	people: readonly TeamBridgeDirectoryMember[],
-	chiefLabels: ChiefLabels,
+	chiefLabel: (agent: string, person: string) => string,
 	self?: TeamBridgeSelf | null,
 ): string | null {
 	const person = people.find(
 		(row) => row.account_id === participant.account_id,
 	);
 	const personName = person ? personDisplayLabel(person) : null;
+	const stored = storedLabel(participant.display_label);
 	if (participant.kind === "human") {
-		const stored = storedLabel(participant.display_label);
 		const selfName =
 			self && self.accountId === participant.account_id
 				? self.name.trim() || null
 				: null;
 		return personName ?? selfName ?? stored;
 	}
-	// An agent name equal to the owner's is the server defaulting the label to
-	// the person (see `composeChiefLabel`): it is no name, so fall through to
-	// the stored label and then to "{person}'s chief of staff".
-	const directoryName = person?.agent?.name.trim() ?? "";
-	const agentName =
-		directoryName !== "" &&
-		(personName === null || nameKey(directoryName) !== nameKey(personName))
-			? directoryName
-			: storedAgentName(participant.display_label, personName);
-	if (personName)
-		return composeChiefLabel(agentName ?? "", personName, chiefLabels);
-	return agentName;
+	const agentName = person?.agent?.name.trim() || stored;
+	if (!agentName) return null;
+	return personName ? chiefLabel(agentName, personName) : agentName;
 }
 
 export type ThreadItem =
@@ -1268,12 +1123,6 @@ export function threadItems(
 	return items;
 }
 
-/** In-flight creates per draft, keyed by the caller's `remembered` map. */
-const INFLIGHT_CREATES = new WeakMap<
-	object,
-	Map<string, Promise<{ id: string; tenantId: string | undefined }>>
->();
-
 /**
  * A draft's FIRST SEND: create the conversation, then post into it.
  *
@@ -1306,287 +1155,22 @@ export async function sendFirstMessage(args: {
 		conversationId: string,
 		message: { clientRef: string; body: string; tenantId: string | undefined },
 	) => Promise<unknown>;
-	/**
-	 * Called for EVERY send of the draft once the conversation is known (the
-	 * create it ran, the create it shared, or one remembered from an earlier
-	 * attempt) and before the post, so each pending entry adopts the id even
-	 * when it shared another send's create (review R2-1 on #1334).
-	 */
-	onCreated?: (created: { id: string; tenantId: string | undefined }) => void;
-}): Promise<{ id: string; tenantId: string | undefined; posted: unknown }> {
+}): Promise<{ id: string; tenantId: string | undefined }> {
 	let created = args.remembered.get(args.draftKey);
 	if (created === undefined) {
-		/*
-		 * TWO SENDS WHILE THE FIRST CREATE IS IN FLIGHT share ONE create (review
-		 * R1-3 on #1334): `remembered` is only written once a create resolves, so
-		 * a second press before that would create a second GROUP (groups are not
-		 * find-or-create). The in-flight promise is kept per draft, beside the
-		 * `remembered` map it belongs to, and dropped when it settles.
-		 */
-		let inflight = INFLIGHT_CREATES.get(args.remembered);
-		if (inflight === undefined) {
-			inflight = new Map();
-			INFLIGHT_CREATES.set(args.remembered, inflight);
-		}
-		let creating = inflight.get(args.draftKey);
-		if (creating === undefined) {
-			creating = args
-				.create(args.input)
-				.then((response) => {
-					if (!response.id) {
-						throw new Error("create returned no conversation id");
-					}
-					const made = {
-						id: response.id,
-						tenantId: response.tenant_id ?? args.tenantId,
-					};
-					args.remembered.set(args.draftKey, made);
-					return made;
-				})
-				.finally(() => inflight.delete(args.draftKey));
-			inflight.set(args.draftKey, creating);
-		}
-		created = await creating;
+		const response = await args.create(args.input);
+		if (!response.id) throw new Error("create returned no conversation id");
+		created = {
+			id: response.id,
+			tenantId: response.tenant_id ?? args.tenantId,
+		};
+		args.remembered.set(args.draftKey, created);
 	}
-	args.onCreated?.(created);
-	const posted = await args.post(created.id, {
+	await args.post(created.id, {
 		clientRef: args.clientRef,
 		body: args.body,
 		tenantId: created.tenantId,
 	});
 	args.remembered.delete(args.draftKey);
-	return { ...created, posted };
-}
-
-/*
- * OPTIMISTIC SEND (operator report, 2026-10-22: "it took a very long time for
- * the message to first appear").
- *
- * A message the reader just sent is drawn at once, before any round trip, as a
- * PENDING entry keyed by its `client_ref` (the UUID the send route stores for
- * idempotency). It is never keyed by conversation id, because a new DM, group
- * or channel is created by the first send and has no id yet: the entry carries
- * a `draftKey` until `conversationId` is adopted from the create.
- *
- * WHY THE SERVER COPY IS MATCHED, NOT KEYED. The server stores `client_ref` but
- * does not return it on message reads, so a refetch cannot be matched to the
- * entry by ref. A server copy claims an entry (and the entry then stops being
- * drawn, so the message is never shown twice) when either
- *   1. the POST has answered with the new message's id and that id is in the
- *      list, or
- *   2. before or without the POST's answer (the race where a refetch or feed
- *      delivers the message first, or an ambiguous failure whose request
- *      landed): a message from the reader, with the same body, newer than the
- *      newest message the reader had seen when they sent. One server message
- *      claims at most one entry, so sending "ok" twice shows two rows.
- * A duplicate is worse than a delay, which is why rule 2 also covers FAILED
- * entries: if the request did land, the failed row disappears into its copy.
- *
- * ORDER. Pending entries sort after every confirmed message (`PENDING_SEQ`),
- * oldest typed first, so a message arriving from someone else never jumps above
- * the one just typed. The server's copy then takes its real seq.
- */
-export type PendingSend = {
-	clientRef: string;
-	body: string;
-	/** ISO time the reader pressed Send; the order among pending entries. */
-	createdAt: string;
-	tenantId: string | undefined;
-	/** The conversation, once known (existing thread, or adopted from create). */
-	conversationId: string | null;
-	/** Identifies the unsent draft thread until `conversationId` exists. */
-	draftKey: string | null;
-	/** Newest confirmed seq in the thread when sent; -1 for a new thread. */
-	baselineSeq: number;
-	/** `sent`: the POST answered; the copy has not shown up in a read yet. */
-	status: "sending" | "sent" | "failed";
-	/** The id the POST answered with, when it did. */
-	confirmedId?: string;
-	/** When the POST answered (ms); a read that lands after it holds the copy. */
-	sentAt?: number;
-};
-
-/** Sorts after every real seq (a seq is a safe integer far below this). */
-export const PENDING_SEQ = Number.MAX_SAFE_INTEGER;
-
-const PENDING_ID_PREFIX = "pending:";
-
-/** The pending entry behind a rendered message, or null for a confirmed one. */
-export function pendingMark(
-	message: Pick<TeamBridgeMessage, "id">,
-	pending: readonly PendingSend[],
-): PendingSend | null {
-	if (!message.id.startsWith(PENDING_ID_PREFIX)) return null;
-	const clientRef = message.id.slice(PENDING_ID_PREFIX.length);
-	return pending.find((entry) => entry.clientRef === clientRef) ?? null;
-}
-
-/**
- * Which pending entries the confirmed thread has not yet claimed (see the
- * matching rules above), oldest typed first.
- */
-export function openPending(
-	confirmed: readonly TeamBridgeMessage[],
-	pending: readonly PendingSend[],
-	selfAccountId: string | undefined,
-): PendingSend[] {
-	const ids = new Set(confirmed.map((message) => message.id));
-	const taken = new Set<string>();
-	const open: PendingSend[] = [];
-	const ordered = [...pending].sort(
-		(a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
-	);
-	for (const entry of ordered) {
-		if (entry.confirmedId !== undefined && ids.has(entry.confirmedId)) {
-			taken.add(entry.confirmedId);
-			continue;
-		}
-		const copy = selfAccountId
-			? confirmed.find(
-					(message) =>
-						!taken.has(message.id) &&
-						message.seq > entry.baselineSeq &&
-						message.sender.kind === "human" &&
-						message.sender.account_id === selfAccountId &&
-						message.body === entry.body,
-				)
-			: undefined;
-		if (copy) {
-			taken.add(copy.id);
-			continue;
-		}
-		open.push(entry);
-	}
-	return open;
-}
-
-/** The thread with this reader's unclaimed pending entries drawn after it. */
-export function threadWithPending(
-	confirmed: readonly TeamBridgeMessage[],
-	pending: readonly PendingSend[],
-	self: { accountId: string; label: string } | null,
-): TeamBridgeMessage[] {
-	if (pending.length === 0) return [...confirmed];
-	const drawn = openPending(confirmed, pending, self?.accountId).map(
-		(entry): TeamBridgeMessage => ({
-			id: `${PENDING_ID_PREFIX}${entry.clientRef}`,
-			conversation_id: entry.conversationId ?? "pending",
-			seq: PENDING_SEQ,
-			sender: {
-				account_id: self?.accountId ?? "self",
-				kind: "human",
-				// No identity yet: the legacy placeholder renders as "Unknown
-				// person" rather than a made-up name.
-				display_label: self?.label || LEGACY_PLACEHOLDER_LABEL,
-			},
-			body: entry.body,
-			origin: "human",
-			created_at: entry.createdAt,
-		}),
-	);
-	return [...confirmed, ...drawn];
-}
-
-/** The id a send POST answered with, whatever envelope the route wraps it in. */
-export function postedMessageId(response: unknown): string | undefined {
-	if (typeof response !== "object" || response === null) return undefined;
-	const record = response as Record<string, unknown>;
-	if (typeof record.id === "string") return record.id;
-	const inner = record.message;
-	if (typeof inner === "object" && inner !== null) {
-		const id = (inner as Record<string, unknown>).id;
-		if (typeof id === "string") return id;
-	}
-	return undefined;
-}
-
-/**
- * The pending entries that belong to the thread on screen: those posted to its
- * conversation, and those typed into its still-unsent draft. An entry keeps
- * its `draftKey` after it adopts the created conversation, so it stays on
- * screen through the window between the create answering and the list
- * refetch re-pointing the target at the new row.
- */
-export function pendingForThread(
-	pending: readonly PendingSend[],
-	conversationId: string | null,
-	draftKey: string | null,
-): PendingSend[] {
-	return pending.filter(
-		(entry) =>
-			(conversationId !== null && entry.conversationId === conversationId) ||
-			(draftKey !== null && entry.draftKey === draftKey),
-	);
-}
-
-/**
- * One send ATTEMPT for a pending entry, as a pure async function so the page's
- * optimistic flow is testable without a DOM (the container only turns its
- * outcome into state). Used for the first try and for every Retry: the
- * `clientRef` is the entry's, never re-minted, so an ambiguous failure whose
- * request landed cannot post twice.
- *
- * - An existing thread posts straight to it.
- * - A new thread goes through `sendFirstMessage` (create once per draft, then
- *   post), calling `onCreated` the instant the conversation exists so the
- *   pending entry adopts its id before the POST resolves.
- * - It never throws: a failure is `{ ok: false }`, which the caller renders as
- *   a failed row with Retry.
- */
-export async function performSend(args: {
-	conversationId: string | null;
-	tenantId: string | undefined;
-	draftKey: string | null;
-	input: Parameters<typeof sendFirstMessage>[0]["input"] | null;
-	draftTenantId: string | undefined;
-	body: string;
-	clientRef: string;
-	remembered: Parameters<typeof sendFirstMessage>[0]["remembered"];
-	create: Parameters<typeof sendFirstMessage>[0]["create"];
-	post: Parameters<typeof sendFirstMessage>[0]["post"];
-	onCreated: (created: { id: string; tenantId: string | undefined }) => void;
-}): Promise<
-	| {
-			ok: true;
-			id: string;
-			tenantId: string | undefined;
-			confirmedId: string | undefined;
-	  }
-	| { ok: false }
-> {
-	try {
-		if (args.conversationId !== null) {
-			const posted = await args.post(args.conversationId, {
-				clientRef: args.clientRef,
-				body: args.body,
-				tenantId: args.tenantId,
-			});
-			return {
-				ok: true,
-				id: args.conversationId,
-				tenantId: args.tenantId,
-				confirmedId: postedMessageId(posted),
-			};
-		}
-		if (args.input === null || args.draftKey === null) return { ok: false };
-		const done = await sendFirstMessage({
-			draftKey: args.draftKey,
-			input: args.input,
-			body: args.body,
-			clientRef: args.clientRef,
-			tenantId: args.draftTenantId,
-			remembered: args.remembered,
-			create: args.create,
-			post: args.post,
-			onCreated: args.onCreated,
-		});
-		return {
-			ok: true,
-			id: done.id,
-			tenantId: done.tenantId,
-			confirmedId: postedMessageId(done.posted),
-		};
-	} catch {
-		return { ok: false };
-	}
+	return created;
 }

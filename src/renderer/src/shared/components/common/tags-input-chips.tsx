@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Free-form tag input rendered as dismissible chips.
  *
@@ -32,10 +34,11 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 	value,
 	label,
 	onChange,
-	placeholder = "Add tag...",
+	placeholder = t("ui.common.forms.tags_input_chips.add_tag"),
 	disabled = false,
 	icon,
 }) => {
+	useI18nLocale();
 	const [input, setInput] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
 	const inputId = useId();
@@ -89,11 +92,13 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 				)}
 			>
 				{value.map((tag) => (
-					<Badge key={tag} className="gap-1 pr-1 text-ink">
+					<Badge key={tag} className="gap-1 pe-1 text-ink">
 						{tag}
 						<button
 							type="button"
-							aria-label={`Remove tag ${tag}`}
+							aria-label={t("ui.common.forms.tags_input_chips.remove_tag", {
+								tag: tag,
+							})}
 							disabled={disabled}
 							onClick={() => handleDelete(tag)}
 							className={cn(
@@ -126,7 +131,7 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Add tag"
+						aria-label={t("ui.common.forms.tags_input_chips.add_tage0db29")}
 						disabled={disabled}
 						onClick={() => {
 							commitInput();
@@ -139,8 +144,8 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 				)}
 			</div>
 			{value.length === 0 && !input && (
-				<span className="mt-1 ml-1 block text-ink-dim text-meta">
-					No tags added
+				<span className="mt-1 ms-1 block text-ink-dim text-meta">
+					{t("ui.common.forms.tags_input_chips.no_tags_added")}
 				</span>
 			)}
 		</div>

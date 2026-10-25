@@ -238,6 +238,7 @@ import {
 import {
 	DEFAULT_SIDEBAR_VIEW,
 	SECTION_GROWN_HINT,
+	SIDEBAR_SECTION_LABEL,
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
 	entityMore,
@@ -954,20 +955,6 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
 		?.click();
 };
 
-/*
- * The words this sentence uses for a count of at most six; digits beyond that,
- * because "Eleven built-in agents" is a figure the eye has to translate back.
- */
-const BUILTIN_COUNT_WORDS = [
-	"No",
-	"One",
-	"Two",
-	"Three",
-	"Four",
-	"Five",
-	"Six",
-];
-
 /**
  * The sentence that offers the built-ins, built from the names actually offered.
  *
@@ -985,16 +972,24 @@ const builtinOfferSentence = (
 	builtins: readonly { name: string }[],
 ): string => {
 	const names = builtins.map((builtin) => builtin.name);
-	const count = BUILTIN_COUNT_WORDS[names.length] ?? String(names.length);
-	const plural = names.length === 1 ? "agent" : "agents";
-	const verb = names.length === 1 ? "is" : "are";
+	/*
+	 * THE LIST IS JOINED HERE, deliberately: IntlMessageFormat has no list
+	 * formatter, and the English source joins with commas and a bare "and" (no
+	 * Oxford comma) - a shape ICU cannot express for a variable-length list. So the
+	 * count and the pre-joined names are parameters of ONE catalogue message (whose
+	 * arms carry the spelled numbers and the it/them pronoun), and a locale cannot
+	 * change the conjunction. That is a stated limit of keying this sentence, not
+	 * an oversight; moving the join into the catalogue would need a list-format
+	 * placeholder the runtime does not have.
+	 */
 	const list =
 		names.length === 1
 			? names[0]
 			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-	return `${count} built-in ${plural} ${verb} ready to install — ${list}. You can edit ${
-		names.length === 1 ? "it" : "them"
-	} once installed.`;
+	return t("ui.chat.sidebar.agents.builtin_offer", {
+		count: names.length,
+		list,
+	});
 };
 
 /**
@@ -5259,17 +5254,34 @@ export function ChatSidebar({
 			<Tooltip
 				key={key}
 				content={rowTooltip}
-				side="right"
+				/*
+				 * THE CARD OPENS BELOW ITS ROW, INSIDE THE SIDEBAR (S5).
+				 *
+				 * It used to open RIGHT, into the content area, and the shared Tooltip
+				 * used to hide the native page while it was painted there. S5 removed
+				 * that lever by kind (a tooltip never pauses the page — a hover hint may
+				 * not take the page away), so a right-opening card would simply be
+				 * CLIPPED by the page, with only the 10px sliver over the sidebar's edge
+				 * visible. No 4px shift fixes it: at the 280 panel the card started at
+				 * x=490 against a panel edge of x=500, and the whole card lies under the
+				 * view from there.
+				 *
+				 * Bottom placement is inside the sidebar's own column, which is DOM and
+				 * never under the view, so the card is fully painted with the page live.
+				 * It covers the NEXT row rather than the hovered row itself (D1's
+				 * constraint was that it must not cover the row's own pin/archive), and
+				 * the panel is `pointer-events-none`, so covering rows cannot eat a
+				 * click. Radix flips it to `top` at the list's bottom edge.
+				 *
+				 * The width follows the trigger (`--radix-tooltip-trigger-width`) and
+				 * `max-w-none` lifts the primitive's 256px cap, so a two-line title wraps
+				 * to the row rather than to the card's own width.
+				 */
+				side="bottom"
 				align="start"
 				disableHoverableContent
 				collisionPadding={FLYOUT_COLLISION_PADDING}
-				/*
-				 * The card opens RIGHT, into the content area, so with the Browser route open
-				 * it lands on the native view and hides it while it is painted there (the
-				 * shared `Tooltip`'s measured registration). Named so the paused page's
-				 * `data-suppressed-by` says which overlay paused it.
-				 */
-				overlayName="sidebar-row-flyout"
+				className="w-(--radix-tooltip-trigger-width) max-w-none"
 				/*
 				 * NO FLYOUT WHILE A DRAG IS ARMED (design round 1, D4; measured on `drag-mid`).
 				 *
@@ -7186,7 +7198,8 @@ export function ChatSidebar({
 						 * drawn only while the lift is, so a group the bound did not withhold
 						 * this row from pays nothing for it.
 						 */}
-						{page.lifted && sectionLabel("Current chat")}
+						{page.lifted &&
+							sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 						{shown.map((row) => sessionRow(row, true))} {/*
 						 * THE GROUP'S OWN SENTENCE.
 						 *
@@ -8509,7 +8522,7 @@ export function ChatSidebar({
 						<section>
 							{heading(
 								"agents",
-								"Agents",
+								t(SIDEBAR_SECTION_LABEL.agents),
 								true,
 								undefined,
 								Bot,
@@ -8860,7 +8873,7 @@ export function ChatSidebar({
 						>
 							{heading(
 								"teams",
-								"Teams",
+								t(SIDEBAR_SECTION_LABEL.teams),
 								true,
 								undefined,
 								Users,
@@ -9090,7 +9103,7 @@ export function ChatSidebar({
 			 */}
 			{liftedRow && (
 				<section data-chat-section="current">
-					{sectionLabel("Current chat")}
+					{sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 					{sessionRow(liftedRow)}
 				</section>
 			)}
@@ -9542,7 +9555,7 @@ export function ChatSidebar({
 					 */
 					className="relative"
 				>
-					{sectionLabel("Pinned")}
+					{sectionLabel(t(SIDEBAR_SECTION_LABEL.pinned))}
 					{taggedRows(orderedPinned)}
 					{/*
 					 * THE INSERTION INDICATOR, and it exists ONLY while a drag does: a 2px line in
@@ -9575,7 +9588,7 @@ export function ChatSidebar({
 						 */
 						return (
 							<section key={key}>
-								{sectionLabel(CHAT_LIST_SECTION_LABEL[key])}
+								{sectionLabel(t(CHAT_LIST_SECTION_LABEL[key]))}
 								<p className="px-2 text-meta text-ink-dim">
 									{livenessUnread
 										? "The daemon could not read which chats are running, so this list may be incomplete."
@@ -9590,7 +9603,7 @@ export function ChatSidebar({
 					return (
 						<section key={key} data-chat-section={key}>
 							{sectionLabel(
-								CHAT_LIST_SECTION_LABEL[key],
+								t(CHAT_LIST_SECTION_LABEL[key]),
 								/*
 								 * The bulk read receipt sits on the FIRST section that has rows - the
 								 * one the eye lands on - while the set it clears is the STORE's, so

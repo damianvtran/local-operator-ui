@@ -1,0 +1,156 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-namespace-reaudit",
+ "date": "2026-10-24",
+ "batch": "canvas",
+ "pr": "#1388",
+ "branch": "feat/i18n-canvas-batch",
+ "audited_head": "3f983092b2296a13e22fddaf74cc65e63efc03e1",
+ "audited_head_short": "3f983092b2",
+ "locale": "ur",
+ "locale_name": "Urdu",
+ "previous_audit": {
+  "receipt": "i18n/receipts/ur-canvas-pickers-r3-90d8cc2d4fda.json",
+  "receipt_sha256": "f2fce5689dea6805e9443fb4223d8ada14e5f1facbd3e646d267bd8e1abbbb30",
+  "head": "30fa931f77bbd2e6ff9719f3207ecf413aefde2f",
+  "target_sha256": "7144a69ac24cd7fab1edd3d090f6173ff297db4878b66b8ad951cd0b4930b109",
+  "note": "Round 3 requested changes at these bytes. The catalogue bytes at 510a9a64f8 are identical to 30fa931f77; this round re-audits only the round-3 findings and their direct neighbours."
+ },
+ "remediation": {
+  "commit": "3f983092b2296a13e22fddaf74cc65e63efc03e1",
+  "subject": "fix(i18n): apply canvas ru/ur audit remediation",
+  "author": "Damian Tran",
+  "note": "Producer of the changed bytes audited here. The commit records the RU and UR changes; this receipt does not invent a translator identity for it."
+ },
+ "translator": {
+  "agent": "translator",
+  "session": "eaf7a455f71b",
+  "model": "radient/auto",
+  "date": "2026-10-24",
+  "receipt": "i18n/receipts/ui-ur-canvas-pickers-20261024.json",
+  "note": "Original translation provenance carried from the round-3 receipt; the r4 bytes were changed by the remediation commit above."
+ },
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "team_role": "translation-auditor",
+ "instance": "aef2ad9d3193",
+ "session": "aef2ad9d3193",
+ "model": "deepseek/deepseek-flash",
+ "served_model": "deepseek/deepseek-flash",
+ "fallback": null,
+ "independence": "This auditor did not author or translate the lane and is a different session. No catalogue, source, context, ledger, allowance or generated file was edited; the two receipts are the only files added, and this audit session commits them. Model deepseek/deepseek-flash; no fallback was observed.",
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "ui_howto": {
+   "path": "docs/I18N.md",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "receipt_contract": {
+   "path": "scripts/i18n/ledger-assemble.mjs",
+   "note": "receipt contract lines 43-57; ledger-rules.mjs deriveReceiptAudit at the audited head"
+  }
+ },
+ "scope": "ONLY ui.chat.pickers at 3f983092b2: the round-3 findings R3-UR-PICKERS-01..06 and their direct neighbours. All 720 keys were checked mechanically (key set, ICU parse, arguments, skeletons, tags, plural/select arms); the 7 changed values and the keys they compose with were re-read semantically. Catalogue audit only; no rendered RTL frame, no native-speaker sign-off and no design/QA approval are claimed.",
+ "method": [
+  "Read the English source, en context sidecar and Urdu catalogue at 3f983092b2 side by side for the changed keys and their neighbours.",
+  "Diffed the namespace against the round-3 head (510a9a64f8; catalogue bytes identical to the receipts' 30fa931f77): 7 values changed, each mapping to a round-3 finding; no other value changed.",
+  "Parsed all 720 messages with @formatjs/icu-messageformat-parser and compared arguments, number/date skeletons, tags, select arms and English plural arms key by key.",
+  "Rendered all 27 plural messages with the repo's IntlMessageFormat at 0, 1, 2, 3, 5, 21, 50 and 1.5: 0 errors; the table pager with the Urdu sessions pair agrees in one/other.",
+  "Ran node --test scripts/i18n/table-pager-range.test.mjs (3/3 pass) and node --test scripts/i18n/locale-parity.test.mjs (43/43 pass).",
+  "Re-checked every round-3 finding at the current bytes; the ur values match the audited/proposed text exactly.",
+  "RTL pass: no manual bidi controls, no Arabic-Indic digits, no Hindi danda; Latin islands kept byte-identical; punctuation checked against the style guide.",
+  "Checked NFC, invisible characters, duplicate keys, key-set/order parity and glossary/style-guide terminology."
+ ],
+ "delta": {
+  "keys_read": 720,
+  "values_changed_since_round3": 7,
+  "changed_keys": [
+   "ui.chat.pickers.destination_pickers.sent_once_with_the_attachment_it_becomes_the_first_turn",
+   "ui.chat.pickers.destination_pickers.copies_this_conversation_up_to_and_including_everything_after_it_is_left",
+   "ui.chat.pickers.model_catalogue_listing.the_provider_listing_failed_the_rows_are_refresh_from_providers_tr",
+   "ui.chat.pickers.goal.clear",
+   "ui.chat.pickers.goal.placeholder",
+   "ui.chat.pickers.goal.title",
+   "ui.chat.pickers.models.native_details"
+  ],
+  "note": "All 7 changes map to round-3 findings; no other value in the namespace changed."
+ },
+ "namespaces": {
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "verdict": "passed — clean-with-findings: 0 BLOCKER, 0 MAJOR, 0 MINOR, 1 NIT; 720/720 keys checked mechanically, 7 changed values and their neighbours re-read. R3-UR-PICKERS-01..06 are fixed at the proposed text; the nit is the «» quote pair in the provider-listing sentence.",
+   "keys_read": 720,
+   "sha256": {
+    "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+    "ur": "c2c219f979a0de875543f109f5485cbb7e2db360e1cad95f0b61389fde009adf",
+    "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "mechanical": {
+    "key_set_equals_en": true,
+    "missing_keys": [],
+    "extra_keys": [],
+    "exact_en_target_key_order": false,
+    "key_order_note": "The key SETS are equal and locale-parity.test.mjs passes; file order differs from English and is not a gate.",
+    "icu_parse": "720/720 messages parse",
+    "placeholder_argument_mismatches": 0,
+    "number_date_skeleton_mismatches": 0,
+    "markup_tag_mismatches": 0,
+    "select_arm_missing": 0,
+    "plural_categories": "one/other present in all 27 plural messages; no missing «other»",
+    "plural_messages_rendered": "27/27 at 0, 1, 2, 3, 5, 21, 50, 1.5; 0 format errors",
+    "nfc": true,
+    "manual_bidi_controls": 0,
+    "identical_values": 11,
+    "identical_values_note": "All eleven are technical/template values: {value}k, skill://, MY_API_KEY, TERM, COLORTERM, Python {python_version}, pid {pid}, pid {pid} duplicate, {completed}, count_noun (template only, no prose), {runtimecount} · {bound}{trajectorycount}.",
+    "rtl_latin_islands": "checked; code spans, flags, paths, model ids and product names kept byte-identical and in source order",
+    "urdu_punctuation": "۔ ، ؟ ؛ used in prose; 6 “ ” pairs and one «» pair; the «» pair is R4-UR-PICKERS-01",
+    "arabic_indic_digits": 0,
+    "hindi_danda": 0,
+    "ascii_double_quotes_in_prose": 0,
+    "nbsp_nbsp_zwsp_bom_shy": 0,
+    "duplicate_keys": 0
+   },
+   "findings": [
+    {
+     "id": "R4-UR-PICKERS-01",
+     "severity": "nit",
+     "category": "typography/consistency",
+     "key": "ui.chat.pickers.model_catalogue_listing.the_provider_listing_failed_the_rows_are_refresh_from_providers_tr",
+     "source": "The provider listing failed. The rows below are {value}; Refresh from providers tries again.",
+     "current": "فراہم کنندہ کی فہرست نہیں مل سکی۔ نیچے والی قطاریں {value} ہیں؛ «فراہم کنندگان سے تازہ کریں» دوبارہ کوشش کرے گا۔",
+     "proposed": "فراہم کنندہ کی فہرست نہیں مل سکی۔ نیچے والی قطاریں {value} ہیں؛ “فراہم کنندگان سے تازہ کریں” دوبارہ کوشش کرے گا۔",
+     "reason": "The Urdu style guide specifies “ ” for quotes; this is the only «» pair in the Urdu catalogue (the other six quoted strings in this namespace use “ ”), so the remediation for R3-UR-PICKERS-02 introduced a typographic inconsistency while fixing the sentence grammar.",
+     "evidence": "Scanned src/i18n/catalogues/ur: 6 “ ” pairs in ui.chat.pickers.json and 1 «» pair (this key); no other Urdu catalogue uses «».",
+     "status": "open"
+    }
+   ]
+  }
+ },
+ "totals": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "status": "passed",
+ "verdict": "passed — clean-with-findings: 0 BLOCKER, 0 MAJOR, 0 MINOR, 1 NIT in ui.chat.pickers at 3f983092b2; 720/720 keys checked mechanically, 7 changed values and their neighbours re-read. The round-3 major and all four minors are fixed at the proposed text; the residual is a typographic nit in the provider-listing sentence.",
+ "notes": [
+  "Catalogue audit only; no rendered RTL frame, no native-speaker sign-off, no design/QA approval.",
+  "The «» pair is the only one in the Urdu catalogue; the other six quoted strings in this namespace use “ ”. It was introduced by the remediation sentence and is a nit, not a regression from the round-3 head (which had no quotes there).",
+  "No catalogue, source, context, ledger, allowance or generated file was edited; only the two receipts were added."
+ ]
+}

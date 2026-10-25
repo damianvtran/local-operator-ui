@@ -1,5 +1,7 @@
 import { Button, Input, Separator, Tooltip } from "@shared/components/ui";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ChevronLeft, ChevronRight, Replace, X } from "lucide-react";
 import type { FC } from "react";
@@ -58,6 +60,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	findValue,
 	onFindValueChange,
 }) => {
+	useI18nLocale();
 	const [mode, setMode] = useState(initialMode);
 	const [replaceValue, setReplaceValue] = useState("");
 
@@ -116,18 +119,26 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	return (
 		<div
 			className={cn(
-				"absolute top-1 right-1 z-10 flex items-center gap-1 rounded-md bg-elevated p-1 shadow-overlay",
+				"absolute top-1 end-1 z-10 flex items-center gap-1 rounded-md bg-elevated p-1 shadow-overlay",
 				containerClassName,
 			)}
 		>
 			<Tooltip
-				content={mode === "find" ? "Switch to replace" : "Switch to find"}
+				content={
+					mode === "find"
+						? t("ui.common.actions.find_replace_widget.switch_to_replace")
+						: t("ui.common.actions.find_replace_widget.switch_to_find")
+				}
 			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
 					onClick={() => setMode(mode === "find" ? "replace" : "find")}
-					aria-label={mode === "find" ? "Switch to replace" : "Switch to find"}
+					aria-label={
+						mode === "find"
+							? t("ui.common.actions.find_replace_widget.switch_to_replace")
+							: t("ui.common.actions.find_replace_widget.switch_to_find")
+					}
 				>
 					<ChevronLeft aria-hidden="true" />
 				</Button>
@@ -137,7 +148,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 				<Input
 					inputSize="sm"
 					ref={findInputRef}
-					placeholder="Find"
+					placeholder={t("ui.common.actions.find_replace_widget.find")}
 					value={findValue}
 					onChange={(e) => onFindValueChange(e.target.value)}
 					onKeyDown={handleFindKeyDown}
@@ -147,7 +158,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 					<Input
 						inputSize="sm"
 						ref={replaceInputRef}
-						placeholder="Replace"
+						placeholder={t("ui.common.actions.find_replace_widget.replace")}
 						value={replaceValue}
 						onChange={(e) => setReplaceValue(e.target.value)}
 						onKeyDown={handleReplaceKeyDown}
@@ -157,14 +168,19 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 			</div>
 
 			<span className="min-w-14 px-2 text-center text-ink-dim text-mono-sm select-none">
-				{matchCount > 0 ? `${currentMatch} of ${matchCount}` : "No results"}
+				{matchCount > 0
+					? t("ui.common.actions.find_replace_widget.of", {
+							currentmatch: currentMatch,
+							matchcount: matchCount,
+						})
+					: t("ui.common.actions.find_replace_widget.no_results")}
 			</span>
 
 			<Button
 				variant="ghost"
 				size="icon-sm"
 				onClick={() => onNavigate("prev")}
-				aria-label="Previous match"
+				aria-label={t("ui.common.actions.find_replace_widget.previous_match")}
 			>
 				<ChevronLeft aria-hidden="true" />
 			</Button>
@@ -172,7 +188,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 				variant="ghost"
 				size="icon-sm"
 				onClick={() => onNavigate("next")}
-				aria-label="Next match"
+				aria-label={t("ui.common.actions.find_replace_widget.next_match")}
 			>
 				<ChevronRight aria-hidden="true" />
 			</Button>
@@ -180,7 +196,9 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 			{mode === "replace" && (
 				<>
 					<Separator orientation="vertical" className="h-5" />
-					<Tooltip content="Replace (Enter)">
+					<Tooltip
+						content={t("ui.common.actions.find_replace_widget.replace_enter")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
@@ -188,20 +206,26 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 								await onReplace(replaceValue);
 								replaceInputRef.current?.focus({ preventScroll: true });
 							}}
-							aria-label="Replace"
+							aria-label={t("ui.common.actions.find_replace_widget.replace")}
 						>
 							<Replace aria-hidden="true" />
 						</Button>
 					</Tooltip>
-					<Tooltip content="Replace all (Cmd/Ctrl+Enter)">
+					<Tooltip
+						content={t(
+							"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter",
+						)}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							onClick={() => onReplaceAll(findValue, replaceValue)}
-							aria-label="Replace all"
+							aria-label={t(
+								"ui.common.actions.find_replace_widget.replace_all",
+							)}
 							className="text-body-sm"
 						>
-							All
+							{t("ui.common.actions.find_replace_widget.all")}
 						</Button>
 					</Tooltip>
 				</>
@@ -212,7 +236,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 				variant="ghost"
 				size="icon-sm"
 				onClick={onClose}
-				aria-label="Close"
+				aria-label={t("ui.common.actions.find_replace_widget.close")}
 			>
 				<X aria-hidden="true" />
 			</Button>

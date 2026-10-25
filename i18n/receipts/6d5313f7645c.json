@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "locale": "ur",
+  "date": "2026-10-24",
+  "status": "passed",
+  "audit_kind": "primary-independent-translation-audit",
+  "scope": "31 new failure-panel keys in ui.common.updates; English source + context; full-file key/placeholder mechanics plus semantic audit of the delta. Translator: amazon-bedrock/us.anthropic.claude-sonnet-5-5.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "6d5313f7645c",
+    "model": "amazon-bedrock/us.anthropic.claude-opus-5-5"
+  },
+  "model_provenance": {
+    "actual_audit_model": "amazon-bedrock/us.anthropic.claude-opus-5-5",
+    "fallback_used": false
+  },
+  "independence": {
+    "translator_agent": "i18n-translator",
+    "translator_model": "amazon-bedrock/us.anthropic.claude-sonnet-5-5",
+    "translator_receipt": "none: CLI run, no portable translator receipt"
+  },
+  "reference_files": {
+    "docs/I18N.md": {
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "src/i18n/catalogues/en/ui.common.updates.json": {
+      "sha256": "41a211c8a83990a9e2c168a44ec706c6462326131ae7d5b3f666595b1b60e69c"
+    },
+    "src/i18n/catalogues/en/ui.common.updates.context.json": {
+      "sha256": "68258a429ca217413a13d43641d1b9642105e802648bc1a99a02a42bf3ee706b"
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    }
+  },
+  "namespaces": {
+    "ui.common.updates": {
+      "status": "passed",
+      "source_sha256": "41a211c8a83990a9e2c168a44ec706c6462326131ae7d5b3f666595b1b60e69c",
+      "target_sha256": "b962a1979f5ee33774d0cecf251cd29de3a336cfc31fb0c11c565e9461218653",
+      "context_sha256": "68258a429ca217413a13d43641d1b9642105e802648bc1a99a02a42bf3ee706b",
+      "source_path": "src/i18n/catalogues/en/ui.common.updates.json",
+      "target_path": "src/i18n/catalogues/ur/ui.common.updates.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.updates.context.json",
+      "keys": 158,
+      "semantic_scope": {
+        "mechanical_total": 158,
+        "semantic_mode": "delta audit: all 31 new failure-panel keys read in this locale; unchanged keys covered by the preceding audited row (superseded)."
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.common.updates.update_notification.failure_cause_serve_no_version",
+          "issue": "The English says the server 'did not move onto it', where 'it' is the install. The translation says 'نئے ورژن پر' (onto the new version). The meaning holds and reads clearly. It is only slightly less tied to the install than the source."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.common.updates.update_notification.failure_step_promote",
+          "issue": "'منتقلی کا مرحلہ' is a correct rendering of 'switch-over'. The same root 'منتقل' also appears in the rolling-onto and serve strings, so this label is a little less specific than the English. It is still consistent with how the catalogue already uses the word."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.common.updates.update_notification.failure_remedy_serve_restartable",
+          "issue": "The verb agrees with 'ایپ' as feminine ('سکتی'), which is correct. The pronoun 'وہ' standing for the app is a little ambiguous next to 'یہ سرور'. Writing 'ایپ اسے ابھی دوبارہ شروع کر سکتی ہے' would remove the ambiguity. It does not block."
+        }
+      ]
+    }
+  }
+}

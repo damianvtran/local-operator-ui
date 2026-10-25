@@ -1,0 +1,239 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-10-24",
+  "locale": "es",
+  "batch": "extract",
+  "pr": "#1403",
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+  "translation_commit": "b6efb4eca3ac54e8bd68e70362237b155cd3290c",
+  "base": "fdd494d3926d7cdf6f47cda4cd7a05301231f127",
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "es-extract-979302629cb5",
+    "session": "979302629cb5",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback used",
+    "fallback": null,
+    "independent_from_translators": true,
+    "independence_basis": "Separate session from the es translator lane; the integration commit b6efb4eca3 was authored by the integrator. This audit read the es and en catalogues and their context sidecars from the PR head bytes, translated nothing and edited no catalogue."
+  },
+  "references": {
+    "glossary": {
+      "path": "local_operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local_operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca8"
+    }
+  },
+  "scope": "All 134 English keys added by PR #1403 in the seven touched es namespaces (key present at f517ec4899 and absent from origin/main), audited value-by-value against the English source and its context sidecar: parity/order, ICU arguments and select/plural branches, placeholders, register, glossary, width budgets and identical-value policy.",
+  "method": [
+    "Key sets compared per namespace against origin/main: 134 new keys, 0 missing, 0 extra, 3813 es keys overall.",
+    "Every new value parsed with @formatjs/icu-messageformat-parser and compared with its English source on argument names, select/plural options and number skeletons; one delta found, an added es 'many' plural category on a pre-existing key (correct for es), none in the batch.",
+    "Placeholders verified byte-exactly, including {status}/{body} adjacency, {query}, {path} and the viewer's {kind}/{index}/{count} arms.",
+    "Widths checked against every maxCells in the sidecars and against the 42-cell suggestion pool and 59-cell tip pool; no overflow in the batch.",
+    "Register scanned for usted/vosotros forms (none) and for English leftovers (only Chat, Canvas, MCP, Linear, Radient, Esc, Intro, hub, runtime, pull request, repo, ProgramData/x86, all permitted or established).",
+    "Terms cross-checked against the es style guide, i18n/glossary.md and the existing es catalogue: chat/chats, recurso (asset), sin procesar (new), al margen (aside), turno, estimado, descartar, directorio.",
+    "Ten-identifier policy checked against the PR body, the global IDENTICAL_OK block and the en sidecar; 8/10 es values identical (etc media mnt opt ProgramData srv usr var), two translated deliberately."
+  ],
+  "namespaces": {
+    "ui.chat.composer": {
+      "batch_keys": 30,
+      "head_keys": 66,
+      "sha256": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "es": "b3cee7de7cfa936707821ef8be816ff1755e8689f0484e92657237dcb271ddf2",
+        "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c"
+      },
+      "status": "passed",
+      "findings": [
+        {
+          "id": "E1",
+          "severity": "minor",
+          "namespace": "ui.chat.composer",
+          "key": "ui.chat.composer.suggestion.wake_with_summary",
+          "current": "Despiértame mañana con un resumen",
+          "proposed": "Despiértame por la mañana con un resumen",
+          "reason": "English names the time of day ('tomorrow morning'); 'mañana' alone is ambiguous between tomorrow and morning, so the chip loses the hour it asks the agent to schedule. Every other locale keeps it, and commit 1bb549a3 fixed exactly this in fr. The proposal is 40/42 characters, inside the suggestion pool's budget."
+        },
+        {
+          "id": "E2",
+          "severity": "nit",
+          "namespace": "ui.chat.composer",
+          "key": "ui.chat.composer.tip.mention_file",
+          "current": "escribe @ para mencionar un archivo de esta carpeta",
+          "proposed": "escribe @ para mencionar un archivo de este directorio",
+          "reason": "Glossary drift: English 'directory' is 'directorio' in the 20 other es strings in ui.chat.directory (e.g. 'Directorio de trabajo'), while 'carpeta' is the es word for 'folder' used by the browser download copy. Same source term, two spellings. Proposal is 54/59 cells."
+        }
+      ],
+      "identical_values": 0
+    },
+    "ui.chat.device": {
+      "batch_keys": 14,
+      "head_keys": 14,
+      "sha256": {
+        "en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+        "es": "7d52e6d1826544836d4c9c0e37bba2edfc05b153c2a993b2cf745b88c40dd946",
+        "context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce"
+      },
+      "status": "passed",
+      "findings": [],
+      "identical_values": 0
+    },
+    "ui.chat.dialogs": {
+      "batch_keys": 6,
+      "head_keys": 10,
+      "sha256": {
+        "en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+        "es": "b3fd09f534cbe3f5f74bd59dc0fa66ff266df8b63e45060f002b1d8132defcc1",
+        "context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299"
+      },
+      "status": "passed",
+      "findings": [],
+      "identical_values": 0
+    },
+    "ui.chat.directory": {
+      "batch_keys": 43,
+      "head_keys": 43,
+      "sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "es": "d6ea88a3042d8c1331c63b4b414dd971862937df70a43f04be17a8a70a755ee5",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+      },
+      "status": "passed",
+      "findings": [
+        {
+          "id": "E3",
+          "severity": "minor",
+          "namespace": "ui.chat.directory",
+          "key": "ui.chat.directory.menu.browse",
+          "current": "Buscar directorio...",
+          "proposed": "Examinar directorio...",
+          "reason": "'Browse for directory...' opens the native directory picker (window.api.selectDirectory). 'Buscar' means 'search', a false friend that promises a search box; Spanish file dialogs use 'Examinar'. The app's only other 'browse' rendering is 'explorar' (ui.hub.skills.unavailable), so 'Explorar directorio...' is an acceptable alternative if house consistency is preferred."
+        },
+        {
+          "id": "E4",
+          "severity": "minor",
+          "namespace": "ui.chat.directory",
+          "key": "ui.chat.directory.folder.program_files",
+          "keys": [
+            "ui.chat.directory.folder.program_files",
+            "ui.chat.directory.folder.program_files_x86"
+          ],
+          "current": "Archivos de programa / Archivos de programa (x86)",
+          "proposed": "Keep the es values; correct the PR body and the global IDENTICAL_OK reason, or (if the invariant is literal) restore 'Program Files' / 'Program Files (x86)'",
+          "reason": "PR #1403 states the ten filesystem identifiers stay byte-identical in every locale, but es translates two of them (8/10 are identical; zh-CN localizes them too). The per-key en sidecar for these two says 'translate the name the platform's file manager shows', and Microsoft's Spanish docs name the folder 'Archivos de programa', so the es values follow the authoritative instruction. The inconsistency is in the stated invariant and the exemption reason ('Explorer shows in English under every UI language'), not in the Spanish."
+        }
+      ],
+      "identical_values": 8
+    },
+    "ui.chat": {
+      "batch_keys": 36,
+      "head_keys": 44,
+      "sha256": {
+        "en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+        "es": "33f6d45403156e0b4b88c45dfa7ae21dcc01fadaaade7dcd31c89ef2a4cdf321",
+        "context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424"
+      },
+      "status": "passed",
+      "findings": [],
+      "identical_values": 1
+    },
+    "ui.chat.sidebar": {
+      "batch_keys": 1,
+      "head_keys": 44,
+      "sha256": {
+        "en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+        "es": "6c80a46c6c7dd83a67bd1c5521bfbde38b36d2883ae7c91439a9d74a14b3b84d",
+        "context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de"
+      },
+      "status": "passed",
+      "findings": [],
+      "identical_values": 0
+    },
+    "ui.common.viewer": {
+      "batch_keys": 4,
+      "head_keys": 8,
+      "sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "es": "8cf0db58a6fa91720ec802b8c0f452175d5ec1cd5431e6e9ba6aa8e9176b0232",
+        "context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5"
+      },
+      "status": "passed",
+      "findings": [],
+      "identical_values": 0
+    }
+  },
+  "findings": [
+    {
+      "id": "E1",
+      "severity": "minor",
+      "namespace": "ui.chat.composer",
+      "key": "ui.chat.composer.suggestion.wake_with_summary",
+      "current": "Despiértame mañana con un resumen",
+      "proposed": "Despiértame por la mañana con un resumen",
+      "reason": "English names the time of day ('tomorrow morning'); 'mañana' alone is ambiguous between tomorrow and morning, so the chip drops the hour it asks the agent to schedule. Every other locale keeps it, and commit 1bb549a3 fixed exactly this in fr. 'Despiértame por la mañana con un resumen' is 40/42 characters and keeps the morning (tomorrow is supplied by the next-morning reading); a version keeping both explicitly ('Despiértame mañana por la mañana con un resumen') is 47 and over the pool budget."
+    },
+    {
+      "id": "E2",
+      "severity": "nit",
+      "namespace": "ui.chat.composer",
+      "key": "ui.chat.composer.tip.mention_file",
+      "current": "escribe @ para mencionar un archivo de esta carpeta",
+      "proposed": "escribe @ para mencionar un archivo de este directorio",
+      "reason": "Glossary drift: English 'directory' is 'directorio' in the 20 other es strings in ui.chat.directory (e.g. 'Directorio de trabajo'), while 'carpeta' is the es word for 'folder' used by the browser download copy. Same source term, two spellings. Proposal is 54/59 cells."
+    },
+    {
+      "id": "E3",
+      "severity": "minor",
+      "namespace": "ui.chat.directory",
+      "key": "ui.chat.directory.menu.browse",
+      "current": "Buscar directorio...",
+      "proposed": "Examinar directorio...",
+      "reason": "'Browse for directory...' opens the native directory picker (window.api.selectDirectory). 'Buscar' means 'search', a false friend that promises a search box; Spanish file dialogs use 'Examinar'. The app's only other 'browse' rendering is 'explorar' (ui.hub.skills.unavailable), so 'Explorar directorio...' is an acceptable alternative if house consistency is preferred."
+    },
+    {
+      "id": "E4",
+      "severity": "minor",
+      "namespace": "ui.chat.directory",
+      "key": "ui.chat.directory.folder.program_files",
+      "keys": [
+        "ui.chat.directory.folder.program_files",
+        "ui.chat.directory.folder.program_files_x86"
+      ],
+      "current": "Archivos de programa / Archivos de programa (x86)",
+      "proposed": "Keep the es values; correct the PR body and the global IDENTICAL_OK reason, or (if the invariant is literal) restore 'Program Files' / 'Program Files (x86)'",
+      "reason": "PR #1403 states the ten filesystem identifiers stay byte-identical in every locale, but es translates two of them (8/10 are identical; zh-CN localizes them too). The per-key en sidecar for these two says 'translate the name the platform's file manager shows', and Microsoft's Spanish docs name the folder 'Archivos de programa', so the es values follow the authoritative instruction. The inconsistency is in the stated invariant and the exemption reason ('Explorer shows in English under every UI language'), not in the Spanish."
+    }
+  ],
+  "finding_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 1
+  },
+  "totals": {
+    "keys_read": 134,
+    "namespaces": 7,
+    "identical_values": 9,
+    "maxcells_overflow": 0
+  },
+  "verdict": "clean-with-findings",
+  "notes": {
+    "chat_identical": "ui.chat.tabs.chat = 'Chat' is the audited es house term, not a skipped string: 43 existing es values use chat/chats, including ui.agents.navigation.legacy.chat 'Chat'; the batch's own ui.chat.sidebar.section.current_chat 'Chat actual' and ui.chat.dialogs.options.title 'Opciones del chat' agree. RAE accepts 'chat'.",
+    "raw": "ui.chat.tabs.raw 'Sin procesar' has no prior es house usage; it is neutral, idiomatic for unprocessed data and does not collide with any other es term. fr chose 'Brut', a different but compatible call.",
+    "asset": "ui.common.viewer asset arms use 'recurso', matching 19 existing es library strings that render asset as recurso.",
+    "device_chip": "'Nueva aquí' (10/20 cells) and 'Nueva en {name}' (15/20) both keep the tense marker 'Nueva', feminine agreeing with 'conversación' as the surrounding sentences do; the live arms ('En este dispositivo', 'En {name}') stay unmarked, preserving the draft/live contrast.",
+    "programdata": "'ProgramData' identical matches the six other locales that keep it; Spanish Explorer shows ProgramData verbatim in current Windows versions.",
+    "key_order": "es ui.chat.dialogs.json and ui.chat.json are not globally sorted like en (new keys appended after the existing block); pre-existing file shape, no runtime or gate effect.",
+    "width_headroom": "ui.chat.composer.tip.run_panel is exactly 59/59 cells; ui.chat.device.label.on_this_device 19/20; no overflow."
+  },
+  "limitations": "Static catalogue audit only: no rendered screen was built or captured in this pass, so maxCells headroom is arithmetic (code points) rather than measured pixels. RTL and font metrics do not apply to es."
+}

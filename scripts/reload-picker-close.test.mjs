@@ -26,9 +26,9 @@
  * round 2, MAJOR-1) is the same subject one panel over - what a picker tells the
  * reader when the backend says no - and it is asserted on the same exported
  * functions this file already imports from `destination-pickers`; and the
- * RENAME picker's unchanged-submit guard (`renameSubmission`, #920, agent
- * review round 1, MINOR-2) is a pure decision with no dialog to mount at all,
- * so it rides the same bundle too. Said here so a reader does not have to
+ * RENAME picker's unchanged-submit guard (`renameSubmission`, #920) and its
+ * success/failure dismissal contract (core issue #2390) ride the same bundle
+ * too. Said here so a reader does not have to
  * wonder why a fork and a rename case sit in the reload file.
  */
 
@@ -157,7 +157,7 @@ const PICKERS =
  */
 const FORK_WHOLE_CONVERSATION_ADVICE = /fork the whole conversation/i;
 const FORK_CUT_VERB = /(cannot be )?cut\b/i;
-const FORK_CUT_NOTE_CALL_SITE = /cutEntryId \? FORK_CUT_NOTE : undefined/;
+const FORK_CUT_NOTE_CALL_SITE = /cutEntryId \? FORK_CUT_NOTE\(\) : undefined/;
 /*
  * Two more this file already used inside callbacks, hoisted for the same rule
  * now that a change touches this file: every path in this tree is burnt down as
@@ -173,16 +173,21 @@ const RELOAD_FAILURE_LINE =
 let nextAnswer = () => Promise.reject(new Error("no answer installed"));
 /** Every toast the shipped component raised, in order. */
 const toasts = [];
+/** The warning toasts raised - the carrier a `notice`/`warning` refusal takes. */
+const warnings = [];
+/** The info toasts raised - the carrier a `native_action`/`block` receipt takes. */
+const infos = [];
 /** The error toasts raised, for the failure that lands after the dialog is gone. */
 const errors = [];
 
 /*
- * THE TWO SEAMS, AND WHY THEY ARE THE ONLY ONES. `desktopResult` is the transfer
+ * THE SEAMS, AND WHY THEY ARE THE ONLY ONES. `desktopResult` is the transfer
  * itself - faking it is what lets a case choose the backend's answer, and there
- * is no way to drive a failure path without it. `showSuccessToast` is the
- * assertion surface for the receipt's survival past the dialog, and sonner's own
- * observer needs a frame clock this harness would otherwise have to fake twice.
- * Everything else - the picker, its host, its footer, `cn` - is the shipped code.
+ * is no way to drive a failure path without it. The toast functions are the
+ * assertion surfaces for the receipt's survival past the dialog and for the
+ * tone a late refusal takes, and sonner's own observer needs a frame clock this
+ * harness would otherwise have to fake twice. Everything else - the picker, its
+ * host, its footer, `cn` - is the shipped code.
  */
 const stubs = {
 	"@shared/api/local-operator/desktop-api": `
@@ -192,6 +197,8 @@ const stubs = {
 	"@shared/utils/toast-manager": `
 		export * from "${resolve("src/renderer/src/shared/utils/toast-manager.ts")}";
 		export const showSuccessToast = (message) => globalThis.__successToast(message);
+		export const showWarningToast = (message) => globalThis.__warningToast(message);
+		export const showInfoToast = (message) => globalThis.__infoToast(message);
 		export const showErrorToast = (message) => globalThis.__errorToast(message);
 	`,
 	/*
@@ -211,7 +218,7 @@ const stubs = {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { ReloadPicker, reloadReceipt, renameSubmission } from "./src/renderer/src/features/chat/pickers/destination-pickers";
+			export { ReloadPicker, RenamePicker, reloadReceipt, renameSubmission } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			export { FORK_CUT_NOTE } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			export { operationFailureText } from "./src/renderer/src/features/chat/pickers/use-picker-backend";
 		`,
@@ -266,6 +273,14 @@ globalThis.__successToast = (message) => {
 	toasts.push(message);
 	return "toast-id";
 };
+globalThis.__warningToast = (message) => {
+	warnings.push(message);
+	return "toast-id";
+};
+globalThis.__infoToast = (message) => {
+	infos.push(message);
+	return "toast-id";
+};
 globalThis.__errorToast = (message) => {
 	errors.push(message);
 	return "toast-id";
@@ -273,6 +288,7 @@ globalThis.__errorToast = (message) => {
 
 const {
 	ReloadPicker,
+	RenamePicker,
 	reloadReceipt,
 	renameSubmission,
 	FORK_CUT_NOTE,
@@ -305,6 +321,8 @@ const pressReload = async ({
 } = {}) => {
 	document.body.innerHTML = "";
 	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
 	errors.length = 0;
 	let closed = 0;
 	const rebound = [];
@@ -423,14 +441,14 @@ test("a refused cut keeps the owner's reason and adds only the note this side ca
 		const text = operationFailureText(
 			"The fork was not created",
 			sentence,
-			FORK_CUT_NOTE,
+			FORK_CUT_NOTE(),
 		);
 		assert.ok(
 			text.startsWith(`The fork was not created: ${sentence}`),
 			"the owner's own sentence survives whole, whatever cause it names",
 		);
 		assert.ok(
-			text.endsWith(FORK_CUT_NOTE),
+			text.endsWith(FORK_CUT_NOTE()),
 			"and the note is added, not substituted",
 		);
 		/*
@@ -441,7 +459,7 @@ test("a refused cut keeps the owner's reason and adds only the note this side ca
 		 * is asserted itself rather than left implied by the note's presence.
 		 */
 		assert.ok(
-			text.includes(`\n${FORK_CUT_NOTE}`),
+			text.includes(`\n${FORK_CUT_NOTE()}`),
 			"the note starts on its own line rather than running into the owner's [redacted]",
 		);
 	}
@@ -453,11 +471,11 @@ test("a refused cut keeps the owner's reason and adds only the note this side ca
 	 * including this message"; "cut" enters only on failure).
 	 */
 	assert.ok(
-		!FORK_WHOLE_CONVERSATION_ADVICE.test(FORK_CUT_NOTE),
+		!FORK_WHOLE_CONVERSATION_ADVICE.test(FORK_CUT_NOTE()),
 		"no advice that the route can itself refuse",
 	);
 	assert.ok(
-		!FORK_CUT_VERB.test(FORK_CUT_NOTE),
+		!FORK_CUT_VERB.test(FORK_CUT_NOTE()),
 		"the note does not introduce a third verb for the act",
 	);
 	/*
@@ -561,6 +579,8 @@ test("a conversation with no title is named by its session id", async () => {
 test("an in-flight failure after the dialog is gone is raised as a toast", async () => {
 	document.body.innerHTML = "";
 	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
 	errors.length = 0;
 	let fail = null;
 	nextAnswer = () =>
@@ -618,6 +638,447 @@ test("an in-flight failure after the dialog is gone is raised as a toast", async
  * retired the naming errand (`chat-title.ts`'s constraint). Pure comparisons,
  * so they run without a DOM at all.
  */
+/** Mount the real rename picker; its owner unmounts it when it closes. */
+const mountRename = async (
+	context,
+	answer,
+	name = "New name",
+	strict = false,
+) => {
+	document.body.innerHTML = "";
+	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
+	errors.length = 0;
+	const requests = [];
+	let closed = 0;
+	nextAnswer = (request) => {
+		requests.push(request);
+		assert.equal(request.op, "sessions.command");
+		assert.equal(request.sessionId, "session-1");
+		assert.equal(request.command, "rename");
+		assert.equal(request.args, name.trim());
+		return answer(request);
+	};
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	context.after(async () => {
+		await act(async () => root.unmount());
+	});
+	const Host = () => {
+		const [open, setOpen] = React.useState(true);
+		return open
+			? React.createElement(RenamePicker, {
+					sessionId: "session-1",
+					action: { args: "", data: {} },
+					canonical: {
+						frontend: { conversation_title: "Old name" },
+					},
+					onClose: () => {
+						closed += 1;
+						setOpen(false);
+					},
+				})
+			: null;
+	};
+	await act(async () => {
+		const tree = React.createElement(Host);
+		root.render(
+			strict ? React.createElement(React.StrictMode, null, tree) : tree,
+		);
+	});
+	const input = document.querySelector('input:not([aria-hidden="true"])');
+	assert.ok(input);
+	assert.equal(
+		input.value,
+		"Old name",
+		"edit the rename field, not the host search",
+	);
+	const setter = Object.getOwnPropertyDescriptor(
+		DOM.window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, name);
+		input.dispatchEvent(new DOM.window.Event("input", { bubbles: true }));
+	});
+	return {
+		requests,
+		closed: () => closed,
+		submit: async (enter = false) => {
+			await act(async () => {
+				if (enter) {
+					// jsdom does not implement Enter's implicit form submission.
+					input.closest("form").dispatchEvent(
+						new DOM.window.Event("submit", {
+							bubbles: true,
+							cancelable: true,
+						}),
+					);
+				} else {
+					buttonByText("Rename").click();
+				}
+			});
+		},
+	};
+};
+
+for (const enter of [false, true]) {
+	test(`a successful rename closes on ${enter ? "form submission" : "click"} and keeps the owner's receipt`, async (context) => {
+		const run = await mountRename(
+			context,
+			async () => ({
+				result: { kind: "notice", style: "info", text: "renamed to New name" },
+			}),
+			"  New name  ",
+		);
+		await run.submit(enter);
+		assert.equal(run.requests.length, 1);
+		assert.equal(run.closed(), 1);
+		assert.equal(document.querySelector('[role="dialog"]') === null, true);
+		assert.deepEqual(toasts, ["renamed to New name"]);
+	});
+}
+
+/*
+ * AND THE RE-ARM SURVIVES StrictMode (agent review round 1, R1-4), which is the
+ * reason the latch is armed at setup rather than only closed at unmount:
+ * StrictMode's development mount/unmount/mount runs this effect's cleanup and
+ * then its setup on the same instance, so a one-way latch leaves the dialog open
+ * forever on a dev build - while every mount outside StrictMode, this file's
+ * included until now, stayed green. `b760ac5c41` argued that in its message and
+ * carried no test; this pins it.
+ */
+test("a StrictMode remount still lets a successful rename close its dialog", async (context) => {
+	const run = await mountRename(
+		context,
+		async () => ({
+			result: { kind: "notice", style: "info", text: "renamed to New name" },
+		}),
+		"New name",
+		true,
+	);
+	await run.submit();
+	assert.equal(run.requests.length, 1);
+	assert.equal(run.closed(), 1, "the dialog closes on a dev-build mount too");
+	assert.equal(document.querySelector('[role="dialog"]') === null, true);
+	assert.deepEqual(toasts, ["renamed to New name"]);
+});
+
+for (const outcome of [
+	{ kind: "error", style: "error", text: "rename refused" },
+	{ kind: "notice", style: "error", text: "rename refused" },
+	/*
+	 * The refusal a rename actually meets: `_rename_slash` answers both of its
+	 * refusals as `notice` + `warning` and never as `error` (serving.py:8267,
+	 * :8280), so folding `warning` into success would otherwise keep these tests
+	 * green (agent review round 1, R1-2).
+	 */
+	{ kind: "notice", style: "warning", text: "session is still starting…" },
+	{ kind: "native_action", destination: "session.rename" },
+]) {
+	test(`a rename ${outcome.kind}/${outcome.style ?? "input"} response keeps the dialog open`, async (context) => {
+		const run = await mountRename(context, async () => ({ result: outcome }));
+		await run.submit();
+		assert.equal(run.requests.length, 1);
+		assert.equal(run.closed(), 0);
+		assert.ok(document.querySelector('[role="dialog"]'));
+		assert.ok(
+			document.body.textContent.includes(
+				outcome.text ?? "The backend needs more input",
+			),
+		);
+		assert.deepEqual(toasts, []);
+		assert.deepEqual(warnings, []);
+		assert.deepEqual(errors, []);
+	});
+}
+
+test("a failed rename keeps its inline error and can be retried", async (context) => {
+	let attempts = 0;
+	const run = await mountRename(context, async () => {
+		if (++attempts === 1) throw new Error("owner unavailable");
+		return {
+			result: { kind: "notice", style: "info", text: "renamed to New name" },
+		};
+	});
+	await run.submit();
+	assert.equal(run.closed(), 0);
+	assert.ok(
+		document.body.textContent.includes(
+			"/rename did not run: owner unavailable",
+		),
+	);
+	assert.deepEqual(toasts, []);
+	await run.submit();
+	assert.equal(run.requests.length, 2);
+	assert.equal(run.closed(), 1);
+	assert.deepEqual(toasts, ["renamed to New name"]);
+});
+
+test("rename waits for the owner's response before closing", async (context) => {
+	let finish;
+	const response = new Promise((resolve) => {
+		finish = resolve;
+	});
+	const run = await mountRename(context, () => response);
+	await run.submit();
+	assert.equal(run.requests.length, 1, "the command has reached the transport");
+	assert.equal(run.closed(), 0);
+	assert.ok(document.querySelector('[role="dialog"]'));
+	assert.deepEqual(toasts, []);
+	await act(async () => {
+		finish({
+			result: { kind: "notice", style: "info", text: "renamed to New name" },
+		});
+	});
+	assert.equal(run.closed(), 1);
+	assert.deepEqual(toasts, ["renamed to New name"]);
+});
+
+/*
+ * AND A RECEIPT THAT LANDS AFTER A DISMISSAL MUST NOT CLOSE THE NEXT DIALOG.
+ *
+ * The pane's owner holds ONE picker in a single slot - `closePicker` is
+ * `setPicker(null)` (`slash-dispatch.ts`) - so a reader who dismisses the rename
+ * dialog while the command is in flight and then opens another picker mounts the
+ * second one in the SAME slot. The picker awaited the command and called
+ * `onClose()` on success without asking whether it was still the dialog on
+ * screen, so a rename's late receipt dismissed the picker the reader had just
+ * opened, which had nothing to do with the rename.
+ *
+ * The host below models that slot rather than counting calls: "closed" only
+ * means something if opening the next dialog is what a stray close takes down.
+ */
+test("a late rename receipt leaves a picker opened after its dismissal up", async (context) => {
+	document.body.innerHTML = "";
+	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
+	errors.length = 0;
+	const requests = [];
+	let finish = null;
+	nextAnswer = (request) => {
+		requests.push(request);
+		assert.equal(request.op, "sessions.command");
+		assert.equal(request.command, "rename");
+		assert.equal(request.args, "New name");
+		return new Promise((resolve) => {
+			finish = () =>
+				resolve({
+					result: {
+						kind: "notice",
+						style: "info",
+						text: "renamed to New name",
+					},
+				});
+		});
+	};
+
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	context.after(async () => {
+		await act(async () => root.unmount());
+	});
+	/*
+	 * The slot's own setter, captured per render, so the case opens the other
+	 * picker exactly the way the dispatcher would: by replacing what the slot
+	 * holds, not by mounting a second dialog beside the first.
+	 */
+	const slot = { open: () => undefined };
+	const Host = () => {
+		const [picker, setPicker] = React.useState("rename");
+		slot.open = () => setPicker("other");
+		if (picker === "rename") {
+			return React.createElement(RenamePicker, {
+				sessionId: "session-1",
+				action: { args: "", data: {} },
+				canonical: { frontend: { conversation_title: "Old name" } },
+				onClose: () => setPicker(null),
+			});
+		}
+		if (picker === "other") {
+			return React.createElement(
+				"div",
+				{ id: "other-picker", role: "dialog" },
+				"other",
+			);
+		}
+		return null;
+	};
+	await act(async () => root.render(React.createElement(Host)));
+	const input = document.querySelector('input:not([aria-hidden="true"])');
+	assert.ok(input);
+	assert.equal(
+		input.value,
+		"Old name",
+		"edit the rename field, not the host search",
+	);
+	const setter = Object.getOwnPropertyDescriptor(
+		DOM.window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, "New name");
+		input.dispatchEvent(new DOM.window.Event("input", { bubbles: true }));
+	});
+	await act(async () => {
+		buttonByText("Rename").click();
+	});
+	assert.equal(requests.length, 1, "the command has reached the transport");
+	assert.ok(finish, "and its answer has not landed yet");
+	/*
+	 * The reader dismisses the dialog MID-FLIGHT through the footer control that
+	 * exists for exactly this state (`Close` while busy, design D3): closing does
+	 * not cancel the operation the owner is already performing.
+	 */
+	await act(async () => {
+		buttonByText("Close").click();
+	});
+	assert.equal(
+		document.querySelector('[role="dialog"]') === null,
+		true,
+		"the dismissed dialog is really gone",
+	);
+	await act(async () => {
+		slot.open();
+	});
+	assert.ok(document.querySelector("#other-picker"), "the next picker is up");
+	await act(async () => {
+		finish();
+		await Promise.resolve();
+		await Promise.resolve();
+	});
+	assert.ok(
+		document.querySelector("#other-picker"),
+		"the late receipt leaves the picker the reader opened where it is",
+	);
+	assert.deepEqual(
+		toasts,
+		["renamed to New name"],
+		"and it still lands - the receipt survives the dialog that carried it",
+	);
+});
+
+/*
+ * AND A NON-SUCCESS THAT LANDS AFTER THE DISMISSAL MUST SPEAK SOMEWHERE
+ * (agent review round 1, R1-1). The refusal strip is inside the dialog, and the
+ * busy-state `Close` dismisses the dialog without cancelling the command - so a
+ * refusal that lands afterwards has no carrier at all unless the submit raises
+ * it as a toast. The refusal a rename actually meets is `notice` + `warning`
+ * ("session is still starting…", `serving.py:8280`), which is the case pinned
+ * here: before the fix it left `toasts === []`, `errors === []`, and the one
+ * sentence saying the name was not stored in no DOM node. It lands on the
+ * warning carrier, not the error one (agent review round 2, R2-1): the same
+ * command's other surface reports this tone with `showWarningToast`, and
+ * `showErrorToast` would drop a repeat of the sentence for five seconds.
+ */
+test("a warning refusal that lands after dismissal is raised as a warning toast", async (context) => {
+	document.body.innerHTML = "";
+	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
+	errors.length = 0;
+	const requests = [];
+	let finish = null;
+	nextAnswer = (request) => {
+		requests.push(request);
+		assert.equal(request.op, "sessions.command");
+		assert.equal(request.command, "rename");
+		assert.equal(request.args, "New name");
+		return new Promise((resolve) => {
+			finish = () =>
+				resolve({
+					result: {
+						kind: "notice",
+						style: "warning",
+						text: "session is still starting…",
+					},
+				});
+		});
+	};
+
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	context.after(async () => {
+		await act(async () => root.unmount());
+	});
+	const Host = () => {
+		const [open, setOpen] = React.useState(true);
+		return open
+			? React.createElement(RenamePicker, {
+					sessionId: "session-1",
+					action: { args: "", data: {} },
+					canonical: { frontend: { conversation_title: "Old name" } },
+					onClose: () => setOpen(false),
+				})
+			: null;
+	};
+	await act(async () => root.render(React.createElement(Host)));
+	const input = document.querySelector('input:not([aria-hidden="true"])');
+	assert.ok(input);
+	assert.equal(
+		input.value,
+		"Old name",
+		"edit the rename field, not the host search",
+	);
+	const setter = Object.getOwnPropertyDescriptor(
+		DOM.window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, "New name");
+		input.dispatchEvent(new DOM.window.Event("input", { bubbles: true }));
+	});
+	await act(async () => {
+		buttonByText("Rename").click();
+	});
+	assert.equal(requests.length, 1, "the command has reached the transport");
+	assert.ok(finish, "and its answer has not landed yet");
+	await act(async () => {
+		buttonByText("Close").click();
+	});
+	assert.equal(
+		document.querySelector('[role="dialog"]') === null,
+		true,
+		"the dismissed dialog is really gone",
+	);
+	await act(async () => {
+		finish();
+		await Promise.resolve();
+		await Promise.resolve();
+	});
+	assert.deepEqual(
+		warnings,
+		["session is still starting…"],
+		"the refusal sentence is said where the reader still is",
+	);
+	assert.deepEqual(errors, [], "and it is not painted as an error");
+	assert.deepEqual(toasts, [], "and no success is claimed");
+	assert.equal(
+		document.querySelector('[role="dialog"]') === null,
+		true,
+		"and nothing re-opened a dialog to carry it",
+	);
+});
+
+test("an unchanged rename closes without a request or a success toast", async (context) => {
+	const run = await mountRename(
+		context,
+		async () => {
+			throw new Error("an unchanged name must not be written");
+		},
+		"Old name",
+	);
+	await run.submit();
+	assert.equal(run.requests.length, 0);
+	assert.equal(run.closed(), 1);
+	assert.deepEqual(toasts, []);
+});
+
 test("an unchanged rename submit writes nothing, so the placeholder cannot become a title", () => {
 	assert.equal(
 		renameSubmission({ name: "Untitled chat", openedWith: "Untitled chat" }),

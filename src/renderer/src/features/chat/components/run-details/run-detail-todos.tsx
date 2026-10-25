@@ -309,7 +309,7 @@ export const RunDetailTodos = ({
 							 * Suppressed when the header already carries the count, so a
 							 * fully-shed phase says it once.
 							 *
-							 * `pl-9` puts the count in the ITEM-TEXT column, not the mark
+							 * `ps-9` puts the count in the ITEM-TEXT column, not the mark
 							 * column: 12px of row padding + the 16px mark + the 8px gap. In the
 							 * first column it read as the NEXT phase's header rather than as
 							 * this phase's footer — same 12px type, same x, one ink step from
@@ -318,11 +318,11 @@ export const RunDetailTodos = ({
 							 * is the same rule the blocked reason follows (`§4.2`, `§5`).
 							 */}
 							{phase.hidden > 0 && !fullyShed && (
-								<li className={cn("pr-3")}>
+								<li className={cn("pe-3")}>
 									<Disclosure
 										disabled={true}
 										summary={`${phase.hidden} hidden`}
-										className={cn("pl-9 text-meta")}
+										className={cn("ps-9 text-meta")}
 									/>
 								</li>
 							)}

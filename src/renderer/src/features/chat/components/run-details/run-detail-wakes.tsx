@@ -231,10 +231,10 @@ export const WakeRowView = ({
 		{/*
 		 * The note, on its own line under the facts: full width, which is what
 		 * lets a long refusal sentence wrap as a paragraph rather than as a
-		 * strip. `pl-6` aligns it with the message column (the 16px mark + the
+		 * strip. `ps-6` aligns it with the message column (the 16px mark + the
 		 * 8px gap), so the row still reads as one object.
 		 */}
-		{note && <div className={cn("pl-6 pt-0.5")}>{note}</div>}
+		{note && <div className={cn("ps-6 pt-0.5")}>{note}</div>}
 	</li>
 );
 
@@ -531,7 +531,7 @@ export const RunDetailWakes = ({
 				 * wire's 16 and no fixture reaches past it — so the numbers are reproducible
 				 * from that revision and from no current frame.
 				 *
-				 * `pl-9` puts the LI at the row's own text column — the same 12px + 16px + 8px
+				 * `ps-9` puts the LI at the row's own text column — the same 12px + 16px + 8px
 				 * the plan's shed count uses — and the marker's TEXT then lands 20px inside
 				 * that column, because the shared `Disclosure` primitive indents its summary
 				 * by its own `ml-5`. Measured in `wakes-many`: the marker's ink starts at
@@ -549,11 +549,11 @@ export const RunDetailWakes = ({
 				 * reachable through the CLI's own writer (UX round 2's U7).
 				 */}
 				{hidden > 0 && (
-					<li className={cn("pr-3")}>
+					<li className={cn("pe-3")}>
 						<Disclosure
 							disabled={true}
 							summary={`${hidden} more wake${hidden === 1 ? "" : "s"}`}
-							className={cn("pl-9 text-meta")}
+							className={cn("ps-9 text-meta")}
 						/>
 					</li>
 				)}

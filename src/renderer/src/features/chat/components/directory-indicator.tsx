@@ -11,6 +11,8 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { useHomeDirectory } from "@shared/hooks";
+import { type WithoutParams, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useRecentDirectoriesStore } from "@shared/store/recent-directories-store";
 import { formatDirectory as formatDirectoryWithHome } from "@shared/utils/path-utils";
@@ -155,7 +157,13 @@ export type DirectoryIndicatorHandle = {
 };
 
 type DirectoryInfo = {
-	name: string;
+	/**
+	 * The entry's LABEL KEY, not its sentence. These are the shell's own folder
+	 * names, offered as quick picks; keeping the English word here is what left
+	 * the menu English while every surrounding label changed language, and it is
+	 * why the field is `nameKey` rather than an optional translation of `name`.
+	 */
+	nameKey: WithoutParams;
 	path: string;
 	icon: LucideIcon;
 };
@@ -198,7 +206,7 @@ const RECENT_PATH_TRUNCATES_AT = 42;
  * `ms-auto` mic/send group is pinned to the row's inline-end edge, and the row's
  * total demand never grows. What moves on a path change in a live row is the
  * readings cluster - the chip's own right-hand neighbour, 2px after it (its
- * `marginLeft` is -6px against the row's 8px `gap-x-2`, which is what the rig
+ * `marginInlineStart` is -6px against the row's 8px `gap-x-2`, which is what the rig
  * measures painted) - by exactly the path's own delta, capped here: `~` ->
  * `~/src/project` is ~86px (12 characters at the measured 7.2px per character,
  * not the plan's 96.4px).
@@ -246,8 +254,7 @@ const CHIP_PATH_COLUMN = "@min-[900px]/chatcol:max-w-[16ch]";
  * (the truncated-path arm and the ordinary live arm) and a sentence that exists
  * twice is how one of them starts describing a different cost.
  */
-const MOVE_COST_SENTENCE =
-	"Click to change the working directory. A running session's runtime restarts there.";
+const MOVE_COST_SENTENCE = "ui.chat.directory.tooltip.move_cost";
 
 /**
  * Which of the pending chip's two sentences is in force.
@@ -285,7 +292,7 @@ const MOVE_COST_SENTENCE =
  * mid-path (design round 2, D11).
  */
 const CHIP_WRAPPER =
-	"ml-2 flex min-w-0 shrink items-center @min-[750px]/chatcol:shrink-0";
+	"ms-2 flex min-w-0 shrink items-center @min-[750px]/chatcol:shrink-0";
 
 /**
  * The chip at the composer's own floor: the glyph, and nothing else.
@@ -412,78 +419,67 @@ const CHIP_LABEL = cn(
 );
 
 /**
- * Maps directory names to appropriate icons
+ * One quick-pick directory. A factory rather than an object literal list: the
+ * label is a KEY, and a bare literal list widens every key to `string`, which is
+ * what lets a typo through to a render that silently prints the key itself.
  */
-const getDirectoryIcon = (name: string, path: string): LucideIcon => {
-	const lowerName = name.toLowerCase();
-	const lowerPath = path.toLowerCase();
+const dir = (
+	nameKey: WithoutParams,
+	path: string,
+	icon: LucideIcon,
+): DirectoryInfo => ({ nameKey, path, icon });
 
-	if (name === "Home" || path === "~") return House;
-	if (lowerName.includes("download")) return Download;
-	if (lowerName.includes("document")) return FileText;
-	if (lowerName.includes("desktop")) return Monitor;
-	if (lowerName.includes("picture")) return ImageIcon;
-	if (lowerName.includes("music")) return Music;
-	if (lowerName.includes("video")) return Video;
-	if (lowerName.includes("program")) return Laptop;
-	if (lowerName.includes("user")) return Users;
-	if (lowerPath.includes("programdata")) return Database;
-	if (lowerName.includes("application")) return PackageOpen;
-	if (lowerName.includes("library")) return Book;
-	if (lowerName.includes("volume")) return HardDrive;
-	if (lowerName.includes("etc")) return Server;
-	if (lowerName.includes("usr")) return Users;
-	if (lowerName.includes("var")) return Database;
-	if (lowerName.includes("opt")) return Package;
-	if (lowerName.includes("mnt")) return HardDrive;
-	if (lowerName.includes("media")) return Archive;
-	if (lowerName.includes("srv")) return Network;
-
-	return Folder;
-};
-
-/**
- * Default directories to offer as quick selections based on OS
- */
+/** Default directories to offer as quick selections based on OS */
 const DEFAULT_DIRECTORIES: DirectoryInfo[] = [
-	{ name: "Home", path: "~", icon: House },
-	{ name: "Downloads", path: "~/Downloads", icon: Download },
-	{ name: "Documents", path: "~/Documents", icon: FileText },
-	{ name: "Desktop", path: "~/Desktop", icon: Monitor },
-	{ name: "Pictures", path: "~/Pictures", icon: ImageIcon },
-	{ name: "Music", path: "~/Music", icon: Music },
-	{ name: "Videos", path: "~/Videos", icon: Video },
+	dir("ui.chat.directory.folder.home", "~", House),
+	dir("ui.chat.directory.folder.downloads", "~/Downloads", Download),
+	dir("ui.chat.directory.folder.documents", "~/Documents", FileText),
+	dir("ui.chat.directory.folder.desktop", "~/Desktop", Monitor),
+	dir("ui.chat.directory.folder.pictures", "~/Pictures", ImageIcon),
+	dir("ui.chat.directory.folder.music", "~/Music", Music),
+	dir("ui.chat.directory.folder.videos", "~/Videos", Video),
 	...(navigator.userAgent.indexOf("Win") !== -1
 		? [
-				{ name: "Program Files", path: "C:\\Program Files", icon: Laptop },
-				{
-					name: "Program Files (x86)",
-					path: "C:\\Program Files (x86)",
-					icon: Laptop,
-				},
-				{ name: "Users", path: "C:\\Users", icon: Users },
-				{ name: "ProgramData", path: "C:\\ProgramData", icon: Database },
+				dir(
+					"ui.chat.directory.folder.program_files",
+					"C:\\Program Files",
+					Laptop,
+				),
+				dir(
+					"ui.chat.directory.folder.program_files_x86",
+					"C:\\Program Files (x86)",
+					Laptop,
+				),
+				dir("ui.chat.directory.folder.users", "C:\\Users", Users),
+				dir(
+					"ui.chat.directory.folder.program_data",
+					"C:\\ProgramData",
+					Database,
+				),
 			]
 		: navigator.userAgent.indexOf("Mac") !== -1
 			? [
-					{ name: "Applications", path: "/Applications", icon: PackageOpen },
-					{ name: "Library", path: "~/Library", icon: Book },
-					{ name: "Users", path: "/Users", icon: Users },
-					{ name: "Volumes", path: "/Volumes", icon: HardDrive },
+					dir(
+						"ui.chat.directory.folder.applications",
+						"/Applications",
+						PackageOpen,
+					),
+					dir("ui.chat.directory.folder.library", "~/Library", Book),
+					dir("ui.chat.directory.folder.users", "/Users", Users),
+					dir("ui.chat.directory.folder.volumes", "/Volumes", HardDrive),
 				]
 			: [
-					{ name: "etc", path: "/etc", icon: Server },
-					{ name: "usr", path: "/usr", icon: Users },
-					{ name: "var", path: "/var", icon: Database },
-					{ name: "opt", path: "/opt", icon: Package },
-					{ name: "mnt", path: "/mnt", icon: HardDrive },
-					{ name: "media", path: "/media", icon: Archive },
-					{ name: "srv", path: "/srv", icon: Network },
-				]
-	).map((dir) => ({
-		...dir,
-		icon: getDirectoryIcon(dir.name, dir.path),
-	})),
+					// These label the path's own basename (`/etc` is `etc` on every
+					// filesystem), so their English value is the path segment rather than
+					// prose; the context sidecar records them as untranslated exceptions.
+					dir("ui.chat.directory.folder.etc", "/etc", Server),
+					dir("ui.chat.directory.folder.usr", "/usr", Users),
+					dir("ui.chat.directory.folder.var", "/var", Database),
+					dir("ui.chat.directory.folder.opt", "/opt", Package),
+					dir("ui.chat.directory.folder.mnt", "/mnt", HardDrive),
+					dir("ui.chat.directory.folder.media", "/media", Archive),
+					dir("ui.chat.directory.folder.srv", "/srv", Network),
+				]),
 ];
 
 /**
@@ -504,6 +500,13 @@ export const DirectoryIndicator = forwardRef<
 	},
 	ref,
 ) {
+	/*
+	 * The chip's own copy is resolved at render: a path that moves the chip's
+	 * word from "Working directory" to "Moving session" is a change of STATE, and
+	 * the sentence has to follow a change of LANGUAGE too. `t()` reads the store
+	 * at call time; this subscription is what makes a switch repaint the chip.
+	 */
+	useI18nLocale();
 	const [isEditing, setIsEditing] = useState(false);
 	const [directory, setDirectory] = useState(currentWorkingDirectory || "");
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -680,10 +683,12 @@ export const DirectoryIndicator = forwardRef<
 
 			if (exists) {
 				addRecentDirectory(trimmed);
-				setAnnouncement(`Working directory set to ${trimmed}`);
+				setAnnouncement(t("ui.chat.directory.announce.set", { path: trimmed }));
 			} else {
 				setInvalidPath(trimmed);
-				setAnnouncement(`${trimmed} is not a directory on this computer`);
+				setAnnouncement(
+					t("ui.chat.directory.announce.invalid", { path: trimmed }),
+				);
 			}
 			return true;
 		},
@@ -870,9 +875,20 @@ export const DirectoryIndicator = forwardRef<
 	 */
 	const pendingText = pending
 		? pendingRestarting
-			? "Restarting this session's runtime…"
-			: `Moving to ${shown}…`
+			? t("ui.chat.directory.pending_restarting")
+			: t("ui.chat.directory.tooltip.pending_move", { path: shown })
 		: null;
+
+	/*
+	 * THE PHRASE BOTH CHANNELS SAY (WCAG 2.5.3, label in name): the visible slot
+	 * and the accessible name are built from this one value, so a state change
+	 * cannot rename the control for a screen reader while the eye reads another
+	 * word. A move in flight says `Moving session`; at rest it says `Working
+	 * directory`. Both are catalogue keys, resolved where the chip draws.
+	 */
+	const chipPhrase = pending
+		? t("ui.chat.directory.label.moving_session")
+		: t("ui.chat.directory.label.working_directory");
 
 	/*
 	 * Read-only: show the directory and say why it cannot be changed HERE.
@@ -935,7 +951,13 @@ export const DirectoryIndicator = forwardRef<
 					<button
 						type="button"
 						aria-disabled="true"
-						aria-label={`Working directory: ${shown}`}
+						// The NAME is the catalogue's full phrase, so the locale's own
+						// punctuation (fr's narrow no-break space, zh's full-width colon)
+						// reaches a screen reader. The visible slot keeps the label/path
+						// split because the path is what truncates.
+						aria-label={t("ui.chat.directory.label.working_directory_value", {
+							path: shown,
+						})}
 						// The reason is a DESCRIPTION, not the name: naming the chip
 						// after the rule told a screen-reader user why they could not
 						// change the directory without ever telling them what it is.
@@ -953,7 +975,9 @@ export const DirectoryIndicator = forwardRef<
 							 * phrase instead of moving to the visual left (design review
 							 * round 1, D1).
 							 */}
-							<bdi dir="auto">Working directory:</bdi>
+							<bdi dir="auto">
+								{t("ui.chat.directory.label.working_directory")}:
+							</bdi>
 						</span>
 						<span
 							className={cn("min-w-0 truncate", PATH_TYPE, CHIP_TEXT_AT_FLOOR)}
@@ -981,17 +1005,17 @@ export const DirectoryIndicator = forwardRef<
 	if (!currentWorkingDirectory && !isEditing) {
 		return (
 			<div className={cn(CHIP_WRAPPER)} data-lo-cwd-chip="unset">
-				<Tooltip content="Click to set the working directory" side="top">
+				<Tooltip content={t("ui.chat.directory.tooltip.set")} side="top">
 					<Button
 						ref={triggerRef}
 						variant="ghost"
 						size="md"
 						className={cn(CHIP_BOX_INTERACTIVE)}
 						onClick={handleStartEdit}
-						aria-label="Set working directory"
+						aria-label={t("ui.chat.directory.tooltip.set")}
 					>
 						<Folder aria-hidden="true" />
-						No working directory set
+						{t("ui.chat.directory.not_set")}
 						{/*
 						 * The same at-rest affordance the editable chip carries (design review
 						 * D8, second half). This state is the WEAKEST of the three: no path means
@@ -1037,8 +1061,8 @@ export const DirectoryIndicator = forwardRef<
 					onChange={(e) => setDirectory(e.target.value)}
 					onKeyDown={handleKeyPress}
 					onBlur={handleCancelEdit}
-					placeholder="Enter directory path"
-					aria-label="Working directory path"
+					placeholder={t("ui.chat.directory.enter_path_placeholder")}
+					aria-label={t("ui.chat.directory.enter_path_label")}
 					className={cn("w-64", PATH_TYPE)}
 				/>
 			) : (
@@ -1050,7 +1074,7 @@ export const DirectoryIndicator = forwardRef<
 							// move while the first is still being applied.
 							pendingText ??
 							(isInvalid
-								? `${shown} is not a directory on this computer`
+								? t("ui.chat.directory.tooltip.invalid", { path: shown })
 								: pathOverflows
 									? // ONE tooltip carries BOTH facts when the path is truncated (UX review
 										// round 2, U2). The chain used to answer the overflow case first, so on a
@@ -1060,7 +1084,9 @@ export const DirectoryIndicator = forwardRef<
 										// only pre-commit statement of what a live move does, so dropping it
 										// here hid the price precisely when the control was hardest to read.
 										writePath?.kind === "move"
-										? `${shown} - ${MOVE_COST_SENTENCE}`
+										? t("ui.chat.directory.tooltip.truncated_move_cost", {
+												path: shown,
+											})
 										: shown
 									: writePath?.kind === "move"
 										? // The LIVE chip names the cost at the point of decision (UX review
@@ -1068,8 +1094,8 @@ export const DirectoryIndicator = forwardRef<
 											// the bare `/move` command, and the command's own note explains that
 											// the runtime restarts while the tooltip the user actually hovers
 											// said nothing about it.
-											MOVE_COST_SENTENCE
-										: "Click to change the working directory")
+											t(MOVE_COST_SENTENCE)
+										: t("ui.chat.directory.tooltip.change"))
 						}
 						side="top"
 					>
@@ -1093,7 +1119,7 @@ export const DirectoryIndicator = forwardRef<
 								 * when the control is most likely to be re-read. The phrase is taken from
 								 * the same condition that paints the slot, not from a second spelling.
 								 */
-								aria-label={`${pending ? "Moving session" : "Working directory"}: ${shown}`}
+								aria-label={`${chipPhrase}: ${shown}`}
 								aria-invalid={isInvalid || undefined}
 							>
 								{/*
@@ -1142,9 +1168,7 @@ export const DirectoryIndicator = forwardRef<
 									 * for it: the tooltip and the live region (`pendingText`).
 									 */}
 									{/* Isolated for the same reason as the read-only label above (D1). */}
-									<bdi dir="auto">
-										{pending ? "Moving session:" : "Working directory:"}
-									</bdi>
+									<bdi dir="auto">{chipPhrase}:</bdi>
 								</span>
 								<span
 									ref={pathRef}
@@ -1223,7 +1247,9 @@ export const DirectoryIndicator = forwardRef<
 						 * region) is what explains why. The trigger stays live because the menu is
 						 * also where the user re-reads the path, which is not an action.
 						 */}
-						<DropdownMenuLabel>Custom directory</DropdownMenuLabel>
+						<DropdownMenuLabel>
+							{t("ui.chat.directory.menu.custom")}
+						</DropdownMenuLabel>
 
 						<DropdownMenuItem
 							disabled={pending}
@@ -1233,7 +1259,7 @@ export const DirectoryIndicator = forwardRef<
 							}}
 						>
 							<Pencil aria-hidden="true" />
-							Enter custom path...
+							{t("ui.chat.directory.menu.enter_custom")}
 						</DropdownMenuItem>
 
 						<DropdownMenuItem
@@ -1241,13 +1267,15 @@ export const DirectoryIndicator = forwardRef<
 							onClick={handleBrowseForDirectory}
 						>
 							<FolderTree aria-hidden="true" />
-							Browse for directory...
+							{t("ui.chat.directory.menu.browse")}
 						</DropdownMenuItem>
 
 						{/* Recent directories section - always show the section */}
 						<DropdownMenuSeparator />
 
-						<DropdownMenuLabel>Recent directories</DropdownMenuLabel>
+						<DropdownMenuLabel>
+							{t("ui.chat.directory.menu.recent")}
+						</DropdownMenuLabel>
 
 						{filteredRecentDirectories.length > 0 ? (
 							filteredRecentDirectories.map((path) => {
@@ -1289,9 +1317,11 @@ export const DirectoryIndicator = forwardRef<
 										 */}
 										<button
 											type="button"
-											aria-label={`Remove ${formatted} from recent directories`}
+											aria-label={t("ui.chat.directory.remove_recent", {
+												path: formatted,
+											})}
 											className={cn(
-												"ml-auto shrink-0 rounded-xs p-0.5 text-ink-dim opacity-0 transition-colors duration-fast",
+												"ms-auto shrink-0 rounded-xs p-0.5 text-ink-dim opacity-0 transition-colors duration-fast",
 												"group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
 												"hover:text-ink",
 											)}
@@ -1309,14 +1339,16 @@ export const DirectoryIndicator = forwardRef<
 							})
 						) : (
 							<DropdownMenuItem disabled>
-								No recent directories
+								{t("ui.chat.directory.menu.no_recent")}
 							</DropdownMenuItem>
 						)}
 
 						{/* Default directories section */}
 						<DropdownMenuSeparator />
 
-						<DropdownMenuLabel>Default directories</DropdownMenuLabel>
+						<DropdownMenuLabel>
+							{t("ui.chat.directory.menu.default")}
+						</DropdownMenuLabel>
 
 						{DEFAULT_DIRECTORIES.map((dir) => {
 							const DirIcon = dir.icon;
@@ -1327,10 +1359,10 @@ export const DirectoryIndicator = forwardRef<
 									onClick={() => handleSelectDirectory(dir.path)}
 								>
 									<DirIcon aria-hidden="true" />
-									{dir.name}
+									{t(dir.nameKey)}
 									<span
 										className={cn(
-											"ml-auto min-w-0 truncate",
+											"ms-auto min-w-0 truncate",
 											PATH_TYPE,
 											"text-ink-dim",
 										)}

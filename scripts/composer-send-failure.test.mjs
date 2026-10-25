@@ -84,7 +84,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {caughtFailureNotice, composerNoticeFor, lockAnswerOutlived, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {caughtFailureNotice, composerNoticeFor, lockAnswerOutlived, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {FAST_UNAVAILABLE_CODE, FAST_UNAVAILABLE_SENTENCE} from "./src/renderer/src/features/chat/draft-selection"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -225,6 +225,7 @@ const {
 	caughtFailureNotice,
 	composerNoticeFor,
 	lockAnswerOutlived,
+	FAST_UNAVAILABLE_CODE,
 	migrateHeldClaim,
 	retryOfferedForFailureCode,
 	mergeReturnedPayload,
@@ -2044,6 +2045,50 @@ test("the lock answer outlives exactly the states that hold a flight open", () =
 		lockAnswerOutlived({ ...flying, muted: false }),
 		false,
 		"a real failure's sentence is not the lock's answer, and this rule must not touch it",
+	);
+});
+
+/*
+ * Q1 (QA round 2): the fast-unavailable line is a muted STATEMENT, not the lock
+ * ANSWER, and the retirement may only retire the latter.
+ *
+ * Both are written into the composer's muted register. Keyed on `muted` alone, the
+ * predicate found nothing in flight on a restored draft - the exact state the
+ * sentence exists for - and cleared it in the commit after the pane set it, so the
+ * line never reached the screen in three QA runs of twenty seconds each.
+ */
+test("a muted statement that names its condition outlives the flight rule", () => {
+	const restoredDraft = {
+		rowPending: false,
+		admitting: false,
+		gatePending: false,
+		muted: true,
+	};
+	assert.equal(
+		lockAnswerOutlived({ ...restoredDraft, code: FAST_UNAVAILABLE_CODE }),
+		false,
+		"the fast-unavailable line describes a send no flight will change; retiring it is the silent strip F1 rejected",
+	);
+	/*
+	 * And the lock answer keeps its retirement exactly as before - it is the muted
+	 * notice that names no code - so a term that goes missing still fails here.
+	 */
+	assert.equal(lockAnswerOutlived({ ...restoredDraft, code: undefined }), true);
+	assert.equal(
+		lockAnswerOutlived({ ...restoredDraft, code: undefined, admitting: true }),
+		false,
+	);
+	assert.equal(
+		lockAnswerOutlived({ ...restoredDraft, code: undefined, rowPending: true }),
+		false,
+	);
+	assert.equal(
+		lockAnswerOutlived({
+			...restoredDraft,
+			code: undefined,
+			gatePending: true,
+		}),
+		false,
 	);
 });
 

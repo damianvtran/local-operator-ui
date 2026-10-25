@@ -426,7 +426,11 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	const isVideo = mediaKind === "video";
 	const positionLabel = (index: number, count: number) =>
 		mediaLabel === "asset"
-			? `Asset ${index + 1} of ${count}`
+			? t("ui.common.viewer.position", {
+					kind: "asset",
+					index: index + 1,
+					count,
+				})
 			: groupPositionLabel(index, count);
 	/*
 	 * WHICH PICTURE FAILED, rather than a boolean this component resets. The
@@ -597,7 +601,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	 * that registration is the reason it may not be built on the primitive
 	 * without it.
 	 */
-	useSuppressBrowserView(open, "image-lightbox");
+	useSuppressBrowserView(open, "lightbox");
 
 	/*
 	 * The zoom frame's own element, read at gesture time rather than stored:
@@ -910,8 +914,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={`Previous ${mediaLabel}`}
-								title={`Previous ${mediaLabel}`}
+								aria-label={t("ui.common.viewer.previous", {
+									kind: mediaLabel,
+								})}
+								title={t("ui.common.viewer.previous", { kind: mediaLabel })}
 								onClick={group?.onPrev}
 								className={cn(
 									"pointer-events-auto fixed top-0 bottom-0 left-4 my-auto",
@@ -924,8 +930,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={`Next ${mediaLabel}`}
-								title={`Next ${mediaLabel}`}
+								aria-label={t("ui.common.viewer.next", { kind: mediaLabel })}
+								title={t("ui.common.viewer.next", { kind: mediaLabel })}
 								onClick={group?.onNext}
 								className={cn(
 									"pointer-events-auto fixed top-0 right-4 bottom-0 my-auto",
@@ -990,8 +996,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								"pointer-events-auto fixed top-4 right-4",
 								CHROME_PLATE,
 							)}
-							aria-label={`Close ${mediaLabel}`}
-							title={`Close ${mediaLabel}`}
+							aria-label={t("ui.common.viewer.close", { kind: mediaLabel })}
+							title={t("ui.common.viewer.close", { kind: mediaLabel })}
 						>
 							<X aria-hidden="true" />
 						</Button>

@@ -15,6 +15,7 @@ import {
 	Bot,
 	Hash,
 	MoreHorizontal,
+	Pencil,
 	Plus,
 	Users,
 } from "lucide-react";
@@ -63,7 +64,7 @@ import {
  */
 
 const ROW =
-	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors duration-fast ease-out-quart";
+	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-start text-[13px] transition-colors duration-fast ease-out-quart";
 
 /** The unread pill every row shares, the sidebar's quiet attention badge. */
 const Unread: FC<{ count: number; yieldsToMenu?: boolean }> = ({
@@ -110,7 +111,7 @@ export const RailSection: FC<{
 	useI18nLocale();
 	return (
 		<section aria-labelledby={id} className="px-1 pb-1">
-			<div className="group/section flex items-center pt-3 pr-1 pb-1 pl-2">
+			<div className="group/section flex items-center pt-3 pe-1 pb-1 ps-2">
 				<h2
 					id={id}
 					className="min-w-0 flex-1 truncate font-medium text-meta text-ink-dim tracking-wide"
@@ -134,7 +135,7 @@ export const RailSection: FC<{
 					<button
 						type="button"
 						onClick={empty.onCreate}
-						className="w-full rounded-md px-2 py-1 text-left text-[12px] text-ink-dim leading-snug transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink-muted"
+						className="w-full rounded-md px-2 py-1 text-start text-[12px] text-ink-dim leading-snug transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink-muted"
 					>
 						{empty.text}
 					</button>
@@ -152,6 +153,7 @@ export const RailSection: FC<{
 
 /** A channel or group row (and an orphaned DM under Direct messages). */
 export const ConversationRailRow: FC<{
+	hasDraft?: boolean;
 	conversation: TeamBridgeConversation;
 	selected: boolean;
 	selfAccountId?: string;
@@ -163,6 +165,7 @@ export const ConversationRailRow: FC<{
 	organizationName?: string;
 	onSelect: () => void;
 }> = ({
+	hasDraft = false,
 	conversation,
 	selected,
 	selfAccountId,
@@ -228,6 +231,17 @@ export const ConversationRailRow: FC<{
 						<span className="sr-only">{t("ui.teamBridge.notify.muted")}</span>
 					</span>
 				)}
+				{hasDraft && (
+					<span
+						title={t("ui.teamBridge.drafts.indicator")}
+						className="shrink-0 text-ink-dim"
+					>
+						<Pencil size={12} aria-hidden="true" />
+						<span className="sr-only">
+							{t("ui.teamBridge.drafts.indicator")}
+						</span>
+					</span>
+				)}
 				<Unread count={unread} />
 			</button>
 		</li>
@@ -247,7 +261,7 @@ const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
 			<button
 				type="button"
 				aria-label={t("ui.teamBridge.row.menu", { name: label })}
-				className="absolute right-1.5 flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
+				className="absolute end-1.5 flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
 			>
 				<MoreHorizontal size={14} aria-hidden="true" />
 			</button>
@@ -275,6 +289,7 @@ const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
  * reachable, and the cue says what they need to do.
  */
 export const PersonRailRow: FC<{
+	hasDraft?: boolean;
 	member: TeamBridgeDirectoryMember;
 	selfAccountId?: string;
 	identityKnown: boolean;
@@ -284,6 +299,7 @@ export const PersonRailRow: FC<{
 	onSelect: () => void;
 	onStartGroup: (recipient: TeamBridgeRecipient) => void;
 }> = ({
+	hasDraft = false,
 	member,
 	selfAccountId,
 	identityKnown,
@@ -393,6 +409,17 @@ export const PersonRailRow: FC<{
 						{t("ui.teamBridge.people.paused")}
 					</span>
 				)}
+				{hasDraft && (
+					<span
+						title={t("ui.teamBridge.drafts.indicator")}
+						className="shrink-0 text-ink-dim"
+					>
+						<Pencil size={12} aria-hidden="true" />
+						<span className="sr-only">
+							{t("ui.teamBridge.drafts.indicator")}
+						</span>
+					</span>
+				)}
 				<Unread count={unread} yieldsToMenu />
 			</button>
 			{canStartGroup && (
@@ -409,6 +436,7 @@ export const PersonRailRow: FC<{
 
 /** One chief of staff: "Aida (Ben)", opening a DM with that person's agent. */
 export const ChiefRailRow: FC<{
+	hasDraft?: boolean;
 	chief: TeamBridgeChiefOfStaff;
 	label: string;
 	selected: boolean;
@@ -416,7 +444,16 @@ export const ChiefRailRow: FC<{
 	readOnly: boolean;
 	onSelect: () => void;
 	onStartGroup: (recipient: TeamBridgeRecipient) => void;
-}> = ({ chief, label, selected, dm, readOnly, onSelect, onStartGroup }) => {
+}> = ({
+	hasDraft = false,
+	chief,
+	label,
+	selected,
+	dm,
+	readOnly,
+	onSelect,
+	onStartGroup,
+}) => {
 	useI18nLocale();
 	const unread = dm?.unread_count ?? 0;
 	return (
@@ -446,6 +483,17 @@ export const ChiefRailRow: FC<{
 				{chief.paused && (
 					<span className="shrink-0 text-meta-sm text-ink-dim">
 						{t("ui.teamBridge.people.paused")}
+					</span>
+				)}
+				{hasDraft && (
+					<span
+						title={t("ui.teamBridge.drafts.indicator")}
+						className="shrink-0 text-ink-dim"
+					>
+						<Pencil size={12} aria-hidden="true" />
+						<span className="sr-only">
+							{t("ui.teamBridge.drafts.indicator")}
+						</span>
 					</span>
 				)}
 				<Unread count={unread} yieldsToMenu />

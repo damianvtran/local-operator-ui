@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "convergence-rebind",
+  "date": "2026-10-25",
+  "locale": "hi",
+  "namespace": "ui.chat.header",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "content_audited_head": "ae40ebc959d9e3dbee6001f7e16d41f050af113e",
+  "instance": "hi-bind-47187b9de732",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "8c59b09ca817",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, edited no catalogue, English source, context sidecar, ledger or allowance file, and did not author any hi value under audit. The prior audit of these same bytes was instance hi-final-e5d955711ca2, a different session; this receipt re-binds that audit's bytes at the post-merge head."
+  },
+  "status": "passed",
+  "result": "clean",
+  "binding": "Current-byte convergence re-bind, not a fresh translation wave. The en, en.context and hi blobs for this namespace are byte-identical between the audited content head ae40ebc959 and the current PR head 0adbb37b94 (verified with git show + sha256 on the three files); the merge ab9bd739c2 integrated origin/main 91aa8f5f10 without touching this namespace. This receipt re-names the current bytes so the stale ledger row can be re-bound.",
+  "scope": "All 12 ui.chat.header keys at current PR head 0adbb37b94, read against src/i18n/catalogues/en/ui.chat.header.json and its context sidecar. The batch delta over origin/main is 2 keys (new_chat, new_chat_with), both authored on this branch.",
+  "sha256": {
+    "en": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+    "hi": "47187b9de7320afbcdc0db47ea271393aa25cf8b925f197b158d679472559a66",
+    "context": "39558b26f12ae22908a146f61c8c40795ac9e3b19e41a6ebed7ada883e7281bf"
+  },
+  "keys_read": 12,
+  "key_set": "equal to English: 12/12, same key order, no extra or missing key, no English stub and no Latin-only value",
+  "icu": "Every value parsed with @formatjs/icu-messageformat-parser. One argument only, {target} in new_chat_with, preserved exactly; no plural, select, number, date or tag construct in the namespace. U+2026 ellipsis preserved in move_device and delete.",
+  "width": "11 keys declare maxCells; measured in grapheme clusters with {target} counted as its literal 8 characters: conversation_name 9/24, archived 4/16, actions 12/28, copy_id 11/24, move_device 17/32, transcript_display 9/28, delete 9/28, close_run_details 15/20, open_run_details 12/20, new_chat 5/16, new_chat_with 19/32. No overrun.",
+  "register": "Titles and imperative menu items only; no second-person address form appears, so the locale's आप register is not put at risk. बातचीत is used for conversation, चैट for chat, सत्र for session, and 'ID' stays Latin, matching the rest of the hi catalogue.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "prior_audit": {
+    "instance": "hi-final-e5d955711ca2",
+    "receipt": "i18n/receipts/hi-final-e5d955711ca2.json",
+    "receipt_sha256": "c7b16f7c5d17b5d760f82e1b1f2fc28b0abd72a743d53bf74b5af71c24258c12",
+    "audited_head": "ae40ebc959d9e3dbee6001f7e16d41f050af113e",
+    "verdict": "clean, 12/12 values, 0 findings",
+    "byte_identity": "The prior receipt records exactly the en/hi/context hashes above; no byte moved between its head and the current head."
+  },
+  "method": [
+    "Read every value at the current head with git show and compared it side by side with the English source and the context sidecar's role/tone/maxCells notes.",
+    "Verified key parity and key order in both directions (12 keys each) and rejected English stubs or untranslated Latin-only values.",
+    "Parsed all 12 messages with @formatjs/icu-messageformat-parser and compared argument names, plural/select categories and skeletons against English.",
+    "Measured grapheme-cluster width against every declared maxCells budget and checked U+2026 preservation and UTF-8/NFC/no-BOM/no-CRLF/no-bidi-control byte hygiene.",
+    "Proved the three blobs are byte-identical to the content head already audited by hi-final-e5d955711ca2."
+  ],
+  "findings": [],
+  "verdict": "clean — 12 keys read; both new titles (नई चैट, {target} के साथ नई चैट) are accurate, idiomatic and inside their maxCells budgets; the carried keys agree with the same बातचीत/चैट terminology and no address-form choice is introduced.",
+  "limitations": "Static catalogue audit only: no rendered screen was built or captured in this pass, so width checks are grapheme-cluster arithmetic against the sidecar hints, not measured pixels. No native-speaker sign-off is claimed."
+}

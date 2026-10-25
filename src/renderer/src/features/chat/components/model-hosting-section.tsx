@@ -68,7 +68,7 @@ export const ModelHostingSection: FC<ModelHostingSectionProps> = ({
 	return (
 		<>
 			<h3 className="mt-6 mb-4 flex items-center font-semibold text-heading text-ink">
-				<span className="mr-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
+				<span className="me-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
 					<Server size={16} aria-hidden="true" />
 				</span>
 				Model and hosting
@@ -77,7 +77,7 @@ export const ModelHostingSection: FC<ModelHostingSectionProps> = ({
 						variant="ghost"
 						size="icon-sm"
 						type="button"
-						className="ml-1 text-accent"
+						className="ms-1 text-accent"
 						aria-label="More info"
 					>
 						<Info aria-hidden="true" />

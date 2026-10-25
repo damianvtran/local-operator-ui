@@ -14,7 +14,11 @@
  *     test asserts it, because "bounded by construction" is the kind of claim that
  *     stops being true quietly;
  *   - "unreachable" and "unknown" are different claims, so a missing answer is
- *     never rendered as a zero.
+ *     never rendered as a zero;
+ *   - a REVOKED membership is not a node: the device id is burned, the wire never
+ *     asks it anything, and drawing it as a peer that did not answer is a claim the
+ *     backend never made. It is an audit row (`revoked`) instead, and only live
+ *     memberships become nodes and edges.
  *
  * THE THREE ENTITY CLASSES, one containment (`mesh-ui.md` §2.8, the plan's §1):
  * networks contain memberships; a device is a member; a session is held by exactly
@@ -90,7 +94,6 @@ export type Membership = {
 	networkName: string;
 	role: string;
 	capabilities: string[];
-	active: boolean;
 	/**
 	 * The operator's DECLARED scope for this membership, or `""` for none.
 	 *
@@ -109,7 +112,11 @@ export type MeshDevice = {
 	id: string;
 	label: string;
 	state: DeviceState;
-	/** One per network this device is a member of, never collapsed. */
+	/**
+	 * One per network this device is a LIVE member of, never collapsed. A revoked
+	 * membership is not one of these - it is a row in `MeshGraph.revoked` - because
+	 * a membership the relay withdrew is not a link the canvas may draw.
+	 */
 	memberships: Membership[];
 	/** Reachable through ANY membership, refined by the peer catalogue. */
 	reachable: boolean;
@@ -148,28 +155,50 @@ export type MeshNetwork = {
 	label: string;
 	epoch: number;
 	trust: string;
-	/** Members that have not been revoked: what the node's stat line counts. */
 	/**
-	 * How many MEMBERS the network holds, revoked tombstones included.
+	 * How many LIVE members the network holds: the device nodes drawn under it.
 	 *
-	 * ALL members, not the active ones, because the summary line above the canvas
-	 * counts device NODES and a revoked member is still a node: a network node
-	 * reading "3 devices" beside a summary reading "4 devices" is one screen making
-	 * two claims about one quantity, which is how the first capture of this set
-	 * looked. `revokedCount` carries the difference, in words.
+	 * Revoked tombstones are NOT counted here, because they are not nodes any
+	 * more. The tab used to draw each tombstone as a peer that had not answered,
+	 * and this count had to include them so the lane and the summary agreed; now
+	 * the lane counts what is drawn and `revokedCount` carries the rest. The two
+	 * numbers still add up to the member rows the relay sent, which is what keeps
+	 * one screen from making two claims about one quantity.
 	 */
 	memberCount: number;
-	/** Members whose membership is revoked (a tombstone the relay still lists). */
+	/**
+	 * Revoked memberships the relay still lists for this network: the audit rows
+	 * behind `MeshGraph.revoked`. The relay prunes a tombstone after 90 days on
+	 * its own; nothing in this app deletes one, by design.
+	 */
 	revokedCount: number;
 };
 
 export type MeshEdge = {
-	/** `<network id>:<device id>` - one per membership, so unique by construction. */
+	/** `<network id>:<device id>` - one per LIVE membership, unique by construction. */
 	key: string;
 	networkId: string;
 	deviceId: string;
-	/** An inactive member (revoked, not yet pruned) draws a dashed edge. */
-	active: boolean;
+};
+
+/**
+ * A membership the relay still lists with `active: false`: a revoked tombstone.
+ *
+ * NOT A DEVICE NODE, and the difference is the whole point of this type. The
+ * device id is burned - it can never be admitted again - and the wire never
+ * asked it anything, so drawing it as a peer whose answer is missing says
+ * something the wire did not. What survives is the audit fact: which network,
+ * the name the membership was recorded under, the id that was burned and the
+ * role it held. The relay prunes the row after 90 days; this app cannot delete
+ * it, by design.
+ */
+export type RevokedMembership = {
+	networkId: string;
+	networkName: string;
+	deviceId: string;
+	/** The member's recorded name, or the burned id when the row carried none. */
+	label: string;
+	role: string;
 };
 
 export type MeshGraph = {
@@ -183,6 +212,12 @@ export type MeshGraph = {
 	 * device's own records do not contain is a real condition rather than noise.
 	 */
 	unmatchedPeers: PeerRow[];
+	/**
+	 * The revoked memberships the reads still carry, one row per network
+	 * membership. NOT nodes: the list's revoked count opens these, and no surface
+	 * may draw them as devices - see `RevokedMembership`.
+	 */
+	revoked: RevokedMembership[];
 	/** Which member is THIS device, or `null` when no read answered. */
 	selfDeviceId: string | null;
 };
@@ -236,14 +271,52 @@ export function meshGraph(input: {
 }): MeshGraph {
 	const { topology, peers } = input;
 
+	/*
+	 * THE AUDIT ROWS ARE COLLECTED BEFORE THE NODES, because the node pass must
+	 * skip exactly the memberships this pass keeps. A tombstone with no device id
+	 * cannot be named in either place: the same rule the node pass states below.
+	 *
+	 * A MEMBER IS REVOKED ONLY WHEN IT SAYS SO (agent review round 1, F1). The
+	 * parser this graph is built from defaults a MISSING `active` to live
+	 * (`mesh-types.ts`: `flag(raw.active, true)`), so `member.active` here read an
+	 * absent field as a tombstone - a member the parser had called live vanished
+	 * from the nodes and reappeared as a revoked audit row. `!== false` is the
+	 * parser's rule: only an explicit `false` is revoked. The three `active` reads
+	 * in this file (here, the node's own memberships, and the peer's) all use it.
+	 */
+	const revoked: RevokedMembership[] = [];
+	for (const network of topology.networks) {
+		const networkName = networkLabel(network);
+		for (const member of network.members) {
+			if (!text(member.device_id) || member.active !== false) continue;
+			revoked.push({
+				networkId: network.network_id,
+				networkName,
+				deviceId: member.device_id,
+				label: deviceLabel({
+					device_id: member.device_id,
+					name: text(member.name),
+				}),
+				role: text(member.role),
+			});
+		}
+	}
+	const revokedByNetwork = new Map<string, number>();
+	for (const member of revoked) {
+		const count = revokedByNetwork.get(member.networkId) ?? 0;
+		revokedByNetwork.set(member.networkId, count + 1);
+	}
+
 	const networks: MeshNetwork[] = topology.networks
 		.map((network) => ({
 			id: network.network_id,
 			label: networkLabel(network),
 			epoch: network.epoch,
 			trust: network.trust,
-			memberCount: network.members.length,
-			revokedCount: network.members.filter((member) => !member.active).length,
+			memberCount: network.members.filter(
+				(member) => member.active !== false && text(member.device_id),
+			).length,
+			revokedCount: revokedByNetwork.get(network.network_id) ?? 0,
 		}))
 		.sort(byLabel);
 
@@ -258,10 +331,15 @@ export function meshGraph(input: {
 	const edges: MeshEdge[] = [];
 	for (const network of topology.networks) {
 		const label = networkLabel(network);
-		// A member with no id cannot be a node: it would key under `undefined` and
-		// draw a device nobody can name.
-		for (const member of network.members.filter((entry) =>
-			text(entry.device_id),
+		/*
+		 * A member with no id cannot be a node: it would key under `undefined` and
+		 * draw a device nobody can name. A REVOKED member is not a node either: the
+		 * id is burned, the wire never asks it anything, and drawing it beside a
+		 * live peer made the tab report a silence that never happened. Its one home
+		 * is `revoked`, collected above.
+		 */
+		for (const member of network.members.filter(
+			(entry) => text(entry.device_id) && entry.active !== false,
 		)) {
 			const list = memberships.get(member.device_id) ?? [];
 			list.push({ member, networkId: network.network_id, networkName: label });
@@ -270,7 +348,6 @@ export function meshGraph(input: {
 				key: `${network.network_id}:${member.device_id}`,
 				networkId: network.network_id,
 				deviceId: member.device_id,
-				active: member.active,
 			});
 		}
 	}
@@ -315,7 +392,6 @@ export function meshGraph(input: {
 					networkName: entry.networkName,
 					role: text(entry.member.role),
 					capabilities: strings(entry.member.capabilities),
-					active: entry.member.active,
 					scope: entry.member.scope,
 				})),
 				reachable,
@@ -341,11 +417,28 @@ export function meshGraph(input: {
 		})
 		.sort(byLabel);
 
+	/*
+	 * A TOMBSTONE'S PEER ROW IS NOT AN UNMATCHED PEER. It used to match a node;
+	 * now that the node is gone, filing it here would claim this device's records
+	 * lack a device they in fact hold a revoked membership for. The audit list is
+	 * where that row is named, so `revoked` is the exclusion set.
+	 */
+	const revokedIds = new Set(revoked.map((member) => member.deviceId));
 	const unmatchedPeers = peers.peers
-		.filter((peer) => !memberships.has(peer.device_id))
+		.filter(
+			(peer) =>
+				!memberships.has(peer.device_id) && !revokedIds.has(peer.device_id),
+		)
 		.sort((a, b) => a.device_id.localeCompare(b.device_id));
 
-	return { networks, devices, edges, unmatchedPeers, selfDeviceId };
+	return {
+		networks,
+		devices,
+		edges,
+		revoked,
+		unmatchedPeers,
+		selfDeviceId,
+	};
 }
 
 /** The node count this graph draws: what the DOM bound is asserted against. */
@@ -449,18 +542,6 @@ function conversationsSentence(count: number): string {
  * cannot drift into two descriptions of one device.
  */
 function statLine(device: MeshDevice, nowSeconds: number): string {
-	/*
-	 * REVOKED OUTRANKS THE REST, because it is not a link state at all: the device is
-	 * not a member of any network this app can name, and a burned device id is never
-	 * admitted again. Rendering it as a neutral "no sessions reported" node - which is
-	 * what the first capture of this set did - left the one node the tab exists to
-	 * make obvious wearing the same clothes as a healthy one.
-	 */
-	if (
-		device.memberships.length > 0 &&
-		device.memberships.every((m) => !m.active)
-	)
-		return t("ui.mesh.mesh_graph.revoked_membership");
 	switch (device.state) {
 		case "self":
 			return device.sessionCount === null

@@ -126,6 +126,9 @@ export interface BrowserChromeState {
 	/** S4b: which list presenter the product chrome has. `suspend` is Tier 1 —
 	 * the field works, the native list does not. Absent on a pre-S4b main. */
 	addressOverlay?: { mode: "popout" | "suspend"; reason: string | null };
+	/** S6b: the native approvals card. Absent on a launch without the opt-in, in
+	 * which case the shield keeps using the DOM dock. */
+	approvalsCard?: { available: boolean; open: boolean };
 	pageControls?: {
 		find: {
 			tabId: number;
@@ -438,7 +441,11 @@ export interface BrowserChrome {
 	 * load failure) rather than an overlay covering the content area. Main keeps
 	 * shortcut ownership for the first and refuses it for the second; see
 	 * `browser-surface.tsx` and `registry.ts:chromeVisible`. */
-	setViewVisible: (visible: boolean, ownPage?: boolean) => void;
+	setViewVisible: (
+		visible: boolean,
+		ownPage?: boolean,
+		ownStatePage?: boolean,
+	) => void;
 	respondToConsent: (
 		entryId: string,
 		decision: ConsentDecision,
@@ -740,19 +747,23 @@ export function useBrowserChrome(): BrowserChrome {
 	 * and the cleanup would hide the view once per change — a flicker rather than
 	 * a policy.
 	 *
-	 * `ownPage` is forwarded unchanged: it is the reason half of the report, not a
-	 * second visibility flag. Dropping it here would leave main unable to tell the
-	 * browser's own start page from a dialog covering it, which is the S4a bug.
+	 * `ownPage` and `ownStatePage` are forwarded unchanged: they are reasons, not
+	 * visibility flags. `ownPage` drives keyboard ownership (cleared by an
+	 * overlay); `ownStatePage` survives one, so controls stay refused on the start
+	 * page while a menu is open over it (QA Q3-1).
 	 */
-	const setViewVisible = useCallback((visible: boolean, ownPage = false) => {
-		void bridge()
-			?.setViewVisible(visible, ownPage)
-			.catch(() => {
-				// Losing a visibility update corrects itself on the next policy change;
-				// surfacing it would put a message in the band for a race the user cannot
-				// act on.
-			});
-	}, []);
+	const setViewVisible = useCallback(
+		(visible: boolean, ownPage = false, ownStatePage = ownPage) => {
+			void bridge()
+				?.setViewVisible(visible, ownPage, ownStatePage)
+				.catch(() => {
+					// Losing a visibility update corrects itself on the next policy change;
+					// surfacing it would put a message in the band for a race the user cannot
+					// act on.
+				});
+		},
+		[],
+	);
 
 	const api = bridge();
 	return useMemo<BrowserChrome>(

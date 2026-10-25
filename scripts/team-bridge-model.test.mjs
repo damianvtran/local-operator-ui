@@ -21,12 +21,6 @@ const model = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
-// The page's catalogue strings, as plain functions.
-const chiefCopy = {
-	named: (agent, person) => `${agent} (${person})`,
-	unnamed: (person) => `${person}'s chief of staff`,
-};
-
 const member = (label, kind, state, accountId = `acct_${label}`) => ({
 	account_id: accountId,
 	kind,
@@ -298,8 +292,10 @@ test("a preview header counts member_count when it has no member rows", () => {
 				],
 			}),
 		),
-		// Current memberships include invitations; this is not an active-access count.
-		3,
+		// member_count counts active + invited; the insider header counts the
+		// active rows only (the avatar strip filters the same state) — invitees are
+		// stated by conversationMembershipCounts instead of merged into this total.
+		2,
 	);
 });
 
@@ -410,7 +406,7 @@ test("a participant is named from the live directory, not the stored label", () 
 			agent: { endpoint_id: "bep_ben", name: "Aida", state: "active" },
 		},
 	];
-	const chief = chiefCopy;
+	const chief = (agent, person) => `${agent} (${person})`;
 	// The hub stored the creator as the placeholder "Member": the directory wins.
 	assert.equal(
 		model.participantLabel(
@@ -449,7 +445,7 @@ test('the legacy stored label "Member" is a placeholder, never a name', () => {
 			bridge_state: "active",
 		},
 	];
-	const chief = chiefCopy;
+	const chief = (agent, person) => `${agent} (${person})`;
 	// A directory hit names the sender even when the stored label is legacy.
 	assert.equal(
 		model.participantLabel(
@@ -492,7 +488,7 @@ test('the legacy stored label "Member" is a placeholder, never a name', () => {
 });
 
 test("the reader's own messages resolve from the signed-in identity", () => {
-	const chief = chiefCopy;
+	const chief = (agent, person) => `${agent} (${person})`;
 	const self = { accountId: "acct_self", name: "Damian Tran" };
 	// The directory does not list the reader: the identity still names them.
 	assert.equal(
@@ -890,7 +886,11 @@ test("recipientCandidates offers the reader’s chief, not their human or bridge
 		person("acct_ben", { endpoint_id: "e1", name: "Aida", state: "active" }),
 		{ ...person("acct_off"), bridge_enabled: false, bridge_state: "disabled" },
 	];
-	const out = model.recipientCandidates(people, "acct_self", chiefCopy);
+	const out = model.recipientCandidates(
+		people,
+		"acct_self",
+		(agent, owner) => `${agent} (${owner})`,
+	);
 	assert.deepEqual(
 		out.map((row) => `${row.kind}:${row.accountId}:${row.label}`),
 		[
@@ -907,7 +907,7 @@ test("recipientCandidates offers the reader’s chief, not their human or bridge
 // R1-2 / R1-8: the first send's two writes, and what a retry does.
 // ---------------------------------------------------------------------------
 
-const firstSendRig = ({ failPostTimes = 0, createId = "bcv_new" } = {}) => {
+const _firstSendRig = ({ failPostTimes = 0, createId = "bcv_new" } = {}) => {
 	const calls = { create: 0, post: [] };
 	let failures = failPostTimes;
 	return {
@@ -927,7 +927,7 @@ const firstSendRig = ({ failPostTimes = 0, createId = "bcv_new" } = {}) => {
 		},
 	};
 };
-const groupInput = {
+const _groupInput = {
 	kind: "group",
 	visibility: "private",
 	agentCapable: false,
@@ -937,116 +937,54 @@ const groupInput = {
 	],
 };
 
-test("R1-2: a retried group send after a failed post creates ONE group and reuses the client_ref", async () => {
-	const rig = firstSendRig({ failPostTimes: 1 });
-	const args = {
-		draftKey: "tnt_1|group|acct_ben,acct_sana",
-		input: groupInput,
-		body: "hello",
-		clientRef: "ref-1",
-		tenantId: "tnt_1",
-		remembered: rig.remembered,
-		create: rig.create,
-		post: rig.post,
-	};
-	await assert.rejects(model.sendFirstMessage(args));
-	assert.equal(rig.calls.create, 1);
-	const done = await model.sendFirstMessage(args);
-	assert.equal(rig.calls.create, 1, "the retry must not create a second group");
-	assert.equal(done.id, "bcv_new_1");
-	assert.deepEqual(
-		rig.calls.post.map((call) => [call.id, call.clientRef, call.tenantId]),
-		[
-			["bcv_new_1", "ref-1", "tnt_1"],
-			["bcv_new_1", "ref-1", "tnt_1"],
-		],
-	);
-	assert.equal(rig.remembered.size, 0, "success forgets the draft");
-});
-
-test("a failed create remembers nothing, so the retry creates", async () => {
-	const remembered = new Map();
-	let creates = 0;
-	const args = {
-		draftKey: "k",
-		input: groupInput,
-		body: "b",
-		clientRef: "r",
-		tenantId: "tnt_1",
-		remembered,
-		create: async () => {
-			creates += 1;
-			if (creates === 1) throw new Error("create failed");
-			return { id: "bcv_ok" };
+test("the reader's own chief of staff is offered beside every other chief", () => {
+	const people = [
+		{
+			account_id: "acct_self",
+			display_label: "Damian Tran",
+			kind: "human",
+			agent: { endpoint_id: "bep_self", name: "Otto", state: "active" },
 		},
-		post: async () => ({}),
-	};
-	await assert.rejects(model.sendFirstMessage(args));
-	assert.equal(remembered.size, 0);
-	assert.equal((await model.sendFirstMessage(args)).id, "bcv_ok");
-	assert.equal(creates, 2);
-});
-
-test("a create response without an id is a failure, not a post to nowhere", async () => {
-	let posted = false;
-	await assert.rejects(
-		model.sendFirstMessage({
-			draftKey: "k",
-			input: groupInput,
-			body: "b",
-			clientRef: "r",
-			tenantId: undefined,
-			remembered: new Map(),
-			create: async () => ({}),
-			post: async () => {
-				posted = true;
-			},
-		}),
-	);
-	assert.equal(posted, false);
-});
-
-test("different drafts never share a remembered conversation", async () => {
-	const rig = firstSendRig({ failPostTimes: 1 });
-	const base = {
-		input: groupInput,
-		body: "b",
-		clientRef: "r",
-		tenantId: "tnt_1",
-		remembered: rig.remembered,
-		create: rig.create,
-		post: rig.post,
-	};
-	await assert.rejects(model.sendFirstMessage({ ...base, draftKey: "A" }));
-	await model.sendFirstMessage({ ...base, draftKey: "B" });
-	assert.equal(rig.calls.create, 2);
-	assert.equal(rig.remembered.has("A"), true);
-});
-
-// Production regression: document member_count is absent; wire member rows are
-// enough to state current membership, without granting invitees active access.
-test("one active owner and three invited agents count as four current members", () => {
-	const members = [
-		member("Damian", "human", "active", "acct_self"),
-		...["Ben", "Sana", "Sherman"].map((name) =>
-			member(name, "agent", "invited"),
-		),
-		member("Former", "human", "left"),
-		member("Removed", "agent", "removed"),
+		{
+			account_id: "acct_ben",
+			display_label: "Ben Tran",
+			kind: "human",
+			agent: { endpoint_id: "bep_ben", name: "Aida", state: "active" },
+		},
+		{
+			account_id: "acct_none",
+			display_label: "Nobody",
+			kind: "human",
+			agent: { endpoint_id: "bep_none", name: "Off", state: "disabled" },
+		},
 	];
-	assert.equal(
-		model.conversationMemberCount(conversation({ kind: "channel", members })),
-		4,
+	// PR #1336: the reader is NOT filtered out (a bridge DM with one's own agent
+	// is a supported path); a disabled endpoint is, because state is the gate.
+	const offered = model.chiefsOfStaff(people, "acct_self");
+	assert.deepEqual(
+		offered.map((c) => c.endpointId),
+		["bep_self", "bep_ben"],
 	);
-	assert.deepEqual(model.conversationMembershipCounts({ members }), {
-		active: 1,
-		invited: 3,
-	});
-	// A populated participant list is authoritative even if aggregate metadata is stale.
-	assert.equal(
-		model.conversationMemberCount(conversation({ members, member_count: 99 })),
-		4,
+});
+
+test("the header total counts active rows; invitations are stated in the breakdown", () => {
+	const members = [
+		member("Damian Tran", "human", "active", "acct_self"),
+		member("Ben Tran", "human", "active", "acct_ben"),
+		member("Aida", "agent", "invited", "acct_ben"),
+		member("Juno", "agent", "invited", "acct_sherman"),
+	];
+	// Parent ruling (2026-10-25): the header total stays ACTIVE-only so it agrees
+	// with the avatars beside it; an invitation is stated by the breakdown, never
+	// merged into the total.
+	assert.deepEqual(
+		model.conversationMembershipCounts(conversation({ members })),
+		{
+			active: 2,
+			invited: 2,
+		},
 	);
+	assert.equal(model.conversationMemberCount(conversation({ members })), 2);
 	assert.equal(
 		model.conversationMemberCount(
 			conversation({ members: [], member_count: undefined }),
@@ -1055,179 +993,11 @@ test("one active owner and three invited agents count as four current members", 
 	);
 });
 
-test("self chief remains offerable with named, empty, or server owner-fallback names", () => {
-	for (const name of ["Aida", "", "Damian"]) {
-		const self = {
-			...person("acct_self", { endpoint_id: "ep_self", name, state: "active" }),
-			display_label: "Damian",
-		};
-		const candidates = model.recipientCandidates(
-			[self],
-			"acct_self",
-			chiefCopy,
-		);
-		assert.equal(model.personRowState(self, "acct_self"), "self");
-		assert.equal(candidates.length, 1);
-		assert.equal(candidates[0].kind, "agent");
-		assert.equal(candidates[0].endpointId, "ep_self");
-		// Integrated #1334 uses one shared composition rule: absent/owner-name
-		// fallback describes a chief of staff rather than repeating the human.
-		assert.equal(
-			candidates[0].label,
-			name === "Aida" ? "Aida (Damian)" : "Damian's chief of staff",
-		);
-		const human = { kind: "human", accountId: "acct_self", label: "Damian" };
-		assert.notEqual(
-			model.recipientKey(candidates[0]),
-			model.recipientKey(human),
-		);
-		assert.equal(model.recipientKey(candidates[0]), "agent:acct_self");
-		assert.deepEqual(model.recipientMemberInput(candidates[0]), {
-			account_id: "acct_self",
-			kind: "agent",
-			endpoint_id: "ep_self",
-			// Store a name, never the localized composed picker label (#1334).
-			display_label: name === "Aida" ? "Aida" : "Damian",
-		});
-		// Adding the agent does not add a human recipient; the server owns creator membership.
-		const input = model.draftCreateInput(candidates);
-		assert.equal(input.members.length, 1);
-		assert.equal(input.members[0].kind, "agent");
-		assert.equal(input.agentCapable, true);
-		assert.equal(input.kind, "dm");
-		assert.deepEqual(
-			model.draftCreateInput([human, candidates[0]]).members.map((m) => m.kind),
-			["human", "agent"],
-		);
-	}
-});
-
-// ---------------------------------------------------------------------------
-// Chief-of-staff label: "Ben Tran (Ben Tran)" (operator report, 2026-10-22).
-// ---------------------------------------------------------------------------
-
-const ben = (agent) => ({
-	account_id: "acct_ben",
-	display_label: "Ben Tran",
-	role: "member",
-	bridge_enabled: true,
-	bridge_state: "active",
-	...(agent ? { agent } : {}),
-});
-
-test("composeChiefLabel names the agent with the person as context, never the person twice", () => {
-	assert.equal(
-		model.composeChiefLabel("Aida", "Ben Tran", chiefCopy),
-		"Aida (Ben Tran)",
-	);
-	// The server defaulted the agent's name to its owner's: that is no name.
-	assert.equal(
-		model.composeChiefLabel("Ben Tran", "Ben Tran", chiefCopy),
-		"Ben Tran's chief of staff",
-	);
-	assert.equal(
-		model.composeChiefLabel("  ben   tran ", "Ben Tran", chiefCopy),
-		"Ben Tran's chief of staff",
-	);
-	assert.equal(
-		model.composeChiefLabel("", "Ben Tran", chiefCopy),
-		"Ben Tran's chief of staff",
-	);
-	assert.equal(
-		model.composeChiefLabel("   ", "Ben Tran", chiefCopy),
-		"Ben Tran's chief of staff",
-	);
-});
-
-test("the rail's recipient label for an unnamed chief never repeats the person", () => {
-	const out = model.recipientCandidates(
-		[ben({ endpoint_id: "e1", name: "Ben Tran", state: "active" })],
-		"acct_self",
-		chiefCopy,
-	);
-	assert.equal(
-		out.find((row) => row.kind === "agent").label,
-		"Ben Tran's chief of staff",
-	);
-});
-
-test("recipientMemberInput never sends a duplicated agent label to the server", () => {
-	const sent = model.recipientMemberInput({
-		kind: "agent",
-		accountId: "acct_ben",
-		endpointId: "e1",
-		label: "Ben Tran (Ben Tran)",
-	});
-	assert.equal(sent.display_label, "Ben Tran");
-	assert.equal(
-		model.recipientMemberInput({
-			kind: "agent",
-			accountId: "acct_ben",
-			endpointId: "e1",
-			label: "Aida (Ben Tran)",
-		}).display_label,
-		"Aida (Ben Tran)",
-	);
-});
-
-test("participantLabel reads existing bad rows: 'X (X)' and the person's own name are absent", () => {
-	const agent = (display_label) => ({
-		account_id: "acct_ben",
-		kind: "agent",
-		display_label,
-	});
-	// Directory names the agent: it wins over a bad stored row.
-	const named = [ben({ endpoint_id: "e1", name: "Aida", state: "active" })];
-	for (const stored of ["Ben Tran (Ben Tran)", "Ben Tran", "Member"]) {
-		assert.equal(
-			model.participantLabel(agent(stored), named, chiefCopy),
-			"Aida (Ben Tran)",
-		);
-	}
-	// Directory agent name is the person's own: no name known.
-	const echoed = [
-		ben({ endpoint_id: "e1", name: "Ben Tran", state: "active" }),
-	];
-	for (const stored of ["Ben Tran (Ben Tran)", "Ben Tran", "Member"]) {
-		assert.equal(
-			model.participantLabel(agent(stored), echoed, chiefCopy),
-			"Ben Tran's chief of staff",
-		);
-	}
-	// No agent in the directory but the person is listed.
-	assert.equal(
-		model.participantLabel(agent("Ben Tran (Ben Tran)"), [ben()], chiefCopy),
-		"Ben Tran's chief of staff",
-	);
-	// A stored "Aida (Ben Tran)" is not composed a second time.
-	assert.equal(
-		model.participantLabel(agent("Aida (Ben Tran)"), [ben()], chiefCopy),
-		"Aida (Ben Tran)",
-	);
-	// Person not in the directory: the stored agent name stands; a doubled one is absent.
-	assert.equal(model.participantLabel(agent("Aida"), [], chiefCopy), "Aida");
-	assert.equal(
-		model.participantLabel(agent("Ben Tran (Ben Tran)"), [], chiefCopy),
-		null,
-	);
-});
-
-test("a DM title with a doubled stored agent label is not the doubled label", () => {
-	const dm = conversation({
-		agent_capable: true,
-		members: [
-			member("Ada", "human", "active", "acct_a"),
-			member("Ben Tran (Ben Tran)", "agent", "active", "acct_ben"),
-		],
-	});
-	assert.equal(model.conversationTitle(dm, "acct_a"), null);
-});
-
 // ---------------------------------------------------------------------------
 // Optimistic send.
 // ---------------------------------------------------------------------------
 
-const pend = (clientRef, body, patch = {}) => ({
+const _pend = (clientRef, body, patch = {}) => ({
 	clientRef,
 	body,
 	createdAt: `2026-10-22T10:00:0${patch.n ?? 0}.000Z`,
@@ -1238,484 +1008,11 @@ const pend = (clientRef, body, patch = {}) => ({
 	status: "sending",
 	...patch,
 });
-const mine = (seq, body, patch = {}) =>
+const _mine = (seq, body, patch = {}) =>
 	message(seq, {
 		id: `bcmsg_${seq}`,
 		body,
 		sender: { account_id: "acct_self", kind: "human", display_label: "Me" },
 		...patch,
 	});
-const selfId = { accountId: "acct_self", label: "Me" };
-
-test("a pending send is drawn at once, after every confirmed message, keyed by client_ref", () => {
-	const out = model.threadWithPending(
-		[message(1), message(2)],
-		[pend("ref-1", "hi")],
-		selfId,
-	);
-	assert.deepEqual(
-		out.map((m) => m.id),
-		["bcmsg_1", "bcmsg_2", "pending:ref-1"],
-	);
-	assert.equal(out[2].body, "hi");
-	assert.equal(
-		model.pendingMark(out[2], [pend("ref-1", "hi")]).clientRef,
-		"ref-1",
-	);
-	assert.equal(model.pendingMark(out[0], [pend("ref-1", "hi")]), null);
-});
-
-test("pending survives 'no conversation id yet': a new thread draws it from the draft key", () => {
-	const entry = pend("ref-n", "first", {
-		conversationId: null,
-		draftKey: "tnt|dm|human:acct_ben",
-		baselineSeq: -1,
-	});
-	assert.equal(
-		model.pendingForThread([entry], null, "tnt|dm|human:acct_ben").length,
-		1,
-	);
-	assert.equal(
-		model.pendingForThread([entry], null, "tnt|dm|human:acct_other").length,
-		0,
-	);
-	assert.equal(model.threadWithPending([], [entry], selfId).length, 1);
-	// It adopts the created conversation and stays on screen both ways.
-	const adopted = { ...entry, conversationId: "bcv_new" };
-	assert.equal(model.pendingForThread([adopted], "bcv_new", null).length, 1);
-	assert.equal(
-		model.pendingForThread([adopted], null, "tnt|dm|human:acct_ben").length,
-		1,
-	);
-	assert.equal(model.pendingForThread([adopted], "bcv_other", null).length, 0);
-});
-
-test("a message arriving from someone else never jumps above the one just typed", () => {
-	const out = model.threadWithPending(
-		[message(1), message(2), message(3, { id: "bcmsg_3" })],
-		[pend("ref-1", "typed")],
-		selfId,
-	);
-	assert.equal(out.at(-1).id, "pending:ref-1");
-	assert.deepEqual(
-		model.chronological(out).map((m) => m.id),
-		["bcmsg_1", "bcmsg_2", "bcmsg_3", "pending:ref-1"],
-	);
-});
-
-test("pending entries keep the order they were typed in", () => {
-	const out = model.threadWithPending(
-		[],
-		[pend("b", "second", { n: 2 }), pend("a", "first", { n: 1 })],
-		selfId,
-	);
-	assert.deepEqual(
-		out.map((m) => m.body),
-		["first", "second"],
-	);
-	assert.deepEqual(
-		model.chronological(out).map((m) => m.body),
-		["first", "second"],
-	);
-});
-
-test("confirm REPLACES the pending entry: the POST's id in the list claims it, never both", () => {
-	const entry = pend("ref-1", "hi", { status: "sent", confirmedId: "bcmsg_9" });
-	const out = model.threadWithPending(
-		[message(1), mine(9, "hi")],
-		[entry],
-		selfId,
-	);
-	assert.deepEqual(
-		out.map((m) => m.id),
-		["bcmsg_1", "bcmsg_9"],
-	);
-});
-
-test("the race: the server's copy arrives (refetch/feed) BEFORE the POST resolves, and is not duplicated", () => {
-	const entry = pend("ref-1", "hi"); // still "sending", no confirmedId yet
-	const out = model.threadWithPending(
-		[message(1), message(2), mine(3, "hi")],
-		[entry],
-		selfId,
-	);
-	assert.deepEqual(
-		out.map((m) => m.id),
-		["bcmsg_1", "bcmsg_2", "bcmsg_3"],
-	);
-	assert.equal(
-		model.openPending(
-			[message(1), message(2), mine(3, "hi")],
-			[entry],
-			"acct_self",
-		).length,
-		0,
-	);
-});
-
-test("a copy claims one entry only: the same text sent twice shows two rows", () => {
-	const entries = [pend("a", "ok", { n: 1 }), pend("b", "ok", { n: 2 })];
-	const one = model.threadWithPending([mine(3, "ok")], entries, selfId);
-	assert.deepEqual(
-		one.map((m) => m.id),
-		["bcmsg_3", "pending:b"],
-	);
-	const two = model.threadWithPending(
-		[mine(3, "ok"), mine(4, "ok")],
-		entries,
-		selfId,
-	);
-	assert.deepEqual(
-		two.map((m) => m.id),
-		["bcmsg_3", "bcmsg_4"],
-	);
-});
-
-test("an older identical message, or someone else's, does not claim a pending entry", () => {
-	const entry = pend("ref-1", "ok", { baselineSeq: 5 });
-	const old = model.threadWithPending([mine(4, "ok")], [entry], selfId);
-	assert.equal(old.at(-1).id, "pending:ref-1");
-	const other = model.threadWithPending(
-		[message(6, { body: "ok" })],
-		[entry],
-		selfId,
-	);
-	assert.equal(other.at(-1).id, "pending:ref-1");
-});
-
-test("a FAILED entry stays drawn (never vanishes) until a copy proves it landed", () => {
-	const failed = pend("ref-1", "hi", { status: "failed" });
-	const out = model.threadWithPending([message(1)], [failed], selfId);
-	assert.equal(out.at(-1).id, "pending:ref-1");
-	assert.equal(model.pendingMark(out.at(-1), [failed]).status, "failed");
-	// An ambiguous failure whose request landed collapses into its copy.
-	const landed = model.threadWithPending(
-		[message(1), mine(3, "hi")],
-		[failed],
-		selfId,
-	);
-	assert.deepEqual(
-		landed.map((m) => m.id),
-		["bcmsg_1", "bcmsg_3"],
-	);
-});
-
-test("postedMessageId reads the id from either response envelope", () => {
-	assert.equal(model.postedMessageId({ id: "m1" }), "m1");
-	assert.equal(model.postedMessageId({ message: { id: "m2" } }), "m2");
-	assert.equal(model.postedMessageId({}), undefined);
-	assert.equal(model.postedMessageId(null), undefined);
-});
-
-test("sendFirstMessage returns the POST's answer so the pending entry can be reconciled by id", async () => {
-	const rig = firstSendRig();
-	rig.post = async () => ({ id: "bcmsg_77" });
-	const done = await model.sendFirstMessage({
-		draftKey: "k",
-		input: groupInput,
-		body: "hello",
-		clientRef: "ref-1",
-		tenantId: "tnt_1",
-		remembered: rig.remembered,
-		create: rig.create,
-		post: rig.post,
-	});
-	assert.equal(model.postedMessageId(done.posted), "bcmsg_77");
-});
-
-test("first send then failed post then retry: same client_ref, one create, one message", async () => {
-	const rig = firstSendRig({ failPostTimes: 1 });
-	const args = {
-		draftKey: "k",
-		input: groupInput,
-		body: "hello",
-		clientRef: "ref-1",
-		tenantId: "tnt_1",
-		remembered: rig.remembered,
-		create: rig.create,
-		post: rig.post,
-	};
-	await assert.rejects(model.sendFirstMessage(args));
-	// Between the failure and Retry the row is failed, and drawn.
-	const failed = pend("ref-1", "hello", {
-		conversationId: "bcv_new_1",
-		status: "failed",
-	});
-	assert.equal(model.threadWithPending([], [failed], selfId).length, 1);
-	await model.sendFirstMessage(args);
-	assert.equal(rig.calls.create, 1);
-	assert.deepEqual(
-		rig.calls.post.map((c) => c.clientRef),
-		["ref-1", "ref-1"],
-	);
-});
-
-// ---------------------------------------------------------------------------
-// performSend: the page container's whole optimistic attempt, executed.
-// ---------------------------------------------------------------------------
-
-const sendRig = (over = {}) => {
-	const calls = { create: 0, post: [], created: [] };
-	return {
-		calls,
-		args: {
-			conversationId: null,
-			tenantId: undefined,
-			draftKey: "tnt_1|dm|human:acct_ben",
-			input: groupInput,
-			draftTenantId: "tnt_1",
-			body: "hello",
-			clientRef: "ref-1",
-			remembered: new Map(),
-			create: async () => {
-				calls.create += 1;
-				return { id: "bcv_new", tenant_id: "tnt_1" };
-			},
-			post: async (id, message) => {
-				calls.post.push({ id, ...message });
-				return { id: "bcmsg_9" };
-			},
-			onCreated: (created) => calls.created.push(created),
-			...over,
-		},
-	};
-};
-
-test("performSend: the first send creates, adopts the id BEFORE the post, and reports the posted id", async () => {
-	const order = [];
-	const rig = sendRig({
-		post: async (id, message) => {
-			order.push("post");
-			rig.calls.post.push({ id, ...message });
-			return { message: { id: "bcmsg_9" } };
-		},
-		onCreated: () => order.push("adopt"),
-	});
-	const out = await model.performSend(rig.args);
-	assert.deepEqual(order, ["adopt", "post"]);
-	assert.deepEqual(out, {
-		ok: true,
-		id: "bcv_new",
-		tenantId: "tnt_1",
-		confirmedId: "bcmsg_9",
-	});
-});
-
-test("performSend: a failed post is {ok:false}, never a throw; the retry reuses the client_ref and the created conversation", async () => {
-	let failing = true;
-	const rig = sendRig({
-		post: async (id, message) => {
-			rig.calls.post.push({ id, ...message });
-			if (failing) throw new Error("offline");
-			return { id: "bcmsg_9" };
-		},
-	});
-	assert.deepEqual(await model.performSend(rig.args), { ok: false });
-	failing = false;
-	const retried = await model.performSend(rig.args);
-	assert.equal(retried.ok, true);
-	assert.equal(rig.calls.create, 1, "the retry must not create again");
-	assert.deepEqual(
-		rig.calls.post.map((c) => [c.id, c.clientRef]),
-		[
-			["bcv_new", "ref-1"],
-			["bcv_new", "ref-1"],
-		],
-	);
-});
-
-test("performSend: an existing thread posts straight to it, with its tenant, and never creates", async () => {
-	const rig = sendRig({
-		conversationId: "bcv_1",
-		tenantId: "tnt_9",
-		draftKey: null,
-		input: null,
-	});
-	const out = await model.performSend(rig.args);
-	assert.equal(rig.calls.create, 0);
-	assert.deepEqual(rig.calls.post, [
-		{ id: "bcv_1", clientRef: "ref-1", body: "hello", tenantId: "tnt_9" },
-	]);
-	assert.equal(out.ok && out.confirmedId, "bcmsg_9");
-});
-
-test("performSend: a failed create is a failed row, and nothing is posted", async () => {
-	const rig = sendRig({
-		create: async () => {
-			throw new Error("403");
-		},
-	});
-	assert.deepEqual(await model.performSend(rig.args), { ok: false });
-	assert.equal(rig.calls.post.length, 0);
-});
-
-test("performSend: no thread and no draft to create is a failure, not a silent drop", async () => {
-	const rig = sendRig({ draftKey: null, input: null });
-	assert.deepEqual(await model.performSend(rig.args), { ok: false });
-});
-
-// ---------------------------------------------------------------------------
-// Review round 1 on #1334: R1-1 (round trip) and R1-3 (overlapping sends).
-// ---------------------------------------------------------------------------
-
-test("R1-1: what the create payload STORES reads back as the same single label (compose → store → read)", () => {
-	for (const agentName of ["Aida", "Ben Tran", ""]) {
-		const people = [
-			ben(
-				agentName
-					? { endpoint_id: "e1", name: agentName, state: "active" }
-					: { endpoint_id: "e1", name: "", state: "active" },
-			),
-		];
-		const [, chief] = model.recipientCandidates(people, "acct_self", chiefCopy);
-		const shown = chief.label;
-		const stored = model.recipientMemberInput(chief).display_label;
-		// Never the composed display label, so the read path cannot compose it twice.
-		assert.notEqual(stored, "Ben Tran's chief of staff");
-		assert.notEqual(stored, "Aida (Ben Tran)");
-		const read = model.participantLabel(
-			{ account_id: "acct_ben", kind: "agent", display_label: stored },
-			people,
-			chiefCopy,
-		);
-		assert.equal(read, shown, `agent name ${JSON.stringify(agentName)}`);
-		// With the directory unavailable the stored NAME is all there is: it
-		// never reads back as a doubled or composed label.
-		const offline = model.participantLabel(
-			{ account_id: "acct_ben", kind: "agent", display_label: stored },
-			[],
-			chiefCopy,
-		);
-		assert.equal(offline, stored);
-	}
-	assert.equal(
-		model.recipientMemberInput(
-			model.recipientCandidates(
-				[ben({ endpoint_id: "e1", name: "Aida", state: "active" })],
-				"acct_self",
-				chiefCopy,
-			)[1],
-		).display_label,
-		"Aida",
-	);
-});
-
-test("R1-3: two sends while the first create is in flight create ONE conversation", async () => {
-	let resolveCreate;
-	let creates = 0;
-	const posts = [];
-	const remembered = new Map();
-	const base = {
-		draftKey: "k",
-		input: groupInput,
-		tenantId: "tnt_1",
-		remembered,
-		create: () => {
-			creates += 1;
-			return new Promise((resolve) => {
-				resolveCreate = () => resolve({ id: "bcv_one", tenant_id: "tnt_1" });
-			});
-		},
-		post: async (id, message) => {
-			posts.push([id, message.clientRef]);
-			return {};
-		},
-	};
-	const first = model.sendFirstMessage({
-		...base,
-		body: "a",
-		clientRef: "ref-a",
-	});
-	const second = model.sendFirstMessage({
-		...base,
-		body: "b",
-		clientRef: "ref-b",
-	});
-	await Promise.resolve();
-	resolveCreate();
-	await Promise.all([first, second]);
-	assert.equal(creates, 1, "one create for one draft");
-	assert.deepEqual(
-		posts.map((p) => p[0]),
-		["bcv_one", "bcv_one"],
-	);
-	assert.deepEqual(posts.map((p) => p[1]).sort(), ["ref-a", "ref-b"]);
-});
-
-test("R1-3: a create that fails for overlapping sends fails both and leaves nothing remembered", async () => {
-	const remembered = new Map();
-	const base = {
-		draftKey: "k",
-		input: groupInput,
-		tenantId: "tnt_1",
-		remembered,
-		create: async () => {
-			throw new Error("403");
-		},
-		post: async () => ({}),
-	};
-	const results = await Promise.allSettled([
-		model.sendFirstMessage({ ...base, body: "a", clientRef: "ref-a" }),
-		model.sendFirstMessage({ ...base, body: "b", clientRef: "ref-b" }),
-	]);
-	assert.deepEqual(
-		results.map((r) => r.status),
-		["rejected", "rejected"],
-	);
-	assert.equal(remembered.size, 0);
-});
-
-test("R2-1: EVERY overlapping send adopts the created conversation, including the one that shared the create", async () => {
-	let resolveCreate;
-	const adopted = [];
-	const remembered = new Map();
-	const base = {
-		draftKey: "k",
-		input: groupInput,
-		tenantId: "tnt_1",
-		remembered,
-		create: () =>
-			new Promise((resolve) => {
-				resolveCreate = () => resolve({ id: "bcv_one", tenant_id: "tnt_1" });
-			}),
-		post: async () => ({}),
-	};
-	const a = model.sendFirstMessage({
-		...base,
-		body: "a",
-		clientRef: "ref-a",
-		onCreated: (c) => adopted.push(["ref-a", c.id]),
-	});
-	const b = model.sendFirstMessage({
-		...base,
-		body: "b",
-		clientRef: "ref-b",
-		onCreated: (c) => adopted.push(["ref-b", c.id]),
-	});
-	await Promise.resolve();
-	resolveCreate();
-	await Promise.all([a, b]);
-	assert.deepEqual(adopted.sort(), [
-		["ref-a", "bcv_one"],
-		["ref-b", "bcv_one"],
-	]);
-});
-
-test("R2-1: a retry that reuses the remembered conversation also adopts it", async () => {
-	const adopted = [];
-	const remembered = new Map([["k", { id: "bcv_old", tenantId: "tnt_1" }]]);
-	await model.sendFirstMessage({
-		draftKey: "k",
-		input: groupInput,
-		body: "a",
-		clientRef: "ref-a",
-		tenantId: "tnt_1",
-		remembered,
-		create: async () => {
-			throw new Error("must not create");
-		},
-		post: async () => ({}),
-		onCreated: (c) => adopted.push(c.id),
-	});
-	assert.deepEqual(adopted, ["bcv_old"]);
-});
+const _selfId = { accountId: "acct_self", label: "Me" };

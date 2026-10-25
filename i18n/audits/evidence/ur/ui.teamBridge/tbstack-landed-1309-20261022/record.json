@@ -1,0 +1,278 @@
+{
+  "audit_id": "tbstack-landed-1309-20261022",
+  "date": "2026-10-22",
+  "locale": "ur",
+  "namespace": "ui.teamBridge",
+  "source_commit": "6631ee87aaa036a387493e51b6ce3716a8a8aad3",
+  "status": "audited",
+  "scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3; 29 newly joined keys substantively audited with unchanged namespace context (173 keys read); not a new full-surface/native-fit approval.",
+  "provenance": {
+    "agent": "translation-auditor",
+    "task_label": "audit-landed-hi-ur",
+    "model": "openai/gpt-6-astra",
+    "session": "ec3e15580372",
+    "job": "63722faf9ecd",
+    "parent_session": "687384e07954",
+    "independence": "No catalogue authored or edited; model from current host state; job supplied by parent, session from scratchpad path. No fallback observed.",
+    "instance_note": "Artifact-scoped instance suffix prevents ledger-wide distinct-receipt collisions; real session remains ec3e15580372."
+  },
+  "receipt": "i18n/receipts/tbstack-landed-1309-ur.json",
+  "keys_read": 173,
+  "new_keys": [
+    "ui.teamBridge.actions.label",
+    "ui.teamBridge.reactions.add",
+    "ui.teamBridge.reactions.all",
+    "ui.teamBridge.reactions.categories",
+    "ui.teamBridge.reactions.category0",
+    "ui.teamBridge.reactions.category1",
+    "ui.teamBridge.reactions.category2",
+    "ui.teamBridge.reactions.category3",
+    "ui.teamBridge.reactions.category4",
+    "ui.teamBridge.reactions.category5",
+    "ui.teamBridge.reactions.category6",
+    "ui.teamBridge.reactions.category7",
+    "ui.teamBridge.reactions.category8",
+    "ui.teamBridge.reactions.choose",
+    "ui.teamBridge.reactions.empty",
+    "ui.teamBridge.reactions.failed",
+    "ui.teamBridge.reactions.frequent",
+    "ui.teamBridge.reactions.noResults",
+    "ui.teamBridge.reactions.search",
+    "ui.teamBridge.reactions.tone",
+    "ui.teamBridge.reactions.toneDefault",
+    "ui.teamBridge.replies.action",
+    "ui.teamBridge.replies.close",
+    "ui.teamBridge.replies.count",
+    "ui.teamBridge.replies.empty",
+    "ui.teamBridge.replies.last",
+    "ui.teamBridge.replies.more",
+    "ui.teamBridge.replies.placeholder",
+    "ui.teamBridge.replies.title"
+  ],
+  "sha256": {
+    "en": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+    "ur": "27d1d20b095e923abd6e5973f77bdb9801a117b2d580965f4ec164bab7396e6b",
+    "context": "5daf30ba2344de56b9a26328939d7e62c516d34e30b5cf7fe27c10d15d93c2fb"
+  },
+  "parents": [
+    "946bf937fd9c158f20708fe069e8fb70c830b191",
+    "19f094810fcc26757efc2bf456f8a4b5437bb984"
+  ],
+  "union": {
+    "en": {
+      "parent_keys": [
+        144,
+        144
+      ],
+      "head_keys": 173,
+      "added_keys": [
+        "ui.teamBridge.actions.label",
+        "ui.teamBridge.reactions.add",
+        "ui.teamBridge.reactions.all",
+        "ui.teamBridge.reactions.categories",
+        "ui.teamBridge.reactions.category0",
+        "ui.teamBridge.reactions.category1",
+        "ui.teamBridge.reactions.category2",
+        "ui.teamBridge.reactions.category3",
+        "ui.teamBridge.reactions.category4",
+        "ui.teamBridge.reactions.category5",
+        "ui.teamBridge.reactions.category6",
+        "ui.teamBridge.reactions.category7",
+        "ui.teamBridge.reactions.category8",
+        "ui.teamBridge.reactions.choose",
+        "ui.teamBridge.reactions.empty",
+        "ui.teamBridge.reactions.failed",
+        "ui.teamBridge.reactions.frequent",
+        "ui.teamBridge.reactions.noResults",
+        "ui.teamBridge.reactions.search",
+        "ui.teamBridge.reactions.tone",
+        "ui.teamBridge.reactions.toneDefault",
+        "ui.teamBridge.replies.action",
+        "ui.teamBridge.replies.close",
+        "ui.teamBridge.replies.count",
+        "ui.teamBridge.replies.empty",
+        "ui.teamBridge.replies.last",
+        "ui.teamBridge.replies.more",
+        "ui.teamBridge.replies.placeholder",
+        "ui.teamBridge.replies.title"
+      ],
+      "parent_sha256": [
+        "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+        "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214"
+      ],
+      "head_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+      "conflicts": 0,
+      "changed": 0,
+      "dropped": 0,
+      "extra": 0
+    },
+    "ur": {
+      "parent_keys": [
+        144,
+        144
+      ],
+      "head_keys": 173,
+      "added_keys": [
+        "ui.teamBridge.actions.label",
+        "ui.teamBridge.reactions.add",
+        "ui.teamBridge.reactions.all",
+        "ui.teamBridge.reactions.categories",
+        "ui.teamBridge.reactions.category0",
+        "ui.teamBridge.reactions.category1",
+        "ui.teamBridge.reactions.category2",
+        "ui.teamBridge.reactions.category3",
+        "ui.teamBridge.reactions.category4",
+        "ui.teamBridge.reactions.category5",
+        "ui.teamBridge.reactions.category6",
+        "ui.teamBridge.reactions.category7",
+        "ui.teamBridge.reactions.category8",
+        "ui.teamBridge.reactions.choose",
+        "ui.teamBridge.reactions.empty",
+        "ui.teamBridge.reactions.failed",
+        "ui.teamBridge.reactions.frequent",
+        "ui.teamBridge.reactions.noResults",
+        "ui.teamBridge.reactions.search",
+        "ui.teamBridge.reactions.tone",
+        "ui.teamBridge.reactions.toneDefault",
+        "ui.teamBridge.replies.action",
+        "ui.teamBridge.replies.close",
+        "ui.teamBridge.replies.count",
+        "ui.teamBridge.replies.empty",
+        "ui.teamBridge.replies.last",
+        "ui.teamBridge.replies.more",
+        "ui.teamBridge.replies.placeholder",
+        "ui.teamBridge.replies.title"
+      ],
+      "parent_sha256": [
+        "be7bfbeb9c7a2b4a458592241d6ffd01e4f3fd8bb73ab6847014a0e594173ce5",
+        "ce734f6de07b06789bd21caea6a01f68fcfcacc86870cbe33658c6b6d7a44302"
+      ],
+      "head_sha256": "27d1d20b095e923abd6e5973f77bdb9801a117b2d580965f4ec164bab7396e6b",
+      "conflicts": 0,
+      "changed": 0,
+      "dropped": 0,
+      "extra": 0
+    },
+    "context": {
+      "parent_keys": [
+        144,
+        144
+      ],
+      "head_keys": 173,
+      "added_keys": [
+        "ui.teamBridge.actions.label",
+        "ui.teamBridge.reactions.add",
+        "ui.teamBridge.reactions.all",
+        "ui.teamBridge.reactions.categories",
+        "ui.teamBridge.reactions.category0",
+        "ui.teamBridge.reactions.category1",
+        "ui.teamBridge.reactions.category2",
+        "ui.teamBridge.reactions.category3",
+        "ui.teamBridge.reactions.category4",
+        "ui.teamBridge.reactions.category5",
+        "ui.teamBridge.reactions.category6",
+        "ui.teamBridge.reactions.category7",
+        "ui.teamBridge.reactions.category8",
+        "ui.teamBridge.reactions.choose",
+        "ui.teamBridge.reactions.empty",
+        "ui.teamBridge.reactions.failed",
+        "ui.teamBridge.reactions.frequent",
+        "ui.teamBridge.reactions.noResults",
+        "ui.teamBridge.reactions.search",
+        "ui.teamBridge.reactions.tone",
+        "ui.teamBridge.reactions.toneDefault",
+        "ui.teamBridge.replies.action",
+        "ui.teamBridge.replies.close",
+        "ui.teamBridge.replies.count",
+        "ui.teamBridge.replies.empty",
+        "ui.teamBridge.replies.last",
+        "ui.teamBridge.replies.more",
+        "ui.teamBridge.replies.placeholder",
+        "ui.teamBridge.replies.title"
+      ],
+      "parent_sha256": [
+        "7062ca8351d00aba9c040eeae2a1d5f1cee83f6c4dd3dbcaab6da60c2aa5bd5b",
+        "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b"
+      ],
+      "head_sha256": "5daf30ba2344de56b9a26328939d7e62c516d34e30b5cf7fe27c10d15d93c2fb",
+      "conflicts": 0,
+      "changed": 0,
+      "dropped": 0,
+      "extra": 0
+    }
+  },
+  "inherited_receipts": [
+    {
+      "path": "i18n/receipts/tbstack-r1-1309m-ur.json",
+      "receipt_sha256": "95f5a387d94d84f0ba06caac24f03a508781296bbf4aa5b9cfa126eaf5582180",
+      "audited_commit": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+      "keys_verified_unchanged": 144,
+      "findings": []
+    },
+    {
+      "path": "i18n/receipts/tbstack-r1-1308m-ur.json",
+      "receipt_sha256": "b50ca47fc30f673532fe245ee9ab5415399eabebba0c6829682a465569d3d812",
+      "audited_commit": "2908b0a9f1ad0c7be87553cd2c12b20008ad0c31",
+      "keys_verified_unchanged": 144,
+      "findings": []
+    },
+    {
+      "path": "i18n/receipts/tbstack-r1-1304m-ur.json",
+      "receipt_sha256": "e35be7e2f4d86eb4213e6d21a6082e20c27f2cf32f32e0b4119080ba5babf83f",
+      "audited_commit": "12dddf52f78bd30704b48a8c856f2b69e1bef6e3",
+      "keys_verified_unchanged": 123,
+      "findings": []
+    }
+  ],
+  "validation": {
+    "union": "Exact union of both actual git parents, all eight catalogues plus English context. No changed/dropped/conflicting/extra values. English/hi/ur literal JSON value tokens also unchanged.",
+    "icu": "Installed FormatJS parser read-only comparison of every English/target key: names, types, multiplicities, each plural arm, # nodes, offsets, skeletons and markup identical modulo text and argument order. hi/ur require one/other; both retained and counts used.",
+    "semantics": "Message پیغام, reply جواب/جوابات, thread تھریڈ and reaction ردعمل remain distinct; actions اقدامات agrees with row.menu. Skin-tone رنگت remains consistent. Respectful آپ/کریں/دیں throughout.",
+    "joined_context": "Reaction and reply actions target one message, not a conversation or scheduled delivery. Schedule cancellation versus discarding local attempt remains distinct; drafts, attachment images and emoji categories do not introduce terminology drift. Empty search labels agree verbatim.",
+    "overflow": "Rendered-fit checks remain outstanding: reactions.frequent (“अक्सर इस्तेमाल किए गए” / “اکثر استعمال ہونے والے”) expands versus “Frequently used”; retain idiomatic wording and check picker width. Urdu reactions.search (“ایموجی تلاش کریں”) also expands versus “Search emoji”. actions.label is an accessible toolbar name. No measured clipping or native-fit claim; not a demonstrated copy defect.",
+    "rtl": "Logical-order Urdu stored without U+061C/U+200B–200F/U+202A–202E/U+2066–2069/BOM controls. Latin names, Enter/Shift+Enter, PNG/JPEG/WebP/GIF and #{channel} intact; dynamic time/count runs require renderer isolation. list.error_pane right-side wording matches RTL context. No visual bidi/shaping certification.",
+    "limitations": "No repo edits, tests, builds, installs, worktrees, pushes or rendering. Native fit unverified. Prior unrelated findings not re-audited; inherited direct hi/ur receipts are clean, no findings erased."
+  },
+  "findings": [],
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "assembly_args": [
+    "--locale",
+    "ur",
+    "--file",
+    "src/i18n/catalogues/ur/ui.teamBridge.json",
+    "--auditor-instance",
+    "ec3e15580372-landed-1309-ur",
+    "--auditor-model",
+    "openai/gpt-6-astra",
+    "--result",
+    "clean",
+    "--receipt",
+    "i18n/receipts/tbstack-landed-1309-ur.json",
+    "--date",
+    "2026-10-22",
+    "--scope",
+    "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3; 29 newly joined keys substantively audited with unchanged namespace context (173 keys read); not a new full-surface/native-fit approval."
+  ],
+  "receipt_verification": {
+    "method": "deriveReceiptAudit from exact head; source and target git-byte hashes checked; context hash independently compared (deriveReceiptAudit does not enforce context)",
+    "derived": {
+      "agent": "translation-auditor",
+      "instance": "ec3e15580372-landed-1309-ur",
+      "model": "openai/gpt-6-astra",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+      "target_sha256": "27d1d20b095e923abd6e5973f77bdb9801a117b2d580965f4ec164bab7396e6b",
+      "receipt_sha256": "d8f2dc8c84ec4991f6174f459d35662c4ab1f86fb772dcc318038827abf512f3"
+    }
+  }
+}

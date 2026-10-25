@@ -1,38 +1,25 @@
 /**
- * The one sidebar's geometry: how wide it is, whether it is docked, and what
- * happens to it when the window is too narrow to hold it beside the chat.
+ * The one sidebar's geometry: how wide it is, whether it is docked, and when it
+ * yields temporarily so a canvas or ask drawer can fit beside the chat.
  *
  * WHY THIS IS A MODULE. The same reason `sidebar-split.ts` and
  * `sidebar-catalogue-gate.ts` beside it give: a decision written as a JSX
  * condition is a decision no test can reach, because `pnpm test:desktop`
  * bundles the shipped TypeScript in memory rather than rendering components.
- * Everything here is a pure function of three numbers/booleans, so
- * `scripts/chat-sidebar-layout.test.mjs` drives the SHIPPED module and the
- * three widths the spec pins are asserted against the same function the
- * component calls rather than against a description of it.
+ * `scripts/chat-sidebar-layout.test.mjs` therefore drives the SHIPPED module
+ * rather than a description of the layout.
  *
- * THE THREE MODES, and why the widths are what they are (they are one decision
- * read at three window sizes, not three decisions):
+ * DOCKED VERSUS STRIP IS THE USER'S CHOICE AT EVERY WINDOW WIDTH (#1077).
+ * Expanding docks the full sidebar; collapsing draws the 56px icon strip.
+ * Resizing the window changes only how much of the stored width can be drawn,
+ * never the open/closed preference. There is no viewport-triggered overlay
+ * sheet: both the keyboard shortcut and the strip control change the same
+ * persisted preference.
  *
- *   docked   >= 1024px of window - 260px, user-resizable 220-320. 1024 is the
- *            FIRST width at which the dock costs nothing: it leaves 764px for
- *            the chat pane, and the reading measure plus its two 24px gutters
- *            needs 688, so the full dock still has 76px to spare. It is not a
- *            round number chosen for looks - it is where the arithmetic
- *            crosses.
- *   strip    880-1023px - the 56px icon strip, and the user's own preference is
- *            ignored rather than honoured: below 1024 a docked list steals width
- *            from the column the app exists to show, so the narrow window gets
- *            the strip whether or not they had it expanded. Their preference is
- *            NOT rewritten (`collapsedPref` is untouched) so widening the window
- *            puts the sidebar back exactly as they left it.
- *   overlay  below 1024 with the sheet asked for - a 260px sheet over the pane.
- *            The strip stays behind it, so the destinations remain one press
- *            away while the list is open.
- *
- * BELOW 880 the overlay is the only way to see the list at all: a docked 260
- * cannot coexist with the chat pane's own 480px floor (260 + 480 > 880), which
- * is why the sheet - not a dock - is what the strip opens there.
+ * THE CANVAS/ASK FIT-YIELD IS SEPARATE AND INTENTIONAL. When docking the sidebar
+ * would prevent an open canvas-family pane from fitting, but the strip would let
+ * it fit, `sidebarYieldsToCanvas` temporarily chooses the strip without
+ * rewriting the preference. Closing that pane restores the user's dock.
  *
  * 56 for the collapsed strip is 48 (the VS Code activity bar's width, and what
  * today's rail collapses to) plus 8, so a 16px glyph keeps an 8px step on each
@@ -51,12 +38,8 @@ export const SIDEBAR_DEFAULT_WIDTH = 260;
 export const SIDEBAR_MIN_WIDTH = 220;
 export const SIDEBAR_MAX_WIDTH = 320;
 
-/** The icon strip's width, and the sheet's. */
+/** The icon strip's width. */
 export const SIDEBAR_COLLAPSED_WIDTH = 56;
-export const SIDEBAR_SHEET_WIDTH = SIDEBAR_DEFAULT_WIDTH;
-
-/** The first window width at which the sidebar is docked rather than a strip. */
-export const SIDEBAR_DOCK_MIN_PX = 1024;
 
 /**
  * The chat pane's own floor, in pixels: the redesign's §B1, and the first of §I's
@@ -70,12 +53,36 @@ export const SIDEBAR_DOCK_MIN_PX = 1024;
  *
  * WHY THE FLOOR IS THE MECHANISM rather than a `max-width` on the canvas: 480 is a
  * promise about the pane the user READS, so it belongs on that column and the row's
- * other occupants yield against it - first the sidebar (below 1024 it is the 56px
- * strip, `resolveSidebarLayout`), then the canvas (`canvasPaneMode`). A cap on the
- * canvas instead would leave the chat column free to be squeezed by anything else
- * that joined the row.
+ * other occupants yield against it - first the sidebar when the independent
+ * canvas/ask fit-yield applies (`sidebarYieldsToCanvas`), then the canvas
+ * (`canvasPaneMode`). A cap on the canvas instead would leave the chat column
+ * free to be squeezed by anything else that joined the row.
  */
 export const CHAT_PANE_MIN_PX = 480;
+
+/**
+ * The clearance the chat column keeps at its right seam while a separator is
+ * drawn there, in pixels.
+ *
+ * THE NUMBER IS THE SCROLLBAR'S OWN WIDTH (8px, `global-scrollbar-styles.tsx`),
+ * and it exists because the separator's hit band is 12px wide and CENTRED on the
+ * seam (`resizable-divider.tsx`: `w-3` at `-left-1.5`/`-right-1.5`), so it
+ * reaches 6px into this column. The transcript's scrollbar sat flush against
+ * that seam, so the band covered 6 of its 8px: a drag started on the bar
+ * resized the pane instead of scrolling, and 2px was left to grab (operator
+ * report, 2026-10-23).
+ *
+ * WHY IT CANNOT GO ON THE PANE SIDE INSTEAD: the pane beside this column hosts a
+ * native `WebContentsView`, and a native view paints above ALL DOM
+ * (`browser-view-policy.ts`), so the pane-side 6px is dead wherever a page is
+ * showing. The live half has to be on the chat side, which is why the bar moves
+ * off it rather than the band moving over.
+ *
+ * 8 > 6, so the band can never reach the bar; measured, the scroller then ends
+ * 2px clear of the band. `scripts/chat-pane-floors.test.mjs` fails if this
+ * falls to or below the band's reach.
+ */
+export const CHAT_SEAM_INSET_PX = 8;
 
 /**
  * The width of the right-edge panel rail, in pixels (#872): the column of four
@@ -217,16 +224,15 @@ export function rightSlotDividerContract({
 /**
  * Whether the DOCKED sidebar must yield to an open canvas (design round 2, D24).
  *
- * §I's order of yielding is a SEQUENCE, and the implementation stopped at its
- * first step: "(1) the sidebar collapses to the 56px strip (it yields first,
- * because it is re-openable over the pane), (2) if there is still not room for a
- * 400px pane, the canvas OVERLAYS the chat pane instead of docking". Step 1 was
- * only ever applied by the window's own width (below 1024 the sidebar is a strip
- * whatever the user chose), so at 1024 with the sidebar the user's own 260px and
- * the canvas open, the module went straight to step 2: the pane floated over the
- * conversation, with no scrim, no edge and no sliver, which is round 1's
- * D2 impression ("it looks like the app has lost its content") on the other
- * pane.
+ * §I's order of yielding is a SEQUENCE: "(1) the sidebar collapses to the 56px
+ * strip (it yields first, because it is re-openable over the pane), (2) if there
+ * is still not room for a 400px pane, the canvas OVERLAYS the chat pane instead
+ * of docking". Before this fit-yield existed, the sidebar followed only the
+ * window's width, so at 1024 with the user's 260px sidebar the module went
+ * straight to step 2: the pane floated over the conversation, with no scrim, no
+ * edge and no sliver, which is round 1's D2 impression ("it looks like the app
+ * has lost its content") on the other pane. This function is now the ONLY
+ * automatic collapse; the viewport no longer overrides the preference by itself.
  *
  * The arithmetic at 1024 is the whole argument: the docked row is
  * `1024 - 260 = 764`, and `canvasDockWidth(764)` is `min(560, 764 - 480) = 284`,
@@ -240,14 +246,15 @@ export function rightSlotDividerContract({
  * function of the window and the user's stored width, exactly as
  * `resolveSidebarLayout`'s other branches are.
  *
- * The yield is REVERSIBLE and it does not rewrite the preference: it is the same
- * shape as the narrow band's override (the state they chose is still in the
- * store), so closing the canvas puts the docked sidebar back where they left it.
+ * The yield is REVERSIBLE and it does not rewrite the preference: closing the
+ * canvas puts the docked sidebar back where the user left it. This fit-driven
+ * override is independent of the user's open/closed choice, which otherwise
+ * applies at every viewport width (#1077).
  *
- * True only in the band where the choice of sidebar shape is what decides the
- * canvas's mode - `[1024, 880 + width)`, i.e. 1024-1139 at the default 260. Above
- * it the docked sidebar already leaves the canvas its floor, and below 1024 the
- * sidebar is a strip for its own reasons.
+ * True only where the sidebar's shape decides the canvas's mode. With the 44px
+ * chat rail that is `[980, 924 + width)` at the default 260, or 980-1183; above
+ * it the dock already leaves the canvas its floor, and below it even the strip
+ * cannot let the canvas dock.
  */
 export function sidebarYieldsToCanvas(
 	viewportWidth: number,
@@ -279,27 +286,22 @@ export function sidebarYieldsToCanvas(
 }
 
 /**
- * The first window width at which the CHAT PANE can hold its own floor beside a
- * docked sidebar. 880 is the spec's number and it is deliberately NOT the dock's
- * own sum: 260 + 480 = 740 is the pane's floor plus the sidebar's width, and the
- * 140px between that and 880 is the gutters and the scrollbar the column
- * reserves once both panes are drawn. The constant is recorded here rather than
- * derived because it is a fact about the pane's floor that the sidebar's width
- * does not decide.
+ * The §I fit budget for the chat's 480px floor beside a docked 400px canvas:
+ * 880px, their sum. It is recorded for the canvas/ask fit arithmetic and is NOT
+ * a sidebar docking threshold: the user's preference decides that at every
+ * width, with `sidebarDockCapacity` preserving the chat floor at 800px (#1077).
  */
 export const CHAT_PANE_WITH_DOCK_MIN_PX = 880;
 
-/** How the sidebar is drawn at the current window width. */
-export type SidebarMode = "docked" | "strip" | "overlay";
+/** How the sidebar is drawn from the user's persisted open/closed choice. */
+export type SidebarMode = "docked" | "strip";
 
 export type SidebarLayout = {
 	mode: SidebarMode;
-	/** The width the sidebar column occupies in the flow (0 in overlay mode). */
+	/** The width the sidebar column occupies in the flow. */
 	width: number;
 	/** Whether only the 56px icon strip is drawn. */
 	collapsed: boolean;
-	/** Whether the overlay sheet is up (only ever true below the dock width). */
-	sheetOpen: boolean;
 	/** Whether the drag divider is offered. */
 	resizable: boolean;
 };
@@ -320,58 +322,54 @@ export function clampSidebarWidth(width: number): number {
 }
 
 /**
+ * The most width the dock may draw without pushing the chat's 480px floor and
+ * the right-edge rail beyond the viewport.
+ *
+ * This is a RENDER-ONLY cap, not a preference write. The app's 800px minimum
+ * window with the 44px chat rail leaves 276px, inside the sidebar's 220-320px
+ * drag range, so even a stored 320px dock fits without horizontal overflow.
+ * Widening the window restores the stored width; narrowing it never rewrites
+ * that stored choice (#1077).
+ */
+export function sidebarDockCapacity(
+	viewportWidth: number,
+	railWidth: number = PANEL_RAIL_WIDTH_PX,
+): number {
+	return Math.max(
+		0,
+		Math.min(SIDEBAR_MAX_WIDTH, viewportWidth - CHAT_PANE_MIN_PX - railWidth),
+	);
+}
+
+/**
  * Where the sidebar sits in this window.
  *
- * `sheetRequested` is the transient half of the state (the user pressed ⌘B or
- * the strip's toolbar button) and it is ignored where it means nothing: a sheet
- * requested while the sidebar is docked does not open a second copy of it.
- *
- * `canvasOpen` is §I's first yielding step, and it is an INPUT rather than
- * something this function can see for itself: a docked sidebar with an open
- * canvas in the band where the two cannot both have their floors collapses to
- * the strip, so the canvas DOCKS beside the chat instead of covering it (design
- * round 2, D24 - `sidebarYieldsToCanvas` carries the arithmetic and the band).
- * The user's own preference is not rewritten, which is what makes closing the
- * canvas restore the dock exactly as they left it.
+ * `collapsedPref` decides docked versus strip at every width. `canvasOpen` is
+ * the one independent fit-yield: if the strip, and only the strip, lets an open
+ * canvas-family pane dock, the sidebar yields temporarily without rewriting
+ * that preference (`sidebarYieldsToCanvas` carries the arithmetic).
  */
 export function resolveSidebarLayout(
 	viewportWidth: number,
 	collapsedPref: boolean,
-	sheetRequested: boolean,
 	storedWidth: number = SIDEBAR_DEFAULT_WIDTH,
 	canvasOpen = false,
 	railWidth: number = PANEL_RAIL_WIDTH_PX,
 ): SidebarLayout {
-	const docked = viewportWidth >= SIDEBAR_DOCK_MIN_PX;
-	if (docked) {
-		const yields =
-			!collapsedPref &&
-			canvasOpen &&
-			sidebarYieldsToCanvas(viewportWidth, storedWidth, railWidth);
-		return {
-			mode: collapsedPref || yields ? "strip" : "docked",
-			width:
-				collapsedPref || yields
-					? SIDEBAR_COLLAPSED_WIDTH
-					: clampSidebarWidth(storedWidth),
-			collapsed: collapsedPref || yields,
-			sheetOpen: false,
-			// A strip has nothing to resize: the divider is the dock's control.
-			resizable: !collapsedPref && !yields,
-		};
-	}
-	/*
-	 * Narrow: the preference is overridden, not rewritten. `collapsed` is true
-	 * here whatever the user chose, and that is the whole of "auto-collapse" -
-	 * the state they chose is still in the store for the window that can honour
-	 * it.
-	 */
+	const yields =
+		!collapsedPref &&
+		canvasOpen &&
+		sidebarYieldsToCanvas(viewportWidth, storedWidth, railWidth);
+	const collapsed = collapsedPref || yields;
+	const capacity = sidebarDockCapacity(viewportWidth, railWidth);
 	return {
-		mode: sheetRequested ? "overlay" : "strip",
-		width: sheetRequested ? SIDEBAR_SHEET_WIDTH : SIDEBAR_COLLAPSED_WIDTH,
-		collapsed: true,
-		sheetOpen: sheetRequested,
-		resizable: false,
+		mode: collapsed ? "strip" : "docked",
+		width: collapsed
+			? SIDEBAR_COLLAPSED_WIDTH
+			: Math.min(clampSidebarWidth(storedWidth), capacity),
+		collapsed,
+		// A strip has nothing to resize; neither does a dock below its drag floor.
+		resizable: !collapsed && capacity >= SIDEBAR_MIN_WIDTH,
 	};
 }
 

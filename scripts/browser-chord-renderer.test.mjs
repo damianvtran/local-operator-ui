@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -57,6 +58,7 @@ async function rig({
 	pane = false,
 	sessionId = "a",
 	platform = "MacIntel",
+	ownState = false,
 } = {}) {
 	const dom = new JSDOM(
 		'<div id="mount"></div><button id="chat">Chat</button><input id="chat-editor" aria-label="Chat editor">',
@@ -132,6 +134,10 @@ async function rig({
 			tabs = [...tabs, { tabId: id, sessionId: session }];
 			active = id;
 			redraw();
+			// S5: the surface focuses the PERMANENT ROW when the new tab's start
+			// page becomes current — a surface-side effect, not a chord `close()`.
+			// The rig's stand-in is the root, so the DOM owner still survives.
+			document.getElementById("surface")?.focus();
 		},
 		closeTab: async (id) => {
 			events.push(["close", id]);
@@ -169,20 +175,16 @@ async function rig({
 				inputRef.current?.focus();
 				inputRef.current?.select();
 			},
-			// `close` lowers the popout for a new tab. The product's start page
-			// focuses its OWN field INSIDE the same surface root; the rig focuses the
-			// root as that field's stand-in, so the DOM owner survives the change.
-			close: () => {
-				inputRef.current?.blur();
-				document.getElementById("surface")?.focus();
-			},
+			// S5 deleted `close()`: nothing is raised to lower. The new tab's start
+			// page focuses the row from the SURFACE, which this rig models in the
+			// `newTab` mock above.
 		});
 		const {
 			root: ref,
 			closeTab,
 			openFind,
 			findReturnToPage,
-		} = useBrowserChords(chrome, tabs, sessionId, address);
+		} = useBrowserChords(chrome, tabs, sessionId, address, ownState);
 		closeFromStrip = closeTab;
 		returnRef = findReturnToPage;
 		const surface = React.createElement(
@@ -682,7 +684,7 @@ test("StageA real pane ancestor header owns R/T; chat, modal, wrong modifiers, I
 		]);
 		await r.focus("pane-header");
 		await act(async () => {
-			release = suppressBrowserView("StageA-modal");
+			release = suppressBrowserView("dialog:StageA-modal");
 		});
 		await r.key("r");
 		await r.key("t");
@@ -895,7 +897,10 @@ test("the browser's own state pages keep L/T/R and main's messages; a real modal
 		// (`browser-surface.tsx`) pushed through the REAL shared registry, so
 		// ref-counting and id shape are the app's; a regression in either one must
 		// fail on its own line rather than hide behind the other.
-		for (const id of ["browser-start-page:test", "browser-load-failure:test"]) {
+		for (const id of [
+			"browser-state:browser-start-page:test",
+			"browser-state:browser-load-failure:test",
+		]) {
 			let release;
 			await act(async () => {
 				release = suppressBrowserView(id);
@@ -928,8 +933,8 @@ test("the browser's own state pages keep L/T/R and main's messages; a real modal
 				[["new", "a"]],
 				`Cmd+T opens a browser tab in the existing scope (${id})`,
 			);
-			// Cmd+T lands on a start page whose own field owns focus; the popout was
-			// lowered, and this rig has no start page to focus.
+			// Cmd+T lands on a start page; the surface focuses the permanent row,
+			// which this rig models as the surface root.
 			assert.equal(document.activeElement.id, "surface");
 			await act(async () => release());
 		}
@@ -938,7 +943,10 @@ test("the browser's own state pages keep L/T/R and main's messages; a real modal
 		// prefix that happens to match. Main's broadcast door is the second door to
 		// the same owner and must find it while only self-registrations are live.
 		await act(async () => {
-			for (const id of ["browser-start-page:test", "browser-load-failure:test"])
+			for (const id of [
+				"browser-state:browser-start-page:test",
+				"browser-state:browser-load-failure:test",
+			])
 				releases.push(suppressBrowserView(id));
 		});
 		const start = r.events.length;
@@ -1412,4 +1420,57 @@ test("page-open then chrome-repeat and toolbar repeat preserve first origin and 
 		await act(async () => r.root.unmount());
 		r.finish();
 	}
+});
+
+test("S5: chords share the menu's own-state in both directions", async () => {
+	const blocked = await rig({ ownState: true });
+	try {
+		await blocked.focus("toolbar");
+		await blocked.key("f", { metaKey: true });
+		await blocked.key("=", { metaKey: true });
+		assert.equal(
+			blocked.events.filter((e) => e[0] === "page-control").length,
+			0,
+			"a start/failure page refuses Find and zoom, like the disabled menu",
+		);
+	} finally {
+		blocked.finish();
+	}
+
+	// `about:blank` while a submitted navigation is loading is NOT own-state:
+	// the menu is enabled, so the same chord must reach main.
+	const loading = await rig({ ownState: false });
+	try {
+		await loading.focus("toolbar");
+		await loading.key("f", { metaKey: true });
+		assert.ok(
+			loading.events.some((e) => e[0] === "page-control" && e[2] === "open"),
+			"the loading blank page still opens Find",
+		);
+	} finally {
+		loading.finish();
+	}
+});
+
+test("S5: the surface hands the chords the same own-state as the menu", () => {
+	const surface = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	const chords = readFileSync(
+		"src/renderer/src/features/browser/hooks/use-browser-chords.ts",
+		"utf8",
+	);
+	assert.match(surface, /browserOwnState,\s*\);/, "the surface passes it in");
+	assert.match(
+		surface,
+		/canControlPage=\{!browserOwnState && activeTab !== null\}/,
+		"the menu reads the same fact",
+	);
+	assert.equal(
+		(chords.match(/if \(latest\.current\.browserOwnState\) return;/g) ?? [])
+			.length,
+		2,
+		"Find and zoom both take the shared guard",
+	);
 });

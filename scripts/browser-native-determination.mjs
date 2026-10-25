@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Native determination for S4b's product browser chrome: does the popout paint
+ * Native determination for S5's permanent address row: does the DOM row paint
  * above the driven page, and can a click reach it?
  *
  * WHY THIS RIG EXISTS. The S4b matrix (`docs/evidence/browser-chrome-s4b`) is a
@@ -607,14 +607,18 @@ async function ownerMeasure(cdp) {
 			};
 			const content = document.querySelector('[data-tour-tag="browser-content"]');
 			const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
-			const popout = document.querySelector('[data-tour-tag="browser-address-popout"]');
+			const row = document.querySelector('[data-tour-tag="browser-url-bar"]');
 			const address = document.querySelector('[data-tour-tag="browser-address"]');
 			return {
 				content: rect(content),
 				strip: rect(strip),
-				popout: rect(popout),
+				row: rect(row),
+				input: rect(document.querySelector('[data-tour-tag="browser-address"]')),
 				address: rect(address),
-				popoutPresent: !!popout,
+				rowPresent: !!row,
+				focusedRow:
+					document.activeElement ===
+					document.querySelector('[data-tour-tag="browser-address"]'),
 				barCount: document.querySelectorAll('[data-tour-tag="browser-url-bar"]').length,
 				dockCount: document.querySelectorAll('[data-address-dock-height]').length,
 				hash: location.hash,
@@ -654,10 +658,10 @@ async function openPopout(ownerCdp) {
 	});
 	const raised = await waitFor(
 		ownerCdp,
-		`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`document.activeElement === document.querySelector('[data-tour-tag="browser-address"]')`,
 		8_000,
 	);
-	if (!raised) throw new Error("the popout never raised");
+	if (!raised) throw new Error("the address row never took focus");
 }
 
 async function pressEscape(ownerCdp) {
@@ -834,7 +838,7 @@ plan(
 );
 plan(
 	"N3",
-	"at open the popout's DOM rect and the page's native rect are measured on the same stable layout (page rect unchanged before/open/after)",
+	"at focus the row's DOM rect and the page's native rect are measured on the same stable layout (page rect unchanged before/open/after)",
 	"driven",
 );
 plan(
@@ -844,7 +848,7 @@ plan(
 );
 plan(
 	"N5",
-	"the popout rect and the page rect do not overlap; the list rect does",
+	"the row rect and the page rect do not overlap; the list rect does",
 	"derived",
 );
 plan(
@@ -877,12 +881,24 @@ plan(
 	"focus ownership is read before and after programmatic focus moves",
 	"driven",
 );
-plan("D1", "Escape lowers the popout and hides the native list", "driven");
-plan("D2", "a page focus event lowers the popout", "driven");
-plan("D3", "a main-frame navigation lowers the popout", "driven");
+plan(
+	"D1",
+	"Escape abandons the draft, returns focus and hides the native list",
+	"driven",
+);
+plan(
+	"D2",
+	"a page focus event dismisses the native list (the row stays)",
+	"driven",
+);
+plan(
+	"D3",
+	"a main-frame navigation dismisses the native list (the row stays)",
+	"driven",
+);
 plan(
 	"D4",
-	"opening another tab lowers the popout; the next open re-raises the list above the new page",
+	"opening another tab dismisses the list; the next focus raises it above the new page",
 	"driven",
 );
 plan(
@@ -1284,7 +1300,7 @@ try {
 	);
 	record(
 		"N2",
-		restOwner.popoutPresent === false &&
+		restOwner.rowPresent === true &&
 			pageViewRest &&
 			Math.abs(pageViewRest.bounds.x - restOwner.content.x) <= 1 &&
 			Math.abs(pageViewRest.bounds.y - restOwner.content.y) <= 1 &&
@@ -1294,7 +1310,7 @@ try {
 			? "PASS"
 			: "FAIL",
 		{
-			popoutPresent: restOwner.popoutPresent,
+			rowPresent: restOwner.rowPresent,
 			content: roundRect(restOwner.content),
 			pageView: pageViewRest
 				? {
@@ -1353,7 +1369,7 @@ try {
 		openNative = await nativeRead(mainCdp);
 		openOwner = await ownerMeasure(ownerSocket);
 		openIds = identify(openNative);
-		childPresent = !!openIds.list?.visible && openOwner.popoutPresent;
+		childPresent = !!openIds.list?.visible && openOwner.rowPresent;
 		if (childPresent) break;
 		await sleep(150);
 	}
@@ -1372,22 +1388,22 @@ try {
 			: true;
 	record(
 		"N3",
-		openOwner.popoutPresent &&
-			openOwner.popout !== null &&
+		openOwner.rowPresent &&
+			openOwner.row !== null &&
 			openIds.page !== undefined &&
 			openIds.page !== null &&
 			pageMoved === false
 			? "PASS"
 			: "FAIL",
 		{
-			popout: roundRect(openOwner.popout),
+			row: roundRect(openOwner.row),
 			strip: roundRect(openOwner.strip),
 			content: roundRect(openOwner.content),
 			pageView: {
 				bounds: openIds.page?.bounds ?? null,
 				order: openIds.page?.index ?? null,
 			},
-			popoutPresent: openOwner.popoutPresent,
+			rowPresent: openOwner.rowPresent,
 			pageMoved,
 			restPageBounds: pageViewRest?.bounds ?? null,
 			openPageBounds: openIds.page?.bounds ?? null,
@@ -1465,7 +1481,7 @@ try {
 			? "PASS"
 			: "FAIL",
 		{
-			popout: roundRect(openOwner.popout),
+			row: roundRect(openOwner.row),
 			page: openIds.page?.bounds ?? null,
 			list: openIds.list?.bounds ?? null,
 			popoutOverlapPage: popoutOverlap,
@@ -1796,7 +1812,7 @@ try {
 	await sleep(1_500);
 	const afterCommit = await evaluate(
 		ownerSocket,
-		`(async () => ({ state: await window.api.browser.state(), popout: !!document.querySelector('[data-tour-tag="browser-address-popout"]') }))()`,
+		`(async () => ({ state: await window.api.browser.state(), rowPresent: !!document.querySelector('[data-tour-tag="browser-url-bar"]'), focusedRow: document.activeElement === document.querySelector('[data-tour-tag="browser-address"]') }))()`,
 	);
 	const afterCommitNative = identify(await nativeRead(mainCdp));
 	const listCounter = (await counters())[String(openIds.list.webContentsId)];
@@ -1807,7 +1823,8 @@ try {
 		rowUrl,
 		point: rowPoint,
 		lastMouse: listCounter?.lastMouse ?? null,
-		popoutPresent: afterCommit.popout,
+		rowPresent: afterCommit.rowPresent,
+		focusedRow: afterCommit.focusedRow,
 		listVisible: afterCommitNative.list?.visible ?? false,
 		url: afterCommit.state?.url ?? null,
 		loading: afterCommit.state?.loading ?? null,
@@ -1816,7 +1833,7 @@ try {
 		"N8b",
 		rowUrl !== null &&
 			afterCommit.state?.url === rowUrl &&
-			!afterCommit.popout &&
+			afterCommit.focusedRow === false &&
 			!(afterCommitNative.list?.visible ?? false)
 			? "PASS"
 			: "FAIL",
@@ -1890,16 +1907,18 @@ try {
 		const entry = {
 			label,
 			before: {
-				popoutPresent: beforeOwner.popoutPresent,
+				rowPresent: beforeOwner.rowPresent,
+				focusedRow: beforeOwner.focusedRow,
 				listVisible: identify(beforeDismiss).list?.visible ?? false,
 				listOrder: identify(beforeDismiss).list?.index ?? null,
 			},
 			after: {
-				popoutPresent: afterOwner.popoutPresent,
+				rowPresent: afterOwner.rowPresent,
+				focusedRow: afterOwner.focusedRow,
 				listVisible: afterIds.list?.visible ?? false,
 				pageBounds: afterIds.page?.bounds ?? null,
 			},
-			lowered: beforeOwner.popoutPresent && !afterOwner.popoutPresent,
+			focusReturned: beforeOwner.focusedRow && !afterOwner.focusedRow,
 			childHidden: !(afterIds.list?.visible ?? false),
 			pageUnmoved:
 				pageViewRest && afterIds.page
@@ -1913,7 +1932,7 @@ try {
 					: null,
 		};
 		// Reopen cleanly for the next row; Escape is the documented dismissal.
-		if (afterOwner.popoutPresent) {
+		if (afterOwner.focusedRow) {
 			await pressEscape(ownerSocket);
 			await sleep(400);
 		}
@@ -1927,7 +1946,7 @@ try {
 	);
 	record(
 		"D1",
-		dismissals[0].lowered &&
+		dismissals[0].focusReturned &&
 			dismissals[0].childHidden &&
 			dismissals[0].pageUnmoved !== false
 			? "PASS"
@@ -1943,10 +1962,11 @@ try {
 		}),
 	);
 	const d2 = dismissals[1];
-	const d2Measured = d2.lowered && d2.childHidden && d2.pageUnmoved !== false;
-	record("D2", d2.lowered ? (d2Measured ? "PASS" : "FAIL") : "BLOCKED", {
+	const d2Measured =
+		d2.focusReturned && d2.childHidden && d2.pageUnmoved !== false;
+	record("D2", d2.focusReturned ? (d2Measured ? "PASS" : "FAIL") : "BLOCKED", {
 		...d2,
-		blockedReason: d2.lowered
+		blockedReason: d2.focusReturned
 			? null
 			: "headless/unfocused window: the page view's native focus event did not fire, so the page-focus dismissal has no native trigger here",
 	});
@@ -1969,7 +1989,7 @@ try {
 	);
 	record(
 		"D3",
-		dismissals[2].lowered && dismissals[2].childHidden ? "PASS" : "FAIL",
+		dismissals[2].focusReturned && dismissals[2].childHidden ? "PASS" : "FAIL",
 		dismissals[2],
 	);
 	dismissals.push(
@@ -1980,7 +2000,7 @@ try {
 	);
 	record(
 		"D4",
-		dismissals[3].lowered && dismissals[3].childHidden ? "PASS" : "FAIL",
+		dismissals[3].focusReturned && dismissals[3].childHidden ? "PASS" : "FAIL",
 		dismissals[3],
 	);
 	facts.dismissals = dismissals;
@@ -2128,7 +2148,7 @@ try {
 	record("I1", "INFERRED", {
 		rule: 'AppKit NSView.addSubview(_:): a subview is "displayed above its siblings"; the measured order puts the list after the page',
 		measuredInputs: {
-			popout: roundRect(openOwner.popout),
+			row: roundRect(openOwner.row),
 			pageBounds: openIds.page?.bounds ?? null,
 			listBounds: openIds.list?.bounds ?? null,
 			children: openNative.children.map((v) => ({

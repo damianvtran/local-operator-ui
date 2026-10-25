@@ -98,6 +98,8 @@ const bundle = await build({
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			import { goalStateWord, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS } from "./src/renderer/src/features/chat/pickers/session-commands";
 			import { goalCapability } from "./src/shared/desktop-session-contract";
+			import { goalJudgeStall } from "./src/shared/goal-judge-stall";
+			import { clearRegisteredCatalogues, currentLocale, registerCatalogue, setLocale } from "./src/i18n/index";
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
@@ -136,7 +138,7 @@ const bundle = await build({
 				);
 			export { GoalPicker };
 			export { toasts };
-			export { askChipClause, askDeadlineShortText, askQueueView, AskDrawer, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
+			export { askChipClause, askDeadlineShortText, askQueueView, AskDrawer, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore, goalJudgeStall, setLocale, registerCatalogue, clearRegisteredCatalogues, currentLocale };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -245,6 +247,11 @@ const {
 	monitorClause,
 	scrollRegionToTop,
 	useUiPreferencesStore,
+	goalJudgeStall,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
+	currentLocale,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -1009,8 +1016,8 @@ test("the first chip cancels its own padding, whichever chip is first", () => {
 	 * activity chip and no goal. The assertion is over the rendered class string, so
 	 * it is the behaviour and not this file's belief about it.
 	 */
-	const firstClass = "-ml-1.5";
-	const count = (markup) => (markup.match(/-ml-1\.5/g) ?? []).length;
+	const firstClass = "-ms-1.5";
+	const count = (markup) => (markup.match(/-ms-1\.5/g) ?? []).length;
 
 	// No goal: the plan chip leads.
 	const planFirst = renderRow({
@@ -1416,7 +1423,7 @@ test("the ask item leads the row when nothing stands ahead of it", () => {
 		frontend: askFrontend([wireAsk("a-1")]),
 		runDetails: NO_DETAILS,
 	});
-	assert.ok(askFirst.indexOf("data-status-asks") < askFirst.indexOf("-ml-1.5"));
+	assert.ok(askFirst.indexOf("data-status-asks") < askFirst.indexOf("-ms-1.5"));
 });
 
 test("the ask item renders only where the host wires the door", () => {
@@ -2057,7 +2064,7 @@ test("the row's own layout: each flexible chip owns a line, and the alignment de
 	 * each chip asks whether IT is the first one, and the plan chip's own term still
 	 * reads the same way it did with two chips.
 	 */
-	assert.match(source, /const FIRST_CHIP = "-ml-1\.5";/);
+	assert.match(source, /const FIRST_CHIP = "-ms-1\.5";/);
 	/*
 	 * The goal is no longer a chip that ASKS whether it is first: it is the row's
 	 * first item whenever it renders, and the cancellation it wears is the same
@@ -2279,7 +2286,10 @@ test("the expanded body caps itself, keeps the author's breaks, and carries its 
 	assert.doesNotMatch(source, /max-h-32/);
 	assert.match(source, /whitespace-pre-wrap break-words/);
 	assert.match(source, /role="group"/);
-	assert.match(source, /aria-label="Session goal"/);
+	assert.match(
+		source,
+		/aria-label=\{t\("ui\.chat\.composer\.status\.session_goal"\)\}/,
+	);
 	assert.match(source, /tabIndex=\{0\}/);
 	/*
 	 * The plan chip REVEALS and is not a toggle: no `aria-pressed` and no pressed
@@ -5255,6 +5265,67 @@ test("the lifecycle's derived strings, one per state", () => {
 	);
 });
 
+/*
+ * THE WIRE'S SENTINELS ARE PROTOCOL, NOT COPY (chat audit Z3). `goal_judge.reason`
+ * arrives in English from `session/goal_judge.py`; a catalogue may translate the
+ * SENTENCE, but it may never move the phrase the classification runs on. The map
+ * installed below is what a translated chat catalogue carries for these two keys:
+ * with it active, the breaker and the cap must still resolve to their own
+ * sentences rather than to the unnamed fallback.
+ *
+ * THIS IS THE REGRESSION THE SOURCE FIX CLOSES. A comparison that reads `t()`
+ * passes in English and fails here, which is exactly how the bug reached locale
+ * review; the pin is on the decision (`goalJudgeStall`) and on the sentence the
+ * transition announces (`goalStalledNote`), because those are the two places the
+ * extraction had coupled to copy.
+ */
+test("the stall phrases are matched as protocol, not through the catalogue", () => {
+	const previous = currentLocale();
+	setLocale("xx-test");
+	registerCatalogue("xx-test", {
+		"ui.chat.composer.composer_status_row.judge_could_not_decide":
+			"评判器无法判定",
+		"ui.chat.composer.composer_status_row.stopped_after": "停止于 ",
+	});
+	try {
+		// The wire's own phrases, unchanged by the catalogue above.
+		assert.deepEqual(goalJudgeStall("judge could not decide"), {
+			code: "judge_could_not_decide",
+		});
+		assert.deepEqual(goalJudgeStall("stopped after 12 continuations"), {
+			code: "continuation_cap",
+			count: "12",
+		});
+		// The cap's shape with no readable count is still the cap, with no count.
+		assert.deepEqual(goalJudgeStall("stopped after twelve continuations"), {
+			code: "continuation_cap",
+			count: null,
+		});
+		assert.equal(
+			goalStalledNote("judge could not decide"),
+			"goal stalled: judge could not decide — send a message to continue",
+		);
+		assert.equal(
+			goalStalledNote("stopped after 12 continuations"),
+			"goal stalled: stopped after 12 continuations — send a message to continue",
+		);
+		/*
+		 * And an unrelated status stays unnamed: the catalogue must not turn a
+		 * reason this build does not know into one it claims to.
+		 */
+		assert.deepEqual(goalJudgeStall("a bound added after this build"), {
+			code: "unnamed",
+		});
+		assert.equal(
+			goalStalledNote("a bound added after this build"),
+			"goal stalled: auto-continuation stopped — send a message to continue",
+		);
+	} finally {
+		clearRegisteredCatalogues();
+		setLocale(previous);
+	}
+});
+
 /* ---------------------------------------------------------------- */
 /* The `/goal --history` receipt, and where its lines go             */
 /* ---------------------------------------------------------------- */
@@ -5781,9 +5852,9 @@ test("the standing facts order the wakes before the watches", () => {
 		frontend: frontend(""),
 		runDetails: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
 	});
-	assert.equal((only.match(/-ml-1\.5/g) ?? []).length, 1);
+	assert.equal((only.match(/-ms-1\.5/g) ?? []).length, 1);
 	assert.ok(
-		only.indexOf("data-status-monitors") < only.indexOf("-ml-1.5"),
+		only.indexOf("data-status-monitors") < only.indexOf("-ms-1.5"),
 		"the monitor chip renders before its own padding cancellation",
 	);
 });

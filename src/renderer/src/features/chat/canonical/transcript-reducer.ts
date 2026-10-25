@@ -28,6 +28,7 @@
  */
 
 import {
+	type CanonicalContentBlock,
 	type CanonicalFrontendState,
 	type DesktopHistoryPage,
 	epochMsFromSeconds,
@@ -116,6 +117,35 @@ export type TranscriptImage = {
 };
 
 /**
+ * One document block of a user message (attachment contract v1 §5).
+ *
+ * Narrower than `TranscriptImage` on purpose: a document is never decoded or
+ * displayed as media, so it carries only what the row has to say - a name, a
+ * type, the origin path and the retained digest. `id` is stable per record and
+ * position among DOCUMENT blocks only, so a text or image block between two
+ * files cannot renumber either.
+ */
+export type TranscriptDocument = {
+	id: string;
+	/** The attachment store's digest, when the row carries one. */
+	attachment: string | null;
+	filename: string;
+	mimeType: string;
+	/** The origin absolute path, display/provenance only. */
+	path: string | null;
+	/**
+	 * The attachment store's absolute path, when the owner's row carries one.
+	 * This is what the missing state copies: the origin path is exactly what is
+	 * gone, so offering it would hand the person a dead string (design round 1,
+	 * D2 follow-up).
+	 */
+	storedPath: string | null;
+	bytes: number;
+	/** How the turn reached the model (historical metadata). */
+	injection?: "native" | "extracted" | "reference";
+};
+
+/**
  * Whether a media ref is a PICTURE: a legacy image block (no `kind`) or an
  * image artifact.
  *
@@ -150,6 +180,13 @@ type TranscriptPayloadRecord =
 			ts: number;
 			text: string;
 			images: TranscriptImage[];
+			/**
+			 * The document blocks this message carried (attachment contract v1 §5),
+			 * mapped by `extractDocuments`. Optional so every story and stored record
+			 * built before documents existed keeps its shape: the row reads an absent
+			 * list as "no files", the same spelling `images` uses on a custom row.
+			 */
+			documents?: TranscriptDocument[];
 			/**
 			 * This row is the app's own optimistic echo, not the owner's record of
 			 * the message - it has not been confirmed by the session yet.
@@ -661,8 +698,20 @@ type TranscriptPayloadRecord =
 			id: string;
 			ts: number;
 			askId: string;
-			/** `answered` | `late` | `declined`. Read as a string, for the usual skew reason. */
+			/** `answered` | `late` | `declined` | `dismissed`. Read as a string, for the usual skew reason. */
 			status: string;
+			/**
+			 * WHO settled it and WHY, as the row carries them (harness PR #2833).
+			 *
+			 * `by.surface` is the surface the backend recorded (`desktop`, `phone`,
+			 * `terminal`) and `reason` is the operator's word on a dismissal
+			 * (`answered_in_chat` | `moot`). Both are optional because every other status
+			 * omits them and an older backend has never heard of them — the dismissed
+			 * sentence's `askResponseSummary` branch reads absence as "no surface named"
+			 * rather than inventing one.
+			 */
+			by?: { surface?: string; [key: string]: unknown } | null;
+			reason?: string | null;
 			/**
 			 * The ask's questions, as the row carried them.
 			 *
@@ -1074,31 +1123,13 @@ function knownArgs(
 	);
 }
 
-type ContentBlock = {
-	/** Absent on durable rows: the encoder drops pydantic defaults. */
-	type?: string;
-	text?: string;
-	/** Inline base64. Live events always; durable rows only under 1 KiB. */
-	data?: string;
-	/** Attachment-store digest. Durable rows over 1 KiB; on an ARTIFACT block
-	 *  this is a declared field (the local copy), not an encoding detail. */
-	attachment?: string;
-	mime_type?: string;
-	// --- output-artifact fields (AttachmentContent) ---
-	/** "image" | "video" | "audio". REQUIRED on an artifact, so it is always
-	 *  present on durable rows (the encoder drops only defaults). */
-	kind?: string;
-	/** MIME of the cached bytes; the artifact's mime_type equivalent. */
-	content_type?: string;
-	/** Provider URL (provenance / re-fetch fallback). */
-	source_url?: string;
-	size_bytes?: number;
-	width?: number;
-	height?: number;
-	duration_s?: number;
-	/** Short display handle. Never a filesystem path. */
-	name?: string;
-};
+/*
+ * The wire block is the SHARED contract type, not a second local spelling: a
+ * document block added there must reach this reducer without being copied by
+ * hand, or the two shapes drift and a durable row loses a field one side knows
+ * (agent review round 1, manager finding).
+ */
+type ContentBlock = CanonicalContentBlock;
 
 /**
  * Whether a content block is an image, on EITHER wire shape.
@@ -1205,6 +1236,11 @@ function extractImages(
 	const images: TranscriptImage[] = [];
 	for (const block of content as ContentBlock[]) {
 		const kind = artifactKind(block);
+		// A DOCUMENT block is not an image even when it carries a digest: the
+		// externalized form sets `attachment`, which is also `isImageBlock`'s
+		// durable-image signal, so without this the file would render as a broken
+		// picture (contract v1 §2/§5).
+		if (block.type === "document") continue;
 		if (kind === null && !isImageBlock(block)) continue;
 		/*
 		 * PICTURES, VIDEOS AND SOUNDS, TOGETHER (review round 1 F2's rule, walked
@@ -1260,6 +1296,90 @@ function extractImages(
 
 /** One shared empty array, so "no images" is always the same reference. */
 const EMPTY_IMAGES: TranscriptImage[] = [];
+
+/** One shared empty array, so "no files" is always the same reference. */
+const EMPTY_DOCUMENTS: TranscriptDocument[] = [];
+
+/**
+ * The document blocks of one message, as view-ready records.
+ *
+ * Same reference-preservation rule as `extractImages`: this surface repaints per
+ * token and `shallowEqual` compares by reference, so an identical extraction
+ * returns the array the record already holds.
+ *
+ * The legacy shape is admitted too (contract v1 §2): a row written before the
+ * discriminator existed carries `filename` + `mime_type` + an `attachment`
+ * digest and no `type`, which `coerce_content_blocks` routes as a document. The
+ * UI reads the same two spellings so a replayed old row and a live one are one
+ * record shape.
+ */
+/**
+ * Exported for `scripts/attachment-files.test.mjs`: the mapping is a pure
+ * function over a row's content, and testing it through a mounted transcript
+ * would test React rather than the contract.
+ */
+export function extractDocuments(
+	message: Record<string, unknown> | undefined,
+	recordId: string,
+	previous?: TranscriptDocument[],
+): TranscriptDocument[] {
+	const content = message?.content;
+	if (!Array.isArray(content))
+		return previous?.length ? previous : EMPTY_DOCUMENTS;
+	const documents: TranscriptDocument[] = [];
+	for (const block of content as ContentBlock[]) {
+		const legacy =
+			typeof block.filename === "string" &&
+			typeof block.mime_type === "string" &&
+			typeof block.attachment === "string" &&
+			block.type === undefined;
+		if (block.type !== "document" && !legacy) continue;
+		documents.push({
+			id: `${recordId}:doc:${documents.length}`,
+			attachment:
+				typeof block.attachment === "string" && block.attachment
+					? block.attachment
+					: null,
+			filename:
+				typeof block.filename === "string" && block.filename
+					? block.filename
+					: (block.name ?? "Attached file"),
+			mimeType: block.mime_type ?? "application/octet-stream",
+			path: typeof block.path === "string" && block.path ? block.path : null,
+			storedPath:
+				typeof block.stored_path === "string" && block.stored_path
+					? block.stored_path
+					: null,
+			bytes: typeof block.bytes === "number" ? block.bytes : 0,
+			...(block.injection ? { injection: block.injection } : {}),
+		});
+	}
+	if (documents.length === 0)
+		return previous?.length ? previous : EMPTY_DOCUMENTS;
+	if (previous && sameDocuments(previous, documents)) return previous;
+	return documents;
+}
+
+/** Field-by-field equality over the document list, for the reference gate. */
+function sameDocuments(
+	a: readonly TranscriptDocument[],
+	b: readonly TranscriptDocument[],
+): boolean {
+	if (a.length !== b.length) return false;
+	return a.every((entry, index) => {
+		const other = b[index];
+		return (
+			entry.id === other.id &&
+			entry.attachment === other.attachment &&
+			entry.filename === other.filename &&
+			entry.mimeType === other.mimeType &&
+			entry.path === other.path &&
+			entry.storedPath === other.storedPath &&
+			entry.bytes === other.bytes &&
+			entry.injection === other.injection
+		);
+	});
+}
 
 /**
  * How much artifact metadata an array carries — non-null fields, summed.
@@ -3208,6 +3328,16 @@ function durableRecord(
 				ts,
 				askId: String(details.ask_id ?? ""),
 				status: String(details.status ?? "answered"),
+				/*
+				 * THE DISMISSAL'S ATTRIBUTION (harness PR #2833). Passed through as the
+				 * row sent it: an object or `null`, never a guessed surface. The receipt's
+				 * sentence is `askResponseSummary`'s, shared with the other statuses.
+				 */
+				by:
+					details.by && typeof details.by === "object"
+						? (details.by as { surface?: string })
+						: null,
+				reason: typeof details.reason === "string" ? details.reason : null,
 				questions,
 				answers,
 				secretLost: details.secret_lost === true,
@@ -3340,6 +3470,11 @@ function durableRecord(
 		 * makes this reach the sessions written before the row existed.
 		 */
 		const skill = skillOf(text);
+		const documents = extractDocuments(
+			payload,
+			entry.id,
+			previous?.kind === "user" ? previous.documents : undefined,
+		);
 		return {
 			kind: "user",
 			id: entry.id,
@@ -3350,6 +3485,7 @@ function durableRecord(
 				entry.id,
 				previous?.kind === "user" ? previous.images : undefined,
 			),
+			...(documents.length ? { documents } : {}),
 			...(skill ? { skill } : {}),
 		};
 	}
@@ -5170,6 +5306,29 @@ export function applyEvent(
 				 */
 				const keepsHold =
 					current?.kind === "user" && current.provisional === true;
+				/*
+				 * THE FILE THE MESSAGE WAS SENT WITH SURVIVES ITS OWN RESTATEMENT.
+				 *
+				 * The press paints the row with the document blocks it already uploaded
+				 * (`appendPendingUser`), and this frame lands SECOND for the same id. An
+				 * upsert replaces the record wholesale, so an arm that rebuilt text and
+				 * images only silently deleted the file: the message on screen read as if
+				 * nothing had been attached while the model had the document (reproduced
+				 * from the operator's own session, 2026-10-24: the echo carried the block,
+				 * this frame dropped it, and only a reload - which reads the durable row
+				 * through `durableRecord` - painted the card again).
+				 *
+				 * `previous` is the echo's own list for a restatement, and the frame's own
+				 * content for a frame replayed onto an empty transcript (a reconnect, or a
+				 * second viewer joining mid-turn): `extractDocuments` prefers the content
+				 * when it has document blocks and falls back to `previous` otherwise, so
+				 * neither case loses the file and a text-only frame invents none.
+				 */
+				const documents = extractDocuments(
+					message,
+					messageId,
+					current?.kind === "user" ? current.documents : undefined,
+				);
 				/* The live half of the `skill` derivation; the durable half is in
 				 * `durableRecord`, and both are needed for the same reason the harness
 				 * suppression above spells out: they are different arms over different
@@ -5189,6 +5348,7 @@ export function applyEvent(
 						messageId,
 						current?.kind === "user" ? current.images : undefined,
 					),
+					...(documents.length ? { documents } : {}),
 					...(keepsHold ? { provisional: true } : {}),
 					...(skill ? { skill } : {}),
 				});
@@ -7559,6 +7719,19 @@ export function appendPendingUser(
 	text: string,
 	images: TranscriptImage[],
 	now = Date.now(),
+	/**
+	 * The document blocks the press already knows about (contract v1 §5). The
+	 * composer uploads before admission, so the echo can paint the sent file card
+	 * from the first frame instead of showing a bubble that grows a file when the
+	 * owner's row coalesces onto it.
+	 *
+	 * LAST, after `now`, because `now` was the fourth positional argument every
+	 * existing caller (and six `.mjs` tests) already passed: putting a new
+	 * parameter in front of it made `Date.now()` the echo's stamp under the
+	 * client's timestamp, silently. A new optional parameter belongs where it
+	 * cannot shift an established one (agent review round 1, M3).
+	 */
+	documents: TranscriptDocument[] = EMPTY_DOCUMENTS,
 ): TranscriptState {
 	// The owner's row wins over a later echo for the same id: re-echoing would
 	// otherwise overwrite reconciled content with the composer's original text.
@@ -7577,6 +7750,7 @@ export function appendPendingUser(
 		ts: monotonicStamp(state, now),
 		text,
 		images,
+		...(documents.length ? { documents } : {}),
 		...(skill ? { skill } : {}),
 		local: true,
 		// Every echo holds its place until the owner states the row: "no rows

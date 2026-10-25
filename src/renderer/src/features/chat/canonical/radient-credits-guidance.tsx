@@ -81,7 +81,7 @@ export const RadientCreditsGuidance: FC<{
 				prices?.default_new_credits,
 			);
 	return (
-		<div className="mt-1 flex flex-col items-start gap-2 pl-6">
+		<div className="mt-1 flex flex-col items-start gap-2 ps-6">
 			{guidance ? (
 				<div
 					data-radient-credits-state={guidance.state}

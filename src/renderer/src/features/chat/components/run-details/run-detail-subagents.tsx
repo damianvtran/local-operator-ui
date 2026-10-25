@@ -158,7 +158,7 @@ export const SubagentRowView = ({
 				type="button"
 				onClick={() => onOpen(row.id)}
 				className={cn(
-					"flex items-start gap-2 px-3 py-1.5 text-left",
+					"flex items-start gap-2 px-3 py-1.5 text-start",
 					/* The row's hover is a step DOWN from the pane's ground (`canvas/index.tsx`),
 					   not up to `elevated`: the rows ride the pane with no plane of their own,
 					   so an `elevated` hover measures ΔE00 0 against the drawer's rung. */

@@ -436,6 +436,22 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "inkMuted",
 	},
+	/*
+	 * The S6a approvals card: another native child over live page content. Its
+	 * ground is the page underneath, which no palette enumeration can know, so
+	 * this row pins what the card controls itself — its elevated fill, its
+	 * control edge and its muted brand/detail ink — the same way the find row
+	 * pins its band. The count's accent ink and the title's `ink` are measured
+	 * by the elevated-ground ink loop; without this row a green run would say
+	 * nothing about the surface the card paints.
+	 */
+	{
+		name: "browser approvals card",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "inkMuted",
+	},
 	{
 		name: "primary button",
 		on: GROUNDS,
@@ -3108,7 +3124,7 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		/* `!option.disabled` joined this arm in review round 1 too (U2); see the
 		 * tint entry above for why the gate is the point rather than a drift. */
-		must: 'isPicked || (isHovered && !isActive && !option.disabled)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
+		must: 'isPicked || (isHovered && !isActive && !option.disabled)) &&\n\t\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
 		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12) - for settable rows; a refused row carries neither half (review round 1, U2)",
 	},
 	{

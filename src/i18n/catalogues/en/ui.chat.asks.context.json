@@ -1,0 +1,89 @@
+{
+	"ui.chat.asks.context.messages_since": {
+		"length": "One short clause plus a parenthetical clock reading.",
+		"note": "The parenthetical names what it stamps: the stamp is the LAST MESSAGE from you, not the ask and not the wait (design round 1, D4; the noun is present so the absolute time cannot be read as either). The count stays the lead because the sentence opens with it.",
+		"placeholders": {
+			"count": "how many user messages arrived since the ask was queued; drives the plural branch and renders as # inside each arm",
+			"time": "the latest of those messages, formatted as the locale's short time (for example 19:36 or 7:36 PM)"
+		},
+		"role": "context line on an open ask card, counting the user's messages since the ask was queued",
+		"tone": "quiet factual aside, sentence case, lowercase parenthetical"
+	},
+	"ui.chat.asks.dismiss.answered_in_chat.note": {
+		"length": "One short clause.",
+		"note": "Subordinate to the reason's title. It says why the ask can be dismissed: the user's reply is already in the conversation, so the agent can take the answer from there.",
+		"placeholders": {},
+		"role": "one-line explanation under the Answered in chat reason button",
+		"tone": "lowercase fragment, no trailing punctuation"
+	},
+	"ui.chat.asks.dismiss.answered_in_chat.title": {
+		"length": "Three words.",
+		"note": "Names the case where the conversation already answered the ask. It sits second, under No longer needed; pressing it dismisses the ask and tells the agent to read the answer from the chat.",
+		"placeholders": {},
+		"role": "second reason button in the ask card's dismissal chooser",
+		"tone": "short noun phrase, sentence case, no trailing punctuation"
+	},
+	"ui.chat.asks.dismiss.cancel": {
+		"length": "One word.",
+		"note": "Returns to the card with the ask untouched; it is not a decline and sends nothing to the agent.",
+		"placeholders": {},
+		"role": "control that closes the dismissal chooser without dismissing",
+		"tone": "verb, sentence case, no trailing punctuation"
+	},
+	"ui.chat.asks.dismiss.heading": {
+		"length": "Three words.",
+		"note": "Heads the two reason buttons that put the ask away. The same words the terminal and phone surfaces use, so one act reads one way on every surface.",
+		"placeholders": {},
+		"role": "heading of the inline reason chooser on an open ask card",
+		"tone": "short verb phrase, sentence case, no trailing punctuation"
+	},
+	"ui.chat.asks.dismiss.in_flight": {
+		"length": "One word plus an ellipsis.",
+		"note": "Replaces the reason's own note on the pressed row for the life of the request, so the reader sees what is being sent. It says the ACT is happening, not that it succeeded: a refusal must not have claimed anything landed. English uses the gerund of the trigger's verb.",
+		"placeholders": {},
+		"role": "the line under the chosen reason while the dismissal request is in flight",
+		"tone": "present participle fragment, no trailing punctuation beyond the ellipsis"
+	},
+	"ui.chat.asks.dismiss.moot.note": {
+		"length": "Four words.",
+		"note": "Subordinate to the reason's title. It says what dismissing means for the wait: the agent stops waiting on this ask, so the agent is the subject (\"the agent stops waiting\"), not the operator.",
+		"placeholders": {},
+		"role": "one-line explanation under the No longer needed reason button",
+		"tone": "lowercase fragment naming what the AGENT stops doing; the actor is the agent, never a second-person address to the operator; no trailing punctuation"
+	},
+	"ui.chat.asks.dismiss.moot.title": {
+		"length": "Three words.",
+		"note": "The common case: the ask is stale or the user has moved on. It sits first, above Answered in chat; pressing it dismisses the ask and tells the agent to carry on without it.",
+		"placeholders": {},
+		"role": "first reason button in the ask card's dismissal chooser",
+		"tone": "short noun phrase, sentence case, no trailing punctuation"
+	},
+	"ui.chat.asks.dismiss.receipt.answered_in_chat": {
+		"length": "One short sentence.",
+		"note": "Shown on the card and on its settled one-line row. The second half is the operator-facing label the harness uses for this reason (settled in chat), so the receipt and the agent's own notice describe one act the same way.",
+		"placeholders": {},
+		"role": "confirmation line after an ask was dismissed as answered in the conversation",
+		"tone": "past-tense statement with a dash, sentence case"
+	},
+	"ui.chat.asks.dismiss.receipt.moot": {
+		"length": "One short sentence.",
+		"note": "Shown on the card and on its settled one-line row. The second half is the operator-facing label the harness uses for this reason (no longer needed), so the receipt and the agent's own notice describe one act the same way.",
+		"placeholders": {},
+		"role": "confirmation line after an ask was dismissed as no longer needed",
+		"tone": "past-tense statement with a dash, sentence case"
+	},
+	"ui.chat.asks.dismiss.refused": {
+		"length": "Two clauses, one sentence.",
+		"note": "It states the two facts the reader needs: the ask was not dismissed, and nothing was sent, so a retry is safe. When the owner supplied its own refusal sentence, the panel appends it after this one - that sentence is the reason a retry would fail too - but the transport's sentence is never appended.",
+		"placeholders": {},
+		"role": "the first sentence of the refusal band when a dismissal request failed",
+		"tone": "operator's words, sentence case, period; no transport vocabulary"
+	},
+	"ui.chat.asks.dismiss.trigger": {
+		"length": "One word plus an ellipsis.",
+		"note": "The ellipsis is load-bearing: the press opens a chooser rather than acting on its own. The button exists only when the backend advertises the dismiss capability.",
+		"placeholders": {},
+		"role": "button that opens the dismissal chooser on an open ask card",
+		"tone": "verb with an ellipsis, sentence case"
+	}
+}

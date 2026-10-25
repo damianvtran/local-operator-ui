@@ -1,10 +1,44 @@
 {
+	"ui.common.viewer.close": {
+		"role": "accessible name and tooltip of the lightbox's close control",
+		"tone": "short verb phrase with its object, sentence case",
+		"note": "`kind` selects the item: image or asset. Keep every arm; each arm is a complete sentence, so word order and articles may change.",
+		"placeholders": {
+			"kind": "selects `image` or `asset`."
+		}
+	},
+	"ui.common.viewer.next": {
+		"role": "accessible name and tooltip of the lightbox's next control",
+		"tone": "short verb phrase with its object, sentence case",
+		"note": "`kind` selects the item: image or asset. Keep every arm; each arm is a complete sentence, so word order and articles may change.",
+		"placeholders": {
+			"kind": "selects `image` or `asset`."
+		}
+	},
 	"ui.common.viewer.opening": {
 		"role": "placeholder title in an image or video viewer while its bytes are still being resolved",
 		"tone": "present-participle progress phrase, sentence case, trailing ellipsis kept",
 		"length": "One word plus the ellipsis.",
 		"note": "One key shared by the canvas image preview, the canvas video preview and both of their resolution routes, because they show the same wait at the same step. The ellipsis is shipped copy; do not add a second one in JSX.",
 		"placeholders": {}
+	},
+	"ui.common.viewer.position": {
+		"role": "position line inside an image or asset carousel",
+		"tone": "noun phrase with two numbers, sentence case",
+		"note": "`index` is the one-based position and `count` the size of the set. An allowed exception, not a plural: the two numbers are rendered by the app's number rules. `kind` selects the item: image or asset. Keep every arm; each arm is a complete sentence, so word order and articles may change.",
+		"placeholders": {
+			"kind": "selects `image` or `asset`.",
+			"index": "one-based position in the set.",
+			"count": "how many items the set holds."
+		}
+	},
+	"ui.common.viewer.previous": {
+		"role": "accessible name and tooltip of the lightbox's previous control",
+		"tone": "short verb phrase with its object, sentence case",
+		"note": "`kind` selects the item: image or asset. Keep every arm; each arm is a complete sentence, so word order and articles may change.",
+		"placeholders": {
+			"kind": "selects `image` or `asset`."
+		}
 	},
 	"ui.common.viewer.reset_view": {
 		"role": "image lightbox control that returns zoom and pan to fit and centred; used as both accessible name and tooltip",
@@ -26,5 +60,38 @@
 		"length": "Two words.",
 		"note": "One key for aria-label and title. Disabled at fit and below, so the pair with Zoom in stays legible side by side.",
 		"placeholders": {}
+	},
+	"ui.common.viewer.image_lightbox.previous": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-lightbox.tsx; accessible label in the image lightbox surface.",
+		"placeholders": {
+			"medialabel": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.viewer.image_lightbox.next": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-lightbox.tsx; accessible label in the image lightbox surface.",
+		"placeholders": {
+			"medialabel": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.viewer.image_lightbox.close": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-lightbox.tsx; accessible label in the image lightbox surface.",
+		"placeholders": {
+			"medialabel": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.viewer.image_lightbox.asset_of": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the viewer surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"index": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		}
 	}
 }

@@ -1,0 +1,92 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r2-zh-cn",
+ "session": "12aab7b684ab",
+ "job": "d8717b64c01a",
+ "date": "2026-10-21",
+ "locale": "zh-CN",
+ "translator": "coder",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "bc0c4b952eaa",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 9,
+ "scope": "Round-2 delta audit of #1314: git diff cf1d7c616c..8cf05961d6 -- src/i18n/catalogues (zh-CN: 9 values changed/added — error_offline, error_type, expired_staged, expired_staged_retry, open, position, preview_unavailable, remove_all, uploading). Includes the changed en attachments.expired_staged and new en attachments.expired_staged_retry / attachments.preview_unavailable with their context notes. Every round-1 finding of att-r1-zh-cn re-verified against the bytes. The other 162 zh-CN values are byte-identical to cf1d7c616c (line-level diff shows only these keys plus schedule.discard_attempt gaining a trailing comma, value unchanged) and stay covered by att-r1-zh-cn and its inherited receipts. PR head 8cf05961d6 re-checked via gh. Catalogue audit only, not rendered-fit/activation/release.",
+ "source_head": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "sha256": {
+  "en": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+  "zh-CN": "9a66cc5265c438481620c908d75ea93399da3dad5dc0ffa46cc9b75f63cdec40",
+  "context": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+ },
+ "findings": [
+  {
+   "id": "ATT-ZH-R2-01",
+   "severity": "NIT",
+   "key": "ui.teamBridge.attachments.expired_staged_retry",
+   "current": "此图片已无法发送。请重试或将其移除。",
+   "proposed": "此图片当前无法发送。请重试或将其移除。",
+   "note": "English deliberately says 'no longer ready to send', a state that Retry can repair; '已无法发送' (can no longer be sent) is absolute, so the next sentence's 请重试 reads as pointless — the same defect the ru round-1 auditor raised for ru. '当前无法发送' keeps the state repairable. expired_staged (no Retry) can keep '已无法发送', since that image really cannot be sent again."
+  }
+ ],
+ "round1_dispositions": [
+  {
+   "finding": "ATT-ZH-01",
+   "severity": "MINOR",
+   "keys": "position/open",
+   "verified": "applied verbatim: '第{index}张图片（共{count}张）' / '打开第{index}张图片（共{count}张）'; composed remove '移除第2张图片（共3张）'"
+  },
+  {
+   "finding": "ATT-ZH-02",
+   "severity": "MINOR",
+   "keys": "error_type/error_offline",
+   "verified": "applied verbatim: no spaces around Latin runs, 格式 added"
+  },
+  {
+   "finding": "ATT-ZH-03",
+   "severity": "MINOR",
+   "keys": "expired_staged",
+   "verified": "superseded by source change (design D1): en no longer has the conditional retry; zh now '此图片已无法发送。请将其移除，然后重新添加。' plus new expired_staged_retry. Reasonable answer; the proposed context note is moot because the conditional is gone"
+  },
+  {
+   "finding": "ATT-ZH-04",
+   "severity": "MINOR",
+   "keys": "remove_all",
+   "verified": "applied verbatim: '移除所有图片'"
+  },
+  {
+   "finding": "ATT-ZH-05",
+   "severity": "NIT",
+   "keys": "uploading",
+   "verified": "applied: ends U+2026 U+2026 ('……')"
+  },
+  {
+   "finding": "observation",
+   "severity": "INFO",
+   "keys": "code",
+   "verified": "answered in code: chip, placeholder and scheduled tile now use aria-label + aria-describedby on separate nodes (team-bridge-attachments.tsx:113-126, 482-486, 757-760); no `${label}. ${reason}` join remains (grep)"
+  }
+ ],
+ "inherited_receipt": {
+  "path": "i18n/receipts/att-r1-zh-cn.json",
+  "sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c",
+  "base": "cf1d7c616c",
+  "target_sha256": "941547bb3bd80e153820fbd9c6a2ba680f626e2f908e629240a8a9ace3bf13d0",
+  "keys_inherited": 162,
+  "unchanged_values_verified": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "validation": {
+  "independence": "Auditor session 12aab7b684ab (job d8717b64c01a, translation-auditor, served model anthropic/claude-opus-5-5 per this session's selected_model record) is a new instance, distinct from translator coder session 03594b2dcc02 (job bc0c4b952eaa, remediation commits 1ffc748e68/cedfe88fc6) and from the round-1 auditor session 366e5a448425. Values read from working-tree bytes at 8cf05961d6 (equal to git show 8cf05961d6); translator/remediation summaries were checked, not relied on. No catalogue or code edits, no git operations, no ledger-assemble.",
+  "semantics": "New/changed keys: expired_staged '此图片已无法发送。请将其移除，然后重新添加。' matches the new en (添加 = add '添加图片'); expired_staged_retry '此图片已无法发送。请重试或将其移除。' mirrors error_upload '请重试或将其移除。' (see ATT-ZH-R2-01 on 已无法); preview_unavailable '无法预览' (预览 = teamBridge.preview.chip). Pronoun-dropped 你 register, full-width punctuation, no CJK/Latin spacing.",
+  "icu": "Parsed all 25 attachments.* values in en and zh-CN with @formatjs/icu-messageformat-parser: argument names/types identical (0 mismatches); the 3 new/changed keys are argument-free in en and zh-CN. in_message/limit plural arms unchanged in structure. Formatted with intl-messageformat: position(2,3)/open/remove composed strings render as recorded in the round-1 dispositions.",
+  "typography": "Changed values NFC, no bidi controls, no ASCII apostrophe or '...', no doubled/edge spaces. uploading ends U+2026 U+2026; full-width ，。（）; no spaces around Latin/digit runs.",
+  "overflow": "expired_staged/expired_staged_retry render in the 12 px wrapping status/alert line under the composer and in the chip's sr-only description; preview_unavailable is a title tooltip plus a hidden aria-describedby node (team-bridge-attachments.tsx:128-132, 761-763, 786-788): no fixed-width visible surface, so no fit risk.",
+  "rtl": "Not applicable (zh-CN is LTR).",
+  "limitations": "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation claim."
+ }
+}

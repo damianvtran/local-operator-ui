@@ -584,6 +584,48 @@ test("the pane's resolution state is wired to the strip, not merely supported by
 	);
 });
 
+test("a dial this backend cannot carry is SAID on this composer, not only filtered", () => {
+	/*
+	 * Round 3, code minor 2. The round-2 fix strips `fast_mode` at every sender, and
+	 * the whole point of a strip is that it is not silent - F1 rejected the silent
+	 * version. Deleting the pane's effect leaves every suite green, because
+	 * `draft-selection.test.mjs` asserts the CONSTANT's value and never its use.
+	 * These are the use: the sentence on the composer's muted line, the row it is
+	 * about, and the state gate that stops an unanswered probe or a missing pairing
+	 * claiming an update is needed.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/draft\?\.model\?\.fast_mode === true[\s\S]{0,160}desktopFeatureState\(capabilities\.data, "draft_fast"\) === "below-version"/,
+		"the line is about a SET dial on a backend that cannot carry it, in the update case only",
+	);
+	assert.match(
+		page,
+		/setSendError\(FAST_UNAVAILABLE_SENTENCE\);[\s\S]{0,160}setSendErrorMuted\(true\);/,
+		"the sentence is said on the composer's muted line, the register for a statement of fact",
+	);
+	/*
+	 * AND IT NAMES ITSELF (QA round 2, Q1). Without a code it is byte-identical to
+	 * the lock answer's shape, and the flight rule cleared it on the next commit -
+	 * the line reached no screen in three QA runs. Both ends of that identity are
+	 * pinned: the pane states the code, and the retirement is TOLD the code.
+	 */
+	assert.match(
+		page,
+		/setSendError\(FAST_UNAVAILABLE_SENTENCE\);[\s\S]{0,160}setSendErrorCode\(FAST_UNAVAILABLE_CODE\);/,
+		"the fast-unavailable line carries its own code, not the lock answer's silence",
+	);
+	assert.match(
+		page,
+		/muted: sendErrorMuted,\s*code: sendErrorCode,/,
+		"the retirement is told which notice it is looking at, so it retires the lock answer only",
+	);
+});
+
 test("a session with no snapshot is still silent, not pending", () => {
 	// The states are the DRAFT's: a session that has not reported has a stream to
 	// report it, and claiming a resolution on its behalf would be a new lie.

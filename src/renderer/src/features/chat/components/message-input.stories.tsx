@@ -34,6 +34,7 @@ import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
 import "./story-electron-shim";
+import { STAGED_IMAGE_DATA_URL } from "./attachment-image-fixture";
 
 /*
  * THE COMPOSER'S OWN STATES, which had no committed surface at all.
@@ -2739,6 +2740,8 @@ const PendingSendHarness = ({
 	awaitingReply = false,
 	row = "none",
 	stageChip = true,
+	chips,
+	byteSizes,
 	onSendMessage,
 	returned,
 	sendError,
@@ -2749,6 +2752,19 @@ const PendingSendHarness = ({
 	awaitingReply?: boolean;
 	row?: PendingSendRow;
 	stageChip?: boolean;
+	/**
+	 * The exact chips to stage, when a story needs more than `stageChip`'s one
+	 * file. Attachment ids are explicit here because they are the React keys the
+	 * chip row is built from (contract §6): a story that invented ids per render
+	 * could not show a stable row.
+	 */
+	chips?: { id: string; path: string }[];
+	/**
+	 * Sizes for those chips, by path. A Storybook frame has no preload bridge to
+	 * probe with, so without this the card's `TYPE · size` line would photograph
+	 * the loading state rather than the design.
+	 */
+	byteSizes?: Readonly<Record<string, number>>;
 	onSendMessage?: React.ComponentProps<typeof MessageInput>["onSendMessage"];
 	/**
 	 * The draft a FAILED send leaves, as the composer's own store holds it after
@@ -2783,11 +2799,17 @@ const PendingSendHarness = ({
 		 * took the file out of the row and into the transcript, so staging one there
 		 * would be a payload the app cannot be showing.
 		 */
-		if (stageChip)
-			store.addAttachment(PENDING_SESSION, {
-				id: "pending-chip",
-				path: returned?.chip ?? PENDING_CHIP_PATH,
-			});
+		const stagedChips =
+			chips ??
+			(stageChip
+				? [
+						{
+							id: "pending-chip",
+							path: returned?.chip ?? PENDING_CHIP_PATH,
+						},
+					]
+				: []);
+		for (const chip of stagedChips) store.addAttachment(PENDING_SESSION, chip);
 		/*
 		 * And the box, for the states a FAILED send leaves: the returned message is
 		 * in the composer (`returnInFlight` put it there and the hook adopted it), so
@@ -2836,7 +2858,7 @@ const PendingSendHarness = ({
 		 * changed `row` while mounted has to re-stage it (agent review round 3,
 		 * BLOCKER 1 - biome's `useExhaustiveDependencies` is right about this one).
 		 */
-	}, [row, stageChip, returned]);
+	}, [row, stageChip, chips, returned]);
 	const composer = (
 		<MessageInput
 			isLoading={isLoading}
@@ -2844,6 +2866,7 @@ const PendingSendHarness = ({
 			isSmallView={isSmallView || undefined}
 			messages={NONEMPTY}
 			conversationId={PENDING_SESSION}
+			attachmentByteSizes={byteSizes}
 			onSendMessage={onSendMessage ?? (async () => true)}
 			sendError={sendError}
 		/>
@@ -3006,6 +3029,300 @@ export const PendingSendChipRowSmallView: Story = {
 	play: async ({ canvasElement }) => {
 		if (!holdAndReset(canvasElement)) return;
 		await assertChipRowGeometry(canvasElement);
+		releaseShutter();
+	},
+};
+
+/**
+ * The chip row's bound for a row that is NOT the notes.md fixture.
+ *
+ * `assertChipRowGeometry` reads the notes.md name span, which is right for the
+ * states it was written for and wrong for the file-card stories: a PDF's card has
+ * no such span. What both rows share is the two claims - the row sits above the
+ * field and no ancestor clips it - so this reads those off whichever chip is
+ * first.
+ */
+const assertAttachmentRowAboveField = (canvasElement: HTMLElement) => {
+	const chip = canvasElement.querySelector("[data-attachment-id]");
+	if (!chip) throw new Error("no attachment chip is staged in this story");
+	const row = chip.parentElement ?? chip;
+	const field = composerField(canvasElement);
+	const chipRect = row.getBoundingClientRect();
+	const fieldRect = field.getBoundingClientRect();
+	if (chipRect.bottom > fieldRect.top + 0.5)
+		throw new Error(
+			`the chip row reaches the field: row bottom ${chipRect.bottom}, field top ${fieldRect.top}`,
+		);
+	for (
+		let ancestor = chip.parentElement;
+		ancestor && ancestor !== canvasElement;
+		ancestor = ancestor.parentElement
+	) {
+		const style = getComputedStyle(ancestor);
+		if (style.overflow === "hidden" || style.overflowY === "hidden") {
+			const box = ancestor.getBoundingClientRect();
+			if (chipRect.bottom > box.bottom + 0.5 || chipRect.top < box.top - 0.5)
+				throw new Error("an ancestor clips the chip row");
+		}
+	}
+};
+
+/** The path the file-card stories stage, so the three are read against each other. */
+const PENDING_FILE_PATH = "/Users/you/Documents/Complete_With_Docusign.pdf";
+
+/*
+ * Fixed identities, not inline literals: the harness's staging effect depends on
+ * the `chips` array, and a fresh array per render would re-run it on every
+ * store update - a loop rather than a story.
+ */
+const PENDING_PDF_CHIPS = [{ id: "pending-pdf", path: PENDING_FILE_PATH }];
+const PENDING_PDF_BYTES = { [PENDING_FILE_PATH]: 2_411_520 };
+/*
+ * THE IMAGE IS REAL BYTES. The old path existed on nobody's machine, so both
+ * mixed frames photographed the degraded icon tile and the thumbnail half of the
+ * design was never judged (design round 1, D3). The fixture is a committed 64x64
+ * PNG inlined as a data URL, so every checkout renders the same pixels.
+ */
+const PENDING_MIXED_CHIPS = [
+	{ id: "mixed-image", path: STAGED_IMAGE_DATA_URL },
+	{ id: "mixed-pdf", path: PENDING_FILE_PATH },
+];
+
+/** A non-image file's card: type icon, whole filename, `PDF · size` (contract §6). */
+export const PendingSendPdf: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="a PDF staged: a wider file card rather than a 100px tile, and the row says it is not sent yet"
+			chips={PENDING_PDF_CHIPS}
+			byteSizes={PENDING_PDF_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		releaseShutter();
+	},
+};
+
+/**
+ * The remove affordance FOCUSED. The claim is negative and cannot be seen in one
+ * still: the control lives in a reserved overlay corner, so focusing it must not
+ * move the card or reflow the filename it overlaps (contract §6). The play takes
+ * the box, focuses the button, and compares - a shifted card throws instead of
+ * shipping.
+ */
+export const PendingSendPdfRemoveFocus: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="the remove control focused: the corner is reserved, so the card and its filename do not move"
+			chips={PENDING_PDF_CHIPS}
+			byteSizes={PENDING_PDF_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const card = canvasElement.querySelector(
+			'[data-attachment-id="pending-pdf"]',
+		);
+		if (!card) throw new Error("the PDF card is not in this story");
+		const button = card.querySelector("button");
+		if (!button) throw new Error("the PDF card has no remove control");
+		const before = card.getBoundingClientRect();
+		button.focus();
+		const after = card.getBoundingClientRect();
+		const same =
+			before.x === after.x &&
+			before.y === after.y &&
+			before.width === after.width &&
+			before.height === after.height;
+		if (!same)
+			throw new Error(
+				`focusing remove moved the card: ${JSON.stringify({ before, after })}`,
+			);
+		releaseShutter();
+	},
+};
+
+/** An image and a PDF in one row: the two chip shapes the composer now holds. */
+export const PendingSendMixed: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="mixed row: an image keeps its 100px thumbnail tile, a PDF takes the wider file card"
+			chips={PENDING_MIXED_CHIPS}
+			byteSizes={PENDING_PDF_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== 2)
+			throw new Error(`expected two chips, found ${cards.length}`);
+		releaseShutter();
+	},
+};
+
+/**
+ * A full draft: eight files, one of them a long name, so the row's WRAP is the
+ * subject rather than a single card's shape. Eight is the wire's own cap
+ * (`DESKTOP_MESSAGE_MAX_FILES`), so this is the largest row a send can carry.
+ */
+const PENDING_MANY_CHIPS = Array.from({ length: 6 }, (_, index) => ({
+	id: `many-${index}`,
+	path:
+		index === 3
+			? "/Users/you/Documents/Quarterly Reports/2026/Q4/Board_Pack_and_Appendices_Final_Reviewed.pdf"
+			: `/Users/you/Documents/Quarterly Reports/2026/Q4/file-${index + 1}.pdf`,
+}));
+const PENDING_MANY_BYTES = Object.fromEntries(
+	PENDING_MANY_CHIPS.map((chip, index) => [
+		chip.path,
+		120_000 + index * 31_000,
+	]),
+);
+
+export const PendingSendManyFiles: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="six files staged: the row wraps, and a long filename is truncated inside its card rather than pushing the row"
+			chips={PENDING_MANY_CHIPS}
+			byteSizes={PENDING_MANY_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== PENDING_MANY_CHIPS.length)
+			throw new Error(
+				`expected ${PENDING_MANY_CHIPS.length} chips, found ${cards.length}`,
+			);
+		releaseShutter();
+	},
+};
+
+/**
+ * THE MAXIMUM a send can carry: eight cards, which exceed the preview area's
+ * 240px bound. Deliberately NOT an evidence frame - the composer scrolls, so a
+ * still shows a sliced third row and describes the bound poorly. The assertion
+ * is the point: the SCROLLER ends above the field and really scrolls, rather
+ * than a band whose content escapes and takes the send controls off screen.
+ */
+const PENDING_EIGHT_CHIPS = Array.from({ length: 8 }, (_, index) => ({
+	id: `eight-${index}`,
+	path: `/Users/you/Documents/Quarterly Reports/2026/Q4/file-${index + 1}.pdf`,
+}));
+const PENDING_EIGHT_BYTES = Object.fromEntries(
+	PENDING_EIGHT_CHIPS.map((chip, index) => [
+		chip.path,
+		120_000 + index * 31_000,
+	]),
+);
+
+export const PendingSendEightFiles: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="eight files, the wire's maximum: the preview area scrolls instead of growing the band"
+			chips={PENDING_EIGHT_CHIPS}
+			byteSizes={PENDING_EIGHT_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== PENDING_EIGHT_CHIPS.length)
+			throw new Error(
+				`expected ${PENDING_EIGHT_CHIPS.length} chips, found ${cards.length}`,
+			);
+		const scroller = cards[0]?.parentElement?.closest(".overflow-y-auto");
+		if (!scroller) throw new Error("the chip row has no bounded scroller");
+		const box = scroller.getBoundingClientRect();
+		const field = composerField(canvasElement).getBoundingClientRect();
+		if (box.bottom > field.top + 0.5)
+			throw new Error(
+				`the scroller reaches the field: bottom ${box.bottom}, field top ${field.top}`,
+			);
+		if (scroller.scrollHeight <= scroller.clientHeight)
+			throw new Error(
+				`eight cards were expected to overflow the scroller: scrollHeight ${scroller.scrollHeight}, clientHeight ${scroller.clientHeight}`,
+			);
+		releaseShutter();
+	},
+};
+
+/**
+ * The narrow rung with an image and two files: the wrapping case at the width
+ * where the file card and the 100px tile can no longer share one line. The long
+ * filename is the card's own truncation test, not a row-overflow test.
+ */
+const PENDING_NARROW_CHIPS = [
+	{ id: "narrow-image", path: STAGED_IMAGE_DATA_URL },
+	{
+		id: "narrow-long",
+		path: "/Users/you/Documents/Quarterly Reports/2026/Q4/Board_Pack_and_Appendices_Final_Reviewed.pdf",
+	},
+	{ id: "narrow-pdf", path: PENDING_FILE_PATH },
+];
+const PENDING_NARROW_BYTES = {
+	[PENDING_NARROW_CHIPS[1].path]: 8_912_345,
+	[PENDING_FILE_PATH]: 2_411_520,
+};
+
+export const PendingSendNarrowLongName: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="the compact rung: an image and two files wrap, and the long filename stays inside its card"
+			isSmallView={true}
+			chips={PENDING_NARROW_CHIPS}
+			byteSizes={PENDING_NARROW_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== PENDING_NARROW_CHIPS.length)
+			throw new Error(
+				`expected ${PENDING_NARROW_CHIPS.length} chips, found ${cards.length}`,
+			);
+		releaseShutter();
+	},
+};
+
+/**
+ * The remove control focused OVER REAL IMAGE PIXELS: the reserved corner must
+ * stay legible and the image tile must not move. The image is the committed
+ * fixture, so this frame is the image half of the focus claim (design D3).
+ */
+export const PendingSendImageRemoveFocus: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="the image tile's remove control focused: a legible control over real pixels, and nothing reflows"
+			chips={[{ id: "focus-image", path: STAGED_IMAGE_DATA_URL }]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const card = canvasElement.querySelector(
+			'[data-attachment-id="focus-image"]',
+		);
+		if (!card) throw new Error("the image tile is not in this story");
+		const button = card.querySelector("button");
+		if (!button) throw new Error("the image tile has no remove control");
+		const before = card.getBoundingClientRect();
+		button.focus();
+		const after = card.getBoundingClientRect();
+		if (
+			before.x !== after.x ||
+			before.y !== after.y ||
+			before.width !== after.width ||
+			before.height !== after.height
+		)
+			throw new Error(
+				`focusing remove moved the image tile: ${JSON.stringify({ before, after })}`,
+			);
 		releaseShutter();
 	},
 };

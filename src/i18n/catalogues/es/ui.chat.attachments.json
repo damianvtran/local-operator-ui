@@ -1,0 +1,14 @@
+{
+	"ui.chat.attachments.pending_caption": "Aún no enviado",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "Movido o eliminado",
+	"ui.chat.attachments.file_retained": "Todavía se conserva en el almacén de adjuntos ({digest})",
+	"ui.chat.attachments.file_unnamed": "Archivo adjunto",
+	"ui.chat.attachments.copy_path": "Copiar ruta",
+	"ui.chat.attachments.path_copied": "Ruta copiada",
+	"ui.chat.attachments.file_missing_recovery": "El archivo ya no está en esta ruta.",
+	"ui.chat.attachments.file_type_unknown": "Archivo",
+	"ui.chat.attachments.copy_saved_path": "Copiar ruta de la copia guardada",
+	"ui.chat.attachments.saved_path_copied": "Ruta de la copia guardada copiada",
+	"ui.chat.attachments.saved_copy_label": "Copia guardada"
+}

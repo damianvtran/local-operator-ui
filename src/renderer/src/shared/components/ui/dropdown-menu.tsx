@@ -1,3 +1,5 @@
+import { useMeasuredBrowserViewPanel } from "@shared/browser-view-policy";
+import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronRight, Circle } from "lucide-react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
@@ -6,6 +8,7 @@ import {
 	type ElementRef,
 	type HTMLAttributes,
 	forwardRef,
+	useMemo,
 } from "react";
 
 /**
@@ -70,13 +73,16 @@ export const DropdownMenuSubTrigger = forwardRef<
 		className={cn(
 			itemClasses,
 			"data-[state=open]:bg-accent-wash",
-			inset && "pl-8",
+			inset && "ps-8",
 			className,
 		)}
 		{...props}
 	>
 		{children}
-		<ChevronRight className="ml-auto text-ink-dim" aria-hidden="true" />
+		<ChevronRight
+			className="ms-auto text-ink-dim rtl:-scale-x-100"
+			aria-hidden="true"
+		/>
 	</DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
@@ -84,36 +90,65 @@ DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
 export const DropdownMenuSubContent = forwardRef<
 	ElementRef<typeof DropdownMenuPrimitive.SubContent>,
 	ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
-	<DropdownMenuPrimitive.SubContent
-		ref={ref}
-		/*
-		 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
-		 * read by in `styles/index.css`. A menu that opens near the top of the window
-		 * can overlap the chrome strip, and a row inside the window's draggable
-		 * region is a row that cannot be clicked.
-		 */
-		data-titlebar-no-drag=""
-		className={cn(panelClasses, className)}
-		{...props}
-	/>
-));
+>(({ className, ...props }, ref) => {
+	// The submenu panel is the same kind of overlay as the parent menu: it pauses
+	// the native browser view only where it MEASURABLY intersects it.
+	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("menu");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
+	return (
+		<DropdownMenuPrimitive.SubContent
+			ref={composedRef}
+			/*
+			 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+			 * read by in `styles/index.css`. A menu that opens near the top of the window
+			 * can overlap the chrome strip, and a row inside the window's draggable
+			 * region is a row that cannot be clicked.
+			 */
+			data-titlebar-no-drag=""
+			className={cn(panelClasses, className)}
+			{...props}
+		/>
+	);
+});
 DropdownMenuSubContent.displayName = "DropdownMenuSubContent";
 
 export const DropdownMenuContent = forwardRef<
 	ElementRef<typeof DropdownMenuPrimitive.Content>,
 	ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 6, ...props }, ref) => (
-	<DropdownMenuPrimitive.Portal>
-		<DropdownMenuPrimitive.Content
-			ref={ref}
-			data-titlebar-no-drag=""
-			sideOffset={sideOffset}
-			className={cn(panelClasses, className)}
-			{...props}
-		/>
-	</DropdownMenuPrimitive.Portal>
-));
+>(({ className, sideOffset = 6, ...props }, ref) => {
+	/*
+	 * THE MENU PANEL IS A MEASURED PAUSE, NOT A BLANKET ONE (S5).
+	 *
+	 * The native browser view paints above all DOM, so a menu that crosses into
+	 * the page is partly invisible unless the view yields. Before S5 every menu
+	 * was either occluded (the shared primitive registered nothing) or paused the
+	 * page unconditionally (the browser's own two menus, by hand). Measuring is
+	 * the only rule that is right for both cases: a menu entirely inside the
+	 * chrome band — above the page — touches nothing and must not take the page
+	 * away, while a menu whose panel reaches the page must. Registering here, in
+	 * the primitive, is what makes that true for every dropdown in the app rather
+	 * than for the two that remembered.
+	 */
+	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("menu");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
+	return (
+		<DropdownMenuPrimitive.Portal>
+			<DropdownMenuPrimitive.Content
+				ref={composedRef}
+				data-titlebar-no-drag=""
+				sideOffset={sideOffset}
+				className={cn(panelClasses, className)}
+				{...props}
+			/>
+		</DropdownMenuPrimitive.Portal>
+	);
+});
 DropdownMenuContent.displayName = "DropdownMenuContent";
 
 export const DropdownMenuItem = forwardRef<
@@ -129,7 +164,7 @@ export const DropdownMenuItem = forwardRef<
 		ref={ref}
 		className={cn(
 			itemClasses,
-			inset && "pl-8",
+			inset && "ps-8",
 			destructive && "text-danger data-[highlighted]:bg-danger-wash",
 			className,
 		)}
@@ -145,10 +180,10 @@ export const DropdownMenuCheckboxItem = forwardRef<
 	<DropdownMenuPrimitive.CheckboxItem
 		ref={ref}
 		checked={checked}
-		className={cn(itemClasses, "pl-8", className)}
+		className={cn(itemClasses, "ps-8", className)}
 		{...props}
 	>
-		<span className="absolute left-2 flex size-4 items-center justify-center">
+		<span className="absolute start-2 flex size-4 items-center justify-center">
 			<DropdownMenuPrimitive.ItemIndicator>
 				<Check className="text-accent" aria-hidden="true" />
 			</DropdownMenuPrimitive.ItemIndicator>
@@ -164,10 +199,10 @@ export const DropdownMenuRadioItem = forwardRef<
 >(({ className, children, ...props }, ref) => (
 	<DropdownMenuPrimitive.RadioItem
 		ref={ref}
-		className={cn(itemClasses, "pl-8", className)}
+		className={cn(itemClasses, "ps-8", className)}
 		{...props}
 	>
-		<span className="absolute left-2 flex size-4 items-center justify-center">
+		<span className="absolute start-2 flex size-4 items-center justify-center">
 			<DropdownMenuPrimitive.ItemIndicator>
 				{/* The one legitimate `rounded-full` here: this is a status dot. */}
 				<Circle className="size-2 fill-accent text-accent" aria-hidden="true" />
@@ -188,7 +223,7 @@ export const DropdownMenuLabel = forwardRef<
 		ref={ref}
 		className={cn(
 			"px-2 py-1.5 text-meta text-ink-dim",
-			inset && "pl-8",
+			inset && "ps-8",
 			className,
 		)}
 		{...props}
@@ -214,7 +249,7 @@ export const DropdownMenuShortcut = ({
 	...props
 }: HTMLAttributes<HTMLSpanElement>) => (
 	<span
-		className={cn("ml-auto font-mono text-ink-dim text-mono-sm", className)}
+		className={cn("ms-auto font-mono text-ink-dim text-mono-sm", className)}
 		{...props}
 	/>
 );

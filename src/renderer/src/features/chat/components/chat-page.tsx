@@ -42,6 +42,8 @@ import {
 	useDraftWarmSession,
 	useWarmSession,
 } from "@shared/hooks/use-warm-session";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
@@ -59,6 +61,7 @@ import {
 	panelIdentityFor,
 	panelSessionIdOfView,
 	pressLockCopy,
+	remoteOwnedId,
 	resynthesisePendingSend,
 	sendFailureCopy,
 	useCanonicalSessionsStore,
@@ -99,11 +102,13 @@ import {
 	approvalAnswerValue,
 	createSendLock,
 	declineQueuedAsk,
+	dismissQueuedAsk,
 	gateIsSecret,
 	reviseQueuedAsk,
 } from "../ask-answer";
 import {
 	type AskAnswerAttempt,
+	type AskDismissReason,
 	type AskDraft,
 	type AskOutcome,
 	askClaimsEscape,
@@ -134,6 +139,8 @@ import { ChatDeviceSlot } from "../device/chat-device-slot";
 import {
 	type DraftResolution,
 	type DraftSelectionTarget,
+	FAST_UNAVAILABLE_CODE,
+	FAST_UNAVAILABLE_SENTENCE,
 	draftPreviewQuery,
 } from "../draft-selection";
 import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "../fleet-asks";
@@ -158,8 +165,9 @@ import {
 	modelAccessLocality,
 } from "../session-status/session-model";
 import type { Message } from "../types/message";
-import { encodeImageAttachments } from "../utils/attachment-encode";
+import { encodeAttachments } from "../utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "../utils/attachment-read";
@@ -233,10 +241,17 @@ function SessionPanel({
 	identity,
 	draftKey,
 	sessionId,
+	onStartNewChat,
 }: {
 	identity: string;
 	draftKey: string | null;
 	sessionId?: string;
+	/**
+	 * The missing notice's route move, owned by `ChatPage` (agent review round 1 /
+	 * QA round 1, Q1): the panel and the transcript below it can stage the fresh
+	 * draft, but only the page holds `navigate`.
+	 */
+	onStartNewChat: () => void;
 }) {
 	const draftIdentity = useCanonicalSessionsStore((state) =>
 		paneDraftKey(draftKey, sessionId, state.drafts),
@@ -383,6 +398,18 @@ function SessionPanel({
 			.getState()
 			.setDraftWarmable(
 				desktopFeatureEnabled(panelCapabilities.data, "session_draft_warm"),
+			);
+		/*
+		 * The same publication for the draft dial (round 2's F1 follow-up). The
+		 * store builds the create and the warm-mint bodies and must not import this
+		 * module's capability hook, so the mounted pane states whether the field can
+		 * ride; fail-closed, so an unanswered query strips it rather than sending a
+		 * body an older core refuses whole.
+		 */
+		useCanonicalSessionsStore
+			.getState()
+			.setDraftFastCarries(
+				desktopFeatureEnabled(panelCapabilities.data, "draft_fast"),
 			);
 	}, [panelCapabilities.data]);
 	/*
@@ -1433,8 +1460,21 @@ function SessionPanel({
 		!sessionId &&
 		cwd.length > 0 &&
 		desktopFeatureEnabled(capabilities.data, "draft_preview");
+	/*
+	 * WHETHER THIS BACKEND CARRIES THE DIAL (round 2's F1 follow-up). A row
+	 * persisted with `fast_mode: true` meets an older core with a 422 for the WHOLE
+	 * body, and that core refuses the preview as readily as the create - so the
+	 * query filters the field out at its own sender (`draftPreviewQuery`) and the
+	 * store does the same for `sessions.draft`/`sessions.create`. The row keeps the
+	 * dial (it was the user's choice, and a capable backend restores it); the line
+	 * below says so out loud rather than dropping it in silence.
+	 */
+	const draftFastCarries = desktopFeatureEnabled(
+		capabilities.data,
+		"draft_fast",
+	);
 	const preview = useQuery({
-		...draftPreviewQuery(draftTarget),
+		...draftPreviewQuery(draftTarget, draftFastCarries),
 		enabled: draftPreviewOn,
 	});
 	/*
@@ -1455,6 +1495,35 @@ function SessionPanel({
 				? { status: "failed", retry: () => void preview.refetch() }
 				: { status: "pending" }
 		: undefined;
+	/*
+	 * A DIAL THE USER SET THAT THIS BACKEND CANNOT CARRY (round 2's F1 follow-up).
+	 *
+	 * The senders drop the field so the request survives (`draftPreviewQuery`, the
+	 * store's create and its warm mint), but dropping it in silence is the discard
+	 * the effort carry exists to prevent. The pane says it once, on the surface it
+	 * already uses for statements of fact about a send (`muted`, the register the
+	 * queued-send line uses), and only when the answer is `below-version` - an
+	 * unanswered probe or a missing pairing is not "update the service".
+	 */
+	const draftFastDropped =
+		!sessionId &&
+		draft?.model?.fast_mode === true &&
+		desktopFeatureState(capabilities.data, "draft_fast") === "below-version";
+	useEffect(() => {
+		if (!draftFastDropped) return;
+		/*
+		 * ITS OWN CODE, not the lock answer's shape (QA round 2, Q1). `muted` alone
+		 * is what the retirement effect reads, and a notice in that register naming
+		 * no code is how it identifies the lock answer - so this line used to be
+		 * cleared on the next commit by `lockAnswerOutlived`, which found nothing
+		 * pending on a restored draft and retired a statement of fact as if it were
+		 * a claim about a flight.
+		 */
+		setSendError(FAST_UNAVAILABLE_SENTENCE);
+		setSendErrorCode(FAST_UNAVAILABLE_CODE);
+		setSendErrorRetry(false);
+		setSendErrorMuted(true);
+	}, [draftFastDropped]);
 	const draftPickable =
 		!sessionId &&
 		desktopFeatureEnabled(capabilities.data, "draft_selection") &&
@@ -1478,6 +1547,12 @@ function SessionPanel({
 	 *   - `catalogues` — the picker's list. `models.catalogue` is where its rows come
 	 *     from, and a picker that opens onto an empty list is a dead control wearing
 	 *     a live one's clothes.
+	 *
+	 * `/fast` is NOT one of these chips, and it needs a FOURTH: the core field its
+	 * pick writes (`draft_fast`) is a capability of the row, not of the pane, so
+	 * `draftSelectionRoute` asks it there and this flag stays exactly as it was —
+	 * a core with `draft_selection` but without `draft_fast` keeps its model and
+	 * effort chips AND refuses `/fast` on a draft (agent review round 1, F1).
 	 */
 	/*
 	 * Retire whatever the composer's error line is holding.
@@ -1630,6 +1705,13 @@ function SessionPanel({
 								.setDraftModel(draftIdentity, selection),
 					}
 				: undefined,
+		/*
+		 * And WHERE the resolution is, which is the only way the dispatcher can tell
+		 * "this pane cannot carry a draft pick" from "this pane has not answered
+		 * yet" (round 2, D7). The same value the strip paints, so the refusal and
+		 * the reading describe one state.
+		 */
+		draftResolution,
 	});
 
 	/*
@@ -1992,10 +2074,25 @@ function SessionPanel({
 					});
 				return true;
 			}
-			const { images, unreadable, overflow } = await encodeImageAttachments(
-				attachments,
-				content,
+			/*
+			 * Files cannot ride a peer-owned conversation in v1 (attachment contract
+			 * §6b.2): the upload lands in THIS machine's attachment store, and the owner
+			 * has a different one. The encoder reports the files as `remote` failures, so
+			 * the refusal below names them and the send stops here rather than posting a
+			 * digest the owner could never resolve. Images keep today's peer staging.
+			 */
+			const remoteOwned = remoteOwnedId(
+				useCanonicalSessionsStore.getState().sessions,
+				useCanonicalSessionsStore.getState().placementFacts,
+				sessionId ?? draft?.sessionId ?? "",
 			);
+			const {
+				images,
+				files,
+				failures,
+				overflow,
+				fileOverflow: fileOverflowCount,
+			} = await encodeAttachments(attachments, content, { remoteOwned });
 			/*
 			 * An attachment the send could not read, reported before admission for the
 			 * same reason as the budget refusal below: the file is not in the message
@@ -2010,7 +2107,7 @@ function SessionPanel({
 			 * how the same sentence was measured both with and without it (design
 			 * round 4, D13; the predicate is `withholdsRetryHint`).
 			 */
-			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			const unreadableRefusal = unreadableAttachmentRefusal(failures);
 			if (unreadableRefusal) {
 				setSendError(unreadableRefusal);
 				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
@@ -2028,6 +2125,14 @@ function SessionPanel({
 				 * register is set here rather than told to a code.
 				 */
 				setSendError(overflowRefusal);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				return false;
+			}
+			const fileOverflow = fileOverflowRefusal(fileOverflowCount);
+			if (fileOverflow) {
+				setSendError(fileOverflow);
 				setSendErrorCode(undefined);
 				setSendErrorRetry(false);
 				setSendErrorMuted(false);
@@ -2315,6 +2420,7 @@ function SessionPanel({
 					text: content,
 					attachments,
 					images,
+					...(files.length ? { files } : {}),
 					mode: turnAlive ? "steer" : "prompt",
 					cwd,
 					/*
@@ -2926,6 +3032,53 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		settleAskOutcome(taskId, outcome);
+	};
+	/**
+	 * PUT AN OPEN ASK AWAY (harness PR #2833, SA-D5).
+	 *
+	 * The third queued-ask door, behind the same lock as its siblings. Its receipt
+	 * is this surface's own record (`AskOutcome.dismissed`): the wire folds the ask
+	 * to `dismissed` with no marker for WHICH reason went, and the card that offered
+	 * the chooser collapses on the frame — so the reason has to be remembered here
+	 * or it is lost between the press and the row.
+	 *
+	 * NO TOAST. A decline has none and the card keeps its own line: the reader is
+	 * looking at the ask they just put away, and a transient notice over it would
+	 * be the second receipt for one act. The fleet scope does toast, because there
+	 * the row leaves the pane rather than settling in place (see its own note).
+	 */
+	const dismissAsk = async (taskId: string, reason: AskDismissReason) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await dismissQueuedAsk(
+				{ taskId, reason, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		if (outcome.status !== "sent") {
+			/*
+			 * `settleAskOutcome` is the one place that clears the in-flight flag and
+			 * records the sentence: a transport failure carries the owner's words, and
+			 * a `refused` outcome (the lock was taken, or the session id is gone) reached
+			 * nothing so it records neither. Returning without it would leave the card
+			 * disabled for the mount's life.
+			 */
+			settleAskOutcome(taskId, outcome);
+			return;
+		}
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: false, refused: null, dismissed: reason },
+		}));
+		void queryClient.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
 	};
 	/*
 	 * THE DRAWER'S TOGGLE. The bar, the chip and the panel's Escape all call this
@@ -4066,6 +4219,7 @@ function SessionPanel({
 				admitting,
 				gatePending: canonical.frontend?.pending_gate != null,
 				muted: sendErrorMuted,
+				code: sendErrorCode,
 			})
 		)
 			return;
@@ -4078,6 +4232,7 @@ function SessionPanel({
 		admitting,
 		canonical.frontend?.pending_gate,
 		sendErrorMuted,
+		sendErrorCode,
 	]);
 	/*
 	 * MEMOISED FOR THE COMPOSER'S MEMO BOUNDARY (C1), with the registry read kept
@@ -4414,6 +4569,7 @@ function SessionPanel({
 				<ChatContent
 					activeTab={tab}
 					onTabChange={setTab}
+					onStartNewChat={onStartNewChat}
 					/*
 					 * THE DEVICE CONTROL'S TWO SURFACES, composed here because this is the one
 					 * place that knows both halves of the pane's identity: the live `sessionId`
@@ -4814,6 +4970,20 @@ function SessionPanel({
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void reviseAsk(taskId, answers),
+						/*
+						 * THE DISMISS DOOR IS GATED ON THE CAPABILITY, not on the reason a call
+						 * might fail: an older daemon's `Answer` is `extra="forbid"`, so a body
+						 * carrying `dismiss` is a 422 there, and a control that can only be
+						 * refused is the dead affordance the ask panel refuses. Absent means the
+						 * panel draws no button.
+						 */
+						onDismissAsk: desktopFeatureEnabled(
+							capabilities.data,
+							"ask_dismiss",
+						)
+							? (taskId: string, reason: AskDismissReason) =>
+									void dismissAsk(taskId, reason)
+							: undefined,
 						askOutcomes,
 						/* The asks drawer's lane: the flag, its door and the panel's draft. The
 						 * composer is deliberately NOT part of it (no sentence, no mode). */
@@ -4831,6 +5001,8 @@ function SessionPanel({
 }
 
 export function ChatPage() {
+	// The pane's own copy follows a backend locale change like every other surface.
+	useI18nLocale();
 	const { agentId: routeIdentity } = useParams<{ agentId?: string }>();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -4994,6 +5166,18 @@ export function ChatPage() {
 		setRouteError(null);
 		navigate("/chat");
 	};
+	/**
+	 * The missing notice's way out, as a ROUTE (agent review round 1 / QA round 1,
+	 * Q1): the transcript owns the button but not `navigate`, and this page is the
+	 * one place that can move the view without a second router. The store action
+	 * has already staged the fresh draft and cleared the selection by the time this
+	 * runs; what is left is the address, or a reload would re-open the dead
+	 * conversation the press just left.
+	 */
+	const startNewChatRoute = useCallback(() => {
+		setRouteError(null);
+		navigate("/chat");
+	}, [navigate]);
 	/*
 	 * THERE IS NO `select` HERE ANY MORE, and its absence is the change rather than
 	 * an omission: the sidebar's rows used to call back into this route so that the
@@ -5115,7 +5299,7 @@ export function ChatPage() {
 							className={cn("underline")}
 							onClick={() => void paneRetry()}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</button>
 					)}
 				</div>
@@ -5139,6 +5323,7 @@ export function ChatPage() {
 						identity={identity}
 						draftKey={draftKey}
 						sessionId={id}
+						onStartNewChat={startNewChatRoute}
 					/>
 				</div>
 			) : (
@@ -5165,7 +5350,7 @@ export function ChatPage() {
 						className={cn("rounded-md border border-control px-3 py-2")}
 						onClick={() => stage(undefined, true)}
 					>
-						New chat
+						{t("ui.shell.sidebar_navigation.new_chat")}
 					</button>
 				</div>
 			)}

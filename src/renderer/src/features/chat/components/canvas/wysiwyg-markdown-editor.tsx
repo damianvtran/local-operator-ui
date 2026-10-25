@@ -16,6 +16,8 @@ import {
 } from "@shared/components/ui";
 import { useDebounce } from "@shared/hooks/use-debounce";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { UndoManager } from "@shared/lib/undo-manager";
 import { cn } from "@shared/lib/utils";
 import { useUndoManagerStore } from "@shared/store/undo-manager-store";
@@ -239,7 +241,7 @@ const editorProseClasses = cn(
 	// is the wrong reading. The header earns a rule and semibold weight rather
 	// than a fill, so the table has no boxes at all.
 	"[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse",
-	"[&_:is(th,td)]:border-hairline [&_:is(th,td)]:border-b [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:pr-4 [&_:is(th,td)]:text-left [&_:is(th,td):last-child]:pr-0",
+	"[&_:is(th,td)]:border-hairline [&_:is(th,td)]:border-b [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:pe-4 [&_:is(th,td)]:text-start [&_:is(th,td):last-child]:pe-0",
 	"[&_th]:font-semibold [&_th]:text-ink-muted",
 	"[&_tbody_tr:last-child_td]:border-b-0",
 	// Links and images.
@@ -308,7 +310,9 @@ const appendDiffSide = (
 		DIFF_LABEL_CLASS,
 		isRemove ? "text-danger" : "text-success",
 	);
-	label.textContent = isRemove ? "- Remove" : "+ Add";
+	label.textContent = isRemove
+		? t("ui.canvas.wysiwyg_markdown_editor.remove")
+		: t("ui.canvas.wysiwyg_markdown_editor.add");
 	half.appendChild(label);
 
 	const content = window.document.createElement("div");
@@ -336,7 +340,10 @@ export const buildDiffContainer = (diff: EditDiff) => {
 	container.contentEditable = "false";
 	container.className = DIFF_CONTAINER_CLASS;
 	container.setAttribute("role", "group");
-	container.setAttribute("aria-label", "Proposed change");
+	container.setAttribute(
+		"aria-label",
+		t("ui.canvas.wysiwyg_markdown_editor.proposed_change"),
+	);
 	appendDiffSide(container, "remove", diff.find);
 	appendDiffSide(container, "add", diff.replace);
 	return container;
@@ -372,14 +379,28 @@ const ACTIVE_TOGGLE_CLASS =
  * silently turns a user's underline into italics is worse than no control,
  * because the document that comes back is not the one they wrote.
  */
-const PRIMARY_TEXT_FORMATS = [
-	{ value: "bold", label: "Bold (Ctrl+B)", Icon: Bold },
-	{ value: "italic", label: "Italic (Ctrl+I)", Icon: Italic },
-] as const;
+const PRIMARY_TEXT_FORMATS = () =>
+	[
+		{
+			value: "bold",
+			label: t("ui.canvas.wysiwyg_markdown_editor.bold_ctrl_b"),
+			Icon: Bold,
+		},
+		{
+			value: "italic",
+			label: t("ui.canvas.wysiwyg_markdown_editor.italic_ctrl_i"),
+			Icon: Italic,
+		},
+	] as const;
 
-const OVERFLOW_TEXT_FORMATS = [
-	{ value: "strikethrough", label: "Strikethrough", Icon: Strikethrough },
-] as const;
+const OVERFLOW_TEXT_FORMATS = () =>
+	[
+		{
+			value: "strikethrough",
+			label: t("ui.canvas.wysiwyg_markdown_editor.strikethrough"),
+			Icon: Strikethrough,
+		},
+	] as const;
 
 /*
  * Alignment is not offered, and the machinery for it is gone with the menu.
@@ -421,6 +442,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 * `bufferText` when a buffer exists; `document.content` is only the fallback
 	 * for a document the owner has never seen.
 	 */
+
+	const locale = useI18nLocale();
 	const [content, setContent] = useState(
 		() => bufferText(document.id) ?? document.content,
 	);
@@ -539,7 +562,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			.then((outcome) => {
 				if (outcome.status !== "written") return;
 				showSuccessToast(
-					outcome.replaced ? "File saved, replacing the change" : "File saved",
+					outcome.replaced
+						? t(
+								"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change",
+							)
+						: t("ui.canvas.wysiwyg_markdown_editor.file_saved"),
 				);
 			})
 			.catch((error) => {
@@ -978,7 +1005,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			 */
 			void saveBuffer(document.id)
 				.then((outcome) => {
-					if (outcome.status === "written") showSuccessToast("File saved");
+					if (outcome.status === "written")
+						showSuccessToast(t("ui.canvas.wysiwyg_markdown_editor.file_saved"));
 				})
 				.catch((error) => {
 					console.error("Could not save the document:", error);
@@ -1239,7 +1267,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				for (let j = 0; j < cols; j++) {
 					const th = window.document.createElement("th");
-					th.textContent = `Header ${j + 1}`;
+					th.textContent = t("ui.canvas.wysiwyg_markdown_editor.header", {
+						j: j + 1,
+					});
 					headerRow.appendChild(th);
 				}
 
@@ -1247,7 +1277,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					const bodyRow = tbody.insertRow();
 					for (let j = 0; j < cols; j++) {
 						const td = bodyRow.insertCell();
-						td.textContent = `Cell ${i + 1}, ${j + 1}`;
+						td.textContent = t("ui.canvas.wysiwyg_markdown_editor.cell", {
+							i: i + 1,
+							j: j + 1,
+						});
 					}
 				}
 
@@ -1598,7 +1631,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			void saveBuffer(document.id, { explicit: true }).then((outcome) => {
 				if (outcome.status !== "written") return;
 				showSuccessToast(
-					outcome.replaced ? "File saved, replacing the change" : "File saved",
+					outcome.replaced
+						? t(
+								"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change",
+							)
+						: t("ui.canvas.wysiwyg_markdown_editor.file_saved"),
 				);
 			});
 		}
@@ -1613,85 +1650,92 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 */
 	const showDiffInline = useCallback<
 		(diff: EditDiff, markdownContent: string) => void
-	>((diff, markdownContent) => {
-		if (!editorRef.current) return;
+	>(
+		(diff, markdownContent) => {
+			void locale;
+			if (!editorRef.current) return;
 
-		try {
-			const normalizedMarkdown = markdownContent.replace(/\r\n/g, "\n");
-			const normalizedFind = diff.find.replace(/\r\n/g, "\n");
+			try {
+				const normalizedMarkdown = markdownContent.replace(/\r\n/g, "\n");
+				const normalizedFind = diff.find.replace(/\r\n/g, "\n");
 
-			const startIndex = normalizedMarkdown.indexOf(normalizedFind);
-			if (startIndex === -1) {
-				console.error("Diff not found in markdown content", { diff });
-				return;
-			}
-
-			const getLineNumber = (text: string, index: number) => {
-				const lines = text.slice(0, index).split("\n");
-				return lines.length;
-			};
-
-			const startLine = getLineNumber(normalizedMarkdown, startIndex);
-			const endLine = getLineNumber(
-				normalizedMarkdown,
-				startIndex + normalizedFind.length,
-			);
-
-			// Look for elements with data-line attributes that match our line range
-			const allElements =
-				editorRef.current.querySelectorAll<HTMLElement>("[data-line]");
-			const elementsInRange: HTMLElement[] = [];
-
-			for (const el of allElements) {
-				const lineAttr = el.getAttribute("data-line");
-				if (!lineAttr) continue;
-
-				const elementLine = Number.parseInt(lineAttr, 10);
-				if (elementLine >= startLine && elementLine <= endLine) {
-					elementsInRange.push(el);
+				const startIndex = normalizedMarkdown.indexOf(normalizedFind);
+				if (startIndex === -1) {
+					console.error("Diff not found in markdown content", { diff });
+					return;
 				}
-			}
 
-			// If no elements found with exact line match, try to find elements containing the diff text
-			if (elementsInRange.length === 0) {
-				const allTextElements = editorRef.current.querySelectorAll<HTMLElement>(
-					"p, h1, h2, h3, h4, h5, h6, li, td, th",
+				const getLineNumber = (text: string, index: number) => {
+					const lines = text.slice(0, index).split("\n");
+					return lines.length;
+				};
+
+				const startLine = getLineNumber(normalizedMarkdown, startIndex);
+				const endLine = getLineNumber(
+					normalizedMarkdown,
+					startIndex + normalizedFind.length,
 				);
-				for (const el of allTextElements) {
-					if (el.textContent?.includes(normalizedFind.trim())) {
+
+				// Look for elements with data-line attributes that match our line range
+				const allElements =
+					editorRef.current.querySelectorAll<HTMLElement>("[data-line]");
+				const elementsInRange: HTMLElement[] = [];
+
+				for (const el of allElements) {
+					const lineAttr = el.getAttribute("data-line");
+					if (!lineAttr) continue;
+
+					const elementLine = Number.parseInt(lineAttr, 10);
+					if (elementLine >= startLine && elementLine <= endLine) {
 						elementsInRange.push(el);
-						break; // Take the first match
 					}
 				}
-			}
 
-			if (elementsInRange.length === 0) {
-				console.warn("No HTML elements match diff range", {
-					startLine,
-					endLine,
-					diff,
-				});
-				// Fallback: insert at the end of the editor
+				// If no elements found with exact line match, try to find elements containing the diff text
+				if (elementsInRange.length === 0) {
+					const allTextElements =
+						editorRef.current.querySelectorAll<HTMLElement>(
+							"p, h1, h2, h3, h4, h5, h6, li, td, th",
+						);
+					for (const el of allTextElements) {
+						if (el.textContent?.includes(normalizedFind.trim())) {
+							elementsInRange.push(el);
+							break; // Take the first match
+						}
+					}
+				}
+
+				if (elementsInRange.length === 0) {
+					console.warn("No HTML elements match diff range", {
+						startLine,
+						endLine,
+						diff,
+					});
+					// Fallback: insert at the end of the editor
+					const diffContainer = buildDiffContainer(diff);
+
+					editorRef.current.appendChild(diffContainer);
+					diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+					return;
+				}
+
+				const rangeObj = window.document.createRange();
+				rangeObj.setStartBefore(elementsInRange[0]);
+				rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
+
 				const diffContainer = buildDiffContainer(diff);
 
-				editorRef.current.appendChild(diffContainer);
+				rangeObj.deleteContents();
+				rangeObj.insertNode(diffContainer);
 				diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-				return;
+			} catch (error) {
+				console.error("Failed to show diff inline:", error, { diff });
 			}
-
-			const rangeObj = window.document.createRange();
-			rangeObj.setStartBefore(elementsInRange[0]);
-			rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
-
-			const diffContainer = buildDiffContainer(diff);
-
-			rangeObj.deleteContents();
-			rangeObj.insertNode(diffContainer);
-			diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-		} catch (error) {
-			console.error("Failed to show diff inline:", error, { diff });
-		}
-	}, []);
+			// buildDiffContainer is raw DOM, so locale must re-arm this callback and
+			// the effect below to rebuild the visible review labels.
+		},
+		[locale],
+	);
 
 	useEffect(() => {
 		if (!reviewState || !editorRef.current) return;
@@ -1867,7 +1911,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				{/* Character formatting */}
 				<div className={cn("flex shrink-0 items-center gap-1")}>
-					{PRIMARY_TEXT_FORMATS.map(({ value, label, Icon }) => {
+					{PRIMARY_TEXT_FORMATS().map(({ value, label, Icon }) => {
 						const isActive = selectedFormats.includes(value);
 						return (
 							<Tooltip key={value} content={label}>
@@ -1899,31 +1943,33 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						"@max-[520px]:hidden",
 					)}
 				>
-					<Tooltip content="Bullet list">
+					<Tooltip content={t("ui.canvas.wysiwyg_markdown_editor.bullet_list")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Bullet list"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.bullet_list")}
 							onClick={() => toggleList("unordered")}
 						>
 							<List />
 						</Button>
 					</Tooltip>
-					<Tooltip content="Numbered list">
+					<Tooltip
+						content={t("ui.canvas.wysiwyg_markdown_editor.numbered_list")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Numbered list"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.numbered_list")}
 							onClick={() => toggleList("ordered")}
 						>
 							<ListOrdered />
 						</Button>
 					</Tooltip>
-					<Tooltip content="Checklist">
+					<Tooltip content={t("ui.canvas.wysiwyg_markdown_editor.checklist")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Checklist"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.checklist")}
 							onClick={() => toggleList("task")}
 						>
 							<SquareCheckBig />
@@ -1932,11 +1978,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				</div>
 
 				<div className={cn("flex shrink-0 items-center gap-1")}>
-					<Tooltip content="Insert link">
+					<Tooltip content={t("ui.canvas.wysiwyg_markdown_editor.insert_link")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Insert link"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.insert_link")}
 							onClick={insertLink}
 						>
 							<Link />
@@ -1945,13 +1991,17 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 					{/* Everything else, grouped the way the menu reads */}
 					<DropdownMenu defaultOpen={initialFormatMenuOpen}>
-						<Tooltip content="More formatting">
+						<Tooltip
+							content={t("ui.canvas.wysiwyg_markdown_editor.more_formatting")}
+						>
 							<DropdownMenuTrigger asChild>
 								<Button
 									ref={overflowTriggerRef}
 									variant="ghost"
 									size="icon-sm"
-									aria-label="More formatting"
+									aria-label={t(
+										"ui.canvas.wysiwyg_markdown_editor.more_formatting",
+									)}
 								>
 									<Ellipsis />
 								</Button>
@@ -1963,7 +2013,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						    106px, which with the icon column and padding needs
 						    176px and left 42% of a 208px menu empty. */}
 						<DropdownMenuContent align="start" className={cn("w-44")}>
-							{OVERFLOW_TEXT_FORMATS.map(({ value, label, Icon }) => (
+							{OVERFLOW_TEXT_FORMATS().map(({ value, label, Icon }) => (
 								<DropdownMenuItem
 									key={value}
 									onSelect={() => handleFormatToggle(value)}
@@ -1975,31 +2025,31 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onSelect={() => toggleList("unordered")}>
 								<List aria-hidden="true" />
-								Bullet list
+								{t("ui.canvas.wysiwyg_markdown_editor.bullet_list")}
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => toggleList("ordered")}>
 								<ListOrdered aria-hidden="true" />
-								Numbered list
+								{t("ui.canvas.wysiwyg_markdown_editor.numbered_list")}
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => toggleList("task")}>
 								<SquareCheckBig aria-hidden="true" />
-								Checklist
+								{t("ui.canvas.wysiwyg_markdown_editor.checklist")}
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
 								onSelect={() => toggleBlockFormat("blockquote")}
 							>
 								<Quote aria-hidden="true" />
-								Quote
+								{t("ui.canvas.wysiwyg_markdown_editor.quote")}
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => toggleBlockFormat("pre")}>
 								<Code aria-hidden="true" />
-								Code block
+								{t("ui.canvas.wysiwyg_markdown_editor.code_block")}
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onSelect={insertImage}>
 								<Image aria-hidden="true" />
-								Insert image
+								{t("ui.canvas.wysiwyg_markdown_editor.insert_image")}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onSelect={() => {
@@ -2012,19 +2062,19 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								}}
 							>
 								<Table aria-hidden="true" />
-								Insert table
+								{t("ui.canvas.wysiwyg_markdown_editor.insert_table")}
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
 
 				{/* History: document-scoped, so it sits opposite the selection tools */}
-				<div className={cn("ml-auto flex shrink-0 items-center gap-1")}>
-					<Tooltip content="Undo (Ctrl+Z)">
+				<div className={cn("ms-auto flex shrink-0 items-center gap-1")}>
+					<Tooltip content={t("ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Undo"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.undo")}
 							onClick={() => {
 								if (undoManagerRef.current?.canUndo()) {
 									undoManagerRef.current.undo();
@@ -2044,11 +2094,13 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							<Undo />
 						</Button>
 					</Tooltip>
-					<Tooltip content="Redo (Ctrl+Shift+Z)">
+					<Tooltip
+						content={t("ui.canvas.wysiwyg_markdown_editor.redo_ctrl_shift_z")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Redo"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.redo")}
 							onClick={() => {
 								if (undoManagerRef.current?.canRedo()) {
 									undoManagerRef.current.redo();

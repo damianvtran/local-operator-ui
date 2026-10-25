@@ -89,12 +89,27 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|mini-view|drafts|stale-team-draft|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
+ *   --attach <absolute-path> (with --scene attach, repeatable) one file the
+ *                          paperclip press stages; ONLY the native picker is
+ *                          replaced, by the queue in src/main/dev-driver-attach.ts
+ *   --attach-prompt <text> (with --scene attach) the prompt typed and SENT after
+ *                          the files are staged; the run then waits for the
+ *                          daemon's assistant turn and reports the session id,
+ *                          the user row's document blocks and the final text
+ *   --attach-expect-answer <substring>  (with --attach-prompt) a substring the
+ *                          assistant's final text must contain
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
  *                          where a dropped file attaches, or the base tree, where
  *                          the same gesture leaves nothing behind
+ *   --mesh-expect <tombstones|collapsed>  (with --scene mesh-tab) which half of
+ *                          the pair this run records: `tombstones` is the base
+ *                          tree, which draws every member id - revoked ones
+ *                          included - as a device node; `collapsed` is the head
+ *                          tree, which draws only live devices and carries the
+ *                          revoked memberships in one inspectable count
  *   --project <key>        (with --scene project-detail, project-update-assets, project-inline-edit or
  *                          project-open) the seeded project the scene drives;
  *                          the seed decides the name and a default would
@@ -135,10 +150,11 @@
  *                          this run is in: `open` (the default) asserts that
  *                          `/help`, `/theme`, `/login`, `/logout` and
  *                          `/resume` typed on a new chat each mount their
- *                          picker with no refusal sentence; `refused` asserts
- *                          the dispatcher's own sentence for each and no
- *                          picker - the base tree's half of the pair (issue
- *                          #625)
+ *                          picker with no refusal sentence, and that `/fast`
+ *                          mounts its dialog there and records what it claims;
+ *                          `refused` asserts the dispatcher's own sentence for
+ *                          each and no picker - the base tree's half of the pair
+ *                          (issues #625 and #1265)
  *   --seal-expect <seal|payload>  (with --scene skill-seal) which half of the
  *                          `$skill` pair this run is in: `seal` (the default)
  *                          asserts the typed line, the folded purpose and the
@@ -239,7 +255,7 @@ import { get as httpGet } from "node:http";
 import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { basename, join, resolve, sep } from "node:path";
+import { basename, isAbsolute, join, resolve, sep } from "node:path";
 /*
  * A NATIVE dependency, and its ONE import-time side effect is recorded here
  * rather than hidden: loading sharp's vendored libvips sets `VIPSHOME` to the
@@ -269,6 +285,7 @@ import {
 	IMAGEGEN_FIXTURE_SESSION,
 } from "./imagegen-card-fixture.mjs";
 import { sceneLibraryAsset } from "./library-asset-scene.mjs";
+import { sceneMeshTab } from "./mesh-scene.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -278,12 +295,14 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import { sceneSidebarDocking } from "./sidebar-docking-scene.mjs";
 import {
 	prepareSidebarLayoutScene,
 	sceneSidebarLayout,
 } from "./sidebar-layout-scene.mjs";
 import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
 import { sceneSounds } from "./sounds-scene.mjs";
+import { sceneTeamNewchat } from "./team-newchat-scene.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 import { sceneTurnHighlights } from "./turn-highlights-scene.mjs";
 
@@ -359,6 +378,53 @@ function argValue(name, fallback = null) {
 	const at = process.argv.indexOf(name);
 	return at === -1 ? fallback : (process.argv[at + 1] ?? fallback);
 }
+
+/**
+ * Every value of a REPEATABLE flag, in argv order.
+ *
+ * `argValue` answers the first, which is right for a flag that names one thing;
+ * `--attach` names a LIST (the paperclip can stage several files), so reading it
+ * through `argValue` would silently drop every file after the first.
+ */
+function argValues(name) {
+	const values = [];
+	for (let index = 0; index < process.argv.length; index += 1) {
+		const argument = process.argv[index];
+		if (argument === name) {
+			const value = process.argv[index + 1];
+			if (value !== undefined && !value.startsWith("--")) {
+				values.push(value);
+				index += 1;
+			}
+			continue;
+		}
+		if (argument.startsWith(`${name}=`))
+			values.push(argument.slice(name.length + 1));
+	}
+	return values;
+}
+
+/**
+ * The files this run's paperclip presses stage (see `--attach` in the header).
+ *
+ * A separate list from every other flag because it is passed to the APP, not
+ * read by a scene: main answers the next `show-open-dialog` with these paths
+ * (`src/main/dev-driver-attach.ts`), so the press, the IPC and `addAttachment`
+ * are the real ones and only the native picker is replaced.
+ */
+const ATTACH_PATHS = argValues("--attach");
+/**
+ * A prompt to send AFTER the paperclip stages its files (`--attach-prompt`).
+ *
+ * The staged-chip claim is the picker half; this is the half QA needs to prove
+ * the paperclip reaches an ANSWER: the prompt is typed into the composer's real
+ * field, the real Send control is pressed, and the run waits for the daemon's
+ * own assistant turn. Absent, the scene stops at the staged frame exactly as it
+ * did before.
+ */
+const ATTACH_PROMPT = argValue("--attach-prompt", null);
+/** The substring the assistant's final text must contain (`--attach-expect-answer`). */
+const ATTACH_EXPECT_ANSWER = argValue("--attach-expect-answer", null);
 
 const SCENE = argValue("--scene", "states");
 const OUT_ARG = argValue("--out", null);
@@ -584,16 +650,17 @@ const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
  */
 const BIN_EXPECT = argValue("--bin-expect", "prompt");
 /**
- * WHICH CLAIM A `--scene sessionless-slash` RUN IS IN (issue #625).
+ * WHICH CLAIM A `--scene sessionless-slash` RUN IS IN (issues #625 and #1265).
  *
  * `open` (the default) is the head tree: `/help`, `/theme`, `/login`,
  * `/logout` and `/resume` typed on a pane with no conversation each mount
- * their picker, and the transcript carries no refusal sentence. `refused` is
- * the base tree: the same five gestures each get the dispatcher's own sentence
- * ("<word> needs an open conversation. Start one first.") and no picker
- * mounts. One scene, both halves, the same bytes - the pair is only readable
- * if the same code produced both, which is why the flag names a claim rather
- * than a tree.
+ * their picker, the transcript carries no refusal sentence, and `/fast` - which
+ * addresses a conversation and therefore used to be refused here - mounts its
+ * dialog and records what its pick claims. `refused` is the base tree: the same
+ * gestures each get the dispatcher's own sentence ("<word> needs an open
+ * conversation. Start one first.") and no picker mounts. One scene, both
+ * halves, the same bytes - the pair is only readable if the same code produced
+ * both, which is why the flag names a claim rather than a tree.
  *
  * A value the scene does not know is refused rather than defaulted, for the
  * same reason `--authoring-expect` and `--bin-expect` are.
@@ -1275,6 +1342,12 @@ async function launchApp({
 	 */
 	dotenvLines = [],
 	envExtra = {},
+	/*
+	 * Absolute paths the app's next file dialog answers with. Only an `attach`
+	 * scene passes any; every other boot (and every gate-check boot) gets none,
+	 * so a flag on the command line cannot leak into a scene that did not ask.
+	 */
+	attachPaths = [],
 }) {
 	/*
 	 * THE BACKEND BINDING IS REQUIRED, AND ITS ABSENCE IS A REFUSAL RATHER
@@ -1414,6 +1487,7 @@ async function launchApp({
 			`--inspect=${inspectPort}`,
 			"--window-mode=headless",
 			`--window-size=${WINDOW_SIZE}`,
+			...attachPaths.map((path) => `--attach=${path}`),
 			/*
 			 * The app is CHROMIUM, and this run redirects `HOME`: without this switch
 			 * OSCrypt finds no login keychain under the scratch home and asks macOS to
@@ -11363,13 +11437,13 @@ async function sceneQuestionDock(cdp) {
  * A reader should run it at the four widths §I is written about:
  *
  *     --scene floors --window-size 1380x900   # docked: row 1120, canvas at its 560 cap
- *     --scene floors --window-size 1024x673   # the sidebar's dock threshold: dock 284 < 400 -> overlay
- *     --scene floors --window-size 960x673    # strip: row 904, dock 424 -> docked
- *     --scene floors --window-size 800x600    # strip: row 744, dock 264 -> overlay
+ *     --scene floors --window-size 1024x673   # canvas fit-yield: strip, canvas overlays
+ *     --scene floors --window-size 960x673    # canvas fit-yield: strip, canvas docks
+ *     --scene floors --window-size 800x600    # expanded dock capped to 276, canvas overlays
  *
- * The four are the two bands of `resolveSidebarLayout` crossed with the two canvas
- * modes, and the assertions below are written about the RULES rather than about the
- * sizes so the same scene is honest at any width a reviewer passes.
+ * The four exercise the independent canvas fit-yield and both canvas modes.
+ * Sidebar docking itself follows the persisted preference at every width (#1077);
+ * only a render-only cap changes the drawn width at 800.
  */
 async function sceneFloors(cdp) {
 	const facts = await factsOf(cdp);
@@ -16964,11 +17038,11 @@ async function scenePinnedReorder(cdp) {
 	const PINNED_IDS = ["p000", "p005", "p010"];
 	const PINNED_QUERY = "Chat 00";
 	/*
-	 * 240 / 260 / 280 / 320 (round 2, design D8): 260 is the panel's DEFAULT width and the
-	 * overlay sheet's fixed width, so it is the state nearly every reader gets and the one
-	 * the shed rule actually decides; the other three bracket it - 240 is a step BELOW the
-	 * default, 280 a panel widened past it, 320 the clamp's own maximum (the clamp is
-	 * 220..320, `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
+	 * 240 / 260 / 280 / 320 (round 2, design D8): 260 is the panel's DEFAULT width,
+	 * so it is the state nearly every reader gets and the one the shed rule actually
+	 * decides; the other three bracket it - 240 is a step BELOW the default, 280 a
+	 * panel widened past it, 320 the clamp's own maximum (the clamp is 220..320,
+	 * `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
 	 * the README called 280 "the default", which is not a width the app opens at.
 	 */
 	/*
@@ -26499,27 +26573,45 @@ async function sceneNewChat(cdp) {
 }
 
 /**
- * `sessionless-slash` (issue #625): `/help`, `/theme`, `/login`, `/logout` and
- * `/resume` typed on a pane with no conversation.
+ * `sessionless-slash` (issue #625; `/fast`, issue #1265): `/help`, `/theme`,
+ * `/login`, `/logout` and `/resume` typed on a pane with no conversation, then
+ * `/fast` on the same draft and on the conversation that draft becomes.
  *
  * WHAT IT MEASURES, AND WHY ONE SCENE RUNS UNDER BOTH EXPECTATIONS.
  * `--slash-expect open` is the head tree: every one of the five mounts its
  * picker over the new chat with `sessionId: ""` and no `sessions.command`
- * POST. `--slash-expect refused` is the base tree: the same five gestures each
- * get the dispatcher's own sentence in the transcript and no picker. One
- * scene, both halves, the same bytes.
+ * POST - and `/fast`, which is NOT sessionless but declares a draft selection
+ * route, mounts the same dialog a conversation gets. `--slash-expect refused`
+ * is the base tree: the same gestures each get the dispatcher's own sentence in
+ * the transcript and no picker. One scene, both halves, the same bytes.
+ *
+ * `/fast` IS THE ONE GESTURE THAT MAKES A PICK, and the scene states which
+ * outcome the BACKEND produced rather than assuming one: a backend that carries
+ * the draft's birth field answers applied and the pane records
+ * `fast_mode: true`; one that predates it refuses the body with a 422, the
+ * dialog says so, and the pane records nothing. What the scene requires is that
+ * the two agree - a success sentence over an unrecorded dial is the silent drop
+ * this route must not ship.
  *
  * ONE THEME PER LAUNCH (see `--theme`), so the harness runs this twice per
- * tree. The live half runs under `open` only: after the five gestures a message
- * is sent and answered, and `/theme` on THAT conversation must still present
- * the picker - the session-ful path the change must not move. On the base tree
- * the same steps would prove nothing this pair is about.
+ * tree. The live half runs under `open` only: after the six gestures a message
+ * is sent and answered, and `/theme` and `/fast` on THAT conversation must
+ * still present their pickers and take the owner's answer - the session-ful
+ * path the change must not move. On the base tree the same steps would prove
+ * nothing this pair is about.
+ *
+ * THE ANSWER IT REQUIRES IS A SETTLED TURN, NOT A SENTENCE (QA round 1, Q2):
+ * the reply's words belong to whichever provider answered, so the check asks for
+ * a completed assistant row (`data-record-kind` + `data-completion-complete`).
+ * It therefore passes against a real provider with a working key and fails on a
+ * turn that never answered - unlike the fixture text it used to require, which
+ * only the rig could ever return.
  *
  * THE NEW CHAT IS THE OPERATOR'S OWN GESTURE, not a route the scene invented:
  * the app-wide Cmd-N stages a fresh draft exactly as the New chat row does
  * (`sceneNewChat` is the scene that proves that press, and this one reuses
- * its chord rather than a selector), and the composer the five commands are
- * typed into is the one that press mounts.
+ * its chord rather than a selector), and the composer the commands are typed
+ * into is the one that press mounts.
  *
  * THE PRESS IS A SHORT SEQUENCE, NOT A SINGLE ENTER, because one destination
  * completes rather than runs: `/theme` opens an INLINE list, so its first Enter
@@ -26607,17 +26699,19 @@ async function sceneSessionlessSlash(cdp) {
 		pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
 
 	const frames = [];
-	for (const command of COMMANDS) {
-		const refusal = `${command.word} needs an open conversation. Start one first.`;
-		const arrives = `Boolean(document.querySelector('[role="dialog"]')) || document.body.innerText.includes(${JSON.stringify(refusal)})`;
-		await clickAt(cdp, `${COMPOSER} textarea`);
-		/*
-		 * A CLEAN BOX BEFORE EACH GESTURE, asserted: a completing row leaves its
-		 * completed value behind until the command actually runs, and the next
-		 * gesture typed onto that tail would be a different gesture than the one
-		 * this frame claims. Meta+A through Chromium's own editing command (a bare
-		 * chord performs no edit), then Backspace.
-		 */
+	/*
+	 * A CLEAN BOX BEFORE EACH GESTURE, asserted at the call site: a completing row
+	 * leaves its completed value behind until the command actually runs, and the
+	 * next gesture typed onto that tail would be a different gesture than the one
+	 * its frame claims. Meta+A through Chromium's own editing command (a bare
+	 * chord performs no edit), then Backspace.
+	 *
+	 * A helper because this half types SIX gestures now - one of them `/fast`
+	 * (issue #1265) - and six copies of this sequence is six places for the next
+	 * gesture to forget the assertion. It returns the value it left behind, so
+	 * every caller still asserts its own box.
+	 */
+	const clearComposer = async () => {
 		let box = await cdp.evaluate(
 			`document.querySelector('${COMPOSER} textarea').value`,
 		);
@@ -26638,6 +26732,21 @@ async function sceneSessionlessSlash(cdp) {
 				`document.querySelector('${COMPOSER} textarea').value`,
 			);
 		}
+		return box;
+	};
+	/* The dialog, the rows by their WIRE values (`data-option-value`), and the
+	 * result strip by its tone (`data-picker-result`): three hooks `picker-host`
+	 * publishes so a scene never picks a row by position or reads a sentence to
+	 * decide whether a pick was applied. */
+	const DIALOG = '[role="dialog"]';
+	const rowByValue = (value) =>
+		`${DIALOG} [role="option"][data-option-value="${value}"]`;
+	const PICKER_RESULT = "[data-picker-result]";
+	for (const command of COMMANDS) {
+		const refusal = `${command.word} needs an open conversation. Start one first.`;
+		const arrives = `Boolean(document.querySelector('[role="dialog"]')) || document.body.innerText.includes(${JSON.stringify(refusal)})`;
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		const box = await clearComposer();
 		check(
 			`the composer is empty before ${command.word} is typed`,
 			box === "",
@@ -26727,6 +26836,217 @@ async function sceneSessionlessSlash(cdp) {
 	}
 
 	/*
+	 * `/fast` ON THE SAME DRAFT (issue #1265): the row the five above are not.
+	 *
+	 * `/fast` still ADDRESSES A CONVERSATION - `destinationNeedsSession` answers
+	 * true, and the palette's route question plus the composer's pane clause read
+	 * that predicate - so on a pane with none the dispatcher refused it. The dial
+	 * it sets is a property of the model the FIRST turn is born on, which is why
+	 * the fix is a DRAFT SELECTION route rather than another `sessionless` row:
+	 * the pick resolves through `sessions.preview` for this pane and is recorded
+	 * on the draft row for `sessions.create`, never `sessions.command` (there is
+	 * no owner to address).
+	 *
+	 * THE PAIR IS THE DEFECT AND ITS ABSENCE. `refused` (the base tree) is the
+	 * report: the dispatcher's sentence and no dialog. `open` (this tree) is the
+	 * same dialog a conversation gets, mounted over the draft - on a backend that
+	 * ADVERTISES `draft_fast`. A backend with `draft_selection` and no
+	 * `draft_fast` is the third outcome: the route asks the capability the pick
+	 * writes, refuses before the dialog opens, and the scene reports the update
+	 * sentence as the correct result rather than a missing dialog (agent review
+	 * round 1, F1).
+	 *
+	 * THE PICK IS MADE FOR REAL, because "no pick could be made" was the defect.
+	 * The premium acknowledgement is ticked first - a draft states
+	 * `premium_pricing` for itself now (the dispatcher's `sessionlessActionData`,
+	 * the constant the backend's `native_action` sends a session) - and the `On`
+	 * row's gate is ASSERTED rather than clicked through. What comes back depends
+	 * on the BACKEND, and the scene claims only what holds for every backend that
+	 * reaches the dialog: one that carries the birth field answers applied and the
+	 * pane's record carries `fast_mode: true`; one that advertises the field but
+	 * refuses this model answers `fast_mode_unsupported` (its `DraftModel` is
+	 * `extra="forbid"`, so a refused pick is a refused request), the dialog says
+	 * so, and the record stays empty. The check below is that the DIALOG AND THE
+	 * RECORD AGREE - which is what rules out the silent drop this route must not
+	 * ship - and `note` records which outcome this run got, so a reader is never
+	 * left to infer it from a frame.
+	 */
+	const FAST_REFUSAL = "/fast needs an open conversation. Start one first.";
+	/*
+	 * THE OTHER CORRECT OUTCOME ON THIS TREE (agent review round 1, F1): a backend
+	 * that advertises `draft_selection` without `draft_fast` cannot carry the field
+	 * the pick writes, so the route refuses `/fast` on a draft before the dialog
+	 * opens rather than demanding the premium acknowledgement and answering the
+	 * only pick it offers with a whole-body 422. The scene accepts either outcome
+	 * and says WHICH one it got, because on such a backend the absence of a dialog
+	 * is the fix working, not the defect.
+	 */
+	const FAST_NO_CAPABILITY =
+		"/fast is not available on this version of the Local Operator service. Update Local Operator, then try again.";
+	const FAST_SENTENCES = [FAST_REFUSAL, FAST_NO_CAPABILITY];
+	/* Every one of those sentences present on screen, as an array literal the page
+	 * can evaluate: the scene reports which refusal it saw rather than matching
+	 * one and calling the other a timeout. */
+	const fastSentencesOnScreen = `(${JSON.stringify(FAST_SENTENCES)}).filter((sentence) => document.body.innerText.includes(sentence))`;
+	const fastArrives = `Boolean(document.querySelector('${DIALOG}')) || ${fastSentencesOnScreen}.length > 0`;
+	await clickAt(cdp, `${COMPOSER} textarea`);
+	const fastBox = await clearComposer();
+	check(
+		"the composer is empty before /fast is typed",
+		fastBox === "",
+		`the box held ${JSON.stringify(fastBox)} after the clear`,
+	);
+	await cdp.send("Input.insertText", { text: "/fast" });
+	await wait(400);
+	await pressEnter();
+	let fastArrived = await waitForCondition(cdp, fastArrives, 5_000);
+	let fastPresses = 1;
+	if (!fastArrived.ok) {
+		/* `/fast` is an inline-argument row (`on`/`off`), so a completed popup can
+		 * be in the way exactly as it is for `/theme` above. */
+		const popup = await cdp.evaluate(
+			`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+		);
+		if (popup) {
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			await wait(300);
+		}
+		await pressEnter();
+		fastPresses = 2;
+		fastArrived = await waitForCondition(cdp, fastArrives, 8_000);
+	}
+	const fastRead = await cdp.evaluate(`(() => {
+		const dialog = document.querySelector('${DIALOG}');
+		const title = dialog ? dialog.querySelector('h2') : null;
+		return {
+			picker: title ? title.textContent.trim() : null,
+			refusals: ${fastSentencesOnScreen},
+		};
+	})()`);
+	frames.push(await captureSettled(cdp, `sessionless-fast-${suffix}`));
+	if (!open) {
+		check(
+			"/fast is refused with the dispatcher's own sentence on a draft",
+			fastRead.refusals.includes(FAST_REFUSAL) && fastRead.picker === null,
+			`refusals ${JSON.stringify(fastRead.refusals)}, picker ${JSON.stringify(fastRead.picker)} (settled after ${fastArrived.waitedMs}ms on press ${fastPresses})`,
+		);
+		note(
+			"draft /fast pick skipped",
+			"--slash-expect refused: the base tree has no dialog to pick in, and a click there would be a gesture this run is not making",
+		);
+	}
+	if (open && fastRead.picker !== null) {
+		check(
+			"/fast opens its picker on a pane with no conversation",
+			fastRead.picker === "Fast mode",
+			`dialog title ${JSON.stringify(fastRead.picker)}, expected "Fast mode" (settled after ${fastArrived.waitedMs}ms on press ${fastPresses})`,
+		);
+		check(
+			"/fast prints no refusal sentence on a draft",
+			fastRead.refusals.length === 0,
+			JSON.stringify(fastRead.refusals),
+		);
+	}
+	if (open && fastRead.picker === null) {
+		/*
+		 * NO DIALOG IS A RESULT, NOT A TIMEOUT, and it has two causes this check tells
+		 * apart: the capability sentence (a backend without `draft_fast`, where this
+		 * tree's refusal IS the fix) or the ordinary one (a tree whose route never
+		 * arrived - the base half, run under the wrong expectation).
+		 */
+		check(
+			"a backend without draft_fast refuses /fast on a draft before the dialog, with the update sentence",
+			fastRead.refusals.includes(FAST_NO_CAPABILITY) &&
+				!fastRead.refusals.includes(FAST_REFUSAL),
+			`refusals ${JSON.stringify(fastRead.refusals)}, picker ${JSON.stringify(fastRead.picker)} (settled after ${fastArrived.waitedMs}ms on press ${fastPresses})`,
+		);
+		note(
+			"draft /fast pick skipped",
+			"this backend advertises draft_selection without draft_fast, so the draft route is closed by the capability gate and no dialog exists to pick in",
+		);
+	}
+	/*
+	 * THE PICK ONLY WHERE THERE IS A DIALOG. On a tree without the draft route (the
+	 * base half) the `opens` check above is the answer and there is no row to click;
+	 * clicking anyway would throw on a missing selector and take the rest of the run
+	 * - including the live half - down with a timeout that names the wrong thing.
+	 */
+	if (open && fastRead.picker === "Fast mode") {
+		const gate = await cdp.evaluate(`(() => {
+			const row = document.querySelector('${rowByValue("on")}');
+			return row ? row.getAttribute("aria-disabled") : "missing";
+		})()`);
+		check(
+			"the On row is held back until the premium acknowledgement is ticked",
+			gate === "true",
+			`On row aria-disabled ${JSON.stringify(gate)}, acknowledgement unticked`,
+		);
+		await clickAt(cdp, `${DIALOG} [role="checkbox"]`);
+		const acked = await cdp.evaluate(`(() => {
+			const box = document.querySelector('${DIALOG} [role="checkbox"]');
+			const row = document.querySelector('${rowByValue("on")}');
+			return {
+				checked: box ? box.getAttribute("aria-checked") : null,
+				onDisabled: row ? row.getAttribute("aria-disabled") : "missing",
+			};
+		})()`);
+		check(
+			"ticking the acknowledgement releases the On row",
+			acked.checked === "true" && acked.onDisabled === null,
+			`acknowledgement aria-checked ${JSON.stringify(acked.checked)}, On row aria-disabled ${JSON.stringify(acked.onDisabled)}`,
+		);
+		await clickAt(cdp, rowByValue("on"));
+		const answered = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('${PICKER_RESULT}'))`,
+			20_000,
+		);
+		const answer = await cdp.evaluate(`(() => {
+			const out = document.querySelector('${PICKER_RESULT}');
+			return out
+				? {
+						tone: out.getAttribute("data-picker-result"),
+						text: out.textContent.trim(),
+					}
+				: null;
+		})()`);
+		const afterPick = await verb(cdp, "state");
+		const recorded = afterPick.activeDraftKey
+			? (afterPick.drafts[afterPick.activeDraftKey]?.model ?? null)
+			: null;
+		const applied = answer?.tone === "success";
+		check(
+			"what the dialog claims and what the pane records agree",
+			answered.ok &&
+				(applied ? recorded?.fast_mode === true : recorded?.fast_mode !== true),
+			`result tone ${JSON.stringify(answer?.tone)}, draft record ${JSON.stringify(recorded)}, text ${JSON.stringify(answer?.text)} (settled after ${answered.waitedMs}ms)`,
+		);
+		note(
+			"draft /fast pick",
+			`${JSON.stringify(answer?.tone)}: ${JSON.stringify(answer?.text)} - draft record ${JSON.stringify(recorded)}`,
+		);
+		frames.push(await captureSettled(cdp, `sessionless-fast-picked-${suffix}`));
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		const fastClosed = await waitForCondition(
+			cdp,
+			`!document.querySelector('${DIALOG}')`,
+			5_000,
+		);
+		check(
+			"/fast's draft picker closes on Escape",
+			fastClosed.ok,
+			`after ${fastClosed.waitedMs}ms`,
+		);
+	}
+	/*
 	 * THE LIVE HALF (open only): a message is sent and answered, and `/theme` on
 	 * the conversation it creates must still present the picker - the
 	 * session-ful path this change must not move.
@@ -26736,7 +27056,38 @@ async function sceneSessionlessSlash(cdp) {
 		await cdp.send("Input.insertText", {
 			text: "Sessionless slash commands: live-conversation sanity check.",
 		});
+		/*
+		 * THE PRESS'S TWO HALVES, ASSERTED SEPARATELY (issue #1265's run measured the
+		 * difference): the text has to be IN the box before Enter, and the box has to
+		 * be EMPTY after it. A first take of this scene's `/fast` addition found Enter
+		 * doing nothing at all on a pane whose box still held the typed line, and the
+		 * old single wait could only report "the transcript lacks the text" - which is
+		 * true both of a send that was refused and of a keypress that never arrived.
+		 * The state is read here so the two are told apart by name.
+		 */
+		const beforeSend = await cdp.evaluate(
+			`document.querySelector('${COMPOSER} textarea').value`,
+		);
+		check(
+			"the sanity message is in the box before Enter",
+			typeof beforeSend === "string" &&
+				beforeSend.includes("live-conversation sanity check"),
+			JSON.stringify(beforeSend),
+		);
 		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const afterSend = await waitForCondition(
+			cdp,
+			`document.querySelector('${COMPOSER} textarea').value === ""`,
+			5_000,
+		);
+		const boxAfter = await cdp.evaluate(
+			`document.querySelector('${COMPOSER} textarea').value`,
+		);
+		check(
+			"Enter consumed the box, so the send left",
+			afterSend.ok && boxAfter === "",
+			`after ${afterSend.waitedMs}ms the box held ${JSON.stringify(boxAfter)}`,
+		);
 		const sent = await waitForCondition(
 			cdp,
 			`(() => {
@@ -26752,14 +27103,24 @@ async function sceneSessionlessSlash(cdp) {
 		);
 		const answered = await waitForCondition(
 			cdp,
-			`(() => {
-				const log = document.querySelector('[role="log"]');
-				return Boolean(log && log.textContent.includes("from the mock provider"));
-			})()`,
+			/*
+			 * THE ANSWER'S WORDS ARE THE PROVIDER'S, so this asks for the SHAPE the
+			 * scene needs rather than for a reply text (QA round 1, Q2). The previous
+			 * form required `from the mock provider`, which only the fixture provider
+			 * returns, so the scene could never pass against a real provider even when
+			 * the send, the create and the owner-path `/fast` all worked - a test that
+			 * only passes in the rig. What is required is an ASSISTANT ROW THAT
+			 * COMPLETED WITH TEXT: `data-completion-complete` is emitted only for a
+			 * record that is complete and, for an assistant turn, is no longer
+			 * streaming and carries text (`canonical-transcript.tsx`), so a turn that
+			 * errored before answering has no such row. Which model answered, and what
+			 * it said, is not this scene's subject.
+			 */
+			`(() => Boolean(document.querySelector('[role="log"] [data-record-kind="assistant"][data-completion-complete="true"]')))()`,
 			60_000,
 		);
 		check(
-			"the mock provider answered, so the pane is on a live conversation",
+			"the turn settled as a completed assistant row, so the pane is on a live conversation",
 			answered.ok,
 			`after ${answered.waitedMs}ms`,
 		);
@@ -26822,6 +27183,99 @@ async function sceneSessionlessSlash(cdp) {
 			livePicker.ok && liveRead.picker === "Theme",
 			`dialog ${JSON.stringify(liveRead.picker)} after ${livePicker.waitedMs}ms`,
 		);
+
+		/*
+		 * AND `/fast` ON THAT CONVERSATION - the half this change must not move.
+		 *
+		 * A session's `/fast` is an OWNER command: the picker posts
+		 * `sessions.command` to the live runtime, which is what it did before this
+		 * change and what it must still do. The claim is structural rather than
+		 * about the outcome sentence, because that sentence is the runtime's
+		 * reading of THIS model: the draft route's own refusal copy ("The fast dial
+		 * could not be set.") is the one string that could appear here only if the
+		 * draft route had leaked into a session, so its absence beside the owner's
+		 * own answer is what the check reads. `note` carries the sentence itself,
+		 * so the run's log states what the runtime said.
+		 */
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await waitForCondition(cdp, `!document.querySelector('${DIALOG}')`, 5_000);
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await clearComposer();
+		await cdp.send("Input.insertText", { text: "/fast" });
+		await wait(400);
+		await pressEnter();
+		let liveFast = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('${DIALOG}'))`,
+			8_000,
+		);
+		if (!liveFast.ok) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			liveFast = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('${DIALOG}'))`,
+				10_000,
+			);
+		}
+		const liveFastTitle = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('${DIALOG}');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return title ? title.textContent.trim() : null;
+		})()`);
+		check(
+			"/fast on a live conversation still presents its picker",
+			liveFast.ok && liveFastTitle === "Fast mode",
+			`dialog ${JSON.stringify(liveFastTitle)} after ${liveFast.waitedMs}ms`,
+		);
+		/* Only where there is a dialog to pick in: a tree without it has already
+		 * answered through the check above, and a click on a missing row would throw
+		 * away the frame this step is here to take. */
+		if (liveFast.ok && liveFastTitle === "Fast mode") {
+			await clickAt(cdp, rowByValue("off"));
+			const liveAnswer = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('${PICKER_RESULT}'))`,
+				30_000,
+			);
+			const liveAnswerRead = await cdp.evaluate(`(() => {
+				const out = document.querySelector('${PICKER_RESULT}');
+				return out
+					? {
+							tone: out.getAttribute("data-picker-result"),
+							text: out.textContent.trim(),
+						}
+					: null;
+			})()`);
+			check(
+				"/fast on a conversation answers through the owner path, not the draft route",
+				liveAnswer.ok &&
+					liveAnswerRead !== null &&
+					!String(liveAnswerRead.text).startsWith(
+						"The fast dial could not be set.",
+					),
+				`tone ${JSON.stringify(liveAnswerRead?.tone)}, text ${JSON.stringify(liveAnswerRead?.text)} (settled after ${liveAnswer.waitedMs}ms)`,
+			);
+			note(
+				"live /fast pick",
+				`${JSON.stringify(liveAnswerRead?.tone)}: ${JSON.stringify(liveAnswerRead?.text)}`,
+			);
+		}
+		frames.push(await captureSettled(cdp, `sessionless-fast-live-${suffix}`));
 	} else {
 		note(
 			"live half skipped",
@@ -35127,58 +35581,10 @@ async function sceneHitZones(cdp) {
 	}
 
 	/*
-	 * The sidebar sheet, where the window is narrow enough for the sidebar to BE
-	 * the sheet (`SIDEBAR_DOCK_MIN_PX`). `⌘B` opens it through the app's own
-	 * handler - the same control the strip's expand button calls - so no selector
-	 * here guesses at a button whose label changes with state.
+	 * The sidebar's narrow overlay sheet was removed with #1077. Dock and strip
+	 * hit-testing now lives in the focused `sidebar-docking` scene, which presses
+	 * the same chord and pointer controls at 1023 and 800px through CDP.
 	 */
-	if (await cdp.evaluate("window.innerWidth < 1024")) {
-		await pressChord(cdp, {
-			key: "b",
-			code: "KeyB",
-			virtualKeyCode: 66,
-			modifiers: MODIFIER.meta,
-		});
-		const sheetUp = await waitForCondition(
-			cdp,
-			`Boolean(document.querySelector('[data-sidebar-sheet]'))`,
-			10_000,
-		);
-		check(
-			"[sidebar-sheet] the sidebar toggle opened the sheet",
-			sheetUp.ok,
-			`after ${sheetUp.waitedMs}ms`,
-		);
-		if (sheetUp.ok) {
-			const frame = await captureSettled(cdp, "hit-zones-sidebar-sheet-dark");
-			note("frame sidebar-sheet", JSON.stringify(frame));
-			surfaces.push(
-				checkHitZones(
-					"sidebar-sheet",
-					await readHitZones(cdp, {
-						surface: "sidebar-sheet",
-						root: "[data-sidebar-sheet]",
-						controls: HIT_ZONE_CONTROLS,
-					}),
-				),
-			);
-			await pressChord(cdp, {
-				key: "Escape",
-				code: "Escape",
-				virtualKeyCode: 27,
-			});
-			await waitForCondition(
-				cdp,
-				`!document.querySelector('[data-sidebar-sheet]')`,
-				10_000,
-			);
-		}
-	} else {
-		note(
-			"sidebar-sheet not exercised",
-			`the sidebar is docked above SIDEBAR_DOCK_MIN_PX (1024) at this width (${chrome.viewport.width}), so there is no sheet here to probe - run this scene at a narrower --window-size for it`,
-		);
-	}
 
 	/*
 	 * The non-chat routes' drag band, on /settings — and its two jobs are per
@@ -39908,7 +40314,7 @@ function translateYOf(transform) {
  * 2. two files - `dataTransfer.files` is a list, and the defect's shape
  *    (the OS promises a copy) is about a real drag, which can carry several;
  * 3. a non-image file - it must attach exactly as any other path does. What
- *    reaches the MODEL is a different question: `encodeImageAttachments` admits
+ *    reaches the MODEL is a different question: `encodeAttachments` admits
  *    only the four image mimes by extension, for every route, so a `.txt` chip
  *    is carried by the composer and skipped by the encoder on the attach
  *    button's route too. That is pre-existing behaviour of the send, not of the
@@ -39950,6 +40356,317 @@ function translateYOf(transform) {
  * the issue reports); and the drag interception flag is a rig device whose
  * refusal the run reports rather than assumes.
  */
+
+/**
+ * THE PAPERCLIP, PRESSED FOR REAL (`--scene attach`, `--attach <absolute-path>`).
+ *
+ * The claim this scene exists for is narrow and honest: pressing the composer's
+ * attach button runs `handleAttachFile` -> `show-open-dialog` -> `addAttachment`,
+ * and the file it stages is the file the run named on its command line. ONLY the
+ * native picker is replaced - main answers the dialog from the `--attach` queue
+ * (`src/main/dev-driver-attach.ts`) - so the press, the IPC round trip and the
+ * store write are the app's own code paths. Nothing here fabricates a chip.
+ *
+ * What it therefore does NOT prove: that the OS dialog opens, and that a person
+ * can reach a file through it. Those are the picker's own behaviour, and a
+ * headless run must not show a picker at all.
+ *
+ * Needs `--backend`: a composer mounts only for a conversation, and the staged
+ * list is read back from the store the app persists.
+ */
+async function sceneAttach(cdp) {
+	if (ATTACH_EXPECT_ANSWER !== null && ATTACH_PROMPT === null) {
+		throw new Error(
+			"--attach-expect-answer needs --attach-prompt: the substring is checked against the assistant's answer to a prompt, and no prompt means no answer to check",
+		);
+	}
+	if (ATTACH_PROMPT !== null && !ATTACH_PROMPT.trim()) {
+		throw new Error(
+			"--attach-prompt must not be empty: an empty send would stage the files and never admit them, so the run would claim a send it did not make",
+		);
+	}
+	if (ATTACH_PATHS.length === 0) {
+		throw new Error(
+			"--scene attach needs at least one --attach <absolute-path>: the subject IS the file the paperclip stages, and a run with no queue would photograph an empty composer as a success",
+		);
+	}
+	for (const path of ATTACH_PATHS) {
+		if (!isAbsolute(path)) {
+			throw new Error(
+				`--attach takes an absolute path (got ${JSON.stringify(path)}): a relative one would resolve against whatever cwd the app holds`,
+			);
+		}
+	}
+	if (BACKEND === null) {
+		throw new Error(
+			"--scene attach needs --backend: the chat pane mounts no composer until a conversation is open, and the staged list is read back from the store and the app log",
+		);
+	}
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+
+	const created = await createBackendSession();
+	check(
+		"a conversation exists on this run's own backend",
+		Boolean(created.id),
+		JSON.stringify(created).slice(0, 400),
+	);
+	await verb(cdp, "navigate", "/chat");
+	const row = '[data-tour-tag="chat-session-row"]';
+	const composerField = 'textarea[aria-label="Message"]';
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-all-chats"]',
+	}).catch(() => null);
+	const rowShown = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(row)}))`,
+		10_000,
+	);
+	if (rowShown.ok) await verb(cdp, "press", { selector: row });
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(composerField)}))`,
+		20_000,
+	);
+	check(
+		"the composer is on screen for the conversation this scene created",
+		mounted.ok,
+		`textarea[aria-label="Message"] present=${mounted.ok} after ${mounted.waitedMs}ms`,
+	);
+	if (!mounted.ok) return;
+
+	/*
+	 * THE PRESS. The selector is the button's own `data-tour-tag`, not an
+	 * `aria-label`: the label is localized copy, and a rig that changes with the
+	 * locale is a rig that fails for the wrong reason.
+	 */
+	const pressed = await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-input-attach-file-button"]',
+	});
+	check(
+		"the paperclip was pressed",
+		pressed !== null && pressed !== undefined,
+		JSON.stringify(pressed ?? null).slice(0, 400),
+	);
+
+	const stagedCount = await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-attachment-id]").length === ${ATTACH_PATHS.length}`,
+		10_000,
+	);
+	check(
+		"one chip is staged per queued path",
+		stagedCount.ok,
+		`expected=${ATTACH_PATHS.length} after ${stagedCount.waitedMs}ms`,
+	);
+	const read = await cdp.evaluate(`(() => {
+		const chips = Array.from(document.querySelectorAll("[data-attachment-id]"));
+		let stored = null;
+		try {
+			const raw = window.localStorage.getItem("conversation-input-store");
+			const parsed = raw === null ? null : JSON.parse(raw);
+			stored = Object.values(parsed?.state?.inputByConversation ?? {}).flatMap((entry) =>
+				(entry?.attachments ?? []).map((attachment) => attachment.path),
+			);
+		} catch (error) {
+			stored = ["<store unreadable: " + String(error) + ">"];
+		}
+		return {
+			chips: chips.map((chip) => ({
+				id: chip.getAttribute("data-attachment-id"),
+				text: (chip.textContent || "").trim(),
+			})),
+			pending: Boolean(document.querySelector("[data-attachment-pending]")),
+			stored,
+		};
+	})()`);
+	note("staged chips", JSON.stringify(read.chips));
+	note("staged attachments (store)", JSON.stringify(read.stored));
+	check(
+		"the store holds exactly the paths this run was given, in order",
+		JSON.stringify(read.stored) === JSON.stringify(ATTACH_PATHS),
+		`expected=${JSON.stringify(ATTACH_PATHS)} actual=${JSON.stringify(read.stored)}`,
+	);
+	check(
+		"the chips carry the same ids the store does",
+		read.chips.length === ATTACH_PATHS.length,
+		`chips=${read.chips.length}`,
+	);
+	check(
+		"the row reads as pending, not sent",
+		read.pending === true,
+		`pending caption present=${read.pending}`,
+	);
+	const answerLine = (await readAppLog(app))
+		.split("\n")
+		.filter((line) => line.includes("[dev-driver] answered the file dialog"));
+	check(
+		"main answered the picker from the queue rather than opening it",
+		answerLine.some((line) =>
+			line.includes(`with ${ATTACH_PATHS.length} queued path(s)`),
+		),
+		answerLine.join(" / ") || "no queue-answered line in the app log",
+	);
+	const frame = await captureSettled(cdp, "attach-staged");
+	note("frame", frame.path);
+	if (ATTACH_PROMPT === null) return;
+
+	/*
+	 * THE SEND. The prompt goes in through the composer's own field, then the
+	 * REAL Send control is pressed - not Enter, because the button is the
+	 * gesture a person uses and the one the send-refusal path is wired to.
+	 */
+	await clickAt(cdp, composerField);
+	await cdp.send("Input.insertText", { text: ATTACH_PROMPT });
+	const sent = await verb(cdp, "press", {
+		selector: 'button[aria-label="Send message"]',
+	});
+	check(
+		"the send control was pressed with the prompt in the composer",
+		sent !== null && sent !== undefined,
+		JSON.stringify(sent ?? null).slice(0, 400),
+	);
+	const admitted = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.textContent.includes(${JSON.stringify(ATTACH_PROMPT)}));
+		})()`,
+		60_000,
+	);
+	check(
+		"the prompt reached the transcript",
+		admitted.ok,
+		`after ${admitted.waitedMs ?? "?"}ms`,
+	);
+
+	/*
+	 * THE DAEMON'S OWN RECORD, not the painted echo: a send the plane refused
+	 * still puts text on screen, and the file block only proves the paperclip
+	 * reached the model if the admitted row carries it. Polled because the turn
+	 * is asynchronous.
+	 *
+	 * THE END OF THE TURN IS THE COMPLETION SIGNAL, not the first assistant row
+	 * with text. A tool-using turn can emit an interim assistant message, and
+	 * checking the expected answer against that message would judge the wrong
+	 * text (agent review round 2, m5). The snapshot's `streaming` plus
+	 * `last_turn_outcome` is the daemon's own statement that the turn settled;
+	 * `last_turn_outcome` is set once per prompt, so a non-empty value cannot be
+	 * an interim message. An OLD runtime that omits the field is handled by
+	 * requiring the assistant text to be unchanged across three polls.
+	 */
+	const deadline = Date.now() + 180_000;
+	let history = null;
+	let userEntry = null;
+	let documents = [];
+	let assistantText = "";
+	let turnOutcome = null;
+	let streaming = null;
+	let previousText = "";
+	let stablePolls = 0;
+	while (Date.now() < deadline) {
+		history = await fetchSessionHistory(created.id);
+		const snapshot = await fetchSessionSnapshot(created.id);
+		streaming = snapshot.state?.streaming ?? null;
+		turnOutcome = snapshot.state?.last_turn_outcome ?? null;
+		const entries = history.body?.result?.entries ?? [];
+		const user = entries.find((entry) => {
+			if (entry?.payload?.role !== "user") return false;
+			const content = Array.isArray(entry.payload.content)
+				? entry.payload.content
+				: [];
+			return content.some(
+				(block) =>
+					typeof block?.text === "string" && block.text.includes(ATTACH_PROMPT),
+			);
+		});
+		if (user) {
+			userEntry = user;
+			documents = (user.payload.content ?? []).filter(
+				(block) =>
+					block &&
+					(block.type === "document" ||
+						(typeof block.filename === "string" &&
+							typeof block.attachment === "string")),
+			);
+		}
+		const answers = entries
+			.filter((entry) => entry?.payload?.role === "assistant")
+			.map((entry) =>
+				(entry.payload.content ?? [])
+					.filter((block) => typeof block?.text === "string")
+					.map((block) => block.text)
+					.join(" "),
+			)
+			.filter((text) => text.trim().length > 0);
+		const current = answers.at(-1) ?? "";
+		stablePolls = current && current === previousText ? stablePolls + 1 : 0;
+		previousText = current;
+		const settledOutcome =
+			typeof turnOutcome === "string" && turnOutcome !== "";
+		const settled =
+			current.length > 0 &&
+			streaming === false &&
+			(settledOutcome ||
+				// An older daemon publishes no outcome: three unchanged polls with
+				// the stream stopped are the strongest signal it can give.
+				(turnOutcome === null && stablePolls >= 2));
+		if (settled) {
+			assistantText = current;
+			break;
+		}
+		await wait(1000);
+	}
+	note("session id", created.id);
+	note(
+		"user row",
+		JSON.stringify(userEntry ? userEntry.payload.content : null).slice(0, 2000),
+	);
+	note("document blocks", JSON.stringify(documents));
+	note(
+		"turn state",
+		JSON.stringify({ streaming, outcome: turnOutcome, stablePolls }),
+	);
+	note("assistant final text", assistantText);
+	check(
+		"the daemon admitted the prompt as a user row",
+		userEntry !== null,
+		`history status=${history?.status} entries=${JSON.stringify(history?.body?.result?.entries ?? []).slice(0, 600)}`,
+	);
+	check(
+		"the admitted user row carries the staged file as a document block",
+		documents.length === ATTACH_PATHS.length &&
+			documents.every(
+				(block) =>
+					typeof block.attachment === "string" && block.attachment.length > 0,
+			),
+		`documents=${JSON.stringify(documents)}`,
+	);
+	check(
+		"the assistant turn completed with a final answer",
+		assistantText.trim().length > 0 &&
+			(turnOutcome === null || turnOutcome === "completed"),
+		`assistant text=${JSON.stringify(assistantText).slice(0, 400)} outcome=${JSON.stringify(turnOutcome)}`,
+	);
+	if (ATTACH_EXPECT_ANSWER !== null) {
+		check(
+			"the assistant's final text contains the expected answer",
+			assistantText.includes(ATTACH_EXPECT_ANSWER),
+			`expected substring=${JSON.stringify(ATTACH_EXPECT_ANSWER)} got=${JSON.stringify(assistantText).slice(0, 600)}`,
+		);
+	}
+	const sentFrame = await captureSettled(cdp, "attach-sent");
+	note("frame", sentFrame.path);
+}
+
 async function sceneComposerDrop(cdp) {
 	if (DROP_EXPECT !== "accepted" && DROP_EXPECT !== "discarded") {
 		throw new Error(
@@ -42557,6 +43274,33 @@ async function fetchSessionHistory(sessionId) {
 	);
 	const body = await response.json().catch(() => null);
 	return { status: response.status, body };
+}
+
+/**
+ * One session's canonical snapshot, which is where the TURN state lives.
+ *
+ * The history page has the messages but not whether the turn behind them has
+ * ENDED; the snapshot's `frontend.snapshot` publishes `streaming` and
+ * `last_turn_outcome`, the two fields a rig needs to tell an interim assistant
+ * message from the answer (agent review round 2, m5). Read tolerantly: an older
+ * daemon may answer the envelope at either depth.
+ */
+async function fetchSessionSnapshot(sessionId) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/sessions/${encodeURIComponent(sessionId)}`,
+		{
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+		},
+	);
+	const body = await response.json().catch(() => null);
+	const state =
+		body?.result?.payload?.frontend?.snapshot ??
+		body?.result?.frontend?.snapshot ??
+		body?.payload?.frontend?.snapshot ??
+		null;
+	return { status: response.status, body, state };
 }
 
 /**
@@ -47062,12 +47806,15 @@ async function sceneHubLinks(cdp, app) {
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-collapsed`);
 	/*
-	 * The roster affordance is asserted only where the sidebar DOCKED: below the
-	 * 1024px threshold it is a sheet, so its marks are legitimately absent (the
-	 * same reason the later sidebar-mark block is gated). The collapsed FRAME is
-	 * still captured at every width - the panel state is what it is for.
+	 * The roster affordance is asserted whenever the user's preference has the
+	 * sidebar docked. A collapsed preference hides those rows at ANY width; the
+	 * old 1024px viewport gate is gone with #1077.
 	 */
-	if (WINDOW_WIDTH >= 1024) {
+	if (
+		await cdp.evaluate(
+			`document.querySelector('[data-sidebar-shell], [data-sidebar-strip]')?.getBoundingClientRect().width > 56`,
+		)
+	) {
 		const collapsedMarks = await cdp.evaluate(`(() => {
 			const marks = Array.from(document.querySelectorAll('[data-hub-mark]')).map((m) =>
 				m.getAttribute('data-hub-mark'),
@@ -47630,16 +48377,16 @@ async function sceneHubLinks(cdp, app) {
 	 * draws one mark per linked row and the AGGREGATE mark for a multi-origin item.
 	 * The stub gives `reviewer` two origins (aggregate) and `coder` one (quiet).
 	 *
-	 * BELOW THE DOCK THRESHOLD the sidebar is a SHEET, not a dock (`SIDEBAR_DOCK_MIN_PX`
-	 * = 1024, `chat-sidebar-layout.ts`), so it is closed by default and its rows -
-	 * and their marks - are legitimately not in the DOM. The marks are a docked-
-	 * sidebar surface, so a narrow run NOTES that and skips the block rather than
-	 * asserting a state the layout does not have; the narrow frames are of the PANEL.
+	 * A COLLAPSED PREFERENCE hides those rows at any window width, so the actual
+	 * rendered sidebar decides whether this block applies. Width alone no longer
+	 * decides docking (#1077).
 	 */
-	const WIDE_ENOUGH_TO_DOCK = WINDOW_WIDTH >= 1024;
-	if (!WIDE_ENOUGH_TO_DOCK) {
+	const sidebarDocked = await cdp.evaluate(
+		`document.querySelector('[data-sidebar-shell], [data-sidebar-strip]')?.getBoundingClientRect().width > 56`,
+	);
+	if (!sidebarDocked) {
 		note(
-			"sidebar marks skipped: the sidebar is a sheet below the 1024px dock threshold",
+			"sidebar marks skipped: the user's collapsed preference is drawing the strip",
 			`window width ${WINDOW_WIDTH}`,
 		);
 		return;
@@ -49156,6 +49903,41 @@ async function main() {
 			"--scene imagegen-card needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
 	}
+	/*
+	 * A New chat with a team whose replayed draft receipt names a dead warm id.
+	 * Every requirement is an instrument: the daemon is the 404, the serve record
+	 * is how the app admits it, the seeded request id IS the operator's persisted
+	 * shape, and the two expectations are different claims about the same screen.
+	 */
+	if (SCENE === "team-newchat" && BACKEND === null) {
+		throw new Error(
+			"--scene team-newchat needs --backend: the defect is the daemon's answer to a replayed receipt, and a run with no reachable backend has no bridge to 404",
+		);
+	}
+	if (SCENE === "team-newchat" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene team-newchat needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
+		);
+	}
+	if (
+		SCENE === "team-newchat" &&
+		(argValue("--team", null) === null ||
+			argValue("--expect", null) === null ||
+			(argValue("--expect", null) !== "carry" &&
+				argValue("--draft-request-id", null) === null))
+	) {
+		throw new Error(
+			"--scene team-newchat needs --team <name> and --expect <broken|fresh|immediate|carry>; the draft halves also need --draft-request-id <uuid> (the receipt whose replay names the dead id), while carry drives a genuinely missing conversation and has no receipt",
+		);
+	}
+	if (
+		SCENE === "team-newchat" &&
+		!process.argv.includes("--seed-onboarding-complete")
+	) {
+		throw new Error(
+			"--scene team-newchat needs --seed-onboarding-complete: the first-run wizard owns the window otherwise, and a frame of it would not be the pane under test",
+		);
+	}
 	if (
 		SCENE === "image-copy" &&
 		COPY_EXPECT !== "after" &&
@@ -49269,6 +50051,14 @@ async function main() {
 		}
 	}
 	if (SCENE === "sidebar-layout") await prepareSidebarLayoutScene();
+	if (
+		SCENE === "sidebar-docking" &&
+		(BACKEND === null || BACKEND_RECORDS === null || SESSION === null)
+	) {
+		throw new Error(
+			"--scene sidebar-docking needs --backend, --backend-records and --session <id>: the evidence must show the named populated synthetic conversation, never an offline/empty chat or whichever row happens to sort first, and the record proves the daemon is this run's isolated fixture",
+		);
+	}
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
 			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the live send walks that daemon's own routes through the record the run linked",
@@ -49307,6 +50097,7 @@ async function main() {
 			armed: true,
 			logName: "app-scene.log",
 			tag: "scene",
+			attachPaths: ATTACH_PATHS,
 		});
 		app = handle;
 		let cdp = null;
@@ -49416,6 +50207,23 @@ async function main() {
 			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
 			else if (SCENE === "sidebar-bottom") await sceneSidebarBottom(cdp);
+			else if (SCENE === "sidebar-docking")
+				await sceneSidebarDocking({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					factsOf,
+					require,
+					clickAt,
+					pressChord,
+					sidebarModifier:
+						process.platform === "darwin" ? MODIFIER.meta : MODIFIER.ctrl,
+					session: SESSION,
+				});
 			else if (SCENE === "sidebar-layout")
 				await sceneSidebarLayout({
 					cdp,
@@ -49457,6 +50265,24 @@ async function main() {
 				await sceneSidebarBinPromptness(cdp);
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
 			else if (SCENE === "stale-team-draft") await sceneStaleTeamDraft(cdp);
+			else if (SCENE === "team-newchat")
+				await sceneTeamNewchat({
+					cdp,
+					verb,
+					capture: captureSettled,
+					/*
+					 * The UN-SETTLED capture too: the window between the bridge's
+					 * answer and the settled pane can only be held by a frame that does
+					 * not wait for two identical screenshots (design round 1, D2).
+					 */
+					captureRaw: capture,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					clickAt,
+					pressChord,
+				});
 			else if (SCENE === "undo-toasts-stacked")
 				await sceneUndoToastsStacked(cdp);
 			/*
@@ -49530,9 +50356,19 @@ async function main() {
 				});
 			else if (SCENE === "project-update-assets")
 				await sceneProjectUpdateAssets(cdp);
+			else if (SCENE === "mesh-tab")
+				await sceneMeshTab({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					waitForCondition,
+				});
 			else if (SCENE === "project-open") await sceneProjectOpen(cdp);
 			else if (SCENE === "agents-ask") await sceneAgentsAsk(cdp);
 			else if (SCENE === "composer-drop") await sceneComposerDrop(cdp);
+			else if (SCENE === "attach") await sceneAttach(cdp);
 			else if (SCENE === "project-inline-edit")
 				await sceneProjectInlineEdit(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);

@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte rebind",
+  "date": "2026-10-25",
+  "locale": "fr",
+  "namespace": "ui.chat.header",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "merge": "ab9bd739c21ebc24c22b9d4fb25ce78a43c4fede",
+  "instance": "fr-bind-5cfb8aea0640",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "e2287a4a6524",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, and edited no catalogue, English source, context sidecar, ledger or allowance file. It did not author any fr value under audit. Prior value sets were audited by other sessions; this receipt re-binds the current bytes and records which parent or prior receipt each set comes from.",
+    "instance": "fr-bind-5cfb8aea0640"
+  },
+  "status": "passed",
+  "result": "clean",
+  "binding": "Current-byte re-bind at PR #1403 head 0adbb37b94, not a fresh translation wave. The fr file is byte-identical to the clean independent audit fr-final-6dec3dc7a6af at the pre-merge branch head d784571d90 (fr sha 5cfb8aea0640), and the English source is byte-identical to that audit (en sha 04fa4fb0f73d). This receipt re-states those bytes so the stale ledger row can be re-bound.",
+  "scope": "All 12 ui.chat.header keys for fr at current PR head 0adbb37b94, read against the English source and its context sidecar. The two keys added by this PR (new_chat, new_chat_with) and the ten pre-existing keys were read; no value was authored or edited by this run.",
+  "sha256": {
+    "en": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+    "fr": "5cfb8aea064075820f9c79136f5a0194efe7f6089b9b2d5a1aa96c399c69abb3",
+    "context": "39558b26f12ae22908a146f61c8c40795ac9e3b19e41a6ebed7ada883e7281bf"
+  },
+  "parents": {
+    "branch": {
+      "rev": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+      "role": "PR pre-merge head; fr file byte-identical to head",
+      "en_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+      "fr_sha256": "5cfb8aea064075820f9c79136f5a0194efe7f6089b9b2d5a1aa96c399c69abb3"
+    }
+  },
+  "keys_read": 12,
+  "key_set": "equal to English: 12/12, same key order, no missing or extra key, no duplicate key, no English stub",
+  "icu": "All 12 values parsed with @formatjs/icu-messageformat-parser. No placeholders except {target} in new_chat_with, preserved exactly. No plural, select or number-skeleton structures in this namespace.",
+  "register": "vous throughout (archived_hint uses « vous »); sentence case; no tu/ton/ta/tes. The two titles are noun phrases and match the header title role in the sidecar.",
+  "glossary": "chat -> conversation; session -> session; device -> appareil; transcript -> transcription; run -> exécution; ID -> ID. « Local Operator » kept as the product name. new_chat/new_chat_with match ui.shell.sidebar_navigation.new_chat (« Nouvelle conversation ») and the 292 « conversation » values in the fr catalogue.",
+  "typography": "U+2019 apostrophes; U+2026 ellipsis in move_device and delete; no ASCII ellipsis, straight quotes, NBSP, bidi controls; NFC-clean.",
+  "width": "The prior independent audit fr-final-6dec3dc7a6af measured the two new titles against their maxCells hints (new_chat 21 cells vs 16 advisory; new_chat_with 35 vs 32) and accepted them with geometry: the header h2 is min-w-0 max-w-full truncate, the app minimum window is 800px, and the 560px design frame leaves the English stand-in room before the identity chip. This re-bind read those bytes and re-checked the hint arithmetic; it did not re-measure pixels.",
+  "findings": [],
+  "inherited_findings": [],
+  "observations": [
+    {
+      "severity": "info",
+      "key": "ui.chat.header.new_chat / new_chat_with",
+      "observation": "Both titles are longer than English (21 vs 8 cells; 35 vs 19-plus-target) and exceed the advisory maxCells. They are accepted, not shortened: the only <=16-cell alternative is « Nouveau chat », which contradicts the locale term « conversation »; a rendered French frame was not captured in this pass."
+    }
+  ],
+  "prior_audits": [
+    {
+      "instance": "fr-final-6dec3dc7a6af",
+      "receipt": "i18n/receipts/fr-final-6dec3dc7a6af.json",
+      "receipt_sha256": "d12082df90eb6012fbe57976fbcf30e3f222c96a943ffb91a9482b28346a9bd5",
+      "covers": "clean audit of all 12 values at d784571d90, same en/fr/context bytes as head; 0 findings",
+      "namespace_block_sha256": {
+        "en": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+        "fr": "5cfb8aea064075820f9c79136f5a0194efe7f6089b9b2d5a1aa96c399c69abb3"
+      }
+    },
+    {
+      "instance": "7c40d1c357cf",
+      "receipt": "i18n/receipts/7c40d1c357cf-round2.json",
+      "receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
+      "covers": "clean-with-findings audit of the ten pre-existing keys at 718219be; F3/F4 nonblocking notes retained in that receipt; those three overflow hints are unchanged here and were accepted by fr-final-6dec3dc7a6af"
+    }
+  ],
+  "method": [
+    "Pulled every value with git show <head>:<path>; never checked out or edited the PR worktree catalogue.",
+    "Compared the key list and key order with English in both directions.",
+    "Parsed every message with @formatjs/icu-messageformat-parser and compared argument names/types and select/plural arms with English.",
+    "Re-read the 12 values against the sidecar role/tone/note and the fr style guide (vous, sentence case, punctuation, glossary).",
+    "Verified the fr file hash against the prior clean audit fr-final-6dec3dc7a6af; byte identity is the basis for retaining its verdict."
+  ],
+  "verdict": "clean — 12 keys read; key set, placeholder {target}, register and glossary match English and the fr style guide; the file is byte-identical to the clean prior audit at d784571d90. No finding.",
+  "limitations": "Static catalogue audit only: no rendered French screen was built or captured in this pass, so width judgement is source-level plus the prior audit geometry, not measured pixels. No native-speaker sign-off is claimed.",
+  "ledger_binding": {
+    "agent": "translation-auditor",
+    "model": "deepseek/deepseek-flash",
+    "result": "clean",
+    "instance": "fr-bind-5cfb8aea0640",
+    "receipt": "i18n/receipts/fr-bind-5cfb8aea0640.json",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    },
+    "scope": "current-byte rebind at 0adbb37b94; all 12 keys; 0 findings",
+    "note": "Re-binds fr/ui.chat.header to en 04fa4fb0f73d / fr 5cfb8aea0640 at PR #1403 head."
+  }
+}

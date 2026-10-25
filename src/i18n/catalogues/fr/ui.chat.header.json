@@ -8,5 +8,7 @@
 	"ui.chat.header.transcript_display": "Affichage de la transcription",
 	"ui.chat.header.delete": "Supprimer la conversation…",
 	"ui.chat.header.close_run_details": "Fermer les détails de l’exécution",
-	"ui.chat.header.open_run_details": "Ouvrir les détails de l’exécution"
+	"ui.chat.header.open_run_details": "Ouvrir les détails de l’exécution",
+	"ui.chat.header.new_chat": "Nouvelle conversation",
+	"ui.chat.header.new_chat_with": "Nouvelle conversation avec {target}"
 }

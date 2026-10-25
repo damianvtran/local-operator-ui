@@ -106,11 +106,28 @@ export const soundDriverVerbs = {
 		slider.releasePointerCapture = () => {};
 		fire("pointerdown", rect.left + 1);
 		fire("pointermove", rect.left + rect.width * request.fraction);
-		return new Promise((resolve) =>
-			requestAnimationFrame(() => {
-				const during = slider
-					.closest("[data-sound-player]")
-					?.getAttribute("data-sound-status");
+		/*
+		 * THE STATUS IS SAMPLED AFTER IT COMMITS, NOT ON THE NEXT FRAME. The
+		 * pointermove's `setScrubbing(true)` is a React state update, so the
+		 * `data-sound-status` attribute lands on the commit that follows the
+		 * event - which is not guaranteed to be the very next rAF. That is the
+		 * one-frame-early read QA measured as `{"during":"playing",
+		 * "seconds":7.799999}` on two of two runs while the seek itself had
+		 * committed. Poll a bounded window for the user-visible state; on
+		 * timeout resolve with what was seen, so a scrub that never starts
+		 * still fails the scene's strict `during === "scrubbing"` assertion
+		 * rather than being papered over.
+		 */
+		const statusNow = () =>
+			slider.closest("[data-sound-player]")?.getAttribute("data-sound-status");
+		const deadline = performance.now() + 1500;
+		return new Promise((resolve) => {
+			const sample = () => {
+				const during = statusNow();
+				if (during !== "scrubbing" && performance.now() < deadline) {
+					requestAnimationFrame(sample);
+					return;
+				}
 				finishScrub = () => {
 					fire("pointerup", rect.left + rect.width * request.fraction);
 					slider.setPointerCapture = capture;
@@ -120,8 +137,9 @@ export const soundDriverVerbs = {
 					during,
 					seconds: useAudioEngineStore.getState().element?.currentTime,
 				});
-			}),
-		);
+			};
+			requestAnimationFrame(sample);
+		});
 	},
 	soundsScrubFinish: () => {
 		finishScrub?.();

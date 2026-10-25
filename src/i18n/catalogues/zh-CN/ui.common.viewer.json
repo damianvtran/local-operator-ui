@@ -1,0 +1,14 @@
+{
+	"ui.common.viewer.close": "{kind, select, image {关闭图片} asset {关闭资源} other {关闭}}",
+	"ui.common.viewer.next": "{kind, select, image {下一张图片} asset {下一个资源} other {下一个}}",
+	"ui.common.viewer.opening": "正在打开……",
+	"ui.common.viewer.position": "{kind, select, image {第{index, number, ::group-off}张图片，共{count, number, ::group-off}张} asset {第{index, number, ::group-off}个资源，共{count, number, ::group-off}个} other {第{index, number, ::group-off}张，共{count, number, ::group-off}张}}",
+	"ui.common.viewer.previous": "{kind, select, image {上一张图片} asset {上一个资源} other {上一个}}",
+	"ui.common.viewer.reset_view": "重置视图",
+	"ui.common.viewer.zoom_in": "放大",
+	"ui.common.viewer.zoom_out": "缩小",
+	"ui.common.viewer.image_lightbox.previous": "上一个{medialabel}",
+	"ui.common.viewer.image_lightbox.next": "下一个{medialabel}",
+	"ui.common.viewer.image_lightbox.close": "关闭{medialabel}",
+	"ui.common.viewer.image_lightbox.asset_of": "第{index, number, ::group-off}项，共{count, number, ::group-off}项"
+}

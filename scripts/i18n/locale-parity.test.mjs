@@ -58,6 +58,14 @@ const IDENTICAL_OK = new Map([
 		"language-neutral counter: only placeholders and '/', no words to translate",
 	],
 	[
+		"ui.chat.attachments.file_meta",
+		// `{type} · {size}`: placeholders and a middle dot, no words. The type is a
+		// filename-derived token (PDF, PNG) and the size is formatted by the caller;
+		// there is nothing for a locale to translate, and a differing value would
+		// only invent punctuation per language.
+		"language-neutral format string: only placeholders and '·', no words",
+	],
+	[
 		"ui.settings.account.settings_page.radient_pass",
 		"Product name, preserved verbatim by the programme glossary.",
 	],
@@ -181,6 +189,14 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.chat.composer.message",
 		"French cognate: « message » has the same spelling.",
+	],
+	// --- ui.chat.tabs. `Chat` is the audited es house voice's established noun
+	// for the conversation, not a skipped string: the rest of the es catalogue
+	// translates around it. Scoped to `es:` because the other six locales must
+	// translate it (fr already does), and a global row would exempt all of them.
+	[
+		"es:ui.chat.tabs.chat",
+		"Spanish loanword, not untranslated English: «chat» is the established noun in the audited es house voice.",
 	],
 	[
 		"ui.agents.navigation.sidebar.title",
@@ -700,7 +716,483 @@ const IDENTICAL_OK = new Map([
 		"ui.shell.sidebar_navigation.agent_hub",
 		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
 	],
+	// --- Audit-classified identical values: canvas and surfaces batches --------
+	// Seven independent auditors classified every value below as legitimately
+	// identical to English at canvas head 936e3a48 / surfaces head 7a1fdf20; the
+	// receipts are i18n/receipts/*-canvas*.json and *-surfaces*.json, and none of
+	// these keys was classified as an untranslated stub. One entry serves every
+	// locale that keeps the value byte-identical; the reason names the class that
+	// makes identical the correct translation rather than a skipped string.
+	[
+		"ui.canvas.create_file_dialog.c_c",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.c_cpp",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.c_cs",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.configuration",
+		"French cognate: « configuration » has the same spelling",
+	],
+	[
+		"ui.canvas.create_file_dialog.css_css",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.dockerfile",
+		"file-name token: the conventional file name is not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.env",
+		"file-name token: the dot-file name is not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.general",
+		"same form in Spanish: the word is spelled identically",
+	],
+	[
+		"ui.canvas.create_file_dialog.go_go",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.html_html",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.ini_ini",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.java_java",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.javascript_js",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.json_json",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.jsx_jsx",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.kotlin_kt",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.markdown_md",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.php_php",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.python_py",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.ruby_rb",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.rust_rs",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.scala_scala",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.swift_swift",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.toml_toml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.tsx_tsx",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.typescript_ts",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.xml_xml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.yaml_yaml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.yaml_yml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.file_rows.archives",
+		"French cognate: « archives » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.code",
+		"French cognate: « code » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.documents",
+		"French cognate: « documents » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.images",
+		"French cognate: « images » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.video",
+		"Vietnamese loanword: « Video » is the standard media-kind label",
+	],
+	[
+		"ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+		"sample path: a literal filesystem path stays byte-identical",
+	],
+	[
+		"ui.canvas.insert_link_dialog.https_example_com",
+		"sample URL: the literal example must stay byte-identical",
+	],
+	[
+		"ui.canvas.insert_link_dialog.url",
+		"technical abbreviation: URL is not translated",
+	],
+	[
+		"ui.canvas.pdf_preview.pdf",
+		"format acronym plus placeholder: PDF is not translated",
+	],
+	[
+		"ui.canvas.shell.canvas",
+		"product surface name: Canvas is preserved verbatim by the glossary",
+	],
+	[
+		"ui.canvas.shell.documents",
+		"French cognate: « documents » has the same spelling",
+	],
+	[
+		"ui.canvas.shell.variables",
+		"French and Spanish cognate: « variables » has the same spelling in both",
+	],
+	[
+		"ui.canvas.variable_form_dialog.example_key_example_value",
+		"format example: JSON syntax must stay byte-identical",
+	],
+	[
+		"ui.canvas.variable_form_dialog.item1_item2",
+		"format example: JSON array syntax must stay byte-identical",
+	],
+	[
+		"ui.canvas.variable_form_dialog.type",
+		"French cognate: « type » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_model.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.sessionf7f199",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.sessions",
+		"French cognate: « sessions » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.analytics_session_state.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_session_state.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.context_model.instructions",
+		"French cognate: « instructions » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.context_model.messages",
+		"French cognate: « messages » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.context_panel.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.context_panel.total",
+		"French and Spanish cognate: « total » has the same spelling in both",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.code",
+		"French cognate: « (code) » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.completed_only",
+		"language-neutral counter: only a formatted number, no words",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.desktop",
+		"Vietnamese loanword: « desktop » is the established platform label",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.k",
+		"unit suffix: « k » is a compact counter marker, not prose",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.message",
+		"French cognate: « message » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.messages",
+		"French cognate: « messages » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.my_api_key",
+		"identifier literal: credential names stay verbatim",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.ports",
+		"French cognate: « ports » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.skill",
+		"URI scheme token: a machine value, never translated",
+	],
+	[
+		"ui.chat.pickers.info_model.agent",
+		"kept-English term: the French glossary renders « agent » as « agent »",
+	],
+	[
+		"ui.chat.pickers.info_model.colorterm",
+		"environment-variable name: identifiers are never translated",
+	],
+	[
+		"ui.chat.pickers.info_model.conversation",
+		"French cognate: « conversation » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.count_noun",
+		"language-neutral ICU skeleton: caller-supplied nouns, no prose",
+	],
+	[
+		"ui.chat.pickers.info_model.no",
+		"same form in Spanish: « no » is spelled identically",
+	],
+	[
+		"ui.chat.pickers.info_model.pid",
+		"technical identifier: « pid » is a token; only the number is formatted",
+	],
+	[
+		"ui.chat.pickers.info_model.pid_7837d5",
+		"technical identifier: « pid » is a token; only the number is formatted",
+	],
+	[
+		"ui.chat.pickers.info_model.python",
+		"product name plus placeholder: the language name is kept verbatim",
+	],
+	[
+		"ui.chat.pickers.info_model.runtime",
+		"kept-English technical term: « runtime » stays English by the style guides",
+	],
+	[
+		"ui.chat.pickers.info_model.runtime_trajectories",
+		"language-neutral composition: placeholders and a separator only",
+	],
+	[
+		"ui.chat.pickers.info_model.runtimes",
+		"kept-English technical term: « runtime » stays English by the style guides",
+	],
+	[
+		"ui.chat.pickers.info_model.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.sessionfcbdc4",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.sessions",
+		"French cognate: « sessions » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.term",
+		"environment-variable name: identifiers are never translated",
+	],
+	[
+		"ui.chat.pickers.info_panel.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_panel.version",
+		"French cognate: « version » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_panel.ok",
+		"status token / interjection: « ok » is conventional in French and Vietnamese",
+	],
+	[
+		"ui.chat.pickers.session_panel.phase",
+		"French cognate: « phase » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_panel.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_panel.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.session_report_model.conversation",
+		"French cognate: « conversation » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_report_model.images_est",
+		"French cognate: « Images » and the « est. » abbreviation are unchanged",
+	],
+	[
+		"ui.chat.pickers.session_report_model.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.usage_view_model.note_with_period",
+		"language-neutral composition: a placeholder and a full stop",
+	],
+	[
+		"ui.chat.pickers.usage_view_model.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.settings.shortcuts.row.canvas",
+		"product surface name: Canvas is preserved verbatim by the glossary",
+	],
+	// --- ui.chat.directory folder labels. The working-directory menu offers
+	// conventional folder names beside their own paths. Two kinds are identical
+	// in EVERY locale and are named here once, globally: the bare path segments
+	// (the context sidecar records them as untranslatable) and `ProgramData`,
+	// whose Explorer display name is the same under every UI language. The three
+	// French cognates and the Windows `Program Files` rows are scoped per locale
+	// below instead: hi/zh-CN/ru/ur/vi must translate the cognates, and only a
+	// locale whose Explorer shows `Program Files` in English may claim it
+	// verbatim (fr shows `Programmes`; es translates it).
+	[
+		"ui.chat.directory.folder.etc",
+		"filesystem identifier, not copy: the path segment `/etc` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.media",
+		"filesystem identifier, not copy: the path segment `/media` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.mnt",
+		"filesystem identifier, not copy: the path segment `/mnt` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.opt",
+		"filesystem identifier, not copy: the path segment `/opt` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.srv",
+		"filesystem identifier, not copy: the path segment `/srv` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.usr",
+		"filesystem identifier, not copy: the path segment `/usr` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.var",
+		"filesystem identifier, not copy: the path segment `/var` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.program_data",
+		"Windows system folder name Explorer shows in English under every UI language",
+	],
+	[
+		"fr:ui.chat.directory.folder.applications",
+		"French cognate: « Applications » has the same spelling; scoped to fr so the other locales still translate it",
+	],
+	[
+		"fr:ui.chat.directory.folder.documents",
+		"French cognate: « Documents » has the same spelling; scoped to fr so the other locales still translate it",
+	],
+	[
+		"fr:ui.chat.directory.folder.volumes",
+		"French cognate: « Volumes » has the same spelling; scoped to fr so the other locales still translate it",
+	],
+	[
+		"hi:ui.chat.directory.folder.program_files",
+		"Hindi Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"hi:ui.chat.directory.folder.program_files_x86",
+		"Hindi Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ru:ui.chat.directory.folder.program_files",
+		"Russian Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ru:ui.chat.directory.folder.program_files_x86",
+		"Russian Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"vi:ui.chat.directory.folder.program_files",
+		"Vietnamese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"vi:ui.chat.directory.folder.program_files_x86",
+		"Vietnamese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ur:ui.chat.directory.folder.program_files",
+		"Urdu Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ur:ui.chat.directory.folder.program_files_x86",
+		"Urdu Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"zh-CN:ui.chat.directory.folder.program_files",
+		"Chinese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"zh-CN:ui.chat.directory.folder.program_files_x86",
+		"Chinese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
 ]);
+
+/*
+ * An exemption is GLOBAL by default — a value no locale may translate, such as a
+ * filesystem identifier — and may be scoped to one locale with a `<locale>:<key>`
+ * row, for a word that is legitimately identical in that language only. The
+ * scoped form exists because a global row for, say, a French cognate also
+ * exempts hi/zh-CN/ru/ur/vi, where that word must differ: the guard would then
+ * pass on a value nobody translated, which is the failure it is meant to catch.
+ */
+function allowsIdenticalValue(locale, key, table = IDENTICAL_OK) {
+	return table.has(key) || table.has(`${locale}:${key}`);
+}
 
 function localeDirs() {
 	return readdirSync(CATALOGUES, { withFileTypes: true })
@@ -902,7 +1394,7 @@ for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
 			for (const [key, message] of Object.entries(data)) {
 				const source = english.get(key);
 				if (source === undefined || typeof message !== "string") continue;
-				if (message === source && !IDENTICAL_OK.has(key)) {
+				if (message === source && !allowsIdenticalValue(locale, key)) {
 					stubs.push(`${file}: ${key}`);
 				}
 			}
@@ -910,3 +1402,23 @@ for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
 		assert.deepEqual(stubs, [], `values identical to English in ${locale}`);
 	});
 }
+
+/*
+ * The scoped-entry guard, proved on its own table: a `<locale>:<key>` row must
+ * exempt exactly one language. If it exempted every locale, a translator could
+ * silence a real stub in six locales by writing one French cognate — the exact
+ * hole this form was added to close — so the property is asserted rather than
+ * assumed from the production table.
+ */
+test("a locale-scoped identical-value exemption does not exempt another locale", () => {
+	const table = new Map([
+		["fr:ui.example.cognate", "French cognate: same spelling"],
+	]);
+	assert.equal(allowsIdenticalValue("fr", "ui.example.cognate", table), true);
+	assert.equal(allowsIdenticalValue("es", "ui.example.cognate", table), false);
+	assert.equal(
+		allowsIdenticalValue("zh-CN", "ui.example.cognate", table),
+		false,
+	);
+	assert.equal(allowsIdenticalValue("fr", "ui.example.other", table), false);
+});

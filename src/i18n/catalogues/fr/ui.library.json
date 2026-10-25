@@ -135,6 +135,7 @@
 	"ui.library.page.loaded_count": "{loaded} éléments sur {total}",
 	"ui.library.page.preview": "Aperçu de l’élément",
 	"ui.library.page.results": "Résultats de la Bibliothèque",
+	"ui.library.page.resize_preview": "Redimensionner le panneau de détails. Double-cliquer pour réinitialiser.",
 	"ui.library.preview.unavailable": "Cet élément n’est pas disponible",
 	"ui.library.preview.unavailable_detail": "Il n’est peut-être plus dans le catalogue.",
 	"ui.library.preview.pptx_preparing": "Préparation de la présentation…",

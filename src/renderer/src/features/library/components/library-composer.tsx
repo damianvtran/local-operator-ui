@@ -44,15 +44,16 @@
  *
  * MEDIA IS ATTACHED WHERE THE WIRE CAN CARRY IT. `sessions.message`'s `images`
  * field takes base64 bytes, so an image asset rides inside the prompt through
- * `encodeImageAttachments` — the same encoder every other send uses, rather
+ * `encodeAttachments` — the same encoder every other send uses, rather
  * than a second base64 pipeline here. There is NO audio field on that op today:
  * an audio asset is named by its display path/digest in the prompt text
  * instead, and that contract gap is recorded rather than faked by sending audio
  * through `images`.
  */
 
-import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
+import { encodeAttachments } from "@features/chat/utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "@features/chat/utils/attachment-read";
@@ -140,7 +141,7 @@ function assetReference(asset: DesktopLibraryAsset): string {
  * An image asset as a composer attachment.
  *
  * A DATA URL rather than the path: the viewer's bytes are already in hand, and
- * `encodeImageAttachments` accepts both forms. Digest-only assets have no path
+ * `encodeAttachments` accepts both forms. Digest-only assets have no path
  * at all, so the data URL is the only form that works for every image row.
  */
 function imageAttachment(
@@ -260,10 +261,11 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 		let target: string | null = sessionId;
 		try {
 			const extra = imageAttachment(asset, image.bytes, image.mimeType);
-			const { images, unreadable, overflow } = await encodeImageAttachments(
-				extra ? [...attachments, extra] : attachments,
-				content,
-			);
+			const { images, files, failures, overflow, fileOverflow } =
+				await encodeAttachments(
+					extra ? [...attachments, extra] : attachments,
+					content,
+				);
 			/*
 			 * The encoder's two refusals are this surface's own "put the text back"
 			 * answer (`false`), reported with the same authored sentences the chat
@@ -271,7 +273,7 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 			 * attachment could not be read, or did not fit the transport, must not
 			 * leave as a different message than the one the user assembled.
 			 */
-			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			const unreadableRefusal = unreadableAttachmentRefusal(failures);
 			if (unreadableRefusal) {
 				showErrorToast(unreadableRefusal);
 				return false;
@@ -279,6 +281,11 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 			const overflowRefusal = imageOverflowRefusal(overflow);
 			if (overflowRefusal) {
 				showErrorToast(overflowRefusal);
+				return false;
+			}
+			const fileOverflowMessage = fileOverflowRefusal(fileOverflow);
+			if (fileOverflowMessage) {
+				showErrorToast(fileOverflowMessage);
 				return false;
 			}
 			if (!target) {
@@ -304,6 +311,7 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 				text: `${text}\n\n${assetReference(asset)}`,
 			};
 			if (images.length > 0) body.images = images;
+			if (files.length > 0) body.files = files;
 			/*
 			 * A MESSAGE TYPED MID-TURN STEERS IT. The wire op takes a `mode`, and the
 			 * chat page's rule is the one this follows: a turn that is running is
@@ -376,7 +384,9 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 	const linked = asset.chat;
 	return (
 		<div
-			className="flex flex-col gap-2 px-4 pb-3"
+			/* MessageInput contributes pt-2/pb-4: these outer tracks leave the
+			 * visible form with 20px above and below, not 20px/28px. */
+			className="flex flex-col gap-2 bg-sunken px-4 pt-3 pb-1"
 			data-library-composer=""
 			data-sending={sending ? "" : undefined}
 		>

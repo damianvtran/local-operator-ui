@@ -251,6 +251,42 @@ export function parseTeamBridgeNotifyRequest(
 }
 
 /**
+ * THE HOLD: the thread surface does not ship in this build, whatever a runtime
+ * advertises.
+ *
+ * HERE, IN THE SHARED MODULE, because the hold has to close BOTH sides of the
+ * notification path: main parks a banner's click target (including a thread
+ * root) and the renderer turns it back into a route. A constant the renderer
+ * alone read would leave `?thread=` on the path and would leave the banner
+ * preview reading thread replies, which are the cache/retry paths carrying the
+ * reported cross-account isolation defects inherited from #1304. A runtime
+ * advertising the route is not clearance: the backend cannot know which client
+ * build is talking to it, and a client built before the fix would reactivate
+ * those defects the moment the runtime that serves threads ships
+ * (local-operator PR #2757).
+ *
+ * Returning the feature is flipping this to `true` and letting the capability
+ * key (`team_bridge_threads`) decide the rest - not a cleanup.
+ */
+export const TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false;
+
+/**
+ * THE REACTIONS HOLD: the reaction affordances do not ship in this build,
+ * whatever a runtime advertises.
+ *
+ * The shipped runtime serves no reaction route at all (its OpenAPI schema
+ * carries none; a reaction GET answers 404), and the old reaction path has NOT
+ * been reviewed for account/retry safety. A backend advertising a
+ * `team_bridge_reactions` capability must therefore never wake it up: enabling
+ * reactions is a DELIBERATE flip of this constant in a release that carries the
+ * verified fix, never an automatic consequence of a capability appearing.
+ *
+ * Kept beside the threads constant because the two holds share one shape: the
+ * build constant dominates, and the capability only narrows further.
+ */
+export const TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD = false;
+
+/**
  * The in-app path a click lands on.
  *
  * A query parameter rather than a new global store: the page already owns its
@@ -258,13 +294,19 @@ export function parseTeamBridgeNotifyRequest(
  * way of naming a destination. The parameters are consumed once and cleared,
  * so a later refetch cannot yank the reader back to a conversation they moved
  * away from.
+ *
+ * NO THREAD PARAMETER WHILE THE HOLD IS ON. The click still lands on the
+ * conversation, which is the notification's other half; the thread lane is not
+ * routable in this build, and a parameter the page would have to ignore is a
+ * navigable target one refactor away from mounting the held pane.
  */
 export function teamBridgeOpenPath(target: TeamBridgeOpenTarget): string {
 	const query = new URLSearchParams({
 		tenant: target.tenantId,
 		conversation: target.conversationId,
-		// The thread lane's hook: the page ignores an unknown parameter today.
-		...(target.threadId ? { thread: target.threadId } : {}),
+		...(TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD && target.threadId
+			? { thread: target.threadId }
+			: {}),
 	});
 	return `/team-bridge?${query.toString()}`;
 }

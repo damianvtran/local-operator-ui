@@ -216,11 +216,13 @@ const ThemeFrame = ({
  */
 const GlassFrame = ({
 	glass,
+	glassIntensity,
 	ownsGlass,
 	theme,
 	children,
 }: {
 	glass: boolean;
+	glassIntensity: number;
 	/** The story's own meta decorator paints the document (Library's harness). */
 	ownsGlass: boolean;
 	theme: ThemeName;
@@ -239,13 +241,13 @@ const GlassFrame = ({
 				? {
 						mechanism: "vibrancy",
 						coverage: "full",
-						intensity: 80,
+						intensity: Math.min(100, Math.max(0, glassIntensity)),
 						material: "window",
 						scheme,
 					}
 				: null,
 		);
-	}, [glass, ownsGlass, theme]);
+	}, [glass, glassIntensity, ownsGlass, theme]);
 	return <>{children}</>;
 };
 
@@ -408,12 +410,14 @@ const preview: Preview = {
 		theme: { control: { type: "select" }, options: THEME_IDS },
 		locale: { control: { type: "select" }, options: LOCALE_IDS },
 		glass: { control: { type: "select" }, options: ["off", "on"] },
+		glassIntensity: { control: { type: "range", min: 0, max: 100, step: 1 } },
 		chrome: { control: { type: "select" }, options: ["native", "mac32"] },
 	},
 	args: {
 		theme: DEFAULT_THEME,
 		locale: DEFAULT_LOCALE,
 		glass: "off",
+		glassIntensity: 80,
 		chrome: "native",
 	},
 	decorators: [
@@ -423,6 +427,7 @@ const preview: Preview = {
 			const locale =
 				(context.args.locale as string | undefined) ?? DEFAULT_LOCALE;
 			const glass = context.args.glass === "on";
+			const glassIntensity = Number(context.args.glassIntensity ?? 80);
 			const chrome = (context.args.chrome as string | undefined) ?? "native";
 			const storyOwnsGlass = Boolean(context.parameters?.glass) && !glass;
 			const muiTheme = getTheme(theme).theme;
@@ -448,6 +453,7 @@ const preview: Preview = {
 										<CssBaseline />
 										<GlassFrame
 											glass={glass}
+											glassIntensity={glassIntensity}
 											ownsGlass={storyOwnsGlass}
 											theme={theme}
 										>

@@ -1,0 +1,53 @@
+{
+  "auditor": "coder",
+  "model": "deepseek/deepseek-flash",
+  "instance": "tb1336b-union-es",
+  "date": "2026-10-25",
+  "locale": "es",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 202,
+  "keys_substantive": 0,
+  "scope": "Exact two-parent merge integrity after the main advance to ece9ae9219: union of 205 keys, every shared value byte-identical, no main key lost, and exactly 3 branch-only keys dropped because main removed the optimistic-send UI that used them (chief.unnamed, message.failed, message.sending); no call site references them. Mechanical verification by the implementing coder — NOT a semantic re-audit; inherits both audited predecessor chains.",
+  "sha256": {
+    "en": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
+    "es": "2f29da0bf2d80f63f2ee03394a396e89ab020a5e64b1a4a37a76b457d75e1945",
+    "context": "ec7742e6c680a7d51636078f2ed7a4615e3569c5902413d7bbab05f56576e083"
+  },
+  "validation": {
+    "union_keys": 205,
+    "dropped_dead_keys": 3,
+    "dropped_key_ids": [
+      "ui.teamBridge.chief.unnamed",
+      "ui.teamBridge.message.failed",
+      "ui.teamBridge.message.sending"
+    ],
+    "unexpected_keys": 0,
+    "value_changed": 0,
+    "main_keys_lost": 0,
+    "locale_union_keys": 205,
+    "locale_value_changed": 0,
+    "locale_main_keys_lost": 0
+  },
+  "inherited_receipts": [
+    {
+      "parent": "HEAD",
+      "items": [
+        {
+          "path": "i18n/receipts/tb1336-main-union-es.json",
+          "sha256": "f57b0c0882b7ffb5944d6f4923886487df1755c27909d98b543d0637d94f9e21"
+        }
+      ]
+    },
+    {
+      "parent": "origin/main",
+      "items": [
+        {
+          "path": "i18n/receipts/d1-account-changed-20261025-es.json",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  ],
+  "findings": []
+}

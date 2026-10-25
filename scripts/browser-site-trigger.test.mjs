@@ -1,112 +1,74 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { build } from "esbuild";
 
 /*
- * The at-rest address trigger's two origin-specific rules (design round 1, D3
- * and D4, plus UX U9):
+ * S5: the strip's site trigger is gone; the field's own mark is the register.
  *
- *   - the host is elided at the LEADING subdomain labels, because a CSS
- *     `truncate` throws away the registrable domain — the half that says whose
- *     page this is;
- *   - a loopback http origin gets a neutral glyph instead of the open padlock,
- *     while the CLASSIFICATION stays `not-secure` (the transport fact does not
- *     change; only the permanent warning glyph does);
- *   - the icon-only trigger at a narrow pane still names the host in its
- *     accessible name.
- *
- * The helpers are the shipped ones; the wiring half is a source guard because
- * the surface cannot be mounted in this suite.
+ * The trigger carried a loopback exception (D11: `localhost:5173` drew a neutral
+ * Globe instead of the open padlock). The operator ruled it OUT for S5 (ruling
+ * 6): the field's mark reports the transport exactly, loopback http included,
+ * and no neutral globe exists for a local page. That is a behaviour change, so
+ * it is pinned here rather than left to a reviewer's memory.
  */
 
-const bundle = await build({
-	stdin: {
-		contents:
-			'export { compactHost, isLoopbackHost } from "./src/renderer/src/features/browser/model/site-info";',
-		resolveDir: process.cwd(),
-	},
-	bundle: true,
-	format: "esm",
-	platform: "node",
-	write: false,
-});
-const { compactHost, isLoopbackHost } = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+const bar = readFileSync(
+	"src/renderer/src/features/browser/components/browser-url-bar.tsx",
+	"utf8",
+);
+const surface = readFileSync(
+	"src/renderer/src/features/browser/components/browser-surface.tsx",
+	"utf8",
+);
+const siteInfo = readFileSync(
+	"src/renderer/src/features/browser/model/site-info.ts",
+	"utf8",
 );
 
-test("compactHost drops leading labels, never the registrable domain", () => {
-	assert.equal(
-		compactHost("very-long-subdomain.example.com"),
-		"example.com",
-		"the tail is the part that identifies the site",
-	);
-	assert.equal(compactHost("a.very-long-subdomain.example.com"), "example.com");
-	assert.equal(
-		compactHost("127.0.0.1:51953"),
-		"127.0.0.1:51953",
-		"a host already inside the budget is untouched, port included",
-	);
-	assert.equal(
-		compactHost("averyverylongsubdomain.example.com", 22),
-		"example.com",
-	);
-	assert.equal(compactHost("example.com"), "example.com");
-	// Short labels are a real case (punycode TLDs): still under budget, untouched.
-	assert.equal(compactHost("xn--d1acufc.xn--p1ai"), "xn--d1acufc.xn--p1ai");
-});
-
-test("isLoopbackHost names the local-development addresses and nothing else", () => {
-	for (const host of [
-		"localhost",
-		"LOCALHOST",
-		"127.0.0.1",
-		"127.1.2.3",
-		"[::1]",
-		"0.0.0.0",
-	])
-		assert.equal(isLoopbackHost(host), true, host);
-	/*
-	 * THE PORTED SPELLINGS (design round 2, D11). The trigger used to pass
-	 * `new URL(origin).host` here, which includes `:5173`; the helper matches
-	 * whole labels, so every dev server — the exact case the neutral glyph was
-	 * added for — kept the warning padlock. The helper's contract is a HOST: the
-	 * surface now feeds `hostname`, and this asserts both halves of that fact,
-	 * including that the old spelling really was false (so the case cannot pass
-	 * by accident if someone reverts it).
-	 */
-	for (const url of [
-		"http://127.0.0.1:53505/",
-		"http://localhost:5173/",
-		"http://[::1]:3000/",
-	]) {
-		assert.equal(isLoopbackHost(new URL(url).hostname), true, url);
-		assert.equal(
-			isLoopbackHost(new URL(url).host),
-			false,
-			`${url} host-with-port must not be the classification input`,
-		);
+test("the trigger and its helpers are gone", () => {
+	for (const source of [bar, surface]) {
+		assert.doesNotMatch(source, /browser-address-trigger/);
+		assert.doesNotMatch(source, /SiteTriggerIcon/);
+		assert.doesNotMatch(source, /compactHost/);
+		assert.doesNotMatch(source, /isLoopbackHost/);
 	}
-	for (const host of [
-		"128.0.0.1",
-		"example.com",
-		"127.0.0.1.example.com",
-		"localhost.example.com",
-	])
-		assert.equal(isLoopbackHost(host), false, host);
-	for (const host of ["128.0.0.1:8080", "example.com:443"])
-		assert.equal(isLoopbackHost(host), false, host);
+	assert.doesNotMatch(siteInfo, /export function compactHost/);
+	assert.doesNotMatch(siteInfo, /export function isLoopbackHost/);
 });
 
-test("the trigger classifies the hostname, and keeps the ported host in its name", () => {
-	const source = readFileSync(
-		"src/renderer/src/features/browser/components/browser-surface.tsx",
-		"utf8",
+test("the field's mark maps every kind exactly, with no loopback branch", () => {
+	// The mapping is a chain of kind checks ending in the Globe for internal.
+	assert.match(bar, /siteInfo\.kind === "secure"/);
+	assert.match(bar, /siteInfo\.kind === "not-secure"/);
+	assert.match(bar, /siteInfo\.kind === "unverified"/);
+	assert.match(bar, /siteInfo\.kind === "file"/);
+	assert.match(bar, /:\s*\n?\s*Globe;/);
+	// http is an open padlock, whatever the host: a loopback page shows the
+	// warning glyph like any other plain-http origin (ruling 6).
+	assert.match(
+		bar,
+		/siteInfo\.kind === "not-secure"[\s\S]{0,120}LockKeyholeOpen/,
 	);
-	// The glyph test must see the port-less spelling (D11); the visible label and
-	// the accessible name keep the port the user typed.
-	assert.match(source, /new URL\(triggerSiteInfo\.origin\)\.hostname/);
-	assert.match(source, /isLoopbackHost\(siteHostName\) \?/);
-	assert.match(source, /compactHost\(siteHost\)/);
-	assert.match(source, /aria-label=\{[\s\S]{0,160}?siteHost/);
+	assert.doesNotMatch(bar, /isLoopbackHost/);
+});
+
+test("the mark is the field's leading-edge description, not a tab stop (U4)", () => {
+	assert.match(bar, /data-site-info=\{siteInfo\.kind\}/);
+	assert.doesNotMatch(
+		bar,
+		/tabIndex=\{0\}/,
+		"a no-op control must not sit in the tab order",
+	);
+	assert.match(bar, /aria-label=\{siteInfoLabel\}/);
+	assert.match(bar, /absolute top-1\/2 left-2/);
+	// The description reaches the field without focus: one hidden sentence, named
+	// by the input's `aria-describedby`.
+	assert.match(bar, /const siteDescId = `\$\{listId\}-site`/);
+	assert.match(bar, /<span id=\{siteDescId\} className="sr-only">/);
+	assert.match(bar, /siteDescId,/);
+	assert.match(
+		bar,
+		/aria-describedby=\{[\s\S]{0,220}siteDescId/,
+		"the field must actually name the mark's sentence",
+	);
 });

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * `/usage` — provider quota as a table, not as JSON.
  *
@@ -36,7 +37,6 @@ import { PickerHost } from "./picker-host";
 import type { MachinePanelContext } from "./picker-registry";
 import {
 	type LimitRow,
-	NOT_REPORTED,
 	type ProviderBlock,
 	type StatusTone,
 	type UsagePayload,
@@ -94,10 +94,18 @@ const BAR_CLASS: Record<StatusTone, string> = {
 
 /** Spoken status for a screen reader; tint is a second channel, never the only one. */
 const STATUS_WORD: Record<StatusTone, string> = {
-	ok: "within limit",
-	warning: "near limit",
-	exhausted: "exhausted",
-	dim: "not reported",
+	get ok() {
+		return t("ui.chat.pickers.usage_view.within_limit");
+	},
+	get warning() {
+		return t("ui.chat.pickers.usage_view.near_limit");
+	},
+	get exhausted() {
+		return "exhausted";
+	},
+	get dim() {
+		return t("ui.chat.pickers.usage_view.not_reported");
+	},
 };
 
 /**
@@ -124,7 +132,7 @@ const KNOWN_WORD: Record<string, string> = {
  * `519.86 USD left, not reported` — the spoken status contradicting the
  * printed number (UX U10). What is missing there is the LIMIT, not the report.
  */
-const NO_LIMIT_WORD = "no limit reported";
+const NO_LIMIT_WORD = () => t("ui.chat.pickers.usage_view.no_limit_reported");
 
 /**
  * The spoken status for one row.
@@ -135,8 +143,9 @@ const NO_LIMIT_WORD = "no limit reported";
  * one this view invented and therefore the one it can get wrong.
  */
 const statusWord = (row: LimitRow): string => {
-	if (row.status === "unknown" && row.amount !== NOT_REPORTED)
-		return NO_LIMIT_WORD;
+	// `reported` is the stable fact; `row.amount` is display copy and is `not
+	// reported` in every language, so comparing it only worked in English.
+	if (row.status === "unknown" && row.reported) return NO_LIMIT_WORD();
 	return KNOWN_WORD[row.status] ?? row.status;
 };
 
@@ -177,6 +186,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 	row,
 	degraded,
 }) => {
+	useI18nLocale();
 	const tone = statusTone(row.status);
 	return (
 		<li className={cn(ROW_GRID, "py-0.5")}>
@@ -195,7 +205,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 					"min-w-0 truncate text-body-sm",
 					// A per-model cap is subordinate: indented and dimmer, so a 100%
 					// family cap never reads as a dead account (SPEC rule 8).
-					row.subordinate ? "pl-3 text-ink-dim" : "text-ink-muted",
+					row.subordinate ? "ps-3 text-ink-dim" : "text-ink-muted",
 				)}
 			>
 				{row.limit.label}
@@ -276,7 +286,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 			<span className={cn("truncate text-right text-ink-dim text-meta")}>
 				{row.countdown ? (
 					<>
-						resets in{" "}
+						{t("ui.chat.pickers.usage_view.resets_in")}{" "}
 						<span className={cn("font-mono text-mono-sm tabular-nums")}>
 							{row.countdown}
 						</span>
@@ -290,18 +300,20 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 };
 
 /** One provider: heading, the window that binds, any note, then every window. */
-const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
-	<section className="rounded-md border border-hairline bg-surface px-3 py-2.5">
-		<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-			<h3 className="font-medium text-body-sm text-ink">
-				{block.report.provider}
-			</h3>
-			{block.report.identity && (
-				<span className="truncate text-ink-muted text-meta">
-					{block.report.identity}
-				</span>
-			)}
-			{/* The binding window is stated on the block's FIRST row because "can I
+export const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => {
+	useI18nLocale();
+	return (
+		<section className="rounded-md border border-hairline bg-surface px-3 py-2.5">
+			<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+				<h3 className="font-medium text-body-sm text-ink">
+					{block.report.provider}
+				</h3>
+				{block.report.identity && (
+					<span className="truncate text-ink-muted text-meta">
+						{block.report.identity}
+					</span>
+				)}
+				{/* The binding window is stated on the block's FIRST row because "can I
 			    keep working" is the question the view is opened to answer; leaving
 			    it to be found among equals is what the TUI's header fixed.
 
@@ -312,82 +324,85 @@ const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
 			    entirely — so reading down the first line of each block, the number
 			    jumped horizontally and once changed which column it was in. That
 			    undercuts the one-table scan the layout is built for. */}
-			{block.binding && (
-				<span className={cn("ml-auto flex items-baseline gap-x-2")}>
-					<span
-						className={cn(
-							AMOUNT_COLUMN,
-							"truncate text-right text-meta",
-							TINT_CLASS[statusTone(block.binding.status)],
-						)}
-					>
-						{block.binding.label}{" "}
-						<span className={cn("font-mono text-mono-sm tabular-nums")}>
-							{block.binding.percent}
+				{block.binding && (
+					<span className={cn("ms-auto flex items-baseline gap-x-2")}>
+						<span
+							className={cn(
+								AMOUNT_COLUMN,
+								"truncate text-right text-meta",
+								TINT_CLASS[statusTone(block.binding.status)],
+							)}
+						>
+							{block.binding.label}{" "}
+							<span className={cn("font-mono text-mono-sm tabular-nums")}>
+								{block.binding.percent}
+							</span>
+						</span>
+						<span
+							className={cn(
+								COUNTDOWN_COLUMN,
+								"truncate text-right text-ink-dim text-meta",
+							)}
+						>
+							{block.binding.countdown ? (
+								<>
+									{t("ui.chat.pickers.usage_view.resets_in")}{" "}
+									<span className={cn("font-mono text-mono-sm tabular-nums")}>
+										{block.binding.countdown}
+									</span>
+								</>
+							) : (
+								""
+							)}
 						</span>
 					</span>
-					<span
-						className={cn(
-							COUNTDOWN_COLUMN,
-							"truncate text-right text-ink-dim text-meta",
-						)}
-					>
-						{block.binding.countdown ? (
-							<>
-								resets in{" "}
-								<span className={cn("font-mono text-mono-sm tabular-nums")}>
-									{block.binding.countdown}
-								</span>
-							</>
-						) : (
-							""
-						)}
-					</span>
-				</span>
-			)}
-			{/* With no meters at all there is no binding window to protect, so the
+				)}
+				{/* With no meters at all there is no binding window to protect, so the
 			    heading may carry the probe failure itself. */}
-			{!block.binding &&
-				block.report.state === "unavailable" &&
-				!hasMuseAllowanceNote(block.report) && (
-					<span className={cn("ml-auto text-ink-dim text-meta")}>
-						Usage unavailable
-					</span>
-				)}
-		</div>
-		{block.note && (
-			<p
-				className={cn(
-					"pt-1 text-meta",
-					// A dead grant names a remedy the user can act on, so it is the one
-					// note that earns the danger role; staleness is a fact, not a fault.
-					block.report.state === "reauth_required"
-						? "text-danger"
-						: "text-ink-dim",
-				)}
-			>
-				{block.note}
-			</p>
-		)}
-		{block.rows.length > 0 ? (
-			<ul className={cn("pt-1.5")}>
-				{block.rows.map((row) => (
-					<LimitRowView
-						key={row.limit.id}
-						row={row}
-						degraded={block.degraded}
-					/>
-				))}
-			</ul>
-		) : (
-			/* A block holding only its heading reads as a rendering defect rather
+				{!block.binding &&
+					block.report.state === "unavailable" &&
+					!hasMuseAllowanceNote(block.report) && (
+						<span className={cn("ms-auto text-ink-dim text-meta")}>
+							{t("ui.chat.pickers.usage_view.usage_unavailable")}
+						</span>
+					)}
+			</div>
+			{block.note && (
+				<p
+					className={cn(
+						"pt-1 text-meta",
+						// A dead grant names a remedy the user can act on, so it is the one
+						// note that earns the danger role; staleness is a fact, not a fault.
+						block.report.state === "reauth_required"
+							? "text-danger"
+							: "text-ink-dim",
+					)}
+				>
+					{block.note}
+				</p>
+			)}
+			{block.rows.length > 0 ? (
+				<ul className={cn("pt-1.5")}>
+					{block.rows.map((row) => (
+						<LimitRowView
+							key={row.limit.id}
+							row={row}
+							degraded={block.degraded}
+						/>
+					))}
+				</ul>
+			) : (
+				/* A block holding only its heading reads as a rendering defect rather
 			   than as an answer, which is why the TUI prints the same line. */
-			block.emptyNote && (
-				<p className={cn("pt-1.5 text-ink-dim text-meta")}>{block.emptyNote}</p>
-			)
-		)}
-	</section>
-);
+				block.emptyNote && (
+					<p className={cn("pt-1.5 text-ink-dim text-meta")}>
+						{block.emptyNote}
+					</p>
+				)
+			)}
+		</section>
+	);
+};
 
 export type UsageReportsProps = {
 	reports: UsageReport[];
@@ -470,33 +485,38 @@ export const UsageTally: FC<{ reports: UsageReport[] }> = ({ reports }) => {
  * `aria-hidden` with a live region beside it: a screen reader should hear
  * "loading provider usage" once, not a description of eleven grey rectangles.
  */
-const UsageSkeleton: FC = () => (
-	<div className={cn("flex flex-col gap-2")}>
-		<output className={cn("sr-only")}>Loading provider usage.</output>
-		{[0, 1, 2].map((block) => (
-			<section
-				key={block}
-				className={cn(
-					"rounded-md border border-hairline bg-surface px-3 py-2.5",
-				)}
-				aria-hidden="true"
-			>
-				<Skeleton className={cn("h-3.5 w-40")} />
-				<div className={cn("flex flex-col gap-2 pt-3")}>
-					{[0, 1].map((row) => (
-						<div key={row} className={cn(ROW_GRID)}>
-							<Skeleton className={cn("size-1.5 rounded-full")} />
-							<Skeleton className={cn("h-3 w-24")} />
-							<Skeleton className={cn("h-1.5")} />
-							<Skeleton className={cn("h-3 w-20 justify-self-end")} />
-							<Skeleton className={cn("h-3 w-16 justify-self-end")} />
-						</div>
-					))}
-				</div>
-			</section>
-		))}
-	</div>
-);
+const UsageSkeleton: FC = () => {
+	useI18nLocale();
+	return (
+		<div className={cn("flex flex-col gap-2")}>
+			<output className={cn("sr-only")}>
+				{t("ui.chat.pickers.usage_view.loading_provider_usage")}
+			</output>
+			{[0, 1, 2].map((block) => (
+				<section
+					key={block}
+					className={cn(
+						"rounded-md border border-hairline bg-surface px-3 py-2.5",
+					)}
+					aria-hidden="true"
+				>
+					<Skeleton className={cn("h-3.5 w-40")} />
+					<div className={cn("flex flex-col gap-2 pt-3")}>
+						{[0, 1].map((row) => (
+							<div key={row} className={cn(ROW_GRID)}>
+								<Skeleton className={cn("size-1.5 rounded-full")} />
+								<Skeleton className={cn("h-3 w-24")} />
+								<Skeleton className={cn("h-1.5")} />
+								<Skeleton className={cn("h-3 w-20 justify-self-end")} />
+								<Skeleton className={cn("h-3 w-16 justify-self-end")} />
+							</div>
+						))}
+					</div>
+				</section>
+			))}
+		</div>
+	);
+};
 
 /**
  * What the polite region says while a read is out, one sentence per mode.
@@ -513,8 +533,10 @@ const UsageSkeleton: FC = () => (
  * cache-aware check must not read as the forced, every-provider ask the user
  * has to have pressed.
  */
-const CHECK_ANNOUNCEMENT = "Checking for an updated usage report.";
-const ASK_ANNOUNCEMENT = "Getting fresh usage from providers.";
+const CHECK_ANNOUNCEMENT = () =>
+	t("ui.chat.pickers.usage_view.checking_for_an_updated_usage_report");
+const ASK_ANNOUNCEMENT = () =>
+	t("ui.chat.pickers.usage_view.getting_fresh_usage_from_providers");
 
 export type UsageDialogProps = {
 	onClose: () => void;
@@ -564,6 +586,8 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 }) => {
 	// The local clock already repaints countdowns. Age passive receipts on that
 	// same tick, including the tally, without re-querying or buying inference.
+
+	useI18nLocale();
 	const reports = (payload?.reports ?? []).map((report) =>
 		currentUsageReport(report, now),
 	);
@@ -615,7 +639,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 	const [announcement, setAnnouncement] = useState("");
 	useEffect(() => {
 		setAnnouncement(
-			fetching ? (asked ? ASK_ANNOUNCEMENT : CHECK_ANNOUNCEMENT) : "",
+			fetching ? (asked ? ASK_ANNOUNCEMENT() : CHECK_ANNOUNCEMENT()) : "",
 		);
 	}, [fetching, asked]);
 
@@ -623,7 +647,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Provider usage"
+			title={t("ui.chat.pickers.usage_view.provider_usage")}
 			wide
 			// At four or more accounts the table is taller than the body, which is
 			// the DEFAULT state for anyone with several logins rather than an edge
@@ -642,10 +666,12 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 							newestConfirmedMs(reports, payload.fetched_at),
 							now,
 						)
-					: "Quota and usage as the providers report it."
+					: t(
+							"ui.chat.pickers.usage_view.quota_and_usage_as_the_providers_report_it",
+						)
 			}
 			toolbar={
-				// `ml-auto` on the action rather than `justify-between` on the row:
+				// `ms-auto` on the action rather than `justify-between` on the row:
 				// the tally renders nothing when there are no windows, and with
 				// `justify-between` its absence left the button sitting at the left
 				// edge of the toolbar instead of staying where it always is.
@@ -696,7 +722,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					 */}
 					<Button
 						ref={actionRef}
-						className={cn("ml-auto")}
+						className={cn("ms-auto")}
 						variant="ghost"
 						size="sm"
 						type="button"
@@ -705,11 +731,11 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					>
 						{fetching
 							? asked
-								? "Asking providers"
-								: "Checking provider usage"
+								? t("ui.chat.pickers.usage_view.asking_providers")
+								: t("ui.chat.pickers.usage_view.checking_provider_usage")
 							: asked
-								? "Ask providers again"
-								: "Ask providers now"}
+								? t("ui.chat.pickers.usage_view.ask_providers_again")
+								: t("ui.chat.pickers.usage_view.ask_providers_now")}
 					</Button>
 				</div>
 			}
@@ -736,7 +762,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					ref={bodyRef}
 					// biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop IS the fix; a labelled scroll container with no focusable descendant has to be focusable or a keyboard user cannot reach its content at all.
 					tabIndex={0}
-					aria-label="Report list"
+					aria-label={t("ui.chat.pickers.usage_view.report_list")}
 					className={cn("block rounded-sm")}
 				>
 					{showSkeleton ? (
@@ -756,8 +782,9 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					 */
 					payload && reports.length === 0 ? (
 						<p className={cn("text-body-sm text-ink-muted")}>
-							No usage reports. Sign in to a provider that publishes quota, then
-							ask providers for live numbers.
+							{t(
+								"ui.chat.pickers.usage_view.no_usage_reports_sign_in_to_a_provider_that_publishes_quota_then_ask_pro",
+							)}
 						</p>
 					) : reports.length === 0 ? (
 						/* No answer yet and nothing to show: the in-flight state, which the
@@ -1055,7 +1082,10 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 		 */
 		if (mode !== "ask") return;
 		if (isError) {
-			setOutcome({ tone: "error", text: errorText(error) });
+			setOutcome({
+				tone: "error",
+				text: errorText(error),
+			});
 			return;
 		}
 		/*
@@ -1069,12 +1099,17 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 		if (failureCount > 0) {
 			setOutcome({
 				tone: "error",
-				text: `${errorText(failureReason)} Retrying…`,
+				text: t("ui.chat.pickers.usage_view.retrying", {
+					errortext: errorText(failureReason),
+				}),
 			});
 			return;
 		}
 		if (!settledAt) return;
-		setOutcome({ tone: "info", text: "Providers answered." });
+		setOutcome({
+			tone: "info",
+			text: t("ui.chat.pickers.usage_view.providers_answered"),
+		});
 	}, [mode, settledAt, isError, error, failureCount, failureReason]);
 
 	/*

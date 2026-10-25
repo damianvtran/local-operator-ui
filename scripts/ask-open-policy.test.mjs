@@ -69,6 +69,7 @@ const {
 	ASK_OPEN_WINDOW_MS,
 	askOpenAnnouncement,
 	askOpenFacts,
+	askSettledAnnouncement,
 	askQueueView,
 	createAskDismissals,
 	createAskOpenView,
@@ -1097,6 +1098,23 @@ test("D1 - the announcement is ONE sentence built from the chip's own count", ()
 	assert.equal(
 		askOpenAnnouncement(askQueueView(prefixOf([ask("open")], 3))),
 		"Opened your questions: 3 outstanding.",
+	);
+});
+
+test("U8 - the settled sentence speaks the state that follows the settle, from the same clause", () => {
+	/*
+	 * UX round 1, U8: the live region kept `Opened your questions: 1 question
+	 * waiting.` after the last ask settled, so a reader who cannot see the drawer was
+	 * told one was waiting when none was. The sentence is the chip's own clause, for
+	 * the same reason the open sentence is - one vocabulary point.
+	 */
+	assert.equal(
+		askSettledAnnouncement(askQueueView(withRows([]))),
+		"All asks settled.",
+	);
+	assert.equal(
+		askSettledAnnouncement(askQueueView(prefixOf([], 2))),
+		"2 outstanding.",
 	);
 });
 

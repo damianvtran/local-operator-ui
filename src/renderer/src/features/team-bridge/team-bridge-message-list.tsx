@@ -1,22 +1,18 @@
-import { Button } from "@shared/components/ui/button";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, UserRound } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
+import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
-import {
-	type PendingSend,
-	type ThreadItem,
-	pendingMark,
-	threadItems,
-} from "./team-bridge-model";
+import { type ThreadItem, threadItems } from "./team-bridge-model";
 import {
 	TeamBridgeReactionChips,
 	useTeamBridgeReactionState,
 } from "./team-bridge-reactions";
+import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { threadSummary } from "./team-bridge-threads-model";
 
 /**
@@ -57,33 +53,40 @@ import { threadSummary } from "./team-bridge-threads-model";
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
-	/**
-	 * The reader's unconfirmed sends, already drawn into `messages` as the last
-	 * rows (see `threadWithPending`): a row whose id matches one is marked
-	 * Sending, or Not sent with a Retry that re-posts with the same client_ref.
-	 */
-	pendingSends?: readonly PendingSend[];
-	onRetrySend?: (clientRef: string) => void;
 	reactionContext?: ReactionContext;
 	onReply?: (message: TeamBridgeMessage) => void;
 	/** Story/capture seed only: show every row's toolbar without hover. */
 	forceToolbar?: boolean;
+	/*
+	 * The organization the messages belong to: an image fetch is member-gated
+	 * per tenant on the hub, so the tenant travels with the request. Omitted by
+	 * callers with no images to fetch (and then images render as unavailable
+	 * rather than guessing a tenant).
+	 */
+	tenantId?: string;
+	/*
+	 * The account this subtree was RENDERED under: the attachment byte route now
+	 * carries `expected_account_id` (the captured-owner guard), and passing the
+	 * render-time prop is what makes it a receipt rather than a lookup of
+	 * whoever happens to be signed in when the fetch runs.
+	 */
+	accountId?: string;
+	/* `compact`: the thread pane's narrow column (see `boxFor`). */
+	density?: "regular" | "compact";
 }> = ({
 	messages,
 	labelFor,
-	pendingSends = [],
-	onRetrySend,
 	reactionContext,
 	onReply,
 	forceToolbar,
+	tenantId,
+	density,
+	accountId,
 }) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
-		/* The bottom padding is INSIDE the scroller on purpose: a lone message
-		   must not sit flush on the composer. Padding, not a margin on a panel,
-		   so the panel's ground still runs to the edge. */
-		<ol className="mt-auto flex flex-col pt-4 pb-6">
+		<ol className="mt-auto flex flex-col pt-4 pb-2">
 			{items.map((item) =>
 				item.type === "day" ? (
 					<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
@@ -93,12 +96,13 @@ export const TeamBridgeMessageList: FC<{
 						message={item.message}
 						continuation={item.continuation}
 						label={labelFor(item.message.sender)}
-						pending={pendingMark(item.message, pendingSends)}
-						onRetrySend={onRetrySend}
 						locale={locale}
 						reactionContext={reactionContext}
 						onReply={onReply}
 						forceToolbar={forceToolbar}
+						tenantId={tenantId}
+						accountId={accountId}
+						density={density}
 					/>
 				),
 			)}
@@ -152,13 +156,14 @@ const MessageRow: FC<{
 	continuation: boolean;
 	label: string | null;
 	locale: string;
-	pending?: PendingSend | null;
-	onRetrySend?: (clientRef: string) => void;
 	reactionContext?: ReactionContext;
 	onReply?: (message: TeamBridgeMessage) => void;
 	forceToolbar?: boolean;
+	tenantId?: string;
+	accountId?: string;
+	density?: "regular" | "compact";
 }> = ({ reactionContext, ...props }) =>
-	reactionContext && !props.pending && props.message.body !== null ? (
+	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
 			key={`${reactionContext.accountId}:${props.message.id}`}
 			reactionContext={reactionContext}
@@ -181,8 +186,6 @@ const ReactableMessageRow: FC<
 };
 
 type MessageRowProps = {
-	pending?: PendingSend | null;
-	onRetrySend?: (clientRef: string) => void;
 	message: TeamBridgeMessage;
 	continuation: boolean;
 	label: string | null;
@@ -190,6 +193,9 @@ type MessageRowProps = {
 	reactions?: ReturnType<typeof useTeamBridgeReactionState>;
 	onReply?: (message: TeamBridgeMessage) => void;
 	forceToolbar?: boolean;
+	tenantId?: string;
+	accountId?: string;
+	density?: "regular" | "compact";
 };
 
 const MessageRowView: FC<MessageRowProps> = ({
@@ -200,14 +206,19 @@ const MessageRowView: FC<MessageRowProps> = ({
 	reactions,
 	onReply,
 	forceToolbar,
-	pending = null,
-	onRetrySend,
+	tenantId,
+	accountId,
+	density,
 }) => {
 	const summary = threadSummary(message);
-	/* One-level threads: only a timeline root can open a thread. */
-	// Local UUID rows have no server message id: neither reactions nor replies
-	// may reach the server until reconciliation replaces the row.
-	const canReply = !pending && onReply !== undefined && !message.thread_root_id;
+	/* One-level threads: only a timeline root can open a thread - and none can
+	   while the thread surface is held. `canReply` is therefore the ONE term the
+	   toolbar button and the "N replies" summary both read, so the affordance
+	   does not render rather than rendering inert. */
+	const canReply =
+		TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD &&
+		onReply !== undefined &&
+		!message.thread_root_id;
 	const agent = message.sender.kind === "agent";
 	const label =
 		known ??
@@ -222,43 +233,8 @@ const MessageRowView: FC<MessageRowProps> = ({
 	const full = valid
 		? formatDate(at, { dateStyle: "full", timeStyle: "short" }, locale)
 		: "";
-	const failed = pending?.status === "failed";
-	// `sent`: the server has the message and only its copy is awaited, so the
-	// row is no longer "Sending…" (and a failed refresh must not leave it so).
-	const unconfirmed = pending?.status === "sending";
-	const bodyId = pending
-		? `team-bridge-pending-${pending.clientRef}`
-		: undefined;
-	const state =
-		pending && pending.status !== "sent" ? (
-			<span
-				className={cn(
-					"flex shrink-0 items-center gap-2 text-[12px]",
-					failed ? "text-danger" : "text-ink-dim",
-				)}
-			>
-				{failed ? (
-					<>
-						<span role="alert">{t("ui.teamBridge.message.failed")}</span>
-						<Button
-							variant="link"
-							size="sm"
-							// Two failed rows must be told apart by assistive tech: the
-							// Retry is described by the message it re-sends.
-							aria-describedby={bodyId}
-							onClick={() => onRetrySend?.(pending.clientRef)}
-						>
-							{t("ui.common.actions.retry")}
-						</Button>
-					</>
-				) : (
-					<output>{t("ui.teamBridge.message.sending")}</output>
-				)}
-			</span>
-		) : null;
 	return (
 		<li
-			data-pending={pending ? pending.status : undefined}
 			data-message-id={message.id}
 			className={cn(
 				"group/message relative flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
@@ -345,23 +321,24 @@ const MessageRowView: FC<MessageRowProps> = ({
 					<p className="text-[14px] text-ink-dim italic">
 						{t("ui.teamBridge.thread.withheld")}
 					</p>
-				) : (
-					<div id={bodyId}>
-						<TeamBridgeMarkdown
-							className={cn(
-								"team-bridge-message-body text-[14px] text-ink",
-								unconfirmed && "opacity-70",
-							)}
-						>
-							{message.body}
-						</TeamBridgeMarkdown>
-					</div>
+				) : message.body.trim() === "" &&
+					(message.attachments?.length ?? 0) > 0 ? null : (
+					/* An image-only message has an empty body: no empty prose block. */
+					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
+						{message.body}
+					</TeamBridgeMarkdown>
 				)}
-				{/* Under the body, not in the header: a continuation row has no
-				    header, and a failed row must always carry its Retry. */}
-				{state}
+				{/* Images come ONLY from the structured list, never from the body. */}
+				{(message.attachments?.length ?? 0) > 0 && (
+					<TeamBridgeMessageAttachments
+						message={message}
+						tenantId={tenantId ?? null}
+						density={density}
+						accountId={accountId}
+					/>
+				)}
 				{reactions && <TeamBridgeReactionChips state={reactions} />}
-				{!pending && onReply && summary.count > 0 && (
+				{canReply && summary.count > 0 && (
 					<button
 						type="button"
 						onClick={() => onReply(message)}

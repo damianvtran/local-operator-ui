@@ -13,6 +13,7 @@ import {
 } from "@shared/components/ui";
 import { fold } from "@shared/components/ui/searchable-select";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -113,7 +114,7 @@ const kindLabel = (kind: string): string => {
 	}
 };
 const REVEAL =
-	"pointer-events-none absolute top-1 right-1 flex gap-1 opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
+	"pointer-events-none absolute top-1 end-1 flex gap-1 opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
 
 type Props = {
 	conversationId: string;
@@ -137,6 +138,7 @@ export function FinderFilesView({
 	materialise,
 	legacyScan,
 }: Props) {
+	const locale = useI18nLocale();
 	const selectedId = useCanvasStore(
 		(state) => state.conversations[conversationId]?.selectedTabId,
 	);
@@ -186,10 +188,11 @@ export function FinderFilesView({
 			prefs,
 		);
 	}, [displayItems, query, prefs]);
-	const sections = useMemo(
-		() => finderSections(narrowed, prefs, narrowing, closed),
-		[narrowed, prefs, narrowing, closed],
-	);
+	const sections = useMemo(() => {
+		// Section labels are translated inside finderSections, not in these inputs.
+		void locale;
+		return finderSections(narrowed, prefs, narrowing, closed);
+	}, [narrowed, prefs, narrowing, closed, locale]);
 	const layout = useMemo(
 		() => layoutFinder(sections, viewport.width, prefs.group),
 		[sections, viewport.width, prefs.group],
@@ -448,7 +451,9 @@ export function FinderFilesView({
 					<Input
 						ref={search}
 						value={query}
-						placeholder={t("ui.canvas.files.searchPlaceholder")}
+						placeholder={t(
+							"ui.canvas.finder_files_view.ui_canvas_files_searchplaceholder",
+						)}
 						aria-label={t("ui.canvas.files.search")}
 						className={cn("min-w-0 flex-1")}
 						onChange={(event) => setQuery(event.target.value)}
@@ -800,20 +805,24 @@ export function FinderFilesView({
 										aria-disabled={narrowing}
 										onClick={() => toggle(section.id)}
 										className={cn(
-											"flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left font-medium text-body-sm text-ink hover:bg-row-hover",
+											"flex h-8 w-full items-center gap-2 rounded-sm px-2 text-start font-medium text-body-sm text-ink hover:bg-row-hover",
 											narrowing && "cursor-default hover:bg-surface",
 											section.id !== "Working files" &&
 												!section.highlights &&
 												sections.some(
 													(entry) => entry.id === "Working files",
 												) &&
-												"pl-4",
+												"ps-4",
 										)}
 									>
 										{section.open ? (
 											<ChevronDown size={14} aria-hidden="true" />
 										) : (
-											<ChevronRight size={14} aria-hidden="true" />
+											<ChevronRight
+												size={14}
+												aria-hidden="true"
+												className="rtl:-scale-x-100"
+											/>
 										)}
 										{sectionLabels[section.id]?.() ?? section.label}
 										<span
@@ -1012,6 +1021,7 @@ function FinderEntry({
 	onExpand: () => void;
 	materialise: () => Promise<string>;
 }) {
+	useI18nLocale();
 	const doc = item.row.document;
 	const [nearRef, near] = useEverInView("200px");
 	const thumb = useFinderThumbnail(
@@ -1068,7 +1078,7 @@ function FinderEntry({
 					setMenuOpen(true);
 				}}
 			>
-				<div className={cn("flex min-w-0 items-center gap-2 pr-8")}>
+				<div className={cn("flex min-w-0 items-center gap-2 pe-8")}>
 					<button
 						type="button"
 						ref={(node) => {
@@ -1089,7 +1099,7 @@ function FinderEntry({
 							} else onKeyDown(event);
 						}}
 						className={cn(
-							"min-w-0 flex-1 truncate rounded-sm py-1 text-left text-body-sm",
+							"min-w-0 flex-1 truncate rounded-sm py-1 text-start text-body-sm",
 							item.row.missing ? "text-ink-muted" : "text-ink",
 						)}
 					>
@@ -1108,7 +1118,9 @@ function FinderEntry({
 				<div className={REVEAL} onKeyDown={(event) => event.stopPropagation()}>
 					<ImageActionsMenu
 						file={doc.path}
-						tooltip={t("ui.canvas.files.fileActions")}
+						tooltip={t(
+							"ui.canvas.finder_files_view.ui_canvas_files_fileactions",
+						)}
 						label={doc.title}
 						open={menuOpen}
 						onOpenChange={setMenuOpen}
@@ -1167,8 +1179,8 @@ function FinderEntry({
 					} else onKeyDown(event);
 				}}
 				className={cn(
-					"w-full min-w-0 rounded-sm p-1 text-left",
-					!tiled && "flex items-center gap-2 pr-8",
+					"w-full min-w-0 rounded-sm p-1 text-start",
+					!tiled && "flex items-center gap-2 pe-8",
 					item.row.missing && "text-ink-muted",
 				)}
 				style={{ height: band.height - (tiled ? 4 : 0) }}
@@ -1270,8 +1282,8 @@ function FinderEntry({
 					file={doc.path}
 					tooltip={
 						item.row.media === "image"
-							? t("ui.canvas.files.imageActions")
-							: t("ui.canvas.files.fileActions")
+							? t("ui.canvas.finder_files_view.ui_canvas_files_imageactions")
+							: t("ui.canvas.finder_files_view.ui_canvas_files_fileactions")
 					}
 					label={doc.title}
 					open={menuOpen}

@@ -1,5 +1,5 @@
 /**
- * A semantic message that leaves the flow: fixed to the bottom-right corner,
+ * A semantic message that leaves the flow: fixed to the bottom-inline-end corner,
  * optionally dismissing itself after a delay.
  *
  * It replaces MUI's `Snackbar` rather than routing through the app's sonner
@@ -38,7 +38,7 @@ export type FloatingAlertProps = {
 	 * and to the polite `status` for everything else.
 	 */
 	role?: "alert" | "status";
-	/** Buttons rendered below the message, right-aligned. */
+	/** Buttons rendered below the message, inline-end aligned. */
 	action?: ReactNode;
 	children: ReactNode;
 };
@@ -68,11 +68,11 @@ export const FloatingAlert: FC<FloatingAlertProps> = ({
 		(variant === "danger" || variant === "warning" ? "alert" : "status");
 
 	return (
-		<div className="fixed right-4 bottom-4 z-50 w-100 max-w-[calc(100vw-2rem)]">
+		<div className="fixed end-4 bottom-4 z-50 w-100 max-w-[calc(100vw-2rem)]">
 			<Alert
 				variant={variant}
 				role={liveRole}
-				className="relative pr-10 shadow-overlay"
+				className="relative pe-10 shadow-overlay"
 			>
 				{children}
 				{action ? (
@@ -84,7 +84,7 @@ export const FloatingAlert: FC<FloatingAlertProps> = ({
 				size="icon-sm"
 				onClick={onClose}
 				aria-label={t("ui.common.connection.floating_alert.dismiss")}
-				className="absolute top-1.5 right-1.5"
+				className="absolute top-1.5 end-1.5"
 			>
 				<X />
 			</Button>

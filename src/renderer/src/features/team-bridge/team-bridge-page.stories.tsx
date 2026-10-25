@@ -1,23 +1,33 @@
+import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
-import {} from "react";
+import { fireEvent, userEvent, within } from "@storybook/test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+	type CSSProperties,
+	useEffect,
+	useLayoutEffect,
+	useState,
+} from "react";
+import type {
+	DesktopRequest,
+	DesktopResponse,
+} from "../../../../shared/desktop-contract";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
+import { draftStorageKey } from "./team-bridge-drafts";
 import {
-	type PendingSend,
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
 	type TeamBridgeTarget,
 	asTeamBridgeTenantId,
 	draftCreateInput,
 	organizationOptions,
-	performSend,
-	threadWithPending,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
+import { scheduledLocalInput } from "./team-bridge-scheduling";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
 import { threadTargetFromSearch } from "./team-bridge-thread-read";
 
@@ -368,7 +378,7 @@ const meta = {
 	// shows the real composition rather than a page collapsed to its content.
 	decorators: [
 		(Story) => (
-			<div className="flex h-dvh flex-col">
+			<div className="h-dvh">
 				<Story />
 			</div>
 		),
@@ -937,6 +947,223 @@ export const EmptySections: Story = {
 	},
 };
 
+/** Interactive per-target draft probe; only this fixture account is touched.
+ * Navigate among channel/group/DM, type independently, then reload the story. */
+function DurableDraftStory() {
+	const [target, setTarget] = useState<
+		import("./team-bridge-model").TeamBridgeTarget
+	>({ type: "conversation", id: channel.id });
+	return (
+		<TeamBridgePageView
+			{...meta.args}
+			selfAccountId="acct_story_drafts"
+			target={target}
+			onTarget={setTarget}
+			initialDraft="The handoff notes are ready for review."
+			onSend={async () => {
+				throw new Error("fixture send refused");
+			}}
+			onSchedule={async () => {
+				throw new Error("fixture schedule refused");
+			}}
+		/>
+	);
+}
+export const DurablePerTargetDrafts: Story = {
+	render: () => <DurableDraftStory />,
+};
+
+/** Seed only this disposable story account, never any operator draft. The
+ * persisted attempt is the real reload/recovery path, not a visual stand-in. */
+function SchedulingPageStory({
+	held = false,
+	narrow = false,
+}: { held?: boolean; narrow?: boolean }) {
+	const [account] = useState(() => {
+		const accountId = held
+			? "acct_story_held_attempt"
+			: "acct_story_pending_schedule";
+		const target = { type: "conversation" as const, id: dm.id };
+		localStorage.setItem(
+			draftStorageKey(accountId, dm.tenant_id),
+			JSON.stringify({
+				[`conversation:${dm.id}`]: {
+					target,
+					body: "The release handoff is ready for review.",
+					clientRef: "story-schedule-reference",
+					...(held
+						? { sendAt: new Date(Date.now() + 3_600_000).toISOString() }
+						: {}),
+				},
+			}),
+		);
+		return accountId;
+	});
+	return (
+		<div className={narrow ? "h-full w-[640px] max-w-full" : "h-full"}>
+			<TeamBridgePageView
+				{...meta.args}
+				selfAccountId={account}
+				onSchedule={() =>
+					held
+						? Promise.reject(new Error("fixture response lost"))
+						: new Promise(() => {})
+				}
+			/>
+		</div>
+	);
+}
+export const HeldAttempt: Story = {
+	render: () => <SchedulingPageStory held />,
+};
+export const HeldAttemptNarrow: Story = {
+	render: () => <SchedulingPageStory held narrow />,
+};
+export const HeldAttemptMinimumWidth: Story = {
+	render: () => (
+		<div className="h-full w-[800px] max-w-full">
+			<SchedulingPageStory held />
+		</div>
+	),
+};
+export const ScheduleComposer: Story = {
+	render: () => <SchedulingPageStory />,
+};
+export const SchedulingInFlight: Story = {
+	render: () => <SchedulingPageStory />,
+	play: async ({ canvasElement }) => {
+		await userEvent.click(
+			within(canvasElement).getByRole("button", {
+				name: t("ui.teamBridge.schedule.title"),
+			}),
+		);
+		const dialog = within(document.body).getByRole("dialog");
+		fireEvent.change(
+			within(dialog).getByLabelText(t("ui.teamBridge.schedule.when")),
+			{
+				target: {
+					value: scheduledLocalInput(
+						new Date(Date.now() + 3_600_000).toISOString(),
+					),
+				},
+			},
+		);
+		await userEvent.click(
+			within(dialog).getByRole("button", {
+				name: t("ui.teamBridge.schedule.review"),
+			}),
+		);
+		await userEvent.click(
+			within(dialog).getByRole("button", {
+				name: t("ui.teamBridge.schedule.confirm_action"),
+			}),
+		);
+	},
+};
+
+/** The production Scheduled view inside the page, using the desktop transport
+ * seam. A 409 transitions one row to sending; another organization refuses its
+ * list. The error and successful rows must remain visible together. */
+function ScheduledRecoveryPageStory() {
+	const [client] = useState(
+		() =>
+			new QueryClient({
+				defaultOptions: { queries: { retry: false, gcTime: 0 } },
+			}),
+	);
+	useLayoutEffect(() => {
+		const previous = window.api;
+		let raced = false;
+		const request = async (input: DesktopRequest): Promise<DesktopResponse> => {
+			if (input.op === "team_bridge.scheduled.list") {
+				if (input.tenant_id === northwindOrganization.tenantId)
+					return {
+						status: 403,
+						body: {
+							detail: {
+								code: "not_a_member",
+								message: "Fixture organization refusal",
+							},
+						},
+					};
+				const base = {
+					tenant_id: minervaOrganization.tenantId,
+					conversation_id: dm.id,
+					send_at: new Date(Date.now() + 3_600_000).toISOString(),
+					created_at: new Date().toISOString(),
+				};
+				return {
+					status: 200,
+					body: {
+						result: {
+							scheduled: [
+								{
+									...base,
+									id: "bsch_story_race",
+									body: "A cancellation races with delivery.",
+									status: raced ? "sending" : "scheduled",
+								},
+								{
+									...base,
+									id: "bsch_story_sending",
+									body: "This message is already being sent.",
+									status: "sending",
+								},
+							],
+						},
+					},
+				};
+			}
+			if (input.op === "team_bridge.scheduled.cancel") {
+				raced = true;
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: "invalid_transition",
+							message: "Fixture delivery already started",
+						},
+					},
+				};
+			}
+			return previous?.desktop?.request
+				? previous.desktop.request(input)
+				: { status: 501, body: { detail: "Unsupported fixture request" } };
+		};
+		window.api = {
+			...previous,
+			desktop: { ...previous?.desktop, request },
+		} as typeof window.api;
+		return () => {
+			window.api = previous;
+			client.clear();
+		};
+	}, [client]);
+	return (
+		<QueryClientProvider client={client}>
+			<TeamBridgePageView
+				{...meta.args}
+				selfAccountId="acct_story_scheduled_page"
+				scope={TEAM_BRIDGE_ALL_SCOPE}
+			/>
+		</QueryClientProvider>
+	);
+}
+export const ScheduledPageRecovery: Story = {
+	render: () => <ScheduledRecoveryPageStory />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(
+			canvas.getByRole("button", { name: t("ui.teamBridge.schedule.list") }),
+		);
+		await userEvent.click(
+			await canvas.findByRole("button", {
+				name: t("ui.teamBridge.schedule.cancel"),
+			}),
+		);
+	},
+};
+
 // These boards use the real page and ChatLayout, not a width-only pane mock.
 // The presentation seam prevents Storybook from contacting the operator's hub.
 const threadRoot: TeamBridgeMessage = {
@@ -1071,6 +1298,99 @@ export const ThreadReadAcknowledgement: Story = {
 			/>
 		);
 	},
+};
+
+/*
+ * F9 frames: enough history to overflow, so the designer can confirm the
+ * timeline OPENS at the newest message (not scrollTop 0) and that a send keeps
+ * it in view. The newest body names itself so the frame is self-checking.
+ */
+const longHistory: TeamBridgeMessage[] = Array.from(
+	{ length: 24 },
+	(_, index) => ({
+		...messages[index % messages.length],
+		id: `bcmsg_long_${index + 1}`,
+		seq: index + 1,
+		body:
+			index === 23
+				? "Newest message — this should be in view when the conversation opens."
+				: `Earlier message ${index + 1} in a long conversation.`,
+		created_at: new Date(Date.now() - (24 - index) * 5 * 60_000).toISOString(),
+	}),
+);
+export const LongHistoryOpensAtNewest: Story = {
+	args: { messages: longHistory },
+};
+
+/*
+ * D14 (timeline): growth that is NOT a new message. Two seconds after open,
+ * the newest message gains a thread rollup (a reply count), which grows the
+ * timeline's inner column without changing the message list's key - the case
+ * the inner-column ResizeObserver exists for (r8 m1). A pinned reader stays
+ * at the bottom with the rollup in view. Scroll up first and it does not move.
+ */
+const RollupGrowth = (args: Story["args"]) => {
+	const [rolled, setRolled] = useState(false);
+	useEffect(() => {
+		const timer = setTimeout(() => setRolled(true), 2000);
+		return () => clearTimeout(timer);
+	}, []);
+	const shown: TeamBridgeMessage[] = longHistory.map((message, index) =>
+		rolled && index === longHistory.length - 1
+			? {
+					...message,
+					reply_count: 3,
+					reply_participants: [message.sender.display_label],
+					last_reply_at: new Date().toISOString(),
+				}
+			: message,
+	);
+	return (
+		<TeamBridgePageView
+			{...(args as Parameters<typeof TeamBridgePageView>[0])}
+			messages={shown}
+		/>
+	);
+};
+export const LongHistoryRollupGrowsWhilePinned: Story = {
+	render: (args) => <RollupGrowth {...args} />,
+};
+
+/*
+ * D14 (timeline): a message ARRIVES while the reader is scrolled up. Every
+ * 3 s a new message is appended. Scroll to the top first: the reader is not
+ * moved. Scroll back to the bottom and later messages are followed again.
+ */
+const ArrivingMessages = (args: Story["args"]) => {
+	const [shown, setShown] = useState(longHistory);
+	useEffect(() => {
+		const timer = setInterval(() => {
+			setShown((current) =>
+				current.length >= longHistory.length + 8
+					? current
+					: [
+							...current,
+							{
+								...longHistory[longHistory.length - 1],
+								id: `bcmsg_arrived_${current.length + 1}`,
+								seq: current.length + 1,
+								body: `Arrived message ${current.length + 1}.`,
+								created_at: new Date().toISOString(),
+							},
+						],
+			);
+		}, 3000);
+		return () => clearInterval(timer);
+	}, []);
+	return (
+		<TeamBridgePageView
+			{...(args as Parameters<typeof TeamBridgePageView>[0])}
+			messages={shown}
+		/>
+	);
+};
+export const MessageArrivesWhileScrolledUp: Story = {
+	render: (args) => <ArrivingMessages {...args} />,
 };
 
 /*
@@ -1230,84 +1550,6 @@ export const OwnChiefNamed: Story = {
 	},
 };
 
-/*
- * TEAM BRIDGE: OPTIMISTIC SEND, SPARSE THREAD, CHIEF-OF-STAFF LABEL
- * (operator report after v0.39.9). Fixtures are hand-written; the pending rows
- * are built with the same `threadWithPending` the page uses, so a story shows
- * what the container really hands the view.
- */
-const sentAt = new Date().toISOString();
-const pendingEntry = (
-	clientRef: string,
-	body: string,
-	status: "sending" | "failed",
-): PendingSend => ({
-	clientRef,
-	body,
-	createdAt: sentAt,
-	tenantId: "tnt_1",
-	conversationId: benDm.id,
-	draftKey: null,
-	baselineSeq: 1,
-	status,
-});
-const withPending = (pending: PendingSend[]) =>
-	threadWithPending(benThread, pending, {
-		accountId: self,
-		label: "Damian Tran",
-	});
-
-/** The message is on screen before the round trip: dimmed, "Sending…". */
-export const OptimisticSending: Story = {
-	args: (() => {
-		const pendingSends = [
-			pendingEntry("ref-1", "On my way, see you there.", "sending"),
-		];
-		return {
-			...slackRail,
-			selfName: "Damian Tran",
-			target: { type: "person" as const, accountId: "acct_ben" },
-			messages: withPending(pendingSends),
-			pendingSends,
-		};
-	})(),
-};
-
-/** A refused send stays in the thread as "Not sent" with a Retry. */
-export const OptimisticFailedWithRetry: Story = {
-	args: (() => {
-		const pendingSends = [
-			pendingEntry("ref-2", "On my way, see you there.", "failed"),
-		];
-		return {
-			...slackRail,
-			selfName: "Damian Tran",
-			target: { type: "person" as const, accountId: "acct_ben" },
-			messages: withPending(pendingSends),
-			pendingSends,
-			onRetrySend: () => {},
-		};
-	})(),
-};
-
-/** Sending, then a failed one beneath it: typed order, after confirmed rows. */
-export const OptimisticMixed: Story = {
-	args: (() => {
-		const pendingSends = [
-			pendingEntry("ref-3", "First, this one failed.", "failed"),
-			pendingEntry("ref-4", "Second, still sending.", "sending"),
-		];
-		return {
-			...slackRail,
-			selfName: "Damian Tran",
-			target: { type: "person" as const, accountId: "acct_ben" },
-			messages: withPending(pendingSends),
-			pendingSends,
-			onRetrySend: () => {},
-		};
-	})(),
-};
-
 /** One message in a thread: breathing room under it, above the composer. */
 export const SparseThread: Story = {
 	args: {
@@ -1390,149 +1632,6 @@ export const ChiefLabelNamedAgent: Story = {
  * the fake server's settlement, never the message row: this makes the no-id,
  * failed, Retry and feed-before-POST windows observable in a browser. It does
  * not claim coverage of the production query/container glue or a live backend.
- */
-export const OptimisticIntegrationFlow: Story = {
-	render: (args) => {
-		const [pending, setPending] = useState<PendingSend[]>([]);
-		const [confirmed, setConfirmed] = useState<TeamBridgeMessage[]>([]);
-		const [made, setMade] = useState(false);
-		const [counts, setCounts] = useState({ create: 0, post: 0 });
-		const remembered = useRef(
-			new Map<string, { id: string; tenantId: string | undefined }>(),
-		);
-		const resolveCreate = useRef<(() => void) | null>(null);
-		const post = useRef<{
-			ok: () => void;
-			no: () => void;
-			body: string;
-			ref: string;
-		} | null>(null);
-		const patch = (ref: string, value: Partial<PendingSend>) =>
-			setPending((rows) =>
-				rows.map((row) => (row.clientRef === ref ? { ...row, ...value } : row)),
-			);
-		const run = async (body: string, clientRef: string) => {
-			patch(clientRef, { status: "sending" });
-			const result = await performSend({
-				conversationId: null,
-				tenantId: "tnt_1",
-				draftTenantId: "tnt_1",
-				draftKey: "integration",
-				input: draftCreateInput([
-					{ kind: "human", accountId: "acct_ben", label: "Ben Tran" },
-				]),
-				body,
-				clientRef,
-				remembered: remembered.current,
-				create: () => {
-					setCounts((c) => ({ ...c, create: c.create + 1 }));
-					return new Promise((resolve) => {
-						resolveCreate.current = () => {
-							setMade(true);
-							resolve({ id: benDm.id, tenant_id: "tnt_1" });
-						};
-					});
-				},
-				onCreated: (c) => patch(clientRef, { conversationId: c.id }),
-				post: () => {
-					setCounts((c) => ({ ...c, post: c.post + 1 }));
-					return new Promise((resolve, reject) => {
-						post.current = {
-							ok: () => resolve({ id: "bcmsg_flow" }),
-							no: () => reject(new Error("scripted failure")),
-							body,
-							ref: clientRef,
-						};
-					});
-				},
-			});
-			patch(
-				clientRef,
-				result.ok
-					? { status: "sent", confirmedId: result.confirmedId }
-					: { status: "failed" },
-			);
-		};
-		const feed = () => {
-			if (post.current)
-				setConfirmed([
-					{
-						id: "bcmsg_flow",
-						conversation_id: benDm.id,
-						seq: 1,
-						sender: {
-							account_id: self,
-							kind: "human",
-							display_label: "Damian Tran",
-						},
-						origin: "human",
-						body: post.current.body,
-						created_at: sentAt,
-					},
-				]);
-		};
-		return (
-			<div className="flex h-full flex-col">
-				<div className="flex shrink-0 gap-3 p-2 text-[12px]">
-					<button type="button" onClick={() => resolveCreate.current?.()}>
-						Resolve create
-					</button>
-					<button type="button" onClick={() => post.current?.no()}>
-						Reject POST
-					</button>
-					<button type="button" onClick={feed}>
-						Deliver server copy
-					</button>
-					<button type="button" onClick={() => post.current?.ok()}>
-						Resolve POST
-					</button>
-					<span>
-						Create {counts.create}; POST {counts.post}
-					</span>
-				</div>
-				<TeamBridgePageView
-					{...args}
-					{...slackRail}
-					selfName="Damian Tran"
-					conversations={made ? [benDm] : []}
-					target={{ type: "person", accountId: "acct_ben" }}
-					messageState={made ? "ready" : "idle"}
-					messages={threadWithPending(confirmed, pending, {
-						accountId: self,
-						label: "Damian Tran",
-					})}
-					pendingSends={pending}
-					onSend={(body, ref) => {
-						setPending((rows) => [
-							...rows,
-							{
-								clientRef: ref,
-								body,
-								createdAt: sentAt,
-								tenantId: "tnt_1",
-								conversationId: null,
-								draftKey: "integration",
-								baselineSeq: -1,
-								status: "sending",
-							},
-						]);
-						return run(body, ref);
-					}}
-					onRetrySend={(ref) => {
-						const row = pending.find((r) => r.clientRef === ref);
-						if (row) void run(row.body, ref);
-					}}
-				/>
-			</div>
-		);
-	},
-};
-
-/**
- * Real page + picker + create serializer + read projection, with an in-memory
- * service boundary. No daemon or production write: the visible payload is what
- * draftCreateInput produced, and its stored labels are fed back uncomposed so
- * the merged page must resolve the same named/unnamed identity on read.
  */
 export const OwnChiefCreateReadRoundTrip: Story = {
 	args: OwnChiefServerFallback.args,

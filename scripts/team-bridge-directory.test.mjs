@@ -400,35 +400,41 @@ test("a ready surface, an unasked boundary or no answer yet is eligible", () => 
 });
 
 // ---------------------------------------------------------------------------
-// View: the thread pane's sender names (review round 4, M1)
+// The held thread surface (review round 4, M1, re-pointed)
 // ---------------------------------------------------------------------------
 
 /*
  * The page's `labelFor` is tenant-scoped and nullable (the "Member" placeholder
  * fix, #1296): `labelFor(sender, tenantId)` is `null` when nothing names the
- * sender. The thread pane was handed that function directly, which compiled
- * and rendered every pane sender as "Unknown person". The page now passes
- * `(sender) => labelFor(sender, thread.tenantId)`. This renders the REAL page
- * with a thread open and a directory that names the sender, so a regression
- * shows up as the unknown label here, not in a user's pane.
+ * sender. The thread pane was once handed that function directly, which
+ * compiled and rendered every pane sender as "Unknown person"; the page now
+ * passes `(sender) => labelFor(sender, thread.tenantId)`.
+ *
+ * THAT RENDER PATH IS HELD IN THIS BUILD. `teamBridgeThreadsAvailable` is false
+ * whatever the runtime advertises (`team-bridge-thread-gate.ts`), so the page
+ * with a `threadLink` renders NO pane and NO reply affordance - even with the
+ * capability answering `enabled`, which is the case this test uses. What is
+ * left to pin is the hold at the real view plus the tenant-scoped wiring in
+ * source, which is what the feature returns on. The pane's own sender naming is
+ * unreachable until the constant flips; asserting it here would be an assertion
+ * about a surface no build mounts.
  */
-test("a thread pane names its sender from the directory, and only an unnamed one reads as unknown", async () => {
+test("the held page mounts no thread pane or reply affordance, and keeps the tenant-scoped label wiring", async () => {
 	const { QueryClient, QueryClientProvider } = await import(
 		"@tanstack/react-query"
 	);
 	const dm = conversation();
-	// The legacy hub label "Member" must be resolved from the directory.
-	const rootMessage = (accountId) => ({
+	const rootMessage = {
 		id: "bmsg_pane_root",
 		conversation_id: dm.id,
 		seq: 1,
-		sender: { account_id: accountId, kind: "human", display_label: "Member" },
+		sender: { account_id: "acct_bea", kind: "human", display_label: "Member" },
 		body: "Thread root body",
 		origin: "human",
 		created_at: "2026-10-19T10:00:00Z",
 		reply_count: 1,
-	});
-	const render = (accountId) =>
+	};
+	const render = (threadsCapabilityState) =>
 		renderToStaticMarkup(
 			createElement(
 				QueryClientProvider,
@@ -437,13 +443,13 @@ test("a thread pane names its sender from the directory, and only an unnamed one
 					TeamBridgePageView,
 					viewProps({
 						selectedConversation: dm,
-						messages: [rootMessage(accountId)],
+						messages: [rootMessage],
 						messageState: "ready",
-						// The MERGED view looks the roster up BY TENANT; a single-
-						// organization view ignores the tenant, so only this shape
-						// can tell a pane that passes the tenant from one that does not.
 						scope: "all",
 						directories: { tnt_1: [person({ display_label: "Bea" })] },
+						...(threadsCapabilityState === undefined
+							? {}
+							: { threadsCapabilityState }),
 						threadLink: {
 							tenantId: dm.tenant_id,
 							conversationId: dm.id,
@@ -453,15 +459,36 @@ test("a thread pane names its sender from the directory, and only an unnamed one
 				),
 			),
 		);
-	const pane = (html) => html.slice(html.indexOf('aria-label="Thread"'));
-	const known = pane(render("acct_bea"));
-	assert.match(known, /Thread root body/, "the pane rendered the root");
-	assert.match(visible(known), /Bea/);
-	assert.doesNotMatch(visible(known), /Unknown person/);
-	// Negative control: a sender the directory does not name IS unknown, so
-	// the assertion above cannot pass by never resolving anything.
-	const unnamed = pane(render("acct_nobody"));
-	assert.match(visible(unnamed), /Unknown person/);
+	// EVERY capability answer is held, `enabled` included: an absent prop is the
+	// "no capabilities read" mount and must behave like `unknown`.
+	for (const state of [
+		undefined,
+		"unknown",
+		"below-version",
+		"unpaired",
+		"enabled",
+	]) {
+		const html = render(state);
+		const label = state ?? "absent";
+		// The timeline itself still renders; only the thread lane is withheld.
+		assert.match(html, /Thread root body/, `${label}: timeline`);
+		assert.doesNotMatch(html, /aria-label="Thread"/, `${label}: pane`);
+		assert.doesNotMatch(html, /Reply in thread/, `${label}: reply`);
+	}
+	const pageSource = readFileSync(
+		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		pageSource,
+		/labelFor\(sender, threadSelection\.tenantId\)/,
+		"the pane's tenant-scoped label wiring must survive for the return",
+	);
+	assert.match(
+		pageSource,
+		/teamBridgeThreadsAvailable\(threadsCapabilityState\)/,
+		"the page must derive the hold from the capability state",
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -1238,4 +1265,31 @@ test("the client maps both ops onto the frozen request shapes", () => {
 	assert.match(source, /op: "team_bridge\.status"/);
 	assert.match(source, /teamBridgeDirectorySchema\.parse/);
 	assert.match(source, /agentMessagesStatusSchema\.parse/);
+});
+
+test("server rendering does not depend on ambient browser storage", () => {
+	const descriptor = Object.getOwnPropertyDescriptor(
+		globalThis,
+		"localStorage",
+	);
+	Object.defineProperty(globalThis, "localStorage", {
+		configurable: true,
+		get() {
+			throw new Error("browser storage is unavailable during server rendering");
+		},
+	});
+	try {
+		const gate = renderToStaticMarkup(
+			createElement(ui.TeamBridgePageView, viewProps({ gatePending: true })),
+		);
+		assert.ok(!gate.includes("team-bridge-channels-heading"));
+		const eligible = renderToStaticMarkup(
+			createElement(ui.TeamBridgePageView, viewProps()),
+		);
+		assert.ok(eligible.includes('id="team-bridge-people-heading"'));
+	} finally {
+		if (descriptor)
+			Object.defineProperty(globalThis, "localStorage", descriptor);
+		else Reflect.deleteProperty(globalThis, "localStorage");
+	}
 });

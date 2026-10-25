@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-namespace-bind-reaudit",
+  "date": "2026-10-25",
+  "locale": "ru",
+  "namespace": "ui.chat.sidebar",
+  "batch": "ru-bind-1403",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "audited_head_short": "0adbb37b94",
+  "requested_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "instance": "ru-bind-334e372f09e0",
+  "instance_note": "Per-namespace bind instance; the 12-hex suffix is the first 12 hex of the current ru target sha256, so the id names the bytes it audited.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "0c5590aa68a9",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback selected or observed",
+    "fallback": null,
+    "independent_from_translator": true,
+    "independence_basis": "Independent translation-auditor session 0c5590aa68a9, separate from the translator (i18n-translator in the ledger). Bytes were read from git at 0adbb37b94; no catalogue or ledger file was edited by this run.",
+    "instance": "ru-bind-334e372f09e0"
+  },
+  "independence": "Independent translation-auditor session 0c5590aa68a9; translator was i18n-translator per the ledger. The audit read en and ru bytes from git at 0adbb37b94, edited no catalogue and no ledger row, and writes only this receipt.",
+  "scope": "Full re-audit of ui.chat.sidebar at the current bytes (bind audit): every key, not a delta.",
+  "method": "Read the en and ru JSON from git; compared key sets, ICU AST (arguments, number skeletons, select arms, plural categories, pound usage), rendered the ru messages with intl-messageformat (the same class used by src/i18n/messages) at 1/2/5/21 plus 0/3/4/6/11/22/1.5, and read the en context sidecars for role/tone/length. Catalogue-level audit only: no browser, no rendered-frame pass, no native-speaker sign-off is claimed.",
+  "source_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+  "target_sha256": "334e372f09e056a1c2b257c47a1a27e04660ffea061ab79221f8963a9bc9992b",
+  "context_sha256": "0a5a1fc27e8d0cab8dfe9b086144a19969268403afded5a7a68036eaf5485339",
+  "checks": {
+    "en_keys": 49,
+    "ru_keys": 49,
+    "key_set_exact": true,
+    "icu_parsed": 49,
+    "icu_failures": 0,
+    "placeholders_exact": true,
+    "plural_categories_ru": "one/few/many/other (0=many, 1=one, 2=few, 5=many, 21=one, 22=few, 1.5=other)",
+    "renders": {
+      "groups.badge": {
+        "1": "1 чат в этой группе",
+        "2": "2 чата в этой группе",
+        "5": "5 чатов в этой группе",
+        "21": "21 чат в этой группе"
+      },
+      "agents.builtin_offer": {
+        "0": "Встроенных агентов, готовых к установке, нет — {list}. После установки их можно редактировать.",
+        "1": "1 встроенный агент готов к установке — {list}. После установки его можно редактировать.",
+        "2": "2 встроенных агента готовы к установке — {list}. После установки их можно редактировать.",
+        "5": "5 встроенных агентов готовы к установке — {list}. После установки их можно редактировать.",
+        "21": "21 встроенный агент готов к установке — {list}. После установки его можно редактировать."
+      },
+      "catalogue.total": {
+        "total=1": "Показано 1 из 1 чата",
+        "total=2": "Показано 1 из 2 чатов",
+        "total=5": "Показано 1 из 5 чатов",
+        "total=21": "Показано 1 из 21 чата"
+      },
+      "catalogue.total_search": {
+        "shown=1": "Показано 1 совпадение из 21 чата",
+        "shown=2": "Показано 2 совпадения из 21 чата",
+        "shown=5": "Показано 5 совпадений из 21 чата",
+        "shown=21": "Показано 21 совпадение из 21 чата"
+      },
+      "catalogue.total_search_clipped": {
+        "shown=1": "Показано 1+ совпадение из 21 чата",
+        "shown=2": "Показано 2+ совпадения из 21 чата",
+        "shown=5": "Показано 5+ совпадений из 21 чата",
+        "shown=21": "Показано 21+ совпадение из 21 чата"
+      }
+    },
+    "note": "The en builtin_offer spells 2..6 in dedicated =2..=6 arms; ru correctly replaces them with native few/many and a digit, and renders 2/3/4/5/6/21/22 correctly. The explicit =0 arm is retained."
+  },
+  "findings": [
+    {
+      "id": "RU-BIND-S-01",
+      "severity": "nit",
+      "category": "idiom",
+      "key": "ui.chat.sidebar.list.loading_more",
+      "current": "Загрузка следующих…",
+      "proposed": "Загрузка ещё…",
+      "reason": "«следующих» is a substantivized adjective with no noun to agree with; the role is a two-word present-participle status plus the ellipsis, and «Загрузка ещё…» states the same thing idiomatically.",
+      "introduced_by": "pre-existing value at PR base 3d0e9010d7 (unchanged by this PR)"
+    },
+    {
+      "id": "RU-BIND-S-02",
+      "severity": "nit",
+      "category": "glossary-consistency",
+      "key": "ui.chat.sidebar.drafts.clear_all_label",
+      "current": "Удалить все черновики",
+      "proposed": "Очистить все черновики",
+      "reason": "The visible label of the same control is «Очистить всё», and the locale translates 'clear' as «очистить» in agents.clear_filter and search.clear; the accessible name switches to «Удалить» (delete) for the same action.",
+      "introduced_by": "pre-existing value at PR base 3d0e9010d7 (unchanged by this PR)"
+    },
+    {
+      "id": "RU-BIND-S-03",
+      "severity": "nit",
+      "category": "overflow",
+      "key": "ui.chat.sidebar.pins.drag_title",
+      "current": "Перетащите, чтобы изменить порядок · Esc — отмена",
+      "reason": "At 49 characters the ru tooltip is 1.69x its 29-character English source. No width budget is declared and this is a native title tooltip that wraps, so it is flagged for a rendered check rather than shortened at the cost of the reorder instruction.",
+      "introduced_by": "pre-existing value at PR base 3d0e9010d7 (unchanged by this PR)"
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 3
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed — 49/49 keys, 0 blocker/major, 3 nits recorded (loading-more idiom, clear/delete drift, drag-title length flagged); all plurals render correctly at 1/2/5/21 and 0/22/1.5."
+}

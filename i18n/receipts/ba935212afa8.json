@@ -1,0 +1,957 @@
+{
+  "auditor": "i18n-auditor",
+  "team_role": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": "none",
+  "instance": "ba935212afa8",
+  "date": "2026-10-23",
+  "locale": "ru",
+  "commit": "a2c5ce5871ff338585020382c610f8a00f0293ec",
+  "status": "changes_requested",
+  "verdict": "changes_requested",
+  "audit_round": "second independent audit of completion round 1",
+  "keys_read": 152,
+  "namespace_count": 11,
+  "independence": "Independent second auditor; did not author the translation, did not edit any repository file, and did not read or copy the committed ui-ru-completion-batch.json receipt or another new audit receipt. Translator session a259c592a9b8 is distinct from auditor session ba935212afa8.",
+  "references": {
+    "docs": [
+      "docs/I18N.md",
+      "scripts/i18n/ledger-assemble.mjs RECEIPT CONTRACT",
+      "scripts/i18n/ledger-rules.mjs",
+      "core docs/I18N.md",
+      "core docs/design/i18n.md §§2,4,6"
+    ],
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "i18n/glossary.md (core)",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "i18n/style-guides/ru.md (core)",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    }
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 43,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "ru": "ed5d0b10bb5c0887cc578b28bf4f9b15702aece2258a9365df8a22ed344f391d",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "findings": [
+        {
+          "id": "RU2-m3",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar.row_menu.copy_id",
+          "path": "src/i18n/catalogues/ru/ui.chat.sidebar.json:30; existing src/i18n/catalogues/ru/ui.chat.header.json:7",
+          "current": "Скопировать ID сессии (sidebar) versus Копировать ID сессии (existing header)",
+          "proposed": "Копировать ID сессии",
+          "reason": "The exact same English label and session-ID copy action use different Russian infinitives in adjacent chat surfaces; match the existing header wording."
+        }
+      ],
+      "evidence": {
+        "side_by_side_keys_read": 43,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 86,
+        "icu_format_operations": 90,
+        "pseudo_parse_format_passes": 43,
+        "overflow_candidates": [
+          {
+            "key": "ui.chat.sidebar.pins.drag_title",
+            "select": null,
+            "enLength": 29,
+            "ruLength": 49,
+            "delta": 20,
+            "ratio": 1.69,
+            "ruDisplay": "Перетащите, чтобы изменить порядок · Esc — отмена"
+          },
+          {
+            "key": "ui.chat.sidebar.header.create_team",
+            "select": null,
+            "enLength": 8,
+            "ruLength": 13,
+            "delta": 5,
+            "ratio": 1.625,
+            "ruDisplay": "Новая команда"
+          },
+          {
+            "key": "ui.chat.sidebar.list.retry_refresh",
+            "select": null,
+            "enLength": 13,
+            "ruLength": 20,
+            "delta": 7,
+            "ratio": 1.538,
+            "ruDisplay": "Повторить обновление"
+          },
+          {
+            "key": "ui.chat.sidebar.header.create",
+            "select": null,
+            "enLength": 17,
+            "ruLength": 26,
+            "delta": 9,
+            "ratio": 1.529,
+            "ruDisplay": "Создать агента или команду"
+          },
+          {
+            "key": "ui.chat.sidebar.agents.no_match",
+            "select": null,
+            "enLength": 15,
+            "ruLength": 22,
+            "delta": 7,
+            "ratio": 1.467,
+            "ruDisplay": "Нет подходящих агентов"
+          },
+          {
+            "key": "ui.chat.sidebar.list.loading_more",
+            "select": null,
+            "enLength": 13,
+            "ruLength": 19,
+            "delta": 6,
+            "ratio": 1.462,
+            "ruDisplay": "Загрузка следующих…"
+          },
+          {
+            "key": "ui.chat.sidebar.row.not_sent",
+            "select": null,
+            "enLength": 12,
+            "ruLength": 17,
+            "delta": 5,
+            "ratio": 1.417,
+            "ruDisplay": "Ещё не отправлено"
+          },
+          {
+            "key": "ui.chat.sidebar.row_menu.copy_id",
+            "select": null,
+            "enLength": 15,
+            "ruLength": 21,
+            "delta": 6,
+            "ratio": 1.4,
+            "ruDisplay": "Скопировать ID сессии"
+          },
+          {
+            "key": "ui.chat.sidebar.pins.failure",
+            "select": "pin",
+            "enLength": 18,
+            "ruLength": 25,
+            "delta": 7,
+            "ratio": 1.389,
+            "ruDisplay": "Не удалось закрепить «X»."
+          },
+          {
+            "key": "ui.chat.sidebar.search.no_match",
+            "select": null,
+            "enLength": 34,
+            "ruLength": 47,
+            "delta": 13,
+            "ratio": 1.382,
+            "ruDisplay": "По запросу «X» в ваших чатах ничего не найдено."
+          },
+          {
+            "key": "ui.chat.sidebar.drafts.clear_all_label",
+            "select": null,
+            "enLength": 16,
+            "ruLength": 21,
+            "delta": 5,
+            "ratio": 1.313,
+            "ruDisplay": "Удалить все черновики"
+          },
+          {
+            "key": "ui.chat.sidebar.row_menu.move_up",
+            "select": null,
+            "enLength": 20,
+            "ruLength": 26,
+            "delta": 6,
+            "ratio": 1.3,
+            "ruDisplay": "Переместить разговор вверх"
+          }
+        ]
+      }
+    },
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
+      "status": "changes_requested",
+      "verdict": "changes_requested",
+      "keys_audited": 34,
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "ru": "5eb9a7dcad1580d28c0cfa91e0d2befad17abf300c5f44dc0d1e0e5eaf033fb5",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "findings": [
+        {
+          "id": "RU2-B1",
+          "severity": "BLOCKER",
+          "key": "ui.chat.pickers.stop.confirm",
+          "path": "src/i18n/catalogues/ru/ui.chat.pickers.json:33",
+          "current": "Остановить {count, plural, one {эту сессию} few {{count, number, ::group-off} сессии} many {{count, number, ::group-off} сессий} other {{count, number, ::group-off} сессии}} сейчас",
+          "proposed": "Остановить {count, plural, =1 {эту сессию} one {{count, number, ::group-off} сессию} few {{count, number, ::group-off} сессии} many {{count, number, ::group-off} сессий} other {{count, number, ::group-off} сессии}} сейчас",
+          "reason": "Russian CLDR one covers 21, 31, 101, etc., so the current branch confirms a destructive bulk stop as “this session” and hides the selected count; exact =1 must be separate from cardinal one.",
+          "evidence": "IntlMessageFormat 12.1.3 + Intl.PluralRules(\"ru\"): 21/one and 101/one both rendered “Остановить эту сессию сейчас”. The proposed string was executed: 1→эту сессию; 21→21 сессию; 101→101 сессию; 2→2 сессии; 5→5 сессий; 1,5→1,5 сессии."
+        },
+        {
+          "id": "RU2-M1",
+          "severity": "MAJOR",
+          "key": "ui.chat.pickers.login.title",
+          "path": "src/i18n/catalogues/ru/ui.chat.pickers.json:16",
+          "current": "Войти через провайдера",
+          "proposed": "Войти в учётную запись провайдера",
+          "reason": "“Войти через провайдера” means signing in through a provider, while this picker signs into the provider account; the misleading preposition changes the authentication relationship in a high-visibility dialog title.",
+          "evidence": "The sidecar says “lists providers to sign in to”. Existing ui.common.models.json:7 translates the same action as “Войдите в учётную запись провайдера”."
+        },
+        {
+          "id": "RU2-m1",
+          "severity": "MINOR",
+          "key": "ui.chat.pickers.models.native_details",
+          "path": "src/i18n/catalogues/ru/ui.chat.pickers.json:22",
+          "current": "Нативные сведения — {name}",
+          "proposed": "Сведения о модели — {name}",
+          "reason": "“Нативные сведения” is a word-for-word calque that does not idiomatically describe the selected model’s provider-supplied facts; naming the model is clear and matches existing “Сведения об агенте/устройстве” terminology."
+        },
+        {
+          "id": "RU2-n1",
+          "severity": "NIT",
+          "key": "ui.chat.pickers.effort.title",
+          "path": "src/i18n/catalogues/ru/ui.chat.pickers.json:8; existing src/i18n/catalogues/ru/ui.agents.models.json:3",
+          "current": "Here: «Глубина рассуждений»; existing ui.agents.models.override.effort_field: «Усилия рассуждения».",
+          "proposed": "Standardise on «Глубина рассуждений» for both; retain this new key and align the older agents key in the terminology-remediation lane.",
+          "reason": "The identical English term “Reasoning effort” currently has two Russian renderings; the new wording is the more idiomatic one, but the drift should be explicit rather than silently preserved."
+        }
+      ],
+      "evidence": {
+        "side_by_side_keys_read": 34,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 68,
+        "icu_format_operations": 68,
+        "pseudo_parse_format_passes": 34,
+        "overflow_candidates": [
+          {
+            "key": "ui.chat.pickers.copy.title",
+            "select": null,
+            "enLength": 4,
+            "ruLength": 11,
+            "delta": 7,
+            "ratio": 2.75,
+            "ruDisplay": "Копирование"
+          },
+          {
+            "key": "ui.chat.pickers.stop.title",
+            "select": null,
+            "enLength": 4,
+            "ruLength": 10,
+            "delta": 6,
+            "ratio": 2.5,
+            "ruDisplay": "Остановить"
+          },
+          {
+            "key": "ui.chat.pickers.goal.mark_done",
+            "select": null,
+            "enLength": 9,
+            "ruLength": 20,
+            "delta": 11,
+            "ratio": 2.222,
+            "ruDisplay": "Отметить выполненной"
+          },
+          {
+            "key": "ui.chat.pickers.approvals.title",
+            "select": null,
+            "enLength": 14,
+            "ruLength": 22,
+            "delta": 8,
+            "ratio": 1.571,
+            "ruDisplay": "Одобрения инструментов"
+          },
+          {
+            "key": "ui.chat.pickers.fast.premium_acknowledgement",
+            "select": null,
+            "enLength": 46,
+            "ruLength": 64,
+            "delta": 18,
+            "ratio": 1.391,
+            "ruDisplay": "Я понимаю, что в быстром режиме стоимость токена может быть выше"
+          },
+          {
+            "key": "ui.chat.pickers.logout.confirm",
+            "select": null,
+            "enLength": 39,
+            "ruLength": 54,
+            "delta": 15,
+            "ratio": 1.385,
+            "ruDisplay": "Удалить сохранённые учётные данные этой учётной записи"
+          },
+          {
+            "key": "ui.chat.pickers.stop.confirm",
+            "select": null,
+            "enLength": 19,
+            "ruLength": 26,
+            "delta": 7,
+            "ratio": 1.368,
+            "ruDisplay": "Остановить 2 сессии сейчас"
+          },
+          {
+            "key": "ui.chat.pickers.models.set_as_default",
+            "select": null,
+            "enLength": 28,
+            "ruLength": 38,
+            "delta": 10,
+            "ratio": 1.357,
+            "ruDisplay": "Установить текущую модель по умолчанию"
+          },
+          {
+            "key": "ui.chat.pickers.goal.placeholder",
+            "select": null,
+            "enLength": 33,
+            "ruLength": 43,
+            "delta": 10,
+            "ratio": 1.303,
+            "ruDisplay": "Опубликовать выпуск после успешных проверок"
+          }
+        ]
+      }
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 30,
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "ru": "4c9127cc7c3bab98249a5748809693f4dc5a84a66906f03a133182f689529a3c",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "findings": [
+        {
+          "id": "RU2-m2",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.stop.confirm_label",
+          "path": "src/i18n/catalogues/ru/ui.chat.canonical.json:4",
+          "current": "Подтверждение остановки",
+          "proposed": "Подтверждение запроса на остановку",
+          "reason": "The source labels confirmation of a best-effort stop request; dropping “request” makes the accessible fieldset sound like confirmation of a guaranteed stop."
+        }
+      ],
+      "evidence": {
+        "side_by_side_keys_read": 30,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 60,
+        "icu_format_operations": 60,
+        "pseudo_parse_format_passes": 30,
+        "overflow_candidates": [
+          {
+            "key": "ui.chat.canonical.supplement.send",
+            "select": null,
+            "enLength": 4,
+            "ruLength": 9,
+            "delta": 5,
+            "ratio": 2.25,
+            "ruDisplay": "Отправить"
+          },
+          {
+            "key": "ui.chat.canonical.transcript.reconnect",
+            "select": null,
+            "enLength": 9,
+            "ruLength": 16,
+            "delta": 7,
+            "ratio": 1.778,
+            "ruDisplay": "Переподключиться"
+          },
+          {
+            "key": "ui.chat.canonical.supplement.file_actions.open_in_default_app",
+            "select": null,
+            "enLength": 19,
+            "ruLength": 33,
+            "delta": 14,
+            "ratio": 1.737,
+            "ruDisplay": "Открыть в приложении по умолчанию"
+          },
+          {
+            "key": "ui.chat.canonical.sound.stop.request_stop",
+            "select": null,
+            "enLength": 12,
+            "ruLength": 19,
+            "delta": 7,
+            "ratio": 1.583,
+            "ruDisplay": "Запросить остановку"
+          },
+          {
+            "key": "ui.chat.canonical.transcript.send_again",
+            "select": null,
+            "enLength": 10,
+            "ruLength": 15,
+            "delta": 5,
+            "ratio": 1.5,
+            "ruDisplay": "Отправить снова"
+          }
+        ]
+      }
+    },
+    "ui.chat.analytics": {
+      "namespace": "ui.chat.analytics",
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 11,
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "ru": "c849179fbbd6f5bec98e4d051335a3b625e8fd0d72ed2b0ff6531957c4417010",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.analytics.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.analytics.json",
+        "context": "src/i18n/catalogues/en/ui.chat.analytics.context.json"
+      },
+      "findings": [
+        {
+          "id": "RU2-n2",
+          "severity": "NIT",
+          "key": "ui.chat.analytics.filters.top_level_only",
+          "path": "src/i18n/catalogues/ru/ui.chat.analytics.json:2",
+          "current": "Только верхнего уровня",
+          "proposed": "Только сессии верхнего уровня",
+          "reason": "The elliptical genitive has no local noun referent and reads translated; the by-session checkbox is clearer when it names sessions explicitly. Include this longer replacement in the rendered-fit check."
+        }
+      ],
+      "evidence": {
+        "side_by_side_keys_read": 11,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 22,
+        "icu_format_operations": 22,
+        "pseudo_parse_format_passes": 11,
+        "overflow_candidates": [
+          {
+            "key": "ui.chat.analytics.filters.top_level_only",
+            "select": null,
+            "enLength": 14,
+            "ruLength": 22,
+            "delta": 8,
+            "ratio": 1.571,
+            "ruDisplay": "Только верхнего уровня"
+          }
+        ]
+      }
+    },
+    "ui.chat.transcript_copy": {
+      "namespace": "ui.chat.transcript_copy",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "ru": "c4c8a65aaf148d886cef5facbcbe0e7a8ab140802fe4ca407a749a8d30d87d3a",
+        "context": "955b217858b3ac8c2ab4a20e7ad47298c683698c5c65c0012f681ba6b23d4c8b"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.transcript_copy.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.transcript_copy.json",
+        "context": "src/i18n/catalogues/en/ui.chat.transcript_copy.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "side_by_side_keys_read": 9,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 18,
+        "icu_format_operations": 18,
+        "pseudo_parse_format_passes": 9,
+        "overflow_candidates": [
+          {
+            "key": "ui.chat.transcript_copy.menu.copy_text",
+            "select": null,
+            "enLength": 9,
+            "ruLength": 16,
+            "delta": 7,
+            "ratio": 1.778,
+            "ruDisplay": "Копировать текст"
+          },
+          {
+            "key": "ui.chat.transcript_copy.menu.copy_selection",
+            "select": null,
+            "enLength": 14,
+            "ruLength": 21,
+            "delta": 7,
+            "ratio": 1.5,
+            "ruDisplay": "Копировать выделенное"
+          },
+          {
+            "key": "ui.chat.transcript_copy.selection.copy",
+            "select": null,
+            "enLength": 14,
+            "ruLength": 21,
+            "delta": 7,
+            "ratio": 1.5,
+            "ruDisplay": "Копировать выделенное"
+          },
+          {
+            "key": "ui.chat.transcript_copy.menu.copy_markdown",
+            "select": null,
+            "enLength": 16,
+            "ruLength": 23,
+            "delta": 7,
+            "ratio": 1.438,
+            "ruDisplay": "Копировать как Markdown"
+          },
+          {
+            "key": "ui.chat.transcript_copy.toast.copied_selection",
+            "select": null,
+            "enLength": 16,
+            "ruLength": 22,
+            "delta": 6,
+            "ratio": 1.375,
+            "ruDisplay": "Выделенное скопировано"
+          },
+          {
+            "key": "ui.chat.transcript_copy.toast.copied_markdown",
+            "select": null,
+            "enLength": 18,
+            "ruLength": 24,
+            "delta": 6,
+            "ratio": 1.333,
+            "ruDisplay": "Скопировано как Markdown"
+          }
+        ]
+      }
+    },
+    "ui.common.file_actions": {
+      "namespace": "ui.common.file_actions",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "ru": "898bd7f70fd9c3af78b0fc427163b53660bf665e2d99470eb2028108bc1459b7",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.file_actions.json",
+        "ru": "src/i18n/catalogues/ru/ui.common.file_actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.file_actions.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "side_by_side_keys_read": 5,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 10,
+        "icu_format_operations": 10,
+        "pseudo_parse_format_passes": 5,
+        "overflow_candidates": [
+          {
+            "key": "ui.common.file_actions.copy_file_path",
+            "select": null,
+            "enLength": 14,
+            "ruLength": 24,
+            "delta": 10,
+            "ratio": 1.714,
+            "ruDisplay": "Скопировать путь к файлу"
+          },
+          {
+            "key": "ui.common.file_actions.preview",
+            "select": null,
+            "enLength": 7,
+            "ruLength": 12,
+            "delta": 5,
+            "ratio": 1.714,
+            "ruDisplay": "Предпросмотр"
+          }
+        ]
+      }
+    },
+    "ui.common.viewer": {
+      "namespace": "ui.common.viewer",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 4,
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "ru": "05bcd305f406377fd8e8ed40ad4582d9975ef6938d2db3d4d926b73e806d3751",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "ru": "src/i18n/catalogues/ru/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "side_by_side_keys_read": 4,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 8,
+        "icu_format_operations": 8,
+        "pseudo_parse_format_passes": 4,
+        "overflow_candidates": []
+      }
+    },
+    "ui.chat.tag_dialogs": {
+      "namespace": "ui.chat.tag_dialogs",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 4,
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "ru": "10b50c8d6646718e1d682800a8b44dedf5a3a601f10cae05d2e52197c64ea355",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.tag_dialogs.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.tag_dialogs.json",
+        "context": "src/i18n/catalogues/en/ui.chat.tag_dialogs.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "side_by_side_keys_read": 4,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 8,
+        "icu_format_operations": 8,
+        "pseudo_parse_format_passes": 4,
+        "overflow_candidates": []
+      }
+    },
+    "ui.presence": {
+      "namespace": "ui.presence",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "ru": "2457b85ac674a43abfb6d8578fe54eff76e3e5a8d1fd7388d24cac0ab163c1d3",
+        "context": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.presence.json",
+        "ru": "src/i18n/catalogues/ru/ui.presence.json",
+        "context": "src/i18n/catalogues/en/ui.presence.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "side_by_side_keys_read": 9,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 18,
+        "icu_format_operations": 18,
+        "pseudo_parse_format_passes": 9,
+        "overflow_candidates": [
+          {
+            "key": "ui.presence.minutes_ago",
+            "select": null,
+            "enLength": 6,
+            "ruLength": 11,
+            "delta": 5,
+            "ratio": 1.833,
+            "ruDisplay": "2 мин назад"
+          },
+          {
+            "key": "ui.presence.days_ago",
+            "select": null,
+            "enLength": 6,
+            "ruLength": 11,
+            "delta": 5,
+            "ratio": 1.833,
+            "ruDisplay": "2 дн. назад"
+          },
+          {
+            "key": "ui.presence.link_down_last_seen",
+            "select": null,
+            "enLength": 23,
+            "ruLength": 39,
+            "delta": 16,
+            "ratio": 1.696,
+            "ruDisplay": "связь потеряна · последний раз в сети X"
+          },
+          {
+            "key": "ui.presence.device_link_down",
+            "select": null,
+            "enLength": 27,
+            "ruLength": 43,
+            "delta": 16,
+            "ratio": 1.593,
+            "ruDisplay": "Связь потеряна · X · последний раз в сети X"
+          },
+          {
+            "key": "ui.presence.link_down_compact",
+            "select": null,
+            "enLength": 13,
+            "ruLength": 18,
+            "delta": 5,
+            "ratio": 1.385,
+            "ruDisplay": "Связь потеряна · X"
+          }
+        ]
+      }
+    },
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "ru": "30e89a7476b2192617d91eca54794e070b9e53b4cd1c291afa6b40c496599e2e",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.run_details.json",
+        "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "side_by_side_keys_read": 2,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 4,
+        "icu_format_operations": 4,
+        "pseudo_parse_format_passes": 2,
+        "overflow_candidates": []
+      }
+    },
+    "ui.chat.commentary_actions": {
+      "namespace": "ui.chat.commentary_actions",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "ru": "43226213031cf20abe0bebe11b5e830cb23c6f37664be5aa5e921bfc2409508f",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.commentary_actions.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.commentary_actions.json",
+        "context": "src/i18n/catalogues/en/ui.chat.commentary_actions.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "side_by_side_keys_read": 1,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 2,
+        "icu_format_operations": 2,
+        "pseudo_parse_format_passes": 1,
+        "overflow_candidates": []
+      }
+    }
+  },
+  "findings_summary": {
+    "blocker": 1,
+    "major": 1,
+    "minor": 3,
+    "nit": 2,
+    "total": 7
+  },
+  "evidence": {
+    "semantic_glossary_register": "Read every English/Russian/context entry side by side (152 keys). Checked accuracy, UI role, idiom, formal lowercase вы register, sentence case, core glossary and existing Russian terminology. No T/V mismatch or core-glossary violation beyond the explicitly recorded terminology drift.",
+    "mechanical": {
+      "result": "PASS",
+      "keys": 152,
+      "english_and_russian_ast_parses": 304,
+      "icu_format_operations": 308,
+      "exact_key_order": true,
+      "exact_context_key_order": true,
+      "placeholder_type_skeleton_and_branch_parity": true,
+      "select_arms": "pin/unpin/other preserved and all formatted",
+      "failures": [],
+      "mutation_controls": {
+        "renamedPlaceholderDetected": true,
+        "changedNumberSkeletonDetected": true,
+        "droppedSelectArmDetected": true,
+        "missingRussianFewDetected": true,
+        "englishProseDetected": true,
+        "pseudoExpansionMeasured": true
+      }
+    },
+    "russian_cldr_plural": {
+      "implementation": "Node Intl.PluralRules(\"ru\") and IntlMessageFormat 12.1.3; real counts, not inferred categories",
+      "samples": [
+        {
+          "count": 0,
+          "category": "many",
+          "formattedNumber": "0",
+          "output": "Остановить 0 сессий сейчас"
+        },
+        {
+          "count": 1,
+          "category": "one",
+          "formattedNumber": "1",
+          "output": "Остановить эту сессию сейчас"
+        },
+        {
+          "count": 2,
+          "category": "few",
+          "formattedNumber": "2",
+          "output": "Остановить 2 сессии сейчас"
+        },
+        {
+          "count": 4,
+          "category": "few",
+          "formattedNumber": "4",
+          "output": "Остановить 4 сессии сейчас"
+        },
+        {
+          "count": 5,
+          "category": "many",
+          "formattedNumber": "5",
+          "output": "Остановить 5 сессий сейчас"
+        },
+        {
+          "count": 11,
+          "category": "many",
+          "formattedNumber": "11",
+          "output": "Остановить 11 сессий сейчас"
+        },
+        {
+          "count": 21,
+          "category": "one",
+          "formattedNumber": "21",
+          "output": "Остановить эту сессию сейчас"
+        },
+        {
+          "count": 22,
+          "category": "few",
+          "formattedNumber": "22",
+          "output": "Остановить 22 сессии сейчас"
+        },
+        {
+          "count": 25,
+          "category": "many",
+          "formattedNumber": "25",
+          "output": "Остановить 25 сессий сейчас"
+        },
+        {
+          "count": 101,
+          "category": "one",
+          "formattedNumber": "101",
+          "output": "Остановить эту сессию сейчас"
+        },
+        {
+          "count": 111,
+          "category": "many",
+          "formattedNumber": "111",
+          "output": "Остановить 111 сессий сейчас"
+        },
+        {
+          "count": 112,
+          "category": "many",
+          "formattedNumber": "112",
+          "output": "Остановить 112 сессий сейчас"
+        },
+        {
+          "count": 1.5,
+          "category": "other",
+          "formattedNumber": "1,5",
+          "output": "Остановить 1,5 сессии сейчас"
+        }
+      ],
+      "semantic_result": "FAIL: RU2-B1. Required one/few/many/other arms exist, but one is semantically wrong for 21/101."
+    },
+    "typography": {
+      "result": "PASS",
+      "nfc": true,
+      "bom_bidi_zero_width_controls": 0,
+      "counts": {
+        "tripleDot": 0,
+        "straightOrEnglishQuotes": 0,
+        "frenchSpacing": 0,
+        "exclamation": 0,
+        "guillemets": 6,
+        "ellipsis": 10,
+        "emDash": 5,
+        "middot": 4
+      },
+      "notes": "Russian prose uses «ёлочки», spaced em dash, ellipsis and middot where applicable; no ASCII triple dots, English/straight quotes, French pre-punctuation spacing, exclamation marks, BOM, bidi or zero-width controls. Russian is LTR; RTL not applicable."
+    },
+    "english_leakage": {
+      "result": "PASS: zero disallowed Latin prose tokens after parsing ICU and inspecting literal AST nodes only",
+      "allowed_observed": {
+        "Esc": 1,
+        "ID": 1,
+        "Local": 1,
+        "Operator": 1,
+        "endpoint": 1,
+        "Canvas": 2,
+        "Finder": 1,
+        "HTML": 1,
+        "Markdown": 2
+      },
+      "allowed_tokens": [
+        "Local Operator (product)",
+        "Esc (key)",
+        "ID (established technical abbreviation)",
+        "endpoint (style-guide kept Latin)",
+        "Canvas/Finder (product names)",
+        "HTML/Markdown (technology/format names)"
+      ],
+      "icu_tokens": "Argument names, plural/select keywords and number skeletons are syntax, not prose leakage."
+    },
+    "pseudo_localization": {
+      "result": "PASS for parse/format/token preservation only",
+      "keys": 152,
+      "algorithm": "Transform English literal AST text only: Latin vowels accented, each nonblank literal wrapped with ⟦⟧ and expanded by ceil(40%) middots; ICU bytes outside literals untouched. Parse and format every result, then compare argument/type/skeleton and select/plural arms.",
+      "min_expansion_ratio": 1.415,
+      "max_expansion_ratio": 2,
+      "rendered_claim": false
+    },
+    "static_overflow": {
+      "result": "40 fit-watch candidates; no clipping verdict",
+      "method": "Format actual English/Russian messages with dummy arguments; flag codepoint expansion >=30% and >=5 codepoints. Dynamic plural/select output is measured after formatting, not from raw ICU source length.",
+      "declared_maxCells_entries": 0,
+      "candidates_referred_to_real_app_gate": true,
+      "additional_pair_watch": {
+        "keys": [
+          "ui.chat.canonical.transcript.edit",
+          "ui.chat.canonical.transcript.send_again"
+        ],
+        "en_combined_codepoints": 14,
+        "ru_combined_codepoints": 23,
+        "ratio": 1.643,
+        "reason": "Sidecar requires this button pair to share one line."
+      },
+      "rendered_claim": false
+    },
+    "commands": [
+      {
+        "command": "cd /Users/damian/local-operator-ui/.worktrees/i18n-ru && node --input-type=module < $SCRATCH/ru-completion-second-audit.mjs > $SCRATCH/ru-completion-second-evidence.json",
+        "actual": "exit 0; 152 keys; failures=[]; all six mutation controls true"
+      },
+      {
+        "command": "git diff --exit-code a2c5ce5871ff338585020382c610f8a00f0293ec -- src/i18n/catalogues/en src/i18n/catalogues/ru",
+        "actual": "exit 0; audited catalogue bytes unchanged"
+      },
+      {
+        "command": "IntlMessageFormat proposed RU2-B1 remediation for counts 1,21,101,2,5,1.5",
+        "actual": "All six proposed outputs correct; see RU2-B1 evidence."
+      }
+    ],
+    "probe_integrity": {
+      "script_sha256": "81ad5238a65d299fa4cc345e7576593571f3222fb2055022847cf7bdb6939266",
+      "raw_evidence_sha256": "c71099a2e3b050356577b98b4c41913f2a52599c6480cf6b73bddada4db5d2e5",
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "formatter": "intl-messageformat 12.1.3"
+    },
+    "limitations": "Catalogue and static-fit audit only. No real-app/rendered, screenshot, activation or release claim. Static overflow candidates and pseudo-localization do not replace the separate real-app gate."
+  }
+}

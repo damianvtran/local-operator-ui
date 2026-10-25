@@ -325,7 +325,7 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 	 * inside `App`. That source cannot express the native fallback (it knows the OS,
 	 * not the mode), cannot know where a Linux WM put its buttons, and does not exist
 	 * until React mounts - and root-level attributes are also the only thing that
-	 * reaches a PORTALED element, which the sidebar's overlay sheet is.
+	 * reaches a PORTALED element, which the command palette's Radix dialog is.
 	 */
 	assert.doesNotMatch(
 		css,

@@ -450,6 +450,14 @@ export const SoundPlayer = ({
 	return (
 		<div
 			data-sound-player={variant}
+			/*
+			 * The observable form of the honest-flat rule: `flat` is the honest
+			 * scrubber drawn for absent/malformed peaks, `stored` is a real
+			 * envelope. Pixels cannot state which one a canvas holds (a JSDOM
+			 * canvas has no context), so the marker is what a test and a story
+			 * can assert without inventing a shape.
+			 */
+			data-sound-peaks={peaks ? "stored" : "flat"}
 			data-sound-status={
 				errored
 					? "error"

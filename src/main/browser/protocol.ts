@@ -86,6 +86,10 @@ export const METHODS = [
 	"styles",
 	"hit_test",
 	"ancestors",
+	// The read-only DOM query: CSS in, element descriptors out. A read by
+	// construction (no write, no navigation, no caller-supplied code), served by
+	// every non-cmux host like the structured reads above.
+	"query",
 	"request_access",
 	"await_access",
 	"cancel_access",
@@ -144,6 +148,8 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	styles: 20.0,
 	hit_test: 20.0,
 	ancestors: 20.0,
+	// The same one-shot page-script class as the reads above.
+	query: 20.0,
 	request_access: 20.0,
 	await_access: 25.0,
 	cancel_access: 20.0,
@@ -286,6 +292,7 @@ export const HOST_CAPABILITIES: readonly Method[] = [
 	"styles",
 	"hit_test",
 	"ancestors",
+	"query",
 	"download",
 	"upload",
 ];

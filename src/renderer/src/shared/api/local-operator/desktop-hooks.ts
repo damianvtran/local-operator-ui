@@ -208,6 +208,17 @@ export type DesktopFeature =
 	 * See `local_operator/server/features.py`.
 	 */
 	| "session_tags_auto_tag"
+	/**
+	 * PUT AN OPEN QUEUED ASK AWAY from a surface (`{ask_id, dismiss: true,
+	 * reason?}` on the answers route, harness PR #2833 / SA-D5).
+	 *
+	 * ITS OWN KEY because the body field is refused, not ignored: the backend's
+	 * `Answer` is `extra="forbid"`, so a daemon that predates the field answers 422
+	 * to a body carrying `dismiss`. A client that offered the control without asking
+	 * this key would draw a button whose only outcome is a refusal — the dead
+	 * affordance the ask panel refuses elsewhere.
+	 */
+	| "ask_dismiss"
 	| "session_files"
 	/**
 	 * The global Library surface (`/v1/desktop/library*` and the Librarian
@@ -230,6 +241,39 @@ export type DesktopFeature =
 	/** Route presence only; dynamic organization eligibility is backend-owned. */
 	| "team_bridge"
 	| "team_bridge_conversations"
+	/**
+	 * The thread/replies plane: a message's thread pane and the reply-in-thread
+	 * affordance that opens it.
+	 *
+	 * ITS OWN KEY rather than a `team_bridge_conversations` bump, on the rule
+	 * this union states in several places: the conversation page must keep
+	 * serving every daemon that has it, while the thread surface has to be
+	 * ASKED about separately because a daemon can serve conversations without
+	 * serving threads.
+	 *
+	 * AND THE ANSWER IS NOT ENOUGH HERE. The UI holds this surface closed in
+	 * the build itself (`team-bridge-thread-gate.ts`): the runtime advertising
+	 * the route is not clearance for the cache/retry isolation defects the
+	 * thread paths inherited from #1304, because the backend cannot know which
+	 * client build is talking to it. The key is asked anyway - the capability
+	 * half is the plumbing the feature returns on - but absent, `unknown`,
+	 * `below-version` and `unpaired` all leave the surface hidden, and so does
+	 * `enabled` until the constant is flipped.
+	 */
+	| "team_bridge_threads"
+	/**
+	 * The reaction plane: a message's reaction chips, the toolbar's react button
+	 * and the emoji picker behind it.
+	 *
+	 * ITS OWN KEY because the shipped runtime serves no reaction path at all (the
+	 * OpenAPI schema carries none; a reaction GET answers 404), while the
+	 * conversation page around it works. The key is SCAFFOLDING for the return:
+	 * the build holds reactions closed regardless
+	 * (`TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD`), because the old reaction
+	 * path is not reviewed for account/retry safety and a backend advertising a
+	 * capability must never wake it up. See `team-bridge-reaction-gate.ts`.
+	 */
+	| "team_bridge_reactions"
 	| "auth"
 	| "settings"
 	| "commands"
@@ -364,6 +408,22 @@ export type DesktopFeature =
 	 * first send creates is the dead affordance R20 forbids.
 	 */
 	| "draft_selection"
+	/**
+	 * `sessions.preview` and `sessions.create` accepting `fast_mode` on a draft's
+	 * model selection (`DraftModel.fast_mode`), so a NEW chat can be born on the
+	 * speed dial (issue #1265). The core half publishes it as
+	 * `features.draft_fast` (local-operator#2848, `server/features.py`).
+	 *
+	 * ITS OWN KEY RATHER THAN A BUMP OF `draft_selection`, and the reason is the
+	 * wire rather than taste: the draft model is `extra="forbid"` on the core, so
+	 * a backend that can select a draft's model but does not carry the dial
+	 * refuses the WHOLE create body - the model and the effort rung with it - the
+	 * moment the renderer sends a `fast_mode` it never asked about. A renderer on
+	 * such a backend keeps its model and effort chips exactly as they are and
+	 * leaves the speed route closed: `/fast` refuses on a draft rather than
+	 * opening a dialog whose only pick must end in a 422.
+	 */
+	| "draft_fast"
 	/**
 	 * `sessions.draft` plus the draft allow-list on `events`/`watch`/`warm`, and
 	 * `sessions.create` accepting `draft_id`: a NEW chat's runtime can be engaged

@@ -187,5 +187,71 @@
 		"tone": "Factual reassurance.",
 		"note": "Free-typed value is absent from searchable listings but remains valid and is saved literally; not an error.",
 		"length": "One short line below the control."
+	},
+	"ui.common.forms.categories_input_chips.add_category": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in categories-input-chips.tsx; input placeholder in the categories input chips surface."
+	},
+	"ui.common.forms.categories_input_chips.remove_category": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in categories-input-chips.tsx; accessible label in the categories input chips surface.",
+		"placeholders": {
+			"value": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.forms.categories_input_chips.no_categories_selected": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in categories-input-chips.tsx; interface copy in the categories input chips surface."
+	},
+	"ui.common.forms.slider_setting.saving": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in slider-setting.tsx; interface copy in the slider setting surface.",
+		"placeholders": {
+			"label": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.forms.tags_input_chips.add_tag": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in tags-input-chips.tsx; input placeholder in the tags input chips surface."
+	},
+	"ui.common.forms.tags_input_chips.remove_tag": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in tags-input-chips.tsx; accessible label in the tags input chips surface.",
+		"placeholders": {
+			"tag": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.forms.tags_input_chips.add_tage0db29": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in tags-input-chips.tsx; accessible label in the tags input chips surface."
+	},
+	"ui.common.forms.tags_input_chips.no_tags_added": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in tags-input-chips.tsx; interface copy in the tags input chips surface."
+	},
+	"ui.common.forms.toggle_setting.saving": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in toggle-setting.tsx; interface copy in the toggle setting surface.",
+		"placeholders": {
+			"label": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.forms.categories_input_chips.category": {
+		"role": "category display label",
+		"tone": "Plain, concise product language; preserve raw identifiers.",
+		"note": "Raw backend category ids select display labels except raw 'other', which maps to other_category so ICU's mandatory other arm can return a genuinely unknown future id verbatim. Used for chips, search and remove-button accessible names.",
+		"placeholders": {
+			"category": "Raw backend category identifier, except raw other maps to other_category before lookup. Do not translate or rename selector arms; unknown future ids reach the other fallback verbatim."
+		},
+		"select_guidance": "Translate display labels only. Keep every selector id, including other_category and the mandatory other fallback with {category}, unchanged."
 	}
 }

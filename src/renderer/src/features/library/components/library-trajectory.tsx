@@ -148,7 +148,7 @@ export const LibraryTrajectory: FC<LibraryTrajectoryProps> = ({
 			data-library-trajectory=""
 			data-collapsed={collapsed ? "" : undefined}
 			className={cn(
-				"flex min-h-0 flex-col bg-canvas",
+				"flex min-h-0 flex-col bg-sunken",
 				/*
 				 * BOUNDED, AND NEVER THE VIEWER'S AIR: 38% by default, capped at
 				 * 20rem so a wide window does not grow a second reading column,
@@ -171,7 +171,7 @@ export const LibraryTrajectory: FC<LibraryTrajectoryProps> = ({
 					type="button"
 					aria-expanded={!collapsed}
 					onClick={onToggleCollapsed}
-					className="flex min-w-0 flex-1 items-center gap-1 rounded-sm text-left text-meta text-ink-muted hover:text-ink focus-visible:outline-offset-1"
+					className="flex min-w-0 flex-1 items-center gap-1 rounded-sm text-start text-meta text-ink-muted hover:text-ink focus-visible:outline-offset-1"
 				>
 					<span className="min-w-0 flex-1 truncate">
 						{t("ui.library.composer.chat_about", { title })}

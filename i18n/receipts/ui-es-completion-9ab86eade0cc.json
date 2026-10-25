@@ -1,0 +1,144 @@
+{
+	"schema": 1,
+	"locale": "es",
+	"date": "2026-10-23",
+	"base": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+	"translator": {
+		"agent": "i18n-translator",
+		"session": "9ab86eade0cc",
+		"model": "openrouter/moonshotai/kimi-k3.1-pro",
+		"served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+		"date": "2026-10-23",
+		"model_provenance": "Actual served model supplied by the active Local Operator runtime for this translator session; no fallback used."
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		}
+	},
+	"note": "Spanish completion batch of 134 keys across nine namespaces; translated only and awaiting independent audit. No auditor verdict is asserted.",
+	"namespaces": {
+		"ui.chat.sidebar": {
+			"status": "translated",
+			"keys": 43,
+			"source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+			"target_sha256": "797a6f9b45b98829d4d332a512fb9cf42e7456e29d2d0a8d589f8abcd877502a",
+			"context_sha256": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a",
+			"translator": {
+				"agent": "i18n-translator",
+				"session": "9ab86eade0cc",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-23"
+			}
+		},
+		"ui.chat.pickers": {
+			"status": "translated",
+			"keys": 34,
+			"source_sha256": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+			"target_sha256": "f25d5baa979025cc55b2efada9e3b372f2c71e68396b58adacaf614b4b18bbba",
+			"context_sha256": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64",
+			"translator": {
+				"agent": "i18n-translator",
+				"session": "9ab86eade0cc",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-23"
+			}
+		},
+		"ui.chat.canonical": {
+			"status": "translated",
+			"keys": 30,
+			"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+			"target_sha256": "5b189a86ad2da2e4b63f4ecb1eb4534905e5f903c07410d3545fb00c4bbc1a77",
+			"context_sha256": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34",
+			"translator": {
+				"agent": "i18n-translator",
+				"session": "9ab86eade0cc",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-23"
+			}
+		},
+		"ui.chat.analytics": {
+			"status": "translated",
+			"keys": 11,
+			"source_sha256": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+			"target_sha256": "174b4be548b4d7494c5da54c4c54b867ca0cafa902b45bfb57fe6e47367ffb02",
+			"context_sha256": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff",
+			"translator": {
+				"agent": "i18n-translator",
+				"session": "9ab86eade0cc",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-23"
+			}
+		},
+		"ui.common.file_actions": {
+			"status": "translated",
+			"keys": 5,
+			"source_sha256": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+			"target_sha256": "95cbcbb27f865bb9d15b0a5f4053fba263a3147ea5729a93449a09d05703c4ff",
+			"context_sha256": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b",
+			"translator": {
+				"agent": "i18n-translator",
+				"session": "9ab86eade0cc",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-23"
+			}
+		},
+		"ui.common.viewer": {
+			"status": "translated",
+			"keys": 4,
+			"source_sha256": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+			"target_sha256": "a7b773b4b329b7ba68c3f2d62c6bb417633eb9507a31128844c997553752d56e",
+			"context_sha256": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9",
+			"translator": {
+				"agent": "i18n-translator",
+				"session": "9ab86eade0cc",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-23"
+			}
+		},
+		"ui.chat.tag_dialogs": {
+			"status": "translated",
+			"keys": 4,
+			"source_sha256": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+			"target_sha256": "5fd755f73ac6d67c9929fcd1e69984602c36e558b6cddb97c2ecf74184902448",
+			"context_sha256": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987",
+			"translator": {
+				"agent": "i18n-translator",
+				"session": "9ab86eade0cc",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-23"
+			}
+		},
+		"ui.chat.run_details": {
+			"status": "translated",
+			"keys": 2,
+			"source_sha256": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+			"target_sha256": "cc95b9c0545c0686fd10dd9b277141c557d45fadde0b708aea4c3406b824d61f",
+			"context_sha256": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6",
+			"translator": {
+				"agent": "i18n-translator",
+				"session": "9ab86eade0cc",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-23"
+			}
+		},
+		"ui.chat.commentary_actions": {
+			"status": "translated",
+			"keys": 1,
+			"source_sha256": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+			"target_sha256": "3633c6cbd80323c7c8e9a6cae0f328d733e0930a5969b6d6c5fe88855116c408",
+			"context_sha256": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1",
+			"translator": {
+				"agent": "i18n-translator",
+				"session": "9ab86eade0cc",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-23"
+			}
+		}
+	}
+}

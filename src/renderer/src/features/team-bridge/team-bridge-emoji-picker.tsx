@@ -10,6 +10,7 @@ import {
 	tonedEmoji,
 } from "./team-bridge-emoji-model";
 import { canRenderEmoji } from "./team-bridge-emoji-support";
+import { TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-reaction-gate";
 import { useReactionPreferences } from "./team-bridge-reaction-preferences";
 
 const COLUMNS = 8;
@@ -36,19 +37,31 @@ function supportedTone(emoji: string, tone: number): string {
 
 /** Offline Unicode/CLDR data, 53 KB gzip. A virtual table renders at most 10 rows for the whole
  * 3963-sequence corpus. Search retains mixed-tone variants; preference changes selection only. */
-export function TeamBridgeEmojiPicker({
-	accountId,
-	onSelect,
-	onClose,
-	disabled = false,
-	initialQuery = "",
-}: {
+type TeamBridgeEmojiPickerProps = {
 	accountId: string;
 	onSelect: (emoji: string) => void;
 	onClose: () => void;
 	disabled?: boolean;
 	initialQuery?: string;
-}) {
+};
+
+/**
+ * THE HOLD AT THE GRID'S FRONT DOOR. No hook runs while the constant is false,
+ * so the picker is unreachable even from a direct mount or a future call site
+ * that bypasses the reaction views.
+ */
+export function TeamBridgeEmojiPicker(props: TeamBridgeEmojiPickerProps) {
+	if (!TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD) return null;
+	return <TeamBridgeEmojiPickerBody {...props} />;
+}
+
+function TeamBridgeEmojiPickerBody({
+	accountId,
+	onSelect,
+	onClose,
+	disabled = false,
+	initialQuery = "",
+}: TeamBridgeEmojiPickerProps) {
 	const id = useId();
 	const preferences = useReactionPreferences((s) => s.accounts[accountId]);
 	const setTone = useReactionPreferences((s) => s.setTone);

@@ -73,14 +73,65 @@ const {
 	desktopResult,
 	refusalDetail,
 	JOB_CANCEL_NOT_FOUND_COPY,
-	// Aliased: the session-variables bundle below binds the plain names, and a
-	// test registered before that top-level await resolves must not reach them
-	// (measured: TDZ under load when the runner starts tests early).
+	// Aliased: the session-variables bundle binds the plain names too. Both
+	// bundles now resolve before the first registration, so this alias keeps two
+	// namespaces from colliding rather than dodging a TDZ window.
 	desktopEndpoint: jobsCancelEndpoint,
 	desktopRequestSchema: jobsCancelSchema,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+
+/*
+ * Built and imported HERE, above the first `test(` registration, rather than
+ * beside the tests that read it.
+ *
+ * `node:test` starts a top-level batch as soon as this module yields, so a
+ * module-level `await` sitting after a `test(` call lets the root `after` hook
+ * close the shared server while the file is still registering tests. Every
+ * registration made after that await then reaches a closed port, and the
+ * transport reports the ECONNREFUSED as a 503 - measured as 4/11 failures here
+ * at 4e2e51da78 against 0/6 at its parent. Hoisting the build takes the await
+ * out of the middle of registration; the tests that read these bindings are
+ * unchanged and still sit where they belong.
+ */
+const rendererBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract"; export { desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	/*
+	 * `desktop-hooks` now reaches the composer's optional-client seam, and the
+	 * renderer's own `@shared` alias is what resolves it - the same aliasing
+	 * every sibling harness carries, and the reason a bare resolveDir is not
+	 * enough. Narrower than the wholesale alias on purpose: this bundle's other
+	 * specifiers are relative and must keep resolving the way they do.
+	 */
+	alias: {
+		"@shared/hooks/use-optional-query-client":
+			"./src/renderer/src/shared/hooks/use-optional-query-client.ts",
+	},
+});
+const {
+	listSessionVariables,
+	createSessionVariable,
+	updateSessionVariable,
+	deleteSessionVariable,
+	isWritableVariableKey,
+	desktopRequestSchema,
+	desktopEndpoint: rendererDesktopEndpoint,
+	// The capability gate the pins tests read: the SAME export the renderer bundle carries, so
+	// the test asks the shipped predicate rather than a restatement of it.
+	desktopFeatureEnabled,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
+);
+
 let server;
 let url;
 const seen = [];
@@ -2301,43 +2352,6 @@ test("sessions.interrupt reaches the interrupt route with request_id only", asyn
  * the read path and re-flattened the fixture with it.
  * ---------------------------------------------------------------------------
  */
-const rendererBundle = await build({
-	stdin: {
-		contents:
-			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract"; export { desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
-		resolveDir: process.cwd(),
-	},
-	bundle: true,
-	format: "esm",
-	platform: "node",
-	write: false,
-	/*
-	 * `desktop-hooks` now reaches the composer's optional-client seam, and the
-	 * renderer's own `@shared` alias is what resolves it - the same aliasing
-	 * every sibling harness carries, and the reason a bare resolveDir is not
-	 * enough. Narrower than the wholesale alias on purpose: this bundle's other
-	 * specifiers are relative and must keep resolving the way they do.
-	 */
-	alias: {
-		"@shared/hooks/use-optional-query-client":
-			"./src/renderer/src/shared/hooks/use-optional-query-client.ts",
-	},
-});
-const {
-	listSessionVariables,
-	createSessionVariable,
-	updateSessionVariable,
-	deleteSessionVariable,
-	isWritableVariableKey,
-	desktopRequestSchema,
-	desktopEndpoint: rendererDesktopEndpoint,
-	// The capability gate the pins tests read: the SAME export the renderer bundle carries, so
-	// the test asks the shipped predicate rather than a restatement of it.
-	desktopFeatureEnabled,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
-);
-
 const SESSION = "8fd6c6a40934";
 
 /** Serve fixed bodies through the renderer transport, as a backend would. */

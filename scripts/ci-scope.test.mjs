@@ -32,6 +32,8 @@ import {
 	flagsFor,
 	isNamedLivePath,
 	isPermissiveDependency,
+	jobMatchesFlags,
+	jobPlan,
 	runJobs,
 } from "./ci-scope.mjs";
 
@@ -241,7 +243,7 @@ test("A3: every gate reads != 'false', and the writer refuses to emit a non-deci
  */
 test("A4: dependency clauses match the implication the module actually guarantees", () => {
 	const vectors = flagVectors();
-	const runs = (job, flags) => JOB_FLAGS[job].every((flag) => flags[flag]);
+	const runs = (job, flags) => jobMatchesFlags(job, flags);
 	for (const job of gatedJobs) {
 		if (job === "desktop-tests-result") continue; // A17e requires failed-worker consumption.
 		for (const dependency of jobNeeds(job)) {
@@ -647,6 +649,31 @@ test("A10: a rename out of the inert set keeps the code suite", () => {
 // ---------------------------------------------------------------------------
 // A11 + A12 - the module, the workflow and the local command are one opinion
 // ---------------------------------------------------------------------------
+
+test("renderer-only and i18n-only signals select the complete language gate", () => {
+	const renderer = classify([
+		"src/renderer/src/features/chat/reviewer-probe.tsx",
+	]);
+	assert.equal(renderer.types, true);
+	assert.equal(renderer.i18n, false);
+	assert.equal(jobPlan(renderer)["i18n-coverage"], "run");
+
+	const catalogueOnly = Object.fromEntries(
+		FLAGS.map((flag) => [flag, flag === "i18n"]),
+	);
+	assert.equal(jobPlan(catalogueOnly)["i18n-coverage"], "run");
+	assert.match(jobIf("i18n-coverage"), /\|\|/);
+	assert.deepEqual(JOB_COMMANDS["i18n-coverage"], [
+		"pnpm check-i18n:catalogues",
+		"pnpm check-i18n:added-strings",
+		"pnpm check-i18n:coverage",
+	]);
+
+	// This suite already runs in CI independently of the new guard suite, so it
+	// is the durable place to prove that guard suite remains enumerated.
+	const desktop = pkg.scripts["test:desktop"].split(/\s+/);
+	assert.ok(desktop.includes("scripts/i18n/check-added-strings.test.mjs"));
+});
 
 /*
  * Defect: `pnpm check-changed` (or a job's own commands) drifting from what CI
@@ -2294,7 +2321,7 @@ test("A17e: three protected workers feed one exact fail-closed Desktop Tests res
 		"fail-fast": false,
 		matrix: { shard: [0, 1, 2] },
 	});
-	assert.equal(worker["timeout-minutes"], 50);
+	assert.equal(worker["timeout-minutes"], 75);
 	assert.equal(result.name, "Desktop Tests");
 	assert.deepEqual(result.needs, ["changes", "test"]);
 	assert.equal(

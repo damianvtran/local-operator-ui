@@ -169,8 +169,18 @@ export function lockAnswerOutlived(input: {
 	gatePending: boolean;
 	/** Whether the notice on screen is the muted lock answer at all. */
 	muted: boolean;
+	/**
+	 * The notice's code, when it names a condition. The LOCK ANSWER names none: it
+	 * is a claim about a flight, and the three terms below are the flight. A muted
+	 * notice that DOES name a condition is not retired here (QA round 2, Q1) - the
+	 * fast-unavailable line is a statement of fact about a send that no flight will
+	 * change, and keyed on `muted` alone it was cleared on the next commit because
+	 * a restored draft has nothing pending.
+	 */
+	code?: string;
 }): boolean {
 	if (!input.muted) return false;
+	if (input.code !== undefined) return false;
 	return !(input.rowPending || input.admitting || input.gatePending);
 }
 

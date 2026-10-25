@@ -309,6 +309,120 @@ export const PercentOnly: Story = {
 	args: { ...base, payload: payload([openai]) },
 };
 
+/**
+ * Kimi on a current plan: a 5-hour window and the MONTHLY pool, no weekly one.
+ *
+ * New Kimi plans expose `5h + monthly`; legacy plans keep the weekly window,
+ * so a frame that always shows three rows is a frame for a plan most accounts
+ * no longer have. The monthly pool is the case this frame exists for: it has
+ * STARTED at 0.06% (`used: 0.06`, no limit, fraction `0.0006`), which
+ * zero-places rounding would print as `0%` — indistinguishable from a window
+ * nothing has been consumed from. The ROW must read `<1%`. In this fixture the
+ * 5h window binds (1% over 0.06%), so the block heading reads `5h limit 1%`;
+ * the heading's sub-1% path is pinned by the binding-summary test, and
+ * `KimiMonthlyBinding` below is the frame that shows it.
+ */
+export const KimiMonthly: Story = {
+	args: {
+		...base,
+		payload: payload([
+			report({
+				provider: "kimi",
+				identity: null,
+				fetched_at: NOW,
+				age_ms: 0,
+				state: "available",
+				limits: [
+					limit({
+						id: "kimi:0",
+						label: "5h limit",
+						window: "5h limit",
+						amount: amount({
+							used: 1,
+							limit: 100,
+							remaining: 99,
+							used_fraction: 0.01,
+							unit: "unknown",
+						}),
+						resets_at_ms: NOW + 4 * HOUR + 16 * MINUTE,
+						shared: true,
+					}),
+					limit({
+						id: "kimi:monthly-total",
+						label: "Monthly total",
+						window: "monthly",
+						amount: amount({
+							used: 0.06,
+							limit: null,
+							remaining: 99.94,
+							used_fraction: 0.0006,
+							unit: "percent",
+						}),
+						resets_at_ms: NOW + 31 * DAY + 5 * HOUR,
+						shared: true,
+					}),
+				],
+			}),
+		]),
+	},
+};
+
+/**
+ * The same report with the 5h window UNTOUCHED, so the monthly pool binds.
+ *
+ * `KimiMonthly` cannot exercise the heading's sub-1% path: its 1% 5h window
+ * outranks the 0.06% monthly one, so the header reads `5h limit 1%` while the
+ * monthly ROW reads `<1%`. A `<1%` row under a heading that answered the same
+ * question differently (`Monthly total 0%`) is exactly the defect this pair
+ * exists to prevent, so here the 5h row sits at zero and the heading must read
+ * `Monthly total <1%`. Both rows stay: the frame shows WHICH row the heading
+ * bound, not a month-only report.
+ */
+export const KimiMonthlyBinding: Story = {
+	args: {
+		...base,
+		payload: payload([
+			report({
+				provider: "kimi",
+				identity: null,
+				fetched_at: NOW,
+				age_ms: 0,
+				state: "available",
+				limits: [
+					limit({
+						id: "kimi:0",
+						label: "5h limit",
+						window: "5h limit",
+						amount: amount({
+							used: 0,
+							limit: 100,
+							remaining: 100,
+							used_fraction: 0,
+							unit: "unknown",
+						}),
+						resets_at_ms: NOW + 4 * HOUR + 16 * MINUTE,
+						shared: true,
+					}),
+					limit({
+						id: "kimi:monthly-total",
+						label: "Monthly total",
+						window: "monthly",
+						amount: amount({
+							used: 0.06,
+							limit: null,
+							remaining: 99.94,
+							used_fraction: 0.0006,
+							unit: "percent",
+						}),
+						resets_at_ms: NOW + 31 * DAY + 5 * HOUR,
+						shared: true,
+					}),
+				],
+			}),
+		]),
+	},
+};
+
 /** A remaining-only balance: a number, no fill, and the words "not reported". */
 export const RemainingBalance: Story = {
 	args: { ...base, payload: payload([deepseek]) },

@@ -263,7 +263,12 @@ export class TabRegistry {
 	 * reads `visible` alone, so a state page never makes a native view
 	 * "presented"; and every report overwrites it, so a reason cannot outlive the
 	 * hide it described. */
-	private ownStatePage = false;
+	/** Why the view is hidden for the KEYBOARD: true only while the browser's own
+	 * state page is the reason, cleared when an overlay also hides it. */
+	private ownPageReason = false;
+	/** The browser's own content state (start page, failure), independent of any
+	 * overlay also hiding the view. Controls are refused on it. */
+	private ownStateContent = false;
 	private contentRect: ContentRect | null = null;
 	/** Tabs with a command in flight, keyed by tabId. See `lane`. */
 	private readonly busy = new Set<number>();
@@ -422,7 +427,7 @@ export class TabRegistry {
 	 * `browserChromeOwnsChord` is untouched: this says whose keys they are, never
 	 * that the window is foreground. */
 	get chromeVisible(): boolean {
-		return this.contentRect !== null && (this.visible || this.ownStatePage);
+		return this.contentRect !== null && (this.visible || this.ownPageReason);
 	}
 
 	get activeTab(): TabRecord | null {
@@ -654,10 +659,32 @@ export class TabRegistry {
 	 * still the browser, and `chromeVisible` keeps its shortcuts. Normalised
 	 * against `visible` so the invariant held is "a reason only exists while the
 	 * view is hidden", never two facts that disagree. */
-	setViewVisible(visible: boolean, ownPage = false): void {
+	setViewVisible(
+		visible: boolean,
+		ownPage = false,
+		ownStatePage = ownPage,
+	): void {
 		this.visible = visible;
-		this.ownStatePage = !visible && ownPage;
+		this.ownPageReason = !visible && ownPage;
+		this.ownStateContent = !visible && ownStatePage;
 		this.applyLayout();
+	}
+
+	/**
+	 * Whether an APP OVERLAY (menu, dialog, picker) is what hides this tab's view.
+	 *
+	 * The page is still the active, laid-out tab - our own chrome asked the view to
+	 * stand down so a DOM panel could be seen - and the difference matters to
+	 * `controlPage`: Find/Print/Reset zoom are chrome-initiated commands on the
+	 * page, and "hidden so our menu is visible" must not read as "this tab is
+	 * gone" (QA Q2-F1). A route teardown drops `contentRect` and an own-state page
+	 * (start/failure) sets `ownStateContent`, so neither qualifies — and it stays
+	 * set while an overlay hides the same page (QA Q3-1).
+	 */
+	hiddenByOverlay(tabId: number): boolean {
+		const record = this.tabs.get(tabId);
+		if (!record || record.tabId !== this.activeTabId) return false;
+		return this.contentRect !== null && !this.visible && !this.ownStateContent;
 	}
 
 	activate(tabId: number): void {
