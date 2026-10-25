@@ -12,7 +12,7 @@
 	"ui.chat.sidebar.catalogue.total_search_clipped": "{total, number, ::group-off} چیٹس میں سے {shown, number, ::group-off}+ {shown, plural, one {نتیجہ دکھایا جا رہا ہے} other {نتائج دکھائے جا رہے ہیں}}",
 	"ui.chat.sidebar.drafts.clear_all": "سب صاف کریں",
 	"ui.chat.sidebar.drafts.clear_all_label": "تمام مسودے صاف کریں",
-	"ui.chat.sidebar.groups.badge": "اس گروہ میں {badge, number, ::group-off} چیٹس",
+	"ui.chat.sidebar.groups.badge": "{badge, plural, one {اس گروہ میں {badge, number, ::group-off} چیٹ} other {اس گروہ میں {badge, number, ::group-off} چیٹس}}",
 	"ui.chat.sidebar.header.create": "نیا ایجنٹ یا نئی ٹیم",
 	"ui.chat.sidebar.header.create_agent": "نیا ایجنٹ",
 	"ui.chat.sidebar.header.create_team": "نئی ٹیم",
