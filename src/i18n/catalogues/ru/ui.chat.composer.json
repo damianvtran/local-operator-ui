@@ -9,6 +9,8 @@
 	"ui.chat.composer.delivery_remedies_hint": "У недоставленного сообщения есть кнопки «Отправить снова» и «Изменить» в разговоре над этим полем: нажмите Shift+Tab, чтобы перейти к ним.",
 	"ui.chat.composer.message": "Сообщение",
 	"ui.chat.composer.processing_audio": "Обработка аудио",
+	"ui.chat.composer.dictation_failed_transient": "Диктовка не удалась: служба транскрипции временно дала сбой. Повторите попытку.",
+	"ui.chat.composer.dictation_failed_transient_take_kept": "Диктовка не удалась: служба транскрипции временно дала сбой. Запись сохранена — «Повторить» отправит её снова.",
 	"ui.chat.composer.secret_ask_notice": "Агент запрашивает секрет. Введите его на панели запросов — общаться можно параллельно.",
 	"ui.chat.composer.secret_ask_open": "Открыть запросы",
 	"ui.chat.composer.secret_confirm_cancel": "Отмена",

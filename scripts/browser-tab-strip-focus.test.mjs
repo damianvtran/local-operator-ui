@@ -9,8 +9,11 @@ import React, { act, useState } from "react";
  * `useTopLevelRegex`, and shared by the assertions that name it). */
 const LANDED_CLOSE_CARET = /^BUTTON role=tab in-tab=\d+$/;
 
-/** The watch row names the tab it belongs to. */
+/** The watch row names the tab it belongs to. The title is bidi-isolated
+ * (design round 2, D7): FSI/PDI are invisible in the rendered row but are real
+ * characters in `textContent`, so the words are read without them. */
 const WATCH_ROW = /Watch "Tab 2"/;
+const withoutIsolates = (text) => text.replace(/[\u2066-\u2069]/g, "");
 
 /*
  * WHERE THE CARET GOES AFTER A CLOSE, INCLUDING A CLOSE THAT NEVER LANDS
@@ -455,11 +458,14 @@ test("the menu's tab leaving the list on its own takes the menu AND the suppress
 		document.querySelector('[data-tour-tag="browser-tab-actions"]'),
 		"the menu is up before the removal",
 	);
-	assert.equal(
-		view.suppressed().some((id) => id.startsWith("browser-tab-actions")),
-		true,
-		`the strip's registration is held while the menu is open: ${JSON.stringify(view.suppressed())}`,
-	);
+	/*
+	 * THE PAUSE ITSELF IS A NATIVE MEASUREMENT (S5). The strip no longer registers
+	 * unconditionally: the panel is a `DropdownMenuContent`, whose shared primitive
+	 * registers only where the painted panel intersects the view rect — and jsdom
+	 * has neither layout nor a view, so the snapshot here is legitimately empty.
+	 * The "inside-band menu does not pause / crossing menu does" half is measured in
+	 * the native probe; what this test owns is the RELEASE (below).
+	 */
 
 	/*
 	 * THE REMOVAL THE MENU NEVER HEARD OF: an agent tool closing the tab in main, or any
@@ -507,7 +513,7 @@ test("the popout opens from an INACTIVE tab and offers `Watch` for it, leaving t
 		"and offers the watch row for a tab that is not the one on screen",
 	);
 	assert.match(
-		watch.textContent ?? "",
+		withoutIsolates(watch.textContent ?? ""),
 		WATCH_ROW,
 		`the watch row names its own tab: ${watch.textContent}`,
 	);

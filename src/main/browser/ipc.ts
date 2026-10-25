@@ -135,6 +135,9 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-page-control",
 	"browser-reopen-tab",
 	"browser-focus-page",
+	"browser-approvals-card-open",
+	"browser-approvals-card-close",
+	"browser-approvals-card-context",
 	"browser-new-tab",
 	"browser-reorder-tabs",
 	"browser-tab-action",
@@ -352,6 +355,21 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	ipcMain.handle("browser-reopen-tab", (event, sessionId: unknown) =>
 		authorize(event).reopenClosed(optionalConversationOrThrow(sessionId)),
 	);
+	ipcMain.handle("browser-approvals-card-open", (event, input: unknown) => {
+		const host = authorize(event);
+		return host.openApprovalsCard(input);
+	});
+
+	ipcMain.handle("browser-approvals-card-close", (event) => {
+		const host = authorize(event);
+		return host.closeApprovalsCard();
+	});
+
+	ipcMain.handle("browser-approvals-card-context", (event, input: unknown) => {
+		const host = authorize(event);
+		host.setApprovalsCardContext(input);
+	});
+
 	ipcMain.handle("browser-focus-page", (event) => {
 		authorize(event);
 		options.focusPage?.();
@@ -387,7 +405,7 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 
 	ipcMain.handle(
 		"browser-set-visible",
-		(event, visible: unknown, ownPage: unknown) => {
+		(event, visible: unknown, ownPage: unknown, ownStatePage: unknown) => {
 			const host = authorize(event);
 			if (typeof visible !== "boolean") {
 				throw new Error("Visibility must be a boolean.");
@@ -399,7 +417,14 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			if (ownPage !== undefined && typeof ownPage !== "boolean") {
 				throw new Error("The view-hidden reason must be a boolean.");
 			}
-			return host.setViewVisible(visible, ownPage === true);
+			if (ownStatePage !== undefined && typeof ownStatePage !== "boolean") {
+				throw new Error("The own-state reason must be a boolean.");
+			}
+			return host.setViewVisible(
+				visible,
+				ownPage === true,
+				ownStatePage === undefined ? ownPage === true : ownStatePage,
+			);
 		},
 	);
 

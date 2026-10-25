@@ -181,11 +181,12 @@ export function withNotificationPreference(
 	page: TeamBridgeConversationList,
 	conversationId: string,
 	notify: TeamBridgeNotify,
+	tenantId?: string,
 ): TeamBridgeConversationList {
 	return {
 		...page,
 		conversations: page.conversations.map((row) =>
-			row.id === conversationId
+			row.id === conversationId && (!tenantId || row.tenant_id === tenantId)
 				? { ...row, notify, muted: notify === "mute" }
 				: row,
 		),

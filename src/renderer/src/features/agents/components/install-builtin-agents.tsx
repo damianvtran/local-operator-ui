@@ -228,7 +228,7 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 						onClick={() => void run()}
 						className={cn(
 							"flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1.5",
-							"text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart",
+							"text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart",
 							"hover:bg-elevated",
 						)}
 						data-testid="install-all-builtins-row"

@@ -5259,17 +5259,34 @@ export function ChatSidebar({
 			<Tooltip
 				key={key}
 				content={rowTooltip}
-				side="right"
+				/*
+				 * THE CARD OPENS BELOW ITS ROW, INSIDE THE SIDEBAR (S5).
+				 *
+				 * It used to open RIGHT, into the content area, and the shared Tooltip
+				 * used to hide the native page while it was painted there. S5 removed
+				 * that lever by kind (a tooltip never pauses the page — a hover hint may
+				 * not take the page away), so a right-opening card would simply be
+				 * CLIPPED by the page, with only the 10px sliver over the sidebar's edge
+				 * visible. No 4px shift fixes it: at the 280 panel the card started at
+				 * x=490 against a panel edge of x=500, and the whole card lies under the
+				 * view from there.
+				 *
+				 * Bottom placement is inside the sidebar's own column, which is DOM and
+				 * never under the view, so the card is fully painted with the page live.
+				 * It covers the NEXT row rather than the hovered row itself (D1's
+				 * constraint was that it must not cover the row's own pin/archive), and
+				 * the panel is `pointer-events-none`, so covering rows cannot eat a
+				 * click. Radix flips it to `top` at the list's bottom edge.
+				 *
+				 * The width follows the trigger (`--radix-tooltip-trigger-width`) and
+				 * `max-w-none` lifts the primitive's 256px cap, so a two-line title wraps
+				 * to the row rather than to the card's own width.
+				 */
+				side="bottom"
 				align="start"
 				disableHoverableContent
 				collisionPadding={FLYOUT_COLLISION_PADDING}
-				/*
-				 * The card opens RIGHT, into the content area, so with the Browser route open
-				 * it lands on the native view and hides it while it is painted there (the
-				 * shared `Tooltip`'s measured registration). Named so the paused page's
-				 * `data-suppressed-by` says which overlay paused it.
-				 */
-				overlayName="sidebar-row-flyout"
+				className="w-(--radix-tooltip-trigger-width) max-w-none"
 				/*
 				 * NO FLYOUT WHILE A DRAG IS ARMED (design round 1, D4; measured on `drag-mid`).
 				 *

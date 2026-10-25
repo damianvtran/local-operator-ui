@@ -14,7 +14,10 @@
  * WHY IT MEASURES EVERY FRAME: a position-only shift (a sidebar collapse moves
  * the toolbar sideways without resizing it) is invisible to ResizeObserver and
  * to the page's own rectangle reporter. Only while the list is open, the hook
- * compares a signature; identical frames send nothing.
+ * compares a signature; identical frames send nothing. A `stale_layout` refusal
+ * gets four frame-spaced retries (~67 ms) and then idles; a real change resets
+ * that budget, so a page that lands later is picked up by the next keystroke or
+ * rect move rather than by a poll.
  */
 
 import { useEffect, useRef } from "react";
@@ -27,6 +30,7 @@ import {
 	isPermanentOverlayRefusal,
 	nextAddressOverlaySeq,
 } from "./address-overlay-port";
+import { nextStaleAttempt } from "./stale-layout-retry";
 
 export interface AddressMirrorRow {
 	text: string;
@@ -188,6 +192,13 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		 * exactly one invoke, and costs S2-on at most one skipped frame.
 		 */
 		let pending = false;
+		/** Bounded re-attempts after `stale_layout` (round-2 U11). The page being
+		 * hidden is a condition, but it can END (the view lands while the field is
+		 * still open). Four frame-spaced tries cover that handover without restoring
+		 * the per-frame storm; any real change resets the budget, and after four
+		 * refusals the loop idles until the projection body changes. */
+		let staleAttempts = 0;
+		let forceProject = false;
 		const stop = (): void => {
 			stopped = true;
 			if (frame !== 0) cancelAnimationFrame(frame);
@@ -280,10 +291,20 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 				return;
 			}
 			const signature = JSON.stringify(body);
-			if (signature === lastSignature) {
+			if (!forceProject && signature === lastSignature) {
 				if (!stopped) frame = requestAnimationFrame(tick);
 				return;
 			}
+			/* A REAL change resets the budget even when it lands ON a forced retry:
+			   the signature differs from the refused body, so this is a new
+			   condition, not another attempt at the old one (round 3, U11 NIT). */
+			if (signature !== lastSignature)
+				staleAttempts = nextStaleAttempt({
+					attempts: staleAttempts,
+					refused: false,
+					signatureChanged: true,
+				}).attempts;
+			forceProject = false;
 			lastSignature = signature;
 			pending = true;
 			wasVisible = true;
@@ -305,6 +326,24 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 					if (answer.reason === "anchor_too_narrow") {
 						stop();
 						latest.current.onUnavailable?.();
+						return;
+					}
+					// A HIDDEN VIEW IS A CONDITION, NOT A FAILURE (S5 round 1, UX U3;
+					// bounded in round 2, U11). `stale_layout` means the page is on its
+					// start/failure state, so main refuses this projection while that
+					// holds. Clearing the signature on every refusal was the per-frame
+					// storm; never retrying at all left a list that could not come back
+					// when the view landed. Four forced retries, then idle: the signature
+					// keeps pointing at the refused body, so nothing loops, and the next
+					// real change (typing, a rect move) is a fresh attempt.
+					if (answer.reason === "stale_layout") {
+						const step = nextStaleAttempt({
+							attempts: staleAttempts,
+							refused: true,
+							signatureChanged: false,
+						});
+						staleAttempts = step.attempts;
+						forceProject = step.retry;
 						return;
 					}
 					// Terminal refusals stop the loop; everything else (a stale frame, a
@@ -340,4 +379,27 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 			if (wasVisible) sendHide();
 		};
 	}, [input.enabled, input.visible, input.tabId]);
+
+	/*
+	 * DISMISSALS ARRIVE WHILE THE LIST IS NOT VISIBLE TOO (review round 1, R1-1).
+	 *
+	 * `visible` is false during IME composition and before the first history
+	 * answer, and the projection effect above returns before it subscribes then.
+	 * A main dismissal in that window (page focus, page pointer, navigation) used
+	 * to be lost, so the late answer or `compositionend` re-raised the child after
+	 * focus had already left. This subscription handles the dismissal half only
+	 * and schedules no frame: the projection loop stays gated on visibility, and
+	 * only one of the two effects holds a subscription at a time, so an event is
+	 * handled once (the visible effect also carries commits).
+	 */
+	useEffect(() => {
+		if (!input.enabled || input.visible) return;
+		const port = addressOverlayPort();
+		if (!port) return;
+		return port.onEvent((event) => {
+			if (!event || typeof event !== "object") return;
+			if (event.type !== "dismiss" || typeof event.reason !== "string") return;
+			latest.current.onDismiss(event.reason);
+		});
+	}, [input.enabled, input.visible]);
 }

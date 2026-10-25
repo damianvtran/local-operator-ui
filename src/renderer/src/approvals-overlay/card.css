@@ -1,0 +1,359 @@
+/*
+ * The approvals card surface.
+ *
+ * The document's background is TRANSPARENT: the native child is larger than the
+ * card only so the card's shadow can paint, and everything outside the rounded
+ * surface must show the live page underneath. The native view's own background
+ * colour is set to fully transparent by the controller; this file must not paint
+ * a body background or the transparency proof would be measuring the card, not
+ * the compositor.
+ *
+ * COLOUR IS TOKEN ROLES ONLY. The generated theme stylesheet is linked by the
+ * document, and the root's `data-theme` selects the app's palette; there is no
+ * hex, no rgb and no second palette in this file.
+ *
+ * THE CARD IS A NON-MODAL DIALOG: it owns focus while focused, but the page is
+ * not inert and Escape/Close always work. The body scrolls between a sticky
+ * header and a sticky footer, so the native view's clamped height never cuts a
+ * decision off mid-glyph and never hides the failure line.
+ */
+html,
+body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background: transparent;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+		sans-serif;
+	color: var(--lo-ink);
+}
+
+#approvals-card {
+	position: absolute;
+	left: 8px;
+	right: 8px;
+	bottom: 8px;
+	box-sizing: border-box;
+	overflow: hidden;
+	/*
+	 * The controller clamps the native view to the content ceiling; the card
+	 * must clamp with it, or a tall document overflows the view and is cut off
+	 * at the HEADER (the card is bottom-pinned). The inset is the same 8 px the
+	 * geometry module places on every side, so the card never leaves the ring.
+	 */
+	max-height: calc(100% - 16px);
+	border: 1px solid var(--lo-border-control);
+	border-radius: 14px;
+	background: var(--lo-elevated);
+	box-shadow: 0 1px 6px color-mix(in srgb, var(--lo-scrim) 60%, transparent);
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	outline: none;
+}
+
+html[data-opaque="1"] #approvals-card {
+	left: 0;
+	right: 0;
+	bottom: 0;
+	max-height: 100%;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+#approvals-card:focus-visible {
+	outline: 2px solid var(--lo-accent);
+	outline-offset: 2px;
+}
+
+.card-brand {
+	margin: 0;
+	padding: 8px 12px 0;
+	color: var(--lo-ink-muted);
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1.3;
+	letter-spacing: 0.02em;
+}
+
+.card-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px 4px;
+}
+
+.card-header h1 {
+	flex: 1;
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.4;
+	color: var(--lo-ink);
+}
+
+.card-close,
+.card-review {
+	appearance: none;
+	border: 1px solid var(--lo-border-control);
+	border-radius: 8px;
+	background: transparent;
+	color: var(--lo-ink-muted);
+	font: inherit;
+	cursor: pointer;
+}
+
+.card-close {
+	/* The app's 28px control ladder; the earlier 19px button read as a tag. */
+	min-height: 28px;
+	padding: 0 8px;
+	font-size: 11px;
+}
+
+.card-close:hover,
+.card-review:hover,
+.card-secondary button:hover,
+.card-row:hover {
+	background: var(--lo-row-hover);
+}
+
+.card-close:focus-visible,
+.card-review:focus-visible,
+.card-primary:focus-visible,
+.card-secondary button:focus-visible,
+.card-row:focus-visible {
+	outline: 2px solid var(--lo-accent);
+	outline-offset: 2px;
+}
+
+.card-body {
+	display: flex;
+	flex-direction: column;
+	/* Fill the pinned card (the list view sets a min-height) so the footer's
+	   auto margin reaches its foot instead of leaving the empty band outside
+	   the body (D12). */
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 0 12px;
+	/* The scrollbar is the card surface's, not the platform's (round-2 nit). */
+	scrollbar-width: thin;
+	scrollbar-color: var(--lo-border-control) transparent;
+}
+
+.card-body::-webkit-scrollbar {
+	width: 10px;
+}
+
+.card-body::-webkit-scrollbar-thumb {
+	border: 2px solid var(--lo-elevated);
+	border-radius: 999px;
+	background: var(--lo-border-control);
+}
+
+.card-body::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+/*
+ * The last decision keeps a breathing space above the hairline; a button whose
+ * border touches the divider reads as the footer's own control (round-2 nit).
+ */
+#approvals-request {
+	padding-bottom: 6px;
+}
+
+/*
+ * ONE SENTENCE, with the origin inline in monospace. The requester, the verb
+ * and the site are the three facts of the question, and splitting them into
+ * block rows made them read as three unrelated statements (D2).
+ */
+.card-request-line {
+	margin: 4px 0 0;
+	color: var(--lo-ink-muted);
+	font-size: 12px;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+
+.card-origin {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12px;
+	color: var(--lo-ink);
+	overflow-wrap: anywhere;
+}
+
+.card-expiry {
+	margin: 4px 0 0;
+	color: var(--lo-ink-dim);
+	font-size: 11px;
+	line-height: 1.4;
+}
+
+.card-primary {
+	margin-top: 8px;
+	width: 100%;
+	min-height: 28px;
+	padding: 5px 10px;
+	border: 1px solid var(--lo-accent);
+	border-radius: 8px;
+	background: var(--lo-accent);
+	color: var(--lo-on-accent);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+/*
+ * DISABLED IS A COLOUR TREATMENT, NOT OPACITY. `opacity: .6` on the light
+ * primary measured 2.53:1 against the elevated ground — the action became
+ * unreadable exactly while the user was waiting for it (D4). These pairs are
+ * the same token roles the contrast contract measures: ink-dim on elevated is
+ * 6.14:1 in localOperatorLight.
+ */
+.card-primary:disabled {
+	border-color: var(--lo-border-control);
+	background: var(--lo-elevated);
+	color: var(--lo-ink-dim);
+	cursor: default;
+}
+
+.card-gloss {
+	margin: 4px 0 0;
+	min-height: 1.4em;
+	color: var(--lo-ink-dim);
+	font-size: 11px;
+	line-height: 1.4;
+}
+
+.card-secondary {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.card-secondary button {
+	appearance: none;
+	width: 100%;
+	min-height: 28px;
+	padding: 5px 8px;
+	border: 1px solid var(--lo-border-control);
+	border-radius: 8px;
+	background: transparent;
+	color: var(--lo-ink);
+	font: inherit;
+	font-size: 12px;
+	line-height: 1.35;
+	text-align: start;
+	cursor: pointer;
+}
+
+.card-secondary button:disabled {
+	color: var(--lo-ink-dim);
+	cursor: default;
+}
+
+/*
+ * THE FOOTER STICKS INSIDE THE SCROLLER. It is a child of `.card-body`, so it
+ * shares the body's content width (including the scrollbar gutter) and cannot
+ * be 15px wider than the rows above it (D7). The hairline and the top scrim
+ * mark the scroll boundary so content is not read as cut mid-glyph (D6).
+ */
+.card-footer {
+	/*
+	 * PINNED AT THE BOTTOM OF A SHORT VIEW, STICKY IN A LONG ONE. `margin-top:
+	 * auto` in the flex body puts the footer at the card's foot when the list is
+	 * short (D12: it used to sit at the end of the 148px list, leaving an empty
+	 * band below it), and `position: sticky` keeps it at the scrollport's foot
+	 * when the request scrolls.
+	 */
+	position: sticky;
+	bottom: 0;
+	margin: auto -12px 0;
+	padding: 6px 12px 10px;
+	border-top: 1px solid var(--lo-hairline);
+	background: var(--lo-elevated);
+}
+
+/*
+ * The scrim is a scroll-boundary cue, not decoration: the body only gets the
+ * class when its content actually overflows, so a short list's empty ground is
+ * not painted grey (D13).
+ */
+.card-body.is-scrollable .card-footer {
+	box-shadow: 0 -10px 14px -8px
+		color-mix(in srgb, var(--lo-scrim) 80%, transparent);
+}
+
+.card-review {
+	width: 100%;
+	min-height: 28px;
+	padding: 4px 8px;
+	font-size: 11px;
+}
+
+/*
+ * A status-shaped label still needs a disclosure affordance (U9): the chevron
+ * points toward the inline end in both directions.
+ */
+.card-review::after {
+	content: " ›";
+	color: var(--lo-ink-dim);
+}
+
+html[dir="rtl"] .card-review::after {
+	content: " ‹";
+}
+
+.card-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 4px 0 0;
+}
+
+/* The list's last row clears the hairline when the body is scrolled to its end. */
+#approvals-list {
+	padding-bottom: 8px;
+}
+
+.card-row {
+	appearance: none;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	width: 100%;
+	padding: 6px 8px;
+	border: 1px solid var(--lo-border-control);
+	border-radius: 8px;
+	background: transparent;
+	color: var(--lo-ink);
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.card-row-origin {
+	font-size: 12px;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+.card-row-meta {
+	color: var(--lo-ink-dim);
+	font-size: 11px;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+.card-error {
+	margin: 0 0 6px;
+	color: var(--lo-danger);
+	font-size: 11px;
+	line-height: 1.4;
+}

@@ -219,7 +219,7 @@ test("F-3 the marker is on the panel a click lands in, never on the scrim", () =
  * F-4 - the one named surface, because the derivation cannot see it.
  *
  * The scan above only finds portalled primitives, and that is its stated limit:
- * `UpdateContainer` is `fixed top-4 right-4 z-50`, mounted on every route, and
+ * `UpdateContainer` is `fixed top-4 end-4 z-50`, mounted on every route, and
  * its top row sits inside a drag surface wherever one is drawn - while reaching
  * the top layer through no portal at all, so neither half of the scan sees it
  * (round 1, R3). It is named rather than derived, because "everything fixed near
@@ -232,11 +232,11 @@ test("F-4 the fixed surface mounted above the strip carries the opt-out", () => 
 		"src/renderer/src/shared/components/common/update-notification.tsx";
 	const source = read(path);
 	const pinned = openingTags(source).filter((tag) =>
-		tag.text.includes("fixed top-4 right-4 z-50"),
+		tag.text.includes("fixed top-4 end-4 z-50"),
 	);
 	assert.ok(
 		pinned.length > 0,
-		`${path}: the card is no longer pinned at the window's top-right (its \`fixed top-4 right-4 z-50\` geometry is gone); if it moved out of the strip, re-read this entry's reason rather than keeping it silently`,
+		`${path}: the card is no longer pinned at the window's top-inline-end (its \`fixed top-4 end-4 z-50\` geometry is gone); if it moved out of the strip, re-read this entry's reason rather than keeping it silently`,
 	);
 	for (const tag of pinned) {
 		assert.ok(

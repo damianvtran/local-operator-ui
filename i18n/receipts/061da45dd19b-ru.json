@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "061da45dd19b-ru",
+  "locale": "ru",
+  "namespace": "ui.chat.composer",
+  "date": "2026-10-24",
+  "status": "passed",
+  "sha256": {
+    "ru": "61e92c6ebe9b057835f22d37a56a043b33a8e23850e476cec90b91cb6361308c",
+    "en": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9"
+  },
+  "findings": []
+}

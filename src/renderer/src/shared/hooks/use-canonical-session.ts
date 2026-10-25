@@ -53,6 +53,7 @@ import {
 	EMPTY_TRANSCRIPT,
 	RECONCILE_TAIL_ENTRIES,
 	RECONCILE_TAIL_MAX_ENTRIES,
+	type TranscriptDocument,
 	type TranscriptImage,
 	type TranscriptState,
 	appendLocalNote,
@@ -1603,6 +1604,13 @@ export type PendingSend = {
 	text: string;
 	images: TranscriptImage[];
 	/**
+	 * The document blocks the press uploaded. Carried with the entry for the same
+	 * reason `images` is: the row is painted from this entry on every mount, so a
+	 * row that lost its files on a remount would show a message short of what was
+	 * sent (contract v1 §5).
+	 */
+	documents: TranscriptDocument[];
+	/**
 	 * THE CLAIM'S OUTCOME IS KNOWN, and the entry is kept only to keep painting the
 	 * row (design review round 1's D1/D2, extended by what the re-shoot measured).
 	 * The server's complete read answered the claim NO (`resolveHeldFromServer`),
@@ -1685,7 +1693,16 @@ function applyPendingSend(
 	entry: PendingSend,
 ): void {
 	target((state) =>
-		appendPendingUser(state, entry.id, entry.text, entry.images),
+		appendPendingUser(
+			state,
+			entry.id,
+			entry.text,
+			entry.images,
+			// `now` is the fifth positional parameter; the echo's document blocks
+			// follow it, so the client stamp stays where callers already put it.
+			undefined,
+			entry.documents,
+		),
 	);
 	if (!entry.painted) {
 		entry.painted = true;
@@ -1757,6 +1774,8 @@ export function paintPendingSend(
 		id: string;
 		text: string;
 		images: TranscriptImage[];
+		/** Files the press already uploaded; absent means none. */
+		documents?: TranscriptDocument[];
 		onPainted?: () => void;
 		/** Only `resynthesisePendingSend`'s resolved arm passes this; see `settled`. */
 		settled?: boolean;
@@ -1785,6 +1804,7 @@ export function paintPendingSend(
 		id: send.id,
 		text: send.text,
 		images: send.images,
+		documents: send.documents ?? [],
 		onPainted: send.onPainted,
 		settled: send.settled,
 		submittedAt: send.submittedAt,
@@ -2042,7 +2062,24 @@ export function seedPendingSends(
 	if (!entries) return state;
 	let seeded = state;
 	for (const entry of entries.values()) {
-		seeded = appendPendingUser(seeded, entry.id, entry.text, entry.images);
+		/*
+		 * The files travel with the row here for the same reason `applyPendingSend`
+		 * passes them: the seed is what a freshly mounted pane paints FIRST, so a
+		 * seed that dropped them would show the message without its card until the
+		 * owner's durable row arrived - the exact window this function exists to
+		 * close for the row's text.
+		 */
+		seeded = appendPendingUser(
+			seeded,
+			entry.id,
+			entry.text,
+			entry.images,
+			// The clock stays the default (`now` = `Date.now()`); `documents` is the
+			// sixth parameter, after it, so passing the list here must not be read as
+			// a stamp - the sibling `applyPendingSend` says the same at its own call.
+			undefined,
+			entry.documents,
+		);
 	}
 	return seeded;
 }
@@ -5442,6 +5479,37 @@ export function useCanonicalSessionStream(
 						 * round trip on the latency path (M6).
 						 */
 						if (event.kind === "error" && event.status === 404) {
+							/*
+							 * A DRAFT'S BRIDGE IS NOT A CONVERSATION (the operator's report,
+							 * 2026-10-23). `isSession` is false when `sessionId` is the id a
+							 * `sessions.draft` mint handed this pane (`SessionPanel`'s
+							 * `sessionId ?? draft?.warmId`) - a registry bridge the pane streams on
+							 * only while it waits for the first send, never a conversation it could
+							 * lose. So a 404 here says the REGISTRY entry is gone (the daemon
+							 * restarted, or the draft expired) and nothing about any conversation:
+							 * the row has no `sessionId`, is a new chat, and the missing notice the
+							 * session arm below paints would contradict the header that says "New
+							 * chat with <team>".
+							 *
+							 * The store retires the dead id and re-mints the mint's request id
+							 * (`retireDraftWarm` carries the why): the next keystroke or send asks
+							 * fresh, and a replayed receipt cannot name this id again. The view
+							 * stays on its draft: no `missing`, no `unavailable`, no dropped paint -
+							 * the pane is a working new chat and the composer is untouched. The
+							 * subscription id goes with the closed stream; the effect re-runs on the
+							 * now-id-less stream and returns before opening anything.
+							 */
+							if (!isSession) {
+								if (sessionId)
+									useCanonicalSessionsStore
+										.getState()
+										.retireDraftWarm(sessionId);
+								commitView((current) => ({
+									...current,
+									subscriptionId: null,
+								}));
+								return;
+							}
 							// Its paint goes with it: a later click on the same id would
 							// otherwise paint rows for a transcript that no longer exists,
 							// with nothing to tell the reader they are fiction. Its expansions
@@ -5878,6 +5946,15 @@ export function useCanonicalSessionStream(
 		commitView,
 		sessionId,
 		enabled,
+		/*
+		 * `isSession` rides the deps because the 404 arm reads it: the same id
+		 * shape is a conversation for one pane and a draft's bridge for another,
+		 * and the answer decides whether a 404 is a verdict or a dead runtime. The
+		 * caller's answer is fixed for a mounted pane (`SessionPanel` passes
+		 * whether its own `sessionId` exists), so this adds the re-run the id's own
+		 * change already performs, never a second one.
+		 */
+		isSession,
 		journalOrder,
 		peerDeclarable,
 		peerScopedNow,

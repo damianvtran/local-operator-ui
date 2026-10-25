@@ -132,6 +132,7 @@ export {
 export type { TabPanelProps } from "./tabs";
 export { Textarea } from "./textarea";
 export type { TextareaProps } from "./textarea";
+export { BrowserSafeTooltip } from "./browser-safe-tooltip";
 export {
 	Tooltip,
 	TooltipContent,

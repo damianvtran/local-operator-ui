@@ -23,13 +23,30 @@ const dom = new JSDOM("<!doctype html><body></body>", {
 	pretendToBeVisual: true,
 	url: "http://localhost/",
 });
-for (const name of ["window", "document", "HTMLElement", "Element", "Event"])
+for (const name of [
+	"window",
+	"document",
+	"HTMLElement",
+	"Element",
+	"Event",
+	/* The outside-press rule reads `event.target instanceof Node`. Node is a real
+	 * global in the renderer and only this harness has to borrow it. */
+	"Node",
+])
 	globalThis[name] = dom.window[name];
 globalThis.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
 Object.defineProperty(globalThis, "navigator", {
 	configurable: true,
 	value: dom.window.navigator,
 });
+/* The mirror's frame loop runs in the `<main>` dismiss case; jsdom supplies the
+ * pair only on its window, and the renderer reads them as globals. */
+globalThis.requestAnimationFrame = dom.window.requestAnimationFrame.bind(
+	dom.window,
+);
+globalThis.cancelAnimationFrame = dom.window.cancelAnimationFrame.bind(
+	dom.window,
+);
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 globalThis.ResizeObserver = class {
 	observe() {}
@@ -275,6 +292,25 @@ async function key(bundle, keyValue, extra = {}) {
 	await flush();
 }
 
+/**
+ * A real pointer press on `target` - the event a click produces BEFORE any focus
+ * change. jsdom has no `PointerEvent` constructor; the row's dismissal reads the
+ * press and its target, both of which `MouseEvent` carries, and it is dispatched
+ * with the bubbling/cancelable/composed shape a browser sends.
+ */
+async function pointerDown(target) {
+	await act(async () => {
+		target.dispatchEvent(
+			new dom.window.MouseEvent("pointerdown", {
+				bubbles: true,
+				cancelable: true,
+				composed: true,
+			}),
+		);
+	});
+	await flush();
+}
+
 const list = (bundle) =>
 	bundle.container.querySelector(
 		'[data-tour-tag="browser-address-suggestions"]',
@@ -288,9 +324,25 @@ const options = (bundle) => [
  * the product, so every empty/hint/error sentence is announced through this
  * `aria-describedby` target rather than painted in DOM. */
 const describedNotice = (bundle) => {
-	const id = bundle.input.getAttribute("aria-describedby");
-	return id ? document.getElementById(id) : null;
+	/* The field now always names its site description first (S5 U4), so the
+	   attribute is a LIST; a notice is whichever referenced node exists. */
+	const ids = (bundle.input.getAttribute("aria-describedby") ?? "")
+		.split(/\s+/)
+		.filter(Boolean);
+	for (const id of ids) {
+		if (!/-(notice|unavailable)$/.test(id)) continue;
+		const node = document.getElementById(id);
+		if (node) return node;
+	}
+	return null;
 };
+/** The concatenated text of every node the field describes itself with. */
+const describedText = (bundle) =>
+	(bundle.input.getAttribute("aria-describedby") ?? "")
+		.split(/\s+/)
+		.filter(Boolean)
+		.map((id) => document.getElementById(id)?.textContent ?? "")
+		.join(" ");
 
 test("focus fetches once and an empty query shows the session's entries", async () => {
 	const bundle = await renderBar();
@@ -621,9 +673,7 @@ test("a paste with no displayed suffix keeps the best match as a row", async () 
 test("blocked input says so before Enter, and Enter refuses it", async () => {
 	const bundle = await renderBar();
 	await type(bundle, "example.com:");
-	const described = bundle.input.getAttribute("aria-describedby");
-	assert.ok(described);
-	assert.match(document.getElementById(described).textContent, BLOCKED_HINT);
+	assert.match(describedText(bundle), BLOCKED_HINT);
 	await key(bundle, "Enter");
 	assert.deepEqual(bundle.navigations, []);
 	assert.equal(bundle.input.value, "example.com:");
@@ -633,9 +683,7 @@ test("blocked input says so before Enter, and Enter refuses it", async () => {
 test("a file URL is refused with the same hint and never searched", async () => {
 	const bundle = await renderBar();
 	await type(bundle, "file:///tmp/a.txt");
-	const described = bundle.input.getAttribute("aria-describedby");
-	assert.ok(described);
-	assert.match(document.getElementById(described).textContent, BLOCKED_HINT);
+	assert.match(describedText(bundle), BLOCKED_HINT);
 	await key(bundle, "Enter");
 	assert.deepEqual(bundle.navigations, []);
 	await bundle.cleanup();
@@ -1005,7 +1053,11 @@ test("aria-controls names the listbox only while a listbox exists", async () => 
 	const populated = await renderBar();
 	await type(populated, "example.com/acc");
 	assert.ok(populated.input.getAttribute("aria-controls"));
-	assert.equal(populated.input.getAttribute("aria-describedby"), null);
+	assert.doesNotMatch(
+		populated.input.getAttribute("aria-describedby") ?? "",
+		/-notice/,
+		"a populated list names no notice; the site description is not a list state",
+	);
 	await populated.cleanup();
 
 	const empty = await renderBar({
@@ -1019,12 +1071,11 @@ test("aria-controls names the listbox only while a listbox exists", async () => 
 	await act(async () => empty.input.focus());
 	await flush();
 	assert.equal(empty.input.getAttribute("aria-controls"), null);
-	const described = empty.input.getAttribute("aria-describedby");
-	assert.ok(described);
-	assert.match(
-		document.getElementById(described).textContent,
-		NO_BROWSING_HISTORY,
-	);
+	// The EMPTY STATE IS NOT A PANEL (operator decision, 2026-10-24): a focused
+	// field with no history and no query shows and describes nothing. The old
+	// "No browsing history yet." panel was the complaint this change answers.
+	assert.equal(empty.input.getAttribute("aria-expanded"), "false");
+	assert.doesNotMatch(describedText(empty), NO_BROWSING_HISTORY);
 	await empty.cleanup();
 });
 
@@ -1037,17 +1088,11 @@ test("the unavailable notice is described by the field", async () => {
 	await act(async () => bundle.input.focus());
 	await flush();
 	assert.equal(bundle.input.getAttribute("aria-controls"), null);
-	const described = bundle.input.getAttribute("aria-describedby");
-	assert.ok(described);
-	assert.match(
-		document.getElementById(described).textContent,
-		ADDRESS_SUGGESTIONS_UNAVAILABLE,
-	);
+	assert.match(describedText(bundle), ADDRESS_SUGGESTIONS_UNAVAILABLE);
 	await bundle.cleanup();
 });
 
 test("an accepted target is not reused after an invalidating action", async () => {
-	const canonical = "http://127.0.0.1:8080/account/profile";
 	const display = "127.0.0.1:8080/account/profile";
 	const arm = async () => {
 		const bundle = await renderBar({
@@ -1118,5 +1163,400 @@ test("switching tabs and back keeps the accepted target", async () => {
 	assert.equal(bundle.input.value, "127.0.0.1:8080/account/profile");
 	await key(bundle, "Enter");
 	assert.deepEqual(bundle.navigations, [{ url: canonical, expectedTabId: 1 }]);
+	await bundle.cleanup();
+});
+
+/*
+ * THE OUTSIDE PRESS, THE MAIN DISMISS AND THE EMPTY STATE (operator report,
+ * 2026-10-24): clicking into the permanent address field used to leave a
+ * native child open over the page, and a press outside never lowered it. These
+ * cases pin the renderer half of that contract.
+ */
+
+test("focus with an empty history opens nothing, and a typed query still explains itself", async () => {
+	const bundle = await renderBar({
+		url: "",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: [],
+		}),
+	});
+	await act(async () => bundle.input.focus());
+	await flush();
+	assert.equal(
+		bundle.input.getAttribute("aria-expanded"),
+		"false",
+		"an empty history is not a reason to raise the native child",
+	);
+	assert.equal(listbox(bundle), null);
+	assert.doesNotMatch(describedText(bundle), NO_BROWSING_HISTORY);
+	assert.equal(bundle.navigations.length, 0);
+
+	// A non-empty query is a fact worth explaining: no match is still a notice,
+	// and the combo says it is expanded so the sentence is reachable. A URL
+	// intent keeps the search row out of the answer, so the rows really are empty.
+	await type(bundle, "https://nothing.example/");
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
+	assert.match(describedText(bundle), /No matching pages/);
+	await bundle.cleanup();
+});
+
+test("a press outside the address row lowers the list and restores the live URL", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example.com/acc");
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
+	assert.ok(listbox(bundle), "rows are on screen before the press");
+
+	const outside = document.createElement("div");
+	document.body.appendChild(outside);
+	await pointerDown(outside);
+
+	assert.equal(
+		bundle.input.getAttribute("aria-expanded"),
+		"false",
+		"a press on non-focusable chrome produces no blur, so the press itself must dismiss",
+	);
+	assert.equal(listbox(bundle), null);
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.equal(bundle.navigations.length, 0, "a dismissal is not a commitment");
+	outside.remove();
+	await bundle.cleanup();
+});
+
+test("a press inside the row or in portalled chrome leaves the list alone", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example.com/acc");
+
+	await pointerDown(bundle.input);
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
+	assert.match(bundle.input.value, /^example\.com\/acc/);
+
+	// A Radix menu/tooltip content is portalled out of the row: its press is
+	// chrome interacting with chrome, not a dismissal of the field's list.
+	const portal = document.createElement("div");
+	portal.setAttribute("data-radix-popper-content-wrapper", "");
+	const item = document.createElement("button");
+	item.textContent = "Find";
+	portal.appendChild(item);
+	document.body.appendChild(portal);
+	await pointerDown(item);
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
+	assert.match(bundle.input.value, /^example\.com\/acc/);
+	portal.remove();
+	await bundle.cleanup();
+});
+
+test("main's dismissal abandons the edit instead of re-projecting it", async () => {
+	let emit = () => {};
+	const projections = [];
+	const intents = [];
+	dom.window.api = {
+		browser: {
+			addressOverlay: {
+				project: async (payload) => {
+					projections.push(payload);
+					return { accepted: true };
+				},
+				onEvent: (callback) => {
+					emit = callback;
+					return () => {};
+				},
+			},
+		},
+	};
+	try {
+		const bundle = await renderBar({
+			onDismiss: (intent) => intents.push(intent),
+		});
+		await type(bundle, "example.com/acc");
+		assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
+
+		// The exact event main sends for a click into the page. The baseline
+		// survived this with an origin of `page` because the focus return is a
+		// no-op in an unfocused window; the edit itself has to be abandoned.
+		const before = projections.length;
+		await act(async () => {
+			emit({ type: "dismiss", reason: "page_focus" });
+		});
+		await flush();
+		// A frame or two, so a loop that would re-raise the child gets the chance.
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 60));
+		});
+		await flush();
+
+		assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+		assert.equal(bundle.input.value, "example.com/account");
+		assert.deepEqual(
+			intents,
+			[],
+			"main's dismissal must not ask the surface to move focus: the user's press already chose the target",
+		);
+		assert.notEqual(
+			document.activeElement,
+			bundle.input,
+			"the focus outline must go with the edit; the page owns focus now",
+		);
+		assert.equal(bundle.navigations.length, 0);
+		const after = projections.slice(before);
+		assert.ok(
+			after.length > 0 && after.every((payload) => payload.visible === false),
+			"the child must be told to hide, and never re-projected visible",
+		);
+		await bundle.cleanup();
+	} finally {
+		dom.window.api = undefined;
+	}
+});
+
+test("Escape names the escape intent so the surface can return focus to the page", async () => {
+	const reasons = [];
+	const bundle = await renderBar({
+		onDismiss: (reason) => reasons.push(reason),
+	});
+	await type(bundle, "example.com/acc");
+	await key(bundle, "Escape");
+	assert.deepEqual(
+		reasons,
+		["escape"],
+		"the surface distinguishes Escape (return to the page) from a cancel",
+	);
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.notEqual(
+		document.activeElement,
+		bundle.input,
+		"Escape hands focus back, so the input must not paint a focus outline",
+	);
+	assert.equal(bundle.navigations.length, 0);
+	await bundle.cleanup();
+});
+
+test("a press during composition cannot be undone by compositionend", async () => {
+	const bundle = await renderBar();
+	await act(async () => bundle.input.focus());
+	await flush();
+	await act(async () => {
+		bundle.input.dispatchEvent(
+			new dom.window.CompositionEvent("compositionstart", { bubbles: true }),
+		);
+		setValue(bundle.input, "exa");
+	});
+	await flush();
+	// The list is CLOSED while composing, which is exactly the window the press
+	// listener used to miss (review round 1, R1-1).
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+
+	const outside = document.createElement("div");
+	document.body.appendChild(outside);
+	await pointerDown(outside);
+
+	// The IME commits its interim text after the press already ended the edit.
+	await act(async () => {
+		bundle.input.dispatchEvent(
+			new dom.window.CompositionEvent("compositionend", { bubbles: true }),
+		);
+	});
+	await flush();
+
+	assert.equal(
+		bundle.input.getAttribute("aria-expanded"),
+		"false",
+		"a late composition commit must not re-raise the child after the press left",
+	);
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.notEqual(document.activeElement, bundle.input);
+	assert.equal(bundle.navigations.length, 0);
+	outside.remove();
+	await bundle.cleanup();
+});
+
+test("a main dismissal before the first answer keeps the list closed", async () => {
+	let resolveHistory = () => {};
+	let emit = () => {};
+	const intents = [];
+	dom.window.api = {
+		browser: {
+			addressOverlay: {
+				project: async () => ({ accepted: true }),
+				onEvent: (callback) => {
+					emit = callback;
+					return () => {};
+				},
+			},
+		},
+	};
+	try {
+		const bundle = await renderBar({
+			addressHistory: (request) =>
+				new Promise((resolve) => {
+					resolveHistory = () =>
+						resolve({
+							requestId: request.requestId,
+							activeTabId: 1,
+							entries: ENTRIES,
+						});
+				}),
+			onDismiss: (intent) => intents.push(intent),
+		});
+		await act(async () => bundle.input.focus());
+		await flush();
+		assert.equal(
+			bundle.input.getAttribute("aria-expanded"),
+			"false",
+			"the answer is pending, so no list is visible to subscribe the visible path",
+		);
+
+		await act(async () => {
+			emit({ type: "dismiss", reason: "page_pointer" });
+		});
+		await flush();
+
+		// The late answer must not resurrect the edit the press/main already ended.
+		await act(async () => {
+			resolveHistory();
+		});
+		await flush();
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		});
+		await flush();
+
+		assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+		assert.equal(bundle.input.value, "example.com/account");
+		assert.notEqual(document.activeElement, bundle.input);
+		assert.deepEqual(intents, [], "a main dismissal is focus-neutral");
+		await bundle.cleanup();
+	} finally {
+		dom.window.api = undefined;
+	}
+});
+
+test("a file: live URL does not announce a refusal on focus alone", async () => {
+	const bundle = await renderBar({
+		url: "file:///tmp/a.txt",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: [],
+		}),
+	});
+	await act(async () => bundle.input.focus());
+	await flush();
+	assert.equal(
+		bundle.input.getAttribute("aria-expanded"),
+		"false",
+		"the focus seed is the page URL, not a typed address",
+	);
+	assert.doesNotMatch(describedText(bundle), BLOCKED_HINT);
+
+	// Typing a file: address IS a user intent, and the refusal still explains it.
+	await type(bundle, "file:///tmp/b.txt");
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
+	assert.match(describedText(bundle), BLOCKED_HINT);
+	await bundle.cleanup();
+});
+
+/*
+ * ROUND 2 (review R2-1/U3-1, R2-2/U3-2): an ended edit must not be reopened by
+ * a late IME commit, and Enter on a blank draft must hand the keyboard back.
+ */
+
+test("a late IME input after a press cannot re-seed a dismissed draft", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example.com/acc");
+	const outside = document.createElement("div");
+	document.body.appendChild(outside);
+	await pointerDown(outside);
+	assert.equal(bundle.input.getAttribute("data-address-editing"), "false");
+
+	// Chromium delivers the input that commits the composition even though the
+	// field was blurred by the press.
+	await act(async () => {
+		setValue(bundle.input, "example.com/account/profile", "insertText");
+	});
+	await flush();
+
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+	assert.equal(
+		bundle.input.getAttribute("data-address-editing"),
+		"false",
+		"a late input must not seed the draft again",
+	);
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.equal(bundle.navigations.length, 0);
+	outside.remove();
+	await bundle.cleanup();
+});
+
+test("a late IME input after a commit cannot re-seed the navigated draft", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example.com/acc");
+	await key(bundle, "Enter");
+	assert.equal(bundle.navigations.length, 1);
+	assert.equal(bundle.input.getAttribute("data-address-editing"), "false");
+
+	await act(async () => {
+		setValue(bundle.input, "example.com/account/pro", "insertText");
+	});
+	await flush();
+
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+	assert.equal(bundle.input.getAttribute("data-address-editing"), "false");
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.equal(bundle.navigations.length, 1);
+	await bundle.cleanup();
+});
+
+test("a late input then compositionend after a press leaves the panel closed", async () => {
+	const bundle = await renderBar();
+	await act(async () => bundle.input.focus());
+	await flush();
+	await act(async () => {
+		bundle.input.dispatchEvent(
+			new dom.window.CompositionEvent("compositionstart", { bubbles: true }),
+		);
+		setValue(bundle.input, "exa");
+	});
+	await flush();
+
+	const outside = document.createElement("div");
+	document.body.appendChild(outside);
+	await pointerDown(outside);
+
+	// The `input` that commits the composition can precede `compositionend`.
+	await act(async () => {
+		setValue(bundle.input, "example.com/account/profile", "insertText");
+	});
+	await act(async () => {
+		bundle.input.dispatchEvent(
+			new dom.window.CompositionEvent("compositionend", { bubbles: true }),
+		);
+	});
+	await flush();
+
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+	assert.equal(bundle.input.getAttribute("data-address-editing"), "false");
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.equal(bundle.navigations.length, 0);
+	outside.remove();
+	await bundle.cleanup();
+});
+
+test("Enter on a blank draft hands focus back instead of dropping it on the body", async () => {
+	const reasons = [];
+	const bundle = await renderBar({
+		onDismiss: (intent) => reasons.push(intent),
+	});
+	await type(bundle, "   ");
+	await key(bundle, "Enter");
+	assert.deepEqual(
+		reasons,
+		["cancel"],
+		"the surface must decide where the keyboard goes, as untouched Enter does",
+	);
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.notEqual(document.activeElement, bundle.input);
+	assert.equal(bundle.navigations.length, 0);
 	await bundle.cleanup();
 });

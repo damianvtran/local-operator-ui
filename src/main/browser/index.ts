@@ -40,7 +40,12 @@ import {
 	AddressOverlayController,
 	type AddressOverlayFacts,
 } from "./address-overlay";
-import { ApprovalStore } from "./approvals";
+import { ApprovalStore, type ConsentDecision } from "./approvals";
+import {
+	ApprovalsOverlayController,
+	approvalsExpiryDelay,
+	approvalsOverlayEnabled,
+} from "./approvals-overlay";
 import {
 	browserChromeOwnsChord,
 	browserPageOwnsChord,
@@ -54,7 +59,11 @@ import {
 import { ConsentNotifier } from "./consent-notifier";
 import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
-import { BrowserHost, isReportableLoadFailure } from "./host";
+import {
+	BrowserHost,
+	isReportableLoadFailure,
+	sessionRequesterOf,
+} from "./host";
 import {
 	PRODUCT_ADDRESS_OVERLAY_EVENT,
 	type RegisterBrowserIpcOptions,
@@ -243,6 +252,16 @@ export interface StartBrowserHostOptions {
 		 */
 		product?: boolean;
 		documentUrl: string;
+	};
+	/**
+	 * S6a's inert approvals card. Absent means off: no controller, no child, no
+	 * product path. The document URL is the app's trusted packaged sibling.
+	 */
+	approvalsOverlay?: {
+		enabled: boolean;
+		documentUrl: string;
+		/** S6b's purpose-built preload for the card document. */
+		preloadPath: string;
 	};
 	log: (message: string) => void;
 }
@@ -840,6 +859,56 @@ async function initializeBrowserHost(
 					})
 				: null;
 
+		/*
+		 * S6a's card child. It reads the registry's post-layout snapshot for the
+		 * same reason the address overlay does: the snapshot is the only trusted
+		 * statement of the page's rectangle and presentation. It is declared before
+		 * the registry so the observer can call it, and before `approvals` so the
+		 * store's change hook can push the live count into it.
+		 */
+		/*
+		 * The host is constructed after this controller, and `respondToConsent`
+		 * lives on it; the indirection keeps ONE decision implementation (the
+		 * store's `respond` + `onChanged`) instead of a second copy here.
+		 */
+		let respondToConsent:
+			| ((entryId: string, decision: ConsentDecision) => unknown)
+			| null = null;
+		const approvalsOverlay =
+			options.approvalsOverlay?.enabled === true &&
+			approvalsOverlayEnabled(process.env)
+				? new ApprovalsOverlayController({
+						window: options.window,
+						documentUrl: options.approvalsOverlay.documentUrl,
+						preloadPath: options.approvalsOverlay.preloadPath,
+						opaque: process.platform !== "darwin",
+						// The projection is the renderer's only view of the shield; a
+						// dismissal from the card itself must push it (F1).
+						onChanged: () => notifyChanged(),
+						log,
+						respond: (entryId, decision) => {
+							if (!respondToConsent) {
+								throw new Error("browser_unavailable");
+							}
+							return respondToConsent(entryId, decision);
+						},
+						// The registry narrows its page handle to the fields the action
+						// context uses; the underlying object is an Electron WebContents,
+						// whose `focus()` is what the gated helper needs.
+						pageWebContents: () =>
+							(registry.activeTab?.view.webContents ?? null) as unknown as {
+								isDestroyed(): boolean;
+								focus(): void;
+							} | null,
+						focusTarget: (target) =>
+							focusBrowserChordTarget(
+								options.window,
+								target,
+								options.windowShow,
+							),
+					})
+				: null;
+
 		/**
 		 * The tab-restore file (design 7.2): the hand-over of session state between two
 		 * runs of the app.
@@ -943,7 +1012,10 @@ async function initializeBrowserHost(
 			},
 			releaseTab,
 			notifyChanged,
-			(snapshot) => addressOverlay?.onLayout(snapshot),
+			(snapshot) => {
+				addressOverlay?.onLayout(snapshot);
+				approvalsOverlay?.onLayout(snapshot);
+			},
 		);
 		registryForDownloads = registry;
 		rollback.add(async () => {
@@ -956,6 +1028,7 @@ async function initializeBrowserHost(
 		// this FIRST: the overlay's webContents must be closed before the pages it
 		// sits above are destroyed, or a teardown can call into a destroyed view.
 		rollback.add(() => addressOverlay?.dispose("startup-rollback"));
+		rollback.add(() => approvalsOverlay?.dispose("startup-rollback"));
 
 		/**
 		 * Release everything one tab holds: its child view, its debugger session and
@@ -1014,6 +1087,14 @@ async function initializeBrowserHost(
 			},
 		});
 
+		/*
+		 * The card must leave when the LAST live request expires, not only when a
+		 * request/respond/tab event happens to call back. Arm one timer at the
+		 * earliest live `expiresAt`; `pendingEntries()` filters by `now`, so the
+		 * callback re-pushes the expiry-aware count with no extra traffic.
+		 */
+		let approvalsExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+		let syncApprovalsOverlay = (): void => {};
 		const approvals = new ApprovalStore({
 			dir: join(options.userDataDir, "browser"),
 			onChanged: () => {
@@ -1029,9 +1110,38 @@ async function initializeBrowserHost(
 				// the renderer is exactly what may be behind another window, which is the
 				// case the banner exists for (design 9.2).
 				consentNotifier.announce(approvals.pendingEntries());
+				// S6a's card is auto-presented from the same live queue the shield
+				// counts. It is unfocused and has no decision path; this is the only
+				// producer of its visibility.
+				syncApprovalsOverlay();
 			},
 			log,
 		});
+		syncApprovalsOverlay = () => {
+			// An ordinary launch has no card at all: no read, no timer, no clock.
+			if (!approvalsOverlay) return;
+			if (approvalsExpiryTimer) {
+				clearTimeout(approvalsExpiryTimer);
+				approvalsExpiryTimer = null;
+			}
+			// The queue's `requester` is an authority boundary; the card gets the
+			// session id so the renderer-pushed display label can name WHO asked
+			// (F2), never the requested site's host.
+			const entries = approvals.pendingEntries().map((entry) => ({
+				...entry,
+				requesterSessionId: sessionRequesterOf(entry.requester),
+			}));
+			approvalsOverlay?.setModel({ entries });
+			if (entries.length === 0) return;
+			const delay = approvalsExpiryDelay(entries);
+			// A small positive margin lets the store's own `now` pass the boundary
+			// before the count is read, rather than racing the same millisecond.
+			if (delay !== null) {
+				approvalsExpiryTimer = setTimeout(syncApprovalsOverlay, delay + 25);
+				approvalsExpiryTimer.unref?.();
+			}
+		};
+		syncApprovalsOverlay();
 
 		const profileDir = browserStoragePath(browserSession) ?? "";
 		const facts = {
@@ -1065,7 +1175,17 @@ async function initializeBrowserHost(
 									? "unavailable"
 									: "platform",
 						},
+			approvalsCard: approvalsOverlay
+				? {
+						open: (input) => approvalsOverlay.open({ focus: true, ...input }),
+						close: () => approvalsOverlay.close("shield"),
+						setContext: (context) => approvalsOverlay.setContext(context),
+						state: () => approvalsOverlay.state(),
+					}
+				: undefined,
 		});
+		respondToConsent = (entryId, decision) =>
+			host.respondToConsent(entryId, decision);
 		// The store exists from here on; every later clear reaches it. Assigned
 		// together with `historyFilePath`, so a host without a store leaves the
 		// slot null and the clear paths simply do not touch history.
@@ -1458,6 +1578,11 @@ async function initializeBrowserHost(
 				// The overlay child goes before the page views: its webContents is a
 				// child of the same window, and disposal is idempotent with rollback.
 				addressOverlay?.dispose("host-stop");
+				if (approvalsExpiryTimer) {
+					clearTimeout(approvalsExpiryTimer);
+					approvalsExpiryTimer = null;
+				}
+				approvalsOverlay?.dispose("host-stop");
 				registry.destroyAll();
 				await Promise.allSettled([...releases]);
 				await cdp.close();
@@ -1556,6 +1681,26 @@ async function initializeBrowserHost(
 				addressOverlay?.dismissForTab(tabId, "page_focus");
 			});
 			contents.on("blur", () => host.setPageFocused(tabId, false));
+			/*
+			 * A PAGE PRESS IS A DISMISSAL EVEN WHEN THE PAGE ALREADY HAS FOCUS
+			 * (operator report, 2026-10-24). The focus handler above fires once,
+			 * when focus ARRIVES; a second click into an already-focused page
+			 * produces no focus event, and the owner input's blur then carries the
+			 * null `relatedTarget` the row deliberately keeps (that value is also a
+			 * window deactivation). The page's own input pipeline sees every press,
+			 * so it is the one fact that can lower the field in that case.
+			 * `dismissForTab` is scoped to the bound/active tab. It performs one
+			 * idempotent hide (and one log line) per page press even when no child
+			 * is shown: the press is the edit-session dismissal, so it must not
+			 * wait for a projection (the pending-first-answer case has none). The
+			 * renderer's abandonment is a no-op when there is no edit. The
+			 * suggestion child's row-commit observer is a different WebContents
+			 * and is not involved.
+			 */
+			contents.on("before-mouse-event", (_event, mouse) => {
+				if (mouse.type === "mouseDown")
+					addressOverlay?.dismissForTab(tabId, "page_pointer");
+			});
 			// The user's own navigation starts here; a page/agent-initiated one shares
 			// the event, which is why the design scopes "navigating dismisses" to the
 			// bound tab's main frame and not to a background tab's load.
@@ -1663,8 +1808,8 @@ async function initializeBrowserHost(
 			// RULE lives in `page-context-menu.ts` (pure, tested); this block
 			// only turns it into a native menu for THIS view - back/forward
 			// walk this contents' own history, not the active tab's, so a
-			// menu can never steer a tab it was not opened on. Read/navigation
-			// only: no downloads, no devtools, no consent actions.
+			// menu can never steer a tab it was not opened on. Navigation and
+			// editing only: no downloads, no devtools, no consent actions.
 			contents.on("context-menu", (_event, params) => {
 				const navigation = contents.navigationHistory;
 				const items = buildPageContextMenuItems({
@@ -1673,6 +1818,7 @@ async function initializeBrowserHost(
 					canGoBack: navigation ? navigation.canGoBack() : false,
 					canGoForward: navigation ? navigation.canGoForward() : false,
 					isEditable: params.isEditable,
+					selectionText: params.selectionText ?? "",
 					editFlags: params.editFlags,
 				});
 				const menu = Menu.buildFromTemplate(
@@ -1689,6 +1835,8 @@ async function initializeBrowserHost(
 									clipboard.writeText(params.linkURL ?? "");
 								else if (item.id === "copy-page")
 									clipboard.writeText(contents.getURL());
+								else if (item.id === "undo") contents.undo();
+								else if (item.id === "redo") contents.redo();
 								else if (item.id === "cut") contents.cut();
 								else if (item.id === "copy") contents.copy();
 								else if (item.id === "paste") contents.paste();

@@ -1,0 +1,160 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "model_note": "Actual served model for this round-2 audit; no provider fallback occurred.",
+  "instance": "hi-completion-5024164cb3f8-r2",
+  "session": "5024164cb3f8",
+  "team": "lopdev",
+  "date": "2026-10-23",
+  "locale": "hi",
+  "round": 2,
+  "status": "passed",
+  "result": "clean",
+  "keys_audited": 54,
+  "keys_substantive": 6,
+  "source_head": "6064a0215b1f3557fed3f086098c95f997935038",
+  "previous_head": "678ff11a7a201c345ff6134c078b382ef8226477",
+  "scope": "Independent round-2 remediation audit of the six changed Hindi values in ui.chat.pickers, ui.common.account and ui.chat.run_details, with direct-neighbor compositions and mechanical checks over all 54 keys in those three namespaces. The other nine round-1 namespaces were not re-audited. No rendered-fit claim.",
+  "summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "info": 0,
+    "clean_namespaces": 3,
+    "clean_with_findings_namespaces": 0,
+    "changes_requested_namespaces": 0
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "references": {
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "style_guide": "~/local-operator/i18n/style-guides/hi.md"
+  },
+  "history": [
+    {
+      "round": 1,
+      "instance": "hi-completion-5024164cb3f8-r1",
+      "path": "/Users/damian/.local-operator/sessions/5024164cb3f8/scratchpad/hi-completion-5024164cb3f8-r1.json",
+      "sha256": "8a86d1b93d84556cbaea65d044f233616f52025b0b8fa265cc198aa98b125c83",
+      "result": "changes_requested",
+      "findings": {
+        "blocker": 0,
+        "major": 2,
+        "minor": 3,
+        "nit": 0
+      }
+    }
+  ],
+  "validation": {
+    "delta": "PASS: git diff 678ff11a7a201c345ff6134c078b382ef8226477..6064a0215b1f3557fed3f086098c95f997935038 contains the three scoped hi catalogues and translator receipt metadata only; six Hindi values changed.",
+    "key_order": "PASS: exact English/Hindi key order in all 54/54 scoped keys.",
+    "icu_arguments": "PASS: real @formatjs parser accepted all 54 en and 54 hi messages; argument names/types and number skeleton descriptor sets match English. stop.confirm has exactly =0, one and other arms and preserves {count, number, ::group-off}. A deliberate {name}→{nameX} negative control was detected.",
+    "cldr_samples": {
+      "locale": "hi",
+      "categories": [
+        "one",
+        "other"
+      ],
+      "selector": {
+        "0": "one",
+        "1": "one",
+        "2": "other",
+        "1234": "other"
+      },
+      "stop.confirm": {
+        "0": "अभी 0 सत्र को रोकें",
+        "1": "अभी इस सत्र को रोकें",
+        "2": "अभी 2 सत्रों को रोकें",
+        "1234": "अभी 1234 सत्रों को रोकें"
+      }
+    },
+    "credential_pair": "PASS: भुलाएँ / इस सत्र से API_KEY भुलाएँ is polite आप-register and matches established hi ui.browser.browser_approvals_dock.forget_this_site = इस साइट को भुलाएँ; the {name} token survives.",
+    "compositions": {
+      "unlock": "Local Operator की पूरी क्षमता अनलॉक करने के लिए: Radient Pass.",
+      "bonus_neighbor": "साथ ही, पहली खरीद पर $5 बोनस क्रेडिट पाएँ।",
+      "unlock_result": "PASS: the prefix + separately emphasized Radient Pass + component period now presents Radient Pass as the means of unlocking Local Operator’s full capability.",
+      "bonus_result": "PASS: unchanged direct-neighbor prefix, amount and suffix still compose naturally with the first-purchase condition."
+    },
+    "radient_automatic": "PASS: अपनी कुंजी इस्तेमाल करने के मुकाबले idiomatically expresses BYOK; एजेंटिक वर्कफ़्लो restores agentic workflows; अक्सर retains the often qualifier and सबसे किफ़ायती मॉडल चुनती है retains cost-effective routing.",
+    "run_details": "PASS: जॉब्स is the established plural for the jobs-list heading; direct neighbor keep = चलने दें remains compatible.",
+    "pseudo_localization": "PASS: all 108 scoped en/hi messages (54 each) were expanded around literal spans, reparsed and formatted with representative arguments without argument/skeleton changes or exceptions.",
+    "unicode_typography": "PASS: 54/54 NFC; zero ZWJ/ZWNJ, bidi controls or Devanagari digits; no missing-nukta spellings from the audit set. New Latin runs are limited to allowed Local Operator, Radient Automatic and ICU/machine tokens.",
+    "static_fit": "Rich cell_len on actual formatted samples: stop.confirm 0/1/2/1234 hi=13/14/13/16 cells; credential confirmation en=32 hi=20; unlock composition en=58 hi=53; bonus composition en=55 hi=32; jobs en=4 hi=3. plus_get watch remains en=9 hi=16 (+7,1.78x). Round-1 copy_markdown watch 16→21 is outside this delta and unchanged. Static cells are not CSS geometry or clipping evidence.",
+    "built_in_test": "PASS: node --test scripts/i18n/locale-parity.test.mjs => 43 tests, 43 pass, 0 fail, including current hi key and ICU-placeholder parity.",
+    "rendered_fit": "NOT EXECUTED. plus_get and copy_markdown remain static-fit watches for rendered QA; no real-app, native shaping, CSS overflow or clipping claim."
+  },
+  "independence": "Independent translation-auditor in session 5024164cb3f8, team lopdev; translator was session 93388133b0e0. This session authored none of the reviewed or remediated copy and did not edit, commit or push any source catalogue, context, allowance, generated, repository receipt or ledger file. No MT, translation API or SDK was used. Only this session scratchpad was written.",
+  "limitations": [
+    "Round 2 is scoped to the three changed namespaces and direct neighbors; unchanged namespaces retain round-1 verdicts.",
+    "No rendered-fit claim; static-fit watches remain for the separate real-app gate.",
+    "Hindi is LTR; no RTL claim."
+  ],
+  "namespaces": {
+    "ui.chat.pickers": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 34,
+      "keys_substantive": [
+        "ui.chat.pickers.credential.forget",
+        "ui.chat.pickers.credential.forget_confirmation",
+        "ui.chat.pickers.stop.confirm"
+      ],
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "hi": "8642a1b803217430605f29a5ac3a1ebda547fbfc3cfc1043b5c9912bc836d213",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.common.account": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 18,
+      "keys_substantive": [
+        "ui.common.account.low_credits_dialog.radient_automatic_is_often_cheaper_than_bringing_your_own_key_its",
+        "ui.common.account.low_credits_dialog.unlock_the_full_power_of_local_operator_with"
+      ],
+      "sha256": {
+        "en": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+        "hi": "e803fc5f02c179506d397da90fc17ddacac91e9ce21019506fe34d455d6a8bb0",
+        "context": "d3576fe1e83a51325e07df3b999a0e9c029c63b19aefad771edeb54be4dd3bcf"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 2,
+      "keys_substantive": [
+        "ui.chat.run_details.jobs"
+      ],
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "hi": "b2b246144d121e4fabc7d5d0614d168bc42dbc51981507bc5fc6cc5d6e1906f5",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  }
+}

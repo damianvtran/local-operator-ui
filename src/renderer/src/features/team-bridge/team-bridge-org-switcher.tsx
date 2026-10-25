@@ -82,7 +82,7 @@ export const TeamBridgeOrgSwitcher: FC<{
 					title={title}
 					className={cn(
 						"group flex h-[30px] min-w-0 flex-1 items-center gap-2 rounded-md px-2",
-						"text-left text-[13px] text-ink transition-colors duration-fast",
+						"text-start text-[13px] text-ink transition-colors duration-fast",
 						"hover:bg-row-hover data-[state=open]:bg-row-hover",
 					)}
 				>

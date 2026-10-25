@@ -18,6 +18,10 @@ import {
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -54,6 +58,7 @@ import {
 	groundWithGlass,
 	windowGlassArgument,
 } from "../shared/window-glass";
+import { uploadAttachment } from "./attachment-upload";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -77,8 +82,10 @@ import {
 	ADDRESS_OVERLAY_VISIBLE_MAX_MS,
 	addressListDocumentUrlFor,
 	addressOverlayDocumentUrlFor,
+	documentUrlFor,
 	resolveAddressOverlayGate,
 } from "./browser/address-overlay";
+import { APPROVALS_OVERLAY_S6A_ENV } from "./browser/approvals-overlay";
 import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
@@ -98,6 +105,7 @@ import {
 	headlessExerciserAllowed,
 	resolveDevDriverArming,
 } from "./dev-driver";
+import { readAttachArguments } from "./dev-driver-attach";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
 import { shouldToggleDevTools } from "./dev-shortcuts";
 import {
@@ -1491,6 +1499,23 @@ const devDriverLine = describeDevDriverArming(devDriverArming);
 if (devDriverLine) console.log(devDriverLine);
 
 /*
+ * THE PAPERCLIP'S PICKER, REPLACED ONLY FOR AN ARMED DRIVER RUN. The queue is
+ * emptied by the first `show-open-dialog` it answers, so one press stages the
+ * paths this launch was told about and a second press opens the real dialog
+ * again rather than replaying the first answer. Unarmed launches parse nothing:
+ * an operator's own file dialog is never answered by a flag.
+ */
+const attachQueue = devDriverArming.armed
+	? readAttachArguments(process.argv)
+	: { paths: [], problems: [] };
+for (const problem of attachQueue.problems)
+	console.error(`[dev-driver] ${problem}`);
+if (devDriverArming.armed && attachQueue.paths.length > 0)
+	console.log(
+		`[dev-driver] attach queue: ${attachQueue.paths.length} path(s) will answer the next file dialog`,
+	);
+
+/*
  * S1's address-overlay gate, resolved ONCE here for the same reason the window
  * mode and the dev driver are: it is a fact about the LAUNCH, decided before a
  * window or a host exists. It needs the exact opt-in AND the already-armed dev
@@ -1525,7 +1550,7 @@ const addressOverlayProduct =
 	process.platform === "darwin" && !addressOverlayGate.enabled;
 if (addressOverlayProduct) {
 	console.log(
-		"[address-overlay] product chrome armed (darwin): popout field over the tab strip, native list child",
+		"[address-overlay] product chrome armed (darwin): permanent address row, native list child",
 	);
 }
 if (addressOverlayGate.asked) {
@@ -2611,6 +2636,15 @@ app
 				? addressListDocumentUrlFor(rendererUrl)
 				: addressOverlayDocumentUrlFor(rendererUrl);
 		/*
+		 * S6a's card document, derived from the same trusted renderer URL. The
+		 * experiment is off unless the exact opt-in is present; the host receives
+		 * no option and creates no child in an ordinary launch.
+		 */
+		const approvalsOverlayS6a = process.env[APPROVALS_OVERLAY_S6A_ENV] === "1";
+		const approvalsOverlayDocumentUrl = approvalsOverlayS6a
+			? documentUrlFor(rendererUrl, "browser-approvals-overlay.html")
+			: null;
+		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
 		 * window at all — the operator's own reported case) and the window takes
@@ -3307,6 +3341,46 @@ app
 		);
 
 		/*
+		 * One composer attachment, read and POSTed to the daemon.
+		 *
+		 * The sender gate is the SAME as `read-file-bytes` above and for the same
+		 * reason: this channel turns a path into bytes leaving the machine. It is
+		 * additionally the only door that attaches the daemon's bearer token, so a
+		 * foreign frame that somehow acquired `window.api` could not reach the
+		 * attachment store without it.
+		 *
+		 * Answers a discriminant rather than throwing, because the composer renders
+		 * the `error` string in its refusal and a structured-clone-stripped Error
+		 * would arrive with nothing it can read.
+		 */
+		ipcMain.handle(
+			"upload-attachment",
+			async (
+				event,
+				source: AttachmentUploadSource,
+			): Promise<AttachmentUploadResult> => {
+				if (!isAdmittedSender(event, trustedLocalFileSenders())) {
+					return {
+						success: false,
+						code: "unreadable",
+						error: "This window cannot read local files.",
+					};
+				}
+				// Only the path form has a path to resolve; a pasted file's bytes
+				// arrive in the data URL it was stored as.
+				const resolved =
+					source.kind === "path"
+						? { ...source, path: resolveUserPath(source.path) }
+						: source;
+				return uploadAttachment({
+					source: resolved,
+					backendUrl: backendService.getBackendUrl(),
+					token: backendService.getDesktopToken(),
+				});
+			},
+		);
+
+		/*
 		 * Vetted, not forwarded: the renderer's `window.api.openExternal` takes any
 		 * string, and `shell.openExternal` launches whatever the OS maps the scheme
 		 * to. Every caller in the renderer passes an http(s) link (or an update
@@ -3409,6 +3483,16 @@ app
 			 * mini, and the broadcast latch below covers the platforms and
 			 * situations where focus still moves.
 			 */
+			// The armed rig's queue answers FIRST, before any window is needed: a
+			// paperclip press in a headless scene has a parent, but the answer must not
+			// depend on the dialog sheet's own plumbing. See `dev-driver-attach.ts`.
+			if (attachQueue.paths.length > 0) {
+				const filePaths = attachQueue.paths.splice(0);
+				console.log(
+					`[dev-driver] answered the file dialog with ${filePaths.length} queued path(s)`,
+				);
+				return { canceled: false, filePaths };
+			}
 			const parent = BrowserWindow.fromWebContents(event.sender) ?? mainWindow;
 			if (!parent) {
 				logger.error(
@@ -4158,6 +4242,18 @@ app
 									visible: addressOverlayGate.visible,
 									product: addressOverlayProduct,
 									documentUrl: addressOverlayDocumentUrl,
+								},
+							}
+						: {}),
+					...(approvalsOverlayS6a && approvalsOverlayDocumentUrl
+						? {
+								approvalsOverlay: {
+									enabled: true,
+									documentUrl: approvalsOverlayDocumentUrl,
+									preloadPath: join(
+										__dirname,
+										"../preload/browser-approvals-overlay.js",
+									),
 								},
 							}
 						: {}),

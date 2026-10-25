@@ -33,13 +33,18 @@
  *
  * A refusal can be **the move's own** - one of `MOVE_REFUSAL_CODES` in
  * `local_operator/network/mobility.py`, mirrored here by the ones a client can know
- * BEFORE asking - or **this client's**, for the two facts the wire does not carry
- * as a move refusal: a `suspect` device (a security fact that outranks
- * reachability, PR #498's `stateOf` precedence) and a revoked membership. The
- * client-side two are named `suspect_device` and `revoked_membership` and are
- * deliberately NOT spelled as move codes, so a reader can tell which side decided
- * - `busy` and `unreachable` mean "the route will say this", and the other two mean
- * "this app will not ask".
+ * BEFORE asking - or **this client's**, for the facts the wire does not carry as a
+ * move refusal: a `suspect` device (a security fact that outranks reachability,
+ * PR #498's `stateOf` precedence) and a target that is not a device at all
+ * (`not_a_device`, `unknown_device`). `suspect_device` is deliberately NOT spelled
+ * as a move code, so a reader can tell which side decided - `busy` and
+ * `unreachable` mean "the route will say this", and the client's codes mean "this
+ * app will not ask".
+ *
+ * A REVOKED MEMBERSHIP IS NO LONGER ONE OF THESE FACTS. A tombstone is not a
+ * device node (`meshGraph` draws live memberships only), so no drop can land on
+ * one; a burned id that somehow arrives here resolves as `unknown_device`, which
+ * is the truthful answer for an identity no membership admits.
  *
  * ## The BUSY case is a refusal rather than a wait, and the wait is offered
  *
@@ -253,20 +258,6 @@ function deviceRefusal(
 			sentence: t("ui.mesh.mesh_drop.duplicate_key", {
 				device: device.label,
 				reason: device.reason ? ` (${device.reason})` : "",
-			}),
-			remedy: {
-				kind: "open",
-				label: t("ui.mesh.mesh_drop.see_this_device"),
-				deviceId,
-			},
-		};
-	}
-	if (device.memberships.every((membership) => !membership.active)) {
-		return {
-			kind: "refused",
-			code: "revoked_membership",
-			sentence: t("ui.mesh.mesh_drop.no_shared_network", {
-				device: device.label,
 			}),
 			remedy: {
 				kind: "open",

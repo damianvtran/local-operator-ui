@@ -1,0 +1,34 @@
+Actual output; local worktree path normalized to <worktree>.
+desktop tests: 1 file, concurrency 1 (explicit LOCAL_OPERATOR_UI_TEST_CONCURRENCY; governor bypassed)
+desktop tests: memory bound 2.0 GB for the test process group (explicit LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB); sampled every 2s on max(footprint, rss)
+desktop tests: per-lane bound 30s (explicit LOCAL_OPERATOR_UI_LANE_BOUND_MS); sampled every 5s over the suite's process group
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+✔ actual auth completion cannot expose cached A history when B history is refused (1187.767625ms)
+✔ live auth B hides A data even while Team Bridge status is still A (112.905625ms)
+✔ late A history cannot repopulate B after actual auth completion (108.043375ms)
+✔ actual auth A-B-A preserves only A's typed text without optimistic send return (145.556875ms)
+✔ inherited mutation retry cannot dispatch A private text as B after real auth completion (1308.922375ms)
+✔ auth completion revokes private rendering before the new account read answers (119.94175ms)
+✔ old runtime refuses covered private writes before dispatch and holds stay closed (88.505875ms)
+✔ conversation owner guard conversations.create  uses body with explicit target tenant (0.854542ms)
+✔ conversation owner guard messages.send  uses body with explicit target tenant (0.132708ms)
+✔ conversation owner guard conversations.join  uses body with explicit target tenant (0.121042ms)
+✔ conversation owner guard conversations.notify  uses body with explicit target tenant (0.21875ms)
+✔ conversation owner guard read  uses body with explicit target tenant (0.156292ms)
+✔ conversation owner guard conversations.consent  uses body with explicit target tenant (0.075333ms)
+✔ conversation owner guard conversations.lifecycle archive uses query with explicit target tenant (0.153ms)
+✔ conversation owner guard conversations.lifecycle unarchive uses query with explicit target tenant (0.097083ms)
+✔ conversation owner guard conversations.lifecycle leave uses query with explicit target tenant (0.058958ms)
+✔ conversation owner guard conversations.lifecycle join uses body with explicit target tenant (0.039458ms)
+✔ conversation owner guard conversations.members.add  uses query with explicit target tenant (0.420917ms)
+✔ conversation owner guard conversations.members.remove  uses query with explicit target tenant (0.062541ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4417.256334

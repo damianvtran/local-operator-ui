@@ -53,7 +53,7 @@ import {
 	SUPPLEMENT_STORY_POPULATED_DOCUMENT,
 	SUPPLEMENT_STORY_SESSION,
 } from "./supplement-document-fixtures";
-import type { SupplementRecord } from "./supplement-model";
+import type { SupplementRecord, SupplementSound } from "./supplement-model";
 import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 
 const TS = 1_760_000_000_000;
@@ -111,6 +111,24 @@ function installSupplementMedia(): void {
 	 */
 	const errorDigest = digest("error-document");
 	desktop.media = (async (request: { op?: string; digest?: string }) => {
+		/*
+		 * Sound bytes and peaks, so the collage stories mount the shipped player
+		 * with a real envelope (the two reads `useAttachmentSource` and
+		 * `useWaveform` issue through this same bridge).
+		 */
+		if (request?.op === "sessions.attachment")
+			return {
+				status: 200,
+				kind: "bytes",
+				mimeType: "audio/wav",
+				data: storyWav(),
+			};
+		if (request?.op === "sessions.attachment.waveform")
+			return {
+				status: 200,
+				kind: "json",
+				body: { version: 1, bars: STORY_PEAKS.length, peaks: STORY_PEAKS },
+			};
 		if (request?.digest === digest("closeout-generated-table")) {
 			return {
 				status: 200,
@@ -231,6 +249,71 @@ const component = (seed: string, title: string, heightHint: number) => ({
 	mime: "text/html",
 	heightHint,
 });
+
+/**
+ * THE SOUNDS SECTION'S REAL INPUT (2026-10-23): fourteen distinct digests on
+ * one row, which is what the uncapped producer now sends. The bridge below
+ * answers both the bytes and the peaks sidecar, so the collage stories draw the
+ * shipped player with a real envelope instead of the reserved line a digest
+ * alone would leave.
+ */
+const sound = (
+	seed: string,
+	title: string,
+	durationS: number,
+): SupplementSound => ({
+	attachment: digest(seed),
+	mime: "audio/wav",
+	title,
+	durationS,
+});
+
+const COLLAGE_SOUNDS: SupplementSound[] = Array.from(
+	{ length: 14 },
+	(_, index) =>
+		sound(`collage-${index}`, `Storm swell ${index + 1}`, 6 + index),
+);
+
+/** The one envelope every story sound draws: deterministic, 240 bars. */
+const STORY_PEAKS = Array.from({ length: 240 }, (_, index) =>
+	Math.min(1, 0.12 + Math.abs(Math.sin(index / 8)) * 0.82),
+);
+
+/** A short valid WAV, so the blob the resolver builds decodes like a sound. */
+const storyWav = (() => {
+	let cached: Uint8Array | null = null;
+	return () => {
+		if (cached) return cached;
+		const rate = 8000;
+		const samples = rate / 5;
+		const wav = new Uint8Array(44 + samples * 2);
+		const view = new DataView(wav.buffer);
+		const ascii = (offset: number, text: string) => {
+			for (let index = 0; index < text.length; index += 1)
+				view.setUint8(offset + index, text.charCodeAt(index));
+		};
+		ascii(0, "RIFF");
+		view.setUint32(4, wav.length - 8, true);
+		ascii(8, "WAVEfmt ");
+		view.setUint32(16, 16, true);
+		view.setUint16(20, 1, true);
+		view.setUint16(22, 1, true);
+		view.setUint32(24, rate, true);
+		view.setUint32(28, rate * 2, true);
+		view.setUint16(32, 2, true);
+		view.setUint16(34, 16, true);
+		ascii(36, "data");
+		view.setUint32(40, samples * 2, true);
+		for (let index = 0; index < samples; index += 1)
+			view.setInt16(
+				44 + index * 2,
+				Math.round(6000 * Math.sin((2 * Math.PI * 220 * index) / rate)),
+				true,
+			);
+		cached = wav;
+		return wav;
+	};
+})();
 
 const supplement = (
 	over: Partial<SupplementRecord> & { id: string },
@@ -1240,6 +1323,43 @@ export const LocalGraphicsMixedHidden: StoryObj = {
 			height={720}
 			click={localReveal}
 			records={localGraphicsRecords(["chart-a", "chart-b"], FILES)}
+		/>
+	),
+};
+
+/*
+ * THE SOUNDS COLLAGE (operator report, 2026-10-23). The producer sends every
+ * generated sound, so fourteen arrived as fourteen stacked rows. These two
+ * stories are the pair the fix is judged on: the EXPANDED answer and the
+ * CONDENSED run paint the same fourteen cells - collapsing changes frame
+ * mounting, never media - and the grid answers to the block's own width
+ * (`auto-fit` over 15rem), so a narrow pane falls back to one column without a
+ * viewport query.
+ */
+export const SoundsCollage: StoryObj = {
+	name: "Sounds collage (expanded)",
+	render: () => (
+		<Frame
+			height={760}
+			records={[
+				answer("m1", "Fourteen takes came out of this run."),
+				supplement({ id: "s1", sounds: COLLAGE_SOUNDS }),
+			]}
+		/>
+	),
+};
+
+export const FoldedCondensedSoundsCollage: StoryObj = {
+	name: "Sounds collage (condensed)",
+	render: () => (
+		<Frame
+			height={760}
+			records={[
+				prompt("u0", "Send fourteen storm variations."),
+				turnCall("c1"),
+				answer("m1", "Fourteen takes came out of this run."),
+				supplement({ id: "s1", sounds: COLLAGE_SOUNDS }),
+			]}
 		/>
 	),
 };

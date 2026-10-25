@@ -239,6 +239,14 @@ export type ToolRowProps = {
 	 * state of the same hold: static, textless, dim - see the cell below.
 	 */
 	summaryHold?: boolean;
+	/**
+	 * Let the summary WRAP instead of truncating. Default false, because a row's
+	 * object is a glance and one line is the glance; a RECEIPT whose sentence ends
+	 * in the ask id is the exception — truncated at a narrow width it lost exactly
+	 * the token that tells two receipts apart (UX round 1, U1), so that row asks
+	 * for its whole sentence at the cost of a second line.
+	 */
+	summaryWrap?: boolean;
 	outcome: ToolRowOutcome;
 	/**
 	 * How a `send` call's delivery ended, when the result stated it
@@ -825,6 +833,7 @@ export const ToolRow = ({
 	summary,
 	summaryFallback = null,
 	summaryHold = false,
+	summaryWrap = false,
 	outcome,
 	deliveryState = null,
 	durationS,
@@ -922,7 +931,20 @@ export const ToolRow = ({
 					// reader scans for the result the quietest thing on a finished turn.
 					// The live/settled difference is the working line and the missing
 					// duration (§E7), not a dimmer summary.
-					"min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm",
+					/*
+					 * TWO WHOLE STRINGS, not a base plus a token (#1363 CI, desktop shard 2/3):
+					 * the default must stay BYTE-IDENTICAL to what it was before this prop
+					 * existed - `tool-row.test.mjs` pins the rendered `min-w-0 flex-1
+					 * truncate` order, and a conditional token appended after the base
+					 * moved `truncate` behind `font-mono`, which that test read as "the
+					 * summary no longer truncates first" (CI, shard 2/3).
+					 * WRAP INSTEAD OF TRUNCATE on the rows that ask for it: a receipt's last
+					 * token is the ask id, and the ellipsis ate it. `break-words` keeps one
+					 * long token from overflowing the row.
+					 */
+					summaryWrap
+						? "min-w-0 flex-1 break-words whitespace-normal font-mono text-ink-muted text-mono-sm"
+						: "min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm",
 				)}
 				// The name beside it has carried a `title` since it became truncatable;
 				// this cell truncates too, and at 390px the summary is the half that
@@ -1000,7 +1022,14 @@ export const ToolRow = ({
 						<span className={cn("sr-only")}>pending</span>
 					</>
 				) : (
-					summaryText
+					/*
+					 * A TOOL SUMMARY IS MACHINE VOICE (design round 1, D2). It carries
+					 * paths and commands, and in an RTL paragraph a leading `/` is a neutral
+					 * character: `tmp/qa-rtl/ledger.md/` reordered the slash onto the far
+					 * side of the run. `dir="ltr"` on an isolated run keeps the token's own
+					 * order without imposing direction on the row it sits in.
+					 */
+					<bdi dir="ltr">{summaryText}</bdi>
 				)}
 			</span>
 			<DiffCounters added={added} removed={removed} />

@@ -299,22 +299,34 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 				</span>
 				<span
 					/*
-					 * The member count, and `epoch` as the element's `title` rather than as a
-					 * second line: a lane has one line of room, and the epoch is the fact a
-					 * reader consults once (when something was revoked) rather than the one
-					 * they scan. Keeping it in the title spends no vertical space and keeps
-					 * the number on screen - the plan § 5's node contract, and #498's design
-					 * round 1, D10.
+					 * The LIVE member count, then the revoked count as its own clause, and
+					 * `epoch` as the element's `title` rather than as a second line: a lane
+					 * has one line of room, and the epoch is the fact a reader consults once
+					 * (when something was revoked) rather than the one they scan. Keeping it
+					 * in the title spends no vertical space and keeps the number on screen -
+					 * the plan § 5's node contract, and #498's design round 1, D10.
+					 *
+					 * WHY THIS IS TEXT AND NOT THE DISCLOSURE: a lane is a heading-like
+					 * row with a fixed height in the solved geometry, and the shared
+					 * disclosure's body renders in flow - opening one here would grow a box
+					 * the layout has already priced. The tab's census band above the canvas
+					 * carries the one count that opens into the audit rows
+					 * (`mesh-revoked.tsx`); this lane only reports its network's share.
 					 */
 					title={t("ui.mesh.mesh_list.epoch", { epoch: network.epoch })}
 					className="block truncate text-meta text-ink-dim"
 				>
 					{t("ui.mesh.mesh_graph.device_count", { count: network.memberCount })}
-					{network.revokedCount > 0
-						? t("ui.mesh.mesh_list.revoked_count", {
+					{/* The revoked clause's separator is markup, not the copy's leading space: see
+					 * `mesh-list.tsx` (design review round 1, D2). */}
+					{network.revokedCount > 0 ? (
+						<>
+							{" · "}
+							{t("ui.mesh.mesh_list.revoked_count", {
 								count: network.revokedCount,
-							})
-						: ""}
+							})}
+						</>
+					) : null}
 				</span>
 			</span>
 		</li>
@@ -476,7 +488,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					 * coordinates (`DEVICE_HEIGHT`), and `justify-between` absorbs the fractions of a
 					 * line so those three rows cannot add up to 96.4 px and push the next node down.
 					 */
-					"flex w-full flex-col justify-between rounded-t-[5px] px-3 pt-2 pb-2 text-left",
+					"flex w-full flex-col justify-between rounded-t-[5px] px-3 pt-2 pb-2 text-start",
 					// A CONTROL'S CURSOR (UX review round 1, U6): this is the click-to-inspect target
 					// and Tailwind's preflight leaves buttons at `cursor: default`, so the title
 					// read like a label. `cursor-pointer` is the app's own spelling.
@@ -767,7 +779,7 @@ const SessionChip: FC<SessionChipProps> = ({
 					 * THE TEXT MOVED INTO ITS OWN SPAN with that change: a flex container cannot
 					 * ellipsise its own text, so the truncation lives on the one span that still can.
 					 */
-					"flex min-h-6 w-full max-w-32 items-center rounded-sm border border-hairline bg-surface px-1.5 text-left text-meta text-ink-muted",
+					"flex min-h-6 w-full max-w-32 items-center rounded-sm border border-hairline bg-surface px-1.5 text-start text-meta text-ink-muted",
 					// THE CURSOR SAYS IT CAN BE GRABBED (UX review round 1, U6): the chips are
 					// the draggable things and the only cue was a `title` tooltip the reader had
 					// to wait for. `cursor-pointer` is the app's own spelling for a control.

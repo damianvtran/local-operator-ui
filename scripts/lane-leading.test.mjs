@@ -45,6 +45,13 @@ const LIBRARY_PAGE =
 	"src/renderer/src/features/library/components/library-page.tsx";
 const BROWSER_SURFACE =
 	"src/renderer/src/features/browser/components/browser-surface.tsx";
+const BROWSER_TAB_STRIP =
+	"src/renderer/src/features/browser/components/browser-tab-strip.tsx";
+const ROUTE_CHROME_WRAPPER =
+	/className=\{isRoutePage \? "panel-top-pad bg-sunken" : undefined\}[\s\S]{0,200}?data-glass-region=\{isRoutePage \? "chrome" : undefined\}[\s\S]{0,200}?data-browser-route-chrome=\{isRoutePage \? "" : undefined\}[\s\S]{0,1200}?<div className="relative">/;
+const STRIP_CHROME_ROLE = /data-glass-region="chrome"/;
+const NESTED_CHROME_TRANSPARENT =
+	/html\[data-glass~="pane"\]\s*\[data-browser-route-chrome\]\s*\[data-glass-region="chrome"\]\s*\{\s*background-color: transparent;\s*\}/;
 const CHAT_PAGE = "src/renderer/src/features/chat/components/chat-page.tsx";
 const CHAT_CONTENT =
 	"src/renderer/src/features/chat/components/chat-content.tsx";
@@ -109,15 +116,15 @@ const PANEL_COLUMNS = [
 	},
 	{
 		/*
-		 * The Browser ROUTE host is its own panel column as well as its flush root:
-		 * it is one column (strip, toolbar, page), so the root pads itself. Without
-		 * the pad the tab strip, `+`, the approvals button and the page menu sat at
-		 * y≈4-36 under the drag lane and the traffic lights (agent review round 1,
-		 * F1). The pane host is NOT listed: `browser-pane.tsx` pads its column.
+		 * The Browser ROUTE host stays flush and full-height, while its chrome child
+		 * owns the pad and material from y0 through the tab track and permanent
+		 * address row. The pane host is NOT listed: `browser-pane.tsx` pads its own
+		 * column.
 		 */
 		path: BROWSER_SURFACE,
 		classes: [
-			'"panel-flush panel-top-pad relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+			'"panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+			'className={isRoutePage ? "panel-top-pad bg-sunken" : undefined}',
 		],
 	},
 	{
@@ -132,7 +139,7 @@ const PANEL_COLUMNS = [
 		classes: [
 			'className="panel-top-pad flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"',
 			'className="panel-top-pad flex min-w-0 flex-1 flex-col"',
-			'className="panel-top-pad flex h-full w-[448px] shrink-0 bg-surface"',
+			'className="panel-top-pad flex h-full shrink-0 bg-surface"',
 			/*
 			 * The standalone preview's wrapper owns the `surface` ground, not only the
 			 * pad: `LibraryPreview` paints `bg-surface` on its own root, which sits
@@ -140,7 +147,7 @@ const PANEL_COLUMNS = [
 			 * through the strip as a band (design round 1, D2).
 			 */
 			'className="panel-top-pad min-w-0 flex-1 bg-surface"',
-			'className="panel-top-pad hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex"',
+			'className="panel-top-pad hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"',
 		],
 	},
 	{
@@ -227,7 +234,7 @@ test("the panel root utility is the only way a route reaches y0", () => {
 		{
 			path: BROWSER_SURFACE,
 			literal:
-				'"panel-flush panel-top-pad relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+				'"panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
 		},
 		{
 			path: CHAT_PAGE,
@@ -240,6 +247,30 @@ test("the panel root utility is the only way a route reaches y0", () => {
 			`${path} lost its flush root (${literal}): without it the page starts at the shell's ordinary-content pad and its own ground cannot reach y0`,
 		);
 	}
+});
+
+test("the Browser route paints its lane, tab track and address row with one chrome owner", () => {
+	const surface = readSource(BROWSER_SURFACE);
+	const strip = readSource(BROWSER_TAB_STRIP);
+	const styles = readSource("src/renderer/src/styles/index.css");
+	const wrapperAt = surface.search(ROUTE_CHROME_WRAPPER);
+	const stripAt = surface.indexOf("<BrowserTabStrip", wrapperAt);
+	const rowAt = surface.indexOf("<BrowserUrlBar", stripAt);
+	const findAt = surface.indexOf("<BrowserFindRow", rowAt);
+	assert.ok(
+		wrapperAt >= 0 && stripAt > wrapperAt && rowAt > stripAt && findAt > rowAt,
+		"the route-only wrapper must pad and paint through y0 around both the strip and S5's permanent address row, before the find row and page",
+	);
+	assert.match(
+		strip,
+		STRIP_CHROME_ROLE,
+		"the strip keeps its established chrome role and active-tab stacking contract",
+	);
+	assert.match(
+		styles,
+		NESTED_CHROME_TRANSPARENT,
+		"nested route chrome must be transparent so only the lane-and-track wrapper paints chrome alpha",
+	);
 });
 
 test("no flush root leaves its content under the lane", () => {
@@ -325,43 +356,6 @@ test("the chat dock pads once: the route is flush, so each column's own pad is t
 		stories,
 		/data-tour-tag="chat-column"\s*(?:\/\*[\s\S]*?\*\/\s*)?className="panel-top-pad [^"]*bg-canvas"/,
 		"the chat shell story's conversation stand-in must pad itself on `canvas`, as `chat-content` does",
-	);
-});
-
-test("the Browser address popout anchors below the route's pad, not at y0", () => {
-	/*
-	 * The popout is `absolute inset-x-0 top-0`, and `top-0` resolves to the
-	 * containing block's PADDING box. On the route host that box starts at y0
-	 * (flush) and the pad lives inside it, so a popout anchored to the root
-	 * opens under the lane even once the root pads. It must instead anchor to
-	 * the strip's own `relative` wrapper, which sits below the pad in both hosts
-	 * (agent review round 1, F1: the #1305 popout opened at y0 after the merge).
-	 */
-	const source = readSource(BROWSER_SURFACE);
-	const wrapperStart = source.indexOf(
-		'<div ref={stripRef} className="relative">',
-	);
-	assert.notEqual(
-		wrapperStart,
-		-1,
-		"the tab strip's wrapper must be the popout's positioned ancestor (`relative`)",
-	);
-	const popoutAt = source.indexOf('data-tour-tag="browser-address-popout"');
-	assert.notEqual(popoutAt, -1, "the address popout must stay tagged");
-	// The wrapper's own closing tag: the first `</div>` at its indentation.
-	const indent = source.slice(
-		source.lastIndexOf("\n", wrapperStart) + 1,
-		wrapperStart,
-	);
-	const wrapperEnd = source.indexOf(`\n${indent}</div>`, wrapperStart);
-	assert.ok(
-		popoutAt > wrapperStart && popoutAt < wrapperEnd,
-		"the address popout must render INSIDE the strip's `relative` wrapper; anchored to the surface root it opens at y0 on the route, under the drag lane and the traffic lights",
-	);
-	assert.match(
-		source.slice(popoutAt - 200, popoutAt),
-		/className="absolute inset-x-0 top-0 z-30"/,
-		"the popout still overlays the strip's own row",
 	);
 });
 

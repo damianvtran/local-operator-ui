@@ -15,6 +15,7 @@
  * card taller than its neighbours.
  */
 
+import { SoundPlayer } from "@features/chat/canonical/sound-player";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { Badge, Button } from "@shared/components/ui";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
@@ -24,7 +25,11 @@ import { Heart, LoaderCircle, MessagesSquare, Star } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
-import { useLibraryBytes, useObjectUrl } from "../hooks/use-library-queries";
+import {
+	useLibraryBytes,
+	useLibraryWaveform,
+	useObjectUrl,
+} from "../hooks/use-library-queries";
 import {
 	assetDisplayName,
 	assetSubtitle,
@@ -99,7 +104,7 @@ const CardPicture: FC<{ asset: DesktopLibraryAsset; large?: boolean }> = ({
 
 const HighlightMark: FC = () => (
 	<span
-		className="absolute top-1.5 left-1.5 flex size-5 items-center justify-center rounded-full bg-elevated"
+		className="absolute top-1.5 start-1.5 flex size-5 items-center justify-center rounded-full bg-elevated"
 		title={t("ui.library.card.highlighted")}
 	>
 		<Star size={12} aria-hidden="true" className="fill-current text-accent" />
@@ -149,87 +154,162 @@ const TagStrip: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 	);
 };
 
+/**
+ * The audio well: the card's picture slot holding the one shared sound player.
+ *
+ * WHY A WAVEFORM AND NOT A GLYPH. A sound card cannot be previewed by its
+ * bytes, so the thumbnail well - the only place a card shows what the asset IS
+ * - painted a speaker glyph and the reader had to open the drawer to hear it.
+ * The player draws the stored envelope, plays in place, and seeks on the same
+ * press every other sound seat uses; the drawer keeps the full-size player for
+ * detail, not as the only way to listen.
+ *
+ * THE SAME TWO READS THE THUMBNAIL DOES, GATED THE SAME WAY. A page is 60
+ * cards, so the content bytes and the peaks sidecar both wait for
+ * `useEverInView`'s latch (`300px`, one row ahead) exactly as the image
+ * thumbnail does; an unseen card costs no IPC. The well keeps the fixed 16/10
+ * box in every state, so the bytes landing cannot move the grid, and the kind
+ * glyph stays the fallback while there is no decodable source (a missing file,
+ * a route the backend has not shipped yet).
+ *
+ * PEAKS ARE NOT A GATE. A 404 for the sidecar is a catalog fact, not a
+ * failure: `peaks={null}` makes the player draw its flat scrubber, which is
+ * still a working transport. Only bytes decide glyph-vs-player.
+ */
+const CardAudioWell: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
+	const [wellRef, near] = useEverInView("300px");
+	const wantsBytes = asset.exists && near;
+	const content = useLibraryBytes(asset.id, "content", wantsBytes);
+	const peaks = useLibraryWaveform(asset.id, wantsBytes);
+	const source = useObjectUrl(
+		content.bytes,
+		content.mimeType || asset.ref.content_type,
+	);
+	return (
+		<div
+			ref={wellRef}
+			data-library-audio-well=""
+			className="relative flex aspect-[16/10] w-full shrink-0 items-center justify-center overflow-hidden bg-canvas px-2"
+		>
+			{source ? (
+				<SoundPlayer
+					variant="compact"
+					ownerId={`sound:library:${asset.id}`}
+					src={source}
+					label={assetDisplayName(asset)}
+					peaks={peaks}
+					durationHint={asset.duration_s}
+				/>
+			) : (
+				<KindGlyph kind={asset.kind} size={28} className="text-ink-dim" />
+			)}
+		</div>
+	);
+};
+
 /** One grid tile. */
 export const LibraryCard: FC<
 	LibraryCardActions & { asset: DesktopLibraryAsset; selected: boolean }
-> = ({ asset, selected, ...actions }) => (
-	<article
-		data-library-card-id={asset.id}
-		data-glass-block=""
-		className={cn(
-			"group relative flex flex-col overflow-hidden rounded-lg border border-hairline bg-surface",
-			selected && rowCurrent,
-		)}
-	>
+> = ({ asset, selected, ...actions }) => {
+	/*
+	 * THE AUDIO CARD IS THREE SIBLING CONTROLS, NOT ONE. The player's transport
+	 * buttons cannot live inside the select button: a button inside a button is
+	 * invalid, focus order becomes ambiguous, and the play press would also
+	 * select the asset and navigate the grid away from itself. So for audio the
+	 * well (and its player) sits beside the select button instead of inside it,
+	 * while the title area keeps the whole-card press. Every other kind keeps
+	 * the original single-button card: their picture is inert, so nothing needs
+	 * splitting. The overflow menu stays the third sibling, on both shapes.
+	 */
+	const audio = asset.kind === "audio";
+	const details = (
+		<div className="flex w-full flex-col gap-1 p-3">
+			<span className="line-clamp-1 text-body-sm font-medium text-ink">
+				{assetDisplayName(asset)}
+			</span>
+			<span className="line-clamp-1 text-meta text-ink-dim">
+				{assetSubtitle(asset)}
+			</span>
+			<div className="flex items-center gap-2 text-meta text-ink-muted">
+				<span className="truncate">{asset.kind}</span>
+				<span aria-hidden="true">·</span>
+				<span>{formatBytes(asset.size_bytes)}</span>
+				{asset.duration_s ? (
+					<>
+						<span aria-hidden="true">·</span>
+						<span>{formatDuration(asset.duration_s)}</span>
+					</>
+				) : null}
+			</div>
+			<TagStrip asset={asset} />
+			{asset.occurrences[0]?.session_title && (
+				<span className="flex min-w-0 items-center gap-1 text-meta text-ink-dim">
+					<MessagesSquare size={12} aria-hidden="true" />
+					<span className="truncate">{asset.occurrences[0].session_title}</span>
+				</span>
+			)}
+			<div className="flex items-center justify-between gap-2 pt-1">
+				<OriginBadge group={asset.origin_group} />
+				<div className="flex items-center gap-2">
+					{asset.session_count > 1 && (
+						<span className="text-meta text-ink-dim">
+							{t("ui.library.card.conversations", {
+								count: asset.session_count,
+							})}
+						</span>
+					)}
+					{asset.favorite && <FavoriteMark />}
+				</div>
+			</div>
+		</div>
+	);
+	const select = (
 		<button
 			type="button"
 			onClick={() => actions.onSelect(asset.id)}
 			aria-pressed={selected}
-			className="flex w-full flex-col text-left focus-visible:outline-offset-2"
+			className="flex w-full flex-1 flex-col text-start focus-visible:outline-offset-2"
 		>
-			<div className="relative">
-				<CardPicture asset={asset} large />
-				{asset.highlighted && <HighlightMark />}
-				<div className="absolute top-1.5 right-1.5">
-					{/* The menu is a sibling control, visually layered on the picture. */}
+			{audio ? null : (
+				<div className="relative">
+					<CardPicture asset={asset} large />
+					{asset.highlighted && <HighlightMark />}
 				</div>
-			</div>
-			<div className="flex w-full flex-col gap-1 p-3">
-				<span className="line-clamp-1 text-body-sm font-medium text-ink">
-					{assetDisplayName(asset)}
-				</span>
-				<span className="line-clamp-1 text-meta text-ink-dim">
-					{assetSubtitle(asset)}
-				</span>
-				<div className="flex items-center gap-2 text-meta text-ink-muted">
-					<span className="truncate">{asset.kind}</span>
-					<span aria-hidden="true">·</span>
-					<span>{formatBytes(asset.size_bytes)}</span>
-					{asset.duration_s ? (
-						<>
-							<span aria-hidden="true">·</span>
-							<span>{formatDuration(asset.duration_s)}</span>
-						</>
-					) : null}
-				</div>
-				<TagStrip asset={asset} />
-				{asset.occurrences[0]?.session_title && (
-					<span className="flex min-w-0 items-center gap-1 text-meta text-ink-dim">
-						<MessagesSquare size={12} aria-hidden="true" />
-						<span className="truncate">
-							{asset.occurrences[0].session_title}
-						</span>
-					</span>
-				)}
-				<div className="flex items-center justify-between gap-2 pt-1">
-					<OriginBadge group={asset.origin_group} />
-					<div className="flex items-center gap-2">
-						{asset.session_count > 1 && (
-							<span className="text-meta text-ink-dim">
-								{t("ui.library.card.conversations", {
-									count: asset.session_count,
-								})}
-							</span>
-						)}
-						{asset.favorite && <FavoriteMark />}
-					</div>
-				</div>
-			</div>
+			)}
+			{details}
 		</button>
-		<div className="invisible absolute top-1.5 right-1.5 group-focus-within:visible group-hover:visible [@media(pointer:coarse)]:visible">
-			<LibraryAssetMenu
-				asset={asset}
-				onAsk={() => actions.onAsk(asset)}
-				onEditMetadata={() => actions.onEditMetadata(asset)}
-				onEditTags={() => actions.onEditTags(asset)}
-				onToggleFavorite={() => actions.onToggleFavorite(asset)}
-				onOpenConversation={actions.onOpenConversation}
-				onFilterSession={actions.onFilterSession}
-				triggerClassName="bg-elevated"
-			/>
-		</div>
-	</article>
-);
+	);
+	return (
+		<article
+			data-library-card-id={asset.id}
+			data-glass-block=""
+			className={cn(
+				"group relative flex flex-col overflow-hidden rounded-lg border border-hairline bg-surface",
+				selected && rowCurrent,
+			)}
+		>
+			{audio && (
+				<div className="relative">
+					<CardAudioWell asset={asset} />
+					{asset.highlighted && <HighlightMark />}
+				</div>
+			)}
+			{select}
+			<div className="invisible absolute top-1.5 end-1.5 group-focus-within:visible group-hover:visible [@media(pointer:coarse)]:visible">
+				<LibraryAssetMenu
+					asset={asset}
+					onAsk={() => actions.onAsk(asset)}
+					onEditMetadata={() => actions.onEditMetadata(asset)}
+					onEditTags={() => actions.onEditTags(asset)}
+					onToggleFavorite={() => actions.onToggleFavorite(asset)}
+					onOpenConversation={actions.onOpenConversation}
+					onFilterSession={actions.onFilterSession}
+					triggerClassName="bg-elevated"
+				/>
+			</div>
+		</article>
+	);
+};
 
 /** One list row: the dense view for names and documents. */
 export const LibraryRow: FC<
@@ -247,7 +327,7 @@ export const LibraryRow: FC<
 			type="button"
 			onClick={() => actions.onSelect(asset.id)}
 			aria-pressed={selected}
-			className="flex min-w-0 flex-1 items-center gap-3 text-left"
+			className="flex min-w-0 flex-1 items-center gap-3 text-start"
 		>
 			<CardPicture asset={asset} />
 			<div className="flex min-w-0 flex-1 flex-col gap-0.5">

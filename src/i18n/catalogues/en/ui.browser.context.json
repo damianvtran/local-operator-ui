@@ -809,6 +809,16 @@
 		"tone": "Factual and restrained",
 		"note": "Site-info tooltip for an https page whose certificate could not be verified. Placeholders: origin = the page origin, preserve verbatim. Length: keep compact."
 	},
+	"ui.browser.page_context_menu.undo": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit-history action for the field under the pointer; reverses the last edit. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.redo": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit-history action for the field under the pointer; reapplies the edit Undo reversed. Length: keep compact."
+	},
 	"ui.browser.page_context_menu.cut": {
 		"role": "menu item \u2014 page context menu",
 		"tone": "Factual and restrained",

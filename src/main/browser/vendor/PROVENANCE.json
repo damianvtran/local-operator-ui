@@ -1,9 +1,9 @@
 {
   "source_repo": "damianvtran/local-operator",
-  "source_ref": "c3b2500bfcdd9d1b1ffc42348bde8c20bfe88c0c",
+  "source_ref": "2ba02f2a4f72118f3331b6e17f2e6fbf335df2aa",
   "proto_version": 1,
   "app_proto_version": 1,
-  "inputs_sha256": "79df820ab3a72c895feed73469249d2bc6213e634ff4a5ce740b0082f3c10e16",
+  "inputs_sha256": "8ce4ccc8be21f73265a3fe2d39d80855785789812f916fa01295c1c4dae36aa9",
   "generator": "scripts/sync-vendored.mjs",
   "patches": [
     {
@@ -18,11 +18,13 @@
     "driver/psl.gen.ts": "4698524d63721a9c6d99ad5d0b1a5b01d7773adafd7b412665ee9a2bcaab33de",
     "driver/access-flow.ts": "1e67838920d293f04c6397e3c71cff5df0359d6f704eeac496561576dfc152c3",
     "driver/access-queue.ts": "a76b311212393d6c2d43b45fb3ef75c42fc77a6000a20d0490932f49230b9c18",
-    "driver/ax-compact.ts": "3152510cca3f0c24570aef28a9e269cbef74766bad51af8f5aaf16df276876d6",
+    "driver/ax-compact.ts": "18c4236411fbd492c47f22ad47bda4a8f1ac6a3ff2ecda11f0007785a6705854",
+    "driver/ax-locator.ts": "9f8ac317a7acad1138a7aa07f3b8fa5a95c64414d0c07928f5505a0bb6c1ae81",
+    "driver/element-query.ts": "d8eeab0b02b03662b39926254a26052142ad1c54f201d3a4d7cdf1ec81f3fb8b",
     "driver/deadline.ts": "18cbe85e22a16f340cf92c8d86a42f963a19d40d4f442bccf7b3d07d87c4f5f0",
     "driver/errors.ts": "7465167cbc0b285b5d813ff458b74eeb43ad96a359cd07ed9602245d1feb80dd",
     "driver/file-transfer-policy.ts": "b095a962a103266b5679754d7cf3e9a028abd334ba71b6fb3405a70a52e67055",
-    "driver/file-transfer.tables.gen.ts": "ac1fab019fe87082248081d8e7251108441f1160fc8ed69ef32860cb78014d11",
+    "driver/file-transfer.tables.gen.ts": "9c551bee52526b81c04f26fa46e5a0d60de713b5d95def8d82c2a8b160f202fe",
     "driver/origin-policy.ts": "aa441ccd0fa3486ec6d0c8c0979abe552920982fc734b83e92a39c4ad87fae35",
     "driver/scroll-expressions.ts": "1ec22ec38898030f228a5adcfd4d1d2a81150d4acefe0ec99104ba7e3b7c46f5",
     "driver/geometry-read.ts": "1eeed74a2bc45308e0a60f16ad50cd8bb7d4928e82ac73947de333e7119d0208"

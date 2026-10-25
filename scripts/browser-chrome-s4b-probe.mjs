@@ -337,6 +337,8 @@ async function typeInAddressField(cdp, text) {
 }
 
 /** The owner listbox's rows, including the machine-readable source. */
+class HistorySceneRigError extends Error {}
+
 function suggestionRows(cdp) {
 	return evaluate(
 		cdp,
@@ -421,7 +423,7 @@ async function historyScene({ shot, framesDir }) {
 		evaluate(
 			cdp,
 			`(() => {
-				const el = document.querySelector('[data-tour-tag="browser-address-trigger"]');
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
 				if (el) el.focus({ preventScroll: true });
 			})()`,
 		);
@@ -441,13 +443,18 @@ async function historyScene({ shot, framesDir }) {
 		await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", ...params });
 		await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", ...params });
 	};
-	const raise = async (cdp) => {
+	const raise = async (cdp, step) => {
 		await press(cdp, "l", "KeyL", 4);
-		return waitFor(
+		// S5: the row is permanent; a raise means the ROW took focus.
+		const raised = await waitFor(
 			cdp,
-			`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			`document.activeElement === document.querySelector('[data-tour-tag="browser-address"]')`,
 			6_000,
 		);
+		if (!raised)
+			throw new HistorySceneRigError(
+				`history scene: ${step}: address row did not take focus`,
+			);
 	};
 	const openPage = async (cdp, url) => {
 		await evaluate(
@@ -707,17 +714,16 @@ async function historyScene({ shot, framesDir }) {
 			(tab) => tab.url === fixture,
 		);
 		await focusChrome(cdp);
-		if (!(await raise(cdp)))
-			throw new Error("history scene: run 2 popout did not raise");
+		await raise(cdp, "run 2 initial focus");
 
-		// H10 (U9): Enter on an untouched draft with no row selected lowers the
-		// popout and navigates nothing.
+		// H10 (U9): Enter on an untouched draft with no row selected gives focus
+		// back and navigates nothing.
 		const untouchedUrl =
 			before.tabs.find((tab) => tab.tabId === before.activeTabId)?.url ?? null;
 		await press(cdp, "Enter", "Enter");
 		const untouchedClosed = await waitFor(
 			cdp,
-			`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 			6_000,
 		);
 		const afterUntouched = await evaluate(cdp, "window.api.browser.state()");
@@ -731,8 +737,7 @@ async function historyScene({ shot, framesDir }) {
 			{ untouchedClosed, untouchedUrl, afterUntouchedUrl },
 		);
 		await focusChrome(cdp);
-		if (!(await raise(cdp)))
-			throw new Error("history scene: popout did not re-raise");
+		await raise(cdp, "re-focus before H1");
 
 		// H1: history row, no open tab, source marks it.
 		await typeInAddressField(cdp, host);
@@ -769,19 +774,19 @@ async function historyScene({ shot, framesDir }) {
 		);
 
 		// H9 (U8): a REAL Cmd+L raise, ArrowDown, Enter. H1 left a typed draft in
-		// the popout; Escape discards it and lowers the row, then Cmd+L raises a
-		// fresh untouched field (the state U8 is about).
+		// the row; Escape discards it and returns focus, then Cmd+L re-selects the
+		// untouched live URL (the state U8 is about).
 		await press(cdp, "Escape", "Escape");
 		await waitFor(
 			cdp,
-			`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 			6_000,
 		);
 		await focusChrome(cdp);
 		await press(cdp, "l", "KeyL", 4);
 		await waitFor(
 			cdp,
-			`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 			6_000,
 		);
 		// The untouched query is answered asynchronously; ArrowDown before the
@@ -824,7 +829,7 @@ async function historyScene({ shot, framesDir }) {
 			20_000,
 		).catch(() => {});
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H2 search");
 
 		// H2: github is search intent; the search row is first and selected.
 		await typeInAddressField(cdp, "github");
@@ -884,7 +889,7 @@ async function historyScene({ shot, framesDir }) {
 
 		// H3: the operator's wording, then H4b: Enter commits THAT query.
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H3/H4 VPN search");
 		await typeInAddressField(cdp, "what is a vpn");
 		await waitFor(
 			cdp,
@@ -973,7 +978,7 @@ async function historyScene({ shot, framesDir }) {
 		);
 		await sleep(400);
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H5 open-tab suggestion");
 		await typeInAddressField(cdp, host);
 		await waitFor(
 			cdp,
@@ -1008,23 +1013,44 @@ async function historyScene({ shot, framesDir }) {
 		});
 		await sleep(500);
 		await frameScene(cdp, "owner-narrow-open-tab.png");
+		const narrowOwner = await evaluate(
+			cdp,
+			`(() => {
+				const row = document.querySelector('[data-tour-tag="browser-url-bar"]');
+				const wrapper = row?.parentElement;
+				const rect = (el) => el ? { x: Math.round(el.getBoundingClientRect().left), width: Math.round(el.getBoundingClientRect().width) } : null;
+				return { viewport: window.innerWidth, row: rect(row), wrapper: rect(wrapper) };
+			})()`,
+		);
 		const narrowChild = await childTitleGeometry(two.port, "Already open", 360);
+		let narrowCaptureError = null;
 		if (narrowChild) {
-			writeFileSync(
-				join(framesDir, "child-narrow-open-tab.png"),
-				await shot(narrowChild.child),
-			);
+			try {
+				writeFileSync(
+					join(framesDir, "child-narrow-open-tab.png"),
+					await shot(narrowChild.child),
+				);
+			} catch (error) {
+				// Keep the geometry verdict visible when the capture is the next
+				// casualty of a stale native width; do not turn it into a cascade.
+				narrowCaptureError = String(error);
+			}
 			narrowChild.child.close();
 		}
+		const narrowGeometryOk =
+			(narrowChild?.facts.viewport ?? 0) > 0 &&
+			(narrowChild?.facts.viewport ?? 0) <= 360 &&
+			(narrowChild?.facts.titleWidth ?? 0) >= 100 &&
+			(narrowChild?.facts.titleText ?? "").includes("Already open");
 		record(
 			"H8",
-			(narrowChild?.facts.viewport ?? 0) > 0 &&
-				(narrowChild?.facts.viewport ?? 0) <= 360 &&
-				(narrowChild?.facts.titleWidth ?? 0) >= 100 &&
-				(narrowChild?.facts.titleText ?? "").includes("Already open")
-				? "PASS"
-				: "FAIL",
-			{ child: narrowChild?.facts ?? null },
+			!narrowGeometryOk ? "FAIL" : narrowCaptureError ? "BLOCKED" : "PASS",
+			{
+				owner: narrowOwner,
+				child: narrowChild?.facts ?? null,
+				geometryOk: narrowGeometryOk,
+				captureError: narrowCaptureError,
+			},
 		);
 		await cdp.send("Emulation.clearDeviceMetricsOverride");
 		await sleep(400);
@@ -1032,7 +1058,7 @@ async function historyScene({ shot, framesDir }) {
 		// H6: a query the (now empty) store cannot match shows the notice, not a
 		// search row and not a false history row.
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H6 no-match query");
 		await typeInAddressField(cdp, "zzz-nohistory.example");
 		await sleep(300);
 		await frameScene(cdp, "owner-no-match.png");
@@ -1062,7 +1088,7 @@ async function historyScene({ shot, framesDir }) {
 		await evaluate(cdp, `document.documentElement.dir = "rtl"`);
 		await sleep(200);
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H7 RTL query");
 		await typeInAddressField(cdp, "github");
 		await waitFor(
 			cdp,
@@ -1094,7 +1120,7 @@ async function historyScene({ shot, framesDir }) {
 		// H11: a complete host query must not match the lookalike domain; the
 		// real www page's other paths stay as rows (the root is the inline target).
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H11 host boundary query");
 		await typeInAddressField(cdp, "www.example.com");
 		await waitFor(
 			cdp,
@@ -1172,6 +1198,7 @@ async function historyScene({ shot, framesDir }) {
 		stopTwo = await two.stop();
 		two = null;
 	} catch (error) {
+		if (error instanceof HistorySceneRigError) throw error;
 		for (const id of [
 			"H1",
 			"H2",
@@ -1212,6 +1239,11 @@ plan(
 plan(
 	"R2",
 	"rest: the strip→page band is 0px with nothing in it, and the #1263 dock is absent from the DOM",
+	"driven",
+);
+plan(
+	"R2-NC",
+	"the band predicate rejects an injected dock or extra occupant, and passes again after removal",
 	"driven",
 );
 plan(
@@ -1263,12 +1295,12 @@ plan(
 );
 plan(
 	"V2",
-	"the page menu opened from the popout keeps the field row raised",
+	"the page menu opened from the permanent row reports its portal and pause",
 	"driven",
 );
 plan(
 	"V3",
-	"the Address item raises/keeps the field and focus lands in it",
+	"the Find item opens the find row and the menu panel is gone",
 	"driven",
 );
 plan("V4", "list with several rows, one selected", "driven");
@@ -1354,6 +1386,11 @@ plan(
 plan(
 	"H7",
 	"an RTL owner chrome paints an RTL child and the row text is dir=auto",
+	"driven",
+);
+plan(
+	"V16",
+	"a hover tooltip at the sidebar edge does not pause or blank the page",
 	"driven",
 );
 plan(
@@ -1481,18 +1518,18 @@ try {
 				};
 				const content = document.querySelector('[data-tour-tag="browser-content"]');
 				const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
-				const popout = document.querySelector('[data-tour-tag="browser-address-popout"]');
-				const bar = document.querySelector('[data-tour-tag="browser-url-bar"]');
+				const row = document.querySelector('[data-tour-tag="browser-url-bar"]');
 				return {
 					content: rect(content),
 					strip: rect(strip),
-					popout: rect(popout),
-					barCount: document.querySelectorAll('[data-tour-tag="browser-url-bar"]').length,
+					row: rect(row),
+					rowCount: document.querySelectorAll('[data-tour-tag="browser-url-bar"]').length,
 					dockCount: document.querySelectorAll('[data-address-dock-height]').length,
-					popoutPresent: !!popout,
-					addressTrigger: !!document.querySelector('[data-tour-tag="browser-address-trigger"]'),
-					triggerText: document.querySelector('[data-tour-tag="browser-address-trigger"]')?.textContent ?? null,
-					triggerWidth: rect(document.querySelector('[data-tour-tag="browser-address-trigger"]'))?.width ?? null,
+					popoutPresent: !!document.querySelector('[data-tour-tag="browser-address-popout"]'),
+					triggerPresent: !!document.querySelector('[data-tour-tag="browser-address-trigger"]'),
+					stripTrailingPresent: !!document.querySelector('[data-tour-tag="browser-strip-trailing"]'),
+					stripAddressControls:
+						strip?.querySelectorAll('input, [role="combobox"]').length ?? -1,
 					hash: location.hash,
 				};
 			})()`,
@@ -1505,8 +1542,10 @@ try {
 	// THE REST BAND, measured rather than inferred from what is visible. The page
 	// is a native view that paints above all DOM, so a bar could sit behind it and
 	// every frame would still look flush; "no bar visible" is not the LOH-13
-	// claim. The claim is geometric and DOM-level: the strip's bottom edge IS the
-	// page's top edge (band 0px) and no element occupies the gap. The scan walks
+	// claim. The claim is geometric and DOM-level: the strip's bottom edge is the
+	// ROW's top edge, the row's bottom edge IS the page's top edge (0px at both
+	// seams), and exactly one element — the row — is bounded by the outer pair.
+	// The scan walks
 	// every element instead of naming tags, because the regression it guards is a
 	// future element added to the band and a tag list would have to know its name.
 	// An occupant must be BOUNDED BY BOTH EDGES: its whole vertical extent lies
@@ -1522,36 +1561,45 @@ try {
 			`(() => {
 				const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
 				const content = document.querySelector('[data-tour-tag="browser-content"]');
-				const dockSelector = '[data-address-dock-height]';
 				if (!strip || !content) {
-					return { stripBottom: null, pageTop: null, stripHeight: null, bandPx: null, intruders: [], dockPresentAtRest: null, dockSelector };
+					return { stripBottom: null, pageTop: null, stripHeight: null, row: null, occupants: [], occupantCount: 0, occupantIsRow: false, dockPresentAtRest: null };
 				}
 				const s = strip.getBoundingClientRect();
 				const c = content.getBoundingClientRect();
 				const stripBottom = Math.round(s.bottom);
 				const pageTop = Math.round(c.top);
-				const intruders = [];
+				const row = document.querySelector('[data-tour-tag="browser-url-bar"]');
+				const r = row ? row.getBoundingClientRect() : null;
+				// S5 rest predicate: elements BOUNDED BY BOTH EDGES and outermost only,
+				// so a wrapper and its child are one occupant, not two. The S4b #1263
+				// regression guard (a 104px in-flow dock) still fails this by adding a
+				// second outer occupant, which is the negative control below.
+				const bounded = [];
 				for (const el of document.querySelectorAll('*')) {
-					const r = el.getBoundingClientRect();
-					if (r.height === 0) continue;
-					if (r.top < stripBottom - 0.5 || r.bottom > pageTop + 0.5) continue;
-					if (r.right <= s.left || r.left >= s.right) continue;
-					intruders.push({
-						tag: el.tagName.toLowerCase(),
-						className: typeof el.className === 'string' ? el.className.slice(0, 120) : '',
-						height: Math.round(r.height),
-						top: Math.round(r.top),
-						bottom: Math.round(r.bottom),
-					});
+					const box = el.getBoundingClientRect();
+					if (box.height === 0) continue;
+					if (box.top < stripBottom - 0.5 || box.bottom > pageTop + 0.5) continue;
+					if (box.right <= s.left || box.left >= s.right) continue;
+					bounded.push(el);
 				}
+				const outer = bounded.filter((el) => !bounded.includes(el.parentElement));
 				return {
 					stripBottom,
 					pageTop,
 					stripHeight: Math.round(s.height),
-					bandPx: Math.max(0, pageTop - stripBottom),
-					intruders,
-					dockPresentAtRest: document.querySelector(dockSelector) !== null,
-					dockSelector,
+					row: r
+						? { top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height), width: Math.round(r.width) }
+						: null,
+					stripToRowGap: r ? Math.round(r.top - s.bottom) : null,
+					rowToPageGap: r ? Math.round(c.top - r.bottom) : null,
+					occupants: outer.map((el) => ({
+						tag: el.tagName.toLowerCase(),
+						tourTag: el.getAttribute('data-tour-tag'),
+						height: Math.round(el.getBoundingClientRect().height),
+					})),
+					occupantCount: outer.length,
+					occupantIsRow: outer.length === 1 && outer[0] === row,
+					dockPresentAtRest: document.querySelector('[data-address-dock-height]') !== null,
 				};
 			})()`,
 		);
@@ -1570,27 +1618,119 @@ try {
 	writeFileSync(join(FRAMES, "owner-rest.png"), await shot(cdp));
 	record(
 		"R1",
-		rest.barCount === 0 &&
+		rest.rowCount === 1 &&
 			rest.dockCount === 0 &&
 			!rest.popoutPresent &&
-			rest.strip &&
+			!rest.triggerPresent &&
+			!rest.stripTrailingPresent &&
+			rest.stripAddressControls === 0 &&
+			rest.row &&
 			rest.content &&
-			Math.abs(rest.content.y - (rest.strip.y + rest.strip.height)) <= 1
+			Math.abs(rest.content.y - (rest.row.y + rest.row.height)) <= 1
 			? "PASS"
 			: "FAIL",
 		{ rest, restPage },
 	);
+	const restBandHolds = (b) =>
+		b.stripHeight === 37 &&
+		b.row !== null &&
+		b.row.height >= 36 &&
+		b.row.height <= 40 &&
+		b.stripToRowGap === 0 &&
+		b.rowToPageGap === 0 &&
+		b.occupantCount === 1 &&
+		b.occupantIsRow &&
+		b.dockPresentAtRest === false;
+	record("R2", restBandHolds(restBand) ? "PASS" : "FAIL", restBand);
+
+	/*
+	 * R2 NEGATIVE CONTROL (required): the predicate must FAIL when the band is
+	 * occupied by anything else, or it is a sentence about itself. Two injections:
+	 * a 104px in-flow sibling (the #1263 dock reappearing) and an extra 20px one
+	 * (the "exactly one occupant" half), each removed before the next.
+	 */
+	const injectBand = async (height) => {
+		await evaluate(
+			cdp,
+			`(() => {
+				const row = document.querySelector('[data-tour-tag="browser-url-bar"]');
+				const div = document.createElement('div');
+				div.id = 's5-band-negative-control';
+				div.style.height = '${height}px';
+				div.style.flex = '0 0 auto';
+				row.parentElement.insertBefore(div, row);
+			})()`,
+		);
+		await sleep(120);
+		const facts = await bandFacts();
+		await evaluate(
+			cdp,
+			`document.getElementById('s5-band-negative-control')?.remove()`,
+		);
+		await sleep(120);
+		return facts;
+	};
+	const dockInjected = await injectBand(104);
+	const extraInjected = await injectBand(20);
 	record(
-		"R2",
-		restBand.bandPx === 0 &&
-			restBand.stripHeight === 37 &&
-			restBand.pageTop === restBand.stripBottom &&
-			restBand.intruders.length === 0 &&
-			restBand.dockPresentAtRest === false
+		"R2-NC",
+		!restBandHolds(dockInjected) &&
+			!restBandHolds(extraInjected) &&
+			restBandHolds(await bandFacts())
 			? "PASS"
 			: "FAIL",
-		restBand,
+		{ dockInjected, extraInjected },
 	);
+
+	// V16: a tooltip at the sidebar edge while the real page is live. Owner frame
+	// carries the tooltip, page frame proves the native page still paints; the
+	// registry reports no suppression, so the tooltip is not a pause.
+	const tipPoint = await evaluate(
+		cdp,
+		`(() => {
+			const el = document.querySelector('[data-tour-tag="browser-tab-close"]');
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+		})()`,
+	);
+	if (tipPoint) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: tipPoint.x,
+			y: tipPoint.y,
+		});
+		await sleep(900);
+		writeFileSync(join(FRAMES, "owner-tooltip-page.png"), await shot(cdp));
+		writeFileSync(join(FRAMES, "page-tooltip-page.png"), await shot(pageCdp));
+		const tooltipFacts = await evaluate(
+			cdp,
+			`(() => {
+				const content = document.querySelector('[data-tour-tag="browser-content"]');
+				const tips = [...document.querySelectorAll('[role="tooltip"]')]
+					.map((el) => ({ text: el.textContent?.trim() ?? '', rect: el.getBoundingClientRect().toJSON() }))
+					.filter((entry) => entry.rect.width > 0 && entry.rect.height > 0);
+				return { tooltipCount: tips.length, tooltip: tips[0] ?? null, suppressedBy: content?.getAttribute('data-suppressed-by') ?? null, page: content?.getBoundingClientRect().toJSON() ?? null };
+			})()`,
+		);
+		record(
+			"V16",
+			tooltipFacts.tooltipCount > 0 &&
+				tooltipFacts.suppressedBy === "" &&
+				tooltipFacts.page !== null
+				? "PASS"
+				: "FAIL",
+			tooltipFacts,
+		);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 4,
+			y: 4,
+		});
+		await sleep(200);
+	} else {
+		record("V16", "BLOCKED", "the settings rail item was not present");
+	}
 
 	const sendKey = (type, key, code, modifiers = 0) =>
 		cdp.send("Input.dispatchKeyEvent", {
@@ -1607,7 +1747,7 @@ try {
 	await sendKey("keyUp", "l", "KeyL", 4);
 	const raised = await waitFor(
 		cdp,
-		`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 		5_000,
 	);
 	const open = await measure();
@@ -1635,9 +1775,10 @@ try {
 	record(
 		"P1",
 		raised &&
-			open.popout &&
-			Math.abs(open.popout.width - open.strip.width) <= 1 &&
-			open.addressTrigger
+			open.row &&
+			Math.abs(open.row.width - open.strip.width) <= 1 &&
+			open.rowCount === 1 &&
+			!open.popoutPresent
 			? "PASS"
 			: "FAIL",
 		{ raised, open },
@@ -1680,7 +1821,7 @@ try {
 	await sendKey("keyUp", "Escape", "Escape");
 	const escaped = await waitFor(
 		cdp,
-		`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 		5_000,
 	);
 	const after = await measure();
@@ -1703,13 +1844,13 @@ try {
 	await sendKey("keyUp", "l", "KeyL", 4);
 	await waitFor(
 		cdp,
-		`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 		5_000,
 	);
 	await evaluate(cdp, "window.api.browser.focusPage()");
 	const clickDismissed = await waitFor(
 		cdp,
-		`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 		5_000,
 	);
 	/*
@@ -1732,7 +1873,7 @@ try {
 	await sendKey("keyUp", "l", "KeyL", 4);
 	await waitFor(
 		cdp,
-		`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 		5_000,
 	);
 	await evaluate(
@@ -1744,7 +1885,7 @@ try {
 	);
 	const navDismissed = await waitFor(
 		cdp,
-		`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 		8_000,
 	);
 	record("D3", navDismissed ? "PASS" : "FAIL", { navDismissed });
@@ -1756,7 +1897,7 @@ try {
 	);
 	const triggerRaised = await waitFor(
 		cdp,
-		`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 		5_000,
 	);
 	const triggerState = await evaluate(
@@ -1775,7 +1916,7 @@ try {
 	await sendKey("keyUp", "Escape", "Escape");
 	await waitFor(
 		cdp,
-		`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 		5_000,
 	);
 
@@ -1807,7 +1948,7 @@ try {
 	});
 	const seeded = await waitFor(
 		cdp,
-		`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 		5_000,
 	);
 	const seededValue = await evaluate(
@@ -1823,12 +1964,16 @@ try {
 			const el = document.querySelector('[data-tour-tag="browser-tab"]');
 			el?.dispatchEvent(new KeyboardEvent("keydown", { key: "s", code: "KeyS", bubbles: true, cancelable: true }));
 			const input = document.querySelector('[data-tour-tag="browser-address"]');
-			return { popout: !!document.querySelector('[data-tour-tag="browser-address-popout"]'), value: input?.value ?? null };
+			return { value: input?.value ?? null };
 		})()`,
 	);
 	record(
 		"T2",
-		seeded && seededValue === "s" ? "PASS" : synthetic.popout ? "PASS" : "FAIL",
+		seeded && seededValue === "s"
+			? "PASS"
+			: synthetic.value === "s"
+				? "PASS"
+				: "FAIL",
 		{
 			seeded,
 			seededValue,
@@ -1843,7 +1988,7 @@ try {
 	await sendKey("keyUp", "Escape", "Escape");
 	await waitFor(
 		cdp,
-		`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 		5_000,
 	);
 
@@ -1852,7 +1997,7 @@ try {
 	await sendKey("keyUp", "l", "KeyL", 4);
 	await waitFor(
 		cdp,
-		`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 		5_000,
 	);
 	await cdp.send("Input.insertText", { text: `${pageBase}/entered` });
@@ -1860,7 +2005,7 @@ try {
 	await sendKey("keyUp", "Enter", "Enter");
 	const enteredGone = await waitFor(
 		cdp,
-		`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 		8_000,
 	);
 	const enteredUrl = await evaluate(
@@ -1878,13 +2023,13 @@ try {
 	await sendKey("keyUp", "l", "KeyL", 4);
 	await waitFor(
 		cdp,
-		`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 		5_000,
 	);
 	await evaluate(cdp, "window.api.browser.newTab(null)");
 	const tabDismissed = await waitFor(
 		cdp,
-		`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 		5_000,
 	);
 	record("T3", tabDismissed ? "PASS" : "FAIL", { tabDismissed });
@@ -1930,7 +2075,7 @@ try {
 	const raisePopout = async () => {
 		const already = await evaluate(
 			cdp,
-			`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 		);
 		if (already) return true;
 		const trigger = await pointOf('[data-tour-tag="browser-address-trigger"]');
@@ -1938,7 +2083,7 @@ try {
 		await clickAt(trigger);
 		return waitFor(
 			cdp,
-			`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			`!!document.querySelector('[data-tour-tag="browser-url-bar"]')`,
 			5_000,
 		);
 	};
@@ -1947,12 +2092,15 @@ try {
 			cdp,
 			`(() => {
 				const menu = document.querySelector('[role="menu"]');
-				const popout = document.querySelector('[data-tour-tag="browser-address-popout"]');
+				const row = document.querySelector('[data-tour-tag="browser-url-bar"]');
+				const content = document.querySelector('[data-tour-tag="browser-content"]');
 				const input = document.querySelector('[data-tour-tag="browser-address"]');
 				return {
 					menu: menu ? menu.getBoundingClientRect().toJSON() : null,
+					page: content ? content.getBoundingClientRect().toJSON() : null,
+					suppressedBy: content?.getAttribute('data-suppressed-by') ?? null,
 					portal: !!document.querySelector('[data-radix-popper-content-wrapper]'),
-					popout: !!popout,
+					row: !!row,
 					activeElement: document.activeElement?.getAttribute('data-tour-tag') ?? document.activeElement?.tagName ?? null,
 					value: input?.value ?? null,
 				};
@@ -2018,21 +2166,28 @@ try {
 		);
 		states.menuRest = { opened: restMenu, ...(await menuFacts()) };
 		await frame("menu-rest.png");
+		// THE PAUSE ASSERTION (S5 round 1, agent MAJOR-1 / QA Q-1): the panel is
+		// painted by the renderer, but the page is a native view above it, so the
+		// only honest proof that the menu is visible is that the policy hid the
+		// view. Rect overlap is reported beside it as the cause.
 		record(
 			"V1",
-			restMenu && states.menuRest.portal ? "PASS" : "FAIL",
+			restMenu &&
+				states.menuRest.portal &&
+				/(^|,)menu:[^,]*/.test(states.menuRest.suppressedBy ?? "")
+				? "PASS"
+				: "FAIL",
 			states.menuRest,
 		);
 		await pressEscape();
 		await waitFor(cdp, `!document.querySelector('[role="menu"]')`, 3_000);
 
-		// V2: the menu opened from the RAISED popout — round 1's MAJOR-1.
+		// V2: the menu opened from the permanent row.
 		await raisePopout();
-		// THE POPOUT'S OWN TRIGGER, not the strip's: both carry the same tag and the
-		// strip's copy stays in the DOM (invisible and inert) under the row, so an
-		// unscoped query clicks the wrong control.
+		// THE ROW'S OWN TRIGGER (there is only one now; scoped anyway so a future
+		// duplicate cannot make this click something else).
 		const popoutMenu = await pointOf(
-			'[data-tour-tag="browser-address-popout"] [data-tour-tag="browser-page-menu"]',
+			'[data-tour-tag="browser-url-bar"] [data-tour-tag="browser-page-menu"]',
 		);
 		await clickAt(popoutMenu);
 		const popoutMenuOpen = await waitFor(
@@ -2045,27 +2200,33 @@ try {
 		await frame("menu-popout.png");
 		record(
 			"V2",
-			popoutMenuOpen && states.menuFromPopout.popout ? "PASS" : "FAIL",
+			popoutMenuOpen &&
+				states.menuFromPopout.portal &&
+				/(^|,)menu:[^,]*/.test(states.menuFromPopout.suppressedBy ?? "")
+				? "PASS"
+				: "FAIL",
 			states.menuFromPopout,
 		);
 
-		// V3: the Address item, from the popout's menu, must keep the field and
-		// put focus in it — the control case round 1 measured failing.
-		const addressItem = await pointOf(
-			'[data-tour-tag="browser-page-menu-address"]',
-		);
-		await clickAt(addressItem);
+		// V3: Find, from the row's overflow — the item replaced the old Address row.
+		// It must open the in-flow find row and keep the page paused while the menu
+		// is up (the same measured rule as V1/V2).
+		const findItem = await pointOf('[data-tour-tag="browser-find"]');
+		await clickAt(findItem);
 		await sleep(400);
 		states.addressItem = await menuFacts();
-		await frame("menu-address-item.png");
+		const findRow = await waitFor(
+			cdp,
+			`!!document.querySelector('[data-tour-tag="browser-find-row"]')`,
+			4_000,
+		);
+		await frame("menu-find-item.png");
 		record(
 			"V3",
-			states.addressItem.popout &&
-				states.addressItem.activeElement === "browser-address" &&
-				states.addressItem.menu === null
+			states.addressItem.row && states.addressItem.menu === null && findRow
 				? "PASS"
 				: "FAIL",
-			states.addressItem,
+			{ ...states.addressItem, findRow },
 		);
 
 		// V4: several suggestion rows, one selected. History is seeded by real
@@ -2133,7 +2294,7 @@ try {
 		await pressEscape();
 		await waitFor(
 			cdp,
-			`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			`document.activeElement !== document.querySelector('[data-tour-tag="browser-address"]')`,
 			3_000,
 		);
 
@@ -2319,7 +2480,7 @@ try {
 			const hovered = await evaluate(
 				cdp,
 				`(() => {
-					const el = document.querySelector('[data-tour-tag="browser-address-trigger"]');
+					const el = document.querySelector('[data-tour-tag="browser-address"]');
 					return { hover: el?.matches(':hover') ?? false, width: el ? Math.round(el.getBoundingClientRect().width) : null };
 				})()`,
 			);
@@ -2437,6 +2598,10 @@ try {
 		}
 		await historyScene({ shot, framesDir: FRAMES });
 	} catch (error) {
+		// A named history failure is already at its discriminating step. Let the
+		// outer fatal path own it; serializing the normal matrix would leave every
+		// unexecuted history row pending and could return a misleading success.
+		if (error instanceof HistorySceneRigError) throw error;
 		// A state rig failure must not discard the rows that already passed: it is
 		// recorded once, and the rest of the matrix still runs.
 		event({ event: "visual-states-error", message: String(error) });

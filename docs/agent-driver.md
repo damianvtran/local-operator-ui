@@ -57,11 +57,102 @@ by `scripts/team-new-chat-stale-draft.test.mjs`; a run-owned daemon has no
 authored team for the sidebar to list. Its before/after pair is committed under
 `docs/pr-evidence/team-new-chat-stale-draft/`.
 
+**`--scene team-newchat` photographs TWO team New-chat defects, in four
+modes.** (2026-10-23). *Draft modes:* a REPLAYED draft receipt. The stable team
+row's `draftRequestId` persists across launches, and a daemon that restarted (or
+a draft that expired) replays the id it minted the first time — an id its
+registry no longer serves. The pane streams on `sessionId ?? draft.warmId`, so
+its bridge 404s; the base tree read that as a missing conversation and painted
+"This conversation is no longer on this machine" under a header that says "New
+chat with <team>". The scene seeds the operator's persisted row (a stable
+`draft:team:<name>` with the request id, no `sessionId`), reloads, types a single
+`C` through CDP's input pipeline, and reports the route, the header, the notice,
+the composer, the row's own state and the id the daemon answered for the seeded
+request. `--expect broken` (the base tree) asserts the notice appeared, the row
+still holds the request id, and an in-page probe catches the notice being painted
+and the box refused; `--expect fresh` (the fix) asserts no notice, the `C` still
+in an editable box with the caret, a re-minted request id, and a first send that
+reaches the transcript with the entered-to-rendered milliseconds reported. It
+also installs the probe over the 404 → retire → next-mint window (DOM mutations,
+animation frames and the store's own persisted writes) and holds the first frame
+after the answer beside the settled one, so "no notice" is a statement about the
+window rather than about one screenshot. `--expect immediate` races a send into
+that window and reports the outcome. *Carry mode:* `--expect carry` drives a
+GENUINELY missing conversation (a real route to a 12-hex id the daemon does not
+serve) whose composer holds text and a chip, presses the notice's own
+**Start a new chat** (keyboard first, pointer fallback, both reported), and reads
+back the new chat's route, composer, caret, chip and the dead identity's row;
+then it reloads to prove the way out survives and sends the carried text once.
+The draft modes need `--backend`, `--backend-records`, `--team <name>`,
+`--draft-request-id <uuid>` and `--seed-onboarding-complete`; `carry` needs the
+same except the receipt, and the daemon's 404 in the draft modes must be real:
+the precondition minted the receipt, materialised a conversation on it, deleted
+that conversation and restarted the daemon.
+
 `--scene none` boots and arms the driver without running a
 scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
 `--out <dir>` puts frames somewhere you choose.
 
+**`--scene sidebar-docking` exercises #1077 against a populated synthetic
+conversation on an isolated daemon.** It drives the real Cmd/Ctrl+B chord and
+the strip/dock pointer controls through CDP at 1380, 1023 and 800 CSS px, checks
+the persisted preference and the absence of a sheet, and reads sidebar/chat/rail
+boxes plus document overflow. At 800 with a stored 320px width the drawn dock is
+capped to 276px so the 480px chat floor and 44px rail still fit; widening
+restores 320 without rewriting storage. It also checks the separate canvas
+fit-yield and captures settled dark/light frames. The base tree is the negative
+control: the same scene records its forced strip and overlay failures before the
+head-only matrix continues. Viewport changes use `Emulation.setDeviceMetricsOverride`,
+so the recorded CSS viewport is the asserted size; native-window resize and
+process-restart persistence are independent QA's lanes. The scene requires
+`--backend`, `--backend-records`, `--session <id>`,
+`--seed-onboarding-complete`, and the mock transcript marker named in
+`scripts/sidebar-docking-scene.mjs`.
+
+**`--scene attach` presses the composer's paperclip and proves what it stages
+(`--attach <absolute-path>`, repeatable).** The attach path is `handleAttachFile`
+-> `show-open-dialog` -> `addAttachment`; the one step a headless CDP scene cannot
+perform is the native picker's answer, so an armed launch that was given
+`--attach` has main return those queued paths from `show-open-dialog`
+(`src/main/dev-driver-attach.ts`) and **only that answer is replaced** — the
+press, the IPC round trip, the store write and the rendered chips are the app's
+own. The scene opens a conversation on its own daemon, presses
+`[data-tour-tag="chat-input-attach-file-button"]`, and asserts: the persisted
+`conversation-input-store` row holds exactly the paths given, in order; one
+`[data-attachment-id]` chip is on screen per path; the row carries the pending
+caption; and the app log names the queue-answered dialog. It does not prove that
+the OS picker opens or that a person can choose a file through it — say so beside
+the frame rather than implying it. `--attach` is refused for a relative path, and
+the queue is read only when the dev-driver bridge is armed.
+
+**`--attach-prompt "<text>"` sends after staging, so the scene proves the
+paperclip reaches an answer.** The prompt is typed into the composer's real field
+and the real `Send message` control is pressed; the run then waits for the
+daemon's own transcript (not the painted echo) to carry the prompt as a user row.
+It waits for the turn to SETTLE - the snapshot's `streaming` and
+`last_turn_outcome`, not the first assistant row with text, which a tool-using
+turn can emit mid-turn - then reports the session id, the row's `document`
+block(s) and the settled final text, and asserts that each staged file arrived
+as a document block and that the assistant turn completed. `--attach-expect-answer "<substring>"` adds a
+substring check on that final text. This path needs a daemon that serves
+`POST /v1/desktop/attachments` **and** a provider that can answer; a daemon
+without either is refused by the send, and the scene reports that refusal rather
+than a staged-only pass.
+
+```bash
+pnpm build
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --seed-onboarding-complete --out /tmp/frames
+
+# the answer path QA runs
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --attach-prompt "Summarise this PDF in one line." \
+  --attach-expect-answer "<expected substring>" \
+  --seed-onboarding-complete --out /tmp/frames
+```
 **`--scene authoring-refresh` is the one scene whose write comes from OUTSIDE the
 app.** Its subject is an agent creating a team or a profile on the backend, so
 the write is an HTTP request from this script's own Node process to the
@@ -642,6 +733,22 @@ rule:
   `hidden`, or a real user's typing — the run's renderer reports `visible`, and
   the dirty-suppression half is covered against the shipped module by
   `scripts/canvas-file-freshness.test.mjs`.
+
+- **`mesh-tab`** — the Mesh tab's device census against a live daemon, and the
+  one scene that reads its expectation from the DAEMON rather than from a
+  fixture. `--mesh-expect tombstones` is the base tree, which drew every member
+  id as a device node, so a revoked membership (`active: false`, a tombstone the
+  relay keeps for audit) appeared as a peer that had not answered;
+  `--mesh-expect collapsed` is the fixed tree, which draws only devices with an
+  active membership and carries the revoked memberships in one inspectable
+  count. The scene asks `/v1/desktop/networks` for the same rows the app renders,
+  derives the live ids and the tombstone ids, and refuses to run on a mesh with
+  no revoked membership: a pair photographed on a clean mesh would not be
+  evidence about this defect. It captures the canvas and the list in the
+  `--theme` this run claims, then opens the revoked count with a real press and
+  photographs the audit rows. What it cannot prove: that a tombstone was created
+  through this UI (the daemon's fixture predates the run), and that the relay's
+  90-day retention pruned anything.
 
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script

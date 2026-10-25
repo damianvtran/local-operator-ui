@@ -54,7 +54,10 @@ import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	remoteOwnedId,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import {
 	type InternalEpisodeIdentitySnapshot,
 	captureInternalEpisodeIdentity,
@@ -181,6 +184,7 @@ import { QuoteToolkit } from "./quote-toolkit";
 import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
+import { SentFileCard } from "./sent-file-card";
 import { editTextOf, skillRowOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
@@ -787,6 +791,15 @@ export type CanonicalTranscriptProps = {
 	 * this surface is being fixed to stop showing.
 	 */
 	onReconnect: () => void;
+	/**
+	 * Where the missing notice's way out goes: the ROUTE move, owned by the page
+	 * that holds `navigate` (agent review round 1 / QA round 1, Q1). The store
+	 * action on the button stages the fresh draft and clears the dead selection;
+	 * this lets the address follow, or a reload would re-open the conversation the
+	 * press just left. Optional because the transcript also renders on surfaces
+	 * with no route (stories, the run panel's child reader).
+	 */
+	onStartNewChat?: () => void;
 };
 
 // ---------------------------------------------------------------- rows
@@ -976,6 +989,30 @@ const UserRow = memo(function UserRow({
 	 * The video player's seat is the card's done body.
 	 */
 	const pictures = record.images.filter(isPictureRef);
+	/*
+	 * Whether this conversation lives on another device. Read from the store
+	 * because the placement fact is not on the transcript row, and a remote
+	 * conversation's file cards make no existence claim (contract v1 §5): the
+	 * path never lived on this machine.
+	 */
+	const remote = useCanonicalSessionsStore((state) =>
+		conversationId
+			? remoteOwnedId(state.sessions, state.placementFacts, conversationId)
+			: false,
+	);
+	/*
+	 * "Not remote" is not "local" until the catalogue has stated where this
+	 * conversation lives: the placement fact or the row's own `locality` is that
+	 * statement, and until one exists the file card must make no existence claim
+	 * (contract §5; agent review round 1, n3).
+	 */
+	const placementKnown = useCanonicalSessionsStore((state) => {
+		if (!conversationId) return false;
+		if (state.placementFacts[conversationId]?.locality) return true;
+		return state.sessions.some(
+			(row) => row.session_id === conversationId && row.locality !== undefined,
+		);
+	});
 	/*
 	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
 	 * rather than guessed from a character count: the box is clamped first and
@@ -1304,6 +1341,18 @@ const UserRow = memo(function UserRow({
 									{expanded ? "Show less" : "Show more"}
 								</button>
 							)}
+							{(record.documents?.length ?? 0) > 0 && (
+								<div className={cn("mt-2 flex flex-col gap-1")}>
+									{record.documents?.map((document) => (
+										<SentFileCard
+											key={document.id}
+											document={document}
+											remote={remote}
+											placementKnown={placementKnown}
+										/>
+									))}
+								</div>
+							)}
 							{pictures.length > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-2")}>
 									{pictures.map((image, index) => (
@@ -1601,11 +1650,11 @@ const AssistantRow = memo(function AssistantRow({
 					 * edge, over the prose - the designer measured it covering text at the
 					 * app's 800px minimum. Reserving 40px here (28px bare Copy target +
 					 * 12px clearance) makes the prose wrap BEFORE the control instead of
-					 * under it; at >=900 the overlay moves out into the `-right-10` gutter
+					 * under it; at >=900 the overlay moves out into the `-end-10` gutter
 					 * and the padding returns to zero, so the wide layout is unchanged.
 					 * A horizontal band only: no reserved ROW, no pill, no smaller target.
 					 */
-					commentaryOverlay && "pr-10 @min-[900px]/chatcol:pr-0",
+					commentaryOverlay && "pe-10 @min-[900px]/chatcol:pe-0",
 					/*
 					 * THE ANSWER'S FOCUS RING, moved off the full-width row wrapper for the
 					 * user bubble's reason: focus is drawn around the content the reader
@@ -1821,7 +1870,7 @@ const AssistantRow = memo(function AssistantRow({
 			 */}
 			{!closesTurn && isFinalResponse(record) && (
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
-					<span className={cn("ml-auto flex shrink-0 items-center gap-2")}>
+					<span className={cn("ms-auto flex shrink-0 items-center gap-2")}>
 						{quotable && (
 							<AnswerActionRow
 								kind="response"
@@ -1839,7 +1888,7 @@ const AssistantRow = memo(function AssistantRow({
 			{commentaryOverlay && (
 				<AnswerActionRow
 					overlay
-					overlayClassName="@min-[900px]/chatcol:-right-10"
+					overlayClassName="@min-[900px]/chatcol:-end-10"
 					kind="commentary"
 					bodyText={remainingContent}
 				/>
@@ -1882,7 +1931,7 @@ const AssistantRow = memo(function AssistantRow({
 				 * caption starts at the content's own left edge - the same rail as the prose
 				 * (`scripts/chat-alignment-geometry.mjs` measures it), and the right cluster
 				 * is `[actions][stamp]` with the stamp rightmost, riding the actions'
-				 * `ml-auto` spacer. The reveal stays opacity-only, so nothing moves when
+				 * `ms-auto` spacer. The reveal stays opacity-only, so nothing moves when
 				 * the buttons appear: the idle and hovered frames of the operator's state,
 				 * and the caption/actions/stamp boxes the geometry script reads per state,
 				 * are under `docs/evidence/chat-canonical-message-actions/` and its
@@ -1924,14 +1973,14 @@ const AssistantRow = memo(function AssistantRow({
 					 */}
 					{quotable && (
 						/*
-						 * `ml-auto` sits on the WRAPPER rather than the row (the row takes no
+						 * `ms-auto` sits on the WRAPPER rather than the row (the row takes no
 						 * className): it is the first box of the right cluster, so it - and
 						 * the stamp that follows it - ride the line's far end while the
 						 * caption keeps the rail. `shrink-0` because the controls are the
 						 * line's fixed part: the caption is the side with slack (it can
 						 * wrap), and the buttons must never be what a narrow column squeezes.
 						 */
-						<span className={cn("ml-auto flex shrink-0")}>
+						<span className={cn("ms-auto flex shrink-0")}>
 							<AnswerActionRow
 								bodyText={remainingContent}
 								agentId={conversationId}
@@ -1954,7 +2003,7 @@ const AssistantRow = memo(function AssistantRow({
 						</span>
 					)}
 					{!closingLineSuppressed && (
-						<span className={cn(!quotable && "ml-auto")}>
+						<span className={cn(!quotable && "ms-auto")}>
 							<TurnTimestamp timestamp={record.ts} scope="answer" />
 						</span>
 					)}
@@ -2303,7 +2352,7 @@ const ToolRow = memo(function ToolRow({
 	);
 	const media =
 		rowMedia.length > 0 ? (
-			<div className={cn("mt-1 ml-5 flex flex-col gap-2")}>
+			<div className={cn("mt-1 ms-5 flex flex-col gap-2")}>
 				{rowMedia.map((ref, index) =>
 					ref.kind === "audio" ? (
 						<CanonicalAudio
@@ -2399,7 +2448,7 @@ const ToolRow = memo(function ToolRow({
  * reuse.
  */
 const ProviderAction: FC<{ action: ProviderErrorAction }> = ({ action }) => (
-	<div className="mt-1 pl-6">
+	<div className="mt-1 ps-6">
 		<Button variant="secondary" size="sm" asChild>
 			<Link to={action.to}>{action.label}</Link>
 		</Button>
@@ -2562,7 +2611,7 @@ const NoticeRow = memo(function NoticeRow({
 			 * connect dialog over this conversation instead of navigating away.
 			 */}
 			{NO_PROVIDER_NOTICE.test(record.text) ? (
-				<div className="mt-1 pl-6">
+				<div className="mt-1 ps-6">
 					<Button
 						variant="secondary"
 						size="sm"
@@ -2797,13 +2846,27 @@ const AskReceiptRow = memo(function AskReceiptRow({
 			</MessageContainer>
 		);
 	const summary = askResponseSummary(record);
-	if (record.questions.length === 0)
+	/*
+	 * A DISMISSAL HAS NO ANSWER FRAME, and the harness says so in its own words
+	 * (`asks/render.py::response_text`: a dismissed ask "NEVER" goes through the
+	 * report, because the report renders the absence as an empty answer). The row
+	 * still carries the ask's questions, so without this arm an expanded dismissal
+	 * would print each question beside `No answer given` — a receipt that reads as
+	 * a partial answer. The sentence IS the receipt.
+	 */
+	if (record.questions.length === 0 || record.status === "dismissed")
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ToolLedgerRow
 					toolName="ask"
 					verbless
 					summary={summary}
+					/*
+					 * THE DISMISSED SENTENCE WRAPS (UX round 1, U1): it ends in the ask id, and a
+					 * truncated receipt at 1024px read `… no longer needed — …`, losing the one
+					 * token that tells two dismissals in one turn apart.
+					 */
+					summaryWrap={record.status === "dismissed"}
 					outcome="receipt"
 					durationS={null}
 				/>
@@ -3442,6 +3505,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	labelHoldLate,
 	labelMarked,
 	onReconnect,
+	onStartNewChat,
 }) => {
 	// The pane's own subscription: the notices and status lines below are
 	// translated and the pane must repaint when the locale changes.
@@ -6920,10 +6984,30 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									variant="outline"
 									size="sm"
 									className="self-start"
+									/*
+									 * THE WORDS THE DEAD CONVERSATION'S BOX HELD FOLLOW THE READER
+									 * (the operator's report, 2026-10-23). Clearing the selection alone
+									 * left no draft at all: the pane fell to its residue arm and the text
+									 * stayed filed under the conversation that is gone - present on disk,
+									 * addressed by nothing on screen. `startNewChat` is the store's own
+									 * answer to that rule (a draft follows the user back, or it is
+									 * discarded), and `conversationId` is the identity this pane's composer
+									 * uses - the same value `composerIdentityFor` answers here, threaded as
+									 * the pane's identity, never recomputed from the draft and session ids.
+									 */
 									onClick={() => {
 										// Read at click time rather than subscribed: this component
 										// must not re-render every time the catalogue does.
-										useCanonicalSessionsStore.getState().setActiveSession(null);
+										useCanonicalSessionsStore
+											.getState()
+											.startNewChat(conversationId);
+										/*
+										 * AND THE ADDRESS FOLLOWS (agent review round 1 / QA round 1,
+										 * Q1): the store has staged the new chat and cleared the dead
+										 * selection, so leaving the route on the dead id would make a
+										 * reload re-open the conversation this press just left.
+										 */
+										onStartNewChat?.();
 									}}
 								>
 									{t("ui.chat.canonical.transcript.start_new_chat")}

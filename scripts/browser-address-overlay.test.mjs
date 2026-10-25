@@ -124,6 +124,7 @@ const bundle = await build({
 		contents: `
 			export * from "./src/main/browser/address-overlay";
 			export * from "./src/renderer/src/features/browser/overlay/address-overlay-port";
+			export { nextStaleAttempt, STALE_LAYOUT_ATTEMPTS } from "./src/renderer/src/features/browser/overlay/stale-layout-retry";
 			export * from "./src/main/browser/address-overlay-list";
 			export * from "./src/main/browser/registry";
 			export * as electron from "electron";
@@ -159,6 +160,8 @@ const {
 	addressOverlayDocumentUrlFor,
 	addressOverlayPort,
 	isPermanentOverlayRefusal,
+	nextStaleAttempt,
+	STALE_LAYOUT_ATTEMPTS,
 	layoutKeyOf,
 	overlayBoundsFor,
 	resolveAddressOverlayGate,
@@ -1008,6 +1011,90 @@ test("S4b: a presentation-only flip lowers nothing, and the child comes back", a
 	assert.deepEqual(
 		events.map((event) => [event.type, event.reason]),
 		[["dismiss", "layout"]],
+	);
+	controller.dispose("test");
+});
+
+test("page_pointer dismisses the bound tab only, through the product door", () => {
+	// The page's own press path (browser/index.ts's `before-mouse-event`) calls
+	// this. The reason is asserted because the renderer's abandonment is keyed on
+	// the event, and a background tab's press must not lower the active field.
+	const events = [];
+	const { controller } = makeController({
+		product: true,
+		onEvent: (event) => events.push(event),
+	});
+	controller.onLayout(layout());
+	controller.dismissForTab(2, "page_pointer");
+	assert.deepEqual(
+		events,
+		[],
+		"another tab's press is not this popout's business",
+	);
+	controller.dismissForTab(1, "page_pointer");
+	assert.deepEqual(
+		events.map((event) => [event.type, event.reason]),
+		[["dismiss", "page_pointer"]],
+	);
+	controller.dispose("test");
+});
+
+test("S5: a narrow anchor that precedes its page rect resizes the hidden reusable child", async () => {
+	const events = [];
+	const {
+		controller,
+		views,
+		window: host,
+	} = makeController({
+		product: true,
+		onEvent: (event) => events.push(event),
+	});
+	host.webContents.getZoomFactor = () => 1;
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views[0];
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	assert.equal((await pending).shown, true);
+	controller.hide("test");
+
+	// Q-3: the row observer can publish x0/360 while main still owns the old
+	// x260/1120 page rect. Their 100px intersection is invalid, so the projection
+	// is refused and the child is hidden before the matching rect arrives.
+	const answer = await controller.project({
+		v: 2,
+		seq: 900,
+		tabId: 1,
+		visible: true,
+		pageRect: { ...RECT },
+		anchor: { x: 0, width: 360 },
+		active: 0,
+		view: { kind: "rows", rows: [{ text: "example.com", title: "Example" }] },
+		label: "From this browser session",
+		dir: "ltr",
+	});
+	assert.equal(answer.accepted, false);
+	assert.equal(answer.reason, "anchor_inconsistent");
+	assert.equal(view.visible, false);
+
+	const narrowRect = { ...RECT, x: 0, width: 360 };
+	controller.onLayout(layout({ contentRect: narrowRect, revision: 2 }));
+	assert.equal(
+		view.bounds.x,
+		0,
+		"the deferred narrow projection must use the matching new page rect",
+	);
+	assert.equal(view.bounds.width, 360);
+	assert.equal(
+		view.visible,
+		false,
+		"resizing must not re-open a dismissed list",
+	);
+	assert.deepEqual(
+		events.map((event) => [event.type, event.reason]),
+		[["dismiss", "layout"]],
+		"the real rect change keeps its intentional product dismissal",
 	);
 	controller.dispose("test");
 });
@@ -1937,6 +2024,58 @@ test("S2 permanent refusals are recognised, transient ones are not", () => {
 	]) {
 		assert.equal(isPermanentOverlayRefusal(reason), false, String(reason));
 	}
+});
+
+test("S5: a stale_layout refusal keeps the frame signature, so the mirror idles", () => {
+	// UX U3 (round 1): the start page and the load-failure page hide the native
+	// view, so main answers `stale_layout` for as long as the user is there. If the
+	// renderer cleared its signature on that answer, the RAF loop re-projected
+	// every frame at a main that refused every one — the storm the reviewer
+	// measured. The early return is the fix; this pins it so a later "retry on any
+	// refusal" cannot quietly come back.
+	const src = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/browser/overlay/use-address-overlay-mirror.ts",
+		),
+		"utf8",
+	);
+	assert.match(
+		src,
+		/if \(answer\.reason === "stale_layout"\) \{/,
+		"stale_layout is handled before the signature reset",
+	);
+	assert.match(
+		src,
+		/nextStaleAttempt\(/,
+		"the retry is the bounded budget, not a per-frame storm",
+	);
+	assert.match(src, /forceProject = step\.retry;/);
+});
+
+test("S5: the stale_layout budget is bounded and a real change restarts it (U11)", () => {
+	let attempts = 0;
+	const refused = () =>
+		nextStaleAttempt({ attempts, refused: true, signatureChanged: false });
+	for (let i = 0; i < STALE_LAYOUT_ATTEMPTS; i++) {
+		const step = refused();
+		assert.equal(step.retry, true, `attempt ${i + 1} retries`);
+		attempts = step.attempts;
+	}
+	const spent = refused();
+	assert.equal(spent.retry, false, "the budget stops the retry storm");
+	assert.equal(spent.attempts, STALE_LAYOUT_ATTEMPTS);
+
+	// A real projection change lands while the spent budget idles: it starts a new
+	// budget, so the next refusal gets its retries again.
+	const changed = nextStaleAttempt({
+		attempts: spent.attempts,
+		refused: false,
+		signatureChanged: true,
+	});
+	assert.equal(changed.attempts, 0);
+	attempts = changed.attempts;
+	assert.equal(refused().retry, true, "the next condition may be retried");
 });
 
 test("S2 escaping: the sanitizer, not JSON.stringify, removes line separators", () => {
