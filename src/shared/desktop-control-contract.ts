@@ -1089,11 +1089,21 @@ export type DesktopNotificationDetail = {
 	asks: Record<string, unknown>[];
 };
 
+/*
+ * Why a write left an id alone. The first four answer the PATCH; the rest are
+ * the seen route's re-checks of the evidence (contract § 6.4), each one a
+ * reason the item stays unread. Measured against the core branch's store
+ * (`notifications/*.py`) on 2026-10-25, not copied from the contract text.
+ */
 export type DesktopNotificationsSkipReason =
 	| "live_ask"
 	| "stale_revision"
 	| "unknown"
-	| "already";
+	| "already"
+	| "anchor_mismatch"
+	| "no_fresh_evidence"
+	| "stale_evidence"
+	| "no_session";
 
 /** `PATCH /v1/desktop/notifications` and `POST …/seen`. */
 export type DesktopNotificationsWriteResult = {

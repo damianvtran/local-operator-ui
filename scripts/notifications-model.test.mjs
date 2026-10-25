@@ -300,7 +300,7 @@ test("the wire: list, detail, read, dismiss and seen reach the contract's routes
 		evidence: {
 			surface: "desktop",
 			session_id: "abc123",
-			input_kind: "key",
+			input_kind: "keydown",
 			input_at_ms: 10,
 			visible_since_ms: 5,
 		},

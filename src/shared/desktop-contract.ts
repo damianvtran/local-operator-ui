@@ -1273,6 +1273,14 @@ const notificationsTarget = z.union([
 		.strict(),
 ]);
 
+/* The seen route's `input_kind` for each renderer input kind (see the endpoint). */
+const SEEN_INPUT_KIND = {
+	pointer: "pointerdown",
+	key: "keydown",
+	wheel: "wheel",
+	focus: "focus",
+} as const;
+
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
 	/*
@@ -9833,7 +9841,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 					evidence: {
 						surface: "desktop",
 						session_id: request.evidence.sessionId,
-						input_kind: request.evidence.inputKind,
+						/*
+						 * The route's vocabulary is the DOM event names (contract § 6.4:
+						 * `pointerdown`, `keydown`, a user `wheel`, window `focus`); the
+						 * renderer's short kind is mapped here, at the one boundary.
+						 */
+						input_kind: SEEN_INPUT_KIND[request.evidence.inputKind],
 						input_at_ms: request.evidence.inputAtMs,
 						visible_since_ms: request.evidence.visibleSinceMs,
 					},
