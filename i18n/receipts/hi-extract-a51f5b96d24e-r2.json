@@ -1,0 +1,364 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-translation-audit",
+  "locale": "hi",
+  "locale_name": "Hindi",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor (lopdev team)",
+  "session": "870e091b1842",
+  "instance": "hi-extract-a51f5b96d24e-r2",
+  "model": "deepseek/deepseek-flash",
+  "model_fallback": "none",
+  "model_note": "Harness session model tag deepseek/deepseek-flash; no model switch or fallback occurred during this run.",
+  "independence": "Independent auditor: I did not translate or remediate this locale and edited no catalogue, English, ledger, allowance or generated file. Every value and hash was read from git objects at the recorded heads; the only file this round adds is this receipt.",
+  "date": "2026-10-24",
+  "round": 2,
+  "scope": {
+    "pr": 1403,
+    "branch": "feat/i18n-key-remaining-copy",
+    "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+    "previous_head": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+    "head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+    "remediation": "f517ec4899..d082bd9595",
+    "keys_audited": 134,
+    "note": "Round 2 re-audits the same 134 new English keys as round 1 (hi-extract-a51f5b96d24e). The hi remediation between the two heads changes exactly 8 values in 3 namespaces; the other four namespaces are byte-identical. English and context sidecars are byte-identical for all seven. Head re-checked against git ls-remote and the PR record during the audit; both name d082bd9595."
+  },
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "supersedes": {
+    "receipt": "i18n/receipts/hi-extract-a51f5b96d24e.json",
+    "sha256": "db3c1a91d18018788b7697a383728c5568695a6ac0fbedaa82cbff6a41067384"
+  },
+  "keys_read": 134,
+  "namespace_count": 7,
+  "status": "passed",
+  "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit across the 134 audited keys. All three round-1 findings (2 minor, 1 nit, 8 values) are fixed at d082bd9595 exactly as proposed; the four unchanged namespaces are byte-identical to the round-1 receipt; no new finding was introduced.",
+  "findings_totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "round1_findings_totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "resolved_findings_total": 3,
+  "resolved_keys_total": 8,
+  "remediation_verification": [
+    {
+      "key": "ui.chat.composer.tip.canvas",
+      "previous": "दस्तावेज़ को कैनवास में खोलें ताकि वह चैट के बगल में बना रहे",
+      "current": "दस्तावेज़ को Canvas में खोलें ताकि वह चैट के बगल में बना रहे",
+      "matches_proposal": true
+    },
+    {
+      "key": "ui.common.viewer.close",
+      "previous": "{kind, select, image {छवि बंद करें} asset {एसेट बंद करें} other {बंद करें}}",
+      "current": "{kind, select, image {तस्वीर बंद करें} asset {एसेट बंद करें} other {बंद करें}}",
+      "matches_proposal": true
+    },
+    {
+      "key": "ui.common.viewer.next",
+      "previous": "{kind, select, image {अगली छवि} asset {अगला एसेट} other {अगला}}",
+      "current": "{kind, select, image {अगली तस्वीर} asset {अगला एसेट} other {अगला}}",
+      "matches_proposal": true
+    },
+    {
+      "key": "ui.common.viewer.previous",
+      "previous": "{kind, select, image {पिछली छवि} asset {पिछला एसेट} other {पिछला}}",
+      "current": "{kind, select, image {पिछली तस्वीर} asset {पिछला एसेट} other {पिछला}}",
+      "matches_proposal": true
+    },
+    {
+      "key": "ui.common.viewer.position",
+      "previous": "{kind, select, image {छवि {index, number, ::group-off} / {count, number, ::group-off}} asset {एसेट {index, number, ::group-off} / {count, number, ::group-off}} other {छवि {index, number, ::group-off} / {count, number, ::group-off}}}",
+      "current": "{kind, select, image {तस्वीर {index, number, ::group-off} / {count, number, ::group-off}} asset {एसेट {index, number, ::group-off} / {count, number, ::group-off}} other {तस्वीर {index, number, ::group-off} / {count, number, ::group-off}}}",
+      "matches_proposal": true
+    },
+    {
+      "key": "ui.chat.device.sentence.gone_did_not_answer",
+      "previous": "यह बातचीत {name} पर चली गई, जिसने पिछली रीडिंग का जवाब नहीं दिया। यहाँ जो प्रति थी वह हटा दी गई। उसे यहाँ वापस लाने के लिए क्लिक करें।",
+      "current": "यह बातचीत {name} पर चली गई, जिसने पिछली बार पढ़ने पर जवाब नहीं दिया। यहाँ जो प्रति थी वह हटा दी गई। उसे यहाँ वापस लाने के लिए क्लिक करें।",
+      "matches_proposal": true
+    },
+    {
+      "key": "ui.chat.device.sentence.remote_did_not_answer",
+      "previous": "यह बातचीत {name} पर चलती है, जिसने पिछली रीडिंग का जवाब नहीं दिया।",
+      "current": "यह बातचीत {name} पर चलती है, जिसने पिछली बार पढ़ने पर जवाब नहीं दिया।",
+      "matches_proposal": true
+    },
+    {
+      "key": "ui.chat.device.sentence.remote_did_not_answer_reason",
+      "previous": "यह बातचीत {name} पर चलती है, जिसने पिछली रीडिंग का जवाब नहीं दिया ({reason})।",
+      "current": "यह बातचीत {name} पर चलती है, जिसने पिछली बार पढ़ने पर जवाब नहीं दिया ({reason})।",
+      "matches_proposal": true
+    }
+  ],
+  "observations": [
+    "Read-only audit from git objects at d082bd9595: nothing was checked out, reset or edited, and the only file this round adds is this receipt.",
+    "The hi remediation f517ec4899..d082bd9595 changes exactly 8 values in 3 files: 1 in ui.chat.composer (tip.canvas), 3 in ui.chat.device (did-not-answer sentences), 4 in ui.common.viewer (image arms). Between the two heads no key was added or removed in any hi catalogue, and no other hi catalogue file changed.",
+    "The four unchanged namespaces — ui.chat.dialogs (6 audited keys), ui.chat.directory (43), ui.chat (36), ui.chat.sidebar (1) — have a target sha256 exactly equal to the round-1 receipt. Their English and context sidecars are also byte-identical; their round-1 findings (none) and observations are carried, not re-derived.",
+    "Key-set parity for the seven files against English: 66/66, 14/14, 10/10, 43/43, 44/44, 44/44, 8/8 — 0 missing, 0 extra.",
+    "ICU re-check of all 134 audited keys with @formatjs/icu-messageformat-parser: argument names/types, select arm sets, plural arms/offsets and number skeletons are identical to English in 134/134. Every select arm of every hi message was rendered with intl-messageformat without error; this covers the four select keys in ui.common.viewer and the three in ui.chat.",
+    "Placeholder integrity for the 8 changed values: {name} (3 device sentences), {reason} (reason variant) and {kind}/{index}/{count} in the four viewer select messages are byte-exact; the reason parentheses are kept; the group-off skeleton is byte-identical in all six numeric positions.",
+    "No छवि and no कैनवास remain anywhere in src/i18n/catalogues/hi. Canvas occurs only in the three product-pane values (the composer tip, ui.chat.canonical.supplement.file_actions.open_in_canvas and ui.common.file_actions.show_in_canvas), which the English sidecars pin as untranslated; तस्वीर is the only image term in the viewer and matches the shipped canvas/library values.",
+    "Typography and register: danda, ellipsis, em dash and middle dot preserved; no failure word added to the unanswered-read sentences; NFC-stable, no ZWJ/ZWNJ or bidi controls, no double spaces; आप register throughout the changed values.",
+    "Width at 13 px (hb-shape; SF Pro for en, Devanagari Sangam MN for hi): tip.canvas 286 vs en 317 (old 280, +6 from the fix); device sentences 678/355/412 vs en 743/382/439; viewer labels 65/62/63/56 vs en 69/63/85/69. No added overflow.",
+    "Freshness: d082bd9595 is the current PR #1403 head (git ls-remote and gh pr view agree); the review scope is base 3d0e9010..head d082bd9595."
+  ],
+  "measurements": {
+    "tool": "hb-shape 13px; en = /System/Library/Fonts/SFNS.ttf, hi = Devanagari Sangam MN (Kohinoor cross-check)",
+    "changed_strings_px": {
+      "ui.chat.composer.tip.canvas": {
+        "en": 317,
+        "hi_previous": 280,
+        "hi_current": 286
+      },
+      "ui.chat.device.sentence.gone_did_not_answer": {
+        "en": 743,
+        "hi_previous": 665,
+        "hi_current": 678
+      },
+      "ui.chat.device.sentence.remote_did_not_answer": {
+        "en": 382,
+        "hi_previous": 342,
+        "hi_current": 355
+      },
+      "ui.chat.device.sentence.remote_did_not_answer_reason": {
+        "en": 439,
+        "hi_previous": 399,
+        "hi_current": 412
+      },
+      "ui.common.viewer.close": {
+        "en": 69,
+        "hi_current": 65
+      },
+      "ui.common.viewer.next": {
+        "en": 63,
+        "hi_current": 62
+      },
+      "ui.common.viewer.previous": {
+        "en": 85,
+        "hi_current": 63
+      },
+      "ui.common.viewer.position": {
+        "en": 69,
+        "hi_current": 56
+      }
+    }
+  },
+  "namespaces": {
+    "ui.chat.composer": {
+      "status": "passed",
+      "keys_read": 30,
+      "namespace_key_count": 66,
+      "sha256": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c",
+        "hi": "2d7873a7ab5a8c793cbed81509369d26e8e4c2406d25a54ed5259443c67bed14"
+      },
+      "round1_target_sha256": "2dfd3ef065503bd2791553e66d5b5f59484893b181c97f33397f6551a498a8a8",
+      "target_byte_identical_to_round1": false,
+      "en_byte_identical_to_round1": true,
+      "context_byte_identical_to_round1": true,
+      "findings": [],
+      "verdict": "clean — round-1 minor resolved (Canvas); 0 open findings",
+      "round1_findings": [
+        {
+          "severity": "minor",
+          "key": "ui.chat.composer.tip.canvas",
+          "current": "दस्तावेज़ को कैनवास में खोलें ताकि वह चैट के बगल में बना रहे",
+          "proposed": "दस्तावेज़ को Canvas में खोलें ताकि वह चैट के बगल में बना रहे",
+          "reason": "Glossary drift: the shipped hi copy keeps the product destination as `Canvas` (`ui.chat.canonical.supplement.file_actions.open_in_canvas` = “Canvas में खोलें”; `ui.common.file_actions.show_in_canvas` = “Canvas में दिखाएँ”). “कैनवास” is the only transliteration and names the same destination differently."
+        }
+      ],
+      "resolved": [
+        {
+          "severity": "minor",
+          "keys": [
+            "ui.chat.composer.tip.canvas"
+          ],
+          "previous": "दस्तावेज़ को कैनवास में खोलें ताकि वह चैट के बगल में बना रहे",
+          "current": "दस्तावेज़ को Canvas में खोलें ताकि वह चैट के बगल में बना रहे",
+          "matches_proposal": true,
+          "fixed_at_head": "d082bd9595"
+        }
+      ],
+      "observations": "All 30 audited keys re-read at d082bd9595. tip.canvas now says Canvas, matching the product pane name that the English sidecars pin as untranslated (ui.chat.canonical.context.json: ‘Canvas is the product’s own pane name and stays untranslated’; the same note in ui.common.file_actions.context.json) and the two shipped hi values ui.chat.canonical.supplement.file_actions.open_in_canvas and ui.common.file_actions.show_in_canvas. कैनवास now occurs 0 times in src/i18n/catalogues/hi. The other 29 audited values and the file’s 36 non-scope rows are byte-identical to round 1. ICU-free; tip.canvas measures 286 px vs en 317 px at 13 px (old 280 px), inside the pool’s measured widths (round-1 maximum 352 px). No new finding."
+    },
+    "ui.chat.device": {
+      "status": "passed",
+      "keys_read": 14,
+      "namespace_key_count": 14,
+      "sha256": {
+        "en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+        "context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce",
+        "hi": "78a8a76817f7d5c9f7619b8da1944c738c3e252008b8ed7371229c5ea63b3806"
+      },
+      "round1_target_sha256": "8d3d4124509052fee9291d656dde0664e533aac75eae72f5595661a5c883148b",
+      "target_byte_identical_to_round1": false,
+      "en_byte_identical_to_round1": true,
+      "context_byte_identical_to_round1": true,
+      "findings": [],
+      "verdict": "clean — round-1 nit resolved across 3 sentences; 0 open findings",
+      "round1_findings": [
+        {
+          "severity": "nit",
+          "key": "ui.chat.device.sentence.remote_did_not_answer",
+          "current": "यह बातचीत {name} पर चलती है, जिसने पिछली रीडिंग का जवाब नहीं दिया।",
+          "proposed": "यह बातचीत {name} पर चलती है, जिसने पिछली बार पढ़ने पर जवाब नहीं दिया।",
+          "also_keys": [
+            "ui.chat.device.sentence.remote_did_not_answer_reason",
+            "ui.chat.device.sentence.gone_did_not_answer"
+          ],
+          "reason": "Calque: a device answers a request, not a reading (“रीडिंग का जवाब देना”). Understandable, and it correctly adds no failure word; the clause still reads translated. The same clause recurs in the two variant keys."
+        }
+      ],
+      "resolved": [
+        {
+          "severity": "nit",
+          "keys": [
+            "ui.chat.device.sentence.remote_did_not_answer",
+            "ui.chat.device.sentence.remote_did_not_answer_reason",
+            "ui.chat.device.sentence.gone_did_not_answer"
+          ],
+          "previous": "…जिसने पिछली रीडिंग का जवाब नहीं दिया…",
+          "current": "…जिसने पिछली बार पढ़ने पर जवाब नहीं दिया…",
+          "matches_proposal": true,
+          "fixed_at_head": "d082bd9595"
+        }
+      ],
+      "observations": "All 14 values re-read. The three did-not-answer sentences now use ‘पिछली बार पढ़ने पर जवाब नहीं दिया’, removing the रीडिंग का nominal calque without adding a failure word, as the sidecar requires (‘An unanswered read is not an offline device … do not add a failure word’). {name} and {reason} are byte-exact and the reason parentheses are kept in all three. The other 11 values, and every row outside the three sentences, are byte-identical to round 1; the maxCells labels are unchanged. No new finding."
+    },
+    "ui.chat.dialogs": {
+      "status": "passed",
+      "keys_read": 6,
+      "namespace_key_count": 10,
+      "sha256": {
+        "en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+        "context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299",
+        "hi": "26e31a919dbe2d5514fca8e2e80c47b26f9b44532bf8a90822c9a779213c125d"
+      },
+      "round1_target_sha256": "26e31a919dbe2d5514fca8e2e80c47b26f9b44532bf8a90822c9a779213c125d",
+      "target_byte_identical_to_round1": true,
+      "en_byte_identical_to_round1": true,
+      "context_byte_identical_to_round1": true,
+      "findings": [],
+      "verdict": "clean — unchanged from round 1; target, English and context byte-identical to the round-1 receipt",
+      "round1_findings": [],
+      "carried_observations_from_round1": "6 keys; `यह बातचीत मिटाएँ?` is the exact phrasing already shipped at `ui.agents.dialogs.clear.title`, so the question-mark imperative is house style, not a new defect."
+    },
+    "ui.chat.directory": {
+      "status": "passed",
+      "keys_read": 43,
+      "namespace_key_count": 43,
+      "sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8",
+        "hi": "4ba675e1406af432d21830a4a49609399683cc2f4109c3556ff3992f9a05df6c"
+      },
+      "round1_target_sha256": "4ba675e1406af432d21830a4a49609399683cc2f4109c3556ff3992f9a05df6c",
+      "target_byte_identical_to_round1": true,
+      "en_byte_identical_to_round1": true,
+      "context_byte_identical_to_round1": true,
+      "findings": [],
+      "verdict": "clean — unchanged from round 1; target, English and context byte-identical to the round-1 receipt",
+      "round1_findings": [],
+      "carried_observations_from_round1": "43 keys; ten filesystem identifiers byte-identical to English (etc, media, mnt, opt, ProgramData, Program Files, Program Files (x86), srv, usr, var) and no other new value byte-identical. Four longest translated folder labels measured at 13px: users 55 vs 32 (the only one wider; the menu is 320px with a truncating path column), applications 49 vs 69, documents 39 vs 64, library 35 vs 38. No overflow."
+    },
+    "ui.chat": {
+      "status": "passed",
+      "keys_read": 36,
+      "namespace_key_count": 44,
+      "sha256": {
+        "en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+        "context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424",
+        "hi": "74c236de7e8ab8ff559509ea74ecc9cf265851a73467b0b22c361524717f9bac"
+      },
+      "round1_target_sha256": "74c236de7e8ab8ff559509ea74ecc9cf265851a73467b0b22c361524717f9bac",
+      "target_byte_identical_to_round1": true,
+      "en_byte_identical_to_round1": true,
+      "context_byte_identical_to_round1": true,
+      "findings": [],
+      "verdict": "clean — unchanged from round 1; target, English and context byte-identical to the round-1 receipt",
+      "round1_findings": [],
+      "carried_observations_from_round1": "36 keys; 3 select keys keep every arm and the kind/number skeleton exact; no plurals in this batch. Dismiss maps to बंद करें, the shipped majority (13 of 18 existing Dismiss/Close keys)."
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "keys_read": 1,
+      "namespace_key_count": 44,
+      "sha256": {
+        "en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+        "context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de",
+        "hi": "803e8e97f2fa3843ef81f6af485ede51b95ca88d349638f8d9810f22059b894f"
+      },
+      "round1_target_sha256": "803e8e97f2fa3843ef81f6af485ede51b95ca88d349638f8d9810f22059b894f",
+      "target_byte_identical_to_round1": true,
+      "en_byte_identical_to_round1": true,
+      "context_byte_identical_to_round1": true,
+      "findings": [],
+      "verdict": "clean — unchanged from round 1; target, English and context byte-identical to the round-1 receipt",
+      "round1_findings": [],
+      "carried_observations_from_round1": "1 key; मौजूदा चैट matches the locale's 40 मौजूदा uses."
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "keys_read": 4,
+      "namespace_key_count": 8,
+      "sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5",
+        "hi": "b75b08e7838283cadb563c789de0dedfc1bdd8832e82332b7b47ccd687b3adcb"
+      },
+      "round1_target_sha256": "758a5c5ce0d949127cbf9319d61acbe5a0035a3226a6df126ccd4b14b5a24d14",
+      "target_byte_identical_to_round1": false,
+      "en_byte_identical_to_round1": true,
+      "context_byte_identical_to_round1": true,
+      "findings": [],
+      "verdict": "clean — round-1 minor resolved (all four image arms use तस्वीर); 0 open findings",
+      "round1_findings": [
+        {
+          "severity": "minor",
+          "key": "ui.common.viewer.close",
+          "current": "{kind, select, image {छवि बंद करें} asset {एसेट बंद करें} other {बंद करें}}",
+          "proposed": "{kind, select, image {तस्वीर बंद करें} asset {एसेट बंद करें} other {बंद करें}}",
+          "also_keys": [
+            "ui.common.viewer.next",
+            "ui.common.viewer.previous",
+            "ui.common.viewer.position"
+          ],
+          "reason": "Glossary drift: the shipped hi catalogue maps “image” to “तस्वीर” (`ui.canvas.files.images` = “तस्वीरें”; `ui.canvas.files.imageActions` = “तस्वीर की कार्रवाइयाँ”; `ui.library.category.images` = “तस्वीरें”), while these four new viewer arms use “छवि”. Standardise on the already-shipped तस्वीर, or re-audit the other keys if छवि is preferred."
+        }
+      ],
+      "resolved": [
+        {
+          "severity": "minor",
+          "keys": [
+            "ui.common.viewer.close",
+            "ui.common.viewer.next",
+            "ui.common.viewer.previous",
+            "ui.common.viewer.position"
+          ],
+          "previous": "छवि (4 image arms)",
+          "current": "तस्वीर (4 image arms)",
+          "matches_proposal": true,
+          "fixed_at_head": "d082bd9595"
+        }
+      ],
+      "observations": "All four image arms now use तस्वीर, the shipped rendering for image (ui.canvas.files.images, ui.canvas.files.imageActions, ui.library.category.images); छवि occurs 0 times in src/i18n/catalogues/hi at head. The three select keys keep exactly the image/asset/other arms and the group-off number skeletons; position keeps the compact ‘तस्वीर {index} / {count}’ counter already used by ui.projects.project_updates.show_asset_name. अगली/पिछली agree with feminine तस्वीर. Labels measure 65/62/63/56 px vs en 69/63/85/69. The four non-scope keys in the file are byte-identical to round 1. No new finding."
+    }
+  }
+}
