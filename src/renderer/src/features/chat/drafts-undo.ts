@@ -31,6 +31,8 @@
  * discard replacing it (the store keeps ONE slot, `DraftsUndoOffer`).
  */
 
+import { t } from "../../../../i18n";
+
 /**
  * The count an offer prints, with the verb left outside it.
  *
@@ -40,8 +42,9 @@
  * the verb — the half that says what happened.
  */
 export function draftsOfferedName(count: number): string {
-	return count === 1 ? "Draft" : `${count} drafts`;
+	return t("ui.notices.chat.drafts_offered_name", { count });
 }
 
 /** The verb a discard offer prints after the count. One home for the copy. */
-export const DRAFTS_OFFERED_VERB = "discarded.";
+export const draftsOfferedVerb = (): string =>
+	t("ui.notices.chat.drafts_offered_verb");

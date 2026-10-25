@@ -8,6 +8,7 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { systemPromptQueryKey } from "./use-system-prompt";
@@ -66,7 +67,7 @@ export const useUpdateSystemPrompt = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			showSuccessToast("System prompt updated");
+			showSuccessToast(t("ui.notices.settings.system_prompt_updated"));
 		},
 		onError: (error) => {
 			console.error("Error updating system prompt:", error);

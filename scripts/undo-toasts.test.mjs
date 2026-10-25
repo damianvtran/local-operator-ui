@@ -162,7 +162,7 @@ const STUB_CONTENTS = {
    of this file's cases reach it (each overrides the store action it is about), so
    a refusal-shaped default would be a second instrument; it answers an empty ok. */
 export const desktopResult = request => globalThis.__ack(request);`,
-	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled, desktopFeatureState} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled, desktopFeatureState, desktopKeys} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
 	)}
 export const useDesktopCapabilities = () => ({ data: { desktop_available: true, features: {} }, error: null, isLoading: false, refetch: async () => undefined });`,

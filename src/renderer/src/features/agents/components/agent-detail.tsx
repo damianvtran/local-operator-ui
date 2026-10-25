@@ -299,8 +299,8 @@ function AgentClassControl({
 			onChanged(profile.name);
 			showSuccessToast(
 				next === "proactive"
-					? `${displayedName} is now proactive — it may message you on its own.`
-					: `${displayedName} is now reactive — proactive messaging stopped.`,
+					? t("ui.notices.agents.proactive", { name: displayedName })
+					: t("ui.notices.agents.reactive", { name: displayedName }),
 			);
 		} catch (caught) {
 			/*
@@ -737,7 +737,7 @@ export function AgentDetail({
 			// the base so a second save in the same session is not a stale compare.
 			baseRevisionRef.current = result.definition_revision;
 			onSaved(result.name);
-			showSuccessToast(`Saved ${result.name}.`);
+			showSuccessToast(t("ui.notices.agents.saved", { name: result.name }));
 			// Focus lands on the pane's heading rather than `body`: the pressed
 			// button unmounts with the edit mode (UX U8).
 			requestAnimationFrame(() => headingRef.current?.focus());
@@ -799,9 +799,7 @@ export function AgentDetail({
 				status < 500;
 			setUnconfirmed(!definitive);
 			if (!definitive) {
-				showErrorToast(
-					"The save could not be confirmed. Check whether it was applied before retrying.",
-				);
+				showErrorToast(t("ui.notices.agents.save_unconfirmed"));
 			}
 		} finally {
 			setPending(false);
@@ -822,7 +820,7 @@ export function AgentDetail({
 			setBase(next);
 			setDraft(next);
 			onSaved(result.name);
-			showSuccessToast(`Installed ${result.name}. It can be edited now.`);
+			showSuccessToast(t("ui.notices.agents.installed", { name: result.name }));
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
@@ -1478,7 +1476,9 @@ export function AgentCreate({
 					delegate: draft.delegate,
 				},
 			});
-			showSuccessToast(`Created ${result.name}.`);
+			showSuccessToast(
+				t("ui.notices.agents.created_named", { name: result.name }),
+			);
 			/*
 			 * The pane the page is about to open takes the caret (QA round 1, Q7): the
 			 * create form cannot focus a heading that does not exist yet.

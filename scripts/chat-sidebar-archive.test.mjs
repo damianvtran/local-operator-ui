@@ -432,7 +432,10 @@ test("a refused press is reported once, as an ordinary sonner toast, with a retr
 	 * merged into the dying entry and destroyed inside sonner's own unmount window.
 	 * Both actions therefore only send their write; the replacement is sonner's update.
 	 */
-	for (const label of ['label: "Retry"', 'label: "Undo"']) {
+	for (const label of [
+		'label: t("ui.common.actions.retry")',
+		'label: t("ui.notices.chat.undo")',
+	]) {
 		const at = failure.indexOf(label);
 		assert.notEqual(at, -1, `${label} is not in the archive effect`);
 		const press = failure.slice(at, failure.indexOf("setSessionArchived", at));
@@ -470,7 +473,7 @@ test("the offer's card truncates its NAME and can never truncate the verb (agent
 	// The name and the verb are two elements: a single string that overflows loses its
 	// TAIL, and the tail of `“<title>” archived.` is the verb.
 	assert.match(offer, /archiveOfferedName\(archiveUndo\.title\)/);
-	assert.match(offer, /ARCHIVE_OFFERED_VERB/);
+	assert.match(offer, /archiveOfferedVerb\(\)/);
 	assert.match(offer, /className=\{cn\("min-w-0 truncate"\)\}/);
 	assert.equal(
 		offer.includes("archiveOfferedText"),

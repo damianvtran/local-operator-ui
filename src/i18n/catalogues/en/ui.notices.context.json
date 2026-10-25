@@ -1,0 +1,738 @@
+{
+	"ui.notices.agents.config_run_changed": {
+		"role": "success toast body after a configuration run that created definitions",
+		"tone": "Factual receipt with a count.",
+		"length": "One sentence; toast card width.",
+		"note": "Names the outcome as changed because at least one definition was newly created. Count is the number of definitions the run touched.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.notices.agents.config_run_updated": {
+		"role": "success toast body after a configuration run that only updated definitions",
+		"tone": "Factual receipt with a count.",
+		"length": "One sentence; toast card width.",
+		"note": "Used when no definition was created, only updated. Same count as config_run_changed.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.notices.agents.created": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "A new agent definition was written. No name is shown in this arm.",
+		"placeholders": {}
+	},
+	"ui.notices.agents.created_named": {
+		"role": "success toast body with the created agent's name",
+		"tone": "Short past-tense confirmation.",
+		"length": "One short sentence; toast card.",
+		"note": "A new agent definition was written; the name is user data and must not be translated.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.agents.deleted": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "An agent definition was deleted.",
+		"placeholders": {}
+	},
+	"ui.notices.agents.exported": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "An agent definition was exported to a file.",
+		"placeholders": {}
+	},
+	"ui.notices.agents.imported": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "An agent definition was imported from a file.",
+		"placeholders": {}
+	},
+	"ui.notices.agents.installed": {
+		"role": "success toast body with the installed agent's name",
+		"tone": "Confirmation plus what the reader can now do.",
+		"length": "One short sentence; toast card.",
+		"note": "An agent was installed into the editable set. The name is user data.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.agents.proactive": {
+		"role": "success toast body after enabling proactive messaging",
+		"tone": "Factual consequence, not a warning.",
+		"length": "One sentence; toast card.",
+		"note": "The agent may now start conversations on its own. The name is user data.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.agents.reactive": {
+		"role": "success toast body after disabling proactive messaging",
+		"tone": "Factual consequence; reassuring, not celebratory.",
+		"length": "One sentence; toast card.",
+		"note": "Proactive messaging is off for this agent. The name is user data.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.agents.save_unconfirmed": {
+		"role": "error toast body for an ambiguous save",
+		"tone": "Honest uncertainty with the check the reader can make.",
+		"length": "Two sentences; toast card.",
+		"note": "A transport failure or timeout means the write may or may not have landed. Never state it failed; names the verification step.",
+		"placeholders": {}
+	},
+	"ui.notices.agents.saved": {
+		"role": "success toast body with the saved agent's name",
+		"tone": "Short past-tense confirmation.",
+		"length": "One short sentence; toast card.",
+		"note": "An edit to an agent definition was saved. The name is user data.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.agents.system_prompt_updated": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Short phrase; toast card.",
+		"note": "An agent's system prompt was saved.",
+		"placeholders": {}
+	},
+	"ui.notices.agents.updated": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "An agent definition was updated.",
+		"placeholders": {}
+	},
+	"ui.notices.aida.unreachable": {
+		"role": "error toast body",
+		"tone": "Plain diagnosis; no blame, no exception text.",
+		"length": "One short sentence; error-toast width.",
+		"note": "Shown when an Aida control request fails without an authored backend detail. The fallback half of userFacingMessage; backend-authored detail wins when present.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.answer_changed": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "The user edited an answer and the change was applied.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.archive_failed": {
+		"role": "warning toast body for a refused archive",
+		"tone": "States the failed act; a retry control follows.",
+		"length": "One sentence; toast card.",
+		"note": "Archive was refused. The title is conversation/user data; backend detail is appended separately when present.",
+		"placeholders": {
+			"title": "string"
+		}
+	},
+	"ui.notices.chat.archive_offered_no_name": {
+		"role": "generic noun in an archive confirmation when the conversation has no title",
+		"tone": "Neutral noun; no quotation marks.",
+		"length": "One word; toast card.",
+		"note": "Stands in for a conversation title this client does not know. Not an error; keep it a plain noun.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.archive_offered_verb": {
+		"role": "fixed tail of the archive-undo toast body",
+		"tone": "Past-tense verb closing the sentence begun by the conversation name.",
+		"length": "One word plus full stop; must stay short so truncation never eats it.",
+		"note": "Rendered as a non-truncating tail after the conversation name, which is allowed to ellipsise. Keep it a verb phrase, not a sentence.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.ask_answered": {
+		"role": "success toast receipt prefix when a fleet answer was delivered",
+		"tone": "Short past-tense verb phrase.",
+		"length": "Short phrase; toast card.",
+		"note": "Used alone only when the conversation's name is unknown; the named variant is preferred.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.ask_answered_named": {
+		"role": "success toast receipt naming the conversation the answer reached",
+		"tone": "Short past-tense verb phrase plus place.",
+		"length": "One short line; toast card.",
+		"note": "The name is a conversation title, user data, and must not be translated.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.chat.ask_changed": {
+		"role": "success toast receipt prefix when a fleet answer revision was delivered",
+		"tone": "Short past-tense verb phrase.",
+		"length": "Short phrase; toast card.",
+		"note": "Used alone only when the conversation's name is unknown.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.ask_changed_named": {
+		"role": "success toast receipt naming the conversation the revision reached",
+		"tone": "Short past-tense verb phrase plus place.",
+		"length": "One short line; toast card.",
+		"note": "The name is a conversation title, user data, and must not be translated.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.chat.ask_declined": {
+		"role": "success toast body for a declined fleet ask when the conversation name is unknown",
+		"tone": "Short receipt.",
+		"length": "Short phrase; toast card.",
+		"note": "No conversation name available, so the sentence ends after the preposition. Pair with ask_declined_named.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.ask_declined_named": {
+		"role": "success toast body for a declined fleet ask",
+		"tone": "Short receipt naming where the answer went.",
+		"length": "One short phrase; toast card.",
+		"note": "The name is the target conversation title, user data, appended after the fixed verb phrase.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.chat.ask_dismissed": {
+		"role": "success toast body for a dismissed fleet ask when the conversation name is unknown",
+		"tone": "Short receipt.",
+		"length": "Short phrase; toast card.",
+		"note": "No conversation name available, so the sentence ends after the preposition. Pair with ask_dismissed_named.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.ask_dismissed_named": {
+		"role": "success toast body for a dismissed fleet ask",
+		"tone": "Short receipt naming where the answer went.",
+		"length": "One short phrase; toast card.",
+		"note": "The name is the target conversation title, user data, appended after the fixed verb phrase.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.chat.drafts_offered_name": {
+		"role": "count and noun at the head of the drafts-discard toast",
+		"tone": "Neutral count, sentence case.",
+		"length": "Two words or a number plus noun; the head may truncate.",
+		"note": "Followed by the fixed verb drafts_offered_verb. Count is the number of discarded drafts.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.notices.chat.drafts_offered_verb": {
+		"role": "fixed tail of the drafts-discard toast body",
+		"tone": "Past-tense verb closing the sentence begun by the count.",
+		"length": "One word plus full stop; must stay short so truncation never eats it.",
+		"note": "Rendered as a non-truncating tail; the count head may ellipsise.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.goal_clear_failed": {
+		"role": "error toast prefix when clearing the session goal fails",
+		"tone": "Plain failure naming the control's act.",
+		"length": "Short phrase; leads the toast before the backend's reason.",
+		"note": "The backend's own reason follows this prefix, separated by a colon by the caller; keep it a fragment that reads as the start of one sentence.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.goal_cleared": {
+		"role": "info toast body confirming a goal was cleared",
+		"tone": "Factual confirmation followed by the goal's own leading words.",
+		"length": "One line; the goal clip may ellipsise.",
+		"note": "The goal text is user data, already clipped before interpolation. The separator is a middot with spaces.",
+		"placeholders": {
+			"goal": "string"
+		}
+	},
+	"ui.notices.chat.goal_dismiss_failed": {
+		"role": "error toast prefix when dismissing the goal fails",
+		"tone": "Plain failure naming the act.",
+		"length": "Short phrase; leads the toast before the backend's reason.",
+		"note": "The backend's own reason follows this prefix.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.goal_done": {
+		"role": "info toast body confirming a goal was marked done",
+		"tone": "Factual confirmation plus the recovery path.",
+		"length": "One line at toast width; the goal clip may shorten.",
+		"note": "Names where the goal went and the command that sets it again. Goal text is user data; /goal is a literal command and must not be translated.",
+		"placeholders": {
+			"goal": "string"
+		}
+	},
+	"ui.notices.chat.goal_done_failed": {
+		"role": "error toast prefix when marking the goal done fails",
+		"tone": "Plain failure naming the act.",
+		"length": "Short phrase; leads the toast before the backend's reason.",
+		"note": "The backend's own reason follows this prefix.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.mark_all_read_cleared": {
+		"role": "success toast body for a bulk read acknowledgement",
+		"tone": "Factual receipt with a count.",
+		"length": "One sentence; toast card.",
+		"note": "Count is the number of chats whose unread marks were cleared. Followed by zero or more remainder sentences.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.notices.chat.mark_all_read_deferred": {
+		"role": "remainder sentence in a bulk read receipt",
+		"tone": "Neutral explanation of a deferral, not a failure.",
+		"length": "One sentence; toast card.",
+		"note": "Some marks live on other devices and will clear when those devices update. Count is that number.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.notices.chat.mark_all_read_none_cleared": {
+		"role": "warning toast lead when no mark was cleared",
+		"tone": "Plain outcome; no blame.",
+		"length": "Three words; toast card.",
+		"note": "Lead of a warning receipt; remainder sentences are appended after it.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.mark_all_read_nothing": {
+		"role": "info toast body when the bulk action had nothing to do",
+		"tone": "Neutral outcome.",
+		"length": "Three words; toast card.",
+		"note": "A request-level fact, not a claim that no unread marks exist on screen.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.mark_all_read_superseded": {
+		"role": "remainder sentence in a bulk read receipt",
+		"tone": "Neutral explanation of unchanged marks.",
+		"length": "One sentence; toast card.",
+		"note": "A newer result arrived before the acknowledgement, so those marks stay unread. Count is that number.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.notices.chat.mark_all_read_unknown": {
+		"role": "remainder sentence in a bulk read receipt",
+		"tone": "Neutral explanation of a failed clear.",
+		"length": "One sentence; toast card.",
+		"note": "Those marks could not be cleared and remain unread. Count is that number.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.notices.chat.seed_invalid": {
+		"role": "error toast body for an invalid seed field",
+		"tone": "Direct validation refusal.",
+		"length": "One short sentence; toast card.",
+		"note": "The seed field accepts numbers only. Technical field name 'seed' stays as the backend names it.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.send_in_flight": {
+		"role": "info/error toast body while the previous message is still sending",
+		"tone": "Plain statement of the held state.",
+		"length": "One short sentence; toast card.",
+		"note": "Explains why a new message was not sent. It is not a refusal of the message's content.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.unarchive_failed": {
+		"role": "warning toast body for a refused unarchive",
+		"tone": "States the failed act; a retry control follows.",
+		"length": "One sentence; toast card.",
+		"note": "Unarchive was refused. The title is conversation/user data; backend detail is appended separately when present.",
+		"placeholders": {
+			"title": "string"
+		}
+	},
+	"ui.notices.chat.undo": {
+		"role": "toast action button label",
+		"tone": "Short reversal verb.",
+		"length": "One word.",
+		"note": "Puts back the state the toast is about. Not a generic app-wide Undo menu item.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.unread_backend_silent": {
+		"role": "fallback clause inside an unread-clear failure toast",
+		"tone": "Plain diagnosis of a non-answering backend.",
+		"length": "One short sentence, followed by another clause.",
+		"note": "Used only when the failure carries no authored sentence. Composed into unread_not_cleared.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.unread_not_cleared": {
+		"role": "warning toast body when clearing unread marks failed",
+		"tone": "Both facts: why it failed and that nothing changed.",
+		"length": "Two clauses; toast card.",
+		"note": "The reason clause is either an authored backend sentence or unread_backend_silent. The second clause is fixed and must stay.",
+		"placeholders": {
+			"reason": "string"
+		}
+	},
+	"ui.notices.credentials.removed": {
+		"role": "warning toast body after clearing a credential reference",
+		"tone": "Factual reference plus the offer to restore it.",
+		"length": "One short line; toast card.",
+		"note": "The index is the number the control the user pressed shows. 'Credential' is product vocabulary, not user data.",
+		"placeholders": {
+			"index": "number"
+		}
+	},
+	"ui.notices.credentials.stored": {
+		"role": "success toast body after a credential was captured",
+		"tone": "Confirmation plus how it is used and its safety.",
+		"length": "Two sentences; toast card.",
+		"note": "The keys are environment variable names, machine identifiers, joined with commas. Never translate key names or 'bash'.",
+		"placeholders": {
+			"keys": "string"
+		}
+	},
+	"ui.notices.credentials.unconfirmed": {
+		"role": "warning toast body when a credential store did not confirm the write",
+		"tone": "Honest uncertainty plus the retry that works.",
+		"length": "Two sentences; toast card.",
+		"note": "Count is the number of keys; keys are machine identifiers. The literal command '/credential' must not be translated.",
+		"placeholders": {
+			"count": "number",
+			"keys": "string"
+		}
+	},
+	"ui.notices.credentials.unstored": {
+		"role": "warning toast body when a credential store refused the write",
+		"tone": "Refusal plus the retry that works.",
+		"length": "Two sentences; toast card.",
+		"note": "Count is the number of keys; keys are machine identifiers. The literal command '/credential' must not be translated.",
+		"placeholders": {
+			"count": "number",
+			"keys": "string"
+		}
+	},
+	"ui.notices.credentials.updated": {
+		"role": "success toast body after a credential value was saved",
+		"tone": "Short confirmation naming the key.",
+		"length": "One short sentence; toast card.",
+		"note": "The key is a machine identifier (environment variable name) and must not be translated.",
+		"placeholders": {
+			"key": "string"
+		}
+	},
+	"ui.notices.files.already_exists": {
+		"role": "error toast body when file creation collides",
+		"tone": "Plain refusal with the outcome.",
+		"length": "One short sentence; toast card.",
+		"note": "A file with that name already exists, so nothing was created.",
+		"placeholders": {}
+	},
+	"ui.notices.files.copy_failed": {
+		"role": "error toast body when a clipboard write is refused",
+		"tone": "Plain failure.",
+		"length": "Two words; toast card.",
+		"note": "The content is still on screen; this arm carries no manual-copy instructions.",
+		"placeholders": {}
+	},
+	"ui.notices.files.copy_path_failed": {
+		"role": "error toast body when copying a file path fails",
+		"tone": "Plain failure.",
+		"length": "Short phrase; toast card.",
+		"note": "Names the thing that could not be copied.",
+		"placeholders": {}
+	},
+	"ui.notices.files.created": {
+		"role": "success toast body after creating a file",
+		"tone": "Short past-tense confirmation with the file name.",
+		"length": "One short sentence; toast card.",
+		"note": "The name includes the extension and is user data.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.files.highlights_update_failed": {
+		"role": "lead sentence of an error toast when highlights could not be updated",
+		"tone": "Plain failure lead; backend diagnosis is appended.",
+		"length": "One short sentence; toast card.",
+		"note": "Only the lead is keyed; the shared backend-error diagnosis and remedy follow from the transport module.",
+		"placeholders": {}
+	},
+	"ui.notices.files.image_copied": {
+		"role": "success toast body after copying an image",
+		"tone": "Short past-tense confirmation.",
+		"length": "One short sentence; toast card.",
+		"note": "The image bytes are on the clipboard.",
+		"placeholders": {}
+	},
+	"ui.notices.files.image_copy_failed": {
+		"role": "error toast body when the image clipboard write fails",
+		"tone": "Plain failure naming the act.",
+		"length": "Short phrase; toast card.",
+		"note": "Lead sentence; the gone variant covers the attachment no longer existing.",
+		"placeholders": {}
+	},
+	"ui.notices.files.image_copy_failed_gone": {
+		"role": "error toast body when the image is gone before it can be copied",
+		"tone": "Plain failure plus the reason.",
+		"length": "One sentence; toast card.",
+		"note": "The attachment is no longer in the session, which is why the clipboard write could not happen.",
+		"placeholders": {}
+	},
+	"ui.notices.files.open_failed": {
+		"role": "error toast body when opening a local file fails",
+		"tone": "Plain failure plus the likely causes.",
+		"length": "Two short sentences; toast card.",
+		"note": "The name is a file name, user data. Covers both file-open and reveal-in-folder refusals.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.files.save_failed": {
+		"role": "error toast lead when saving a file fails",
+		"tone": "Plain failure lead; error detail may follow.",
+		"length": "Short phrase; toast card.",
+		"note": "The failure detail is appended after a colon by the caller when present.",
+		"placeholders": {}
+	},
+	"ui.notices.files.save_failed_gone": {
+		"role": "error toast body when the image is gone before it can be saved",
+		"tone": "Plain failure plus the reason.",
+		"length": "One sentence; toast card.",
+		"note": "The attachment is no longer in the session, which is why the save could not happen.",
+		"placeholders": {}
+	},
+	"ui.notices.hub.agent_delisted": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "The agent's public listing was removed from the hub. The agent itself still exists locally.",
+		"placeholders": {}
+	},
+	"ui.notices.hub.downloaded": {
+		"role": "success toast body after a hub download",
+		"tone": "Short past-tense confirmation naming the installed agent.",
+		"length": "One short sentence; toast card.",
+		"note": "The name is the installed agent name, user data.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.hub.downloaded_collision": {
+		"role": "warning toast body when a downloaded agent duplicates an existing local name",
+		"tone": "States what happened and the consequence, then the repair.",
+		"length": "Three sentences; toast card.",
+		"note": "Both names are user data. Two agents answering one name is a real hazard; keep the consequence and the rename instruction.",
+		"placeholders": {
+			"name": "string",
+			"existing": "string"
+		}
+	},
+	"ui.notices.hub.downloaded_renamed": {
+		"role": "success toast body when the hub renamed the agent on install",
+		"tone": "States the outcome and why the name differs.",
+		"length": "One short sentence; toast card.",
+		"note": "Both names are user data. The dash is an em dash with spaces.",
+		"placeholders": {
+			"name": "string",
+			"existing": "string"
+		}
+	},
+	"ui.notices.hub.team_pulled": {
+		"role": "success toast body after pulling an organization team",
+		"tone": "Short past-tense confirmation naming the team.",
+		"length": "One short sentence; toast card.",
+		"note": "The name is the stored team name, user data.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.notices.hub.team_pulled_collision": {
+		"role": "success toast body when the pulled team duplicated a local name",
+		"tone": "States the outcome and the existing name in parentheses.",
+		"length": "One short sentence; toast card.",
+		"note": "Both names are user data.",
+		"placeholders": {
+			"stored": "string",
+			"published": "string"
+		}
+	},
+	"ui.notices.hub.team_pulled_renamed": {
+		"role": "warning toast body when the published name was unusable",
+		"tone": "Explains the rename in two sentences.",
+		"length": "Two sentences; toast card.",
+		"note": "Both names are user data; the second sentence gives the reason the stored name differs.",
+		"placeholders": {
+			"stored": "string",
+			"published": "string"
+		}
+	},
+	"ui.notices.links.open_failed": {
+		"role": "error toast body when a link cannot be opened",
+		"tone": "Plain failure.",
+		"length": "One short sentence; toast card.",
+		"note": "Used for external links refused for reasons other than loopback/private addresses.",
+		"placeholders": {}
+	},
+	"ui.notices.links.open_local_blocked": {
+		"role": "error toast body when a link points at the local machine or network",
+		"tone": "Plain failure plus the app's deliberate policy.",
+		"length": "Two short sentences; toast card.",
+		"note": "The app refuses loopback and private-network URLs on purpose; do not soften it into a temporary error.",
+		"placeholders": {}
+	},
+	"ui.notices.main.consent_body_many": {
+		"role": "macOS/Windows notification body for the browser consent queue",
+		"tone": "Direct request with the action.",
+		"length": "Two short sentences; OS banner body, keep under ~170 characters.",
+		"note": "Count is the number of pending site approvals. Rendered outside the app window.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.notices.main.consent_body_one": {
+		"role": "macOS/Windows notification body for one browser consent request",
+		"tone": "Direct request naming the site and the action.",
+		"length": "Two short sentences; OS banner body, keep under ~170 characters.",
+		"note": "The origin is a URL origin, machine data, and must not be translated.",
+		"placeholders": {
+			"origin": "string"
+		}
+	},
+	"ui.notices.main.consent_title": {
+		"role": "macOS/Windows notification title for a browser consent request",
+		"tone": "Short alert title.",
+		"length": "Three words; OS banner title.",
+		"note": "Tells the reader a website is asking to be opened by an agent. Not a security warning.",
+		"placeholders": {}
+	},
+	"ui.notices.main.update_hold_body": {
+		"role": "macOS/Windows notification body while an app update installs",
+		"tone": "Plain explanation of the wait and the relaunch.",
+		"length": "Three sentences; OS banner body, keep under ~250 characters.",
+		"note": "Explains why the app will not open, what happens after, and that clicking does not shorten the wait. The relaunch clause is a separate keyed sentence.",
+		"placeholders": {
+			"version": "string",
+			"relaunch": "string"
+		}
+	},
+	"ui.notices.main.update_hold_no_relaunch": {
+		"role": "relaunch clause inside the update-hold notification",
+		"tone": "Honest instruction when no automatic relaunch exists.",
+		"length": "One sentence; appended inside the notification body.",
+		"note": "Used when the updater could not arrange to reopen the app; the reader must start it by hand.",
+		"placeholders": {}
+	},
+	"ui.notices.main.update_hold_relaunch": {
+		"role": "relaunch clause inside the update-hold notification",
+		"tone": "Reassuring statement of what happens next.",
+		"length": "One sentence; appended inside the notification body.",
+		"note": "Used when an automatic relaunch was arranged.",
+		"placeholders": {}
+	},
+	"ui.notices.main.update_hold_title": {
+		"role": "macOS/Windows notification title while an app update installs",
+		"tone": "Short status title.",
+		"length": "Five words; OS banner title.",
+		"note": "Names the product, so do not translate 'Local Operator'.",
+		"placeholders": {}
+	},
+	"ui.notices.sessions.clear_failed": {
+		"role": "error toast body when clearing a conversation fails",
+		"tone": "Plain failure with the transport detail.",
+		"length": "One sentence; toast card.",
+		"note": "The detail is an error message, machine text, or the unknown_error fallback.",
+		"placeholders": {
+			"detail": "string"
+		}
+	},
+	"ui.notices.sessions.cleared": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "The conversation's transcript was cleared.",
+		"placeholders": {}
+	},
+	"ui.notices.sessions.id_copied": {
+		"role": "success toast body after copying a session id",
+		"tone": "Short past-tense confirmation.",
+		"length": "Three words; toast card.",
+		"note": "Session ID is product vocabulary for the conversation identifier.",
+		"placeholders": {}
+	},
+	"ui.notices.sessions.id_copy_failed": {
+		"role": "error toast body when copying a session id fails",
+		"tone": "Plain failure.",
+		"length": "Short phrase; toast card.",
+		"note": "The clipboard write was refused; no identifier is shown.",
+		"placeholders": {}
+	},
+	"ui.notices.sessions.sign_out_failed": {
+		"role": "error toast body when signing out fails",
+		"tone": "Plain failure with the transport detail.",
+		"length": "One sentence; toast card.",
+		"note": "The detail is an error message, machine text.",
+		"placeholders": {
+			"detail": "string"
+		}
+	},
+	"ui.notices.sessions.signed_out": {
+		"role": "success toast body after signing out",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "The Radient account session ended.",
+		"placeholders": {}
+	},
+	"ui.notices.sessions.unknown_error": {
+		"role": "fallback detail inside a failure toast",
+		"tone": "Neutral placeholder when no error message exists.",
+		"length": "Two words; inline.",
+		"note": "Never shown alone; fills the detail slot of clear_failed. Prefer a translated neutral noun phrase.",
+		"placeholders": {}
+	},
+	"ui.notices.settings.configuration_updated": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "A configuration value was saved.",
+		"placeholders": {}
+	},
+	"ui.notices.settings.system_prompt_updated": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Three words; toast card.",
+		"note": "The global system prompt was saved.",
+		"placeholders": {}
+	},
+	"ui.notices.variables.create_failed": {
+		"role": "error toast body when a session variable cannot be created",
+		"tone": "Plain failure naming the act.",
+		"length": "One sentence; toast card.",
+		"note": "Used only when the failure carries no authored sentence.",
+		"placeholders": {}
+	},
+	"ui.notices.variables.created": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "A session variable was created.",
+		"placeholders": {}
+	},
+	"ui.notices.variables.delete_failed": {
+		"role": "error toast body when a session variable cannot be deleted",
+		"tone": "Plain failure naming the act.",
+		"length": "One sentence; toast card.",
+		"note": "Used only when the failure carries no authored sentence.",
+		"placeholders": {}
+	},
+	"ui.notices.variables.deleted": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "A session variable was deleted.",
+		"placeholders": {}
+	},
+	"ui.notices.variables.update_failed": {
+		"role": "error toast body when a session variable cannot be updated",
+		"tone": "Plain failure naming the act.",
+		"length": "One sentence; toast card.",
+		"note": "Used only when the failure carries no authored sentence.",
+		"placeholders": {}
+	},
+	"ui.notices.variables.updated": {
+		"role": "success toast body",
+		"tone": "Short past-tense confirmation.",
+		"length": "Two words; toast card.",
+		"note": "A session variable was updated.",
+		"placeholders": {}
+	}
+}

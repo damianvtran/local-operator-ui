@@ -19,6 +19,7 @@ import type {
 	SessionVariablesResult,
 	VariableWrite,
 } from "@shared/api/local-operator/session-variables-api";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -87,11 +88,11 @@ export const useCreateSessionVariable = () => {
 		mutationFn: ({ sessionId, ...write }) =>
 			createSessionVariable(sessionId, write),
 		onSuccess: async () => {
-			showSuccessToast("Variable created");
+			showSuccessToast(t("ui.notices.variables.created"));
 		},
 		onError: (error) => {
 			showErrorToast(
-				userFacingMessage(error, "The variable could not be created."),
+				userFacingMessage(error, t("ui.notices.variables.create_failed")),
 			);
 		},
 		onSettled: invalidateSessionVariables(queryClient),
@@ -105,11 +106,11 @@ export const useUpdateSessionVariable = () => {
 		mutationFn: ({ sessionId, ...write }) =>
 			updateSessionVariable(sessionId, write),
 		onSuccess: async () => {
-			showSuccessToast("Variable updated");
+			showSuccessToast(t("ui.notices.variables.updated"));
 		},
 		onError: (error) => {
 			showErrorToast(
-				userFacingMessage(error, "The variable could not be updated."),
+				userFacingMessage(error, t("ui.notices.variables.update_failed")),
 			);
 		},
 		onSettled: invalidateSessionVariables(queryClient),
@@ -128,11 +129,11 @@ export const useDeleteSessionVariable = () => {
 	return useMutation<unknown, Error, { sessionId: string; key: string }>({
 		mutationFn: ({ sessionId, key }) => deleteSessionVariable(sessionId, key),
 		onSuccess: async () => {
-			showSuccessToast("Variable deleted");
+			showSuccessToast(t("ui.notices.variables.deleted"));
 		},
 		onError: (error) => {
 			showErrorToast(
-				userFacingMessage(error, "The variable could not be deleted."),
+				userFacingMessage(error, t("ui.notices.variables.delete_failed")),
 			);
 		},
 		onSettled: invalidateSessionVariables(queryClient),

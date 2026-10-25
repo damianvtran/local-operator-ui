@@ -444,7 +444,10 @@ export const SupplementRow = memo(function SupplementRow({
 			 * "Not Found" must never reach a toast).
 			 */
 			showErrorToast(
-				backendLoadErrorMessage("Highlights could not be updated.", error),
+				backendLoadErrorMessage(
+					t("ui.notices.files.highlights_update_failed"),
+					error,
+				),
 			);
 		} finally {
 			setBusy(false);

@@ -8,6 +8,7 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { credentialsQueryKey } from "./use-credentials";
@@ -88,7 +89,9 @@ export const useUpdateCredential = (options?: { successToasts?: boolean }) => {
 			});
 
 			if (successToasts)
-				showSuccessToast(`Credential "${variables.key}" updated successfully`);
+				showSuccessToast(
+					t("ui.notices.credentials.updated", { key: variables.key }),
+				);
 		},
 		onError: (error) => {
 			console.error("Error updating credential:", error);

@@ -2047,7 +2047,12 @@ export function ChatSidebar({
 				raiseBulkReadDeferral(unreadCopy.count);
 			} else {
 				showWarningToast(
-					`${userFacingMessage(failure, "The backend did not answer.")} The unread marks were not cleared.`,
+					t("ui.notices.chat.unread_not_cleared", {
+						reason: userFacingMessage(
+							failure,
+							t("ui.notices.chat.unread_backend_silent"),
+						),
+					}),
 				);
 			}
 		} finally {

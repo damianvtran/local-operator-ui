@@ -62,6 +62,7 @@
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { ArchiveFact } from "@shared/store/canonical-sessions-store";
 import { useEffect } from "react";
+import { t } from "../../../../i18n";
 import { undoOfferStands } from "./chat-archived";
 
 /**
@@ -103,11 +104,12 @@ export const ARCHIVE_FAILURE_TOAST_MS = 10_000;
  * has no title to quote, so the name is the generic noun and the verb still follows.
  */
 export function archiveOfferedName(title: string | undefined): string {
-	return title ? `“${title}”` : "Conversation";
+	return title ? `“${title}”` : t("ui.notices.chat.archive_offered_no_name");
 }
 
 /** The verb an archive offer prints after the name. One home for the offer's copy. */
-export const ARCHIVE_OFFERED_VERB = "archived.";
+export const archiveOfferedVerb = (): string =>
+	t("ui.notices.chat.archive_offered_verb");
 
 /**
  * The archive fact this window holds for a conversation, if it holds one.

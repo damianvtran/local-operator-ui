@@ -1,3 +1,4 @@
+import { showErrorToast } from "@shared/utils/toast-manager";
 /**
  * The sentence a refused external open shows, and the listener that shows it
  * (round-2 R-4).
@@ -15,13 +16,13 @@
  * is pinned on the main side (`window-guards.test.mjs`'s refusal table), so the
  * two cannot drift into disagreeing about what "loopback or private" is.
  */
-import { showErrorToast } from "@shared/utils/toast-manager";
+import { t } from "../../../../i18n";
 
 /** The one sentence, per refusal class. */
 export const externalOpenFailure = (reason: string): string =>
 	reason.includes("loopback or private")
-		? "Could not open that link. The app does not open links to your own machine or local network."
-		: "Could not open that link.";
+		? t("ui.notices.links.open_local_blocked")
+		: t("ui.notices.links.open_failed");
 
 /** Show the refusal `reason` as the shared sentence. */
 export const showExternalOpenRefusal = (reason: string): void => {

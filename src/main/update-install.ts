@@ -20,6 +20,7 @@ import {
 	join,
 	relative,
 } from "node:path";
+import { t } from "../i18n/index";
 import BUNDLED_RUNTIME_LAYOUT from "../shared/bundled-runtime-layout.json";
 import MACOS_ENTITLEMENT_POLICY from "../shared/macos-entitlement-policy.json";
 import {
@@ -2558,11 +2559,14 @@ export function installLaunchHoldNotice(
 ): InstallLaunchHoldNotice {
 	const relaunch =
 		options.relaunchEnsured === false
-			? "No relaunch could be arranged for this install, so start Local Operator by hand when it finishes."
-			: "Local Operator will open by itself when the install finishes.";
+			? t("ui.notices.main.update_hold_no_relaunch")
+			: t("ui.notices.main.update_hold_relaunch");
 	return {
-		title: "Local Operator is still updating",
-		body: `The update to version ${marker.targetVersion} is still installing — opening the app now would cancel it. ${relaunch} Clicking this notice will not open it any sooner.`,
+		title: t("ui.notices.main.update_hold_title"),
+		body: t("ui.notices.main.update_hold_body", {
+			version: marker.targetVersion,
+			relaunch,
+		}),
 	};
 }
 

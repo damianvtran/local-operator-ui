@@ -21,6 +21,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { radientProxy } from "@shared/api/radient/proxy";
 import type { UserInfoResult } from "@shared/api/radient/types";
+import { t } from "@shared/i18n";
 import { useUserStore } from "@shared/store/user-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
@@ -537,13 +538,15 @@ export const useRadientUserQuery = ({
 			 */
 			forgetAccountReadFailure();
 			queryClient.invalidateQueries({ queryKey: desktopKeys.accounts });
-			showSuccessToast("Successfully signed out");
+			showSuccessToast(t("ui.notices.sessions.signed_out"));
 			setIsSigningOut(false);
 		},
 		onError: (error) => {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			showErrorToast(`Failed to sign out: ${errorMessage}`);
+			showErrorToast(
+				t("ui.notices.sessions.sign_out_failed", { detail: errorMessage }),
+			);
 			setIsSigningOut(false);
 			// A partial account removal cannot restore old private authority by
 			// assumption. Commission the real account read to establish it again.

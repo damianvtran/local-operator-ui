@@ -5,6 +5,7 @@
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentCreate } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { QueryKey } from "@tanstack/react-query";
@@ -42,7 +43,7 @@ export const useCreateAgent = () => {
 		onSuccess: () => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast("Agent created");
+			showSuccessToast(t("ui.notices.agents.created"));
 		},
 		onError: (error) => {
 			console.error("Error creating agent:", error);
@@ -89,7 +90,7 @@ export const useDeleteAgent = () => {
 			});
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast("Agent deleted");
+			showSuccessToast(t("ui.notices.agents.deleted"));
 		},
 		onError: (error) => {
 			console.error("Error deleting agent:", error);
@@ -129,7 +130,7 @@ export const useImportAgent = () => {
 		onSuccess: (data) => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast("Agent imported");
+			showSuccessToast(t("ui.notices.agents.imported"));
 			return data;
 		},
 		onError: (error) => {
@@ -161,7 +162,7 @@ export const useExportAgent = () => {
 			}
 		},
 		onSuccess: () => {
-			showSuccessToast("Agent exported");
+			showSuccessToast(t("ui.notices.agents.exported"));
 		},
 		onError: (error) => {
 			console.error("Error exporting agent:", error);

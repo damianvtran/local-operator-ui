@@ -62,6 +62,7 @@
  * when the offer must retire (`useArchiveUndoRetirement`).
  */
 
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
@@ -72,12 +73,12 @@ import {
 import { useEffect, useRef } from "react";
 import {
 	ARCHIVE_FAILURE_TOAST_MS,
-	ARCHIVE_OFFERED_VERB,
 	ARCHIVE_UNDO_TOAST_MS,
 	archiveOfferedName,
+	archiveOfferedVerb,
 	useArchiveUndoRetirement,
 } from "../archive-undo";
-import { DRAFTS_OFFERED_VERB, draftsOfferedName } from "../drafts-undo";
+import { draftsOfferedName, draftsOfferedVerb } from "../drafts-undo";
 import { markAllReadDeferredSentence } from "../mark-all-read";
 
 /**
@@ -250,14 +251,14 @@ export function UndoToasts() {
 		};
 		if (newest === "failure" && archiveFailure) {
 			showWarningToast(
-				`Could not ${archiveFailure.archived ? "archive" : "unarchive"} “${archiveFailure.title}”.${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
+				`${archiveFailure.archived ? t("ui.notices.chat.archive_failed", { title: archiveFailure.title }) : t("ui.notices.chat.unarchive_failed", { title: archiveFailure.title })}${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
 				{
 					id: ARCHIVE_TOAST_ID,
 					duration: ARCHIVE_FAILURE_TOAST_MS,
 					onAutoClose: settle("failure", archiveFailure.at),
 					onDismiss: settle("failure", archiveFailure.at),
 					action: {
-						label: "Retry",
+						label: t("ui.common.actions.retry"),
 						/*
 						 * SONNER DISMISSES THE TOAST AFTER AN ACTION UNLESS THE HANDLER
 						 * PREVENTS IT. 2.0.3's action button is `onClick(event); if
@@ -309,7 +310,7 @@ export function UndoToasts() {
 					<span className={cn("min-w-0 truncate")}>
 						{archiveOfferedName(archiveUndo.title)}
 					</span>
-					<span className={cn("shrink-0")}>{ARCHIVE_OFFERED_VERB}</span>
+					<span className={cn("shrink-0")}>{archiveOfferedVerb()}</span>
 				</span>,
 				{
 					id: ARCHIVE_TOAST_ID,
@@ -327,7 +328,7 @@ export function UndoToasts() {
 					onAutoClose: settle("offer", archiveUndo.at),
 					onDismiss: settle("offer", archiveUndo.at),
 					action: {
-						label: "Undo",
+						label: t("ui.notices.chat.undo"),
 						/*
 						 * THE UNDO SENDS ITS WRITE AND NOTHING ELSE (agent review round 2,
 						 * R2-1), the Retry's own rule one control over: a `dismissToast(id)`
@@ -390,7 +391,7 @@ export function UndoToasts() {
 				<span className={cn("min-w-0 truncate")}>
 					{draftsOfferedName(draftsUndo.keys.length)}
 				</span>
-				<span className={cn("shrink-0")}>{DRAFTS_OFFERED_VERB}</span>
+				<span className={cn("shrink-0")}>{draftsOfferedVerb()}</span>
 			</span>,
 			{
 				id: DRAFTS_UNDO_TOAST_ID,
@@ -402,7 +403,7 @@ export function UndoToasts() {
 				onAutoClose: settle,
 				onDismiss: settle,
 				action: {
-					label: "Undo",
+					label: t("ui.notices.chat.undo"),
 					onClick: (event) => {
 						event.preventDefault();
 						/*
