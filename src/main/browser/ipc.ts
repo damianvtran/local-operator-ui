@@ -13,6 +13,7 @@ import {
 import {
 	type TabActionsMenuSelection,
 	tabActionsMenuRequestOrThrow,
+	tabActionsMenuSelectionOrNull,
 } from "../../shared/browser-tab-actions-menu";
 import { trustedDesktopFrame } from "../desktop-transport";
 import {
@@ -57,6 +58,14 @@ import { buildTabActionsMenuTemplate } from "./tab-actions-menu";
 
 export interface RegisterBrowserIpcOptions {
 	window: () => BrowserWindow | null;
+	/**
+	 * `windowShow === "never"` from the launch plan: true only in `headless`
+	 * (`src/main/window-mode.ts`'s WINDOW_BEHAVIOUR table). Forwarded rather than
+	 * re-read here, like every other launch fact this module consumes, so the tab
+	 * menu's refusal and `window-chrome.ts`'s app-menu refusal cannot disagree
+	 * about which launches have a window a popup can hang from.
+	 */
+	headless: boolean;
 	/** The trusted renderer URL: the dev server during development, the packaged
 	 * `index.html` otherwise. Same value the desktop transport is given. */
 	expectedUrl: string;
@@ -287,32 +296,52 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	 * same owner check every channel here uses.
 	 *
 	 * NO WINDOW, NO MENU. A native popup needs a visible window to hang from. A
-	 * headless rig has none - and a menu left open on a window nobody can see is a
-	 * state nothing can reach to close - so the request answers `null` (a
+	 * headless launch has none - and a menu left open on a window nobody can see
+	 * is a state nothing can reach to close - so the request answers `null` (a
 	 * dismissal) instead of arming a popup that could never be dismissed. This is
-	 * the same refusal `window-chrome.ts` makes for the app menu.
+	 * the launch-mode gate `window-chrome.ts` makes for the app menu, including
+	 * its one log line: a rig must be able to tell a refusal from a window that
+	 * simply did not show a menu.
+	 *
+	 * The visibility check after it is the same refusal for a non-headless window
+	 * that is hidden or minimised: a menu there is equally unreachable.
+	 *
+	 * THE ANCHOR IS CSS PX; `menu.popup` READS DIP. The strip sends
+	 * `getBoundingClientRect()` (or `clientX`/`clientY`), which the renderer lays
+	 * out in zoomed CSS px, while Electron/AppKit place the popup in DIP. At
+	 * `webContents` zoom factor z, `DIP = CSS x z`; multiplying here is what keeps
+	 * the menu on its trigger when the app UI is zoomed.
 	 */
 	ipcMain.handle("browser-tab-actions-menu", (event, payload: unknown) => {
 		authorizeSender(event);
 		const request = tabActionsMenuRequestOrThrow(payload);
+		if (options.headless) {
+			options.log(
+				"[browser-ipc] tab actions menu refused: this launch is headless, so there is no window to hang it from",
+			);
+			return null;
+		}
 		const owner = options.window();
 		if (!owner || owner.isDestroyed() || !owner.isVisible()) return null;
+		const zoom = owner.webContents.getZoomFactor();
 		return new Promise<TabActionsMenuSelection>((resolve) => {
 			// One settlement: a clicked item resolves before the popup's own close
-			// callback, and a dismissal is the callback alone.
+			// callback, and a dismissal is the callback alone. The answer is
+			// validated too, so nothing outside the action vocabulary can reach the
+			// strip even if a template were ever built from something else.
 			let settled = false;
-			const settle = (selection: TabActionsMenuSelection): void => {
+			const settle = (selection: unknown): void => {
 				if (settled) return;
 				settled = true;
-				resolve(selection);
+				resolve(tabActionsMenuSelectionOrNull(selection));
 			};
 			const menu = Menu.buildFromTemplate(
 				buildTabActionsMenuTemplate(request.items, settle),
 			);
 			menu.popup({
 				window: owner,
-				x: Math.round(request.anchor.x),
-				y: Math.round(request.anchor.y),
+				x: Math.round(request.anchor.x * zoom),
+				y: Math.round(request.anchor.y * zoom),
 				callback: () => settle(null),
 			});
 		});

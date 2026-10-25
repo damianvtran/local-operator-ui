@@ -107,7 +107,7 @@ import {
  * not move. The item list (labels, counts and the optional hands) is still the
  * strip's, because the counts disclose what a destructive press will close; the
  * native template and its popup live in main
- * (`src/main/browser/tab-actions-menu.ts`, `ipc.ts`). `scripts/browser-chrome-proof.mjs`
+ * (`src/main/browser/tab-actions-menu.ts`, `ipc.ts`). `scripts/browser-tab-menu-native-proof.mjs`
  * measures the page staying visible while the menu is open.
  *
  * WHY THE SPINNER IS A PER-TAB FACT (spec §8.3). The gate was `loading &&

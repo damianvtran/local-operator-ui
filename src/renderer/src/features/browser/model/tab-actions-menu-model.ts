@@ -93,9 +93,16 @@ export function buildTabActionsMenuItems(
 	if (tab.owner === "user" && !tab.handedOver)
 		items.push({
 			id: "hand-over",
-			label: t("ui.browser.browser_tab_strip.let_an_agent_use", {
+			/*
+			 * THE ELLIPSIS IS INTERACTION COPY, and it is appended here rather than
+			 * carried by the catalogue string because every translated label would
+			 * otherwise need its own copy of it. This row opens the hand-over
+			 * picker instead of handing the tab over, so it must read like the
+			 * dialog-opening control it is (base `browser-tab-strip.tsx:1557-1563`).
+			 */
+			label: `${t("ui.browser.browser_tab_strip.let_an_agent_use", {
 				title: label,
-			}),
+			})}…`,
 			enabled: true,
 		});
 	if (tab.handedOver || tab.owner === "agent")

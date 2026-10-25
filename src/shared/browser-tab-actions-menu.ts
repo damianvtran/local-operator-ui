@@ -68,23 +68,17 @@ export type TabActionsMenuActionId = Exclude<
 	"header" | "separator"
 >;
 
-export const TAB_ACTIONS_MENU_ACTION_IDS = [
-	"watch",
-	"hand-over",
-	"revoke-hand-over",
-	"move-left",
-	"move-right",
-	"mute",
-	"unmute",
-	"duplicate",
-	"reload",
-	"close",
-	"close-others",
-	"close-right",
-	"close-failed",
-	"close-conversation",
-	"copy-url",
-] as const satisfies readonly TabActionsMenuActionId[];
+/**
+ * The selectable ids, DERIVED from the item list rather than re-listed.
+ *
+ * A hand-written second list could only be proved a subset by `satisfies`: a new
+ * item added to `TAB_ACTIONS_MENU_ITEM_IDS` and forgotten there would pass the
+ * request validator and then be dropped as `null` on the way back - a control
+ * that does nothing. The filter is the one definition, so an id cannot miss it.
+ */
+export const TAB_ACTIONS_MENU_ACTION_IDS = TAB_ACTIONS_MENU_ITEM_IDS.filter(
+	(id): id is TabActionsMenuActionId => id !== "header" && id !== "separator",
+);
 
 export interface TabActionsMenuItem {
 	id: TabActionsMenuItemId;
@@ -95,7 +89,12 @@ export interface TabActionsMenuItem {
 }
 
 export interface TabActionsMenuRequest {
-	/** The tab whose trigger was pressed. Every action is scoped to it. */
+	/**
+	 * The tab whose trigger was pressed: context for the popup and its log line.
+	 * Main validates the value as an id and returns only the item main selected;
+	 * the strip's own handler scopes the action from the tab it captured, so a
+	 * scope check is NOT performed here and must not be assumed.
+	 */
 	tabId: number;
 	/**
 	 * Where the popup hangs, in CSS px relative to the renderer viewport - the

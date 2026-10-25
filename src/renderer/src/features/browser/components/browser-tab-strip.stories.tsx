@@ -472,5 +472,5 @@ export const Restored: Story = {
  * that used to be judged here - the item order, the counted closes, the title
  * row - are pinned by `buildTabActionsMenuItems` and its test, and the live
  * popup (with the page still visible behind it) is measured by
- * `scripts/browser-chrome-proof.mjs` against the running app.
+ * `scripts/browser-tab-menu-native-proof.mjs` against the running app.
  */

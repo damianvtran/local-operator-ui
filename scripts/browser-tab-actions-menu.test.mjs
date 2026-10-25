@@ -297,7 +297,7 @@ test("items: the panel's order and copy, as data", () => {
 	assert.equal(byId(items, "watch").label, 'Watch "\u2068Tab 2\u2069"');
 	assert.equal(
 		byId(items, "hand-over").label,
-		'Let an agent use "\u2068Tab 2\u2069"',
+		'Let an agent use "\u2068Tab 2\u2069"\u2026',
 	);
 	assert.equal(byId(items, "close").label, 'Close "\u2068Tab 2\u2069"');
 	assert.equal(byId(items, "close-others").label, "Close 2 other tabs");

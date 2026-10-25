@@ -74,9 +74,11 @@ globalThis.IntersectionObserver = class {
 	disconnect() {}
 };
 /*
- * RADIX'S DISMISSABLE LAYER DISPATCHES ITS OWN EVENT ON THE DOCUMENT when a menu
- * layer mounts (`new CustomEvent(...)` + `document.dispatchEvent`), and this file
- * opens one: the row's actions are a Radix popout since 2026-09-28. Node defines
+ * RADIX'S DISMISSABLE LAYER DISPATCHES ITS OWN EVENT ON THE DOCUMENT when a layer
+ * mounts (`new CustomEvent(...)` + `document.dispatchEvent`). The row's actions
+ * are a NATIVE menu since 2026-10-25, so this file no longer opens that layer;
+ * the strip it mounts still renders Radix `Tooltip` children, which take the same
+ * path when one opens. Node defines
  * `Event`/`CustomEvent` as globals of its OWN, and the copy loop above keeps any
  * global that already exists, so without these two rebindings Radix builds a Node
  * event that jsdom's `dispatchEvent` refuses - "parameter 1 is not of type
@@ -86,8 +88,8 @@ globalThis.IntersectionObserver = class {
 globalThis.Event = dom.window.Event;
 globalThis.CustomEvent = dom.window.CustomEvent;
 /*
- * `:modal` IS A JSDOM LANDMINE UNDER FLOATING-UI (measured 2026-09-28). The popout's
- * popper walks its ancestors with floating-ui's `getContainingBlock`, which probes
+ * `:modal` IS A JSDOM LANDMINE UNDER FLOATING-UI (measured 2026-09-28). A Radix
+ * popper's ancestor walk uses floating-ui's `getContainingBlock`, which probes
  * each one with `element.matches(':modal')` (`isTopLayer`, floating-ui.utils.dom).
  * jsdom 26.1.0 answers `:modal` by delegating back into its own selector engine -
  * `nwsapi isModal -> matchesNative(node, ':modal') -> node.matches(':modal')` - and
@@ -559,8 +561,9 @@ test("opening the tab menu leaves the running turn exposed and its Stop control 
 		 * on the body while it was open; the OS menu paints outside this DOM
 		 * entirely, so none of that may exist here. (Whether the OS menu consumes
 		 * the first outside click is a platform fact the jsdom test cannot see; the
-		 * built-app probe in `scripts/browser-chrome-proof.mjs` records the pixels
-		 * and the state.)
+		 * committed `scripts/browser-tab-menu-native-proof.mjs` records the page's
+		 * pixels and the menu-open state, and the OS popup's own pointer path stays a
+		 * hand check because this host denies the permissions a capture needs.)
 		 */
 		assert.equal(
 			document.body.style.pointerEvents,
