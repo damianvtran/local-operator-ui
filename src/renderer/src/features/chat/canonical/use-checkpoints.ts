@@ -74,6 +74,39 @@ import { checkpointPendingIds } from "./checkpoint-model";
 export const CHECKPOINT_POLL_INTERVAL_MS = 1500;
 export const CHECKPOINT_POLL_CEILING_MS = 45_000;
 
+/**
+ * THE BUILD FOLLOW (conversation-first-paint): the backoff ladder for re-reading
+ * a manifest that answered `building`/`stale`, and the episode's ceiling.
+ *
+ * Why it exists: the naming poll above runs only while a warmed NAME is
+ * pending, so a `building` answer was never read again - and today's core
+ * answers `building` (an empty 151-byte manifest) on the cold first open of
+ * any large journal, by design, so the rail could paint immediately. Measured
+ * on installed 0.42.7: `building_at_settled = true` with 0 ticks for the whole
+ * visit on the 8 MB gate fixture. The core will not hold an old client's read
+ * open (it answers `building` for an unpayable journal whatever the client
+ * sends), so the client re-asking is the only fix, and the same re-read works
+ * against every core version.
+ *
+ * 250 ms first, because a small journal finishes its scan in well under a
+ * second and the rail should fill on the next frame or two; doubling to a 2 s
+ * cap, because a 272 MB journal measured 22 s and a faster cadence there buys
+ * nothing but requests. The 10-minute ceiling is a safety stop for a backend
+ * that never leaves `building` (a bug, not a state): ~300 cheap reads, then
+ * the rail keeps whatever it painted and a later `refresh()` may ask again.
+ */
+export const CHECKPOINT_BUILD_POLL_MIN_MS = 250;
+export const CHECKPOINT_BUILD_POLL_MAX_MS = 2000;
+export const CHECKPOINT_BUILD_POLL_CEILING_MS = 10 * 60_000;
+
+/** Whether an answer means "a scan is still running; ask again". */
+function manifestIsBuilding(manifest: CheckpointManifest | null): boolean {
+	return (
+		manifest !== null &&
+		(manifest.index.state === "building" || manifest.index.state === "stale")
+	);
+}
+
 export type CheckpointsState = "idle" | "loading" | "ready" | "error";
 
 export type UseCheckpointsResult = {
@@ -168,6 +201,84 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 	 * first every 1.5 s.
 	 */
 	const loggedMessages = useRef(new Set<string>());
+	/*
+	 * The build follow's own timer, separate from the naming poll's: the two
+	 * end on different facts (a ready index vs. an empty pending set), and one
+	 * timer would let either episode cancel the other.
+	 */
+	const buildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const buildDelay = useRef(CHECKPOINT_BUILD_POLL_MIN_MS);
+	const buildDeadline = useRef<number | null>(null);
+	/** The last answer applied for this epoch: what the follow decides on. */
+	const lastManifest = useRef<CheckpointManifest | null>(null);
+
+	const stopBuildPoll = useCallback(() => {
+		if (buildTimer.current !== null) {
+			clearTimeout(buildTimer.current);
+			buildTimer.current = null;
+		}
+		buildDelay.current = CHECKPOINT_BUILD_POLL_MIN_MS;
+		buildDeadline.current = null;
+	}, []);
+
+	/*
+	 * Arm the next build re-read if the last answer is still building, with the
+	 * backoff ladder above. Called from every place an answer is applied (the
+	 * hook's read, a served memory, another surface's read via the cache
+	 * subscription) and from the follow's own completion - so a failed re-read
+	 * (which applies nothing) still re-arms from the last answer, one rung
+	 * slower, instead of leaving the rail stuck. Guarded by the epoch like every
+	 * other callback here, so a switch or unmount releases it.
+	 */
+	const followBuildRef = useRef<(epoch: number) => void>(() => {});
+	const followBuild = useCallback(
+		(epoch: number) => {
+			if (epoch !== epochRef.current) return;
+			if (!manifestIsBuilding(lastManifest.current)) {
+				stopBuildPoll();
+				return;
+			}
+			if (buildTimer.current !== null) return;
+			const deadline =
+				buildDeadline.current ?? Date.now() + CHECKPOINT_BUILD_POLL_CEILING_MS;
+			buildDeadline.current = deadline;
+			if (Date.now() >= deadline) return;
+			const delay = buildDelay.current;
+			buildDelay.current = Math.min(delay * 2, CHECKPOINT_BUILD_POLL_MAX_MS);
+			buildTimer.current = setTimeout(() => {
+				buildTimer.current = null;
+				if (epoch !== epochRef.current) return;
+				void loadRef.current(epoch, "refresh").then(() => {
+					followBuildRef.current(epoch);
+				});
+			}, delay);
+		},
+		[stopBuildPoll],
+	);
+	followBuildRef.current = followBuild;
+
+	/*
+	 * Every answer lands through here. A building answer that repeats an equally
+	 * empty building answer keeps the PREVIOUS object, so the follow's re-reads
+	 * do not re-render the transcript that hosts this hook (and the rail beneath
+	 * it) once per rung while there is nothing new to paint.
+	 */
+	const applyManifest = useCallback(
+		(epoch: number, next: CheckpointManifest) => {
+			lastManifest.current = next;
+			setManifest((previous) =>
+				previous !== null &&
+				previous.index.state === next.index.state &&
+				manifestIsBuilding(next) &&
+				previous.checkpoints.length === 0 &&
+				next.checkpoints.length === 0
+					? previous
+					: next,
+			);
+			followBuildRef.current(epoch);
+		},
+		[],
+	);
 
 	const stopPoll = useCallback(() => {
 		if (pollTimer.current !== null) {
@@ -218,7 +329,7 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 					const served = readCachedCheckpointManifest(sessionRef.current);
 					if (served !== null) {
 						if (epoch !== epochRef.current) return;
-						setManifest(served);
+						applyManifest(epoch, served);
 						setState("ready");
 						if (pendingIds.current.size > 0) {
 							pendingIds.current = new Set(
@@ -237,7 +348,7 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 				 */
 				const next = await loadCheckpointManifest(sessionRef.current);
 				if (epoch !== epochRef.current) return;
-				setManifest(next);
+				applyManifest(epoch, next);
 				setState("ready");
 				if (pendingIds.current.size > 0) {
 					pendingIds.current = new Set(
@@ -260,7 +371,7 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 				if (inFlightEpoch.current === epoch) inFlightEpoch.current = null;
 			}
 		},
-		[logOnce, stopPoll],
+		[applyManifest, logOnce, stopPoll],
 	);
 	loadRef.current = load;
 
@@ -365,7 +476,7 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		 * in the same effect flush has to find the listener already there.)
 		 */
 		return subscribeCheckpointManifest(sessionId, (manifest) => {
-			setManifest(manifest);
+			applyManifest(epochRef.current, manifest);
 			setState("ready");
 			if (pendingIds.current.size > 0) {
 				pendingIds.current = new Set(
@@ -373,7 +484,7 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 				);
 			}
 		});
-	}, [sessionId]);
+	}, [sessionId, applyManifest]);
 
 	useEffect(() => {
 		sessionRef.current = sessionId;
@@ -382,6 +493,8 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		inFlightEpoch.current = null;
 		pendingIds.current = new Set();
 		stopPoll();
+		stopBuildPoll();
+		lastManifest.current = null;
 		loggedMessages.current = new Set();
 		/*
 		 * THE SAME MEMORY, FOR THE PATHS THAT RENDERED BEFORE IT WAS WARM: a pane
@@ -420,6 +533,7 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 			: false;
 		const served = seeded !== null && openedRead;
 		setManifest(seeded);
+		lastManifest.current = seeded;
 		if (!sessionId) {
 			setState("idle");
 			return;
@@ -441,17 +555,23 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 			 */
 			epochRef.current += 1;
 			stopPoll();
+			stopBuildPoll();
 		};
-	}, [sessionId, load, stopPoll]);
+	}, [sessionId, load, stopPoll, stopBuildPoll]);
 
-	const building =
-		manifest !== null &&
-		(manifest.index.state === "building" || manifest.index.state === "stale");
+	const building = manifestIsBuilding(manifest);
 
 	return {
 		state,
 		building,
-		checkpoints: manifest?.checkpoints ?? NO_CHECKPOINTS,
+		/*
+		 * An EMPTY answer is the stable empty array, so a `building` answer with no
+		 * ticks yet and the next one are the same value to the memoised rail.
+		 */
+		checkpoints:
+			manifest && manifest.checkpoints.length > 0
+				? manifest.checkpoints
+				: NO_CHECKPOINTS,
 		warm,
 		refresh,
 	};
