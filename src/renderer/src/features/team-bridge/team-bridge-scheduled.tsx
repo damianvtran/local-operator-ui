@@ -28,6 +28,7 @@ export function TeamBridgeScheduleDialog({
 	onSchedule,
 	initialBody,
 	initialSendAt,
+	returnFocus,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -35,6 +36,11 @@ export function TeamBridgeScheduleDialog({
 	onSchedule: (sendAt: string, body?: string) => Promise<unknown>;
 	initialBody?: string;
 	initialSendAt?: string;
+	/* The control that opened this dialog. Explicit rather than read back from
+	   `document.activeElement`: by the time an effect runs, Radix has already
+	   moved focus INTO the content, so the active element is the dialog itself
+	   (design review round 1, D33). */
+	returnFocus?: { current: HTMLElement | null };
 }) {
 	const locale = useI18nLocale();
 	const id = useId();
@@ -44,6 +50,36 @@ export function TeamBridgeScheduleDialog({
 	const [body, setBody] = useState(initialBody ?? "");
 	const [failed, setFailed] = useState(false);
 	const [confirming, setConfirming] = useState<string | null>(null);
+	/*
+	 * FOCUS RETURNS TO THE OPENER. This dialog is opened programmatically (the
+	 * clock, or a row's Reschedule), so Radix has no trigger to restore to and
+	 * drops focus on `body`; a keyboard user then has to tab from the top of the
+	 * page to get back (design review round 1, D33). Capture on open, restore on
+	 * close, and suppress Radix's own body-focus default.
+	 */
+	const opener = useRef<HTMLElement | null>(null);
+	const wasOpenForFocus = useRef(false);
+	useEffect(() => {
+		const wasOpenHere = wasOpenForFocus.current;
+		wasOpenForFocus.current = open;
+		if (open) {
+			if (returnFocus?.current) opener.current = returnFocus.current;
+			return;
+		}
+		// A dialog that never opened has nothing to restore; without this guard a
+		// first render with `open=false` would pull focus to the clock.
+		if (!wasOpenHere) return;
+		/*
+		 * Restore HERE as well as in `onCloseAutoFocus`: Radix's close-auto-focus
+		 * runs while its focus scope is still mounted in some paths (Escape from
+		 * jsdom included), and a `focus()` inside the trap is redirected to body.
+		 * By the time this effect runs the dialog is unmounted, so the handoff
+		 * sticks (design review round 1, D33).
+		 */
+		const target = returnFocus?.current ?? opener.current;
+		opener.current = null;
+		if (target?.isConnected) target.focus();
+	}, [open, returnFocus]);
 	const unchangedTime = Boolean(
 		initialSendAt && value === scheduledLocalInput(initialSendAt),
 	);
@@ -74,7 +110,15 @@ export function TeamBridgeScheduleDialog({
 				}
 			}}
 		>
-			<DialogContent>
+			<DialogContent
+				onCloseAutoFocus={(event) => {
+					const target = returnFocus?.current ?? opener.current;
+					opener.current = null;
+					if (!target || !target.isConnected) return;
+					event.preventDefault();
+					target.focus();
+				}}
+			>
 				<DialogHeader>
 					<DialogTitle>{t("ui.teamBridge.schedule.title")}</DialogTitle>
 					<DialogDescription>
@@ -179,11 +223,13 @@ export function TeamBridgeScheduledList({
 	accountId,
 	tenantIds,
 	organizationNames,
+	conversationNames,
 	readOnly = false,
 }: {
 	accountId: string;
 	tenantIds: string[];
 	organizationNames?: Readonly<Record<string, string>>;
+	conversationNames?: Readonly<Record<string, string>>;
 	readOnly?: boolean;
 }) {
 	const query = useQuery({
@@ -206,6 +252,7 @@ export function TeamBridgeScheduledList({
 			messages={query.data?.scheduled ?? []}
 			failedTenants={query.data?.failedTenants ?? []}
 			organizationNames={organizationNames}
+			conversationNames={conversationNames}
 			readOnly={readOnly}
 			refresh={() => query.refetch()}
 		/>
@@ -219,6 +266,7 @@ export function TeamBridgeScheduledListView({
 	messages,
 	failedTenants = [],
 	organizationNames = {},
+	conversationNames = {},
 	readOnly = false,
 	refresh,
 }: {
@@ -226,10 +274,22 @@ export function TeamBridgeScheduledListView({
 	messages: TeamBridgeScheduledMessage[];
 	failedTenants?: string[];
 	organizationNames?: Readonly<Record<string, string>>;
+	conversationNames?: Readonly<Record<string, string>>;
 	readOnly?: boolean;
 	refresh: () => Promise<unknown>;
 }) {
-	const [cancelFailed, setCancelFailed] = useState(false);
+	/*
+	 * The failure names the ROW it belongs to, so there is exactly one notice
+	 * (here) instead of one at the page and one under the row, and so a later
+	 * success — or a reload where that row is gone — can clear it. A bare
+	 * boolean could not: it outlived both, so the empty state contradicted
+	 * itself (design review round 1, D31).
+	 */
+	const [cancelFailure, setCancelFailure] = useState<string | null>(null);
+	useEffect(() => {
+		if (cancelFailure && !messages.some((row) => row.id === cancelFailure))
+			setCancelFailure(null);
+	}, [messages, cancelFailure]);
 
 	return (
 		<section
@@ -255,7 +315,7 @@ export function TeamBridgeScheduledListView({
 						</Button>
 					</div>
 				))}
-			{cancelFailed && (
+			{cancelFailure && (
 				<p role="alert" className="text-sm text-danger">
 					{t("ui.teamBridge.schedule.cancel_failed")}
 				</p>
@@ -281,7 +341,10 @@ export function TeamBridgeScheduledListView({
 						key={message.id}
 						message={message}
 						refresh={refresh}
-						onCancelFailure={() => setCancelFailed(true)}
+						organizationNames={organizationNames}
+						conversationNames={conversationNames}
+						onCancelFailure={() => setCancelFailure(message.id)}
+						onCancelSuccess={() => setCancelFailure(null)}
 						readOnly={readOnly}
 					/>
 				))
@@ -294,17 +357,37 @@ export function TeamBridgeScheduledRow({
 	message,
 	refresh,
 	readOnly = false,
+	organizationNames = {},
+	conversationNames = {},
 	onCancelFailure,
+	onCancelSuccess,
 }: {
 	message: TeamBridgeScheduledMessage;
 	refresh: () => Promise<unknown>;
 	readOnly?: boolean;
+	organizationNames?: Readonly<Record<string, string>>;
+	conversationNames?: Readonly<Record<string, string>>;
 	onCancelFailure?: () => void;
+	onCancelSuccess?: () => void;
 }) {
 	const locale = useI18nLocale();
 	const [busy, setBusy] = useState(false);
-	const [failed, setFailed] = useState(false);
 	const [edit, setEdit] = useState(false);
+	const rescheduleRef = useRef<HTMLButtonElement>(null);
+	const destinationId = useId();
+	/*
+	 * Cancellation is destructive and immediate, so a row has to say WHICH
+	 * conversation (and organization, when the view spans more than one) it
+	 * belongs to: body copy is not a destination (design review round 1, D32).
+	 * The cancel button points at this line with `aria-describedby`, so the
+	 * affordance carries the identity without new copy for every row.
+	 */
+	const destination = [
+		conversationNames[message.conversation_id]?.trim(),
+		organizationNames[message.tenant_id]?.trim(),
+	]
+		.filter(Boolean)
+		.join(" · ");
 	return (
 		/*
 		 * `elevated`, one lightness step above the `surface` page (design round
@@ -321,25 +404,38 @@ export function TeamBridgeScheduledRow({
 					timeStyle: "long",
 				}).format(new Date(message.send_at))}
 			</p>
+			{destination && (
+				<p id={destinationId} className="text-sm text-ink-muted">
+					{destination}
+				</p>
+			)}
 			<TeamBridgeMarkdown>{message.body}</TeamBridgeMarkdown>
 			{message.status === "sending" ? (
 				<p aria-live="polite">{t("ui.teamBridge.schedule.sending")}</p>
 			) : (
 				<div className="flex flex-wrap gap-2">
-					<Button disabled={busy || readOnly} onClick={() => setEdit(true)}>
+					<Button
+						ref={rescheduleRef}
+						disabled={busy || readOnly}
+						onClick={() => setEdit(true)}
+					>
 						{t("ui.teamBridge.schedule.reschedule")}
 					</Button>
 					<Button
 						variant="ghost"
 						className="h-auto min-h-8 max-w-full whitespace-normal text-left text-danger hover:text-danger"
 						disabled={busy || readOnly}
+						aria-describedby={destination ? destinationId : undefined}
 						onClick={() => {
 							setBusy(true);
-							setFailed(false);
 							void TeamBridgeApi.scheduledCancel(message.tenant_id, message.id)
-								.then(refresh)
+								.then(() => {
+									// A later success is the newest truth; the failure it
+									// supersedes must not outlive it (D31).
+									onCancelSuccess?.();
+									return refresh();
+								})
 								.catch(() => {
-									setFailed(true);
 									onCancelFailure?.();
 									void refresh();
 								})
@@ -350,14 +446,10 @@ export function TeamBridgeScheduledRow({
 					</Button>
 				</div>
 			)}
-			{failed && (
-				<p role="alert" className="text-sm text-danger">
-					{t("ui.teamBridge.schedule.cancel_failed")}
-				</p>
-			)}
 			<TeamBridgeScheduleDialog
 				open={edit}
 				onOpenChange={setEdit}
+				returnFocus={rescheduleRef}
 				busy={busy}
 				initialBody={message.body}
 				initialSendAt={message.send_at}

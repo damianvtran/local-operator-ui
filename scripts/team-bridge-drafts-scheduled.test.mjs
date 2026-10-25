@@ -1712,3 +1712,153 @@ test("r12 minor c: a scheduled create forwards thread_root_id only when set", ()
 	assert.equal(reply.body.thread_root_id, "bcmsg_abc123");
 	assert.equal(reply.path, "/v1/desktop/team-bridge/scheduled");
 });
+
+/* ---- design review round 1 (D31, D32, D33) ------------------------------- */
+
+const dRow = {
+	id: "bsch_1",
+	tenant_id: "org_launch",
+	conversation_id: "bcv_launch",
+	body: "standup notes",
+	send_at: "2030-01-01T12:00:00Z",
+	status: "scheduled",
+	created_at: "2030-01-01T11:00:00Z",
+};
+
+test("D31: a later successful cancel clears the earlier cancellation failure", async () => {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	let outcome = "fail";
+	const requests = [];
+	window.api = {
+		desktop: {
+			request: async (request) => {
+				requests.push(request);
+				if (outcome === "fail")
+					return {
+						status: 409,
+						body: {
+							detail: { code: "invalid_transition", message: "sending" },
+						},
+					};
+				return { status: 204, body: null };
+			},
+		},
+	};
+	const draw = (messages) =>
+		act(async () =>
+			root.render(
+				React.createElement(model.TeamBridgeScheduledListView, {
+					state: "ready",
+					messages,
+					refresh: async () => {},
+				}),
+			),
+		);
+	const cancel = () =>
+		[...element.querySelectorAll("button")].find(
+			(button) => button.textContent === "Cancel message",
+		);
+	try {
+		await draw([dRow]);
+		await act(async () => cancel().click());
+		assert.ok(element.querySelector('[role="alert"]'), "the failure is shown");
+		outcome = "ok";
+		await act(async () => cancel().click());
+		assert.equal(
+			element.querySelector('[role="alert"]'),
+			null,
+			"the failure the success supersedes is gone",
+		);
+		// A clean reload with the row gone must not resurrect it either.
+		await draw([]);
+		assert.equal(element.querySelector('[role="alert"]'), null);
+		assert.ok(element.textContent.includes("No pending scheduled messages"));
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+	}
+});
+
+test("D32: a scheduled row names its conversation and organization, and the cancel points at it", async () => {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(model.TeamBridgeScheduledListView, {
+					state: "ready",
+					messages: [dRow],
+					organizationNames: { org_launch: "Launch org" },
+					conversationNames: { bcv_launch: "launch" },
+					refresh: async () => {},
+				}),
+			),
+		);
+		const destination = element.querySelector("[id][class*='text-ink-muted']");
+		assert.ok(destination);
+		assert.equal(destination.textContent, "launch · Launch org");
+		const cancel = [...element.querySelectorAll("button")].find(
+			(button) => button.textContent === "Cancel message",
+		);
+		assert.equal(cancel.getAttribute("aria-describedby"), destination.id);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+	}
+});
+
+test("D33: Escape returns focus to the control that opened the schedule dialog", async () => {
+	localStorage.clear();
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(
+					model.TeamBridgePageView,
+					r12Props({ onSchedule: async () => ({}) }),
+				),
+			),
+		);
+		const clock = element.querySelector(
+			'button[aria-label="Schedule message"]',
+		);
+		assert.ok(clock);
+		// The clock is disabled on an empty composer, so put something in the box.
+		await r12Type(element.querySelector("textarea"), "schedule me");
+		assert.equal(clock.disabled, false);
+		clock.focus();
+		await act(async () => clock.click());
+		assert.ok(document.querySelector('[role="dialog"]'), "the dialog opened");
+		await act(async () => {
+			document.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Escape",
+					bubbles: true,
+				}),
+			);
+			// Radix restores focus in its unmount effect; let that land before
+			// reading the active element.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+		assert.equal(
+			document.querySelector('[role="dialog"]'),
+			null,
+			"Escape closed it",
+		);
+		// By selector, not node identity: React may replace the button's node
+		// while the dialog is open, and the contract is "the clock has focus".
+		assert.equal(
+			document.activeElement?.getAttribute("aria-label"),
+			"Schedule message",
+			`focus landed on ${document.activeElement?.tagName}/${document.activeElement?.getAttribute?.("aria-label") ?? ""}`,
+		);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+	}
+});
