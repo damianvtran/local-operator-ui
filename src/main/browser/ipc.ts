@@ -1,10 +1,19 @@
-import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
+import {
+	type BrowserWindow,
+	type IpcMainInvokeEvent,
+	Menu,
+	ipcMain,
+} from "electron";
 import { t } from "../../i18n";
 import {
 	ADDRESS_HISTORY_MAX_LIMIT,
 	ADDRESS_HISTORY_MAX_QUERY_LENGTH,
 	type AddressHistoryRequest,
 } from "../../shared/browser-address-history";
+import {
+	type TabActionsMenuSelection,
+	tabActionsMenuRequestOrThrow,
+} from "../../shared/browser-tab-actions-menu";
 import { trustedDesktopFrame } from "../desktop-transport";
 import {
 	DEV_DRIVER_ADDRESS_OVERLAY,
@@ -17,6 +26,7 @@ import { type BrowserAvailability, MAX_START_ATTEMPTS } from "./lifecycle";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
 import { numberOrThrow, tabIdOrThrow } from "./request-guards";
+import { buildTabActionsMenuTemplate } from "./tab-actions-menu";
 
 /**
  * The renderer IPC surface for the browser feature.
@@ -141,6 +151,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-new-tab",
 	"browser-reorder-tabs",
 	"browser-tab-action",
+	"browser-tab-actions-menu",
 	"browser-close-tab",
 	"browser-close-tabs",
 	"browser-activate-tab",
@@ -259,6 +270,54 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			return host.actOnChromeTab(numberOrThrow(tabId, "tabId"), action);
 		},
 	);
+	/**
+	 * The tab strip's actions menu, as a NATIVE menu (LOH-13 operator report).
+	 *
+	 * WHY THIS IS IPC AT ALL. A native `Menu` is built and popped from the main
+	 * process, and the strip is renderer DOM. The request carries the item list
+	 * (labels already interpolated by the strip) and an anchor; the answer is the
+	 * selected item id, or null. The strip runs its existing handler for that id,
+	 * so this channel adds a PRESENTATION path and no new tab operation: the
+	 * vocabulary it may return is fixed in `browser-tab-actions-menu.ts`, and every
+	 * id in it maps to a control the strip already offered.
+	 *
+	 * WHY IT DOES NOT NEED A HOST. Building a menu is display, not browser state;
+	 * requiring a running host would make the menu refuse on a strip whose tabs
+	 * are still on screen while the host restarts. Sender authorization is the
+	 * same owner check every channel here uses.
+	 *
+	 * NO WINDOW, NO MENU. A native popup needs a visible window to hang from. A
+	 * headless rig has none - and a menu left open on a window nobody can see is a
+	 * state nothing can reach to close - so the request answers `null` (a
+	 * dismissal) instead of arming a popup that could never be dismissed. This is
+	 * the same refusal `window-chrome.ts` makes for the app menu.
+	 */
+	ipcMain.handle("browser-tab-actions-menu", (event, payload: unknown) => {
+		authorizeSender(event);
+		const request = tabActionsMenuRequestOrThrow(payload);
+		const owner = options.window();
+		if (!owner || owner.isDestroyed() || !owner.isVisible()) return null;
+		return new Promise<TabActionsMenuSelection>((resolve) => {
+			// One settlement: a clicked item resolves before the popup's own close
+			// callback, and a dismissal is the callback alone.
+			let settled = false;
+			const settle = (selection: TabActionsMenuSelection): void => {
+				if (settled) return;
+				settled = true;
+				resolve(selection);
+			};
+			const menu = Menu.buildFromTemplate(
+				buildTabActionsMenuTemplate(request.items, settle),
+			);
+			menu.popup({
+				window: owner,
+				x: Math.round(request.anchor.x),
+				y: Math.round(request.anchor.y),
+				callback: () => settle(null),
+			});
+		});
+	});
+
 	ipcMain.handle("browser-close-tab", (event, tabId: unknown) => {
 		const host = authorize(event);
 		return host.closeTab(numberOrThrow(tabId, "tabId"));

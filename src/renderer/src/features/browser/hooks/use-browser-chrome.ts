@@ -9,6 +9,11 @@ import type {
 import type { BrowserAvailability } from "../../../../../shared/browser-availability";
 import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
 import {
+	type TabActionsMenuRequest,
+	type TabActionsMenuSelection,
+	tabActionsMenuSelectionOrNull,
+} from "../../../../../shared/browser-tab-actions-menu";
+import {
 	browserBridge as bridge,
 	browserBridgeAvailable,
 	clearBrowserProjectionReadError,
@@ -382,6 +387,22 @@ export interface BrowserChrome {
 		tabId: number,
 		action: "duplicate" | "reload" | "mute" | "unmute",
 	) => Promise<HumanTabActionOutcome | undefined>;
+	/**
+	 * Show the strip's actions menu as a NATIVE menu (LOH-13 operator report).
+	 *
+	 * Resolves with the verb the user selected, or null for a dismissal. The
+	 * STRIP builds the list and runs the handler; this hook only carries the
+	 * validated request and answer, and validates the answer against the shared
+	 * vocabulary so a menu id the strip does not implement can never reach the
+	 * dispatcher.
+	 *
+	 * A refusal is not an action error: a menu that cannot be shown (no window,
+	 * no bridge) is a dismissal, and a toast about it would name nothing the
+	 * user pressed.
+	 */
+	showTabActionsMenu: (
+		request: TabActionsMenuRequest,
+	) => Promise<TabActionsMenuSelection>;
 	newTab: (sessionId?: string | null) => Promise<void>;
 	closeTab: (tabId: number) => Promise<boolean>;
 	/**
@@ -791,6 +812,17 @@ export function useBrowserChrome(): BrowserChrome {
 				return outcome;
 			},
 			newTab: (sessionId) => runVoid(() => api?.newTab(sessionId ?? null)),
+			showTabActionsMenu: async (request) => {
+				try {
+					return tabActionsMenuSelectionOrNull(
+						await api?.tabActionsMenu(request),
+					);
+				} catch {
+					// A menu that could not be shown is a dismissal, not an action
+					// failure: there is no intent here to refuse.
+					return null;
+				}
+			},
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
 			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
 			activateTab: (tabId) => runVoid(() => api?.activateTab(tabId)),
