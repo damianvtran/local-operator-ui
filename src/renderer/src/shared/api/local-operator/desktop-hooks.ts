@@ -230,6 +230,15 @@ export type DesktopFeature =
 	 */
 	| "library"
 	/**
+	 * The notifications reel (`/v1/desktop/notifications*`, the feed's
+	 * `notifications` invalidation frame, the `/notifications` slash destination
+	 * and the sidebar row). Its own key for the Library reason: an older core
+	 * has no routes, refuses `"notifications"` in a sidebar-layout PUT, and
+	 * sends no frame, so absent means no row, no route, no read, no write and the
+	 * asks drawer exactly as it was - never an empty inbox.
+	 */
+	| "notifications"
+	/**
 	 * The sidebar customisation resource (`GET`/`PUT /v1/desktop/sidebar-layout`,
 	 * design contract § 4). Its own key because the column must render TODAY'S
 	 * fixed arrangement on a backend that predates the route: the drag handle and

@@ -125,6 +125,19 @@ export type DesktopFeedConnection = {
 	 */
 	codeRequestsRevision: { sessionId: string; revision: number } | null;
 	/**
+	 * The last `notifications` frame's high-water revision and counts, or null
+	 * before the first one - the answer an older backend gives forever.
+	 *
+	 * EXPOSED rather than acted on, exactly as `codeRequestsRevision` is: the
+	 * query keys belong to `features/notifications/notifications-api.ts`, whose
+	 * `useNotificationsFeedInvalidation` spends it.
+	 */
+	notificationsRevision: {
+		revision: number;
+		unreadCount: number;
+		waitingCount: number;
+	} | null;
+	/**
 	 * The last `config` frame, or null before the first one - which is also the
 	 * answer an older backend gives forever, so a consumer guards on null and a
 	 * frame that never arrives changes nothing.
@@ -165,6 +178,11 @@ export function useDesktopFeed(): DesktopFeedConnection {
 	const [codeRequestsRevision, setCodeRequestsRevision] = useState<{
 		sessionId: string;
 		revision: number;
+	} | null>(null);
+	const [notificationsRevision, setNotificationsRevision] = useState<{
+		revision: number;
+		unreadCount: number;
+		waitingCount: number;
 	} | null>(null);
 	const [configChange, setConfigChange] = useState<{
 		changedKeys: string[];
@@ -301,6 +319,19 @@ export function useDesktopFeed(): DesktopFeedConnection {
 				return;
 			}
 			/*
+			 * The notifications reel moved. Exposed in the `code_requests` shape and
+			 * for the same reason: the invalidation belongs to the module that owns
+			 * the reel's query keys, and this hook stays free of query knowledge.
+			 */
+			if (frame.type === "notifications") {
+				setNotificationsRevision({
+					revision: frame.payload.revision,
+					unreadCount: frame.payload.unread_count,
+					waitingCount: frame.payload.waiting_count,
+				});
+				return;
+			}
+			/*
 			 * A `config.yml` change, exposed the same way the revisions above are:
 			 * the transport says WHAT moved; the language's own writer (locale-sync)
 			 * decides what to invalidate and whether the change is worth announcing
@@ -336,6 +367,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		authoringRevision,
 		authoringReconnectRevision,
 		codeRequestsRevision,
+		notificationsRevision,
 		configChange,
 	};
 }
