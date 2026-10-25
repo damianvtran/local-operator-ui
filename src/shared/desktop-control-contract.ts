@@ -1044,12 +1044,18 @@ export type DesktopNotificationItem = {
 };
 
 /** `GET /v1/desktop/notifications`. `waiting` is present on the first page only. */
+export type DesktopNotificationToken = { id: string; revision: number };
+
 export type DesktopNotificationsList = {
 	items: DesktopNotificationItem[];
+	/** Exact page observations; first page also includes its waiting ask refs. */
+	observed: DesktopNotificationToken[];
 	waiting?: DesktopNotificationItem[];
 	next_cursor?: string | null;
 	unread_count: number;
 	waiting_count: number;
+	/** Unread pending asks only: reading never removes an open ask. */
+	waiting_unread_count: number;
 	/** Max `seq` this answer saw: the `throughSeq` of a mark-all / by-session write. */
 	high_water: number;
 };
@@ -1058,6 +1064,8 @@ export type DesktopNotificationsList = {
 export type DesktopNotificationsCount = {
 	unread_count: number;
 	waiting_count: number;
+	/** Unread pending asks only: reading never removes an open ask. */
+	waiting_unread_count: number;
 	high_water: number;
 };
 
@@ -1107,6 +1115,8 @@ export type DesktopNotificationsSkipReason =
 
 /** `PATCH /v1/desktop/notifications` and `POST …/seen`. */
 export type DesktopNotificationsWriteResult = {
+	waiting_count: number;
+	waiting_unread_count: number;
 	changed: string[];
 	skipped: { id: string; reason: DesktopNotificationsSkipReason }[];
 	unread_count: number;

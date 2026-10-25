@@ -87,39 +87,73 @@ export const DrawerTabs: FC<{
 	};
 	return (
 		<div
-			role="tablist"
-			aria-label={t("ui.notifications.drawer.tabs_label")}
+			className="flex shrink-0 flex-col gap-1 border-hairline border-b px-2 pb-1"
 			onKeyDown={onKeyDown}
-			className="flex h-9 shrink-0 items-end gap-1 border-hairline border-b px-2"
 		>
-			{shown.map((entry) => (
-				<button
-					key={entry.id}
-					type="button"
-					role="tab"
-					aria-selected={tab === entry.id}
-					tabIndex={tab === entry.id ? 0 : -1}
-					data-drawer-tab={entry.id}
-					onClick={() => onTab(entry.id)}
-					className={cn(
-						"-mb-px flex h-8 items-center gap-1.5 border-b-2 px-2 text-body-sm",
-						tab === entry.id
-							? "border-accent text-ink"
-							: "border-transparent text-ink-muted hover:text-ink",
-					)}
+			{/* Scope is its own full-width control: long translations cannot
+			    squeeze three unrelated labels into one 360px line (D1/U1). */}
+			<button
+				type="button"
+				aria-pressed={tab === "all"}
+				data-drawer-tab="all"
+				onClick={() => onTab("all")}
+				className={cn(
+					"min-h-8 w-full whitespace-normal rounded-sm px-2 py-1 text-start text-body-sm",
+					tab === "all"
+						? "bg-row-selected text-ink"
+						: "text-ink-muted hover:bg-row-hover",
+				)}
+			>
+				{t("ui.notifications.drawer.tab.all")}
+			</button>
+			{!sessionless && (
+				<div
+					role="tablist"
+					aria-label={t("ui.notifications.drawer.tabs_label")}
+					className="flex min-w-0 gap-1"
 				>
-					{entry.label}
-					{entry.count > 0 && (
-						<Badge variant="neutral" size="count">
-							{entry.id === "updates"
-								? t("ui.notifications.drawer.unread_count", {
-										count: formatNumber(entry.count),
-									})
-								: formatNumber(entry.count)}
-						</Badge>
-					)}
-				</button>
-			))}
+					{tabs
+						.filter((entry) => entry.id !== "all")
+						.map((entry) => (
+							<button
+								key={entry.id}
+								type="button"
+								role="tab"
+								aria-selected={tab === entry.id}
+								tabIndex={
+									tab === entry.id || (tab === "all" && entry.id === "asks")
+										? 0
+										: -1
+								}
+								data-drawer-tab={entry.id}
+								onClick={() => onTab(entry.id)}
+								className={cn(
+									"flex min-h-8 min-w-0 flex-1 flex-wrap items-center justify-center gap-1 border-b-2 px-2 py-1 text-body-sm",
+									tab === entry.id
+										? "border-accent text-ink"
+										: "border-transparent text-ink-muted hover:text-ink",
+								)}
+							>
+								<span className="min-w-0 whitespace-normal break-words">
+									{entry.label}
+								</span>
+								{entry.count > 0 && (
+									<Badge
+										variant="neutral"
+										size="count"
+										className="h-auto max-w-full whitespace-normal break-words text-center"
+									>
+										{entry.id === "updates"
+											? t("ui.notifications.drawer.unread_count", {
+													count: formatNumber(entry.count),
+												})
+											: formatNumber(entry.count)}
+									</Badge>
+								)}
+							</button>
+						))}
+				</div>
+			)}
 		</div>
 	);
 };

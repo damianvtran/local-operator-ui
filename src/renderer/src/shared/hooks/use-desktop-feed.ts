@@ -136,6 +136,7 @@ export type DesktopFeedConnection = {
 		revision: number;
 		unreadCount: number;
 		waitingCount: number;
+		waitingUnreadCount: number;
 	} | null;
 	/**
 	 * The last `config` frame, or null before the first one - which is also the
@@ -183,6 +184,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		revision: number;
 		unreadCount: number;
 		waitingCount: number;
+		waitingUnreadCount: number;
 	} | null>(null);
 	const [configChange, setConfigChange] = useState<{
 		changedKeys: string[];
@@ -328,6 +330,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					revision: frame.payload.revision,
 					unreadCount: frame.payload.unread_count,
 					waitingCount: frame.payload.waiting_count,
+					waitingUnreadCount: frame.payload.waiting_unread_count,
 				});
 				return;
 			}

@@ -1267,9 +1267,31 @@ const notificationsTarget = z.union([
 				.max(500),
 		})
 		.strict(),
-	z.object({ sessionId, throughSeq: z.number().int().min(0) }).strict(),
 	z
-		.object({ all: z.literal(true), throughSeq: z.number().int().min(0) })
+		.object({
+			sessionId,
+			throughSeq: z.number().int().min(0),
+			observed: z
+				.array(
+					z
+						.object({ id: notificationId, revision: z.number().int().min(1) })
+						.strict(),
+				)
+				.max(500),
+		})
+		.strict(),
+	z
+		.object({
+			all: z.literal(true),
+			throughSeq: z.number().int().min(0),
+			observed: z
+				.array(
+					z
+						.object({ id: notificationId, revision: z.number().int().min(1) })
+						.strict(),
+				)
+				.max(500),
+		})
 		.strict(),
 ]);
 
@@ -4372,6 +4394,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			source: z.enum(["notify", "ask"]).optional(),
 			priority: z.enum(["high", "normal", "low"]).optional(),
 			sessionId: sessionId.optional(),
+			throughSeq: z.number().int().min(0).optional(),
 			cursor: z.string().min(1).max(64).optional(),
 			limit: z.number().int().min(1).max(100).optional(),
 		})
@@ -9804,6 +9827,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.priority) query.set("priority", request.priority);
 			if (request.sessionId) query.set("session_id", request.sessionId);
 			if (request.cursor) query.set("cursor", request.cursor);
+			if (request.throughSeq !== undefined)
+				query.set("through_seq", String(request.throughSeq));
 			if (request.limit !== undefined)
 				query.set("limit", String(request.limit));
 			return {
@@ -9868,9 +9893,17 @@ function notificationsTargetBody(
 		};
 	}
 	if ("sessionId" in target) {
-		return { session_id: target.sessionId, through_seq: target.throughSeq };
+		return {
+			session_id: target.sessionId,
+			through_seq: target.throughSeq,
+			observed: target.observed,
+		};
 	}
-	return { all: true, through_seq: target.throughSeq };
+	return {
+		all: true,
+		through_seq: target.throughSeq,
+		observed: target.observed,
+	};
 }
 
 /**

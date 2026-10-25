@@ -1,3 +1,4 @@
+import { openConversation } from "@features/chat/open-conversation";
 /**
  * The Notifications page (`/notifications`, `/notifications/:id`): one reel of
  * open asks and agent-raised updates across every conversation, with a detail
@@ -21,7 +22,7 @@
  * yet: high-volume DOM performance remains a measured limitation, not a claim
  * that an arbitrary truncation is the whole inbox.
  */
-import { openConversation } from "@features/chat/open-conversation";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureState,
 	useDesktopCapabilities,
@@ -82,6 +83,15 @@ import type {
 	DesktopNotificationsWriteResult,
 } from "../../../../../shared/desktop-control-contract";
 import {
+	type NotificationSnapshot,
+	type OperationProgress,
+	applyNotificationOperation,
+	inverseNotificationVerb,
+	isCompleteInverse,
+	observeNotificationScope,
+	receiptProgress,
+} from "../notification-operations";
+import {
 	type NotificationsTarget,
 	type NotificationsVerb,
 	notificationKeys,
@@ -89,6 +99,7 @@ import {
 	useNotificationDetail,
 	useNotificationsList,
 	useNotificationsWrite,
+	writeNotifications,
 } from "../notifications-api";
 import {
 	DEFAULT_FILTERS,
@@ -109,6 +120,8 @@ import { NotificationRow } from "./notification-row";
 
 /** The design's Undo window (§ 0.8): 6 s, after which the toast leaves. */
 export const UNDO_WINDOW_MS = 6_000;
+const operationText = (progress: OperationProgress) =>
+	t("ui.notifications.operation.progress", progress);
 
 /** The read-state choice persists per device (design § 2). */
 const READ_STATE_KEY = "notifications-read-state";
@@ -174,7 +187,12 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		sessionId: string;
 		title: string;
 		count: number;
+		snapshot: NotificationSnapshot;
 	} | null>(null);
+	const [operationProgress, setOperationProgress] =
+		useState<OperationProgress | null>(null);
+	const [operationBusy, setOperationBusy] = useState(false);
+	const operationLock = useRef(false);
 	/*
 	 * ROWS MARKED READ STAY ON THE UNREAD FILTER until the next navigation or
 	 * refresh (design § 7.3, the Gmail/Linear rule): they do not vanish under
@@ -258,7 +276,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * render nobody can vouch for.
 	 */
 	const refreshFailed = list.isError && Boolean(loaded);
-	const writesPaused = refreshFailed;
+	const writesPaused = refreshFailed || operationBusy;
 	const openItem = notificationId
 		? (byId.get(notificationId) ?? detail.data?.item ?? null)
 		: null;
@@ -296,80 +314,144 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * server (contract § 12 "undo within a window"), so the toast's window is the
 	 * UI's promise, not a server deadline.
 	 */
-	const runWrite = useCallback(
-		(
-			verb: NotificationsVerb,
-			target: NotificationsTarget,
-			sent: { id: string; revision: number }[],
-			receipt: (result: DesktopNotificationsWriteResult) => string | null,
-		) => {
-			write.mutate(
-				{ verb, target },
-				{
-					onSuccess: (result) => {
-						const message = receipt(result);
-						const changed = new Set(result.changed);
-						const undoItems = sent.filter((item) => changed.has(item.id));
-						if (!message) return;
-						const inverse: NotificationsVerb | null =
-							verb === "dismiss"
-								? "undismiss"
-								: verb === "read"
-									? "unread"
-									: verb === "unread"
-										? "read"
-										: null;
-						showInfoToast(message, {
-							duration: UNDO_WINDOW_MS,
-							action:
-								inverse && undoItems.length > 0
-									? {
-											label: t("ui.notifications.toast.undo"),
-											onClick: () => {
-												writeUndo(inverse, undoItems);
-											},
-										}
-									: undefined,
-						});
-					},
-					onError: () => {
-						showErrorToast(
-							verb === "dismiss" || verb === "undismiss"
-								? t("ui.notifications.error.dismiss")
-								: t("ui.notifications.error.mark"),
-						);
-					},
-				},
-			);
-		},
-		[write],
-	);
-	const writeUndo = useCallback(
-		(
-			verb: NotificationsVerb,
-			undoItems: { id: string; revision: number }[],
-		) => {
-			write.mutate(
-				{ verb, target: { items: undoItems } },
-				{
-					onSuccess: () => showSuccessToast(t("ui.notifications.toast.undone")),
-					onError: () =>
-						showErrorToast(
-							verb === "undismiss"
-								? t("ui.notifications.error.dismiss")
-								: t("ui.notifications.error.mark"),
-						),
-				},
-			);
-		},
-		[write],
-	);
-	/* Keyboard Undo (design § 7.2 ⌘Z) re-runs the last receipt's inverse. */
 	const lastUndo = useRef<{
 		verb: NotificationsVerb;
 		items: { id: string; revision: number }[];
 		at: number;
 	} | null>(null);
+
+	const writeUndo = useCallback(
+		async (
+			verb: NotificationsVerb,
+			undoItems: { id: string; revision: number }[],
+		) => {
+			if (operationLock.current) return;
+			operationLock.current = true;
+			setOperationBusy(true);
+			lastUndo.current = null;
+			try {
+				const receipt = await applyNotificationOperation(
+					writeNotifications,
+					verb,
+					undoItems,
+					undefined,
+					setOperationProgress,
+				);
+				const progress = receiptProgress(receipt);
+				if (verb === "unread")
+					setStickyRead((current) => {
+						const next = new Map(current);
+						for (const token of receipt.changed) next.delete(token.id);
+						return next;
+					});
+				// "Restored" is reserved for a complete, confirmed inverse. Zero or
+				// partial inversions keep the actual three-way receipt visible (R3).
+				if (isCompleteInverse(receipt, undoItems.length))
+					showSuccessToast(t("ui.notifications.toast.undone"));
+				else showInfoToast(operationText(progress));
+			} finally {
+				operationLock.current = false;
+				setOperationBusy(false);
+				void client.invalidateQueries({ queryKey: notificationKeys.all });
+			}
+		},
+		[client],
+	);
+
+	const runWrite = useCallback(
+		async (
+			verb: NotificationsVerb,
+			target: NotificationsTarget,
+			sent: { id: string; revision: number }[],
+			message: (
+				result: Pick<DesktopNotificationsWriteResult, "changed" | "skipped">,
+			) => string | null,
+			ownsLock = false,
+		) => {
+			if (operationLock.current && !ownsLock) return;
+			operationLock.current = true;
+			setOperationBusy(true);
+			// A failed original operation cannot leave a keyboard Undo for work
+			// that was never confirmed. Populate only from actual changed receipts.
+			lastUndo.current = null;
+			try {
+				const snapshot =
+					"items" in target
+						? undefined
+						: {
+								scope:
+									"sessionId" in target
+										? { sessionId: target.sessionId }
+										: { all: true as const },
+								throughSeq: target.throughSeq,
+								tokens: sent,
+							};
+				const receipt = await applyNotificationOperation(
+					writeNotifications,
+					verb,
+					sent,
+					snapshot,
+					setOperationProgress,
+				);
+				const progress = receiptProgress(receipt);
+				if (verb === "read") {
+					const changed = new Set(receipt.changed.map((token) => token.id));
+					setStickyRead((current) => {
+						const next = new Map(current);
+						for (const item of byId.values())
+							if (changed.has(item.id))
+								next.set(item.id, {
+									...item,
+									read: true,
+									read_via: "explicit",
+								});
+						return next;
+					});
+				} else if (verb === "unread") {
+					setStickyRead((current) => {
+						const next = new Map(current);
+						for (const token of receipt.changed) next.delete(token.id);
+						return next;
+					});
+				}
+				const undo = receipt.changed.length
+					? {
+							verb: inverseNotificationVerb(verb),
+							items: receipt.changed,
+							at: Date.now(),
+						}
+					: null;
+				lastUndo.current = undo;
+				const summary = message({
+					changed: receipt.changed.map((token) => token.id),
+					skipped: receipt.skipped,
+				});
+				showInfoToast(
+					[summary, operationText(progress)].filter(Boolean).join(". "),
+					{
+						duration: UNDO_WINDOW_MS,
+						action: undo
+							? {
+									label: t("ui.notifications.toast.undo"),
+									onClick: () => {
+										if (
+											lastUndo.current === undo &&
+											Date.now() - undo.at <= UNDO_WINDOW_MS
+										)
+											void writeUndo(undo.verb, undo.items);
+									},
+								}
+							: undefined,
+					},
+				);
+			} finally {
+				operationLock.current = false;
+				setOperationBusy(false);
+				void client.invalidateQueries({ queryKey: notificationKeys.all });
+			}
+		},
+		[client, byId, writeUndo],
+	);
 
 	const toggleRead = useCallback(
 		(targets: DesktopNotificationItem[]) => {
@@ -380,19 +462,6 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				anyUnread ? !item.read : item.read,
 			);
 			const tokens = tokensOf(subject);
-			if (verb === "read" && readState === "unread") {
-				setStickyRead((current) => {
-					const next = new Map(current);
-					for (const item of subject)
-						next.set(item.id, { ...item, read: true, read_via: "explicit" });
-					return next;
-				});
-			}
-			lastUndo.current = {
-				verb: verb === "read" ? "unread" : "read",
-				items: tokens,
-				at: Date.now(),
-			};
 			runWrite(verb, { items: tokens }, tokens, (result) =>
 				verb === "read"
 					? t("ui.notifications.toast.marked_read", {
@@ -403,7 +472,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 						}),
 			);
 		},
-		[readState, runWrite, writesPaused],
+		[runWrite, writesPaused],
 	);
 
 	/*
@@ -420,7 +489,6 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				return;
 			}
 			const tokens = tokensOf(dismissable);
-			lastUndo.current = { verb: "undismiss", items: tokens, at: Date.now() };
 			/* Focus walks to the next row so `E E E` works down the list (§ 7.3). */
 			const ids = new Set(dismissable.map((item) => item.id));
 			const position = order.findIndex((item) => ids.has(item.id));
@@ -454,66 +522,106 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * so an update landing after the confirm is not swept.
 	 */
 	const requestDismissSession = useCallback(
-		(sessionId: string, title: string) => {
-			const count = sessionDismissCount([...waiting, ...items], sessionId);
-			if (count === 0) return;
-			setConfirmSession({ sessionId, title, count });
+		async (sessionId: string, title: string) => {
+			if (!loaded || writesPaused || operationLock.current) return;
+			operationLock.current = true;
+			setOperationBusy(true);
+			try {
+				const snapshot = await observeNotificationScope(
+					(request) =>
+						desktopResult<DesktopNotificationsList>({
+							op: "notifications.list",
+							...request,
+						}),
+					{
+						scope: { sessionId },
+						throughSeq: loaded.high_water,
+						waiting: [],
+						verb: "dismiss",
+					},
+				);
+				// Nothing in this confirmation reads the mutable query again. Refresh,
+				// filters and paging cannot replace its count, boundary or revisions.
+				if (snapshot.tokens.length)
+					setConfirmSession({
+						sessionId,
+						title,
+						count: snapshot.tokens.length,
+						snapshot,
+					});
+			} catch {
+				showErrorToast(t("ui.notifications.error.load.title"));
+			} finally {
+				operationLock.current = false;
+				setOperationBusy(false);
+			}
 		},
-		[items, waiting],
+		[loaded, writesPaused],
 	);
 	const confirmDismissSession = useCallback(() => {
-		if (!confirmSession || !loaded) return;
-		const { sessionId } = confirmSession;
-		const sent = tokensOf(
-			[...waiting, ...items].filter(
-				(item) => item.session.id === sessionId && !isLiveAsk(item),
-			),
-		);
+		if (!confirmSession) return;
+		const { snapshot } = confirmSession;
 		setConfirmSession(null);
-		if (notificationId && byId.get(notificationId)?.session.id === sessionId)
-			navigate("/notifications");
-		runWrite(
+		void runWrite(
 			"dismiss",
-			{ sessionId, throughSeq: loaded.high_water },
-			sent,
-			(result) => {
-				const asks = result.skipped.filter(
-					(entry) => entry.reason === "live_ask",
-				).length;
-				const message = t("ui.notifications.toast.dismissed", {
-					count: result.changed.length,
-				});
-				return asks > 0
-					? `${message}. ${t("ui.notifications.select.asks_stay", { count: asks })}`
-					: message;
+			{
+				...snapshot.scope,
+				throughSeq: snapshot.throughSeq,
+				observed: [...snapshot.tokens],
 			},
-		);
-	}, [
-		byId,
-		confirmSession,
-		items,
-		loaded,
-		navigate,
-		notificationId,
-		runWrite,
-		waiting,
-	]);
-
-	/* MARK ALL READ, one click with Undo, bounded by `high_water` (§ 0.8, § 12.4). */
-	const markAllRead = useCallback(() => {
-		if (!loaded) return;
-		const sent = tokensOf(order.filter((item) => !item.read));
-		lastUndo.current = { verb: "unread", items: sent, at: Date.now() };
-		runWrite(
-			"read",
-			{ all: true, throughSeq: loaded.high_water },
-			sent,
+			[...snapshot.tokens],
 			(result) =>
-				t("ui.notifications.toast.marked_read", {
-					count: formatNumber(result.changed.length),
-				}),
+				t("ui.notifications.toast.dismissed", { count: result.changed.length }),
 		);
-	}, [loaded, order, runWrite]);
+	}, [confirmSession, runWrite]);
+
+	/* Mark ALL is global, independent of the From/Kind/Priority display filters.
+	 * Read every notify page under the first rendered boundary, retain the first
+	 * unread waiting set, and never manufacture observations for later arrivals. */
+	const markAllRead = useCallback(async () => {
+		if (!loaded || writesPaused || operationLock.current) return;
+		operationLock.current = true;
+		setOperationBusy(true);
+		try {
+			const unreadAsks = new Set(
+				(loaded.waiting ?? [])
+					.filter((item) => !item.read)
+					.map((item) => item.id),
+			);
+			const snapshot = await observeNotificationScope(
+				(request) =>
+					desktopResult<DesktopNotificationsList>({
+						op: "notifications.list",
+						...request,
+					}),
+				{
+					scope: { all: true },
+					throughSeq: loaded.high_water,
+					waiting: loaded.observed.filter((token) => unreadAsks.has(token.id)),
+					verb: "read",
+				},
+			);
+			await runWrite(
+				"read",
+				{
+					all: true,
+					throughSeq: snapshot.throughSeq,
+					observed: [...snapshot.tokens],
+				},
+				[...snapshot.tokens],
+				(result) =>
+					t("ui.notifications.toast.marked_read", {
+						count: formatNumber(result.changed.length),
+					}),
+				true,
+			);
+		} catch {
+			showErrorToast(t("ui.notifications.error.load.title"));
+		} finally {
+			operationLock.current = false;
+			setOperationBusy(false);
+		}
+	}, [loaded, runWrite, writesPaused]);
 
 	const openDetail = useCallback(
 		(item: DesktopNotificationItem) => {
@@ -944,6 +1052,17 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				) : null}
 			</div>
 
+			{operationBusy && !operationProgress && (
+				<Spinner label={t("ui.notifications.page.loading")} />
+			)}
+			{operationProgress && (
+				<output
+					className="shrink-0 px-6 py-1 text-meta text-ink-muted"
+					data-notification-operation=""
+				>
+					{t("ui.notifications.operation.progress", operationProgress)}
+				</output>
+			)}
 			{confirmSession && (
 				<ConfirmDismissSession
 					title={confirmSession.title}
@@ -1213,7 +1332,7 @@ const Toolbar: FC<ToolbarProps> = ({
 				: "indeterminate";
 	return (
 		<div
-			className="flex h-11 shrink-0 flex-wrap items-center gap-2 border-hairline border-b pb-2"
+			className="flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-hairline border-b py-2"
 			data-notifications-toolbar={selecting ? "selection" : "filters"}
 		>
 			{selecting ? (
@@ -1468,13 +1587,23 @@ const Toolbar: FC<ToolbarProps> = ({
 						 * the button should read as unavailable. A paused write stays
 						 * `aria-disabled` so it keeps focus and its tooltip says why.
 						 */
-						disabled={!loaded || (loaded?.unread_count ?? 0) === 0}
+						disabled={
+							!loaded ||
+							(loaded?.unread_count ?? 0) +
+								(loaded?.waiting_unread_count ?? 0) ===
+								0
+						}
 						aria-disabled={writesPaused || undefined}
 						title={
 							writesPaused ? t("ui.notifications.writes_paused_tip") : undefined
 						}
 						onClick={() => {
-							if (!loaded || writesPaused || loaded.unread_count === 0) return;
+							if (
+								!loaded ||
+								writesPaused ||
+								loaded.unread_count + loaded.waiting_unread_count === 0
+							)
+								return;
 							markAllRead();
 						}}
 						data-notifications-mark-all=""

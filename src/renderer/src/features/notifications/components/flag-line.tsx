@@ -105,7 +105,12 @@ export const FlagLinesProvider: FC<{
 	}, [enabled, items.data, reader]);
 	return (
 		<FlagLinesContext.Provider value={value}>
-			{children}
+			<div
+				className="contents"
+				data-notification-owner={sessionId ?? undefined}
+			>
+				{children}
+			</div>
 		</FlagLinesContext.Provider>
 	);
 };
@@ -126,8 +131,10 @@ export const FlagLine: FC<{ item: DesktopNotificationItem }> = ({ item }) => {
 	const anchorId = item.anchor_id ?? "";
 	useEffect(() => {
 		const element = ref.current;
-		if (!element || !context?.reader || !unread || !anchorId) return;
+		const owner = element?.closest<HTMLElement>("[data-notification-owner]");
+		if (!element || !owner || !context?.reader || !unread || !anchorId) return;
 		return context.reader.register({
+			owner,
 			id: item.id,
 			revision: item.revision,
 			anchorId,

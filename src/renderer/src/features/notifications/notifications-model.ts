@@ -244,7 +244,7 @@ export const badgeCountOf = (
 	count: DesktopNotificationsCount | null | undefined,
 ): number =>
 	count
-		? Math.max(0, count.unread_count) + Math.max(0, count.waiting_count)
+		? Math.max(0, count.unread_count) + Math.max(0, count.waiting_unread_count)
 		: 0;
 
 /** Which provenance mark a READ row draws (design § 17.4). */

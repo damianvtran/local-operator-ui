@@ -2307,6 +2307,7 @@ export type DesktopFeedFrame =
 				revision: number;
 				unread_count: number;
 				waiting_count: number;
+				waiting_unread_count: number;
 			};
 	  }
 	| {

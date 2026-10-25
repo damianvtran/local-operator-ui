@@ -32,7 +32,7 @@ import {
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -75,15 +75,20 @@ export function useNotificationsList(
 	return useInfiniteQuery({
 		queryKey: notificationKeys.list(state),
 		enabled,
-		initialPageParam: undefined as string | undefined,
+		initialPageParam: undefined as
+			| { cursor: string; throughSeq: number }
+			| undefined,
 		queryFn: ({ pageParam }) =>
 			desktopResult<DesktopNotificationsList>({
 				op: "notifications.list",
 				state,
 				limit: 100,
-				...(pageParam ? { cursor: pageParam } : {}),
+				...(pageParam ?? {}),
 			}),
-		getNextPageParam: (last) => last.next_cursor ?? undefined,
+		getNextPageParam: (last) =>
+			last.next_cursor
+				? { cursor: last.next_cursor, throughSeq: last.high_water }
+				: undefined,
 		// Only page one carries waiting. Deduplicate keyed items across a cursor
 		// boundary if content changed between reads, retaining the freshest token.
 		select: (answer): DesktopNotificationsList => {
@@ -166,23 +171,20 @@ export function useNotificationsCount(enabled: boolean) {
 
 /**
  * Spend the feed's `notifications` frame: every key under the reel's prefix is
- * invalidated once per new revision. The frame's counts are written into the
- * count query first, so the badge repaints without waiting on a round trip.
- *
- * A revision already applied is a no-op (duplicate delivery after a reconnect),
- * the `appliedAfterFrame` rule the code-request ledger follows.
+ * invalidated for EVERY frame. The notification-store sequence does not cover
+ * ask-queue changes: a same-count ask replacement or an ask read mark can carry
+ * the same numeric revision. Frame identity, not that sequence, is the signal
+ * (R1/Q1). The frame's counts paint immediately, then queries reconcile.
  */
 export function useNotificationsFeedInvalidation() {
 	const { notificationsRevision } = useDesktopFeed();
 	const { client, provided } = useOptionalQueryClient();
-	const applied = useRef<number | null>(null);
 	useEffect(() => {
 		if (!provided || !notificationsRevision) return;
-		if (applied.current === notificationsRevision.revision) return;
-		applied.current = notificationsRevision.revision;
 		client.setQueryData<DesktopNotificationsCount>(notificationKeys.count, {
 			unread_count: notificationsRevision.unreadCount,
 			waiting_count: notificationsRevision.waitingCount,
+			waiting_unread_count: notificationsRevision.waitingUnreadCount,
 			high_water: notificationsRevision.revision,
 		});
 		void client.invalidateQueries({ queryKey: notificationKeys.all });
@@ -192,8 +194,16 @@ export function useNotificationsFeedInvalidation() {
 /** The target half of a write, as the contract's request schema spells it. */
 export type NotificationsTarget =
 	| { items: { id: string; revision: number }[] }
-	| { sessionId: string; throughSeq: number }
-	| { all: true; throughSeq: number };
+	| {
+			sessionId: string;
+			throughSeq: number;
+			observed: { id: string; revision: number }[];
+	  }
+	| {
+			all: true;
+			throughSeq: number;
+			observed: { id: string; revision: number }[];
+	  };
 
 export type NotificationsVerb = "read" | "unread" | "dismiss" | "undismiss";
 

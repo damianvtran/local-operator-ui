@@ -33,3 +33,27 @@ relative-luminance formula, and asserted in `scripts/contrast-contract.mjs` as
 |---|---|---|---|
 | `accent` fill vs ground (≥ 3:1) | 4.24 (tokyoNight, `rowSelected`) | 6.10–7.54 | 4.53–5.14 |
 | `onAccent` digit vs `accent` fill (≥ 4.5:1) | 4.97 (tokyoNightDay) | 8.58 | 5.33 |
+
+## Round 1 remediation captures (2026-10-25)
+
+These are the states the review round asked to see again, from the *same* build
+that carries the fixes. Everything about the harness is unchanged: Storybook
+served the stories, one reused browser tab stepped through them, the frames were
+cropped to the preview, and nothing was retouched.
+
+| Frame | What it answers |
+|---|---|
+| `round1-populated-dark.webp` | the page still renders the pinned "Waiting on you" group and time groups after the toolbar layout change |
+| `round1-narrow-980-en-dark.webp` / `-fr-dark` | **U1/Q6**: the same 980x380 box in both languages. The toolbar wraps to a natural height (`min-h-11`, `py-2`) instead of clipping, and "Tout marquer comme lu" is fully visible and hit-testable — the English frame is the same-size control, not a second viewport |
+| `round1-drawer-404-ru-dark.webp` | **D1**: the REAL `AskDrawer` + rail at 404 px (360 px drawer). Russian "Обновления / Непрочитанных: 1" wraps inside its tab; the scope selector owns its own full-width row, so no label is squeezed or hidden |
+| `round1-drawer-404-ur-rtl-dark.webp` | **D2**: the same drawer in Urdu through the real `LocaleDirectionProvider`/`useDocumentDirection`; `html` computes `direction: rtl` and the panel, rail and rows mirror |
+
+Measured, not eyeballed: `[data-notifications-mark-all]` is `visible, in view`
+at 980x380 in French (rect 845.44,109.29 110.56x28), and the Urdu document root
+reports `direction: rtl`. The blue boxes behind some Urdu labels in that frame
+are the inspection overlay the harness draws over an element I had just
+measured — the button's own computed `background-color` is `rgba(0, 0, 0, 0)`.
+
+The drawer's width is pinned by the story (`w-[404px]`: 360 px drawer + the
+44 px rail), because a proof of "long labels fit" is worthless if the host
+happened to be wide.

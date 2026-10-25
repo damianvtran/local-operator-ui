@@ -94,6 +94,7 @@ import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiMiniView from "./catalogues/en/ui.miniView.json";
 import enUiNotices from "./catalogues/en/ui.notices.json";
 import enUiNotifications from "./catalogues/en/ui.notifications.json";
+import enUiNotificationsOperation from "./catalogues/en/ui.notifications.operation.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
@@ -865,6 +866,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiMiniView,
 	...enUiNotices,
 	...enUiNotifications,
+	...enUiNotificationsOperation,
 	...enUiOnboarding,
 	...enUiPresence,
 	...enUiProjects,
@@ -6518,6 +6520,11 @@ export type MessageParams = {
 	"ui.notifications.toast.undo": undefined;
 	"ui.notifications.toast.undone": undefined;
 	"ui.notifications.writes_paused_tip": undefined;
+	"ui.notifications.operation.progress": {
+		changed: number;
+		skipped: number;
+		pending: number;
+	};
 	"ui.onboarding.connect.intro": undefined;
 	"ui.onboarding.default_model.block.loading_models": undefined;
 	"ui.onboarding.default_model.block.pick_a_model": undefined;

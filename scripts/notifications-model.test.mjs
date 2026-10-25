@@ -13,7 +13,8 @@ import { build } from "esbuild";
  *  - a live ask never enters a bulk dismiss, and the count of skipped asks is
  *    what the selection bar promises (design section 6, contract section 2.3);
  *  - time buckets are calendar days, so the four groups partition every time;
- *  - the badge is unread_count + waiting_count (contract section 8.1);
+ *  - the badge is unread_count + waiting_unread_count, while `waiting_count` keeps
+ *    every pending ask in the group (core ``waiting_unread_count``);
  *  - provenance marks map read_via to "Seen live" / "Seen in conversation";
  *  - the request schema refuses a sweep without a high-water mark, and the
  *    read and dismiss halves are separate ops so main's foreground guard can
@@ -212,8 +213,14 @@ test("range selection spans the row order in either direction", () => {
 
 test("the badge is unread plus waiting, and absence is zero", () => {
 	assert.equal(
-		badgeCountOf({ unread_count: 3, waiting_count: 2, high_water: 9 }),
+		badgeCountOf({
+			unread_count: 3,
+			waiting_count: 9,
+			waiting_unread_count: 2,
+			high_water: 9,
+		}),
 		5,
+		"the badge counts UNREAD asks: waiting_count keeps read asks in the group",
 	);
 	assert.equal(badgeCountOf(undefined), 0);
 	assert.equal(badgeCountOf(null), 0);
@@ -273,17 +280,35 @@ test("the wire: list, detail, read, dismiss and seen reach the contract's routes
 		desktopEndpoint({
 			op: "notifications.dismiss",
 			verb: "dismiss",
-			target: { sessionId: "abc123", throughSeq: 41 },
+			target: {
+				sessionId: "abc123",
+				throughSeq: 41,
+				observed: [{ id: "n_abcdefghijklmnop", revision: 3 }],
+			},
 		}).body,
-		{ op: "dismiss", session_id: "abc123", through_seq: 41 },
+		{
+			op: "dismiss",
+			session_id: "abc123",
+			through_seq: 41,
+			observed: [{ id: "n_abcdefghijklmnop", revision: 3 }],
+		},
 	);
 	assert.deepEqual(
 		desktopEndpoint({
 			op: "notifications.read",
 			verb: "read",
-			target: { all: true, throughSeq: 41 },
+			target: {
+				all: true,
+				throughSeq: 41,
+				observed: [{ id: "n_abcdefghijklmnop", revision: 3 }],
+			},
 		}).body,
-		{ op: "read", all: true, through_seq: 41 },
+		{
+			op: "read",
+			all: true,
+			through_seq: 41,
+			observed: [{ id: "n_abcdefghijklmnop", revision: 3 }],
+		},
 	);
 	const seen = desktopEndpoint({
 		op: "notifications.seen",
@@ -323,6 +348,27 @@ test("the schema refuses a sweep with no high-water mark and a path-bearing id",
 		}),
 		false,
 		"the read op never carries a dismiss verb: the foreground guard names ops, not verbs",
+	);
+	assert.equal(
+		parse({
+			op: "notifications.read",
+			verb: "read",
+			target: { all: true, throughSeq: 9 },
+		}),
+		false,
+		"a bulk target without observed tokens would be a fresh-watermark sweep",
+	);
+	assert.equal(
+		parse({
+			op: "notifications.read",
+			verb: "read",
+			target: {
+				sessionId: "aaaaaaaaaaa1",
+				throughSeq: 9,
+				observed: [{ id: "n_abcdefghijklmnop", revision: 1 }],
+			},
+		}),
+		true,
 	);
 	assert.equal(parse({ op: "notifications.get", id: "../../etc" }), false);
 	assert.equal(
@@ -431,12 +477,27 @@ test("in-view coordinator refuses covered input, missing anchors, synthetic inpu
 		(batch) => posts.push(batch),
 		() => clock,
 	);
+	/*
+	 * The pane that owns the line. The coordinator binds a qualifying input to
+	 * the SAME rendered conversation, so an unrelated pane's click cannot
+	 * acknowledge this transcript (R4): `closest` answers the owner for an input
+	 * inside it, and null for anything else.
+	 */
+	const owner = { id: "owner-a" };
+	const otherPane = { id: "owner-b" };
+	const paneElement = (pane) => ({
+		closest: (selector) =>
+			selector === "[data-notification-owner]" ? pane : null,
+	});
 	const element = {
 		getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 20 }),
 		contains: () => false,
+		closest: (selector) =>
+			selector === "[data-notification-owner]" ? owner : null,
 	};
-	const fire = (name, trusted = true) =>
-		listeners.get(name)?.({ isTrusted: trusted });
+	const insideOtherPane = paneElement(otherPane);
+	const fire = (name, trusted = true, target = element) =>
+		listeners.get(name)?.({ isTrusted: trusted, target });
 	const dwell = () => {
 		clock += 1_000;
 		const callbacks = [...timers.values()];
@@ -454,6 +515,7 @@ test("in-view coordinator refuses covered input, missing anchors, synthetic inpu
 			updatedAtMs: 1,
 			unread: true,
 			element,
+			owner,
 		});
 		observer([{ target: element, intersectionRatio: 0.49 }]);
 		hit = element;
@@ -477,6 +539,18 @@ test("in-view coordinator refuses covered input, missing anchors, synthetic inpu
 		fire("blur");
 		dwell();
 		assert.equal(posts.length, 0, "other-app activity interrupts dwell");
+		/*
+		 * R4: the same visible, uncovered anchor, the same trusted input, but the
+		 * input landed in another pane. No receipt, because the operator's
+		 * activity belongs to a different conversation.
+		 */
+		fire("keydown", true, insideOtherPane);
+		dwell();
+		assert.equal(
+			posts.length,
+			0,
+			"trusted input in an unrelated pane cannot acknowledge this conversation",
+		);
 		fire("keydown");
 		observer([{ target: element, intersectionRatio: 0 }]);
 		clock += 1;

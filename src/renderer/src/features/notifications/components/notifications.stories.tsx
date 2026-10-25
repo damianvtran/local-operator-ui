@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
 } from "../../../../../shared/desktop-control-contract";
 import type { PendingAsk } from "../../../../../shared/desktop-session-contract";
+import { createNotificationFixture } from "../notifications-fixture";
 /**
  * The Notifications page against a scripted bridge (design.md § 5 states, § 18
  * drawer, § 1 sidebar). The fixtures are the mock's own content
@@ -25,9 +26,13 @@ import { DrawerTabs, DrawerUpdates } from "./drawer-updates";
 import { FlagLine, FlagLinesProvider } from "./flag-line";
 import "../../../styles/index.css";
 import "../../chat/components/story-electron-shim";
+import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
 import { ChatLayout } from "@shared/components/common/chat-layout";
+import { PanelRailFrame } from "@shared/components/navigation/panel-rail-frame";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { Badge } from "@shared/components/ui";
+import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { NotificationsPage } from "./notifications-page";
 
 const NOW = new Date(2026, 9, 25, 15, 4, 0).getTime();
@@ -52,13 +57,13 @@ const item = (
 		read_via: null,
 		dismissed: false,
 		repeat_count: 1,
-		session: { id: "s-fraud", title: "radient fraud watch" },
+		session: { id: "aaaaaaaaaaa1", title: "radient fraud watch" },
 		ask: null,
 		...over,
 	};
 };
 
-const ASK_ID = "ask:s-aida:a-7f3c";
+const ASK_ID = "ask:aaaaaaaaaaa2:a-7f3c";
 const WAITING: DesktopNotificationItem[] = [
 	item({
 		id: ASK_ID,
@@ -67,13 +72,13 @@ const WAITING: DesktopNotificationItem[] = [
 		title: "Which environment should the release go to?",
 		updated_at: NOW - 22 * MINUTE,
 		created_at: NOW - 22 * MINUTE,
-		session: { id: "s-aida", title: "Aida" },
+		session: { id: "aaaaaaaaaaa2", title: "Aida" },
 		ask: { status: "open", question_count: 2, deadline_at: NOW + 38 * MINUTE },
 	}),
 ];
 
 const FRAUD = item({
-	id: "n_fraudwatch00001",
+	id: "n_fraudwatcheneo",
 	priority: "high",
 	title: "Chargeback spike on 3 merchants",
 	excerpt: "Disputes up 4.1× in the last hour; two share a BIN range.",
@@ -88,52 +93,52 @@ const FRAUD = item({
 const POPULATED: DesktopNotificationItem[] = [
 	FRAUD,
 	item({
-		id: "n_prreview0000001",
+		id: "n_prreviewcheckeo",
 		title: "External PR needs review: #1410 payload log lines",
 		excerpt: "CI is green; the change touches desktop-feed.ts.",
 		updated_at: NOW - 41 * MINUTE,
-		session: { id: "s-aida", title: "Aida" },
+		session: { id: "aaaaaaaaaaa2", title: "Aida" },
 	}),
 	item({
-		id: "n_nightlybuild001",
+		id: "n_nightlybuildeo",
 		priority: "low",
 		title: "Nightly build finished",
 		excerpt: "All 59 palettes pass the contrast contract.",
 		updated_at: NOW - 2 * HOUR,
 		read: true,
 		read_via: "watching",
-		session: { id: "s-ci", title: "ci-watch" },
+		session: { id: "ccccccccccc3", title: "ci-watch" },
 	}),
 	item({
-		id: "n_quotawarning001",
+		id: "n_quotawarningeo",
 		title: "Provider quota at 82%",
 		excerpt: "Resets at 00:00 UTC.",
 		updated_at: NOW - 3 * HOUR,
 		read: true,
 		read_via: "in_view",
-		session: { id: "s-ops", title: "ops" },
+		session: { id: "ddddddddddd4", title: "ops" },
 	}),
 	item({
-		id: "n_yesterday000001",
+		id: "n_yesterdayseoteo",
 		title: "Weekly digest ready",
 		excerpt: "12 merged PRs, 3 releases.",
 		updated_at: NOW - DAY - 2 * HOUR,
-		session: { id: "s-aida", title: "Aida" },
+		session: { id: "aaaaaaaaaaa2", title: "Aida" },
 	}),
 	item({
-		id: "n_olderitem000001",
+		id: "n_olderitemeo",
 		priority: "low",
 		title: "Backup verified",
 		updated_at: NOW - 9 * DAY,
 		read: true,
 		read_via: "explicit",
-		session: { id: "s-ops", title: "ops" },
+		session: { id: "ddddddddddd4", title: "ops" },
 	}),
 ];
 
 const ASK: PendingAsk = {
 	ask_id: "a-7f3c",
-	session_id: "s-aida",
+	session_id: "aaaaaaaaaaa2",
 	created_at: NOW - 22 * MINUTE,
 	expires_at: NOW + 38 * MINUTE,
 	timeout_s: 3600,
@@ -176,7 +181,11 @@ const DETAIL: DesktopNotificationDetail = {
 		title: `Chargeback spike on ${n > 2 ? 2 : 3} merchants`,
 		excerpt: `Disputes up ${(4.1 - n * 0.4).toFixed(1)}×`,
 	})),
-	session: { id: "s-fraud", title: "radient fraud watch", live_state: "idle" },
+	session: {
+		id: "aaaaaaaaaaa1",
+		title: "radient fraud watch",
+		live_state: "idle",
+	},
 	anchor: {
 		id: "toolu_fraud_6",
 		excerpt:
@@ -187,10 +196,10 @@ const DETAIL: DesktopNotificationDetail = {
 };
 
 const HIGH_VOLUME: DesktopNotificationItem[] = Array.from(
-	{ length: 60 },
+	{ length: 160 },
 	(_, index) =>
 		item({
-			id: `n_volume${String(index).padStart(10, "0")}`,
+			id: `n_volume${String.fromCharCode(97 + Math.floor(index / 26))}${String.fromCharCode(97 + (index % 26))}`,
 			priority: index % 7 === 0 ? "high" : index % 3 === 0 ? "low" : "normal",
 			title: `Monitor tick ${index + 1}: queue depth ${120 - index}`,
 			excerpt: "Consumer lag within budget.",
@@ -198,7 +207,14 @@ const HIGH_VOLUME: DesktopNotificationItem[] = Array.from(
 			read: index % 4 === 0,
 			repeat_count: index % 5 === 0 ? 3 : 1,
 			session: {
-				id: `s-mon-${index % 6}`,
+				id: [
+					"a1a1a1a1a1a1",
+					"b2b2b2b2b2b2",
+					"c3c3c3c3c3c3",
+					"d4d4d4d4d4d4",
+					"e5e5e5e5e5e5",
+					"f6f6f6f6f6f6",
+				][index % 6],
 				title: [
 					"queue monitor",
 					"fraud watch",
@@ -224,6 +240,16 @@ type Stub = {
 
 let stub: Stub = { items: [], waiting: [] };
 let listReads = 0;
+/*
+ * A STATEFUL fixture over the PINNED contract, not a canned success. It owns
+ * cursor paging, the through_seq boundary, observed tokens, revision refusals and
+ * notify high-water that ask-only changes must NOT disturb (D2/U2/Q7). A story
+ * that claims a bulk/Undo outcome is therefore measuring the shipped planner.
+ */
+let fixture = createNotificationFixture(stub.items, stub.waiting);
+
+/** Index bookkeeping for the answer route, kept out of the JSX-free switch. */
+const askIndexMissing = (_stub: Stub, index: number) => index < 0;
 
 const answer = (request: { op: string; [key: string]: unknown }) => {
 	if (request.op === "capabilities") {
@@ -241,6 +267,7 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 					features: {
 						aida: 1,
 						projects: 1,
+						desktop_feed: 1,
 						library: 1,
 						...(stub.capability === false ? {} : { notifications: 1 }),
 					},
@@ -257,44 +284,10 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 					status: 503,
 					body: { detail: "The local server did not answer." },
 				};
-			const state = request.state === "all" ? "all" : "unread";
-			const sessionId = request.sessionId as string | undefined;
-			const pool = stub.items.filter(
-				(row) =>
-					!row.dismissed &&
-					(state === "all" || !row.read) &&
-					(!sessionId || row.session.id === sessionId) &&
-					(request.source !== "notify" || row.source === "notify"),
-			);
-			return {
-				status: 200,
-				body: {
-					result: {
-						items: pool,
-						waiting: sessionId ? [] : stub.waiting,
-						next_cursor: null,
-						unread_count: stub.items.filter(
-							(row) => !row.read && !row.dismissed,
-						).length,
-						waiting_count: stub.waiting.length,
-						high_water: 999,
-					},
-				},
-			};
+			return fixture.request(request);
 		}
 		case "notifications.count":
-			return {
-				status: 200,
-				body: {
-					result: {
-						unread_count: stub.items.filter(
-							(row) => !row.read && !row.dismissed,
-						).length,
-						waiting_count: stub.waiting.length,
-						high_water: 999,
-					},
-				},
-			};
+			return fixture.request(request);
 		case "notifications.get": {
 			/*
 			 * The detail's `item` is the LIVE row, as the route reads it from the same
@@ -328,38 +321,26 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 			return { status: 200, body: { result: detail } };
 		}
 		case "notifications.read":
-		case "notifications.dismiss": {
-			const target = request.target as { items?: { id: string }[] };
-			const ids = new Set((target.items ?? []).map((entry) => entry.id));
-			const verb = request.verb as string;
-			const changed: string[] = [];
-			const skipped: { id: string; reason: string }[] = [];
-			for (const row of stub.items) {
-				if (!ids.has(row.id)) continue;
-				if (verb === "read") row.read = true;
-				if (verb === "unread") row.read = false;
-				if (verb === "dismiss") row.dismissed = true;
-				if (verb === "undismiss") row.dismissed = false;
-				changed.push(row.id);
-			}
-			/*
-			 * An open ask takes a reel-side read mark (contract § 1.2 `ref_state`)
-			 * but is never dismissed from the reel (§ 2.3): the route's own split.
-			 */
-			for (const row of stub.waiting) {
-				if (!ids.has(row.id)) continue;
-				if (verb === "read" || verb === "unread") {
-					row.read = verb === "read";
-					changed.push(row.id);
-				} else skipped.push({ id: row.id, reason: "live_ask" });
-			}
+		case "notifications.dismiss":
+			return fixture.request(request);
+		/*
+		 * The detail pane's real answer component posts here. Removing the ask is
+		 * what makes an "answered ask leaves the reel" claim observable.
+		 */
+		case "sessions.answer": {
+			const index = stub.waiting.findIndex((row) =>
+				row.id.endsWith(`:${request.askId}`),
+			);
+			if (askIndexMissing(stub, index))
+				return { status: 409, body: { detail: "Ask already settled" } };
+			stub.waiting.splice(index, 1);
+			fixture.publish();
 			return {
 				status: 200,
-				body: {
-					result: { changed, skipped, unread_count: 0, high_water: 999 },
-				},
+				body: { result: { status: "accepted", ask_id: request.askId } },
 			};
 		}
+
 		/*
 		 * No stored layout: the sidebar draws the DEFAULT layout, which is the
 		 * case design § 1.1 calls "anyone who never customised" and the one the
@@ -375,12 +356,13 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 const install = (next: Stub) => {
 	/* A deep copy: a write in one story must not leak into the next one's fixtures. */
 	stub = structuredClone(next);
+	fixture = createNotificationFixture(stub.items, stub.waiting);
 	listReads = 0;
 	const page = window as unknown as {
 		api?: { desktop?: { request: typeof answer } };
 	};
 	page.api = page.api ?? {};
-	page.api.desktop = { request: answer };
+	page.api.desktop = { request: answer, feed: fixture.feed } as never;
 	try {
 		localStorage.removeItem("notifications-read-state");
 		localStorage.removeItem("notifications-grouping");
@@ -391,31 +373,55 @@ const install = (next: Stub) => {
 
 /** Drop every cached read so each story starts from its own bridge. */
 const FreshCache = ({ children }: { children: ReactNode }) => {
+	useDocumentDirection();
 	const client = useQueryClient();
 	const [ready, setReady] = useState(false);
 	useEffect(() => {
 		client.clear();
 		setReady(true);
 	}, [client]);
-	return ready ? <>{children}</> : null;
+	return ready ? (
+		<LocaleDirectionProvider>{children}</LocaleDirectionProvider>
+	) : null;
 };
 
 const RouteTo = ({ path, children }: { path: string; children: ReactNode }) => {
+	/*
+	 * INITIALIZE ONCE. Re-running the redirect on every render reset a click that
+	 * navigated to the detail route, which is what made the list-to-detail flow
+	 * unreviewable (U2).
+	 */
 	const navigate = useNavigate();
+	const initialized = useRef(false);
 	useEffect(() => {
+		if (initialized.current) return;
+		initialized.current = true;
 		navigate(path, { replace: true });
 	}, [navigate, path]);
 	return (
 		<Routes>
 			<Route path="/notifications/:notificationId" element={children} />
 			<Route path="/notifications" element={children} />
+			<Route
+				path="/chat/:sessionId"
+				element={<div data-destination="conversation" />}
+			/>
+			<Route
+				path="/projects/:projectId"
+				element={<div data-destination="project" />}
+			/>
 		</Routes>
 	);
 };
 
 const page = (
 	state: Stub,
-	options: { path?: string; prefs?: Record<string, string> } = {},
+	options: {
+		path?: string;
+		prefs?: Record<string, string>;
+		/** Pin the CSS box so a translated toolbar is measured at a real window size. */
+		box?: { width: number; height: number };
+	} = {},
 ) => {
 	install(state);
 	for (const [key, value] of Object.entries(options.prefs ?? {})) {
@@ -428,7 +434,12 @@ const page = (
 	return (
 		<FreshCache>
 			<RouteTo path={options.path ?? "/notifications"}>
-				<div className="h-screen bg-canvas">
+				<div
+					className={
+						options.box ? "overflow-hidden bg-canvas" : "h-screen bg-canvas"
+					}
+					style={options.box}
+				>
 					<NotificationsPage nowMs={NOW} />
 				</div>
 			</RouteTo>
@@ -505,7 +516,7 @@ export const AskDetail: Story = {
 		),
 };
 
-/** Sixty rows over six conversations: the From menu sorts by volume. */
+/** A hundred and sixty rows over six conversations: the From menu sorts by volume. */
 export const HighVolume: Story = {
 	render: () =>
 		page(
@@ -563,8 +574,8 @@ export const MultiSelect: Story = {
 		for (const id of [
 			ASK_ID,
 			FRAUD.id,
-			"n_prreview0000001",
-			"n_nightlybuild001",
+			"n_prreviewcheckeo",
+			"n_nightlybuildeo",
 		]) {
 			const row = rows.find(
 				(element) => element.dataset.notificationRow === id,
@@ -573,6 +584,47 @@ export const MultiSelect: Story = {
 			await new Promise((resolve) => setTimeout(resolve, 30));
 		}
 	},
+};
+
+/*
+ * THE REPORTED NARROW WINDOW, IN BOTH LANGUAGES AT ONE SIZE (U1/Q6).
+ *
+ * 980x380 is the window UX measured the clipped toolbar in. The box is pinned
+ * rather than inherited from the host, because the proof is that ESSENTIAL
+ * ACTIONS stay reachable at that size in the LONGER locale, and a host that
+ * happened to be wider would photograph the easy case: the pair is same-size
+ * control, not two different viewports.
+ */
+const narrow = (locale: "en" | "fr") => {
+	const state = { items: POPULATED, waiting: WAITING };
+	return (
+		<FreshCache>
+			<RouteTo path="/notifications">
+				<div
+					className="overflow-hidden bg-canvas"
+					style={{ width: 980, height: 380 }}
+					data-narrow-capture=""
+				>
+					<NotificationsPage nowMs={NOW} />
+				</div>
+			</RouteTo>
+			{(() => {
+				install(state);
+				void locale;
+				return null;
+			})()}
+		</FreshCache>
+	);
+};
+
+export const NarrowEnglish: Story = {
+	render: () => narrow("en"),
+	parameters: { locale: "en" },
+};
+
+export const NarrowFrench: Story = {
+	render: () => narrow("fr"),
+	parameters: { locale: "fr" },
 };
 
 /** Below the capability: the page states it and reads nothing. */
@@ -585,7 +637,7 @@ export const Unsupported: Story = {
 const DRAWER_ITEMS: DesktopNotificationItem[] = [
 	FRAUD,
 	item({
-		id: "n_fraudread000001",
+		id: "n_fraudreadeo",
 		title: "Merchant m_2290 cleared",
 		updated_at: NOW - 70 * MINUTE,
 		read: true,
@@ -593,7 +645,7 @@ const DRAWER_ITEMS: DesktopNotificationItem[] = [
 		anchor_id: "toolu_fraud_2",
 	}),
 	item({
-		id: "n_fraudread000002",
+		id: "n_fraudreadthreo",
 		priority: "low",
 		title: "Baseline recomputed",
 		updated_at: NOW - 3 * HOUR,
@@ -602,20 +654,56 @@ const DRAWER_ITEMS: DesktopNotificationItem[] = [
 	}),
 ];
 
+/*
+ * The REAL drawer, mounted with the REAL rail beside it at the width the product
+ * uses: the tab strip is judged where it ships, not in a bare panel (D1). The
+ * scope selector is its own full-width row, so a long translation cannot squeeze
+ * three unrelated labels into one 360px line.
+ */
 const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
 	const [current, setCurrent] = useState<"asks" | "updates" | "all">(tab);
+	const [rows, setRows] = useState<PendingAsk[]>([ASK]);
+	const updates = fixture.counts().unread_count;
 	return (
-		<div className="flex h-[560px] w-[360px] flex-col bg-elevated">
-			<DrawerTabs
-				tab={current}
-				onTab={setCurrent}
-				asks={1}
-				unreadUpdates={1}
-				sessionless={false}
+		<div className="flex h-[560px] w-[404px] shrink-0 bg-canvas" dir="auto">
+			<div className="min-w-0 flex-1">
+				<AskDrawer
+					frontend={{
+						asks: rows,
+						asks_open: rows.length,
+						asks_truncated: false,
+					}}
+					scope={current === "all" ? "fleet" : "session"}
+					onClose={() => {}}
+					onAnswer={(askId) =>
+						setRows((list) => list.filter((row) => row.ask_id !== askId))
+					}
+					onDecline={() => {}}
+					onRevise={() => {}}
+					nowMs={NOW}
+					tabs={{
+						strip: (
+							<DrawerTabs
+								tab={current}
+								onTab={setCurrent}
+								asks={rows.length}
+								unreadUpdates={updates}
+								sessionless={false}
+							/>
+						),
+						body:
+							current === "updates" ? (
+								<DrawerUpdates sessionId="aaaaaaaaaaa1" nowMs={NOW} />
+							) : null,
+					}}
+				/>
+			</div>
+			<PanelRailFrame
+				sessionId="aaaaaaaaaaa1"
+				askScope={current === "all" ? "fleet" : "session"}
+				askCount={rows.length}
+				askUpdates={updates}
 			/>
-			{current === "updates" ? (
-				<DrawerUpdates sessionId="s-fraud" nowMs={NOW} />
-			) : null}
 		</div>
 	);
 };
@@ -652,7 +740,7 @@ export const FlagLines: Story = {
 		install({ items: DRAWER_ITEMS, waiting: [] });
 		return (
 			<FreshCache>
-				<FlagLinesProvider sessionId="s-fraud">
+				<FlagLinesProvider sessionId="aaaaaaaaaaa1">
 					<div className="flex w-[640px] flex-col gap-4 bg-canvas p-6">
 						<FlagLine item={FRAUD} />
 						<FlagLine item={DRAWER_ITEMS[1]} />

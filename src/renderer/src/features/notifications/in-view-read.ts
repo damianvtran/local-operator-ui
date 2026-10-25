@@ -58,6 +58,8 @@ export function qualifiesInView(
 ): boolean {
 	if (!anchor.unread) return false;
 	if (anchor.visibleSinceMs === null) return false; // (a) not visible now
+	if (anchor.visibleSinceMs < anchor.updatedAtMs) return false;
+	if (inputAtMs > nowMs || nowMs - inputAtMs > 120_000) return false;
 	if (anchor.visibleSinceMs > inputAtMs) return false; // (c) edge before it was visible
 	if (!anchor.uncovered) return false; // (b)
 	if (nowMs - inputAtMs < IN_VIEW_DWELL_MS) return false; // (d)
@@ -73,6 +75,23 @@ export type InViewAnchor = {
 	updatedAtMs: number;
 	unread: boolean;
 	element: HTMLElement;
+	/** The actual displayed transcript owning both the anchor and input. */
+	owner: HTMLElement;
+};
+
+/**
+ * Whether an input target sits inside the pane that owns the anchor.
+ *
+ * Structural rather than `instanceof Element`: the node test host has no DOM
+ * classes, and the rule this encodes is "the target can say which pane it is
+ * in", which `closest` answers in a browser and in a controlled host alike.
+ */
+const isElementInOwner = (target: unknown, owner: Element): boolean => {
+	const closest = (target as { closest?: unknown } | null)?.closest;
+	return (
+		typeof closest === "function" &&
+		(target as Element).closest("[data-notification-owner]") === owner
+	);
 };
 
 /** Whether the line's centre point resolves inside the line itself. */
@@ -130,21 +149,25 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 					{ threshold: [0, IN_VIEW_RATIO, 1] },
 				);
 
-	const onEdge = (inputKind: InputKind) => {
+	const onEdge = (inputKind: InputKind, target: EventTarget | null) => {
 		if (!foreground() || anchors.size === 0) return;
 		const inputAtMs = now();
 		// Capture the actually visible, uncovered anchors AT the input edge. A
 		// key pressed behind a modal is not evidence if the modal closes later.
-		const candidates = new Map<HTMLElement, number>();
+		const candidates = new Map<HTMLElement, { since: number; token: string }>();
 		for (const [element, anchor] of anchors) {
 			const since = visibleSince.get(element);
 			if (
+				isElementInOwner(target, anchor.owner) &&
 				since !== undefined &&
 				since <= inputAtMs &&
 				anchor.unread &&
 				anchorUncovered(element)
 			)
-				candidates.set(element, since);
+				candidates.set(element, {
+					since,
+					token: `${anchor.id}@${anchor.revision}`,
+				});
 		}
 		if (candidates.size === 0) return;
 		const timer = setTimeout(() => {
@@ -157,7 +180,12 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 				const token = `${anchor.id}@${anchor.revision}`;
 				if (posted.has(token)) continue;
 				const since = visibleSince.get(element) ?? null;
-				if (since === null || candidates.get(element) !== since) continue;
+				if (
+					since === null ||
+					candidates.get(element)?.since !== since ||
+					candidates.get(element)?.token !== token
+				)
+					continue;
 				const ok = qualifiesInView(
 					{
 						visibleSinceMs: since,
@@ -188,16 +216,16 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 		timers.add(timer);
 	};
 	const onPointer = (event: PointerEvent) => {
-		if (event.isTrusted) onEdge("pointer");
+		if (event.isTrusted) onEdge("pointer", event.target);
 	};
 	const onKey = (event: KeyboardEvent) => {
-		if (event.isTrusted) onEdge("key");
+		if (event.isTrusted) onEdge("key", event.target);
 	};
 	const onWheel = (event: WheelEvent) => {
-		if (event.isTrusted) onEdge("wheel");
+		if (event.isTrusted) onEdge("wheel", event.target);
 	};
 	const onFocus = (event: FocusEvent) => {
-		if (event.isTrusted) onEdge("focus");
+		if (event.isTrusted) onEdge("focus", document.activeElement);
 	};
 	const cancelDwell = () => {
 		for (const timer of timers) clearTimeout(timer);

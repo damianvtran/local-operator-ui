@@ -38,6 +38,7 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 	/* The scope defaults to `session` because the frame's own route default has a
 	   conversation, exactly as `sessionId` does. */
 	askCount = 0,
+	askUpdates = 0,
 	askScope = "session",
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
@@ -68,6 +69,7 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 				readerChildId={readerChildId}
 				browserAttentionCount={browserAttentionCount}
 				askCount={askCount}
+				askUpdates={askUpdates}
 				askScope={askScope}
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}

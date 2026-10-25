@@ -1323,6 +1323,39 @@ function thisRunsProcesses() {
 	return { measured: true, lines, detail: `${lines.length} process(es)` };
 }
 
+/**
+ * Which window mode this boot may ask for.
+ *
+ * `headless` is the default and needs no argument. `normal` is refused unless
+ * the run is the notifications scene itself on a GitHub-HOSTED runner: those are
+ * the only conditions under which showing a window cannot steal a real person's
+ * focus, and the check is on the actual runner predicate rather than on `CI`,
+ * which a self-hosted runner also sets.
+ */
+function resolvedWindowMode(requested) {
+	if (requested === "headless") return "headless";
+	if (requested !== "normal")
+		throw new Error(
+			`launchApp's windowMode accepts "headless" or "normal" (got ${JSON.stringify(requested)})`,
+		);
+	const hosted = process.env.RUNNER_ENVIRONMENT === "github-hosted";
+	if (
+		process.env.LOCAL_OPERATOR_UI_NATIVE_SCENE !== "notifications" ||
+		process.env.CI !== "true" ||
+		process.env.GITHUB_ACTIONS !== "true" ||
+		!hosted ||
+		process.platform !== "darwin"
+	)
+		throw new Error(
+			/*
+			 * A REFUSAL, NEVER A FALLBACK. Reporting headless success here would
+			 * claim the foreground proof this mode exists to obtain.
+			 */
+			"a shown window is allowed only for the notifications native scene on an ephemeral GitHub-hosted macOS runner (LOCAL_OPERATOR_UI_NATIVE_SCENE=notifications, CI=true, GITHUB_ACTIONS=true, RUNNER_ENVIRONMENT=github-hosted, darwin); this environment is refused rather than relaunched headless",
+		);
+	return "normal";
+}
+
 async function launchApp({
 	armed,
 	apiUrl,
@@ -1348,6 +1381,22 @@ async function launchApp({
 	 * so a flag on the command line cannot leak into a scene that did not ask.
 	 */
 	attachPaths = [],
+	/*
+	 * THE ONE SANCTIONED FOREGROUND LAUNCH (notifications lane, core `notifications.read`).
+	 *
+	 * Every other scene here launches `--window-mode=headless`, because a test
+	 * must never take the operator's focus. A positive foreground receipt is the
+	 * one proof headless CANNOT produce: main's guard reads the REAL
+	 * `BrowserWindow`, so a hidden window must refuse and only a genuinely shown,
+	 * focused one may commit a read. So this is an explicit, separately declared
+	 * mode that refuses everywhere except the narrow case that can own a desktop
+	 * honestly: an ephemeral GitHub-HOSTED macOS runner running the notifications
+	 * scene. It is not a general capability, it does not weaken the default, and
+	 * a self-hosted runner or a developer machine is refused by name rather than
+	 * silently downgraded to headless (which would turn a missing display into a
+	 * false PASS).
+	 */
+	windowMode = "headless",
 }) {
 	/*
 	 * THE BACKEND BINDING IS REQUIRED, AND ITS ABSENCE IS A REFUSAL RATHER
@@ -1485,7 +1534,7 @@ async function launchApp({
 			`--user-data-dir=${USER_DATA}-${tag}`,
 			`--remote-debugging-port=${port}`,
 			`--inspect=${inspectPort}`,
-			"--window-mode=headless",
+			`--window-mode=${resolvedWindowMode(windowMode)}`,
 			`--window-size=${WINDOW_SIZE}`,
 			...attachPaths.map((path) => `--attach=${path}`),
 			/*
@@ -2012,6 +2061,7 @@ export const rendererDriverApi = Object.freeze({
 	waitForBridge,
 	verb,
 	capture,
+	resolvedWindowMode,
 	reapLiveBoots,
 });
 
