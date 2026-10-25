@@ -102,9 +102,17 @@ export const ARCHIVE_FAILURE_TOAST_MS = 10_000;
  *
  * The no-name spelling is the same statement: a conversation this client does not list
  * has no title to quote, so the name is the generic noun and the verb still follows.
+ *
+ * THE QUOTATION MARKS ARE CATALOGUE COPY, not part of this function (French audit):
+ * they used to be hardcoded English curly quotes, so every locale composed the
+ * English pair around its own title. They belong to the locale - fr prints « » -
+ * so the keys around `archive_offered_no_name` carry them, and this function only
+ * decides whether there is a title to quote.
  */
 export function archiveOfferedName(title: string | undefined): string {
-	return title ? `“${title}”` : t("ui.notices.chat.archive_offered_no_name");
+	return title
+		? t("ui.notices.chat.archive_offered_title", { title })
+		: t("ui.notices.chat.archive_offered_no_name");
 }
 
 /** The verb an archive offer prints after the name. One home for the offer's copy. */

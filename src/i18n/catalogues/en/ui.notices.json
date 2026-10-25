@@ -17,6 +17,7 @@
 	"ui.notices.chat.answer_changed": "Answer changed",
 	"ui.notices.chat.archive_failed": "Could not archive “{title}”.",
 	"ui.notices.chat.archive_offered_no_name": "Conversation",
+	"ui.notices.chat.archive_offered_title": "“{title}”",
 	"ui.notices.chat.archive_offered_verb": "archived.",
 	"ui.notices.chat.ask_answered": "Answer sent to",
 	"ui.notices.chat.ask_answered_named": "Answer sent to {name}",

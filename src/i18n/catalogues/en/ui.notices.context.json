@@ -141,6 +141,15 @@
 		"note": "Stands in for a conversation title this client does not know. Not an error; keep it a plain noun.",
 		"placeholders": {}
 	},
+	"ui.notices.chat.archive_offered_title": {
+		"role": "the conversation title wrapped in the locale's quotation marks, in an archive confirmation",
+		"tone": "User data in quotation marks; no verb.",
+		"length": "One quoted title; toast card.",
+		"note": "Rendered as the flexing, ellipsising half of the archive-undo body, with archive_offered_verb as the fixed tail. The quotation marks belong to the locale (French uses « »), so each catalogue supplies its own pair around the placeholder. The title is user data and must not be translated.",
+		"placeholders": {
+			"title": "string"
+		}
+	},
 	"ui.notices.chat.archive_offered_verb": {
 		"role": "fixed tail of the archive-undo toast body",
 		"tone": "Past-tense verb closing the sentence begun by the conversation name.",

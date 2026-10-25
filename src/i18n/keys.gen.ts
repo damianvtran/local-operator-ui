@@ -5043,6 +5043,7 @@ export type MessageParams = {
 	"ui.notices.chat.answer_changed": undefined;
 	"ui.notices.chat.archive_failed": { title: string };
 	"ui.notices.chat.archive_offered_no_name": undefined;
+	"ui.notices.chat.archive_offered_title": { title: string };
 	"ui.notices.chat.archive_offered_verb": undefined;
 	"ui.notices.chat.ask_answered": undefined;
 	"ui.notices.chat.ask_answered_named": { name: string };

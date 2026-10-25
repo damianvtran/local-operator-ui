@@ -647,6 +647,15 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « images » has the same spelling.",
 	],
 	[
+		"ui.notices.chat.archive_offered_title",
+		// The value is the locale's quotation marks around a user-data placeholder —
+		// there is no prose to translate. hi, vi, zh-CN and es legitimately use the
+		// same “ ” pair as English; fr uses « » with narrow no-break spaces and ru
+		// « » closed up. An identical value here is the locale's own typography,
+		// not an untranslated string.
+		"quotation marks around an untranslated user-data placeholder",
+	],
+	[
 		"ui.notices.chat.archive_offered_no_name",
 		// Fallback noun used when the archived conversation has to be shown without
 		// its title. French spells it the same way and it is the correct French noun,
