@@ -2321,7 +2321,7 @@ test("A17e: three protected workers feed one exact fail-closed Desktop Tests res
 		"fail-fast": false,
 		matrix: { shard: [0, 1, 2] },
 	});
-	assert.equal(worker["timeout-minutes"], 50);
+	assert.equal(worker["timeout-minutes"], 75);
 	assert.equal(result.name, "Desktop Tests");
 	assert.deepEqual(result.needs, ["changes", "test"]);
 	assert.equal(
