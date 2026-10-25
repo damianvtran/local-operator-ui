@@ -955,20 +955,6 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
 		?.click();
 };
 
-/*
- * The words this sentence uses for a count of at most six; digits beyond that,
- * because "Eleven built-in agents" is a figure the eye has to translate back.
- */
-const BUILTIN_COUNT_WORDS = [
-	"No",
-	"One",
-	"Two",
-	"Three",
-	"Four",
-	"Five",
-	"Six",
-];
-
 /**
  * The sentence that offers the built-ins, built from the names actually offered.
  *
@@ -986,16 +972,24 @@ const builtinOfferSentence = (
 	builtins: readonly { name: string }[],
 ): string => {
 	const names = builtins.map((builtin) => builtin.name);
-	const count = BUILTIN_COUNT_WORDS[names.length] ?? String(names.length);
-	const plural = names.length === 1 ? "agent" : "agents";
-	const verb = names.length === 1 ? "is" : "are";
+	/*
+	 * THE LIST IS JOINED HERE, deliberately: IntlMessageFormat has no list
+	 * formatter, and the English source joins with commas and a bare "and" (no
+	 * Oxford comma) - a shape ICU cannot express for a variable-length list. So the
+	 * count and the pre-joined names are parameters of ONE catalogue message (whose
+	 * arms carry the spelled numbers and the it/them pronoun), and a locale cannot
+	 * change the conjunction. That is a stated limit of keying this sentence, not
+	 * an oversight; moving the join into the catalogue would need a list-format
+	 * placeholder the runtime does not have.
+	 */
 	const list =
 		names.length === 1
 			? names[0]
 			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-	return `${count} built-in ${plural} ${verb} ready to install — ${list}. You can edit ${
-		names.length === 1 ? "it" : "them"
-	} once installed.`;
+	return t("ui.chat.sidebar.agents.builtin_offer", {
+		count: names.length,
+		list,
+	});
 };
 
 /**
