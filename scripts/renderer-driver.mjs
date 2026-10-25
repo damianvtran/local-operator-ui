@@ -11824,12 +11824,18 @@ async function sceneFloors(cdp) {
 async function railHoverTrace(cdp) {
 	const SESSION = "be1a9fef0001";
 	const rail = "[data-lo-checkpoint-rail]";
+	/*
+	 * THE RAIL IS VIRTUALISED (conversation-first-paint P1): only the port's
+	 * window of marks is mounted, so every density wait in this file reads the
+	 * manifest's true count from the frame's `data-checkpoint-count` rather than
+	 * counting `[data-checkpoint-id]` elements, which now reads the window.
+	 */
 	await verb(cdp, "press", {
 		selector: `[data-session-row="${SESSION}"] [data-chat-row]`,
 	});
 	const ready = await waitForCondition(
 		cdp,
-		`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && document.querySelectorAll("[data-checkpoint-id]").length >= 300; })()`,
+		`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 300; })()`,
 		30_000,
 	);
 	check(
@@ -11879,7 +11885,7 @@ async function railHoverTrace(cdp) {
 			cx: Math.round(rect.left + rect.width / 2),
 			top: Math.round(rect.top + 6),
 			bottom: Math.round(rect.bottom - 6),
-			ticks: document.querySelectorAll("[data-checkpoint-id]").length,
+			ticks: Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0),
 		};
 	})()`);
 	if (!geometry) {
@@ -11995,7 +12001,7 @@ async function railPressProbe(cdp) {
 	});
 	await waitForCondition(
 		cdp,
-		`document.querySelectorAll('${rail} [data-checkpoint-id]').length >= 267`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 267`,
 		30_000,
 	);
 	await waitForCondition(
@@ -12219,7 +12225,7 @@ async function railCueProbe(cdp) {
 	});
 	await waitForCondition(
 		cdp,
-		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 12`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 12`,
 		30_000,
 	);
 	await waitForCondition(
@@ -12262,7 +12268,7 @@ async function railCueProbe(cdp) {
 	});
 	await waitForCondition(
 		cdp,
-		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 267`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 267`,
 		30_000,
 	);
 	await waitForCondition(
@@ -12453,7 +12459,7 @@ async function sceneTranscriptRail(cdp) {
 		}
 		const ready = await waitForCondition(
 			cdp,
-			`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && Boolean(document.querySelector('[data-checkpoint-id="${firstTick}"]')) && document.querySelectorAll("[data-checkpoint-id]").length >= ${minTicks}; })()`,
+			`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && Boolean(document.querySelector('[data-checkpoint-id="${firstTick}"]')) && Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= ${minTicks}; })()`,
 			30_000,
 		);
 		/*
@@ -12628,11 +12634,11 @@ async function sceneTranscriptRail(cdp) {
 	);
 	const dense = await waitForCondition(
 		cdp,
-		`document.querySelectorAll('${rail} [data-checkpoint-id]').length >= 267`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 267`,
 		30_000,
 	);
 	const tickCount = await evaluate(
-		`document.querySelectorAll('${rail} [data-checkpoint-id]').length`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`,
 	);
 	check(
 		"the rail renders the daemon's own manifest at density",
@@ -13081,7 +13087,7 @@ async function sceneTranscriptRail(cdp) {
 		check(
 			`the fixture conversation is open before the ${theme} pass`,
 			await openFixture(SESSION, "u0001", 267),
-			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+			`ticks=${await evaluate(`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`)}`,
 		);
 		const applied = await verb(cdp, "setTheme", theme);
 		check(
@@ -13446,7 +13452,7 @@ async function sceneTranscriptRail(cdp) {
 		check(
 			`the deep fixture conversation is open (${theme})`,
 			await openFixture(SESSION_DEEP, "du0001", 600),
-			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+			`ticks=${await evaluate(`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`)}`,
 		);
 		await verb(cdp, "setTheme", theme);
 		await parkPointer(cdp);
@@ -13467,7 +13473,7 @@ async function sceneTranscriptRail(cdp) {
 		check(
 			`the deep fixture conversation is open (${theme})`,
 			await openFixture(SESSION_DEEP, "du0001", 600),
-			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+			`ticks=${await evaluate(`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`)}`,
 		);
 		/*
 		 * THE TRACK AT ITS TOP END FIRST (round-1 re-shoot, measured): the rail
@@ -13557,7 +13563,7 @@ async function sceneTranscriptRail(cdp) {
 		check(
 			`the sparse fixture conversation is open (${theme})`,
 			await openFixture(SESSION_SPARSE, "qu0001", 12),
-			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+			`ticks=${await evaluate(`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`)}`,
 		);
 		await parkPointer(cdp);
 		const sparse = await evaluate(`(() => {
