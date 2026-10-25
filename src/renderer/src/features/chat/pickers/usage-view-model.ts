@@ -22,6 +22,14 @@
  */
 
 import { t } from "../../../../../i18n";
+import {
+	META_MUSE_ALLOWANCE_NOTE,
+	META_MUSE_NO_OBSERVATION_NOTE,
+	META_MUSE_PASSIVE_NOTE,
+	META_MUSE_STALE_NOTE,
+	type MetaMuseUsageNote,
+	isMetaMuseUsageNote,
+} from "./muse-usage-notes";
 
 export type UsageUnit =
 	| "usd"
@@ -97,34 +105,18 @@ export type UsagePayload = {
 // serving reply, never a quota probe. Keep a finite vocabulary so diagnostics
 // from other providers (or a malformed payload) cannot become user-facing copy.
 export const MUSE_OBSERVATION_TTL_MS = 5 * 60 * 1000;
-const MUSE_PASSIVE_NOTE = () =>
-	t(
-		"ui.chat.pickers.usage_view_model.last_response_allowance_refresh_does_not_query_muse",
-	);
-const MUSE_STALE_NOTE = () =>
-	t(
-		"ui.chat.pickers.usage_view_model.stale_response_allowance_current_usage_unknown_refresh_does_not_query_mu",
-	);
-const MUSE_NO_OBSERVATION_NOTE = () =>
-	t(
-		"ui.chat.pickers.usage_view_model.no_allowance_observation_recorded_refresh_does_not_query_muse",
-	);
-// Build the comparison set per read: its members are localized display copy,
-// not stable protocol codes, so a module-level Set would pin the startup locale.
-const museUsageNotes = () =>
-	new Set([
-		MUSE_PASSIVE_NOTE(),
-		MUSE_STALE_NOTE(),
-		MUSE_NO_OBSERVATION_NOTE(),
-		t(
-			"ui.chat.pickers.usage_view_model.stale_sign_in_allowance_current_usage_unknown_refresh_does_not_query_mus",
-		),
-	]);
 
-export const hasMuseAllowanceNote = (report: UsageReport): boolean =>
-	report.provider === "meta-muse" &&
-	typeof report.notes === "string" &&
-	museUsageNotes().has(report.notes);
+/**
+ * Whether this report carries one of the backend's fixed Muse provenance
+ * statements. The comparison set is the server vocabulary in
+ * `muse-usage-notes.ts`, NOT `t()` output: `notes` is protocol data that the
+ * route emits in English, and deciding behaviour from localized copy made the
+ * same payload age differently in `en` than in `ru`/`es`.
+ */
+export const hasMuseAllowanceNote = (
+	report: UsageReport,
+): report is UsageReport & { notes: MetaMuseUsageNote } =>
+	report.provider === "meta-muse" && isMetaMuseUsageNote(report.notes);
 
 /** Age an open pane without mutating the shared query payload or buying inference. */
 export const currentUsageReport = (
@@ -135,7 +127,7 @@ export const currentUsageReport = (
 		return report;
 	const dated = Number.isFinite(report.fetched_at) && report.fetched_at > 0;
 	const expired =
-		report.notes === MUSE_PASSIVE_NOTE() &&
+		report.notes === META_MUSE_PASSIVE_NOTE &&
 		(!dated ||
 			nowMs - report.fetched_at > MUSE_OBSERVATION_TTL_MS ||
 			report.limits.some(
@@ -144,15 +136,15 @@ export const currentUsageReport = (
 					Number.isFinite(limit.resets_at_ms) &&
 					limit.resets_at_ms <= nowMs,
 			));
-	if (report.notes === MUSE_PASSIVE_NOTE() && !expired) return report;
+	if (report.notes === META_MUSE_PASSIVE_NOTE && !expired) return report;
 	return {
 		...report,
 		limits: [],
 		state: "unavailable",
 		notes: expired
 			? dated
-				? MUSE_STALE_NOTE()
-				: MUSE_NO_OBSERVATION_NOTE()
+				? META_MUSE_STALE_NOTE
+				: META_MUSE_NO_OBSERVATION_NOTE
 			: report.notes,
 	};
 };
@@ -893,6 +885,36 @@ export const isStale = (report: UsageReport, headerMs: number): boolean =>
 	Boolean(report.fetched_at) && headerMs - report.fetched_at >= STALE_BEHIND_MS;
 
 /**
+ * The catalogue sentence for a server Muse provenance note.
+ *
+ * This is the display half of the vocabulary in `muse-usage-notes.ts`: the
+ * switch runs on the SERVER's English constant, and `t()` only supplies the
+ * sentence printed for it. Keying a lookup BY `t()` output (the round-1 shape)
+ * made the same payload render differently in every locale, and a locale with
+ * a stale or missing catalogue could silently lose the note.
+ */
+const museNoteText = (note: MetaMuseUsageNote): string => {
+	switch (note) {
+		case META_MUSE_ALLOWANCE_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.stale_sign_in_allowance_current_usage_unknown_refresh_does_not_query_mus",
+			);
+		case META_MUSE_STALE_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.stale_response_allowance_current_usage_unknown_refresh_does_not_query_mu",
+			);
+		case META_MUSE_NO_OBSERVATION_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.no_allowance_observation_recorded_refresh_does_not_query_muse",
+			);
+		case META_MUSE_PASSIVE_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.last_response_allowance_refresh_does_not_query_muse",
+			);
+	}
+};
+
+/**
  * The per-account note, or `""` when the block is live. `_account_status_note()`.
  *
  * Load-bearing rather than decorative: the age in the view's description
@@ -920,12 +942,13 @@ export const accountNote = (
 	const report = currentUsageReport(input, nowMs);
 	const fetchedAt = report.fetched_at || 0;
 	if (hasMuseAllowanceNote(report) && report.state !== "reauth_required") {
+		const note = museNoteText(report.notes);
 		return Number.isFinite(fetchedAt) && fetchedAt > 0
 			? t("ui.chat.pickers.usage_view_model.observed_with_note", {
-					notes: report.notes ?? "",
+					notes: note,
 					formatage: formatAge(Math.max(0, nowMs - fetchedAt)),
 				})
-			: (report.notes ?? "");
+			: note;
 	}
 	const ageMs = Math.max(0, nowMs - fetchedAt);
 	const age = fetchedAt && report.limits.length ? formatAge(ageMs) : "";
@@ -1013,6 +1036,12 @@ export type LimitRow = {
 	/** 0..1 clamped, or null when unmeasurable — a null bar draws NO fill. */
 	fraction: number | null;
 	amount: string;
+	/**
+	 * Whether the vendor reported a number at all, before `amount` fell back to
+	 * the localized `not reported` sentence. Behaviour reads this flag; the
+	 * rendered sentence is catalogue copy and must never be compared.
+	 */
+	reported: boolean;
 	eligibilityNote: string;
 	countdown: string;
 	/** A per-model cap is subordinate to the shared rows (SPEC rule 8). */
@@ -1021,15 +1050,17 @@ export type LimitRow = {
 
 export const limitRow = (limit: UsageLimit, nowMs: number): LimitRow => {
 	const fraction = fractionOf(limit.amount);
+	const formatted = formatAmount(
+		limit.paid_fallback && limit.amount.remaining !== null
+			? { ...limit.amount, used: null }
+			: limit.amount,
+	);
 	return {
 		limit,
 		status: effectiveStatus(limit),
 		fraction: fraction === null ? null : Math.max(0, Math.min(1, fraction)),
-		amount: amountText(
-			limit.paid_fallback && limit.amount.remaining !== null
-				? { ...limit.amount, used: null }
-				: limit.amount,
-		),
+		amount: formatted || NOT_REPORTED(),
+		reported: formatted !== "",
 		eligibilityNote: !limit.paid_fallback
 			? ""
 			: limit.available === false

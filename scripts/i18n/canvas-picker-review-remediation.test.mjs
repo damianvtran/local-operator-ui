@@ -105,6 +105,8 @@ const built = await build({
 			'export { CACHE_HIT_MEANING } from "./src/renderer/src/features/chat/pickers/panels/analytics-model";',
 			'export { MCP_NOT_READ_NOTE } from "./src/renderer/src/features/chat/pickers/panels/info-model";',
 			'export { ProviderBlockView } from "./src/renderer/src/features/chat/pickers/usage-view";',
+			'export { currentUsageReport, hasMuseAllowanceNote, accountNote } from "./src/renderer/src/features/chat/pickers/usage-view-model";',
+			'export { isBreakdownUnavailable } from "./src/renderer/src/features/chat/pickers/panels/context-model";',
 			'export { CategoriesInputChips } from "./src/renderer/src/shared/components/common/categories-input-chips";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -148,6 +150,10 @@ const {
 	CACHE_HIT_MEANING,
 	MCP_NOT_READ_NOTE,
 	ProviderBlockView,
+	currentUsageReport,
+	hasMuseAllowanceNote,
+	accountNote,
+	isBreakdownUnavailable,
 	CategoriesInputChips,
 } = mod;
 
@@ -659,5 +665,140 @@ testSerial(
 				`${file} must rebuild its imperative labels on locale change`,
 			);
 		}
+	},
+);
+
+/*
+ * Round-1 review B1. `report.notes` is the BACKEND's fixed provenance
+ * vocabulary (`local_operator/providers/usage.py` META_MUSE_*), so the aging
+ * rule must compare those English constants, never catalogue copy. Before the
+ * fix the comparison set was built from `t()`: an `en` UI aged a 1h-old passive
+ * note to unavailable, while `ru`/`es` left it available and lost the passive
+ * provenance sentence. The assertion is the invariant, not one language's text:
+ * every locale resolves the same payload to the same state and the same server
+ * vocabulary, and only the rendered sentence changes.
+ */
+const META_MUSE_PASSIVE =
+	"Last response allowance; refresh does not query Muse.";
+const META_MUSE_STALE =
+	"Stale response allowance; current usage unknown; refresh does not query Muse.";
+const realPickersCatalogue = (locale) =>
+	JSON.parse(
+		readFileSync(
+			join(process.cwd(), `src/i18n/catalogues/${locale}/ui.chat.pickers.json`),
+			"utf8",
+		),
+	);
+
+testSerial(
+	"Muse provenance ages identically in every UI language",
+	async () => {
+		const now = 1_760_000_000_000;
+		const report = {
+			provider: "meta-muse",
+			fetched_at: now - 60 * 60 * 1000,
+			limits: [
+				{
+					id: "meta-muse:window",
+					label: "5 hour",
+					amount: {
+						used: 1,
+						limit: 100,
+						remaining: 99,
+						used_fraction: 0.01,
+						unit: "percent",
+					},
+					window: "five_hour",
+					status: null,
+					resets_at: null,
+					resets_at_ms: null,
+					tier: "",
+					shared: false,
+				},
+			],
+			notes: META_MUSE_PASSIVE,
+			identity: null,
+			consecutive_failures: 0,
+			usage_unavailable: false,
+			next_probe_at_ms: null,
+			credential_invalid: false,
+			age_ms: 60 * 60 * 1000,
+			state: "available",
+		};
+		const resolved = {};
+		for (const language of ["en", "ru", "es"]) {
+			messages.clearRegisteredCatalogues();
+			if (language !== "en")
+				messages.registerCatalogue(language, realPickersCatalogue(language));
+			await locale.setLocale(language);
+			assert.equal(
+				hasMuseAllowanceNote(report),
+				true,
+				`${language}: the server's passive note must be recognised`,
+			);
+			const aged = currentUsageReport(report, now);
+			assert.equal(
+				aged.state,
+				"unavailable",
+				`${language}: a 1h-old passive note must age out`,
+			);
+			assert.equal(
+				aged.notes,
+				META_MUSE_STALE,
+				`${language}: the aged report must keep server vocabulary`,
+			);
+			resolved[language] = { state: aged.state, notes: aged.notes };
+			const note = accountNote(report, now, now);
+			assert.ok(
+				!note.includes(META_MUSE_PASSIVE),
+				`${language}: rendered copy must not fall back to server English`,
+			);
+			assert.ok(
+				note.includes(
+					realPickersCatalogue(language)[
+						"ui.chat.pickers.usage_view_model.stale_response_allowance_current_usage_unknown_refresh_does_not_query_mu"
+					],
+				),
+				`${language}: the stale sentence must be the translated catalogue entry`,
+			);
+		}
+		assert.deepEqual(resolved.ru, resolved.en);
+		assert.deepEqual(resolved.es, resolved.en);
+		await locale.setLocale("en");
+	},
+);
+
+/*
+ * The same class, second site: the context panel recognises the backend's
+ * "no breakdown" answer by its fixed English sentence. The matcher used `t()`,
+ * so under `ru`/`es` the server's own answer no longer matched and the panel
+ * drew a breakdown body for a notice. The English wire sentence must match in
+ * every locale; a translated sentence cannot, because the wire never sends one.
+ */
+testSerial(
+	"the no-breakdown notice is matched on the server's sentence, not the catalogue",
+	async () => {
+		const notice = { kind: "notice", text: "context breakdown unavailable." };
+		for (const language of ["en", "ru", "es"]) {
+			messages.clearRegisteredCatalogues();
+			if (language !== "en")
+				messages.registerCatalogue(language, realPickersCatalogue(language));
+			await locale.setLocale(language);
+			assert.equal(
+				isBreakdownUnavailable(notice),
+				true,
+				`${language}: the backend's English notice must still match`,
+			);
+			const translated =
+				realPickersCatalogue(language)[
+					"ui.chat.pickers.context_model.context_breakdown_unavailable"
+				];
+			assert.equal(
+				isBreakdownUnavailable({ kind: "notice", text: translated }),
+				false,
+				`${language}: catalogue copy is not the wire vocabulary`,
+			);
+		}
+		await locale.setLocale("en");
 	},
 );

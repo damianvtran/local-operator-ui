@@ -37,7 +37,6 @@ import { PickerHost } from "./picker-host";
 import type { MachinePanelContext } from "./picker-registry";
 import {
 	type LimitRow,
-	NOT_REPORTED,
 	type ProviderBlock,
 	type StatusTone,
 	type UsagePayload,
@@ -144,8 +143,9 @@ const NO_LIMIT_WORD = () => t("ui.chat.pickers.usage_view.no_limit_reported");
  * one this view invented and therefore the one it can get wrong.
  */
 const statusWord = (row: LimitRow): string => {
-	if (row.status === "unknown" && row.amount !== NOT_REPORTED())
-		return NO_LIMIT_WORD();
+	// `reported` is the stable fact; `row.amount` is display copy and is `not
+	// reported` in every language, so comparing it only worked in English.
+	if (row.status === "unknown" && row.reported) return NO_LIMIT_WORD();
 	return KNOWN_WORD[row.status] ?? row.status;
 };
 

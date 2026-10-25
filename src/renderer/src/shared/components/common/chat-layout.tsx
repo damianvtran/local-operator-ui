@@ -609,9 +609,12 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
  * `navigator.platform` rather than a chrome attribute, because this is a key cap
  * and not a chrome decision: the chrome gates (`data-chrome-*`) say where the
  * OS DRAWS, and the cap says which modifier the handler here answers.
+ *
+ * The comparison token is a literal, never `t("…mac")`: catalogue copy must
+ * not decide which branch runs, or the same platform would resolve differently
+ * per UI language. The caption itself stays keyed in `sidebarToggleCap()`.
  */
+const MAC_PLATFORM_TOKEN = "MAC";
 const isMacPlatform = (): boolean =>
 	typeof navigator !== "undefined" &&
-	navigator.platform
-		.toUpperCase()
-		.indexOf(t("ui.common.layout.chat_layout.mac")) >= 0;
+	navigator.platform.toUpperCase().indexOf(MAC_PLATFORM_TOKEN) >= 0;
