@@ -8,5 +8,7 @@
 	"ui.chat.header.transcript_display": "对话记录显示方式",
 	"ui.chat.header.delete": "删除对话……",
 	"ui.chat.header.close_run_details": "关闭运行详情",
-	"ui.chat.header.open_run_details": "打开运行详情"
+	"ui.chat.header.open_run_details": "打开运行详情",
+	"ui.chat.header.new_chat": "新对话",
+	"ui.chat.header.new_chat_with": "与{target}的新对话"
 }
