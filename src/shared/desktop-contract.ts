@@ -3634,6 +3634,10 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			body: z.string(),
 			send_at: z.string().datetime({ offset: true }),
 			attachment_ids: teamBridgeAttachmentIds.optional(),
+			/* A scheduled REPLY. The core route carried this and the renderer's
+			   strict model did not, so scheduling a reply was unreachable (round
+			   12, minor c). Forwarded only when set, like a normal send. */
+			thread_root_id: id.optional(),
 		})
 		.strict(),
 	z
@@ -9096,6 +9100,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					send_at: request.send_at,
 					...(request.attachment_ids?.length
 						? { attachment_ids: request.attachment_ids }
+						: {}),
+					...(request.thread_root_id
+						? { thread_root_id: request.thread_root_id }
 						: {}),
 				},
 			};

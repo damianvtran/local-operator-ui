@@ -221,7 +221,7 @@ const COLUMNS: Column[] = [
  */
 function progressCellText(project: DesktopProject, nowMs: number): string {
 	const age = progressAge(project.progress_updated_at, nowMs);
-	if (!age) return t("ui.projects.project_list.not_reported");
+	if (age.kind === "unknown") return t("ui.projects.project_list.not_reported");
 	return progressAgePhrase(age);
 }
 

@@ -1,0 +1,514 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-namespace-delta-translation-audit-round-2",
+ "date": "2026-10-24",
+ "locale": "es",
+ "batch": "canvas",
+ "pr": "#1388",
+ "branch": "feat/i18n-canvas-batch",
+ "round": 2,
+ "instance": "3ac75cca27a3",
+ "status": "passed",
+ "audited_head": "82209cab3a9eeee4d6649d4b0015b73501b122e8",
+ "previous_audited_head": "936e3a483b4d675c9827be5f40167da186f86900",
+ "remediation_commit": "56e01f23710b6e1b3619a1cdf4ba557ae3d9e516",
+ "remediation_merge": "829605f42d036c108b75a095f2d670628884acbc",
+ "translation_commit": "57aad8da32d3e6fd368033f4ecd83fcfc223102d",
+ "base": "d96d68795b1f261b3aac8c65d7ca821f6641c5fa",
+ "round_1_receipt": "i18n/receipts/es-canvas-batch-audit-766edc0f038b.json",
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "3ac75cca27a3",
+  "model": "radient/auto",
+  "actual_model_source": "harness session model (system prompt: Model: radient/auto); no fallback used",
+  "fallback": null,
+  "independent_from_translators": true,
+  "independence_basis": "Separate session from the canvas translator (f21dffa6aee9, named in i18n/receipts/canvas-picker-8dc527533d9a-es.json); this audit run is instance 3ac75cca27a3, read the catalogue bytes at the new head and edited no translated value. The round-1 receipt was authored by a different auditor session (766edc0f038b)."
+ },
+ "references": {
+  "glossary": {
+   "path": "local_operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "local_operator/i18n/style-guides/es.md",
+   "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  },
+  "docs": {
+   "path": "docs/I18N.md",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca8"
+  }
+ },
+ "scope": "Round 2 of the independent es canvas audit: the 17 findings of receipt es-canvas-batch-audit-766edc0f038b re-adjudicated against the bytes at 82209cab3a, plus the 31 catalogue values changed by 936e3a483b..82209cab3a. Only the remediation delta and its direct neighbours were re-read semantically; values outside the delta are covered by hash identity with the round-1 audit. No rendered UI frame pass and no native-speaker sign-off are claimed.",
+ "method": [
+  "Read all 31 changed es values against the English source and en.context.json at the new head; verified every proposal is present byte-for-byte.",
+  "Parsed every changed message with @formatjs/icu-messageformat-parser and compared argument, tag, select, plural-category and number-skeleton structure with English; the only structural change is the intended Spanish many arm.",
+  "Rendered ui.chat.pickers.table_pager.range through IntlMessageFormat locale es for total 1, 2, 1234, 1000000, 1500000 and 2000000: the many arm yields 1.000.000 de sesiones while other yields 1.500.000 sesiones.",
+  "Scanned the four changed namespaces (1,111 keys) for Enter/Intro, cache/caché, canvas capitalization, consultas/preguntas, aprobaciones/confirmaciones and composer terminology; checked NFC, bidi controls, whitespace and duplicate members in the changed files.",
+  "Confirmed key parity and order against English, and that the English and context sidecars are byte-identical to the round-1 head; no es key was added or removed. The es catalogue bytes at 82209cab3a are identical to the remediation commit 56e01f2371 (empty diff)."
+ ],
+ "namespaces": {
+  "ui.canvas": {
+   "keys": 347,
+   "changed_keys": 7,
+   "sha256": {
+    "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+    "es": "03d6cd5c75bcde11346f257d6827ebd2a3d12a09ff3ac2c1b44c22382e06f66c"
+   },
+   "context_sha256": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8",
+   "previous_es_sha256": "7e4db512636cafdc2356f5a6b30b527e9ecd9a1f07190d0f91be186a9f1e3013",
+   "status": "passed",
+   "verdict": "remediation delta verified; 7 changed values re-read"
+  },
+  "ui.chat.pickers": {
+   "keys": 720,
+   "changed_keys": 20,
+   "sha256": {
+    "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+    "es": "e37e6e89b517212a4209eafa765ee829108384334d8c99363f4cea7a772c9071"
+   },
+   "context_sha256": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9",
+   "previous_es_sha256": "d917b21fc0cdcc79406e3bdbf29cd193e2bb502a2943d1982d1c71ca9085c166",
+   "status": "passed",
+   "verdict": "remediation delta verified; 20 changed values re-read"
+  },
+  "ui.common.actions": {
+   "keys": 36,
+   "changed_keys": 3,
+   "sha256": {
+    "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+    "es": "d523131cd7b09bb295ee060570a0dd0aec64cd2ac938cdeb4ef672746eb7d2c6"
+   },
+   "context_sha256": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db",
+   "previous_es_sha256": "8b02efbc6a28578bbd3abdaf2ba9fbdb6f7e653d6d22bd8f9db206e97f3147c0",
+   "status": "passed",
+   "verdict": "remediation delta verified; 3 changed values re-read"
+  },
+  "ui.common.layout": {
+   "keys": 8,
+   "changed_keys": 1,
+   "sha256": {
+    "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+    "es": "b6a05ab03b37c55451155dfa8282a5bc2d5cebb7ce54df8a20669763b589bc89"
+   },
+   "context_sha256": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39",
+   "previous_es_sha256": "0f4c910af697c1f52b7b9531f42ed5698be5573316a00f290d9a5db1058f1fed",
+   "status": "passed",
+   "verdict": "remediation delta verified; 1 changed value re-read"
+  },
+  "ui.common.forms": {
+   "keys": 37,
+   "changed_keys": 0,
+   "sha256": {
+    "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+    "es": "f3aad3e820cca8b74f731272ac0e1f0f5256ba5752eec4dd246448cdce9cc7a7"
+   },
+   "context_sha256": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4",
+   "previous_es_sha256": "f3aad3e820cca8b74f731272ac0e1f0f5256ba5752eec4dd246448cdce9cc7a7",
+   "status": "passed",
+   "verdict": "byte-identical to the round-1 audit; no value changed"
+  },
+  "ui.common.speech": {
+   "keys": 5,
+   "changed_keys": 0,
+   "sha256": {
+    "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+    "es": "04e760d104c108047767d26d0e016e760dd0c35d49d4052da6ac0782abc7989d"
+   },
+   "context_sha256": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a",
+   "previous_es_sha256": "04e760d104c108047767d26d0e016e760dd0c35d49d4052da6ac0782abc7989d",
+   "status": "passed",
+   "verdict": "byte-identical to the round-1 audit; no value changed"
+  },
+  "ui.common.updates": {
+   "keys": 135,
+   "changed_keys": 0,
+   "sha256": {
+    "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+    "es": "8992e26afae082b1eaae0ee2cbd1d983e88e20c91497da9c0f9c6e6458eed0f2"
+   },
+   "context_sha256": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee",
+   "previous_es_sha256": "8992e26afae082b1eaae0ee2cbd1d983e88e20c91497da9c0f9c6e6458eed0f2",
+   "status": "passed",
+   "verdict": "byte-identical to the round-1 audit; no value changed"
+  },
+  "ui.common.viewer": {
+   "keys": 8,
+   "changed_keys": 0,
+   "sha256": {
+    "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+    "es": "8c2e0cfbe0d28250e5d005bc93d10eee355ad024057b9e3b70df5ae3170cd28c"
+   },
+   "context_sha256": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8",
+   "previous_es_sha256": "8c2e0cfbe0d28250e5d005bc93d10eee355ad024057b9e3b70df5ae3170cd28c",
+   "status": "passed",
+   "verdict": "byte-identical to the round-1 audit; no value changed"
+  }
+ },
+ "findings": [],
+ "remediation_reaudit": [
+  {
+   "id": "CA-1",
+   "severity": "major",
+   "status": "fixed",
+   "namespaces": [
+    "ui.canvas"
+   ],
+   "keys": [
+    "ui.canvas.create_file_dialog.change_the_working_directory_from_the_composer_to_create_the_file_elsewh"
+   ],
+   "applied_values": {
+    "ui.canvas.create_file_dialog.change_the_working_directory_from_the_composer_to_create_the_file_elsewh": "Cambia el directorio de trabajo desde el cuadro de mensaje para crear el archivo en otro lugar."
+   },
+   "note": "Applied verbatim; the composer term now matches the panel copy, and editor has no occurrence in any es catalogue."
+  },
+  {
+   "id": "CA-2",
+   "severity": "major",
+   "status": "fixed",
+   "namespaces": [
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears"
+   ],
+   "applied_values": {
+    "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears": "Guarda un secreto con nombre para las herramientas de esta sesión. El valor nunca aparece en el cuadro de mensaje, la transcripción ni el recibo del comando."
+   },
+   "note": "Applied verbatim; the security claim now names the composer, not the code editor."
+  },
+  {
+   "id": "CA-3",
+   "severity": "major",
+   "status": "fixed",
+   "namespaces": [
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did"
+   ],
+   "applied_values": {
+    "ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did": "{length, plural, one {Un proveedor no respondió ({length, number, ::group-off}). Las filas siguientes son las que sí respondieron.} many {Algunos proveedores no respondieron ({length, number, ::group-off}). Las filas siguientes son las que sí respondieron.} other {Algunos proveedores no respondieron ({length, number, ::group-off}). Las filas siguientes son las que sí respondieron.}}"
+   },
+   "note": "All one/many/other arms now use las que; ICU parses with the three Spanish categories."
+  },
+  {
+   "id": "CA-4",
+   "severity": "minor",
+   "status": "fixed",
+   "namespaces": [
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes",
+    "ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes",
+    "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2"
+   ],
+   "applied_values": {
+    "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes": "Las flechas mueven la selección, Intro elige, Esc cierra",
+    "ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes": "Las flechas mueven la selección · Intro conecta {activeconnectprovider} · Esc cierra",
+    "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2": "Las flechas mueven la selección · Intro elige {activelabel} · Esc cierra"
+   },
+   "note": "All three now say mueven la selección; these keys were also covered by CA-5."
+  },
+  {
+   "id": "CA-5",
+   "severity": "minor",
+   "status": "fixed",
+   "namespaces": [
+    "ui.canvas",
+    "ui.common.actions",
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.canvas.inline_edit.apply_all_enter",
+    "ui.canvas.inline_edit.apply_all_ctrl_enter",
+    "ui.canvas.inline_edit.confirm_recording_enter",
+    "ui.common.actions.find_replace_widget.replace_enter",
+    "ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter",
+    "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes",
+    "ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes",
+    "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2",
+    "ui.chat.pickers.picker_host.the_row_you_were_on_is_gone_enter_picks"
+   ],
+   "applied_values": {
+    "ui.canvas.inline_edit.apply_all_enter": "Aplicar todo (⌘+Intro)",
+    "ui.canvas.inline_edit.apply_all_ctrl_enter": "Aplicar todo (Ctrl+Intro)",
+    "ui.canvas.inline_edit.confirm_recording_enter": "Confirmar grabación (Intro)",
+    "ui.common.actions.find_replace_widget.replace_enter": "Reemplazar (Intro)",
+    "ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": "Reemplazar todo (Cmd/Ctrl+Intro)",
+    "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes": "Las flechas mueven la selección, Intro elige, Esc cierra",
+    "ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes": "Las flechas mueven la selección · Intro conecta {activeconnectprovider} · Esc cierra",
+    "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2": "Las flechas mueven la selección · Intro elige {activelabel} · Esc cierra",
+    "ui.chat.pickers.picker_host.the_row_you_were_on_is_gone_enter_picks": "La fila en la que estabas ya no está · Intro elige {retargetedlabel}"
+   },
+   "note": "Enter replaced by Intro in every named key plus the-row-you-were-on (same key family, fixed by the translator although outside the original list); no Enter remains in the three namespaces."
+  },
+  {
+   "id": "CA-6",
+   "severity": "minor",
+   "status": "fixed",
+   "namespaces": [
+    "ui.canvas"
+   ],
+   "keys": [
+    "ui.canvas.create_file_dialog.creating"
+   ],
+   "applied_values": {
+    "ui.canvas.create_file_dialog.creating": "Creando..."
+   },
+   "note": "Three ASCII periods exactly, as the sidecar requires; U+2026 is gone from this key."
+  },
+  {
+   "id": "CA-7",
+   "severity": "minor",
+   "status": "fixed",
+   "namespaces": [
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y",
+    "ui.chat.pickers.destination_pickers.this_conversation_will_run"
+   ],
+   "applied_values": {
+    "ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y": "Esta sesión se ejecuta con {shownselector}. Elegir otro se aplica solo a esta sesión, a menos que también lo establezcas como predeterminado.",
+    "ui.chat.pickers.destination_pickers.this_conversation_will_run": "Esta conversación se ejecutará con {selectorofresolution}."
+   },
+   "note": "Both now use se ejecuta/se ejecutará con; the model is no longer the direct object of ejecutar."
+  },
+  {
+   "id": "CA-8",
+   "severity": "minor",
+   "status": "fixed",
+   "namespaces": [
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i"
+   ],
+   "applied_values": {
+    "ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i": "Habilidades detectables desde el directorio de trabajo de esta sesión (ámbito {value}). Que aparezca en la lista no significa que esté seleccionada para el prompt."
+   },
+   "note": "The que-clause gives the floating participle its subject and agrees with habilidad."
+  },
+  {
+   "id": "CA-9",
+   "severity": "minor",
+   "status": "deferred-accepted",
+   "namespaces": [
+    "ui.canvas"
+   ],
+   "keys": [
+    "ui.canvas.file_rows.archives"
+   ],
+   "applied_values": {
+    "ui.canvas.file_rows.archives": "Archivos comprimidos"
+   },
+   "note": "Deferral verified at the render site: FILE_KIND_GROUPS feeds a content-sized DropdownMenuCheckboxItem menu (finder-files-view.tsx:548) and the selected-kinds line (:614); no maxCells, truncate or fixed chip width. Archivos comprimidos stays."
+  },
+  {
+   "id": "CA-10",
+   "severity": "minor",
+   "status": "fixed",
+   "namespaces": [
+    "ui.common.layout"
+   ],
+   "keys": [
+    "ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width"
+   ],
+   "applied_values": {
+    "ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "Cambia el ancho de las consultas. Haz doble clic para restablecer el ancho compartido del panel."
+   },
+   "note": "Now consultas, matching ui.chat.asks and the composer ask panel."
+  },
+  {
+   "id": "CA-11",
+   "severity": "minor",
+   "status": "fixed",
+   "namespaces": [
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w"
+   ],
+   "applied_values": {
+    "ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w": "Repite turnos para alcanzar un objetivo. Las aprobaciones y preguntas siguen deteniendo el proceso y esperando tu respuesta; el bucle nunca responde por ti."
+   },
+   "note": "Now aprobaciones; confirmaciones has no occurrence in the es catalogues."
+  },
+  {
+   "id": "CA-12",
+   "severity": "minor",
+   "status": "fixed",
+   "namespaces": [
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.chat.pickers.analytics_model.cache_hit_rate",
+    "ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c",
+    "ui.chat.pickers.context_panel.last_cache_read",
+    "ui.chat.pickers.info_model.cache_dir",
+    "ui.chat.pickers.session_panel.cache_hit_rate",
+    "ui.chat.pickers.session_panel.of_context_from_cache",
+    "ui.chat.pickers.usage_view_model.cached"
+   ],
+   "applied_values": {
+    "ui.chat.pickers.analytics_model.cache_hit_rate": "Tasa de aciertos de cache",
+    "ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c": "Lecturas de cache como proporción de los tokens de contexto leídos; — significa que ninguna llamada indicó un total de contexto.",
+    "ui.chat.pickers.context_panel.last_cache_read": "Última lectura de cache",
+    "ui.chat.pickers.info_model.cache_dir": "Directorio de cache",
+    "ui.chat.pickers.session_panel.cache_hit_rate": "Tasa de aciertos de cache",
+    "ui.chat.pickers.session_panel.of_context_from_cache": "de contexto desde cache",
+    "ui.chat.pickers.usage_view_model.cached": "En cache"
+   },
+   "note": "All seven batch values now use cache, the style guide kept-English spelling; the one remaining caché is a pre-existing ui.common.updates value recorded in O-3."
+  },
+  {
+   "id": "CA-13",
+   "severity": "nit",
+   "status": "fixed",
+   "namespaces": [
+    "ui.canvas",
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.canvas.use_file_freshness.changed_on_disk_load_it_or_save_to_replace_it",
+    "ui.canvas.use_file_freshness.already_up_to_date_the_file_is_unchanged",
+    "ui.chat.pickers.usage_view_model.sign_in_expired_run_login",
+    "ui.chat.pickers.usage_view_model.usage_unavailable_last_known"
+   ],
+   "applied_values": {
+    "ui.canvas.use_file_freshness.changed_on_disk_load_it_or_save_to_replace_it": "Cambió en el disco — cárgalo o guarda para reemplazarlo.",
+    "ui.canvas.use_file_freshness.already_up_to_date_the_file_is_unchanged": "Ya está actualizado — el archivo no ha cambiado.",
+    "ui.chat.pickers.usage_view_model.sign_in_expired_run_login": "La sesión caducó — ejecuta /login {provider}",
+    "ui.chat.pickers.usage_view_model.usage_unavailable_last_known": "Uso no disponible — último valor conocido {age}"
+   },
+   "note": "All four named keys now use the style-guide em dash with spaces. The same pattern survives in three unnamed batch values, recorded non-gating in O-1."
+  },
+  {
+   "id": "CA-14",
+   "severity": "nit",
+   "status": "fixed",
+   "namespaces": [
+    "ui.common.actions"
+   ],
+   "keys": [
+    "ui.common.actions.text_selection_controls.refer_to_this_from_file"
+   ],
+   "applied_values": {
+    "ui.common.actions.text_selection_controls.refer_to_this_from_file": "Hacer referencia a esto desde el archivo"
+   },
+   "note": "Idiomatic infinitive action label."
+  },
+  {
+   "id": "CA-15",
+   "severity": "nit",
+   "status": "deferred-accepted",
+   "namespaces": [
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.chat.pickers.info_model.not_listening"
+   ],
+   "applied_values": {
+    "ui.chat.pickers.info_model.not_listening": "sin escuchar"
+   },
+   "note": "Deferral verified: the key is the control-port row when control_port is null (info-model.ts:276), where sin escuchar is the settled socket term; sin respuesta/inactivo would describe a different condition."
+  },
+  {
+   "id": "CA-16",
+   "severity": "minor",
+   "status": "fixed",
+   "namespaces": [
+    "ui.canvas"
+   ],
+   "keys": [
+    "ui.canvas.shell.canvas_view",
+    "ui.canvas.shell.close_canvas"
+   ],
+   "applied_values": {
+    "ui.canvas.shell.canvas_view": "Vista de canvas",
+    "ui.canvas.shell.close_canvas": "Cerrar canvas"
+   },
+   "note": "Both now lowercase canvas mid-sentence, matching the pre-existing Abrir canvas/Cerrar canvas usage; standalone Canvas remains a product label."
+  },
+  {
+   "id": "CA-17",
+   "severity": "nit",
+   "status": "fixed",
+   "namespaces": [
+    "ui.chat.pickers"
+   ],
+   "keys": [
+    "ui.chat.pickers.table_pager.range"
+   ],
+   "applied_values": {
+    "ui.chat.pickers.table_pager.range": "{from}–{to} de {totaltext} {total, plural, one {{label}} many {de {plurallabel}} other {{plurallabel}}}"
+   },
+   "note": "Spanish many arm added. IntlMessageFormat es render: 1 -> 1 sesión, 1.500.000 -> 1.500.000 sesiones, 1.000.000 -> 1.000.000 de sesiones; ICU parses."
+  }
+ ],
+ "observations": [
+  {
+   "id": "O-1",
+   "severity": "info",
+   "class": "pre-existing direct-neighbour punctuation",
+   "namespaces": [
+    "ui.canvas"
+   ],
+   "keys": [
+    "ui.canvas.use_file_freshness.no_longer_on_disk_showing_the_version_we_last_read",
+    "ui.canvas.use_file_freshness.could_not_be_read_showing_the_version_we_last_read",
+    "ui.canvas.use_file_freshness.could_not_be_re_read_showing_the_version_we_last_read"
+   ],
+   "note": "The semicolon-for-em-dash pattern CA-13 recorded survives in three batch values not named in CA-13 and untouched by the remediation. English uses an em dash and the es style guide prescribes \" — \". Not re-opened in round 2 (unchanged values outside the remediation delta); a future locale pass should align them or record the semicolon as a deliberate call."
+  },
+  {
+   "id": "O-2",
+   "severity": "info",
+   "class": "pre-existing locale-wide key label",
+   "namespaces": [
+    "ui.teamBridge"
+   ],
+   "keys": [
+    "ui.teamBridge.composer.hint"
+   ],
+   "note": "Still says Enter para enviar, Shift+Enter para una línea nueva while the canvas/pickers/actions surfaces are now uniformly Intro. Outside the canvas batch; recorded for a future locale-wide pass."
+  },
+  {
+   "id": "O-3",
+   "severity": "info",
+   "class": "pre-existing cache spelling",
+   "namespaces": [
+    "ui.common.updates"
+   ],
+   "keys": [
+    "ui.common.updates.update_notification.still_installing_a_slow_connection_or_a_cold_cache_can_hold_this_"
+   ],
+   "note": "Pre-existing value uses caché while the batch and style guide use cache. It predates the batch (present at d96d68795b) and the translator receipt already records it; not a gate on this remediation."
+  }
+ ],
+ "totals": {
+  "findings_reaudited": 17,
+  "fixed": 15,
+  "deferred_accepted": 2,
+  "remaining": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  },
+  "changed_keys_read": 31,
+  "namespaces_changed": 4,
+  "head_keys_hashed": 1296,
+  "keys_scanned_in_changed_namespaces": 1111,
+  "round_1_batch_keys_read": 1041
+ },
+ "verdict": "passed",
+ "limitations": [
+  "Round-2 scope only: values outside the 31 changed keys and the 17 findings were not re-read semantically; their identity is established by the recorded hashes.",
+  "No rendered UI frame pass; the pager plural was validated through the ICU formatter, not through the app shell.",
+  "No native-speaker sign-off is claimed."
+ ],
+ "round_1_receipt_sha256": "623f3e2cdce63217142585c7fd8ce1e71d1305eb0ac4eb3eb4ba47f450e3cdf6"
+}

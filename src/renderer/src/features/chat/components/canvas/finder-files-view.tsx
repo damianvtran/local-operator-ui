@@ -13,6 +13,7 @@ import {
 } from "@shared/components/ui";
 import { fold } from "@shared/components/ui/searchable-select";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -137,6 +138,7 @@ export function FinderFilesView({
 	materialise,
 	legacyScan,
 }: Props) {
+	const locale = useI18nLocale();
 	const selectedId = useCanvasStore(
 		(state) => state.conversations[conversationId]?.selectedTabId,
 	);
@@ -186,10 +188,11 @@ export function FinderFilesView({
 			prefs,
 		);
 	}, [displayItems, query, prefs]);
-	const sections = useMemo(
-		() => finderSections(narrowed, prefs, narrowing, closed),
-		[narrowed, prefs, narrowing, closed],
-	);
+	const sections = useMemo(() => {
+		// Section labels are translated inside finderSections, not in these inputs.
+		void locale;
+		return finderSections(narrowed, prefs, narrowing, closed);
+	}, [narrowed, prefs, narrowing, closed, locale]);
 	const layout = useMemo(
 		() => layoutFinder(sections, viewport.width, prefs.group),
 		[sections, viewport.width, prefs.group],
@@ -448,7 +451,9 @@ export function FinderFilesView({
 					<Input
 						ref={search}
 						value={query}
-						placeholder={t("ui.canvas.files.searchPlaceholder")}
+						placeholder={t(
+							"ui.canvas.finder_files_view.ui_canvas_files_searchplaceholder",
+						)}
 						aria-label={t("ui.canvas.files.search")}
 						className={cn("min-w-0 flex-1")}
 						onChange={(event) => setQuery(event.target.value)}
@@ -1016,6 +1021,7 @@ function FinderEntry({
 	onExpand: () => void;
 	materialise: () => Promise<string>;
 }) {
+	useI18nLocale();
 	const doc = item.row.document;
 	const [nearRef, near] = useEverInView("200px");
 	const thumb = useFinderThumbnail(
@@ -1112,7 +1118,9 @@ function FinderEntry({
 				<div className={REVEAL} onKeyDown={(event) => event.stopPropagation()}>
 					<ImageActionsMenu
 						file={doc.path}
-						tooltip={t("ui.canvas.files.fileActions")}
+						tooltip={t(
+							"ui.canvas.finder_files_view.ui_canvas_files_fileactions",
+						)}
 						label={doc.title}
 						open={menuOpen}
 						onOpenChange={setMenuOpen}
@@ -1274,8 +1282,8 @@ function FinderEntry({
 					file={doc.path}
 					tooltip={
 						item.row.media === "image"
-							? t("ui.canvas.files.imageActions")
-							: t("ui.canvas.files.fileActions")
+							? t("ui.canvas.finder_files_view.ui_canvas_files_imageactions")
+							: t("ui.canvas.finder_files_view.ui_canvas_files_fileactions")
 					}
 					label={doc.title}
 					open={menuOpen}

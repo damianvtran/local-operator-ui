@@ -1,6 +1,8 @@
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo } from "react";
 import {
@@ -73,6 +75,7 @@ import {
 const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	document,
 }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
@@ -95,21 +98,24 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 				{state.status === "ready" ? (
 					<iframe
 						src={`${state.url}#toolbar=0`}
-						title={`PDF: ${document.title}`}
+						title={t("ui.canvas.pdf_preview.pdf", { title: document.title })}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>
 				) : state.status === "loading" ? (
-					<FileViewerState quiet title="Opening…" />
+					<FileViewerState quiet title={t("ui.canvas.pdf_preview.opening")} />
 				) : state.code === "too-large" ? (
-					<FileViewerState title="Too large to preview" detail={state.message}>
+					<FileViewerState
+						title={t("ui.canvas.pdf_preview.too_large_to_preview")}
+						detail={state.message}
+					>
 						<OpenInOsButton path={document.path} />
 					</FileViewerState>
 				) : (
 					<FileViewerState
 						title={
 							state.code === "not-found"
-								? "File no longer exists"
-								: "This PDF could not be opened"
+								? t("ui.canvas.pdf_preview.file_no_longer_exists")
+								: t("ui.canvas.pdf_preview.this_pdf_could_not_be_opened")
 						}
 						detail={state.message ?? document.path}
 					>

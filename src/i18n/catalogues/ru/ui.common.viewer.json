@@ -1,4 +1,8 @@
 {
+	"ui.common.viewer.image_lightbox.asset_of": "Материал {index, number, ::group-off} из {count, number, ::group-off}",
+	"ui.common.viewer.image_lightbox.close": "Закрыть: {medialabel}",
+	"ui.common.viewer.image_lightbox.next": "Следующее: {medialabel}",
+	"ui.common.viewer.image_lightbox.previous": "Предыдущее: {medialabel}",
 	"ui.common.viewer.opening": "Открытие…",
 	"ui.common.viewer.reset_view": "Сбросить вид",
 	"ui.common.viewer.zoom_in": "Увеличить",

@@ -20,7 +20,9 @@ import {
 import { FleetAskDrawer } from "@features/chat/components/asks/fleet-ask-drawer";
 import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
 import { UpdateQuietIndicator } from "@shared/components/common/update-quiet-indicator";
+import { t } from "@shared/i18n";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	resolveRightSlotWidth,
@@ -150,6 +152,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * sidebar's leading edge is logical: inline-start is left in LTR and right in
 	 * RTL. This one direction read keeps those geometry calculations aligned.
 	 */
+
+	useI18nLocale();
 	const direction = useTextDirection();
 	// Clamp pre-redesign saved widths through the module rather than rewriting
 	// persisted sessions or discarding the rest of the user preferences.
@@ -453,7 +457,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 						minWidth={SIDEBAR_MIN_WIDTH}
 						maxWidth={sidebarDockCapacity(viewportWidth, railWidth)}
 						onDoubleClick={restoreDefaultSidebarWidth}
-						label={`Resize the sidebar (${sidebarToggleCap(isMacPlatform())})`}
+						label={t("ui.common.layout.chat_layout.resize_the_sidebar", {
+							sidebartogglecap: sidebarToggleCap(isMacPlatform()),
+						})}
 					/>
 				)}
 				{/*
@@ -516,7 +522,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 											)}
 											side="left"
 											onDoubleClick={restoreDefaultRightSlotWidth}
-											label="Resize asks. Double-click resets the shared pane width."
+											label={t(
+												"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width",
+											)}
 										/>
 									)}
 									<PaneSlot
@@ -601,7 +609,13 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
  * `navigator.platform` rather than a chrome attribute, because this is a key cap
  * and not a chrome decision: the chrome gates (`data-chrome-*`) say where the
  * OS DRAWS, and the cap says which modifier the handler here answers.
+ *
+ * The comparison token is a literal, never catalogue copy: a translated
+ * platform word would make the same machine resolve differently per UI
+ * language. The caption is `sidebarToggleCap()`'s literal keycap (`⌘B` /
+ * `Ctrl+B`) — a modifier glyph, not prose, so it has no catalogue key.
  */
+const MAC_PLATFORM_TOKEN = "MAC";
 const isMacPlatform = (): boolean =>
 	typeof navigator !== "undefined" &&
-	navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	navigator.platform.toUpperCase().indexOf(MAC_PLATFORM_TOKEN) >= 0;

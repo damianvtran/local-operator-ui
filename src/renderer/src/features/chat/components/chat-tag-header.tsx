@@ -263,9 +263,8 @@ export function ChatTagHeader({
 		}
 		setError(result.error);
 		// Only a refused WRITE is retryable; a validation refusal is fixed by typing.
-		setRetry(() =>
-			result.error === t("ui.chat.tags.save_failed") ? again : null,
-		);
+		// The hook reports that as a stable flag, never as catalogue copy.
+		setRetry(() => (result.retryable ? again : null));
 		return false;
 	};
 	const move = async (direction: "up" | "down") => {
