@@ -467,6 +467,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const [scheduledSuccess, setScheduledSuccess] = useState(false);
 	const [scheduleFailed, setScheduleFailed] = useState(false);
 	const writing = useRef(false);
+	/* Escape from the schedule dialog must land back on the clock (D33). */
+	const clockRef = useRef<HTMLButtonElement>(null);
 	const heldReasonId = useId();
 	const draftTenant =
 		scope === TEAM_BRIDGE_ALL_SCOPE && target?.type === "conversation"
@@ -1233,6 +1235,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						organizationNames={Object.fromEntries(
 							organizations.map((row) => [row.tenantId, row.name]),
 						)}
+						/* A destructive cancel names its destination (design round 1,
+						   D32); the list already holds the titles the rail uses. */
+						conversationNames={Object.fromEntries(
+							conversations.flatMap((row) => {
+								const title = conversationTitle(row, selfAccountId);
+								return title ? [[row.id, title]] : [];
+							}),
+						)}
 						tenantIds={
 							mergedView ? organizations.map((row) => row.tenantId) : [scope]
 						}
@@ -1626,6 +1636,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											</span>
 											{onSchedule && (
 												<Button
+													ref={clockRef}
 													variant="ghost"
 													size="icon"
 													aria-label={t("ui.teamBridge.schedule.title")}
@@ -1651,6 +1662,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											)}
 											<TeamBridgeScheduleDialog
 												open={scheduleOpen}
+												returnFocus={clockRef}
 												onOpenChange={setScheduleOpen}
 												busy={scheduling}
 												onSchedule={schedule}
