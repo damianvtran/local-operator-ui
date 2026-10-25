@@ -133,6 +133,20 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 	const onEdge = (inputKind: InputKind) => {
 		if (!foreground() || anchors.size === 0) return;
 		const inputAtMs = now();
+		// Capture the actually visible, uncovered anchors AT the input edge. A
+		// key pressed behind a modal is not evidence if the modal closes later.
+		const candidates = new Map<HTMLElement, number>();
+		for (const [element, anchor] of anchors) {
+			const since = visibleSince.get(element);
+			if (
+				since !== undefined &&
+				since <= inputAtMs &&
+				anchor.unread &&
+				anchorUncovered(element)
+			)
+				candidates.set(element, since);
+		}
+		if (candidates.size === 0) return;
 		const timer = setTimeout(() => {
 			timers.delete(timer);
 			if (!foreground()) return;
@@ -143,6 +157,7 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 				const token = `${anchor.id}@${anchor.revision}`;
 				if (posted.has(token)) continue;
 				const since = visibleSince.get(element) ?? null;
+				if (since === null || candidates.get(element) !== since) continue;
 				const ok = qualifiesInView(
 					{
 						visibleSinceMs: since,
@@ -172,16 +187,36 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 		}, IN_VIEW_DWELL_MS);
 		timers.add(timer);
 	};
-	const onPointer = () => onEdge("pointer");
-	const onKey = () => onEdge("key");
-	const onWheel = () => onEdge("wheel");
-	const onFocus = () => onEdge("focus");
+	const onPointer = (event: PointerEvent) => {
+		if (event.isTrusted) onEdge("pointer");
+	};
+	const onKey = (event: KeyboardEvent) => {
+		if (event.isTrusted) onEdge("key");
+	};
+	const onWheel = (event: WheelEvent) => {
+		if (event.isTrusted) onEdge("wheel");
+	};
+	const onFocus = (event: FocusEvent) => {
+		if (event.isTrusted) onEdge("focus");
+	};
+	const cancelDwell = () => {
+		for (const timer of timers) clearTimeout(timer);
+		timers.clear();
+	};
+	// Losing foreground during the dwell invalidates the edge; returning must
+	// earn a fresh edge rather than resuming a partly observed receipt.
+	window.addEventListener("blur", cancelDwell);
+	document.addEventListener("visibilitychange", cancelDwell);
 	window.addEventListener("pointerdown", onPointer, true);
 	window.addEventListener("keydown", onKey, true);
 	window.addEventListener("wheel", onWheel, { capture: true, passive: true });
 	window.addEventListener("focus", onFocus);
 
 	return {
+		/** A failed/refused post needs a NEW input edge, not a permanent latch. */
+		forget(items: readonly { id: string; revision: number }[]) {
+			for (const item of items) posted.delete(`${item.id}@${item.revision}`);
+		},
 		register(anchor: InViewAnchor): () => void {
 			anchors.set(anchor.element, anchor);
 			observer?.observe(anchor.element);
@@ -199,6 +234,8 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 			window.removeEventListener("keydown", onKey, true);
 			window.removeEventListener("wheel", onWheel, true);
 			window.removeEventListener("focus", onFocus);
+			window.removeEventListener("blur", cancelDwell);
+			document.removeEventListener("visibilitychange", cancelDwell);
 		},
 	};
 }

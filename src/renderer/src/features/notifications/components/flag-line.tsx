@@ -18,9 +18,9 @@
  * fallback), so an older core keeps today's transcript exactly.
  */
 import { Tooltip } from "@shared/components/ui/tooltip";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { cn } from "@shared/lib/utils";
 import { Eye } from "lucide-react";
 import {
 	type FC,
@@ -30,13 +30,17 @@ import {
 	useEffect,
 	useMemo,
 	useRef,
+	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
 import { type InViewReader, createInViewReader } from "../in-view-read";
 import {
+	notificationKeys,
 	postNotificationsSeen,
+	tokensOf,
 	useNotificationsEnabled,
+	useNotificationsWrite,
 	useSessionNotifications,
 } from "../notifications-api";
 import { PriorityBars } from "./priority-bars";
@@ -59,9 +63,16 @@ export const FlagLinesProvider: FC<{
 }> = ({ sessionId, children }) => {
 	const enabled = useNotificationsEnabled();
 	const items = useSessionNotifications(sessionId, enabled);
-	const reader = useMemo(() => {
-		if (!enabled || !sessionId || typeof window === "undefined") return null;
-		return createInViewReader((batch) => {
+	const { client } = useOptionalQueryClient();
+	const [reader, setReader] = useState<InViewReader | null>(null);
+	useEffect(() => {
+		if (!enabled || !sessionId) {
+			setReader(null);
+			return;
+		}
+		// Register browser observers/listeners only after commit: creating them in
+		// useMemo leaks listeners when React abandons or double-renders a tree.
+		const owned = createInViewReader((batch) => {
 			void postNotificationsSeen({
 				items: batch.items,
 				evidence: {
@@ -70,17 +81,20 @@ export const FlagLinesProvider: FC<{
 					inputAtMs: batch.inputAtMs,
 					visibleSinceMs: batch.visibleSinceMs,
 				},
-			}).catch(() => {
-				/*
-				 * A refused or failed post leaves the item unread, which is the
-				 * honest direction (contract § 6.3); the next qualifying edge
-				 * cannot re-post the same revision, so the reader's explicit
-				 * read is the way out, as for any item the guard refused.
-				 */
-			});
+			})
+				.then((result) => {
+					const changed = new Set(result.changed);
+					owned.forget(batch.items.filter((item) => !changed.has(item.id)));
+					void client.invalidateQueries({ queryKey: notificationKeys.all });
+				})
+				.catch(() => {
+					// Stay unread on failure, but allow a later fresh human edge to retry.
+					owned.forget(batch.items);
+				});
 		});
-	}, [enabled, sessionId]);
-	useEffect(() => () => reader?.dispose(), [reader]);
+		setReader(owned);
+		return () => owned.dispose();
+	}, [enabled, sessionId, client]);
 	const value = useMemo<FlagContext | null>(() => {
 		if (!enabled || !items.data) return null;
 		const byAnchor = new Map<string, DesktopNotificationItem>();
@@ -106,6 +120,7 @@ export const FlagLine: FC<{ item: DesktopNotificationItem }> = ({ item }) => {
 	useI18nLocale();
 	const context = useContext(FlagLinesContext);
 	const navigate = useNavigate();
+	const write = useNotificationsWrite();
 	const ref = useRef<HTMLDivElement>(null);
 	const unread = !item.read;
 	const anchorId = item.anchor_id ?? "";
@@ -159,14 +174,20 @@ export const FlagLine: FC<{ item: DesktopNotificationItem }> = ({ item }) => {
 				</span>
 			) : (
 				<Tooltip content={t("ui.notifications.flag.seen_hint")}>
-					<span
-						className={cn(
-							"inline-flex shrink-0 items-center gap-1 text-ink-dim",
-						)}
+					<button
+						type="button"
+						aria-label={t("ui.notifications.row.mark_unread")}
+						onClick={() =>
+							write.mutate({
+								verb: "unread",
+								target: { items: tokensOf([item]) },
+							})
+						}
+						className="inline-flex shrink-0 items-center gap-1 text-ink-dim hover:text-ink"
 					>
 						<Eye size={12} aria-hidden="true" />
 						{t("ui.notifications.flag.seen")}
-					</span>
+					</button>
 				</Tooltip>
 			)}
 		</div>

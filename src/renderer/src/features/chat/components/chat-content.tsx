@@ -9,12 +9,12 @@ import { useCodeRequests } from "@features/code-review/hooks/use-code-requests";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
 import {
-	type DrawerTab,
 	DrawerTabs,
 	DrawerUpdates,
 	defaultDrawerTab,
 	useSessionUnreadUpdates,
 } from "@features/notifications/components/drawer-updates";
+import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
 import { useNotificationsEnabled } from "@features/notifications/notifications-api";
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
@@ -1705,7 +1705,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			sessionId ?? null,
 			notificationsEnabled,
 		);
-		const [drawerTab, setDrawerTab] = useState<DrawerTab | null>(null);
+		const drawerTab = useNotificationDrawerTab((state) => state.tab);
+		const setDrawerTab = useNotificationDrawerTab((state) => state.setTab);
 		const headerAsksCount = headerAsksSession
 			? askAttentionCount(sessionAsksView)
 			: fleetAsks.outstanding;

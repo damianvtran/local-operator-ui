@@ -19,6 +19,7 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import { ChevronsUp, ExternalLink } from "lucide-react";
 import { type FC, type KeyboardEvent, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -168,10 +169,78 @@ export const DrawerUpdates: FC<{
 			{ duration: 900, easing: "ease-out" },
 		);
 	};
-	if (list.isLoading) return null;
+	if (list.isLoading)
+		return (
+			<p className="p-3 text-body-sm text-ink-muted">
+				{t("ui.notifications.page.loading")}
+			</p>
+		);
+	if (list.isError && !list.data)
+		return (
+			<div className="p-3 text-body-sm text-ink-muted">
+				<p>{t("ui.notifications.error.load.title")}</p>
+				<Button
+					size="sm"
+					variant="secondary"
+					onClick={() => void list.refetch()}
+				>
+					{t("ui.notifications.error.retry")}
+				</Button>
+			</div>
+		);
+	const ordered = [...unread, ...read];
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2">
+			<div
+				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
+				onKeyDown={(event) => {
+					const target = event.target as HTMLElement;
+					const row = target.closest<HTMLElement>("[data-drawer-update]");
+					if (!row) return;
+					const index = ordered.findIndex(
+						(item) => item.id === row.dataset.drawerUpdate,
+					);
+					const item = ordered[index];
+					if (!item) return;
+					if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+						event.preventDefault();
+						const next =
+							ordered[
+								Math.max(
+									0,
+									Math.min(
+										ordered.length - 1,
+										index + (event.key === "ArrowDown" ? 1 : -1),
+									),
+								)
+							];
+						event.currentTarget
+							.querySelector<HTMLElement>(
+								`[data-drawer-update="${CSS.escape(next.id)}"] button`,
+							)
+							?.focus();
+					} else if (
+						["r", "u", "e"].includes(event.key.toLowerCase()) &&
+						!list.isError
+					) {
+						event.preventDefault();
+						write.mutate(
+							{
+								verb:
+									event.key.toLowerCase() === "e"
+										? "dismiss"
+										: event.key.toLowerCase() === "u"
+											? "unread"
+											: "read",
+								target: { items: tokensOf([item]) },
+							},
+							{
+								onError: () => showErrorToast(t("ui.notifications.error.mark")),
+							},
+						);
+					}
+				}}
+			>
 				{rows.length === 0 ? (
 					<p className="px-3 py-8 text-center text-body-sm text-ink-muted">
 						{t("ui.notifications.drawer.empty")}
@@ -185,6 +254,7 @@ export const DrawerUpdates: FC<{
 									<Button
 										variant="ghost"
 										size="sm"
+										disabled={list.isError}
 										onClick={() =>
 											write.mutate({
 												verb: "read",

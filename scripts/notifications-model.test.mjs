@@ -25,7 +25,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/notifications/notifications-model";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
-			'export { qualifiesInView, IN_VIEW_DWELL_MS } from "./src/renderer/src/features/notifications/in-view-read";',
+			'export { createInViewReader, qualifiesInView, IN_VIEW_DWELL_MS } from "./src/renderer/src/features/notifications/in-view-read";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -52,6 +52,7 @@ const {
 	sessionDismissCount,
 	timeBucketOf,
 	DEFAULT_FILTERS,
+	createInViewReader,
 	qualifiesInView,
 	IN_VIEW_DWELL_MS,
 } = model;
@@ -379,4 +380,126 @@ test("in-view read: every one of the five conditions is required (contract secti
 		false,
 		"a read item is never re-posted",
 	);
+});
+
+// Exercise the shipped coordinator, not just its predicate. The fake browser
+// owns only DOM evidence and the clock; input, observer and timer paths are real.
+test("in-view coordinator refuses covered input, missing anchors, synthetic input and interrupted dwell", () => {
+	const originals = Object.fromEntries(
+		[
+			"window",
+			"document",
+			"IntersectionObserver",
+			"setTimeout",
+			"clearTimeout",
+		].map((key) => [key, globalThis[key]]),
+	);
+	let clock = 10_000;
+	let observer;
+	let hit = null;
+	const listeners = new Map();
+	const timers = new Map();
+	let timerId = 0;
+	const registerEvent = (name, callback) => listeners.set(name, callback);
+	globalThis.window = {
+		addEventListener: registerEvent,
+		removeEventListener: (name) => listeners.delete(name),
+	};
+	globalThis.document = {
+		visibilityState: "visible",
+		hasFocus: () => true,
+		elementFromPoint: () => hit,
+		addEventListener: registerEvent,
+		removeEventListener: (name) => listeners.delete(name),
+	};
+	globalThis.IntersectionObserver = class {
+		constructor(callback) {
+			observer = callback;
+		}
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	};
+	globalThis.setTimeout = (callback) => {
+		const id = ++timerId;
+		timers.set(id, callback);
+		return id;
+	};
+	globalThis.clearTimeout = (id) => timers.delete(id);
+	const posts = [];
+	const reader = createInViewReader(
+		(batch) => posts.push(batch),
+		() => clock,
+	);
+	const element = {
+		getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 20 }),
+		contains: () => false,
+	};
+	const fire = (name, trusted = true) =>
+		listeners.get(name)?.({ isTrusted: trusted });
+	const dwell = () => {
+		clock += 1_000;
+		const callbacks = [...timers.values()];
+		timers.clear();
+		for (const callback of callbacks) callback();
+	};
+	try {
+		fire("keydown");
+		dwell();
+		assert.equal(posts.length, 0, "unrendered anchor never acknowledges");
+		reader.register({
+			id: "n_abcdefghijklmnop",
+			revision: 1,
+			anchorId: "call-1",
+			updatedAtMs: 1,
+			unread: true,
+			element,
+		});
+		observer([{ target: element, intersectionRatio: 0.49 }]);
+		hit = element;
+		fire("keydown");
+		dwell();
+		assert.equal(posts.length, 0, "scrolled-up / less than half visible");
+		observer([{ target: element, intersectionRatio: 1 }]);
+		hit = {};
+		fire("keydown");
+		hit = element;
+		dwell();
+		assert.equal(
+			posts.length,
+			0,
+			"input behind modal cannot qualify when it closes",
+		);
+		fire("keydown", false);
+		dwell();
+		assert.equal(posts.length, 0, "synthetic event is not engagement");
+		fire("keydown");
+		fire("blur");
+		dwell();
+		assert.equal(posts.length, 0, "other-app activity interrupts dwell");
+		fire("keydown");
+		observer([{ target: element, intersectionRatio: 0 }]);
+		clock += 1;
+		observer([{ target: element, intersectionRatio: 1 }]);
+		dwell();
+		assert.equal(
+			posts.length,
+			0,
+			"scroll out and back invalidates the old edge",
+		);
+		fire("keydown");
+		dwell();
+		assert.equal(
+			posts.length,
+			1,
+			"fresh input on the uncovered visible revision qualifies",
+		);
+		assert.equal(posts[0].items[0].revision, 1);
+	} finally {
+		reader.dispose();
+		for (const [key, value] of Object.entries(originals)) {
+			if (value === undefined) delete globalThis[key];
+			else globalThis[key] = value;
+		}
+	}
 });

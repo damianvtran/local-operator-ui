@@ -16,10 +16,10 @@
  * mounted at all (`app.tsx`), and this component repeats the gate for a story
  * or a hand-typed URL that reaches it anyway.
  *
- * NOT VIRTUALISED. The route caps a page at 100 rows plus the waiting group and
- * repeats collapse server-side, so the DOM holds a bounded set; the design's
- * "1,000 rows" case is bounded by that page size here, and older pages are not
- * fetched in v1 (listed under "Not covered" in the PR).
+ * Pages arrive by the route's cursor, 100 rows at a time, as the list approaches
+ * its lower edge. Keyed repeats collapse server-side. Rows are not virtualised
+ * yet: high-volume DOM performance remains a measured limitation, not a claim
+ * that an arbitrary truncation is the whole inbox.
  */
 import { openConversation } from "@features/chat/open-conversation";
 import {
@@ -195,6 +195,23 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	}, [list.isSuccess, list.isFetching, list.dataUpdatedAt]);
 
 	const loaded = list.data;
+	const observedIds = useRef<Set<string> | null>(null);
+	const [newIds, setNewIds] = useState<Set<string>>(() => new Set());
+	useEffect(() => {
+		if (!loaded) return;
+		const next = new Set(
+			[...(loaded.waiting ?? []), ...loaded.items].map((item) => item.id),
+		);
+		const previous = observedIds.current;
+		observedIds.current = next;
+		if (!previous || (listRef.current?.scrollTop ?? 0) < 24) {
+			setNewIds(new Set());
+			return;
+		}
+		const arrivals = [...next].filter((id) => !previous.has(id));
+		if (arrivals.length)
+			setNewIds((current) => new Set([...current, ...arrivals]));
+	}, [loaded]);
 	const items = useMemo(() => {
 		const base = loaded?.items ?? [];
 		if (readState !== "unread" || stickyRead.size === 0) return base;
@@ -248,20 +265,24 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 
 	/*
 	 * OPENING A DETAIL IS AN EXPLICIT READ (contract § 6.4, design § 17.3),
-	 * token-bound to the revision the detail rendered. Once per (id, revision),
-	 * so a refetch of the same revision does not post again, and a NEW revision
-	 * of an open item (a keyed update while the reader is on it) is read too:
-	 * it is on screen in the pane they chose.
+	 * token-bound to the revision the detail rendered. Once per detail opening,
+	 * NOT per revision: a keyed update arriving while the pane is open is not
+	 * proof the new content was seen. It stays unread until a fresh explicit
+	 * action or an item-specific transcript receipt (presence refinement).
 	 */
 	const explicitRead = useRef<string | null>(null);
 	useEffect(() => {
+		if (!notificationId) {
+			explicitRead.current = null;
+			return;
+		}
 		const item = detail.data?.item;
-		if (!item || item.read || item.dismissed) return;
-		const token = `${item.id}@${item.revision}`;
-		if (explicitRead.current === token) return;
-		explicitRead.current = token;
+		if (!item || item.id !== notificationId || explicitRead.current === item.id)
+			return;
+		explicitRead.current = item.id;
+		if (item.read || item.dismissed || writesPaused) return;
 		write.mutate({ verb: "read", target: { items: tokensOf([item]) } });
-	}, [detail.data, write]);
+	}, [notificationId, detail.data, write, writesPaused]);
 
 	const clearSelection = useCallback(() => {
 		setSelected(new Set());
@@ -817,9 +838,38 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								aria-multiselectable="true"
 								aria-label={t("ui.notifications.page.list_label")}
 								onKeyDown={onListKeyDown}
+								onScroll={(event) => {
+									const box = event.currentTarget;
+									if (box.scrollTop < 24) setNewIds(new Set());
+									if (
+										list.hasNextPage &&
+										!list.isFetchingNextPage &&
+										box.scrollHeight - box.scrollTop - box.clientHeight < 160
+									)
+										void list.fetchNextPage();
+								}}
 								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [scrollbar-gutter:stable]"
 								data-notifications-list=""
 							>
+								{newIds.size > 0 && (
+									<div className="sticky top-0 z-[2] flex shrink-0 justify-center bg-canvas py-1">
+										<Button
+											size="sm"
+											variant="secondary"
+											onClick={() => {
+												listRef.current?.scrollTo({
+													top: 0,
+													behavior: "smooth",
+												});
+												setNewIds(new Set());
+											}}
+										>
+											{t("ui.notifications.new_pill", {
+												count: formatNumber(newIds.size),
+											})}
+										</Button>
+									</div>
+								)}
 								{groups.map((group) => (
 									<GroupBlock
 										key={group.key}

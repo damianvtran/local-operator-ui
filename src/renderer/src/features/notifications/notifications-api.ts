@@ -31,7 +31,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import type {
 	DesktopNotificationDetail,
@@ -72,20 +72,39 @@ export function useNotificationsList(
 	enabled: boolean,
 ) {
 	useNotificationsFeedInvalidation();
-	return useQuery({
+	return useInfiniteQuery({
 		queryKey: notificationKeys.list(state),
 		enabled,
-		queryFn: () =>
+		initialPageParam: undefined as string | undefined,
+		queryFn: ({ pageParam }) =>
 			desktopResult<DesktopNotificationsList>({
 				op: "notifications.list",
 				state,
 				limit: 100,
+				...(pageParam ? { cursor: pageParam } : {}),
 			}),
+		getNextPageParam: (last) => last.next_cursor ?? undefined,
+		// Only page one carries waiting. Deduplicate keyed items across a cursor
+		// boundary if content changed between reads, retaining the freshest token.
+		select: (answer): DesktopNotificationsList => {
+			const first = answer.pages[0];
+			const items = new Map<string, DesktopNotificationItem>();
+			for (const page of answer.pages)
+				for (const item of page.items) {
+					const previous = items.get(item.id);
+					if (!previous || item.revision > previous.revision)
+						items.set(item.id, item);
+				}
+			return {
+				...first,
+				items: [...items.values()],
+				next_cursor: answer.pages.at(-1)?.next_cursor,
+			};
+		},
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
 		refetchInterval: 30_000,
 		refetchIntervalInBackground: false,
-		placeholderData: (previous) => previous,
 	});
 }
 

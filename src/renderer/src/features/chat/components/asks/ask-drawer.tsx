@@ -436,7 +436,9 @@ export const AskDrawer = ({
 	 * the latch is spent.
 	 */
 	useEffect(() => {
-		if (closedOnce.current) return;
+		// With Notifications the panel also owns updates: an empty asks queue
+		// cannot close an Updates tab (or steal the tab strip after answering).
+		if (tabs || closedOnce.current) return;
 		/*
 		 * NOTHING TO SHOW IS `open === 0` AND NO ROWS, NOT ROWS ALONE (remediation round
 		 * 1, R1). A frame whose LIST the wire bound dropped but whose TALLY survived
@@ -475,7 +477,7 @@ export const AskDrawer = ({
 		 * effect could sit on a stale close verdict for exactly the frame the guard was
 		 * added for.
 		 */
-	}, [view.rows.length, view.open, frameUnread, onClose]);
+	}, [view.rows.length, view.open, frameUnread, onClose, tabs]);
 
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
@@ -1079,8 +1081,10 @@ export const AskDrawer = ({
 			{tabs?.strip}
 			{tabs?.body ?? null}
 			<div
-				hidden={Boolean(tabs?.body)}
-				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2"
+				className={cn(
+					"min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+					tabs?.body ? "hidden" : "flex",
+				)}
 			>
 				{/*
 				 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
