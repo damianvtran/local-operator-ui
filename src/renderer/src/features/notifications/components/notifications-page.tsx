@@ -1413,11 +1413,15 @@ const Toolbar: FC<ToolbarProps> = ({
 					<Button
 						variant="secondary"
 						size="sm"
-						aria-disabled={
-							!loaded ||
-							writesPaused ||
-							(loaded?.unread_count ?? 0) === 0 ||
-							undefined
+						/*
+						 * Nothing unread is a real `disabled`: there is nothing to do, and
+						 * the button should read as unavailable. A paused write stays
+						 * `aria-disabled` so it keeps focus and its tooltip says why.
+						 */
+						disabled={!loaded || (loaded?.unread_count ?? 0) === 0}
+						aria-disabled={writesPaused || undefined}
+						title={
+							writesPaused ? t("ui.notifications.writes_paused_tip") : undefined
 						}
 						onClick={() => {
 							if (!loaded || writesPaused || loaded.unread_count === 0) return;

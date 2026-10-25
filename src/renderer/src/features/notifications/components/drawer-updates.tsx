@@ -222,12 +222,15 @@ export const DrawerUpdates: FC<{
 				)}
 			</div>
 			<div className="flex shrink-0 items-center justify-between gap-2 border-hairline border-t px-3 py-2 text-meta">
-				<span className="truncate text-ink-dim">
+				{/* Wraps rather than truncates: at the drawer's 320-360px widths the
+				    note lost its last word, and the button beside it never shrinks. */}
+				<span className="min-w-0 text-ink-dim">
 					{t("ui.notifications.drawer.footer")}
 				</span>
 				<Button
 					variant="ghost"
 					size="sm"
+					className="shrink-0"
 					onClick={() =>
 						navigate(`/notifications?from=${encodeURIComponent(sessionId)}`)
 					}

@@ -1,0 +1,745 @@
+import type { Meta, StoryObj } from "@storybook/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { type ReactNode, useEffect, useState } from "react";
+import { Route, Routes, useNavigate } from "react-router-dom";
+import type {
+	DesktopNotificationDetail,
+	DesktopNotificationItem,
+} from "../../../../../shared/desktop-control-contract";
+import type { PendingAsk } from "../../../../../shared/desktop-session-contract";
+/**
+ * The Notifications page against a scripted bridge (design.md § 5 states, § 18
+ * drawer, § 1 sidebar). The fixtures are the mock's own content
+ * (`mock-desktop.html`), so a frame can be compared with the designer's PNG
+ * beside it, and the bridge answers in the route shapes of contract § 5.2.
+ *
+ * WHY A SCRIPTED BRIDGE AND NOT A MOCKED HOOK. The page reads through
+ * `desktopResult`, so a story that answers `window.api.desktop.request` drives
+ * the SHIPPED hooks, query keys and request schema; a hook mock would
+ * photograph a component the app never mounts (the projects-stories rule).
+ *
+ * The clock is pinned (`NOW`) so the time column and the time groups do not
+ * churn between captures.
+ */
+import { DrawerTabs, DrawerUpdates } from "./drawer-updates";
+import { FlagLine, FlagLinesProvider } from "./flag-line";
+import "../../../styles/index.css";
+import "../../chat/components/story-electron-shim";
+import { ChatLayout } from "@shared/components/common/chat-layout";
+import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { Badge } from "@shared/components/ui";
+import { NotificationsPage } from "./notifications-page";
+
+const NOW = new Date(2026, 9, 25, 15, 4, 0).getTime();
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+let seq = 100;
+const item = (
+	over: Partial<DesktopNotificationItem> & { id: string; title: string },
+): DesktopNotificationItem => {
+	seq += 1;
+	return {
+		source: "notify",
+		priority: "normal",
+		excerpt: "",
+		created_at: NOW - HOUR,
+		updated_at: NOW - HOUR,
+		seq,
+		revision: 1,
+		read: false,
+		read_via: null,
+		dismissed: false,
+		repeat_count: 1,
+		session: { id: "s-fraud", title: "radient fraud watch" },
+		ask: null,
+		...over,
+	};
+};
+
+const ASK_ID = "ask:s-aida:a-7f3c";
+const WAITING: DesktopNotificationItem[] = [
+	item({
+		id: ASK_ID,
+		source: "ask",
+		priority: "high",
+		title: "Which environment should the release go to?",
+		updated_at: NOW - 22 * MINUTE,
+		created_at: NOW - 22 * MINUTE,
+		session: { id: "s-aida", title: "Aida" },
+		ask: { status: "open", question_count: 2, deadline_at: NOW + 38 * MINUTE },
+	}),
+];
+
+const FRAUD = item({
+	id: "n_fraudwatch00001",
+	priority: "high",
+	title: "Chargeback spike on 3 merchants",
+	excerpt: "Disputes up 4.1× in the last hour; two share a BIN range.",
+	updated_at: NOW - 6 * MINUTE,
+	created_at: NOW - 3 * HOUR,
+	repeat_count: 6,
+	revision: 6,
+	anchor_id: "toolu_fraud_6",
+	projects: [{ key: "radient-risk", name: "Radient risk", status: "active" }],
+});
+
+const POPULATED: DesktopNotificationItem[] = [
+	FRAUD,
+	item({
+		id: "n_prreview0000001",
+		title: "External PR needs review: #1410 payload log lines",
+		excerpt: "CI is green; the change touches desktop-feed.ts.",
+		updated_at: NOW - 41 * MINUTE,
+		session: { id: "s-aida", title: "Aida" },
+	}),
+	item({
+		id: "n_nightlybuild001",
+		priority: "low",
+		title: "Nightly build finished",
+		excerpt: "All 59 palettes pass the contrast contract.",
+		updated_at: NOW - 2 * HOUR,
+		read: true,
+		read_via: "watching",
+		session: { id: "s-ci", title: "ci-watch" },
+	}),
+	item({
+		id: "n_quotawarning001",
+		title: "Provider quota at 82%",
+		excerpt: "Resets at 00:00 UTC.",
+		updated_at: NOW - 3 * HOUR,
+		read: true,
+		read_via: "in_view",
+		session: { id: "s-ops", title: "ops" },
+	}),
+	item({
+		id: "n_yesterday000001",
+		title: "Weekly digest ready",
+		excerpt: "12 merged PRs, 3 releases.",
+		updated_at: NOW - DAY - 2 * HOUR,
+		session: { id: "s-aida", title: "Aida" },
+	}),
+	item({
+		id: "n_olderitem000001",
+		priority: "low",
+		title: "Backup verified",
+		updated_at: NOW - 9 * DAY,
+		read: true,
+		read_via: "explicit",
+		session: { id: "s-ops", title: "ops" },
+	}),
+];
+
+const ASK: PendingAsk = {
+	ask_id: "a-7f3c",
+	session_id: "s-aida",
+	created_at: NOW - 22 * MINUTE,
+	expires_at: NOW + 38 * MINUTE,
+	timeout_s: 3600,
+	urgent: true,
+	status: "open",
+	delivered: false,
+	questions: [
+		{
+			id: "target",
+			question: "Which environment should the release go to?",
+			recommended: 0,
+			options: [
+				{ label: "staging", description: "The shared pre-prod cluster" },
+				{ label: "production", description: "Live traffic" },
+			],
+			multi: false,
+		},
+	],
+} as PendingAsk;
+
+const DETAIL: DesktopNotificationDetail = {
+	item: {
+		...FRAUD,
+		body_md: [
+			"Disputes on three merchants rose **4.1×** against the trailing 7-day hour.",
+			"",
+			"| Merchant | Disputes / h | 7-day avg |",
+			"|---|---:|---:|",
+			"| m_4821 | 37 | 8 |",
+			"| m_1170 | 22 | 6 |",
+			"| m_9035 | 14 | 4 |",
+			"",
+			"Two of the three share BIN range `4147 20`.",
+		].join("\n"),
+		links: [{ label: "Dashboard", url: "https://example.invalid/risk" }],
+	},
+	history: [1, 2, 3, 4, 5].map((n) => ({
+		revision: 6 - n,
+		at: NOW - (6 + n * 25) * MINUTE,
+		title: `Chargeback spike on ${n > 2 ? 2 : 3} merchants`,
+		excerpt: `Disputes up ${(4.1 - n * 0.4).toFixed(1)}×`,
+	})),
+	session: { id: "s-fraud", title: "radient fraud watch", live_state: "idle" },
+	anchor: {
+		id: "toolu_fraud_6",
+		excerpt:
+			"Flagging this: the spike crossed 4× and two merchants share a BIN range.",
+	},
+	projects: [{ key: "radient-risk", name: "Radient risk", status: "active" }],
+	asks: [],
+};
+
+const HIGH_VOLUME: DesktopNotificationItem[] = Array.from(
+	{ length: 60 },
+	(_, index) =>
+		item({
+			id: `n_volume${String(index).padStart(10, "0")}`,
+			priority: index % 7 === 0 ? "high" : index % 3 === 0 ? "low" : "normal",
+			title: `Monitor tick ${index + 1}: queue depth ${120 - index}`,
+			excerpt: "Consumer lag within budget.",
+			updated_at: NOW - index * 47 * MINUTE,
+			read: index % 4 === 0,
+			repeat_count: index % 5 === 0 ? 3 : 1,
+			session: {
+				id: `s-mon-${index % 6}`,
+				title: [
+					"queue monitor",
+					"fraud watch",
+					"ci-watch",
+					"ops",
+					"Aida",
+					"pricing",
+				][index % 6],
+			},
+		}),
+);
+
+type Stub = {
+	items: DesktopNotificationItem[];
+	waiting: DesktopNotificationItem[];
+	hang?: boolean;
+	failList?: boolean;
+	/** First read answers, every later read fails: the stale-list state. */
+	failAfterFirst?: boolean;
+	detail?: DesktopNotificationDetail | null;
+	capability?: boolean;
+};
+
+let stub: Stub = { items: [], waiting: [] };
+let listReads = 0;
+
+const answer = (request: { op: string; [key: string]: unknown }) => {
+	if (request.op === "capabilities") {
+		return {
+			status: 200,
+			body: {
+				result: {
+					desktop_contract: 1,
+					desktop_available: true,
+					desktop_auth: "bearer",
+					features: stub.capability === false ? {} : { notifications: 1 },
+				},
+			},
+		};
+	}
+	switch (request.op) {
+		case "notifications.list": {
+			if (stub.hang) return new Promise(() => {});
+			listReads += 1;
+			if (stub.failList || (stub.failAfterFirst && listReads > 1))
+				return {
+					status: 503,
+					body: { detail: "The local server did not answer." },
+				};
+			const state = request.state === "all" ? "all" : "unread";
+			const sessionId = request.sessionId as string | undefined;
+			const pool = stub.items.filter(
+				(row) =>
+					!row.dismissed &&
+					(state === "all" || !row.read) &&
+					(!sessionId || row.session.id === sessionId) &&
+					(request.source !== "notify" || row.source === "notify"),
+			);
+			return {
+				status: 200,
+				body: {
+					result: {
+						items: pool,
+						waiting: sessionId ? [] : stub.waiting,
+						next_cursor: null,
+						unread_count: stub.items.filter(
+							(row) => !row.read && !row.dismissed,
+						).length,
+						waiting_count: stub.waiting.length,
+						high_water: 999,
+					},
+				},
+			};
+		}
+		case "notifications.count":
+			return {
+				status: 200,
+				body: {
+					result: {
+						unread_count: stub.items.filter(
+							(row) => !row.read && !row.dismissed,
+						).length,
+						waiting_count: stub.waiting.length,
+						high_water: 999,
+					},
+				},
+			};
+		case "notifications.get": {
+			/*
+			 * The detail's `item` is the LIVE row, as the route reads it from the same
+			 * store: a fixed copy would keep saying "unread" after the page's own
+			 * explicit read changed the row (the server never answers that way).
+			 */
+			const live = [...stub.items, ...stub.waiting].find(
+				(row) => row.id === request.id,
+			);
+			const detail =
+				(stub.detail && live
+					? { ...stub.detail, item: { ...stub.detail.item, ...live } }
+					: stub.detail) ??
+				(() => {
+					const found = [...stub.items, ...stub.waiting].find(
+						(row) => row.id === request.id,
+					);
+					return found
+						? {
+								item: found,
+								history: [],
+								session: found.session,
+								anchor: null,
+								projects: found.projects ?? [],
+								asks: found.source === "ask" ? [ASK] : [],
+							}
+						: null;
+				})();
+			if (!detail)
+				return { status: 404, body: { detail: "no such notification" } };
+			return { status: 200, body: { result: detail } };
+		}
+		case "notifications.read":
+		case "notifications.dismiss": {
+			const target = request.target as { items?: { id: string }[] };
+			const ids = new Set((target.items ?? []).map((entry) => entry.id));
+			const verb = request.verb as string;
+			const changed: string[] = [];
+			const skipped: { id: string; reason: string }[] = [];
+			for (const row of stub.items) {
+				if (!ids.has(row.id)) continue;
+				if (verb === "read") row.read = true;
+				if (verb === "unread") row.read = false;
+				if (verb === "dismiss") row.dismissed = true;
+				if (verb === "undismiss") row.dismissed = false;
+				changed.push(row.id);
+			}
+			/*
+			 * An open ask takes a reel-side read mark (contract § 1.2 `ref_state`)
+			 * but is never dismissed from the reel (§ 2.3): the route's own split.
+			 */
+			for (const row of stub.waiting) {
+				if (!ids.has(row.id)) continue;
+				if (verb === "read" || verb === "unread") {
+					row.read = verb === "read";
+					changed.push(row.id);
+				} else skipped.push({ id: row.id, reason: "live_ask" });
+			}
+			return {
+				status: 200,
+				body: {
+					result: { changed, skipped, unread_count: 0, high_water: 999 },
+				},
+			};
+		}
+		/*
+		 * No stored layout: the sidebar draws the DEFAULT layout, which is the
+		 * case design § 1.1 calls "anyone who never customised" and the one the
+		 * before/after pair is about.
+		 */
+		case "sidebar_layout.get":
+			return { status: 200, body: { result: { layout: null } } };
+		default:
+			return { status: 404, body: { detail: `story bridge: ${request.op}` } };
+	}
+};
+
+const install = (next: Stub) => {
+	/* A deep copy: a write in one story must not leak into the next one's fixtures. */
+	stub = structuredClone(next);
+	listReads = 0;
+	const page = window as unknown as {
+		api?: { desktop?: { request: typeof answer } };
+	};
+	page.api = page.api ?? {};
+	page.api.desktop = { request: answer };
+	try {
+		localStorage.removeItem("notifications-read-state");
+		localStorage.removeItem("notifications-grouping");
+	} catch {
+		/* storage is not what these stories are about */
+	}
+};
+
+/** Drop every cached read so each story starts from its own bridge. */
+const FreshCache = ({ children }: { children: ReactNode }) => {
+	const client = useQueryClient();
+	const [ready, setReady] = useState(false);
+	useEffect(() => {
+		client.clear();
+		setReady(true);
+	}, [client]);
+	return ready ? <>{children}</> : null;
+};
+
+const RouteTo = ({ path, children }: { path: string; children: ReactNode }) => {
+	const navigate = useNavigate();
+	useEffect(() => {
+		navigate(path, { replace: true });
+	}, [navigate, path]);
+	return (
+		<Routes>
+			<Route path="/notifications/:notificationId" element={children} />
+			<Route path="/notifications" element={children} />
+		</Routes>
+	);
+};
+
+const page = (
+	state: Stub,
+	options: { path?: string; prefs?: Record<string, string> } = {},
+) => {
+	install(state);
+	for (const [key, value] of Object.entries(options.prefs ?? {})) {
+		try {
+			localStorage.setItem(key, value);
+		} catch {
+			/* see install */
+		}
+	}
+	return (
+		<FreshCache>
+			<RouteTo path={options.path ?? "/notifications"}>
+				<div className="h-screen bg-canvas">
+					<NotificationsPage nowMs={NOW} />
+				</div>
+			</RouteTo>
+		</FreshCache>
+	);
+};
+
+const meta: Meta = {
+	title: "Notifications/Page",
+	parameters: { layout: "fullscreen" },
+};
+export default meta;
+type Story = StoryObj;
+
+/** First read in flight: skeleton rows, the toolbar in place. */
+export const Loading: Story = {
+	render: () => page({ items: [], waiting: [], hang: true }),
+};
+
+/** Unread filter with nothing left (design § 5 "All caught up"). */
+export const Empty: Story = {
+	render: () => page({ items: [], waiting: [] }),
+};
+
+/** The first read failed, nothing to keep on screen. */
+export const LoadError: Story = {
+	render: () => page({ items: [], waiting: [], failList: true }),
+};
+
+/** The mock's populated state on the All filter: waiting group, ×6 repeat, provenance. */
+export const Populated: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+};
+
+/** Grouped by conversation instead of time. */
+export const ByConversation: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING },
+			{
+				prefs: {
+					"notifications-read-state": "all",
+					"notifications-grouping": "conversation",
+				},
+			},
+		),
+};
+
+/** The detail pane open on the ×6 high item: body table, history, project. */
+export const Detail: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING, detail: DETAIL },
+			{
+				path: `/notifications/${FRAUD.id}`,
+				prefs: { "notifications-read-state": "all" },
+			},
+		),
+};
+
+/** The open ask's detail: that conversation's ask answerable in place. */
+export const AskDetail: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING },
+			{
+				path: `/notifications/${encodeURIComponent(ASK_ID)}`,
+				prefs: { "notifications-read-state": "all" },
+			},
+		),
+};
+
+/** Sixty rows over six conversations: the From menu sorts by volume. */
+export const HighVolume: Story = {
+	render: () =>
+		page(
+			{ items: HIGH_VOLUME, waiting: WAITING },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+};
+
+/**
+ * Refresh failed with a list held: the stale notice, writes paused. The first
+ * read answers; the page's refetch then fails (the bridge's `failAfterFirst`).
+ */
+export const RefreshFailed: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING, failAfterFirst: true },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async ({ canvasElement }) => {
+		const until = Date.now() + 4_000;
+		while (
+			!canvasElement.querySelector("[data-notifications-list]") &&
+			Date.now() < until
+		)
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		(
+			canvasElement.querySelector(
+				'[aria-label="Refresh notifications"]',
+			) as HTMLElement | null
+		)?.click();
+	},
+};
+
+/**
+ * Multi-select with a live ask in the selection: "Dismiss 3" and the note
+ * that the ask stays (design § 6). Selection is made by the row checkboxes,
+ * the real path a pointer takes.
+ */
+export const MultiSelect: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async ({ canvasElement }) => {
+		const until = Date.now() + 4_000;
+		while (
+			canvasElement.querySelectorAll("[data-notification-row]").length < 4 &&
+			Date.now() < until
+		)
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		const rows = [
+			...canvasElement.querySelectorAll<HTMLElement>("[data-notification-row]"),
+		];
+		for (const id of [
+			ASK_ID,
+			FRAUD.id,
+			"n_prreview0000001",
+			"n_nightlybuild001",
+		]) {
+			const row = rows.find(
+				(element) => element.dataset.notificationRow === id,
+			);
+			row?.querySelector<HTMLElement>('button[role="checkbox"]')?.click();
+			await new Promise((resolve) => setTimeout(resolve, 30));
+		}
+	},
+};
+
+/** Below the capability: the page states it and reads nothing. */
+export const Unsupported: Story = {
+	render: () => page({ items: [], waiting: [], capability: false }),
+};
+
+/* ------------------------------------------------------------- drawer tab */
+
+const DRAWER_ITEMS: DesktopNotificationItem[] = [
+	FRAUD,
+	item({
+		id: "n_fraudread000001",
+		title: "Merchant m_2290 cleared",
+		updated_at: NOW - 70 * MINUTE,
+		read: true,
+		read_via: "in_view",
+		anchor_id: "toolu_fraud_2",
+	}),
+	item({
+		id: "n_fraudread000002",
+		priority: "low",
+		title: "Baseline recomputed",
+		updated_at: NOW - 3 * HOUR,
+		read: true,
+		read_via: "watching",
+	}),
+];
+
+const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
+	const [current, setCurrent] = useState<"asks" | "updates" | "all">(tab);
+	return (
+		<div className="flex h-[560px] w-[360px] flex-col bg-elevated">
+			<DrawerTabs
+				tab={current}
+				onTab={setCurrent}
+				asks={1}
+				unreadUpdates={1}
+				sessionless={false}
+			/>
+			{current === "updates" ? (
+				<DrawerUpdates sessionId="s-fraud" nowMs={NOW} />
+			) : null}
+		</div>
+	);
+};
+
+/** The asks drawer's Updates tab for one conversation (design § 18). */
+export const DrawerUpdatesTab: Story = {
+	render: () => {
+		install({ items: DRAWER_ITEMS, waiting: [] });
+		return (
+			<FreshCache>
+				<Drawer tab="updates" />
+			</FreshCache>
+		);
+	},
+};
+
+/** Nothing flagged in this conversation. */
+export const DrawerUpdatesEmpty: Story = {
+	render: () => {
+		install({ items: [], waiting: [] });
+		return (
+			<FreshCache>
+				<Drawer tab="updates" />
+			</FreshCache>
+		);
+	},
+};
+
+/* --------------------------------------------------------- flag line */
+
+/** The in-transcript line, unread and seen (design § 17.2). */
+export const FlagLines: Story = {
+	render: () => {
+		install({ items: DRAWER_ITEMS, waiting: [] });
+		return (
+			<FreshCache>
+				<FlagLinesProvider sessionId="s-fraud">
+					<div className="flex w-[640px] flex-col gap-4 bg-canvas p-6">
+						<FlagLine item={FRAUD} />
+						<FlagLine item={DRAWER_ITEMS[1]} />
+					</div>
+				</FlagLinesProvider>
+			</FreshCache>
+		);
+	},
+};
+
+/* ------------------------------------------------------------- sidebar */
+
+/*
+ * The sidebar BEFORE and AFTER the capability (design § 1, decisions D5/D10).
+ * Before: an older core, no `features.notifications`, so no row and Schedules
+ * still visible. After: the row under Aida carrying the `emphasis` count
+ * (3 unread + 1 waiting = 4), Schedules folded into More. Same component, same
+ * bridge; only the advertised capability differs.
+ */
+/* The sidebar needs the shell's frame context (`useSidebarFrame`), so it is
+   drawn inside `ChatLayout` exactly as `route-audit.stories.tsx` composes it. */
+const Rail = ({ path }: { path: string }) => (
+	<div className="relative flex h-screen flex-col overflow-hidden">
+		<ChatLayout
+			sidebar={<SidebarNavigation />}
+			content={
+				<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden">
+					<RouteTo path={path}>
+						{path === "/notifications" ? (
+							<NotificationsPage nowMs={NOW} />
+						) : (
+							<div />
+						)}
+					</RouteTo>
+				</main>
+			}
+		/>
+	</div>
+);
+
+export const SidebarBefore: Story = {
+	render: () => {
+		install({ items: POPULATED, waiting: WAITING, capability: false });
+		return (
+			<FreshCache>
+				<Rail path="/chat" />
+			</FreshCache>
+		);
+	},
+};
+
+export const SidebarAfter: Story = {
+	render: () => {
+		install({ items: POPULATED, waiting: WAITING });
+		return (
+			<FreshCache>
+				<Rail path="/notifications" />
+			</FreshCache>
+		);
+	},
+};
+
+/**
+ * THE BADGE, BEFORE AND AFTER (decisions D5): the quiet register every other
+ * rail row keeps, beside the `emphasis` register the Notifications row now
+ * wears, on the four grounds the rail draws a count on. Both pills compose the
+ * SHIPPED `badgeVariants` call the rail makes, so this frame cannot drift from
+ * the row; the contrast numbers are asserted in `scripts/contrast-contract.mjs`
+ * ("rail notifications badge (emphasis)").
+ */
+export const BadgeRegisters: Story = {
+	render: () => (
+		<div className="flex flex-col gap-3 bg-canvas p-6 text-body-sm text-ink-muted">
+			{(
+				[
+					["canvas", "bg-canvas"],
+					["surface", "bg-surface"],
+					["row-hover", "bg-row-hover"],
+					["row-selected", "bg-row-selected"],
+				] as const
+			).map(([name, ground]) => (
+				<div
+					key={name}
+					className={`flex w-[320px] items-center justify-between rounded-sm px-3 py-2 ${ground}`}
+				>
+					<span>{name}</span>
+					<span className="flex items-center gap-6">
+						<Badge variant="attentionQuiet" shape="pill" size="count">
+							4
+						</Badge>
+						<Badge variant="emphasis" shape="pill" size="count">
+							4
+						</Badge>
+					</span>
+				</div>
+			))}
+		</div>
+	),
+};
