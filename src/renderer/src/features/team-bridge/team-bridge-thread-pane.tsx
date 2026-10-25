@@ -11,7 +11,16 @@ import {
 } from "@tanstack/react-query";
 import { ArrowUp, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
+import type {
+	TeamBridgeAttachmentCapability,
+	TeamBridgeMessage,
+} from "../../../../shared/team-bridge-contract";
+import {
+	TeamBridgeAttachButton,
+	TeamBridgeAttachmentStrip,
+	attachmentPasteHandlers,
+} from "./team-bridge-attachments";
+import { isAttachmentNotFound } from "./team-bridge-attachments-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import { manageThreadFocus } from "./team-bridge-thread-focus";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
@@ -20,7 +29,9 @@ import {
 	loadThreadPage,
 	observeDisplayedThreadReplies,
 } from "./team-bridge-thread-read";
+import { useStickToBottom } from "./use-stick-to-bottom";
 import { teamBridgeKeys, useMarkTeamBridgeRead } from "./use-team-bridge";
+import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
 
 export type ThreadPaneProps = {
 	root: TeamBridgeMessage | null;
@@ -31,8 +42,21 @@ export type ThreadPaneProps = {
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
 	onClose: () => void;
 	onRetry: () => void;
-	onSend: (body: string, clientRef: string) => Promise<unknown>;
+	onSend: (
+		body: string,
+		clientRef: string,
+		attachmentIds?: readonly string[],
+	) => Promise<unknown>;
 	readOnly?: boolean;
+	/*
+	 * Images in a reply: the SAME staging hook and chips as the channel
+	 * composer (one lifecycle, not two). The thread always has a conversation,
+	 * so uploads go straight to it; the reply draft is in-memory like its text.
+	 */
+	tenantId?: string;
+	conversationId?: string;
+	accountId?: string;
+	attachmentCapability?: TeamBridgeAttachmentCapability | null;
 	hasMore?: boolean;
 	loadingMore?: boolean;
 	onMore?: () => void;
@@ -77,6 +101,10 @@ function TeamBridgeThreadPaneBody({
 	onRead,
 	reactionContext,
 	forceToolbar,
+	tenantId,
+	conversationId,
+	accountId,
+	attachmentCapability = null,
 }: ThreadPaneProps) {
 	useI18nLocale();
 	const pane = useRef<HTMLElement>(null);
@@ -93,25 +121,63 @@ function TeamBridgeThreadPaneBody({
 	const [draft, setDraft] = useState("");
 	const [sending, setSending] = useState(false);
 	const [failed, setFailed] = useState(false);
-	const pending = useRef<{ body: string; clientRef: string } | null>(null);
+	const [imagesBlocked, setImagesBlocked] = useState(false);
+	const images = useTeamBridgeAttachments({
+		scopeKey: `${tenantId ?? ""}|${conversationId ?? ""}|${root?.id ?? ""}`,
+		accountId,
+		tenantId,
+		conversationId: conversationId ?? null,
+		capability: conversationId && tenantId ? attachmentCapability : null,
+	});
+	const pending = useRef<{
+		body: string;
+		images: string;
+		clientRef: string;
+	} | null>(null);
 	const lock = useRef(false);
+	// Same stick-to-bottom as the channel timeline (F9): opens at the newest
+	// reply and follows new ones only while the reader is at the bottom.
+	const scroll = useStickToBottom({
+		resetKey: `${tenantId ?? ""}:${conversationId ?? ""}:${root?.id ?? ""}:${state}`,
+		contentKey: `${replies.length}:${replies.at(-1)?.id ?? ""}`,
+	});
+	const hasContent = Boolean(draft.trim()) || images.count > 0;
 	const submit = async () => {
 		const body = draft.trim();
-		if (!body || lock.current || readOnly || state !== "ready") return;
+		if (images.blocked) {
+			setImagesBlocked(true);
+			return;
+		}
+		if (
+			!hasContent ||
+			images.busy ||
+			lock.current ||
+			readOnly ||
+			state !== "ready"
+		)
+			return;
+		const ids = images.readyIds();
+		// The idempotency key is reused only for the SAME text AND image set: the
+		// hub's replay check compares both hashes, so a changed set needs a new key.
+		const signature = ids.join(",");
 		const entry =
-			pending.current?.body === body
+			pending.current?.body === body && pending.current.images === signature
 				? pending.current
-				: { body, clientRef: crypto.randomUUID() };
+				: { body, images: signature, clientRef: crypto.randomUUID() };
 		pending.current = entry;
 		lock.current = true;
 		setSending(true);
 		setFailed(false);
+		setImagesBlocked(false);
+		scroll.pin();
 		try {
-			await onSend(body, entry.clientRef);
+			await onSend(body, entry.clientRef, ids);
 			pending.current = null;
+			images.clearSent(ids);
 			setDraft((current) => (current.trim() === body ? "" : current));
-		} catch {
+		} catch (error) {
 			setFailed(true);
+			if (ids.length > 0 && isAttachmentNotFound(error)) images.markExpired();
 		} finally {
 			lock.current = false;
 			setSending(false);
@@ -137,11 +203,14 @@ function TeamBridgeThreadPaneBody({
 					<X size={16} />
 				</Button>
 			</header>
-			<ScrollArea className="min-h-0 flex-1">
+			<ScrollArea ref={scroll.rootRef} className="min-h-0 flex-1">
 				{root && (
 					<TeamBridgeMessageList
 						messages={[root]}
 						labelFor={labelFor}
+						tenantId={tenantId}
+						accountId={accountId}
+						density="compact"
 						reactionContext={reactionContext}
 						forceToolbar={forceToolbar}
 					/>
@@ -172,7 +241,10 @@ function TeamBridgeThreadPaneBody({
 				) : (
 					<TeamBridgeMessageList
 						messages={replies}
+						accountId={accountId}
 						labelFor={labelFor}
+						tenantId={tenantId}
+						density="compact"
 						reactionContext={reactionContext}
 						forceToolbar={forceToolbar}
 					/>
@@ -182,7 +254,11 @@ function TeamBridgeThreadPaneBody({
 						variant="ghost"
 						size="sm"
 						disabled={loadingMore}
-						onClick={onMore}
+						onClick={() => {
+							// Read the loaded page from here, not from its end (r8 m2).
+							scroll.hold();
+							onMore?.();
+						}}
 						className="mx-5 my-2"
 					>
 						{t("ui.teamBridge.replies.more")}
@@ -200,7 +276,18 @@ function TeamBridgeThreadPaneBody({
 							{t("ui.teamBridge.composer.error")}
 						</p>
 					)}
-					<div className="rounded-xl bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid">
+					{/* A hub that cannot take images is already explained by the strip's
+					   unsupported note; this alert is only for error-marked chips (R2-02). */}
+					{imagesBlocked && images.blocked && !images.unsupported && (
+						<p role="alert" className="pb-1 text-[12px] text-danger">
+							{t("ui.teamBridge.attachments.send_blocked")}
+						</p>
+					)}
+					<div
+						className="rounded-xl bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid"
+						{...(state === "ready" ? attachmentPasteHandlers(images) : {})}
+					>
+						<TeamBridgeAttachmentStrip state={images} />
 						<textarea
 							rows={2}
 							aria-label={t("ui.teamBridge.replies.placeholder")}
@@ -224,11 +311,17 @@ function TeamBridgeThreadPaneBody({
 							<span className="min-w-0 flex-1 ps-1.5 text-meta-sm text-ink-dim">
 								{t("ui.teamBridge.composer.hint")}
 							</span>
+							<TeamBridgeAttachButton
+								state={images}
+								disabled={sending || state !== "ready"}
+							/>
 							<Button
 								size="icon-sm"
 								variant="primary"
 								className="rounded-lg"
-								disabled={!draft.trim() || sending || state !== "ready"}
+								disabled={
+									!hasContent || images.busy || sending || state !== "ready"
+								}
 								aria-label={t("ui.teamBridge.composer.send")}
 								onClick={() => void submit()}
 							>
@@ -259,6 +352,10 @@ export type ThreadPaneMountProps = {
 	labelFor: ThreadPaneProps["labelFor"];
 	onClose: () => void;
 	reactionContext?: ThreadPaneProps["reactionContext"];
+	/* The attachment lane's two additions ride the mount props, so the shipped-
+	   build gate wrapper passes them through untouched. */
+	accountId?: string;
+	attachmentCapability?: TeamBridgeAttachmentCapability | null;
 };
 
 export function TeamBridgeThreadPane(props: ThreadPaneMountProps) {
@@ -273,6 +370,8 @@ function TeamBridgeThreadPaneMount({
 	labelFor,
 	onClose,
 	reactionContext,
+	accountId,
+	attachmentCapability,
 }: ThreadPaneMountProps) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
@@ -313,12 +412,21 @@ function TeamBridgeThreadPaneMount({
 		[query.data],
 	);
 	const send = useMutation({
-		mutationFn: ({ body, clientRef }: { body: string; clientRef: string }) =>
+		mutationFn: ({
+			body,
+			clientRef,
+			attachmentIds,
+		}: {
+			body: string;
+			clientRef: string;
+			attachmentIds?: readonly string[];
+		}) =>
 			TeamBridgeApi.send(conversationId, {
 				body,
 				clientRef,
 				tenantId,
 				threadRootId: rootId,
+				attachmentIds,
 			}),
 		onSuccess: async () => {
 			await Promise.all([
@@ -341,7 +449,13 @@ function TeamBridgeThreadPaneMount({
 			onClose={onClose}
 			onRead={acknowledge}
 			onRetry={() => void query.refetch()}
-			onSend={(body, clientRef) => send.mutateAsync({ body, clientRef })}
+			onSend={(body, clientRef, attachmentIds) =>
+				send.mutateAsync({ body, clientRef, attachmentIds })
+			}
+			tenantId={tenantId}
+			conversationId={conversationId}
+			accountId={accountId}
+			attachmentCapability={attachmentCapability}
 			readOnly={readOnly}
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}

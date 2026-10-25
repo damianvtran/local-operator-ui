@@ -18,6 +18,7 @@ import {
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
 import {
+	type TeamBridgeAttachment,
 	type TeamBridgeConversation,
 	type TeamBridgeConversationList,
 	type TeamBridgeDirectory,
@@ -28,6 +29,7 @@ import {
 	type TeamBridgeReadState,
 	type TeamBridgeThreadPage,
 	type TeamBridgeUnread,
+	teamBridgeAttachmentUploadSchema,
 	teamBridgeConversationListSchema,
 	teamBridgeConversationSchema,
 	teamBridgeDirectorySchema,
@@ -44,7 +46,24 @@ import {
 	browserDraftStorage,
 	reconcileDraftAccount,
 } from "../../store/team-bridge-draft-account";
-import { desktopResult } from "./desktop-api";
+import { desktopMedia, desktopResult } from "./desktop-api";
+
+/*
+ * A refused attachment upload or fetch, carrying only the HTTP status and the
+ * hub's declared code - never the bytes, the id or a filename (D9). The chip
+ * maps the status onto its own sentence (`attachmentFailureCopy`), so a
+ * machine detail string never reaches the screen.
+ */
+export class TeamBridgeAttachmentError extends Error {
+	readonly status: number | null;
+	readonly code?: string;
+	constructor(status: number | null, code?: string) {
+		super("team bridge attachment request failed");
+		this.name = "TeamBridgeAttachmentError";
+		this.status = status;
+		this.code = code;
+	}
+}
 
 /** An old runtime cannot atomically bind a private write to its captured author.
  * Fail closed, rather than claiming a renderer status check closes that race.
@@ -78,6 +97,8 @@ export const TeamBridgeApi = {
 		client_ref: string;
 		body: string;
 		send_at: string;
+		/* Staged ids the schedule RESERVES until delivery (D2: send_at + 7 d). */
+		attachment_ids?: string[];
 		thread_root_id?: string;
 	}) {
 		return teamBridgeScheduledMessageSchema.parse(
@@ -90,7 +111,7 @@ export const TeamBridgeApi = {
 	async scheduledUpdate(
 		tenantId: string,
 		scheduledId: string,
-		patch: { body?: string; send_at?: string },
+		patch: { body?: string; send_at?: string; attachment_ids?: string[] },
 	) {
 		return teamBridgeScheduledMessageSchema.parse(
 			await desktopResult<unknown>({
@@ -228,6 +249,9 @@ export const TeamBridgeApi = {
 			tenantId?: string;
 			/* Set to reply in that root's thread; omitted for a channel-level post. */
 			threadRootId?: string;
+			/* Staged uploads this message binds. Omitted (never `[]`) when text-only,
+			   so a text-only send stays byte-identical for an older hub. */
+			attachmentIds?: readonly string[];
 		},
 	): Promise<unknown> {
 		return desktopResult<unknown>({
@@ -242,7 +266,83 @@ export const TeamBridgeApi = {
 			body: input.body,
 			...(input.tenantId ? { tenant_id: input.tenantId } : {}),
 			...(input.threadRootId ? { thread_root_id: input.threadRootId } : {}),
+			...(input.attachmentIds?.length
+				? { attachment_ids: [...input.attachmentIds] }
+				: {}),
 		});
+	},
+
+	/**
+	 * Stage one already-bounded image in a conversation. The bytes go through
+	 * main's bearer relay as a raw body; the answer is a STAGED descriptor that
+	 * a send or schedule binds. The hub dedupes identical bytes to the same id,
+	 * so retrying a chip after a lost answer cannot stage twice.
+	 */
+	async uploadAttachment(
+		tenantId: string,
+		conversationId: string,
+		bytes: Uint8Array,
+		expectedAccountId: string,
+	): Promise<TeamBridgeAttachment> {
+		const answer = await desktopMedia(
+			{
+				op: "team_bridge.attachment.upload",
+				tenantId,
+				conversationId,
+				expectedAccountId,
+			},
+			bytes,
+		);
+		if (answer.kind !== "json")
+			throw new TeamBridgeAttachmentError(
+				answer.kind === "error" ? answer.status : null,
+				answer.kind === "error" ? answer.code : undefined,
+			);
+		// The runtime wraps the hub's `{attachment}` in its house CRUD envelope
+		// (`{status, message, result}`), like every other relay JSON answer.
+		const body = answer.body as { result?: unknown } | null;
+		return teamBridgeAttachmentUploadSchema.parse(
+			body && typeof body === "object" && "result" in body ? body.result : body,
+		).attachment;
+	},
+
+	/** Discard a staged upload the author removed. Idempotent on the hub. */
+	async deleteAttachment(
+		tenantId: string,
+		conversationId: string,
+		attachmentId: string,
+		expectedAccountId: string,
+	): Promise<unknown> {
+		return desktopResult<unknown>({
+			op: "team_bridge.attachments.delete",
+			tenant_id: tenantId,
+			expected_account_id: expectedAccountId,
+			conversation_id: conversationId,
+			attachment_id: attachmentId,
+		});
+	},
+
+	/**
+	 * One bound attachment's bytes, member-gated on the hub. Main refuses any
+	 * answer that is not png/jpeg, so the blob built from this is a picture.
+	 */
+	async attachmentBytes(input: {
+		tenantId: string;
+		conversationId: string;
+		messageId: string;
+		attachmentId: string;
+		expectedAccountId: string;
+	}): Promise<{ data: Uint8Array; mimeType: string }> {
+		const answer = await desktopMedia(
+			{ op: "team_bridge.attachment", ...input },
+			null,
+		);
+		if (answer.kind !== "bytes")
+			throw new TeamBridgeAttachmentError(
+				answer.kind === "error" ? answer.status : null,
+				answer.kind === "error" ? answer.code : undefined,
+			);
+		return { data: answer.data, mimeType: answer.mimeType };
 	},
 
 	async markRead(
@@ -277,6 +377,7 @@ export const TeamBridgeApi = {
 			boundary: "surface_open",
 		});
 		const parsed = teamBridgeIdentitySchema.parse(answer);
+		// Nullable: a denied or absent storage must not fail the identity read.
 		reconcileDraftAccount(browserDraftStorage(), parsed);
 		return parsed.account_id ?? null;
 	},
@@ -326,6 +427,7 @@ export const TeamBridgeApi = {
 			...(boundary ? { boundary } : {}),
 		});
 		const parsed = agentMessagesStatusSchema.parse(answer);
+		// Nullable: a denied or absent storage must not fail the status read.
 		reconcileDraftAccount(browserDraftStorage(), parsed);
 		return parsed;
 	},

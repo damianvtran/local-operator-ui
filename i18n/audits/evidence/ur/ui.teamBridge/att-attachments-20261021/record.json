@@ -1,0 +1,130 @@
+{
+ "audit_id": "att-attachments-20261021",
+ "date": "2026-10-21",
+ "locale": "ur",
+ "namespace": "ui.teamBridge",
+ "source_commit": "0906d747e527473f253c7ff422e2036cb59f8f21",
+ "source_base": "5005cfe8b6",
+ "pr_head": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "scope": "23 ui.teamBridge.attachments.* keys (git diff 5005cfe8b6..cf1d7c616c of en, filtered to attachments): 22 added in en at 715c864171, remove_all added at b8aad1066b, unsupported shortened at 0906d747e5, and ur for all 23 added at 0906d747e5. The 8 replies.* keys (from #1304 8913528) and the other 138 values (from #1309 5005cfe) are inherited unchanged and are out of scope.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "bc0c4b952eaa"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean-with-findings",
+   "instance": "att-r1-ur",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 3
+   },
+   "receipt": "i18n/receipts/att-r1-ur.json",
+   "receipt_sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e",
+   "scope": "Team Bridge image attachments: the 23-key attachments.* delta, independently audited in att-r1-ur with 2 MINOR and 3 NIT findings and no blocker or major. The other 146 values are inherited unchanged from 5005cfe8b6 (tbh-r1-ur) and 8913528e50 (threads1304-r2-ur). Catalogue audit plus a limited Storybook spot-check; not rendered-fit, activation or release approval.",
+   "note": "Round 1, independent of the translator (coder bc0c4b952eaa). MINOR: attachments.retry, attachments.send_blocked. NIT: error_quota, expired_staged, expired. Record: i18n/audits/evidence/ur/ui.teamBridge/att-attachments-20261021/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-ur",
+   "session": "5e326caaed53",
+   "job": "9cce805ed705",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "47bccf3a65d5ad9ccba4b375fba35c67d3c00ec689bd209fcb06361a655a6d99",
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.retry"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.send_blocked"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.error_quota"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.expired_staged"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.expired"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-ur.json",
+    "sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e"
+   }
+  }
+ ],
+ "inherited_receipt": {
+  "base": "5005cfe8b6",
+  "path": "i18n/receipts/tbh-r1-ur.json",
+  "sha256": "c00b9c945c59680a460b68c7e78364157fdfb7536691a350ecd6f9fda349208b",
+  "keys_inherited": 138,
+  "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "base_target_sha256": "d8a04b1e39a509dbee21aa7b2cf9b1d021a23ba9d1c0ba1a0c2e0c55309d7c0b",
+  "unchanged_values_verified": 138,
+  "merged_stack_receipt": {
+   "base": "8913528e50",
+   "path": "i18n/receipts/threads1304-r2-ur.json",
+   "sha256": "b5a7258163e453df983d6ac5b363216a7782e17aa87731f59e8e89fa3cdce23f",
+   "keys_inherited": 8,
+   "base_source_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+   "base_target_sha256": "19ad3a4350dcb607412bc4b193ff54a6c204468861d760e21c76cec39a3faf0c",
+   "unchanged_values_verified": 8
+  }
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+   "sha256": "47bccf3a65d5ad9ccba4b375fba35c67d3c00ec689bd209fcb06361a655a6d99"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  }
+ },
+ "independence": "The translator was the implementing coder agent (session 03594b2dcc02, job bc0c4b952eaa). The auditor is a separate translation-auditor (session 5e326caaed53, job 9cce805ed705) that never edited catalogues or code and wrote only this record and its receipt. No ledger-assemble was run.",
+ "limitations": [
+  "Rendered evidence is limited to the ur Storybook frames bubble-placeholders and chips-expired-restored plus DOM text reads of three more stories. The Storybook layout was not mirrored, and the screenshots stay in auditor scratch, not the repo.",
+  "Not visually checked in ur: the error chip states, the send_blocked alert, the thread composer and the reschedule-dialog remove_all button. No live-app, glyph-metric, pseudo-localization or activation evidence.",
+  "Open MINOR/NIT findings await translator remediation and a round-2 delta audit."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-ur.json",
+   "sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e"
+  }
+ ]
+}
