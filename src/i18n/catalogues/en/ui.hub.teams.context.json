@@ -1,4 +1,29 @@
 {
+	"ui.hub.teams.brief.collaboration": {
+		"note": "Names the collaboration brief block inside a disclosed public team row. Small meta weight; one short line.",
+		"role": "section label",
+		"tone": "plain, quiet"
+	},
+	"ui.hub.teams.brief.collaboration_empty": {
+		"note": "The team has no collaboration brief. Same block as a real brief so the row does not reflow.",
+		"role": "fallback sentence where a collaboration brief would be",
+		"tone": "plain, factual"
+	},
+	"ui.hub.teams.brief.project": {
+		"note": "Names the project brief block; pairs with brief.collaboration directly above it.",
+		"role": "section label",
+		"tone": "plain, quiet"
+	},
+	"ui.hub.teams.brief.project_empty": {
+		"note": "The team has no project brief. Sits where the pre-line brief text would render.",
+		"role": "fallback sentence where a project brief would be",
+		"tone": "plain, factual"
+	},
+	"ui.hub.teams.brief.roster": {
+		"note": "Names the roster list in the disclosed body. Not the same word as the roster heading on the org page if the language distinguishes them.",
+		"role": "section label",
+		"tone": "plain, quiet"
+	},
 	"ui.hub.teams.kind.role": {
 		"note": "A roster slot whose kind is `role` on the wire. The wire token stays English in data; this is only what the roster prints. Narrow cell, never wraps.",
 		"role": "roster slot kind label",
@@ -38,5 +63,70 @@
 		"note": "The team declares no member slots. Appears both on the summary line and (only for a row with nothing else) in the expanded body, so it must stand alone in either position.",
 		"role": "inline fallback in the composition line and the roster body",
 		"tone": "plain, factual"
+	},
+	"ui.hub.teams.public.aria": [
+		"accessible name and hidden heading for the public library",
+		"plain, names the collection",
+		"One name used twice: the region's aria-label and the section's sr-only h2. The h2 keeps the heading outline; the label keeps the landmark."
+	],
+	"ui.hub.teams.public.catalogue_unreadable": [
+		"fallback sentence inside a danger alert",
+		"calm, specific about the cause",
+		"Base sentence handed to the shared public-hub error mapper, which appends the transport detail. 'Public team catalogue' is this surface's name for the read."
+	],
+	"ui.hub.teams.public.empty": [
+		"empty-state sentence",
+		"plain, factual",
+		"The public hub carries no teams yet. Says what is missing without a call to action: this surface cannot publish."
+	],
+	"ui.hub.teams.public.intro": [
+		"introductory paragraph under the heading",
+		"plain, explanatory",
+		"Explains who publishes these teams, that reading needs no sign-in, and what Pulling does. Three sentences; capped at max-w-3xl and wraps freely."
+	],
+	"ui.hub.teams.public.load_failed": [
+		"alert title",
+		"calm, specific",
+		"The public team read failed as a whole. The explanation and the retry sit beneath it."
+	],
+	"ui.hub.teams.public.match_line": [
+		"status line above the grid while a search is active",
+		"plain, factual",
+		"{visible} and {total} are counts on this page and its load; {total} takes an ICU plural. {query} is the operator's typed text, escaped and quoted, never translated."
+	],
+	"ui.hub.teams.public.open_settings": [
+		"button label",
+		"plain, action",
+		"Opens Settings where the Radient credential is entered. The sentence beside it explains why."
+	],
+	"ui.hub.teams.public.published_by": [
+		"prefix before the author's name",
+		"plain, quiet",
+		"A trailing space is supplied by the caller before the name span; do not bake punctuation into this message that the layout cannot move."
+	],
+	"ui.hub.teams.public.search_aria": [
+		"accessible name for the teams search field",
+		"plain",
+		"Stable name for the search input; the placeholder beside it is a hint, not a second name."
+	],
+	"ui.hub.teams.public.search_placeholder": [
+		"placeholder in the teams search field",
+		"plain",
+		"Placeholder text in the search box above the public teams grid. Fits beside the search icon in an h-8 field."
+	],
+	"ui.hub.teams.public.search_scope": [
+		"inline qualifier after the match line",
+		"plain, quiet",
+		"Leading middle dot and space are part of the message: it is appended to the match sentence as a dim aside. Says search only covers the teams already loaded on this page."
+	],
+	"ui.hub.teams.public.sign_in_hint": [
+		"inline sentence beside the sign-in button",
+		"plain, explains why",
+		"Pulling a team needs a Radient credential on this machine. Radient is a product name and stays English."
+	],
+	"ui.hub.teams.public.trying": {
+		"note": "Replaces 'Try again' on the failed-read alert while the refetch runs; the button is disabled and aria-busy. U+2026.",
+		"role": "button label while the retry is in flight",
+		"tone": "plain, progress"
 	}
 }

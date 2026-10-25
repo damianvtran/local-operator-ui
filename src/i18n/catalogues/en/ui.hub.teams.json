@@ -1,4 +1,9 @@
 {
+	"ui.hub.teams.brief.collaboration": "Collaboration brief",
+	"ui.hub.teams.brief.collaboration_empty": "This team has no collaboration brief.",
+	"ui.hub.teams.brief.project": "Project brief",
+	"ui.hub.teams.brief.project_empty": "This team has no project brief.",
+	"ui.hub.teams.brief.roster": "Roster",
 	"ui.hub.teams.kind.role": "Role",
 	"ui.hub.teams.kind.specialist": "Specialist",
 	"ui.hub.teams.manager": "Manager",
@@ -6,5 +11,18 @@
 	"ui.hub.teams.member_count": "{count, plural, one {# member} other {# members}}:",
 	"ui.hub.teams.members": "Members",
 	"ui.hub.teams.no_description": "No description",
-	"ui.hub.teams.no_members": "No members"
+	"ui.hub.teams.no_members": "No members",
+	"ui.hub.teams.public.aria": "Public teams",
+	"ui.hub.teams.public.catalogue_unreadable": "The public team catalogue could not be read.",
+	"ui.hub.teams.public.empty": "No teams have been published to the public hub yet.",
+	"ui.hub.teams.public.intro": "Public teams are published to the hub by anyone and can be read here without signing in. Pulling one copies it into this machine's local team registry.",
+	"ui.hub.teams.public.load_failed": "Public teams could not be loaded",
+	"ui.hub.teams.public.match_line": "{visible} of {total, plural, one {# team} other {# teams}} on this page match “{query}”",
+	"ui.hub.teams.public.open_settings": "Open settings to sign in",
+	"ui.hub.teams.public.published_by": "Published by",
+	"ui.hub.teams.public.search_aria": "Search teams",
+	"ui.hub.teams.public.search_placeholder": "Search teams",
+	"ui.hub.teams.public.search_scope": "· search covers the teams loaded here",
+	"ui.hub.teams.public.sign_in_hint": "Sign in to Radient to pull a team into this machine.",
+	"ui.hub.teams.public.trying": "Trying…"
 }

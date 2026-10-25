@@ -5,7 +5,6 @@
 		"src/renderer/src/features/agent-hub/agent-details-page.tsx": 16,
 		"src/renderer/src/features/agent-hub/components/agent-card.tsx": 4,
 		"src/renderer/src/features/agent-hub/components/hub-pager.tsx": 6,
-		"src/renderer/src/features/agent-hub/components/public-teams-library.tsx": 22,
 		"src/renderer/src/features/agents/components/agent-detail.tsx": 52,
 		"src/renderer/src/features/agents/components/team-detail.tsx": 35,
 		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx": 25,

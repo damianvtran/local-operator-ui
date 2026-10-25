@@ -5239,6 +5239,11 @@ export type MessageParams = {
 	"ui.hub.taxonomy.origin.named": { name: string };
 	"ui.hub.taxonomy.origin.organization": undefined;
 	"ui.hub.taxonomy.origin.unnamed": undefined;
+	"ui.hub.teams.brief.collaboration": undefined;
+	"ui.hub.teams.brief.collaboration_empty": undefined;
+	"ui.hub.teams.brief.project": undefined;
+	"ui.hub.teams.brief.project_empty": undefined;
+	"ui.hub.teams.brief.roster": undefined;
 	"ui.hub.teams.kind.role": undefined;
 	"ui.hub.teams.kind.specialist": undefined;
 	"ui.hub.teams.manager": undefined;
@@ -5247,6 +5252,23 @@ export type MessageParams = {
 	"ui.hub.teams.members": undefined;
 	"ui.hub.teams.no_description": undefined;
 	"ui.hub.teams.no_members": undefined;
+	"ui.hub.teams.public.aria": undefined;
+	"ui.hub.teams.public.catalogue_unreadable": undefined;
+	"ui.hub.teams.public.empty": undefined;
+	"ui.hub.teams.public.intro": undefined;
+	"ui.hub.teams.public.load_failed": undefined;
+	"ui.hub.teams.public.match_line": {
+		visible: string;
+		total: number;
+		query: string;
+	};
+	"ui.hub.teams.public.open_settings": undefined;
+	"ui.hub.teams.public.published_by": undefined;
+	"ui.hub.teams.public.search_aria": undefined;
+	"ui.hub.teams.public.search_placeholder": undefined;
+	"ui.hub.teams.public.search_scope": undefined;
+	"ui.hub.teams.public.sign_in_hint": undefined;
+	"ui.hub.teams.public.trying": undefined;
 	"ui.hub.updates.action.details": undefined;
 	"ui.hub.updates.action.retry": undefined;
 	"ui.hub.updates.action.review": undefined;
