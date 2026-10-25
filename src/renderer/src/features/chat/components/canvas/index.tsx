@@ -351,10 +351,19 @@ export const ViewSwitcher: FC<{
 				 */
 				const counted =
 					value === "files" ? fileCount : value === "goals" ? goalCount : 0;
+				/*
+				 * Both spellings are passed in: `viewSegmentName` must not derive the
+				 * plural from localized copy (round-1 B1's class), and the ICU message
+				 * needs the plural noun this segment's own kind names.
+				 */
 				const noun =
 					value === "files"
 						? t("ui.canvas.shell.file")
 						: t("ui.canvas.shell.goal");
+				const pluralNoun =
+					value === "files"
+						? t("ui.canvas.shell.files")
+						: t("ui.canvas.shell.goals");
 				/*
 				 * The name is DERIVED OUTSIDE, because the number it speaks is a claim about a
 				 * list and the Goals segment's list can be capped. `goalTruncated` is read only
@@ -367,6 +376,7 @@ export const ViewSwitcher: FC<{
 						: viewSegmentName(
 								label,
 								noun,
+								pluralNoun,
 								counted,
 								value === "goals" && goalTruncated,
 							);

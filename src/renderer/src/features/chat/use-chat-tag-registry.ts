@@ -14,8 +14,18 @@ import type {
 /** Validation refusals keep their actionable sentence; transport failures use save_failed. */
 class RegistryRefusal extends Error {}
 
-/** A refused edit: the sentence to show, never an exception for the caller. */
-export type RegistryEditResult = { ok: true } | { ok: false; error: string };
+/**
+ * A refused edit: the sentence to show, never an exception for the caller.
+ *
+ * `retryable` is a stable reason code for the one behaviour the sentence used
+ * to carry: whether pressing again can help. The header used to derive it by
+ * comparing `error` against `t("ui.chat.tags.save_failed")`, so in every other
+ * language a transport failure silently lost its retry control. Validation
+ * refusals keep their actionable sentence; transport failures use save_failed.
+ */
+export type RegistryEditResult =
+	| { ok: true }
+	| { ok: false; error: string; retryable: boolean };
 
 /**
  * Why a registry name is refused, or null when it may be written. Duplicates are
@@ -71,7 +81,12 @@ export function useChatTagRegistry() {
 	const write = async (
 		derive: (categories: readonly TagCategory[]) => DesiredTag[] | null,
 	): Promise<RegistryEditResult> => {
-		if (pending) return { ok: false, error: t("ui.chat.tags.save_failed") };
+		if (pending)
+			return {
+				ok: false,
+				error: t("ui.chat.tags.save_failed"),
+				retryable: true,
+			};
 		setPending(true);
 		try {
 			await replaceCategories(derive);
@@ -83,6 +98,7 @@ export function useChatTagRegistry() {
 					error instanceof RegistryRefusal
 						? error.message
 						: t("ui.chat.tags.save_failed"),
+				retryable: !(error instanceof RegistryRefusal),
 			};
 		} finally {
 			setPending(false);

@@ -22,6 +22,12 @@ export type ContextBlock = {
 	numbers?: DesktopContextNumbers;
 };
 
+/**
+ * `local_operator/serving.py` / `app.py`: the fixed sentence for "no
+ * breakdown to give". See the docstring above for why it is not localized.
+ */
+const CONTEXT_BREAKDOWN_UNAVAILABLE_NOTICE = "context breakdown unavailable.";
+
 /** The block, or `null` when the outcome is not one. */
 export function contextBlockOf(
 	outcome: SlashOutcome | null | undefined,
@@ -38,15 +44,19 @@ export function contextBlockOf(
  * one notice for this case and the panel must not invent a second wording for
  * it. The panel does NOT show this text — it shows copy that says what to do
  * about it — which is why the test lives here rather than in the JSX.
+ *
+ * THE PHRASE IS THE SERVER'S, NEVER `t()`. `serving.py` and the TUI emit this
+ * exact English sentence regardless of the UI language, so matching the
+ * translated string made the answer look like a real block in `ru`/`es` and
+ * the panel rendered the wrong body. Compare the wire constant; the catalogue
+ * keeps the translated wording available for display elsewhere.
  */
 export function isBreakdownUnavailable(
 	outcome: SlashOutcome | null | undefined,
 ): boolean {
 	return Boolean(
 		outcome?.kind === "notice" &&
-			outcome.text?.includes(
-				t("ui.chat.pickers.context_model.context_breakdown_unavailable"),
-			),
+			outcome.text?.includes(CONTEXT_BREAKDOWN_UNAVAILABLE_NOTICE),
 	);
 }
 

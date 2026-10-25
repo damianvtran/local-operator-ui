@@ -1525,3 +1525,18 @@ test("finite paid wallets are reported balances rather than missing limits", () 
 		assert.equal(stats.unreported, 0);
 	}
 });
+
+test("a row's reported flag is the fact behind the not-reported sentence", () => {
+	// The spoken status used to compare `row.amount` against the localized
+	// `not reported` phrase. A row with no number must still be distinguishable
+	// after the copy is translated, so the flag is what the view reads.
+	const measured = limitRow(
+		limit({ amount: amount({ used: 0, unit: "percent" }) }),
+		NOW,
+	);
+	assert.equal(measured.amount, "0%");
+	assert.equal(measured.reported, true);
+	const missing = limitRow(limit({ amount: amount() }), NOW);
+	assert.equal(missing.amount, "not reported");
+	assert.equal(missing.reported, false);
+});

@@ -25,22 +25,20 @@ import { t } from "@shared/i18n";
  * A `files` count has no cap to admit — the documents are the open tabs the strip
  * already prints — so that segment calls this with `truncated` unset and keeps the
  * shipped shape.
+ *
+ * BOTH SPELLINGS ARE CALLER INPUT. Round 1 derived the plural by comparing the
+ * already-localized singular against `t("…file")` / `t("…goal")`, which made the
+ * plural depend on catalogue copy: in any other language neither branch matched
+ * and the fallback appended an English `s`. The caller knows the segment's kind,
+ * so it passes the catalogue plural explicitly and this function only formats.
  */
 export const viewSegmentName = (
 	label: string,
 	noun: string,
+	pluralNoun: string,
 	counted: number,
 	truncated = false,
 ): string => {
-	// Keep the established public signature. Product callers pass the localized
-	// singular noun; the matching catalogue plural avoids translating English
-	// grammar while the generic fallback preserves the helper's old test contract.
-	const pluralNoun =
-		noun === t("ui.canvas.shell.file")
-			? t("ui.canvas.shell.files")
-			: noun === t("ui.canvas.shell.goal")
-				? t("ui.canvas.shell.goals")
-				: `${noun}s`;
 	if (truncated)
 		return t("ui.canvas.view_name.view_shown_this_list_is_capped", {
 			label: label,
