@@ -581,7 +581,16 @@ jobs:
       !cancelled() &&
       needs.changes.outputs.unit != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    # RAISED FROM 50 TO 75 on 2026-10-25, measured a third time. The cap is per
+    # SHARD, and the partitions are balanced by file COUNT, not by runtime:
+    # shard 2/3 took 428 s on an M-series host, while the same shard on the CI
+    # runner ran past the 50-minute ceiling on three consecutive attempts (runs
+    # 40160038927, 40169799731, 40169840176, each cancelled at 50m00s with the
+    # suite still emitting tests). Two PRs were blocked at once. 75 minutes
+    # leaves headroom for the runner's ~7x slowdown without hiding a hang: the
+    # job still runs the suite once and fails on any red. Balancing shards by
+    # measured runtime is the real fix and a follow-up, not a guess made here.
+    timeout-minutes: 75
 
     strategy:
       fail-fast: false
