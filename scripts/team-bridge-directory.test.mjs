@@ -1266,3 +1266,30 @@ test("the client maps both ops onto the frozen request shapes", () => {
 	assert.match(source, /teamBridgeDirectorySchema\.parse/);
 	assert.match(source, /agentMessagesStatusSchema\.parse/);
 });
+
+test("server rendering does not depend on ambient browser storage", () => {
+	const descriptor = Object.getOwnPropertyDescriptor(
+		globalThis,
+		"localStorage",
+	);
+	Object.defineProperty(globalThis, "localStorage", {
+		configurable: true,
+		get() {
+			throw new Error("browser storage is unavailable during server rendering");
+		},
+	});
+	try {
+		const gate = renderToStaticMarkup(
+			createElement(ui.TeamBridgePageView, viewProps({ gatePending: true })),
+		);
+		assert.ok(!gate.includes("team-bridge-channels-heading"));
+		const eligible = renderToStaticMarkup(
+			createElement(ui.TeamBridgePageView, viewProps()),
+		);
+		assert.ok(eligible.includes('id="team-bridge-people-heading"'));
+	} finally {
+		if (descriptor)
+			Object.defineProperty(globalThis, "localStorage", descriptor);
+		else Reflect.deleteProperty(globalThis, "localStorage");
+	}
+});

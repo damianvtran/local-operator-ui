@@ -1,0 +1,52 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbh-r1-ru",
+ "session": "a36573e13fe0",
+ "date": "2026-10-21",
+ "locale": "ru",
+ "translator": "translator",
+ "translator_session": "485b723247d7",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "2-key held-schedule recovery delta (ui.teamBridge.schedule.held, schedule.discard_attempt) per git diff 51dceb5a09..c06b457 of en; 136 other values verified byte-unchanged vs HEAD and inherited from tbs-r2-ru; catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "ru": "2d57f6a72d84728bdce29911b08d15e83f671228aa2aeba8dd7b0635b79d37c0",
+  "context": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "key": "ui.teamBridge.schedule.discard_attempt",
+   "current": "Раздел «Запланированные» проверен — сбросить эту попытку",
+   "proposed": "Раздел «Запланированные» проверен — сбросить попытку",
+   "note": "Rendered in a ghost Button whose base class is whitespace-nowrap, so the 56-char label (en 42, +33%) cannot wrap in the composer footer; dropping 'эту' (the attempt is already named in the adjacent held paragraph) saves 4 chars and keeps the explicit acknowledgement — flag for a rendered-width check rather than a required change."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-ru.json",
+  "sha256": "0c951b061c26e0a174351b073eefead8ea5e9479e7caff4404cee677e4b60067",
+  "keys_inherited": 136,
+  "base_target_sha256": "b702e87e371d63bc481a0448cfdd619eb333f39f4430121316664be1cb233eb2",
+  "unchanged_values_verified": 136,
+  "previous_rounds": {
+   "path": "i18n/receipts/tbs-r1-ru.json",
+   "sha256": "9ff49d0dd09a5332e95ab37000b15f3f1d60a9f43c8fcae381ad89c2d5fa7b31"
+  }
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+ },
+ "validation": {
+  "independence": "Auditor session a36573e13fe0 is distinct from translator session 485b723247d7 and from prior auditor session 3f57db52bdab; read-only audit, no repo files edited, staged or committed.",
+  "semantics": "Both values read against en, the context sidecar and their role in team-bridge-page.tsx (held = <p id={heldReasonId}> in the composer footer; discard_attempt = ghost Button that clears sendAt and rotates clientRef, not a server cancel). held keeps the uncertainty ('Возможно, … уже запланирована'), the order check-then-cancel-then-discard ('Прежде чем сбросить эту попытку, проверьте … и при необходимости отмените отправку') and 'Черновик сохранён' identical to schedule.failed/create_uncertain; the server action reuses schedule.cancel's 'отменить отправку', while the local action uses the distinct verb 'сбросить' (consistent with ru UI 'Сбросить фильтр'), so the discard cannot read as cancelling/deleting the server message. «Запланированные» equals schedule.list and the references in schedule.failed/success. discard_attempt mirrors create_retry's approved pattern ('Раздел «…» проверен — <infinitive>'), keeping the explicit acknowledgement. вы-register lowercase imperatives, infinitive action, impersonal past passive, sentence case, no 'Пожалуйста'/'!' per ru style guide. Key set/order equals en (138/138); diff vs HEAD is only the 2 added lines plus the comma after schedule.retry; 136 HEAD values byte-equal.",
+  "icu": "@formatjs/icu-messageformat-parser from repo node_modules: en and ru for both keys parse to a single literal node (no arguments, no plurals), so plural-category needs do not arise; intl-messageformat('ru').format() returns each string unchanged.",
+  "typography": "Both values NFC; no U+200E/F, U+202A–E, U+2066–9, U+061C; no Latin letters; «ёлочки» quotes (U+00AB/U+00BB), spaced em dash U+2014 in discard_attempt; no space before punctuation, no double spaces; differ from en; file LF, no BOM, trailing newline.",
+  "overflow": "held 183 chars vs en 128 (+43%) is wrapping paragraph copy (context permits wrapping) — no budget issue. discard_attempt 56 vs en 42 (+33%) in a whitespace-nowrap ghost button, same width class as the approved create_retry (55); NIT above, needs a rendered check.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

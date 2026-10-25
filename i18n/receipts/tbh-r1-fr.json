@@ -1,0 +1,48 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbh-r1-fr",
+ "session": "1a89c9920568",
+ "date": "2026-10-21",
+ "locale": "fr",
+ "translator": "translator",
+ "translator_session": "7f91449c7aa6",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "2-key held-schedule recovery delta (ui.teamBridge.schedule.held, ui.teamBridge.schedule.discard_attempt) per git diff 51dceb5a09..c06b457 of en; 136 other values verified byte-unchanged vs HEAD and inherited from tbs-r2-fr; catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "fr": "21289e3b3f5f54dcd3c5f67486f2e089448cf611f3e864efd953b820bc049809",
+  "context": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "key": "ui.teamBridge.schedule.discard_attempt",
+   "current": "J’ai vérifié « Planifiés » — abandonner cette tentative",
+   "proposed": "J’ai vérifié « Planifiés » — abandonner cet essai (and « avant d’abandonner cet essai » in ui.teamBridge.schedule.held); keeping « tentative » is equally acceptable",
+   "note": "English “attempt” now maps to « essai » in the sibling create_retry (« autoriser un nouvel essai », chosen in round 2 for width) and to « tentative » in held/discard_attempt; both are idiomatic and refer to different attempts, so this is a drift note, not a defect."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-fr.json",
+  "sha256": "a22cd7571d983c4b3a81c433d4d59edb3616de87e9b573348a48a58a9795918e",
+  "keys_inherited": 136,
+  "base_target_sha256": "551c9ae899c431dfd85d4e9ce30ca4942eb698df4b032f6943dc2c3af2418ce4",
+  "unchanged_values_verified": 136
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "validation": {
+  "independence": "Auditor session 1a89c9920568 is distinct from translator session 7f91449c7aa6; values read from working-tree bytes (sha 21289e3b…, matching the translator's reported hash), no summary relied on; no repo file edited, staged or committed.",
+  "semantics": "Both values read beside en, the context sidecar (role/note: local attempt discard, does NOT cancel server delivery, distinct from Cancel message) and team-bridge-page.tsx ~L1210-1245 (held = <p id=heldReasonId> in the composer footer; discard_attempt = ghost Button that clears sendAt and rotates clientRef). « Planifiés » quoted verbatim = schedule.list and identical to the references in schedule.failed (« consultez « Planifiés » ») and schedule.success (« dans « Planifiés » »). Server action uses « annulez-la » (= Annuler, as schedule.cancel « Annuler l’envoi »); local action uses « abandonner cette tentative » — the two verbs keep the cancel/discard distinction, and discard_attempt cannot read as cancelling or deleting the server message. Explicit acknowledgement kept (« J’ai vérifié … — … », same shape as create_retry « J’ai vérifié la section Groupes — autoriser un nouvel essai »). Uncertainty kept (« existe peut-être encore »); « Votre brouillon est conservé. » identical to failed/create_uncertain; « Une planification précédente » matches schedule.retry « la planification précédente » and the style-guide call schedule→planification. Register: vous, imperatives (Vérifiez, annulez-la), no « Veuillez », sentence case — no T/V drift.",
+  "icu": "Parsed en and fr for both keys with @formatjs/icu-messageformat-parser from the repo node_modules: each is a single literal node (type 0), no arguments in either language, 0 mismatches, no plural needed. Formatted with intl-messageformat (fr) → output byte-equal to the catalogue text.",
+  "typography": "Both values NFC; no U+200E/F, U+202A–E, U+2066–9 or U+061C; apostrophes U+2019; « » with U+202F inside (same bytes as failed/success); em dash U+2014 with spaces; no ASCII apostrophe or U+00A0 anywhere in the file. Diff vs HEAD is exactly 2 added lines + trailing comma on schedule.retry; key set and order equal en (138); 136 other values byte-identical to HEAD, whose sha 551c9ae8… equals sha256.fr recorded in tbs-r2-fr (chain tbs-r2 → tbs-r1 → tbd-r3 verified). File ends with newline.",
+  "overflow": "held 170 vs 128 chars (1.33×) in a wrapping <p> — fine. discard_attempt 55 vs 42 chars (1.31×) on a ghost Button whose shared base class (src/renderer/src/shared/components/ui/button.tsx) is whitespace-nowrap; it is shorter than the already-audited sibling create_retry (59 chars) in the same composer footer, so no finding, but it rides the same pending rendered check at the 800 px minimum width.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}
