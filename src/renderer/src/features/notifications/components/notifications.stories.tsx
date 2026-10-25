@@ -234,7 +234,16 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 					desktop_contract: 1,
 					desktop_available: true,
 					desktop_auth: "bearer",
-					features: stub.capability === false ? {} : { notifications: 1 },
+					/*
+					 * The rail's usual neighbours are advertised in EVERY story, so the
+					 * sidebar before/after pair differs in exactly one capability.
+					 */
+					features: {
+						aida: 1,
+						projects: 1,
+						library: 1,
+						...(stub.capability === false ? {} : { notifications: 1 }),
+					},
 				},
 			},
 		};
