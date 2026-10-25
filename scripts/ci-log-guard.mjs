@@ -37,13 +37,15 @@
  * a `data:` specifier are invisible to it - that is a known class, listed on
  * the PR that introduced this guard, not a finding here. What it catches is a
  * data URI that REACHED OUTPUT, because output is what the runner streams and
- * what a reader has to be able to read. A line that QUOTES source or a fixture
- * is exempted for the same reason: a `12 | await import("data:...")` code frame
- * (with or without a `>` gutter), a bare `const`/`let`/`import` statement, TAP
- * YAML's `actual:`/`expected:`, an assert diff quoting a value, or an
- * `AssertionError` message. Those are the 302-file class being echoed, not a
- * diagnostic that named the module - and a shard log is TAP, so they arrive
- * `# `-prefixed and are read after that prefix is stripped.
+ * what a reader has to be able to read. A `data:` URI that is QUOTED is a
+ * CITATION - source text, an assertion's compared values, or its message - and
+ * is exempt while it stays under `CITATION_MAX_BYTES`; a citation is a
+ * reference, not a dump. A URI that is NOT quoted is how a stack frame
+ * (`at fn (data:...:1:1)`) and a resolution failure write a module specifier, so
+ * it is a finding at any size, and a line that says the specifier was used AS A
+ * MODULE stays a finding even when quoted. This is a property of the line, not
+ * a list of reporter renderings: TAP prefixes every one of those lines with
+ * `# `, so the prefix is stripped before the property is read.
  *
  * WHAT IT CANNOT DO, said plainly because the alternative is overstating it:
  * the scan is a step AFTER the suite, and a job cancelled at its own
@@ -82,23 +84,38 @@ const ECHO_PREFIX =
 	/^(?:\uFEFF)?(?:\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z\s?|#\s?)/;
 
 /*
- * The shapes a QUOTATION takes, as opposed to a diagnostic that NAMED the
- * module. Each is a rendering of something the test already contained - its own
- * source, or the fixture values an assertion compared - so none of them is the
- * hazard this guard exists for. They are exempt from the content rule and left
- * to the size backstop, which has no exemptions.
+ * THE EXEMPTION IS A PROPERTY OF THE LINE, NOT A LIST OF REPORTER SHAPES.
  *
- * The first three are what a TAP log actually contains, and the TAP `# ` prefix
- * is why the shape has to be read AFTER stripping it.
+ * Two review rounds landed on the same defect: the rule was a list of renderings
+ * (spec-reporter code frame, then TAP's `# `-prefixed ones), and each round found
+ * a shape the list had not been taught - the last one being TAP's `error:`
+ * scalar, which quotes an assertion's own message (`  error: "…'data:…'…"`).
+ * Enumerating renderings cannot converge, because the reporters are not the
+ * surface this guard exists to protect; READABILITY is.
+ *
+ * So the rule is the one property every real false positive shared: the `data:`
+ * URI is a CITATION - it sits inside matching quotes, which is how source text,
+ * an assertion's compared values, and its message all write a value they are
+ * quoting. A citation is exempt up to CITATION_MAX_BYTES, because a citation is
+ * a reference and not a dump; past that bound, quotes or not, it is a payload.
+ *
+ * A URI that is NOT enclosed in quotes is the hazard, whatever surrounds it:
+ * that is how a stack frame (`at fn (data:…:1:1)`) and a resolution failure
+ * write a module specifier, and it is exactly the shape of the incident on both
+ * sides of this file. Those are findings at any size.
  */
-const QUOTED_SHAPES = [
-	/^\s*>?\s*\d+\s*\|\s/, // code frame: `12 | ...`, `> 12 | ...`
-	/^\s*(?:const|let|var|import|export|await|return)\b/, // source echo
-	/^\s*(?:actual|expected)\s*:/, // TAP YAML comparison
-	/^\s*[+-]\s*['"`]/, // assert diff quoting a value
-	/^\s*['"`]/, // a bare quoted fixture
-	/^AssertionError\b/, // the assertion's own message
-];
+const CITATION =
+	/(['"`])(data:[a-z0-9.+-]+\/[a-z0-9.+-]*(?:;[a-z0-9=.+-]+)*,[^'"`\s]*)\1/gi;
+/* Every URI-shaped run on the line, quoted or not, for the "all of them?" test. */
+const ANY_DATA_URI =
+	/data:[a-z0-9.+-]+\/[a-z0-9.+-]*(?:;[a-z0-9=.+-]+)*,[^\s'"`)]*/gi;
+/* A diagnostic that says the specifier was USED AS A MODULE keeps failing, even
+ * when the message quotes it: its subject is the module, not a value. */
+const MODULE_RESOLUTION =
+	/Cannot find (?:module|package)|ERR_MODULE_NOT_FOUND|cannot import|imported from|Failed to resolve|does not provide an export/i;
+/* How long a quoted citation may be before it is a payload wearing quotes. */
+const CITATION_MAX_BYTES = 4096;
+
 /* The test file a diagnostic names, with or without a file:// URL prefix. */
 const SCRIPT_PATH = /scripts\/[A-Za-z0-9._/-]+\.m?js/;
 const SUBTEST = /# Subtest: (.+)$/;
@@ -109,11 +126,17 @@ function group(value) {
 	return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-/** Is this line a quotation of source or of a fixture, rather than a report? */
+/** Is every data: URI on this line a bounded, quoted citation? */
 function isQuotation(line) {
 	/* Two prefixes can stack: the runner's timestamp, then TAP's `# `. */
 	const body = line.replace(ECHO_PREFIX, "").replace(ECHO_PREFIX, "");
-	return QUOTED_SHAPES.some((shape) => shape.test(body));
+	if (MODULE_RESOLUTION.test(body)) return false;
+	const citations = [...body.matchAll(CITATION)];
+	if (citations.length === 0) return false;
+	/* One unquoted URI among them makes the line a diagnostic, not a citation. */
+	if ([...body.matchAll(ANY_DATA_URI)].length !== citations.length)
+		return false;
+	return citations.every(([, , uri]) => uri.length <= CITATION_MAX_BYTES);
 }
 
 function excerptOf(text) {

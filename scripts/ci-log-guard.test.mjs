@@ -40,6 +40,33 @@ function run(lines, options = {}) {
 	};
 }
 
+/**
+ * Run a generated suite through the REAL TAP reporter and hand back its output.
+ *
+ * `NODE_TEST_CONTEXT` is dropped deliberately: this file runs inside `node
+ * --test`, and node passes that variable down so a child knows it is a test
+ * worker. A nested `node --test` that inherits it renders nothing on stdout -
+ * measured here as an empty capture while the same command in a plain shell
+ * produced TAP - so the fixture would silently test an empty string.
+ */
+function tapOf(source, name) {
+	const dir = mkdtempSync(join(tmpdir(), "ci-log-tap-"));
+	const suite = join(dir, name);
+	writeFileSync(suite, source);
+	const env = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => key !== "NODE_TEST_CONTEXT"),
+	);
+	const tap = spawnSync(
+		process.execPath,
+		["--test", "--test-reporter=tap", suite],
+		{ encoding: "utf8", env },
+	);
+	assert.equal(tap.status, 0, tap.stderr);
+	const log = join(dir, "tap.log");
+	writeFileSync(log, tap.stdout);
+	return { dir, log, stdout: tap.stdout };
+}
+
 /** A frame shaped like the incident: a media type, base64, then a module line. */
 function payloadFrame(functionName, repetitions) {
 	return `#     at ${functionName} (data:text/javascript;base64,${"QUJD".repeat(repetitions)}:50450:21)`;
@@ -106,11 +133,15 @@ test("the word `data:` in prose is not a URI", () => {
 /*
  * THE EXEMPTION IS ONLY REAL IF IT MATCHES THE FORMAT THIS SUITE PRINTS, and a
  * shard log is TAP: a test's own output arrives `# `-prefixed (and a fetched job
- * log wraps that in the runner's timestamp again). The first version of this
- * rule knew only the un-prefixed spec-reporter shape, so every real TAP source
- * echo was a finding — a false red on a printed source line (review round 1,
- * Q-1). Each shape below must stay exempt; removing one fails a case here,
- * which is what stops the exemption from narrowing again.
+ * log wraps that in the runner's timestamp again). Two rounds of review found
+ * that defect twice - first the spec-reporter shape was pinned and TAP missed,
+ * then the TAP code frame was pinned and TAP's `error:` scalar missed - so the
+ * rule is now the property all of them share: the URI is quoted, and bounded.
+ *
+ * Every rendering below must stay exempt, and the two real-reporter cases after
+ * this table generate theirs from `node --test --test-reporter=tap` rather than
+ * writing what the format is believed to be. Removing the property fails all of
+ * them, which is what stops the exemption from narrowing again.
  */
 const QUOTED_SHAPES_IN_A_LOG = [
 	[
@@ -139,6 +170,15 @@ const QUOTED_SHAPES_IN_A_LOG = [
 		"AssertionError message",
 		"AssertionError [ERR_ASSERTION]: 'data:text/javascript;base64,QUJD' !== 'x'",
 	],
+	[
+		"TAP `error:` scalar quoting an assertion message",
+		`  error: "refused: 'data:text/javascript;base64,QUJD' was not accepted"`,
+	],
+	[
+		"TAP `error:` block scalar's continuation",
+		"    expected 'data:text/javascript;base64,QUJD' to be accepted",
+	],
+	["a bare quoted value", "  'data:text/javascript;base64,QUJD'"],
 ];
 
 test("every shape that quotes source or a fixture is exempt", () => {
@@ -156,11 +196,65 @@ test("a diagnostic that names the module is still a finding", () => {
 	for (const line of [
 		"#     at desktopResult (data:text/javascript;base64,QUJD:50450:21)",
 		"Error: cannot import 'data:text/javascript;base64,QUJD'",
+		"Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'data:text/javascript;base64,QUJD' imported from /x.mjs",
 	]) {
 		const result = run([line]);
 		assert.equal(result.status, 1, `${line}: ${result.stdout}`);
 		assert.match(result.stdout, /\[data-uri\]/);
 	}
+});
+
+test("a quoted citation past the bound is a payload, not a citation", () => {
+	/* The exemption is a citation rule, not a size loophole: this is the seam
+	 * R2-3 named, closed by the bound rather than documented away. */
+	const huge = `'data:text/javascript;base64,${"QUJD".repeat(2048)}'`;
+	const result = run([`  error: ${huge}`]);
+	assert.equal(result.status, 1, result.stdout);
+	assert.match(result.stdout, /\[data-uri\]/);
+});
+
+test("the reporter's own output for a quoted assertion message is exempt", () => {
+	const tap = tapOf(
+		[
+			'import assert from "node:assert/strict";',
+			'import { test } from "node:test";',
+			"",
+			'test("a todo case quoting a fixture", { todo: true }, () => {',
+			'\tassert.equal("data:text/javascript;base64,QUJDREVGR0g=", "something else");',
+			"});",
+			"",
+		].join("\n"),
+		"quoted.test.mjs",
+	);
+	assert.match(tap.stdout, /# fail 0/, tap.stdout);
+	const result = spawnSync(process.execPath, [GUARD, "check", tap.log], {
+		encoding: "utf8",
+	});
+	assert.equal(result.status, 0, result.stdout);
+	assert.match(result.stdout, /ci-log-guard: clean/);
+});
+
+test("the reporter's own output for a frame that names a data: module is a finding", () => {
+	const tap = tapOf(
+		[
+			'import { test } from "node:test";',
+			"",
+			"const mod = await import(",
+			`\t"data:text/javascript,export function boom(){throw new Error('nope')}"`,
+			");",
+			'test("a thrown fixture", { todo: true }, () => {',
+			"\tmod.boom();",
+			"});",
+			"",
+		].join("\n"),
+		"frame.test.mjs",
+	);
+	assert.match(tap.stdout, /\(data:text\/javascript,/, tap.stdout);
+	const result = spawnSync(process.execPath, [GUARD, "check", tap.log], {
+		encoding: "utf8",
+	});
+	assert.equal(result.status, 1, result.stdout);
+	assert.match(result.stdout, /\[data-uri\]/);
 });
 
 test("a missing log is a usage error, not a pass", () => {
