@@ -1,5 +1,5 @@
 {
-	"ui.common.viewer.close": "{kind, select, image {Fermer l’image} asset {Fermer l’élément} other {Fermer}}",
+	"ui.common.viewer.close": "{kind, select, image {Fermeture de l’image} asset {Fermeture de l’élément} other {Fermeture}}",
 	"ui.common.viewer.next": "{kind, select, image {Image suivante} asset {Élément suivant} other {Suivant}}",
 	"ui.common.viewer.opening": "Ouverture…",
 	"ui.common.viewer.position": "{kind, select, image {Image {index, number, ::group-off} sur {count, number, ::group-off}} asset {Élément {index, number, ::group-off} sur {count, number, ::group-off}} other {Image {index, number, ::group-off} sur {count, number, ::group-off}}}",
