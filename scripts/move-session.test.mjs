@@ -538,6 +538,26 @@ test("the chip's accessible name carries the phrase its label slot paints (R3-1,
 		/<bdi dir="auto">\{chipPhrase\}:<\/bdi>/,
 		"and the slot paints it in a bidi-isolated run so its colon stays with the phrase under RTL",
 	);
+	/*
+	 * THE READ-ONLY ARM KEEPS ITS OWN ISOLATION AND ITS FULL-PHRASE NAME. Both
+	 * assertions below cover the branch at the top of the component, which paints
+	 * a fixed label rather than `chipPhrase`: the round that keyed the chip dropped
+	 * its `<bdi>` assertion, so a later edit could have deleted `dir="auto"` there
+	 * with no failing test (agent review round 1, m3). The accessible name reads
+	 * the catalogue's whole phrase (`working_directory_value`) rather than
+	 * splicing one around an ASCII colon, which is what carries fr's narrow
+	 * no-break space and zh's full-width colon to a screen reader (round 1, m1).
+	 */
+	assert.match(
+		chip,
+		/<bdi dir="auto">\s*\{t\("ui\.chat\.directory\.label\.working_directory"\)\}:\s*<\/bdi>/,
+		"the read-only arm isolates its label run too, so its colon cannot drift to the visual left under RTL",
+	);
+	assert.match(
+		chip,
+		/aria-label=\{t\("ui\.chat\.directory\.label\.working_directory_value",\s*\{\s*path: shown,?\s*\}\s*\)\}/,
+		"the read-only name is the catalogue's full phrase, so the locale's own punctuation reaches it",
+	);
 	assert.match(
 		chip,
 		/const chipPhrase = pending[\s\S]{0,200}t\("ui\.chat\.directory\.label\.moving_session"\)[\s\S]{0,120}t\("ui\.chat\.directory\.label\.working_directory"\)/,

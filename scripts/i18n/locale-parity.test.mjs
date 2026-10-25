@@ -190,48 +190,12 @@ const IDENTICAL_OK = new Map([
 		"ui.chat.composer.message",
 		"French cognate: « message » has the same spelling.",
 	],
-	// --- ui.chat.directory / ui.chat.tabs. The working-directory quick-pick
-	// labels each Linux folder by its own basename (`/etc` is `etc` on every
-	// filesystem), and the en sidecar records those seven as untranslated
-	// exceptions; Spanish cannot spell a path segment differently without
-	// renaming the folder on screen. `ProgramData` is the Windows folder's own
-	// name, which Spanish Explorer shows verbatim. `Chat` is the audited es
-	// house voice's established noun for the conversation, not a skipped
-	// string: the rest of the es catalogue translates around it.
+	// --- ui.chat.tabs. `Chat` is the audited es house voice's established noun
+	// for the conversation, not a skipped string: the rest of the es catalogue
+	// translates around it. Scoped to `es:` because the other six locales must
+	// translate it (fr already does), and a global row would exempt all of them.
 	[
-		"ui.chat.directory.folder.etc",
-		"Literal path segment: the quick-pick labels `/etc` by its own basename; identical is the correct translation.",
-	],
-	[
-		"ui.chat.directory.folder.media",
-		"Literal path segment: the quick-pick labels `/media` by its own basename; identical is the correct translation.",
-	],
-	[
-		"ui.chat.directory.folder.mnt",
-		"Literal path segment: the quick-pick labels `/mnt` by its own basename; identical is the correct translation.",
-	],
-	[
-		"ui.chat.directory.folder.opt",
-		"Literal path segment: the quick-pick labels `/opt` by its own basename; identical is the correct translation.",
-	],
-	[
-		"ui.chat.directory.folder.program_data",
-		"Windows folder name: Spanish Explorer shows `ProgramData` verbatim; the path beside the label is never translated.",
-	],
-	[
-		"ui.chat.directory.folder.srv",
-		"Literal path segment: the quick-pick labels `/srv` by its own basename; identical is the correct translation.",
-	],
-	[
-		"ui.chat.directory.folder.usr",
-		"Literal path segment: the quick-pick labels `/usr` by its own basename; identical is the correct translation.",
-	],
-	[
-		"ui.chat.directory.folder.var",
-		"Literal path segment: the quick-pick labels `/var` by its own basename; identical is the correct translation.",
-	],
-	[
-		"ui.chat.tabs.chat",
+		"es:ui.chat.tabs.chat",
 		"Spanish loanword, not untranslated English: «chat» is the established noun in the audited es house voice.",
 	],
 	[
@@ -1130,11 +1094,12 @@ const IDENTICAL_OK = new Map([
 	// --- ui.chat.directory folder labels. The working-directory menu offers
 	// conventional folder names beside their own paths. Two kinds are identical
 	// in EVERY locale and are named here once, globally: the bare path segments
-	// (the context sidecar records them as untranslatable) and the Windows system
-	// folders that Explorer itself shows in English under every UI language. The
-	// three French cognates below are scoped to `fr:` instead, because hi/zh-CN/
-	// ru/ur/vi must translate those words and a global row would silently exempt
-	// them.
+	// (the context sidecar records them as untranslatable) and `ProgramData`,
+	// whose Explorer display name is the same under every UI language. The three
+	// French cognates and the Windows `Program Files` rows are scoped per locale
+	// below instead: hi/zh-CN/ru/ur/vi must translate the cognates, and only a
+	// locale whose Explorer shows `Program Files` in English may claim it
+	// verbatim (fr shows `Programmes`; es translates it).
 	[
 		"ui.chat.directory.folder.etc",
 		"filesystem identifier, not copy: the path segment `/etc` is identical in every locale",
@@ -1178,14 +1143,6 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.chat.directory.folder.volumes",
 		"French cognate: « Volumes » has the same spelling; scoped to fr so the other locales still translate it",
-	],
-	[
-		"fr:ui.chat.directory.folder.program_files",
-		"French Windows shows this folder name verbatim; the path beside it is never translated.",
-	],
-	[
-		"fr:ui.chat.directory.folder.program_files_x86",
-		"French Windows shows this folder name verbatim; the path beside it is never translated.",
 	],
 	[
 		"hi:ui.chat.directory.folder.program_files",
