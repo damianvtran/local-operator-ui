@@ -41,6 +41,14 @@ const SOURCE_LOCALE = "en";
  * a UI token. An entry here is a claim that gets reviewed, not a silencer.
  */
 const IDENTICAL_OK = new Map([
+	// French cognates only: these are the normal French UI nouns, not English
+	// fallbacks. Scope to fr so untranslated nouns in other languages still fail.
+	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
+	["fr:ui.notifications.page.title", "French UI noun: Notifications"],
+	[
+		"fr:ui.notifications.filter.group_conversation",
+		"French cognate: Conversation",
+	],
 	[
 		"fr:ui.teamBridge.profile.agent_badge",
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
