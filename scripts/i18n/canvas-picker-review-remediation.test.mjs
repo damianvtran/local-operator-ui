@@ -4,6 +4,11 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
+import {
+	backendUsagePath,
+	parseMuseNotes,
+	readManifest,
+} from "./muse-usage-manifest.mjs";
 
 // Locale is process-wide: these cases must never reset it under one another.
 const testSerial = (name, fn) => test(name, { concurrency: false }, fn);
@@ -107,6 +112,7 @@ const built = await build({
 			'export { ProviderBlockView } from "./src/renderer/src/features/chat/pickers/usage-view";',
 			'export { currentUsageReport, hasMuseAllowanceNote, accountNote } from "./src/renderer/src/features/chat/pickers/usage-view-model";',
 			'export { isBreakdownUnavailable } from "./src/renderer/src/features/chat/pickers/panels/context-model";',
+			'export { META_MUSE_ALLOWANCE_NOTE, META_MUSE_PASSIVE_NOTE, META_MUSE_STALE_NOTE, META_MUSE_NO_OBSERVATION_NOTE } from "./src/renderer/src/features/chat/pickers/muse-usage-notes";',
 			'export { CategoriesInputChips } from "./src/renderer/src/shared/components/common/categories-input-chips";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -154,8 +160,18 @@ const {
 	hasMuseAllowanceNote,
 	accountNote,
 	isBreakdownUnavailable,
+	META_MUSE_ALLOWANCE_NOTE,
+	META_MUSE_PASSIVE_NOTE,
+	META_MUSE_STALE_NOTE,
+	META_MUSE_NO_OBSERVATION_NOTE,
 	CategoriesInputChips,
 } = mod;
+const MUSE_MIRROR = {
+	META_MUSE_ALLOWANCE_NOTE,
+	META_MUSE_PASSIVE_NOTE,
+	META_MUSE_STALE_NOTE,
+	META_MUSE_NO_OBSERVATION_NOTE,
+};
 
 const FRENCH = {
 	"ui.canvas": {
@@ -802,3 +818,34 @@ testSerial(
 		await locale.setLocale("en");
 	},
 );
+
+/*
+ * M5: the Muse mirror is a CROSS-REPO contract, so the pin is not a second copy
+ * of the four sentences. The committed manifest is generated from
+ * `local_operator/providers/usage.py` (`muse-usage-manifest.mjs --write`); the
+ * portable assertion below compares the TypeScript mirror to it in CI. On a
+ * machine with the backend checkout beside this repo, the same test parses the
+ * Python source too, so a backend rename fails before the app silently stops
+ * recognising its own payloads.
+ */
+test("the Muse mirror is the backend's generated vocabulary", () => {
+	const manifest = readManifest();
+	assert.deepEqual(
+		Object.keys(MUSE_MIRROR).sort(),
+		Object.keys(manifest.constants).sort(),
+	);
+	for (const [name, value] of Object.entries(manifest.constants)) {
+		assert.equal(
+			MUSE_MIRROR[name],
+			value,
+			`${name} must match the generated manifest`,
+		);
+	}
+	const backend = backendUsagePath();
+	if (!backend) return;
+	assert.deepEqual(
+		parseMuseNotes(readFileSync(backend, "utf8")),
+		manifest.constants,
+		"usage.py changed without regenerating scripts/i18n/fixtures/muse-usage-notes.json",
+	);
+});

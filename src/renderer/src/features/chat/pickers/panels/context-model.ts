@@ -23,8 +23,9 @@ export type ContextBlock = {
 };
 
 /**
- * `local_operator/serving.py` / `app.py`: the fixed sentence for "no
- * breakdown to give". See the docstring above for why it is not localized.
+ * `local_operator/session/runtime/serving.py` / `local_operator/tui/app.py`:
+ * the fixed sentence for "no breakdown to give". See the docstring above for
+ * why it is not localized.
  */
 const CONTEXT_BREAKDOWN_UNAVAILABLE_NOTICE = "context breakdown unavailable.";
 

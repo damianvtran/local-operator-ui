@@ -5,6 +5,5 @@
 	"ui.common.layout.sidebar_header.create_a_new_agent": "नया एजेंट बनाएँ",
 	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "ZIP फ़ाइल से एजेंट इम्पोर्ट करें",
 	"ui.common.layout.sidebar_header.import_agent": "एजेंट इम्पोर्ट करें",
-	"ui.common.layout.sidebar_header.new_agent": "नया एजेंट",
-	"ui.common.layout.chat_layout.mac": "MAC"
+	"ui.common.layout.sidebar_header.new_agent": "नया एजेंट"
 }
