@@ -106,9 +106,9 @@
 		"role": "what a collaboration group's chat-count badge means, for its title and screen-reader name",
 		"tone": "plain statement, sentence case, no trailing punctuation",
 		"length": "Five words plus one number.",
-		"note": "The badge shows a group's census - how many chats the group HOLDS - which is a different number from the section heading's count of rows drawn. The sentence is also the only way that number reaches a screen reader, because the badge sits inside buttons whose aria-labels replace their children.",
+		"note": "The badge shows a group's census - how many chats the group HOLDS - which is a different number from the section heading's count of rows drawn. The sentence is also the only way that number reaches a screen reader, because the badge sits inside buttons whose aria-labels replace their children. Uses a plural so a single-chat group reads \"1 chat\", not \"1 chats\".",
 		"placeholders": {
-			"badge": "how many chats the group holds. A number; never translate it."
+			"badge": "number"
 		}
 	},
 	"ui.chat.sidebar.header.create": {
