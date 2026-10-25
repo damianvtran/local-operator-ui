@@ -1,0 +1,18 @@
+$ GET /v1/desktop/notifications?state=all&limit=100
+  -> 200 {"items":[{"id":"n_geocp5rybtgnxiex","source":"notify","priority":"low","title":"Nightly build finished","excerpt":"","created_at":1792948992630,"updated_at":1792948992630,"seq":6,"revision":1,"read":true,"read_via":"watching","dismissed":false,"repeat_count":1,"key":"","anchor_id":"","session":{"id
+$ PATCH /v1/desktop/notifications {"op":"unread","ids":[{"id":"n_qex6e5nbmz47x6ry","revision":4}]}
+  -> 200 {"changed":["n_qex6e5nbmz47x6ry"],"skipped":[],"unread_count":2,"high_water":10}
+$ POST /v1/desktop/notifications/seen {"items":[{"id":"n_qex6e5nbmz47x6ry","revision":4,"anchor_id":"toolu_live_1"}],"evidence":{"surface":"desktop","session_id":"aaaaaaaaaaa1","input_kind":"pointerdown","input_at_ms":1792949028392,"visible_since_ms":1792949027192}}
+  -> 200 {"changed":["n_qex6e5nbmz47x6ry"],"skipped":[],"unread_count":1,"high_water":11}
+$ POST /v1/desktop/notifications/seen {"items":[{"id":"n_qex6e5nbmz47x6ry","revision":4,"anchor_id":"toolu_WRONG"}],"evidence":{"surface":"desktop","session_id":"aaaaaaaaaaa1","input_kind":"keydown","input_at_ms":1792949028428,"visible_since_ms":1792949028392}}
+  -> 200 {"changed":[],"skipped":[{"id":"n_qex6e5nbmz47x6ry","reason":"anchor_mismatch"}],"unread_count":1,"high_water":11}
+$ GET /v1/desktop/notifications?state=all&limit=100
+  -> 200 {"items":[{"id":"n_geocp5rybtgnxiex","source":"notify","priority":"low","title":"Nightly build finished","excerpt":"","created_at":1792948992630,"updated_at":1792948992630,"seq":6,"revision":1,"read":true,"read_via":"watching","dismissed":false,"repeat_count":1,"key":"","anchor_id":"","session":{"id
+  -> n_qex6e5nbmz47x6ry read=true read_via=in_view
+$ GET /v1/desktop/notifications?state=unread&limit=100
+  -> 200 {"items":[{"id":"n_kd25p3qdkxre3pyc","source":"notify","priority":"normal","title":"External PR needs review: #1410","excerpt":"CI is green.","created_at":1792948992629,"updated_at":1792948992629,"seq":9,"revision":1,"read":false,"read_via":null,"dismissed":false,"repeat_count":1,"key":"","anchor_id
+  unread before mark-all: n_kd25p3qdkxre3pyc high_water=11
+$ PATCH /v1/desktop/notifications {"op":"read","all":true,"through_seq":11}
+  -> 200 {"changed":["n_kd25p3qdkxre3pyc"],"skipped":[],"unread_count":0,"high_water":12}
+$ GET /v1/desktop/notifications/count
+  -> 200 {"unread_count":0,"waiting_count":0,"high_water":12}
