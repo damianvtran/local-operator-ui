@@ -1524,3 +1524,191 @@ test("D11: scheduled rows take the elevated ground on the surface page, never a 
 		element.remove();
 	}
 });
+
+/*
+ * Round 12 regressions. Both were merge-resolution damage on the composer that
+ * CI could not see: there was no test driving a send/schedule to completion
+ * with the author still typing.
+ */
+const r12Conversation = {
+	id: "bcv_r12",
+	tenant_id: "org_r12",
+	kind: "group",
+	name: "Round twelve",
+	members: [],
+	visibility: "private",
+	agent_capable: false,
+	status: "open",
+	created_by: "acct_r12",
+	last_message_at: "2030-01-01T00:00:00Z",
+	latest_seq: 0,
+	last_read_seq: 0,
+	unread_count: 0,
+	muted: false,
+};
+const r12Props = (over = {}) => ({
+	selfAccountId: "acct_r12",
+	scope: "org_r12",
+	target: { type: "conversation", id: r12Conversation.id },
+	conversations: [r12Conversation],
+	messages: [],
+	organizations: [
+		{
+			tenantId: "org_r12",
+			name: "Round twelve org",
+			role: "owner",
+			unread: 0,
+		},
+	],
+	totalUnread: 0,
+	listState: "ready",
+	messageState: "ready",
+	onTarget: () => {},
+	onNewChannel: () => {},
+	onScopeChange: () => {},
+	onSend: async () => {},
+	...over,
+});
+const r12Type = async (box, text) => {
+	await act(async () => {
+		Object.getOwnPropertyDescriptor(
+			dom.window.HTMLTextAreaElement.prototype,
+			"value",
+		).set.call(box, text);
+		box.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
+};
+const r12Tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+const r12SendButton = (element) =>
+	element.querySelector(
+		'button[aria-label="Send"], button[aria-label="Send message"]',
+	);
+
+test("r12 B1: text typed while a send is in flight survives the success clear", async () => {
+	localStorage.clear();
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(
+					model.TeamBridgePageView,
+					r12Props({ onSend: () => gate }),
+				),
+			),
+		);
+		const box = element.querySelector("textarea");
+		await r12Type(box, "first line");
+		await act(async () => r12SendButton(element).click());
+		// The author keeps typing while the request is in flight.
+		await r12Type(box, "first line, then more");
+		await act(async () => {
+			release();
+			await gate;
+			await r12Tick();
+		});
+		assert.equal(
+			element.querySelector("textarea").value,
+			"first line, then more",
+			"mid-flight text stays in the composer",
+		);
+		const stored = JSON.parse(
+			localStorage.getItem(model.draftStorageKey("acct_r12", "org_r12")) ??
+				"{}",
+		);
+		assert.equal(
+			stored[
+				model.draftTargetKey({ type: "conversation", id: r12Conversation.id })
+			]?.body,
+			"first line, then more",
+			"the durable draft keeps the later text",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+	}
+});
+
+test("r12 M1: a scheduled body does not come back as an unsent draft after remount", async () => {
+	localStorage.clear();
+	const journal = { body: "" };
+	const time = new Date(Date.now() + 3_600_000).toISOString();
+	const element = document.createElement("div");
+	document.body.append(element);
+	let root = createRoot(element);
+	const props = r12Props({
+		draftJournal: journal,
+		initialDraft: "",
+		onSchedule: async () => ({}),
+	});
+	try {
+		await act(async () =>
+			root.render(React.createElement(model.TeamBridgePageView, props)),
+		);
+		const box = element.querySelector("textarea");
+		await r12Type(box, "scheduled fixture body");
+		await act(async () =>
+			element.querySelector('button[aria-label="Schedule message"]').click(),
+		);
+		const dialog = document.querySelector('[role="dialog"]');
+		const input = dialog.querySelector('input[type="datetime-local"]');
+		await act(async () => {
+			Object.getOwnPropertyDescriptor(
+				dom.window.HTMLInputElement.prototype,
+				"value",
+			).set.call(input, model.scheduledLocalInput(time));
+			input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+		});
+		const action = () =>
+			[...dialog.querySelectorAll("button")].find(
+				(button) =>
+					button.textContent === "Review schedule" ||
+					button.textContent === "Confirm schedule",
+			);
+		await act(async () => action().click());
+		await act(async () => action().click());
+		await act(async () => {
+			await r12Tick();
+			await r12Tick();
+		});
+		// Remount the SAME surface, as switching conversations and back does.
+		await act(async () => root.unmount());
+		root = createRoot(element);
+		await act(async () =>
+			root.render(React.createElement(model.TeamBridgePageView, props)),
+		);
+		assert.equal(
+			element.querySelector("textarea").value,
+			"",
+			"the scheduled text is not reseeded as a draft",
+		);
+		assert.equal(journal.body, "", "the journal cleared with the durable row");
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+	}
+});
+
+test("r12 minor c: a scheduled create forwards thread_root_id only when set", () => {
+	const base = {
+		op: "team_bridge.scheduled.create",
+		tenant_id: "tnt_1",
+		conversation_id: "bcv_1",
+		client_ref: "ref-1",
+		body: "reply later",
+		send_at: "2030-01-02T12:00:00Z",
+	};
+	const plain = model.desktopEndpoint(base);
+	assert.equal("thread_root_id" in plain.body, false, "text-only schedule");
+	const reply = model.desktopEndpoint({
+		...base,
+		thread_root_id: "bcmsg_abc123",
+	});
+	assert.equal(reply.body.thread_root_id, "bcmsg_abc123");
+	assert.equal(reply.path, "/v1/desktop/team-bridge/scheduled");
+});

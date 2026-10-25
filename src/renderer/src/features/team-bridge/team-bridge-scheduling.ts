@@ -20,6 +20,8 @@ export async function scheduleTeamBridgeDraft(args: {
 	body: string;
 	clientRef: string;
 	sendAt: string;
+	/* Present only when the scheduled message is a thread reply. */
+	threadRootId?: string;
 	remembered: Map<string, { id: string; tenantId: string | undefined }>;
 	onCreated: (id: string) => void;
 	onScheduled?: (id: string) => void;
@@ -32,6 +34,7 @@ export async function scheduleTeamBridgeDraft(args: {
 		client_ref: string;
 		body: string;
 		send_at: string;
+		thread_root_id?: string;
 	}) => Promise<unknown>;
 }) {
 	const post = async (
@@ -45,6 +48,7 @@ export async function scheduleTeamBridgeDraft(args: {
 			client_ref: args.clientRef,
 			body: args.body,
 			send_at: args.sendAt,
+			...(args.threadRootId ? { thread_root_id: args.threadRootId } : {}),
 		});
 		// Publish the conversation identity only after schedule success. Clearing
 		// the compose draft must not leave its next message creating another group.

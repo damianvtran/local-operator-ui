@@ -750,17 +750,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				pendingSend.current = null;
 				if (draftJournal) draftJournal.pending = null;
 			}
-			// The durable store's setter takes a VALUE, not an updater: read the body
-			// from this render and clear only if it is still what was sent.
-			if (draft.trim() === body) setDraft("");
+		};
+		/*
+		 * THE CLEAR IS DELEGATED TO THE STORES, NEVER DECIDED FROM THIS RENDER.
+		 * `draft` and `body` both come from the submit render, so comparing them
+		 * here is a tautology that wrote "" over text typed while the request was
+		 * in flight (review round 12, B1). `clearSent` re-reads the DURABLE row,
+		 * so a mid-flight edit keeps that row and the box keeps its text.
+		 */
+		const finish = () => {
+			// The journal lives ABOVE the keyed view, so a body left there reseeds
+			// the sent text on remount (review round 12, M1). Clear it under the
+			// same condition the durable store uses: still exactly what was sent.
+			if (draftJournal && draftJournal.body.trim() === body)
+				draftJournal.body = "";
+			draftState.clearSent(entryKey, body, clientRef);
+			settle();
 		};
 		if (result instanceof Promise) {
 			writing.current = true;
 			void result
-				.then(() => {
-					draftState.clearSent(entryKey, body, clientRef);
-					settle();
-				})
+				.then(finish)
 				.catch(() => {})
 				.finally(() => {
 					writing.current = false;
@@ -768,7 +778,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		} else {
 			// A synchronous send has already resolved: main's journal must not
 			// keep naming an attempt that is over.
-			settle();
+			finish();
 		}
 	};
 	const schedule = async (sendAt: string) => {
@@ -825,6 +835,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						throw new Error("draft persistence unavailable");
 				},
 			);
+			// Same two-store clear as a send: a journal body left behind reseeds the
+			// scheduled text as an unsent draft on remount (round 12, M1).
+			if (draftJournal && draftJournal.body.trim() === body)
+				draftJournal.body = "";
 			draftState.clearSent(entryKey, body, clientRef);
 			setScheduledSuccess(true);
 		} catch (error) {
