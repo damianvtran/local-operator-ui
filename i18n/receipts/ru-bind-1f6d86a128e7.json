@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-namespace-bind-reaudit",
+  "date": "2026-10-25",
+  "locale": "ru",
+  "namespace": "ui.chat.composer",
+  "batch": "ru-bind-1403",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "audited_head_short": "0adbb37b94",
+  "requested_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "instance": "ru-bind-1f6d86a128e7",
+  "instance_note": "Per-namespace bind instance; the 12-hex suffix is the first 12 hex of the current ru target sha256, so the id names the bytes it audited.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "0c5590aa68a9",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback selected or observed",
+    "fallback": null,
+    "independent_from_translator": true,
+    "independence_basis": "Independent translation-auditor session 0c5590aa68a9, separate from the translator (i18n-translator in the ledger). Bytes were read from git at 0adbb37b94; no catalogue or ledger file was edited by this run.",
+    "instance": "ru-bind-1f6d86a128e7"
+  },
+  "independence": "Independent translation-auditor session 0c5590aa68a9; translator was i18n-translator per the ledger. The audit read en and ru bytes from git at 0adbb37b94, edited no catalogue and no ledger row, and writes only this receipt.",
+  "scope": "Full re-audit of ui.chat.composer at the current bytes (bind audit): every key, not a delta.",
+  "method": "Read the en and ru JSON from git; compared key sets, ICU AST (arguments, number skeletons, select arms, plural categories, pound usage), rendered the ru messages with intl-messageformat (the same class used by src/i18n/messages) at 1/2/5/21 plus 0/3/4/6/11/22/1.5, and read the en context sidecars for role/tone/length. Catalogue-level audit only: no browser, no rendered-frame pass, no native-speaker sign-off is claimed.",
+  "source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+  "target_sha256": "1f6d86a128e758f04a6bd4cf6323ecdde8120e2d64a83148677dc89a3f7d090f",
+  "context_sha256": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c",
+  "checks": {
+    "en_keys": 66,
+    "ru_keys": 66,
+    "key_set_exact": true,
+    "icu_parsed": 66,
+    "icu_failures": 0,
+    "placeholders_exact": true,
+    "plural_categories_ru": "one/few/many/other",
+    "renders": {
+      "secret_confirm_chars": {
+        "1": "1 символ",
+        "2": "2 символа",
+        "5": "5 символов",
+        "21": "21 символ"
+      }
+    },
+    "length_checks": {
+      "suggestion_pool_budget": 42,
+      "chips_over_budget": {
+        "suggestion.review_repo_pr": 45
+      },
+      "tip_band_longest": {
+        "tip.ask_for_a_team": 60,
+        "tip.parallel_work": 57,
+        "tip.schedule": 56
+      },
+      "note": "tip band width was not rendered; the longest tips are named for a rendered check, not counted as findings"
+    }
+  },
+  "findings": [
+    {
+      "id": "RU-BIND-C-01",
+      "severity": "minor",
+      "category": "accuracy",
+      "key": "ui.chat.composer.suggestion.phone_access",
+      "current": "Доступ к телефону",
+      "proposed": "Доступ с телефона",
+      "reason": "The design round's D1 MAJOR (remediated in 5ffc6a5a78) shortened this chip to hold the pinned four-chip sample to two rows at the 550px floor, and that fit constraint stands. The approved short form still says access *to* the phone («к телефону»), while the feature and the locale's own tip (ui.chat.composer.tip.phone_access: «попросите доступ с телефона…») mean access *from* the phone; es and vi also render 'from' (desde / từ), and all six other locales keep the 'turn on' verb. The proposed «Доступ с телефона» is one character longer than the current chip and remains far inside the row budget the D1 fix freed, so it does not reopen the three-row defect.",
+      "introduced_by": "added by this PR, then shortened by the D1 remediation 5ffc6a5a78"
+    },
+    {
+      "id": "RU-BIND-C-02",
+      "severity": "minor",
+      "category": "glossary-consistency",
+      "key": "ui.chat.composer.tip.canvas",
+      "current": "откройте документ в холсте, чтобы он был рядом с чатом",
+      "proposed": "откройте документ в Canvas, чтобы он был рядом с чатом",
+      "reason": "The product's own pane name is Canvas and two en context sidecars say it stays untranslated (ui.common.file_actions.show_in_canvas, ui.chat.canonical.supplement.file_actions.open_in_canvas); five of the six other target locales keep it Latin. This is the open minor carried from the round-2 audit (R2-RU-EX-01); the proposed string is 54 cells inside the 59-cell tip band.",
+      "introduced_by": "added by this PR (carried from the round-2 audit R2-RU-EX-01)"
+    },
+    {
+      "id": "RU-BIND-C-03",
+      "severity": "nit",
+      "category": "overflow",
+      "key": "ui.chat.composer.suggestion.review_repo_pr",
+      "current": "Проверьте репозиторий и откройте pull request",
+      "proposed": "Проверьте репозиторий и откройте PR",
+      "reason": "45 characters against the 42-character chip-pool budget stated in the chip context; the prior audit also measured 45/42 and treated it as non-gating. Flagged for a rendered check, with a 34-cell proposal using the standard «PR» abbreviation; this is not a fit break on its own.",
+      "introduced_by": "added by this PR"
+    },
+    {
+      "id": "RU-BIND-C-04",
+      "severity": "nit",
+      "category": "register",
+      "key": "ui.chat.composer.secret_confirm_put",
+      "current": "В поле секрета",
+      "proposed": "Поместить в поле секрета",
+      "reason": "The primary confirm action's tone is a short imperative; the ru is a destination phrase («В поле секрета»), not parallel with the sibling action «Отправить сообщением», though the dialog makes the destination clear. The proposal is exactly the 24-cell budget.",
+      "introduced_by": "added by this PR"
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 2
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed — 66/66 keys, 0 blocker/major, 2 minors (phone-access direction, Canvas pane-name policy) and 2 nits (45/42 chip overflow, secret-field button register); plural renders correct at 1/2/5/21 and 1.5.",
+  "notes": "Design round 1 D1 is the authority for the two shortened ru chips (5ffc6a5a78); this audit records the residual preposition cost and proposes a one-character fix that keeps the two-row pin. The prior round-2 audit's open minor (R2-RU-EX-01, tip.canvas) is carried."
+}

@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-final-key-translation-audit",
+  "date": "2026-10-25",
+  "locale": "es",
+  "namespace": "ui.chat.header",
+  "pr": "#1403",
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+  "content_audited_head": "ae40ebc959d9e3dbee6001f7e16d41f050af113e",
+  "head_identity": "The en, en.context and es blobs for this namespace are byte-identical between content_audited_head ae40ebc959 and audited_head d784571d90 (git diff --quiet for the three files). The commits in between touch other locales' badge values plus an English-source add/revert pair (a2be7769e7 'pluralize the chat counter total', d784571d90 Revert) whose net tree diff is empty.",
+  "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "batch_commits": {
+    "es_translation": "9b0148d53cab0faabae47ec23709b5189636c8b9",
+    "badge_plural": "d8de01976218ce39018c459ae87cd1e657c40e5d"
+  },
+  "instance": "es-final-c7acf4522dbc",
+  "status": "clean",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "65856d4a9723",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independent_from_translators": true,
+    "independence_basis": "Separate session 65856d4a9723 from the es translation commits 9b0148d53c and d8de019762. This run read the catalogue bytes with git show, wrote no translated value, edited no catalogue, English, ledger, allowance or generated file, and did not author or approve the es values under audit. The earlier es sidebar audit es-extract-a815d841bd5d-r2 is a different receipt and does not cover this delta."
+  },
+  "references": {
+    "glossary": {
+      "path": "local_operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local_operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "scope": "Full ui.chat.header namespace (12 keys; 2 new: new_chat, new_chat_with), read at the current PR head against the English source and context sidecar.",
+  "method": [
+    "Read all 12 ui.chat.header values at the current head against the English source and the en context sidecar; key set and order equal, no English stub.",
+    "Parsed all 12 messages with @formatjs/icu-messageformat-parser: {target} in new_chat_with is preserved exactly; the namespace has no plural, select or number skeleton.",
+    "Checked every maxCells hint: new_chat 10/16 cells, new_chat_with 23/32 including {target}; no new key exceeds its budget. Pre-existing conversation_name 25/24 and close/open run details 28/27 vs 20 are unchanged advisory overruns outside this delta.",
+    "Checked UTF-8/NFC, BOM, CRLF, duplicate keys, bidi controls and whitespace; read tone and role against the sidecar: short sentence-case titles, no address form, 'chat' the audited house noun and 'conversación' kept for conversation.",
+    "Confirmed the en, en.context and es blobs are byte-identical between content_audited_head ae40ebc959 and the current head 566fed8845; the intervening commits touch only vi and zh-CN."
+  ],
+  "namespaces": {
+    "ui.chat.header": {
+      "keys_read": 12,
+      "changed_keys": 2,
+      "sha256": {
+        "en": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+        "target": "0662c7cbe58aec6ccfe17e48fb6f0e257f53a948ef6dcbfcedd28a5f821a52f5"
+      },
+      "context_sha256": "39558b26f12ae22908a146f61c8c40795ac9e3b19e41a6ebed7ada883e7281bf",
+      "key_set": "equal to English; no extra or missing key",
+      "status": "clean",
+      "findings": []
+    }
+  },
+  "findings": [],
+  "verdict": "clean — 12 keys read; both new header titles are accurate, idiomatic and inside their maxCells budgets, and neither introduces an address-form choice.",
+  "limitations": "Static catalogue audit only: no rendered screen was built or captured in this pass, so width checks are code-point arithmetic against the sidecar hints, not measured pixels. No native-speaker sign-off is claimed. The catalogue values are the subject; component call sites were read only to establish role and placeholder meaning."
+}

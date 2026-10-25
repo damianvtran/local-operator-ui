@@ -1,0 +1,405 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"locale": "zh-CN",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor (lopdev team)",
+	"session": "412a348ada6d",
+	"instance": "zh-cn-extract-734dc4749c3d-r2",
+	"model": "deepseek/deepseek-flash",
+	"model_fallback": "none",
+	"model_note": "Harness session model tag deepseek/deepseek-flash; no model switch or fallback occurred during this run. The instance keeps the round-1 extract id and is lower-case only to satisfy the ledger charset rule (isPlaceholderInstance and isRepoReceiptPath require ^[a-z0-9_-]+$); the locale it names is zh-CN.",
+	"independence": "Independent auditor: I did not translate or remediate this locale, and I edited no catalogue, English source, context sidecar, ledger, allowance or generated file. Every value was read from git objects at the recorded head; the only file this round adds is this receipt.",
+	"date": "2026-10-24",
+	"round": 2,
+	"scope": {
+		"pr": 1403,
+		"branch": "feat/i18n-key-remaining-copy",
+		"base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+		"previous_head": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+		"interim_head": "e9771396c296382dfc03816174de06222e860fae",
+		"head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+		"remediation": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c..d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+		"note": "Round 2 covers all seven namespaces at the recorded head. Four changed since round 1: composer (1 value), device (1), directory (14: the ten identifiers fixed at e9771396c2 plus four audit values fixed at 6d6530f15e), ui.chat (5). The three unchanged namespaces are byte-identical to the round-1 receipt. Values were read with git show; nothing was checked out or reset, and no catalogue, English source, context sidecar, ledger, allowance or generated file was edited. The only file this round adds is this receipt."
+	},
+	"references": {
+		"core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		}
+	},
+	"supersedes": [
+		{
+			"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d.json",
+			"sha256": "6ea1b6aaad9230050c7b994492c80bbe6e8bb81a5a8f8a8d8ff9490697740c49",
+			"covers": "round 1, all seven namespaces; its three unchanged blocks carry forward here"
+		},
+		{
+			"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-dir-r2.json",
+			"sha256": "be0f37fbf23161e8f81d5033dc72650ed7edbf30e8f96d30e10e5a8ac6dc543e",
+			"covers": "interim directory-only round 2 at e9771396c2; this receipt re-reads directory at the current head"
+		}
+	],
+	"keys_read": 134,
+	"namespace_count": 7,
+	"status": "passed",
+	"verdict": "passed — clean-with-findings: 0 blocker, 0 major, 2 minor, 0 nit over 134 extract keys. The round-1 blocker is resolved: all ten filesystem identifiers are literal and byte-identical to English. 8 of the 9 round-1 findings are fully addressed; the device finding is partially addressed (sentence.remote now 移回此处, sentence.local still 召回). The directory fix left remove_recent on the old 最近的目录 term (new minor). No defect changes what a control does; nothing blocks release.",
+	"round1_findings_summary": {
+		"findings_total": 9,
+		"findings_fully_addressed": 8,
+		"findings_partially_addressed": 1,
+		"finding_keys_total": 22,
+		"finding_keys_addressed": 21,
+		"blocker_resolved": true,
+		"open_from_round_1": [
+			"ui.chat.device.sentence.local"
+		],
+		"new_in_round_2": [
+			"ui.chat.directory.remove_recent"
+		]
+	},
+	"remediation_verification": [
+		{
+			"ns": "ui.chat.composer",
+			"key": "ui.chat.composer.placeholder.aside",
+			"severity": "minor",
+			"previous": "不留记录地提问 — Esc关闭旁支对话",
+			"current": "不留记录地提问——Esc关闭旁支对话",
+			"proposed": "不留记录地提问——Esc关闭旁支对话",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.device",
+			"key": "ui.chat.device.sentence.local",
+			"severity": "minor",
+			"previous": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后召回。",
+			"current": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后召回。",
+			"proposed": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。",
+			"addressed": false
+		},
+		{
+			"ns": "ui.chat.device",
+			"key": "ui.chat.device.sentence.remote",
+			"severity": "minor",
+			"previous": "此对话在{name}上运行。点击可将其召回此处，或继续迁移。",
+			"current": "此对话在{name}上运行。点击可将其移回此处，或继续迁移。",
+			"proposed": "此对话在{name}上运行。点击可将其移回此处，或继续迁移。",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.etc",
+			"severity": "blocker",
+			"previous": "系统配置",
+			"current": "etc",
+			"proposed": "etc",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.media",
+			"severity": "blocker",
+			"previous": "媒体",
+			"current": "media",
+			"proposed": "media",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.mnt",
+			"severity": "blocker",
+			"previous": "挂载点",
+			"current": "mnt",
+			"proposed": "mnt",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.opt",
+			"severity": "blocker",
+			"previous": "可选软件",
+			"current": "opt",
+			"proposed": "opt",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.srv",
+			"severity": "blocker",
+			"previous": "服务数据",
+			"current": "srv",
+			"proposed": "srv",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.usr",
+			"severity": "blocker",
+			"previous": "系统程序",
+			"current": "usr",
+			"proposed": "usr",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.var",
+			"severity": "blocker",
+			"previous": "可变数据",
+			"current": "var",
+			"proposed": "var",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.program_data",
+			"severity": "blocker",
+			"previous": "程序数据",
+			"current": "ProgramData",
+			"proposed": "ProgramData",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.program_files",
+			"severity": "blocker",
+			"previous": "程序文件",
+			"current": "Program Files",
+			"proposed": "Program Files",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.folder.program_files_x86",
+			"severity": "blocker",
+			"previous": "程序文件（x86）",
+			"current": "Program Files (x86)",
+			"proposed": "Program Files (x86)",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.menu.no_recent",
+			"severity": "minor",
+			"previous": "没有最近的目录",
+			"current": "暂无最近使用的目录",
+			"proposed": "暂无最近使用的目录",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.menu.recent",
+			"severity": "minor",
+			"previous": "最近的目录",
+			"current": "最近使用的目录",
+			"proposed": "最近使用的目录",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.announce.invalid",
+			"severity": "nit",
+			"previous": "{path}不是此计算机上的目录",
+			"current": "{path}不是本机上的目录",
+			"proposed": "{path}不是本机上的目录",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat.directory",
+			"key": "ui.chat.directory.tooltip.invalid",
+			"severity": "nit",
+			"previous": "{path}不是此计算机上的目录",
+			"current": "{path}不是本机上的目录",
+			"proposed": "{path}不是本机上的目录",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat",
+			"key": "ui.chat.question_dock.secret_answer_label",
+			"severity": "minor",
+			"previous": "敏感信息回答",
+			"current": "填写敏感信息",
+			"proposed": "填写敏感信息",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat",
+			"key": "ui.chat.question_dock.secret_value_label",
+			"severity": "minor",
+			"previous": "敏感信息值",
+			"current": "敏感信息",
+			"proposed": "敏感信息",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat",
+			"key": "ui.chat.question_dock.secret_note",
+			"severity": "minor",
+			"previous": "输入时隐藏 — 会发送给智能体，不显示在会话记录中。",
+			"current": "输入时隐藏——会发送给智能体，不显示在会话记录中。",
+			"proposed": "输入时隐藏——会发送给智能体，不显示在会话记录中。",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat",
+			"key": "ui.chat.session_status.choose_model_tooltip",
+			"severity": "nit",
+			"previous": "选择此对话将要运行的模型",
+			"current": "选择此对话使用的模型",
+			"proposed": "选择此对话使用的模型",
+			"addressed": true
+		},
+		{
+			"ns": "ui.chat",
+			"key": "ui.chat.hub_update.update_all_label",
+			"severity": "nit",
+			"previous": "{kind, select, agents {从中心更新全部{count, number, ::group-off}项智能体更新} teams {从中心更新全部{count, number, ::group-off}项团队更新} skills {从中心更新全部{count, number, ::group-off}项技能更新} other {从中心更新全部{count, number, ::group-off}项}}",
+			"current": "{kind, select, agents {从中心应用全部{count, number, ::group-off}项智能体更新} teams {从中心应用全部{count, number, ::group-off}项团队更新} skills {从中心应用全部{count, number, ::group-off}项技能更新} other {从中心应用全部{count, number, ::group-off}项}}",
+			"proposed": "{kind, select, agents {从中心应用全部{count, number, ::group-off}项智能体更新} teams {从中心应用全部{count, number, ::group-off}项团队更新} skills {从中心应用全部{count, number, ::group-off}项技能更新} other {从中心应用全部{count, number, ::group-off}项}}",
+			"addressed": true
+		}
+	],
+	"observations": [
+		"Byte-level diff f517ec48..d082bd9595 for the four zh-CN files is exactly 21 insertions and 21 deletions: composer 1, device 1, directory 14 (10 identifiers at e9771396c2 + 4 values at 6d6530f15e), ui.chat 5. The other 113 of the 134 extract values are byte-identical to round 1.",
+		"All ten identifiers are byte-identical to English at the head: etc, media, mnt, opt, srv, usr, var, ProgramData, Program Files, Program Files (x86). The gate's IDENTICAL_OK covers the seven path segments and ProgramData globally, plus program_files and program_files_x86 with zh-CN-scoped rows.",
+		"ICU feature parity re-derived for all 134 extract keys with the repository's real parser (@formatjs/icu-messageformat-parser): argument names, select arms and ::group-off number skeletons are identical, 0 mismatches. No plural message exists in the extract; the changed update_all_label keeps agents/teams/skills/other and the count skeleton in every arm.",
+		"English catalogues and context sidecars are byte-identical to the round-1 head for all seven namespaces, so every en/context hash carries; only the four zh-CN target hashes moved.",
+		"The three unchanged namespaces are byte-identical to the round-1 receipt on all three hashes: dialogs (6 keys), sidebar (1 key), viewer (4 keys); their round-1 clean verdicts carry.",
+		"21 of the 22 round-1 finding-keys now match the proposed text exactly. The exception is ui.chat.device.sentence.local, unchanged at 或稍后召回; the remediation commit changed only the key named in the finding's `key` field, not the second key in its `keys` array.",
+		"The directory menu fix created one new inconsistency: remove_recent still says 最近的目录 while menu.recent and menu.no_recent now say 最近使用的目录. The context identifies remove_recent as the prune control on a recent-directory row, so it is the same term.",
+		"The two spaced ASCII em dashes from round 1 are gone (composer placeholder.aside and question_dock.secret_note now use the unspaced full-width ——). No 您, standalone 请, 啦/哦/呀, ！, ASCII ellipsis or ASCII quote occurs in the 134; 请 remains only inside 请求/申请 compounds.",
+		"Width: none of the 21 changed values carries maxCells; a full 134-key cell scan finds no value over budget (the largest is still 在此设备上运行 at 14 cells against a 20-cell budget).",
+		"Placeholder specifics re-checked in the changed bytes: {path} verbatim in announce.invalid, tooltip.invalid and remove_recent; {name} in sentence.remote; {kind} and {count} with ::group-off in update_all_label; the source-pinned `{path} - ` prefix in truncated_move_cost is untouched.",
+		"Different English verbs were not conflated: sentence.gone / 'bring it back' is 带回此处, which is not the recall term and is not flagged; only sentence.local's 召回 is the drift.",
+		"Key parity at the head: 134 extract keys and 229 total keys across the seven namespaces match English exactly, 0 missing, 0 extra."
+	],
+	"namespaces": {
+		"ui.chat.composer": {
+			"status": "passed",
+			"verdict": "clean: 30 extract keys re-read; the round-1 minor (placeholder.aside spacing) is fixed exactly as proposed",
+			"keys_audited": 30,
+			"namespace_key_count": 66,
+			"changed_values_since_round_1": 1,
+			"byte_identical_to_round_1": false,
+			"sha256": {
+				"en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+				"zh-CN": "68cb70b7a354d4cbc622b0f69d4603d4fd58bcd512c8a574478ef10a46f8c0fd",
+				"context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c"
+			},
+			"findings": []
+		},
+		"ui.chat.device": {
+			"status": "passed",
+			"verdict": "clean-with-findings: 1 minor carried and narrowed — sentence.remote now 移回此处, sentence.local still 召回; 14 keys re-read",
+			"keys_audited": 14,
+			"namespace_key_count": 14,
+			"changed_values_since_round_1": 1,
+			"byte_identical_to_round_1": false,
+			"sha256": {
+				"en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+				"zh-CN": "0dbaa05e826b2b02841ea3ea1404ca660c16450128a536cda3e1a68c6cde30ad",
+				"context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce"
+			},
+			"findings": [
+				{
+					"severity": "minor",
+					"key": "ui.chat.device.sentence.local",
+					"keys": [
+						"ui.chat.device.sentence.local"
+					],
+					"current": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后召回。",
+					"proposed": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。",
+					"reason": "Round 1 flagged both sentence.local and sentence.remote for rendering the same English 'recall' as 召回 while this locale's four ui.mesh recall strings use 移回. The remediation changed only sentence.remote (the finding's `key`), so the local arm still says 召回 and the same control family now uses two terms. Carried from round 1, narrowed to this key.",
+					"carried_from": "round 1 (zh-cn-extract-734dc4749c3d)",
+					"remediation_status": "partially addressed"
+				}
+			]
+		},
+		"ui.chat.dialogs": {
+			"status": "passed",
+			"verdict": "clean: 6 keys, byte-identical to the round-1 receipt; round-1 clean verdict carried",
+			"keys_audited": 6,
+			"namespace_key_count": 10,
+			"changed_values_since_round_1": 0,
+			"byte_identical_to_round_1": true,
+			"sha256": {
+				"en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+				"zh-CN": "3dc39047a762c8db7fffee313d735d55a77b7dbcffda534e8ca0f2819a64bbd5",
+				"context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299"
+			},
+			"findings": []
+		},
+		"ui.chat.directory": {
+			"status": "passed",
+			"verdict": "clean-with-findings: round-1 blocker resolved (10/10 identifiers literal), round-1 minor and nit fixed; 1 new minor (remove_recent still 最近的目录); 43 keys re-read",
+			"keys_audited": 43,
+			"namespace_key_count": 43,
+			"changed_values_since_round_1": 14,
+			"byte_identical_to_round_1": false,
+			"sha256": {
+				"en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+				"zh-CN": "18a26364c7dd5421fa2613992d7936441299a9cb81d20e6d41410d2d897f7c03",
+				"context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+			},
+			"findings": [
+				{
+					"severity": "minor",
+					"key": "ui.chat.directory.remove_recent",
+					"keys": [
+						"ui.chat.directory.remove_recent"
+					],
+					"current": "将{path}从最近的目录中移除",
+					"proposed": "将{path}从最近使用的目录中移除",
+					"reason": "The fix moved menu.recent and menu.no_recent to 最近使用的目录 but left the third occurrence of the same English term ('from recent directories') on 最近的目录. The context names this the prune control on a recent-directory row, so the same picker now renders 'recent' two ways. New in round 2, exposed by the partial fix.",
+					"origin": "round 2 remediation (6d6530f15e)"
+				}
+			]
+		},
+		"ui.chat": {
+			"status": "passed",
+			"verdict": "clean: 36 extract keys re-read; all four round-1 findings fixed exactly as proposed",
+			"keys_audited": 36,
+			"namespace_key_count": 44,
+			"changed_values_since_round_1": 5,
+			"byte_identical_to_round_1": false,
+			"sha256": {
+				"en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+				"zh-CN": "2f0fa402e0f8959bd8b0ec214092f07d97b1e9733979d546709851dc26957a9f",
+				"context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424"
+			},
+			"findings": []
+		},
+		"ui.chat.sidebar": {
+			"status": "passed",
+			"verdict": "clean: 1 key, byte-identical to the round-1 receipt; round-1 clean verdict carried",
+			"keys_audited": 1,
+			"namespace_key_count": 44,
+			"changed_values_since_round_1": 0,
+			"byte_identical_to_round_1": true,
+			"sha256": {
+				"en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+				"zh-CN": "8c123f38a30f55130c7bfe62a6d49068095cb440431723b11b347c4f63870f53",
+				"context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de"
+			},
+			"findings": []
+		},
+		"ui.common.viewer": {
+			"status": "passed",
+			"verdict": "clean: 4 keys, byte-identical to the round-1 receipt; round-1 clean verdict carried",
+			"keys_audited": 4,
+			"namespace_key_count": 8,
+			"changed_values_since_round_1": 0,
+			"byte_identical_to_round_1": true,
+			"sha256": {
+				"en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+				"zh-CN": "5efff290b4ad62356dd60d5a18116b64e88c6b161ff115bd895cd875704323e3",
+				"context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5"
+			},
+			"findings": []
+		}
+	}
+}

@@ -26,6 +26,7 @@
  * same rule for the sections).
  */
 
+import { t } from "@shared/i18n";
 import {
 	CATALOGUE_GROUP_PAGE,
 	type CatalogueScopeCounts,
@@ -317,7 +318,7 @@ export function scopeCensusTotal(
  * on the group's row and in the badge's `title`.
  */
 export function groupBadgeLabel(badge: number): string {
-	return `${badge} chats in this group`;
+	return t("ui.chat.sidebar.groups.badge", { badge });
 }
 
 /**
@@ -373,11 +374,21 @@ export function catalogueTotalSentence(args: {
 		 * the one place in the panel claiming an exact number it knows to be a floor. The
 		 * `+` is the badge's own idiom, which is why it is the one used.
 		 */
-		const noun = args.shown === 1 ? "match" : "matches";
-		const exact = args.clipped === true ? "+" : "";
-		return `Showing ${args.shown}${exact} ${noun} of ${args.total} chats`;
+		/*
+		 * The CAP-DEPENDENT `+` is a different sentence, not a suffix the caller
+		 * concatenates: a translation may place the mark elsewhere, so each arm is
+		 * its own catalogue message. The match/matches plural is ICU's, keyed on
+		 * the drawn count, so the noun follows the same number the sentence says.
+		 */
+		const params = { shown: args.shown, total: args.total };
+		return args.clipped === true
+			? t("ui.chat.sidebar.catalogue.total_search_clipped", params)
+			: t("ui.chat.sidebar.catalogue.total_search", params);
 	}
-	return `Showing ${args.shown} of ${args.total} chats`;
+	return t("ui.chat.sidebar.catalogue.total", {
+		shown: args.shown,
+		total: args.total,
+	});
 }
 
 /**

@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-final-key-translation-audit",
+  "date": "2026-10-25",
+  "locale": "es",
+  "namespace": "ui.chat.sidebar",
+  "pr": "#1403",
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+  "content_audited_head": "ae40ebc959d9e3dbee6001f7e16d41f050af113e",
+  "head_identity": "The en, en.context and es blobs for this namespace are byte-identical between content_audited_head ae40ebc959 and audited_head d784571d90 (git diff --quiet for the three files). The commits in between touch other locales' badge values plus an English-source add/revert pair (a2be7769e7 'pluralize the chat counter total', d784571d90 Revert) whose net tree diff is empty.",
+  "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "batch_commits": {
+    "es_translation": "9b0148d53cab0faabae47ec23709b5189636c8b9",
+    "badge_plural": "d8de01976218ce39018c459ae87cd1e657c40e5d"
+  },
+  "instance": "es-final-31a1e4ddb7a4",
+  "status": "clean-with-findings",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "65856d4a9723",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independent_from_translators": true,
+    "independence_basis": "Separate session 65856d4a9723 from the es translation commits 9b0148d53c and d8de019762. This run read the catalogue bytes with git show, wrote no translated value, edited no catalogue, English, ledger, allowance or generated file, and did not author or approve the es values under audit. The earlier es sidebar audit es-extract-a815d841bd5d-r2 is a different receipt and does not cover this delta."
+  },
+  "references": {
+    "glossary": {
+      "path": "local_operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local_operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "scope": "Full ui.chat.sidebar namespace (49 keys; 6 changed: builtin_offer, catalogue.total, catalogue.total_search, catalogue.total_search_clipped, groups.badge, section.current_chat), read at the current PR head against the English source and context sidecar.",
+  "method": [
+    "Read all 49 ui.chat.sidebar values at the current head against the English source and the en context sidecar; key sets equal, no English stub. Key order differs from en only because en inserts agents.builtin_offer after agents.no_match while es keeps the file's sorted order; keys.gen sorts, so there is no runtime effect.",
+    "Parsed all 49 messages with @formatjs/icu-messageformat-parser. Intended es deltas only: the many arms on groups.badge, catalogue.total_search and catalogue.total_search_clipped, and groups.badge's explicit {badge, number, ::group-off} per arm instead of #, the documented way to keep the compact badge ungrouped. Every other argument, skeleton and tag is identical to en.",
+    "Rendered every plural message with intl-messageformat 12.1.3 at locale es for 0, 1, 2, 3, 6, 7, 999999, 1000000, 1000001, 1500000, 2000000 and 3000000. groups.badge yields '1 chat' at one, '1000000 de chats' at exact millions and '1500000 chats' at 1.5M; the two search counters yield 'coincidencia' / 'de coincidencias' / 'coincidencias' on the same boundaries. No ICU or render error.",
+    "Checked glossary and register: 'agentes integrados' matches agents.dismiss_offer and ui.agents.starters; 'chat/chats' is the audited es house loanword; builtin_offer addresses the reader as tú; sentence case, spaced em dash, no '!'.",
+    "Checked UTF-8/NFC, BOM, CRLF, duplicate keys, bidi controls, leading/trailing whitespace and double spaces. The sidecar carries no maxCells in this namespace; widths were compared by code point only (builtin_offer ~1.2x en, the three counters ~1.1x). No rendered frame was built or captured.",
+    "Confirmed the en, en.context and es blobs are byte-identical between content_audited_head ae40ebc959 and the current head 566fed8845; the intervening commits touch only vi and zh-CN."
+  ],
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "keys_read": 49,
+      "changed_keys": 6,
+      "sha256": {
+        "en": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+        "target": "dcf7a90d4488229bb88db0627be92b659308e5d692e8ded2b7ad3f1c4f9d368a"
+      },
+      "context_sha256": "0a5a1fc27e8d0cab8dfe9b086144a19969268403afded5a7a68036eaf5485339",
+      "key_set": "equal to English; no extra or missing key",
+      "status": "clean-with-findings",
+      "findings": [
+        {
+          "id": "S1",
+          "severity": "minor",
+          "namespace": "ui.chat.sidebar",
+          "keys": [
+            "ui.chat.sidebar.catalogue.total",
+            "ui.chat.sidebar.catalogue.total_search",
+            "ui.chat.sidebar.catalogue.total_search_clipped"
+          ],
+          "current": [
+            "Mostrando {shown, number, ::group-off} de {total, number, ::group-off} chats",
+            "Mostrando {shown, number, ::group-off} {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, number, ::group-off} chats",
+            "Mostrando {shown, number, ::group-off}+ {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, number, ::group-off} chats"
+          ],
+          "proposed": [
+            "Mostrando {shown, number, ::group-off} de {total, plural, one {{total, number, ::group-off} chat} many {{total, number, ::group-off} de chats} other {{total, number, ::group-off} chats}}",
+            "Mostrando {shown, number, ::group-off} {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, plural, one {{total, number, ::group-off} chat} many {{total, number, ::group-off} de chats} other {{total, number, ::group-off} chats}}",
+            "Mostrando {shown, number, ::group-off}+ {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, plural, one {{total, number, ::group-off} chat} many {{total, number, ::group-off} de chats} other {{total, number, ::group-off} chats}}"
+          ],
+          "reason": "The denominator is a bare number followed by a fixed noun, so at an exact multiple of 10^6 it reads 'de 1000000 chats'. Spanish requires the 'de' complement for the numeral noun millon at exact millions: RAE DPD, cardinales, states '1 000 000 de personas' but '1 200 000 personas' for a complex numeral. The locale already carries this exact total-plural shape in ui.mesh.mesh_node.shown_conversations and ui.schedules.count.list_truncated, both with a many arm and 'de conversaciones'. The numerator's many arm is correct; only the denominator lacks the category. Minor: no count is lost and the value is an edge of the census domain, not a normal catalogue size.",
+          "evidence": "IntlMessageFormat es, current: total=1000000 -> 'Mostrando 1 de 1000000 chats'; total=1500000 -> 'Mostrando 1 de 1500000 chats'. Proposed: total=1000000 -> 'Mostrando 1 de 1000000 de chats'; total=1500000 -> 'Mostrando 1 de 1500000 chats'. Same behaviour for total_search and total_search_clipped; the shown many arm already yields '1000000 de coincidencias'."
+        },
+        {
+          "id": "S2",
+          "severity": "nit",
+          "namespace": "ui.chat.sidebar",
+          "keys": [
+            "ui.chat.sidebar.agents.builtin_offer"
+          ],
+          "current": "{count, plural, =0 {No hay agentes integrados listos para instalar — {list}. Puedes editarlos una vez instalados.} one {Un agente integrado está listo para instalar — {list}. Puedes editarlo una vez instalado.} =2 {Dos agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =3 {Tres agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =4 {Cuatro agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =5 {Cinco agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =6 {Seis agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} other {{count, number, ::group-off} agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.}}",
+          "proposed": "{count, plural, =0 {No hay agentes integrados listos para instalar — {list}. Puedes editarlos una vez instalados.} one {Un agente integrado está listo para instalar — {list}. Puedes editarlo una vez instalado.} =2 {Dos agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =3 {Tres agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =4 {Cuatro agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =5 {Cinco agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =6 {Seis agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} many {{count, number, ::group-off} de agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} other {{count, number, ::group-off} agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.}}",
+          "reason": "Spanish CLDR selects many at exact multiples of 10^6, and this message has no many arm, so ICU falls back to other and 1,000,000 renders '1000000 agentes integrados' instead of '1000000 de agentes integrados'. The sibling ui.agents.starters.available, counting the same packaged built-ins, already carries 'de agentes integrados'; ui.mesh.mesh_list.conversation_count shows the explicit =0 plus many pattern. The packaged profile count is single-digit today, so this arm cannot occur with today's shipped profile set; recorded for CLDR completeness, not as a user-facing defect.",
+          "evidence": "IntlMessageFormat es, current: count=1000000 -> '1000000 agentes integrados están listos para instalar — A, B. ...'; proposed: -> '1000000 de agentes integrados están listos para instalar — A, B. ...'. count=1000001 and 1500000 stay without 'de' in both."
+        }
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "S1",
+      "severity": "minor",
+      "namespace": "ui.chat.sidebar",
+      "keys": [
+        "ui.chat.sidebar.catalogue.total",
+        "ui.chat.sidebar.catalogue.total_search",
+        "ui.chat.sidebar.catalogue.total_search_clipped"
+      ],
+      "current": [
+        "Mostrando {shown, number, ::group-off} de {total, number, ::group-off} chats",
+        "Mostrando {shown, number, ::group-off} {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, number, ::group-off} chats",
+        "Mostrando {shown, number, ::group-off}+ {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, number, ::group-off} chats"
+      ],
+      "proposed": [
+        "Mostrando {shown, number, ::group-off} de {total, plural, one {{total, number, ::group-off} chat} many {{total, number, ::group-off} de chats} other {{total, number, ::group-off} chats}}",
+        "Mostrando {shown, number, ::group-off} {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, plural, one {{total, number, ::group-off} chat} many {{total, number, ::group-off} de chats} other {{total, number, ::group-off} chats}}",
+        "Mostrando {shown, number, ::group-off}+ {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, plural, one {{total, number, ::group-off} chat} many {{total, number, ::group-off} de chats} other {{total, number, ::group-off} chats}}"
+      ],
+      "reason": "The denominator is a bare number followed by a fixed noun, so at an exact multiple of 10^6 it reads 'de 1000000 chats'. Spanish requires the 'de' complement for the numeral noun millon at exact millions: RAE DPD, cardinales, states '1 000 000 de personas' but '1 200 000 personas' for a complex numeral. The locale already carries this exact total-plural shape in ui.mesh.mesh_node.shown_conversations and ui.schedules.count.list_truncated, both with a many arm and 'de conversaciones'. The numerator's many arm is correct; only the denominator lacks the category. Minor: no count is lost and the value is an edge of the census domain, not a normal catalogue size.",
+      "evidence": "IntlMessageFormat es, current: total=1000000 -> 'Mostrando 1 de 1000000 chats'; total=1500000 -> 'Mostrando 1 de 1500000 chats'. Proposed: total=1000000 -> 'Mostrando 1 de 1000000 de chats'; total=1500000 -> 'Mostrando 1 de 1500000 chats'. Same behaviour for total_search and total_search_clipped; the shown many arm already yields '1000000 de coincidencias'. A branch pair a2be7769e7/d784571d90 briefly wrapped the English total in {total, plural, one {# chat} other {# chats}} and reverted it; that form renders the number via # (grouped), so the locale-side fix above keeps the explicit {total, number, ::group-off} arm text instead."
+    },
+    {
+      "id": "S2",
+      "severity": "nit",
+      "namespace": "ui.chat.sidebar",
+      "keys": [
+        "ui.chat.sidebar.agents.builtin_offer"
+      ],
+      "current": "{count, plural, =0 {No hay agentes integrados listos para instalar — {list}. Puedes editarlos una vez instalados.} one {Un agente integrado está listo para instalar — {list}. Puedes editarlo una vez instalado.} =2 {Dos agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =3 {Tres agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =4 {Cuatro agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =5 {Cinco agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =6 {Seis agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} other {{count, number, ::group-off} agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.}}",
+      "proposed": "{count, plural, =0 {No hay agentes integrados listos para instalar — {list}. Puedes editarlos una vez instalados.} one {Un agente integrado está listo para instalar — {list}. Puedes editarlo una vez instalado.} =2 {Dos agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =3 {Tres agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =4 {Cuatro agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =5 {Cinco agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} =6 {Seis agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} many {{count, number, ::group-off} de agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.} other {{count, number, ::group-off} agentes integrados están listos para instalar — {list}. Puedes editarlos una vez instalados.}}",
+      "reason": "Spanish CLDR selects many at exact multiples of 10^6, and this message has no many arm, so ICU falls back to other and 1,000,000 renders '1000000 agentes integrados' instead of '1000000 de agentes integrados'. The sibling ui.agents.starters.available, counting the same packaged built-ins, already carries 'de agentes integrados'; ui.mesh.mesh_list.conversation_count shows the explicit =0 plus many pattern. The packaged profile count is single-digit today, so this arm cannot occur with today's shipped profile set; recorded for CLDR completeness, not as a user-facing defect.",
+      "evidence": "IntlMessageFormat es, current: count=1000000 -> '1000000 agentes integrados están listos para instalar — A, B. ...'; proposed: -> '1000000 de agentes integrados están listos para instalar — A, B. ...'. count=1000001 and 1500000 stay without 'de' in both."
+    }
+  ],
+  "verdict": "clean-with-findings — 49 keys read; 0 blockers, 0 majors, 1 minor, 1 nit. The two added many arms and the badge's de chats form render correctly at exact millions; the denominator total does not yet carry the same category, and builtin_offer lacks a many arm for a count the shipped set cannot reach.",
+  "limitations": "Static catalogue audit only: no rendered screen was built or captured in this pass, so width checks are code-point arithmetic against the sidecar hints, not measured pixels. No native-speaker sign-off is claimed. The catalogue values are the subject; component call sites were read only to establish role and placeholder meaning."
+}

@@ -2286,7 +2286,10 @@ test("the expanded body caps itself, keeps the author's breaks, and carries its 
 	assert.doesNotMatch(source, /max-h-32/);
 	assert.match(source, /whitespace-pre-wrap break-words/);
 	assert.match(source, /role="group"/);
-	assert.match(source, /aria-label="Session goal"/);
+	assert.match(
+		source,
+		/aria-label=\{t\("ui\.chat\.composer\.status\.session_goal"\)\}/,
+	);
 	assert.match(source, /tabIndex=\{0\}/);
 	/*
 	 * The plan chip REVEALS and is not a toggle: no `aria-pressed` and no pressed

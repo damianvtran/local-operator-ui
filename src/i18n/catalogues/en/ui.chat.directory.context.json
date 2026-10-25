@@ -1,0 +1,274 @@
+{
+	"ui.chat.directory.announce.invalid": {
+		"role": "live-region announcement after a directory commit",
+		"tone": "statement, sentence case, trailing period where shown",
+		"note": "Polite screen-reader announcement, never a toast. The invalid arm must not claim the commit failed for permission reasons: the check is readability.",
+		"placeholders": {
+			"path": "a directory path as the machine spells it. Keep it verbatim, including `~` and separators; never translate a path."
+		}
+	},
+	"ui.chat.directory.announce.set": {
+		"role": "live-region announcement after a directory commit",
+		"tone": "statement, sentence case, trailing period where shown",
+		"note": "Polite screen-reader announcement, never a toast. The invalid arm must not claim the commit failed for permission reasons: the check is readability.",
+		"placeholders": {
+			"path": "a directory path as the machine spells it. Keep it verbatim, including `~` and separators; never translate a path."
+		}
+	},
+	"ui.chat.directory.enter_path_label": {
+		"role": "editable path field in the chip",
+		"tone": "short noun phrase",
+		"note": "The label is the field's accessible name; the placeholder is the hint inside an empty field.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.enter_path_placeholder": {
+		"role": "editable path field in the chip",
+		"tone": "short noun phrase",
+		"note": "The label is the field's accessible name; the placeholder is the hint inside an empty field.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.applications": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.desktop": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.documents": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.downloads": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.etc": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "A filesystem directory name shown beside its own path, so this is the literal path segment rather than prose: an allowed exception, do NOT translate it. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.home": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.library": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.media": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "A filesystem directory name shown beside its own path, so this is the literal path segment rather than prose: an allowed exception, do NOT translate it. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.mnt": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "A filesystem directory name shown beside its own path, so this is the literal path segment rather than prose: an allowed exception, do NOT translate it. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.music": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.opt": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "A filesystem directory name shown beside its own path, so this is the literal path segment rather than prose: an allowed exception, do NOT translate it. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.pictures": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.program_data": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.program_files": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.program_files_x86": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.srv": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "A filesystem directory name shown beside its own path, so this is the literal path segment rather than prose: an allowed exception, do NOT translate it. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.users": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.usr": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "A filesystem directory name shown beside its own path, so this is the literal path segment rather than prose: an allowed exception, do NOT translate it. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.var": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "A filesystem directory name shown beside its own path, so this is the literal path segment rather than prose: an allowed exception, do NOT translate it. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.videos": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.folder.volumes": {
+		"role": "quick-pick folder name in the chip's menu",
+		"tone": "the folder's familiar name, sentence case",
+		"note": "The shell's own folder, offered as a shortcut. These are conventional folder names, not machine paths: translate the name the platform's file manager shows. The path beside it is never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.label.moving_session": {
+		"role": "chip label, or accessible name built from it",
+		"tone": "noun phrase, sentence case; the chip sets no capitals itself",
+		"note": "The state word beside the path: `Working directory` at rest, `Moving session` while a move is unconfirmed. Keep both short enough for the composer row.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.label.working_directory": {
+		"role": "chip label, or accessible name built from it",
+		"tone": "noun phrase, sentence case; the chip sets no capitals itself",
+		"note": "The state word beside the path: `Working directory` at rest, `Moving session` while a move is unconfirmed. Keep both short enough for the composer row.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.label.working_directory_value": {
+		"role": "chip label, or accessible name built from it",
+		"tone": "noun phrase, sentence case; the chip sets no capitals itself",
+		"note": "The state word beside the path: `Working directory` at rest, `Moving session` while a move is unconfirmed. Keep both short enough for the composer row.",
+		"placeholders": {
+			"path": "a directory path as the machine spells it. Keep it verbatim, including `~` and separators; never translate a path."
+		}
+	},
+	"ui.chat.directory.menu.browse": {
+		"role": "menu heading or menu row in the working-directory picker",
+		"tone": "short noun phrase or verb phrase, sentence case",
+		"note": "The three-dot endings on the path rows are the app's existing menu style, not an omission.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.menu.custom": {
+		"role": "menu heading or menu row in the working-directory picker",
+		"tone": "short noun phrase or verb phrase, sentence case",
+		"note": "The three-dot endings on the path rows are the app's existing menu style, not an omission.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.menu.default": {
+		"role": "menu heading or menu row in the working-directory picker",
+		"tone": "short noun phrase or verb phrase, sentence case",
+		"note": "The three-dot endings on the path rows are the app's existing menu style, not an omission.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.menu.enter_custom": {
+		"role": "menu heading or menu row in the working-directory picker",
+		"tone": "short noun phrase or verb phrase, sentence case",
+		"note": "The three-dot endings on the path rows are the app's existing menu style, not an omission.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.menu.no_recent": {
+		"role": "menu heading or menu row in the working-directory picker",
+		"tone": "short noun phrase or verb phrase, sentence case",
+		"note": "The three-dot endings on the path rows are the app's existing menu style, not an omission.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.menu.recent": {
+		"role": "menu heading or menu row in the working-directory picker",
+		"tone": "short noun phrase or verb phrase, sentence case",
+		"note": "The three-dot endings on the path rows are the app's existing menu style, not an omission.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.not_set": {
+		"role": "working-directory chip copy",
+		"tone": "sentence case, plain statement",
+		"note": "Describes the chip's own state. Paths arrive as machine text in placeholders and are never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.pending_restarting": {
+		"role": "working-directory chip copy",
+		"tone": "sentence case, plain statement",
+		"note": "Describes the chip's own state. Paths arrive as machine text in placeholders and are never translated.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.remove_recent": {
+		"role": "accessible name of the prune control on a recent-directory row",
+		"tone": "verb phrase, sentence case",
+		"note": "Screen-reader only: the control is an X icon. It removes the row; it does not select the directory.",
+		"placeholders": {
+			"path": "a directory path as the machine spells it. Keep it verbatim, including `~` and separators; never translate a path."
+		}
+	},
+	"ui.chat.directory.tooltip.change": {
+		"role": "tooltip on the working-directory chip",
+		"tone": "short imperative or statement, sentence case",
+		"note": "The move-cost arms state what a live move does before the press: the session's runtime restarts in the new directory. Do not drop that clause. `{path} - ` prefixes the path when the chip truncates it.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.tooltip.invalid": {
+		"role": "tooltip on the working-directory chip",
+		"tone": "short imperative or statement, sentence case",
+		"note": "The move-cost arms state what a live move does before the press: the session's runtime restarts in the new directory. Do not drop that clause. `{path} - ` prefixes the path when the chip truncates it.",
+		"placeholders": {
+			"path": "a directory path as the machine spells it. Keep it verbatim, including `~` and separators; never translate a path."
+		}
+	},
+	"ui.chat.directory.tooltip.move_cost": {
+		"role": "tooltip on the working-directory chip",
+		"tone": "short imperative or statement, sentence case",
+		"note": "The move-cost arms state what a live move does before the press: the session's runtime restarts in the new directory. Do not drop that clause. `{path} - ` prefixes the path when the chip truncates it.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.tooltip.pending_move": {
+		"role": "tooltip on the working-directory chip",
+		"tone": "short imperative or statement, sentence case",
+		"note": "The move-cost arms state what a live move does before the press: the session's runtime restarts in the new directory. Do not drop that clause. `{path} - ` prefixes the path when the chip truncates it.",
+		"placeholders": {
+			"path": "a directory path as the machine spells it. Keep it verbatim, including `~` and separators; never translate a path."
+		}
+	},
+	"ui.chat.directory.tooltip.set": {
+		"role": "tooltip on the working-directory chip",
+		"tone": "short imperative or statement, sentence case",
+		"note": "The move-cost arms state what a live move does before the press: the session's runtime restarts in the new directory. Do not drop that clause. `{path} - ` prefixes the path when the chip truncates it.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.tooltip.truncated_move_cost": {
+		"role": "tooltip on the working-directory chip",
+		"tone": "short imperative or statement, sentence case",
+		"note": "The move-cost arms state what a live move does before the press: the session's runtime restarts in the new directory. Do not drop that clause. `{path} - ` prefixes the path when the chip truncates it.",
+		"placeholders": {
+			"path": "a directory path as the machine spells it. Keep it verbatim, including `~` and separators; never translate a path."
+		}
+	}
+}

@@ -48,6 +48,7 @@
  * is that the arrangement may sort - this file's bucketing stays a filter.
  */
 
+import type { WithoutParams } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 
 export type ChatListSection = "running" | "today" | "week" | "older";
@@ -73,12 +74,22 @@ export const CHAT_LIST_SECTIONS: readonly ChatListSection[] = [
 	"older",
 ];
 
-/** The label each section prints (the component sets them in small caps). */
-export const CHAT_LIST_SECTION_LABEL: Record<ChatListSection, string> = {
-	running: "Running",
-	today: "Today",
-	week: "This week",
-	older: "Older",
+/**
+ * The label each section prints (the component sets them in small caps).
+ *
+ * THE TABLE HOLDS KEYS, NOT COPY. A map of English sentences resolves at module
+ * load - once, in whatever locale the renderer started in - so every section
+ * heading would stay English after a language switch. Keys are resolved by `t()`
+ * at the render that draws the heading, which is the only place the active
+ * locale is known. The four keys are the ones the view popover already prints
+ * for these sections, so the popover and the heading cannot name one section two
+ * ways.
+ */
+export const CHAT_LIST_SECTION_LABEL: Record<ChatListSection, WithoutParams> = {
+	running: "ui.chat.sidebar_view.section.running",
+	today: "ui.chat.sidebar_view.section.today",
+	week: "ui.chat.sidebar_view.section.week",
+	older: "ui.chat.sidebar_view.section.older",
 };
 
 /**
