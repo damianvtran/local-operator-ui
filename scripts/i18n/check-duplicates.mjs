@@ -121,7 +121,9 @@ if (
 	}
 	if (offenders.length) {
 		for (const { file, keys } of offenders) {
-			console.error(`check-duplicates: ${file}: duplicate key(s) ${keys.join(", ")}`);
+			console.error(
+				`check-duplicates: ${file}: duplicate key(s) ${keys.join(", ")}`,
+			);
 		}
 		console.error(
 			`check-duplicates: FAILED — ${offenders.length} file(s) with duplicate keys across ${scanned} scanned`,
