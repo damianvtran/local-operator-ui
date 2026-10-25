@@ -12,7 +12,7 @@
 	"ui.chat.sidebar.catalogue.total_search_clipped": "显示{shown, plural, other {{shown, number, ::group-off}+个匹配}}，共{total, number, ::group-off}个对话",
 	"ui.chat.sidebar.drafts.clear_all": "全部清除",
 	"ui.chat.sidebar.drafts.clear_all_label": "清除所有草稿",
-	"ui.chat.sidebar.groups.badge": "此分组内有{badge, number, ::group-off}个对话",
+	"ui.chat.sidebar.groups.badge": "{badge, plural, other {此分组中有{badge, number, ::group-off}个对话}}",
 	"ui.chat.sidebar.header.create": "新建智能体或团队",
 	"ui.chat.sidebar.header.create_agent": "新建智能体",
 	"ui.chat.sidebar.header.create_team": "新建团队",
