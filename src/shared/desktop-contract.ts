@@ -3621,6 +3621,10 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			client_ref: id,
 			body: z.string().min(1),
 			send_at: z.string().datetime({ offset: true }),
+			/* A scheduled REPLY. The core route carried this and the renderer's
+			   strict model did not, so scheduling a reply was unreachable (round
+			   12, minor c). Forwarded only when set, like a normal send. */
+			thread_root_id: id.optional(),
 		})
 		.strict(),
 	z
@@ -9013,6 +9017,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					client_ref: request.client_ref,
 					body: request.body,
 					send_at: request.send_at,
+					...(request.thread_root_id
+						? { thread_root_id: request.thread_root_id }
+						: {}),
 				},
 			};
 		case "team_bridge.scheduled.update":

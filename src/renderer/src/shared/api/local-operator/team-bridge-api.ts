@@ -78,6 +78,7 @@ export const TeamBridgeApi = {
 		client_ref: string;
 		body: string;
 		send_at: string;
+		thread_root_id?: string;
 	}) {
 		return teamBridgeScheduledMessageSchema.parse(
 			await desktopResult<unknown>({
