@@ -1707,8 +1707,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		);
 		const [drawerTab, setDrawerTab] = useState<DrawerTab | null>(null);
 		const headerAsksCount = headerAsksSession
-			? askAttentionCount(sessionAsksView) + sessionUnreadUpdates
+			? askAttentionCount(sessionAsksView)
 			: fleetAsks.outstanding;
+		const headerAsksUpdates = headerAsksSession ? sessionUnreadUpdates : 0;
 		const headerAsksOpen =
 			isAskDrawerOpen && askDrawerScope === headerAsksScope;
 		/*
@@ -3678,6 +3679,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						   expression per fact, so the rail item and the menu row cannot disagree
 						   about which queue a press opens or how many are outstanding. */
 						askCount={headerAsksCount}
+						askUpdates={headerAsksUpdates}
 						askScope={headerAsksScope}
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}
