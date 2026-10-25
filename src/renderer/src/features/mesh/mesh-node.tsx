@@ -57,7 +57,7 @@ import {
 } from "./mesh-reach";
 import { sessionStripeKey } from "./mesh-sessions";
 import type { ChipStripeKey, DeviceSessions } from "./mesh-sessions";
-import { deviceDisplayName } from "./mesh-types";
+import { deviceDisplayName, deviceIdentityText } from "./mesh-types";
 import type { MeshSessionRow } from "./mesh-types";
 
 /**
@@ -604,7 +604,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			 */}
 			<ul
 				aria-label={t("ui.mesh.mesh_node.conversations_on", {
-					device: device.label,
+					device: deviceIdentityText(device, deviceIds, true),
 				})}
 				className={cn(
 					/*
@@ -637,7 +637,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					<SessionChip
 						key={session.id}
 						session={session}
-						ownerLabel={device.label}
+						ownerLabel={deviceIdentityText(device, deviceIds, true)}
 						ownerReach={reach}
 						ownerReachable={device.reachable}
 						moving={movingSessionId === session.id}

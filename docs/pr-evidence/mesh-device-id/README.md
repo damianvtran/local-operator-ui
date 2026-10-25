@@ -118,3 +118,25 @@ The absent-name control initially rejected an incorrect test expectation that
 required the full id inline; after correcting the fixture to expect the compact
 id plus its full-id tooltip, the same real story passed and was captured. This
 was a fixture correction, not a production fallback or a waived assertion.
+
+## Review remediation — round 2
+
+Round 2 changes only the remaining owner/target/chip identity paths; the
+compact-id algorithm and all earlier dimensions and evidence are unchanged.
+The final round-2 commit is named in the PR remediation comment. Three new
+frames cover only the newly visible text, using the same measured 1024x576 CSS
+pixel iframe method described above. The harness desktop browser captured all
+three; no custom Chrome, alternate browser engine, build or live backend was
+used.
+
+| Surface | New frame and executed result |
+| --- | --- |
+| Remote-source destructive recall | `after-duplicate-source-recall.png`: the real `MeshPage` menu and `MoveConfirmDialog` show `The copy on "shared-node" d_012345678… is deleted once this device has it.` The two-source unit regression deliberately supplies the old raw owner label and requires different loss sentences. |
+| Suspect target refusal | `after-duplicate-suspect-refusal.png`: a real `resolveDrop` `suspect_device` verdict feeds the existing `MoveNotice`; its sentence carries `"shared-node" d_012345678…`. The story refuses to render if the resolver returns any other verdict kind. |
+| Canvas/panel chip and accessible copy | `after-duplicate-source-chip.png`: the detail panel paints one `on "shared-node" d_012345678…` fact. The canvas chip intentionally paints only the conversation title; the play separately proves its `title` and `aria-label`, and the conversation list's `aria-label`, carry the same identity. The existing row dimensions and title-truncation priority are unchanged. |
+
+All three final plays completed with no browser console errors. An initial
+fixture assertion incorrectly expected two visible chip facts; the diagnostic
+frame showed the canvas chip's established title/ARIA-only contract, so the
+play was corrected to test that actual contract before the passing capture.
+No failed frame is claimed as evidence.

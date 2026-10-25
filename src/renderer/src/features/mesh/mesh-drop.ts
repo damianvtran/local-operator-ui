@@ -260,13 +260,14 @@ function peerLabel(
 function deviceRefusal(
 	device: MeshDevice,
 	deviceId: string,
+	displayedDeviceIds: readonly string[],
 ): Extract<DropVerdict, { kind: "refused" }> | null {
 	if (device.suspect) {
 		return {
 			kind: "refused",
 			code: "suspect_device",
 			sentence: t("ui.mesh.mesh_drop.duplicate_key", {
-				device: device.label,
+				device: deviceIdentityText(device, displayedDeviceIds, true),
 				reason: device.reason ? ` (${device.reason})` : "",
 			}),
 			remedy: {
@@ -289,7 +290,7 @@ function deviceRefusal(
 			kind: "refused",
 			code: "unreachable",
 			sentence: t("ui.mesh.mesh_drop.reach_refusal", {
-				device: device.label,
+				device: deviceIdentityText(device, displayedDeviceIds, true),
 				reach,
 				reason: device.reason ? ` (${device.reason})` : "",
 			}),
@@ -313,8 +314,14 @@ export function resolveDrop(
 	target: DropTarget,
 	context: DropContext,
 ): DropVerdict {
-	const { session, ownerDeviceId, ownerLabel } = payload;
+	const { session, ownerDeviceId, ownerLabel: suppliedOwnerLabel } = payload;
 	const { selfDeviceId, devices, networks } = context;
+	const displayedDeviceIds = [...devices.keys()];
+	const owner = devices.get(ownerDeviceId);
+	/* Destructive copy must not trust a caller's potentially raw duplicate name. */
+	const ownerLabel = owner
+		? deviceIdentityText(owner, displayedDeviceIds, true)
+		: suppliedOwnerLabel;
 
 	if (target.kind === "ground") return { kind: "none" };
 
@@ -376,7 +383,7 @@ export function resolveDrop(
 								device: peerLabel(
 									devices.get(target.deviceId),
 									target.deviceId,
-									[...devices.keys()],
+									displayedDeviceIds,
 								),
 							}),
 				waitS: 0,
@@ -397,7 +404,7 @@ export function resolveDrop(
 
 	const destination = devices.get(target.deviceId);
 	const refused = destination
-		? deviceRefusal(destination, target.deviceId)
+		? deviceRefusal(destination, target.deviceId, displayedDeviceIds)
 		: {
 				code: "unknown_device",
 				sentence: t("ui.mesh.mesh_drop.that_device_is_no_longer_in_any"),
@@ -405,9 +412,11 @@ export function resolveDrop(
 			};
 	if (refused) return { kind: "refused", ...refused };
 
-	const destinationLabel = peerLabel(destination, target.deviceId, [
-		...devices.keys(),
-	]);
+	const destinationLabel = peerLabel(
+		destination,
+		target.deviceId,
+		displayedDeviceIds,
+	);
 	const sourceIsLocal = session.locality === "local";
 
 	/*
@@ -418,7 +427,6 @@ export function resolveDrop(
 	 * answering, so nothing changed.
 	 */
 	if (!sourceIsLocal) {
-		const owner = devices.get(ownerDeviceId);
 		if (owner && !owner.reachable) {
 			/* The owner is in hand, so the refusal carries the owner's own reach word. */
 			const reach = reachWords(deviceReach(owner));

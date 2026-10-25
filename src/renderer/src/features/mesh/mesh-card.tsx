@@ -172,7 +172,13 @@ export function destinationsWithVerdicts(
 			{
 				session,
 				ownerDeviceId,
-				ownerLabel: owner?.label ?? session.owner_device_name,
+				ownerLabel: owner
+					? deviceIdentityText(
+							owner,
+							graph.devices.map((device) => device.id),
+							true,
+						)
+					: session.owner_device_name,
 			},
 			{ kind: "device", deviceId: destination.deviceId },
 			context,
@@ -586,7 +592,11 @@ export const DevicePanel: FC<{
 									{chipLabel(session)}
 								</span>
 								<span className="shrink-0 text-meta text-ink-dim">
-									{chipFact(session, device.label, deviceReach(device))}
+									{chipFact(
+										session,
+										deviceIdentityText(device, deviceIds, true),
+										deviceReach(device),
+									)}
 								</span>
 								{movingSessionId === session.id ? (
 									<span className="shrink-0 text-meta text-ink-muted">

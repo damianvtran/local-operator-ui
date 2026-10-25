@@ -35,8 +35,15 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
 import { MoveNotice } from "./mesh-actions";
+import { resolveDrop } from "./mesh-drop";
+import { meshGraph } from "./mesh-graph";
 import { MeshPage } from "./mesh-page";
-import type { PeerLinkState, PeerRelayState } from "./mesh-types";
+import {
+	type PeerLinkState,
+	type PeerRelayState,
+	networkTopology,
+	peerList,
+} from "./mesh-types";
 
 type BridgeRequest = { op: string; approvalId?: string };
 
@@ -1077,7 +1084,7 @@ function actionFixture() {
 
 /** Real wire reads for the compact identity states, with an optional local move. */
 function identityFixture(
-	rows: { id: string; name?: string }[],
+	rows: { id: string; name?: string; suspect?: boolean }[],
 	sessions: ReturnType<typeof sessionRow>[] = [],
 ) {
 	const [self, ...peers] = rows;
@@ -1091,6 +1098,7 @@ function identityFixture(
 					rows.map((row, index) =>
 						member(row.id, {
 							name: row.name ?? "",
+							suspect: row.suspect ?? false,
 							role: index === 0 ? "admin" : "drive",
 							last_seen_at: 1_800_000_000,
 						}),
@@ -1334,6 +1342,127 @@ export const CompactDuplicateNameRemoveDialog: Story = {
 		);
 		const dialog = await screen.findByRole("dialog");
 		expect(dialog).toHaveTextContent(`"shared-node" ${DEVICE_SHARED_ONE}`);
+	},
+};
+
+export const DuplicateSourceRecallConfirm: Story = {
+	render: () => {
+		installBridge(
+			duplicateIdentityFixture([
+				sessionRow("01234567890b", "Duplicate recall", {
+					locality: "remote",
+					owner_device: DEVICE_SHARED_ONE,
+					owner_device_name: "shared-node",
+				}),
+			]),
+		);
+		holdShutter('[role="dialog"]', "d_012345678…");
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SHARED_ONE);
+		await chooseFromSessionMenu("01234567890b", "Recall to this device");
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog).toHaveTextContent(
+			'The copy on "shared-node" d_012345678… is deleted once this device has it.',
+		);
+	},
+};
+
+export const DuplicateSourceChipIdentity: Story = {
+	render: () => {
+		installBridge(
+			duplicateIdentityFixture([
+				sessionRow("01234567890b", "Duplicate chip", {
+					locality: "remote",
+					owner_device: DEVICE_SHARED_ONE,
+					owner_device_name: "shared-node",
+					live_state: "",
+				}),
+			]),
+		);
+		holdShutter(`[data-mesh-panel="${DEVICE_SHARED_ONE}"]`, "d_012345678…");
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SHARED_ONE);
+		const chips = await screen.findAllByText('on "shared-node" d_012345678…', {
+			exact: false,
+		});
+		expect(chips).toHaveLength(1);
+		const canvasDevice = document.querySelector(
+			`[data-mesh-device="${DEVICE_SHARED_ONE}"]`,
+		);
+		const chip = canvasDevice?.querySelector(
+			'[data-mesh-session="01234567890b"]',
+		);
+		expect(chip?.getAttribute("title")).toContain('"shared-node" d_012345678…');
+		expect(chip?.getAttribute("aria-label")).toContain(
+			'"shared-node" d_012345678…',
+		);
+		const conversations = canvasDevice?.querySelector("ul[aria-label]");
+		expect(conversations?.getAttribute("aria-label")).toContain(
+			'"shared-node" d_012345678…',
+		);
+	},
+};
+
+export const DuplicateSuspectRefusalNotice: Story = {
+	render: () => {
+		const fixture = identityFixture(
+			[
+				{ id: DEVICE_SELF, name: "studio-mac" },
+				{ id: DEVICE_SHARED_ONE, name: "shared-node", suspect: true },
+				{ id: DEVICE_SHARED_TWO, name: "shared-node" },
+			],
+			[sessionRow("01234567890c", "Local drag")],
+		);
+		const graph = meshGraph({
+			topology: networkTopology(fixture.networks),
+			peers: peerList(fixture.peers),
+		});
+		const verdict = resolveDrop(
+			{
+				session: fixture.sessions[0],
+				ownerDeviceId: DEVICE_SELF,
+				ownerLabel: "studio-mac",
+			},
+			{ kind: "device", deviceId: DEVICE_SHARED_ONE },
+			{
+				selfDeviceId: DEVICE_SELF,
+				devices: new Map(graph.devices.map((device) => [device.id, device])),
+				networks: new Map(
+					graph.networks.map((network) => [network.id, network]),
+				),
+			},
+		);
+		if (verdict.kind !== "refused")
+			throw new Error("the suspect target did not produce a refusal");
+		return (
+			<section className="flex min-h-40 bg-surface p-6">
+				<MoveNotice
+					receipt={null}
+					canWait={false}
+					refusal={{
+						code: verdict.code,
+						sentence: verdict.sentence,
+						reach: "reach" in verdict ? verdict.reach : undefined,
+						status: null,
+						unconfirmed: false,
+					}}
+					onWait={() => {}}
+					onRecheck={() => {}}
+					onUndo={() => {}}
+					pending={false}
+				/>
+			</section>
+		);
+	},
+	play: async () => {
+		const notice = await screen.findByText('"shared-node" d_012345678…', {
+			exact: false,
+		});
+		expect(notice).toHaveTextContent("duplicated key");
 	},
 };
 

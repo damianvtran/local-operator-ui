@@ -98,7 +98,11 @@ import {
 	useNetworkInvite,
 	useNetworkMemberRemove,
 } from "./mesh-store";
-import type { MeshRefusal, MeshSessionRow } from "./mesh-types";
+import {
+	type MeshRefusal,
+	type MeshSessionRow,
+	deviceIdentityText,
+} from "./mesh-types";
 
 const PRESENTATIONS = ["canvas", "list"] as const;
 export type Presentation = (typeof PRESENTATIONS)[number];
@@ -367,7 +371,13 @@ export const MeshSurface: FC<{
 				{
 					session,
 					ownerDeviceId,
-					ownerLabel: owner?.label ?? session.owner_device_name,
+					ownerLabel: owner
+						? deviceIdentityText(
+								owner,
+								graph.devices.map((device) => device.id),
+								true,
+							)
+						: session.owner_device_name,
 				},
 				{ kind: "device", deviceId: destination.deviceId },
 				context,

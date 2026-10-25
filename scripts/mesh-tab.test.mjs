@@ -3435,6 +3435,106 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 	);
 });
 
+function duplicateDropContext(suspect = false) {
+	const graph = meshGraph({
+		topology: networkTopology({
+			self_device_id: SELF,
+			networks: [
+				{
+					network_id: NET_HOME,
+					name: "identity-test-mesh",
+					epoch: 1,
+					trust: "active",
+					members: [
+						member(SELF, { name: "studio-mac" }),
+						...[PEER, THIRD].map((id) =>
+							member(id, {
+								name: "shared-node",
+								suspect,
+								capabilities: ["sessions", "transfer"],
+							}),
+						),
+					],
+				},
+			],
+		}),
+		peers: peerList({
+			self_device_id: SELF,
+			peers: [PEER, THIRD].map((device_id) => ({
+				device_id,
+				name: "shared-node",
+				reachable: true,
+				session_count: 1,
+			})),
+		}),
+	});
+	return {
+		selfDeviceId: graph.selfDeviceId,
+		devices: new Map(graph.devices.map((device) => [device.id, device])),
+		networks: new Map(graph.networks.map((network) => [network.id, network])),
+	};
+}
+
+test("duplicate recall sources have distinct destructive loss sentences", () => {
+	const context = duplicateDropContext();
+	const losses = [PEER, THIRD].map((ownerId) => {
+		const remote = session({
+			locality: "remote",
+			owner_device: ownerId,
+			owner_device_name: "shared-node",
+		});
+		const verdict = resolveDrop(
+			// Deliberately supply the old raw label: the resolver must not trust it.
+			drag(remote, ownerId, "shared-node"),
+			{ kind: "device", deviceId: SELF },
+			context,
+		);
+		assert.equal(verdict.kind, "plan");
+		return verdict.plan.lost;
+	});
+	assert.deepEqual(losses, [
+		'The copy on "shared-node" d_bbbbbbbb… is deleted once this device has it.',
+		'The copy on "shared-node" d_eeeeeeee… is deleted once this device has it.',
+	]);
+	assert.notEqual(losses[0], losses[1]);
+
+	for (const file of ["mesh-page.tsx", "mesh-card.tsx", "mesh-canvas.tsx"]) {
+		assert.ok(
+			!source(`src/renderer/src/features/mesh/${file}`).includes(
+				"owner?.label",
+			),
+			`${file} must not reintroduce the raw owner-label bypass`,
+		);
+	}
+});
+
+test("duplicate suspect targets have distinct refusal identities", () => {
+	const context = duplicateDropContext(true);
+	const sentences = [PEER, THIRD].map((deviceId) => {
+		const verdict = resolveDrop(
+			drag(session(), SELF, SELF_LABEL),
+			{ kind: "device", deviceId },
+			context,
+		);
+		assert.equal(verdict.kind, "refused");
+		assert.equal(verdict.code, "suspect_device");
+		return verdict.sentence;
+	});
+	assert.match(sentences[0], /"shared-node" d_bbbbbbbb…/);
+	assert.match(sentences[1], /"shared-node" d_eeeeeeee…/);
+	assert.notEqual(sentences[0], sentences[1]);
+	assert.ok(
+		!source("src/renderer/src/features/mesh/mesh-node.tsx").includes(
+			"ownerLabel={device.label}",
+		),
+	);
+	assert.ok(
+		!source("src/renderer/src/features/mesh/mesh-card.tsx").includes(
+			"chipFact(session, device.label",
+		),
+	);
+});
+
 test("a suspect identity refuses the drop before the route is asked, and a burned id is not a device", () => {
 	const { context } = dropFixture();
 	const payload = drag(session(), SELF, SELF_LABEL);
@@ -3730,7 +3830,7 @@ test("the chip's spoken fact reads the reach model, and its stripe the same reac
 	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
 	assert.match(
 		card,
-		/chipFact\(session, device\.label, deviceReach\(device\)\)/,
+		/chipFact\(\s*session,\s*deviceIdentityText\(device, deviceIds, true\),\s*deviceReach\(device\),?\s*\)/,
 	);
 });
 
