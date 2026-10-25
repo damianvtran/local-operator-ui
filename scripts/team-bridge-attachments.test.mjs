@@ -532,8 +532,10 @@ async function mountHook(props) {
 	const element = document.createElement("div");
 	document.body.append(element);
 	const root = createRoot(element);
-	// The hook resolves its captured owner through `useBridgeOwner`, so it needs
-	// the SAME react-query context the page provides in production.
+	// No query context is needed: the hook CAPTURES the account with `useRef` and
+	// never looks one up. The provider stays only because this harness is shared
+	// with the page tests; a reader must not "fix" the hook toward a live lookup
+	// on the strength of this wrapper.
 	const client = new m.QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
@@ -656,7 +658,7 @@ test("hook: a captured account the runtime refuses never becomes a silent succes
 	// would 422/409 at send time.
 	mediaAnswer = (request) =>
 		request.op === "team_bridge.attachment.upload"
-			? { status: 409, kind: "error", detail: "account_mismatch" }
+			? { status: 409, kind: "error", code: "account_mismatch" }
 			: { status: 404, kind: "error" };
 	const app = await mountHook({
 		scopeKey: "a",
@@ -666,6 +668,16 @@ test("hook: a captured account the runtime refuses never becomes a silent succes
 		capability: CAP,
 	});
 	try {
+		// Re-render the SAME hook under another account before the upload: a live
+		// lookup would now send `acct_b`, which is exactly what the guard must not
+		// receive (review round 1, R1-04).
+		await app.render({
+			scopeKey: "a",
+			accountId: "acct_b",
+			tenantId: "tnt_1",
+			conversationId: "bcv_1",
+			capability: CAP,
+		});
 		await act(async () => hook.add([new Blob([PNG])]));
 		await settle();
 		await settle();
@@ -678,6 +690,7 @@ test("hook: a captured account the runtime refuses never becomes a silent succes
 			["error"],
 			"the refusal surfaces as an error chip",
 		);
+		assert.equal(hook.chips[0].reason, "account_mismatch");
 		assert.equal(hook.readyIds().length, 0, "nothing is sendable");
 		assert.equal(hook.blocked, true, "send is blocked");
 	} finally {
@@ -2358,3 +2371,79 @@ test(
 			}
 		}),
 );
+
+test("R1-01: an account mismatch is explained as a sign-in problem, never as a quota", async () => {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(m.TeamBridgeAttachmentChip, {
+					chip: {
+						key: "k1",
+						status: "error",
+						reason: "account_mismatch",
+						prepared: { bytes: PNG, mime: "image/png" },
+					},
+					index: 0,
+					count: 1,
+				}),
+			),
+		);
+		const text = element.textContent;
+		assert.match(
+			text,
+			/signed out|sign in/i,
+			"the sign-in explanation is shown",
+		);
+		assert.equal(
+			/too many images/i.test(text),
+			false,
+			"the quota sentence is reserved for the actual limit refusal",
+		);
+		// A retry would 409 again until the account is resolved.
+		assert.equal(
+			[...element.querySelectorAll("button")].some((button) =>
+				/retry/i.test(button.textContent ?? ""),
+			),
+			false,
+			"no Retry on an account mismatch",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+	}
+});
+
+test("R1-01: a bare 409 is not read as the image quota either", () => {
+	assert.equal(m.uploadFailure(409), "failed");
+	assert.equal(m.uploadFailure(400), "limit");
+	assert.equal(m.uploadFailure(409, "account_mismatch"), "account_mismatch");
+	assert.equal(m.uploadFailure(401), "signed_out");
+});
+
+test("R1-02: the delete receipt is required by the shipped schema", () => {
+	const base = {
+		op: "team_bridge.attachments.delete",
+		tenant_id: "tnt_1",
+		conversation_id: "bcv_1",
+		attachment_id: "batt_1",
+	};
+	assert.equal(
+		m.desktopRequestSchema.safeParse(base).success,
+		false,
+		"no receipt is refused before the route",
+	);
+	assert.equal(
+		m.desktopRequestSchema.safeParse({ ...base, expected_account_id: "" })
+			.success,
+		false,
+		"a blank receipt is refused",
+	);
+	assert.equal(
+		m.desktopRequestSchema.safeParse({ ...base, expected_account_id: "acct_a" })
+			.success,
+		true,
+	);
+});
