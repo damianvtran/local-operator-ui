@@ -5,10 +5,123 @@
 		"note": "Follows the turn's own stop control, so it names what the reader did rather than a failure.",
 		"placeholders": {}
 	},
+	"ui.chat.composer.status.goal_collapse": {
+		"role": "accessible name of the session goal while its disclosure is open; the press closes it",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal's own text follows after an em dash, so this string carries no final punctuation. 'Session goal' is the region's name, kept identical to the expand arm's.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss": {
+		"role": "visible word on the control that puts a finished goal's chip away",
+		"tone": "one verb, sentence case, no trailing punctuation",
+		"note": "Not a deletion: the finished goal stays in the goal history, which the longer name states. This word sits on a 24px row and is dropped below the narrow column floor, where the control keeps its icon and accessible name.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss_keep": {
+		"role": "middle clause of the finished goal's dismiss accessible name",
+		"tone": "declarative clause, lower-case start, no trailing punctuation",
+		"note": "Relays that the dismissal hides the row and keeps the record. It is joined between em dashes, so it stays lower case and takes no full stop.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss_name": {
+		"role": "head of the finished goal's dismiss tooltip and accessible name",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "Followed by the keep clause and the goal itself, both after em dashes. It names dismissing the chip, not deleting the record that the next clause says survives.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_done": {
+		"role": "visible word on the control that records the goal as done",
+		"tone": "one verb, sentence case",
+		"note": "It marks the goal finished and records the decision; it is not a dismissing 'Done' from a dialog. A separate longer key names the action for screen readers, because 'Done' alone would not say what is done.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_done_name": {
+		"role": "head of the goal's done control in its accessible name and tooltip",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal text follows after a dash. Nothing is destroyed: the record stays in the goal history.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_expand": {
+		"role": "accessible name of the session goal while its disclosure is closed; the press opens it",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal's own text follows after an em dash. 'Session goal' is the region's name, identical in both arms so the name does not change identity when it opens.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_label": {
+		"role": "visible label at the head of the session goal chip",
+		"tone": "noun with a colon, sentence case",
+		"note": "The row's chips lead with the fact's name and a colon; the disambiguating words live in the accessible names.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.jobs_action": {
+		"role": "head of the jobs chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The count and state clauses follow after an em dash. 'Open' moves the reader to the run pane's Jobs section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_clear": {
+		"role": "action label on the loop chip's dismiss control once the loop has settled",
+		"tone": "verb plus object, sentence case, no trailing punctuation",
+		"note": "The settled state is cleared, never stopped - 'Stop' belongs to the running state only. This press sends no command: it clears the row's own acknowledgement of a settled loop.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_label": {
+		"role": "visible label at the head of the loop chip",
+		"tone": "noun with a colon, sentence case",
+		"note": "The wire's own status word follows, untranslated, so the chip and the loop picker spell one state the same way.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_progress_of_turns": {
+		"role": "turn progress clause inside the loop chip and its accessible name",
+		"tone": "two counts with a trailing noun",
+		"note": "Rendered after a comma that follows the wire's status word. Keep both numbers and the noun; the wording is a fact about turns completed out of the loop's allowance.",
+		"placeholders": {
+			"completed": "number of turns the loop has completed",
+			"total": "number of turns the loop was allowed"
+		}
+	},
+	"ui.chat.composer.status.loop_progress_turns": {
+		"role": "turn count clause inside the loop chip when the loop carries no allowance",
+		"tone": "a counted noun, pluralized by the locale's own rules",
+		"note": "Rendered after a comma that follows the wire's status word. Plural categories are the locale's own; do not copy English's two-arm shape.",
+		"placeholders": {
+			"count": "number of turns completed so far"
+		}
+	},
+	"ui.chat.composer.status.loop_stop": {
+		"role": "action label on the loop chip's dismiss control while the loop is running",
+		"tone": "verb plus object, sentence case, no trailing punctuation",
+		"note": "The running state is stopped; a settled loop is cleared instead, which is a separate key. The loop picker's own primary button says 'Cancel loop' - that dialog is a different control and does not share this wording.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.monitors_action": {
+		"role": "head of the monitors chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The armed-monitor count clause follows after an em dash. 'Open' moves the reader to the run pane's Monitors section instead of disclosing something in place; the plural matches that section's own heading.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.plan_action": {
+		"role": "head of the plan chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The to-do count clause follows after an em dash. 'Open' moves the reader to the run pane's To-dos section instead of disclosing something in place.",
+		"placeholders": {}
+	},
 	"ui.chat.composer.status.session_goal": {
 		"role": "accessible name of the region that holds the authored session goal",
 		"tone": "noun phrase, sentence case",
 		"note": "A group name, not a heading: the goal is one authored paragraph that a keyboard reader must be able to scroll.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.subagents_action": {
+		"role": "head of the subagents chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The count and state clauses follow after an em dash. 'Open' moves the reader to the run pane's Subagents section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.wakes_action": {
+		"role": "head of the wakes chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The armed-schedule count clause follows after an em dash. 'Open' moves the reader to the run pane's Wakes section instead of disclosing something in place.",
 		"placeholders": {}
 	},
 	"ui.chat.header_identity.loading": {

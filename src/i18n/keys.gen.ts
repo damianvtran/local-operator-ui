@@ -2637,7 +2637,28 @@ export type MessageParams = {
 	"ui.chat.aside.thinking": undefined;
 	"ui.chat.aside.title": undefined;
 	"ui.chat.aside.you_label": undefined;
+	"ui.chat.composer.status.goal_collapse": undefined;
+	"ui.chat.composer.status.goal_dismiss": undefined;
+	"ui.chat.composer.status.goal_dismiss_keep": undefined;
+	"ui.chat.composer.status.goal_dismiss_name": undefined;
+	"ui.chat.composer.status.goal_done": undefined;
+	"ui.chat.composer.status.goal_done_name": undefined;
+	"ui.chat.composer.status.goal_expand": undefined;
+	"ui.chat.composer.status.goal_label": undefined;
+	"ui.chat.composer.status.jobs_action": undefined;
+	"ui.chat.composer.status.loop_clear": undefined;
+	"ui.chat.composer.status.loop_label": undefined;
+	"ui.chat.composer.status.loop_progress_of_turns": {
+		completed: number;
+		total: number;
+	};
+	"ui.chat.composer.status.loop_progress_turns": { count: number };
+	"ui.chat.composer.status.loop_stop": undefined;
+	"ui.chat.composer.status.monitors_action": undefined;
+	"ui.chat.composer.status.plan_action": undefined;
 	"ui.chat.composer.status.session_goal": undefined;
+	"ui.chat.composer.status.subagents_action": undefined;
+	"ui.chat.composer.status.wakes_action": undefined;
 	"ui.chat.header_identity.loading": { kind: string };
 	"ui.chat.header_identity.no_matches": { query: string };
 	"ui.chat.header_identity.search": { kind: string };
