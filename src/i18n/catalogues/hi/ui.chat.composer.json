@@ -40,7 +40,7 @@
 	"ui.chat.composer.tip.approvals": "टूल पहले पूछें या नहीं, यह तय करने के लिए /approvals टाइप करें",
 	"ui.chat.composer.tip.ask_for_a_team": "टीम माँगें और कई एजेंट मिलकर एक ही अनुरोध संभालते हैं",
 	"ui.chat.composer.tip.attach_a_file": "पेपरक्लिप से फ़ाइल जोड़ें, या फ़ाइल पेस्ट करें",
-	"ui.chat.composer.tip.canvas": "दस्तावेज़ को कैनवास में खोलें ताकि वह चैट के बगल में बना रहे",
+	"ui.chat.composer.tip.canvas": "दस्तावेज़ को Canvas में खोलें ताकि वह चैट के बगल में बना रहे",
 	"ui.chat.composer.tip.mcp_tools": "एजेंट को टूल देने के लिए सेटिंग्स में MCP सर्वर कनेक्ट करें",
 	"ui.chat.composer.tip.mention_file": "इस डायरेक्टरी की फ़ाइल की ओर एजेंट का ध्यान दिलाने के लिए @ टाइप करें",
 	"ui.chat.composer.tip.parallel_work": "समानांतर काम माँगें और एजेंट उप-एजेंटों में काम बाँट देता है",
