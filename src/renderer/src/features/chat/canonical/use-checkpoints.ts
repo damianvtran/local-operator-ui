@@ -539,6 +539,17 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 			return;
 		}
 		setState(seeded ? "ready" : "loading");
+		/*
+		 * A CACHED BUILD IS ALREADY OWED A FOLLOW (review R1), not only after a
+		 * successful refresh. A transient failure of this mount's refresh keeps
+		 * the cached building/stale answer, but never reaches `applyManifest`, so
+		 * without this activation no timer exists to discover the ready answer.
+		 * The same epoch-guarded follow owns the seed and subsequent reads: a
+		 * successful refresh shares its timer (or cancels it on ready), while
+		 * switch/unmount still releases it through the cleanup below. A ready
+		 * seed arms nothing, and the existing backoff and episode ceiling apply.
+		 */
+		followBuild(epoch);
 		void load(epoch, seeded ? (served ? "served" : "refresh") : "initial");
 		return () => {
 			/*
@@ -557,7 +568,7 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 			stopPoll();
 			stopBuildPoll();
 		};
-	}, [sessionId, load, stopPoll, stopBuildPoll]);
+	}, [sessionId, load, stopPoll, stopBuildPoll, followBuild]);
 
 	const building = manifestIsBuilding(manifest);
 

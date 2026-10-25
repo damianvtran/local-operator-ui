@@ -1008,3 +1008,84 @@ test("a switch mid-follow cancels the old conversation's re-reads", async (t) =>
 	t.mock.timers.tick(CHECKPOINT_BUILD_POLL_MAX_MS * 10);
 	assert.equal(after.length, 1, "no re-read after unmount");
 });
+
+/*
+ * R1: a cached build is already an obligation to follow, even if this mount's
+ * refresh fails. These use the real manifest cache and hook; only transport and
+ * time are controlled. The successful-refresh and cached-ready controls keep a
+ * passing test from merely proving that every cached answer now polls forever.
+ */
+for (const state of ["building", "stale"]) {
+	test(`a cached ${state} seed recovers after the mount refresh fails`, async (t) => {
+		t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+		freshWindow();
+		backend(manifest([], { state }));
+		await loadCheckpointManifest("s1");
+		const ticks = [user()];
+		const requests = backend([
+			new Error("transient mount refresh failure"),
+			manifest(ticks),
+		]);
+		const warnings = captureWarnings();
+		const rail = await mountHook("s1");
+		try {
+			assert.equal(requests.length, 1, "the failed mount refresh ran");
+			assert.equal(rail.latest().building, true);
+			assert.equal(rail.latest().checkpoints.length, 0);
+			t.mock.timers.tick(CHECKPOINT_BUILD_POLL_MIN_MS);
+			await rail.flush();
+			assert.equal(requests.length, 2, "the seeded build still owns a follow");
+			assert.equal(rail.latest().building, false);
+			assert.deepEqual(rail.latest().checkpoints, ticks);
+			t.mock.timers.tick(CHECKPOINT_BUILD_POLL_MAX_MS * 20);
+			await rail.flush();
+			assert.equal(requests.length, 2, "ready ends the follow");
+		} finally {
+			await rail.close();
+			warnings.restore();
+		}
+	});
+}
+
+test("a cached building seed with a successful mount refresh follows once, not twice", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	freshWindow();
+	backend(building());
+	await loadCheckpointManifest("s1");
+	const requests = backend([building(), manifest([user()])]);
+	const rail = await mountHook("s1");
+	try {
+		assert.equal(requests.length, 1);
+		t.mock.timers.tick(CHECKPOINT_BUILD_POLL_MIN_MS);
+		await rail.flush();
+		assert.equal(requests.length, 2, "seed and refresh share one follow timer");
+		assert.equal(rail.latest().building, false);
+		assert.equal(rail.latest().checkpoints.length, 1);
+		t.mock.timers.tick(CHECKPOINT_BUILD_POLL_MAX_MS * 20);
+		await rail.flush();
+		assert.equal(requests.length, 2);
+	} finally {
+		await rail.close();
+	}
+});
+
+test("a cached ready seed does not start a build follow when its refresh fails", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	freshWindow();
+	const ticks = [user()];
+	backend(manifest(ticks));
+	await loadCheckpointManifest("s1");
+	const requests = backend(new Error("transient ready refresh failure"));
+	const warnings = captureWarnings();
+	const rail = await mountHook("s1");
+	try {
+		t.mock.timers.tick(CHECKPOINT_BUILD_POLL_MAX_MS * 20);
+		await rail.flush();
+		assert.equal(requests.length, 1, "a ready seed owes no build follow");
+		assert.equal(rail.latest().building, false);
+		assert.deepEqual(rail.latest().checkpoints, ticks);
+	} finally {
+		await rail.close();
+		warnings.restore();
+	}
+});
