@@ -55,7 +55,6 @@ import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
 	DESKTOP_REFUSAL_CODE,
-	DESKTOP_REFUSAL_SENTENCE,
 	type DelegatedCleanupNotice,
 	type DesktopModelSelection,
 	type DesktopRequest,
@@ -85,6 +84,7 @@ import {
 	mergePeerDeviceFacts,
 	reconcilePeerDeviceSnapshot,
 } from "../../features/mesh/peer-presence";
+import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-copy";
 
 export type CanonicalSessionRow = {
 	session_id: string;
@@ -1569,7 +1569,7 @@ export function sendFailureCopy(
 	if (code === DESKTOP_REFUSAL_CODE.transportFailed)
 		return { message: SEND_FAILURE_COPY.unreachable, retry: true, code };
 	if (isDesktopRefusalCode(code))
-		return { message: DESKTOP_REFUSAL_SENTENCE[code], retry: false, code };
+		return { message: desktopRefusalSentence(code), retry: false, code };
 	/*
 	 * THE TRANSPORT'S DEADLINE IS THE ARM THE OPERATOR REPORTED, and this is the
 	 * line that answers it. Its sentence (`desktop-contract.ts`, "The app waits up

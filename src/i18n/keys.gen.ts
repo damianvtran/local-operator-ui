@@ -2110,6 +2110,8 @@ export type MessageParams = {
 	"ui.chat.header.copy_id": undefined;
 	"ui.chat.header.delete": undefined;
 	"ui.chat.header.move_device": undefined;
+	"ui.chat.header.new_chat": undefined;
+	"ui.chat.header.new_chat_with": { target: string };
 	"ui.chat.header.open_run_details": undefined;
 	"ui.chat.header.transcript_display": undefined;
 	"ui.chat.action.stopped": undefined;
@@ -2200,6 +2202,7 @@ export type MessageParams = {
 	"ui.chat.response_actions.label": undefined;
 	"ui.chat.run_details.jobs": undefined;
 	"ui.chat.run_details.keep": undefined;
+	"ui.chat.sidebar.agents.builtin_offer": { count: number; list: string };
 	"ui.chat.sidebar.agents.clear_filter": undefined;
 	"ui.chat.sidebar.agents.create": undefined;
 	"ui.chat.sidebar.agents.dismiss_offer": undefined;
@@ -2207,8 +2210,15 @@ export type MessageParams = {
 	"ui.chat.sidebar.agents.filter": undefined;
 	"ui.chat.sidebar.agents.loading": undefined;
 	"ui.chat.sidebar.agents.no_match": undefined;
+	"ui.chat.sidebar.catalogue.total": { shown: number; total: number };
+	"ui.chat.sidebar.catalogue.total_search": { shown: number; total: number };
+	"ui.chat.sidebar.catalogue.total_search_clipped": {
+		shown: number;
+		total: number;
+	};
 	"ui.chat.sidebar.drafts.clear_all": undefined;
 	"ui.chat.sidebar.drafts.clear_all_label": undefined;
+	"ui.chat.sidebar.groups.badge": { badge: number };
 	"ui.chat.sidebar.header.create": undefined;
 	"ui.chat.sidebar.header.create_agent": undefined;
 	"ui.chat.sidebar.header.create_team": undefined;
@@ -2543,6 +2553,10 @@ export type MessageParams = {
 	"ui.common.editing.conflict": undefined;
 	"ui.common.editing.keep_mine": undefined;
 	"ui.common.editing.use_theirs": undefined;
+	"ui.common.errors.desktop_refusal.no_credential": undefined;
+	"ui.common.errors.desktop_refusal.plane_closed": undefined;
+	"ui.common.errors.desktop_refusal.refused": undefined;
+	"ui.common.errors.desktop_refusal.transport_failed": undefined;
 	"ui.common.errors.error_boundary.error_details": undefined;
 	"ui.common.errors.error_boundary.something_went_wrong": undefined;
 	"ui.common.errors.error_boundary.stack_trace": undefined;
