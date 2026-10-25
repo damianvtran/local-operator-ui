@@ -1,0 +1,251 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-translation-audit",
+  "locale": "zh-CN",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor (lopdev team)",
+  "session": "2c1cdbac8e38",
+  "instance": "zh-cn-extract-734dc4749c3d",
+  "model": "deepseek/deepseek-flash",
+  "model_fallback": "none",
+  "model_note": "Harness session model tag deepseek/deepseek-flash; no model switch or fallback occurred during this run. The instance is lower-cased ('zh-cn-') only to satisfy the ledger charset rule (isPlaceholderInstance requires ^[a-z0-9_-]+$, and isRepoReceiptPath applies the same rule to the receipt filename); the locale it names is zh-CN.",
+  "independence": "Independent auditor: I did not translate this locale, and this session is separate from the translator and implementer sessions. I edited no catalogue, English source, context sidecar, ledger, allowance or generated file; every value was read from git objects at the recorded head.",
+  "date": "2026-10-24",
+  "scope": {
+    "pr": 1403,
+    "branch": "feat/i18n-key-remaining-copy",
+    "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+    "head": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+    "note": "Read the named head with git show; nothing was checked out, reset or edited. The audited values are the 134 English keys added against base 3d0e9010 in the seven namespaces below, each compared with its en context sidecar and with the pre-existing zh-CN catalogue. Whole-file key parity (3,813/3,813, 0 missing, 0 extra for all seven other locales) was re-derived here, not taken from the PR summary. ICU structure was compared with the repository's real parser (@formatjs/icu-messageformat-parser): 134/134 identical argument names, select arms and number skeletons."
+  },
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "keys_read": 134,
+  "namespace_count": 7,
+  "status": "changes_requested",
+  "verdict": "changes_requested: 1 blocker over 10 keys (filesystem identifiers translated instead of kept literal), 5 minor findings over 8 keys and 3 nit findings over 4 keys. The other 116 keys are clean: ICU and placeholder structure exact on all 134, 你 register with no 您 and no added 请, established terms for agent/session/hub/provider/credits/dismiss/clear/asset, and no untranslated stub outside the ten identifiers.",
+  "namespaces": {
+    "ui.chat.composer": {
+      "status": "passed",
+      "verdict": "clean-with-findings: 1 minor over 1 key",
+      "keys_audited": 30,
+      "namespace_key_count": 66,
+      "sha256": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "zh-CN": "41b3bcbdfaf4d6bd713310c78428045ac3cecbbfd9ace0d564f704d461cac95c",
+        "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.chat.composer.placeholder.aside",
+          "keys": [
+            "ui.chat.composer.placeholder.aside"
+          ],
+          "current": "不留记录地提问 — Esc关闭旁支对话",
+          "proposed": "不留记录地提问——Esc关闭旁支对话",
+          "reason": "Chinese typography uses the full-width 破折号 —— with no surrounding spaces; the locale already does this (ui.chat.asks.dismiss.receipt.answered_in_chat 已关闭——已在对话中解决). The spaced ASCII em dash also inserts a space between Chinese and the Latin Esc, against the locale's width discipline."
+        }
+      ]
+    },
+    "ui.chat.device": {
+      "status": "passed",
+      "verdict": "clean-with-findings: 1 minor over 2 keys",
+      "keys_audited": 14,
+      "namespace_key_count": 14,
+      "sha256": {
+        "en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+        "zh-CN": "953a72ad6bf265a2bb098a0b941c7b1322fc0f09ba1a4d1ecbc4714ca3bb65b9",
+        "context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.chat.device.sentence.remote",
+          "keys": [
+            "ui.chat.device.sentence.local",
+            "ui.chat.device.sentence.remote"
+          ],
+          "current": "或稍后召回 | 点击可将其召回此处，或继续迁移",
+          "proposed": "或稍后移回此处 | 点击可将其移回此处，或继续迁移",
+          "reason": "Glossary drift: the same English term 'recall' is already rendered 移回 in this locale (ui.mesh.mesh_card.recall_to_this_device 移回此设备, ui.mesh.mesh_drop.recall_it 移回此设备, ui.mesh.mesh_drop.recall_first 请先将其移回此处). 召回 is a calque from product recalls and names a second term for the same action."
+        }
+      ]
+    },
+    "ui.chat.dialogs": {
+      "status": "passed",
+      "verdict": "clean: 6 keys, no findings",
+      "keys_audited": 6,
+      "namespace_key_count": 10,
+      "sha256": {
+        "en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+        "zh-CN": "3dc39047a762c8db7fffee313d735d55a77b7dbcffda534e8ca0f2819a64bbd5",
+        "context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299"
+      },
+      "findings": []
+    },
+    "ui.chat.directory": {
+      "status": "changes_requested",
+      "verdict": "changes_requested: 1 blocker over 10 keys, 1 minor over 2 keys, 1 nit over 2 keys",
+      "keys_audited": 43,
+      "namespace_key_count": 43,
+      "sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "zh-CN": "4a1d72e93dd884b21369033419bd1415bd5b94a06e6265e707d6b66a120fb7c3",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+      },
+      "findings": [
+        {
+          "severity": "blocker",
+          "key": "ui.chat.directory.folder.etc",
+          "keys": [
+            "ui.chat.directory.folder.etc",
+            "ui.chat.directory.folder.media",
+            "ui.chat.directory.folder.mnt",
+            "ui.chat.directory.folder.opt",
+            "ui.chat.directory.folder.srv",
+            "ui.chat.directory.folder.usr",
+            "ui.chat.directory.folder.var",
+            "ui.chat.directory.folder.program_data",
+            "ui.chat.directory.folder.program_files",
+            "ui.chat.directory.folder.program_files_x86"
+          ],
+          "current": "系统配置 | 媒体 | 挂载点 | 可选软件 | 服务数据 | 系统程序 | 可变数据 | 程序数据 | 程序文件 | 程序文件（x86）",
+          "proposed": "etc | media | mnt | opt | srv | usr | var | ProgramData | Program Files | Program Files (x86)",
+          "proposed_per_key": {
+            "ui.chat.directory.folder.etc": "etc",
+            "ui.chat.directory.folder.media": "media",
+            "ui.chat.directory.folder.mnt": "mnt",
+            "ui.chat.directory.folder.opt": "opt",
+            "ui.chat.directory.folder.srv": "srv",
+            "ui.chat.directory.folder.usr": "usr",
+            "ui.chat.directory.folder.var": "var",
+            "ui.chat.directory.folder.program_data": "ProgramData",
+            "ui.chat.directory.folder.program_files": "Program Files",
+            "ui.chat.directory.folder.program_files_x86": "Program Files (x86)"
+          },
+          "reason": "These ten values are the folder's own name shown beside its path, not prose: the seven Unix segments carry an explicit 'do NOT translate it' note in the en sidecar, and the three Windows folders are shown in English by Explorer under every UI language (the en sidecar asks for the name the file manager shows, which is the literal name). This branch already restored exactly these ten keys to English in hi (242119ba78), and i18n/locale-parity.test.mjs lists all ten in the global IDENTICAL_OK table as 'identical in every locale'. Translating them shows a folder name that does not exist."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.directory.menu.no_recent",
+          "keys": [
+            "ui.chat.directory.menu.no_recent",
+            "ui.chat.directory.menu.recent"
+          ],
+          "current": "没有最近的目录 | 最近的目录",
+          "proposed": "暂无最近使用的目录 | 最近使用的目录",
+          "reason": "'Recent directories' means recently used directories; 最近的目录 reads as a literal calque of 'nearest directories'. Chinese file pickers name this list 最近使用的位置/目录, and the empty state uses 暂无 rather than 没有."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.chat.directory.announce.invalid",
+          "keys": [
+            "ui.chat.directory.announce.invalid",
+            "ui.chat.directory.tooltip.invalid"
+          ],
+          "current": "{path}不是此计算机上的目录",
+          "proposed": "{path}不是本机上的目录",
+          "reason": "Same English phrase 'this computer' is already rendered 本机 in this locale's identical clear-conversation warning (ui.chat.dialogs.options.clear_message) and 此电脑 in the provider copy; 此计算机 adds a third spelling. 本机 is the terse chat-voice term and is shorter for the announcement."
+        }
+      ]
+    },
+    "ui.chat": {
+      "status": "passed",
+      "verdict": "clean-with-findings: 2 minor over 3 keys, 2 nit over 2 keys",
+      "keys_audited": 36,
+      "namespace_key_count": 44,
+      "sha256": {
+        "en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+        "zh-CN": "c51d137b004dc70fe4ecd109a46f62c78e5ef7458237fd257481ddca6b8d66c6",
+        "context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.chat.question_dock.secret_value_label",
+          "keys": [
+            "ui.chat.question_dock.secret_answer_label",
+            "ui.chat.question_dock.secret_value_label"
+          ],
+          "current": "敏感信息回答 | 敏感信息值",
+          "proposed": "填写敏感信息 | 敏感信息",
+          "reason": "Both are accessible names built by calquing English word order: 敏感信息值 reads 'value of sensitive information' and 敏感信息回答 reads 'sensitive-information reply'. Native field names say what goes in the field; the composer already uses 填写敏感信息 for the same action (ui.chat.composer.placeholder.secret_answer)."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.question_dock.secret_note",
+          "keys": [
+            "ui.chat.question_dock.secret_note"
+          ],
+          "current": "输入时隐藏 — 会发送给智能体，不显示在会话记录中。",
+          "proposed": "输入时隐藏——会发送给智能体，不显示在会话记录中。",
+          "reason": "Same typography defect as the aside placeholder: a spaced ASCII em dash between Chinese clauses, where this locale uses the unspaced full-width 破折号."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.chat.session_status.choose_model_tooltip",
+          "keys": [
+            "ui.chat.session_status.choose_model_tooltip"
+          ],
+          "current": "选择此对话将要运行的模型",
+          "proposed": "选择此对话使用的模型",
+          "reason": "将要运行的 is a future-tense calque of 'will run on'; Chinese tooltips name the model's role with 使用的. Meaning is unchanged and shorter."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.chat.hub_update.update_all_label",
+          "keys": [
+            "ui.chat.hub_update.update_all_label"
+          ],
+          "current": "从中心更新全部{count, number, ::group-off}项智能体更新",
+          "proposed": "从中心应用全部{count, number, ::group-off}项智能体更新",
+          "reason": "更新 ... 更新 repeats the same verb and noun inside one accessible name that is read aloud; 应用...更新 is the standard Chinese collocation for applying updates. The select arms stay identical apart from that verb."
+        }
+      ]
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "verdict": "clean: 1 key, no findings",
+      "keys_audited": 1,
+      "namespace_key_count": 44,
+      "sha256": {
+        "en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+        "zh-CN": "8c123f38a30f55130c7bfe62a6d49068095cb440431723b11b347c4f63870f53",
+        "context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de"
+      },
+      "findings": []
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "verdict": "clean: 4 keys, no findings",
+      "keys_audited": 4,
+      "namespace_key_count": 8,
+      "sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "zh-CN": "5efff290b4ad62356dd60d5a18116b64e88c6b161ff115bd895cd875704323e3",
+        "context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5"
+      },
+      "findings": []
+    }
+  },
+  "observations": [
+    "Folder display names checked against the platform file manager: 用户 matches Windows Explorer's zh-CN name for C:\\Users; 应用程序 matches Finder's zh-CN name for /Applications; 宗卷 is Apple's zh-CN term for a volume (Disk Utility and Finder use it), which is the macOS name this shortcut stands for. 文档 matches Windows Explorer; macOS Finder labels that folder 文稿, and one cross-platform key cannot carry both, so 文档 is the neutral choice and is not flagged.",
+    "ui.chat.directory.tooltip.truncated_move_cost keeps the source-pinned `{path} - ` prefix (en sidecar: 'The `{path} - ` prefixes the path when the chip truncates it'), so its ASCII hyphen and surrounding spaces are deliberate and are not a typography finding.",
+    "All 请 occurrences in the 134 values are inside 请求/申请/请先-style compounds; none is the politeness marker the zh-CN guide restricts to strings whose English says 'please'. No 您, 啦/哦/呀 or ！ occurs in the audited values.",
+    "Width: only 7 of the 134 keys carry maxCells; the largest CJK rendering is 在此设备上运行 at 14 cells against a 20-cell budget, so no audited key is over budget.",
+    "Register: 你 is used where a pronoun is needed (输入你自己的回答), with no 您 anywhere in the round, matching the locale's recorded 你 decision.",
+    "Key order: the seven files append this round's keys after the pre-existing block, which is how the locale's existing files already relate to en order; catalogues are JSON objects, so key order has no runtime effect and is not recorded as a finding.",
+    "Parity re-derived at the head: all seven translated locales carry 3,813 keys with 0 missing and 0 extra against en, and every audited namespace has an identical key set in en and zh-CN.",
+    "ICU structure was compared for all 134 keys with the repository's real parser (@formatjs/icu-messageformat-parser): argument names, select arms and number skeletons (::group-off) are identical, 0 mismatches; no plural message was added in this round."
+  ]
+}
