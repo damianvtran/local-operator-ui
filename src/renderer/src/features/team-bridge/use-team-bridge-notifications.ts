@@ -223,9 +223,11 @@ async function deliverTeamBridgeBanner(
 				candidate.tenantId,
 				selfAccountId,
 			);
-			senderLabel = participantLabel(newest.sender, people, (agent, person) =>
-				t("ui.teamBridge.chief.label", { agent, person }),
-			);
+			senderLabel = participantLabel(newest.sender, people, {
+				named: (agent, person) =>
+					t("ui.teamBridge.chief.label", { agent, person }),
+				unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
+			});
 			preview = teamBridgePreviewText(newest.body);
 		}
 	} catch {

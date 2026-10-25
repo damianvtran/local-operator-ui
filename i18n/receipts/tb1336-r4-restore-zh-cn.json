@@ -1,0 +1,56 @@
+{
+  "auditor": "coder",
+  "model": "kimi/k3.1-pro",
+  "instance": "tb1336-r4-restore-zh-cn",
+  "session": "df4d0ccf18f8",
+  "date": "2026-10-25",
+  "locale": "zh-CN",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 1,
+  "keys_substantive": 0,
+  "scope": "R4-01 restoration only: chief.unnamed English/context/target values are exactly the previously audited 491c4c2 values; the pre-remediation head lacked this key. Coder byte/provenance verification, not an independent semantic audit; prior independent union audit remains inherited.",
+  "sha256": {
+    "en": "549d3474e9f0403f2e2c088ba954fe079babed2db974abf2508beebd0a7217df",
+    "zh-CN": "b2e7dace90f6ceaccdf55df9144df989e885271ea3d37d05de0bfdca4e1b8c3d",
+    "context": "5811a53d2944a4e645fc001b0f6f32a41c4a98e00d53ae85251235a564e65117"
+  },
+  "validation": {
+    "src/i18n/catalogues/en/ui.teamBridge.json": {
+      "added": [
+        "ui.teamBridge.chief.unnamed"
+      ],
+      "removed": [],
+      "changed": [],
+      "restored_value_matches_491c4c2": true
+    },
+    "src/i18n/catalogues/en/ui.teamBridge.context.json": {
+      "added": [
+        "ui.teamBridge.chief.unnamed"
+      ],
+      "removed": [],
+      "changed": [],
+      "restored_value_matches_491c4c2": true
+    },
+    "src/i18n/catalogues/zh-CN/ui.teamBridge.json": {
+      "added": [
+        "ui.teamBridge.chief.unnamed"
+      ],
+      "removed": [],
+      "changed": [],
+      "restored_value_matches_491c4c2": true
+    }
+  },
+  "inherited_receipts": [
+    {
+      "path": "i18n/receipts/tb1336-main-union-zh-cn.json",
+      "sha256": "66fda78ca47f5596eed1686d0b5efe4f928bbaf09c1886fe90473ca0a44a4720"
+    },
+    {
+      "path": "i18n/receipts/tb-members-r1-zh-CN.json",
+      "sha256": "d502042825d885c3bb005c4e66f69e9ebdda1e21f5588f13e342d2311beb942d"
+    }
+  ],
+  "findings": [],
+  "limits": "No new translation, no independent semantic audit, no rendered-fit claim. Restoration of previously audited values only."
+}

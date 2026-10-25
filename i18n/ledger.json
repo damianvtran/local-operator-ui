@@ -4235,8 +4235,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
-			"target_sha256": "2f29da0bf2d80f63f2ee03394a396e89ab020a5e64b1a4a37a76b457d75e1945",
+			"source_sha256": "549d3474e9f0403f2e2c088ba954fe079babed2db974abf2508beebd0a7217df",
+			"target_sha256": "5d4dd5cbaa6c0718804d2fe405c0e8962d1971258b0362adad21a5d5d371a841",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -4247,19 +4247,19 @@
 			"auditors": [
 				{
 					"agent": "coder",
-					"model": "deepseek/deepseek-flash",
+					"model": "kimi/k3.1-pro",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "tb1336b-union-es",
+					"instance": "tb1336-r4-restore-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1336b-union-es.json",
-					"receipt_sha256": "bace44d7efda631a3aca208f2f8368d4f090ff6776adb828afd5050b6d5e4870",
-					"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
+					"receipt": "i18n/receipts/tb1336-r4-restore-es.json",
+					"receipt_sha256": "947e10f6f3cd73d20a8b015d9a1297207931b0e83115dbc04dfd355b769487ae",
+					"scope": "R4-01: restored chief.unnamed verbatim from audited 491c4c2; coder byte verification inherits prior independent audit, no new semantic audit."
 				}
 			],
 			"status": "audited",
@@ -4852,6 +4852,29 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-es.json",
 							"receipt_sha256": "bc8f961592deac220244f758f10edd4e137f212722abfe2a4b55da8ea4fed1ee",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
+					"target_sha256": "2f29da0bf2d80f63f2ee03394a396e89ab020a5e64b1a4a37a76b457d75e1945",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "tb1336b-union-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1336b-union-es.json",
+							"receipt_sha256": "bace44d7efda631a3aca208f2f8368d4f090ff6776adb828afd5050b6d5e4870",
+							"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
 						}
 					],
 					"status": "audited"
@@ -9502,8 +9525,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
-			"target_sha256": "df7a6c595a42420e9024e7b0bf88a4e8da4c8405e8ea0ba2aa4bd3bf53cf1065",
+			"source_sha256": "549d3474e9f0403f2e2c088ba954fe079babed2db974abf2508beebd0a7217df",
+			"target_sha256": "c6c27b6511a8b32983dbef7db65ac23610723451ef8d8b29f8660f058b9f6376",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -9515,19 +9538,19 @@
 			"auditors": [
 				{
 					"agent": "coder",
-					"model": "deepseek/deepseek-flash",
+					"model": "kimi/k3.1-pro",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "tb1336b-union-fr",
+					"instance": "tb1336-r4-restore-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1336b-union-fr.json",
-					"receipt_sha256": "bb2c3651bd55accddb5acf9d8448722faf3690de04fb1615283fcb03065e50a8",
-					"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
+					"receipt": "i18n/receipts/tb1336-r4-restore-fr.json",
+					"receipt_sha256": "97bfe0f7c9e57f18fc1d7e4eb8e67fc648e8c52ac6d9173ccf14cf9ca6201984",
+					"scope": "R4-01: restored chief.unnamed verbatim from audited 491c4c2; coder byte verification inherits prior independent audit, no new semantic audit."
 				}
 			],
 			"status": "audited",
@@ -10144,6 +10167,29 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-fr.json",
 							"receipt_sha256": "8c8159d44028a20869cfe736fd6ea488eeb3774679507a4890312d51d3d2bf86",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
+					"target_sha256": "df7a6c595a42420e9024e7b0bf88a4e8da4c8405e8ea0ba2aa4bd3bf53cf1065",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "tb1336b-union-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1336b-union-fr.json",
+							"receipt_sha256": "bb2c3651bd55accddb5acf9d8448722faf3690de04fb1615283fcb03065e50a8",
+							"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
 						}
 					],
 					"status": "audited"
@@ -14695,8 +14741,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
-			"target_sha256": "f0604ae683a0f5c3ffb4e69032852403613c0b477470469d2c88ba2df29af9d4",
+			"source_sha256": "549d3474e9f0403f2e2c088ba954fe079babed2db974abf2508beebd0a7217df",
+			"target_sha256": "5395b5b64d4d29f1e7f74cd50c9d922efbe2334bd2de87ea4ae71a3382e119e9",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -14707,19 +14753,19 @@
 			"auditors": [
 				{
 					"agent": "coder",
-					"model": "deepseek/deepseek-flash",
+					"model": "kimi/k3.1-pro",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "tb1336b-union-hi",
+					"instance": "tb1336-r4-restore-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1336b-union-hi.json",
-					"receipt_sha256": "f5e47c737e10d9cef5160dabf91c766ea47e6bc87c6ba68f51643b59303ca13a",
-					"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
+					"receipt": "i18n/receipts/tb1336-r4-restore-hi.json",
+					"receipt_sha256": "9959d53b5a1c5d6fc53d51317866e9a366fa443f9d412055ab7dc5c9cfc40cb3",
+					"scope": "R4-01: restored chief.unnamed verbatim from audited 491c4c2; coder byte verification inherits prior independent audit, no new semantic audit."
 				}
 			],
 			"status": "audited",
@@ -15259,6 +15305,29 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-hi.json",
 							"receipt_sha256": "23c3745502c1d2b48c531ace8e193c9c2a9a9d4015a32f263453d9fef59ef28d",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
+					"target_sha256": "f0604ae683a0f5c3ffb4e69032852403613c0b477470469d2c88ba2df29af9d4",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "tb1336b-union-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1336b-union-hi.json",
+							"receipt_sha256": "f5e47c737e10d9cef5160dabf91c766ea47e6bc87c6ba68f51643b59303ca13a",
+							"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
 						}
 					],
 					"status": "audited"
@@ -19555,8 +19624,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
-			"target_sha256": "344c118074acc6ee8d28a635480a67022f33604c387a190bd5fcc6bc832be9d3",
+			"source_sha256": "549d3474e9f0403f2e2c088ba954fe079babed2db974abf2508beebd0a7217df",
+			"target_sha256": "c245b2a23825aeb93b7293d2a1be1b7f38943ab2bbb37b42f3b90d012aed3ee4",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19568,19 +19637,19 @@
 			"auditors": [
 				{
 					"agent": "coder",
-					"model": "deepseek/deepseek-flash",
+					"model": "kimi/k3.1-pro",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "tb1336b-union-ru",
+					"instance": "tb1336-r4-restore-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1336b-union-ru.json",
-					"receipt_sha256": "41f6bdf010d0b55f076a1dc9c66f0cf22f658328b99f8b94bdf0c3259cdcd5a1",
-					"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
+					"receipt": "i18n/receipts/tb1336-r4-restore-ru.json",
+					"receipt_sha256": "f409ad2b007638cd7e565a8e6118d681036ed0f9677b8269b93f1ebf686ebdf3",
+					"scope": "R4-01: restored chief.unnamed verbatim from audited 491c4c2; coder byte verification inherits prior independent audit, no new semantic audit."
 				}
 			],
 			"status": "audited",
@@ -20151,6 +20220,29 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-ru.json",
 							"receipt_sha256": "2c14caaaf3d817f6e605763e75164999b1fd52726b0766601abc66728bd9af9b",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
+					"target_sha256": "344c118074acc6ee8d28a635480a67022f33604c387a190bd5fcc6bc832be9d3",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "tb1336b-union-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1336b-union-ru.json",
+							"receipt_sha256": "41f6bdf010d0b55f076a1dc9c66f0cf22f658328b99f8b94bdf0c3259cdcd5a1",
+							"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
 						}
 					],
 					"status": "audited"
@@ -24538,8 +24630,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
-			"target_sha256": "fc226b7a5fac64848662ef43b87abe15e2d4efe9b0dbca87e899c12db2c6eeba",
+			"source_sha256": "549d3474e9f0403f2e2c088ba954fe079babed2db974abf2508beebd0a7217df",
+			"target_sha256": "92138894ab6d45f4a09607715869c7fb2df221615875d4699ef06a35c3857279",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -24550,19 +24642,19 @@
 			"auditors": [
 				{
 					"agent": "coder",
-					"model": "deepseek/deepseek-flash",
+					"model": "kimi/k3.1-pro",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "tb1336b-union-ur",
+					"instance": "tb1336-r4-restore-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1336b-union-ur.json",
-					"receipt_sha256": "f9310644c240ec2be15c53f0625891878dfa9cb19bec1488b52acb9c4bc6dbd2",
-					"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
+					"receipt": "i18n/receipts/tb1336-r4-restore-ur.json",
+					"receipt_sha256": "183c95345e2e302e4c227b36c06d8e0d5206208114eeecbbe70af66612a7c80f",
+					"scope": "R4-01: restored chief.unnamed verbatim from audited 491c4c2; coder byte verification inherits prior independent audit, no new semantic audit."
 				}
 			],
 			"status": "audited",
@@ -25102,6 +25194,29 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-ur.json",
 							"receipt_sha256": "5a7570715b94041233d37cb0ca87150e96f867dc84e393708c62ad20b2a17b1b",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
+					"target_sha256": "fc226b7a5fac64848662ef43b87abe15e2d4efe9b0dbca87e899c12db2c6eeba",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "tb1336b-union-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1336b-union-ur.json",
+							"receipt_sha256": "f9310644c240ec2be15c53f0625891878dfa9cb19bec1488b52acb9c4bc6dbd2",
+							"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
 						}
 					],
 					"status": "audited"
@@ -29710,8 +29825,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
-			"target_sha256": "ee83c2082d6191d92896200fd611298570e4fb46eb57fad1db1cb85042c78fdf",
+			"source_sha256": "549d3474e9f0403f2e2c088ba954fe079babed2db974abf2508beebd0a7217df",
+			"target_sha256": "d62836e211efc759b05405027dca7e61f9399f629c7faf9325f71b1bfa2d0591",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -29722,19 +29837,19 @@
 			"auditors": [
 				{
 					"agent": "coder",
-					"model": "deepseek/deepseek-flash",
+					"model": "kimi/k3.1-pro",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "tb1336b-union-vi",
+					"instance": "tb1336-r4-restore-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1336b-union-vi.json",
-					"receipt_sha256": "133b5d481cb5ebd135d04cf3fddac1acc08b6c842b09ed4316ebeafd8b745bfb",
-					"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
+					"receipt": "i18n/receipts/tb1336-r4-restore-vi.json",
+					"receipt_sha256": "f406997a6cd0971eecc8f330697c6dd2f48595c1a407606f0c15ca78c4ce0faf",
+					"scope": "R4-01: restored chief.unnamed verbatim from audited 491c4c2; coder byte verification inherits prior independent audit, no new semantic audit."
 				}
 			],
 			"status": "audited",
@@ -30305,6 +30420,29 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-vi.json",
 							"receipt_sha256": "f15e563bb45ed37ede38734551c4d774a505b69da30c54c48e8cf21362e9d2a8",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
+					"target_sha256": "ee83c2082d6191d92896200fd611298570e4fb46eb57fad1db1cb85042c78fdf",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "tb1336b-union-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1336b-union-vi.json",
+							"receipt_sha256": "133b5d481cb5ebd135d04cf3fddac1acc08b6c842b09ed4316ebeafd8b745bfb",
+							"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
 						}
 					],
 					"status": "audited"
@@ -35528,8 +35666,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
-			"target_sha256": "ac06f1892d4c074a4ece1d971abb924bf9b67c39d40103dc48db4a63ea2e8430",
+			"source_sha256": "549d3474e9f0403f2e2c088ba954fe079babed2db974abf2508beebd0a7217df",
+			"target_sha256": "b2e7dace90f6ceaccdf55df9144df989e885271ea3d37d05de0bfdca4e1b8c3d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -35540,19 +35678,19 @@
 			"auditors": [
 				{
 					"agent": "coder",
-					"model": "deepseek/deepseek-flash",
+					"model": "kimi/k3.1-pro",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "tb1336b-union-zh-cn",
+					"instance": "tb1336-r4-restore-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1336b-union-zh-cn.json",
-					"receipt_sha256": "5f6694a20e38e31ec9bf2e6d1efb47b7ac69157fadd6efa1490190ada30dc63a",
-					"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
+					"receipt": "i18n/receipts/tb1336-r4-restore-zh-cn.json",
+					"receipt_sha256": "27eb072e798e7b3ab75dff5ee276856c961a8d417800b3530dfaeb91d0a171d5",
+					"scope": "R4-01: restored chief.unnamed verbatim from audited 491c4c2; coder byte verification inherits prior independent audit, no new semantic audit."
 				}
 			],
 			"status": "audited",
@@ -36145,6 +36283,29 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-zhcn.json",
 							"receipt_sha256": "d086a407d7fdf135acee93109b6083ddaf34cba4c47f922368ee0709f3877b60",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dccce6b06a589f76f982ed0ff6026c0dec02bd4cbb4460e6c5fff0f96db3ad21",
+					"target_sha256": "ac06f1892d4c074a4ece1d971abb924bf9b67c39d40103dc48db4a63ea2e8430",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "tb1336b-union-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1336b-union-zh-cn.json",
+							"receipt_sha256": "5f6694a20e38e31ec9bf2e6d1efb47b7ac69157fadd6efa1490190ada30dc63a",
+							"scope": "PR #1336 main-union integrity after ece9ae9219; coder mechanical verification, inherits both audited chains."
 						}
 					],
 					"status": "audited"

@@ -1,4 +1,13 @@
 {
+	"ui.teamBridge.chief.unnamed": {
+		"role": "row label composition",
+		"tone": "plain, sentence case",
+		"length": "Short; must fit a 30px rail row.",
+		"placeholders": {
+			"person": "The owning teammate's display name, verbatim."
+		},
+		"note": "Names a teammate's chief of staff when the agent has no name of its own (or its name is the owner's name), e.g. 'Ben Tran’s chief of staff'. Must not repeat the person. Shown on the rail, the thread header and the composer placeholder."
+	},
 	"ui.teamBridge.page.title": {
 		"role": "page heading",
 		"tone": "sentence case, product name kept as-is",

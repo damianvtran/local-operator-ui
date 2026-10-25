@@ -1,0 +1,88 @@
+{
+ "audit_id": "tb1336-r4-restore-hi",
+ "date": "2026-10-25",
+ "locale": "hi",
+ "namespace": "ui.teamBridge",
+ "source_commit": "491c4c2e767983cf4406253fe6a1b56ad49c2ebd",
+ "base_commit": "0e2000f6d525e248582987aa11fb0b6e0f1b0f10",
+ "keys_audited": [
+  "ui.teamBridge.chief.unnamed"
+ ],
+ "translation": {
+  "performed": false,
+  "reason": "Restored the English, context and locale values byte-for-byte from the previously audited branch head; no machine translation or new wording."
+ },
+ "auditors": [
+  {
+   "agent": "coder",
+   "model": "kimi/k3.1-pro",
+   "session": "df4d0ccf18f8",
+   "date": "2026-10-25",
+   "result": "clean",
+   "instance": "tb1336-r4-restore-hi",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tb1336-r4-restore-hi.json",
+   "receipt_sha256": "9959d53b5a1c5d6fc53d51317866e9a366fa443f9d412055ab7dc5c9cfc40cb3",
+   "scope": "R4-01 restoration only: chief.unnamed English/context/target values are exactly the previously audited 491c4c2 values; the pre-remediation head lacked this key. Coder byte/provenance verification, not an independent semantic audit; prior independent union audit remains inherited.",
+   "note": "Mechanical restoration/provenance verification only; not an independent semantic audit."
+  }
+ ],
+ "independent_semantic_audit": {
+  "agent": "reviewer",
+  "model": "openai/gpt-6-astra",
+  "session": "f4444b5af1c0",
+  "job": "617ed8792e53",
+  "date": "2026-10-23",
+  "instance": "tb1336-main-union-hi",
+  "status": "passed",
+  "receipt": "i18n/receipts/tb1336-main-union-hi.json",
+  "receipt_sha256": "1efb997a412b6e1f25e38fa0c1bfa6f7ab752a4fc4dfd8c9e049a6017d5d60c6",
+  "note": "Existing independent audit inherited; its original semantic scope and limits are unchanged."
+ },
+ "validation": {
+  "src/i18n/catalogues/en/ui.teamBridge.json": {
+   "added": [
+    "ui.teamBridge.chief.unnamed"
+   ],
+   "removed": [],
+   "changed": [],
+   "restored_value_matches_491c4c2": true
+  },
+  "src/i18n/catalogues/en/ui.teamBridge.context.json": {
+   "added": [
+    "ui.teamBridge.chief.unnamed"
+   ],
+   "removed": [],
+   "changed": [],
+   "restored_value_matches_491c4c2": true
+  },
+  "src/i18n/catalogues/hi/ui.teamBridge.json": {
+   "added": [
+    "ui.teamBridge.chief.unnamed"
+   ],
+   "removed": [],
+   "changed": [],
+   "restored_value_matches_491c4c2": true
+  }
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "549d3474e9f0403f2e2c088ba954fe079babed2db974abf2508beebd0a7217df"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+   "sha256": "5395b5b64d4d29f1e7f74cd50c9d922efbe2334bd2de87ea4ae71a3382e119e9"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "5811a53d2944a4e645fc001b0f6f32a41c4a98e00d53ae85251235a564e65117"
+  }
+ },
+ "limits": "No new translation, independent semantic re-audit, rendered-fit or runtime claim. This record documents restoration of previously audited values and the exact new file hashes."
+}

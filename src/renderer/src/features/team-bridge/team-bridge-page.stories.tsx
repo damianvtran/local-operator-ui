@@ -1560,11 +1560,11 @@ export const SparseThread: Story = {
 };
 
 /**
- * Chiefs of staff: Ben's agent name was defaulted to Ben's own name by the
- * server ("Ben Tran" → "Ben Tran's chief of staff"), Sherman's is Juno
- * ("Juno (Sherman Tsui)"). The DM below stores the doubled label "Ben Tran (Ben
- * Tran)" as the agent member's name; it must read as the same single label on
- * the rail, the thread header, the composer placeholder and the messages.
+ * Chiefs of staff: the directory defaults Ben's agent name to his own name.
+ * `composeChiefLabel` therefore renders "Ben Tran’s chief of staff" rather than
+ * "Ben Tran (Ben Tran)"; a named agent such as Aida renders "Aida (Ben Tran)".
+ * The legacy DM/message rows below deliberately store the doubled label. Read
+ * normalization suppresses it: no doubled label is a usable stored agent name.
  */
 const echoedRoster = rosterWithChiefs.map((row) =>
 	row.account_id === "acct_ben"

@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.chief.unnamed": "Chánh văn phòng của {person}",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "Chưa có cuộc trò chuyện nào",
 	"ui.teamBridge.list.empty.body": "Bắt đầu một tin nhắn trực tiếp, một nhóm hoặc một kênh.",

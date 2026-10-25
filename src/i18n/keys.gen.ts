@@ -6951,6 +6951,7 @@ export type MessageParams = {
 	"ui.teamBridge.builtin.humans_topic": undefined;
 	"ui.teamBridge.chief.fallback": undefined;
 	"ui.teamBridge.chief.label": { agent: string; person: string };
+	"ui.teamBridge.chief.unnamed": { person: string };
 	"ui.teamBridge.compose.empty": undefined;
 	"ui.teamBridge.compose.label": undefined;
 	"ui.teamBridge.compose.new": undefined;
