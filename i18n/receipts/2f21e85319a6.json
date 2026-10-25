@@ -1,0 +1,48 @@
+{
+ "schema": 1,
+ "audit_kind": "merge-composition-translation-audit",
+ "date": "2026-10-24",
+ "pr": "#1388",
+ "branch": "feat/i18n-canvas-batch",
+ "instance": "2f21e85319a6",
+ "status": "passed",
+ "merge_base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+ "our_head": "fc42fca230616c9f47124c11246c9cbebf419d1f",
+ "incoming_head": "1320319c9a272d9880419478f120b5bc8f0434f6",
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "2f21e85319a6",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "coder session model (system prompt: Model: deepseek/deepseek-flash); no fallback used",
+  "fallback": null,
+  "independent_from_translators": true,
+  "independence_basis": "The merge composed two independently audited snapshots; this run translated no value. It is a distinct session from both translators (`i18n-translator` on each side) and from the auditors whose rows are recorded in `superseded`."
+ },
+ "scope": "Merge composition of `feat/i18n-canvas-batch` (fc42fca230) with origin/main (1320319c9a) for the seven shipped locales of `ui.common.updates`. Verifies that the union keeps every key, that every merged value is byte-identical to its value in one of the two audited snapshots, and that the combined key sets/placeholders are intact. No retranslation, no rendered UI frame pass, and no native-speaker sign-off are claimed.",
+ "method": [
+  "Built each merged catalogue as the key union of the two branch tips: 40 keys added across the merge (31 from origin/main's update-failure vocabulary, 9 from the canvas batch) over 127 shared keys.",
+  "Compared overlapping keys: 0 differed between the two tips in all seven locales, so the union has one unambiguous value per key.",
+  "Proved per-key provenance: every merged value equals the same key's value in the audited `ours` or `theirs` snapshot; no value was edited in this merge.",
+  "Ran the catalogue gates at the merged tree: generator freshness, check-strings, context parity, locale-parity 43/43 (key sets, ICU placeholders, non-English stubs) and the coverage gate.",
+  "Read the 40 added English keys and their translations in all seven locales; spot-read the full update-failure group (cause, consequence, remedy, step) in es, ru, zh-CN and the long rebuild sentence in every locale."
+ ],
+ "namespaces": {
+  "ui.common.updates": {
+   "keys": 167,
+   "sha256": {
+    "en": "fffb6231da06701dbb0dfd24b9ad9dfe35dac56dc412403b30c7643a0437180f",
+    "es": "b885224e75571220c2863daf105e4603bdbcd78b3c73a955cbc05c6d3542f689",
+    "fr": "1c9a621dc7cc65cbb656622f1caea850e5c7c72e907bad1a838bdb85e59d1395",
+    "ru": "46dfc7a9e421c0575547825088264134a9a18f37a1e8f7a97c9a2119346e656f",
+    "hi": "01a52e32f4cdd34bed3d2137da1f2bd9b4b0bec9e7348ecfc7e32de1b88aee23",
+    "ur": "f19db47b4df0533eb467c0d40300181036554505feb996d601b499a1d37961e0",
+    "vi": "fff44cddec9be54ae9e5193af1927090c30d9bc0bc687a31aed46a450153e8eb",
+    "zh-CN": "d63fe5eb3a8bed9ff757d97ee50cd966376468457d3459b8687cc7843f016c84"
+   },
+   "context_sha256": "249a57cdbb2335e340dc31be45ce8fe89ebcb06382f5d7ab66f85d76e13b62c6",
+   "status": "passed",
+   "verdict": "merge composition verified; every value byte-identical to one of the two audited snapshots"
+  }
+ },
+ "findings": []
+}
