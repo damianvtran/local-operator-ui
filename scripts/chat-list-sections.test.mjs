@@ -92,9 +92,21 @@ const BUSY = { status: { code: "busy", label: "Working" } };
 
 test("the sections are the four §C1 names, in the order they are drawn", () => {
 	assert.deepEqual(CHAT_LIST_SECTIONS, ["running", "today", "week", "older"]);
+	/*
+	 * THE TABLE HOLDS MESSAGE KEYS, not the four English words it used to. A
+	 * module-scope sentence table cannot follow a language switch, so the
+	 * wording now lives in the English catalogue and this file pins the KEYS -
+	 * the heading and the view popover's section row share them, which is what
+	 * `ui.chat.sidebar_view.section.*` names here.
+	 */
 	assert.deepEqual(
 		CHAT_LIST_SECTIONS.map((key) => CHAT_LIST_SECTION_LABEL[key]),
-		["Running", "Today", "This week", "Older"],
+		[
+			"ui.chat.sidebar_view.section.running",
+			"ui.chat.sidebar_view.section.today",
+			"ui.chat.sidebar_view.section.week",
+			"ui.chat.sidebar_view.section.older",
+		],
 	);
 });
 

@@ -1,0 +1,14 @@
+{
+	"ui.browser.errors.browser_unavailable": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: The browser is not available."
+	},
+	"ui.browser.errors.address_history_unavailable": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: address history is unavailable"
+	}
+}

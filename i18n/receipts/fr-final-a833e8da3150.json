@@ -1,0 +1,171 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-receipt",
+ "audit_kind": "namespace audit of the final keys wave",
+ "date": "2026-10-25",
+ "locale": "fr",
+ "locale_name": "French",
+ "pr": 1403,
+ "pr_url": "https://github.com/damianvtran/local-operator-ui/pull/1403",
+ "branch": "feat/i18n-key-remaining-copy",
+ "audited_head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+ "pr_base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c (PR baseRefOid; origin/main has since moved to 91aa8f5f1079)",
+ "guidance": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "contracts": [
+   {
+    "path": "~/local-operator-ui/docs/I18N.md",
+    "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+   },
+   {
+    "path": "~/local-operator-ui/AGENTS.md (read from the working checkout; the head copy differs by unrelated sections, sha256 b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af at d784571d)",
+    "sha256": "a259e3cff9de9675176c0f6b03490526762735540e59f4d8255d0e99920a717f"
+   }
+  ]
+ },
+ "method": "Bytes pulled with `git show <head>:<path>` (no checkout) into a scratch tree and SHA-256 hashed there; no catalogue, English, ledger, allowance or generated file was edited. English, French and the English context sidecar were read side by side for the whole namespace, not just the delta. ICU was parsed with @formatjs/icu-messageformat-parser 3.5.21 (argument names, argument types, plural categories and selectors, number skeletons, tags) and rendered with intl-messageformat 12.1.3 under locale fr by a read-only Node probe against the repository's own node_modules. Key sets and order were compared per namespace; every maxCells hint in the sidecar was measured against the French value (code-point cells); register and glossary were checked against the core glossary and the fr style guide, and the locale's key terms were grepped across the whole fr catalogue for drift.",
+ "namespace": "ui.chat.sidebar",
+ "instance": "fr-final-a833e8da3150",
+ "instance_note": "One run per namespace, unique to this namespace by sha256(en bytes + en context bytes + fr bytes), first 12 hex; distinct from the round-2 extract audit da12aa6ade20, which read this namespace before the final five keys existed.",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value in this batch",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "session": "d25a74a9522a",
+  "model": "deepseek/deepseek-flash",
+  "actual_model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback selected or observed",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independence_basis": "This session d25a74a9522a authored no value in these namespaces and is distinct from the fr round-2 extract auditor da12aa6ade20 (receipt fr-extract-audit-da12aa6ade20-r2) and from the canvas/surfaces auditor d94011de0dc0; the final-keys translation is commit 42c72a8a73, produced by a different session. Every value was read from the catalogue bytes at the audited head, not from the translator's commit summary.",
+  "instance": "fr-final-a833e8da3150"
+ },
+ "translator": {
+  "agent": "not recorded for the final keys (no translator receipt exists for this wave at the audited head)",
+  "model": "not recorded",
+  "commit": "42c72a8a73 feat(i18n): translate the final eleven keys to French",
+  "ledger_state": "i18n/ledger.json has no ui.chat.sidebar row for any locale (420 entries, 62 namespaces); the implementer must add the fr row from this receipt, not re-point an existing one.",
+  "commit_note": "The commit message claims: chats -> conversations (ui.chat.sidebar.nav.chats), the counters reuse the house \"{shown} sur {total}\" shape from ui.canvas.files.narrowCount, match -> correspondance, paired -> appairée (ui.projects), built-in agents -> agents intégrés (dismiss_offer), and that the plural arms were rendered in the real ICU formatter at 0,1,2..7,12 and 10^6. The terminology claims hold in the bytes; the 10^6 render does not: only groups.badge carries a `many` arm; the counter and offer messages fall to `other` without the required \"de\" (recorded as FR-FINAL-01/-02 in the ui.chat.sidebar receipt)."
+ },
+ "scope": "All 49 values of ui.chat.sidebar at PR #1403 head d784571d90, read against src/i18n/catalogues/en/ui.chat.sidebar.json and its context sidecar; the final-keys delta is 5 values (agents.builtin_offer, catalogue.total, catalogue.total_search, catalogue.total_search_clipped, groups.badge). section.current_chat is also new against the PR base but arrived in the main keying commit ea0d16253f and was read here too. Catalogue-level audit only: no rendered-frame pass, no browser, and no native-speaker sign-off is claimed. The fr bytes are identical at the previous head ae40ebc959 and at d784571d90.",
+ "sha256": {
+  "en": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+  "fr": "7ba6741b6192b70c0a627ff99a1952ba079c5d754101c970b7c97ca85aaf8dc5",
+  "context": "0a5a1fc27e8d0cab8dfe9b086144a19969268403afded5a7a68036eaf5485339"
+ },
+ "keys_total": 49,
+ "keys_in_batch": 5,
+ "checks": {
+  "key_set": "equal to en (0 missing, 0 extra, same order)",
+  "icu_parse": "all 49 values parse; 0 failures",
+  "placeholders": "argument names identical in all 49 values; number skeletons preserved (::group-off); groups.badge adds an explicit {badge, number, ::group-off} in each arm where English uses `#`, and the render below confirms the required group-off output",
+  "plural_arms": "groups.badge carries fr one/many/other and renders 0 conversation / 1 conversation / 2 conversations / 1000000 de conversations. total_search and total_search_clipped carry one/other only (missing many at 10^6, FR-FINAL-01). builtin_offer mirrors English's =0/one/=2..=6/other and lacks many (FR-FINAL-02). catalogue.total carries no plural at all on its denominator (FR-FINAL-01).",
+  "identical_to_en": "none",
+  "register": "vous throughout; no tu/ton/ta/tes; sentence case; no added politeness. The offer's second sentence uses vous correctly.",
+  "glossary": "chat -> conversation (ui.chat.sidebar.nav.chats, ui.shell.sidebar_navigation.new_chat); built-in -> intégré (dismiss_offer « agents intégrés »); correspondance for match (search.no_match); the counters reuse the house « {shown} sur {total} » shape of ui.canvas.files.narrowCount.",
+  "accuracy": "groups.badge, both search counters and the offer say what English says; the one accuracy defect is the unpluralised denominator (FR-FINAL-01), which the English source also carries but which ru repairs in this same PR with a nested plural.",
+  "typography": "U+2019 apostrophes throughout the new values; U+202F before the prose colon where one occurs; em dash spaced; no ASCII ellipsis, NBSP, straight quotes or bidi controls; NFC-clean."
+ },
+ "width": "No maxCells hints in this namespace. The offer is a wrapping sentence; the counters are one-line status text under the list, not fixed-width labels.",
+ "rendered_checks": {
+  "groups.badge": {
+   "0": "0 conversation dans ce groupe",
+   "1": "1 conversation dans ce groupe",
+   "2": "2 conversations dans ce groupe",
+   "1000": "1000 conversations dans ce groupe",
+   "1000000": "1000000 de conversations dans ce groupe",
+   "1500000": "1500000 conversations dans ce groupe",
+   "note": "rendered with intl-messageformat 12.1.3 under fr; ::group-off preserved, so no U+202F grouping in the badge (the brief requires group-off)."
+  },
+  "catalogue.total": {
+   "0": "0 sur 0 conversations",
+   "1": "1 sur 1 conversations",
+   "2": "2 sur 2 conversations",
+   "1000000": "1000000 sur 1000000 conversations",
+   "note": "the 0 and 1 renders are the defect in FR-FINAL-01."
+  },
+  "catalogue.total_search": {
+   "0": "0 correspondance sur 0 conversations",
+   "1": "1 correspondance sur 1 conversations",
+   "1000000": "1000000 correspondances sur 1000000 conversations"
+  },
+  "agents.builtin_offer": {
+   "0": "Aucun agent intégré n’est prêt à être installé — Alpha, Bêta. Vous pourrez les modifier une fois installés.",
+   "1": "Un agent intégré est prêt à être installé — Alpha, Bêta. Vous pourrez le modifier une fois installé.",
+   "2": "Deux agents intégrés sont prêts à être installés — Alpha, Bêta. Vous pourrez les modifier une fois installés.",
+   "7": "7 agents intégrés sont prêts à être installés — Alpha, Bêta. Vous pourrez les modifier une fois installés.",
+   "1000000": "1000000 agents intégrés sont prêts à être installés — Alpha, Bêta. Vous pourrez les modifier une fois installés."
+  }
+ },
+ "rendered_evidence": [],
+ "findings": [
+  {
+   "id": "FR-FINAL-01",
+   "severity": "major",
+   "key": "ui.chat.sidebar.catalogue.total / ui.chat.sidebar.catalogue.total_search / ui.chat.sidebar.catalogue.total_search_clipped",
+   "items": [
+    {
+     "key": "ui.chat.sidebar.catalogue.total",
+     "current": "{shown, number, ::group-off} sur {total, number, ::group-off} conversations",
+     "proposed": "{shown, number, ::group-off} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}}"
+    },
+    {
+     "key": "ui.chat.sidebar.catalogue.total_search",
+     "current": "{shown, number, ::group-off} {shown, plural, one {correspondance} other {correspondances}} sur {total, number, ::group-off} conversations",
+     "proposed": "{shown, number, ::group-off} {shown, plural, one {correspondance} many {de correspondances} other {correspondances}} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}}"
+    },
+    {
+     "key": "ui.chat.sidebar.catalogue.total_search_clipped",
+     "current": "{shown, number, ::group-off}+ {shown, plural, one {correspondance} other {correspondances}} sur {total, number, ::group-off} conversations",
+     "proposed": "{shown, number, ::group-off}+ {shown, plural, one {correspondance} many {de correspondances} other {correspondances}} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}}"
+    }
+   ],
+   "reason": "The denominator noun is not pluralised, so a reachable count renders ungrammatical French: with one chat in the catalogue the footer reads « 1 sur 1 conversations » (and a search reads « 1 correspondance sur 1 conversations »); at 0 it reads « 0 sur 0 conversations ». French selects `one` for 0 and 1 and requires the singular noun, and at exact multiples of 10^6 it requires « de conversations ». The same sentence in ru, in this same PR, repairs it with a nested plural on {total}; fr does not. The two search messages also lack the `many` arm for the match noun, so 10^6 renders « 1000000 correspondances » instead of « 1 000 000 de correspondances ». The proposed strings were rendered with the repository's own formatter at 0/1/2/10^6 and produce « 1 sur 1 conversation », « 0 correspondance sur 0 conversation », « 1000000 de correspondances sur 1000000 de conversations ».",
+   "evidence": [
+    "fr now, rendered: 1 | 1 sur 1 conversations; 0 | 0 sur 0 conversations",
+    "call site renders whenever pageable && total !== null && shown <= total (sidebar-scope-paging.ts catalogueTotalSentence; chat-sidebar.tsx totalSentence), so total=1 is live",
+    "fr style guide §Plurals: one covers 0 and 1 (« 0 session »), many is exact multiples of 10^6 (« 1 000 000 de sessions »), other otherwise",
+    "ru value in this PR: {total, plural, one {... чата} few {...} many {...} other {...}} — the same source, repaired",
+    "ui.canvas.files.count is the fr house template for a counted noun with one/many/other"
+   ]
+  },
+  {
+   "id": "FR-FINAL-02",
+   "severity": "nit",
+   "key": "ui.chat.sidebar.agents.builtin_offer",
+   "current": "{count, plural, =0 {Aucun agent intégré n’est prêt à être installé — {list}. Vous pourrez les modifier une fois installés.} one {Un agent intégré est prêt à être installé — {list}. Vous pourrez le modifier une fois installé.} =2 {Deux agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =3 {Trois agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =4 {Quatre agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =5 {Cinq agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =6 {Six agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} other {{count, number, ::group-off} agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.}}",
+   "proposed": "{count, plural, =0 {Aucun agent intégré n’est prêt à être installé — {list}. Vous pourrez les modifier une fois installés.} one {Un agent intégré est prêt à être installé — {list}. Vous pourrez le modifier une fois installé.} =2 {Deux agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =3 {Trois agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =4 {Quatre agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =5 {Cinq agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =6 {Six agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} many {{count, number, ::group-off} d’agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} other {{count, number, ::group-off} agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.}}",
+   "reason": "At an exact multiple of 10^6 the `other` arm renders « 1000000 agents intégrés », where French requires « d’agents intégrés »; 187 of the fr catalogue's 190 plural messages carry one/many/other, so this is a conformance gap, not a house style. It is a nit because the offer count is bounded by the packaged built-in profiles and the =0 arm is itself unreachable at the call site (availableBuiltins.length > 0 gates it), so no user can reach the count that exposes it.",
+   "evidence": [
+    "fr now, rendered at 1000000: « 1000000 agents intégrés sont prêts à être installés — … »",
+    "house survey: 190 fr plural messages, 187 carry one/many/other; the four exceptions are this key, the two search counters (FR-FINAL-01) and the pre-existing ui.chat.tags.remove_all",
+    "call site: chat-sidebar.tsx builtinOfferOnScreen = agentsEmpty && availableBuiltins.length > 0 && !offerDismissed"
+   ]
+  }
+ ],
+ "status": "changes_requested",
+ "result": "changes_requested",
+ "verdict": "changes_requested — 49/49 values read, 1 major (FR-FINAL-01, the unpluralised counter denominator, visible at 0/1 chats), 1 nit (FR-FINAL-02, the offer's missing many arm). The badge itself passes: 1 renders « 1 conversation dans ce groupe » and ::group-off is kept in every arm. Fixing FR-FINAL-01 changes the target hash and needs a one-value delta re-audit.",
+ "outside_scope_observations": [
+  {
+   "key": "ui.chat.sidebar.groups.badge (English vs fr)",
+   "observation": "English uses `#`, so 1000 renders \"1,000 chats in this group\"; fr's required ::group-off renders \"1000 conversations dans ce groupe\". Recorded so a rendered check knows what to expect; not a fr defect and not changed here (the brief requires group-off)."
+  },
+  {
+   "key": "ui.chat.sidebar.catalogue.total / total_search / total_search_clipped (English)",
+   "observation": "The English source attaches a fixed plural noun to the total, so total=1 renders \"Showing 1 of 1 chats\". This PR briefly pluralised it in a2be7769e7 and reverted it in d784571d. English-side; fr must still repair its own noun (FR-FINAL-01), as ru already does."
+  },
+  {
+   "key": "ui.chat.sidebar.agents.builtin_offer call site",
+   "observation": "chat-sidebar.tsx joins the names with \" and \" before passing them as {list}, so a French sentence shows \"Alpha and Beta\". The code comment states this as an ICU list-format limit, not an oversight; it is not a catalogue value and cannot be fixed in the fr file. Affects every locale."
+  }
+ ]
+}

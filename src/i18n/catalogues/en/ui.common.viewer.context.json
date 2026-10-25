@@ -1,10 +1,44 @@
 {
+	"ui.common.viewer.close": {
+		"role": "accessible name and tooltip of the lightbox's close control",
+		"tone": "short verb phrase with its object, sentence case",
+		"note": "`kind` selects the item: image or asset. Keep every arm; each arm is a complete sentence, so word order and articles may change.",
+		"placeholders": {
+			"kind": "selects `image` or `asset`."
+		}
+	},
+	"ui.common.viewer.next": {
+		"role": "accessible name and tooltip of the lightbox's next control",
+		"tone": "short verb phrase with its object, sentence case",
+		"note": "`kind` selects the item: image or asset. Keep every arm; each arm is a complete sentence, so word order and articles may change.",
+		"placeholders": {
+			"kind": "selects `image` or `asset`."
+		}
+	},
 	"ui.common.viewer.opening": {
 		"role": "placeholder title in an image or video viewer while its bytes are still being resolved",
 		"tone": "present-participle progress phrase, sentence case, trailing ellipsis kept",
 		"length": "One word plus the ellipsis.",
 		"note": "One key shared by the canvas image preview, the canvas video preview and both of their resolution routes, because they show the same wait at the same step. The ellipsis is shipped copy; do not add a second one in JSX.",
 		"placeholders": {}
+	},
+	"ui.common.viewer.position": {
+		"role": "position line inside an image or asset carousel",
+		"tone": "noun phrase with two numbers, sentence case",
+		"note": "`index` is the one-based position and `count` the size of the set. An allowed exception, not a plural: the two numbers are rendered by the app's number rules. `kind` selects the item: image or asset. Keep every arm; each arm is a complete sentence, so word order and articles may change.",
+		"placeholders": {
+			"kind": "selects `image` or `asset`.",
+			"index": "one-based position in the set.",
+			"count": "how many items the set holds."
+		}
+	},
+	"ui.common.viewer.previous": {
+		"role": "accessible name and tooltip of the lightbox's previous control",
+		"tone": "short verb phrase with its object, sentence case",
+		"note": "`kind` selects the item: image or asset. Keep every arm; each arm is a complete sentence, so word order and articles may change.",
+		"placeholders": {
+			"kind": "selects `image` or `asset`."
+		}
 	},
 	"ui.common.viewer.reset_view": {
 		"role": "image lightbox control that returns zoom and pan to fit and centred; used as both accessible name and tooltip",
@@ -58,6 +92,16 @@
 		"placeholders": {
 			"index": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		}
+	},
+	"ui.common.viewer.image_progress": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Image {index} of {count}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number.",
+			"index": "Runtime value; preserve the placeholder and insert it without translation."
 		}
 	}
 }

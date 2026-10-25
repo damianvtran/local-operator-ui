@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * Canonical desktop session stream consumption.
  *
@@ -5564,8 +5565,8 @@ export function useCanonicalSessionStream(
 						}
 						const detail =
 							event.kind === "error"
-								? (event.detail ?? "The event stream failed.")
-								: "The event stream closed unexpectedly.";
+								? (event.detail ?? t("ui.common.errors.event_stream_failed"))
+								: t("ui.common.errors.event_stream_closed");
 						// The subscription the watch lease names died with the stream. Held,
 						// it makes the lease keep posting a subscription id the backend no
 						// longer holds (the 422 the operator's log shows), so it is dropped

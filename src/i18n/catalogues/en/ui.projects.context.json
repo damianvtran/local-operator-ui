@@ -2918,5 +2918,31 @@
 		"tone": "Quiet factual statement; preserve the distinction between unavailable, refused and pending.",
 		"note": "English source: The request could not be confirmed..  Markup and emphasized user names stay outside this message.",
 		"length": "English is 35 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions."
+	},
+	"ui.projects.project_model.milestone_summary": {
+		"role": "Hub update l",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {completed} of {total} complete",
+		"placeholders": {
+			"completed": "Runtime value; preserve the placeholder and insert it without translation.",
+			"total": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.projects.project_model.todos_summary": {
+		"role": "Hub update l",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {open} open of {total}",
+		"placeholders": {
+			"open": "Runtime value; preserve the placeholder and insert it without translation.",
+			"total": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.projects.project_model.done_gate_tail": {
+		"role": "Hub update l",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: complete or remove the incomplete milestones, then mark it done"
 	}
 }

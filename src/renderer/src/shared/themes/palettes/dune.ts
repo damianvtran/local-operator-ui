@@ -27,7 +27,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const dune: ThemeDefinition = {
 	id: "dune",
 	name: "Dune",
-	description: "Desert night: warm near-black with a vivid orange.",
+	descriptionKey: "ui.settings.appearance.theme.dune",
 	palette: {
 		mode: "dark",
 

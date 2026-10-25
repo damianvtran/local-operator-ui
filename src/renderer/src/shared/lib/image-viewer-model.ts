@@ -18,6 +18,8 @@
  * the picture's edge may reach the frame's, and no more.
  */
 
+import { t } from "@shared/i18n";
+
 /**
  * The zoom ladder, in multiples of the fitted size.
  *
@@ -87,7 +89,11 @@ export const wrapGroupIndex = (
  * and the announcement cannot drift apart.
  */
 export const groupPositionLabel = (index: number, count: number): string =>
-	`Image ${index + 1} of ${count}`;
+	t("ui.common.viewer.position", {
+		kind: "image",
+		index: index + 1,
+		count,
+	});
 
 /**
  * Clamp a pan so the picture never shows a gap between its edge and the frame's.

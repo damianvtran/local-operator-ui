@@ -28,6 +28,24 @@ const id = z
 	.regex(/^[a-zA-Z0-9_-]+$/);
 
 const MAX_UPLOAD_BYTES = 16 * 1024 * 1024;
+/*
+ * Team Bridge image ceilings. The upload cap is the hub's own 5 MiB request
+ * bound (manager decision D3); the renderer already bounds to 1 MiB, so this is
+ * headroom that keeps a renderer bug from sending 16 MiB to a route that will
+ * refuse it. The download cap is the same number: a bound attachment can never
+ * be larger than the upload that created it, so anything bigger is not one.
+ */
+const TEAM_BRIDGE_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+/*
+ * The only picture types the hub stores (it sniffs and re-states them; D3).
+ * A fetched attachment answering any other type is refused here rather than
+ * handed to the renderer as a blob: `image/svg+xml` in particular is script-
+ * capable, and the renderer must never be the one deciding that.
+ */
+const TEAM_BRIDGE_ATTACHMENT_TYPES: ReadonlySet<string> = new Set([
+	"image/png",
+	"image/jpeg",
+]);
 const MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024;
 
 const mediaRequestSchema = z.discriminatedUnion("op", [
@@ -122,6 +140,39 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("sessions.supplementDocument"),
 			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
+		})
+		.strict(),
+	/*
+	 * Team Bridge image attachments (image-attachments contract §3). Upload and
+	 * fetch ride THIS relay rather than the JSON transport for the reason every
+	 * op here does - bytes - and because the bearer must stay in main: the hub
+	 * route is member-gated, so the renderer cannot be handed a fetchable URL.
+	 * Every id is shape-checked because main builds the path from it.
+	 *
+	 * The upload is a raw `application/octet-stream` body, not multipart: the hub
+	 * ignores the client's type and filename (it sniffs the bytes), so sending
+	 * neither means neither can leak into a log or be trusted by mistake.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.attachment.upload"),
+			tenantId: id,
+			conversationId: id,
+			/* REQUIRED: the runtime route answers 422 without a captured-owner
+			   receipt, and comparing an account to itself is not a guard. Main
+			   refuses the request locally when it is absent, so no unguarded
+			   attachment call can be constructed. */
+			expectedAccountId: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.attachment"),
+			tenantId: id,
+			conversationId: id,
+			messageId: id,
+			attachmentId: id,
+			expectedAccountId: id,
 		})
 		.strict(),
 	/*
@@ -234,6 +285,16 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/library/assets/${request.assetId}/waveform`,
 				method: "GET",
 			};
+		case "team_bridge.attachment.upload":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				method: "POST",
+			};
+		case "team_bridge.attachment":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
+			};
 	}
 }
 
@@ -296,6 +357,21 @@ export async function requestDesktopMediaOutcome(
 			answered: false,
 		};
 	}
+	if (
+		request.op === "team_bridge.attachment.upload" &&
+		bytes &&
+		bytes.byteLength > TEAM_BRIDGE_ATTACHMENT_MAX_BYTES
+	) {
+		// Never sent: the hub would answer 413 for the same bytes.
+		return {
+			response: {
+				status: 413,
+				kind: "error",
+				detail: "This image is too large.",
+			},
+			answered: false,
+		};
+	}
 	const target = endpoint(request);
 
 	let body: BodyInit | undefined;
@@ -308,10 +384,24 @@ export async function requestDesktopMediaOutcome(
 		request.op === "sessions.supplementDocument" ||
 		request.op === "library.content" ||
 		request.op === "library.thumbnail" ||
-		request.op === "library.waveform"
+		request.op === "library.waveform" ||
+		request.op === "team_bridge.attachment"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
+	} else if (request.op === "team_bridge.attachment.upload") {
+		if (!bytes || bytes.byteLength === 0) {
+			return {
+				response: {
+					status: 422,
+					kind: "error",
+					detail: "An image is required.",
+				},
+				answered: false,
+			};
+		}
+		body = new Blob([bytes]);
+		contentType = "application/octet-stream";
 	} else if (request.op === "speech.create" || request.op === "speech.agent") {
 		body = JSON.stringify(request.request);
 		contentType = "application/json";
@@ -424,8 +514,29 @@ export async function requestDesktopMediaOutcome(
 				answered: true,
 			};
 		}
+		if (
+			request.op === "team_bridge.attachment" &&
+			!TEAM_BRIDGE_ATTACHMENT_TYPES.has(
+				responseType.split(";")[0].trim().toLowerCase(),
+			)
+		) {
+			// A member-gated picture route answering a non-picture is not one of
+			// ours; refuse it before any byte reaches the renderer (see the set).
+			return {
+				response: {
+					status: 502,
+					kind: "error",
+					detail: "The backend returned an unsupported image type.",
+				},
+				answered: true,
+			};
+		}
 		const buffer = new Uint8Array(await response.arrayBuffer());
-		if (buffer.byteLength > MAX_DOWNLOAD_BYTES) {
+		if (
+			buffer.byteLength > MAX_DOWNLOAD_BYTES ||
+			(request.op === "team_bridge.attachment" &&
+				buffer.byteLength > TEAM_BRIDGE_ATTACHMENT_MAX_BYTES)
+		) {
 			return {
 				response: {
 					status: 502,

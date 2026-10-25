@@ -30,8 +30,10 @@ const source = bundle.outputFiles[0].text;
  */
 const refusalContractBundle = await build({
 	stdin: {
-		contents:
-			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE, DESKTOP_MACHINE_DETAIL } from "./src/shared/desktop-contract";',
+		contents: [
+			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_COPY_KEY, DESKTOP_MACHINE_DETAIL } from "./src/shared/desktop-contract";',
+			'export { t } from "./src/i18n";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -43,8 +45,9 @@ const refusalContractBundle = await build({
 });
 const {
 	DESKTOP_REFUSAL_CODE,
-	DESKTOP_REFUSAL_SENTENCE,
+	DESKTOP_REFUSAL_COPY_KEY,
 	DESKTOP_MACHINE_DETAIL,
+	t,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(refusalContractBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -783,6 +786,86 @@ test("bounding never returns an image larger than the one it was given", async (
 			`${width}x${height} q${quality} grew: ${source.byteLength} -> ${base64ByteLength(bounded.data_b64)}`,
 		);
 	}
+});
+
+/**
+ * A PNG that no downscale can shrink: a 2 px black/white checkerboard. As a PNG
+ * it deflates to almost nothing, but resampling turns every edge into grey
+ * ramps, so the 1024 px re-encode is LARGER on both rungs (measured with this
+ * sharp build at 2400x1600: source 25 KB, PNG 97 KB, JPEG 36 KB). Plain random
+ * noise is the wrong fixture: its downscaled JPEG comes out smaller (715 KB ->
+ * 388 KB), so the never-grow rule never fires. This is the shape of QA round 1's
+ * Q1 reproduction (a 102 KB 2400x1600 PNG served back at native size).
+ */
+async function resampleGrowsPng(width, height) {
+	const pixels = Buffer.alloc(width * height * 3);
+	for (let y = 0; y < height; y += 1)
+		for (let x = 0; x < width; x += 1)
+			pixels.fill(
+				((x >> 1) + (y >> 1)) & 1 ? 255 : 0,
+				(y * width + x) * 3,
+				(y * width + x) * 3 + 3,
+			);
+	return sharp(pixels, { raw: { width, height, channels: 3 } })
+		.png({ compressionLevel: 9 })
+		.toBuffer();
+}
+
+test("edgeIsHard (Team Bridge) always bounds the edge; chat keeps never-grow", async () => {
+	const {
+		boundImageForWire,
+		base64ByteLength,
+		IMAGE_MAX_EDGE,
+		IMAGE_JPEG_QUALITY,
+	} = await loadImageBounding();
+	const source = await resampleGrowsPng(2400, 1600);
+	const input = { data_b64: source.toString("base64"), mime_type: "image/png" };
+
+	// Precondition, so this test cannot pass vacuously: for this fixture the
+	// default (chat) path DOES hand back the over-edge original.
+	const chat = await boundImageForWire(input);
+	const chatMeta = await sharp(Buffer.from(chat.data_b64, "base64")).metadata();
+	assert.equal(
+		Math.max(chatMeta.width, chatMeta.height),
+		2400,
+		"chat path: an over-edge image whose downscale grows is returned as is (never-grow)",
+	);
+	assert.ok(base64ByteLength(chat.data_b64) <= source.byteLength);
+
+	const bridge = await boundImageForWire(
+		input,
+		IMAGE_MAX_EDGE,
+		IMAGE_JPEG_QUALITY,
+		{
+			edgeIsHard: true,
+		},
+	);
+	const bridgeMeta = await sharp(
+		Buffer.from(bridge.data_b64, "base64"),
+	).metadata();
+	assert.ok(
+		Math.max(bridgeMeta.width, bridgeMeta.height) <= IMAGE_MAX_EDGE,
+		`Team Bridge path: edge ${Math.max(bridgeMeta.width, bridgeMeta.height)} must be <= ${IMAGE_MAX_EDGE}`,
+	);
+	assert.ok(["image/png", "image/jpeg"].includes(bridge.mime_type));
+	// <= 1 MiB in practice (r7 M1): the hard cap is the capability's, upstream.
+	assert.ok(
+		base64ByteLength(bridge.data_b64) <= 1024 * 1024,
+		`Team Bridge path bytes ${base64ByteLength(bridge.data_b64)} must be <= 1 MiB`,
+	);
+
+	// An in-bounds image is still returned verbatim with the flag on.
+	const small = await resampleGrowsPng(300, 200);
+	const smallInput = {
+		data_b64: small.toString("base64"),
+		mime_type: "image/png",
+	};
+	assert.deepEqual(
+		await boundImageForWire(smallInput, IMAGE_MAX_EDGE, IMAGE_JPEG_QUALITY, {
+			edgeIsHard: true,
+		}),
+		smallInput,
+	);
 });
 
 test("the ladder returns the smallest set BY THE MEASURE IT WAS GIVEN, not the last rung", async () => {
@@ -1792,7 +1875,7 @@ test("a plane's refusal is coded, and the sentence is this app's rather than the
 			daemonProse,
 			"the server's own words are retained on the error for machine-voice detail",
 		);
-		assert.equal(rendered, DESKTOP_REFUSAL_SENTENCE[code]);
+		assert.equal(rendered, t(DESKTOP_REFUSAL_COPY_KEY[code]));
 		assert.notEqual(
 			rendered,
 			daemonProse,
@@ -1831,7 +1914,7 @@ test("a code main declared wins, so the app's own refusal is not read as the pla
 		}
 		assert.equal(caught.code, code);
 		const rendered = userFacingMessage(caught, "fallback");
-		assert.equal(rendered, DESKTOP_REFUSAL_SENTENCE[code]);
+		assert.equal(rendered, t(DESKTOP_REFUSAL_COPY_KEY[code]));
 		assert.doesNotMatch(
 			rendered,
 			/manage its own server|desktop-managed backend/i,

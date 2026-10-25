@@ -64,7 +64,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const matrix: ThemeDefinition = {
 	id: "matrix",
 	name: "Matrix",
-	description: "Phosphor green rain on a near-black terminal screen.",
+	descriptionKey: "ui.settings.appearance.theme.matrix",
 	palette: {
 		mode: "dark",
 

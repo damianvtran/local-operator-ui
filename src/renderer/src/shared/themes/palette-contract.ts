@@ -54,6 +54,7 @@
  * no runtime code: the registry is built from the palette directory, and the
  * union this file is checked against is erased at compile time.
  */
+import type { WithoutParams } from "../../../../i18n/keys.gen";
 import type { ThemeName } from "../types/theme";
 
 /**
@@ -975,8 +976,21 @@ export type ThemeDefinition = {
 	 * M-1). A type-only import, so the two modules still share no runtime code.
 	 */
 	id: ThemeName;
+	/** Established palette and editor-family names stay verbatim, like other brand names. */
 	name: string;
-	/** One line, shown under the name in the theme picker. */
-	description: string;
+	/**
+	 * The message key of the one line shown under the name in the theme picker.
+	 *
+	 * A KEY rather than the rendered sentence, because a palette file is
+	 * framework-free colour data: it is executed by `check-design-kit`'s esbuild
+	 * bundle and scanned for values by `palette-source.mjs`, and resolving copy
+	 * there froze bootstrap English into the module (and, when the batch first
+	 * wrote it as a `t()` getter here, made the palette unbuildable outside the
+	 * app's module graph). The registry resolves this key at read time in
+	 * `themes/index.ts`, so a live language switch re-renders the picker.
+	 * `WithoutParams` keeps the spelling checked against the generated key map,
+	 * and states what the picker needs: a description carries no arguments.
+	 */
+	descriptionKey: WithoutParams;
 	palette: ThemePalette;
 };

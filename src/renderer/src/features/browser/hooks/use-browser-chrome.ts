@@ -884,7 +884,7 @@ export function useBrowserChrome(): BrowserChrome {
 				// Putting it in `actionError` would surface an error band for a field
 				// that still types and navigates perfectly well. The hook owns the
 				// degraded state, which is exactly the proposal's safe fallback.
-				if (!api) throw new Error("The browser is not available.");
+				if (!api) throw new Error(t("ui.browser.errors.browser_unavailable"));
 				return api.addressHistory(request);
 			},
 			onStateChanged: (callback) => api?.onStateChanged(callback) ?? (() => {}),

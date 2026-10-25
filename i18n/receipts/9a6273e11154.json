@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "radient/auto",
+  "served_model": "radient/auto",
+  "previous_round_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": null,
+  "instance": "9a6273e11154",
+  "session": "9a6273e11154",
+  "date": "2026-10-24",
+  "locale": "es",
+  "round": 2,
+  "head": "44d39ba559ab62bcacc3a3d0eeef191e35214377",
+  "base": "82a6f6a954586fe629b01fa2dc60bfbec049a845",
+  "overall_verdict": "passed",
+  "result": "clean-with-findings",
+  "keys_audited": 13,
+  "namespace_count": 5,
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+  },
+  "independence": {
+    "translator_session": "352ac9921511",
+    "statement": "Same independent auditor as round 1 (session 9a6273e11154); did not author the translations and made no source, catalogue, ledger, allowance or generated-file edits. Only this session’s scratchpad was written."
+  },
+  "references": {
+    "ui_contract": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "glossary": {
+      "path": "local-operator/i18n/glossary.md",
+      "revision": "5079899f091c5439711350108fa6a32500b1100c",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local-operator/i18n/style-guides/es.md",
+      "revision": "23d08be818088578da161e80cfc82e5c77516d3a",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    }
+  },
+  "validation": {
+    "delta": "Derived from git show/JSON object order: exactly 13 changed values in 5 namespaces, 0 keys added, 0 removed, no English/context/other-locale/ledger/generated-file changes beyond the translator’s own provenance receipt. The other 18 es namespaces are byte-identical to round 1.",
+    "claims": "The translator remediation receipt’s 13 applied strings and all 5 updated target hashes match bytes on disk.",
+    "dispositions": [
+      {
+        "severity": "MAJOR",
+        "key": "ui.common.connection.backend.pane_governed",
+        "disposition": "fixed",
+        "evidence": "Now \"otro programa gestiona los controles de escritorio del servidor\", matching the en source and the desktop-controls family."
+      },
+      {
+        "severity": "MAJOR",
+        "key": "ui.common.errors.teams_unsupported",
+        "disposition": "fixed",
+        "evidence": "Now \"hacer pull de los equipos\", matching the glossary kept-English pull and core es usage."
+      },
+      {
+        "severity": "MAJOR",
+        "key": "ui.hub.updates.error.provider",
+        "disposition": "fixed",
+        "evidence": "Now \"el modelo responsable del merge\"; the kept-English merge term is used."
+      },
+      {
+        "severity": "MAJOR",
+        "key": "ui.hub.updates.error.model_unavailable",
+        "disposition": "fixed",
+        "evidence": "Now \"para hacer merge\"."
+      },
+      {
+        "severity": "MAJOR",
+        "key": "ui.hub.updates.error.prompt_too_long",
+        "disposition": "fixed",
+        "evidence": "Now \"para hacer merge automáticamente\"."
+      },
+      {
+        "severity": "MAJOR",
+        "key": "ui.hub.updates.detail.updating",
+        "disposition": "fixed",
+        "evidence": "Now \"Haciendo merge de la versión del hub con la tuya\"."
+      },
+      {
+        "severity": "MAJOR",
+        "key": "ui.hub.updates.report.merged_edits",
+        "disposition": "fixed",
+        "evidence": "Now \"Merge aplicado con tus cambios\"."
+      },
+      {
+        "severity": "MINOR",
+        "key": "ui.hub.updates.report.merged_local",
+        "disposition": "fixed",
+        "evidence": "Now \"En las partes en las que ... diferían\", restoring the source’s part-by-part scope."
+      },
+      {
+        "severity": "MINOR",
+        "key": "ui.hub.updates.report.merged_remote",
+        "disposition": "fixed",
+        "evidence": "Now \"En las partes en las que ... diferían\"."
+      },
+      {
+        "severity": "MINOR",
+        "key": "ui.hub.updates.slow_note",
+        "disposition": "fixed",
+        "evidence": "Now \"el indicador se actualizará\"."
+      },
+      {
+        "severity": "MINOR",
+        "key": "ui.settings.shortcuts.reserved.zoom_reset",
+        "disposition": "fixed",
+        "evidence": "Applied wording differs from the proposal but removes the ambiguous \"ella\": \"o el de la app fuera del navegador\" now names the browser explicitly."
+      }
+    ],
+    "neighbor_checks": [
+      "ui.common.connection: \"controles de escritorio\" now agrees with desktop_refusal_placeholder, desktop_backend_offline and desktop_backend_compatibility; pairing_governed still uses \"gestiona\" for the same ownership relation.",
+      "ui.common.errors: \"hacer pull\" agrees with core es hub copy (e.g. wire.settings \"hiciste pull\") and ui.hub.skills.text_limits; no other pull rendering inside the assigned set.",
+      "ui.hub.updates: no \"fusion\" remains in the namespace; \"hacer merge\", \"del merge\", \"Haciendo merge\" and \"Merge aplicado\" are the only merge renderings. The sibling report/detail keys without the term were unchanged and still read correctly.",
+      "ui.settings.shortcuts: the unchanged \"fuera de él\" siblings (browser_back, browser_forward, find, close) and zoom_in/zoom_out remain consistent; zoom_reset now names the browser explicitly instead of using a pronoun.",
+      "ui.settings.appearance: outrun and synthwave are the only changed values; the unchanged theme tooltips keep the established \"sobre <background/colour>\" pattern."
+    ],
+    "icu": "PASS: the 13 changed pairs parse with the existing @formatjs parser; ordered non-literal argument structure, markup and number skeletons match en. Regression over all 360 keys in the 5 namespaces also passed (8 plurals, 40 formatted samples).",
+    "static_fit": {
+      "method": "Character counts for the 13 changed values; no context in scope declares maxCells. synthwave (78 vs 52, 1.50×) and zoom_reset (92 vs 59, 1.56×) exceed the round-1 1.5×/8-character flag threshold; both sit in wrapping surfaces (theme tooltip, shortcut refusal sentence) and are flagged for a rendered check, not treated as defects.",
+      "changed": [
+        {
+          "key": "ui.common.connection.backend.pane_governed",
+          "en_chars": 132,
+          "es_chars": 139,
+          "ratio": 1.05
+        },
+        {
+          "key": "ui.common.errors.teams_unsupported",
+          "en_chars": 82,
+          "es_chars": 115,
+          "ratio": 1.4
+        },
+        {
+          "key": "ui.hub.updates.error.provider",
+          "en_chars": 89,
+          "es_chars": 126,
+          "ratio": 1.42
+        },
+        {
+          "key": "ui.hub.updates.error.model_unavailable",
+          "en_chars": 59,
+          "es_chars": 80,
+          "ratio": 1.36
+        },
+        {
+          "key": "ui.hub.updates.error.prompt_too_long",
+          "en_chars": 45,
+          "es_chars": 67,
+          "ratio": 1.49
+        },
+        {
+          "key": "ui.hub.updates.detail.updating",
+          "en_chars": 37,
+          "es_chars": 49,
+          "ratio": 1.32
+        },
+        {
+          "key": "ui.hub.updates.report.merged_local",
+          "en_chars": 106,
+          "es_chars": 140,
+          "ratio": 1.32
+        },
+        {
+          "key": "ui.hub.updates.report.merged_remote",
+          "en_chars": 110,
+          "es_chars": 139,
+          "ratio": 1.26
+        },
+        {
+          "key": "ui.hub.updates.report.merged_edits",
+          "en_chars": 67,
+          "es_chars": 86,
+          "ratio": 1.28
+        },
+        {
+          "key": "ui.hub.updates.slow_note",
+          "en_chars": 79,
+          "es_chars": 90,
+          "ratio": 1.14
+        },
+        {
+          "key": "ui.settings.appearance.theme.outrun",
+          "en_chars": 55,
+          "es_chars": 70,
+          "ratio": 1.27
+        },
+        {
+          "key": "ui.settings.appearance.theme.synthwave",
+          "en_chars": 52,
+          "es_chars": 78,
+          "ratio": 1.5
+        },
+        {
+          "key": "ui.settings.shortcuts.reserved.zoom_reset",
+          "en_chars": 59,
+          "es_chars": 92,
+          "ratio": 1.56
+        }
+      ]
+    },
+    "out_of_scope": "Recorded for separate follow-up, not a finding here: three es values outside the 471-key set still render merge as fusionar — ui.code_review.activity.merge, ui.hub.subscriptions.enable_safety and ui.agents.navigation.updates.merge_guidance. This remediation did not touch them.",
+    "repository_checks": [
+      "node scripts/i18n/generate.mjs --check — PASS, byte-identical fresh generation",
+      "node scripts/i18n/context-parity.mjs — PASS, 131 allowed gaps in 4 namespaces"
+    ],
+    "rendered_fit": "Not executed. No rendered or geometry claim is made.",
+    "second_audit_note": "The outrun, synthwave and zoom_reset changes also answer the second independent round-1 audit cited in the translator receipt; this receipt judges only the resulting bytes."
+  },
+  "namespaces": {
+    "ui.common.connection": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 1,
+      "scope": "Round-2 delta only: 1 changed value(s) in 82a6f6a954586fe629b01fa2dc60bfbec049a845..44d39ba559ab62bcacc3a3d0eeef191e35214377; unchanged values were not re-audited.",
+      "sha256": {
+        "en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+        "es": "1d2ba13affe531c60633999f0f5b5853f7cb9fe5f61b8ea37bc2f6abab52c3a8",
+        "context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+      },
+      "findings": []
+    },
+    "ui.common.errors": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 1,
+      "scope": "Round-2 delta only: 1 changed value(s) in 82a6f6a954586fe629b01fa2dc60bfbec049a845..44d39ba559ab62bcacc3a3d0eeef191e35214377; unchanged values were not re-audited.",
+      "sha256": {
+        "en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+        "es": "c1fbdbef6a3aba68acb0876f4ee93a1da709d10fb479750b30c13e249a852e22",
+        "context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+      },
+      "findings": []
+    },
+    "ui.hub.updates": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 8,
+      "scope": "Round-2 delta only: 8 changed value(s) in 82a6f6a954586fe629b01fa2dc60bfbec049a845..44d39ba559ab62bcacc3a3d0eeef191e35214377; unchanged values were not re-audited.",
+      "sha256": {
+        "en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+        "es": "45bf4fbbf80a1bdb4abd7d26eef782d0213ae40dc945a4d33bc4a16b77f80af8",
+        "context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
+      },
+      "findings": []
+    },
+    "ui.settings.appearance": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 2,
+      "scope": "Round-2 delta only: 2 changed value(s) in 82a6f6a954586fe629b01fa2dc60bfbec049a845..44d39ba559ab62bcacc3a3d0eeef191e35214377; unchanged values were not re-audited.",
+      "sha256": {
+        "en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+        "es": "f83bf4bddab3408541d779ae3fda547173bec78347251da8e32cc08bbf772639",
+        "context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.settings.appearance.theme.synthwave",
+          "current": "Rosa intenso y cian sobre un viaje nocturno en morado y azul marino profundos.",
+          "proposed": "Rosa intenso y cian en un viaje nocturno en morado y azul marino profundos.",
+          "reason": "“Sobre un viaje” calques the source’s “on a night drive” and momentarily reads as “about a night trip”; “en” states the setting idiomatically. Meaning is clear and this does not gate."
+        }
+      ]
+    },
+    "ui.settings.shortcuts": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 1,
+      "scope": "Round-2 delta only: 1 changed value(s) in 82a6f6a954586fe629b01fa2dc60bfbec049a845..44d39ba559ab62bcacc3a3d0eeef191e35214377; unchanged values were not re-audited.",
+      "sha256": {
+        "en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+        "es": "3599926c9fbca0be97f671f915610cce835e1aa1d29f34cc9679216f031aca25",
+        "context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+      },
+      "findings": []
+    }
+  }
+}

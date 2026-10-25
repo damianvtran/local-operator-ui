@@ -34,5 +34,19 @@
 	"ui.common.actions.text_selection_controls.open_in_browser": "Open in browser",
 	"ui.common.actions.confirmation_modal.confirm": "Confirm",
 	"ui.common.actions.confirmation_modal.cancel": "Cancel",
-	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}"
+	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+	"ui.common.actions.agent_created": "Agent created",
+	"ui.common.actions.agent_deleted": "Agent deleted",
+	"ui.common.actions.agent_imported": "Agent imported",
+	"ui.common.actions.agent_exported": "Agent exported",
+	"ui.common.actions.agent_updated": "Agent updated",
+	"ui.common.actions.agent_system_prompt_updated": "Agent system prompt updated",
+	"ui.common.actions.conversation_cleared": "Conversation cleared",
+	"ui.common.actions.variable_created": "Variable created",
+	"ui.common.actions.variable_updated": "Variable updated",
+	"ui.common.actions.variable_deleted": "Variable deleted",
+	"ui.common.actions.configuration_updated": "Configuration updated",
+	"ui.common.actions.system_prompt_updated": "System prompt updated",
+	"ui.common.actions.credential_updated": "Credential \"{key}\" updated successfully",
+	"ui.common.actions.clear": "Clear"
 }

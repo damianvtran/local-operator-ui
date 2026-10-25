@@ -3,5 +3,16 @@
 	"ui.common.speech.speak_control.replay_speech": "آواز دوبارہ چلائیں",
 	"ui.common.speech.speak_control.speak_aloud": "بلند آواز میں پڑھیں",
 	"ui.common.speech.speak_control.stop": "روکیں",
-	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": "ابتدائی {tolocalestring} حروف پڑھے جا رہے ہیں۔ باقی متن بلند آواز میں نہیں پڑھا جائے گا۔"
+	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": "ابتدائی {tolocalestring} حروف پڑھے جا رہے ہیں۔ باقی متن بلند آواز میں نہیں پڑھا جائے گا۔",
+	"ui.common.speech.control.checking": "Radient سائن ان جانچا جا رہا ہے…",
+	"ui.common.speech.control.recording_sign_in": "ریکارڈنگ کے لیے ترتیبات میں Radient سائن ان کریں",
+	"ui.common.speech.control.recording_unknown": "آپ کے Radient سائن ان کی جانچ نہیں ہو سکی، اس لیے ریکارڈنگ فی الحال دستیاب نہیں",
+	"ui.common.speech.control.recording_offline": "Local Operator آف لائن ہو تو ریکارڈنگ دستیاب نہیں",
+	"ui.common.speech.control.speaking_sign_in": "آواز میں سنانے کے لیے ترتیبات میں Radient سائن ان کریں",
+	"ui.common.speech.control.speaking_unknown": "آپ کے Radient سائن ان کی جانچ نہیں ہو سکی، اس لیے آواز میں سنانا فی الحال دستیاب نہیں",
+	"ui.common.speech.control.speaking_offline": "Local Operator آف لائن ہو تو آواز میں سنانا دستیاب نہیں",
+	"ui.common.speech.settings.checking": "جانچ ہو رہی ہے کہ یہ مشین آواز میں سنا سکتی ہے…",
+	"ui.common.speech.settings.sign_in": "ابھی کچھ آواز میں نہیں سنایا جا سکتا: سائن ان کے لیے /login radient چلائیں، یا ماڈل فراہم کنندگان کے حصے میں فراہم کنندہ کی کلید محفوظ کریں",
+	"ui.common.speech.settings.unknown": "ابھی کچھ آواز میں نہیں سنایا جا سکتا۔ اس کے لیے Radient سائن ان یا محفوظ فراہم کنندہ کلید درکار ہے",
+	"ui.common.speech.settings.offline": "Local Operator آف لائن ہے، اس لیے فی الحال کچھ آواز میں نہیں سنایا جا سکتا"
 }

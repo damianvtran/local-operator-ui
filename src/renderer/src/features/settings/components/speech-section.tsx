@@ -116,9 +116,11 @@ const BACKEND_OLDER_SENTENCE =
  * before the frame is taken (design review round 1, D1), and the rendered lane
  * asserts it. A reworded sentence that was duplicated in either place would
  * either photograph the wrong arm or assert a string nothing renders.
+ *
+ * Exported as its KEY, resolved where it is compared and rendered: a
+ * module-scope `t()` froze the import-time locale (review round 1, nit).
  */
-export const UNAVAILABLE_SENTENCE = "Speech availability could not be read.";
-const UNAVAILABLE_SENTENCE_KEY =
+export const UNAVAILABLE_SENTENCE_KEY =
 	"ui.settings.speech.speech_section.copy_unavailable_sentence";
 
 /**

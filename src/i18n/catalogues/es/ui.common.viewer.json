@@ -1,10 +1,15 @@
 {
+	"ui.common.viewer.close": "{kind, select, image {Cerrar imagen} asset {Cerrar recurso} other {Cerrar}}",
+	"ui.common.viewer.next": "{kind, select, image {Imagen siguiente} asset {Recurso siguiente} other {Siguiente}}",
+	"ui.common.viewer.opening": "Abriendo…",
+	"ui.common.viewer.position": "{kind, select, image {Imagen {index, number, ::group-off} de {count, number, ::group-off}} asset {Recurso {index, number, ::group-off} de {count, number, ::group-off}} other {Imagen {index, number, ::group-off} de {count, number, ::group-off}}}",
+	"ui.common.viewer.previous": "{kind, select, image {Imagen anterior} asset {Recurso anterior} other {Anterior}}",
+	"ui.common.viewer.reset_view": "Restablecer vista",
+	"ui.common.viewer.zoom_in": "Acercar",
+	"ui.common.viewer.zoom_out": "Alejar",
 	"ui.common.viewer.image_lightbox.previous": "{medialabel} anterior",
 	"ui.common.viewer.image_lightbox.next": "{medialabel} siguiente",
 	"ui.common.viewer.image_lightbox.close": "Cerrar {medialabel}",
 	"ui.common.viewer.image_lightbox.asset_of": "Recurso {index, number, ::group-off} de {count, number, ::group-off}",
-	"ui.common.viewer.opening": "Abriendo…",
-	"ui.common.viewer.reset_view": "Restablecer vista",
-	"ui.common.viewer.zoom_in": "Acercar",
-	"ui.common.viewer.zoom_out": "Alejar"
+	"ui.common.viewer.image_progress": "Imagen {index, number, ::group-off} de {count, number, ::group-off}"
 }

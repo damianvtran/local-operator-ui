@@ -1,10 +1,15 @@
 {
+	"ui.common.viewer.close": "{kind, select, image {Close image} asset {Close asset} other {Close}}",
+	"ui.common.viewer.next": "{kind, select, image {Next image} asset {Next asset} other {Next}}",
 	"ui.common.viewer.opening": "Opening…",
+	"ui.common.viewer.position": "{kind, select, image {Image {index, number, ::group-off} of {count, number, ::group-off}} asset {Asset {index, number, ::group-off} of {count, number, ::group-off}} other {Image {index, number, ::group-off} of {count, number, ::group-off}}}",
+	"ui.common.viewer.previous": "{kind, select, image {Previous image} asset {Previous asset} other {Previous}}",
 	"ui.common.viewer.reset_view": "Reset view",
 	"ui.common.viewer.zoom_in": "Zoom in",
 	"ui.common.viewer.zoom_out": "Zoom out",
 	"ui.common.viewer.image_lightbox.previous": "Previous {medialabel}",
 	"ui.common.viewer.image_lightbox.next": "Next {medialabel}",
 	"ui.common.viewer.image_lightbox.close": "Close {medialabel}",
-	"ui.common.viewer.image_lightbox.asset_of": "Asset {index, number, ::group-off} of {count, number, ::group-off}"
+	"ui.common.viewer.image_lightbox.asset_of": "Asset {index, number, ::group-off} of {count, number, ::group-off}",
+	"ui.common.viewer.image_progress": "Image {index, number, ::group-off} of {count, number, ::group-off}"
 }

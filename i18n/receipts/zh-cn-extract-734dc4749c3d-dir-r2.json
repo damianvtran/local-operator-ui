@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-translation-audit",
+  "locale": "zh-CN",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor (lopdev team)",
+  "session": "2c1cdbac8e38",
+  "instance": "zh-cn-extract-734dc4749c3d-dir-r2",
+  "model": "deepseek/deepseek-flash",
+  "model_fallback": "none",
+  "model_note": "Harness session model tag deepseek/deepseek-flash; no model switch or fallback occurred during this run. The instance keeps the round-1 family and is lower-case only to satisfy the ledger charset rule (isPlaceholderInstance and isRepoReceiptPath require ^[a-z0-9_-]+$).",
+  "independence": "Independent auditor: I did not translate or remediate this locale, and I edited no catalogue. Every value was read from git objects at the recorded heads; the only files this round adds are receipts.",
+  "date": "2026-10-24",
+  "round": 2,
+  "scope": {
+    "pr": 1403,
+    "branch": "feat/i18n-key-remaining-copy",
+    "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+    "previous_head": "f517ec4899",
+    "head": "e9771396c2",
+    "remediation": "f517ec4899..e9771396c2",
+    "note": "Round 2 re-audits ONLY ui.chat.directory, the namespace that carried the round-1 blocker. The remediation commit changes exactly ten values in src/i18n/catalogues/zh-CN/ui.chat.directory.json (10 insertions, 10 deletions); the English source and its context sidecar are byte-identical to the round-1 head, and the other 33 values in the file are unchanged. Read with git show; nothing was checked out, reset or edited."
+  },
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "supersedes": {
+    "receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d.json",
+    "sha256": "6ea1b6aaad9230050c7b994492c80bbe6e8bb81a5a8f8a8d8ff9490697740c49"
+  },
+  "keys_read": 43,
+  "namespace_count": 1,
+  "status": "passed",
+  "verdict": "clean-with-findings: the round-1 blocker is resolved — all ten filesystem identifiers are literal and byte-identical to English (etc, media, mnt, opt, srv, usr, var, ProgramData, Program Files, Program Files (x86)), and the other 33 values are unchanged. Two round-1 findings remain open and are carried, not churned: 1 minor over 2 keys, 1 nit over 2 keys; no blocker or major.",
+  "remediation_verification": [
+    {
+      "key": "ui.chat.directory.folder.etc",
+      "previous": "系统配置",
+      "current": "etc",
+      "matches_english": true
+    },
+    {
+      "key": "ui.chat.directory.folder.media",
+      "previous": "媒体",
+      "current": "media",
+      "matches_english": true
+    },
+    {
+      "key": "ui.chat.directory.folder.mnt",
+      "previous": "挂载点",
+      "current": "mnt",
+      "matches_english": true
+    },
+    {
+      "key": "ui.chat.directory.folder.opt",
+      "previous": "可选软件",
+      "current": "opt",
+      "matches_english": true
+    },
+    {
+      "key": "ui.chat.directory.folder.srv",
+      "previous": "服务数据",
+      "current": "srv",
+      "matches_english": true
+    },
+    {
+      "key": "ui.chat.directory.folder.usr",
+      "previous": "系统程序",
+      "current": "usr",
+      "matches_english": true
+    },
+    {
+      "key": "ui.chat.directory.folder.var",
+      "previous": "可变数据",
+      "current": "var",
+      "matches_english": true
+    },
+    {
+      "key": "ui.chat.directory.folder.program_data",
+      "previous": "程序数据",
+      "current": "ProgramData",
+      "matches_english": true
+    },
+    {
+      "key": "ui.chat.directory.folder.program_files",
+      "previous": "程序文件",
+      "current": "Program Files",
+      "matches_english": true
+    },
+    {
+      "key": "ui.chat.directory.folder.program_files_x86",
+      "previous": "程序文件（x86）",
+      "current": "Program Files (x86)",
+      "matches_english": true
+    }
+  ],
+  "observations": [
+    "Byte-level diff f517ec4899..e9771396c2 for the target file is exactly 10 insertions and 10 deletions, all ten folder.* rows; no formatting, ordering or neighbouring value changed.",
+    "Key set 43/43 against English, 0 missing, 0 extra; ICU structure re-checked for all 43 keys with the repository's real parser (@formatjs/icu-messageformat-parser): argument names, select arms and number skeletons identical, 0 mismatches.",
+    "The ten literal values are now covered by the gate's exemption rows: the seven Unix segments and ProgramData globally, and program_files/program_files_x86 scoped to zh-CN (plus fr/hi/ru/vi/ur) in e9771396c2's locale-parity table.",
+    "The carried findings were re-read in the new bytes and are still present: menu.no_recent/menu.recent = 没有最近的目录/最近的目录, announce.invalid/tooltip.invalid = {path}不是此计算机上的目录.",
+    "Per the round scope, the other six namespaces of the round-1 receipt were not re-read; their values are unchanged from f517ec4899 and keep their round-1 verdicts."
+  ],
+  "namespaces": {
+    "ui.chat.directory": {
+      "status": "passed",
+      "verdict": "clean-with-findings: blocker resolved; 1 minor over 2 keys and 1 nit over 2 keys carried from round 1",
+      "keys_audited": 43,
+      "namespace_key_count": 43,
+      "sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "zh-CN": "7dd3c61e5763e421264b971d51a77489b90a1da083a53dce65eb96c9f9a2f80d",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.chat.directory.menu.no_recent",
+          "keys": [
+            "ui.chat.directory.menu.no_recent",
+            "ui.chat.directory.menu.recent"
+          ],
+          "current": "没有最近的目录 | 最近的目录",
+          "proposed": "暂无最近使用的目录 | 最近使用的目录",
+          "reason": "'Recent directories' means recently used directories; 最近的目录 reads as a literal calque of 'nearest directories'. Chinese file pickers name this list 最近使用的位置/目录, and the empty state uses 暂无. Carried from round 1 unchanged: this round's remediation did not touch these rows.",
+          "carried_from": "round 1 (zh-cn-extract-734dc4749c3d)"
+        },
+        {
+          "severity": "nit",
+          "key": "ui.chat.directory.announce.invalid",
+          "keys": [
+            "ui.chat.directory.announce.invalid",
+            "ui.chat.directory.tooltip.invalid"
+          ],
+          "current": "{path}不是此计算机上的目录",
+          "proposed": "{path}不是本机上的目录",
+          "reason": "The locale renders 'this computer' as 本机 in the identical clear-warning copy and as 此电脑 in provider copy; 此计算机 adds a third spelling. Carried from round 1 unchanged: this round's remediation did not touch these rows.",
+          "carried_from": "round 1 (zh-cn-extract-734dc4749c3d)"
+        }
+      ]
+    }
+  }
+}

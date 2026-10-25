@@ -45,7 +45,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const oneLight: ThemeDefinition = {
 	id: "oneLight",
 	name: "One Light",
-	description: "Atom's daylight standard, cool white with the One accent row.",
+	descriptionKey: "ui.settings.appearance.theme.one_light",
 	palette: {
 		mode: "light",
 

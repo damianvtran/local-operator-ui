@@ -82,6 +82,7 @@ import {
 	type CanonicalSessionRow,
 	LEGACY_CATALOGUE_PAGE,
 	catalogueScopeKey,
+	conversationTitleForDisplay,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -238,6 +239,7 @@ import {
 import {
 	DEFAULT_SIDEBAR_VIEW,
 	SECTION_GROWN_HINT,
+	SIDEBAR_SECTION_LABEL,
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
 	entityMore,
@@ -954,20 +956,6 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
 		?.click();
 };
 
-/*
- * The words this sentence uses for a count of at most six; digits beyond that,
- * because "Eleven built-in agents" is a figure the eye has to translate back.
- */
-const BUILTIN_COUNT_WORDS = [
-	"No",
-	"One",
-	"Two",
-	"Three",
-	"Four",
-	"Five",
-	"Six",
-];
-
 /**
  * The sentence that offers the built-ins, built from the names actually offered.
  *
@@ -985,16 +973,24 @@ const builtinOfferSentence = (
 	builtins: readonly { name: string }[],
 ): string => {
 	const names = builtins.map((builtin) => builtin.name);
-	const count = BUILTIN_COUNT_WORDS[names.length] ?? String(names.length);
-	const plural = names.length === 1 ? "agent" : "agents";
-	const verb = names.length === 1 ? "is" : "are";
+	/*
+	 * THE LIST IS JOINED HERE, deliberately: IntlMessageFormat has no list
+	 * formatter, and the English source joins with commas and a bare "and" (no
+	 * Oxford comma) - a shape ICU cannot express for a variable-length list. So the
+	 * count and the pre-joined names are parameters of ONE catalogue message (whose
+	 * arms carry the spelled numbers and the it/them pronoun), and a locale cannot
+	 * change the conjunction. That is a stated limit of keying this sentence, not
+	 * an oversight; moving the join into the catalogue would need a list-format
+	 * placeholder the runtime does not have.
+	 */
 	const list =
 		names.length === 1
 			? names[0]
 			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-	return `${count} built-in ${plural} ${verb} ready to install — ${list}. You can edit ${
-		names.length === 1 ? "it" : "them"
-	} once installed.`;
+	return t("ui.chat.sidebar.agents.builtin_offer", {
+		count: names.length,
+		list,
+	});
 };
 
 /**
@@ -2519,7 +2515,7 @@ export function ChatSidebar({
 			if (!fact.pinned || listed.has(id)) continue;
 			out.push({
 				session_id: id,
-				title: fact.title || "Untitled chat",
+				title: fact.title || "",
 				updated_at: fact.updated_at,
 				pinned: true,
 			});
@@ -3154,7 +3150,9 @@ export function ChatSidebar({
 	 * (round 2, M2). The fallback is the row render's own ("Untitled chat").
 	 */
 	const rowLabel = (id: string): string =>
-		matching.find((row) => row.session_id === id)?.title || "Untitled chat";
+		conversationTitleForDisplay(
+			matching.find((row) => row.session_id === id)?.title,
+		);
 	const orderedPinned = orderPinnedRows(pinned, view.pins);
 	const pinnedDrawnIds = orderedPinned.map((row) => row.session_id);
 	const pinnedIndex = new Map(
@@ -4423,7 +4421,7 @@ export function ChatSidebar({
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
-		const label = row.title || "Untitled chat";
+		const label = conversationTitleForDisplay(row.title);
 		/*
 		 * ARCHIVED, as THIS row knows it: the wire's value, or the client's own when it
 		 * has written one that this row's answer predates (`archiveFacts` - the same
@@ -4613,7 +4611,7 @@ export function ChatSidebar({
 		const rowTooltip = (
 			<>
 				<span className="block">
-					{row.title || "Untitled chat"}
+					{conversationTitleForDisplay(row.title)}
 					{bindingClause(row)}
 				</span>
 				<span className="block">
@@ -4873,7 +4871,7 @@ export function ChatSidebar({
 				 * fade and the reduced-motion off switch are all that module's, with the
 				 * reasoning for each.
 				 */}
-				<ChatRowTitle text={row.title || "Untitled chat"} />
+				<ChatRowTitle text={conversationTitleForDisplay(row.title)} />
 				{/*
 				 * THE SUBAGENT INDICATOR, immediately after the title and before the
 				 * trailing statement - the placement `sidebar-row-space.md` §2 forces:
@@ -6447,7 +6445,7 @@ export function ChatSidebar({
 					 * `rename` through `useSessionCommand` - asked for the way the Fork item above
 					 * asks, because the sidebar owns no presenter. The request names THIS row's
 					 * conversation (the pane's own is generally not the row's) AND carries the name
-					 * the row draws (`row.title || "Untitled chat"`), so the dialog's field opens on
+					 * the row draws (`conversationTitleForDisplay(row.title)`), so the dialog's field opens on
 					 * the name the user pointed at rather than on the pane's title - the row is the
 					 * only party that holds its own name (see `PanelRequest.subjectName`). A third
 					 * door to ONE write, not a second mechanism.
@@ -6467,7 +6465,7 @@ export function ChatSidebar({
 									`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
 								),
 								row.session_id,
-								{ subjectName: row.title || "Untitled chat" },
+								{ subjectName: conversationTitleForDisplay(row.title) },
 							);
 							// The palette's own guard, minus its first clause (the Fork item's
 							// reasoning, verbatim): `session.rename` is pane-only, so the request
@@ -7203,7 +7201,8 @@ export function ChatSidebar({
 						 * drawn only while the lift is, so a group the bound did not withhold
 						 * this row from pays nothing for it.
 						 */}
-						{page.lifted && sectionLabel("Current chat")}
+						{page.lifted &&
+							sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 						{shown.map((row) => sessionRow(row, true))} {/*
 						 * THE GROUP'S OWN SENTENCE.
 						 *
@@ -8526,7 +8525,7 @@ export function ChatSidebar({
 						<section>
 							{heading(
 								"agents",
-								"Agents",
+								t(SIDEBAR_SECTION_LABEL.agents),
 								true,
 								undefined,
 								Bot,
@@ -8877,7 +8876,7 @@ export function ChatSidebar({
 						>
 							{heading(
 								"teams",
-								"Teams",
+								t(SIDEBAR_SECTION_LABEL.teams),
 								true,
 								undefined,
 								Users,
@@ -8935,7 +8934,7 @@ export function ChatSidebar({
 		<p ref={pinRef} className="pb-2 text-meta text-warning">
 			{t("ui.chat.sidebar.pins.failure", {
 				action: pinFailure.pinned ? "pin" : "unpin",
-				title: pinFailure.title,
+				title: conversationTitleForDisplay(pinFailure.title, "this_chat"),
 			})}
 			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
 			<button
@@ -9107,7 +9106,7 @@ export function ChatSidebar({
 			 */}
 			{liftedRow && (
 				<section data-chat-section="current">
-					{sectionLabel("Current chat")}
+					{sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 					{sessionRow(liftedRow)}
 				</section>
 			)}
@@ -9559,7 +9558,7 @@ export function ChatSidebar({
 					 */
 					className="relative"
 				>
-					{sectionLabel("Pinned")}
+					{sectionLabel(t(SIDEBAR_SECTION_LABEL.pinned))}
 					{taggedRows(orderedPinned)}
 					{/*
 					 * THE INSERTION INDICATOR, and it exists ONLY while a drag does: a 2px line in
@@ -9592,7 +9591,7 @@ export function ChatSidebar({
 						 */
 						return (
 							<section key={key}>
-								{sectionLabel(CHAT_LIST_SECTION_LABEL[key])}
+								{sectionLabel(t(CHAT_LIST_SECTION_LABEL[key]))}
 								<p className="px-2 text-meta text-ink-dim">
 									{livenessUnread
 										? "The daemon could not read which chats are running, so this list may be incomplete."
@@ -9607,7 +9606,7 @@ export function ChatSidebar({
 					return (
 						<section key={key} data-chat-section={key}>
 							{sectionLabel(
-								CHAT_LIST_SECTION_LABEL[key],
+								t(CHAT_LIST_SECTION_LABEL[key]),
 								/*
 								 * The bulk read receipt sits on the FIRST section that has rows - the
 								 * one the eye lands on - while the set it clears is the STORE's, so

@@ -214,5 +214,107 @@
 		"length": "Three words.",
 		"note": "Marks the answer as incomplete. It is a statement about the answer, not an error and not an action; nothing here offers a retry.",
 		"placeholders": {}
+	},
+	"ui.chat.canonical.send_failure.unconfirmed": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Couldn't confirm your message was sent. Sending it again is safe."
+	},
+	"ui.chat.canonical.send_failure.unreachable": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Couldn't reach Local Operator. Your message may not have been sent."
+	},
+	"ui.chat.canonical.send_failure.busy": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: The agent is busy, so your message wasn't sent."
+	},
+	"ui.chat.canonical.send_failure.aside_not_answered": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: The aside was not answered."
+	},
+	"ui.chat.canonical.send_failure.aside_still_answering": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: The aside is still answering. Press Enter again once the answer is in."
+	},
+	"ui.chat.canonical.send_failure.retiring": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Local Operator is restarting, so your message wasn't sent. Try again in a moment."
+	},
+	"ui.chat.canonical.send_failure.not_ready": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: This chat isn't ready yet, so your message wasn't sent."
+	},
+	"ui.chat.canonical.send_failure.generic": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your message wasn't sent."
+	},
+	"ui.chat.canonical.send_failure.gone": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: This conversation no longer exists, so your message wasn't sent."
+	},
+	"ui.chat.canonical.send_failure.send_lock": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your last message is still sending."
+	},
+	"ui.chat.canonical.send_failure.gate_lock": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Answer the question above first."
+	},
+	"ui.chat.canonical.send_failure.queued_send": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your message will send as soon as the conversation is ready."
+	},
+	"ui.chat.canonical.send_failure.late_delivery": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your earlier message was delivered."
+	},
+	"ui.chat.canonical.send_failure.late_delivery_draft": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your earlier message was delivered. What's here now hasn't been sent."
+	},
+	"ui.chat.canonical.send_failure.late_delivery_overlap": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your earlier message was delivered. Its words are still in the box, so sending again would repeat them."
+	},
+	"ui.chat.canonical.untitled": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Untitled chat"
+	},
+	"ui.chat.canonical.this_chat": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: this chat"
 	}
 }

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type {
 	DesktopMediaRequest,
 	DesktopMediaResponse,
@@ -10,7 +11,6 @@ import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
-	DESKTOP_REFUSAL_SENTENCE,
 	desktopEndpoint,
 	desktopRefusalCodeForStatus,
 	desktopRequestDeadlineDetail,
@@ -27,6 +27,7 @@ import {
 	parseDelegatedCleanupNotice,
 	useDelegatedCleanupNoticeStore,
 } from "../../store/delegated-cleanup-notice-store";
+import { desktopRefusalSentence } from "./desktop-refusal-copy";
 
 export type {
 	AuthOperation,
@@ -189,8 +190,13 @@ function withDeadline(
  * undefined (QA round 3, Q-4). A second literal at the reader would be a second
  * thing to drift from this one.
  */
+/* Stable missing-prose sentinel: error state and its consumers compare this
+ * value, so only the presentation path may translate it. */
 export const DESKTOP_REFUSAL_PLACEHOLDER =
 	"This server did not answer the request for its desktop controls.";
+
+const desktopRefusalPlaceholder = (): string =>
+	t("ui.common.errors.desktop_refusal_placeholder");
 
 export class DesktopControlError extends Error {
 	/**
@@ -316,7 +322,9 @@ export function userFacingMessage(error: unknown, fallback: string): string {
 		 * rather than at nine call sites.
 		 */
 		if (isDesktopRefusalCode(error.code))
-			return DESKTOP_REFUSAL_SENTENCE[error.code];
+			return desktopRefusalSentence(error.code);
+		if (error.message === DESKTOP_REFUSAL_PLACEHOLDER)
+			return desktopRefusalPlaceholder();
 		return error.message;
 	}
 	return fallback;
@@ -859,7 +867,7 @@ export function mediaError(result: DesktopMediaResponse): Error {
 		 */
 		if (isDesktopRefusalCode(result.code))
 			return new UserFacingError(
-				DESKTOP_REFUSAL_SENTENCE[result.code],
+				desktopRefusalSentence(result.code),
 				result.code,
 			);
 		return new Error(result.detail);

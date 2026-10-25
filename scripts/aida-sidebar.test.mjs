@@ -51,7 +51,8 @@ const bundle = await build({
 			 * the test builds the real classes rather than lookalikes.
 			 */
 			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
-			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE } from "./src/shared/desktop-contract";',
+			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_COPY_KEY } from "./src/shared/desktop-contract";',
+			'export { t } from "./src/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -70,7 +71,8 @@ const {
 	aidaReservedAction,
 	DesktopControlError,
 	DESKTOP_REFUSAL_CODE,
-	DESKTOP_REFUSAL_SENTENCE,
+	DESKTOP_REFUSAL_COPY_KEY,
+	t,
 	UserFacingError,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -217,7 +219,7 @@ test("a failure's copy comes from the app's one copy path, never from the throw"
 				DESKTOP_REFUSAL_CODE.refused,
 			),
 		),
-		DESKTOP_REFUSAL_SENTENCE[DESKTOP_REFUSAL_CODE.refused],
+		t(DESKTOP_REFUSAL_COPY_KEY[DESKTOP_REFUSAL_CODE.refused]),
 		"a pairing refusal is answered in this app's words, never the daemon's",
 	);
 });

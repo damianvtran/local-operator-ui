@@ -38,7 +38,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const lavender: ThemeDefinition = {
 	id: "lavender",
 	name: "Lavender",
-	description: "Purple-grey dusk lit by a soft lavender glow.",
+	descriptionKey: "ui.settings.appearance.theme.lavender",
 	palette: {
 		mode: "dark",
 		/*

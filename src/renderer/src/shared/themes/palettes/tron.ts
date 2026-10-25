@@ -63,7 +63,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const tron: ThemeDefinition = {
 	id: "tron",
 	name: "Tron",
-	description: "Electric cyan circuitry on the Grid's blue-black.",
+	descriptionKey: "ui.settings.appearance.theme.tron",
 	palette: {
 		mode: "dark",
 

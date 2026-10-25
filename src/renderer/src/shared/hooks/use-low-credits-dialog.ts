@@ -1,5 +1,6 @@
 import { radientProxy } from "@shared/api/radient/proxy";
 import type { CreditBalanceResult } from "@shared/api/radient/types";
+import { t } from "@shared/i18n";
 import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import { useCallback, useEffect, useState } from "react";
 import { useRadientAuth } from "./use-radient-auth";
@@ -23,7 +24,7 @@ export const useLowCreditsDialog = () => {
 				tenantId: user.radientUser.account.tenant_id,
 			});
 			if (!creditBalance || typeof creditBalance.balance !== "number") {
-				throw new Error("Invalid credit balance response format");
+				throw new Error(t("ui.common.errors.credit_balance_invalid"));
 			}
 			setCurrentCredits(creditBalance.balance);
 		} catch (error) {

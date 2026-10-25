@@ -59,9 +59,12 @@ export type CatalogueInput =
  * so the state is unknown for every row and badging one would be a claim the
  * payload does not support. The chat picker already has this third group; using
  * its wording keeps the two surfaces describing one unknown the same way.
+ *
+ * A key, resolved by the builder that emits the group heading, so a language
+ * switch does not leave a heading in the import-time locale (review round 1,
+ * nit).
  */
-export const SIGN_IN_UNKNOWN_GROUP = "Sign-in state unknown";
-const SIGN_IN_UNKNOWN_GROUP_KEY =
+export const SIGN_IN_UNKNOWN_GROUP_KEY =
 	"ui.settings.model.model_setting_options.copy_sign_in_unknown_group";
 
 /**
@@ -69,9 +72,10 @@ const SIGN_IN_UNKNOWN_GROUP_KEY =
  *
  * Its own heading rather than a neighbour's, so a rescued row can never split
  * or duplicate the heading of a group it is not really in.
+ *
+ * A key for the same reason as the unknown-store heading above.
  */
-export const CURRENT_VALUE_GROUP = "Current value";
-const CURRENT_VALUE_GROUP_KEY =
+export const CURRENT_VALUE_GROUP_KEY =
 	"ui.settings.model.model_setting_options.copy_current_value_group";
 
 /** The two states a known-credentials listing distinguishes. */

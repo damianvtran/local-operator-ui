@@ -3,6 +3,7 @@ import type {
 	UsageRollupRequestParams,
 	UsageRollupResponse,
 } from "@shared/api/radient/types";
+import { t } from "@shared/i18n";
 /**
  * React Query hook for fetching Radient usage rollup data through the backend
  * proxy. Query fields are the proxy's allow-list for the usage operation.
@@ -23,7 +24,7 @@ export const useUsageRollup = (
 	return useQuery<UsageRollupResponse, Error>({
 		queryKey: [...QUERY_KEY_BASE, tenantId, params],
 		queryFn: async () => {
-			if (!tenantId) throw new Error("Tenant ID not available");
+			if (!tenantId) throw new Error(t("ui.common.errors.tenant_missing"));
 			const query: Record<string, string> = {};
 			for (const [key, value] of Object.entries(params)) {
 				if (value !== undefined && value !== null) query[key] = String(value);
@@ -33,7 +34,7 @@ export const useUsageRollup = (
 				tenantId,
 				query,
 			});
-			if (!result) throw new Error("Invalid usage rollup response format");
+			if (!result) throw new Error(t("ui.common.errors.usage_rollup_invalid"));
 			return result;
 		},
 		enabled: isEnabled,

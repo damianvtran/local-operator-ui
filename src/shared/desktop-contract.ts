@@ -11,6 +11,7 @@ export type TagRegistry = { tags: TagCategory[] };
 export type DesiredTag = { id?: string; name: string };
 
 import { z } from "zod";
+import type { WithoutParams } from "../i18n";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
 import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
 // The sidebar's destination vocabulary is the same list the route validates
@@ -488,6 +489,16 @@ const teamFields = z
 	})
 	.strict();
 const chains = z.record(z.array(z.string().max(1024)).max(100));
+/*
+ * Team Bridge staged-attachment ids on a send or schedule. Four is the hub's
+ * per-message cap (D3) and is enforced here too so a renderer bug is refused
+ * before it costs a round trip; duplicates are refused because the hub binds
+ * each id exactly once and a repeated id would be a guaranteed 404.
+ */
+const teamBridgeAttachmentIds = z
+	.array(id)
+	.max(4)
+	.refine((ids) => new Set(ids).size === ids.length, "Duplicate attachment");
 // Mirrors ScheduleUnit in the renderer's api/local-operator/types.ts and the
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
@@ -3590,10 +3601,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			conversation_id: id,
 			tenant_id: id.optional(),
 			client_ref: id,
-			body: z.string().min(1),
+			/* Empty only with `attachment_ids` (image-only); enforced in the refine below. */
+			body: z.string(),
 			agent_label: z.string().min(1).max(64).optional(),
 			/* Reply in this root message's thread; the hub validates the root. */
 			thread_root_id: id.optional(),
+			attachment_ids: teamBridgeAttachmentIds.optional(),
 		})
 		.strict(),
 	/*
@@ -3619,8 +3632,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id,
 			conversation_id: id,
 			client_ref: id,
-			body: z.string().min(1),
+			body: z.string(),
 			send_at: z.string().datetime({ offset: true }),
+			attachment_ids: teamBridgeAttachmentIds.optional(),
 			/* A scheduled REPLY. The core route carried this and the renderer's
 			   strict model did not, so scheduling a reply was unreachable (round
 			   12, minor c). Forwarded only when set, like a normal send. */
@@ -3632,8 +3646,26 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("team_bridge.scheduled.update"),
 			tenant_id: id,
 			scheduled_id: id,
-			body: z.string().min(1).optional(),
+			body: z.string().optional(),
 			send_at: z.string().datetime({ offset: true }).optional(),
+			/* The WHOLE new set when present (`[]` removes every image); absent keeps it. */
+			attachment_ids: teamBridgeAttachmentIds.optional(),
+		})
+		.strict(),
+	/*
+	 * Discard one STAGED upload (a chip the author removed before sending). JSON,
+	 * not the media relay: there are no bytes either way. Idempotent 204 on the
+	 * hub, so a retry after a lost answer is harmless.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.attachments.delete"),
+			tenant_id: id,
+			conversation_id: id,
+			attachment_id: id,
+			/* REQUIRED by the runtime route: the captured owner this delete runs
+			   under. A delete with no receipt would be refused 422 anyway. */
+			expected_account_id: id,
 		})
 		.strict(),
 	z
@@ -4277,6 +4309,30 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/*
+		 * Image-only messages: an empty body is legal only when images carry the
+		 * message (contract §3, "body may be empty iff attachment_ids non-empty").
+		 * A PATCH that omits `body` keeps the stored one, so only an explicit
+		 * empty body needs a non-empty set beside it.
+		 */
+		if (
+			request.op === "team_bridge.messages.send" ||
+			request.op === "team_bridge.scheduled.create" ||
+			(request.op === "team_bridge.scheduled.update" &&
+				request.body !== undefined)
+		) {
+			if (
+				request.body?.trim() === "" &&
+				(request.attachment_ids?.length ?? 0) === 0
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "A message needs text or an image", // i18n: ignore request-schema diagnostic
+					path: ["body"],
+				});
+				return;
+			}
+		}
 		// Guarded conversation writes never fall back to the token's default org.
 		// Legacy callers remain compatible; the new renderer requires the capability.
 		if (
@@ -4887,9 +4943,18 @@ export function asideAdoptRefusedReason(
 }
 
 /**
- * The sentences a refusal composes into, one per code.
+ * The catalogue message a refusal composes into, one per code.
  *
- * NO sentence here names an update, and none tells the user to change what the
+ * WHY KEYS AND NOT SENTENCES. This table is the one place that says which
+ * pairing fact a refused control reports, and that mapping is shared contract -
+ * but the sentence a user reads is the renderer's copy and follows the active
+ * locale. Holding English prose here would make the shared half a second source
+ * of truth for wording the catalogue already owns (and a translation could
+ * never be reached through it). So the contract carries IDs and the renderer's
+ * `desktopRefusalSentence()` resolves them at draw time; `DESKTOP_MACHINE_DETAIL`
+ * below stays prose precisely because it is compared, never rendered.
+ *
+ * NO message here names an update, and none tells the user to change what the
  * app manages: every one of these codes is a PAIRING condition, and pairing is
  * the app's own business to re-establish (design § 3.1, § 4's falsifiable
  * prediction). The two that can only be repaired by re-claiming say so; the two
@@ -4904,15 +4969,17 @@ export function asideAdoptRefusedReason(
  * verbatim. Removing it is what keeps "which table words this condition" a
  * question with one answer (review round 1, MINOR-3; design round 1, D4).
  */
-export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
+export const DESKTOP_REFUSAL_COPY_KEY: Record<
+	DesktopRefusalCode,
+	WithoutParams
+> = {
 	[DESKTOP_REFUSAL_CODE.noCredential]:
-		"This app is not paired with the running Local Operator server, so this control is unavailable.",
-	[DESKTOP_REFUSAL_CODE.refused]:
-		"This app's credential for the running Local Operator server was refused, so this control is unavailable.",
+		"ui.common.errors.desktop_refusal.no_credential",
+	[DESKTOP_REFUSAL_CODE.refused]: "ui.common.errors.desktop_refusal.refused",
 	[DESKTOP_REFUSAL_CODE.planeClosed]:
-		"The running Local Operator server does not accept this app's desktop controls.",
+		"ui.common.errors.desktop_refusal.plane_closed",
 	[DESKTOP_REFUSAL_CODE.transportFailed]:
-		"The Local Operator server did not answer this request.",
+		"ui.common.errors.desktop_refusal.transport_failed",
 };
 
 /**
@@ -4922,7 +4989,7 @@ export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
  * machine vocabulary rather than copy: main emits them, and the renderer has to
  * tell them apart from the DAEMON's own 503 so that "the app holds no credential"
  * is never reported as "the server's plane is shut". They are carried in
- * `detail.message` and rendered only by {@link DESKTOP_REFUSAL_SENTENCE}.
+ * `detail.message` and rendered only through {@link DESKTOP_REFUSAL_COPY_KEY}.
  */
 export const DESKTOP_MACHINE_DETAIL = {
 	/*
@@ -6543,6 +6610,29 @@ export type DesktopMediaRequest =
 	 */
 	| { op: "library.content"; assetId: string; download?: boolean }
 	| { op: "library.thumbnail"; assetId: string; width?: number }
+	/*
+	 * TEAM BRIDGE IMAGE ATTACHMENTS. Upload stages one bounded image (raw bytes,
+	 * no filename or type: the hub sniffs); the read fetches one BOUND image by
+	 * its message, member-gated on the hub. Main validates every id and refuses a
+	 * non-png/jpeg answer (`main/desktop-media.ts`).
+	 */
+	| {
+			op: "team_bridge.attachment.upload";
+			tenantId: string;
+			conversationId: string;
+			/* The captured-owner receipt the runtime now REQUIRES on these routes:
+			   comparing an account to itself is not a guard, so it is the identity
+			   the view was authorized under, captured at the call site. */
+			expectedAccountId: string;
+	  }
+	| {
+			op: "team_bridge.attachment";
+			tenantId: string;
+			conversationId: string;
+			messageId: string;
+			attachmentId: string;
+			expectedAccountId: string;
+	  }
 	/*
 	 * A Library audio asset's PRE-RENDER peaks, as the same `{version, bars,
 	 * peaks}` JSON a generated sound's attachment waveform route serves. Audio
@@ -9000,6 +9090,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.thread_root_id
 						? { thread_root_id: request.thread_root_id }
 						: {}),
+					...(request.attachment_ids?.length
+						? { attachment_ids: request.attachment_ids }
+						: {}),
 				},
 			};
 		case "team_bridge.scheduled.list":
@@ -9017,6 +9110,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					client_ref: request.client_ref,
 					body: request.body,
 					send_at: request.send_at,
+					...(request.attachment_ids?.length
+						? { attachment_ids: request.attachment_ids }
+						: {}),
 					...(request.thread_root_id
 						? { thread_root_id: request.thread_root_id }
 						: {}),
@@ -9031,7 +9127,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.send_at === undefined
 						? {}
 						: { send_at: request.send_at }),
+					// `[]` is meaningful here (remove every image), so only absence is omitted.
+					...(request.attachment_ids === undefined
+						? {}
+						: { attachment_ids: request.attachment_ids }),
 				},
+			};
+		case "team_bridge.attachments.delete":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/attachments/${encodeURIComponent(request.attachment_id)}?${new URLSearchParams({ tenant_id: request.tenant_id, expected_account_id: request.expected_account_id })}`,
+				method: "DELETE",
 			};
 		case "team_bridge.scheduled.cancel":
 			return {

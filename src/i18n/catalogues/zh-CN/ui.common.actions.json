@@ -34,5 +34,19 @@
 	"ui.common.actions.text_selection_controls.open_in_browser": "在浏览器中打开",
 	"ui.common.actions.confirmation_modal.confirm": "确认",
 	"ui.common.actions.confirmation_modal.cancel": "取消",
-	"ui.common.actions.find_replace_widget.of": "第{currentmatch, number, ::group-off}项，共{matchcount, number, ::group-off}项"
+	"ui.common.actions.find_replace_widget.of": "第{currentmatch, number, ::group-off}项，共{matchcount, number, ::group-off}项",
+	"ui.common.actions.agent_created": "智能体已创建",
+	"ui.common.actions.agent_deleted": "智能体已删除",
+	"ui.common.actions.agent_imported": "智能体已导入",
+	"ui.common.actions.agent_exported": "智能体已导出",
+	"ui.common.actions.agent_updated": "智能体已更新",
+	"ui.common.actions.agent_system_prompt_updated": "智能体系统提示词已更新",
+	"ui.common.actions.conversation_cleared": "对话已清空",
+	"ui.common.actions.variable_created": "变量已创建",
+	"ui.common.actions.variable_updated": "变量已更新",
+	"ui.common.actions.variable_deleted": "变量已删除",
+	"ui.common.actions.configuration_updated": "配置已更新",
+	"ui.common.actions.system_prompt_updated": "系统提示词已更新",
+	"ui.common.actions.credential_updated": "凭据“{key}”已更新",
+	"ui.common.actions.clear": "清空"
 }

@@ -113,8 +113,8 @@ const bundle = await build({
 			} from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { SPEECH_MAX_CHARS } from "@shared/lib/speech-clip";
 			export {
-				SPEECH_FAILURE_COPY,
-				SPEECH_PLAYBACK_COPY,
+				speechFailureFallbackCopy,
+				speechPlaybackCopy,
 			} from "@shared/lib/speech-errors";
 			export { useSpeechStore, messageSpeechKey } from "@shared/store/speech-store";
 			export { useAudioEngineStore } from "@shared/store/audio-engine-store";
@@ -718,7 +718,7 @@ test("an unmapped upstream diagnostic is mapped for the reader, detail to the co
 	}
 	assert.deepEqual(
 		toasts().errors,
-		[mod.SPEECH_FAILURE_COPY],
+		[mod.speechFailureFallbackCopy()],
 		"a support diagnostic never reads as copy",
 	);
 	assert.ok(
@@ -750,7 +750,7 @@ test("a playback failure raises the error toast through the same channel (C1)", 
 	}
 	assert.deepEqual(
 		toasts().errors,
-		[mod.SPEECH_PLAYBACK_COPY],
+		[mod.speechPlaybackCopy()],
 		"a fetched-then-unplayable press must not look like nothing happened",
 	);
 	assert.ok(

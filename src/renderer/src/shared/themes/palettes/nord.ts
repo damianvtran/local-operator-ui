@@ -45,7 +45,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const nord: ThemeDefinition = {
 	id: "nord",
 	name: "Nord",
-	description: "Arctic blue-grey with a frost cyan accent.",
+	descriptionKey: "ui.settings.appearance.theme.nord",
 	palette: {
 		mode: "dark",
 

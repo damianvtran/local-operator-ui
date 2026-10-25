@@ -20,6 +20,15 @@ export async function scheduleTeamBridgeDraft(args: {
 	body: string;
 	clientRef: string;
 	sendAt: string;
+	/* Images already staged in `conversationId`. */
+	attachmentIds?: readonly string[];
+	/*
+	 * Images held in memory for a draft with no conversation yet: staged into
+	 * the conversation right after it exists and BEFORE the schedule POST. A
+	 * failure throws, so a schedule never goes out text-only behind the
+	 * author's back; the remembered id makes the retry reuse the same group.
+	 */
+	stageHeld?: (conversationId: string, tenantId: string) => Promise<string[]>;
 	/* Present only when the scheduled message is a thread reply. */
 	threadRootId?: string;
 	remembered: Map<string, { id: string; tenantId: string | undefined }>;
@@ -34,6 +43,7 @@ export async function scheduleTeamBridgeDraft(args: {
 		client_ref: string;
 		body: string;
 		send_at: string;
+		attachment_ids?: string[];
 		thread_root_id?: string;
 	}) => Promise<unknown>;
 }) {
@@ -42,12 +52,17 @@ export async function scheduleTeamBridgeDraft(args: {
 		message: { tenantId: string | undefined },
 	) => {
 		args.onCreated(id);
+		const tenant = message.tenantId ?? args.tenantId;
+		const ids = args.stageHeld
+			? await args.stageHeld(id, tenant)
+			: [...(args.attachmentIds ?? [])];
 		const result = await args.schedule({
-			tenant_id: message.tenantId ?? args.tenantId,
+			tenant_id: tenant,
 			conversation_id: id,
 			client_ref: args.clientRef,
 			body: args.body,
 			send_at: args.sendAt,
+			...(ids.length > 0 ? { attachment_ids: ids } : {}),
 			...(args.threadRootId ? { thread_root_id: args.threadRootId } : {}),
 		});
 		// Publish the conversation identity only after schedule success. Clearing
@@ -116,10 +131,32 @@ export function scheduledEditPatch(
 	message: TeamBridgeScheduledMessage,
 	sendAt: string,
 	body?: string,
-): { body?: string; send_at?: string } {
+	attachmentIds?: readonly string[],
+): { body?: string; send_at?: string; attachment_ids?: string[] } {
+	const before = (message.attachments ?? []).map((row) => row.id);
+	// The PATCH carries the WHOLE set when it changes (`[]` removes every image,
+	// which the hub releases in the same update); an unchanged set is omitted so
+	// a time-only edit stays byte-identical for an older hub.
+	const imagesChanged =
+		attachmentIds !== undefined &&
+		(attachmentIds.length !== before.length ||
+			attachmentIds.some((id, index) => id !== before[index]));
+	/*
+	 * An edit that empties the caption but keeps the images is image-only, and
+	 * the contract (like the hub) accepts an empty body only beside a non-empty
+	 * set, so the set rides along even when unchanged (review round 1, R1-03).
+	 */
+	const imageOnly =
+		body !== undefined &&
+		body.trim() === "" &&
+		body !== message.body &&
+		(attachmentIds?.length ?? 0) > 0;
 	return {
 		...(body !== undefined && body !== message.body ? { body } : {}),
 		...(sendAt !== message.send_at ? { send_at: sendAt } : {}),
+		...(imagesChanged || imageOnly
+			? { attachment_ids: [...(attachmentIds ?? [])] }
+			: {}),
 	};
 }
 

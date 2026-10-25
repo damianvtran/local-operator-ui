@@ -40,8 +40,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const gruvbox: ThemeDefinition = {
 	id: "gruvbox",
 	name: "Gruvbox",
-	description:
-		"Retro groove after dark — warm charcoal under the gruvbox brights.",
+	descriptionKey: "ui.settings.appearance.theme.gruvbox",
 	palette: {
 		mode: "dark",
 

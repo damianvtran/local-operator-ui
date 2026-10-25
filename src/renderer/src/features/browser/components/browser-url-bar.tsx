@@ -450,7 +450,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		query,
 		requestHistory:
 			addressHistory ??
-			(() => Promise.reject(new Error("address history is unavailable"))),
+			(() =>
+				Promise.reject(
+					new Error(t("ui.browser.errors.address_history_unavailable")),
+				)),
 		subscribe: onStateChanged ?? (() => () => {}),
 		enabled: suggestionsEnabled,
 	});

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Hook for fetching credentials from the Local Operator API
  *
@@ -68,7 +69,9 @@ export const useCredentials = () => {
 			const response = await client.credentials.listCredentials();
 
 			if (response.status >= 400) {
-				throw new Error(response.message || "Failed to fetch credentials");
+				throw new Error(
+					response.message || t("ui.common.errors.credentials_fetch"),
+				);
 			}
 
 			return response.result as CredentialListResult;

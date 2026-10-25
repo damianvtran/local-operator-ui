@@ -57,5 +57,17 @@
 		"tone": "short imperative action, sentence case",
 		"maxCells": 20,
 		"note": "States the action the row takes: it opens the run-details pane. Its sibling close_run_details carries the opposite state. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.new_chat": {
+		"role": "chat header title for an untargeted new conversation",
+		"tone": "short title, sentence case",
+		"maxCells": 16,
+		"note": "The stand-in the header wears while a New chat draft has no conversation and no target; the conversation's own name replaces it as soon as one exists. It names the new chat itself, so it is not the New chat control's label elsewhere in the shell (that key is ui.shell.sidebar_navigation.new_chat). maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.new_chat_with": {
+		"role": "chat header title for a new conversation aimed at an agent or team",
+		"tone": "short title, sentence case",
+		"maxCells": 32,
+		"note": "{target} is the agent or team's own display name and is never translated. Names the staged draft before it has a conversation; once one exists the conversation's name replaces it. maxCells is advisory, not measured fit."
 	}
 }

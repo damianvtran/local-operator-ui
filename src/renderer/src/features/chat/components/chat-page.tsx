@@ -42,6 +42,8 @@ import {
 	useDraftWarmSession,
 	useWarmSession,
 } from "@shared/hooks/use-warm-session";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
@@ -50,7 +52,6 @@ import {
 	ASIDE_STILL_ANSWERING_CODE,
 	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
-	SESSION_UNVALIDATED_MESSAGE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
 	isSessionUnvalidated,
@@ -62,6 +63,7 @@ import {
 	remoteOwnedId,
 	resynthesisePendingSend,
 	sendFailureCopy,
+	sessionUnvalidatedMessage,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -2398,7 +2400,7 @@ function SessionPanel({
 					if (outcome === "failed") {
 						setSendError(
 							streamRef.current.failure?.statement ??
-								SESSION_UNVALIDATED_MESSAGE,
+								sessionUnvalidatedMessage(),
 						);
 						setSendErrorCode(SESSION_UNVALIDATED_CODE);
 						/*
@@ -4999,6 +5001,8 @@ function SessionPanel({
 }
 
 export function ChatPage() {
+	// The pane's own copy follows a backend locale change like every other surface.
+	useI18nLocale();
 	const { agentId: routeIdentity } = useParams<{ agentId?: string }>();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -5295,7 +5299,7 @@ export function ChatPage() {
 							className={cn("underline")}
 							onClick={() => void paneRetry()}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</button>
 					)}
 				</div>
@@ -5346,7 +5350,7 @@ export function ChatPage() {
 						className={cn("rounded-md border border-control px-3 py-2")}
 						onClick={() => stage(undefined, true)}
 					>
-						New chat
+						{t("ui.shell.sidebar_navigation.new_chat")}
 					</button>
 				</div>
 			)}

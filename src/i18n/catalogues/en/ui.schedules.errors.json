@@ -1,0 +1,5 @@
+{
+	"ui.schedules.errors.agent_id_required": "Agent ID is required to create a schedule.",
+	"ui.schedules.errors.agent_id_missing": "Agent ID is missing for submission.",
+	"ui.schedules.errors.base_url_missing": "Base URL for Local Operator API is not configured."
+}

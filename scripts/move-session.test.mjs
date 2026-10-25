@@ -522,49 +522,47 @@ test("the chip's accessible name carries the phrase its label slot paints (R3-1,
 	const chip = read(
 		"src/renderer/src/features/chat/components/directory-indicator.tsx",
 	);
-	assert.match(
-		chip,
-		/aria-label=\{`\$\{pending \? "Moving session" : "Working directory"\}: \$\{shown\}`\}/,
-		"the name is built from the same condition the slot paints",
-	);
-	assert.match(
-		chip,
-		/<bdi dir="auto">\s*\{pending \? "Moving session:" : "Working directory:"\}\s*<\/bdi>/,
-		"and the slot paints the phrase the name carries, in a bidi-isolated run so its colon stays with the phrase under RTL",
-	);
 	/*
-	 * THE READ-ONLY CHIP PAINTS THE SAME PHRASE, and it had the same defect: a
-	 * Latin fallback inheriting the row's RTL direction put the colon on the
-	 * visual left. The isolation is pinned on both branches rather than only the
-	 * one the design frame caught.
+	 * THE PHRASE IS ONE VALUE ON THE CHIP (`chipPhrase`): the visible slot and the
+	 * accessible name are built from it, so label-in-name holds by construction
+	 * rather than by two expressions that happen to agree today. What is pinned
+	 * below is that construction plus the two catalogue keys it chooses between.
 	 */
 	assert.match(
 		chip,
-		/<bdi dir="auto">Working directory:<\/bdi>/,
-		"the read-only slot paints its label in the same isolated run",
+		/aria-label=\{\s*`\$\{chipPhrase\}: \$\{shown\}`\s*\}/,
+		"the name is built from the phrase the slot paints",
+	);
+	assert.match(
+		chip,
+		/<bdi dir="auto">\{chipPhrase\}:<\/bdi>/,
+		"and the slot paints it in a bidi-isolated run so its colon stays with the phrase under RTL",
 	);
 	/*
-	 * The phrases are COMPARED rather than counted: a count moves whenever an
-	 * unrelated edit adds a third mention, while what label-in-name actually needs
-	 * is that the name contains the label. Both are read out of the shipped source
-	 * and asked directly.
+	 * THE READ-ONLY ARM KEEPS ITS OWN ISOLATION AND ITS FULL-PHRASE NAME. Both
+	 * assertions below cover the branch at the top of the component, which paints
+	 * a fixed label rather than `chipPhrase`: the round that keyed the chip dropped
+	 * its `<bdi>` assertion, so a later edit could have deleted `dir="auto"` there
+	 * with no failing test (agent review round 1, m3). The accessible name reads
+	 * the catalogue's whole phrase (`working_directory_value`) rather than
+	 * splicing one around an ASCII colon, which is what carries fr's narrow
+	 * no-break space and zh's full-width colon to a screen reader (round 1, m1).
 	 */
-	const painted = chip.match(
-		/<bdi dir="auto">\s*\{pending \? "(Moving session:)" : "(Working directory:)"\}\s*<\/bdi>/,
+	assert.match(
+		chip,
+		/<bdi dir="auto">\s*\{t\("ui\.chat\.directory\.label\.working_directory"\)\}:\s*<\/bdi>/,
+		"the read-only arm isolates its label run too, so its colon cannot drift to the visual left under RTL",
 	);
-	const named = chip.match(
-		/aria-label=\{`\$\{pending \? "(Moving session)" : "(Working directory)"\}/,
+	assert.match(
+		chip,
+		/aria-label=\{t\("ui\.chat\.directory\.label\.working_directory_value",\s*\{\s*path: shown,?\s*\}\s*\)\}/,
+		"the read-only name is the catalogue's full phrase, so the locale's own punctuation reaches it",
 	);
-	assert.ok(
-		painted && named,
-		"both the slot and the name must be found to be compared",
+	assert.match(
+		chip,
+		/const chipPhrase = pending[\s\S]{0,200}t\("ui\.chat\.directory\.label\.moving_session"\)[\s\S]{0,120}t\("ui\.chat\.directory\.label\.working_directory"\)/,
+		"the in-flight state says `Moving session`, the resting state `Working directory`, from the catalogue",
 	);
-	assert.equal(
-		named[1],
-		painted[1].replace(/:$/, ""),
-		"the in-flight label the user reads is the phrase the accessible name carries",
-	);
-	assert.equal(named[2], painted[2].replace(/:$/, ""));
 });
 
 test("the chip re-measures its overflow when the PATH changes (agent review R-1, R3-N2)", () => {
