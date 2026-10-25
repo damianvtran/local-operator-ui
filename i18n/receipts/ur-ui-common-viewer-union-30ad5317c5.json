@@ -1,0 +1,270 @@
+{
+  "schema": 1,
+  "audit_kind": "translation-audit",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor (lopdev team)",
+  "model": "deepseek/deepseek-flash",
+  "model_fallback": "none",
+  "model_note": "Harness session model tag deepseek/deepseek-flash; no model switch or fallback occurred during this run.",
+  "session": "a816cdf135c7",
+  "instance": "ur-ui-common-viewer-union-30ad5317c5",
+  "instance_scope": "Artifact-scoped receipt instance for this locale. All seven receipts were authored in one session (a816cdf135c7); they are not seven independent reviewers.",
+  "date": "2026-10-25",
+  "locale": "ur",
+  "namespace": "ui.common.viewer",
+  "head": "30ad5317c5965fb1dfd40cb78b16525977129035",
+  "merge_parents": {
+    "A": "649a09fe302bd422e3db30804b8f278e78f64e24",
+    "B": "ece9ae92191a50950e0a7987b93163a7fba8b288"
+  },
+  "status": "clean-with-findings",
+  "verdict": "PASS — clean-with-findings. Union provenance is exact: all 13 values are byte-identical to one merge parent (8 to both, 4 B-only, 1 A-only), the key set equals English and the parent union, and there are no duplicate keys. All live strings are clean and use the established از counter. Findings: the shared structural minor on image_progress plus the inherited asset_of nit (slash → از). 1 minor / 1 nit, 0 blocker/major.",
+  "keys_read": 13,
+  "keys_audited": 13,
+  "sha256": {
+    "en": "abfb7cc367dfbe11730a4ee57f5fbb19b67c67dbff1b919ae4575d72fa0fa537",
+    "ur": "8a11409590f3bd2cd0ca1fa34f727ff082a960be4f9a14ed6fe935635d618bfd",
+    "context": "e01d781a09d1bf5cc6368e79e3f7f89a8b25d923ac5e8fc93f137198325a5d2d"
+  },
+  "key_set": {
+    "english": 13,
+    "parent_A": 9,
+    "parent_B": 12,
+    "parent_union": 13,
+    "target": 13,
+    "equals_english": true,
+    "equals_parent_union": true,
+    "missing": [],
+    "extra": []
+  },
+  "duplicate_keys": {
+    "decoded_json": [],
+    "decoded_json_parent_A": [],
+    "decoded_json_parent_B": [],
+    "raw_duplicate_lines": [],
+    "note": "Checked with json.loads(object_pairs_hook=...) so last-wins parsing cannot hide a repeated member, and again at the raw line level. None found in any of the eight files."
+  },
+  "union": {
+    "A_only": [
+      "ui.common.viewer.image_progress"
+    ],
+    "B_only": [
+      "ui.common.viewer.close",
+      "ui.common.viewer.next",
+      "ui.common.viewer.position",
+      "ui.common.viewer.previous"
+    ],
+    "both": [
+      "ui.common.viewer.opening",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out",
+      "ui.common.viewer.image_lightbox.previous",
+      "ui.common.viewer.image_lightbox.next",
+      "ui.common.viewer.image_lightbox.close",
+      "ui.common.viewer.image_lightbox.asset_of"
+    ],
+    "neither": []
+  },
+  "per_key": [
+    {
+      "key": "ui.common.viewer.close",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {تصویر بند کریں} asset {اثاثہ بند کریں} other {بند کریں}}",
+      "raw_value_sha256": "6aaa41984e4d6367478651ee0aaf291af5afa4d136c5457fd5f7b3ee0645ef43"
+    },
+    {
+      "key": "ui.common.viewer.next",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {اگلی تصویر} asset {اگلا اثاثہ} other {اگلا}}",
+      "raw_value_sha256": "f98707a580754deb62400ef40570b67e542e20deb5463f72defa099f5ba0eee1"
+    },
+    {
+      "key": "ui.common.viewer.opening",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "کھولا جا رہا ہے…",
+      "raw_value_sha256": "418d98c71affe05b2762f9d7f29eaaa36531964e51b778d8e9b05ae67ddfaa65"
+    },
+    {
+      "key": "ui.common.viewer.position",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {تصویر {index, number, ::group-off} از {count, number, ::group-off}} asset {اثاثہ {index, number, ::group-off} از {count, number, ::group-off}} other {تصویر {index, number, ::group-off} از {count, number, ::group-off}}}",
+      "raw_value_sha256": "15f06aae3c8eeea52f2bb902a37945082c2339ca1bff35a7e43c36d50c97ab0c"
+    },
+    {
+      "key": "ui.common.viewer.previous",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {پچھلی تصویر} asset {پچھلا اثاثہ} other {پچھلا}}",
+      "raw_value_sha256": "9ee691b531b1f2356f42fb13d3e643671bd1e6439aa94dee7e7263e3cdbfce8d"
+    },
+    {
+      "key": "ui.common.viewer.reset_view",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "منظر ری سیٹ کریں",
+      "raw_value_sha256": "af337040ce7c65f836fe51d54520fc7945a2b3a7921b41fb2d7699d11844013a"
+    },
+    {
+      "key": "ui.common.viewer.zoom_in",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "زوم بڑھائیں",
+      "raw_value_sha256": "ae98d49ea6c1b6af36afeac7c6ce315f913ab4b3c5d02a494e099c0a335e3063"
+    },
+    {
+      "key": "ui.common.viewer.zoom_out",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "زوم گھٹائیں",
+      "raw_value_sha256": "786ae09df26fe136f9b4acf10f11ad95d1227cf90b07e3703d18071e63ea7bf8"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.previous",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "پچھلا {medialabel}",
+      "raw_value_sha256": "4a93510e790f70c7ad9ab83117ba1f52a2d1e623fba1320080859dddb7c3ae4a"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.next",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "اگلا {medialabel}",
+      "raw_value_sha256": "18b53c40b35cdcc1a97edd75914f3277a57b572969f88e836e15ca0148c69476"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.close",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "{medialabel} بند کریں",
+      "raw_value_sha256": "903e2a3872cbc5b3b93402c700b10d2612f5b16a520579c429d04a9c522c3e7c"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.asset_of",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "اثاثہ {index, number, ::group-off} / {count, number, ::group-off}",
+      "raw_value_sha256": "a707eb5cc823069be3c486b47e6efffad50cb621559617e426704a050b6ff54b"
+    },
+    {
+      "key": "ui.common.viewer.image_progress",
+      "source": "A",
+      "present_in_A": true,
+      "present_in_B": false,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": false,
+      "value": "{count, number, ::group-off} میں سے تصویر {index, number, ::group-off}",
+      "raw_value_sha256": "4d025e25080a4489094dc767d06fc8af30457a3d59cc932726cdcfc5d8c9c236"
+    }
+  ],
+  "icu": {
+    "runtime": "intl-messageformat 12.1.3 on Node 24.22.1",
+    "keys_compiled": 13,
+    "select_messages": 4,
+    "select_arms": 12,
+    "arm_names": [
+      "image",
+      "asset",
+      "other"
+    ],
+    "number_skeletons": {
+      "occurrences": 10,
+      "skeleton": "::group-off",
+      "all_match_english": true
+    },
+    "render_samples": {
+      "position_3_of_5": "تصویر 3 از 5",
+      "position_index_1234_count_1500000": "تصویر 1234 از 1500000",
+      "image_progress_3_of_5": "5 میں سے تصویر 3"
+    },
+    "errors": []
+  },
+  "image_progress": {
+    "referenced_in_code": false,
+    "evidence": "git grep image_progress at 30ad5317c5 matches only src/i18n/catalogues/**, src/i18n/keys.gen.ts and historical i18n/receipts/**. The current counter call sites are src/renderer/src/shared/lib/image-viewer-model.ts:92 and src/renderer/src/shared/components/common/image-lightbox.tsx:429, both ui.common.viewer.position. The four ui.common.viewer.image_lightbox.* keys are likewise unreferenced in app code.",
+    "superseded_caller": "Parent A's image-viewer-model.ts:92 called image_progress; parent B's identical function calls position with kind: image. The merge resolved the code to B and the catalogue to A ∪ B.",
+    "same_as_position_image_arm": false,
+    "same_as_position_other_arm": false,
+    "recommendation": "remove — dead copy that carries a second counter wording; do not leave it as an unused alternative"
+  },
+  "findings": [
+    {
+      "id": "UR-UNION-01",
+      "severity": "minor",
+      "category": "dead-copy",
+      "key": "ui.common.viewer.image_progress",
+      "current": "{count, number, ::group-off} میں سے تصویر {index, number, ::group-off}",
+      "proposed": "remove ui.common.viewer.image_progress from the English source, its context sidecar and all seven targets, together with the four unreferenced ui.common.viewer.image_lightbox.* keys, in a follow-up extraction change; if a progress counter is needed later, reuse ui.common.viewer.position",
+      "reason": "At 30ad5317c5 the key has no caller: parent A's image-viewer-model.ts:92 used it, parent B's identical function calls ui.common.viewer.position with kind: image, and the merge resolved the code to B while unioning A's key. It restates position's image-counter role without a kind select, so it cannot serve assets, and its sidecar is boilerplate (role \"Hub update \") rather than viewer context. Seven locales now maintain a second source of truth for the same counter.",
+      "locale_detail": "Uses '{count} میں سے تصویر {index}' while position uses 'تصویر {index} از {count}' (the ur precedent in ui.projects.project_updates.show_asset_name), so two counter constructions would coexist.",
+      "introduced_by": "merge 30ad5317c5 (A 649a09fe30 + B ece9ae9219)",
+      "disposition": "non-gating minor; recommend removal in a follow-up extraction PR, not in this audit (removal changes key sets, keys.gen.ts and every locale)"
+    },
+    {
+      "id": "UR-UNION-02",
+      "severity": "nit",
+      "category": "consistency",
+      "key": "ui.common.viewer.image_lightbox.asset_of",
+      "current": "اثاثہ {index, number, ::group-off} / {count, number, ::group-off}",
+      "proposed": "اثاثہ {index, number, ::group-off} از {count, number, ::group-off}",
+      "reason": "position's asset arm and ui.projects.project_updates.show_asset_name both use «از»; this key uses «/». One construction, two local forms in one namespace. The key has no caller, so the impact is catalogue-only.",
+      "disposition": "inherited from ur-bind-9b0acb464ecd; unresolved at 30ad5317c5"
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "observations": [
+    "Union was checked at the raw JSON literal level: each value's bytes (escapes included) equal the same key's bytes in A or B; no value was rewritten, re-escaped or round-tripped.",
+    "Key order is parent B's order with A's single unique key (image_progress) appended; no existing line was reordered. Ordering is not semantically required and is not part of this binding.",
+    "No duplicate JSON members and no duplicate raw key lines in any of the eight files (en + seven locales); the silent auto-merge duplicate class seen elsewhere did not occur here.",
+    "Byte hygiene: no BOM, no bidi controls (U+200E/F, U+202A–E, U+2066–9), no ZWSP/ZWNJ/ZWJ, no NBSP/U+202F, no trailing spaces; every value is NFC. Urdu storage order is logical; the render layer owns FSI/PDI isolation.",
+    "The four ui.common.viewer.image_lightbox.* keys are also unreferenced at HEAD (and were already unreferenced in both parents); they belong in the same cleanup as image_progress.",
+    "image_progress's English context sidecar says role \"Hub update \" (trailing space) and describes a 'plural selector' although the message uses a number skeleton — evidence it was imported from a bulk wave, not authored for the viewer."
+  ],
+  "limitations": "Read-only audit from the working tree at 30ad5317c5; no catalogue, context, ledger, allowance or generated file was edited, and this receipt is the only file written. No browser or native render was run, so this is a source-copy, ICU and provenance audit; rendered fit remains unproven. Width figures quoted are cell estimates from the ICU render, not measured pixels."
+}
