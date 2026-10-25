@@ -1,0 +1,770 @@
+{
+	"ui.onboarding.tour.action.back": {
+		"length": "Footer button label; English is 4 characters. Keep within about 1.5x.",
+		"note": "Footer button that moves to the previous tour step. Shared by every step that has one; one key, not a copy per step.",
+		"role": "Tour footer button label",
+		"tone": "Imperative button label in sentence case."
+	},
+	"ui.onboarding.tour.action.finish": {
+		"length": "Footer button label; English is 6 characters. Keep within about 1.5x.",
+		"note": "Footer button on the last step that closes the tour.",
+		"role": "Tour footer button label",
+		"tone": "Imperative button label in sentence case."
+	},
+	"ui.onboarding.tour.action.next": {
+		"length": "Footer button label; English is 4 characters. Keep within about 1.5x.",
+		"note": "Footer button that advances to the next tour step. Shared by every step that has one; one key, not a copy per step.",
+		"role": "Tour footer button label",
+		"tone": "Imperative button label in sentence case."
+	},
+	"ui.onboarding.tour.agent_capabilities.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 457 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 6 of 37 (\"More than just chat\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names. Quoted UI label(s) \"tools\" must match the control label in the app.",
+		"role": "Body paragraph in tour step 6 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.agent_capabilities.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 213 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 6 of 37 (\"More than just chat\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 6 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.agent_capabilities.image.1.alt": {
+		"length": "Short descriptive phrase in the image alt attribute; English is 16 characters.",
+		"note": "Alt text for the tour screenshot agentic-sequence.png shown in step 6 (\"More than just chat\"). It describes what the screenshot shows; the same words may appear in the step prose.",
+		"role": "Alternative text for screenshot 1 in tour step 6 of 37",
+		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+	},
+	"ui.onboarding.tour.agent_capabilities.title": {
+		"length": "Tour panel heading, one line; English is 19 characters. Keep within about 1.5x.",
+		"note": "Heading of step 6 of 37 in the Shepherd walkthrough. Step id: agent-capabilities.",
+		"role": "Tour step 6 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.agent_hub_view.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 151 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 23 of 37 (\"The Agent Hub\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 23 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.agent_hub_view.title": {
+		"length": "Tour panel heading, one line; English is 13 characters. Keep within about 1.5x.",
+		"note": "Heading of step 23 of 37 in the Shepherd walkthrough. Step id: agent-hub-view.",
+		"role": "Tour step 23 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.agent_list.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 314 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 2 of 37 (\"Your agents\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 2 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.agent_list.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 177 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 2 of 37 (\"Your agents\"). Plain paragraph; no tags. Product/feature names present: Agent Hub. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 2 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.agent_list.title": {
+		"length": "Tour panel heading, one line; English is 11 characters. Keep within about 1.5x.",
+		"note": "Heading of step 2 of 37 in the Shepherd walkthrough. Step id: agent-list.",
+		"role": "Tour step 2 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.agent_naming_guidelines.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 330 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 21 of 37 (\"Naming and describing your agent\"). Plain paragraph; no tags. Quoted UI label(s) \"File Organizer\", \"Web Researcher\" must match the control label in the app.",
+		"role": "Body paragraph in tour step 21 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.agent_naming_guidelines.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 183 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 21 of 37 (\"Naming and describing your agent\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 21 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.agent_naming_guidelines.title": {
+		"length": "Tour panel heading, one line; English is 32 characters. Keep within about 1.5x.",
+		"note": "Heading of step 21 of 37 in the Shepherd walkthrough. Step id: agent-naming-guidelines.",
+		"role": "Tour step 21 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.agent_options.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 116 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 13 of 37 (\"Agent options\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 13 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.agent_options.title": {
+		"length": "Tour panel heading, one line; English is 13 characters. Keep within about 1.5x.",
+		"note": "Heading of step 13 of 37 in the Shepherd walkthrough. Step id: agent-options.",
+		"role": "Tour step 13 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.appearance_settings.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 105 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 33 of 37 (\"Customize appearance\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 33 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.appearance_settings.title": {
+		"length": "Tour panel heading, one line; English is 20 characters. Keep within about 1.5x.",
+		"note": "Heading of step 33 of 37 in the Shepherd walkthrough. Step id: appearance-settings.",
+		"role": "Tour step 33 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.application_updates_settings.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 149 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 36 of 37 (\"Stay up to date\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 36 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.application_updates_settings.title": {
+		"length": "Tour panel heading, one line; English is 15 characters. Keep within about 1.5x.",
+		"note": "Heading of step 36 of 37 in the Shepherd walkthrough. Step id: application-updates-settings.",
+		"role": "Tour step 36 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.attachments.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 230 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 5 of 37 (\"Attach files to your message\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 5 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.attachments.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 121 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 5 of 37 (\"Attach files to your message\"). Plain paragraph; no tags. Product/feature names present: PDF. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 5 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.attachments.body.3": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 403 characters. No length cap; keep every fact.",
+		"note": "Paragraph 3 of the body in step 5 of 37 (\"Attach files to your message\"). Plain paragraph; no tags. Product/feature names present: Excel, Word, CSV. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 5 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.attachments.body.4": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 195 characters. No length cap; keep every fact.",
+		"note": "Paragraph 4 of the body in step 5 of 37 (\"Attach files to your message\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 5 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.attachments.image.1.alt": {
+		"length": "Short descriptive phrase in the image alt attribute; English is 16 characters.",
+		"note": "Alt text for the tour screenshot chat-attachments.png shown in step 5 (\"Attach files to your message\"). It describes what the screenshot shows; the same words may appear in the step prose.",
+		"role": "Alternative text for screenshot 1 in tour step 5 of 37",
+		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+	},
+	"ui.onboarding.tour.attachments.title": {
+		"length": "Tour panel heading, one line; English is 28 characters. Keep within about 1.5x.",
+		"note": "Heading of step 5 of 37 in the Shepherd walkthrough. Step id: attachments.",
+		"role": "Tour step 5 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.canvas_documents_view.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 280 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 10 of 37 (\"Documents view\"). Plain paragraph; no tags. Product/feature names present: HTML. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 10 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_documents_view.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 64 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 10 of 37 (\"Documents view\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 10 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_documents_view.body.3": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 135 characters. No length cap; keep every fact.",
+		"note": "Paragraph 3 of the body in step 10 of 37 (\"Documents view\"). Plain paragraph; no tags. Cmd/Ctrl+K is a literal keyboard shortcut used by the app; do not translate or reformat it.",
+		"role": "Body paragraph in tour step 10 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_documents_view.body.4": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 159 characters. No length cap; keep every fact.",
+		"note": "Paragraph 4 of the body in step 10 of 37 (\"Documents view\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 10 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_documents_view.image.1.alt": {
+		"length": "Short descriptive phrase in the image alt attribute; English is 18 characters.",
+		"note": "Alt text for the tour screenshot inline-edit-canvas.png shown in step 10 (\"Documents view\"). It describes what the screenshot shows; the same words may appear in the step prose.",
+		"role": "Alternative text for screenshot 1 in tour step 10 of 37",
+		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+	},
+	"ui.onboarding.tour.canvas_documents_view.image.2.alt": {
+		"length": "Short descriptive phrase in the image alt attribute; English is 23 characters.",
+		"note": "Alt text for the tour screenshot canvas-code-inline-edit.png shown in step 10 (\"Documents view\"). It describes what the screenshot shows; the same words may appear in the step prose.",
+		"role": "Alternative text for screenshot 2 in tour step 10 of 37",
+		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+	},
+	"ui.onboarding.tour.canvas_documents_view.title": {
+		"length": "Tour panel heading, one line; English is 14 characters. Keep within about 1.5x.",
+		"note": "Heading of step 10 of 37 in the Shepherd walkthrough. Step id: canvas-documents-view.",
+		"role": "Tour step 10 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.canvas_feature.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 281 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 9 of 37 (\"The canvas: your visual workspace\"). Plain paragraph; no tags. Product/feature names present: Canvas. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 9 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_feature.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 297 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 9 of 37 (\"The canvas: your visual workspace\"). Plain paragraph; no tags. Product/feature names present: HTML. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 9 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_feature.image.1.alt": {
+		"length": "Short descriptive phrase in the image alt attribute; English is 15 characters.",
+		"note": "Alt text for the tour screenshot canvas-overview.png shown in step 9 (\"The canvas: your visual workspace\"). It describes what the screenshot shows; the same words may appear in the step prose.",
+		"role": "Alternative text for screenshot 1 in tour step 9 of 37",
+		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+	},
+	"ui.onboarding.tour.canvas_feature.title": {
+		"length": "Tour panel heading, one line; English is 33 characters. Keep within about 1.5x.",
+		"note": "Heading of step 9 of 37 in the Shepherd walkthrough. Step id: canvas-feature.",
+		"role": "Tour step 9 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.canvas_files_view.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 203 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 11 of 37 (\"Files view\"). Plain paragraph; no tags. Product/feature names present: Canvas. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 11 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_files_view.title": {
+		"length": "Tour panel heading, one line; English is 10 characters. Keep within about 1.5x.",
+		"note": "Heading of step 11 of 37 in the Shepherd walkthrough. Step id: canvas-files-view.",
+		"role": "Tour step 11 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.canvas_open_button.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 163 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 8 of 37 (\"Open the canvas\"). Plain paragraph; no tags. Product/feature names present: Canvas. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 8 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_open_button.title": {
+		"length": "Tour panel heading, one line; English is 15 characters. Keep within about 1.5x.",
+		"note": "Heading of step 8 of 37 in the Shepherd walkthrough. Step id: canvas-open-button.",
+		"role": "Tour step 8 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.canvas_variables_view.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 259 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 12 of 37 (\"Variables view\"). Plain paragraph; no tags. Quoted UI label(s) \"code memory\" must match the control label in the app.",
+		"role": "Body paragraph in tour step 12 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_variables_view.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 129 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 12 of 37 (\"Variables view\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 12 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.canvas_variables_view.image.1.alt": {
+		"length": "Short descriptive phrase in the image alt attribute; English is 16 characters.",
+		"note": "Alt text for the tour screenshot canvas-variables-view.png shown in step 12 (\"Variables view\"). It describes what the screenshot shows; the same words may appear in the step prose.",
+		"role": "Alternative text for screenshot 1 in tour step 12 of 37",
+		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+	},
+	"ui.onboarding.tour.canvas_variables_view.title": {
+		"length": "Tour panel heading, one line; English is 14 characters. Keep within about 1.5x.",
+		"note": "Heading of step 12 of 37 in the Shepherd walkthrough. Step id: canvas-variables-view.",
+		"role": "Tour step 12 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.chat_input.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 167 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 4 of 37 (\"Ask your agent anything\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 4 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.chat_input.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 40 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 4 of 37 (\"Ask your agent anything\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 4 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.chat_input.body.3": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 113 characters. No length cap; keep every fact.",
+		"note": "Paragraph 3 of the body in step 4 of 37 (\"Ask your agent anything\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 4 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.chat_input.image.1.alt": {
+		"length": "Short descriptive phrase in the image alt attribute; English is 10 characters.",
+		"note": "Alt text for the tour screenshot chat-input.png shown in step 4 (\"Ask your agent anything\"). It describes what the screenshot shows; the same words may appear in the step prose.",
+		"role": "Alternative text for screenshot 1 in tour step 4 of 37",
+		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+	},
+	"ui.onboarding.tour.chat_input.list.1.item.1": {
+		"length": "Single bullet line in the tour panel; English is 82 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 1 of 3 in the list in step 4 of 37 (\"Ask your agent anything\"). Bullet item: no terminal period unless the source has one. Quoted text \"Create a spreadsheet in my Documents folder with all the major cities in Canada.\" is example user input; keep the quotation marks.",
+		"role": "Bulleted list item in tour step 4 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.chat_input.list.1.item.2": {
+		"length": "Single bullet line in the tour panel; English is 70 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 2 of 3 in the list in step 4 of 37 (\"Ask your agent anything\"). Bullet item: no terminal period unless the source has one. Quoted text \"Search the web for the latest news on AI and make a thorough report.\" is example user input; keep the quotation marks.",
+		"role": "Bulleted list item in tour step 4 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.chat_input.list.1.item.3": {
+		"length": "Single bullet line in the tour panel; English is 66 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 3 of 3 in the list in step 4 of 37 (\"Ask your agent anything\"). Bullet item: no terminal period unless the source has one. Quoted text \"translate this document to French.\" is example user input; keep the quotation marks.",
+		"role": "Bulleted list item in tour step 4 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.chat_input.title": {
+		"length": "Tour panel heading, one line; English is 23 characters. Keep within about 1.5x.",
+		"note": "Heading of step 4 of 37 in the Shepherd walkthrough. Step id: chat-input.",
+		"role": "Tour step 4 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.click_view_settings_from_chat.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 144 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 14 of 37 (\"View configuration\"). Plain paragraph; no tags. Quoted UI label(s) \"View agent settings\" must match the control label in the app.",
+		"role": "Body paragraph in tour step 14 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.click_view_settings_from_chat.title": {
+		"length": "Tour panel heading, one line; English is 18 characters. Keep within about 1.5x.",
+		"note": "Heading of step 14 of 37 in the Shepherd walkthrough. Step id: click-view-settings-from-chat.",
+		"role": "Tour step 14 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.create_new_agent.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 116 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 20 of 37 (\"Create a new agent\"). Plain paragraph; no tags. Quoted UI label(s) \"+\" must match the control label in the app.",
+		"role": "Body paragraph in tour step 20 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.create_new_agent.title": {
+		"length": "Tour panel heading, one line; English is 18 characters. Keep within about 1.5x.",
+		"note": "Heading of step 20 of 37 in the Shepherd walkthrough. Step id: create-new-agent.",
+		"role": "Tour step 20 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.create_schedule.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 134 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 29 of 37 (\"Set up a recurring task\"). Plain paragraph; no tags. Quoted UI label(s) \"Create schedule\" must match the control label in the app.",
+		"role": "Body paragraph in tour step 29 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.create_schedule.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 81 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 29 of 37 (\"Set up a recurring task\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 29 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.create_schedule.title": {
+		"length": "Tour panel heading, one line; English is 23 characters. Keep within about 1.5x.",
+		"note": "Heading of step 29 of 37 in the Shepherd walkthrough. Step id: create-schedule.",
+		"role": "Tour step 29 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.create_schedule_dialog.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 178 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 30 of 37 (\"Configure your schedule\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 30 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.create_schedule_dialog.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 246 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 30 of 37 (\"Configure your schedule\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 30 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.create_schedule_dialog.body.3": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 83 characters. No length cap; keep every fact.",
+		"note": "Paragraph 3 of the body in step 30 of 37 (\"Configure your schedule\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 30 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.create_schedule_dialog.title": {
+		"length": "Tour panel heading, one line; English is 23 characters. Keep within about 1.5x.",
+		"note": "Heading of step 30 of 37 in the Shepherd walkthrough. Step id: create-schedule-dialog.",
+		"role": "Tour step 30 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.download_agent.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 95 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 24 of 37 (\"Download an agent\"). Plain paragraph; no tags. Quoted UI label(s) \"Get\" must match the control label in the app.",
+		"role": "Body paragraph in tour step 24 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.download_agent.title": {
+		"length": "Tour panel heading, one line; English is 17 characters. Keep within about 1.5x.",
+		"note": "Heading of step 24 of 37 in the Shepherd walkthrough. Step id: download-agent.",
+		"role": "Tour step 24 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.general_settings.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 109 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 32 of 37 (\"General settings\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 32 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.general_settings.title": {
+		"length": "Tour panel heading, one line; English is 16 characters. Keep within about 1.5x.",
+		"note": "Heading of step 32 of 37 in the Shepherd walkthrough. Step id: general-settings.",
+		"role": "Tour step 32 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.integrations_settings.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 180 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 35 of 37 (\"Connect your services\"). Plain paragraph; no tags. Product/feature names present: Google. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 35 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.integrations_settings.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 152 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 35 of 37 (\"Connect your services\"). Plain paragraph; no tags. Product/feature names present: Radient. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 35 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.integrations_settings.title": {
+		"length": "Tour panel heading, one line; English is 21 characters. Keep within about 1.5x.",
+		"note": "Heading of step 35 of 37 in the Shepherd walkthrough. Step id: integrations-settings.",
+		"role": "Tour step 35 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.modify_agent_prompt.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 257 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 19 of 37 (\"Customize the agent's behavior\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 19 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.modify_agent_prompt.title": {
+		"length": "Tour panel heading, one line; English is 30 characters. Keep within about 1.5x.",
+		"note": "Heading of step 19 of 37 in the Shepherd walkthrough. Step id: modify-agent-prompt.",
+		"role": "Tour step 19 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.modify_security_prompt.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 271 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 18 of 37 (\"Customize security behaviors\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 18 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.modify_security_prompt.title": {
+		"length": "Tour panel heading, one line; English is 28 characters. Keep within about 1.5x.",
+		"note": "Heading of step 18 of 37 in the Shepherd walkthrough. Step id: modify-security-prompt.",
+		"role": "Tour step 18 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.navigate_agent_hub.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 112 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 22 of 37 (\"Discover more agents\"). Plain paragraph; no tags. Product/feature names present: Agent Hub. Keep Local Operator and Radient as product names. Quoted UI label(s) \"Agent Hub\" must match the control label in the app.",
+		"role": "Body paragraph in tour step 22 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.navigate_agent_hub.title": {
+		"length": "Tour panel heading, one line; English is 20 characters. Keep within about 1.5x.",
+		"note": "Heading of step 22 of 37 in the Shepherd walkthrough. Step id: navigate-agent-hub.",
+		"role": "Tour step 22 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.navigate_schedules.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 95 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 27 of 37 (\"Automate tasks with schedules\"). Plain paragraph; no tags. Product/feature names present: Local Operator, Schedules. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 27 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.navigate_schedules.title": {
+		"length": "Tour panel heading, one line; English is 29 characters. Keep within about 1.5x.",
+		"note": "Heading of step 27 of 37 in the Shepherd walkthrough. Step id: navigate-schedules.",
+		"role": "Tour step 27 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.navigate_settings.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 80 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 31 of 37 (\"Personalize your experience\"). Plain paragraph; no tags. Product/feature names present: Local Operator, Settings. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 31 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.navigate_settings.title": {
+		"length": "Tour panel heading, one line; English is 27 characters. Keep within about 1.5x.",
+		"note": "Heading of step 31 of 37 in the Shepherd walkthrough. Step id: navigate-settings.",
+		"role": "Tour step 31 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 117 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Product/feature names present: Command Palette. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 372 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Product/feature names present: Windows, Linux. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.4": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 12 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 23 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.6": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 19 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.7": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 24 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 37 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.3": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 111 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Product/feature names present: Windows, Linux. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.5": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 156 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Product/feature names present: Windows, Linux. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.connector.on_mac_and": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 12 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment around an inline keyboard-shortcut span rendered as <code> by the component; keep the leading/trailing spaces exactly as written. Connector between two keyboard shortcuts, reused three times in this step; it replaces an inline <code> span and must keep its leading and trailing spaces. Product/feature names present: Mac. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 7 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.title": {
+		"length": "Tour panel heading, one line; English is 15 characters. Keep within about 1.5x.",
+		"note": "Heading of step 7 of 37 in the Shepherd walkthrough. Step id: pre-command-palette-open-canvas.",
+		"role": "Tour step 7 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.radient_account_settings.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 358 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 34 of 37 (\"Radient account\"). Plain paragraph; no tags. Product/feature names present: Local Operator, Radient. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 34 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.radient_account_settings.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 327 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 34 of 37 (\"Radient account\"). Plain paragraph; no tags. Product/feature names present: Local Operator, Radient. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 34 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.radient_account_settings.title": {
+		"length": "Tour panel heading, one line; English is 15 characters. Keep within about 1.5x.",
+		"note": "Heading of step 34 of 37 in the Shepherd walkthrough. Step id: radient-account-settings.",
+		"role": "Tour step 34 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.schedules_overview.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 293 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 28 of 37 (\"Proactive agents with schedules\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 28 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.schedules_overview.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 206 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 28 of 37 (\"Proactive agents with schedules\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 28 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.schedules_overview.body.3": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 155 characters. No length cap; keep every fact.",
+		"note": "Paragraph 3 of the body in step 28 of 37 (\"Proactive agents with schedules\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 28 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.schedules_overview.title": {
+		"length": "Tour panel heading, one line; English is 31 characters. Keep within about 1.5x.",
+		"note": "Heading of step 28 of 37 in the Shepherd walkthrough. Step id: schedules-overview.",
+		"role": "Tour step 28 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.select_agent.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 184 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 3 of 37 (\"Select an agent\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 3 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.select_agent.title": {
+		"length": "Tour panel heading, one line; English is 15 characters. Keep within about 1.5x.",
+		"note": "Heading of step 3 of 37 in the Shepherd walkthrough. Step id: select-agent.",
+		"role": "Tour step 3 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.select_model.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 316 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 17 of 37 (\"Select AI model\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 17 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.select_model.title": {
+		"length": "Tour panel heading, one line; English is 15 characters. Keep within about 1.5x.",
+		"note": "Heading of step 17 of 37 in the Shepherd walkthrough. Step id: select-model.",
+		"role": "Tour step 17 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.select_provider.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 299 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 16 of 37 (\"Select hosting provider\"). Plain paragraph; no tags. Product/feature names present: Local Operator, Radient. Keep Local Operator and Radient as product names. Quoted UI label(s) \"Automatic\" must match the control label in the app.",
+		"role": "Body paragraph in tour step 16 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.select_provider.title": {
+		"length": "Tour panel heading, one line; English is 23 characters. Keep within about 1.5x.",
+		"note": "Heading of step 16 of 37 in the Shepherd walkthrough. Step id: select-provider.",
+		"role": "Tour step 16 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.tour_complete.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 156 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 37 of 37 (\"Tour complete\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 37 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.tour_complete.title": {
+		"length": "Tour panel heading, one line; English is 13 characters. Keep within about 1.5x.",
+		"note": "Heading of step 37 of 37 in the Shepherd walkthrough. Step id: tour-complete.",
+		"role": "Tour step 37 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.upload_agent_hub.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 132 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 25 of 37 (\"Share your agents\"). Plain paragraph; no tags. Product/feature names present: Agent Hub. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 25 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.upload_agent_hub.title": {
+		"length": "Tour panel heading, one line; English is 17 characters. Keep within about 1.5x.",
+		"note": "Heading of step 25 of 37 in the Shepherd walkthrough. Step id: upload-agent-hub.",
+		"role": "Tour step 25 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.upload_agent_hub_dialog.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 481 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 26 of 37 (\"Upload agent to hub\"). Plain paragraph; no tags. Product/feature names present: Radient. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 26 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.upload_agent_hub_dialog.title": {
+		"length": "Tour panel heading, one line; English is 19 characters. Keep within about 1.5x.",
+		"note": "Heading of step 26 of 37 in the Shepherd walkthrough. Step id: upload-agent-hub-dialog.",
+		"role": "Tour step 26 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.view_agent_settings.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 174 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 15 of 37 (\"Agent configuration\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 15 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.view_agent_settings.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 155 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 15 of 37 (\"Agent configuration\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 15 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.view_agent_settings.title": {
+		"length": "Tour panel heading, one line; English is 19 characters. Keep within about 1.5x.",
+		"note": "Heading of step 15 of 37 in the Shepherd walkthrough. Step id: view-agent-settings.",
+		"role": "Tour step 15 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	},
+	"ui.onboarding.tour.welcome.body.1": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 152 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 1 of 37 (\"Welcome to Local Operator\"). Plain paragraph; no tags. Product/feature names present: Local Operator. Keep Local Operator and Radient as product names.",
+		"role": "Body paragraph in tour step 1 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.welcome.body.2": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 219 characters. No length cap; keep every fact.",
+		"note": "Paragraph 2 of the body in step 1 of 37 (\"Welcome to Local Operator\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 1 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.welcome.body.3": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 32 characters. No length cap; keep every fact.",
+		"note": "Paragraph 3 of the body in step 1 of 37 (\"Welcome to Local Operator\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 1 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.welcome.body.4": {
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 27 characters. No length cap; keep every fact.",
+		"note": "Paragraph 4 of the body in step 1 of 37 (\"Welcome to Local Operator\"). Plain paragraph; no tags.",
+		"role": "Body paragraph in tour step 1 of 37",
+		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
+	},
+	"ui.onboarding.tour.welcome.image.1.alt": {
+		"length": "Short descriptive phrase in the image alt attribute; English is 14 characters.",
+		"note": "Alt text for the tour screenshot chat-full-view.png shown in step 1 (\"Welcome to Local Operator\"). It describes what the screenshot shows; the same words may appear in the step prose.",
+		"role": "Alternative text for screenshot 1 in tour step 1 of 37",
+		"tone": "Plain descriptive alt text; do not start with \"Image of\"."
+	},
+	"ui.onboarding.tour.welcome.list.1.item.1": {
+		"length": "Single bullet line in the tour panel; English is 15 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 1 of 7 in the list in step 1 of 37 (\"Welcome to Local Operator\"). Bullet item: no terminal period unless the source has one.",
+		"role": "Bulleted list item in tour step 1 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.welcome.list.1.item.2": {
+		"length": "Single bullet line in the tour panel; English is 23 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 2 of 7 in the list in step 1 of 37 (\"Welcome to Local Operator\"). Bullet item: no terminal period unless the source has one.",
+		"role": "Bulleted list item in tour step 1 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.welcome.list.1.item.3": {
+		"length": "Single bullet line in the tour panel; English is 20 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 3 of 7 in the list in step 1 of 37 (\"Welcome to Local Operator\"). Bullet item: no terminal period unless the source has one.",
+		"role": "Bulleted list item in tour step 1 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.welcome.list.1.item.4": {
+		"length": "Single bullet line in the tour panel; English is 18 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 4 of 7 in the list in step 1 of 37 (\"Welcome to Local Operator\"). Bullet item: no terminal period unless the source has one.",
+		"role": "Bulleted list item in tour step 1 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.welcome.list.1.item.5": {
+		"length": "Single bullet line in the tour panel; English is 39 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 5 of 7 in the list in step 1 of 37 (\"Welcome to Local Operator\"). Bullet item: no terminal period unless the source has one.",
+		"role": "Bulleted list item in tour step 1 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.welcome.list.1.item.6": {
+		"length": "Single bullet line in the tour panel; English is 30 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 6 of 7 in the list in step 1 of 37 (\"Welcome to Local Operator\"). Bullet item: no terminal period unless the source has one.",
+		"role": "Bulleted list item in tour step 1 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.welcome.list.1.item.7": {
+		"length": "Single bullet line in the tour panel; English is 26 characters. Keep within about 1.5x.",
+		"note": "Bulleted item 7 of 7 in the list in step 1 of 37 (\"Welcome to Local Operator\"). Bullet item: no terminal period unless the source has one.",
+		"role": "Bulleted list item in tour step 1 of 37",
+		"tone": "Short noun phrase or imperative; parallel with the other bullets."
+	},
+	"ui.onboarding.tour.welcome.title": {
+		"length": "Tour panel heading, one line; English is 25 characters. Keep within about 1.5x.",
+		"note": "Heading of step 1 of 37 in the Shepherd walkthrough. Step id: welcome.",
+		"role": "Tour step 1 of 37 title",
+		"tone": "Short sentence-case heading; no terminal period."
+	}
+}
