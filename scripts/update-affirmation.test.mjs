@@ -292,11 +292,18 @@ const bundle = await build({
 			*/
 			export { UpdateNotification } from "./src/renderer/src/shared/components/common/update-notification";
 			/*
+			 * THE PRODUCER'S OWN COMPOSER, so the panel case drives the sentence the app
+			 * would send rather than a paraphrase a fixture could drift from. The module
+			 * imports nothing at runtime (its failure vocabulary is a type-only import),
+			 * so this joins the bundle without dragging the main process in.
+			 */
+			export { serverUpdateFailureSentence } from "./src/main/server-update-copy";
+			/*
 			 * The failure panel's own container, so the sentence UNDER TEST is read from
 			 * the panel rather than from whatever else on screen happens to say it -
 			 * which surface holds it is the whole attribution question (R2-1, QA Q2).
 			 */
-			export { UpdateContainer } from "./src/renderer/src/shared/components/common/update-notification";
+			export { CommandBlock, InstallerOutput, UpdateContainer } from "./src/renderer/src/shared/components/common/update-notification";
 			/*
 			 * The alert that carries an update-path failure's sentence. Exported so the
 			 * harness can EXPAND it (below) rather than treat it as an opaque element:
@@ -412,6 +419,32 @@ export const useDeferredUpdatesStore = () => ({
 				stub("react/jsx-runtime", jsxRuntimeStandIn);
 				stub("react-dom", reactDomStandIn);
 				stub("react-dom/client", reactDomStandIn);
+				/*
+				 * The disclosure's tooltip pulls the `radix-ui` aggregate, whose password
+				 * fields import `flushSync` from react-dom. This harness has no DOM, so the
+				 * whole primitive is substituted with pass-through elements: the case under
+				 * test is the disclosure's collapsed state, not Radix's positioning.
+				 */
+				builder.onResolve({ filter: /^radix-ui$/ }, () => ({
+					path: "radix",
+					namespace: "affirmation-radix",
+				}));
+				builder.onLoad(
+					{ filter: /.*/, namespace: "affirmation-radix" },
+					() => ({
+						contents: `const passthrough = ({ children }) => children;
+const empty = () => null;
+export const Tooltip = {
+	Provider: passthrough,
+	Root: passthrough,
+	Trigger: passthrough,
+	Portal: passthrough,
+	Content: passthrough,
+	Arrow: empty,
+};`,
+						loader: "js",
+					}),
+				);
 			},
 		},
 	],
@@ -578,8 +611,11 @@ const {
 	UpdateErrorAlert,
 	PanelDetails,
 	Button,
+	CommandBlock,
+	InstallerOutput,
 	UpdateContainer,
 	UpdateNotification,
+	serverUpdateFailureSentence,
 	useUpdateNoticeStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -1142,6 +1178,376 @@ test("backend-update-error takes the in-flight panel down and says why", () => {
 	// dismissal that defers the release.
 	control(handle, "Try again");
 	control(handle, "Update later");
+});
+
+/**
+ * THE INCIDENT THE STRUCTURED CAUSE EXISTS FOR (2026-10-24).
+ *
+ * The updater exited 1 with `fresh PyPI latest is 0.88.4, not 0.89.0` on line 7 of
+ * its stderr, behind two startup advisories long enough to consume
+ * `installDiagnosisLines`' 800-character budget. The panel therefore showed the
+ * advisories and no cause. These cases drive the shipped panel with the producer's
+ * composed sentence for those facts and assert the cause is what the reader sees.
+ */
+const INCIDENT_STARTUP_OUTPUT = [
+	"2026-10-24 16:42:26,743 - WARNING - /Users/operator/.local-operator/config.yml lost 1 setting(s) since the last launch: subagents.models.hi",
+	"2026-10-24 16:42:27,154 - WARNING - the LOADED page of the project store carries 2 rows named 'minerva-assigned-mr-release-20261013'",
+].join("\n");
+const STRUCTURED_FAILURE = {
+	step: "publish",
+	kind: "publication",
+	exitCode: 1,
+	error: "fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+	target: "0.89.0",
+	installVersion: "0.88.4",
+	runningVersion: "0.88.4",
+	restartable: false,
+	appOwnedEnvironment: false,
+	command: "lop update",
+};
+
+/** The legacy sentence every structured payload still carries, unused by its arm. */
+const legacySentence = () =>
+	serverUpdateFailureSentence({
+		rebuildRoute: false,
+		ran: true,
+		exitCode: 1,
+		groupSurvived: false,
+		diagnosis: INCIDENT_STARTUP_OUTPUT,
+		target: "0.89.0",
+		after: "0.88.4",
+		before: "0.88.4",
+		updateCommand: "lop update",
+	});
+
+test("a structured failure is a cause line and a remedy, with the machine record collapsed", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: INCIDENT_STARTUP_OUTPUT,
+		failure: STRUCTURED_FAILURE,
+	});
+	handle.render();
+
+	assert.equal(showsText(handle, "Updating server"), false);
+	assert.ok(
+		showsText(handle, "The server update didn't finish"),
+		JSON.stringify(visible(handle)),
+	);
+	// D1/U4: the plain-language cause is its own primary-ink line, not a clause
+	// 16 words into a paragraph, and it is composed from the translated keys.
+	assert.ok(showsText(handle, "Publish step"));
+	assert.ok(showsText(handle, "Version 0.89.0 is not on PyPI yet."));
+	assert.ok(
+		showsText(
+			handle,
+			"The release is still publishing; try again in a few minutes.",
+		),
+	);
+	assert.ok(showsText(handle, "Nothing was restarted."));
+	/*
+	 * U6/D3: no command, exit status or second retry instruction in the primary
+	 * block. The updater's verbatim line lives in the raw record.
+	 */
+	const copy = allText(handle);
+	assert.doesNotMatch(copy, /lop update/);
+	assert.doesNotMatch(copy, /exited 1/);
+	assert.doesNotMatch(copy, /retry lop update/);
+	// The raw block survives as the fallback record, handed the stream head.
+	const outputBlock = walk(handle.tree).find(
+		(node) => node.type === InstallerOutput,
+	);
+	assert.ok(outputBlock, "the raw output must keep its own block");
+	assert.match(outputBlock.props.output, /config\.yml lost 1 setting\(s\)/);
+	control(handle, "Try again");
+	control(handle, "Update later");
+	assert.equal(dangerToasts(handle).length, 0);
+});
+
+test("the serve arm offers a restart, not a repeat install (U1)", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: {
+			step: "services",
+			kind: "serve",
+			exitCode: 1,
+			error: "the server did not move onto 0.89.0",
+			target: "0.89.0",
+			installVersion: "0.89.0",
+			runningVersion: "0.88.4",
+			restartable: true,
+			appOwnedEnvironment: true,
+			command: null,
+		},
+	});
+	handle.render();
+
+	assert.ok(
+		showsText(handle, "The server is still on the old version"),
+		"the heading must not say the update did not install (F3)",
+	);
+	assert.ok(
+		showsText(
+			handle,
+			"The install finished, but the server is still running 0.88.4.",
+		),
+	);
+	assert.ok(
+		showsText(handle, "The app started this server, so it can restart it now."),
+	);
+	assert.equal(
+		showsText(handle, "Nothing was restarted."),
+		false,
+		"the install landed, so the consequence is false (F1)",
+	);
+	assert.equal(showsText(handle, "Try again"), false);
+	control(handle, "Restart the server").props.onClick();
+	handle.render();
+	// The restart press re-enters the app's own managed update path at the version
+	// already on disk, which is how the skew panel performs the same restart.
+	assert.equal(updater.backendUpdates.length, 2);
+	assert.equal(updater.backendUpdates[1].targetVersion, "0.89.0");
+});
+
+test("a serve failure the app may not restart names the owning account instead", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: {
+			step: "services",
+			kind: "serve",
+			exitCode: 1,
+			error: "the server did not move onto 0.89.0",
+			target: "0.89.0",
+			installVersion: "0.89.0",
+			runningVersion: "0.88.4",
+			restartable: false,
+			appOwnedEnvironment: false,
+			command: null,
+		},
+	});
+	handle.render();
+	assert.ok(
+		showsText(
+			handle,
+			"This server was not started by the app, so restart it from the account that owns this install.",
+		),
+	);
+	assert.equal(showsText(handle, "Restart the server"), false);
+	assert.equal(
+		showsText(handle, "Try again"),
+		false,
+		"a repeat install is not the remedy this arm names",
+	);
+	control(handle, "Update later");
+});
+
+test("a serve failure with no running reading does not borrow the new version (R2-F2)", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: {
+			step: "services",
+			kind: "serve",
+			exitCode: 1,
+			error: "the server did not move onto 0.89.0",
+			target: "0.89.0",
+			installVersion: "0.89.0",
+			runningVersion: null,
+			restartable: false,
+			appOwnedEnvironment: false,
+			command: null,
+		},
+	});
+	handle.render();
+	assert.ok(
+		showsText(
+			handle,
+			"The install finished, but the server did not move onto it.",
+		),
+	);
+	assert.equal(
+		showsText(handle, "still running 0.89.0"),
+		false,
+		"the version that landed is not the version that is running",
+	);
+});
+
+test("the stopped-group safety clause rides the structured failure (R2-F3)", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: INCIDENT_STARTUP_OUTPUT,
+		failure: {
+			...STRUCTURED_FAILURE,
+			groupSurvived: true,
+		},
+	});
+	handle.render();
+	assert.ok(
+		showsText(
+			handle,
+			"The updater was stopped; something it started may still be replacing the install.",
+		),
+	);
+});
+
+test("the unknown arm says so and points at the record (U3)", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: "unexpected state",
+		failure: {
+			step: "install",
+			kind: "unknown",
+			exitCode: 1,
+			error: "unexpected state",
+			target: "0.89.0",
+			installVersion: "0.88.4",
+			runningVersion: "0.88.4",
+			restartable: false,
+			appOwnedEnvironment: false,
+			command: null,
+		},
+	});
+	handle.render();
+	/*
+	 * ONE PRIMARY LINE (U3): the fallback sentence carries both the missing cause
+	 * and the next step, so it is not split into two nodes that repeat its opening.
+	 */
+	assert.ok(
+		showsText(
+			handle,
+			"The updater did not name a cause. Copy the details below and try again; if it happens again, the update service log has the full output.",
+		),
+	);
+	// The fallback still offers the retry its own sentence describes.
+	control(handle, "Try again");
+});
+
+test("the refused arm gives a terminal route and no unconditional retry (U2)", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: "lop-update: REFUSING to release a stale ref",
+		failure: {
+			step: "check",
+			kind: "refused",
+			exitCode: 1,
+			error: "lop-update: REFUSING to release a stale ref",
+			target: "0.89.0",
+			installVersion: "0.88.4",
+			runningVersion: "0.88.4",
+			restartable: false,
+			appOwnedEnvironment: true,
+			command: "lop-update",
+		},
+	});
+	handle.render();
+	assert.ok(
+		showsText(
+			handle,
+			"Bring this machine's checkout up to date, then try again.",
+		),
+	);
+	assert.equal(
+		showsText(handle, "Try again"),
+		false,
+		"the panel must not invite the refusal again",
+	);
+	const commandBlock = walk(handle.tree).find(
+		(node) => node.type === CommandBlock,
+	);
+	assert.ok(commandBlock, "the terminal escape hatch must be reachable");
+	assert.equal(commandBlock.props.command, "lop-update");
+	control(handle, "Update later");
+});
+
+test("the consequence is suppressed where the install did land (F1)", () => {
+	for (const step of ["services", "report"]) {
+		const handle = mountNotification();
+		startServerUpdate(handle);
+		updater.emit("backend-update-error", {
+			message: legacySentence(),
+			phase: "update",
+			installerOutput: null,
+			failure: {
+				step,
+				kind: "unknown",
+				exitCode: 1,
+				error: "unexpected state",
+				target: "0.89.0",
+				installVersion: "0.89.0",
+				runningVersion: "0.88.4",
+				restartable: false,
+				appOwnedEnvironment: false,
+				command: null,
+			},
+		});
+		handle.render();
+		assert.equal(
+			showsText(handle, "Nothing was restarted."),
+			false,
+			`${step}: the install landed, so the consequence is false`,
+		);
+	}
+});
+
+test("an older payload without a failure block keeps today's copy and does not crash", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	const legacy = serverUpdateFailureSentence({
+		rebuildRoute: false,
+		ran: true,
+		exitCode: 1,
+		groupSurvived: false,
+		diagnosis: INCIDENT_STARTUP_OUTPUT,
+		target: "0.89.0",
+		after: "0.88.4",
+		before: "0.88.4",
+		updateCommand: "lop update",
+	});
+	// No `failure` field at all: the shape every build that predates the contract
+	// sends.
+	updater.emit("backend-update-error", {
+		message: legacy,
+		phase: "update",
+		installerOutput: INCIDENT_STARTUP_OUTPUT,
+	});
+	handle.render();
+
+	assert.ok(
+		showsText(handle, legacy),
+		`the older sentence must render unchanged: ${legacy}`,
+	);
+	assert.equal(
+		showsText(handle, "It stopped at"),
+		false,
+		"an older backend must not gain a cause clause it cannot back with data",
+	);
+	assert.equal(dangerToasts(handle).length, 0);
+	control(handle, "Try again");
 });
 
 test("a resolved false with no event still leaves the panel and says something", async () => {
