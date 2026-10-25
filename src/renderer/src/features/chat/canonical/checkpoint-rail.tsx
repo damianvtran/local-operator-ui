@@ -659,16 +659,17 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 		 * THE TAIL IS COMPUTED, NOT READ (conversation-first-paint P1): this used
 		 * to write `frame.scrollHeight`, which forced a layout of every mounted mark
 		 * inside the transcript's own commit (the 16k-mark profile's forced layout).
-		 * The fixed pitch makes the track's height a closed form, so the only read
-		 * left is the frame's `clientHeight`, a layout of a few dozen nodes now that
-		 * the marks are windowed. Clamped at 0: a track shorter than the port.
+		 * The fixed pitch makes the track's height a closed form, so the seed reads
+		 * no geometry at all.
 		 */
-		const tail = Math.max(
-			0,
-			checkpointRailContentHeight(checkpoints.length, building) -
-				frame.clientHeight,
-		);
-		frame.scrollTop = tail;
+		/*
+		 * The FULL content height is written and the browser clamps it, exactly as
+		 * the `scrollHeight` write did - NOT `height - clientHeight`: the port is
+		 * fractional (measured 345.5 px at 1440x900) while `clientHeight` rounds to
+		 * an integer, so the subtraction landed half a pixel short of the true tail
+		 * and the end marks rendered 0.5 px off the pre-virtualisation frames.
+		 */
+		frame.scrollTop = checkpointRailContentHeight(checkpoints.length, building);
 		/*
 		 * The window follows in the SAME commit: a state update inside a layout
 		 * effect re-renders synchronously before paint, so the first painted
@@ -783,11 +784,15 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			: (checkpoints[0]?.id ?? null);
 	/*
 	 * THE WALK CAN LAND ON A MARK THAT IS NOT MOUNTED (conversation-first-paint
-	 * P1): End on a 16k rail, or Home from the tail. The port is scrolled to it
-	 * arithmetically first, then the roving id moves - and the roving mark is
-	 * always mounted (see `mountedIndices`), so the commit that follows has the
-	 * element; the layout effect below focuses it before paint. Focusing in the
-	 * handler would find no element for an off-port target.
+	 * P1): End on a 16k rail, or Home from the tail. A MOUNTED target is focused
+	 * exactly as before - Chromium's own focus scroll (centre-if-needed) is what
+	 * the pre-virtualisation rail used, and keeping it keeps the pixels. An
+	 * UNMOUNTED one gets that same centre-if-needed position written first,
+	 * arithmetically (the browser clamps it, which is what puts End at the true
+	 * tail), then the roving id moves - the roving mark is always mounted (see
+	 * `mountedIndices`), so the commit that follows has the element and the
+	 * layout effect below focuses it before paint, already inside the port, so
+	 * the native focus scroll then has nothing to do.
 	 */
 	const pendingFocus = useRef<string | null>(null);
 	const focusTickAt = useCallback(
@@ -795,22 +800,21 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			const bounded = Math.max(0, Math.min(checkpoints.length - 1, index));
 			const target = checkpoints[bounded];
 			if (!target) return;
-			const frame = frameRef.current;
-			if (frame !== null) {
-				const next = checkpointRailRevealScrollTop(
-					bounded,
-					building,
-					frame.scrollTop,
-					frame.clientHeight,
-				);
-				if (next !== null) frame.scrollTop = next;
-				syncPort(frame.scrollTop);
-			}
 			setRovingId(target.id);
 			const element = tickElements.current.get(target.id);
 			if (element) {
 				element.focus();
 				return;
+			}
+			const frame = frameRef.current;
+			if (frame !== null) {
+				frame.scrollTop = Math.max(
+					0,
+					checkpointRailMarkTop(bounded, building) +
+						RAIL_PITCH_PX / 2 -
+						frame.clientHeight / 2,
+				);
+				syncPort(frame.scrollTop);
 			}
 			pendingFocus.current = target.id;
 		},

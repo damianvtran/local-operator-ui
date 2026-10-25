@@ -447,8 +447,8 @@ test("a switch seeds the inbound port while the outbound mark is still reported 
 		completion({ id: "c1", turn: 1, seq: 50 }),
 	];
 	/*
-	 * 240 inbound marks: a 2448px track (24 + 240 x 10 + 24), so the computed
-	 * tail of a 420px port is 2028. The inbound mark `v230` sits at 2324-2334,
+	 * 240 inbound marks: a 2448px track (24 + 240 x 10 + 24), written whole
+	 * and clamped by a 420px port to 2028. The inbound mark `v230` sits at 2324-2334,
 	 * inside that port past the follow's 24px pad.
 	 */
 	const inbound = Array.from({ length: 240 }, (_, index) =>
@@ -509,7 +509,7 @@ test("a switch seeds the inbound port while the outbound mark is still reported 
 		});
 		assert.deepEqual(
 			writes,
-			[2028],
+			[2448],
 			`the commit that paints the inbound ticks seeded the port to the tail: ${JSON.stringify(writes)}`,
 		);
 
@@ -1005,8 +1005,8 @@ test("roving to an unmounted mark scrolls it into the port and focuses it", asyn
 		assert.equal(active(), "m15999", "End lands focus on the newest mark");
 		assert.deepEqual(
 			writes,
-			[checkpointRailContentHeight(16_000, false) - 420],
-			"the port scrolled to bring it in, by arithmetic",
+			[checkpointRailMarkTop(15_999, false) + 5 - 210],
+			"the port scrolled to centre it, by arithmetic (the browser clamps to the tail)",
 		);
 		assert.equal(rail.tick("m15999").tabIndex, 0, "and it holds the tab stop");
 		/* Home from the tail: back across 16,000 marks in one press. */
