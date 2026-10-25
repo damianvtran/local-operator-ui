@@ -1,0 +1,101 @@
+{
+ "audit_id": "hi-tour-r2-20261025",
+ "date": "2026-10-25",
+ "locale": "hi",
+ "namespace": "ui.onboarding.tour",
+ "source_commit": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+ "scope": "Round 2 delta pass on the final bytes for ui.onboarding.tour: all 12 round-1 findings fixed, 19 changed keys and 104 unchanged retained byte-identically. Round 1 receipt remains immutable evidence. Text-only; rendered fit unverified.",
+ "status": "audited",
+ "high_visibility": {
+  "group": "onboarding",
+  "second_independent_audit_required": true,
+  "second_independent_audit": "not performed"
+ },
+ "translator": {
+  "agent": "translator",
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "job": "1a52ed60d4b5",
+  "session": "1a52ed60d4b5"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "result": "clean",
+   "instance": "hi-onboarding-tour-r2-cc19dcba2a86",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/hi-onboarding-tour-r2-cc19dcba2a86.json",
+   "receipt_sha256": "54921db331360122f64bbb810fbba8476bcca45589555192677eddbbfeb6e526",
+   "scope": "Round 2 delta pass on the final bytes: all 12 round-1 findings fixed, 19 changed keys and 104 unchanged retained byte-identically. Round 1 receipt i18n/receipts/hi-onboarding-tour-e38c1c237313.json remains immutable evidence. First-independent-audit scope only; rendered fit unverified.",
+   "note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "hi-onboarding-tour-e38c1c237313",
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "status": "changes_requested",
+   "result": "changes_requested",
+   "keys_audited": 123,
+   "target_sha256": "e38c1c23731374b3838a4bab113be94a7e6187d8536cbc237dba06c3fd69c033",
+   "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+   "findings": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 6,
+    "nit": 5
+   },
+   "receipt": {
+    "path": "i18n/receipts/hi-onboarding-tour-e38c1c237313.json",
+    "sha256": "984aa293334a97db4635680aba0d05680df1c69ad819c1b32adff848ded79f05"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "hi-onboarding-tour-r2-cc19dcba2a86",
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 123,
+   "target_sha256": "cc19dcba2a867fb2e7a64266a3c53b4d5c82722919da9323532337488d82cfb7",
+   "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": {
+    "path": "i18n/receipts/hi-onboarding-tour-r2-cc19dcba2a86.json",
+    "sha256": "54921db331360122f64bbb810fbba8476bcca45589555192677eddbbfeb6e526"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+   "sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+   "sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/hi/ui.onboarding.tour.json",
+   "sha256": "cc19dcba2a867fb2e7a64266a3c53b4d5c82722919da9323532337488d82cfb7"
+  }
+ },
+ "limitations": "Text-only audit; no browser/rendered frame or native-speaker sign-off. The high-visibility second independent audit required by docs/I18N.md is not performed, so this record is not release eligibility."
+}

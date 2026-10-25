@@ -170,6 +170,7 @@ import esUiMeshErrors from "./catalogues/es/ui.mesh.errors.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
 import esUiMiniView from "./catalogues/es/ui.miniView.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiOnboardingTour from "./catalogues/es/ui.onboarding.tour.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
@@ -255,6 +256,7 @@ import frUiMeshErrors from "./catalogues/fr/ui.mesh.errors.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiMiniView from "./catalogues/fr/ui.miniView.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiOnboardingTour from "./catalogues/fr/ui.onboarding.tour.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
@@ -340,6 +342,7 @@ import hiUiMeshErrors from "./catalogues/hi/ui.mesh.errors.json";
 import hiUiMesh from "./catalogues/hi/ui.mesh.json";
 import hiUiMiniView from "./catalogues/hi/ui.miniView.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiOnboardingTour from "./catalogues/hi/ui.onboarding.tour.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
@@ -425,6 +428,7 @@ import ruUiMeshErrors from "./catalogues/ru/ui.mesh.errors.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiMiniView from "./catalogues/ru/ui.miniView.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiOnboardingTour from "./catalogues/ru/ui.onboarding.tour.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
@@ -510,6 +514,7 @@ import urUiMeshErrors from "./catalogues/ur/ui.mesh.errors.json";
 import urUiMesh from "./catalogues/ur/ui.mesh.json";
 import urUiMiniView from "./catalogues/ur/ui.miniView.json";
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
+import urUiOnboardingTour from "./catalogues/ur/ui.onboarding.tour.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
@@ -595,6 +600,7 @@ import viUiMeshErrors from "./catalogues/vi/ui.mesh.errors.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiMiniView from "./catalogues/vi/ui.miniView.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiOnboardingTour from "./catalogues/vi/ui.onboarding.tour.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
@@ -680,6 +686,7 @@ import zhCNUiMeshErrors from "./catalogues/zh-CN/ui.mesh.errors.json";
 import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
 import zhCNUiMiniView from "./catalogues/zh-CN/ui.miniView.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiOnboardingTour from "./catalogues/zh-CN/ui.onboarding.tour.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
@@ -862,6 +869,7 @@ export const bundledCatalogues: Readonly<
 		...esUiMesh,
 		...esUiMiniView,
 		...esUiOnboarding,
+		...esUiOnboardingTour,
 		...esUiPresence,
 		...esUiProjects,
 		...esUiProviders,
@@ -949,6 +957,7 @@ export const bundledCatalogues: Readonly<
 		...frUiMesh,
 		...frUiMiniView,
 		...frUiOnboarding,
+		...frUiOnboardingTour,
 		...frUiPresence,
 		...frUiProjects,
 		...frUiProviders,
@@ -1036,6 +1045,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiMesh,
 		...hiUiMiniView,
 		...hiUiOnboarding,
+		...hiUiOnboardingTour,
 		...hiUiPresence,
 		...hiUiProjects,
 		...hiUiProviders,
@@ -1123,6 +1133,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiMesh,
 		...ruUiMiniView,
 		...ruUiOnboarding,
+		...ruUiOnboardingTour,
 		...ruUiPresence,
 		...ruUiProjects,
 		...ruUiProviders,
@@ -1210,6 +1221,7 @@ export const bundledCatalogues: Readonly<
 		...urUiMesh,
 		...urUiMiniView,
 		...urUiOnboarding,
+		...urUiOnboardingTour,
 		...urUiPresence,
 		...urUiProjects,
 		...urUiProviders,
@@ -1297,6 +1309,7 @@ export const bundledCatalogues: Readonly<
 		...viUiMesh,
 		...viUiMiniView,
 		...viUiOnboarding,
+		...viUiOnboardingTour,
 		...viUiPresence,
 		...viUiProjects,
 		...viUiProviders,
@@ -1384,6 +1397,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiMesh,
 		...zhCNUiMiniView,
 		...zhCNUiOnboarding,
+		...zhCNUiOnboardingTour,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
 		...zhCNUiProviders,

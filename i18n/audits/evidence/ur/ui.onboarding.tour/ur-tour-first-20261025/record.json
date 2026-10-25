@@ -1,0 +1,78 @@
+{
+ "audit_id": "ur-tour-first-20261025",
+ "date": "2026-10-25",
+ "locale": "ur",
+ "namespace": "ui.onboarding.tour",
+ "source_commit": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+ "scope": "Full first independent audit of ui.onboarding.tour for ur: 123 English, 123 context and 123 target values read against the frozen source. Text-only; rendered fit unverified.",
+ "status": "audited",
+ "high_visibility": {
+  "group": "onboarding",
+  "second_independent_audit_required": true,
+  "second_independent_audit": "not performed"
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "job": "03e8045ae218"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "result": "clean-with-findings",
+   "instance": "c62009d5ecba",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 8,
+    "nit": 4
+   },
+   "receipt": "i18n/receipts/c62009d5ecba.json",
+   "receipt_sha256": "141274f656cac2590eb4abff1d743b6d1f8d6cbd317ba44e0a221089e9861c1e",
+   "scope": "Full first independent audit of ui.onboarding.tour for ur: 123 English/context/target values; text-only, rendered fit unverified.",
+   "note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "c62009d5ecba",
+   "agent": "translation-auditor (lopdev team)",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "status": "clean-with-findings",
+   "result": "clean-with-findings",
+   "keys_audited": 123,
+   "target_sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+   "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 8,
+    "nit": 4
+   },
+   "receipt": {
+    "path": "i18n/receipts/ur-onboarding-tour-first-audit-c62009d5ecba.json",
+    "sha256": "141274f656cac2590eb4abff1d743b6d1f8d6cbd317ba44e0a221089e9861c1e"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+   "sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+   "sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ur/ui.onboarding.tour.json",
+   "sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028"
+  }
+ },
+ "limitations": "Text-only audit; no browser/rendered frame or native-speaker sign-off. The high-visibility second independent audit required by docs/I18N.md is not performed, so this record is not release eligibility."
+}

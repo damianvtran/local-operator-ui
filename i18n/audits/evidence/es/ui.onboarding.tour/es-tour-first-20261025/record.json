@@ -1,0 +1,79 @@
+{
+ "audit_id": "es-tour-first-20261025",
+ "date": "2026-10-25",
+ "locale": "es",
+ "namespace": "ui.onboarding.tour",
+ "source_commit": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+ "scope": "Full first independent audit of ui.onboarding.tour for es: 123 English, 123 context and 123 target values read against the frozen source. Text-only; rendered fit unverified.",
+ "status": "audited",
+ "high_visibility": {
+  "group": "onboarding",
+  "second_independent_audit_required": true,
+  "second_independent_audit": "not performed"
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "job": "f94bee7a94de",
+  "note": "Receipt-recorded translator job. The delegating manager's original-job list names es27f96e2bff5f; that discrepancy is not resolved by editing provenance here."
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-sonnet-5-5",
+   "date": "2026-10-25",
+   "result": "clean-with-findings",
+   "instance": "699cfe87308b-es-onboarding-tour",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 4
+   },
+   "receipt": "i18n/receipts/699cfe87308b-es-onboarding-tour.json",
+   "receipt_sha256": "b932fbe6b539a4141c193829fc427fe66c8882e4ac122f57e7ff5f750a7bc737",
+   "scope": "Full first independent audit of ui.onboarding.tour for es: 123 English/context/target values; text-only, rendered fit unverified.",
+   "note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "699cfe87308b-es-onboarding-tour",
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-sonnet-5-5",
+   "date": "2026-10-25",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 123,
+   "target_sha256": "01be2019914eac6288075ee34f988e6b4b04f6f20678c390305931255706b2af",
+   "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 4
+   },
+   "receipt": {
+    "path": "i18n/receipts/699cfe87308b-es-onboarding-tour.json",
+    "sha256": "b932fbe6b539a4141c193829fc427fe66c8882e4ac122f57e7ff5f750a7bc737"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+   "sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+   "sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/es/ui.onboarding.tour.json",
+   "sha256": "01be2019914eac6288075ee34f988e6b4b04f6f20678c390305931255706b2af"
+  }
+ },
+ "limitations": "Text-only audit; no browser/rendered frame or native-speaker sign-off. The high-visibility second independent audit required by docs/I18N.md is not performed, so this record is not release eligibility."
+}
