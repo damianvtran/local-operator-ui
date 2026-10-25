@@ -182,7 +182,10 @@ export function useTeamBridgeAttachments(args: {
 			if (generation.current !== started) return null;
 			patch(key, {
 				status: "error",
-				reason: uploadFailure((error as { status?: number | null })?.status),
+				reason: uploadFailure(
+					(error as { status?: number | null })?.status,
+					(error as { code?: string })?.code,
+				),
 			});
 			return null;
 		}

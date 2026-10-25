@@ -84,6 +84,14 @@ const failureCopy = (reason: AttachmentFailure | undefined): string => {
 		// Reuses the page gate's own signed-out sentence: same fact, same words.
 		case "signed_out":
 			return t("ui.teamBridge.plan.sign_in_reason");
+		/*
+		 * A dedicated "your account changed" sentence needs a translation round
+		 * (the ledger admits no untranslated key), so this reuses the sign-in
+		 * sentence and its action. What it must NOT do is claim a quota: that was
+		 * the falsehood R1-01 found. Deferred: a precise account-change string.
+		 */
+		case "account_mismatch":
+			return t("ui.teamBridge.plan.sign_in_reason");
 		default:
 			return t("ui.teamBridge.attachments.error_upload");
 	}
@@ -190,15 +198,18 @@ export const TeamBridgeAttachmentChip: FC<{
 			</ChipAction>
 			{/* No Retry for signed_out: it would 401 again until the user signs in
 			    (review r7 M2), the same rule as the page's error view. */}
-			{failed && chip.prepared && chip.reason !== "signed_out" && (
-				<ChipAction
-					position="bottom"
-					label={t("ui.teamBridge.attachments.retry", { label })}
-					onClick={onRetry}
-				>
-					<RotateCw size={12} aria-hidden="true" />
-				</ChipAction>
-			)}
+			{failed &&
+				chip.prepared &&
+				chip.reason !== "signed_out" &&
+				chip.reason !== "account_mismatch" && (
+					<ChipAction
+						position="bottom"
+						label={t("ui.teamBridge.attachments.retry", { label })}
+						onClick={onRetry}
+					>
+						<RotateCw size={12} aria-hidden="true" />
+					</ChipAction>
+				)}
 		</li>
 	);
 };

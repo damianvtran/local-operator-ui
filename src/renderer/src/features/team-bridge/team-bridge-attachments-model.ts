@@ -113,6 +113,10 @@ export type AttachmentFailure =
 	| "expired"
 	| "offline"
 	| "signed_out"
+	/* The captured owner is no longer the signed-in one (409 `account_mismatch`).
+	   Its own reason because the ONLY truthful account sentence is "who you are
+	   changed", not "you are signed out" and not a quota (review round 1, R1-01). */
+	| "account_mismatch"
 	| "failed";
 
 /**
@@ -120,10 +124,17 @@ export type AttachmentFailure =
  * (§2-3, D3): 413 oversize, 415 type, 422 corrupt/pixel bomb, 429 rate,
  * 400 count/quota, 404 the uniform "not yours / gone" answer. `null` is "the
  * request never reached anything" (no daemon, no credential, transport).
+ *
+ * `code` matters where a status is ambiguous: the captured-owner guard answers
+ * 409 `account_mismatch`, and reading that as the 400 quota refusal told a user
+ * whose account changed that they had too many images (review round 1, R1-01).
+ * The declared code wins; a bare 409 is a generic conflict, never a quota.
  */
 export function uploadFailure(
 	status: number | null | undefined,
+	code?: string | null,
 ): AttachmentFailure {
+	if (code === "account_mismatch") return "account_mismatch";
 	switch (status) {
 		case 413:
 			return "too_large";
@@ -134,8 +145,10 @@ export function uploadFailure(
 		case 429:
 			return "rate_limited";
 		case 400:
-		case 409:
 			return "limit";
+		case 409:
+			/* Any other conflict: retryable, and not a claim about quota. */
+			return "failed";
 		case 404:
 			return "expired";
 		// 401 `bridge_signin_required`: the runtime lost its sign-in while the
