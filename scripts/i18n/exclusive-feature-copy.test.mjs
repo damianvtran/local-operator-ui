@@ -184,13 +184,21 @@ for (const count of [0, 1, 2]) {
 }
 
 test("display headings read current locale without translating scope identifiers", () => {
+	/*
+	 * A SYNTHETIC TAG, deliberately (same premise as `keyed-copy-behaviour`'s
+	 * fallback case, commit 888e1859c4): the shipped locales now carry every key
+	 * of this namespace, so a partial `fr` registration would still find the
+	 * bundled translation on a miss and prove nothing. `xx` has no bundled
+	 * catalogue, which is the only state where "this locale has no message for
+	 * this key" is literally true and the English fallback is what renders.
+	 */
 	try {
-		runtime.registerCatalogue("fr", {
+		runtime.registerCatalogue("xx", {
 			"ui.command_palette.palette_search.chats": "fixture chats",
 			"ui.command_palette.palette_search.commands_and_pages":
 				"fixture commands",
 		});
-		runtime.setLocale("fr");
+		runtime.setLocale("xx");
 		assert.equal(runtime.PALETTE_SECTION_TITLES.chats, "fixture chats");
 		assert.equal(runtime.SCOPE_LEGEND[0].label, "fixture commands");
 		assert.equal(runtime.parsePaletteQuery("#retention").scope, "chat");
