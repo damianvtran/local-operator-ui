@@ -23,6 +23,8 @@
  * own children — see `ChildCount`.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ChevronRight } from "lucide-react";
 import {
@@ -149,6 +151,7 @@ export const ChildSubagents = ({
 	 */
 	paneWidth: number;
 }) => {
+	useI18nLocale();
 	/*
 	 * Nothing at all when the open child has no children — not an empty section
 	 * and not a `0 subagents` line: most children delegate to nobody, and a section
@@ -222,7 +225,9 @@ export const ChildSubagents = ({
 						"flex min-w-0 items-baseline gap-1 text-meta text-ink-muted",
 					)}
 				>
-					<span className={cn("shrink-0")}>Subagents of</span>
+					<span className={cn("shrink-0")}>
+						{t("ui.chat.run_details.subagents_of")}
+					</span>
 					<span className={cn("min-w-0 truncate")} title={ownerLabel}>
 						{ownerLabel}
 					</span>

@@ -14,6 +14,8 @@
 
 import { Separator } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type LucideIcon,
@@ -55,7 +57,7 @@ const TODO_INK: Record<TodoItemStatus, string> = {
 
 /** The trailing tag for a settled row: one fixed word, so it stays inline. */
 const settledTag = (item: TodoItemView): string | null =>
-	item.status === "dropped" ? "— dropped" : null;
+	item.status === "dropped" ? t("ui.chat.run_details.todos.dropped") : null;
 
 /**
  * The blocked row's own line: the word that says which open state this is, and
@@ -66,7 +68,9 @@ const settledTag = (item: TodoItemView): string | null =>
  */
 const blockedReason = (item: TodoItemView): string | null => {
 	if (item.status !== "blocked") return null;
-	return item.reason ? `— blocked: ${item.reason}` : "— blocked";
+	return item.reason
+		? t("ui.chat.run_details.todos.blocked_reason", { reason: item.reason })
+		: t("ui.chat.run_details.todos.blocked");
 };
 
 /** The state in words, for the settled states that carry no visible tag. */
@@ -184,6 +188,7 @@ export const RunDetailTodos = ({
 	 */
 	sectionRef?: Ref<HTMLElement>;
 }) => {
+	useI18nLocale();
 	const { phases } = visibleTodoPhases(details.todos);
 	return (
 		<section ref={sectionRef} className={cn("flex flex-col pb-1.5")}>
@@ -192,7 +197,9 @@ export const RunDetailTodos = ({
 					"flex items-baseline justify-between gap-2 px-3 pt-2 pb-1",
 				)}
 			>
-				<span className={cn("shrink-0 text-meta text-ink-muted")}>To-dos</span>
+				<span className={cn("shrink-0 text-meta text-ink-muted")}>
+					{t("ui.chat.run_details.todos.title")}
+				</span>
 				<span
 					className={cn(
 						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
@@ -280,7 +287,9 @@ export const RunDetailTodos = ({
 									 * not a control and not a second count.
 									 */
 									<span className={cn("shrink-0 text-ink-dim text-meta")}>
-										· {phase.hidden} hidden
+										{t("ui.chat.run_details.todos.hidden", {
+											count: formatNumber(phase.hidden),
+										})}
 									</span>
 								)}
 							</div>

@@ -663,8 +663,15 @@ test("an unresolvable typed approval answer renders the sentence, not an unconfi
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 	assert.match(
 		code,
-		/throw new UserFacingError\(\s*"Reply yes or no to answer the approval request\.",\s*ANSWER_NOT_SENT_CODE,?\s*\)/,
+		/throw new UserFacingError\(\s*t\("ui\.chat\.approval\.reply_required"\),\s*ANSWER_NOT_SENT_CODE,?\s*\)/,
 		"the approval branch must throw UserFacingError carrying ANSWER_NOT_SENT_CODE - a bare Error beside this sentence renders as an unknown outcome with a Retry that cannot work",
+	);
+	// The sentence itself now comes from the catalogue, so this pins the key that
+	// supplies it instead of the literal (i18n extraction; the copy was unkeyed).
+	assert.equal(
+		SENTENCE,
+		"Reply yes or no to answer the approval request.",
+		"the English catalogue value must stay the sentence this test asserts",
 	);
 	assert.doesNotMatch(
 		code,

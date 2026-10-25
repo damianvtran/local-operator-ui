@@ -2045,7 +2045,7 @@ function SessionPanel({
 					const approved = approvalAnswerValue(typed ?? content);
 					if (approved === null)
 						throw new UserFacingError(
-							"Reply yes or no to answer the approval request.",
+							t("ui.chat.approval.reply_required"),
 							ANSWER_NOT_SENT_CODE,
 						);
 					await desktopResult({

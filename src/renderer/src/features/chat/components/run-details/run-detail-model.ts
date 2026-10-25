@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type { TranscriptRecord } from "../../canonical/transcript-reducer";
 import type { WorkingLineState } from "../../canonical/working-line-model";
 
@@ -3096,7 +3097,7 @@ export function mcpTally(
 	rows: readonly McpServerRow[],
 	maxChars?: number,
 ): string {
-	if (mcpServersAreCold(rows)) return MCP_COLD_LINE;
+	if (mcpServersAreCold(rows)) return t(MCP_COLD_LINE);
 	const connected = rows.filter((row) => row.status === "connected").length;
 	const problems = rows.filter((row) => row.problem).length;
 	const base = `${connected} of ${rows.length} connected`;
@@ -3139,8 +3140,7 @@ export function mcpTally(
  * claiming three servers are down when none was asked to be up. It lights no
  * dot, because nothing is wrong.
  */
-export const MCP_COLD_LINE =
-	"No session is running — server status cannot be checked.";
+export const MCP_COLD_LINE = "ui.chat.run_details.mcp.cold_label";
 
 /** Every MCP name that is asking for something right now. */
 export function mcpProblemNames(rows: readonly McpServerRow[]): string[] {
@@ -3832,15 +3832,19 @@ type TodoClauseCounts = Pick<RunDetails, "openTodos" | "droppedTodos">;
  */
 export const todoClause = (counts: TodoClauseCounts): string => {
 	if (counts.openTodos > 0) {
-		return counts.openTodos === 1
-			? "1 to-do open"
-			: `${counts.openTodos} to-dos open`;
+		// ICU, not a hand-built plural: the arms carry this locale’s CLDR
+		// categories and translators receive the count as an argument.
+		return t("ui.chat.run_details.chip.todos_open", {
+			count: counts.openTodos,
+		});
 	}
-	return counts.droppedTodos > 0 ? "All to-dos closed" : "All to-dos resolved";
+	return counts.droppedTodos > 0
+		? t("ui.chat.run_details.chip.todos_closed")
+		: t("ui.chat.run_details.chip.todos_resolved");
 };
 
 const failureClause = (count: number): string =>
-	`${plural(count, "subagent")} failed`;
+	t("ui.chat.run_details.chip.subagents_failed", { count });
 
 /**
  * The attention GRAMMAR, stated once (`§ 3.4`, `§ 7.2`; round 3's nit).
@@ -3854,16 +3858,13 @@ const failureClause = (count: number): string =>
  * two surfaces a single reader sees together, and nothing but review would have
  * caught it. `needs` for a count of one, `need` otherwise.
  */
-const attentionVerb = (count: number): string =>
-	count === 1 ? "needs" : "need";
-
 /** The clause that names no subject: `1 needs attention`, `3 need attention`. */
 const attentionClause = (count: number): string =>
-	`${count} ${attentionVerb(count)} attention`;
+	t("ui.chat.run_details.chip.attention", { count });
 
 /** The MCP ledger's clause, with the protocol's own name left singular. */
 const mcpClause = (count: number): string =>
-	`${plural(count, "MCP server")} ${attentionVerb(count)} attention`;
+	t("ui.chat.run_details.chip.mcp_attention", { count });
 
 /**
  * The tooltip and `aria-label` copy (`§3.3`, `§6.2`).

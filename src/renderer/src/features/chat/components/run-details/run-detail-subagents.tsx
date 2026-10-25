@@ -34,6 +34,8 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { ReactNode, Ref } from "react";
 import {
@@ -207,6 +209,7 @@ export const RunDetailSubagents = ({
 	 */
 	paneWidth: number;
 }) => {
+	useI18nLocale();
 	/*
 	 * The rows come from the model's `panelSlice`, never from a local narrowing:
 	 * the acknowledgement predicates count failures out of the SAME call, so a
@@ -236,7 +239,7 @@ export const RunDetailSubagents = ({
 				)}
 			>
 				<span className={cn("shrink-0 text-meta text-ink-muted")}>
-					Subagents
+					{t("ui.chat.run_details.subagents.title")}
 				</span>
 				<span
 					className={cn(

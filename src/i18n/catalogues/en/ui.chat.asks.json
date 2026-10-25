@@ -21,5 +21,8 @@
 	"ui.chat.asks.cancel": "Cancel",
 	"ui.chat.asks.change_answer": "Change answer",
 	"ui.chat.asks.filter_label": "Filter asks",
-	"ui.chat.asks.settled_heading": "Settled"
+	"ui.chat.asks.settled_heading": "Settled",
+	"ui.chat.asks.close_asks": "Close asks",
+	"ui.chat.asks.all_asks": "All asks",
+	"ui.chat.asks.conversation_asks": "This conversation's asks"
 }
