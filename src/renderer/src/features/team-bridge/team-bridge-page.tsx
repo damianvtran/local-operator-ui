@@ -505,6 +505,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		if (!isDraftCurrent()) return;
 		setDraftState(value);
 		if (draftJournal) draftJournal.body = value;
+		// "Message scheduled" describes ONE message; a fresh edit is not it
+		// (review round 12, n1).
+		if (scheduledSuccess) setScheduledSuccess(false);
 	};
 	const selectTarget = (next: TeamBridgeTarget) => {
 		setQuickView(null);
