@@ -11,10 +11,10 @@
   "model_note": "Harness-selected model identity recorded as radient/auto (effort auto); the upstream routed model is not exposed in session metadata. No fallback model was used.",
   "date": "2026-10-24",
   "scope": {
-    "pr": 1389,
-    "branch": "feat/i18n-surfaces-batch",
+    "pr": 1388,
+    "branch": "feat/i18n-canvas-batch",
     "base": "d96d68795b1f261b3aac8c65d7ca821f6641c5fa",
-    "head": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
+    "head": "936e3a483b4d675c9827be5f40167da186f86900",
     "merged_main": "40462495827dfb0e1bfacb8643da805912493a5b",
     "note": "Read the named head via git archive/git show without checking out or editing either branch. Each namespace sha256 binds the English source, zh-CN target and context sidecar at that head. The audited values are every zh-CN value changed against base d96d687; whole-file key presence and parity were checked separately."
   },
@@ -29,295 +29,205 @@
       "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
     }
   },
-  "keys_read": 505,
-  "namespace_count": 23,
+  "keys_read": 1079,
+  "namespace_count": 8,
   "status": "passed",
-  "verdict": "clean-with-findings: 1 minor finding over 1 key; no blocker or major",
+  "verdict": "clean-with-findings: 6 minor findings over 10 keys and 3 nit findings over 8 keys; no blocker or major",
   "namespaces": {
-    "ui.browser.errors": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 2,
-      "namespace_key_count": 2,
-      "sha256": {
-        "en": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
-        "zh-CN": "5999fe9763953fce71ccd9d80ee2b42b4ed085963a8586006922876d9e408f1f",
-        "context": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
-      },
-      "findings": []
-    },
-    "ui.chat.canonical": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 47,
-      "namespace_key_count": 47,
-      "sha256": {
-        "en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
-        "zh-CN": "35fcf61c88df37439bbe12167f436e9f7690f72cbe091c836e59ca9a77269275",
-        "context": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
-      },
-      "findings": []
-    },
-    "ui.chat.composer": {
+    "ui.canvas": {
       "status": "passed",
       "verdict": "clean-with-findings",
-      "keys_audited": 11,
-      "namespace_key_count": 47,
+      "keys_audited": 290,
+      "namespace_key_count": 347,
       "sha256": {
-        "en": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
-        "zh-CN": "61a57ab7395685032099d7816ab0406189f6d1f32fc739e9d77ee141a8585e33",
-        "context": "3a45a24f1ce79edec4d13b2c0f11272c3dd3974812f05d8009f04ab787da8e63"
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "zh-CN": "22f05638c559a2bca58dea34e51e34a918dcb960209d721189f6d08c647509bd",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
       },
       "findings": [
         {
           "severity": "minor",
-          "key": "ui.chat.composer.placeholder.aside",
+          "key": "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
           "keys": [
-            "ui.chat.composer.placeholder.aside"
+            "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
+            "ui.canvas.variables_viewer.this_variable_s_name_can_t_be_edited_from_here_copy_it_to_the_session_un",
+            "ui.canvas.variable_form_dialog.the_variable_could_not_be_saved_try_again"
           ],
-          "current": "向旁支对话提问——按Esc关闭",
-          "proposed": "向旁支对话私下提问——按Esc关闭",
-          "reason": "The English 'Ask off the record' is the offer's defining property; the Chinese says only 'ask the aside conversation', dropping that the exchange is not recorded. Other locales preserve it (ur/hi say 'off the record' explicitly)."
+          "current": "后端未响应，因此无法读取此对话的代码记忆。未做任何更改。请稍后重试。 | 无法在这里编辑此变量的名称。如需更改，请用新名称将其复制到会话中。 | 无法保存变量。请重试。",
+          "proposed": "后端未响应，因此无法读取此对话的代码记忆。未做任何更改。稍后重试。 | 无法在这里编辑此变量的名称。如需更改，可用新名称将其复制到会话中。 | 无法保存变量。重试。",
+          "reason": "Style guide restricts 请 to strings whose English says 'please' (blocking dialogs); none of these three sources has 'please'."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.canvas.create_file_dialog.creating",
+          "keys": [
+            "ui.canvas.create_file_dialog.creating"
+          ],
+          "current": "正在创建……",
+          "proposed": "正在创建...",
+          "reason": "The key's context note says 'preserve the three ASCII periods'; the general locale style prefers ……, so the key-specific note and the style guide conflict and one must be corrected."
         }
       ]
     },
-    "ui.code_review": {
+    "ui.chat.pickers": {
       "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 1,
-      "namespace_key_count": 76,
+      "verdict": "clean-with-findings",
+      "keys_audited": 720,
+      "namespace_key_count": 720,
       "sha256": {
-        "en": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
-        "zh-CN": "87687d5b752ff56a3274f74d8c255f88c4cc743fad5422e8f5087288a27ec074",
-        "context": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "zh-CN": "7f3bebf417d8112b08b39cc91f771e599865134b81ff02047732c4e81e38cd5f",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
       },
-      "findings": []
-    },
-    "ui.common.account": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 20,
-      "namespace_key_count": 38,
-      "sha256": {
-        "en": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
-        "zh-CN": "b01f733d44d55cfe6aa56078032742bc2b57db199ade5471f05899a886e03b6c",
-        "context": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
-      },
-      "findings": []
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears",
+          "keys": [
+            "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears"
+          ],
+          "current": "按名称为此会话的工具存储机密。值绝不会出现在输入框、记录或命令回执中。",
+          "proposed": "按名称为此会话的工具存储敏感信息。值绝不会出现在输入框、记录或命令回执中。",
+          "reason": "Same English concept 'secret' is rendered 敏感信息 in the established asks-flow strings (10 occurrences in ui.chat.composer, e.g. secret_ask_notice); 机密 is a different term."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model",
+          "keys": [
+            "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model",
+            "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_a_reasoning_model_with_model_first"
+          ],
+          "current": "{label}没有可调整的推理强度。请选择其他模型。 | {label}没有可调整的推理强度。请先使用/model选择推理模型。",
+          "proposed": "{label}没有可调整的推理强度。选择其他模型。 | {label}没有可调整的推理强度。先使用/model选择推理模型。",
+          "reason": "Style guide restricts 请 to strings whose English says 'please'; both sources are imperative 'Pick...' without 'please'."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.request_admitted_once",
+          "keys": [
+            "ui.chat.pickers.destination_pickers.request_admitted_once",
+            "ui.chat.pickers.destination_pickers.your_message_was_admitted_once"
+          ],
+          "current": "请求已准入一次{duplicate, select, true {（此前已准入）} other {}}。 | 你的消息已准入一次：{detail}。",
+          "proposed": "请求已受理一次{duplicate, select, true {（此前已受理）} other {}}。 | 你的消息已受理一次：{detail}。",
+          "reason": "准入 is a noun for market/access admission; for a message admitted into a session the idiomatic verb is 受理, and 已准入一次 reads translated."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.info_panel.live_total",
+          "keys": [
+            "ui.chat.pickers.info_panel.live_total"
+          ],
+          "current": "{formatcount}个实时 · 共{formatcount2}个",
+          "proposed": "{formatcount}个活跃 · 共{formatcount2}个",
+          "reason": "个实时 is ungrammatical as a count phrase (实时 is an adverb/adjective); the sibling info_model.live_not_answering already renders live sessions as 活跃."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.stop.confirm",
+          "keys": [
+            "ui.chat.pickers.stop.confirm"
+          ],
+          "current": "{count, plural, other {立即停止{count, number, ::group-off}个会话}}",
+          "proposed": "{count, plural, =1 {立即停止此会话} other {立即停止{count, number, ::group-off}个会话}}",
+          "reason": "The source's one branch says 'this session', and the context note calls that out; the other-only form loses the deictic and reads as a bare count for one."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+          "keys": [
+            "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+            "ui.chat.pickers.analytics_session_state.top_level_only",
+            "ui.chat.pickers.analytics_session_state.filter_top_zero",
+            "ui.chat.pickers.analytics_session_state.filter_top",
+            "ui.chat.pickers.analytics_session_state.top_level_only_off"
+          ],
+          "current": "此时间窗口内没有顶级会话。 | {searched} · 仅顶级会话 | 仅顶级会话：无会话。 | {matched, plural, other {仅顶级会话：{matchedtext}个会话。}} | {matched, plural, other {已关闭“仅顶级会话”：{matchedtext}个会话。}}",
+          "proposed": "Use 顶层 throughout: 此时间窗口内没有顶层会话。 | {searched} · 仅顶层会话 | 仅顶层会话：无会话。 | {matched, plural, other {仅顶层会话：{matchedtext}个会话。}} | {matched, plural, other {已关闭“仅顶层会话”：{matchedtext}个会话。}}",
+          "reason": "For a hierarchy, top-level is 顶层; 顶级 more often means top-tier/premium, and it recurs across five strings."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.chat.pickers.destination_pickers.fork",
+          "keys": [
+            "ui.chat.pickers.destination_pickers.fork",
+            "ui.chat.pickers.destination_pickers.ports"
+          ],
+          "current": "创建分支 | 移植主题",
+          "proposed": "If the rendered controls are tight: 分支 | 移植 (or confirm both fit with a rendered check).",
+          "reason": "Cell-width risk: Fork 4→8 cells (2.0×) and Ports 5→8 cells (1.6×); no maxCells budget exists for these keys, so this is a rendered-check flag, not a measured overflow."
+        }
+      ]
     },
     "ui.common.actions": {
       "status": "passed",
       "verdict": "clean",
-      "keys_audited": 14,
-      "namespace_key_count": 20,
+      "keys_audited": 30,
+      "namespace_key_count": 36,
       "sha256": {
-        "en": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
-        "zh-CN": "68c0106efeb9808c40aa806201b3e7e0184db7a25d655af61ca7b6becf1d798e",
-        "context": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "zh-CN": "9cabbd92edbad4245d1382e7f09f0b098b00fb114ea7f2b5ed10755711343618",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
       },
       "findings": []
     },
-    "ui.common.connection": {
+    "ui.common.forms": {
       "status": "passed",
       "verdict": "clean",
-      "keys_audited": 27,
+      "keys_audited": 10,
       "namespace_key_count": 37,
       "sha256": {
-        "en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-        "zh-CN": "df77d05f36a1f970d26b14e2ab11ca3900ec9cc482502dbb656cf0f0978ae033",
-        "context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "zh-CN": "1b365ede79da0c08c9aae2532dda478b08c944293121421352646da57d155b7a",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
       },
       "findings": []
     },
-    "ui.common.errors": {
+    "ui.common.layout": {
       "status": "passed",
       "verdict": "clean",
-      "keys_audited": 131,
-      "namespace_key_count": 135,
+      "keys_audited": 8,
+      "namespace_key_count": 8,
       "sha256": {
-        "en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
-        "zh-CN": "d78d82b8f6351e83e0bb650d22fd6f3d74d4d66c1a6b55e903e5fcfa50466ec3",
-        "context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "zh-CN": "c02cd9a6bf613448b3da6b3e03285a055243446b66543a58a56b36c9b2bb750f",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
       },
       "findings": []
     },
     "ui.common.speech": {
       "status": "passed",
       "verdict": "clean",
-      "keys_audited": 11,
-      "namespace_key_count": 11,
+      "keys_audited": 5,
+      "namespace_key_count": 5,
       "sha256": {
-        "en": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
-        "zh-CN": "a1c765db0f2948391194ba59fd7a9bd4c055aab9fec9f6c107d63322186deeb8",
-        "context": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
-      },
-      "findings": []
-    },
-    "ui.common.time": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 1,
-      "namespace_key_count": 1,
-      "sha256": {
-        "en": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-        "zh-CN": "6c4aa41408545720f80843c183c12b36e8ba325b4404b8ce8a2bc48e50141ff2",
-        "context": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "zh-CN": "cde7779d2cba788609576948d2a8798c0972171550b8b8bf995ee37c03d75ce0",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
       },
       "findings": []
     },
     "ui.common.updates": {
       "status": "passed",
       "verdict": "clean",
-      "keys_audited": 11,
-      "namespace_key_count": 138,
+      "keys_audited": 8,
+      "namespace_key_count": 135,
       "sha256": {
-        "en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-        "zh-CN": "90d09f65191ab661374d4a4800c7e7ac373601a5c925cf9ea94ceba8ea505304",
-        "context": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "zh-CN": "859754d92e281d0ce8360c6e6610684b666dcd938b22b3c492c4cc5b12ad37e7",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
       },
       "findings": []
     },
     "ui.common.viewer": {
       "status": "passed",
       "verdict": "clean",
-      "keys_audited": 5,
-      "namespace_key_count": 5,
+      "keys_audited": 8,
+      "namespace_key_count": 8,
       "sha256": {
-        "en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
-        "zh-CN": "76490490e7fc261d9221316d42adfcefddbf20e199ba0b0fa7b1a4a9a7741f4e",
-        "context": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
-      },
-      "findings": []
-    },
-    "ui.console.errors": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 1,
-      "namespace_key_count": 1,
-      "sha256": {
-        "en": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
-        "zh-CN": "8f66a4184b9ac75d3e87894f7aa3756a40d45b498b0106743db7c44af98d46b4",
-        "context": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
-      },
-      "findings": []
-    },
-    "ui.hub.updates": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 56,
-      "namespace_key_count": 56,
-      "sha256": {
-        "en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
-        "zh-CN": "e5c561e12dd3c4624ef2be8cd685006b31fc9bca46561dc80bd3e4255939da84",
-        "context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
-      },
-      "findings": []
-    },
-    "ui.installer": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 4,
-      "namespace_key_count": 22,
-      "sha256": {
-        "en": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
-        "zh-CN": "3b4299a1b0da2d28ce624cb121285ad8cb4b14947796a815001300de604596f7",
-        "context": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
-      },
-      "findings": []
-    },
-    "ui.library.errors": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 3,
-      "namespace_key_count": 3,
-      "sha256": {
-        "en": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
-        "zh-CN": "250e8b3e76579d62a66b21694b6ec61322777cb9f89c196c41895e63848a7385",
-        "context": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
-      },
-      "findings": []
-    },
-    "ui.mesh.errors": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 1,
-      "namespace_key_count": 1,
-      "sha256": {
-        "en": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
-        "zh-CN": "7fec5b4532369971a434a55aef6d65523c1597c835192f139f8ff686131d8ec3",
-        "context": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
-      },
-      "findings": []
-    },
-    "ui.miniView": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 34,
-      "namespace_key_count": 34,
-      "sha256": {
-        "en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
-        "zh-CN": "197a52750ca133480e6819fddc434a4aa9ca9abd51e8e7c47e42933d533be086",
-        "context": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
-      },
-      "findings": []
-    },
-    "ui.projects": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 3,
-      "namespace_key_count": 427,
-      "sha256": {
-        "en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-        "zh-CN": "9d0da77447bc0e9e9cfc70c54ba5a400fe4772a47d234d51390856c15ad1fb0c",
-        "context": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
-      },
-      "findings": []
-    },
-    "ui.schedules.errors": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 3,
-      "namespace_key_count": 3,
-      "sha256": {
-        "en": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
-        "zh-CN": "cea59e8fc5c2b873a80b27af618680ca7a33ca48725f221a33a36f3936ee8b82",
-        "context": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
-      },
-      "findings": []
-    },
-    "ui.settings": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 6,
-      "namespace_key_count": 45,
-      "sha256": {
-        "en": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-        "zh-CN": "cd2b0e0249d9f3c64d28600bfd62833f666b6b9b46aba9165c3ff1ee773715b1",
-        "context": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
-      },
-      "findings": []
-    },
-    "ui.settings.appearance": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 59,
-      "namespace_key_count": 69,
-      "sha256": {
-        "en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
-        "zh-CN": "7747435c0cf1204424b688d17e0161f768354ad6a8a350115b597b88e0f13153",
-        "context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
-      },
-      "findings": []
-    },
-    "ui.settings.shortcuts": {
-      "status": "passed",
-      "verdict": "clean",
-      "keys_audited": 54,
-      "namespace_key_count": 63,
-      "sha256": {
-        "en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-        "zh-CN": "42d14913361f54e3c446598ee2166cc9e1cf5e40cd1c3f4b0ba7091b26edffe5",
-        "context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "zh-CN": "340dc07cd763562727e2bdabc1284e5bc17ab34d9ce0b408c761947e186df027",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
       },
       "findings": []
     }
@@ -325,13 +235,102 @@
   "findings": [
     {
       "severity": "minor",
-      "key": "ui.chat.composer.placeholder.aside",
+      "key": "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
       "keys": [
-        "ui.chat.composer.placeholder.aside"
+        "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
+        "ui.canvas.variables_viewer.this_variable_s_name_can_t_be_edited_from_here_copy_it_to_the_session_un",
+        "ui.canvas.variable_form_dialog.the_variable_could_not_be_saved_try_again"
       ],
-      "current": "向旁支对话提问——按Esc关闭",
-      "proposed": "向旁支对话私下提问——按Esc关闭",
-      "reason": "The English 'Ask off the record' is the offer's defining property; the Chinese says only 'ask the aside conversation', dropping that the exchange is not recorded. Other locales preserve it (ur/hi say 'off the record' explicitly)."
+      "current": "后端未响应，因此无法读取此对话的代码记忆。未做任何更改。请稍后重试。 | 无法在这里编辑此变量的名称。如需更改，请用新名称将其复制到会话中。 | 无法保存变量。请重试。",
+      "proposed": "后端未响应，因此无法读取此对话的代码记忆。未做任何更改。稍后重试。 | 无法在这里编辑此变量的名称。如需更改，可用新名称将其复制到会话中。 | 无法保存变量。重试。",
+      "reason": "Style guide restricts 请 to strings whose English says 'please' (blocking dialogs); none of these three sources has 'please'."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.canvas.create_file_dialog.creating",
+      "keys": [
+        "ui.canvas.create_file_dialog.creating"
+      ],
+      "current": "正在创建……",
+      "proposed": "正在创建...",
+      "reason": "The key's context note says 'preserve the three ASCII periods'; the general locale style prefers ……, so the key-specific note and the style guide conflict and one must be corrected."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears",
+      "keys": [
+        "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears"
+      ],
+      "current": "按名称为此会话的工具存储机密。值绝不会出现在输入框、记录或命令回执中。",
+      "proposed": "按名称为此会话的工具存储敏感信息。值绝不会出现在输入框、记录或命令回执中。",
+      "reason": "Same English concept 'secret' is rendered 敏感信息 in the established asks-flow strings (10 occurrences in ui.chat.composer, e.g. secret_ask_notice); 机密 is a different term."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model",
+      "keys": [
+        "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model",
+        "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_a_reasoning_model_with_model_first"
+      ],
+      "current": "{label}没有可调整的推理强度。请选择其他模型。 | {label}没有可调整的推理强度。请先使用/model选择推理模型。",
+      "proposed": "{label}没有可调整的推理强度。选择其他模型。 | {label}没有可调整的推理强度。先使用/model选择推理模型。",
+      "reason": "Style guide restricts 请 to strings whose English says 'please'; both sources are imperative 'Pick...' without 'please'."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.request_admitted_once",
+      "keys": [
+        "ui.chat.pickers.destination_pickers.request_admitted_once",
+        "ui.chat.pickers.destination_pickers.your_message_was_admitted_once"
+      ],
+      "current": "请求已准入一次{duplicate, select, true {（此前已准入）} other {}}。 | 你的消息已准入一次：{detail}。",
+      "proposed": "请求已受理一次{duplicate, select, true {（此前已受理）} other {}}。 | 你的消息已受理一次：{detail}。",
+      "reason": "准入 is a noun for market/access admission; for a message admitted into a session the idiomatic verb is 受理, and 已准入一次 reads translated."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.info_panel.live_total",
+      "keys": [
+        "ui.chat.pickers.info_panel.live_total"
+      ],
+      "current": "{formatcount}个实时 · 共{formatcount2}个",
+      "proposed": "{formatcount}个活跃 · 共{formatcount2}个",
+      "reason": "个实时 is ungrammatical as a count phrase (实时 is an adverb/adjective); the sibling info_model.live_not_answering already renders live sessions as 活跃."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.stop.confirm",
+      "keys": [
+        "ui.chat.pickers.stop.confirm"
+      ],
+      "current": "{count, plural, other {立即停止{count, number, ::group-off}个会话}}",
+      "proposed": "{count, plural, =1 {立即停止此会话} other {立即停止{count, number, ::group-off}个会话}}",
+      "reason": "The source's one branch says 'this session', and the context note calls that out; the other-only form loses the deictic and reads as a bare count for one."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+      "keys": [
+        "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+        "ui.chat.pickers.analytics_session_state.top_level_only",
+        "ui.chat.pickers.analytics_session_state.filter_top_zero",
+        "ui.chat.pickers.analytics_session_state.filter_top",
+        "ui.chat.pickers.analytics_session_state.top_level_only_off"
+      ],
+      "current": "此时间窗口内没有顶级会话。 | {searched} · 仅顶级会话 | 仅顶级会话：无会话。 | {matched, plural, other {仅顶级会话：{matchedtext}个会话。}} | {matched, plural, other {已关闭“仅顶级会话”：{matchedtext}个会话。}}",
+      "proposed": "Use 顶层 throughout: 此时间窗口内没有顶层会话。 | {searched} · 仅顶层会话 | 仅顶层会话：无会话。 | {matched, plural, other {仅顶层会话：{matchedtext}个会话。}} | {matched, plural, other {已关闭“仅顶层会话”：{matchedtext}个会话。}}",
+      "reason": "For a hierarchy, top-level is 顶层; 顶级 more often means top-tier/premium, and it recurs across five strings."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.chat.pickers.destination_pickers.fork",
+      "keys": [
+        "ui.chat.pickers.destination_pickers.fork",
+        "ui.chat.pickers.destination_pickers.ports"
+      ],
+      "current": "创建分支 | 移植主题",
+      "proposed": "If the rendered controls are tight: 分支 | 移植 (or confirm both fit with a rendered check).",
+      "reason": "Cell-width risk: Fork 4→8 cells (2.0×) and Ports 5→8 cells (1.6×); no maxCells budget exists for these keys, so this is a rendered-check flag, not a measured overflow."
     }
   ],
   "observations": [
@@ -357,20 +356,84 @@
     "RTL checks are not applicable to zh-CN; no manual bidi controls were found in the audited values."
   ],
   "independence": "This audit was performed by translation-auditor in session 93ed237d2e46, which did not author or edit any catalogue, ledger, allowance or existing receipt. Translator receipts name translator session 04d5644fbe5a for canvas and 2947ffc9a35c for surfaces.",
-  "identical_candidates": [],
-  "identical_candidate_count": 0,
+  "identical_candidates": [
+    {
+      "keys": [
+        "ui.canvas.create_file_dialog.markdown_md",
+        "ui.canvas.create_file_dialog.html_html",
+        "ui.canvas.create_file_dialog.css_css",
+        "ui.canvas.create_file_dialog.javascript_js",
+        "ui.canvas.create_file_dialog.jsx_jsx",
+        "ui.canvas.create_file_dialog.typescript_ts",
+        "ui.canvas.create_file_dialog.tsx_tsx",
+        "ui.canvas.create_file_dialog.python_py",
+        "ui.canvas.create_file_dialog.go_go",
+        "ui.canvas.create_file_dialog.java_java",
+        "ui.canvas.create_file_dialog.c_cs",
+        "ui.canvas.create_file_dialog.php_php",
+        "ui.canvas.create_file_dialog.ruby_rb",
+        "ui.canvas.create_file_dialog.rust_rs",
+        "ui.canvas.create_file_dialog.json_json",
+        "ui.canvas.create_file_dialog.yaml_yaml",
+        "ui.canvas.create_file_dialog.yaml_yml",
+        "ui.canvas.create_file_dialog.xml_xml",
+        "ui.canvas.create_file_dialog.toml_toml",
+        "ui.canvas.create_file_dialog.ini_ini",
+        "ui.canvas.create_file_dialog.env",
+        "ui.canvas.create_file_dialog.dockerfile",
+        "ui.canvas.create_file_dialog.c_c",
+        "ui.canvas.create_file_dialog.c_cpp",
+        "ui.canvas.create_file_dialog.swift_swift",
+        "ui.canvas.create_file_dialog.kotlin_kt",
+        "ui.canvas.create_file_dialog.scala_scala"
+      ],
+      "reason": "Language/product names and file-extension tokens; the translatable words (Plain text, Web development, Backend and scripting, etc.) are translated. Keeping these as-is is IDENTICAL_OK."
+    },
+    {
+      "keys": [
+        "ui.canvas.variable_form_dialog.example_key_example_value",
+        "ui.canvas.variable_form_dialog.item1_item2",
+        "ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+        "ui.canvas.insert_link_dialog.url",
+        "ui.canvas.insert_link_dialog.https_example_com"
+      ],
+      "reason": "Examples of JSON syntax, a filesystem path, and the URL acronym/URL literal; translating any of them would break the example or the technical token."
+    },
+    {
+      "keys": [
+        "ui.chat.pickers.destination_pickers.k",
+        "ui.chat.pickers.destination_pickers.skill",
+        "ui.chat.pickers.destination_pickers.my_api_key",
+        "ui.chat.pickers.info_model.term",
+        "ui.chat.pickers.info_model.colorterm",
+        "ui.chat.pickers.info_model.python",
+        "ui.chat.pickers.info_model.pid",
+        "ui.chat.pickers.info_model.pid_7837d5",
+        "ui.chat.pickers.destination_pickers.completed_only",
+        "ui.chat.pickers.info_model.runtime_trajectories"
+      ],
+      "reason": "A number-format skeleton, protocol/identifier tokens, environment-variable names, a product name plus placeholder, and placeholder-only counters; no prose to translate."
+    },
+    {
+      "keys": [
+        "ui.common.layout.chat_layout.mac"
+      ],
+      "reason": "Platform-detection token: chat-layout.tsx tests navigator.userAgent for this exact string; translating it would break macOS detection."
+    }
+  ],
+  "identical_candidate_count": 43,
   "stub_count": 0,
   "finding_count_by_severity": {
     "blocker": 0,
     "major": 0,
-    "minor": 1,
-    "nit": 0
+    "minor": 6,
+    "nit": 3
   },
   "affected_key_count_by_severity": {
     "blocker": 0,
     "major": 0,
-    "minor": 1,
-    "nit": 0
+    "minor": 10,
+    "nit": 8
   },
   "shared_namespaces": {
     "namespaces": [

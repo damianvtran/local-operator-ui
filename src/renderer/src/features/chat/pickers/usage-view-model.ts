@@ -22,6 +22,14 @@
  */
 
 import { t } from "../../../../../i18n";
+import {
+	META_MUSE_ALLOWANCE_NOTE,
+	META_MUSE_NO_OBSERVATION_NOTE,
+	META_MUSE_PASSIVE_NOTE,
+	META_MUSE_STALE_NOTE,
+	type MetaMuseUsageNote,
+	isMetaMuseUsageNote,
+} from "./muse-usage-notes";
 
 export type UsageUnit =
 	| "usd"
@@ -97,23 +105,18 @@ export type UsagePayload = {
 // serving reply, never a quota probe. Keep a finite vocabulary so diagnostics
 // from other providers (or a malformed payload) cannot become user-facing copy.
 export const MUSE_OBSERVATION_TTL_MS = 5 * 60 * 1000;
-const MUSE_PASSIVE_NOTE =
-	"Last response allowance; refresh does not query Muse.";
-const MUSE_STALE_NOTE =
-	"Stale response allowance; current usage unknown; refresh does not query Muse.";
-const MUSE_NO_OBSERVATION_NOTE =
-	"No allowance observation recorded; refresh does not query Muse.";
-const MUSE_USAGE_NOTES = new Set([
-	MUSE_PASSIVE_NOTE,
-	MUSE_STALE_NOTE,
-	MUSE_NO_OBSERVATION_NOTE,
-	"Stale sign-in allowance; current usage unknown; refresh does not query Muse.",
-]);
 
-export const hasMuseAllowanceNote = (report: UsageReport): boolean =>
-	report.provider === "meta-muse" &&
-	typeof report.notes === "string" &&
-	MUSE_USAGE_NOTES.has(report.notes);
+/**
+ * Whether this report carries one of the backend's fixed Muse provenance
+ * statements. The comparison set is the server vocabulary in
+ * `muse-usage-notes.ts`, NOT `t()` output: `notes` is protocol data that the
+ * route emits in English, and deciding behaviour from localized copy made the
+ * same payload age differently in `en` than in `ru`/`es`.
+ */
+export const hasMuseAllowanceNote = (
+	report: UsageReport,
+): report is UsageReport & { notes: MetaMuseUsageNote } =>
+	report.provider === "meta-muse" && isMetaMuseUsageNote(report.notes);
 
 /** Age an open pane without mutating the shared query payload or buying inference. */
 export const currentUsageReport = (
@@ -124,7 +127,7 @@ export const currentUsageReport = (
 		return report;
 	const dated = Number.isFinite(report.fetched_at) && report.fetched_at > 0;
 	const expired =
-		report.notes === MUSE_PASSIVE_NOTE &&
+		report.notes === META_MUSE_PASSIVE_NOTE &&
 		(!dated ||
 			nowMs - report.fetched_at > MUSE_OBSERVATION_TTL_MS ||
 			report.limits.some(
@@ -133,15 +136,15 @@ export const currentUsageReport = (
 					Number.isFinite(limit.resets_at_ms) &&
 					limit.resets_at_ms <= nowMs,
 			));
-	if (report.notes === MUSE_PASSIVE_NOTE && !expired) return report;
+	if (report.notes === META_MUSE_PASSIVE_NOTE && !expired) return report;
 	return {
 		...report,
 		limits: [],
 		state: "unavailable",
 		notes: expired
 			? dated
-				? MUSE_STALE_NOTE
-				: MUSE_NO_OBSERVATION_NOTE
+				? META_MUSE_STALE_NOTE
+				: META_MUSE_NO_OBSERVATION_NOTE
 			: report.notes,
 	};
 };
@@ -198,9 +201,15 @@ export const statusTone = (status: ReportedStatus): StatusTone =>
 export const UNIT_LABELS: Record<string, string> = {
 	usd: "USD",
 	percent: "%",
-	tokens: "tokens",
-	requests: "req",
-	credits: "credits",
+	get tokens() {
+		return t("ui.chat.pickers.usage_view_model.tokens");
+	},
+	get requests() {
+		return t("ui.chat.pickers.usage_view_model.requests");
+	},
+	get credits() {
+		return t("ui.chat.pickers.usage_view_model.credits");
+	},
 	unknown: "",
 };
 
@@ -500,19 +509,30 @@ export const formatAmount = (amount: UsageAmount): string => {
 		return withUnit(amount.used, unit);
 	}
 	if (amount.remaining !== null)
-		return `${withUnit(amount.remaining, unit)} left`;
-	if (amount.limit !== null) return `${withUnit(amount.limit, unit)} limit`;
+		return t("ui.chat.pickers.usage_view_model.left", {
+			withunit: withUnit(amount.remaining, unit),
+		});
+	if (amount.limit !== null)
+		return t("ui.chat.pickers.usage_view_model.limit", {
+			withunit: withUnit(amount.limit, unit),
+		});
 	if (amount.used_fraction !== null)
-		return `${formatPercentValue(amount.used_fraction * 100)}% used`;
+		// The number keeps main's sub-1 guard: a 0.06% window must read `<1`,
+		// not `0`, which would claim a started window is untouched. Only the
+		// copy around it is localized.
+		return t("ui.chat.pickers.usage_view_model.used", {
+			tofixedhalfeven: formatPercentValue(amount.used_fraction * 100),
+		});
 	return "";
 };
 
 /** What a row shows when the vendor reported no number at all. */
-export const NOT_REPORTED = "not reported";
+export const NOT_REPORTED = () =>
+	t("ui.chat.pickers.usage_view_model.not_reported");
 
 /** `format_amount` with the TUI's own fallback applied. */
 export const amountText = (amount: UsageAmount): string =>
-	formatAmount(amount) || NOT_REPORTED;
+	formatAmount(amount) || NOT_REPORTED();
 
 /**
  * `3h24m` / `2d11h` / `45m` — time until a window rolls over.
@@ -543,11 +563,16 @@ export const formatCountdown = (ms: number | null): string => {
  */
 export const formatAge = (ms: number): string => {
 	const seconds = Math.max(0, ms / 1000);
-	if (seconds < 60) return "just now";
+	if (seconds < 60) return t("ui.chat.pickers.usage_view_model.just_now");
 	const minutes = Math.trunc(seconds / 60);
-	if (minutes < 60) return `${minutes}m ago`;
+	if (minutes < 60)
+		return t("ui.chat.pickers.usage_view_model.m_ago", { minutes: minutes });
 	const hours = Math.trunc(minutes / 60);
-	return hours < 24 ? `${hours}h ago` : `${Math.trunc(hours / 24)}d ago`;
+	return hours < 24
+		? t("ui.chat.pickers.usage_view_model.h_ago", { hours: hours })
+		: t("ui.chat.pickers.usage_view_model.d_ago", {
+				trunc: Math.trunc(hours / 24),
+			});
 };
 
 /**
@@ -712,25 +737,47 @@ export type StatsTerm = { count: number; label: string };
 export const statsTerms = (stats: UsageStats): StatsTerm[] => {
 	if (!stats.windows) return [];
 	const terms: StatsTerm[] = [
-		{ count: stats.windows, label: `window${stats.windows === 1 ? "" : "s"}` },
+		{
+			count: stats.windows,
+			label: t("ui.chat.pickers.usage_view_model.window", {
+				count: stats.windows,
+			}),
+		},
 	];
 	if (stats.exhausted)
-		terms.push({ count: stats.exhausted, label: "exhausted" });
+		terms.push({
+			count: stats.exhausted,
+			label: t("ui.chat.pickers.usage_view_model.exhausted"),
+		});
 	if (stats.tierExhausted)
 		terms.push({
 			count: stats.tierExhausted,
-			label: `model cap${stats.tierExhausted === 1 ? "" : "s"} exhausted`,
+			label: t("ui.chat.pickers.usage_view_model.model_cap_exhausted", {
+				count: stats.tierExhausted,
+			}),
 		});
-	if (stats.warning) terms.push({ count: stats.warning, label: "near limit" });
+	if (stats.warning)
+		terms.push({
+			count: stats.warning,
+			label: t("ui.chat.pickers.usage_view_model.near_limit"),
+		});
 	if (stats.reportedBalances)
 		terms.push({
 			count: stats.reportedBalances,
-			label: `reported balance${stats.reportedBalances === 1 ? "" : "s"}`,
+			label: t("ui.chat.pickers.usage_view_model.reported_balance", {
+				count: stats.reportedBalances,
+			}),
 		});
 	if (stats.withoutLimit)
-		terms.push({ count: stats.withoutLimit, label: "without a limit" });
+		terms.push({
+			count: stats.withoutLimit,
+			label: t("ui.chat.pickers.usage_view_model.without_a_limit"),
+		});
 	if (stats.unreported)
-		terms.push({ count: stats.unreported, label: "not reported" });
+		terms.push({
+			count: stats.unreported,
+			label: t("ui.chat.pickers.usage_view_model.not_reported"),
+		});
 	return terms;
 };
 
@@ -838,6 +885,36 @@ export const isStale = (report: UsageReport, headerMs: number): boolean =>
 	Boolean(report.fetched_at) && headerMs - report.fetched_at >= STALE_BEHIND_MS;
 
 /**
+ * The catalogue sentence for a server Muse provenance note.
+ *
+ * This is the display half of the vocabulary in `muse-usage-notes.ts`: the
+ * switch runs on the SERVER's English constant, and `t()` only supplies the
+ * sentence printed for it. Keying a lookup BY `t()` output (the round-1 shape)
+ * made the same payload render differently in every locale, and a locale with
+ * a stale or missing catalogue could silently lose the note.
+ */
+const museNoteText = (note: MetaMuseUsageNote): string => {
+	switch (note) {
+		case META_MUSE_ALLOWANCE_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.stale_sign_in_allowance_current_usage_unknown_refresh_does_not_query_mus",
+			);
+		case META_MUSE_STALE_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.stale_response_allowance_current_usage_unknown_refresh_does_not_query_mu",
+			);
+		case META_MUSE_NO_OBSERVATION_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.no_allowance_observation_recorded_refresh_does_not_query_muse",
+			);
+		case META_MUSE_PASSIVE_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.last_response_allowance_refresh_does_not_query_muse",
+			);
+	}
+};
+
+/**
  * The per-account note, or `""` when the block is live. `_account_status_note()`.
  *
  * Load-bearing rather than decorative: the age in the view's description
@@ -865,41 +942,55 @@ export const accountNote = (
 	const report = currentUsageReport(input, nowMs);
 	const fetchedAt = report.fetched_at || 0;
 	if (hasMuseAllowanceNote(report) && report.state !== "reauth_required") {
-		const observed =
-			Number.isFinite(fetchedAt) && fetchedAt > 0
-				? ` Observed ${formatAge(Math.max(0, nowMs - fetchedAt))}.`
-				: "";
-		return `${report.notes}${observed}`;
+		const note = museNoteText(report.notes);
+		return Number.isFinite(fetchedAt) && fetchedAt > 0
+			? t("ui.chat.pickers.usage_view_model.observed_with_note", {
+					notes: note,
+					formatage: formatAge(Math.max(0, nowMs - fetchedAt)),
+				})
+			: note;
 	}
-	const age =
-		fetchedAt && report.limits.length
-			? formatAge(Math.max(0, nowMs - fetchedAt))
-			: "";
+	const ageMs = Math.max(0, nowMs - fetchedAt);
+	const age = fetchedAt && report.limits.length ? formatAge(ageMs) : "";
 	if (report.state === "reauth_required") {
 		// The provider is named because the view lists several accounts and the
 		// note sits under one block; `/login kimi` is runnable as printed, which
 		// "sign in again" would not be. `sign-in expired` deliberately does not
 		// reuse the "needs login" vocabulary: the user HAS logged in, and what
 		// they need to know is that it stopped working.
-		const note = `Sign-in expired — run /login ${report.provider}`;
+		const note = t(
+			"ui.chat.pickers.usage_view_model.sign_in_expired_run_login",
+			{ provider: report.provider },
+		);
 		// The second clause is a provenance caveat, not a peer of the remedy, and
 		// its siblings teach `last known` — a bare `· numbers 2d ago` is
 		// telegraphic in a way no other copy in this view is.
-		return age ? `${note}. Last known ${age}.` : `${note}.`;
+		return age
+			? t("ui.chat.pickers.usage_view_model.last_known1c1a43", {
+					note: note,
+					age: age,
+				})
+			: t("ui.chat.pickers.usage_view_model.note_with_period", {
+					note: note,
+				});
 	}
 	if (report.state === "unavailable") {
 		// The age rides along only when it would misdate the numbers. A
 		// sub-minute report renders `just now` — exactly what the description
 		// already says — so appending it produced a self-contradictory
 		// "usage unavailable — last known just now".
-		return age && age !== "just now"
-			? `Usage unavailable — last known ${age}`
-			: "Usage unavailable";
+		return age && ageMs >= 60_000
+			? t("ui.chat.pickers.usage_view_model.usage_unavailable_last_known", {
+					age: age,
+				})
+			: t("ui.chat.pickers.usage_view_model.usage_unavailable");
 	}
 	if (isStale(report, headerMs)) {
 		// `headerMs - fetched_at >= STALE_BEHIND_MS` by construction, so the age
 		// can never be `just now` here.
-		return age ? `Last known ${age}` : "Last known";
+		return age
+			? t("ui.chat.pickers.usage_view_model.last_known63737e", { age: age })
+			: t("ui.chat.pickers.usage_view_model.last_known");
 	}
 	// A probe miss after a fresh confirmation misdates nothing, so a bare
 	// `consecutive_failures > 0` is deliberately NOT a trigger (SPEC rule 10).
@@ -945,6 +1036,12 @@ export type LimitRow = {
 	/** 0..1 clamped, or null when unmeasurable — a null bar draws NO fill. */
 	fraction: number | null;
 	amount: string;
+	/**
+	 * Whether the vendor reported a number at all, before `amount` fell back to
+	 * the localized `not reported` sentence. Behaviour reads this flag; the
+	 * rendered sentence is catalogue copy and must never be compared.
+	 */
+	reported: boolean;
 	eligibilityNote: string;
 	countdown: string;
 	/** A per-model cap is subordinate to the shared rows (SPEC rule 8). */
@@ -953,15 +1050,17 @@ export type LimitRow = {
 
 export const limitRow = (limit: UsageLimit, nowMs: number): LimitRow => {
 	const fraction = fractionOf(limit.amount);
+	const formatted = formatAmount(
+		limit.paid_fallback && limit.amount.remaining !== null
+			? { ...limit.amount, used: null }
+			: limit.amount,
+	);
 	return {
 		limit,
 		status: effectiveStatus(limit),
 		fraction: fraction === null ? null : Math.max(0, Math.min(1, fraction)),
-		amount: amountText(
-			limit.paid_fallback && limit.amount.remaining !== null
-				? { ...limit.amount, used: null }
-				: limit.amount,
-		),
+		amount: formatted || NOT_REPORTED(),
+		reported: formatted !== "",
 		eligibilityNote: !limit.paid_fallback
 			? ""
 			: limit.available === false
@@ -979,7 +1078,8 @@ export const limitRow = (limit: UsageLimit, nowMs: number): LimitRow => {
 };
 
 /** What a block says instead of rows when the vendor answered with no windows. */
-export const NO_WINDOWS = "No windows reported.";
+export const NO_WINDOWS = () =>
+	t("ui.chat.pickers.usage_view_model.no_windows_reported");
 
 /** One provider block, fully derived. The view renders this and nothing else. */
 export type ProviderBlock = {
@@ -1061,7 +1161,7 @@ export const providerBlocks = (
 				report.limits.length ||
 				(hasMuseAllowanceNote(report) && report.state !== "reauth_required")
 					? ""
-					: NO_WINDOWS,
+					: NO_WINDOWS(),
 		}));
 
 /**
@@ -1081,4 +1181,10 @@ export const describeSource = (
 	confirmedAtMs: number,
 	nowMs: number,
 ): string =>
-	`${source === "live" ? "Live" : "Cached"} report, ${formatAge(Math.max(0, nowMs - confirmedAtMs))}.`;
+	t("ui.chat.pickers.usage_view_model.report", {
+		value:
+			source === "live"
+				? t("ui.chat.pickers.usage_view_model.live")
+				: t("ui.chat.pickers.usage_view_model.cached"),
+		formatage: formatAge(Math.max(0, nowMs - confirmedAtMs)),
+	});

@@ -24,6 +24,7 @@ import {
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
@@ -155,6 +156,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	onRejectDiff,
 	onNavigateDiff,
 }) => {
+	useI18nLocale();
 	const [prompt, setPrompt] = useState("");
 	const [attachments, setAttachments] = useState<Attachment[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
@@ -301,12 +303,10 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		return "Ctrl+Shift+S";
 	}, [platform]);
 
-	const acceptAllTooltipText = useMemo(() => {
-		if (platform === "darwin") {
-			return "Apply all (⌘+Enter)";
-		}
-		return "Apply all (Ctrl+Enter)";
-	}, [platform]);
+	const acceptAllTooltipText =
+		platform === "darwin"
+			? t("ui.canvas.inline_edit.apply_all_enter")
+			: t("ui.canvas.inline_edit.apply_all_ctrl_enter");
 
 	const acceptAllShortcut = useMemo(() => {
 		if (platform === "darwin") {
@@ -415,14 +415,18 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				recordingAttemptRef.current = null;
 				console.error("Error accessing microphone:", err);
 				showErrorToast(
-					"Error accessing microphone. Please ensure microphone permissions are granted.",
+					t(
+						"ui.canvas.inline_edit.error_accessing_microphone_please_ensure_microphone_permissions_are_gran",
+					),
 				);
 			}
 		} else {
 			console.error("This runtime exposes no MediaRecorder");
 			/* Not "your browser": this is a desktop app, and the person reading
 			   this did not choose a browser and cannot change it. */
-			showErrorToast("Dictation is not available on this device.");
+			showErrorToast(
+				t("ui.canvas.inline_edit.dictation_is_not_available_on_this_device"),
+			);
 		}
 	}, [canEnableRecordingFeature, settleRecordingAttempt]);
 
@@ -673,7 +677,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 	const handleSubmit = useCallback(async () => {
 		if (!agentToUse) {
-			showErrorToast("Please select an agent first.");
+			showErrorToast(t("ui.canvas.inline_edit.please_select_an_agent_first"));
 			return;
 		}
 		setIsLoading(true);
@@ -703,13 +707,13 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			if (response.result && response.result.edit_diffs.length > 0) {
 				onApplyChanges(response.result.edit_diffs);
 			} else {
-				showSuccessToast("No changes were needed.");
+				showSuccessToast(t("ui.canvas.inline_edit.no_changes_were_needed"));
 				onClose();
 			}
 		} catch (error) {
 			if (!isCancelledRef.current) {
 				console.error("Failed to edit file:", error);
-				showErrorToast("Failed to edit file.");
+				showErrorToast(t("ui.canvas.inline_edit.failed_to_edit_file"));
 			}
 		} finally {
 			setIsLoading(false);
@@ -755,8 +759,8 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					 */}
 					<div className={cn("flex items-center gap-3")}>
 						<p className={cn("shrink-0 font-medium text-body-sm text-ink")}>
-							Change {reviewState.currentIndex + 1} of{" "}
-							{reviewState.diffs.length}
+							{t("ui.canvas.inline_edit.change")} {reviewState.currentIndex + 1}{" "}
+							{t("ui.canvas.inline_edit.of")} {reviewState.diffs.length}
 						</p>
 						{/*
 						 * One segment per change, carrying the decision already made
@@ -774,7 +778,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 						 * see is not a progress track.
 						 */}
 						<ol
-							aria-label="Review progress"
+							aria-label={t("ui.canvas.inline_edit.review_progress")}
 							className={cn(
 								"flex h-2 min-w-0 max-w-40 flex-1 items-center gap-1",
 							)}
@@ -785,17 +789,20 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								const isAccepted =
 									isDecided && reviewState.approvedDiffs.includes(diff);
 								const state = isCurrent
-									? "Reviewing now"
+									? t("ui.canvas.inline_edit.reviewing_now")
 									: isAccepted
-										? "Accepted"
+										? t("ui.canvas.inline_edit.accepted")
 										: isDecided
-											? "Rejected"
-											: "Not reviewed yet";
+											? t("ui.canvas.inline_edit.rejected")
+											: t("ui.canvas.inline_edit.not_reviewed_yet");
 								return (
 									<li
 										// biome-ignore lint/suspicious/noArrayIndexKey: a diff is a plain find/replace pair with no id, and two identical replacements in one response are legitimate; position is the only stable identity.
 										key={index}
-										aria-label={`Change ${index + 1}: ${state}`}
+										aria-label={t("ui.canvas.inline_edit.change_125665", {
+											index: index + 1,
+											state: state,
+										})}
 										className={cn(
 											"min-w-2 flex-1 rounded-full",
 											isCurrent ? "h-1 bg-accent" : "h-0.5",
@@ -807,11 +814,11 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								);
 							})}
 						</ol>
-						<Tooltip content="Stop reviewing">
+						<Tooltip content={t("ui.canvas.inline_edit.stop_reviewing")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Stop reviewing"
+								aria-label={t("ui.canvas.inline_edit.stop_reviewing")}
 								onClick={handleXClick}
 								className={cn("shrink-0")}
 							>
@@ -831,12 +838,12 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					 */}
 					<div className={cn("flex items-center justify-between gap-2")}>
 						<div className={cn("flex items-center gap-0.5")}>
-							<Tooltip content="Previous change">
+							<Tooltip content={t("ui.canvas.inline_edit.previous_change")}>
 								<span>
 									<Button
 										variant="ghost"
 										size="icon-sm"
-										aria-label="Previous change"
+										aria-label={t("ui.canvas.inline_edit.previous_change")}
 										onClick={() => onNavigateDiff("prev")}
 										disabled={reviewState.currentIndex === 0}
 									>
@@ -844,12 +851,12 @@ export const InlineEdit: FC<InlineEditProps> = ({
 									</Button>
 								</span>
 							</Tooltip>
-							<Tooltip content="Next change">
+							<Tooltip content={t("ui.canvas.inline_edit.next_change")}>
 								<span>
 									<Button
 										variant="ghost"
 										size="icon-sm"
-										aria-label="Next change"
+										aria-label={t("ui.canvas.inline_edit.next_change")}
 										onClick={() => onNavigateDiff("next")}
 										disabled={
 											reviewState.currentIndex >= reviewState.diffs.length - 1
@@ -867,11 +874,11 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							    the two choices. */}
 							<Button variant="secondary" size="sm" onClick={onRejectDiff}>
 								<X aria-hidden="true" />
-								Reject
+								{t("ui.canvas.inline_edit.reject")}
 							</Button>
 							<Button variant="primary" size="sm" onClick={onAcceptDiff}>
 								<Check aria-hidden="true" />
-								Accept
+								{t("ui.canvas.inline_edit.accept")}
 							</Button>
 						</div>
 					</div>
@@ -896,7 +903,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							className={SHORTCUT_BUTTON}
 						>
 							<KeyboardShortcut shortcut="Esc" />
-							Reject all
+							{t("ui.canvas.inline_edit.reject_all")}
 						</Button>
 						<Button
 							variant="ghost"
@@ -906,18 +913,18 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							className={SHORTCUT_BUTTON}
 						>
 							<KeyboardShortcut shortcut={acceptAllShortcut} />
-							Accept all
+							{t("ui.canvas.inline_edit.accept_all")}
 						</Button>
 					</div>
 				</div>
 			) : (
 				<>
-					<Tooltip content="Close">
+					<Tooltip content={t("ui.canvas.inline_edit.close")}>
 						<span className={cn("absolute top-2 end-2 z-[1301]")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Close"
+								aria-label={t("ui.canvas.inline_edit.close")}
 								onClick={handleXClick}
 								disabled={isLoading}
 							>
@@ -943,7 +950,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							<span
 								className={cn("me-1 font-medium text-body-sm text-ink-muted")}
 							>
-								Processing audio
+								{t("ui.canvas.inline_edit.processing_audio")}
 							</span>
 							<WaveformAnimation />
 						</div>
@@ -959,8 +966,8 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								"placeholder:text-ink-dim disabled:text-ink-disabled",
 							)}
 							rows={1}
-							placeholder="Ask for an edit"
-							aria-label="Edit instructions"
+							placeholder={t("ui.canvas.inline_edit.ask_for_an_edit")}
+							aria-label={t("ui.canvas.inline_edit.edit_instructions")}
 							value={prompt}
 							onChange={(e) => setPrompt(e.target.value)}
 							onPaste={handlePaste}
@@ -1049,12 +1056,12 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					    the step that survives every palette is the one below. */}
 					<div className={cn("flex items-center justify-between gap-2")}>
 						<div className={cn("flex items-center gap-2")}>
-							<Tooltip content="Add attachments">
+							<Tooltip content={t("ui.canvas.inline_edit.add_attachments")}>
 								<span>
 									<Button
 										variant="ghost"
 										size="icon-sm"
-										aria-label="Add attachments"
+										aria-label={t("ui.canvas.inline_edit.add_attachments")}
 										className="text-ink-dim hover:bg-surface hover:text-ink"
 										onClick={handleAttachFile}
 										disabled={
@@ -1076,14 +1083,17 @@ export const InlineEdit: FC<InlineEditProps> = ({
 									content={
 										!canEnableRecordingFeature
 											? speechUnavailableReason("recording", speechBlock)
-											: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
+											: t("ui.canvas.inline_edit.start_recording_or_hold", {
+													shortcuttext: shortcutText,
+													label: resolvePushToTalkBinding().label,
+												})
 									}
 								>
 									<span>
 										<Button
 											variant="ghost"
 											size="icon-sm"
-											aria-label="Start recording"
+											aria-label={t("ui.canvas.inline_edit.start_recording")}
 											className="text-ink-dim hover:bg-surface hover:text-ink"
 											onClick={handleStartRecording}
 											disabled={isLoading || !canEnableRecordingFeature}
@@ -1095,12 +1105,16 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							)}
 							{isRecording && (
 								<>
-									<Tooltip content="Confirm recording (Enter)">
+									<Tooltip
+										content={t("ui.canvas.inline_edit.confirm_recording_enter")}
+									>
 										<span>
 											<Button
 												variant="ghost"
 												size="icon-sm"
-												aria-label="Confirm recording"
+												aria-label={t(
+													"ui.canvas.inline_edit.confirm_recording",
+												)}
 												className={cn(
 													"text-success hover:bg-success-wash hover:text-success",
 												)}
@@ -1111,12 +1125,14 @@ export const InlineEdit: FC<InlineEditProps> = ({
 											</Button>
 										</span>
 									</Tooltip>
-									<Tooltip content="Cancel recording (Esc)">
+									<Tooltip
+										content={t("ui.canvas.inline_edit.cancel_recording_esc")}
+									>
 										<span>
 											<Button
 												variant="ghost"
 												size="icon-sm"
-												aria-label="Cancel recording"
+												aria-label={t("ui.canvas.inline_edit.cancel_recording")}
 												className={cn(
 													"text-danger hover:bg-danger-wash hover:text-danger",
 												)}
@@ -1130,12 +1146,12 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								</>
 							)}
 							{!isRecording && !isTranscribing && !isLoading && (
-								<Tooltip content="Edit">
+								<Tooltip content={t("ui.canvas.inline_edit.edit")}>
 									<span>
 										<Button
 											variant="primary"
 											size="icon-sm"
-											aria-label="Edit"
+											aria-label={t("ui.canvas.inline_edit.edit")}
 											onClick={handleSubmit}
 											disabled={!prompt.trim() && attachments.length === 0}
 										>
@@ -1146,13 +1162,16 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							)}
 							{isLoading && (
 								<>
-									<Spinner size="sm" label="Editing" />
-									<Tooltip content="Cancel edit">
+									<Spinner
+										size="sm"
+										label={t("ui.canvas.inline_edit.editing")}
+									/>
+									<Tooltip content={t("ui.canvas.inline_edit.cancel_edit")}>
 										<span>
 											<Button
 												variant="danger"
 												size="icon-sm"
-												aria-label="Cancel edit"
+												aria-label={t("ui.canvas.inline_edit.cancel_edit")}
 												onClick={handleCancelEdit}
 											>
 												<Square aria-hidden="true" />

@@ -157,6 +157,15 @@
 	"ui.common.updates.wait.minutes": "अभी तक {minutes, plural, one {{minutes, number, ::group-off} मिनट} other {{minutes, number, ::group-off} मिनट}} से इंतज़ार है",
 	"ui.common.updates.wait.minutes_seconds": "अभी तक {minutes, plural, one {{minutes, number, ::group-off} मिनट} other {{minutes, number, ::group-off} मिनट}} {seconds, plural, one {{seconds, number, ::group-off} सेकंड} other {{seconds, number, ::group-off} सेकंड}} से इंतज़ार है",
 	"ui.common.updates.wait.seconds": "अभी तक {seconds, plural, one {{seconds, number, ::group-off} सेकंड} other {{seconds, number, ::group-off} सेकंड}} से इंतज़ार है",
+	"ui.common.updates.update_notification.failure_consequence_group_survived": "अपडेटर को रोक दिया गया; उसने जो कुछ शुरू किया था, वह अब भी इंस्टॉलेशन को बदल रहा हो सकता है।",
+	"ui.common.updates.check_for_updates_button.at_an_unknown_time": "अज्ञात समय पर",
+	"ui.common.updates.update_foot_icon.available_show_the_update_notice": "{joined} उपलब्ध। अपडेट सूचना दिखाएँ।",
+	"ui.common.updates.update_foot_icon.in_progress": "{subject} जारी{percent}।",
+	"ui.common.updates.update_foot_icon.subject_join": "{left} और {right}",
+	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": "इस मशीन के चेकआउट से सर्वर दोबारा बनाया जा रहा है। ऐप ने पहले इस मशीन पर चल रहे टर्न के पूरा होने का इंतज़ार किया और रीबिल्ड इस इंस्टॉलेशन को उसी जगह फिर इंस्टॉल करता है - इसलिए इस दौरान शुरू किया टर्न अब भी बीच में रुक सकता है। इसमें कई मिनट (अधिकतम आधा घंटा) लग सकते हैं। शुरू होने के बाद इसे बीच में रोका नहीं जा सकता।",
+	"ui.common.updates.update_notification.the_new_build": "नया बिल्ड",
+	"ui.common.updates.update_quiet_indicator.available": "{quietoffersubject} उपलब्ध",
+	"ui.common.updates.update_quiet_indicator.open_release_details": "{quietoffertext}। रिलीज़ विवरण खोलें।",
 	"ui.common.updates.install.verifying": "बदले जाने वाले ऐप के मुकाबले अपडेट की जाँच…",
 	"ui.common.updates.install.staging": "बदले जाने वाले ऐप के पास अपडेट तैयार किया जा रहा है…",
 	"ui.common.updates.install.starting": "इंस्टॉलर शुरू हो रहा है। ऐप थोड़ी देर के लिए बंद होगा…",
@@ -167,6 +176,5 @@
 	"ui.common.updates.error.install": "अपडेट इंस्टॉल नहीं हो सका। इस मशीन का कनेक्शन जाँचें, फिर अपडेट पैनल से इसे दोबारा शुरू करें।",
 	"ui.common.updates.error.quit": "इंस्टॉल पूरा करने के लिए ऐप बंद नहीं हो सका। ऐप खुद बंद करें, फिर अपडेट पूरा होने दें।",
 	"ui.common.updates.error.check_incomplete": "अपडेट जाँच पूरी नहीं हो सकी। ऐप अगली जाँच में फिर कोशिश करेगा।",
-	"ui.common.updates.error.version_unknown_required": "अज्ञात (अपडेट ज़रूरी)",
-	"ui.common.updates.update_notification.failure_consequence_group_survived": "अपडेटर को रोक दिया गया; उसने जो कुछ शुरू किया था, वह अब भी इंस्टॉलेशन को बदल रहा हो सकता है।"
+	"ui.common.updates.error.version_unknown_required": "अज्ञात (अपडेट ज़रूरी)"
 }

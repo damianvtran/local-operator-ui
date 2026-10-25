@@ -22,7 +22,7 @@
  *   panels are given numbers and format them once.
  */
 
-import { formatNumber } from "@shared/i18n";
+import { formatNumber, t } from "@shared/i18n";
 import { pyFixed } from "../../session-status/fixed-point";
 
 /*
@@ -41,7 +41,8 @@ const PANEL_PINNED_LOCALE = "en-US";
 export const UNKNOWN = "—";
 
 /** `unknown` for a duration-ish measurement that was never taken. */
-export const UNKNOWN_WORD = "unknown";
+export const UNKNOWN_WORD = (): string =>
+	t("ui.chat.pickers.formatters.unknown");
 
 /**
  * Money, from integer micro-USD (`analytics_panel.py` `format_cost`).
@@ -206,7 +207,7 @@ const roundHalfEven = (value: number): number => {
  * sub-second branch because the Python's own format carries it.
  */
 export function formatMs(value: number | null | undefined): string {
-	if (value === null || value === undefined) return UNKNOWN_WORD;
+	if (value === null || value === undefined) return UNKNOWN_WORD();
 	if (Math.abs(value) < 1000) {
 		return `${formatNumber(roundHalfEven(value), undefined, PANEL_PINNED_LOCALE)} ms`;
 	}
@@ -226,27 +227,12 @@ export function formatMs(value: number | null | undefined): string {
  * whose job is telling one row from the next.
  */
 export function formatClock(tsMs: number | null | undefined): string {
-	if (tsMs === null || tsMs === undefined) return UNKNOWN_WORD;
+	if (tsMs === null || tsMs === undefined) return UNKNOWN_WORD();
 	const at = new Date(tsMs);
 	const hh = String(at.getHours()).padStart(2, "0");
 	const mm = String(at.getMinutes()).padStart(2, "0");
 	return `${hh}:${mm}`;
 }
-
-const MONTHS = [
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
-] as const;
 
 /** `YYYY-MM-DD`, the only shape a rollup bucket may have. */
 const DAY_BUCKET = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -268,7 +254,12 @@ export function formatDayBucket(period: string): string {
 	if (!match) return period;
 	const month = Number(match[2]);
 	if (month < 1 || month > 12) return period;
-	return `${MONTHS[month - 1]} ${Number(match[3])}`;
+	// Intl owns month names and their order; local-date construction avoids a
+	// UTC parsing shift while retaining this panel's documented en-US pin.
+	return new Intl.DateTimeFormat(PANEL_PINNED_LOCALE, {
+		month: "short",
+		day: "numeric",
+	}).format(new Date(Number(match[1]), month - 1, Number(match[3])));
 }
 
 /**
@@ -418,7 +409,7 @@ export function formatTokensPerSecond(
  * exists. `null` is not a zero duration and says so.
  */
 export function formatDuration(seconds: number | null | undefined): string {
-	if (seconds === null || seconds === undefined) return UNKNOWN_WORD;
+	if (seconds === null || seconds === undefined) return UNKNOWN_WORD();
 	const total = Math.trunc(Math.max(0, seconds));
 	if (total < 60) return `${total}s`;
 	if (total < 3600) return `${Math.floor(total / 60)}m`;

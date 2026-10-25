@@ -157,6 +157,15 @@
 	"ui.common.updates.wait.minutes": "Đã chờ {minutes, plural, other {{minutes, number, ::group-off} phút}}",
 	"ui.common.updates.wait.minutes_seconds": "Đã chờ {minutes, plural, other {{minutes, number, ::group-off} phút}} {seconds, plural, other {{seconds, number, ::group-off} giây}}",
 	"ui.common.updates.wait.seconds": "Đã chờ {seconds, plural, other {{seconds, number, ::group-off} giây}}",
+	"ui.common.updates.update_notification.failure_consequence_group_survived": "Trình cập nhật đã bị dừng; thứ mà nó đã khởi chạy có thể vẫn đang thay thế bản cài.",
+	"ui.common.updates.check_for_updates_button.at_an_unknown_time": "vào thời điểm không xác định",
+	"ui.common.updates.update_foot_icon.available_show_the_update_notice": "Đã có {joined}. Hiện thông báo cập nhật.",
+	"ui.common.updates.update_foot_icon.in_progress": "{subject} đang diễn ra{percent}.",
+	"ui.common.updates.update_foot_icon.subject_join": "{left} và {right}",
+	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": "Đang dựng lại máy chủ từ bản checkout trên máy này. Ứng dụng đã đợi các lượt chạy trên máy này hoàn tất trước, và quá trình dựng lại sẽ cài lại ngay trên bản cài hiện tại — nên một lượt bắt đầu trong lúc chạy vẫn có thể bị gián đoạn — đồng thời có thể mất vài phút (tối đa nửa giờ). Không thể ngắt sau khi bắt đầu.",
+	"ui.common.updates.update_notification.the_new_build": "bản dựng mới",
+	"ui.common.updates.update_quiet_indicator.available": "Đã có {quietoffersubject}",
+	"ui.common.updates.update_quiet_indicator.open_release_details": "{quietoffertext}. Mở chi tiết bản phát hành.",
 	"ui.common.updates.install.verifying": "Đang xác minh bản cập nhật với ứng dụng sẽ được thay thế…",
 	"ui.common.updates.install.staging": "Đang đặt bản cập nhật cạnh ứng dụng sẽ được thay thế…",
 	"ui.common.updates.install.starting": "Đang khởi động trình cài đặt. Ứng dụng sẽ đóng trong giây lát…",
@@ -167,6 +176,5 @@
 	"ui.common.updates.error.install": "Không thể cài bản cập nhật. Kiểm tra kết nối của máy rồi bắt đầu lại từ bảng cập nhật.",
 	"ui.common.updates.error.quit": "Ứng dụng không thể thoát để hoàn tất cài đặt. Hãy tự thoát ứng dụng rồi để quá trình cập nhật hoàn tất.",
 	"ui.common.updates.error.check_incomplete": "Không thể hoàn tất kiểm tra cập nhật. Ứng dụng sẽ thử lại ở lần kiểm tra tiếp theo.",
-	"ui.common.updates.error.version_unknown_required": "Không xác định (cần cập nhật)",
-	"ui.common.updates.update_notification.failure_consequence_group_survived": "Trình cập nhật đã bị dừng; thứ mà nó đã khởi chạy có thể vẫn đang thay thế bản cài."
+	"ui.common.updates.error.version_unknown_required": "Không xác định (cần cập nhật)"
 }

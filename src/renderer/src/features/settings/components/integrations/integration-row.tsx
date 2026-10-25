@@ -39,10 +39,8 @@ import type { FC, KeyboardEvent, Ref } from "react";
 import type { McpCatalogOperation } from "../../../../../../shared/desktop-control-contract";
 import {
 	type IntegrationRow as IntegrationRowData,
-	NOT_CONNECTED_EXPLANATION_KEY,
 	type OverflowItem,
 	type PrimaryAction,
-	READY_EXPLANATION_KEY,
 	type RowMemories,
 	type StatusTone,
 	integrationMeta,
@@ -82,17 +80,6 @@ const STATUS_INK: Record<StatusTone, string> = {
 	 */
 	neutral: "text-ink-dim",
 };
-
-/** The tooltip a status carries, when it needs one at all. */
-// Resolve both the status and its explanation in the same locale at render
-// time. The English compatibility constants remain exported for older callers.
-function statusExplanation(label: string): string | undefined {
-	if (label === t("ui.settings.integrations.integration_model.ready"))
-		return t(READY_EXPLANATION_KEY);
-	if (label === t("ui.settings.integrations.integration_model.not_connected"))
-		return t(NOT_CONNECTED_EXPLANATION_KEY);
-	return undefined;
-}
 
 /** A question the row asks inline before a destructive or account change. */
 export type RowConfirm = { kind: "remove" | "sign_out" } | null;
@@ -208,27 +195,27 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 					</span>
 					<span className="truncate text-ink-dim text-meta">
 						{meta.map((part, index) => (
-							<span key={part}>
+							<span key={part.text}>
 								{index > 0 ? " · " : null}
 								{/* The source file is the tooltip of the "Imported from" part:
-								    the path is where it is fixed, and quiet until asked for. */}
-								{/* The origin is the final metadata item; use that structural fact rather
-								    than parsing a localized "Imported from" prefix. */}
-								{index === meta.length - 1 && row.source.path ? (
+								    the path is where it is fixed, and quiet until asked for.
+								    `importSource` is the model's structural flag, not a match on
+								    the rendered sentence: the sentence is catalogue copy. */}
+								{part.importSource && row.source.path ? (
 									<Tooltip content={compactPath(row.source.path)}>
 										<span className="underline decoration-dotted underline-offset-2">
-											{part}
+											{part.text}
 										</span>
 									</Tooltip>
 								) : (
-									part
+									part.text
 								)}
 							</span>
 						))}
 					</span>
 				</div>
-				{statusExplanation(status.label) ? (
-					<Tooltip content={statusExplanation(status.label)}>
+				{status.explanation ? (
+					<Tooltip content={status.explanation}>
 						<span className={cn("shrink-0 text-body-sm", statusInk)}>
 							{status.label}
 						</span>

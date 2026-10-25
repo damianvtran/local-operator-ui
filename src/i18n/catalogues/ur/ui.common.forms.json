@@ -25,5 +25,15 @@
 	"ui.common.forms.searchable_select.clear_value": "قدر صاف کریں",
 	"ui.common.forms.searchable_select.no_matches": "کوئی مماثلت نہیں",
 	"ui.common.forms.searchable_select.use": "“{text}” استعمال کریں",
-	"ui.common.forms.select.unlisted_value": "کسی فہرست میں نہیں؛ درج کردہ صورت میں محفوظ ہے۔"
+	"ui.common.forms.select.unlisted_value": "کسی فہرست میں نہیں؛ درج کردہ صورت میں محفوظ ہے۔",
+	"ui.common.forms.categories_input_chips.add_category": "زمرہ شامل کریں…",
+	"ui.common.forms.categories_input_chips.remove_category": "زمرہ {value} ہٹائیں",
+	"ui.common.forms.categories_input_chips.no_categories_selected": "کوئی زمرہ منتخب نہیں",
+	"ui.common.forms.slider_setting.saving": "{label} محفوظ ہو رہا ہے",
+	"ui.common.forms.tags_input_chips.add_tag": "ٹیگ شامل کریں…",
+	"ui.common.forms.tags_input_chips.remove_tag": "ٹیگ {tag} ہٹائیں",
+	"ui.common.forms.tags_input_chips.add_tage0db29": "ٹیگ شامل کریں",
+	"ui.common.forms.tags_input_chips.no_tags_added": "کوئی ٹیگ شامل نہیں",
+	"ui.common.forms.toggle_setting.saving": "{label} محفوظ ہو رہا ہے",
+	"ui.common.forms.categories_input_chips.category": "{category, select, investment {سرمایہ کاری} accounting {اکاؤنٹنگ} healthcare {صحت کی دیکھ بھال} legal {قانونی} software {سافٹ ویئر} security {سیکیورٹی} role_play {کردار ادا کرنا} personal_assistance {ذاتی معاونت} education {تعلیم} marketing {مارکیٹنگ} sales {فروخت} research {تحقیق} analysis {تجزیہ} management {انتظام} social_media {سوشل میڈیا} other_category {دیگر} other {{category}}}"
 }

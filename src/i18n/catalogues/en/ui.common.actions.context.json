@@ -37,6 +37,169 @@
 		"note": "Attempts the failed action again; not navigation, sign-out or reload by definition.",
 		"length": "Two words."
 	},
+	"ui.common.actions.date_time_picker.select_date": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in date-time-picker.tsx; input placeholder in the date time picker surface."
+	},
+	"ui.common.actions.date_time_picker.choose_date": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in date-time-picker.tsx; accessible label in the date time picker surface.",
+		"placeholders": {
+			"label": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.actions.date_time_picker.select_time": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in date-time-picker.tsx; input placeholder in the date time picker surface."
+	},
+	"ui.common.actions.date_time_picker.choose_time": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in date-time-picker.tsx; accessible label in the date time picker surface.",
+		"placeholders": {
+			"label": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.actions.date_time_picker.set_to_current_time": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in date-time-picker.tsx; tooltip in the date time picker surface."
+	},
+	"ui.common.actions.date_time_picker.set_to_current_time369877": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in date-time-picker.tsx; accessible label in the date time picker surface.",
+		"placeholders": {
+			"label": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.actions.file_actions_menu.file_actions": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-actions-menu.tsx; tooltip in the file actions menu surface."
+	},
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-actions-menu.tsx; toast in the file actions menu surface."
+	},
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-actions-menu.tsx; toast in the file actions menu surface."
+	},
+	"ui.common.actions.find_replace_widget.switch_to_replace": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; tooltip in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.switch_to_find": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; tooltip in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.find": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; input placeholder in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.replace": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; input placeholder in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.no_results": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; interface copy in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.previous_match": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; accessible label in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.next_match": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; accessible label in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.replace_enter": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; tooltip in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; tooltip in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.replace_all": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; accessible label in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.all": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; tooltip in the find replace widget surface."
+	},
+	"ui.common.actions.find_replace_widget.close": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; accessible label in the find replace widget surface."
+	},
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-selection-controls.tsx; tooltip in the text selection controls surface."
+	},
+	"ui.common.actions.text_selection_controls.copy": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-selection-controls.tsx; tooltip in the text selection controls surface."
+	},
+	"ui.common.actions.text_selection_controls.copy_without_formatting": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-selection-controls.tsx; tooltip in the text selection controls surface."
+	},
+	"ui.common.actions.text_selection_controls.reply": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-selection-controls.tsx; tooltip in the text selection controls surface."
+	},
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-selection-controls.tsx; tooltip in the text selection controls surface."
+	},
+	"ui.common.actions.text_selection_controls.open_in_browser": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-selection-controls.tsx; tooltip in the text selection controls surface."
+	},
+	"ui.common.actions.confirmation_modal.confirm": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in confirmation-modal.tsx; interface copy in the confirmation modal surface."
+	},
+	"ui.common.actions.confirmation_modal.cancel": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in confirmation-modal.tsx; interface copy in the confirmation modal surface."
+	},
+	"ui.common.actions.find_replace_widget.of": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in find-replace-widget.tsx; interface copy in the find replace widget surface.",
+		"placeholders": {
+			"currentmatch": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller.",
+			"matchcount": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
 	"ui.common.actions.agent_created": {
 		"role": "Success toast",
 		"tone": "Brief factual confirmation.",

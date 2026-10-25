@@ -157,6 +157,15 @@
 	"ui.common.updates.wait.minutes": "已等待{minutes, plural, other {{minutes, number, ::group-off}分钟}}",
 	"ui.common.updates.wait.minutes_seconds": "已等待{minutes, plural, other {{minutes, number, ::group-off}分钟}}{seconds, plural, other {{seconds, number, ::group-off}秒}}",
 	"ui.common.updates.wait.seconds": "已等待{seconds, plural, other {{seconds, number, ::group-off}秒}}",
+	"ui.common.updates.update_notification.failure_consequence_group_survived": "更新程序已停止；它启动的进程可能仍在替换此安装。",
+	"ui.common.updates.check_for_updates_button.at_an_unknown_time": "时间未知",
+	"ui.common.updates.update_foot_icon.available_show_the_update_notice": "{joined}可用。显示更新通知。",
+	"ui.common.updates.update_foot_icon.in_progress": "{subject}进行中{percent}。",
+	"ui.common.updates.update_foot_icon.subject_join": "{left}和{right}",
+	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": "正在从本机检出的源码重新构建服务器。应用已先等待本机运行的轮次结束；重新构建会就地重新安装当前安装实例，因此构建期间启动的轮次仍可能中断。过程可能需要数分钟（最长半小时），开始后无法中断。",
+	"ui.common.updates.update_notification.the_new_build": "新构建",
+	"ui.common.updates.update_quiet_indicator.available": "{quietoffersubject}可用",
+	"ui.common.updates.update_quiet_indicator.open_release_details": "{quietoffertext}。打开版本详情。",
 	"ui.common.updates.install.verifying": "正在对照待替换的应用验证更新……",
 	"ui.common.updates.install.staging": "正在将更新暂存到待替换的应用旁边……",
 	"ui.common.updates.install.starting": "正在启动安装程序。应用将短暂关闭……",
@@ -167,6 +176,5 @@
 	"ui.common.updates.error.install": "无法安装更新。检查本机网络连接，然后从更新面板重新安装。",
 	"ui.common.updates.error.quit": "应用无法退出以完成安装。手动退出应用，然后等待更新完成。",
 	"ui.common.updates.error.check_incomplete": "更新检查未能完成。应用会在下次检查时重试。",
-	"ui.common.updates.error.version_unknown_required": "未知（需要更新）",
-	"ui.common.updates.update_notification.failure_consequence_group_survived": "更新程序已停止；它启动的进程可能仍在替换此安装。"
+	"ui.common.updates.error.version_unknown_required": "未知（需要更新）"
 }

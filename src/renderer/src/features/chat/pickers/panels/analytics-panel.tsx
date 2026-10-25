@@ -200,7 +200,7 @@ const Legend = ({ text }: { text: string }) => (
 	<p className={cn("pt-1 text-balance text-ink-dim text-meta")}>{text}</p>
 );
 
-const CacheHitLegend = () => <Legend text={CACHE_HIT_MEANING} />;
+const CacheHitLegend = () => <Legend text={CACHE_HIT_MEANING()} />;
 
 /**
  * The rate column's footnote, or nothing.
@@ -219,22 +219,23 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 	data,
 	metric,
 }) => {
+	useI18nLocale();
 	const rows = providerRows(data.aggregate.by_provider, metric);
 	const columns: Column<(typeof rows)[number]>[] = [
 		{
 			key: "provider",
-			header: "Provider",
+			header: t("ui.chat.pickers.analytics_panel.provider"),
 			cell: (row) => row.key,
 		},
 		{
 			key: "calls",
-			header: "Calls",
+			header: t("ui.chat.pickers.analytics_panel.calls"),
 			numeric: true,
 			cell: (row) => formatCount(row.calls),
 		},
 		{
 			key: "tokens",
-			header: "Tokens",
+			header: t("ui.chat.pickers.analytics_panel.tokens"),
 			numeric: true,
 			cell: (row) => formatTokens(row.tokens),
 		},
@@ -252,13 +253,13 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 		 */
 		{
 			key: "rate",
-			header: TOK_PER_SECOND_LABEL,
+			header: TOK_PER_SECOND_LABEL(),
 			numeric: true,
 			cell: (row) => formatTokensPerSecond(row.decodeRate),
 		},
 		{
 			key: "cost",
-			header: "Cost",
+			header: t("ui.chat.pickers.analytics_panel.cost"),
 			numeric: true,
 			cell: (row) => row.cost,
 		},
@@ -276,7 +277,7 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 		 */
 		{
 			key: "cache",
-			header: CACHE_HIT_LABEL,
+			header: CACHE_HIT_LABEL(),
 			numeric: true,
 			cell: (row) => percentageOf(row.cacheHit),
 		},
@@ -284,7 +285,10 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 	return (
 		<>
 			<DataTable<(typeof rows)[number]>
-				label={`Usage by provider in this window. ${CACHE_HIT_MEANING}`}
+				label={t(
+					"ui.chat.pickers.analytics_panel.usage_by_provider_in_this_window",
+					{ cache_hit_meaning: CACHE_HIT_MEANING() },
+				)}
 				columns={columns}
 				rows={rows}
 				rowKey={(row) => row.key}
@@ -292,10 +296,20 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 					<ProportionBar
 						fraction={row.fraction}
 						className="w-24"
-						srLabel={`${row.key}: ${percentageOf(row.fraction)} of ${METRIC_LABEL[metric].toLowerCase()} in this window`}
+						srLabel={t("ui.chat.pickers.analytics_panel.of_in_this_window", {
+							key: row.key,
+							percentageof: percentageOf(row.fraction),
+							value: METRIC_LABEL[metric].toLowerCase(),
+						})}
 					/>
 				)}
-				empty={<PanelEmpty text="No per-provider rows in this window." />}
+				empty={
+					<PanelEmpty
+						text={t(
+							"ui.chat.pickers.analytics_panel.no_per_provider_rows_in_this_window",
+						)}
+					/>
+				}
 			/>
 			<CacheHitLegend />
 			{/*
@@ -454,7 +468,7 @@ const SessionTable: FC<{
 	const columns: Column<(typeof pageRows)[number]>[] = [
 		{
 			key: "session",
-			header: "Session",
+			header: t("ui.chat.pickers.analytics_panel.sessionf7f199"),
 			sortable: true,
 			cell: (row) => (
 				<span
@@ -470,14 +484,14 @@ const SessionTable: FC<{
 		},
 		{
 			key: "calls",
-			header: "Calls",
+			header: t("ui.chat.pickers.analytics_panel.calls"),
 			numeric: true,
 			sortable: true,
 			cell: (row) => formatCount(row.calls),
 		},
 		{
 			key: "tokens",
-			header: "Tokens",
+			header: t("ui.chat.pickers.analytics_panel.tokens"),
 			numeric: true,
 			sortable: true,
 			cell: (row) => formatTokens(row.tokens),
@@ -499,14 +513,14 @@ const SessionTable: FC<{
 		 */
 		{
 			key: "rate",
-			header: TOK_PER_SECOND_LABEL,
+			header: TOK_PER_SECOND_LABEL(),
 			numeric: true,
 			sortable: true,
 			cell: (row) => formatTokensPerSecond(row.decodeRate),
 		},
 		{
 			key: "cost",
-			header: "Cost",
+			header: t("ui.chat.pickers.analytics_panel.cost"),
 			numeric: true,
 			sortable: true,
 			cell: (row) => row.cost,
@@ -514,7 +528,7 @@ const SessionTable: FC<{
 		/* Same column, same rule, one row per session (see `ProviderTable`). */
 		{
 			key: "cache",
-			header: CACHE_HIT_LABEL,
+			header: CACHE_HIT_LABEL(),
 			numeric: true,
 			sortable: true,
 			cell: (row) => percentageOf(row.cacheHit),
@@ -626,7 +640,10 @@ const SessionTable: FC<{
 			) : (
 				<>
 					<DataTable<(typeof pageRows)[number]>
-						label={`Usage by session in this window. ${CACHE_HIT_MEANING}`}
+						label={t(
+							"ui.chat.pickers.analytics_panel.usage_by_session_in_this_window",
+							{ cache_hit_meaning: CACHE_HIT_MEANING() },
+						)}
 						columns={columns}
 						rows={pageRows}
 						rowKey={(row) => row.id}
@@ -635,10 +652,23 @@ const SessionTable: FC<{
 							<ProportionBar
 								fraction={row.fraction}
 								className="w-24"
-								srLabel={`${row.label}: ${percentageOf(row.fraction)} of ${METRIC_LABEL[metric].toLowerCase()} in this window`}
+								srLabel={t(
+									"ui.chat.pickers.analytics_panel.of_in_this_windowf655cc",
+									{
+										label: row.label,
+										percentageof: percentageOf(row.fraction),
+										value: METRIC_LABEL[metric].toLowerCase(),
+									},
+								)}
 							/>
 						)}
-						empty={<PanelEmpty text="No per-session rows in this window." />}
+						empty={
+							<PanelEmpty
+								text={t(
+									"ui.chat.pickers.analytics_panel.no_per_session_rows_in_this_window",
+								)}
+							/>
+						}
 					/>
 					<CacheHitLegend />
 					<RateLegend text={rateLegend(decodeCoverage(data.aggregate))} />
@@ -652,6 +682,12 @@ const SessionTable: FC<{
 					 * Absent only when the window has no sessions at all, where the
 					 * section's behaviour is what it was before this change: the table's
 					 * own empty state above, and no controls counting nothing.
+					 *
+					 * The noun pair is passed in the form the RANGE message places it —
+					 * after `of {totaltext}` — so each catalogue carries the forms its own
+					 * grammar requires there: Russian needs the genitive («сессии»/
+					 * «сессий»), not the standalone nominative. Both keys are pager-only;
+					 * a standalone «session» label has its own keys.
 					 */}
 					{index.rows.length > 0 ? (
 						<TablePager
@@ -660,7 +696,8 @@ const SessionTable: FC<{
 							from={slice.from}
 							to={slice.to}
 							total={slice.total}
-							label="session"
+							label={t("ui.chat.pickers.analytics_panel.session")}
+							pluralLabel={t("ui.chat.pickers.analytics_panel.sessions")}
 							onPage={(page) => {
 								setChange("page");
 								dispatch({ type: "page", page });
@@ -722,6 +759,8 @@ const ModelTable: FC<{
 	 * takes the content and the meta with it, because "Last 30 days" beside a
 	 * read that failed is a claim about a window nothing was read from.
 	 */
+
+	useI18nLocale();
 	if (error) return <PanelNotice kind="unavailable" text={error} />;
 	/*
 	 * No answer yet — the slow read is in flight, or the query has not been
@@ -739,8 +778,12 @@ const ModelTable: FC<{
 		return (
 			<PanelNotice
 				kind="empty"
-				text="No per-model rows in this window."
-				detail="The ledger records a model on every provider call, so this window has none."
+				text={t(
+					"ui.chat.pickers.analytics_panel.no_per_model_rows_in_this_window",
+				)}
+				detail={t(
+					"ui.chat.pickers.analytics_panel.the_ledger_records_a_model_on_every_provider_call_so_this_window_has_non",
+				)}
 			/>
 		);
 	}
@@ -749,18 +792,18 @@ const ModelTable: FC<{
 	const columns: Column<ModelRow>[] = [
 		{
 			key: "model",
-			header: "Model",
+			header: t("ui.chat.pickers.analytics_panel.model"),
 			cell: (row) => row.label,
 		},
 		{
 			key: "calls",
-			header: "Calls",
+			header: t("ui.chat.pickers.analytics_panel.calls"),
 			numeric: true,
 			cell: (row) => formatCount(row.calls),
 		},
 		{
 			key: "tokens",
-			header: "Tokens",
+			header: t("ui.chat.pickers.analytics_panel.tokens"),
 			numeric: true,
 			/*
 			 * `output_tokens`, not the input+output total the other tables
@@ -771,7 +814,7 @@ const ModelTable: FC<{
 		},
 		{
 			key: "rate",
-			header: TOK_PER_SECOND_LABEL,
+			header: TOK_PER_SECOND_LABEL(),
 			numeric: true,
 			cell: (row) => formatTokensPerSecond(row.decodeRate),
 		},
@@ -785,7 +828,7 @@ const ModelTable: FC<{
 		 */
 		{
 			key: "wall",
-			header: WALL_TOK_PER_SECOND_LABEL,
+			header: WALL_TOK_PER_SECOND_LABEL(),
 			numeric: true,
 			cell: (row) => formatTokensPerSecond(row.wallRate),
 		},
@@ -797,7 +840,7 @@ const ModelTable: FC<{
 		 */
 		{
 			key: "coverage",
-			header: COVERAGE_LABEL,
+			header: COVERAGE_LABEL(),
 			numeric: true,
 			cell: (row) => percentageOf(row.decodeCoverage),
 		},
@@ -805,7 +848,10 @@ const ModelTable: FC<{
 	return (
 		<>
 			<DataTable<ModelRow>
-				label={`Generation rate by model, read from the usage ledger. ${modelRateLegend(coverage.decode, coverage.wall) ?? ""}`}
+				label={t(
+					"ui.chat.pickers.analytics_panel.generation_rate_by_model_read_from_the_usage_ledger",
+					{ value: modelRateLegend(coverage.decode, coverage.wall) ?? "" },
+				)}
 				columns={columns}
 				rows={tableRows}
 				rowKey={(row) => row.key}
@@ -813,10 +859,19 @@ const ModelTable: FC<{
 					<ProportionBar
 						fraction={row.fraction}
 						className="w-24"
-						srLabel={`${row.label}: ${percentageOf(row.fraction)} of the output tokens this ledger read recorded in this window`}
+						srLabel={t(
+							"ui.chat.pickers.analytics_panel.of_the_output_tokens_this_ledger_read_recorded_in_this_window",
+							{ label: row.label, percentageof: percentageOf(row.fraction) },
+						)}
 					/>
 				)}
-				empty={<PanelEmpty text="No per-model rows in this window." />}
+				empty={
+					<PanelEmpty
+						text={t(
+							"ui.chat.pickers.analytics_panel.no_per_model_rows_in_this_window",
+						)}
+					/>
+				}
 			/>
 			<RateLegend text={modelRateLegend(coverage.decode, coverage.wall)} />
 		</>
@@ -833,10 +888,11 @@ const ModelTable: FC<{
  * leaves today's panel exactly as it was (the cost-channels project's UI rule).
  */
 const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
+	useI18nLocale();
 	const columns: Column<ChannelTableRow>[] = [
 		{
 			key: "channel",
-			header: "Channel",
+			header: t("ui.chat.pickers.analytics_panel.channel"),
 			cell: (row) => row.name,
 		},
 		/*
@@ -848,12 +904,12 @@ const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
 		 */
 		{
 			key: "basis",
-			header: "Basis",
+			header: t("ui.chat.pickers.analytics_panel.basis"),
 			cell: (row) => row.basis,
 		},
 		{
 			key: "spend",
-			header: "Spend",
+			header: t("ui.chat.pickers.analytics_panel.spend"),
 			numeric: true,
 			cell: (row) => row.spend,
 		},
@@ -870,7 +926,9 @@ const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
 			 */}
 			{!view.tracked && <Legend text={CHANNELS_UNTRACKED_NOTE} />}
 			<DataTable<ChannelTableRow>
-				label="Channel spend for this conversation, from the published channel ledger"
+				label={t(
+					"ui.chat.pickers.analytics_panel.channel_spend_for_this_conversation_from_the_published_channel_ledger",
+				)}
 				columns={columns}
 				rows={view.rows}
 				rowKey={(row) => row.key}
@@ -883,8 +941,12 @@ const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
 						 */
 						text={
 							view.rowsDropped > 0
-								? "Channel rows in this conversation could not be read."
-								: "No channel rows in this conversation."
+								? t(
+										"ui.chat.pickers.analytics_panel.channel_rows_in_this_conversation_could_not_be_read",
+									)
+								: t(
+										"ui.chat.pickers.analytics_panel.no_channel_rows_in_this_conversation",
+									)
 						}
 					/>
 				}
@@ -967,8 +1029,13 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 	 */
 	const channels = channelsEnabled ? channelsView(channelsProp) : null;
 	const rows = data ? chartSeries(data.daily, win, metric) : [];
-	const scope = thisSessionOnly ? "this session" : "all sessions";
-	const chartTitle = metric === "spend" ? "Daily spend" : "Daily tokens";
+	const scope = thisSessionOnly
+		? t("ui.chat.pickers.analytics_panel.this_session")
+		: t("ui.chat.pickers.analytics_panel.all_sessions");
+	const chartTitle =
+		metric === "spend"
+			? t("ui.chat.pickers.analytics_panel.daily_spend")
+			: t("ui.chat.pickers.analytics_panel.daily_tokens");
 	useI18nLocale();
 	const [sessionState, sessionDispatch] = useSessionTableState({
 		metric,
@@ -980,28 +1047,42 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
-			bodyLabel="Analytics region"
+			bodyLabel={t("ui.chat.pickers.analytics_panel.analytics_region")}
 			title={t("ui.chat.analytics.title")}
-			description="Model calls, tokens and known cost from the backend analytics ledger."
+			description={t(
+				"ui.chat.pickers.analytics_panel.model_calls_tokens_and_known_cost_from_the_backend_analytics_ledger",
+			)}
 			toolbar={
 				<div className={cn("flex flex-wrap items-center gap-4")}>
 					<PickerSegment
-						label="Window"
+						label={t("ui.chat.pickers.analytics_panel.window")}
 						value={String(windowDays)}
 						onChange={(value) => onWindowChange(Number(value))}
 						options={[
-							{ value: "1", label: "Today" },
-							{ value: "7", label: "7 days" },
-							{ value: "30", label: "30 days" },
+							{ value: "1", label: t("ui.chat.pickers.analytics_panel.today") },
+							{
+								value: "7",
+								label: t("ui.chat.pickers.analytics_panel.7_days"),
+							},
+							{
+								value: "30",
+								label: t("ui.chat.pickers.analytics_panel.30_days"),
+							},
 						]}
 					/>
 					<PickerSegment
-						label="Metric"
+						label={t("ui.chat.pickers.analytics_panel.metric")}
 						value={metric}
 						onChange={(value) => onMetricChange(value as AnalyticsMetric)}
 						options={[
-							{ value: "tokens", label: "Tokens" },
-							{ value: "spend", label: "Spend" },
+							{
+								value: "tokens",
+								label: t("ui.chat.pickers.analytics_panel.tokens"),
+							},
+							{
+								value: "spend",
+								label: t("ui.chat.pickers.analytics_panel.spend"),
+							},
 						]}
 					/>
 					{canScopeToSession ? (
@@ -1026,7 +1107,12 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 				) : error || !aggregate ? (
 					<PanelNotice
 						kind="unavailable"
-						text={error ?? "The backend returned no analytics."}
+						text={
+							error ??
+							t(
+								"ui.chat.pickers.analytics_panel.the_backend_returned_no_analytics",
+							)
+						}
 					/>
 				) : aggregate.calls === 0 ? (
 					/*
@@ -1038,10 +1124,15 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 						kind="empty"
 						text={
 							windowDays === 1
-								? "No calls recorded today."
-								: `No calls recorded in the last ${windowDays} days.`
+								? t("ui.chat.pickers.analytics_panel.no_calls_recorded_today")
+								: t(
+										"ui.chat.pickers.analytics_panel.no_calls_recorded_in_the_last_days",
+										{ windowdays: windowDays },
+									)
 						}
-						detail="Analytics accrue as sessions make provider calls."
+						detail={t(
+							"ui.chat.pickers.analytics_panel.analytics_accrue_as_sessions_make_provider_calls",
+						)}
 					/>
 				) : (
 					<PanelStack>
@@ -1051,21 +1142,28 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 						>
 							<StatGrid>
 								<StatCard
-									label="Requests"
+									label={t("ui.chat.pickers.analytics_panel.requests")}
 									value={formatCount(aggregate.calls)}
 									note={
 										aggregate.ok_calls === aggregate.calls
 											? undefined
-											: `${formatCount(aggregate.calls - aggregate.ok_calls)} failed`
+											: t("ui.chat.pickers.analytics_panel.failed", {
+													formatcount: formatCount(
+														aggregate.calls - aggregate.ok_calls,
+													),
+												})
 									}
 								/>
 								<StatCard
-									label="Tokens"
+									label={t("ui.chat.pickers.analytics_panel.tokens")}
 									value={formatTokens(totalTokens(aggregate))}
-									note={`${formatTokens(aggregate.context_tokens)} in · ${formatTokens(aggregate.output_tokens)} out`}
+									note={t("ui.chat.pickers.analytics_panel.in_out", {
+										formattokens: formatTokens(aggregate.context_tokens),
+										formattokens2: formatTokens(aggregate.output_tokens),
+									})}
 								/>
 								<StatCard
-									label="Cost"
+									label={t("ui.chat.pickers.analytics_panel.cost")}
 									value={formatMicroUsd(
 										aggregate.cost_micro,
 										aggregate.cost_known_calls,
@@ -1073,9 +1171,16 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 									)}
 									note={
 										aggregate.cost_known_calls === 0
-											? "No call in this window has a published price"
+											? t(
+													"ui.chat.pickers.analytics_panel.no_call_in_this_window_has_a_published_price",
+												)
 											: aggregate.cost_known_calls < aggregate.calls
-												? `${formatCount(aggregate.cost_known_calls)} of ${formatCount(aggregate.calls)} calls priced`
+												? t("ui.chat.pickers.analytics_panel.of_calls_priced", {
+														formatcount: formatCount(
+															aggregate.cost_known_calls,
+														),
+														formatcount2: formatCount(aggregate.calls),
+													})
 												: undefined
 									}
 									fraction={costKnownFraction(aggregate)}
@@ -1088,9 +1193,16 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 								 * window, just not the one the percentage is about.
 								 */}
 								<StatCard
-									label={CACHE_HIT_LABEL}
+									label={CACHE_HIT_LABEL()}
 									value={percentageOf(cacheReadFraction(aggregate))}
-									note={`${formatTokens(aggregate.cache_read_tokens)} of ${formatTokens(aggregate.context_tokens)} context · ${formatTokens(aggregate.cache_write_tokens)} written`}
+									note={t(
+										"ui.chat.pickers.analytics_panel.of_context_written",
+										{
+											formattokens: formatTokens(aggregate.cache_read_tokens),
+											formattokens2: formatTokens(aggregate.context_tokens),
+											formattokens3: formatTokens(aggregate.cache_write_tokens),
+										},
+									)}
 									fraction={cacheReadFraction(aggregate)}
 								/>
 							</StatGrid>
@@ -1105,15 +1217,21 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 							<PanelSection title={chartTitle}>
 								<PanelNotice
 									kind="empty"
-									text="No priced calls in this window."
+									text={t(
+										"ui.chat.pickers.analytics_panel.no_priced_calls_in_this_window",
+									)}
 								/>
 							</PanelSection>
 						) : rows.length === 0 ? (
 							<PanelSection title={chartTitle}>
 								<PanelNotice
 									kind="empty"
-									text="No daily rows for this window."
-									detail="The daily rollup only covers calls recorded since it began."
+									text={t(
+										"ui.chat.pickers.analytics_panel.no_daily_rows_for_this_window",
+									)}
+									detail={t(
+										"ui.chat.pickers.analytics_panel.the_daily_rollup_only_covers_calls_recorded_since_it_began",
+									)}
 								/>
 							</PanelSection>
 						) : (
@@ -1146,7 +1264,10 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 						 */}
 						<PanelSection
 							title={t("ui.chat.analytics.sections.by_model")}
-							meta={`${windowTitle(windowDays)} · from the ledger · ranked by output tokens`}
+							meta={t(
+								"ui.chat.pickers.analytics_panel.from_the_ledger_ranked_by_output_tokens",
+								{ windowtitle: windowTitle(windowDays) },
+							)}
 						>
 							<ModelTable
 								rows={models}
@@ -1156,7 +1277,9 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 						</PanelSection>
 						<PanelSection
 							title={t("ui.chat.analytics.sections.by_session")}
-							meta="Own figures per session · totals include subagents"
+							meta={t(
+								"ui.chat.pickers.analytics_panel.own_figures_per_session_totals_include_subagents",
+							)}
 						>
 							<SessionTable
 								data={data}
@@ -1177,7 +1300,10 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 						{channels && (
 							<PanelSection
 								title={t("ui.chat.analytics.sections.by_channel")}
-								meta={`This conversation, all time · total ${channels.total}`}
+								meta={t(
+									"ui.chat.pickers.analytics_panel.this_conversation_all_time_total",
+									{ total: channels.total },
+								)}
 							>
 								<ChannelsTable view={channels} />
 							</PanelSection>

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type { FilesSort } from "../../canonical/session-files";
 import type { FileKindGroup, FileRow } from "./file-rows";
 
@@ -162,15 +163,17 @@ export function finderSections(
 	if (highlights.length)
 		sections.push({
 			id: "Highlights",
-			label: "Highlights",
+			label: t("ui.canvas.finder_layout.highlights"),
 			items: highlights,
 			open: narrowing || !closed.has("Highlights"),
 			highlights: true,
 		});
 	if (highlights.length && working.length) {
 		sections.push({
+			// Preferences, closedSections and band identity use this stable id;
+			// only the human-facing label is localized.
 			id: "Working files",
-			label: "Working files",
+			label: t("ui.canvas.finder_layout.working_files"),
 			items: [],
 			open: prefs.workingOpen || narrowing,
 			highlights: false,
@@ -181,7 +184,7 @@ export function finderSections(
 		if (working.length)
 			sections.push({
 				id: "Files",
-				label: "Files",
+				label: t("ui.canvas.finder_layout.files"),
 				items: working,
 				open: true,
 				highlights: false,

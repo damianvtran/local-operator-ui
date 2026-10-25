@@ -157,6 +157,15 @@
 	"ui.common.updates.wait.minutes": "اب تک {minutes, plural, one {{minutes, number, ::group-off} منٹ} other {{minutes, number, ::group-off} منٹ}} انتظار ہوا",
 	"ui.common.updates.wait.minutes_seconds": "اب تک {minutes, plural, one {{minutes, number, ::group-off} منٹ} other {{minutes, number, ::group-off} منٹ}} {seconds, plural, one {{seconds, number, ::group-off} سیکنڈ} other {{seconds, number, ::group-off} سیکنڈ}} انتظار ہوا",
 	"ui.common.updates.wait.seconds": "اب تک {seconds, plural, one {{seconds, number, ::group-off} سیکنڈ} other {{seconds, number, ::group-off} سیکنڈ}} انتظار ہوا",
+	"ui.common.updates.update_notification.failure_consequence_group_survived": "اپ ڈیٹر کو روک دیا گیا؛ اس نے جو کچھ شروع کیا تھا وہ شاید اب بھی تنصیب کو تبدیل کر رہا ہو۔",
+	"ui.common.updates.check_for_updates_button.at_an_unknown_time": "نامعلوم وقت پر",
+	"ui.common.updates.update_foot_icon.available_show_the_update_notice": "{joined} دستیاب ہے۔ اپ ڈیٹ کی اطلاع دکھائیں۔",
+	"ui.common.updates.update_foot_icon.in_progress": "{subject} جاری ہے{percent}۔",
+	"ui.common.updates.update_foot_icon.subject_join": "{left} اور {right}",
+	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": "اس مشین کے چیک آؤٹ سے سرور دوبارہ بنایا جا رہا ہے۔ ایپ نے پہلے اس مشین پر چلتی باریوں کے مکمل ہونے کا انتظار کیا، اور دوبارہ تعمیر کے عمل میں یہی تنصیب اسی جگہ دوبارہ نصب ہوتی ہے — لہٰذا اس کے دوران شروع کی گئی باریاں اب بھی منقطع ہو سکتی ہیں — اور اس میں کئی منٹ (زیادہ سے زیادہ آدھا گھنٹہ) لگ سکتے ہیں۔ شروع ہونے کے بعد اس میں خلل نہیں ڈالا جا سکتا۔",
+	"ui.common.updates.update_notification.the_new_build": "نیا بلڈ",
+	"ui.common.updates.update_quiet_indicator.available": "{quietoffersubject} دستیاب ہے",
+	"ui.common.updates.update_quiet_indicator.open_release_details": "{quietoffertext}۔ ریلیز کی تفصیلات کھولیں۔",
 	"ui.common.updates.install.verifying": "جس ایپ کو بدلا جائے گا اس کے مطابق اپ ڈیٹ کی تصدیق کی جا رہی ہے…",
 	"ui.common.updates.install.staging": "جس ایپ کو بدلا جائے گا اس کے پاس اپ ڈیٹ رکھا جا رہا ہے…",
 	"ui.common.updates.install.starting": "انسٹالر شروع ہو رہا ہے۔ ایپ کچھ دیر کے لیے بند ہو گی…",
@@ -167,6 +176,5 @@
 	"ui.common.updates.error.install": "اپ ڈیٹ نصب نہیں ہو سکی۔ اس مشین کا کنکشن چیک کریں، پھر اپ ڈیٹ پینل سے دوبارہ شروع کریں۔",
 	"ui.common.updates.error.quit": "تنصیب مکمل کرنے کے لیے ایپ بند نہیں ہو سکی۔ ایپ خود بند کریں، پھر اپ ڈیٹ مکمل ہونے دیں۔",
 	"ui.common.updates.error.check_incomplete": "اپ ڈیٹ کی جانچ مکمل نہیں ہو سکی۔ ایپ اگلی جانچ پر دوبارہ کوشش کرے گی۔",
-	"ui.common.updates.error.version_unknown_required": "نامعلوم (اپ ڈیٹ درکار)",
-	"ui.common.updates.update_notification.failure_consequence_group_survived": "اپ ڈیٹر کو روک دیا گیا؛ اس نے جو کچھ شروع کیا تھا وہ شاید اب بھی تنصیب کو تبدیل کر رہا ہو۔"
+	"ui.common.updates.error.version_unknown_required": "نامعلوم (اپ ڈیٹ درکار)"
 }

@@ -1,0 +1,141 @@
+{
+	"schema": 1,
+	"locale": "fr",
+	"translator": {
+		"agent": "translator",
+		"role": "LLM translator (team lopdev)",
+		"session": "0749478e57b2",
+		"model": "radient/auto",
+		"model_note": "Translation began on openrouter/moonshotai/kimi-k3.1-pro and completed on radient/auto after the session model switched mid-run. Both are disclosed as actual served models; no MT service, translation API or SDK was used.",
+		"date": "2026-10-24"
+	},
+	"status": "translated",
+	"awaiting": "independent i18n-auditor pass; no ledger rows, allowances or baselines were edited by the translator",
+	"scope": "8dc527533d9aaa9b53d110658bf34e78b4220989: 1,041 newly extracted English keys in the canvas/picker/common batch. Older backfill keys already present in English were deliberately not translated here.",
+	"manifest": {
+		"path": "session scratchpad i18n-canvas-new-keys.json",
+		"base_sha": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+		"new_key_count": 1041,
+		"sha256": "b9faa8d3abc3f81c100b54657549e4065135f98ba2e12a10c4f606c5b4dd778e"
+	},
+	"source": {
+		"glossary": "local-operator i18n/glossary.md",
+		"style_guide": "local-operator i18n/style-guides/fr.md",
+		"register": "formal vous, sentence case, French typographic spacing (U+202F before : ; ! ?), curly apostrophes, « » quotes, Latin digits",
+		"plurals": "fr one/many/other; English one/other expanded to the French category set (many used for exact multiples of 10^6)"
+	},
+	"namespaces": {
+		"ui.canvas": {
+			"keys_assigned": 290,
+			"keys_in_file_total": 347,
+			"sha256": {
+				"en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+				"fr": "65ae722bee3d81c60e1208205228065fcf4fb5c068ef036a77fc2f1958beb181",
+				"context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+			}
+		},
+		"ui.chat.pickers": {
+			"keys_assigned": 686,
+			"keys_in_file_total": 720,
+			"sha256": {
+				"en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+				"fr": "3cc21a09f3c12bd7f499bd1bd4446eab376d0f2ba309916cda9cd734e3c0320e",
+				"context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+			}
+		},
+		"ui.common.actions": {
+			"keys_assigned": 30,
+			"keys_in_file_total": 36,
+			"sha256": {
+				"en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+				"fr": "e8004e12fcc3549867dd3b95d4921975ad1d4f8cef7009f23f208805adcf46f9",
+				"context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+			}
+		},
+		"ui.common.forms": {
+			"keys_assigned": 10,
+			"keys_in_file_total": 37,
+			"sha256": {
+				"en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+				"fr": "32ffb1f02a1ea0a0dbc48448f32b04d872fcdf6983d2a36c6817ac329a5237f8",
+				"context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+			}
+		},
+		"ui.common.layout": {
+			"keys_assigned": 8,
+			"keys_in_file_total": 8,
+			"sha256": {
+				"en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+				"fr": "26c831d3c079c031c9b406e4e480e8faab8d3670912971a575da5873d73b47d4",
+				"context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+			}
+		},
+		"ui.common.speech": {
+			"keys_assigned": 5,
+			"keys_in_file_total": 5,
+			"sha256": {
+				"en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+				"fr": "c5172745262a062e6f3c47b249c2d04e667a140b1c634bf15b07be4c21e8182a",
+				"context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+			}
+		},
+		"ui.common.updates": {
+			"keys_assigned": 8,
+			"keys_in_file_total": 135,
+			"sha256": {
+				"en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+				"fr": "d807475f42e34864c3f4cb1bdbce6e3eb7e7d321fa0dc3c3269c3b4b8637c7c2",
+				"context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+			}
+		},
+		"ui.common.viewer": {
+			"keys_assigned": 4,
+			"keys_in_file_total": 8,
+			"sha256": {
+				"en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+				"fr": "8a0f4fd4ee4975b343c552119dfc8ab81b1dec379991490bc709f4bb9cc15f00",
+				"context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+			}
+		}
+	},
+	"checks": {
+		"generate_check": "PASS — src/i18n/keys.gen.ts byte-identical to a fresh generation",
+		"icu_and_pseudo": "PASS — all 1,296 keys now in the eight French namespaces parse and match their English arguments, select arms and number skeletons (392 argument nodes, 44 plural nodes, 14 select nodes); 5,227 pseudo-localized render variants produced. The original 1,041-key pass produced 4,207 variants.",
+		"targeted_suite": "PASS — node --test canvas-picker-review-remediation, common-control-copy, common-status-copy, typed-keys, runtime, format: 52/52 tests",
+		"types": "PASS — pnpm check-types (main and renderer)",
+		"literal_scanner": "PASS — check-strings.mjs: 1,343 files, 417 literals at or below baseline",
+		"context_parity": "PASS — 131 pre-existing allowed gaps in 4 namespaces, no new gap",
+		"locale_parity": "PASS for fr full-key coverage after remediation (pickers 720/720, viewer 8/8); the identical-to-English stub arm still lists 85 values, all technical tokens or French cognates, which need reviewed IDENTICAL_OK claims (gate script not edited).",
+		"ledger": "EXPECTED RED until audit — the four new fr namespaces ship without ledger entries and the modified fr namespaces carry stale audited hashes; no ledger row, allowance or baseline was edited here."
+	},
+	"notes": [
+		"Only manifest keys were added. No English catalogue, other locale, application code, gate script or generated key file was hand-edited; keys.gen.ts was regenerated.",
+		"Rebased onto extraction head eb963e1baa, where the five canvas alias keys gained real English copy instead of key ids. Their French values now carry the copy already used by the surfaces they alias: Actions sur le fichier, Impossible d’enregistrer le fichier, Rechercher des fichiers, Actions sur l’image. No key was added or removed at that step.",
+		"Terms chosen: runtime (kept English, per fr guide), mémoire de code for code memory, dérivation for a forked conversation, effort for reasoning effort, plafond for model cap, registre for ledger, transcription for transcript, approbations for approvals, tâche for job.",
+		"Remediation round 2 applied 95 overlay entries: 38 added keys plus 57 named value fixes. See remediation.fixed, remediation.rejected and remediation.conflicts for the per-finding outcome."
+	],
+	"remediation": {
+		"base_head": "09d425ec97d1536b6aa17b0e787b9f3491092cfa",
+		"findings_sources": [
+			"audit A: translation-auditor session 32d8c951fea8",
+			"audit B: translation-auditor session 125915832871"
+		],
+		"fixed": [
+			"FR-PIC-01 / FR-VIEW-01: added the 34 older picker keys and 4 older viewer keys with the auditors’ proposed French; ui.chat.pickers is now 720/720 and ui.common.viewer 8/8.",
+			"FR-PIC-B1: the redaction artifact is gone; ui.chat.pickers.destination_pickers.search_by_title_or_id is « Rechercher par titre ou ID ».",
+			"FR-CAN-01, FR-CAN-02, FR-PIC-02: French many arms now carry de/d’ across the 22 named keys (canvas view_count and view_shown_this_list_is_capped; picker counters, caveats, guides, loop turns, table pager, totals, window/cap/balance tallies).",
+			"FR-CAN-03 Backend et scripting; FR-CAN-04 Liste de tâches; FR-CAN-05 Modification en cours; FR-CAN-06 ligne ci-dessus; FR-C-M2 champ de saisie.",
+			"FR-PIC-03 fork family now uses Bifurquer / Bifurcation, matching the pre-existing ui.chat.tags « bifurquées »; FR-PIC-04 finalité; FR-PIC-05 Durées; FR-PIC-06 Application de bureau; FR-PIC-07 épuisées; FR-PIC-08 Citer; FR-PIC-09 Modèle ayant répondu; FR-PIC-10 à {formatclock}; FR-PIC-11 sur … des … appels; FR-PIC-12 and FR-UPD-02 U+202F before the colon.",
+			"FR-P-M3 Reprise de / Réouverture de; FR-P-N1 Répertoire de configuration and Dossier des journaux; FR-P-N2 composition; FR-P-N3 singular complément; FR-P-N4 affiche une valeur inconnue; FR-P-N5 Durées des requêtes; FR-UPD-01 avis de mise à jour.",
+			"FR-CAN-M2 translator-added correction from audit B: composer is now « champ de saisie » in the canvas create-file dialog as well, so one element has one French term."
+		],
+		"rejected": [
+			"Audit A’s mechanism for dynamic {pluralnoun}/{plurallabel} (a many-specific plural argument or elision-aware branch) would add ICU structure and caller-supplied arguments beyond catalogue copy; applied audit B’s exact de {pluralnoun} arms instead. Residual risk: a caller-supplied plural starting with a vowel renders « de objectifs » rather than « d’objectifs »; resolving it needs caller code, outside a translator change.",
+			"The manager summary’s row→barre and checklist→Liste de contrôle conflict with both audits: the current values were « barre » and « Liste de contrôle », and both auditors identify those as the defects. Applied row→ligne and checklist→Liste de tâches."
+		],
+		"conflicts": [
+			"FR-PIC-05 timings: audit A offered Temps or Durées, audit B proposed Durées; chose Durées. FR-CAN-04 checklist: audit A proposed Liste de tâches, audit B Liste de vérification; chose Liste de tâches (Markdown task list)."
+		],
+		"unchanged": "The 1,041 previously assigned values are byte-identical except the keys named above; no key was removed, no English catalogue, ledger, allowance, baseline, gate script or application code was edited."
+	}
+}

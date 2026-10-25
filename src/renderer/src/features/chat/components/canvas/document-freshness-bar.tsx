@@ -1,10 +1,11 @@
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { Button, Tooltip } from "@shared/components/ui";
+import { formatTime, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { formatCalendarDateTime } from "@shared/utils/date-utils";
 import { RefreshCw } from "lucide-react";
 import { type FC, useId } from "react";
-import { formatTime, t } from "../../../../../../i18n";
 import { useFileFreshness } from "./use-file-freshness";
 
 /**
@@ -81,6 +82,7 @@ export const DocumentFreshnessBar: FC<{
 	document: CanvasDocument;
 	conversationId?: string;
 }> = ({ document, conversationId }) => {
+	useI18nLocale();
 	const {
 		lastModifiedMs,
 		refreshing,
@@ -138,8 +140,10 @@ export const DocumentFreshnessBar: FC<{
 				: modifiedText;
 	const stamp =
 		modifiedText === null
-			? "Not read from disk yet"
-			: `Modified ${modifiedText}`;
+			? t("ui.canvas.document_freshness_bar.not_read_from_disk_yet")
+			: t("ui.canvas.document_freshness_bar.modified", {
+					formatcalendardatetime: modifiedText,
+				});
 
 	/*
 	 * THE NAME FOLLOWS THE STATE (UX round 1 U7, round 2 U1). "Re-read from disk"
@@ -150,10 +154,12 @@ export const DocumentFreshnessBar: FC<{
 	 * file's version wins and their unsaved edits go, which is what the name says.
 	 */
 	const controlLabel = diskChanged
-		? "Load the file's version (your unsaved edits are discarded)"
+		? t(
+				"ui.canvas.document_freshness_bar.load_the_file_s_version_your_unsaved_edits_are_discarded",
+			)
 		: dirty
-			? "Check the file (your edits are kept)"
-			: "Re-read from disk";
+			? t("ui.canvas.document_freshness_bar.check_the_file_your_edits_are_kept")
+			: t("ui.canvas.document_freshness_bar.re_read_from_disk");
 
 	return (
 		<div

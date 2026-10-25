@@ -3,11 +3,11 @@
   "kind": "translation-audit-receipt",
   "locale": "ur",
   "locale_name": "Urdu",
-  "batch": "surfaces",
-  "pr": 1389,
-  "branch": "feat/i18n-surfaces-batch",
-  "head": "c7374018ee2bf58eda2c1765ea9a68e830750f8c",
-  "previous_head": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
+  "batch": "canvas",
+  "pr": 1388,
+  "branch": "feat/i18n-canvas-batch",
+  "head": "82209cab3a9eeee4d6649d4b0015b73501b122e8",
+  "previous_head": "936e3a483b4d675c9827be5f40167da186f86900",
   "base": "40462495827dfb0e1bfacb8643da805912493a5b",
   "date": "2026-10-24",
   "round": 2,
@@ -35,21 +35,42 @@
     }
   },
   "previous_receipt": {
-    "path": "i18n/receipts/ur-surfaces-audit-9f7efaeab2ef.json",
-    "sha256": "5edbb39ba01647e949691762cddd7f782edede82c439c81dc7d740e19eb1e9fc"
+    "path": "i18n/receipts/ur-canvas-audit-9f7efaeab2ef.json",
+    "sha256": "e4e57d1018cb285a7c9684c344ceb2d8620c99f97570fe8a52bb7dbed2acb4af"
   },
   "audit_scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below.",
   "independence_note": "This is round 2 of the same auditor role that raised round 1; it verifies the applied values and runs the mechanical checks again, it does not re-audit unchanged copy.",
   "remediation": {
-    "UR-SUR-CANONICAL-01": "FIXED",
-    "UR-SUR-ERRORS-01": "FIXED",
-    "UR-SUR-UPDATES-01": "FIXED",
-    "UR-SUR-MINIVIEW-01": "FIXED",
-    "UR-SUR-SHORTCUTS-01": "FIXED"
+    "UR-CAN-CANVAS-01": "FIXED",
+    "UR-CAN-CANVAS-02": "FIXED",
+    "UR-CAN-CANVAS-03": "FIXED",
+    "UR-CAN-CANVAS-04": "FIXED",
+    "UR-CAN-CANVAS-05": "FIXED",
+    "UR-CAN-PICKERS-01": "FIXED",
+    "UR-CAN-PICKERS-02": "FIXED",
+    "UR-CAN-PICKERS-03": "FIXED",
+    "UR-CAN-PICKERS-04": "FIXED",
+    "UR-CAN-PICKERS-05": "FIXED",
+    "UR-CAN-PICKERS-06": "FIXED",
+    "UR-CAN-PICKERS-07": "FIXED",
+    "UR-CAN-PICKERS-08": "FIXED",
+    "UR-CAN-PICKERS-09": "FIXED",
+    "UR-CAN-PICKERS-10": "FIXED",
+    "UR-CAN-PICKERS-11": "FIXED",
+    "UR-CAN-PICKERS-12": "FIXED",
+    "UR-CAN-PICKERS-13": "FIXED",
+    "UR-CAN-PICKERS-14": "FIXED",
+    "UR-CAN-PICKERS-15": "FIXED",
+    "UR-CAN-PICKERS-16": {
+      "status": "DEFERRED",
+      "reason": "Register decision accepted: the ur style guide mandates the respectful imperative (دوبارہ کوشش کریں), and 30+ existing values use it; no maxCells budget exists for ui.chat.pickers, so overflow remains a rendered-check question, not a catalogue defect. Non-gating minor."
+    },
+    "UR-CAN-PICKERS-17": "FIXED",
+    "UR-CAN-ACTIONS-01": "FIXED"
   },
   "mechanical_checks": {
-    "changed_keys_checked": 11,
-    "nfc_normalised": "11/11",
+    "changed_keys_checked": 31,
+    "nfc_normalised": "31/31",
     "manual_bidi_controls": 0,
     "ascii_question_or_semicolon": 0,
     "latin_token_drift": 0,
@@ -60,148 +81,311 @@
   },
   "delta_table": [
     {
-      "id": "UR-SUR-CANONICAL-01",
-      "severity": "minor",
-      "key": "ui.chat.canonical.supplement.preview_unavailable",
-      "before": "ان لائن پیش منظر دستیاب نہیں۔ اس HTML کے لیے غیر تعاون یافتہ وسائل یا دستاویزی مواد درکار ہے۔ دیکھنے کے لیے فائل کھولیں۔",
-      "after": "ان لائن پیش منظر دستیاب نہیں۔ اس HTML کے لیے غیر سپورٹ شدہ وسائل یا دستاویزی مواد درکار ہے۔ دیکھنے کے لیے فائل کھولیں۔",
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z",
+      "before": "واپس کریں (Ctrl+Z)",
+      "after": "کالعدم کریں (Ctrl+Z)",
+      "status": "FIXED",
+      "reason": "UR-CAN-CANVAS-01 direct sibling: the same command with its accelerator."
+    },
+    {
+      "id": "UR-CAN-CANVAS-01",
+      "severity": "major",
+      "key": "ui.canvas.wysiwyg_markdown_editor.undo",
+      "before": "واپس کریں",
+      "after": "کالعدم کریں",
       "status": "FIXED",
       "class": "finding"
     },
     {
-      "id": "UR-SUR-ERRORS-01",
-      "severity": "minor",
-      "key": "ui.common.errors.execution_history_fetch",
-      "before": "اجرا کی تاریخ حاصل نہیں ہو سکی",
-      "after": "اجرا کی سرگزشت حاصل نہیں ہو سکی",
+      "id": "UR-CAN-CANVAS-02",
+      "severity": "major",
+      "key": "ui.canvas.variable_form_dialog.value_json_array",
+      "before": "قدر (JSON ارے)",
+      "after": "قدر (JSON سرنی)",
       "status": "FIXED",
       "class": "finding"
     },
     {
-      "id": "UR-SUR-UPDATES-01",
+      "id": "UR-CAN-CANVAS-03",
       "severity": "minor",
-      "key": "ui.hub.updates.error.provider",
-      "before": "اسے merge کرنے والے ماڈل تک رسائی نہیں ہو سکی۔ خود دوبارہ کوشش ہو گی؛ ابھی کے لیے دوبارہ کوشش کا بٹن دبائیں۔",
-      "after": "اسے merge کرنے والے ماڈل تک رسائی نہیں ہو سکی۔ یہ خود دوبارہ کوشش کرے گا؛ ابھی کوشش کرنے کے لیے “دوبارہ کوشش” دبائیں۔",
+      "key": "ui.canvas.goals_viewer.goals_appear_here_once_they_are_finished",
+      "before": "ہدف مکمل ہونے پر یہاں ظاہر ہوتے ہیں۔",
+      "after": "ہدف مکمل ہونے پر یہاں ظاہر ہوتا ہے۔",
       "status": "FIXED",
       "class": "finding"
     },
     {
-      "id": null,
-      "class": "consistency-satellite",
-      "key": "ui.miniView.context_estimated",
-      "before": "سیاق: {used} ٹوکن (تخمینہ)۔",
-      "after": "کانٹیکسٹ: {used} ٹوکن (تخمینہ)۔",
+      "id": "UR-CAN-CANVAS-04",
+      "severity": "nit",
+      "key": "ui.canvas.finder_layout.highlights",
+      "before": "نمایاں کردہ",
+      "after": "نمایاں",
       "status": "FIXED",
-      "reason": "UR-SUR-MINIVIEW-01 consistency: same context label in the estimated variant."
+      "class": "finding"
     },
     {
-      "id": null,
-      "class": "consistency-satellite",
-      "key": "ui.miniView.context_no_reading",
-      "before": "سیاق: ابھی کوئی پیمائش نہیں۔",
-      "after": "کانٹیکسٹ: ابھی کوئی پیمائش نہیں۔",
-      "status": "FIXED",
-      "reason": "UR-SUR-MINIVIEW-01 consistency: same context label in the no-reading variant."
-    },
-    {
-      "id": null,
-      "class": "consistency-satellite",
-      "key": "ui.miniView.context_window",
-      "before": "سیاق: {window} میں سے {used} ٹوکن۔",
-      "after": "کانٹیکسٹ: {window} میں سے {used} ٹوکن۔",
-      "status": "FIXED",
-      "reason": "UR-SUR-MINIVIEW-01 consistency: same context label in the window variant."
-    },
-    {
-      "id": null,
-      "class": "consistency-satellite",
-      "key": "ui.miniView.context_window_estimated",
-      "before": "سیاق: {window} میں سے {used} ٹوکن (تخمینہ)۔",
-      "after": "کانٹیکسٹ: {window} میں سے {used} ٹوکن (تخمینہ)۔",
-      "status": "FIXED",
-      "reason": "UR-SUR-MINIVIEW-01 consistency: same context label in the estimated window variant."
-    },
-    {
-      "id": "UR-SUR-MINIVIEW-01",
-      "severity": "minor",
-      "key": "ui.miniView.context",
-      "before": "سیاق: {used} ٹوکن۔",
-      "after": "کانٹیکسٹ: {used} ٹوکن۔",
+      "id": "UR-CAN-CANVAS-05",
+      "severity": "nit",
+      "key": "ui.canvas.shell.canvas_view",
+      "before": "Canvas منظر",
+      "after": "Canvas کا منظر",
       "status": "FIXED",
       "class": "finding"
     },
     {
       "id": null,
       "class": "consistency-satellite",
-      "key": "ui.settings.shortcuts.reserved.redo",
-      "before": "مخصوص: ریڈو کرتا ہے۔",
-      "after": "مخصوص: دوبارہ کرتا ہے۔",
+      "key": "ui.chat.pickers.destination_pickers.show_all_supported_models",
+      "before": "تمام تعاون یافتہ ماڈل دکھائیں",
+      "after": "تمام سپورٹ شدہ ماڈل دکھائیں",
       "status": "FIXED",
-      "reason": "UR-SUR-SHORTCUTS-01 consistency: undo and redo must be named as a pair."
+      "reason": "UR-CAN-PICKERS-15 consistency: same term in the button label."
     },
     {
       "id": null,
       "class": "consistency-satellite",
-      "key": "ui.settings.shortcuts.reserved.redo_windows_linux",
-      "before": "مخصوص: Windows اور Linux پر ریڈو کرتا ہے۔",
-      "after": "مخصوص: Windows اور Linux پر دوبارہ کرتا ہے۔",
+      "key": "ui.chat.pickers.destination_pickers.not_supported",
+      "before": "تعاون یافتہ نہیں",
+      "after": "سپورٹ شدہ نہیں",
       "status": "FIXED",
-      "reason": "UR-SUR-SHORTCUTS-01 consistency: same pair on the platform variant."
+      "reason": "UR-CAN-PICKERS-15 consistency: the negated status must use the same root as supported."
     },
     {
-      "id": "UR-SUR-SHORTCUTS-01",
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.native_outputs",
+      "before": "نیٹو آؤٹ پٹس",
+      "after": "مقامی آؤٹ پٹس",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-01 sibling: same false friend as native_inputs."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i",
+      "before": "اس سیشن کی ورکنگ ڈائریکٹری سے دستیاب مہارتیں ({value} کے دائرے میں)۔ فہرست میں ہونا پرامپٹ میں منتخب ہونے کے برابر نہیں۔",
+      "after": "اس سیشن کی ورکنگ ڈائریکٹری سے قابلِ دریافت مہارتیں ({value} کے دائرے میں)۔ فہرست میں ہونا پرامپٹ میں منتخب ہونے کے برابر نہیں۔",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-11 consistency: the sentence uses the same 'discoverable' term."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.no_skills_are_discoverable_from_this_session_s_directory",
+      "before": "اس سیشن کی ڈائریکٹری سے کوئی مہارت دستیاب نہیں۔",
+      "after": "اس سیشن کی ڈائریکٹری سے کوئی مہارت قابلِ دریافت نہیں۔",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-11 consistency: the negated sentence uses the same term."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in",
+      "before": "{scopecount, plural, one {تمام تعاون یافتہ ماڈل دکھائیں ({scopecount, number, ::group-off} کو سائن ان درکار ہے)} other {تمام تعاون یافتہ ماڈل دکھائیں ({scopecount, number, ::group-off} کو سائن ان درکار ہے)}}",
+      "after": "{scopecount, plural, one {تمام سپورٹ شدہ ماڈل دکھائیں ({scopecount, number, ::group-off} کو سائن ان درکار ہے)} other {تمام سپورٹ شدہ ماڈل دکھائیں ({scopecount, number, ::group-off} کو سائن ان درکار ہے)}}",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-15 consistency: same term inside the ICU plural."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.goal.clear",
+      "before": "مقصد صاف کریں",
+      "after": "ہدف صاف کریں",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-03 consistency: the picker's clear action must use the same goal term as its title."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.models.native_details",
+      "before": "نیٹو تفصیلات — {name}",
+      "after": "اصل تفصیلات — {name}",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-01 details caption; the round-1 finding named the details caption explicitly."
+    },
+    {
+      "id": "UR-CAN-PICKERS-01",
+      "severity": "major",
+      "key": "ui.chat.pickers.destination_pickers.native_inputs",
+      "before": "نیٹو ان پٹس",
+      "after": "مقامی ان پٹس",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-02",
+      "severity": "major",
+      "key": "ui.chat.pickers.analytics_session_state.top_level_only_off",
+      "before": "صرف اعلیٰ درجہ بند: {matchedtext} {matched, plural, one {سیشن} other {سیشنز}}۔",
+      "after": "صرف اعلیٰ درجہ والا فلٹر بند: {matchedtext} {matched, plural, one {سیشن} other {سیشنز}}۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-03",
       "severity": "minor",
-      "key": "ui.settings.shortcuts.reserved.undo",
-      "before": "مخصوص: انڈو کرتا ہے۔",
-      "after": "مخصوص: کالعدم کرتا ہے۔",
+      "key": "ui.chat.pickers.goal.title",
+      "before": "سیشن کا مقصد",
+      "after": "سیشن کا ہدف",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-04",
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.fixed_number_of_turns",
+      "before": "باریاں کی مقررہ تعداد",
+      "after": "باریوں کی مقررہ تعداد",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-05",
+      "severity": "minor",
+      "key": "ui.chat.pickers.session_panel.no_recent_requests_recorded_for_this_session",
+      "before": "اس سیشن کی کوئی حالیہ درخواستیں درج نہیں۔",
+      "after": "اس سیشن کی کوئی حالیہ درخواست درج نہیں۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-06",
+      "severity": "minor",
+      "key": "ui.chat.pickers.session_panel.no_model_rows_recorded_for_this_session",
+      "before": "اس سیشن کے لیے کوئی ماڈل قطاریں درج نہیں۔",
+      "after": "اس سیشن کے لیے کوئی ماڈل قطار درج نہیں۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-07",
+      "severity": "minor",
+      "key": "ui.chat.pickers.session_panel.no_purpose_rows_recorded_for_this_session",
+      "before": "اس سیشن کے لیے مقصد کی کوئی قطاریں درج نہیں۔",
+      "after": "اس سیشن کے لیے مقصد کی کوئی قطار درج نہیں۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-08",
+      "severity": "minor",
+      "key": "ui.chat.pickers.analytics_panel.no_channel_rows_in_this_conversation",
+      "before": "اس گفتگو میں کوئی چینل قطاریں نہیں۔",
+      "after": "اس گفتگو میں کوئی چینل قطار نہیں۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-09",
+      "severity": "minor",
+      "key": "ui.chat.pickers.model_catalogue_listing.the_shipped_models",
+      "before": "شائع شدہ ماڈل",
+      "after": "شامل شدہ ماڈلز",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-10",
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title",
+      "before": "واضح نام خود بنے ہوئے عنوان پر مقدم ہوتا ہے۔",
+      "after": "واضح طور پر دیا گیا نام خود بنے ہوئے عنوان پر مقدم ہوتا ہے۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-11",
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.discoverable",
+      "before": "دستیاب",
+      "after": "قابلِ دریافت",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-12",
+      "severity": "minor",
+      "key": "ui.chat.pickers.info_model.still_connecting_deferred_servers",
+      "before": "موؤخر سرورز سے اب بھی رابطہ ہو رہا ہے",
+      "after": "ملتوی سرورز سے اب بھی رابطہ ہو رہا ہے",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-13",
+      "severity": "minor",
+      "key": "ui.chat.pickers.session_panel.the_backend_returned_no_report",
+      "before": "بیک اینڈ نے کوئی رپورٹ واپس نہیں کی۔",
+      "after": "بیک اینڈ نے کوئی رپورٹ فراہم نہیں کی۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-14",
+      "severity": "minor",
+      "key": "ui.chat.pickers.context_panel.the_owner_returned_no_breakdown",
+      "before": "مالک نے کوئی تفصیل واپس نہیں کی۔",
+      "after": "مالک نے کوئی تفصیل فراہم نہیں کی۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-15",
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.supported",
+      "before": "تعاون یافتہ",
+      "after": "سپورٹ شدہ",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-16",
+      "severity": "minor",
+      "key": "ui.chat.pickers.mcp_picker.retry",
+      "before": "دوبارہ کوشش کریں",
+      "after": "دوبارہ کوشش کریں",
+      "status": "DEFERRED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-17",
+      "severity": "nit",
+      "key": "ui.chat.pickers.goal.placeholder",
+      "before": "تمام گیٹس کامیاب ہونے پر ریلیز شپ کریں",
+      "after": "تمام گیٹس کامیاب ہونے پر ریلیز جاری کریں",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-ACTIONS-01",
+      "severity": "minor",
+      "key": "ui.common.actions.find_replace_widget.switch_to_replace",
+      "before": "تبدیلی پر سوئچ کریں",
+      "after": "تبدیل کرنے پر سوئچ کریں",
       "status": "FIXED",
       "class": "finding"
     }
   ],
   "namespaces": {
-    "ui.browser.errors": {
-      "namespace": "ui.browser.errors",
+    "ui.canvas": {
+      "namespace": "ui.canvas",
       "status": "passed",
       "result": "clean",
       "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 2,
+      "keys_audited_in_delta": 6,
+      "file_keys": 347,
       "sha256": {
-        "en": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
-        "ur": "6ee6afe94d7e0772e98235e0ac6cdabf6cf693ac5d3345b3e07b29383b21fdf7",
-        "context": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "ur": "0256fd05b8c204673036d928767b60c195b64e74e9435bddde97d40517f88eec",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
       },
       "paths": {
-        "en": "src/i18n/catalogues/en/ui.browser.errors.json",
-        "target": "src/i18n/catalogues/ur/ui.browser.errors.json",
-        "context": "src/i18n/catalogues/en/ui.browser.errors.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.chat.canonical": {
-      "namespace": "ui.chat.canonical",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 1,
-      "file_keys": 47,
-      "sha256": {
-        "en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
-        "ur": "11cc149b6dcd9cbda6f3253c4a63e7aa60ad5b8f91c1435ccc92d21f73e55605",
-        "context": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
-        "target": "src/i18n/catalogues/ur/ui.chat.canonical.json",
-        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+        "en": "src/i18n/catalogues/en/ui.canvas.json",
+        "target": "src/i18n/catalogues/ur/ui.canvas.json",
+        "context": "src/i18n/catalogues/en/ui.canvas.context.json"
       },
       "findings": [],
       "severity_counts": {
@@ -212,104 +396,232 @@
       },
       "round1_findings_verified": [
         {
-          "id": "UR-SUR-CANONICAL-01",
+          "id": "UR-CAN-CANVAS-01",
+          "severity": "major",
+          "key": "ui.canvas.wysiwyg_markdown_editor.undo",
+          "before": "واپس کریں",
+          "after": "کالعدم کریں",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-CANVAS-02",
+          "severity": "major",
+          "key": "ui.canvas.variable_form_dialog.value_json_array",
+          "before": "قدر (JSON ارے)",
+          "after": "قدر (JSON سرنی)",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-CANVAS-03",
           "severity": "minor",
-          "key": "ui.chat.canonical.supplement.preview_unavailable",
-          "before": "ان لائن پیش منظر دستیاب نہیں۔ اس HTML کے لیے غیر تعاون یافتہ وسائل یا دستاویزی مواد درکار ہے۔ دیکھنے کے لیے فائل کھولیں۔",
-          "after": "ان لائن پیش منظر دستیاب نہیں۔ اس HTML کے لیے غیر سپورٹ شدہ وسائل یا دستاویزی مواد درکار ہے۔ دیکھنے کے لیے فائل کھولیں۔",
+          "key": "ui.canvas.goals_viewer.goals_appear_here_once_they_are_finished",
+          "before": "ہدف مکمل ہونے پر یہاں ظاہر ہوتے ہیں۔",
+          "after": "ہدف مکمل ہونے پر یہاں ظاہر ہوتا ہے۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-CANVAS-04",
+          "severity": "nit",
+          "key": "ui.canvas.finder_layout.highlights",
+          "before": "نمایاں کردہ",
+          "after": "نمایاں",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-CANVAS-05",
+          "severity": "nit",
+          "key": "ui.canvas.shell.canvas_view",
+          "before": "Canvas منظر",
+          "after": "Canvas کا منظر",
           "status": "FIXED"
         }
       ]
     },
-    "ui.chat.composer": {
-      "namespace": "ui.chat.composer",
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
       "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 47,
+      "result": "clean-with-findings",
+      "verdict": "clean with findings — remediation verified; one minor deferred with reason",
+      "keys_audited_in_delta": 24,
+      "file_keys": 720,
       "sha256": {
-        "en": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
-        "ur": "28c9fb80a5e751a22f0e222f38d7e8bc8c350df149cc8b286b20743264935583",
-        "context": "3a45a24f1ce79edec4d13b2c0f11272c3dd3974812f05d8009f04ab787da8e63"
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "ur": "ddc2e2eee04e56d7286dc362bfe2d683cdf5bde01fbfbb56fd5683c11c5192e8",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
       },
       "paths": {
-        "en": "src/i18n/catalogues/en/ui.chat.composer.json",
-        "target": "src/i18n/catalogues/ur/ui.chat.composer.json",
-        "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "target": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
       },
-      "findings": [],
+      "findings": [
+        {
+          "id": "UR-CAN-PICKERS-16",
+          "severity": "minor",
+          "key": "ui.chat.pickers.mcp_picker.retry",
+          "before": "دوبارہ کوشش کریں",
+          "after": "دوبارہ کوشش کریں",
+          "status": "DEFERRED",
+          "note": "Register decision accepted: the ur style guide mandates the respectful imperative (دوبارہ کوشش کریں), and 30+ existing values use it; no maxCells budget exists for ui.chat.pickers, so overflow remains a rendered-check question, not a catalogue defect. Non-gating minor."
+        }
+      ],
       "severity_counts": {
         "blocker": 0,
         "major": 0,
-        "minor": 0,
+        "minor": 1,
         "nit": 0
       },
-      "round1_findings_verified": []
-    },
-    "ui.code_review": {
-      "namespace": "ui.code_review",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 76,
-      "sha256": {
-        "en": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
-        "ur": "c78342cab8d4ca187049f7db1621cd54db0b82c35f92c3628d588765231fd48c",
-        "context": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.code_review.json",
-        "target": "src/i18n/catalogues/ur/ui.code_review.json",
-        "context": "src/i18n/catalogues/en/ui.code_review.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.common.account": {
-      "namespace": "ui.common.account",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 38,
-      "sha256": {
-        "en": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
-        "ur": "564f9c11c6eff15c5ba782d24e18fd1fdd58e350f49c424902f94e1cad04430d",
-        "context": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.common.account.json",
-        "target": "src/i18n/catalogues/ur/ui.common.account.json",
-        "context": "src/i18n/catalogues/en/ui.common.account.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
+      "round1_findings_verified": [
+        {
+          "id": "UR-CAN-PICKERS-01",
+          "severity": "major",
+          "key": "ui.chat.pickers.destination_pickers.native_inputs",
+          "before": "نیٹو ان پٹس",
+          "after": "مقامی ان پٹس",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-02",
+          "severity": "major",
+          "key": "ui.chat.pickers.analytics_session_state.top_level_only_off",
+          "before": "صرف اعلیٰ درجہ بند: {matchedtext} {matched, plural, one {سیشن} other {سیشنز}}۔",
+          "after": "صرف اعلیٰ درجہ والا فلٹر بند: {matchedtext} {matched, plural, one {سیشن} other {سیشنز}}۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-03",
+          "severity": "minor",
+          "key": "ui.chat.pickers.goal.title",
+          "before": "سیشن کا مقصد",
+          "after": "سیشن کا ہدف",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-04",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.fixed_number_of_turns",
+          "before": "باریاں کی مقررہ تعداد",
+          "after": "باریوں کی مقررہ تعداد",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-05",
+          "severity": "minor",
+          "key": "ui.chat.pickers.session_panel.no_recent_requests_recorded_for_this_session",
+          "before": "اس سیشن کی کوئی حالیہ درخواستیں درج نہیں۔",
+          "after": "اس سیشن کی کوئی حالیہ درخواست درج نہیں۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-06",
+          "severity": "minor",
+          "key": "ui.chat.pickers.session_panel.no_model_rows_recorded_for_this_session",
+          "before": "اس سیشن کے لیے کوئی ماڈل قطاریں درج نہیں۔",
+          "after": "اس سیشن کے لیے کوئی ماڈل قطار درج نہیں۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-07",
+          "severity": "minor",
+          "key": "ui.chat.pickers.session_panel.no_purpose_rows_recorded_for_this_session",
+          "before": "اس سیشن کے لیے مقصد کی کوئی قطاریں درج نہیں۔",
+          "after": "اس سیشن کے لیے مقصد کی کوئی قطار درج نہیں۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-08",
+          "severity": "minor",
+          "key": "ui.chat.pickers.analytics_panel.no_channel_rows_in_this_conversation",
+          "before": "اس گفتگو میں کوئی چینل قطاریں نہیں۔",
+          "after": "اس گفتگو میں کوئی چینل قطار نہیں۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-09",
+          "severity": "minor",
+          "key": "ui.chat.pickers.model_catalogue_listing.the_shipped_models",
+          "before": "شائع شدہ ماڈل",
+          "after": "شامل شدہ ماڈلز",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-10",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title",
+          "before": "واضح نام خود بنے ہوئے عنوان پر مقدم ہوتا ہے۔",
+          "after": "واضح طور پر دیا گیا نام خود بنے ہوئے عنوان پر مقدم ہوتا ہے۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-11",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.discoverable",
+          "before": "دستیاب",
+          "after": "قابلِ دریافت",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-12",
+          "severity": "minor",
+          "key": "ui.chat.pickers.info_model.still_connecting_deferred_servers",
+          "before": "موؤخر سرورز سے اب بھی رابطہ ہو رہا ہے",
+          "after": "ملتوی سرورز سے اب بھی رابطہ ہو رہا ہے",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-13",
+          "severity": "minor",
+          "key": "ui.chat.pickers.session_panel.the_backend_returned_no_report",
+          "before": "بیک اینڈ نے کوئی رپورٹ واپس نہیں کی۔",
+          "after": "بیک اینڈ نے کوئی رپورٹ فراہم نہیں کی۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-14",
+          "severity": "minor",
+          "key": "ui.chat.pickers.context_panel.the_owner_returned_no_breakdown",
+          "before": "مالک نے کوئی تفصیل واپس نہیں کی۔",
+          "after": "مالک نے کوئی تفصیل فراہم نہیں کی۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-15",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.supported",
+          "before": "تعاون یافتہ",
+          "after": "سپورٹ شدہ",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-16",
+          "severity": "minor",
+          "key": "ui.chat.pickers.mcp_picker.retry",
+          "before": "دوبارہ کوشش کریں",
+          "after": "دوبارہ کوشش کریں",
+          "status": "DEFERRED",
+          "note": "Register decision accepted: the ur style guide mandates the respectful imperative (دوبارہ کوشش کریں), and 30+ existing values use it; no maxCells budget exists for ui.chat.pickers, so overflow remains a rendered-check question, not a catalogue defect. Non-gating minor."
+        },
+        {
+          "id": "UR-CAN-PICKERS-17",
+          "severity": "nit",
+          "key": "ui.chat.pickers.goal.placeholder",
+          "before": "تمام گیٹس کامیاب ہونے پر ریلیز شپ کریں",
+          "after": "تمام گیٹس کامیاب ہونے پر ریلیز جاری کریں",
+          "status": "FIXED"
+        }
+      ]
     },
     "ui.common.actions": {
       "namespace": "ui.common.actions",
       "status": "passed",
       "result": "clean",
       "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 20,
+      "keys_audited_in_delta": 1,
+      "file_keys": 36,
       "sha256": {
-        "en": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
-        "ur": "05f1e53f0ea0db0bd61426aa0a2cc5f9acdc3047309f5d4c3a59a64b56ad7336",
-        "context": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "ur": "0af7fd2481daadf4b2a51657a0b7996a96c1fca580a5464a76a5f84d57b1a760",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
       },
       "paths": {
         "en": "src/i18n/catalogues/en/ui.common.actions.json",
@@ -323,24 +635,33 @@
         "minor": 0,
         "nit": 0
       },
-      "round1_findings_verified": []
+      "round1_findings_verified": [
+        {
+          "id": "UR-CAN-ACTIONS-01",
+          "severity": "minor",
+          "key": "ui.common.actions.find_replace_widget.switch_to_replace",
+          "before": "تبدیلی پر سوئچ کریں",
+          "after": "تبدیل کرنے پر سوئچ کریں",
+          "status": "FIXED"
+        }
+      ]
     },
-    "ui.common.connection": {
-      "namespace": "ui.common.connection",
+    "ui.common.forms": {
+      "namespace": "ui.common.forms",
       "status": "passed",
       "result": "clean",
       "verdict": "clean — remediation verified, no new findings",
       "keys_audited_in_delta": 0,
       "file_keys": 37,
       "sha256": {
-        "en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-        "ur": "5d22e34fa23f0fa4d212f842269dbfc74372958212a9e85d43efd662c07dd45a",
-        "context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "ur": "2d869ab5f846cd2ccf8227bd5d21ed4ae8223d3f273e5e4355678698b60c4635",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
       },
       "paths": {
-        "en": "src/i18n/catalogues/en/ui.common.connection.json",
-        "target": "src/i18n/catalogues/ur/ui.common.connection.json",
-        "context": "src/i18n/catalogues/en/ui.common.connection.context.json"
+        "en": "src/i18n/catalogues/en/ui.common.forms.json",
+        "target": "src/i18n/catalogues/ur/ui.common.forms.json",
+        "context": "src/i18n/catalogues/en/ui.common.forms.context.json"
       },
       "findings": [],
       "severity_counts": {
@@ -351,22 +672,22 @@
       },
       "round1_findings_verified": []
     },
-    "ui.common.errors": {
-      "namespace": "ui.common.errors",
+    "ui.common.layout": {
+      "namespace": "ui.common.layout",
       "status": "passed",
       "result": "clean",
       "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 1,
-      "file_keys": 135,
+      "keys_audited_in_delta": 0,
+      "file_keys": 8,
       "sha256": {
-        "en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
-        "ur": "eb740898d7c47830d6dc7dd20f2301637c78ac4dd66f9688dc7b6b80a21b3bfd",
-        "context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "ur": "d6f37cb2b8c03d079bf52b50b811f5e0febde9ddbe88bbbe87681f9d1e4776c2",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
       },
       "paths": {
-        "en": "src/i18n/catalogues/en/ui.common.errors.json",
-        "target": "src/i18n/catalogues/ur/ui.common.errors.json",
-        "context": "src/i18n/catalogues/en/ui.common.errors.context.json"
+        "en": "src/i18n/catalogues/en/ui.common.layout.json",
+        "target": "src/i18n/catalogues/ur/ui.common.layout.json",
+        "context": "src/i18n/catalogues/en/ui.common.layout.context.json"
       },
       "findings": [],
       "severity_counts": {
@@ -375,16 +696,7 @@
         "minor": 0,
         "nit": 0
       },
-      "round1_findings_verified": [
-        {
-          "id": "UR-SUR-ERRORS-01",
-          "severity": "minor",
-          "key": "ui.common.errors.execution_history_fetch",
-          "before": "اجرا کی تاریخ حاصل نہیں ہو سکی",
-          "after": "اجرا کی سرگزشت حاصل نہیں ہو سکی",
-          "status": "FIXED"
-        }
-      ]
+      "round1_findings_verified": []
     },
     "ui.common.speech": {
       "namespace": "ui.common.speech",
@@ -392,42 +704,16 @@
       "result": "clean",
       "verdict": "clean — remediation verified, no new findings",
       "keys_audited_in_delta": 0,
-      "file_keys": 11,
+      "file_keys": 5,
       "sha256": {
-        "en": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
-        "ur": "edc9686952f10190b0a3d8e92e19b3e658e5de93113447c725ec04db44948737",
-        "context": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "ur": "e161eed70853a74841cb6e434fe15b06172b7a072fb74b8d365edfa0e5c30dd2",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
       },
       "paths": {
         "en": "src/i18n/catalogues/en/ui.common.speech.json",
         "target": "src/i18n/catalogues/ur/ui.common.speech.json",
         "context": "src/i18n/catalogues/en/ui.common.speech.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.common.time": {
-      "namespace": "ui.common.time",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 1,
-      "sha256": {
-        "en": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-        "ur": "89f3687b2d44d59cbc7a2fb69b29ec0e52cd79ab9743e1f2356799d6ee9f756c",
-        "context": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.common.time.json",
-        "target": "src/i18n/catalogues/ur/ui.common.time.json",
-        "context": "src/i18n/catalogues/en/ui.common.time.context.json"
       },
       "findings": [],
       "severity_counts": {
@@ -444,11 +730,11 @@
       "result": "clean",
       "verdict": "clean — remediation verified, no new findings",
       "keys_audited_in_delta": 0,
-      "file_keys": 138,
+      "file_keys": 135,
       "sha256": {
-        "en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-        "ur": "4d7d9c8c1fb59b6789506a86c25562a4650ef3713f9e587c3ad80ae6a5a9fb66",
-        "context": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "ur": "cc364e0e4efc32ccc66e9c8d28b236c3d857ef06f3ea548e643c483d8a67bcdc",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
       },
       "paths": {
         "en": "src/i18n/catalogues/en/ui.common.updates.json",
@@ -470,11 +756,11 @@
       "result": "clean",
       "verdict": "clean — remediation verified, no new findings",
       "keys_audited_in_delta": 0,
-      "file_keys": 5,
+      "file_keys": 8,
       "sha256": {
-        "en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
-        "ur": "92243c6068adf5c058db3ecb35636a856958add71467e51d419a3706422b3261",
-        "context": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "ur": "4bb4a186ec2ab6f631da48a730b9ef590587cadb9de9050dd1b32e0c01ed4593",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
       },
       "paths": {
         "en": "src/i18n/catalogues/en/ui.common.viewer.json",
@@ -489,338 +775,25 @@
         "nit": 0
       },
       "round1_findings_verified": []
-    },
-    "ui.console.errors": {
-      "namespace": "ui.console.errors",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 1,
-      "sha256": {
-        "en": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
-        "ur": "8eceb100a539dca95b09359ea77263efb459778a785b9e62217fc14796b71e86",
-        "context": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.console.errors.json",
-        "target": "src/i18n/catalogues/ur/ui.console.errors.json",
-        "context": "src/i18n/catalogues/en/ui.console.errors.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.hub.updates": {
-      "namespace": "ui.hub.updates",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 1,
-      "file_keys": 56,
-      "sha256": {
-        "en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
-        "ur": "23dd3d1894206c08170a73d9a889f935ea12a2532059a5b7262d24069bd69110",
-        "context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.hub.updates.json",
-        "target": "src/i18n/catalogues/ur/ui.hub.updates.json",
-        "context": "src/i18n/catalogues/en/ui.hub.updates.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": [
-        {
-          "id": "UR-SUR-UPDATES-01",
-          "severity": "minor",
-          "key": "ui.hub.updates.error.provider",
-          "before": "اسے merge کرنے والے ماڈل تک رسائی نہیں ہو سکی۔ خود دوبارہ کوشش ہو گی؛ ابھی کے لیے دوبارہ کوشش کا بٹن دبائیں۔",
-          "after": "اسے merge کرنے والے ماڈل تک رسائی نہیں ہو سکی۔ یہ خود دوبارہ کوشش کرے گا؛ ابھی کوشش کرنے کے لیے “دوبارہ کوشش” دبائیں۔",
-          "status": "FIXED"
-        }
-      ]
-    },
-    "ui.installer": {
-      "namespace": "ui.installer",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 22,
-      "sha256": {
-        "en": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
-        "ur": "a3666343ef0918f7fcec203000d700c3e02d740575b6875cfd1feff4a4c53f33",
-        "context": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.installer.json",
-        "target": "src/i18n/catalogues/ur/ui.installer.json",
-        "context": "src/i18n/catalogues/en/ui.installer.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.library.errors": {
-      "namespace": "ui.library.errors",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 3,
-      "sha256": {
-        "en": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
-        "ur": "b51f97dc6b21a98a0317ce89b9b31e5265ebca6d89a83123ee2ec280bd38d60e",
-        "context": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.library.errors.json",
-        "target": "src/i18n/catalogues/ur/ui.library.errors.json",
-        "context": "src/i18n/catalogues/en/ui.library.errors.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.mesh.errors": {
-      "namespace": "ui.mesh.errors",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 1,
-      "sha256": {
-        "en": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
-        "ur": "8b205c416381b302e4221eaa0330dbd16fa8889579119a1432b467b8db4aaa6b",
-        "context": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.mesh.errors.json",
-        "target": "src/i18n/catalogues/ur/ui.mesh.errors.json",
-        "context": "src/i18n/catalogues/en/ui.mesh.errors.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.miniView": {
-      "namespace": "ui.miniView",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 5,
-      "file_keys": 34,
-      "sha256": {
-        "en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
-        "ur": "9da5471be93bc8369da409cfc57ea5af7cfb52319a1410bde72f17b0a5b56461",
-        "context": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.miniView.json",
-        "target": "src/i18n/catalogues/ur/ui.miniView.json",
-        "context": "src/i18n/catalogues/en/ui.miniView.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": [
-        {
-          "id": "UR-SUR-MINIVIEW-01",
-          "severity": "minor",
-          "key": "ui.miniView.context",
-          "before": "سیاق: {used} ٹوکن۔",
-          "after": "کانٹیکسٹ: {used} ٹوکن۔",
-          "status": "FIXED"
-        }
-      ]
-    },
-    "ui.projects": {
-      "namespace": "ui.projects",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 427,
-      "sha256": {
-        "en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-        "ur": "232734a936be103b3be70e08a922e8dcd07a1a4c9b6406aa56ade5c9d16bdc0b",
-        "context": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.projects.json",
-        "target": "src/i18n/catalogues/ur/ui.projects.json",
-        "context": "src/i18n/catalogues/en/ui.projects.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.schedules.errors": {
-      "namespace": "ui.schedules.errors",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 3,
-      "sha256": {
-        "en": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
-        "ur": "37ede29f5f1e530990ac5963ec0963099f703b623fab4d0e5b8cac5b78828883",
-        "context": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.schedules.errors.json",
-        "target": "src/i18n/catalogues/ur/ui.schedules.errors.json",
-        "context": "src/i18n/catalogues/en/ui.schedules.errors.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.settings.appearance": {
-      "namespace": "ui.settings.appearance",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 69,
-      "sha256": {
-        "en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
-        "ur": "2ba0bc5900f6c52e8c4078f1449953ceff824493e584cb8310d7208f3319688f",
-        "context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.settings.appearance.json",
-        "target": "src/i18n/catalogues/ur/ui.settings.appearance.json",
-        "context": "src/i18n/catalogues/en/ui.settings.appearance.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.settings": {
-      "namespace": "ui.settings",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 0,
-      "file_keys": 45,
-      "sha256": {
-        "en": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-        "ur": "ddd178d737e391d27eaeec96d8f95edbe93a1e7395d274ee0b96a298f009b596",
-        "context": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.settings.json",
-        "target": "src/i18n/catalogues/ur/ui.settings.json",
-        "context": "src/i18n/catalogues/en/ui.settings.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": []
-    },
-    "ui.settings.shortcuts": {
-      "namespace": "ui.settings.shortcuts",
-      "status": "passed",
-      "result": "clean",
-      "verdict": "clean — remediation verified, no new findings",
-      "keys_audited_in_delta": 3,
-      "file_keys": 63,
-      "sha256": {
-        "en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-        "ur": "92c8a9a56e12310aa219c8e33990c0991370032d687afe4882d84ac003189aa7",
-        "context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
-      },
-      "paths": {
-        "en": "src/i18n/catalogues/en/ui.settings.shortcuts.json",
-        "target": "src/i18n/catalogues/ur/ui.settings.shortcuts.json",
-        "context": "src/i18n/catalogues/en/ui.settings.shortcuts.context.json"
-      },
-      "findings": [],
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "round1_findings_verified": [
-        {
-          "id": "UR-SUR-SHORTCUTS-01",
-          "severity": "minor",
-          "key": "ui.settings.shortcuts.reserved.undo",
-          "before": "مخصوص: انڈو کرتا ہے۔",
-          "after": "مخصوص: کالعدم کرتا ہے۔",
-          "status": "FIXED"
-        }
-      ]
     }
   },
   "totals": {
-    "keys_audited_round1": 505,
+    "keys_audited_round1": 1079,
     "findings_round1": {
       "blocker": 0,
-      "major": 0,
-      "minor": 5,
-      "nit": 0
+      "major": 4,
+      "minor": 16,
+      "nit": 3
     },
-    "findings_fixed": 5,
-    "findings_deferred": 0,
+    "findings_fixed": 22,
+    "findings_deferred": 1,
     "new_findings_round2": 0,
-    "changed_keys_rechecked": 11,
-    "consistency_satellites": 6
+    "changed_keys_rechecked": 31,
+    "consistency_satellites": 9
   },
   "status": "passed",
   "verdict": "passed — all majors fixed, no blocker/major open, no new findings",
-  "result": "clean",
+  "result": "clean-with-findings",
   "outside_scope_observations": [
     "ui.chat.tags.undo still reads واپس کریں (go back) while ui.browser.page_context_menu.undo, ui.canvas.wysiwyg_markdown_editor.undo and ui.settings.shortcuts.reserved.undo read کالعدم کریں. Pre-existing, outside both audited batches (ui.chat.tags is not in either namespace set), not introduced by this remediation; recorded for the next ur wave, not part of this verdict.",
     "ui.settings.imports.availability_unsupported reads غیر معاون and ui.providers.provider_detail.this_provider_has_no_supported_sign_in reads کوئی معاون طریقہ نہیں, while the remediated keys now use سپورٹ شدہ for supported/unsupported. Both are older keys outside this batch's audited delta (not in either key set); pre-existing, not introduced here, and not part of this verdict."

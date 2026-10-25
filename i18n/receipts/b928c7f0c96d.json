@@ -2,12 +2,12 @@
   "schema": 1,
   "kind": "independent-translation-audit",
   "locale": "vi",
-  "batch": "surfaces",
-  "pr": 1389,
-  "branch": "feat/i18n-surfaces-batch",
+  "batch": "canvas",
+  "pr": 1388,
+  "branch": "feat/i18n-canvas-batch",
   "date": "2026-10-24",
   "audited_heads": {
-    "head": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
+    "head": "936e3a483b4d675c9827be5f40167da186f86900",
     "base_merge_base": "40462495827dfb0e1bfacb8643da805912493a5b",
     "kind": "batch delta audit: every key whose English value was added or changed between base and head"
   },
@@ -21,8 +21,8 @@
   "independence": {
     "auditor_agent": "translation-auditor",
     "translator_agent": "translator",
-    "translator_session": "ca0bc31400bd",
-    "translator_receipt": "i18n/receipts/surface-extraction-translator-vi.json",
+    "translator_session": "1bbb997ac79c",
+    "translator_receipt": "i18n/receipts/canvas-batch-vi.json",
     "statement": "Did not author or translate any value in this batch; read the English source, the 31 namespace context sidecars (role/note consulted for flagged or ambiguous keys) and the target bytes at the audited head."
   },
   "reference": {
@@ -46,196 +46,631 @@
     },
     "parity_suite": {
       "path": "scripts/i18n/locale-parity.test.mjs",
-      "sha256": "efdd5fcf3b1a6358ac2e91e30cab536012823f968cf790c3704fe2fd0fd56919"
+      "sha256": "519ac59bb472defccbe41c155001310f8e7d62eb8e98c168d704e5b4f5edf3cc"
     }
   },
   "mechanical": {
-    "namespaces": 23,
-    "keys_audited": 471,
+    "namespaces": 8,
+    "keys_audited": 1041,
     "icu_ast_equal_after_vi_plural_collapse": true,
     "placeholder_integrity": "pass (argument names, selectors, number skeletons and tags)",
     "nfc": "pass",
     "manual_bidi_controls": "none",
-    "plural_categories": "other-only for vi; no caller-supplied one/other case in this batch",
-    "keys_read": 471,
-    "preexisting_identical_out_of_scope": 12,
-    "identical_changed_values": 0,
+    "plural_categories": "other-only for vi; four caller-supplied noun/pluralnoun messages retain one/other because the caller supplies both forms (ui.canvas.view_name.view_count, view_shown_this_list_is_capped, ui.chat.pickers.info_model.count_noun, table_pager.range)",
+    "keys_read": 1041,
+    "preexisting_identical_out_of_scope": 0,
+    "identical_changed_values": 51,
     "untranslated_stubs": 0,
     "rtl": "not applicable: vi is LTR"
   },
   "gate_checks": {
     "locale_parity_test": {
       "command": "node --test scripts/i18n/locale-parity.test.mjs",
-      "result": "PASS",
-      "detail": "vi is not an English stub; all vi checks pass."
+      "result": "FAIL",
+      "detail": "see gate_findings"
     }
   },
-  "merge_readiness": "ready",
+  "merge_readiness": "blocked",
   "translation_status": "clean-with-findings",
-  "status": "clean-with-findings",
-  "verdict": "clean-with-findings: 5 minor, 1 nit, 0 blocker, 0 major, no untranslated stubs; parity suite passes.",
+  "status": "changes_requested",
+  "verdict": "Translation quality clean-with-findings: 7 minor, 5 nit, 0 blocker, 0 major, no untranslated stubs. Merge is blocked on seven missing IDENTICAL_OK entries in the shared parity suite.",
   "severity_counts": {
     "blocker": 0,
     "major": 0,
-    "minor": 5,
-    "nit": 1
+    "minor": 7,
+    "nit": 5
   },
-  "gate_findings": [],
-  "observations": [],
+  "gate_findings": [
+    {
+      "severity": "blocker",
+      "category": "parity-gate",
+      "finding": "The seven vi values listed are legitimate IDENTICAL_OK candidates, but scripts/i18n/locale-parity.test.mjs has no IDENTICAL_OK entry for them. `node --test scripts/i18n/locale-parity.test.mjs` fails the vi stub test on this head; the same run also fails es, fr, hi, ur and zh-CN (ru passes).",
+      "values_correct": true,
+      "keys": [
+        "ui.canvas.file_rows.video",
+        "ui.canvas.shell.canvas",
+        "ui.chat.pickers.destination_pickers.desktop",
+        "ui.chat.pickers.destination_pickers.k",
+        "ui.chat.pickers.info_model.count_noun",
+        "ui.chat.pickers.info_model.runtime",
+        "ui.chat.pickers.session_panel.ok"
+      ],
+      "remediation": "Add the seven keys to IDENTICAL_OK in scripts/i18n/locale-parity.test.mjs with the reasons recorded in identical_ok; do not change the vi values."
+    }
+  ],
+  "observations": [
+    "ui.canvas.variables_viewer.this_action_cannot_be_undone carries a literal leading '? ' in English and vi alike; preserved as source, not counted as a translation finding (likely upstream copy defect)."
+  ],
   "limitations": [
     "Source-and-catalogue audit only; no rendered UI fit, pseudo-localization, RTL layout or activation/release sign-off.",
     "Every changed key was read; unchanged keys in the same namespace files (34 in ui.chat.pickers, 57 in ui.canvas, and the pre-existing surfaces rows) are outside the batch delta.",
     "Context sidecars were hashed for every namespace; role/note was read per flagged or ambiguous key rather than for every row."
   ],
   "namespaces": {
-    "ui.browser.errors": {
-      "namespace": "ui.browser.errors",
-      "source_path": "src/i18n/catalogues/en/ui.browser.errors.json",
-      "target_path": "src/i18n/catalogues/vi/ui.browser.errors.json",
-      "context_path": "src/i18n/catalogues/en/ui.browser.errors.context.json",
-      "keys_audited": 2,
+    "ui.canvas": {
+      "namespace": "ui.canvas",
+      "source_path": "src/i18n/catalogues/en/ui.canvas.json",
+      "target_path": "src/i18n/catalogues/vi/ui.canvas.json",
+      "context_path": "src/i18n/catalogues/en/ui.canvas.context.json",
+      "keys_audited": 290,
       "file_keys": {
-        "en": 2,
-        "vi": 2
+        "en": 347,
+        "vi": 347
       },
       "sha256": {
-        "en": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
-        "target": "e6bcc20734c458caaf8bd40ab9145c9da660bce93e063560bf2fa04eb1368dfa",
-        "context": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.chat.canonical": {
-      "namespace": "ui.chat.canonical",
-      "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
-      "target_path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
-      "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
-      "keys_audited": 17,
-      "file_keys": {
-        "en": 47,
-        "vi": 47
-      },
-      "sha256": {
-        "en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
-        "target": "11bec39c8c57dcffd93369604076d5061b7815e436b7cb79d271441230ef6d9c",
-        "context": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.chat.composer": {
-      "namespace": "ui.chat.composer",
-      "source_path": "src/i18n/catalogues/en/ui.chat.composer.json",
-      "target_path": "src/i18n/catalogues/vi/ui.chat.composer.json",
-      "context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
-      "keys_audited": 11,
-      "file_keys": {
-        "en": 47,
-        "vi": 47
-      },
-      "sha256": {
-        "en": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
-        "target": "533a19e92c44da462b9fe347f3d104bc7d1f2dce8e30c6efc2c32f5d8e3122dd",
-        "context": "3a45a24f1ce79edec4d13b2c0f11272c3dd3974812f05d8009f04ab787da8e63"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.code_review": {
-      "namespace": "ui.code_review",
-      "source_path": "src/i18n/catalogues/en/ui.code_review.json",
-      "target_path": "src/i18n/catalogues/vi/ui.code_review.json",
-      "context_path": "src/i18n/catalogues/en/ui.code_review.context.json",
-      "keys_audited": 1,
-      "file_keys": {
-        "en": 76,
-        "vi": 76
-      },
-      "sha256": {
-        "en": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
-        "target": "f094c2cc035c35f73ed540157fa4dd1a40674c8558d4c3d847e895189310cc1d",
-        "context": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.common.account": {
-      "namespace": "ui.common.account",
-      "source_path": "src/i18n/catalogues/en/ui.common.account.json",
-      "target_path": "src/i18n/catalogues/vi/ui.common.account.json",
-      "context_path": "src/i18n/catalogues/en/ui.common.account.context.json",
-      "keys_audited": 20,
-      "file_keys": {
-        "en": 38,
-        "vi": 38
-      },
-      "sha256": {
-        "en": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
-        "target": "f31d6745518a5270ab7eb1cc5daba3b897e6c3ff92ecd0993f5c205c403693db",
-        "context": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "target": "099709dc5c2fd65dfc9350943818865e991d4e1fb22818f013771b427938e7f4",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
       },
       "status": "clean-with-findings",
       "severity_counts": {
         "blocker": 0,
         "major": 0,
-        "minor": 0,
-        "nit": 1
+        "minor": 2,
+        "nit": 2
       },
       "findings": [
         {
+          "severity": "minor",
+          "category": "accuracy/idiom",
+          "key": "ui.canvas.inline_edit.edit_instructions",
+          "current": "Sửa hướng dẫn",
+          "proposed": "Hướng dẫn chỉnh sửa",
+          "reason": "aria-label on the instruction textarea; “Sửa hướng dẫn” reads as the imperative 'edit the instructions', not as the field's purpose (instructions for the edit)."
+        },
+        {
           "severity": "nit",
-          "category": "accuracy",
-          "key": "ui.common.account.first_top_up_bonus",
-          "current": "Nhận thêm {bonus} miễn phí cho lần nạp đầu tiên từ {minimum}.",
-          "proposed": "Nhận thêm {bonus} miễn phí cho lần nạp đầu tiên từ {minimum} trở lên.",
-          "reason": "English says “of {minimum} or more”; add “trở lên” so the threshold is explicit."
+          "category": "idiom",
+          "key": "ui.canvas.wysiwyg_markdown_editor.checklist",
+          "current": "Danh sách kiểm",
+          "proposed": "Danh sách kiểm tra",
+          "reason": "Clipped compound; the standard editor label is “Danh sách kiểm tra”."
+        },
+        {
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.canvas.variables_viewer.the_backend_does_not_have_a_chat_with_this_session_id",
+          "current": "Backend không có cuộc trò chuyện với mã phiên này.",
+          "proposed": "Backend không có cuộc trò chuyện với ID phiên này.",
+          "reason": "The same English term is “ID phiên” in ui.chat.header.copy_id; one rendering should be used."
+        },
+        {
+          "severity": "nit",
+          "category": "idiom",
+          "key": "ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk",
+          "current": "Bản lưu của bạn đã thay thế thay đổi trên đĩa.",
+          "proposed": "Bản lưu của bạn đã ghi đè thay đổi trên đĩa.",
+          "reason": "“thay thế thay đổi” repeats the same stem; “ghi đè” is the idiomatic verb for overwriting a changed file."
         }
       ],
-      "identical_ok": [],
+      "identical_ok": [
+        {
+          "key": "ui.canvas.file_rows.video",
+          "value": "Video",
+          "classification": "IDENTICAL_OK",
+          "reason": "Vietnamese loanword and the standard media-kind label; identical is the correct translation.",
+          "parity_entry_present": false
+        },
+        {
+          "key": "ui.canvas.shell.canvas",
+          "value": "Canvas",
+          "classification": "IDENTICAL_OK",
+          "reason": "Product surface name; the glossary keeps Canvas verbatim.",
+          "parity_entry_present": false
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.markdown_md",
+          "value": "Markdown (.md)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.html_html",
+          "value": "HTML (.html)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.css_css",
+          "value": "CSS (.css)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.javascript_js",
+          "value": "JavaScript (.js)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.jsx_jsx",
+          "value": "JSX (.jsx)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.typescript_ts",
+          "value": "TypeScript (.ts)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.tsx_tsx",
+          "value": "TSX (.tsx)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.python_py",
+          "value": "Python (.py)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.go_go",
+          "value": "Go (.go)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.java_java",
+          "value": "Java (.java)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.c_cs",
+          "value": "C# (.cs)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.php_php",
+          "value": "PHP (.php)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.ruby_rb",
+          "value": "Ruby (.rb)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.rust_rs",
+          "value": "Rust (.rs)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.json_json",
+          "value": "JSON (.json)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.yaml_yaml",
+          "value": "YAML (.yaml)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.yaml_yml",
+          "value": "YAML (.yml)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.xml_xml",
+          "value": "XML (.xml)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.toml_toml",
+          "value": "TOML (.toml)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.ini_ini",
+          "value": "INI (.ini)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.env",
+          "value": ".env",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.dockerfile",
+          "value": "Dockerfile",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.c_c",
+          "value": "C (.c)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.c_cpp",
+          "value": "C++ (.cpp)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.swift_swift",
+          "value": "Swift (.swift)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.kotlin_kt",
+          "value": "Kotlin (.kt)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.scala_scala",
+          "value": "Scala (.scala)",
+          "classification": "IDENTICAL_OK",
+          "reason": "Technology name and file extension only; both stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.pdf_preview.pdf",
+          "value": "PDF: {title}",
+          "classification": "IDENTICAL_OK",
+          "reason": "PDF acronym plus a title placeholder; the format name stays English.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.variable_form_dialog.example_key_example_value",
+          "value": "'{ \"example_key\": \"example_value\" }'",
+          "classification": "IDENTICAL_OK",
+          "reason": "JSON example object; machine syntax, never translated.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.variable_form_dialog.item1_item2",
+          "value": "[ \"item1\", \"item2\" ]",
+          "classification": "IDENTICAL_OK",
+          "reason": "JSON example array; machine syntax, never translated.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+          "value": "/Users/eren/Documents/image.png",
+          "classification": "IDENTICAL_OK",
+          "reason": "Sample absolute path; paths stay Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.insert_link_dialog.url",
+          "value": "URL",
+          "classification": "IDENTICAL_OK",
+          "reason": "URL acronym kept Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.canvas.insert_link_dialog.https_example_com",
+          "value": "https://example.com",
+          "classification": "IDENTICAL_OK",
+          "reason": "Sample URL; an example address, not prose.",
+          "parity_entry_present": true
+        }
+      ],
       "stubs": [],
       "overflow": [
         {
-          "key": "ui.common.account.top_up",
-          "en_len": 25,
-          "vi_len": 34,
-          "action": "rendered check: card link/button"
+          "key": "ui.canvas.wysiwyg_markdown_editor.checklist",
+          "en_len": 9,
+          "vi_len": 15,
+          "action": "rendered check; proposed “Danh sách kiểm tra” is 19"
+        },
+        {
+          "key": "ui.canvas.insert_table_popover.custom_size",
+          "en_len": 11,
+          "vi_len": 21,
+          "action": "rendered check: popover label"
+        }
+      ]
+    },
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
+      "source_path": "src/i18n/catalogues/en/ui.chat.pickers.json",
+      "target_path": "src/i18n/catalogues/vi/ui.chat.pickers.json",
+      "context_path": "src/i18n/catalogues/en/ui.chat.pickers.context.json",
+      "keys_audited": 686,
+      "file_keys": {
+        "en": 720,
+        "vi": 720
+      },
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "target": "3288771c3b535338b64a40efd75c487a215a9e3bad15ea3a556758ff49c30a48",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+      },
+      "status": "clean-with-findings",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 5,
+        "nit": 3
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "category": "accuracy",
+          "key": "ui.chat.pickers.context_panel.total_of_the_context_window",
+          "current": "Tổng: {formatpercent} cửa sổ ngữ cảnh",
+          "proposed": "Tổng: {formatpercent} của cửa sổ ngữ cảnh",
+          "reason": "The possessive is dropped; the current text reads “N% context window” rather than “N% of the context window”."
+        },
+        {
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.chat.pickers.analytics_panel.window",
+          "current": "Khung",
+          "proposed": "Khung thời gian",
+          "reason": "The same English “window” is rendered “khung thời gian” in ui.chat.pickers.usage_view_model.window; “Khung” alone is ambiguous with a pane/frame."
+        },
+        {
+          "severity": "minor",
+          "category": "idiom/terminology",
+          "key": "ui.chat.pickers.destination_pickers.resolving_the_model",
+          "current": "Đang phân giải mô hình…",
+          "proposed": "Đang xác định mô hình…",
+          "reason": "“phân giải” is DNS/parsing terminology; model and team resolution use “xác định” elsewhere (ui.agents.models.reading.not_resolved = “chưa xác định”). Same fix for resolving_the_model24577b, resolving_the_effort, resolving_the_effortd0fa08, pick_a_team_to_see_how_it_resolves and this_pane_has_not_resolved_a_model_to_change.",
+          "related_keys": [
+            "ui.chat.pickers.destination_pickers.resolving_the_model24577b",
+            "ui.chat.pickers.destination_pickers.resolving_the_effort",
+            "ui.chat.pickers.destination_pickers.resolving_the_effortd0fa08",
+            "ui.chat.pickers.destination_pickers.pick_a_team_to_see_how_it_resolves",
+            "ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change"
+          ]
+        },
+        {
+          "severity": "nit",
+          "category": "accuracy",
+          "key": "ui.chat.pickers.info_model.none_running",
+          "current": "{plural} · không có mục nào đang chạy",
+          "proposed": "{plural} · không có phiên nào đang chạy",
+          "reason": "{plural} is a session count; “mục” drops the noun and does not agree with “phiên”. Same fix for none_running_queued.",
+          "related_keys": [
+            "ui.chat.pickers.info_model.none_running_queued"
+          ]
+        },
+        {
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.chat.pickers.usage_view_model.credits",
+          "current": "credit",
+          "proposed": "tín dụng",
+          "reason": "The same billing unit is “tín dụng” throughout ui.common.account (Nạp tín dụng, tín dụng miễn phí); a bare English “credit” is a glossary drift."
+        },
+        {
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.chat.pickers.info_model.mobile_relay",
+          "current": "Relay di động",
+          "proposed": "Chuyển tiếp di động",
+          "reason": "Glossary §2 renders relay as “chuyển tiếp” and the mesh catalogue uses “dịch vụ chuyển tiếp”; “Relay” is a half-translation."
+        },
+        {
+          "severity": "nit",
+          "category": "idiom",
+          "key": "ui.chat.pickers.analytics_model.cache_hit_rate",
+          "current": "Tỷ lệ trúng cache",
+          "proposed": "Tỷ lệ cache hit",
+          "reason": "“trúng cache” is a literal calque; “cache hit” is the developer term. Same fix for session_panel.cache_hit_rate.",
+          "related_keys": [
+            "ui.chat.pickers.session_panel.cache_hit_rate"
+          ]
+        },
+        {
+          "severity": "nit",
+          "category": "accuracy",
+          "key": "ui.chat.pickers.destination_pickers.masked_cleared_after_storing",
+          "current": "Đã che. Xóa sau khi lưu.",
+          "proposed": "Đã che. Trường này được xóa sau khi lưu.",
+          "reason": "The passive “cleared” is ambiguous with the imperative “delete”; name the field and use the passive."
+        }
+      ],
+      "identical_ok": [
+        {
+          "key": "ui.chat.pickers.destination_pickers.k",
+          "value": "{value, number, ::group-off}k",
+          "classification": "IDENTICAL_OK",
+          "reason": "Placeholder plus the SI-style “k” suffix; no words to translate.",
+          "parity_entry_present": false
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.skill",
+          "value": "skill://",
+          "classification": "IDENTICAL_OK",
+          "reason": "Opaque scheme token; never translated.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.my_api_key",
+          "value": "MY_API_KEY",
+          "classification": "IDENTICAL_OK",
+          "reason": "Environment-variable-style token; never translated.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.desktop",
+          "value": "Desktop",
+          "classification": "IDENTICAL_OK",
+          "reason": "Platform/surface label; vi keeps “desktop” as in “ứng dụng desktop”.",
+          "parity_entry_present": false
+        },
+        {
+          "key": "ui.chat.pickers.info_model.term",
+          "value": "TERM",
+          "classification": "IDENTICAL_OK",
+          "reason": "Environment variable name; never translated.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.chat.pickers.info_model.colorterm",
+          "value": "COLORTERM",
+          "classification": "IDENTICAL_OK",
+          "reason": "Environment variable name; never translated.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.ok",
+          "value": "ok",
+          "classification": "IDENTICAL_OK",
+          "reason": "Status token; “ok” is the conventional status word beside failed/unknown.",
+          "parity_entry_present": false
+        },
+        {
+          "key": "ui.chat.pickers.info_model.python",
+          "value": "Python {python_version}",
+          "classification": "IDENTICAL_OK",
+          "reason": "Product name plus a version placeholder; Python stays Latin.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.chat.pickers.info_model.pid",
+          "value": "pid {pid, number, ::group-off}",
+          "classification": "IDENTICAL_OK",
+          "reason": "Machine field name plus a number placeholder.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.chat.pickers.info_model.pid_7837d5",
+          "value": "pid {pid, number, ::group-off}",
+          "classification": "IDENTICAL_OK",
+          "reason": "Machine field name plus a number placeholder.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.chat.pickers.usage_view_model.note_with_period",
+          "value": "{note}.",
+          "classification": "IDENTICAL_OK",
+          "reason": "Placeholder plus punctuation; no words to translate.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.completed_only",
+          "value": "{completed, number, ::group-off}",
+          "classification": "IDENTICAL_OK",
+          "reason": "Placeholder only; renders a bare count with no words.",
+          "parity_entry_present": true
+        },
+        {
+          "key": "ui.chat.pickers.info_model.count_noun",
+          "value": "{count, plural, one {{count, number, ::group-off} {noun}} other {{count, number, ::group-off} {pluralnoun}}}",
+          "classification": "IDENTICAL_OK",
+          "reason": "ICU message of placeholders only; no words to translate.",
+          "parity_entry_present": false
+        },
+        {
+          "key": "ui.chat.pickers.info_model.runtime",
+          "value": "runtime",
+          "classification": "IDENTICAL_OK",
+          "reason": "The vi style guide keeps “runtime” English (wave-2 recorded call).",
+          "parity_entry_present": false
+        },
+        {
+          "key": "ui.chat.pickers.info_model.runtime_trajectories",
+          "value": "{runtimecount} · {bound}{trajectorycount}",
+          "classification": "IDENTICAL_OK",
+          "reason": "Placeholders and a separator only; no words to translate.",
+          "parity_entry_present": true
+        }
+      ],
+      "stubs": [],
+      "overflow": [
+        {
+          "key": "ui.chat.pickers.destination_pickers.judge",
+          "en_len": 5,
+          "vi_len": 14,
+          "action": "rendered check: PickerField label"
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.as_quote",
+          "en_len": 8,
+          "vi_len": 19,
+          "action": "rendered check: command-palette group label"
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.tool_call_validity",
+          "en_len": 19,
+          "vi_len": 30,
+          "action": "rendered check: metric-card label"
+        },
+        {
+          "key": "ui.chat.pickers.usage_view_model.requests",
+          "en_len": 3,
+          "vi_len": 7,
+          "action": "rendered check: inline unit label (req → yêu cầu)"
+        },
+        {
+          "key": "ui.chat.pickers.info_model.active",
+          "en_len": 6,
+          "vi_len": 14,
+          "action": "rendered check: status chip"
+        },
+        {
+          "key": "ui.chat.pickers.failovers_panel.failovers",
+          "en_len": 9,
+          "vi_len": 22,
+          "action": "rendered check: panel title"
         }
       ]
     },
@@ -244,15 +679,15 @@
       "source_path": "src/i18n/catalogues/en/ui.common.actions.json",
       "target_path": "src/i18n/catalogues/vi/ui.common.actions.json",
       "context_path": "src/i18n/catalogues/en/ui.common.actions.context.json",
-      "keys_audited": 14,
+      "keys_audited": 30,
       "file_keys": {
-        "en": 20,
-        "vi": 20
+        "en": 36,
+        "vi": 36
       },
       "sha256": {
-        "en": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
-        "target": "0be5f71f9825dc9ac4e54d6d476d22a49f0d459c077591d2629ab807db80f3aa",
-        "context": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "target": "a26a6cc9565608095af1925b2a3ddd96db58091033827b1e467724ea003c1cf3",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
       },
       "status": "passed",
       "severity_counts": {
@@ -266,20 +701,20 @@
       "stubs": [],
       "overflow": []
     },
-    "ui.common.connection": {
-      "namespace": "ui.common.connection",
-      "source_path": "src/i18n/catalogues/en/ui.common.connection.json",
-      "target_path": "src/i18n/catalogues/vi/ui.common.connection.json",
-      "context_path": "src/i18n/catalogues/en/ui.common.connection.context.json",
-      "keys_audited": 27,
+    "ui.common.forms": {
+      "namespace": "ui.common.forms",
+      "source_path": "src/i18n/catalogues/en/ui.common.forms.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.forms.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.forms.context.json",
+      "keys_audited": 10,
       "file_keys": {
         "en": 37,
         "vi": 37
       },
       "sha256": {
-        "en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-        "target": "a7e425416d31ba6dfc598eb47436b2fe49ca67e3792655ca5c02823da5a9bb1d",
-        "context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "target": "124d30c6cc98637d1b2ac3567072d662c2943fede765ed4c83e08fe4b56ac11e",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
       },
       "status": "passed",
       "severity_counts": {
@@ -293,20 +728,20 @@
       "stubs": [],
       "overflow": []
     },
-    "ui.common.errors": {
-      "namespace": "ui.common.errors",
-      "source_path": "src/i18n/catalogues/en/ui.common.errors.json",
-      "target_path": "src/i18n/catalogues/vi/ui.common.errors.json",
-      "context_path": "src/i18n/catalogues/en/ui.common.errors.context.json",
-      "keys_audited": 131,
+    "ui.common.layout": {
+      "namespace": "ui.common.layout",
+      "source_path": "src/i18n/catalogues/en/ui.common.layout.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.layout.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.layout.context.json",
+      "keys_audited": 8,
       "file_keys": {
-        "en": 135,
-        "vi": 135
+        "en": 8,
+        "vi": 8
       },
       "sha256": {
-        "en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
-        "target": "2160d62e4c79f193a6ff3c309dee327c51403c47d50a1ed6ef5abd9d1cf879bb",
-        "context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "target": "8eb978ebdec1aaf91083f11750f52a70dbf2c5d430ea0a0e2f1130b4daf85981",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
       },
       "status": "passed",
       "severity_counts": {
@@ -316,7 +751,15 @@
         "nit": 0
       },
       "findings": [],
-      "identical_ok": [],
+      "identical_ok": [
+        {
+          "key": "ui.common.layout.chat_layout.mac",
+          "value": "MAC",
+          "classification": "IDENTICAL_OK",
+          "reason": "Platform keycap token; never translated.",
+          "parity_entry_present": true
+        }
+      ],
       "stubs": [],
       "overflow": []
     },
@@ -325,42 +768,15 @@
       "source_path": "src/i18n/catalogues/en/ui.common.speech.json",
       "target_path": "src/i18n/catalogues/vi/ui.common.speech.json",
       "context_path": "src/i18n/catalogues/en/ui.common.speech.context.json",
-      "keys_audited": 11,
+      "keys_audited": 5,
       "file_keys": {
-        "en": 11,
-        "vi": 11
+        "en": 5,
+        "vi": 5
       },
       "sha256": {
-        "en": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
-        "target": "5829eb308bd30ed3f412a84afd73b6b45d1e80fbd9a22144a27f7c56f5ddfb3b",
-        "context": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.common.time": {
-      "namespace": "ui.common.time",
-      "source_path": "src/i18n/catalogues/en/ui.common.time.json",
-      "target_path": "src/i18n/catalogues/vi/ui.common.time.json",
-      "context_path": "src/i18n/catalogues/en/ui.common.time.context.json",
-      "keys_audited": 1,
-      "file_keys": {
-        "en": 1,
-        "vi": 1
-      },
-      "sha256": {
-        "en": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-        "target": "c0bed5df041a72992031e574f0f3a59cd29608a4c6dd13cb1d41186e05d1b60a",
-        "context": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "target": "4c36f1b63f3b8684394ff2ea6c3663bc0e39a9cd9412329386f6179d33c525d2",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
       },
       "status": "passed",
       "severity_counts": {
@@ -379,15 +795,15 @@
       "source_path": "src/i18n/catalogues/en/ui.common.updates.json",
       "target_path": "src/i18n/catalogues/vi/ui.common.updates.json",
       "context_path": "src/i18n/catalogues/en/ui.common.updates.context.json",
-      "keys_audited": 11,
+      "keys_audited": 8,
       "file_keys": {
-        "en": 138,
-        "vi": 138
+        "en": 135,
+        "vi": 135
       },
       "sha256": {
-        "en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-        "target": "38860c7449bbd690395e5829ed88709d8633cd52cb7571374fc295dcd6261e0f",
-        "context": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "target": "553a68179c4f2c1687b353c890cfe13b822c7bc4d7baeb11a6a11e2d12141fae",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
       },
       "status": "passed",
       "severity_counts": {
@@ -406,105 +822,15 @@
       "source_path": "src/i18n/catalogues/en/ui.common.viewer.json",
       "target_path": "src/i18n/catalogues/vi/ui.common.viewer.json",
       "context_path": "src/i18n/catalogues/en/ui.common.viewer.context.json",
-      "keys_audited": 1,
-      "file_keys": {
-        "en": 5,
-        "vi": 5
-      },
-      "sha256": {
-        "en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
-        "target": "637a114e5e108b1e2e5e1d85d6ccd232a4d7d51bd9eab3cd3217e2489de2bc89",
-        "context": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.console.errors": {
-      "namespace": "ui.console.errors",
-      "source_path": "src/i18n/catalogues/en/ui.console.errors.json",
-      "target_path": "src/i18n/catalogues/vi/ui.console.errors.json",
-      "context_path": "src/i18n/catalogues/en/ui.console.errors.context.json",
-      "keys_audited": 1,
-      "file_keys": {
-        "en": 1,
-        "vi": 1
-      },
-      "sha256": {
-        "en": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
-        "target": "ee0161868220653324581ffcea093b9615965ab0460eb1b64fdf31e76c57888b",
-        "context": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
-      },
-      "status": "clean-with-findings",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 1,
-        "nit": 0
-      },
-      "findings": [
-        {
-          "severity": "minor",
-          "category": "glossary-consistency",
-          "key": "ui.console.errors.console_unavailable",
-          "current": "Cửa sổ này không thể kết nối với console.",
-          "proposed": "Cửa sổ này không thể kết nối với bảng lệnh.",
-          "reason": "Same Console surface; the established vi label is “Bảng lệnh”, not the English “console”."
-        }
-      ],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.hub.updates": {
-      "namespace": "ui.hub.updates",
-      "source_path": "src/i18n/catalogues/en/ui.hub.updates.json",
-      "target_path": "src/i18n/catalogues/vi/ui.hub.updates.json",
-      "context_path": "src/i18n/catalogues/en/ui.hub.updates.context.json",
-      "keys_audited": 56,
-      "file_keys": {
-        "en": 56,
-        "vi": 56
-      },
-      "sha256": {
-        "en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
-        "target": "c7a862c10c35ed422daf28c587b1820fbf59e6d0cfd731e4a0be6600b3ca7c29",
-        "context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.installer": {
-      "namespace": "ui.installer",
-      "source_path": "src/i18n/catalogues/en/ui.installer.json",
-      "target_path": "src/i18n/catalogues/vi/ui.installer.json",
-      "context_path": "src/i18n/catalogues/en/ui.installer.context.json",
       "keys_audited": 4,
       "file_keys": {
-        "en": 22,
-        "vi": 22
+        "en": 8,
+        "vi": 8
       },
       "sha256": {
-        "en": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
-        "target": "675758ce2f514ed7a460aa46b2209e0d15fae24891f2dfce4e9ac100a5546662",
-        "context": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "target": "6870b8b1de074943c687442d16cc24cd5a75beead9de8a25396fa94c550072d6",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
       },
       "status": "passed",
       "severity_counts": {
@@ -517,270 +843,6 @@
       "identical_ok": [],
       "stubs": [],
       "overflow": []
-    },
-    "ui.library.errors": {
-      "namespace": "ui.library.errors",
-      "source_path": "src/i18n/catalogues/en/ui.library.errors.json",
-      "target_path": "src/i18n/catalogues/vi/ui.library.errors.json",
-      "context_path": "src/i18n/catalogues/en/ui.library.errors.context.json",
-      "keys_audited": 3,
-      "file_keys": {
-        "en": 3,
-        "vi": 3
-      },
-      "sha256": {
-        "en": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
-        "target": "aeef352d2af540954d3067843341ec97faf4c0c7126a205cb9263860db5c4cce",
-        "context": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.mesh.errors": {
-      "namespace": "ui.mesh.errors",
-      "source_path": "src/i18n/catalogues/en/ui.mesh.errors.json",
-      "target_path": "src/i18n/catalogues/vi/ui.mesh.errors.json",
-      "context_path": "src/i18n/catalogues/en/ui.mesh.errors.context.json",
-      "keys_audited": 1,
-      "file_keys": {
-        "en": 1,
-        "vi": 1
-      },
-      "sha256": {
-        "en": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
-        "target": "ed61904fa5cc5817f3a1500844e8e3270061d011ee823c514f46dcd20571fd17",
-        "context": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.miniView": {
-      "namespace": "ui.miniView",
-      "source_path": "src/i18n/catalogues/en/ui.miniView.json",
-      "target_path": "src/i18n/catalogues/vi/ui.miniView.json",
-      "context_path": "src/i18n/catalogues/en/ui.miniView.context.json",
-      "keys_audited": 34,
-      "file_keys": {
-        "en": 34,
-        "vi": 34
-      },
-      "sha256": {
-        "en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
-        "target": "24d5d5411a578c37d1d42cc09eabfafb4249b0606a09b9497fe11aa364475182",
-        "context": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
-      },
-      "status": "clean-with-findings",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 1,
-        "nit": 0
-      },
-      "findings": [
-        {
-          "severity": "minor",
-          "category": "glossary-consistency",
-          "key": "ui.miniView.sheet_effort",
-          "current": "Mức độ suy luận",
-          "proposed": "Mức suy luận",
-          "reason": "The same “Reasoning effort” control is “Mức suy luận” in every ui.chat.pickers effort string; one term should be used."
-        }
-      ],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.projects": {
-      "namespace": "ui.projects",
-      "source_path": "src/i18n/catalogues/en/ui.projects.json",
-      "target_path": "src/i18n/catalogues/vi/ui.projects.json",
-      "context_path": "src/i18n/catalogues/en/ui.projects.context.json",
-      "keys_audited": 3,
-      "file_keys": {
-        "en": 427,
-        "vi": 427
-      },
-      "sha256": {
-        "en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-        "target": "9d4bcad72b9074fe399e541119fda6c1b8b9ef16ede9c10e3f5860be93de5712",
-        "context": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.schedules.errors": {
-      "namespace": "ui.schedules.errors",
-      "source_path": "src/i18n/catalogues/en/ui.schedules.errors.json",
-      "target_path": "src/i18n/catalogues/vi/ui.schedules.errors.json",
-      "context_path": "src/i18n/catalogues/en/ui.schedules.errors.context.json",
-      "keys_audited": 3,
-      "file_keys": {
-        "en": 3,
-        "vi": 3
-      },
-      "sha256": {
-        "en": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
-        "target": "f6e714541ea1241c0c792808332033cb436d12ef48e8f058f531998d8be1ac6e",
-        "context": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.settings.appearance": {
-      "namespace": "ui.settings.appearance",
-      "source_path": "src/i18n/catalogues/en/ui.settings.appearance.json",
-      "target_path": "src/i18n/catalogues/vi/ui.settings.appearance.json",
-      "context_path": "src/i18n/catalogues/en/ui.settings.appearance.context.json",
-      "keys_audited": 59,
-      "file_keys": {
-        "en": 69,
-        "vi": 69
-      },
-      "sha256": {
-        "en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
-        "target": "952319ac16b1f715cc9dcffaf8fc26b526b3e3f75efef3bc60e9aa4f74534a07",
-        "context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
-      },
-      "status": "clean-with-findings",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 1,
-        "nit": 0
-      },
-      "findings": [
-        {
-          "severity": "minor",
-          "category": "idiom",
-          "key": "ui.settings.appearance.theme.vaporwave",
-          "current": "Pastel hồng phai và xanh mòng két nhạt trên nền tím trung tâm thương mại đậm.",
-          "proposed": "Pastel hồng phai và xanh mòng két nhạt trên nền tím mall đậm.",
-          "reason": "“mall-purple” is an aesthetic descriptor; “tím trung tâm thương mại” is a literal calque, and the translator's own terminology list records “tím mall”."
-        }
-      ],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.settings": {
-      "namespace": "ui.settings",
-      "source_path": "src/i18n/catalogues/en/ui.settings.json",
-      "target_path": "src/i18n/catalogues/vi/ui.settings.json",
-      "context_path": "src/i18n/catalogues/en/ui.settings.context.json",
-      "keys_audited": 6,
-      "file_keys": {
-        "en": 45,
-        "vi": 45
-      },
-      "sha256": {
-        "en": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-        "target": "eeeb5f42b1cd22b3306e51fd62b324c7da8fb09a5cd65c7544660fbee47e7fd5",
-        "context": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
-      },
-      "status": "passed",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 0,
-        "nit": 0
-      },
-      "findings": [],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": []
-    },
-    "ui.settings.shortcuts": {
-      "namespace": "ui.settings.shortcuts",
-      "source_path": "src/i18n/catalogues/en/ui.settings.shortcuts.json",
-      "target_path": "src/i18n/catalogues/vi/ui.settings.shortcuts.json",
-      "context_path": "src/i18n/catalogues/en/ui.settings.shortcuts.context.json",
-      "keys_audited": 54,
-      "file_keys": {
-        "en": 63,
-        "vi": 63
-      },
-      "sha256": {
-        "en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-        "target": "b193310681a609816ecf7809005dc7d19d64d5bf8fb39d92d693bbf496d79ed8",
-        "context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
-      },
-      "status": "clean-with-findings",
-      "severity_counts": {
-        "blocker": 0,
-        "major": 0,
-        "minor": 2,
-        "nit": 0
-      },
-      "findings": [
-        {
-          "severity": "minor",
-          "category": "glossary-consistency/product-name",
-          "key": "ui.settings.shortcuts.row.canvas",
-          "current": "Bảng Canvas",
-          "proposed": "Canvas",
-          "reason": "The batch's own IDENTICAL_OK entry says Canvas is a product surface name preserved verbatim; ui.canvas.shell.canvas keeps “Canvas”, so “Bảng Canvas” is a second rendering."
-        },
-        {
-          "severity": "minor",
-          "category": "glossary-consistency",
-          "key": "ui.settings.shortcuts.row.console",
-          "current": "Bảng Console",
-          "proposed": "Bảng lệnh",
-          "reason": "The existing Console surface label is “Bảng lệnh” (ui.console.pane.label); “Bảng Console” is a third rendering of the same surface."
-        }
-      ],
-      "identical_ok": [],
-      "stubs": [],
-      "overflow": [
-        {
-          "key": "ui.settings.shortcuts.row.canvas",
-          "en_len": 6,
-          "vi_len": 11,
-          "action": "proposed “Canvas” (6) removes the risk"
-        },
-        {
-          "key": "ui.settings.shortcuts.row.console",
-          "en_len": 7,
-          "vi_len": 12,
-          "action": "proposed “Bảng lệnh” (10) keeps the established label"
-        }
-      ]
     }
   }
 }

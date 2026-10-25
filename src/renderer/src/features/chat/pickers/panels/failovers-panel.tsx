@@ -1,5 +1,7 @@
 import { Badge } from "@shared/components/ui/badge";
 import { Tooltip } from "@shared/components/ui/tooltip";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
@@ -77,6 +79,8 @@ const ChainRowView: FC<{ row: ChainRow }> = ({ row }) => {
 	 * key is the one that keeps rendering a neighbour's state when a list
 	 * reorders.
 	 */
+
+	useI18nLocale();
 	const seen = new Map<string, number>();
 	const hops = row.hops.map((hop) => {
 		const occurrence = (seen.get(hop) ?? 0) + 1;
@@ -94,9 +98,13 @@ const ChainRowView: FC<{ row: ChainRow }> = ({ row }) => {
 			</span>
 			{hops.length === 0 ? (
 				<>
-					<span className={cn("text-body-sm text-ink-muted")}>(none)</span>
+					<span className={cn("text-body-sm text-ink-muted")}>
+						{t("ui.chat.pickers.failovers_panel.none")}
+					</span>
 					<span className={cn("text-ink-dim text-meta")}>
-						A failure here goes straight to an error
+						{t(
+							"ui.chat.pickers.failovers_panel.a_failure_here_goes_straight_to_an_error",
+						)}
 					</span>
 				</>
 			) : (
@@ -123,6 +131,7 @@ export const FailoversPanel: FC<FailoversPanelProps> = ({
 	error,
 	onClose,
 }) => {
+	useI18nLocale();
 	const verdict = servingVerdict(data?.selected, data?.effective);
 	const chains = chainRows(data?.chains ?? {});
 	const selected = modelLabel(data?.selected);
@@ -132,9 +141,11 @@ export const FailoversPanel: FC<FailoversPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
-			bodyLabel="Failover chains region"
-			title="Failovers"
-			description="The model this session selected, the one actually serving it, and the configured default fallback chains."
+			bodyLabel={t("ui.chat.pickers.failovers_panel.failover_chains_region")}
+			title={t("ui.chat.pickers.failovers_panel.failovers")}
+			description={t(
+				"ui.chat.pickers.failovers_panel.the_model_this_session_selected_the_one_actually_serving_it_and_the_conf",
+			)}
 			body={
 				loading ? (
 					<PanelSkeleton shape="stats" />
@@ -143,19 +154,24 @@ export const FailoversPanel: FC<FailoversPanelProps> = ({
 				) : (
 					<PanelStack>
 						<PanelSection
-							title="Serving"
-							meta="live · from the session's owner"
+							title={t("ui.chat.pickers.failovers_panel.serving")}
+							meta={t(
+								"ui.chat.pickers.failovers_panel.live_from_the_session_s_owner",
+							)}
 						>
 							<div className={cn("grid gap-3 sm:grid-cols-2")}>
 								<Tooltip content={selected}>
 									<div className={cn("min-w-0")}>
-										<StatCard label="Selected" value={selected} />
+										<StatCard
+											label={t("ui.chat.pickers.failovers_panel.selected")}
+											value={selected}
+										/>
 									</div>
 								</Tooltip>
 								<Tooltip content={effective}>
 									<div className={cn("min-w-0")}>
 										<StatCard
-											label="Serving"
+											label={t("ui.chat.pickers.failovers_panel.serving")}
 											value={effective}
 											note={verdict.note}
 											tone={verdict.tone}
@@ -165,13 +181,27 @@ export const FailoversPanel: FC<FailoversPanelProps> = ({
 							</div>
 						</PanelSection>
 						<PanelSection
-							title="Fallback chains"
-							meta={`${data?.scope === "configured_defaults" || !data?.scope ? "configured defaults" : data.scope.split("_").join(" ")} · not live routing state`}
+							title={t("ui.chat.pickers.failovers_panel.fallback_chains")}
+							meta={t(
+								"ui.chat.pickers.failovers_panel.not_live_routing_state",
+								{
+									value:
+										data?.scope === "configured_defaults" || !data?.scope
+											? t("ui.chat.pickers.failovers_panel.configured_defaults")
+											: // Unknown backend scope identifiers stay technical rather than
+												// masquerading as reviewed product terminology.
+												data.scope
+													.split("_")
+													.join(" "),
+								},
+							)}
 						>
 							{chains.length === 0 ? (
 								<PanelNotice
 									kind="empty"
-									text="No fallback chains configured."
+									text={t(
+										"ui.chat.pickers.failovers_panel.no_fallback_chains_configured",
+									)}
 								/>
 							) : (
 								<div className={cn("flex flex-col")}>
@@ -181,7 +211,7 @@ export const FailoversPanel: FC<FailoversPanelProps> = ({
 								</div>
 							)}
 						</PanelSection>
-						<PanelSection title="Scope">
+						<PanelSection title={t("ui.chat.pickers.failovers_panel.scope")}>
 							{/*
 							 * No meta. § 6.5 and `panel-frame.tsx`'s own rule reserve the slot for
 							 * something the section does not already say; "read from your settings
@@ -189,8 +219,9 @@ export const FailoversPanel: FC<FailoversPanelProps> = ({
 							 * three-line section (design round 1, D12).
 							 */}
 							<p className={cn("text-body-sm text-ink-muted")}>
-								Chains are configuration read from your settings file. What is
-								actually serving is the live value above.
+								{t(
+									"ui.chat.pickers.failovers_panel.chains_are_configuration_read_from_your_settings_file_what_is_actually_s",
+								)}
 							</p>
 						</PanelSection>
 					</PanelStack>
