@@ -42,5 +42,10 @@
 	"ui.chat.sidebar.search.unavailable": "Поиск по разговорам недоступен, поэтому показаны совпадения только в названиях.",
 	"ui.chat.sidebar.teams.create": "Создать команду",
 	"ui.chat.sidebar.teams.loading": "Загрузка команд…",
-	"ui.chat.sidebar.section.current_chat": "Текущий чат"
+	"ui.chat.sidebar.section.current_chat": "Текущий чат",
+	"ui.chat.sidebar.agents.builtin_offer": "{count, plural, =0 {Встроенных агентов, готовых к установке, нет — {list}. После установки их можно редактировать.} one {{count, number, ::group-off} встроенный агент готов к установке — {list}. После установки его можно редактировать.} few {{count, number, ::group-off} встроенных агента готовы к установке — {list}. После установки их можно редактировать.} many {{count, number, ::group-off} встроенных агентов готовы к установке — {list}. После установки их можно редактировать.} other {{count, number, ::group-off} встроенного агента готово к установке — {list}. После установки их можно редактировать.}}",
+	"ui.chat.sidebar.catalogue.total": "Показано {shown, number, ::group-off} из {total, plural, one {{total, number, ::group-off} чата} few {{total, number, ::group-off} чатов} many {{total, number, ::group-off} чатов} other {{total, number, ::group-off} чата}}",
+	"ui.chat.sidebar.catalogue.total_search": "Показано {shown, number, ::group-off} {shown, plural, one {совпадение} few {совпадения} many {совпадений} other {совпадения}} из {total, plural, one {{total, number, ::group-off} чата} few {{total, number, ::group-off} чатов} many {{total, number, ::group-off} чатов} other {{total, number, ::group-off} чата}}",
+	"ui.chat.sidebar.catalogue.total_search_clipped": "Показано {shown, number, ::group-off}+ {shown, plural, one {совпадение} few {совпадения} many {совпадений} other {совпадения}} из {total, plural, one {{total, number, ::group-off} чата} few {{total, number, ::group-off} чатов} many {{total, number, ::group-off} чатов} other {{total, number, ::group-off} чата}}",
+	"ui.chat.sidebar.groups.badge": "{badge, plural, one {{badge, number, ::group-off} чат в этой группе} few {{badge, number, ::group-off} чата в этой группе} many {{badge, number, ::group-off} чатов в этой группе} other {{badge, number, ::group-off} чата в этой группе}}"
 }
