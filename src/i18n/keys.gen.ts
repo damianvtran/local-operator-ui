@@ -154,6 +154,7 @@ import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
 import esUiInstaller from "./catalogues/es/ui.installer.json";
 import esUiLibrary from "./catalogues/es/ui.library.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
+import esUiNotices from "./catalogues/es/ui.notices.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
@@ -231,6 +232,7 @@ import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
 import frUiInstaller from "./catalogues/fr/ui.installer.json";
 import frUiLibrary from "./catalogues/fr/ui.library.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
+import frUiNotices from "./catalogues/fr/ui.notices.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
@@ -308,6 +310,7 @@ import hiUiHubTaxonomy from "./catalogues/hi/ui.hub.taxonomy.json";
 import hiUiInstaller from "./catalogues/hi/ui.installer.json";
 import hiUiLibrary from "./catalogues/hi/ui.library.json";
 import hiUiMesh from "./catalogues/hi/ui.mesh.json";
+import hiUiNotices from "./catalogues/hi/ui.notices.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
@@ -385,6 +388,7 @@ import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
 import ruUiLibrary from "./catalogues/ru/ui.library.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
+import ruUiNotices from "./catalogues/ru/ui.notices.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
@@ -462,6 +466,7 @@ import urUiHubTaxonomy from "./catalogues/ur/ui.hub.taxonomy.json";
 import urUiInstaller from "./catalogues/ur/ui.installer.json";
 import urUiLibrary from "./catalogues/ur/ui.library.json";
 import urUiMesh from "./catalogues/ur/ui.mesh.json";
+import urUiNotices from "./catalogues/ur/ui.notices.json";
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
@@ -539,6 +544,7 @@ import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
 import viUiInstaller from "./catalogues/vi/ui.installer.json";
 import viUiLibrary from "./catalogues/vi/ui.library.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
+import viUiNotices from "./catalogues/vi/ui.notices.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
@@ -616,6 +622,7 @@ import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
 import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
 import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
 import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
+import zhCNUiNotices from "./catalogues/zh-CN/ui.notices.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
@@ -782,6 +789,7 @@ export const bundledCatalogues: Readonly<
 		...esUiInstaller,
 		...esUiLibrary,
 		...esUiMesh,
+		...esUiNotices,
 		...esUiOnboarding,
 		...esUiPresence,
 		...esUiProjects,
@@ -861,6 +869,7 @@ export const bundledCatalogues: Readonly<
 		...frUiInstaller,
 		...frUiLibrary,
 		...frUiMesh,
+		...frUiNotices,
 		...frUiOnboarding,
 		...frUiPresence,
 		...frUiProjects,
@@ -940,6 +949,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiInstaller,
 		...hiUiLibrary,
 		...hiUiMesh,
+		...hiUiNotices,
 		...hiUiOnboarding,
 		...hiUiPresence,
 		...hiUiProjects,
@@ -1019,6 +1029,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiInstaller,
 		...ruUiLibrary,
 		...ruUiMesh,
+		...ruUiNotices,
 		...ruUiOnboarding,
 		...ruUiPresence,
 		...ruUiProjects,
@@ -1098,6 +1109,7 @@ export const bundledCatalogues: Readonly<
 		...urUiInstaller,
 		...urUiLibrary,
 		...urUiMesh,
+		...urUiNotices,
 		...urUiOnboarding,
 		...urUiPresence,
 		...urUiProjects,
@@ -1177,6 +1189,7 @@ export const bundledCatalogues: Readonly<
 		...viUiInstaller,
 		...viUiLibrary,
 		...viUiMesh,
+		...viUiNotices,
 		...viUiOnboarding,
 		...viUiPresence,
 		...viUiProjects,
@@ -1256,6 +1269,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiInstaller,
 		...zhCNUiLibrary,
 		...zhCNUiMesh,
+		...zhCNUiNotices,
 		...zhCNUiOnboarding,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
@@ -5039,7 +5053,7 @@ export type MessageParams = {
 	"ui.notices.chat.ask_dismissed": undefined;
 	"ui.notices.chat.ask_dismissed_named": { name: string };
 	"ui.notices.chat.drafts_offered_name": { count: number };
-	"ui.notices.chat.drafts_offered_verb": undefined;
+	"ui.notices.chat.drafts_offered_verb": { count: number };
 	"ui.notices.chat.goal_clear_failed": undefined;
 	"ui.notices.chat.goal_cleared": { goal: string };
 	"ui.notices.chat.goal_dismiss_failed": undefined;

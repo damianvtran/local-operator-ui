@@ -647,6 +647,13 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « images » has the same spelling.",
 	],
 	[
+		"ui.notices.chat.archive_offered_no_name",
+		// Fallback noun used when the archived conversation has to be shown without
+		// its title. French spells it the same way and it is the correct French noun,
+		// so the identical value is the translation rather than an English copy.
+		"French cognate: « Conversation » has the same spelling.",
+	],
+	[
 		"ui.library.category.video",
 		// es writes the unaccented « video » (Latin American usage; Spain accents
 		// « vídeo »). The identical value is the es spelling, not an English copy,

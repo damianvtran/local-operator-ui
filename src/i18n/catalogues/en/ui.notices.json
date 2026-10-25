@@ -27,7 +27,7 @@
 	"ui.notices.chat.ask_dismissed": "Dismissed the ask in",
 	"ui.notices.chat.ask_dismissed_named": "Dismissed the ask in {name}",
 	"ui.notices.chat.drafts_offered_name": "{count, plural, one {Draft} other {{count} drafts}}",
-	"ui.notices.chat.drafts_offered_verb": "discarded.",
+	"ui.notices.chat.drafts_offered_verb": "{count, plural, one {discarded.} other {discarded.}}",
 	"ui.notices.chat.goal_clear_failed": "Could not clear the goal",
 	"ui.notices.chat.goal_cleared": "Goal cleared · {goal}",
 	"ui.notices.chat.goal_dismiss_failed": "Could not dismiss the goal",

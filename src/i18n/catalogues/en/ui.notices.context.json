@@ -216,17 +216,19 @@
 		"role": "count and noun at the head of the drafts-discard toast",
 		"tone": "Neutral count, sentence case.",
 		"length": "Two words or a number plus noun; the head may truncate.",
-		"note": "Followed by the fixed verb drafts_offered_verb. Count is the number of discarded drafts.",
+		"note": "Followed by the verb tail drafts_offered_verb, which receives the same count so an inflected language can agree with this noun. Count is the number of discarded drafts.",
 		"placeholders": {
 			"count": "number"
 		}
 	},
 	"ui.notices.chat.drafts_offered_verb": {
-		"role": "fixed tail of the drafts-discard toast body",
+		"role": "sentence tail of the drafts-discard toast body",
 		"tone": "Past-tense verb closing the sentence begun by the count.",
 		"length": "One word plus full stop; must stay short so truncation never eats it.",
-		"note": "Rendered as a non-truncating tail; the count head may ellipsise.",
-		"placeholders": {}
+		"note": "Rendered as a non-truncating tail appended after the counted noun (drafts_offered_name), and it must agree with that noun. {count} selects the agreement form and is not printed here, because the head carries the number. Plural guidance: use the target locale's complete CLDR cardinal categories, not an English count === 1 rule; identical English arms do not limit the categories a translation may need.",
+		"placeholders": {
+			"count": "number"
+		}
 	},
 	"ui.notices.chat.goal_clear_failed": {
 		"role": "error toast prefix when clearing the session goal fails",

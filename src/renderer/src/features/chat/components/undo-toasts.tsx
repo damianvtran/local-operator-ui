@@ -391,7 +391,9 @@ export function UndoToasts() {
 				<span className={cn("min-w-0 truncate")}>
 					{draftsOfferedName(draftsUndo.keys.length)}
 				</span>
-				<span className={cn("shrink-0")}>{draftsOfferedVerb()}</span>
+				<span className={cn("shrink-0")}>
+					{draftsOfferedVerb(draftsUndo.keys.length)}
+				</span>
 			</span>,
 			{
 				id: DRAFTS_UNDO_TOAST_ID,
