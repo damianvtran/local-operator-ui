@@ -1,4 +1,6 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { formatCount } from "../formatters";
 
@@ -61,11 +63,14 @@ export type TablePagerProps = {
 	/** Rows in the narrowed set. */
 	total: number;
 	/**
-	 * The counted thing, SINGULAR — `"session"`. This is the only place the
-	 * noun lives: the range line pluralises it from `total`, so a caller cannot
-	 * pass a plural and get `1 sessions`.
+	 * Singular and plural counted nouns, in the forms the RANGE message places
+	 * them. It prints `{from}–{to} of {totaltext} …` and selects one branch by
+	 * `total`, so a locale whose grammar inflects the noun after that count
+	 * supplies those forms rather than its standalone nominative: Russian passes
+	 * the genitive («сессии»/«сессий») because «из 50 сессий» governs the case.
 	 */
 	label: string;
+	pluralLabel: string;
 	onPage: (page: number) => void;
 };
 
@@ -76,8 +81,10 @@ export const TablePager = ({
 	to,
 	total,
 	label,
+	pluralLabel,
 	onPage,
 }: TablePagerProps) => {
+	useI18nLocale();
 	const atStart = page <= 0;
 	const atEnd = page >= pageCount - 1;
 	/**
@@ -142,17 +149,23 @@ export const TablePager = ({
 			 * file's own formatter module exists to prevent.
 			 */}
 			<p className={cn("text-ink-dim text-meta")}>
-				{formatCount(from)}–{formatCount(to)} of {formatCount(total)}{" "}
-				{total === 1 ? label : `${label}s`}
+				{t("ui.chat.pickers.table_pager.range", {
+					from: formatCount(from),
+					to: formatCount(to),
+					totaltext: formatCount(total),
+					total: total,
+					label: label,
+					plurallabel: pluralLabel,
+				})}
 			</p>
 			<div className={cn("flex items-center gap-2")}>
-				{control("First", atStart, 0)}
-				{control("Prev", atStart, page - 1)}
+				{control(t("ui.chat.pickers.table_pager.first"), atStart, 0)}
+				{control(t("ui.chat.pickers.table_pager.prev"), atStart, page - 1)}
 				<p className={cn("text-ink-dim text-meta tabular-nums")}>
 					{page + 1} / {pageCount}
 				</p>
-				{control("Next", atEnd, page + 1)}
-				{control("Last", atEnd, pageCount - 1)}
+				{control(t("ui.chat.pickers.table_pager.next"), atEnd, page + 1)}
+				{control(t("ui.chat.pickers.table_pager.last"), atEnd, pageCount - 1)}
 			</div>
 		</div>
 	);

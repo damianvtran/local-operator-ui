@@ -40,12 +40,44 @@
  *     (188 = headerBottom 184 + 4, recorded in reveal-after.json).
  */
 import assert from "node:assert/strict";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
+import { buildSync } from "esbuild";
 
-import {
-	FINDER_HEADER_BAND,
-	FOCUS_RING_GAP,
-} from "../src/renderer/src/features/chat/components/canvas/finder-layout.ts";
+/*
+ * The layout module resolves copy through `t()`, so it carries a renderer
+ * path alias (`@shared/i18n`) that Node's own TS loader cannot resolve.
+ * Bundle it the way the rest of this suite bundles an aliased renderer
+ * module (`header-identity-menu.test.mjs` restates the same aliases).
+ */
+const layoutBundle = buildSync({
+	stdin: {
+		contents:
+			'export { FINDER_HEADER_BAND, FOCUS_RING_GAP } from "./src/renderer/src/features/chat/components/canvas/finder-layout.ts";',
+		resolveDir: process.cwd(),
+		loader: "ts",
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	alias: {
+		"@shared": join(process.cwd(), "src/renderer/src/shared"),
+		"@features": join(process.cwd(), "src/renderer/src/features"),
+	},
+	logLevel: "silent",
+});
+const layoutFile = join(
+	process.cwd(),
+	"node_modules/.cache/canvas-batch/finder-layout.mjs",
+);
+mkdirSync(dirname(layoutFile), { recursive: true });
+writeFileSync(layoutFile, layoutBundle.outputFiles[0].text);
+const { FINDER_HEADER_BAND, FOCUS_RING_GAP } = await import(
+	pathToFileURL(layoutFile).href
+);
 
 /**
  * The reveal's own arithmetic, as the component writes it.

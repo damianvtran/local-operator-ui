@@ -1,0 +1,9 @@
+{
+	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "Đổi kích thước khung câu hỏi. Nhấp đúp để đặt lại chiều rộng khung dùng chung.",
+	"ui.common.layout.chat_layout.resize_the_sidebar": "Đổi kích thước thanh bên ({sidebartogglecap})",
+	"ui.common.layout.sidebar_header.create_a_new_agent": "Tạo tác nhân mới",
+	"ui.common.layout.sidebar_header.import_agent": "Nhập tác nhân",
+	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "Nhập tác nhân từ tệp ZIP",
+	"ui.common.layout.sidebar_header.new_agent": "Tác nhân mới",
+	"ui.common.layout.sidebar_header.search_agents": "Tìm tác nhân"
+}
