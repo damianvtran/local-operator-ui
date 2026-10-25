@@ -555,6 +555,7 @@ const boxFor = (
 const MessageImage: FC<{
 	message: TeamBridgeMessage;
 	tenantId: string | null;
+	accountId?: string;
 	attachment: TeamBridgeAttachment;
 	index: number;
 	count: number;
@@ -565,6 +566,7 @@ const MessageImage: FC<{
 }> = ({
 	message,
 	tenantId,
+	accountId,
 	attachment,
 	index,
 	count,
@@ -583,8 +585,10 @@ const MessageImage: FC<{
 			conversationId: message.conversation_id,
 			messageId: message.id,
 			attachmentId: attachment.id,
+			// The receipt, not a lookup: the account this tile was rendered under.
+			expectedAccountId: accountId ?? "",
 		},
-		view === "fetch",
+		view === "fetch" && Boolean(accountId),
 		attempt,
 	);
 	const label = t("ui.teamBridge.attachments.position", {
@@ -655,8 +659,10 @@ export const TeamBridgeMessageAttachments: FC<{
 	message: TeamBridgeMessage;
 	/* `null` = the caller does not know the organization: nothing is fetched. */
 	tenantId: string | null;
+	/* The captured owner this subtree was rendered under; the byte route needs it. */
+	accountId?: string;
 	density?: "regular" | "compact";
-}> = ({ message, tenantId, density = "regular" }) => {
+}> = ({ message, tenantId, density = "regular", accountId }) => {
 	useI18nLocale();
 	const attachments = message.attachments ?? [];
 	const [open, setOpen] = useState<number | null>(null);
@@ -694,6 +700,7 @@ export const TeamBridgeMessageAttachments: FC<{
 						<MessageImage
 							message={message}
 							tenantId={tenantId}
+							accountId={accountId}
 							attachment={attachment}
 							index={index}
 							count={count}

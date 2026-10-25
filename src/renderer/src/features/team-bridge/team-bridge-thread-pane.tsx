@@ -209,6 +209,7 @@ function TeamBridgeThreadPaneBody({
 						messages={[root]}
 						labelFor={labelFor}
 						tenantId={tenantId}
+						accountId={accountId}
 						density="compact"
 						reactionContext={reactionContext}
 						forceToolbar={forceToolbar}
@@ -240,6 +241,7 @@ function TeamBridgeThreadPaneBody({
 				) : (
 					<TeamBridgeMessageList
 						messages={replies}
+						accountId={accountId}
 						labelFor={labelFor}
 						tenantId={tenantId}
 						density="compact"

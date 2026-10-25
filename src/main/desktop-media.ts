@@ -158,6 +158,11 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("team_bridge.attachment.upload"),
 			tenantId: id,
 			conversationId: id,
+			/* REQUIRED: the runtime route answers 422 without a captured-owner
+			   receipt, and comparing an account to itself is not a guard. Main
+			   refuses the request locally when it is absent, so no unguarded
+			   attachment call can be constructed. */
+			expectedAccountId: id,
 		})
 		.strict(),
 	z
@@ -167,6 +172,7 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			conversationId: id,
 			messageId: id,
 			attachmentId: id,
+			expectedAccountId: id,
 		})
 		.strict(),
 	/*
@@ -281,12 +287,12 @@ function endpoint(request: DesktopMediaRequest): {
 			};
 		case "team_bridge.attachment.upload":
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId })}`,
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
 				method: "POST",
 			};
 		case "team_bridge.attachment":
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId })}`,
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
 				method: "GET",
 			};
 	}

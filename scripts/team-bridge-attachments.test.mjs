@@ -218,11 +218,12 @@ test("send/schedule DTOs carry attachment_ids only when present, and refuse empt
 		tenant_id: "tnt_1",
 		conversation_id: "bcv_1",
 		attachment_id: "batt_a",
+		expected_account_id: "acct_a",
 	});
 	assert.equal(del.method, "DELETE");
 	assert.equal(
 		del.path,
-		"/v1/desktop/team-bridge/conversations/bcv_1/attachments/batt_a?tenant_id=tnt_1",
+		"/v1/desktop/team-bridge/conversations/bcv_1/attachments/batt_a?tenant_id=tnt_1&expected_account_id=acct_a",
 	);
 });
 
@@ -531,8 +532,21 @@ async function mountHook(props) {
 	const element = document.createElement("div");
 	document.body.append(element);
 	const root = createRoot(element);
+	// The hook resolves its captured owner through `useBridgeOwner`, so it needs
+	// the SAME react-query context the page provides in production.
+	const client = new m.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	const render = async (next) =>
-		act(async () => root.render(React.createElement(HookProbe, next)));
+		act(async () =>
+			root.render(
+				React.createElement(
+					m.QueryClientProvider,
+					{ client },
+					React.createElement(HookProbe, next),
+				),
+			),
+		);
 	await render(props);
 	return {
 		render,
@@ -610,10 +624,13 @@ test("hook: upload into an existing conversation, max 4, retry after failure, re
 	for (const call of mediaCalls) {
 		assert.deepEqual(Object.keys(call.request).sort(), [
 			"conversationId",
+			"expectedAccountId",
 			"op",
 			"tenantId",
 		]);
 		assert.equal(call.request.tenantId, "tnt_1");
+		// The receipt is the account this composer was rendered under.
+		assert.equal(call.request.expectedAccountId, "acct_a");
 	}
 	// Drafts persisted descriptors (ids), never bytes.
 	assert.equal(persisted.at(-1).length, 4);
@@ -629,6 +646,43 @@ test("hook: upload into an existing conversation, max 4, retry after failure, re
 	);
 	assert.equal(hook.readyIds().length, 0, "expired ids are never sent");
 	await app.close();
+});
+
+test("hook: a captured account the runtime refuses never becomes a silent success", async () => {
+	mediaCalls = [];
+	// The captured-owner guard: the runtime answers 409 when the receipt names an
+	// account that is no longer the signed-in one. The composer must surface that
+	// refusal (error chip, send blocked) instead of showing a ready image that
+	// would 422/409 at send time.
+	mediaAnswer = (request) =>
+		request.op === "team_bridge.attachment.upload"
+			? { status: 409, kind: "error", detail: "account_mismatch" }
+			: { status: 404, kind: "error" };
+	const app = await mountHook({
+		scopeKey: "a",
+		accountId: "acct_stale",
+		tenantId: "tnt_1",
+		conversationId: "bcv_1",
+		capability: CAP,
+	});
+	try {
+		await act(async () => hook.add([new Blob([PNG])]));
+		await settle();
+		await settle();
+		assert.equal(mediaCalls.length, 1);
+		// The receipt is the account the composer was rendered under, not a fresh
+		// lookup of whoever is signed in when the request runs.
+		assert.equal(mediaCalls.at(-1).request.expectedAccountId, "acct_stale");
+		assert.deepEqual(
+			hook.chips.map((chip) => chip.status),
+			["error"],
+			"the refusal surfaces as an error chip",
+		);
+		assert.equal(hook.readyIds().length, 0, "nothing is sendable");
+		assert.equal(hook.blocked, true, "send is blocked");
+	} finally {
+		await app.close();
+	}
 });
 
 test("hook: a draft with no conversation HOLDS images and stages them on first send", async () => {
@@ -810,6 +864,9 @@ async function renderList(messages, tenantId = "tnt_1") {
 				messages,
 				labelFor: (sender) => sender.display_label,
 				tenantId,
+				// The byte route carries the captured-owner receipt, so the list
+				// is rendered with the account it is authorized under.
+				accountId: "acct_a",
 			}),
 		),
 	);
@@ -873,7 +930,10 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 		"ids never reach the screen",
 	);
 	await view.close();
+	// The cache defers a revoke by one microtask (a fold swap hands a URL to a
+	// new holder inside one commit), so the count is read after a macrotask.
 	await settle();
+	await new Promise((resolve) => setTimeout(resolve, 10));
 	assert.equal(liveUrls.size, 0, "blob URLs are revoked on unmount");
 });
 
@@ -988,6 +1048,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 				op: "team_bridge.attachment.upload",
 				tenantId: "tnt_1",
 				conversationId: "bcv_1",
+				expectedAccountId: "acc_1",
 			},
 			new Uint8Array(PNG),
 			base,
@@ -996,7 +1057,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 		assert.equal(up.response.kind, "json");
 		assert.deepEqual(seen.at(-1), {
 			method: "POST",
-			url: "/v1/desktop/team-bridge/conversations/bcv_1/attachments?tenant_id=tnt_1",
+			url: "/v1/desktop/team-bridge/conversations/bcv_1/attachments?tenant_id=tnt_1&expected_account_id=acc_1",
 			auth: true,
 			type: "application/octet-stream",
 			bytes: PNG.length,
@@ -1008,6 +1069,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 				op: "team_bridge.attachment",
 				tenantId: "tnt_1",
 				conversationId: "bcv_1",
+				expectedAccountId: "acc_1",
 				messageId: "bmsg_1",
 				attachmentId: "batt_1",
 			},
@@ -1018,7 +1080,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 		assert.equal(got.response.kind, "bytes");
 		assert.equal(
 			seen.at(-1).url,
-			"/v1/desktop/team-bridge/conversations/bcv_1/messages/bmsg_1/attachments/batt_1?tenant_id=tnt_1",
+			"/v1/desktop/team-bridge/conversations/bcv_1/messages/bmsg_1/attachments/batt_1?tenant_id=tnt_1&expected_account_id=acc_1",
 		);
 		assert.equal(seen.at(-1).method, "GET");
 
@@ -1028,6 +1090,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 				op: "team_bridge.attachment",
 				tenantId: "tnt_1",
 				conversationId: "bcv_1",
+				expectedAccountId: "acc_1",
 				messageId: "bmsg_1",
 				attachmentId: "batt_1",
 			},
@@ -1052,6 +1115,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 				op: "team_bridge.attachment",
 				tenantId: "tnt_1",
 				conversationId: "bcv_1",
+				expectedAccountId: "acc_1",
 				messageId: "bmsg_1",
 				attachmentId: "batt_other",
 			},
@@ -1068,6 +1132,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 				op: "team_bridge.attachment",
 				tenantId: "tnt_1",
 				conversationId: "../../v1/admin",
+				expectedAccountId: "acc_1",
 				messageId: "bmsg_1",
 				attachmentId: "batt_1",
 			},
@@ -1082,6 +1147,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 				op: "team_bridge.attachment.upload",
 				tenantId: "tnt_1",
 				conversationId: "bcv_1",
+				expectedAccountId: "acc_1",
 			},
 			new Uint8Array(5 * 1024 * 1024 + 1),
 			base,
@@ -1094,6 +1160,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 				op: "team_bridge.attachment.upload",
 				tenantId: "tnt_1",
 				conversationId: "bcv_1",
+				expectedAccountId: "acc_1",
 			},
 			null,
 			base,
@@ -1105,6 +1172,7 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 				op: "team_bridge.attachment.upload",
 				tenantId: "tnt_1",
 				conversationId: "bcv_1",
+				expectedAccountId: "acc_1",
 			},
 			new Uint8Array(PNG),
 			base,
@@ -1601,7 +1669,14 @@ test("fail-fast guards: the render budget and the settle bound turn a runaway in
  */
 test(
 	"page R4-02: opening Drafts or Scheduled closes an open thread",
-	{ timeout: 30_000 },
+	{
+		timeout: 30_000,
+		// HELD IN THIS BUILD: main gates the thread surface at the view's front
+		// door (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false`), so this
+		// export renders null and the pane's scroll behaviour is unreachable.
+		// Re-enable with the thread surface; nothing here is attachment-specific.
+		skip: "thread surface is held in this build (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)",
+	},
 	async () => {
 		for (const label of ["Drafts", "Scheduled"]) {
 			localStorage.clear();
@@ -1984,7 +2059,14 @@ test("F9 harness self-check: an overflowing viewport left alone is NOT at the bo
 
 test(
 	"F9 thread pane: opens at the newest reply, follows when pinned, never yanks a reader who scrolled up",
-	{ timeout: 30_000 },
+	{
+		timeout: 30_000,
+		// HELD IN THIS BUILD: main gates the thread surface at the view's front
+		// door (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false`), so this
+		// export renders null and the pane's scroll behaviour is unreachable.
+		// Re-enable with the thread surface; nothing here is attachment-specific.
+		skip: "thread surface is held in this build (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)",
+	},
 	() =>
 		withScrollGeometry(async () => {
 			const element = document.createElement("div");
@@ -2215,7 +2297,14 @@ test(
 
 test(
 	"r8 m2: Load more replies keeps the reader's place instead of jumping past the new page",
-	{ timeout: 30_000 },
+	{
+		timeout: 30_000,
+		// HELD IN THIS BUILD: main gates the thread surface at the view's front
+		// door (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false`), so this
+		// export renders null and the pane's scroll behaviour is unreachable.
+		// Re-enable with the thread surface; nothing here is attachment-specific.
+		skip: "thread surface is held in this build (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)",
+	},
 	() =>
 		withScrollGeometry(async () => {
 			const element = document.createElement("div");

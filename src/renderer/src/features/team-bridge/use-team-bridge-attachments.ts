@@ -93,6 +93,16 @@ export function useTeamBridgeAttachments(args: {
 	const [chips, setChips] = useState<AttachmentChip[]>(() =>
 		(persisted ?? []).map((row) => chipFromDraft(accountId, row)),
 	);
+	/*
+	 * THE RECEIPT IS CAPTURED, NOT LOOKED UP. Every attachment route now carries
+	 * `expected_account_id`, and the runtime refuses a call without it (422) or
+	 * with another account's receipt (409). The account this composer was
+	 * RENDERED under is the receipt; resolving whoever is signed in when the
+	 * request runs would compare an account to itself and prove nothing. A ref,
+	 * so a re-render under a different account cannot silently re-point an
+	 * in-flight upload.
+	 */
+	const capturedAccount = useRef(accountId).current;
 	const [notice, setNotice] = useState<AttachmentNotice>(null);
 	// The latest list for async completions, which must not act on a stale render.
 	const live = useRef(chips);
@@ -147,7 +157,7 @@ export function useTeamBridgeAttachments(args: {
 		started = generation.current,
 		tenant = tenantId,
 	): Promise<DraftAttachment | null> => {
-		if (!tenant) {
+		if (!tenant || !capturedAccount) {
 			patch(key, { status: "error", reason: "failed" });
 			return null;
 		}
@@ -157,6 +167,7 @@ export function useTeamBridgeAttachments(args: {
 				tenant,
 				into,
 				prepared.bytes,
+				capturedAccount,
 			);
 			if (generation.current !== started) return null;
 			const descriptor = draftAttachment(answer, into);
@@ -228,11 +239,17 @@ export function useTeamBridgeAttachments(args: {
 		setNotice(null);
 		// Best effort: an orphaned staged upload is reaped by the hub's 72 h sweep
 		// anyway, so a failed delete costs storage for a while, never correctness.
-		if (chip.attachment && tenantId && chip.status === "ready")
+		if (
+			chip.attachment &&
+			tenantId &&
+			chip.status === "ready" &&
+			capturedAccount
+		)
 			void TeamBridgeApi.deleteAttachment(
 				tenantId,
 				chip.attachment.conversationId,
 				chip.attachment.id,
+				capturedAccount,
 			).catch(() => {});
 	};
 
