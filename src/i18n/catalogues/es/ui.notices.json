@@ -47,7 +47,7 @@
 	"ui.notices.chat.unread_backend_silent": "El backend no respondió.",
 	"ui.notices.chat.unread_not_cleared": "{reason} No se borraron las marcas de mensajes sin leer.",
 	"ui.notices.credentials.removed": "Credencial n.º {index, number} eliminada",
-	"ui.notices.credentials.stored": "Guardado: {keys}. Se inyectan en cada comando de bash como variables de entorno; el agente no puede leer el valor.",
+	"ui.notices.credentials.stored": "Guardado: {keys}. Cada clave se inyecta en cada comando de bash como variable de entorno; el agente no puede leer el valor.",
 	"ui.notices.credentials.unconfirmed": "El guardado de {count, plural, one {1 credencial} many {{count, number} de credenciales} other {{count, number} credenciales}} no se pudo confirmar ({keys}); se avisó al agente para que compruebe el valor antes de usarlo. Vuelve a pegar el valor después de /credential para guardarlo de nuevo.",
 	"ui.notices.credentials.unstored": "El guardado de {count, plural, one {1 credencial} many {{count, number} de credenciales} other {{count, number} credenciales}} falló ({keys}); se avisó al agente. Vuelve a pegar el valor después de /credential para reintentarlo.",
 	"ui.notices.credentials.updated": "Credencial “{key}” actualizada",
