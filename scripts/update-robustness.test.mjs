@@ -3475,7 +3475,14 @@ test(
 			settleSeconds: 1,
 			appearSeconds: 1,
 			announceSeconds: 1,
-			appWaitNoticeSeconds: 1,
+			/*
+			 * Raise on the FIRST poll. This case is about the sentence's bytes, not
+			 * about the one-second threshold; with a two-second deadline a loaded
+			 * host can sleep past the threshold and break before it fires, which
+			 * made the assertion intermittently see only the fallbacks. Threshold
+			 * timing is covered by the wait/hard-bound case below.
+			 */
+			appWaitNoticeSeconds: 0,
 			appWaitFallbackSeconds: 2,
 			messages: {
 				...watchdogMessages(),
