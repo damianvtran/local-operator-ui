@@ -49,9 +49,19 @@ import { pythonChildEnv } from "./python-child-env.mjs";
 const OUT = resolve("artifacts/notifications-native");
 const SESSION = "aaaaaaaaaaa1";
 const OTHER_SESSION = "bbbbbbbbbbb2";
-const TARGET = "n_targetitemaaaaaa";
-const UNRELATED = "n_unrelatedaaaaaaa";
-const RACED = "n_raceditemaaaaaa";
+/*
+ * THE ITEM IDS ARE THE STORE'S, NOT THIS FILE'S.
+ *
+ * `NotificationStore.notify` mints its own `n_` + 16 base32 characters, so a
+ * literal id here could never equal what the seed returns - the equality
+ * assertions that used to hold these constants failed on every run, which is
+ * why the scene has never reached its foreground read. They are assigned from
+ * the seed's answer below, before any selector or request is built out of them,
+ * and only their SHAPE is asserted here.
+ */
+let TARGET = "";
+let UNRELATED = "";
+let RACED = "";
 const _ASK = `ask:${OTHER_SESSION}:a-7f3c`;
 
 const refuseUnlessSanctioned = () => {
@@ -92,6 +102,18 @@ const freePort = () =>
 	});
 
 const pause = (ms) => new Promise((done) => setTimeout(done, ms));
+const outfile = join(OUT, "native-scene.json");
+
+/** Resolve when `child` has exited, or when `ms` runs out. */
+const exited = (child, ms) =>
+	new Promise((done) => {
+		if (child.exitCode !== null || child.signalCode !== null) return done();
+		const timer = setTimeout(done, ms);
+		child.once("exit", () => {
+			clearTimeout(timer);
+			done();
+		});
+	});
 
 async function waitForHealth(base, deadlineMs = 120_000) {
 	const started = Date.now();
@@ -249,9 +271,15 @@ async function main() {
 		receipt.backendHealth = health;
 
 		const seeded = JSON.parse(seed(config));
-		assert.equal(seeded.target.id, TARGET);
-		assert.equal(seeded.unrelated.id, UNRELATED);
-		assert.equal(seeded.raced.id, RACED);
+		TARGET = seeded.target.id;
+		UNRELATED = seeded.unrelated.id;
+		RACED = seeded.raced.id;
+		for (const [name, id] of Object.entries({ TARGET, UNRELATED, RACED }))
+			assert.match(
+				String(id),
+				/^n_[a-z2-7]{16}$/,
+				`${name} must be an item id the store minted`,
+			);
 		receipt.seeded = seeded;
 
 		// The bearer is synthetic, so an unauthenticated read must be refused before
@@ -395,10 +423,7 @@ async function main() {
 		);
 
 		receipt.result = "positive-foreground-read-confirmed";
-		writeFileSync(
-			join(OUT, "native-scene.json"),
-			JSON.stringify(receipt, null, 2),
-		);
+		writeFileSync(outfile, JSON.stringify(receipt, null, 2));
 		console.log(
 			JSON.stringify({
 				result: receipt.result,
@@ -411,27 +436,40 @@ async function main() {
 		receipt.result = "failed";
 		receipt.error = String(error?.stack || error);
 		receipt.backendLog = backendLog.join("").slice(-4_000);
-		writeFileSync(
-			join(OUT, "native-scene.json"),
-			JSON.stringify(receipt, null, 2),
-		);
+		writeFileSync(outfile, JSON.stringify(receipt, null, 2));
 		throw error;
 	} finally {
 		cdp?.close();
 		nodeCdp?.close();
-		await api.reapLiveBoots({
-			code: 0,
-			why: "bounded notifications native scene complete",
-		});
+		/*
+		 * THE BACKEND DIES BEFORE THE REAPER, and that order is load-bearing: the
+		 * backend is a python child running under this process's `pythonChildEnv`
+		 * scratch cache, and the reaper EXITS the process, whose exit hook purges
+		 * that cache. With the child still alive it wrote under the purge and the
+		 * hook threw `ENOTEMPTY` - a cleanup error standing in place of the scene's
+		 * own failure.
+		 */
 		backend.kill("SIGTERM");
-		await pause(1_000);
-		if (!backend.killed) backend.kill("SIGKILL");
+		await exited(backend, 5_000);
+		if (backend.exitCode === null && backend.signalCode === null) {
+			backend.kill("SIGKILL");
+			await exited(backend, 5_000);
+		}
 		writeFileSync(join(OUT, "core.log"), backendLog.join(""));
-		assert.equal(
-			existsSync(join(OUT, "native-scene.json")),
-			true,
-			"the scene wrote no receipt",
-		);
+		const wroteReceipt = existsSync(outfile);
+		/*
+		 * THE EXIT CODE IS THE VERDICT. `reapExited` ends this process, so the code
+		 * it is handed is the one the harness sees. It used to be a flat 0, which
+		 * turned every failure above into a GREEN CI step sitting on a receipt that
+		 * said `"result": "failed"` - the false green this scene exists to prevent.
+		 */
+		await api.reapLiveBoots({
+			code:
+				receipt.result === "positive-foreground-read-confirmed" && wroteReceipt
+					? 0
+					: 1,
+			why: "notifications native scene complete",
+		});
 	}
 }
 
