@@ -588,7 +588,9 @@ jobs:
     # stall: `scripts/completion-view-ack.test.mjs` imported two esbuild bundles
     # as `data:text/javascript;base64,...` specifiers, and a diagnostic naming
     # those specifiers dumped the whole bundle into one 8,264,707-byte log line.
-    # #1407 (d52be1696c) removed that, cutting the diagnostic to 163 bytes.
+    # #1407 (d52be1696c) removed that: its own report says this is not a proven root
+    # cause, and the measured pair is 402,575 B -> 163 B for the diagnostic, while
+    # 8,264,707 B is the size of the line the cancelled CI run actually wrote.
     # Shard 2 then completed in 17m55s, and the runs either side of the fix
     # measured 25m14s / 15m18s / 15m24s - all inside the ORIGINAL 50-minute cap.
     #
