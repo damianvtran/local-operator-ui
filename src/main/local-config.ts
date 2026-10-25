@@ -108,6 +108,15 @@ export interface QuickSendReading {
 export function readQuickSendValue(
 	env: NodeJS.ProcessEnv = process.env,
 ): QuickSendReading {
+	const reading = readKeymapValue(QUICK_SEND_KEY, env);
+	return { ...reading, value: reading.value || DEFAULT_QUICK_SEND_VALUE };
+}
+
+/** One flat key from the shared config; each action owns its default. */
+export function readKeymapValue(
+	key: string,
+	env: NodeJS.ProcessEnv = process.env,
+): QuickSendReading {
 	const file = quickSendConfigPath(env);
 	let text: string;
 	try {
@@ -118,10 +127,10 @@ export function readQuickSendValue(
 			// No config yet (a fresh install): the default is the answer, not a
 			// problem. §K.8 calls this out as a QA item precisely because it is
 			// the ordinary first-run path.
-			return { value: DEFAULT_QUICK_SEND_VALUE, present: false };
+			return { value: "", present: false };
 		}
 		return {
-			value: DEFAULT_QUICK_SEND_VALUE,
+			value: "",
 			present: false,
 			problem: `config.yml could not be read (${String(code ?? error)})`,
 		};
@@ -131,7 +140,7 @@ export function readQuickSendValue(
 		parsed = parseYaml(text);
 	} catch (error) {
 		return {
-			value: DEFAULT_QUICK_SEND_VALUE,
+			value: "",
 			present: false,
 			problem: `config.yml is not parseable YAML (${String(error)})`,
 		};
@@ -142,16 +151,16 @@ export function readQuickSendValue(
 			: undefined;
 	const stored =
 		values !== null && typeof values === "object"
-			? (values as Record<string, unknown>)[QUICK_SEND_KEY]
+			? (values as Record<string, unknown>)[key]
 			: undefined;
 	if (stored === undefined || stored === null) {
-		return { value: DEFAULT_QUICK_SEND_VALUE, present: false };
+		return { value: "", present: false };
 	}
 	if (typeof stored !== "string" || stored.trim() === "") {
 		return {
-			value: DEFAULT_QUICK_SEND_VALUE,
+			value: "",
 			present: false,
-			problem: `config.yml carries a ${typeof stored} for ${QUICK_SEND_KEY}; expected a string chord`,
+			problem: `config.yml carries a ${typeof stored} for ${key}; expected a string chord`,
 		};
 	}
 	return { value: stored.trim(), present: true };
@@ -178,12 +187,31 @@ export interface QuickSendWatcher {
  *
  * `baseline` is what the caller has already applied, so starting the watcher
  * after an initial `readQuickSendValue` does not re-emit the same value.
- * Without it the first observed read is emitted unconditionally.
+ * Without it the first observed read is emitted unconditionally. `onConfigChange`
+ * also runs once at startup: other consumers share this watch but have their own
+ * value, so a quick-send-only change comparison cannot stand in for their refresh.
  *
  * A read that fails emits `onProblem` and passes NO value on, which is the
  * "keep the last good registration" half of the failure policy: the registrar
  * is left exactly as it was.
  */
+export function watchLocalConfig(options: {
+	onConfigChange: () => void;
+	onProblem: (message: string) => void;
+	env?: NodeJS.ProcessEnv;
+	intervalMs?: number;
+	debounceMs?: number;
+}): QuickSendWatcher {
+	return watchQuickSend({
+		env: options.env,
+		onValue: () => {},
+		onProblem: options.onProblem,
+		onConfigChange: options.onConfigChange,
+		intervalMs: options.intervalMs,
+		debounceMs: options.debounceMs,
+	});
+}
+
 export function watchQuickSend(options: {
 	onValue: (value: string) => void;
 	onProblem: (message: string) => void;
@@ -207,9 +235,23 @@ export function watchQuickSend(options: {
 	let lastProblem: string | null = null;
 	let timer: NodeJS.Timeout | null = null;
 	let stopped = false;
+	let initial = true;
+	let lastFingerprint: string | null = null;
 
 	function readAndEmit(): void {
 		if (stopped) return;
+		let fingerprint: string;
+		try {
+			// Effective config revision, not a poll count: watchFile and the
+			// directory watch may both report one atomic replace. Content identity
+			// collapses those signals and ignores mtime-only touches.
+			fingerprint = readFileSync(file, "utf8");
+		} catch (error) {
+			fingerprint = `unreadable:${String((error as NodeJS.ErrnoException).code ?? error)}`;
+		}
+		if (!initial && fingerprint === lastFingerprint) return;
+		initial = false;
+		lastFingerprint = fingerprint;
 		options.onConfigChange?.();
 		const reading = readQuickSendValue(env);
 		if (reading.problem !== undefined) {

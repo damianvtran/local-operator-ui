@@ -1,9 +1,16 @@
 import "../../../styles/index.css";
 
+import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
+import { useRecordingShortcutStore } from "@shared/hooks/use-recording-shortcut";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fireEvent, screen, userEvent, waitFor } from "@storybook/test";
-import { type FC, useEffect, useLayoutEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type FC, useEffect, useLayoutEffect, useState } from "react";
+import type {
+	DesktopRequest,
+	DesktopResponse,
+} from "../../../../../shared/desktop-contract";
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 
 /**
@@ -129,5 +136,127 @@ export const Cleared: Story = {
 			"Browser: press the keys you want",
 		) as HTMLInputElement;
 		await waitFor(() => expect(field.value).toBe("No shortcut"));
+	},
+};
+
+/*
+ * The recording row is backend-owned, unlike the renderer-local panel rows.
+ * These stories provide the same desktop envelope and query client as the app,
+ * so the populated states exercise the production row rather than a mock of it.
+ */
+const RecordingBackendStory: FC<{
+	value?: string;
+	refuseSave?: boolean;
+}> = ({ value = "primary+shift+s", refuseSave = false }) => {
+	const [client] = useState(
+		() => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+	);
+	useLayoutEffect(() => {
+		const previous = window.api;
+		const previousElectron = window.electron;
+		const setting: BackendSettings["settings"][number] = {
+			key: "keymap.start_recording",
+			section: "keymap",
+			label: "Start recording",
+			kind: "hotkey",
+			help: "Starts speech-to-text recording in the desktop window.",
+			value,
+			default: "primary+shift+s",
+			is_default: value === "primary+shift+s",
+			minimum: null,
+			maximum: null,
+			members: [],
+			choices: [],
+			empty_unsets: false,
+			redacted: false,
+			tier: "core",
+			hotkey_scope: "desktop",
+		};
+		const ok = (result: unknown): DesktopResponse => ({
+			status: 200,
+			body: { status: 200, message: "ok", result },
+		});
+		const request = async (input: DesktopRequest): Promise<DesktopResponse> => {
+			if (input.op === "settings.list")
+				return ok({ sections: [], settings: [setting] });
+			if (input.op === "settings.edit") {
+				if (refuseSave)
+					return {
+						status: 422,
+						body: {
+							status: 422,
+							detail:
+								"Start recording cannot use this shortcut: reserved chord.",
+						},
+					};
+				setting.value = input.value;
+				setting.is_default = input.value === setting.default;
+				useRecordingShortcutStore.getState().setState({
+					value: String(input.value),
+					canonical: String(input.value),
+				});
+				return ok(setting);
+			}
+			if (input.op === "settings.reset") {
+				setting.value = setting.default;
+				setting.is_default = true;
+				return ok(setting);
+			}
+			throw new Error(`Unsupported story request: ${input.op}`);
+		};
+		window.api = {
+			...previous,
+			desktop: { ...previous?.desktop, request },
+		} as typeof window.api;
+		window.electron = {
+			...previousElectron,
+			recordingShortcut: {
+				get: async () => ({ value, canonical: value }),
+				onChange: () => () => {},
+				markPending: () => {},
+				syncClaims: () => {},
+			},
+		} as typeof window.electron;
+		return () => {
+			window.api = previous;
+			window.electron = previousElectron;
+			client.clear();
+		};
+	}, [client, refuseSave, value]);
+	return (
+		<QueryClientProvider client={client}>
+			<Section />
+		</QueryClientProvider>
+	);
+};
+
+/** The backend row beside the six panel rows, with the preserved default. */
+export const RecordingDefault: Story = {
+	render: () => <RecordingBackendStory />,
+	play: async () => {
+		await screen.findByText("Start recording");
+	},
+};
+
+/** A saved override displays its glyph label and explicit Reset affordance. */
+export const RecordingOverride: Story = {
+	render: () => <RecordingBackendStory value="primary+alt+r" />,
+	play: async () => {
+		await screen.findByText("Start recording");
+	},
+};
+
+/** Capture saves immediately; a refusal keeps the previous saved value. */
+export const RecordingSaveRefused: Story = {
+	render: () => <RecordingBackendStory refuseSave />,
+	play: async () => {
+		const field = await screen.findByLabelText(
+			"Start recording: press the keys you want",
+		);
+		fireEvent.keyDown(field, { key: "r", metaKey: true, altKey: true });
+		await screen.findByText(
+			"Start recording cannot use this shortcut: reserved chord.",
+		);
+		expect(field).toHaveValue("Ctrl+Shift+S");
 	},
 };

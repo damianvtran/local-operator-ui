@@ -152,6 +152,17 @@ test("chordFromEvent: the event shapes the recorder and dispatcher pass", () => 
 	assert.equal(chordFromEvent(press({ key: "F13", metaKey: true })), null);
 	assert.equal(chordFromEvent(press({ key: "Enter", metaKey: true })), null);
 	assert.equal(chordFromEvent(press({ key: "Escape" })), null);
+	assert.equal(
+		chordFromEvent(
+			press({ key: "®", code: "KeyR", altKey: true, metaKey: true }),
+		),
+		"primary+alt+r",
+	);
+	assert.equal(
+		chordFromEvent(press({ key: "q", code: "KeyA", metaKey: true })),
+		"primary+q",
+		"no-Alt AZERTY keeps event.key rather than the physical US letter",
+	);
 });
 
 test("display: glyph, caps and tokens match the mini view's own tables", () => {
@@ -275,6 +286,18 @@ test("captureRefusal: the four sentences, in precedence order", () => {
 			"panel.browser": "primary+i",
 		}),
 		"Already assigned to Open browser.",
+	);
+	assert.equal(
+		captureRefusal(
+			"primary+shift+s",
+			"panel.console",
+			{},
+			"linux",
+			new Map([
+				["primary+shift+s", "Start recording already uses this chord."],
+			]),
+		),
+		"Start recording already uses this chord.",
 	);
 });
 

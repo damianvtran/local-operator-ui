@@ -212,7 +212,8 @@ const needsModifierSentence = (platform: MiniViewPlatform): string =>
  * 2. a chord with no `primary` (it would fire while the user types);
  * 3. a reserved chord (the set's own sentence names the job);
  * 4. a chord another action already answers — under its effective binding, so
- *    a default counts as taken, not only a stored override.
+ *    a default counts as taken, not only a stored override. External claim
+ *    values are complete refusal sentences, matching the reserved set.
  *
  * The action's OWN chord is not a conflict: re-pressing the chord a row already
  * shows is never refused, and the ROW answers it without a store write (UX
@@ -225,12 +226,15 @@ export function captureRefusal(
 	actionId: ActionId,
 	bindings: ShortcutBindings | undefined,
 	platform: MiniViewPlatform = "linux",
+	external: ReadonlyMap<string, string> = new Map(),
 ): string | null {
 	const normalized = chord === null ? null : normalizeChord(chord);
 	if (normalized === null) return t("ui.settings.shortcuts.capture.unbindable");
 	if (!chordHasPrimary(normalized)) return needsModifierSentence(platform);
 	const reserved = RESERVED_CHORDS.get(normalized);
 	if (reserved !== undefined) return reserved;
+	const externalClaim = external.get(normalized);
+	if (externalClaim !== undefined) return externalClaim;
 	for (const action of KEYMAP_ACTIONS) {
 		if (action.id === actionId) continue;
 		if (effectiveChord(action.id, bindings) === normalized) {

@@ -62,5 +62,9 @@
 	"ui.settings.shortcuts.row.canvas": "canvas",
 	"ui.settings.shortcuts.row.code_review": "Revisión de código",
 	"ui.settings.shortcuts.row.console": "Consola",
-	"ui.settings.shortcuts.row.execution": "Detalles de ejecución"
+	"ui.settings.shortcuts.row.execution": "Detalles de ejecución",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "Enfoca un campo de atajo y pulsa las teclas para guardar el atajo de inmediato. Esc borra la indicación de captura; Restablecer restaura el valor predeterminado.",
+	"ui.settings.shortcuts.category.speech_to_text": "Dictado",
+	"ui.settings.shortcuts.recording.invalid_stored_value": "El atajo guardado no es válido. Se muestra el último atajo que funcionó.",
+	"ui.settings.shortcuts.recording.inactive_claimed": "La grabación está inactiva: {label} usa este atajo."
 }
