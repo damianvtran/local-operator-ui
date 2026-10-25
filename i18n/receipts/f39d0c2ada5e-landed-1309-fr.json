@@ -1,0 +1,25 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6-astra",
+  "instance": "f39d0c2ada5e-landed-1309-fr",
+  "session": "f39d0c2ada5e",
+  "job": "396a37b6695e",
+  "parent_session": "687384e07954",
+  "date": "2026-10-22",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "result": "clean",
+  "source_head": "6631ee87aaa036a387493e51b6ce3716a8a8aad3",
+  "sha256": {
+    "en": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+    "fr": "726c74126ec69a856d914ee3aa98d02ef97232b3ac704fa5e7310e965c9035ea",
+    "context": "5daf30ba2344de56b9a26328939d7e62c516d34e30b5cf7fe27c10d15d93c2fb"
+  },
+  "keys_read": 173,
+  "keys_substantive": 29,
+  "scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads.",
+  "findings": [],
+  "record": "i18n/audits/evidence/fr/ui.teamBridge/tbstack-landed-1309-20261022/record.json",
+  "native_fit": "unverified"
+}

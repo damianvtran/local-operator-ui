@@ -1,0 +1,80 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbs-r2-hi",
+  "session": "5cbd61e9669b",
+  "date": "2026-10-21",
+  "locale": "hi",
+  "translator": "translator",
+  "translator_session": "79cb4bc439e2",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 4,
+  "scope": "Round-2 remediation delta: 4 changed values (schedule.confirm, schedule.invalid, schedule.cancel_failed, schedule.retry) versus round-1 audited bytes (sha256 8ae1dd53…); the other 132 of 136 values are verified byte-identical to round 1. The round-1 audit of the 27 drafts/schedule keys is inherited for the 23 unchanged ones, and the base 109-key audit is inherited (all 109 still byte-identical to HEAD). Catalogue audit only, not rendered-fit/activation/release.",
+  "sha256": {
+    "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+    "hi": "ecc9fec207ec0685265caedbb99d3acbc75c3e7285e526c7e78a9b7aa911761b",
+    "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+  },
+  "findings": [],
+  "previous_round": {
+    "path": "i18n/receipts/tbs-r1-hi.json",
+    "sha256": "d3d63d0074df1eed832f029103151c908be1f47e89858cb60a01b0cbdc0be97c",
+    "target_sha256": "8ae1dd53731eed74ea1b8d2e2a3cd8bf04b2225b40e648f985db360e1e1b9343"
+  },
+  "remediation": [
+    {
+      "key": "ui.teamBridge.schedule.confirm",
+      "r1_severity": "MINOR",
+      "disposition": "fixed",
+      "verified": true,
+      "value": "{date} भेजें?"
+    },
+    {
+      "key": "ui.teamBridge.schedule.invalid",
+      "r1_severity": "MINOR",
+      "disposition": "fixed",
+      "verified": true,
+      "value": "अभी से 1 मिनट और 120 दिन के बीच की कोई मान्य तारीख़ और समय चुनें।"
+    },
+    {
+      "key": "ui.teamBridge.schedule.cancel_failed",
+      "r1_severity": "MINOR",
+      "disposition": "fixed",
+      "verified": true,
+      "value": "रद्द होने की पुष्टि नहीं हुई। हो सकता है संदेश भेजा जाना शुरू हो चुका हो। फिर कोशिश करने से पहले रीफ़्रेश करें।"
+    },
+    {
+      "key": "ui.teamBridge.schedule.retry",
+      "r1_severity": "MINOR",
+      "disposition": "fixed",
+      "verified": true,
+      "value": "पिछले शेड्यूल से फिर कोशिश करें"
+    }
+  ],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r3-hi.json",
+    "sha256": "b0a3d96a6fce52dab28f89094ee16997846e8301cedbe06d90733e8d450b0313",
+    "keys_inherited": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "78ff808697020fdde224fe7609a18d4aee9ab63f1f8719d2447d204a39933b7c",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r1-hi.json",
+      "sha256": "48c6c90dc1cda69478373a5f312bec377ac13ca4d4286dd2101d3df25e1b2cae"
+    },
+    "unchanged_values_verified": 109
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "validation": {
+    "independence": "Auditor session 5cbd61e9669b (round-1 auditor), independent of translator session 79cb4bc439e2. Diffed the round-1 snapshot r1/hi.json (sha256 = round-1 target hash 8ae1dd53…) against the current repo file. Exactly the 4 round-1 finding keys changed. The other 132 values, the key order and the key set (136) are byte-identical, and the 109 base values still equal git HEAD. The round-1 receipt was read, not modified. No repo file edited; nothing staged.",
+    "semantics": "confirm: the extra को is gone, so with the formatter's own 'को … बजे' it now reads naturally ('…2026 को 5:30:00 am GMT-4 बजे भेजें?'). It is still a question, consistent with the review→confirm_action button pair, which is unchanged. invalid: तारीख़ now has its nukta, matching catalogue usage, and the range is idiomatic '1 मिनट और 120 दिन के बीच'; accuracy and register (आप imperative चुनें) are preserved. cancel_failed: रीफ़्रेश now matches the established hi spelling, and 'भेजा जाना शुरू हो चुका हो' restores the 'may already'; uncertainty stays explicit (पुष्टि नहीं हुई, हो सकता है). retry: it now uses the file's retry verb फिर कोशिश करें, matching list.retry and the adjacent schedule.failed alert ('…फिर कोशिश करें'); 'पिछले शेड्यूल से' means retrying with the previous schedule, as in the English. No new findings.",
+    "icu": "Parsed all 4 values with @formatjs/icu-messageformat-parser: confirm keeps exactly {date} (argument), the other three have no arguments, the same as English. Formatted confirm with intl-messageformat (hi) using real Intl.DateTimeFormat('hi',{dateStyle:'full',timeStyle:'long'}) strings for America/New_York and Asia/Kolkata. Both render with a single को.",
+    "typography": "All 4 values are NFC. No U+200E/F, U+202A–E, U+2066–9, U+061C, ZWJ or ZWNJ. None is identical to English. Latin digits only. Sentences end in danda and confirm keeps ?; nukta is consistent (तारीख़, रीफ़्रेश). The file is valid JSON ending with a newline.",
+    "overflow": "Code points hi/en: confirm 13/15 and invalid 65/68 are both shorter. cancel_failed 111/96 is an alert paragraph that wraps. retry 31/23 is a ghost button in the composer alert area, which can wrap; it is flagged for a rendered-fit check only, because shortening it to 'फिर कोशिश करें' would lose 'previous schedule'.",
+    "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+  }
+}
