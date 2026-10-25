@@ -61,7 +61,7 @@ import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import type {
 	TeamBridgeNotifyAuthority,
 	TeamBridgeNotifyRequest,
-	TeamBridgeOpenTarget,
+	TeamBridgeOpenResult,
 } from "../shared/team-bridge-notify";
 import {
 	type WebauthnRequestPayload,
@@ -156,7 +156,7 @@ const api = {
 					ipcRenderer.removeListener("team-bridge:open", handler);
 				};
 			},
-			pendingOpen: (): Promise<TeamBridgeOpenTarget | null> =>
+			pendingOpen: (): Promise<TeamBridgeOpenResult | null> =>
 				ipcRenderer.invoke("team-bridge:pending-open"),
 		},
 		/**

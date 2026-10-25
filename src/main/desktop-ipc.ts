@@ -393,13 +393,9 @@ export function registerDesktopIPC(
 	 */
 	if (teamBridgeNotifier) {
 		const watched = new WeakSet<IpcMainInvokeEvent["sender"]>();
-		const navigating = new WeakSet<IpcMainInvokeEvent["sender"]>();
 		const authorizeNotifications = (event: IpcMainInvokeEvent) => {
 			// Only the shell owns the auth journal, not an admitted auxiliary pane.
-			if (
-				!isAdmittedSender(event, [{ window: window(), url: expectedUrl }]) ||
-				navigating.has(event.sender)
-			) {
+			if (!isAdmittedSender(event, [{ window: window(), url: expectedUrl }])) {
 				throw new Error("This document cannot use Team Bridge notifications.");
 			}
 		};
@@ -408,22 +404,18 @@ export function registerDesktopIPC(
 			if (!watched.has(event.sender)) {
 				watched.add(event.sender);
 				const contents = event.sender;
-				// Epochs belong to the credential journal of ONE renderer document.
-				// Revoke at navigation start; accept a reset only after main observes
-				// the new document. Late IPC from the departing frame cannot reset it.
-				contents.on(
-					"did-start-navigation",
-					(_event, _url, inPlace, mainFrame) => {
-						if (inPlace || !mainFrame) return;
-						navigating.add(contents);
-						teamBridgeNotifier.resetAuthority();
-					},
-				);
+				// Electron 44 emits did-start-navigation BEFORE the guard can cancel
+				// will-frame-navigate; cancellation has no commit event. Reset only
+				// on a committed document replacement, never on an attempted link.
+				// Frame/URL admission above still rejects departing/foreign frames.
 				contents.on(
 					"did-frame-navigate",
 					(_event, _url, _code, _text, mainFrame) => {
-						if (mainFrame) navigating.delete(contents);
+						if (mainFrame) teamBridgeNotifier.resetAuthority();
 					},
+				);
+				contents.on("render-process-gone", () =>
+					teamBridgeNotifier.resetAuthority(),
 				);
 				contents.once("destroyed", () => teamBridgeNotifier.resetAuthority());
 			}

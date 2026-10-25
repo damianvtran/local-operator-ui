@@ -144,6 +144,8 @@ export function safeTeamBridgeBannerText(
 export type TeamBridgeNotifyAuthority = {
 	accountId?: string;
 	epoch: number;
+	/** Credential refresh is unresolved, not a completed sign-out. */
+	settling?: boolean;
 };
 export type TeamBridgeNotifyOwner = TeamBridgeNotifyAuthority & {
 	accountId: string;
@@ -162,8 +164,11 @@ export function parseTeamBridgeNotifyAuthority(
 		return null;
 	if (input.accountId !== undefined && cleanId(input.accountId) === null)
 		return null;
+	if (input.settling !== undefined && typeof input.settling !== "boolean")
+		return null;
 	return {
 		epoch: input.epoch,
+		...(input.settling === undefined ? {} : { settling: input.settling }),
 		...(input.accountId === undefined
 			? {}
 			: { accountId: input.accountId as string }),
@@ -214,6 +219,9 @@ export type TeamBridgeNotifyRequest = {
 };
 
 /** What a click names: the organization and the conversation to open. */
+/** Stale-click feedback carries no departing account or conversation IDs. */
+export type TeamBridgeOpenResult = TeamBridgeOpenTarget | { unavailable: true };
+
 export type TeamBridgeOpenTarget = {
 	owner: TeamBridgeNotifyOwner;
 	conversationId: string;

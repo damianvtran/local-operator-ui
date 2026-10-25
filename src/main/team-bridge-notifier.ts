@@ -40,6 +40,7 @@ import { type BrowserWindow, type NativeImage, Notification } from "electron";
 import {
 	type TeamBridgeNotifyAuthority,
 	type TeamBridgeNotifyRequest,
+	type TeamBridgeOpenResult,
 	type TeamBridgeOpenTarget,
 	parseTeamBridgeNotifyAuthority,
 	parseTeamBridgeNotifyRequest,
@@ -210,6 +211,10 @@ export class TeamBridgeNotifier {
 	/** The banners this process must keep reachable for their clicks to fire. */
 	private lifetime = new NotificationLifetime();
 	private pendingOpen: TeamBridgeOpenTarget | null = null;
+	private pendingUnavailable = false;
+	/** Last settled owner outlives renderer documents and credential refresh. */
+	private settledOwner: string | undefined;
+	private awaitingDocument = false;
 	private authority: TeamBridgeNotifyAuthority | null = null;
 	// Unknown revokes delivery, not the epoch's established identity. Otherwise
 	// A -> unknown -> B could silently replace A without a credential write.
@@ -244,24 +249,37 @@ export class TeamBridgeNotifier {
 					next.accountId !== this.epochOwner))
 		)
 			return;
-		if (current?.epoch === next.epoch && current.accountId === next.accountId)
+		if (
+			current?.epoch === next.epoch &&
+			current.accountId === next.accountId &&
+			current.settling === next.settling
+		)
 			return;
-		this.revoke();
+		// A refresh temporarily has no account. Hold existing banners/clicks,
+		// but do not admit new delivery until the account actually settles.
+		if (!next.settling && this.settledOwner !== next.accountId) this.revoke();
+		if (!next.settling) this.settledOwner = next.accountId;
 		if (!current || next.epoch > current.epoch) this.epochOwner = undefined;
 		this.epochOwner ??= next.accountId;
 		this.authority = next;
+		this.awaitingDocument = false;
+		if (!next.settling && this.pendingOpen) this.options.host.signalOpen();
 	}
 
 	/** Document epochs restart on reload. Only main's document lifecycle can
 	 * reset that counter; an IPC payload cannot lower it. */
 	resetAuthority(): void {
-		this.revoke();
+		// A new document has a new epoch journal, not a new signed-in person.
+		// Keep the last settled owner and banners; suspend admission until its
+		// replacement reports the actual account. No-window clicks remain live.
 		this.authority = null;
 		this.epochOwner = undefined;
+		this.awaitingDocument = true;
 	}
 
 	private revoke(): void {
-		this.pendingOpen = null;
+		// Preserve only neutral stale feedback after a settled account change.
+		if (this.pendingOpen) this.pendingUnavailable = true;
 		for (const notification of this.banners.values()) notification.close?.();
 		this.banners.clear();
 		this.raisedAt.clear();
@@ -283,7 +301,11 @@ export class TeamBridgeNotifier {
 		if (request === null) {
 			throw new Error("Invalid Team Bridge notification payload.");
 		}
-		if (!teamBridgeNotifyOwnerMatches(request.owner, this.authority))
+		if (
+			this.awaitingDocument ||
+			this.authority?.settling ||
+			!teamBridgeNotifyOwnerMatches(request.owner, this.authority)
+		)
 			return { shown: false };
 		if (this.options.show === "never") return { shown: false };
 		if (!this.canNotify()) return { shown: false };
@@ -366,13 +388,18 @@ export class TeamBridgeNotifier {
 	 * from an already-validated notification payload, so this read does not
 	 * re-parse ids.
 	 */
-	takePendingOpen(): TeamBridgeOpenTarget | null {
+	takePendingOpen(): TeamBridgeOpenResult | null {
+		// Mount pulls can precede the new document's auth read. Keep the click
+		// parked until settlement instead of consuming it under an unknown owner.
+		if (this.awaitingDocument || this.authority?.settling) return null;
 		const pending = this.pendingOpen;
 		this.pendingOpen = null;
-		return pending &&
-			teamBridgeNotifyOwnerMatches(pending.owner, this.authority)
+		if (!pending) return null;
+		const unavailable = this.pendingUnavailable;
+		this.pendingUnavailable = false;
+		return !unavailable && pending.owner.accountId === this.authority?.accountId
 			? pending
-			: null;
+			: { unavailable: true };
 	}
 
 	private replace(conversationId: string): void {
@@ -389,9 +416,11 @@ export class TeamBridgeNotifier {
 	): void {
 		const conversationId = target.conversationId;
 		this.lifetime.retain(notification, () => {
-			if (this.banners.get(conversationId) !== notification) return;
-			this.banners.delete(conversationId);
-			this.open(target);
+			const live = this.banners.get(conversationId) === notification;
+			if (live) this.banners.delete(conversationId);
+			// A click racing native withdrawal still deserves visible feedback,
+			// but A -> B -> A must not revive a banner that was already revoked.
+			this.open(target, !live);
 		});
 		notification.once("close", () => {
 			if (this.banners.get(conversationId) === notification) {
@@ -400,8 +429,7 @@ export class TeamBridgeNotifier {
 		});
 	}
 
-	private open(target: TeamBridgeOpenTarget): void {
-		if (!teamBridgeNotifyOwnerMatches(target.owner, this.authority)) return;
+	private open(target: TeamBridgeOpenTarget, unavailable = false): void {
 		/*
 		 * ALWAYS PARKED FIRST, THEN SIGNALLED. The signal wakes a loaded renderer,
 		 * but a renderer that is loading or reloading has no listener yet and the
@@ -410,6 +438,7 @@ export class TeamBridgeNotifier {
 		 * signal - so a dropped signal costs latency, never the click.
 		 */
 		this.pendingOpen = target;
+		this.pendingUnavailable = unavailable;
 		const window = this.options.window();
 		if (window && !window.isDestroyed()) {
 			this.options.host.signalOpen();

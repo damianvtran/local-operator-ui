@@ -608,9 +608,9 @@ test("account transition revokes old banners and cannot route their clicks", () 
 		h.notifier.setAuthority?.({ accountId: "acct_b", epoch: 2 });
 		assert.equal(h.banners[0].closed, true);
 		h.banners[0].emit("click");
-		assert.equal(h.notifier.takePendingOpen(), null);
-		assert.equal(h.signals.length, 0);
-		assert.equal(h.presented.length, 0);
+		assert.deepEqual(h.notifier.takePendingOpen(), { unavailable: true });
+		assert.equal(h.signals.length, 1);
+		assert.equal(h.presented.length, 1);
 		assert.deepEqual(
 			h.notifier.notify(request({ owner: { accountId: "acct_b", epoch: 2 } })),
 			{ shown: true },
@@ -875,7 +875,7 @@ test("logout revokes preview retention and parked targets; late authority cannot
 		h.notifier.notify(request({ seq: 5 }));
 		h.notifier.setAuthority({ epoch: 2 });
 		assert.equal(h.banners[1].closed, true);
-		assert.equal(h.notifier.takePendingOpen(), null);
+		assert.deepEqual(h.notifier.takePendingOpen(), { unavailable: true });
 		assert.equal(
 			h.notifier.lifetime.size,
 			0,
@@ -892,8 +892,12 @@ test("logout revokes preview retention and parked targets; late authority cannot
 			{ shown: false },
 		);
 		h.banners[1].emit("click");
-		assert.equal(h.notifier.takePendingOpen(), null);
-		assert.equal(h.signals.length, 1, "only the click before logout signalled");
+		assert.deepEqual(h.notifier.takePendingOpen(), { unavailable: true });
+		assert.equal(
+			h.presented.length,
+			2,
+			"both original and stale click visibly answer",
+		);
 		assert.throws(() => h.notifier.notify(request({ owner: undefined })));
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
@@ -908,7 +912,7 @@ test("A to B to A cannot revive an earlier credential epoch click or notify", ()
 		h.notifier.setAuthority({ accountId: "acct_b", epoch: 2 });
 		h.notifier.setAuthority({ accountId: "acct_a", epoch: 3 });
 		h.banners[0].emit("click");
-		assert.equal(h.notifier.takePendingOpen(), null);
+		assert.deepEqual(h.notifier.takePendingOpen(), { unavailable: true });
 		assert.deepEqual(h.notifier.notify(request({ seq: 5 })), { shown: false });
 		assert.deepEqual(
 			h.notifier.notify(
@@ -1005,11 +1009,12 @@ test("authorized IPC fences late epochs, auxiliary frames and document replaceme
 			false,
 			true,
 		);
-		assert.equal(h.banners[1].closed, true);
-		assert.throws(
-			() => invoke("authority", { accountId: "acct_b", epoch: 6 }),
-			DOCUMENT_REFUSAL,
+		assert.equal(
+			h.banners[1].closed,
+			false,
+			"attempted navigation does not revoke",
 		);
+		invoke("authority", { accountId: "acct_b", epoch: 6 });
 		const oldFrame = contents.mainFrame;
 		contents.mainFrame = { url: "file:///app/index.html" };
 		contents.emit(
@@ -1038,9 +1043,19 @@ test("authorized IPC fences late epochs, auxiliary frames and document replaceme
 			{ shown: true },
 		);
 		contents.emit("destroyed");
-		assert.equal(h.banners[2].closed, true);
+		assert.equal(
+			h.banners[2].closed,
+			false,
+			"window destruction retains banners",
+		);
 		h.banners[2].emit("click");
-		assert.equal(invoke("pending-open"), null);
+		assert.equal(
+			invoke("pending-open"),
+			null,
+			"replacement account must settle before consumption",
+		);
+		invoke("authority", { accountId: "acct_b", epoch: 0 });
+		assert.equal(invoke("pending-open")?.conversationId, "bcv_abc123");
 	} finally {
 		globalThis.__teamBridgeHandlers = undefined;
 		rmSync(dir, { recursive: true, force: true });
@@ -1102,3 +1117,189 @@ test("R2 unknown revocation preserves the established epoch owner", () => {
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
+
+function lifecycleHarness(file) {
+	const h = harness({ file });
+	const contents = new EventEmitter();
+	contents.mainFrame = { url: "file:///app/index.html" };
+	h.window.webContents = contents;
+	globalThis.__teamBridgeHandlers = new Map();
+	notifierModule.registerDesktopIPC(
+		() => h.window,
+		"file:///app/index.html",
+		async () => ({}),
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		h.notifier,
+	);
+	const invoke = (name, input) =>
+		globalThis.__teamBridgeHandlers.get(`team-bridge:${name}`)(
+			{ sender: contents, senderFrame: contents.mainFrame },
+			input,
+		);
+	invoke("authority", { accountId: "acct_a", epoch: 5 });
+	invoke("notify", request({ owner: { accountId: "acct_a", epoch: 5 } }));
+	return { ...h, contents, invoke };
+}
+
+for (const event of ["destroyed", "reload", "render-process-gone"]) {
+	test(`Q1 D1 ${event} keeps banner and parks click until replacement account settles`, () => {
+		const { dir, file } = tempFile();
+		try {
+			const h = lifecycleHarness(file);
+			if (event === "reload") {
+				h.contents.emit(
+					"did-start-navigation",
+					{},
+					"file:///app/index.html",
+					false,
+					true,
+				);
+				h.contents.mainFrame = { url: "file:///app/index.html" };
+				h.contents.emit(
+					"did-frame-navigate",
+					{},
+					"file:///app/index.html",
+					200,
+					"OK",
+					true,
+				);
+			} else h.contents.emit(event);
+			assert.equal(
+				h.banners[0].closed,
+				false,
+				"renderer lifecycle must not withdraw delivery",
+			);
+			h.window.destroyed = true;
+			h.banners[0].emit("click");
+			assert.equal(h.reopens.length, 1, "native click reopens a closed window");
+			assert.equal(
+				h.notifier.takePendingOpen(),
+				null,
+				"unsettled document must not consume click",
+			);
+			h.notifier.setAuthority({ accountId: "acct_a", epoch: 0 });
+			assert.equal(h.notifier.takePendingOpen()?.conversationId, "bcv_abc123");
+			assert.equal(
+				h.notifier.takePendingOpen(),
+				null,
+				"route is consumed exactly once",
+			);
+		} finally {
+			globalThis.__teamBridgeHandlers = undefined;
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+}
+
+test("Q2 cancelled Electron navigation preserves later notification admission", () => {
+	const { dir, file } = tempFile();
+	try {
+		const h = lifecycleHarness(file);
+		// QA measured Electron 44.3: did-start-navigation precedes a prevented
+		// will-frame-navigate, and cancellation produces NO did-frame-navigate.
+		h.contents.emit(
+			"did-start-navigation",
+			{},
+			"https://blocked.invalid/",
+			false,
+			true,
+		);
+		h.contents.emit("will-frame-navigate", { defaultPrevented: true });
+		assert.equal(h.banners[0].closed, false);
+		assert.deepEqual(
+			h.invoke(
+				"notify",
+				request({ owner: { accountId: "acct_a", epoch: 5 }, seq: 5 }),
+			),
+			{ shown: true },
+		);
+	} finally {
+		globalThis.__teamBridgeHandlers = undefined;
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+for (const nextAccount of ["acct_a", "acct_b", undefined]) {
+	test(`D2 credential refresh preserves pending click until ${nextAccount ?? "sign-out"} settles`, () => {
+		const { dir, file } = tempFile();
+		try {
+			const h = harness({ file });
+			h.notifier.notify(request());
+			h.notifier.setAuthority({ epoch: 2, settling: true });
+			assert.equal(h.banners[0].closed, false);
+			assert.deepEqual(
+				h.notifier.notify(
+					request({ owner: { accountId: "acct_a", epoch: 2 }, seq: 5 }),
+				),
+				{ shown: false },
+			);
+			h.banners[0].emit("click");
+			assert.equal(
+				h.notifier.takePendingOpen(),
+				null,
+				"click remains held during re-auth",
+			);
+			h.notifier.setAuthority({
+				epoch: 2,
+				...(nextAccount ? { accountId: nextAccount } : {}),
+				settling: false,
+			});
+			const result = h.notifier.takePendingOpen();
+			if (nextAccount === "acct_a")
+				assert.equal(result?.conversationId, "bcv_abc123");
+			else
+				assert.deepEqual(
+					result,
+					{ unavailable: true },
+					"mismatch feedback carries no private IDs",
+				);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+}
+
+test("D3 stale click foregrounds but returns only neutral feedback", () => {
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		h.notifier.notify(request());
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 2 });
+		h.banners[0].emit("click");
+		assert.equal(h.presented.length, 1);
+		assert.deepEqual(h.notifier.takePendingOpen(), { unavailable: true });
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+for (const nextAccount of ["acct_a", "acct_b"]) {
+	test(`D2 delivered banner is ${nextAccount === "acct_a" ? "kept" : "withdrawn"} after settled re-sign-in`, () => {
+		const { dir, file } = tempFile();
+		try {
+			const h = harness({ file });
+			h.notifier.notify(request());
+			h.notifier.setAuthority({ epoch: 2, settling: true });
+			assert.equal(h.banners[0].closed, false);
+			h.notifier.setAuthority({
+				accountId: nextAccount,
+				epoch: 2,
+				settling: false,
+			});
+			assert.equal(h.banners[0].closed, nextAccount !== "acct_a");
+			h.banners[0].emit("click");
+			const result = h.notifier.takePendingOpen();
+			if (nextAccount === "acct_a")
+				assert.equal(result?.conversationId, "bcv_abc123");
+			else assert.deepEqual(result, { unavailable: true });
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+}

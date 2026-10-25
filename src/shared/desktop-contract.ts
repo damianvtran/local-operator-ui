@@ -25,7 +25,7 @@ import { appendJournalOrderIds } from "./journal-order-query";
 import type {
 	TeamBridgeNotifyAuthority,
 	TeamBridgeNotifyRequest,
-	TeamBridgeOpenTarget,
+	TeamBridgeOpenResult,
 } from "./team-bridge-notify";
 
 const id = z
@@ -6737,7 +6737,7 @@ export type DesktopAPI = {
 		setAuthority: (authority: TeamBridgeNotifyAuthority) => Promise<void>;
 		notify: (input: TeamBridgeNotifyRequest) => Promise<{ shown: boolean }>;
 		onOpen: (callback: () => void) => () => void;
-		pendingOpen: () => Promise<TeamBridgeOpenTarget | null>;
+		pendingOpen: () => Promise<TeamBridgeOpenResult | null>;
 	};
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**

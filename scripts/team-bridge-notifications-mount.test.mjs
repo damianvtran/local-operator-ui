@@ -27,6 +27,11 @@ import React, { act } from "react";
 const scratch = mkdtempSync(join(tmpdir(), "team-bridge-notify-mount-"));
 const apiFixturePath = join(scratch, "team-bridge-api-fixture.mjs");
 const membershipsFixturePath = join(scratch, "memberships-fixture.mjs");
+const toastFixturePath = join(scratch, "toast-fixture.mjs");
+writeFileSync(
+	toastFixturePath,
+	"export const toasts = []; export const showInfoToast = (message) => { toasts.push(message); }; export const showErrorToast = () => {}; export const showSuccessToast = () => {};",
+);
 const mountPath = new URL(
 	`./_team-bridge-notifications-mount-${process.pid}.mjs`,
 	import.meta.url,
@@ -108,6 +113,7 @@ const bundled = await build({
 	stdin: {
 		contents: `
 			export { useTeamBridgeNotifications } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
+			export { toasts } from "@shared/utils/toast-manager";
 			export { useTeamBridgeNotificationOpen } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
 			export { beginRadientAuthorityTransition, settleRadientAuthority } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { teamBridgeKeys, notifyMutationOptions } from "./src/renderer/src/features/team-bridge/use-team-bridge";
@@ -121,6 +127,7 @@ const bundled = await build({
 	packages: "external",
 	write: false,
 	alias: {
+		"@shared/utils/toast-manager": toastFixturePath,
 		"@shared/api/local-operator/team-bridge-api": apiFixturePath,
 		"@features/agent-hub/hooks/use-memberships-query": membershipsFixturePath,
 		"@features": `${process.cwd()}/src/renderer/src/features`,
@@ -185,6 +192,7 @@ const mount = async () => {
 	globalThis.window = dom.window;
 	globalThis.document = dom.window.document;
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	api.toasts.length = 0;
 	const notifications = [];
 	const authorities = [];
 	const routes = [];
@@ -1253,3 +1261,98 @@ for (const { outcome, disable, firstSeed = false } of [
 		}
 	});
 }
+
+for (const next of ["acct_alice", "acct_bob", undefined]) {
+	test(`D2 D3 click waits through credential refresh and answers ${next ?? "sign-out"}`, async () => {
+		resetFixture();
+		const mounted = await mount();
+		try {
+			await act(async () =>
+				api.beginRadientAuthorityTransition(mounted.client),
+			);
+			const epoch = mounted.authorities.at(-1).epoch;
+			await act(async () => mounted.emitOpen(clickTarget()));
+			await settle();
+			assert.deepEqual(mounted.routes, []);
+			assert.deepEqual(
+				api.toasts,
+				[],
+				"settling is not stale and must remain quiet",
+			);
+			await act(async () => {
+				api.settleRadientAuthority(mounted.client, epoch, next);
+				mounted.client.setQueryData(
+					["radient-user", "user"],
+					next ? { account: { id: next } } : null,
+				);
+			});
+			await settle();
+			assert.equal(mounted.routes.length, next === "acct_alice" ? 1 : 0);
+			assert.deepEqual(
+				api.toasts,
+				next === "acct_alice"
+					? []
+					: ["That notification is no longer available on this account."],
+			);
+		} finally {
+			await mounted.teardown();
+		}
+	});
+}
+
+test("D1 replacement document routes same-account click despite former epoch", async () => {
+	resetFixture();
+	const mounted = await mount();
+	try {
+		await act(async () =>
+			mounted.emitOpen(clickTarget({ accountId: "acct_alice", epoch: 47 })),
+		);
+		await settle();
+		assert.equal(mounted.routes.length, 1);
+		assert.deepEqual(api.toasts, []);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("D3 stale result shows neutral toast without routing private IDs", async () => {
+	resetFixture();
+	const mounted = await mount();
+	try {
+		await act(async () => mounted.emitOpen({ unavailable: true }));
+		await settle();
+		assert.deepEqual(mounted.routes, []);
+		assert.deepEqual(api.toasts, [
+			"That notification is no longer available on this account.",
+		]);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("D2 authority settlement before query commit remains held, not signed out", async () => {
+	resetFixture();
+	const mounted = await mount();
+	try {
+		await act(async () => {
+			api.beginRadientAuthorityTransition(mounted.client);
+			const epoch = mounted.authorities.at(-1).epoch;
+			mounted.client.removeQueries({
+				queryKey: ["radient-user", "user"],
+				exact: true,
+			});
+			api.settleRadientAuthority(mounted.client, epoch, "acct_alice");
+			assert.equal(
+				mounted.authorities.at(-1).settling,
+				true,
+				"account result has not reached QueryClient yet",
+			);
+			mounted.client.setQueryData(["radient-user", "user"], {
+				account: { id: "acct_alice" },
+			});
+			assert.equal(mounted.authorities.at(-1).settling, false);
+		});
+	} finally {
+		await mounted.teardown();
+	}
+});

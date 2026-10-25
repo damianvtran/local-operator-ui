@@ -7624,6 +7624,7 @@ export type MessageParams = {
 	"ui.teamBridge.notify.muted": undefined;
 	"ui.teamBridge.notify.subtitle": { place: string; organization: string };
 	"ui.teamBridge.notify.title": { conversation: string; organization: string };
+	"ui.teamBridge.notify.unavailable": undefined;
 	"ui.teamBridge.page.title": undefined;
 	"ui.teamBridge.people.all_scope": undefined;
 	"ui.teamBridge.people.bridge_off": undefined;

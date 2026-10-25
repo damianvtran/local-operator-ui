@@ -13,6 +13,20 @@ type Authority = { epoch: number; pending: boolean; accountId?: string };
 const authorities = new WeakMap<QueryClient, Authority>();
 const subscribers = new WeakMap<QueryClient, Set<() => void>>();
 
+/** Notification retention distinguishes unresolved credentials from sign-out;
+ * neither state admits a new banner, but only settled sign-out withdraws one. */
+export function radientAuthorityPending(client: QueryClient): boolean {
+	const authority = authorities.get(client);
+	if (!authority)
+		return client.getQueryState(radientUserKeys.user())?.status !== "success";
+	const committedAccount = client.getQueryData<UserInfoResult | null>(
+		radientUserKeys.user(),
+	)?.account?.id;
+	// Settlement announces before QueryClient commits its result. That gap is
+	// still unresolved, not a sign-out that should withdraw retained banners.
+	return authority.pending || authority.accountId !== committedAccount;
+}
+
 export function radientAuthorityEpoch(client: QueryClient): number {
 	return authorities.get(client)?.epoch ?? 0;
 }

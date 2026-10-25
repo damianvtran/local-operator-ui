@@ -66,6 +66,7 @@ import {
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import {
 	observedRadientAuthority,
+	radientAuthorityPending,
 	radientAuthoritySnapshot,
 	subscribeRadientAuthority,
 } from "@shared/hooks/radient-account-authority";
@@ -370,7 +371,10 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		// This is a separate authority channel; a late notify cannot update it.
 		const publish = () => {
 			void bridge
-				.setAuthority(observedRadientAuthority(client))
+				.setAuthority({
+					...observedRadientAuthority(client),
+					settling: radientAuthorityPending(client),
+				})
 				.catch(() => undefined);
 		};
 		const unsubscribe = subscribeRadientAuthority(client, publish);

@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "Это уведомление больше нельзя открыть в текущем аккаунте.",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "Разговоров пока нет",
 	"ui.teamBridge.list.empty.body": "Напишите личное сообщение, создайте группу или канал.",

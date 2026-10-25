@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "Neutral info toast after a stale native Team Bridge notification click. The app foregrounds but must not navigate or reveal the previous account or conversation. Shown only after the signed-in account settles; not during credential refresh.",
 	"ui.teamBridge.page.title": {
 		"role": "page heading",
 		"tone": "sentence case, product name kept as-is",
