@@ -165,5 +165,16 @@
 	"ui.common.updates.update_quiet_indicator.server_update": "Обновление сервера",
 	"ui.common.updates.wait.minutes": "Ожидание {minutes, plural, one {{minutes, number, ::group-off} минуты} few {{minutes, number, ::group-off} минут} many {{minutes, number, ::group-off} минут} other {{minutes, number, ::group-off} минуты}}",
 	"ui.common.updates.wait.minutes_seconds": "Ожидание {minutes, plural, one {{minutes, number, ::group-off} минуты} few {{minutes, number, ::group-off} минут} many {{minutes, number, ::group-off} минут} other {{minutes, number, ::group-off} минуты}} {seconds, plural, one {{seconds, number, ::group-off} секунды} few {{seconds, number, ::group-off} секунд} many {{seconds, number, ::group-off} секунд} other {{seconds, number, ::group-off} секунды}}",
-	"ui.common.updates.wait.seconds": "Ожидание {seconds, plural, one {{seconds, number, ::group-off} секунды} few {{seconds, number, ::group-off} секунд} many {{seconds, number, ::group-off} секунд} other {{seconds, number, ::group-off} секунды}}"
+	"ui.common.updates.wait.seconds": "Ожидание {seconds, plural, one {{seconds, number, ::group-off} секунды} few {{seconds, number, ::group-off} секунд} many {{seconds, number, ::group-off} секунд} other {{seconds, number, ::group-off} секунды}}",
+	"ui.common.updates.install.verifying": "Проверка обновления перед заменой приложения…",
+	"ui.common.updates.install.staging": "Подготовка обновления рядом с заменяемым приложением…",
+	"ui.common.updates.install.starting": "Запуск установщика. Приложение ненадолго закроется…",
+	"ui.common.updates.install.preparing": "Подготовка к установке…",
+	"ui.common.updates.install.succeeded": "Local Operator обновлён до версии v{version}.",
+	"ui.common.updates.error.server_unreachable": "Не удалось связаться с сервером обновлений. Проверьте подключение этого компьютера и повторите.",
+	"ui.common.updates.error.download": "Не удалось скачать обновление. Проверьте подключение этого компьютера и начните скачивание снова.",
+	"ui.common.updates.error.install": "Не удалось установить обновление. Проверьте подключение этого компьютера и запустите его снова на панели обновлений.",
+	"ui.common.updates.error.quit": "Приложению не удалось завершить работу для установки. Закройте его самостоятельно, чтобы обновление завершилось.",
+	"ui.common.updates.error.check_incomplete": "Проверка обновлений не завершилась. Приложение повторит её при следующей проверке.",
+	"ui.common.updates.error.version_unknown_required": "Неизвестно (требуется обновление)"
 }

@@ -11,6 +11,7 @@ export const AddedCopyFixture = ({ enabled, count, kind, serverText, t }) => {
 		{ label: enabled || "Added logical or label" },
 		{ label: serverText ?? "Added nullish label" },
 		{ label: t("ui.fixture.keyed") },
+		{ label: "ui.fixture.keyed" },
 		{ tooltip: serverText },
 		{ id: "technical-identifier", model: "gpt-5" },
 		{
@@ -40,6 +41,7 @@ export const AddedCopyFixture = ({ enabled, count, kind, serverText, t }) => {
 			/>
 			<div title={enabled ? "Unchanged debt one" : "Unchanged debt two"} />
 			<div title={serverText} />
+			<div>{"ui.fixture.raw_key"}</div>
 			{items}
 		</div>
 	);

@@ -20,6 +20,7 @@
  * sentence per file — is how the two come to disagree about the same state.
  */
 
+import { t } from "../../../i18n/messages";
 import type { MiniViewPlatform } from "../../../shared/mini-view";
 import { formatQuickSendDisplay } from "../../../shared/mini-view";
 
@@ -41,52 +42,84 @@ export const MINI_COPY = {
 	 * `aida.data?.name ?? "Aida"`), kept here as a resolver rather than a
 	 * literal so the four sentences below cannot drift from each other.
 	 */
-	seatLabel: (name: string) => `To: ${name}`,
+	seatLabel: (name: string) => t("ui.miniView.seat_label", { name }),
 	/** The composer's placeholder; sentence case, an invitation not an order. */
-	placeholder: (name: string) => `Message ${name}`,
+	placeholder: (name: string) => t("ui.miniView.placeholder", { name }),
 	/** The "Sent" flash, before the window puts itself away. */
-	sent: "Sent",
+	get sent() {
+		return t("ui.miniView.sent");
+	},
 	/** The hint row, replacing nothing — it is the resting line of the surface. */
-	hint: "Enter sends, Shift+Enter adds a line, Esc hides",
+	get hint() {
+		return t("ui.miniView.hint");
+	},
 	/** Dictation states. The mic control's own labels are the composer's. */
-	recording: "Recording. Press the stop button when you're done.",
+	get recording() {
+		return t("ui.miniView.recording");
+	},
 	/** The seat could not be resolved. */
-	seatMissing: (name: string) => `This build doesn't have a ${name} seat.`,
-	seatOpenFailed: (name: string) => `Couldn't open the ${name} conversation.`,
-	seatUnreachable: (name: string) => `Couldn't reach ${name}.`,
+	seatMissing: (name: string) => t("ui.miniView.seat_missing", { name }),
+	seatOpenFailed: (name: string) => t("ui.miniView.seat_open_failed", { name }),
+	seatUnreachable: (name: string) =>
+		t("ui.miniView.seat_unreachable", { name }),
 	/**
 	 * Paired with a pre-admission refusal, so the reader knows the draft was
 	 * not the thing that failed.
 	 */
-	keepText: "Your message is still here.",
+	get keepText() {
+		return t("ui.miniView.keep_text");
+	},
 	/**
 	 * Post-admission failure: the message may be in the conversation, and
 	 * retrying could duplicate it — so the copy points at the conversation
 	 * rather than offering a control that might send twice.
 	 */
-	postAdmission: (name: string) =>
-		`That didn't reach ${name} — check the conversation.`,
+	postAdmission: (name: string) => t("ui.miniView.post_admission", { name }),
 	/** The compact sheets' titles (model/effort), driven by the strip's chips. */
-	sheetModel: "Model for this conversation",
-	sheetEffort: "Reasoning effort",
+	get sheetModel() {
+		return t("ui.miniView.sheet_model");
+	},
+	get sheetEffort() {
+		return t("ui.miniView.sheet_effort");
+	},
 	/** Shown while a sheet reads the backend's list. */
-	sheetLoading: "Reading the list…",
+	get sheetLoading() {
+		return t("ui.miniView.sheet_loading");
+	},
 	/** When the backend cannot be asked (a failed `commands.entities`). */
-	sheetFailed: "Couldn't read the list. Press to try again.",
+	get sheetFailed() {
+		return t("ui.miniView.sheet_failed");
+	},
 	/** The command surface is off, so no chip opens a sheet. */
-	sheetUnavailable: "This backend can't switch that here.",
+	get sheetUnavailable() {
+		return t("ui.miniView.sheet_unavailable");
+	},
 	/** A pick that the owner refused. */
-	switchFailed: "That didn't switch:",
+	get switchFailed() {
+		return t("ui.miniView.switch_failed");
+	},
 	/** The context chip's readout, off the same snapshot the strip reads. */
-	contextLine: (used: string, window: string | null, estimated: boolean) =>
-		`Context: ${used}${
-			window ? ` of ${window}` : ""
-		} tokens${estimated ? " (estimated)" : ""}.`,
-	contextLineNoReading: "Context: no reading yet.",
+	contextLine: (used: string, window: string | null, estimated: boolean) => {
+		if (window !== null) {
+			return estimated
+				? t("ui.miniView.context_window_estimated", { used, window })
+				: t("ui.miniView.context_window", { used, window });
+		}
+		return estimated
+			? t("ui.miniView.context_estimated", { used })
+			: t("ui.miniView.context", { used });
+	},
+	get contextLineNoReading() {
+		return t("ui.miniView.context_no_reading");
+	},
 	/** A control that reached the mini but has no quick-send presentation. */
-	controlUnavailable: "That control isn't available in quick send.",
+	get controlUnavailable() {
+		return t("ui.miniView.control_unavailable");
+	},
 	/** The cwd chip's read-only reason (quick send never moves a directory). */
-	cwdReadOnly: "Quick send follows the conversation's directory.",
+	get cwdReadOnly() {
+		return t("ui.miniView.cwd_read_only");
+	},
 } as const;
 
 /**
@@ -120,22 +153,23 @@ export function resolveSeatName(name: string | null | undefined): string {
  * and it is macOS-only: on Windows and Linux a refused chord really does
  * surface through the taken state.
  */
-export const MACOS_DETECTION_BOUNDARY_COPY =
-	"If the chord does nothing, another app or the system owns it — choose another.";
+export const macosDetectionBoundaryCopy = (): string =>
+	t("ui.miniView.macos_detection_boundary");
 
 /**
  * The settings row's scope line (design §H.2) — the one sentence the desktop
  * UI adds to the registry's own help for this row.
  */
-export const QUICK_SEND_SCOPE_COPY = "Works even when the app isn't focused.";
+export const quickSendScopeCopy = (): string =>
+	t("ui.miniView.quick_send_scope");
 
 /**
  * The refusal shown UNDER the field when a captured chord has no modifier
  * (design §A.5 rule 1). The backend refuses the same shape at the write
  * boundary; this copy exists so the reader hears it at the key press.
  */
-export const DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY =
-	"A global shortcut needs a modifier — it would otherwise fire while you type.";
+export const desktopHotkeyNeedsModifierCopy = (): string =>
+	t("ui.miniView.hotkey_needs_modifier");
 
 /**
  * The alternates sentence (§B.3), spelled with the display keys of the
@@ -146,7 +180,10 @@ export const DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY =
  */
 export function alternatesCopy(platform: MiniViewPlatform): string {
 	const shown = (value: string) => formatQuickSendDisplay(value, platform);
-	return `Try ${shown("primary+shift+space")} or ${shown("primary+f8")} if that one is taken.`;
+	return t("ui.miniView.alternates", {
+		first: shown("primary+shift+space"),
+		second: shown("primary+f8"),
+	});
 }
 
 /**
@@ -175,11 +212,13 @@ export function priorArtCopy(
 		case "alt+primary+space":
 			return macOr(
 				platform,
-				"Fantastical and Things Quick Entry use Control+Option+Space; both let you rebind it.",
-				"Some capture apps reserve their own chord in this family; the settings inside them can rebind it.",
+				t("ui.miniView.prior_art_launchers_mac"),
+				t("ui.miniView.prior_art_launchers_other"),
 			);
 		case "primary+shift+space":
-			return `Some editors use ${shown("primary+shift+space")} for parameter hints, and word processors for a non-breaking space.`;
+			return t("ui.miniView.prior_art_editors", {
+				chord: shown("primary+shift+space"),
+			});
 		default:
 			return null;
 	}
@@ -200,12 +239,12 @@ export function registrationCopy(
 ): string {
 	switch (status) {
 		case "registered":
-			return `Registered ${display}`;
+			return t("ui.miniView.registration_registered", { display });
 		case "taken":
-			return `Couldn't register ${display} — another app may already use it. Choose another shortcut.`;
+			return t("ui.miniView.registration_taken", { display });
 		case "invalid":
-			return "This key can't be used as a global shortcut on this system.";
+			return t("ui.miniView.registration_invalid");
 		case "unavailable":
-			return "Global shortcuts aren't supported on this system.";
+			return t("ui.miniView.registration_unavailable");
 	}
 }

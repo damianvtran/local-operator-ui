@@ -28,7 +28,8 @@ const bundle = await build({
 			'export { isSignedOut, isFailedSignOut } from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
 			'export { focusHoldStep, focusHoldWindow, focusHoldRead, focusHoldCandidate, focusHoldPointerEnds, focusHoldWatchDelay, FOCUS_WATCH_MS, FOCUS_REANCHOR_CAP } from "./src/renderer/src/features/settings/components/integrations/integration-focus";' +
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";' +
-			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";' +
+			'export { t } from "./src/i18n/messages";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -580,7 +581,7 @@ test("a refusal code this build has never seen still gets a true sentence", () =
 				code === undefined
 					? // No code at all is the session route's blanket 409: still generic.
 						"refused it"
-					: m.CATALOG_REFUSAL_FALLBACK.slice(0, 24),
+					: m.t(m.CATALOG_REFUSAL_FALLBACK_KEY).slice(0, 24),
 			),
 		);
 	}

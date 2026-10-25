@@ -38,7 +38,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const palenight: ThemeDefinition = {
 	id: "palenight",
 	name: "Palenight",
-	description: "Material Palenight: deep navy under a soft violet accent.",
+	descriptionKey: "ui.settings.appearance.theme.palenight",
 	palette: {
 		mode: "dark",
 

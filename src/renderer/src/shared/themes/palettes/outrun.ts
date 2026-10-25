@@ -61,7 +61,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const outrun: ThemeDefinition = {
 	id: "outrun",
 	name: "Outrun",
-	description: "Sunset magenta and grid cyan racing over midnight blue.",
+	descriptionKey: "ui.settings.appearance.theme.outrun",
 	palette: {
 		mode: "dark",
 

@@ -34,5 +34,19 @@
 	"ui.common.actions.text_selection_controls.copy_without_formatting": "Sao chép không định dạng",
 	"ui.common.actions.text_selection_controls.open_in_browser": "Mở trong trình duyệt",
 	"ui.common.actions.text_selection_controls.refer_to_this_from_file": "Tham chiếu nội dung này từ tệp",
-	"ui.common.actions.text_selection_controls.reply": "Trả lời"
+	"ui.common.actions.text_selection_controls.reply": "Trả lời",
+	"ui.common.actions.agent_created": "Đã tạo tác nhân",
+	"ui.common.actions.agent_deleted": "Đã xóa tác nhân",
+	"ui.common.actions.agent_imported": "Đã nhập tác nhân",
+	"ui.common.actions.agent_exported": "Đã xuất tác nhân",
+	"ui.common.actions.agent_updated": "Đã cập nhật tác nhân",
+	"ui.common.actions.agent_system_prompt_updated": "Đã cập nhật prompt hệ thống của tác nhân",
+	"ui.common.actions.conversation_cleared": "Đã xóa lịch sử cuộc trò chuyện",
+	"ui.common.actions.variable_created": "Đã tạo biến",
+	"ui.common.actions.variable_updated": "Đã cập nhật biến",
+	"ui.common.actions.variable_deleted": "Đã xóa biến",
+	"ui.common.actions.configuration_updated": "Đã cập nhật cấu hình",
+	"ui.common.actions.system_prompt_updated": "Đã cập nhật prompt hệ thống",
+	"ui.common.actions.credential_updated": "Đã cập nhật thông tin xác thực “{key}”",
+	"ui.common.actions.clear": "Xóa"
 }

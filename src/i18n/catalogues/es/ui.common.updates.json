@@ -165,5 +165,16 @@
 	"ui.common.updates.update_foot_icon.available_show_the_update_notice": "{joined} disponible. Mostrar el aviso de actualización.",
 	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": "Recompilando el servidor desde el checkout de este equipo. La app esperó primero a que terminaran los turnos en ejecución en este equipo; la recompilación reinstala esta instalación en su ubicación, así que un turno iniciado durante el proceso aún puede interrumpirse. Puede tardar varios minutos (hasta media hora). No se puede interrumpir una vez iniciada.",
 	"ui.common.updates.update_quiet_indicator.available": "{quietoffersubject} disponible",
-	"ui.common.updates.update_foot_icon.subject_join": "{left} y {right}"
+	"ui.common.updates.update_foot_icon.subject_join": "{left} y {right}",
+	"ui.common.updates.install.verifying": "Verificando la actualización con respecto a la app que sustituirá…",
+	"ui.common.updates.install.staging": "Preparando la actualización junto a la app que sustituirá…",
+	"ui.common.updates.install.starting": "Iniciando el instalador. La app se cierra un momento…",
+	"ui.common.updates.install.preparing": "Preparando la instalación…",
+	"ui.common.updates.install.succeeded": "Local Operator se actualizó a v{version}.",
+	"ui.common.updates.error.server_unreachable": "La app no pudo contactar con el servidor de actualizaciones. Comprueba la conexión de este equipo y vuelve a intentarlo.",
+	"ui.common.updates.error.download": "No se pudo descargar la actualización. Comprueba la conexión de este equipo y reinicia la descarga.",
+	"ui.common.updates.error.install": "No se pudo instalar la actualización. Comprueba la conexión de este equipo y reiníciala desde el panel de actualizaciones.",
+	"ui.common.updates.error.quit": "La app no pudo cerrarse para terminar la instalación. Ciérrala tú y deja que la actualización termine.",
+	"ui.common.updates.error.check_incomplete": "No se completó la comprobación de actualizaciones. La app reintentará en la próxima.",
+	"ui.common.updates.error.version_unknown_required": "Desconocida (actualización necesaria)"
 }

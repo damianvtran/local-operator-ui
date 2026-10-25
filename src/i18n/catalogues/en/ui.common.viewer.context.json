@@ -93,5 +93,15 @@
 			"index": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
 		}
+	},
+	"ui.common.viewer.image_progress": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Image {index} of {count}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number.",
+			"index": "Runtime value; preserve the placeholder and insert it without translation."
+		}
 	}
 }

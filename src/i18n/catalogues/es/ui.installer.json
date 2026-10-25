@@ -16,5 +16,9 @@
 	"ui.installer.phase.label.python": "Preparándolo todo",
 	"ui.installer.phase.label.verify": "Arrancando",
 	"ui.installer.status.elapsed": "{step} · {elapsed} transcurrido · {eta}",
-	"ui.installer.status.step": "Paso {step} de {total}"
+	"ui.installer.status.step": "Paso {step} de {total}",
+	"ui.installer.phase.state.finished": " - finalizado",
+	"ui.installer.phase.state.active": " - en curso",
+	"ui.installer.phase.state.failed": " - fallido",
+	"ui.installer.phase.state.waiting": " - en espera"
 }

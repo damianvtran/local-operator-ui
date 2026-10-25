@@ -199,5 +199,92 @@
 			"currentmatch": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller.",
 			"matchcount": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
 		}
+	},
+	"ui.common.actions.agent_created": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Agent created"
+	},
+	"ui.common.actions.agent_deleted": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Agent deleted"
+	},
+	"ui.common.actions.agent_imported": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Agent imported"
+	},
+	"ui.common.actions.agent_exported": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Agent exported"
+	},
+	"ui.common.actions.agent_updated": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Agent updated"
+	},
+	"ui.common.actions.agent_system_prompt_updated": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Agent system prompt updated"
+	},
+	"ui.common.actions.conversation_cleared": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Conversation cleared"
+	},
+	"ui.common.actions.variable_created": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Variable created"
+	},
+	"ui.common.actions.variable_updated": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Variable updated"
+	},
+	"ui.common.actions.variable_deleted": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Variable deleted"
+	},
+	"ui.common.actions.configuration_updated": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Configuration updated"
+	},
+	"ui.common.actions.system_prompt_updated": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: System prompt updated"
+	},
+	"ui.common.actions.credential_updated": {
+		"role": "Success toast",
+		"tone": "Brief factual confirmation.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Credential \"{key}\" updated successfully",
+		"placeholders": {
+			"key": "Credential key name; keep verbatim."
+		}
+	},
+	"ui.common.actions.clear": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Clear"
 	}
 }

@@ -63,7 +63,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const arcade: ThemeDefinition = {
 	id: "arcade",
 	name: "Arcade",
-	description: "Candy RGB game states glowing on black CRT glass.",
+	descriptionKey: "ui.settings.appearance.theme.arcade",
 	palette: {
 		mode: "dark",
 

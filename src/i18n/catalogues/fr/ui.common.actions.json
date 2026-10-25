@@ -34,5 +34,19 @@
 	"ui.common.actions.text_selection_controls.open_in_browser": "Ouvrir dans le navigateur",
 	"ui.common.actions.confirmation_modal.confirm": "Confirmer",
 	"ui.common.actions.confirmation_modal.cancel": "Annuler",
-	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} sur {matchcount, number, ::group-off}"
+	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} sur {matchcount, number, ::group-off}",
+	"ui.common.actions.agent_created": "Agent créé",
+	"ui.common.actions.agent_deleted": "Agent supprimé",
+	"ui.common.actions.agent_imported": "Agent importé",
+	"ui.common.actions.agent_exported": "Agent exporté",
+	"ui.common.actions.agent_updated": "Agent mis à jour",
+	"ui.common.actions.agent_system_prompt_updated": "Prompt système de l’agent mis à jour",
+	"ui.common.actions.conversation_cleared": "Conversation effacée",
+	"ui.common.actions.variable_created": "Variable créée",
+	"ui.common.actions.variable_updated": "Variable mise à jour",
+	"ui.common.actions.variable_deleted": "Variable supprimée",
+	"ui.common.actions.configuration_updated": "Configuration mise à jour",
+	"ui.common.actions.system_prompt_updated": "Prompt système mis à jour",
+	"ui.common.actions.credential_updated": "Identifiant « {key} » mis à jour",
+	"ui.common.actions.clear": "Effacer"
 }
