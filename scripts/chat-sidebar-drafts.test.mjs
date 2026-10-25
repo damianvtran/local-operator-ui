@@ -393,7 +393,14 @@ test("the discard offer is its own toast: one id, one slot, an Undo that restore
 		false,
 		"the discard offer must not share the archive's id: nothing about this act is an archive",
 	);
-	assert.match(branch, /label: "Undo"/);
+	/*
+	 * The label is the shared KEY now, not a literal: the same action text is the
+	 * archive offer's (`ui.notices.chat.undo`), so one catalogue entry owns it and
+	 * a locale switch redraws it (agent review round 1, R1-2). The pin keeps what
+	 * it was for - the offer must carry an Undo action - and drops the English
+	 * spelling it used to spell out.
+	 */
+	assert.match(branch, /label: t\("ui\.notices\.chat\.undo"\)/);
 	assert.match(branch, /restoreDraftsUndo\(\);/);
 	/*
 	 * LIFETIME, CHROME AND SHRINKING ARE SONNER'S (2026-09-27): the offer's own
@@ -401,7 +408,16 @@ test("the discard offer is its own toast: one id, one slot, an Undo that restore
 	 * no persistent duration for a clock to outlive, no `position`, and the same
 	 * `min-w-0` chain as the archive offer so the copy can give at the card's width.
 	 */
-	assert.match(branch, /duration: ARCHIVE_UNDO_TOAST_MS/);
+	/*
+	 * The documented eight seconds is now the value the raise RECEIVES and the
+	 * base a locale redraw counts down from (agent review round 1, R1-5): the
+	 * option is the computed remainder, so the pin names the computation rather
+	 * than a literal option that would re-arm the timer on every language switch.
+	 */
+	assert.match(
+		branch,
+		/const duration = redraw \? raised\.raisedAt \+ ARCHIVE_UNDO_TOAST_MS - Date\.now\(\) : ARCHIVE_UNDO_TOAST_MS;/,
+	);
 	assert.equal(branch.includes("POSITIVE_INFINITY"), false);
 	assert.equal(branch.includes("position:"), false);
 	assert.match(branch, /classNames: \{ content: "min-w-0" \}/);

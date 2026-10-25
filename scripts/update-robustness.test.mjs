@@ -81,6 +81,7 @@ const {
 	appBundleFromExecutable,
 	buildPipUpgradeCommand,
 	buildWatchdogPlan,
+	watchdogMessages,
 	classifyGlobalInstall,
 	clearPendingInstallMarker,
 	compareVersions,
@@ -983,6 +984,56 @@ test("pending marker survives a write, detects failure or success, and clears", 
 	writeFileSync(pendingInstallMarkerPath(dir), "{not json", "utf8");
 	assert.equal(readPendingInstallMarker(dir), null);
 	assert.equal(parsePendingInstallMarker('{"targetVersion":""}'), null);
+});
+
+test("the marker's language is optional, validated, and invisible to an older reader", () => {
+	const dir = tempDir("lo-marker-language-");
+	const written = writePendingInstallMarker(dir, {
+		targetVersion: "0.42.0",
+		artifactPath: "/tmp/LO-0.42.0.zip",
+		startedAt: "2026-10-25T10:00:00.000Z",
+		watchdogPid: 1234,
+		installerPid: null,
+		language: "fr",
+	});
+	// Round-trips: the hold can read the tag the quitting process recorded.
+	assert.equal(readPendingInstallMarker(dir)?.language, "fr");
+	assert.equal(written.language, "fr");
+
+	/*
+	 * A marker written by the app before this field existed is still VALID - the
+	 * absence is what tells the hold to fall back to the device reading, and an
+	 * older reader ignores the key it does not know (rollback-safe).
+	 */
+	const legacy = parsePendingInstallMarker(
+		JSON.stringify({
+			targetVersion: "0.42.0",
+			artifactPath: "/tmp/LO-0.42.0.zip",
+			startedAt: "2026-10-25T10:00:00.000Z",
+			watchdogPid: null,
+			installerPid: null,
+		}),
+	);
+	assert.ok(legacy, "a pre-language marker must still parse");
+	assert.equal("language" in legacy, false);
+
+	// The file is writable by anything, so the parser is the gate: an unusable
+	// tag is treated exactly like an absent one rather than reaching ICU.
+	for (const bad of ["fr/../../etc", "", "en US", 42, null]) {
+		const parsed = parsePendingInstallMarker(
+			JSON.stringify({
+				targetVersion: "0.42.0",
+				language: bad,
+			}),
+		);
+		assert.ok(parsed);
+		assert.equal(
+			"language" in parsed,
+			false,
+			`${JSON.stringify(bad)} was accepted as a language`,
+		);
+	}
+	rmSync(dir, { recursive: true, force: true });
 });
 
 /**
@@ -1934,11 +1985,25 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	);
 	assert.match(
 		plan.script,
-		/\$app_wait_notice" -eq 0 \] && \[ "\$_waited" -ge 15 \]; then\n\t\tapp_wait_notice=1\n\t\tnotify "Waiting for Local Operator to close so the update can install \(waiting \$\(elapsed_text\)\)\. No action is needed yet\."/,
+		/\$app_wait_notice" -eq 0 \] && \[ "\$_waited" -ge 15 \]; then\n\t\tapp_wait_notice=1\n\t\tnotify "\$\(printf "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT" "\$\(elapsed_text\)"\)"/,
 	);
 	assert.match(
 		plan.script,
-		/\$app_wait_fallback" -eq 0 \] && \[ "\$_waited" -ge 160 \]; then\n\t\tapp_wait_fallback=1\n\t\tnotify "The update is still waiting for Local Operator to close \(waiting \$\(elapsed_text\)\)\. If nothing happens, quit Local Operator \(Force Quit if it does not respond\) and leave it closed until it opens again by itself\."/,
+		/\$app_wait_fallback" -eq 0 \] && \[ "\$_waited" -ge 160 \]; then\n\t\tapp_wait_fallback=1\n\t\tnotify "\$\(printf "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK" "\$\(elapsed_text\)"\)"/,
+	);
+	/*
+	 * The copy itself is DATA in the plan's environment now (agent review round 1,
+	 * R1-1/R1-3): a translation must never become shell source. The messages are
+	 * still the operator's sentences, and the elapsed reading is still a shell
+	 * substitution - now one `printf` conversion rather than text inside quotes.
+	 */
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT,
+		"Waiting for Local Operator to close so the update can install (waiting %s). No action is needed yet.",
+	);
+	assert.match(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK,
+		/If nothing happens, quit Local Operator \(Force Quit if it does not respond\) and leave it closed until it opens again by itself\./,
 	);
 	/*
 	 * The hard bound's notice tells the truth on BOTH arms (2026-10-11): the arm
@@ -1950,7 +2015,7 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	 */
 	assert.match(
 		plan.script,
-		/if app_running; then\n\t\t\t\tnotify "The update is still waiting for Local Operator to close/,
+		/if app_running; then\n\t\t\t\tnotify "\$\(printf "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK"/,
 	);
 	assert.match(plan.script, /hard_deadline=\$\(\( \$\(now\) \+ 1800 \)\)/);
 	// The hold is keyed on `install_live`, which is the installer's own pid for an
@@ -1961,11 +2026,15 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// wait/fallback copy, app gone -> the stay-closed copy.
 	assert.match(
 		plan.script,
-		/&& install_live; then\n\t\t\tholding=1\n(?:\t\t\t# [^\n]*\n)*\t\t\tif app_running; then\n\t\t\t\tnotify "The update is still waiting for Local Operator to close/,
+		/&& install_live; then\n\t\t\tholding=1\n(?:\t\t\t# [^\n]*\n)*\t\t\tif app_running; then\n\t\t\t\tnotify "\$\(printf "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK"/,
 	);
 	assert.match(
 		plan.script,
-		/\t\t\telse\n\t\t\t\tnotify "The update is still installing\. Keep Local Operator closed; it will open again when the install finishes\."/,
+		/\t\t\telse\n\t\t\t\tnotify "\$LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING"/,
+	);
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING,
+		"The update is still installing. Keep Local Operator closed; it will open again when the install finishes.",
 	);
 	/*
 	 * And the script's own reader of the installer's pid asks the same second
@@ -3336,6 +3405,87 @@ test(
 			before,
 			"the watchdog started the app into an install while the app was still running",
 		);
+		app.kill();
+		installer.kill();
+	},
+);
+
+test(
+	"a translated watchdog sentence is data, not shell syntax",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = tempDir("lo-watchdog-copy-escape-");
+		const fixture = makeWatchdogFixture(dir);
+		const pwned = join(dir, "pwned-by-a-translation");
+		const hostile = [
+			"quote \"double\" and 'single'",
+			`tick \`touch ${pwned}\``,
+			`sub $(touch ${pwned})`,
+			"percent 100% and elapsed {elapsed} end",
+		].join("\n");
+		const app = startProcess("/bin/sleep", ["60"]);
+		const installer = startProcess("/bin/sleep", ["60"]);
+		const plan = buildWatchdogPlan({
+			appBundlePath: fixture.bundle,
+			executableName: "Fixture",
+			appPid: app.pid,
+			installerPid: installer.pid,
+			shipItJob: "com.local-operator.ShipIt",
+			platform: "darwin",
+			signals: fixture.probes,
+			timeoutSeconds: 2,
+			hardTimeoutSeconds: 3,
+			intervalSeconds: 1,
+			settleSeconds: 1,
+			appearSeconds: 1,
+			announceSeconds: 1,
+			appWaitNoticeSeconds: 1,
+			appWaitFallbackSeconds: 2,
+			messages: {
+				...watchdogMessages(),
+				appWait: hostile,
+			},
+		});
+		const watchdog = runWatchdog({
+			plan,
+			binDir: fixture.binDir,
+			env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+		});
+		const deadline = Date.now() + 8000;
+		while (Date.now() < deadline) {
+			if (
+				fixture
+					.notifications()
+					.some((line) => line.includes("percent 100% and elapsed"))
+			)
+				break;
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+		const notices = fixture.notifications();
+		/*
+		 * The stub logs one argv string; the hostile sentence contains newlines, so
+		 * the log file has several lines for ONE notification. Join before reading
+		 * it, or the assertion sees only the sentence's last line.
+		 */
+		const painted = notices.join("\n");
+		assert.ok(
+			painted.includes("percent 100% and elapsed"),
+			`the hostile sentence never reached the notifier: ${JSON.stringify(notices)}`,
+		);
+		// The sentence is printed literally: the substitution happened, and the
+		// shell never executed what the "translation" contained.
+		assert.match(
+			painted,
+			/quote "double" and 'single'\s+tick `touch [^`]+`\s+sub \$\(touch /,
+			"the translated text was altered before it reached the user",
+		);
+		assert.doesNotMatch(painted, /\{elapsed\}/);
+		assert.equal(
+			existsSync(pwned),
+			false,
+			"a translation executed as shell code",
+		);
+		await watchdog.exit;
 		app.kill();
 		installer.kill();
 	},

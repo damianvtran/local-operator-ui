@@ -427,10 +427,6 @@ export const goalStalledNote = (reason: string | undefined): string => {
  * paraphrases nothing it is reporting.
  */
 
-const LOOP_STOP_FAILURE = "Could not stop the loop";
-const LOOP_CLEAR_FAILURE = "Could not clear the loop";
-const GOAL_UNDO_FAILURE = "Could not restore the goal";
-
 /**
  * How much of the cleared goal the confirmation prints, in characters.
  *
@@ -1150,8 +1146,16 @@ export const loopAffordance = (
 	loop: DesktopLoopState,
 ): { text: string; args: string | null; failure: string } =>
 	loopIsRunning(loop.status)
-		? { text: LOOP_STOP_TEXT, args: LOOP_STOP_ARGS, failure: LOOP_STOP_FAILURE }
-		: { text: LOOP_CLEAR_TEXT, args: null, failure: LOOP_CLEAR_FAILURE };
+		? {
+				text: LOOP_STOP_TEXT,
+				args: LOOP_STOP_ARGS,
+				failure: t("ui.notices.chat.loop_stop_failed"),
+			}
+		: {
+				text: LOOP_CLEAR_TEXT,
+				args: null,
+				failure: t("ui.notices.chat.loop_clear_failed"),
+			};
 
 /**
  * The loop dismiss's tooltip and accessible name: one derived string, on
@@ -2132,7 +2136,11 @@ export const ComposerStatusRow = ({
 			pendingUndo.current = [];
 			return;
 		}
-		const result = await goalCommand.run(GOAL_COMMAND, text, GOAL_UNDO_FAILURE);
+		const result = await goalCommand.run(
+			GOAL_COMMAND,
+			text,
+			t("ui.notices.chat.goal_restore_failed"),
+		);
 		if (result.result.tone === "error") showErrorToast(result.result.text);
 	};
 

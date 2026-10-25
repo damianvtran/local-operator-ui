@@ -127,7 +127,12 @@ const BULK_READ_DEFERRAL_TOAST_MS = 8000;
  * toast in the app uses.
  */
 export function UndoToasts() {
-	useI18nLocale();
+	/*
+	 * The value is read for its SUBSCRIPTION as well as its value: a locale change
+	 * must redraw an OPEN offer in the new language, and the effects below carry
+	 * it in their dependencies for exactly that (agent review round 1, R1-5).
+	 */
+	const locale = useI18nLocale();
 	const archiveFailure = useCanonicalSessionsStore(
 		(state) => state.archiveFailure,
 	);
@@ -172,6 +177,24 @@ export function UndoToasts() {
 		kind: "offer" | "failure";
 		at: number;
 	} | null>(null);
+	/*
+	 * WHEN THIS ID WAS LAST RAISED, so a locale redraw can UPDATE the standing
+	 * card without extending its life. Sonner restarts an entry's timer on
+	 * `toast.info`/`toast.warning` even when the id is unchanged, so passing the
+	 * full documented duration again on every language switch would keep an offer
+	 * alive forever while the user flips languages. The remaining time is computed
+	 * from the ORIGINAL raise: the deadline never moves, and an already-expired
+	 * message is not resurrected (`null` skips the redraw; sonner is already
+	 * taking it down).
+	 */
+	const archiveRaisedRef = useRef<{
+		kind: "offer" | "failure";
+		at: number;
+		raisedAt: number;
+		duration: number;
+		/** The locale the standing entry was last redrawn in. */
+		locale: string;
+	} | null>(null);
 
 	useEffect(() => {
 		/*
@@ -194,6 +217,7 @@ export function UndoToasts() {
 		if (archiveFailure === null && archiveUndo === null) {
 			if (archiveDrawnRef.current === null) return;
 			archiveDrawnRef.current = null;
+			archiveRaisedRef.current = null;
 			dismissToast(ARCHIVE_TOAST_ID);
 			return;
 		}
@@ -258,11 +282,35 @@ export function UndoToasts() {
 				archiveDrawnRef.current = null;
 		};
 		if (newest === "failure" && archiveFailure) {
+			/*
+			 * The redraw rule (R1-5): a locale change re-raises the SAME id with the
+			 * time the original raise has left; a new refusal is a new raise and gets
+			 * the full documented life.
+			 */
+			const raised = archiveRaisedRef.current;
+			const redraw =
+				raised !== null &&
+				raised.kind === "failure" &&
+				raised.at === archiveFailure.at;
+			const duration = redraw
+				? raised.raisedAt + raised.duration - Date.now()
+				: ARCHIVE_FAILURE_TOAST_MS;
+			if (duration <= 0) return;
+			if (!redraw)
+				archiveRaisedRef.current = {
+					kind: "failure",
+					at: archiveFailure.at,
+					raisedAt: Date.now(),
+					duration,
+					locale,
+				};
+			else if (raised.locale !== locale)
+				archiveRaisedRef.current = { ...raised, locale };
 			showWarningToast(
 				`${archiveFailure.archived ? t("ui.notices.chat.archive_failed", { title: archiveFailureTitle }) : t("ui.notices.chat.unarchive_failed", { title: archiveFailureTitle })}${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
 				{
 					id: ARCHIVE_TOAST_ID,
-					duration: ARCHIVE_FAILURE_TOAST_MS,
+					duration,
 					onAutoClose: settle("failure", archiveFailure.at),
 					onDismiss: settle("failure", archiveFailure.at),
 					action: {
@@ -305,6 +353,30 @@ export function UndoToasts() {
 			return;
 		}
 		if (archiveUndo) {
+			/*
+			 * Same redraw rule as the refusal above, on the offer's own documented
+			 * life. The ACTION is re-created with this render's closure either way, so
+			 * a language switch cannot lose the Undo; only the deadline is preserved.
+			 */
+			const raised = archiveRaisedRef.current;
+			const redraw =
+				raised !== null &&
+				raised.kind === "offer" &&
+				raised.at === archiveUndo.at;
+			const duration = redraw
+				? raised.raisedAt + raised.duration - Date.now()
+				: ARCHIVE_UNDO_TOAST_MS;
+			if (duration <= 0) return;
+			if (!redraw)
+				archiveRaisedRef.current = {
+					kind: "offer",
+					at: archiveUndo.at,
+					raisedAt: Date.now(),
+					duration,
+					locale,
+				};
+			else if (raised.locale !== locale)
+				archiveRaisedRef.current = { ...raised, locale };
 			showInfoToast(
 				/*
 				 * THE NAME FLEXES; THE VERB DOES NOT (agent review round 2, R2-3). The
@@ -322,7 +394,7 @@ export function UndoToasts() {
 				</span>,
 				{
 					id: ARCHIVE_TOAST_ID,
-					duration: ARCHIVE_UNDO_TOAST_MS,
+					duration,
 					/*
 					 * THE FLEX CHAIN HAS TO BE ABLE TO SHRINK TO THE CARD, and the class is how:
 					 * sonner's `[data-content]` is a flex item whose automatic minimum size is
@@ -365,6 +437,7 @@ export function UndoToasts() {
 			);
 		}
 	}, [
+		locale,
 		archiveFailureTitle,
 		archiveFailure,
 		archiveUndo,
@@ -381,14 +454,35 @@ export function UndoToasts() {
 	 * dismisses what the slot no longer stands behind.
 	 */
 	const draftsDrawnRef = useRef(false);
+	/* Same deadline-preserving redraw as the archive offer (R1-5). */
+	const draftsRaisedRef = useRef<{
+		at: number;
+		raisedAt: number;
+		locale: string;
+	} | null>(null);
 	useEffect(() => {
 		if (draftsUndo === null) {
 			if (!draftsDrawnRef.current) return;
 			draftsDrawnRef.current = false;
+			draftsRaisedRef.current = null;
 			dismissToast(DRAFTS_UNDO_TOAST_ID);
 			return;
 		}
 		draftsDrawnRef.current = true;
+		const raised = draftsRaisedRef.current;
+		const redraw = raised !== null && raised.at === draftsUndo.at;
+		const duration = redraw
+			? raised.raisedAt + ARCHIVE_UNDO_TOAST_MS - Date.now()
+			: ARCHIVE_UNDO_TOAST_MS;
+		if (duration <= 0) return;
+		if (!redraw)
+			draftsRaisedRef.current = {
+				at: draftsUndo.at,
+				raisedAt: Date.now(),
+				locale,
+			};
+		else if (raised.locale !== locale)
+			draftsRaisedRef.current = { ...raised, locale };
 		const settle = () => {
 			const state = useCanonicalSessionsStore.getState();
 			if (state.draftsUndo?.at !== draftsUndo.at) return;
@@ -406,7 +500,7 @@ export function UndoToasts() {
 			</span>,
 			{
 				id: DRAFTS_UNDO_TOAST_ID,
-				duration: ARCHIVE_UNDO_TOAST_MS,
+				duration,
 				/* The offer's own shrink rule (`min-w-0` on the content box): the count is
 				   short at every width, but the chain that lets a long NAME give is the chain,
 				   and one shape keeps the two offers' cards identical. */
@@ -453,7 +547,7 @@ export function UndoToasts() {
 				},
 			},
 		);
-	}, [draftsUndo, restoreDraftsUndo]);
+	}, [locale, draftsUndo, restoreDraftsUndo]);
 
 	/*
 	 * THE BULK READ DEFERRAL (operator report, 2026-10-05; raised here since agent

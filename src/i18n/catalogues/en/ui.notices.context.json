@@ -278,6 +278,27 @@
 		"note": "The backend's own reason follows this prefix.",
 		"placeholders": {}
 	},
+	"ui.notices.chat.goal_restore_failed": {
+		"role": "error toast prefix when restoring a cleared goal fails",
+		"tone": "Plain failure naming the control's act.",
+		"length": "Short phrase; leads the toast before the backend's reason.",
+		"note": "The backend's own reason follows this prefix, separated by a colon by the caller; keep it a fragment that reads as the start of one sentence.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.loop_clear_failed": {
+		"role": "error toast prefix when clearing the agent loop fails",
+		"tone": "Plain failure naming the control's act.",
+		"length": "Short phrase; leads the toast before the backend's reason.",
+		"note": "The backend's own reason follows this prefix. \"Loop\" is the agent-run loop the control stops or clears.",
+		"placeholders": {}
+	},
+	"ui.notices.chat.loop_stop_failed": {
+		"role": "error toast prefix when stopping the agent loop fails",
+		"tone": "Plain failure naming the control's act.",
+		"length": "Short phrase; leads the toast before the backend's reason.",
+		"note": "The backend's own reason follows this prefix. \"Loop\" is the agent-run loop the control stops or clears.",
+		"placeholders": {}
+	},
 	"ui.notices.chat.mark_all_read_cleared": {
 		"role": "success toast body for a bulk read acknowledgement",
 		"tone": "Factual receipt with a count.",
@@ -604,6 +625,45 @@
 		"tone": "Short alert title.",
 		"length": "Three words; OS banner title.",
 		"note": "Tells the reader a website is asking to be opened by an agent. Not a security warning.",
+		"placeholders": {}
+	},
+	"ui.notices.main.watchdog_app_wait": {
+		"role": "macOS notification while the update waits for the app to quit",
+		"tone": "Calm status with an explicit no-action clause.",
+		"length": "Two sentences; OS banner body, keep under ~170 characters.",
+		"note": "Raised by the detached relaunch watchdog after the app has quit; {elapsed} is the shell's own reading of the wait (\"15 s\", \"2 min 30 s\") and must stay exactly that token.",
+		"placeholders": {
+			"elapsed": "string"
+		}
+	},
+	"ui.notices.main.watchdog_app_wait_fallback": {
+		"role": "macOS notification when the app did not quit and the wait needs the user",
+		"tone": "Direct fallback instruction, still calm.",
+		"length": "Two sentences; OS banner body.",
+		"note": "Second-stage notice from the relaunch watchdog. {elapsed} is the shell's wait reading and must stay exactly that token. It must not tell the reader to reopen the app.",
+		"placeholders": {
+			"elapsed": "string"
+		}
+	},
+	"ui.notices.main.watchdog_installing": {
+		"role": "macOS notification that an update install has started",
+		"tone": "Plain status plus the one instruction.",
+		"length": "Two sentences; OS banner body.",
+		"note": "Raised after the app has quit and the install is under way. It names no duration on purpose.",
+		"placeholders": {}
+	},
+	"ui.notices.main.watchdog_still_installing": {
+		"role": "macOS notification at the soft bound while an install still runs",
+		"tone": "Plain status plus the one instruction.",
+		"length": "Two sentences; OS banner body.",
+		"note": "Raised only when the app is gone and the install is still live at the soft bound.",
+		"placeholders": {}
+	},
+	"ui.notices.main.watchdog_taking_longer": {
+		"role": "macOS notification at the hard bound before the app reopens",
+		"tone": "Honest status and one qualifying instruction.",
+		"length": "Two sentences; OS banner body, keep under ~250 characters.",
+		"note": "Raised only when the app is gone at the hard bound and will be relaunched. It must not promise the install has finished.",
 		"placeholders": {}
 	},
 	"ui.notices.main.update_hold_body": {

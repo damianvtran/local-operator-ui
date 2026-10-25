@@ -5550,6 +5550,9 @@ export type MessageParams = {
 	"ui.notices.chat.goal_dismiss_failed": undefined;
 	"ui.notices.chat.goal_done": { goal: string };
 	"ui.notices.chat.goal_done_failed": undefined;
+	"ui.notices.chat.goal_restore_failed": undefined;
+	"ui.notices.chat.loop_clear_failed": undefined;
+	"ui.notices.chat.loop_stop_failed": undefined;
 	"ui.notices.chat.mark_all_read_cleared": { count: number };
 	"ui.notices.chat.mark_all_read_deferred": { count: number };
 	"ui.notices.chat.mark_all_read_none_cleared": undefined;
@@ -5594,6 +5597,11 @@ export type MessageParams = {
 	"ui.notices.main.update_hold_no_relaunch": undefined;
 	"ui.notices.main.update_hold_relaunch": undefined;
 	"ui.notices.main.update_hold_title": undefined;
+	"ui.notices.main.watchdog_app_wait": { elapsed: string };
+	"ui.notices.main.watchdog_app_wait_fallback": { elapsed: string };
+	"ui.notices.main.watchdog_installing": undefined;
+	"ui.notices.main.watchdog_still_installing": undefined;
+	"ui.notices.main.watchdog_taking_longer": undefined;
 	"ui.notices.sessions.clear_failed": { detail: string };
 	"ui.notices.sessions.cleared": undefined;
 	"ui.notices.sessions.id_copied": undefined;

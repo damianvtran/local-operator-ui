@@ -21,6 +21,7 @@ import {
 	relative,
 } from "node:path";
 import { t } from "../i18n/index";
+import { isLanguageTag } from "../i18n/locale";
 import BUNDLED_RUNTIME_LAYOUT from "../shared/bundled-runtime-layout.json";
 import MACOS_ENTITLEMENT_POLICY from "../shared/macos-entitlement-policy.json";
 import {
@@ -1282,6 +1283,22 @@ export type PendingInstallMarker = {
 	 * field reads as `null` (i.e. "ask the job") rather than as unparseable.
 	 */
 	installerPid: number | null;
+	/**
+	 * The BACKEND-RESOLVED UI language at the moment of the quit, when there was
+	 * one - the tag the hold's notice and the watchdog's messages should speak.
+	 *
+	 * Optional and additive on purpose: a marker written by a version of this app
+	 * that predates the field is still a valid marker, and the parser's absence
+	 * rule (`undefined` here) is what tells the hold to fall back to the DEVICE
+	 * reading rather than to invent a language. Nothing writes a `manual` or
+	 * device guess into it: `update-service.ts` includes this field only while the
+	 * locale store's source is `backend`, which is the same owner the renderer
+	 * reads (`docs/I18N.md`).
+	 *
+	 * Rollback-safe: an older app reads this file with its own parser and ignores
+	 * unknown keys; a newer app reads an older file with the field absent.
+	 */
+	language?: string;
 };
 
 export function pendingInstallMarkerPath(dir: string): string {
@@ -1328,6 +1345,10 @@ export function parsePendingInstallMarker(
 			// same answer as the fallback's `null`: ask the install's own launchd job.
 			installerPid:
 				typeof parsed.installerPid === "number" ? parsed.installerPid : null,
+			// Strictly validated rather than copied: this value reaches ICU
+			// formatters, and the file is writable by anything. An unusable tag is
+			// the same answer as an absent field - fall back to the device reading.
+			...(isLanguageTag(parsed.language) ? { language: parsed.language } : {}),
 		};
 	} catch {
 		return null;
@@ -2629,6 +2650,70 @@ export type WatchdogPlan = {
 };
 
 /**
+ * The literal the hold/notification copy uses for "the time since the app
+ * exited", substituted by the shell at the moment the line is shown.
+ *
+ * It is NOT an i18n placeholder that a translator can move arbitrarily: the
+ * generated script replaces this exact token with `%s` and feeds the shell's
+ * own elapsed reading into it. A translation that drops or duplicates it
+ * degrades to a sentence with no reading (or one empty reading), never to a
+ * broken script.
+ */
+export const WATCHDOG_ELAPSED_TOKEN = "{elapsed}";
+
+/** The five sentences the watchdog can show, in the caller's current locale. */
+export type WatchdogMessages = {
+	/** First wait notice; carries `WATCHDOG_ELAPSED_TOKEN`. */
+	appWait: string;
+	/** Escalation fallback; carries `WATCHDOG_ELAPSED_TOKEN`. */
+	appWaitFallback: string;
+	/** The app has exited and an install is under way. */
+	installing: string;
+	/** Soft bound reached with the install still running and the app gone. */
+	stillInstalling: string;
+	/** Hard bound reached with the app gone; the app is about to reopen. */
+	takingLonger: string;
+};
+
+/**
+ * The shipped messages, read from the catalogue at plan-build time.
+ *
+ * WHY AT BUILD TIME RATHER THAN IN THE SCRIPT. This script outlives the app and
+ * runs while the app's UI is gone: there is no process left to call `t()` when
+ * a notice fires, so the only moment the active locale is knowable is here.
+ * The values travel to the script through the ENVIRONMENT (see the plan's
+ * `env`), never through shell source: a translation is data, and interpolating
+ * data into a shell script is how a quote or a `$(...)` in a translated
+ * sentence becomes code. The elapsed token becomes a `printf` conversion with
+ * every `%` in the sentence escaped, so a translator's percent sign prints
+ * literally instead of consuming an argument.
+ */
+export function watchdogMessages(): WatchdogMessages {
+	return {
+		appWait: t("ui.notices.main.watchdog_app_wait", {
+			elapsed: WATCHDOG_ELAPSED_TOKEN,
+		}),
+		appWaitFallback: t("ui.notices.main.watchdog_app_wait_fallback", {
+			elapsed: WATCHDOG_ELAPSED_TOKEN,
+		}),
+		installing: t("ui.notices.main.watchdog_installing"),
+		stillInstalling: t("ui.notices.main.watchdog_still_installing"),
+		takingLonger: t("ui.notices.main.watchdog_taking_longer"),
+	};
+}
+
+/**
+ * A catalogue sentence as a POSIX `printf` format string.
+ *
+ * `%` is escaped first so a literal percent in a translation survives; then the
+ * elapsed token becomes the one `%s` the script supplies. The order matters:
+ * escaping after the conversion would turn our own `%s` into `%%s`.
+ */
+function printfFormat(message: string): string {
+	return message.split("%").join("%%").split(WATCHDOG_ELAPSED_TOKEN).join("%s");
+}
+
+/**
  * Build the detached relaunch watchdog.
  *
  * Why the signals are what they are (each was wrong at some point, and in a way
@@ -2831,9 +2916,17 @@ export function buildWatchdogPlan(input: {
 	 * only an absent key adds nothing to the environment at all.
 	 */
 	noNotifications?: string | null;
+	/**
+	 * The five notices, in the locale the caller has already applied. Defaults to
+	 * `watchdogMessages()` (the store's current locale), which is what production
+	 * passes; tests that drive the script substitute their own set, and the
+	 * escaping case deliberately hands hostile text through this seam.
+	 */
+	messages?: WatchdogMessages;
 	signals?: WatchdogSignals;
 }): WatchdogPlan {
 	const signals = input.signals ?? watchdogSignals(input.platform ?? "darwin");
+	const messages = input.messages ?? watchdogMessages();
 	const timeoutSeconds = input.timeoutSeconds ?? WATCHDOG_TIMEOUT_SECONDS;
 	const hardTimeoutSeconds =
 		input.hardTimeoutSeconds ?? WATCHDOG_HARD_TIMEOUT_SECONDS;
@@ -3209,11 +3302,11 @@ while app_running; do
 	_waited=$(( $(now) - started ))
 	if [ "$app_wait_notice" -eq 0 ] && [ "$_waited" -ge ${appWaitNoticeSeconds} ]; then
 		app_wait_notice=1
-		notify "Waiting for Local Operator to close so the update can install (waiting $(elapsed_text)). No action is needed yet."
+		notify "$(printf "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT" "$(elapsed_text)")"
 	fi
 	if [ "$app_wait_fallback" -eq 0 ] && [ "$_waited" -ge ${appWaitFallbackSeconds} ]; then
 		app_wait_fallback=1
-		notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+		notify "$(printf "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK" "$(elapsed_text)")"
 	fi
 	sleep ${intervalSeconds}
 done
@@ -3277,7 +3370,7 @@ fi
 #     there would be the original defect back again.
 if ! app_running; then
 	if [ "$signal_known" -eq 0 ] || install_live; then
-		notify "Installing the update. Keep Local Operator closed until it opens again by itself."
+		notify "$LO_UPDATE_WATCHDOG_MSG_INSTALLING"
 	fi
 fi
 # 3. Wait for the install to be decided - by the job going, or by the swap
@@ -3295,9 +3388,9 @@ while :; do
 			# elapsed reading; app gone -> the stay-closed copy, which is true there
 			# (an install this app spawned is live and the swap still needs quiet).
 			if app_running; then
-				notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+				notify "$(printf "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK" "$(elapsed_text)")"
 			else
-				notify "The update is still installing. Keep Local Operator closed; it will open again when the install finishes."
+				notify "$LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING"
 			fi
 		fi
 		break
@@ -3336,9 +3429,9 @@ if [ "$holding" -eq 1 ]; then
 			# the wait's own notices use; the app-gone arm keeps the notice the
 			# panel's copy expects (UX U10).
 			if app_running; then
-				notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+				notify "$(printf "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK" "$(elapsed_text)")"
 			else
-				notify "The update is taking longer than expected. Local Operator is opening again so you are not left without it — if it says the update is still installing, quit it and leave it closed until the install finishes."
+				notify "$LO_UPDATE_WATCHDOG_MSG_TAKING_LONGER"
 			fi
 			break
 		fi
@@ -3382,6 +3475,20 @@ exit 0
 			...(input.noNotifications != null
 				? { LOCAL_OPERATOR_NO_NOTIFICATIONS: input.noNotifications }
 				: {}),
+			/*
+			 * The five notices as DATA, not shell source. `notify` reads them from
+			 * these variables, so a quote, backtick, newline or `$(...)` in a
+			 * translated sentence is a byte in a notification rather than syntax in
+			 * the script. The two elapsed sentences are `printf` FORMATS (see
+			 * `printfFormat`), with every other percent escaped by the builder.
+			 */
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT: printfFormat(messages.appWait),
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK: printfFormat(
+				messages.appWaitFallback,
+			),
+			LO_UPDATE_WATCHDOG_MSG_INSTALLING: messages.installing,
+			LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING: messages.stillInstalling,
+			LO_UPDATE_WATCHDOG_MSG_TAKING_LONGER: messages.takingLonger,
 			LO_UPDATE_WATCHDOG_APP_PID: String(input.appPid),
 			LO_UPDATE_WATCHDOG_APP_BUNDLE: input.appBundlePath,
 			LO_UPDATE_WATCHDOG_APP_NAME: input.executableName,
