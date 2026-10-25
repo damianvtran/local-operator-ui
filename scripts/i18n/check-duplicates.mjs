@@ -28,7 +28,15 @@
  *   - it does not scan `src/i18n/keys.gen.ts`, which is generated and covered by
  *     `generate.mjs --check`.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import {
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -125,8 +133,25 @@ export function selfTest() {
 	if (duplicateKeys('{"a":{"title":"x"},"b":{"title":"y"}}').length) {
 		throw new Error("detector reported a duplicate across different objects");
 	}
-	if (duplicateKeys('{"a":1,"\u0061":2}').length !== 1) {
+	// String.raw: an ordinary '\u0061' literal is resolved by the JS parser
+	// before the detector ever sees it, so the fixture would test nothing.
+	if (duplicateKeys(String.raw`{"a":1,"\u0061":2}`).length !== 1) {
 		throw new Error("detector missed an escaped duplicate");
+	}
+	// Guard the FILE walk and the offender list, not only the tokeniser: a copy
+	// that parsed files but never recorded an offender would pass the checks
+	// above and still exit 0 on a real duplicate.
+	const scratch = mkdtempSync(join(tmpdir(), "dupes-selftest-"));
+	try {
+		writeFileSync(join(scratch, "ui.probe.json"), '{"a":1,"a":2}');
+		const probe = findDuplicates(catalogueFiles(scratch));
+		if (probe.scanned !== 1 || probe.offenders.length !== 1) {
+			throw new Error(
+				`file walk did not surface a duplicate (scanned ${probe.scanned}, offenders ${probe.offenders.length})`,
+			);
+		}
+	} finally {
+		rmSync(scratch, { recursive: true, force: true });
 	}
 }
 
