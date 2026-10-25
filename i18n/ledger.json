@@ -4814,8 +4814,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.updates",
-			"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-			"target_sha256": "427cf9644a4b32ce6464697caebdcc2b1f90e3c6e921c1ef8c909366a52cc409",
+			"source_sha256": "9b2983230ad0cdd30a7bebe5ca177d1ab9702e9f0d8e9b1ff6a417c27183eba3",
+			"target_sha256": "dce0b573362e73fb013e8b90ebd6579ec4711b881b038834c75611fba986f7d8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -4824,18 +4824,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "32818c8f857f",
+					"instance": "es-updates-rebind-dce0b573362e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/32818c8f857f.json",
-					"receipt_sha256": "dd9f3d21d37499ef78506d9998f3f37c71faa888b55c3402c8c078710ab0c3f9"
+					"receipt": "i18n/receipts/es-updates-rebind-dce0b573362e.json",
+					"receipt_sha256": "ccd9dc9497f7e84dea819a371f21641018e8281930e9e9ba504d2f7a9566e367",
+					"scope": "ui.common.updates at fedd1597113e: binding audit of the 170 merged keys (127 shared, 11 branch-only, 32 main-only) against the English source, the context sidecar and both parents; no value changes or invented keys.",
+					"note": "Binding audit of the merge union: provenance of bytes, not a fresh translation review. Receipt es-updates-rebind-dce0b573362e.json."
 				}
 			],
 			"status": "audited",
@@ -4859,6 +4861,28 @@
 							"receipt": "i18n/receipts/ea3629c2a645.json",
 							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
 							"scope": "Full semantic read; exhaustive mechanical checks."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+					"target_sha256": "427cf9644a4b32ce6464697caebdcc2b1f90e3c6e921c1ef8c909366a52cc409",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "32818c8f857f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/32818c8f857f.json",
+							"receipt_sha256": "dd9f3d21d37499ef78506d9998f3f37c71faa888b55c3402c8c078710ab0c3f9"
 						}
 					],
 					"status": "audited"
@@ -6647,8 +6671,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.updates",
-			"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-			"target_sha256": "2eb6633209a88e8bdc2c19b454b7688763dfd0b200c8cfe625b0f6f9a0e42f0d",
+			"source_sha256": "9b2983230ad0cdd30a7bebe5ca177d1ab9702e9f0d8e9b1ff6a417c27183eba3",
+			"target_sha256": "88cd165b945acdfe683a519c65bb7709bacb82cb290fa8726eacc4f0935eab7a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6657,18 +6681,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "radient/auto",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "d94011de0dc0",
+					"result": "clean",
+					"instance": "fr-updates-rebind-88cd165b945a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/d94011de0dc0.json",
-					"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+					"receipt": "i18n/receipts/fr-updates-rebind-88cd165b945a.json",
+					"receipt_sha256": "ab431bc73f42771f51cff213450e1b11461ed10e1f6c8bc9175d3a75f28cb9ca",
+					"scope": "ui.common.updates at fedd1597113e: binding audit of the 170 merged keys (127 shared, 11 branch-only, 32 main-only) against the English source, the context sidecar and both parents; no value changes or invented keys.",
+					"note": "Binding audit of the merge union: provenance of bytes, not a fresh translation review. Receipt fr-updates-rebind-88cd165b945a.json."
 				}
 			],
 			"status": "audited",
@@ -6693,6 +6719,28 @@
 							"receipt_sha256": "384b9a6c0380589c8f2b2dad6f1e929275d213c813d99b564438f82337297c7d",
 							"scope": "Chunk D at 1516984ec99ae09e635b0cb58c4f2e747de1483c; full 206 new keys plus prior408 full coverage retained with typography-only delta.",
 							"note": "Actual automatic quota-fallback model verified; same resumed auditor, not second independent auditor. Nonblocking minors retained as deferred."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+					"target_sha256": "2eb6633209a88e8bdc2c19b454b7688763dfd0b200c8cfe625b0f6f9a0e42f0d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "d94011de0dc0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/d94011de0dc0.json",
+							"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
 						}
 					],
 					"status": "audited"
@@ -8451,8 +8499,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.updates",
-			"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-			"target_sha256": "cc7e477a9afd14aae5f3adb14cfad87b4580cd72f842c1b60e698d3b115011b8",
+			"source_sha256": "9b2983230ad0cdd30a7bebe5ca177d1ab9702e9f0d8e9b1ff6a417c27183eba3",
+			"target_sha256": "da65d206fa90d4bf775b3d44f317113a65c2df27354c4c9edad5f557c8e2a6bb",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -8461,19 +8509,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "radient/auto",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "23463a773a32-surfaces",
+					"instance": "ru-updates-rebind-da65d206fa90",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/23463a773a32-surfaces.json",
-					"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
-					"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+					"receipt": "i18n/receipts/ru-updates-rebind-da65d206fa90.json",
+					"receipt_sha256": "9e3aa6bcc3b96e4691ed34c64755bc6e8117d7d21f26a3e47ef80fbfbfa13ad1",
+					"scope": "ui.common.updates at fedd1597113e: binding audit of the 170 merged keys (127 shared, 11 branch-only, 32 main-only) against the English source, the context sidecar and both parents; no value changes or invented keys.",
+					"note": "Binding audit of the merge union: provenance of bytes, not a fresh translation review. Receipt ru-updates-rebind-da65d206fa90.json."
 				}
 			],
 			"status": "audited",
@@ -8497,6 +8546,29 @@
 								"minor": 0,
 								"nit": 0
 							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+					"target_sha256": "cc7e477a9afd14aae5f3adb14cfad87b4580cd72f842c1b60e698d3b115011b8",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "23463a773a32-surfaces",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23463a773a32-surfaces.json",
+							"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
+							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
 						}
 					],
 					"status": "audited"
@@ -11154,8 +11226,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.updates",
-			"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-			"target_sha256": "90d09f65191ab661374d4a4800c7e7ac373601a5c925cf9ea94ceba8ea505304",
+			"source_sha256": "9b2983230ad0cdd30a7bebe5ca177d1ab9702e9f0d8e9b1ff6a417c27183eba3",
+			"target_sha256": "eae7d1eb68e536d752f59378eacf82f5dc44fe85fab55f0727b04aa02322e836",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11165,18 +11237,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+					"instance": "zh-cn-updates-rebind-eae7d1eb68e5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
-					"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
+					"receipt": "i18n/receipts/zh-cn-updates-rebind-eae7d1eb68e5.json",
+					"receipt_sha256": "66924b11c5824c0ce14a9341574a9fd38097681c5724c9daeb0c0e65c4d6149d",
+					"scope": "ui.common.updates at fedd1597113e: binding audit of the 170 merged keys (127 shared, 11 branch-only, 32 main-only) against the English source, the context sidecar and both parents; no value changes or invented keys.",
+					"note": "Binding audit of the merge union: provenance of bytes, not a fresh translation review. Receipt zh-cn-updates-rebind-eae7d1eb68e5.json."
 				}
 			],
 			"status": "audited",
@@ -11225,6 +11299,28 @@
 							"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
 							"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
 							"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+					"target_sha256": "90d09f65191ab661374d4a4800c7e7ac373601a5c925cf9ea94ceba8ea505304",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
+							"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
 						}
 					],
 					"status": "audited"
@@ -14431,8 +14527,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.updates",
-			"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-			"target_sha256": "095fd2a2d945b86fa70519840079bca361b236a371af8d0a935f9376df3e011e",
+			"source_sha256": "9b2983230ad0cdd30a7bebe5ca177d1ab9702e9f0d8e9b1ff6a417c27183eba3",
+			"target_sha256": "c64fd2babe34e54cbdb08737f80ff4357b0b46818b46d80b9501abb786f6f617",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14441,18 +14537,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "radient/auto",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "dab47dfc690a",
+					"instance": "hi-updates-rebind-c64fd2babe34",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/dab47dfc690a.json",
-					"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
+					"receipt": "i18n/receipts/hi-updates-rebind-c64fd2babe34.json",
+					"receipt_sha256": "9892d569f84b3c19c905805193afd8ef7cc49adb0b764b3b502ae5d93c6dba79",
+					"scope": "ui.common.updates at fedd1597113e: binding audit of the 170 merged keys (127 shared, 11 branch-only, 32 main-only) against the English source, the context sidecar and both parents; no value changes or invented keys.",
+					"note": "Binding audit of the merge union: provenance of bytes, not a fresh translation review. Receipt hi-updates-rebind-c64fd2babe34.json."
 				}
 			],
 			"status": "audited",
@@ -14477,6 +14575,28 @@
 							"receipt_sha256": "65b4e51c287e2c51708607dd333d37dfb27360eda9d05c60f5d3d79eefd77a07",
 							"scope": "hi ui.common.updates vs en source — round 2 remediation-diff audit on final bytes",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+					"target_sha256": "095fd2a2d945b86fa70519840079bca361b236a371af8d0a935f9376df3e011e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "dab47dfc690a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/dab47dfc690a.json",
+							"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
 						}
 					],
 					"status": "audited"
@@ -17043,8 +17163,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.updates",
-			"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-			"target_sha256": "38860c7449bbd690395e5829ed88709d8633cd52cb7571374fc295dcd6261e0f",
+			"source_sha256": "9b2983230ad0cdd30a7bebe5ca177d1ab9702e9f0d8e9b1ff6a417c27183eba3",
+			"target_sha256": "4c6d4188150a76e4fe0ae8617c51f5e687fd9c4f1e9aa4686c3405745ba3c10a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -17053,18 +17173,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "radient/auto",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "b928c7f0c96d",
+					"instance": "vi-updates-rebind-4c6d4188150a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b928c7f0c96d.json",
-					"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
+					"receipt": "i18n/receipts/vi-updates-rebind-4c6d4188150a.json",
+					"receipt_sha256": "ce45a46f3616ff9bc4f9d2bdc33e9c99dfa48fd0911cb7f446e8366a173ca882",
+					"scope": "ui.common.updates at fedd1597113e: binding audit of the 170 merged keys (127 shared, 11 branch-only, 32 main-only) against the English source, the context sidecar and both parents; no value changes or invented keys.",
+					"note": "Binding audit of the merge union: provenance of bytes, not a fresh translation review. Receipt vi-updates-rebind-4c6d4188150a.json."
 				}
 			],
 			"status": "audited",
@@ -17089,6 +17211,28 @@
 							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
 							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
 							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+					"target_sha256": "38860c7449bbd690395e5829ed88709d8633cd52cb7571374fc295dcd6261e0f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "b928c7f0c96d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b928c7f0c96d.json",
+							"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
 						}
 					],
 					"status": "audited"
@@ -20809,8 +20953,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.updates",
-			"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
-			"target_sha256": "4d7d9c8c1fb59b6789506a86c25562a4650ef3713f9e587c3ad80ae6a5a9fb66",
+			"source_sha256": "9b2983230ad0cdd30a7bebe5ca177d1ab9702e9f0d8e9b1ff6a417c27183eba3",
+			"target_sha256": "69ca62ba4b311059ef394a87ece81614d514174dd8e61d950252cda0bb379ece",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20819,19 +20963,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "radient/auto",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "21fe6c635cf3",
+					"instance": "ur-updates-rebind-69ca62ba4b31",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/21fe6c635cf3.json",
-					"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
-					"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+					"receipt": "i18n/receipts/ur-updates-rebind-69ca62ba4b31.json",
+					"receipt_sha256": "525f11dd69b440f856772a5f468459d8f21b7819b521ba65de705096d27f8f27",
+					"scope": "ui.common.updates at fedd1597113e: binding audit of the 170 merged keys (127 shared, 11 branch-only, 32 main-only) against the English source, the context sidecar and both parents; no value changes or invented keys.",
+					"note": "Binding audit of the merge union: provenance of bytes, not a fresh translation review. Receipt ur-updates-rebind-69ca62ba4b31.json."
 				}
 			],
 			"status": "audited",
@@ -20880,6 +21025,29 @@
 							"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
 							"scope": "Post-review remediation delta: review round-1 findings M1/N1/N2/N5 at the final bytes.",
 							"note": "Agent-review round 1 findings fixed; independent post-review audit zero findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+					"target_sha256": "4d7d9c8c1fb59b6789506a86c25562a4650ef3713f9e587c3ad80ae6a5a9fb66",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "21fe6c635cf3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/21fe6c635cf3.json",
+							"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
+							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
 						}
 					],
 					"status": "audited"
