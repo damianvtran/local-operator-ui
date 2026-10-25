@@ -127,6 +127,14 @@ export type IntegrationStatusView = {
 	detail: string | null;
 	/** Whether a spinner, not a dot, marks the row. */
 	busy: boolean;
+	/**
+	 * The status's tooltip, when this status has a standard explanation.
+	 *
+	 * Chosen where the STATE is known, not re-derived from `label`: the row used
+	 * to compare the rendered label against `t("…ready")` / `t("…not_connected")`,
+	 * which only matched in English and silently dropped the tooltip elsewhere.
+	 */
+	explanation?: string;
 };
 
 /**
@@ -600,6 +608,7 @@ export function integrationStatus(
 			tone: "neutral",
 			detail: null,
 			busy: false,
+			explanation: t(NOT_CONNECTED_EXPLANATION_KEY),
 		};
 
 	switch (row.status) {
@@ -812,6 +821,7 @@ export function integrationStatus(
 					tone: "neutral",
 					detail: null,
 					busy: false,
+					explanation: t(NOT_CONNECTED_EXPLANATION_KEY),
 				};
 			// No detail line: "Ready" on every idle row followed by the same sentence
 			// would be the loudest thing on a page of healthy servers. The sentence
@@ -821,6 +831,7 @@ export function integrationStatus(
 				tone: "neutral",
 				detail: null,
 				busy: false,
+				explanation: t(READY_EXPLANATION_KEY),
 			};
 	}
 }
@@ -925,11 +936,23 @@ export function foreignOrigin(row: IntegrationRow): string | null {
  * with the desktop's default cwd of `~` there is not, and t("ui.settings.integrations.integration_model.global") beside every
  * row would be a distinction with nothing on the other side of it.
  */
+export type IntegrationMetaPart = {
+	text: string;
+	/**
+	 * True for the "Imported from …" part. The row hangs the source path's
+	 * tooltip off it, so the flag must be a structural fact of the part — the
+	 * row cannot re-derive it by matching localized copy.
+	 */
+	importSource: boolean;
+};
+
 export function integrationMeta(
 	row: IntegrationRow,
 	projectScopeAvailable: boolean,
-): string[] {
-	const parts = [transportLabel(row)];
+): IntegrationMetaPart[] {
+	const parts: IntegrationMetaPart[] = [
+		{ text: transportLabel(row), importSource: false },
+	];
 	// The last count the tool cache saw, for a row that is not connected now. A
 	// connected row says its count in the status instead, and a live count beside
 	// a remembered one would be two answers to one question.
@@ -938,30 +961,39 @@ export function integrationMeta(
 		row.tool_count_basis === "last_seen" &&
 		typeof row.tool_count === "number"
 	)
-		parts.push(
-			t("ui.settings.integrations.integration_model.tools_when_last_checked", {
-				tools: String(toolCountLabel(row.tool_count)),
-			}),
-		);
+		parts.push({
+			text: t(
+				"ui.settings.integrations.integration_model.tools_when_last_checked",
+				{
+					tools: String(toolCountLabel(row.tool_count)),
+				},
+			),
+			importSource: false,
+		});
 	if (projectScopeAvailable)
-		parts.push(
-			row.scope === "project"
-				? t("ui.settings.integrations.integration_model.this_project")
-				: t("ui.settings.integrations.integration_model.global"),
-		);
+		parts.push({
+			text:
+				row.scope === "project"
+					? t("ui.settings.integrations.integration_model.this_project")
+					: t("ui.settings.integrations.integration_model.global"),
+			importSource: false,
+		});
 	const origin = foreignOrigin(row);
 	if (origin)
-		parts.push(
-			t("ui.settings.integrations.integration_model.imported_from_origin", {
-				origin: String(origin),
-			}),
-		);
+		parts.push({
+			text: t(
+				"ui.settings.integrations.integration_model.imported_from_origin",
+				{ origin: String(origin) },
+			),
+			importSource: true,
+		});
 	else if (!row.source.editable)
-		parts.push(
-			t(
+		parts.push({
+			text: t(
 				"ui.settings.integrations.integration_model.imported_from_a_project_file",
 			),
-		);
+			importSource: true,
+		});
 	return parts;
 }
 

@@ -1,4 +1,8 @@
 {
+	"ui.common.viewer.image_lightbox.previous": "上一个{medialabel}",
+	"ui.common.viewer.image_lightbox.next": "下一个{medialabel}",
+	"ui.common.viewer.image_lightbox.close": "关闭{medialabel}",
+	"ui.common.viewer.image_lightbox.asset_of": "第{index, number, ::group-off}项，共{count, number, ::group-off}项",
 	"ui.common.viewer.opening": "正在打开……",
 	"ui.common.viewer.reset_view": "重置视图",
 	"ui.common.viewer.zoom_in": "放大",

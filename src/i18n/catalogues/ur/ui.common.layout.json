@@ -1,0 +1,9 @@
+{
+	"ui.common.layout.chat_layout.resize_the_sidebar": "سائیڈ بار کا سائز بدلیں ({sidebartogglecap})",
+	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "سوالوں کے پین کا سائز بدلیں۔ مشترکہ پین کی چوڑائی بحال کرنے کے لیے ڈبل کلک کریں۔",
+	"ui.common.layout.sidebar_header.search_agents": "ایجنٹس تلاش کریں",
+	"ui.common.layout.sidebar_header.create_a_new_agent": "نیا ایجنٹ بنائیں",
+	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "ZIP فائل سے ایجنٹ درآمد کریں",
+	"ui.common.layout.sidebar_header.import_agent": "ایجنٹ درآمد کریں",
+	"ui.common.layout.sidebar_header.new_agent": "نیا ایجنٹ"
+}

@@ -1,0 +1,9 @@
+{
+	"ui.common.layout.chat_layout.resize_the_sidebar": "Resize the sidebar ({sidebartogglecap})",
+	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "Resize asks. Double-click resets the shared pane width.",
+	"ui.common.layout.sidebar_header.search_agents": "Search agents",
+	"ui.common.layout.sidebar_header.create_a_new_agent": "Create a new agent",
+	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "Import an agent from a ZIP file",
+	"ui.common.layout.sidebar_header.import_agent": "Import agent",
+	"ui.common.layout.sidebar_header.new_agent": "New agent"
+}

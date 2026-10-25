@@ -85,6 +85,13 @@ const bundleInto = async (name, contents) => {
 	return import(pathToFileURL(file).href);
 };
 
+const { t, setLocale } = await bundleInto(
+	"i18n-runtime",
+	'export { t } from "./src/i18n/messages"; export { setLocale } from "./src/i18n/locale";',
+);
+setLocale("en");
+const PICKER_COPY = "ui.chat.pickers.destination_pickers";
+
 const {
 	PickerRow,
 	PICKER_LIST_INITIAL,
@@ -1251,7 +1258,10 @@ test("the adapter wires the decisions the tests above pin", () => {
 
 	// D8: a pending live fetch gets a pending label, and the label that says so
 	// is the one this file's own copy assertion can see.
-	assert.match(picker, /Refreshing…/);
+	assert.match(picker, /destination_pickers\.refreshing/);
+	assert.match(picker, /destination_pickers\.checking/);
+	assert.equal(t(`${PICKER_COPY}.refreshing`), "Refreshing…");
+	assert.equal(t(`${PICKER_COPY}.checking`), "Checking…");
 
 	/*
 	 * D13: the settled control must still DO something. `Live list` looked like an
@@ -1259,7 +1269,11 @@ test("the adapter wires the decisions the tests above pin", () => {
 	 * and said nothing, so the label states a verb and the click re-lists.
 	 */
 	assert.match(picker, /catalogue\.refetch\(\)/);
-	assert.match(picker, /Refresh from providers/);
+	assert.match(picker, /destination_pickers\.refresh_from_providers/);
+	assert.equal(
+		t(`${PICKER_COPY}.refresh_from_providers`),
+		"Refresh from providers",
+	);
 	assert.doesNotMatch(
 		picker,
 		/"Live list"/,
@@ -1269,10 +1283,23 @@ test("the adapter wires the decisions the tests above pin", () => {
 	// D7: the checkbox's label states the consequence while it is ticked - and,
 	// once a save landed, the default it saved, by the row's display name (PR
 	// #1108 UX round 1, U5; round 2, U10).
-	assert.match(picker, /Picks here also set the default for new sessions/);
 	assert.match(
 		picker,
-		/`Default for new sessions: \$\{modelName\(\s*savedModel \?\?/,
+		/destination_pickers\.picks_here_also_set_the_default_for_new_sessions/,
+	);
+	assert.equal(
+		t(`${PICKER_COPY}.picks_here_also_set_the_default_for_new_sessions`),
+		"Picks here also set the default for new sessions",
+	);
+	assert.match(
+		picker,
+		/destination_pickers\.default_for_new_sessions",\s*\{ modelname: modelName\(selector\) \}/,
+	);
+	assert.equal(
+		t(`${PICKER_COPY}.default_for_new_sessions`, {
+			modelname: "Claude Opus",
+		}),
+		"Default for new sessions: Claude Opus",
 	);
 
 	/*
@@ -1291,12 +1318,22 @@ test("the adapter wires the decisions the tests above pin", () => {
 	 */
 	assert.match(
 		picker,
-		/busyText=\{\s*draft\s*\? "Resolving the model…"\s*: command\.busy\s*\? "Switching the model…"\s*: "Saving the default…"\s*\}/,
+		/busyText=\{\s*draft\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.resolving_the_model"\)\s*:\s*command\.busy\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.switching_the_model"\)\s*:\s*t\("ui\.chat\.pickers\.destination_pickers\.saving_the_default"\)\s*\}/,
 	);
 	assert.match(
 		picker,
-		/busyLabel=\{\s*draft\s*\? "Resolving the model"\s*: command\.busy\s*\? "Switching the model"\s*: "Saving the default"\s*\}/,
+		/busyLabel=\{\s*draft\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.resolving_the_model24577b"\)\s*:\s*command\.busy\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.switching_the_model8e7138"\)\s*:\s*t\("ui\.chat\.pickers\.destination_pickers\.saving_the_default9573f2"\)\s*\}/,
 	);
+	for (const [key, copy] of Object.entries({
+		resolving_the_model: "Resolving the model…",
+		switching_the_model: "Switching the model…",
+		saving_the_default: "Saving the default…",
+		resolving_the_model24577b: "Resolving the model",
+		switching_the_model8e7138: "Switching the model",
+		saving_the_default9573f2: "Saving the default",
+	})) {
+		assert.equal(t(`${PICKER_COPY}.${key}`), copy);
+	}
 
 	/*
 	 * UX U1's invariant has two halves, and this is the second: a CLICK moves the
@@ -1349,16 +1386,32 @@ test("the round-1 remediation's decisions are pinned where they live", () => {
 	const composer = source("shared/components/composer/message-input.tsx");
 	const dialog = source("features/providers/connect-provider-dialog.tsx");
 
-	// D1: "(1 need sign-in)" reads wrong at one.
-	assert.match(picker, /scopeCount === 1 \? "needs" : "need"/);
+	// D1: the catalogue's ICU plural owns the one/other grammar.
+	assert.match(
+		picker,
+		/show_all_supported_models_sign_in",\s*\{ scopecount: scopeCount \}/,
+	);
+	assert.equal(
+		t(`${PICKER_COPY}.show_all_supported_models_sign_in`, { scopecount: 1 }),
+		"Show all supported models (1 needs sign-in)",
+	);
+	assert.equal(
+		t(`${PICKER_COPY}.show_all_supported_models_sign_in`, { scopecount: 2 }),
+		"Show all supported models (2 need sign-in)",
+	);
 	// D3: the dead end names the cause, and the CTA below says the same thing.
-	assert.match(picker, /"No models are signed in yet\."/);
+	assert.match(picker, /destination_pickers\.no_models_are_signed_in_yet/);
+	assert.equal(
+		t(`${PICKER_COPY}.no_models_are_signed_in_yet`),
+		"No models are signed in yet.",
+	);
 	// D5/U3: one vocabulary for the withheld state on this surface — the row's
 	// caveat comes off the shared auth answer and says `needs sign-in`.
 	assert.match(
 		picker,
-		/rowAuthOf\(row, known\) === "needs-sign-in" \? ", needs sign-in"/,
+		/rowAuthOf\(row, known\) === "needs-sign-in"\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.needs_sign_in"\)/,
 	);
+	assert.equal(t(`${PICKER_COPY}.needs_sign_in`), ", needs sign-in");
 	assert.doesNotMatch(
 		picker,
 		/known && !row\.connected \? ", no credential"/,
@@ -1390,7 +1443,16 @@ test("the round-1 remediation's decisions are pinned where they live", () => {
 	assert.match(host, /if \(option\.action\?\.kind !== "connect"\)/);
 	// D2: the footer reads the same action the pick does.
 	assert.match(host, /activeOption\?\.action\?\.kind === "connect"/);
-	assert.match(host, /Enter connects \$\{state\.activeConnectProvider\}/);
+	assert.match(
+		host,
+		/ui\.chat\.pickers\.picker_host\.arrows_move_enter_connects_esc_closes/,
+	);
+	assert.equal(
+		t("ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes", {
+			activeconnectprovider: "Anthropic",
+		}),
+		"Arrows move · Enter connects Anthropic · Esc closes",
+	);
 
 	// U2: the inline submission routes through the same rule, before the run.
 	assert.match(composer, /connectProviderForSelector/);
@@ -1506,17 +1568,16 @@ test("the picker lists the providers by itself, on the backend's cadence", () =>
 		/const refreshing = live && catalogue\.isFetching;/,
 		"only a live fetch may claim that a listing is running (design D8)",
 	);
-	assert.ok(
-		picker.includes(
-			'const refreshingLabel = asked ? "Refreshing…" : "Checking…"',
-		),
-		"the automatic pass and the user's own click read differently, because a control nobody pressed must not borrow the word the click produces (design D2, UX U4)",
+	assert.match(
+		picker,
+		/const refreshingLabel = asked\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.refreshing"\)\s*:\s*t\("ui\.chat\.pickers\.destination_pickers\.checking"\)/,
+		"the automatic pass and the user's own click use distinct keyed messages, because a control nobody pressed must not borrow the word the click produces (design D2, UX U4)",
 	);
-	assert.ok(
-		picker.includes(
-			'const refreshingLabel = asked ? "Refreshing…" : "Checking…"',
-		),
-		"and the automatic label fits INSIDE the reserved width: a busy label wider than the idle one puts the row's reflow back (design D1, measured at 12px when this one read `Checking providers…`)",
+	assert.equal(t(`${PICKER_COPY}.refreshing`), "Refreshing…");
+	assert.equal(
+		t(`${PICKER_COPY}.checking`),
+		"Checking…",
+		"and the automatic label fits INSIDE the reserved width (design D1)",
 	);
 	assert.ok(
 		picker.includes('className="min-w-[149px]"'),
@@ -1945,7 +2006,7 @@ test("one binding answers which model the session is on", () => {
 	);
 	assert.match(
 		picker,
-		/description=\{\s*draft\s*\?\s*shownSelector\s*\?\s*`This conversation starts on \$\{shownSelector\}/,
+		/description=\{\s*draft\s*\?\s*shownSelector\s*\?\s*t\(\s*"ui\.chat\.pickers\.destination_pickers\.this_conversation_starts_on_and_keeps_running_on_it_choosing_another_cha"/,
 		// Round 4's D10: the sentence names the CONVERSATION the draft becomes, not
 		// one message of it - the pick rides `sessions.create` and the backend pins
 		// the session to it, so "the first message only" was a scope the system does
@@ -1955,8 +2016,22 @@ test("one binding answers which model the session is on", () => {
 	);
 	assert.match(
 		picker,
-		/:\s*shownSelector\s*\?\s*`This session runs \$\{shownSelector\}/,
+		/:\s*shownSelector\s*\?\s*t\(\s*"ui\.chat\.pickers\.destination_pickers\.this_session_runs_choosing_another_applies_to_this_session_only_unless_y"/,
 		"and a session's keeps the sentence that names its scope",
+	);
+	assert.equal(
+		t(
+			`${PICKER_COPY}.this_conversation_starts_on_and_keeps_running_on_it_choosing_another_cha`,
+			{ shownselector: "anthropic/claude-opus" },
+		),
+		"This conversation starts on anthropic/claude-opus and keeps running on it. Choosing another changes that; your default is unchanged.",
+	);
+	assert.equal(
+		t(
+			`${PICKER_COPY}.this_session_runs_choosing_another_applies_to_this_session_only_unless_y`,
+			{ shownselector: "anthropic/claude-opus" },
+		),
+		"This session runs anthropic/claude-opus. Choosing another applies to this session only unless you also set it as the default.",
 	);
 	assert.doesNotMatch(
 		picker,
@@ -1999,9 +2074,22 @@ test("the pick is painted before the owner is awaited, and rolled back on refusa
 	 * lands, from the same call's result, so the strip and the transcript cannot
 	 * disagree.
 	 */
-	const note = onPick.indexOf("note(`The model was not changed.");
+	const note = onPick.indexOf(
+		"ui.chat.pickers.destination_pickers.the_model_was_not_changed6dd4bb",
+	);
 	assert.ok(note > rollback, "the failure is reported when the answer arrives");
+	assert.match(
+		onPick,
+		/note\(\s*t\(\s*"ui\.chat\.pickers\.destination_pickers\.the_model_was_not_changed6dd4bb"/,
+		"the ordered note uses the keyed message",
+	);
 	assert.match(onPick, /failure\.text/, "in the strip's own words");
+	assert.equal(
+		t(`${PICKER_COPY}.the_model_was_not_changed6dd4bb`, {
+			text: "backend refusal",
+		}),
+		"The model was not changed. backend refusal",
+	);
 	assert.doesNotMatch(
 		picker,
 		/closeWithOutcome/,

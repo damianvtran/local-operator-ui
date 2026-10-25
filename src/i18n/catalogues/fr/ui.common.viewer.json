@@ -2,5 +2,9 @@
 	"ui.common.viewer.opening": "Ouverture…",
 	"ui.common.viewer.reset_view": "Réinitialiser la vue",
 	"ui.common.viewer.zoom_in": "Zoom avant",
-	"ui.common.viewer.zoom_out": "Zoom arrière"
+	"ui.common.viewer.zoom_out": "Zoom arrière",
+	"ui.common.viewer.image_lightbox.previous": "Précédent ({medialabel})",
+	"ui.common.viewer.image_lightbox.next": "Suivant ({medialabel})",
+	"ui.common.viewer.image_lightbox.close": "Fermer {medialabel}",
+	"ui.common.viewer.image_lightbox.asset_of": "Élément {index, number, ::group-off} sur {count, number, ::group-off}"
 }

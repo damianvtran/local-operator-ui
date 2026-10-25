@@ -1,4 +1,8 @@
 {
+	"ui.common.viewer.image_lightbox.asset_of": "Mục {index, number, ::group-off} / {count, number, ::group-off}",
+	"ui.common.viewer.image_lightbox.close": "Đóng {medialabel}",
+	"ui.common.viewer.image_lightbox.next": "{medialabel} tiếp theo",
+	"ui.common.viewer.image_lightbox.previous": "{medialabel} trước",
 	"ui.common.viewer.opening": "Đang mở…",
 	"ui.common.viewer.reset_view": "Đặt lại chế độ xem",
 	"ui.common.viewer.zoom_in": "Phóng to",
