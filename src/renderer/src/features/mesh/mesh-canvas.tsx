@@ -921,6 +921,7 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 							<MeshDeviceNode
 								key={device.id}
 								device={device}
+								deviceIds={graph.devices.map((entry) => entry.id)}
 								x={box.x}
 								y={box.y}
 								nowSeconds={nowSeconds}

@@ -58,6 +58,7 @@ import {
 	type PeerList,
 	type PeerRelayState,
 	type PeerRow,
+	deviceIdentityText,
 	deviceLabel,
 	networkLabel,
 	strings,
@@ -702,7 +703,7 @@ export function meshSummary(graph: MeshGraph): string {
 		);
 		parts.push(
 			t("ui.mesh.mesh_graph.self_identity", {
-				device: self ? self.label : graph.selfDeviceId,
+				device: self ? deviceIdentityText(self) : graph.selfDeviceId,
 			}),
 		);
 	}

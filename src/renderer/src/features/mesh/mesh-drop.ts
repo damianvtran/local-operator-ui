@@ -60,7 +60,11 @@
 import { t } from "../../../../i18n/messages";
 import type { MeshDevice, MeshNetwork } from "./mesh-graph";
 import { deviceReach, reachWords } from "./mesh-reach";
-import { type MeshSessionRow, sessionIsBusy } from "./mesh-types";
+import {
+	type MeshSessionRow,
+	deviceIdentityText,
+	sessionIsBusy,
+} from "./mesh-types";
 
 /** What the pointer is over. */
 export type DropTarget =
@@ -231,9 +235,15 @@ function runtimeSentence(session: MeshSessionRow, where: string): string {
 	});
 }
 
-/** Where a device's label is shown; the id's tail when it never told us a name. */
-function peerLabel(device: MeshDevice | undefined, deviceId: string): string {
-	return device?.label || deviceId.slice(-6);
+/** The destination's shared name+id identity; an unknown target keeps its full id. */
+function peerLabel(
+	device: MeshDevice | undefined,
+	deviceId: string,
+	displayedDeviceIds: readonly string[],
+): string {
+	return device
+		? deviceIdentityText(device, displayedDeviceIds, true)
+		: deviceId;
 }
 
 /**
@@ -366,6 +376,7 @@ export function resolveDrop(
 								device: peerLabel(
 									devices.get(target.deviceId),
 									target.deviceId,
+									[...devices.keys()],
 								),
 							}),
 				waitS: 0,
@@ -394,7 +405,9 @@ export function resolveDrop(
 			};
 	if (refused) return { kind: "refused", ...refused };
 
-	const destinationLabel = peerLabel(destination, target.deviceId);
+	const destinationLabel = peerLabel(destination, target.deviceId, [
+		...devices.keys(),
+	]);
 	const sourceIsLocal = session.locality === "local";
 
 	/*

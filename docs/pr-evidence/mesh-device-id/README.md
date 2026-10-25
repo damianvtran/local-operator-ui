@@ -72,3 +72,49 @@ and the list supplies the complete id when space allows.
 For the long-name after frame, the identity flex box measured 645.55x19.5 px;
 the full-id span measured 244.8x17.4 px at 12 px Geist Mono with
 `text-overflow: clip`, `overflow: visible`, and its right edge inside the row.
+
+## Review remediation — round 1
+
+The remediation was originally based on reviewed head
+`87c1b92f66aa40b3650c3dd8a104445603e39475`. GitHub then reported the PR DIRTY,
+so the branch was rebased onto `origin/main`
+`da1ebe36d1321d12ea536e9ebd06f72d48731d97`. Range-diff mapped the evidence and
+remediation patches unchanged; the original identity patch differed only where
+the generated key file was regenerated to preserve both upstream `miniView`
+keys and `mesh_types.unnamed_device`. The original before/after captures above
+remain attributed to their actual pre-rebase sources.
+
+The eight remediation frames below were **recaptured after the rebase** from
+renderer source `f8f0839bca79360b001e22bdbb74f25237498138`; the PR remediation
+comment names the final commit, whose subsequent amendment updates only this
+evidence record and its images. Seven frames are pixel-identical to their
+pre-rebase versions. The tooltip frame differs only in a one-pixel-wide strip
+outside the identity text and was inspected at full size. All eight exercise
+the real `MeshPage`, wire normalisers, graph join, compact canvas, detail panel,
+menus and dialogs. They are Storybook fixtures, not live-relay evidence.
+
+The harness browser's outer viewport was 1280x720. A scratch static wrapper
+embedded the real Storybook preview iframe at **1024x576 CSS pixels**; the
+browser geometry read measured the iframe rect as exactly `0,0 1024x576`.
+Each 2560x1440 source screenshot was cropped to that iframe's 2048x1152 source
+pixels (2x device pixels), leaving a 1024x576 CSS-pixel evidence frame. No
+second browser, browser dependency, build or live backend was used. The served
+`mesh-identity.tsx` contained `compactDeviceId(deviceId, deviceIds)`, and the
+Storybook index contained every remediation story before capture.
+
+| Finding | Story | New frame and actual rendered result |
+| --- | --- | --- |
+| D1 compact absence | `mesh-tab--compact-absent-name` | `after-compact-absent-name.png`: unquoted `(unnam…` beside `d_bbbbbbbb…`; the full id remains in the id tooltip, and the summary carries the quoted self name plus full id. |
+| D1 panel absence | `mesh-tab--compact-absent-name-panel` | `after-compact-absent-name-panel.png`: complete unquoted `(unnamed device)` beside the compact id in the real detail panel. |
+| D1/F2 compact duplicates | `mesh-tab--compact-duplicate-names` | `after-compact-duplicate-names.png`: two equal `"share…` names remain distinguishable as `d_012345678…` and `d_012345679…`; the shared default prefix widened by one hex digit. |
+| D1/F2 panel duplicates | `mesh-tab--compact-duplicate-names-panel` | `after-compact-duplicate-names-panel.png`: the detail panel carries `"shared-node"` and the widened id. |
+| F1 action menus | `mesh-tab--compact-duplicate-name-actions` | `after-duplicate-name-actions.png`: two Move and two Copy labels all include the quoted name and their distinct widened ids. The play asserts both Move labels differ and exactly match the expected identities. |
+| F1 invite dialog | `mesh-tab--compact-duplicate-name-invite-dialog` | `after-duplicate-name-invite-dialog.png`: the invitation sentence includes `"shared-node"` and the complete 34-character id. |
+| F1 remove dialog | `mesh-tab--compact-duplicate-name-remove-dialog` | `after-duplicate-name-remove-dialog.png`: both the title and consequences include `"shared-node"` and the complete id. |
+| D2 full-name recovery | `mesh-tab--compact-long-name-tooltip` | `after-long-name-tooltip.png`: hovering the truncated panel name opens the shared tooltip with the complete quoted stored name. |
+
+Every story's own play assertions completed with no browser console errors.
+The absent-name control initially rejected an incorrect test expectation that
+required the full id inline; after correcting the fixture to expect the compact
+id plus its full-id tooltip, the same real story passed and was captured. This
+was a fixture correction, not a production fallback or a waived assertion.

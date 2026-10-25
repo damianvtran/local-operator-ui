@@ -226,12 +226,12 @@ export const MeshSurface: FC<{
 	invite: {
 		open: boolean;
 		deviceId?: string;
-		deviceLabel: string | null;
+		deviceName?: string;
 		options: { id: string; label: string }[];
 	} | null;
 	onOpenInvite: (ask: {
 		deviceId?: string;
-		deviceLabel: string | null;
+		deviceName?: string;
 	}) => void;
 	onInvite: (ask: {
 		networkId: string;
@@ -247,13 +247,13 @@ export const MeshSurface: FC<{
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	} | null;
 	onOpenRemove: (ask: {
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	}) => void;
 	onRemove: (confirm: string) => void;
 	onCloseRemove: () => void;
@@ -696,6 +696,7 @@ export const MeshSurface: FC<{
 						{selectedDevice && (
 							<DevicePanel
 								device={selectedDevice}
+								deviceIds={graph.devices.map((device) => device.id)}
 								sessions={
 									held.byDevice.get(selectedDevice.id) ?? {
 										rows: [],
@@ -716,7 +717,7 @@ export const MeshSurface: FC<{
 								onInvite={(device) =>
 									onOpenInvite({
 										deviceId: device.id,
-										deviceLabel: device.label,
+										deviceName: device.name,
 									})
 								}
 								onRemoveMember={(device, networkId) => {
@@ -727,7 +728,7 @@ export const MeshSurface: FC<{
 										networkId,
 										networkLabel: network?.label ?? networkId,
 										deviceId: device.id,
-										deviceLabel: device.label,
+										deviceName: device.name,
 									});
 								}}
 								onShowInList={(deviceId) => {
@@ -755,7 +756,7 @@ export const MeshSurface: FC<{
 					open={invite.open}
 					options={invite.options}
 					deviceId={invite.deviceId}
-					deviceLabel={invite.deviceLabel}
+					deviceName={invite.deviceName}
 					onClose={onCloseInvite}
 					onInvite={onInvite}
 					pending={inviteBusy}
@@ -768,7 +769,8 @@ export const MeshSurface: FC<{
 				<RemoveMemberDialog
 					open={remove.open}
 					networkLabel={remove.networkLabel}
-					deviceLabel={remove.deviceLabel}
+					deviceId={remove.deviceId}
+					deviceName={remove.deviceName}
 					onClose={onCloseRemove}
 					onConfirm={onRemove}
 					pending={removeBusy}
@@ -903,7 +905,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 	const [moveReport, setMoveReport] = useState<MoveReport | null>(null);
 	const [inviteAsk, setInviteAsk] = useState<{
 		deviceId?: string;
-		deviceLabel: string | null;
+		deviceName?: string;
 	} | null>(null);
 	const [inviteReceipt, setInviteReceipt] = useState<{
 		token_path: string;
@@ -914,7 +916,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	} | null>(null);
 	const [removed, setRemoved] = useState<{
 		removed: string;
@@ -1163,7 +1165,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 					: {
 							open: true,
 							deviceId: inviteAsk.deviceId,
-							deviceLabel: inviteAsk.deviceLabel,
+							deviceName: inviteAsk.deviceName,
 							options: inviteOptions,
 						}
 			}
@@ -1196,7 +1198,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 							networkId: removeAsk.networkId,
 							networkLabel: removeAsk.networkLabel,
 							deviceId: removeAsk.deviceId,
-							deviceLabel: removeAsk.deviceLabel,
+							deviceName: removeAsk.deviceName,
 						}
 			}
 			onOpenRemove={(ask) => {

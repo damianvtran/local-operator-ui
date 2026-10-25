@@ -148,13 +148,13 @@ type MeshListProps = {
 		keep: boolean,
 	) => void;
 	/** Invite a device to a network: the ONE way a member is admitted. */
-	onInvite: (ask: { deviceId: string; deviceLabel: string }) => void;
+	onInvite: (ask: { deviceId: string; deviceName?: string }) => void;
 	/** Revoke a membership, from the network it belongs to. */
 	onRemove: (ask: {
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	}) => void;
 };
 
@@ -507,7 +507,7 @@ export const MeshList: FC<MeshListProps> = ({
 												onClick={() =>
 													onInvite({
 														deviceId: device.id,
-														deviceLabel: device.label,
+														deviceName: device.name,
 													})
 												}
 											>
@@ -523,7 +523,7 @@ export const MeshList: FC<MeshListProps> = ({
 															networkId: network.id,
 															networkLabel: network.label,
 															deviceId: device.id,
-															deviceLabel: device.label,
+															deviceName: device.name,
 														})
 													}
 												>

@@ -117,6 +117,7 @@ const {
 	meshGraph,
 	meshSummary,
 	deviceDisplayName,
+	deviceIdentityText,
 	compactDeviceId,
 	deviceStatLine,
 	meshNodeCount,
@@ -878,7 +879,7 @@ test("the summary line is a sentence about this mesh, and this device", () => {
 	const graph = meshGraph({ topology, peers });
 	assert.equal(
 		meshSummary(graph),
-		"2 networks · 3 devices · 1 reached · 1 no answer · this device is device …aaaaaa",
+		"2 networks · 3 devices · 1 reached · 1 no answer · this device is (unnamed device) d_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"counted by REACH (mesh redesign, D3), so an unanswered device is not filed as a failure it never was",
 	);
 	/*
@@ -923,7 +924,7 @@ test("the summary line is a sentence about this mesh, and this device", () => {
 	});
 	assert.equal(
 		meshSummary(census),
-		"1 network · 4 devices · 1 of them suspected · 2 no answer · 1 unknown · this device is device …aaaaaa",
+		"1 network · 4 devices · 1 of them suspected · 2 no answer · 1 unknown · this device is (unnamed device) d_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"the suspect fact is a qualifier on the census, and `unknown` is named so the six counts can be added up",
 	);
 });
@@ -1016,10 +1017,67 @@ test("member identity quotes real names and keeps absence visually distinct", ()
 	);
 });
 
-test("compact member ids are stable and explicitly abbreviated", () => {
-	assert.equal(compactDeviceId(DEVICE_A), "d_aaaaaaaa…");
-	assert.equal(compactDeviceId("d_short"), "d_short");
-	assert.notEqual(compactDeviceId(DEVICE_A), compactDeviceId(DEVICE_B));
+test("member identity text always carries the authenticated id", () => {
+	const first = { id: DEVICE_A, name: "shared-node" };
+	const second = { id: DEVICE_B, name: "shared-node" };
+	const firstText = deviceIdentityText(first);
+	const secondText = deviceIdentityText(second);
+	assert.equal(firstText, `"shared-node" ${DEVICE_A}`);
+	assert.equal(secondText, `"shared-node" ${DEVICE_B}`);
+	assert.notEqual(
+		firstText,
+		secondText,
+		"equal stored names cannot make summary or action labels interchangeable",
+	);
+	const graph = meshGraph({
+		topology: networkTopology({
+			self_device_id: DEVICE_A,
+			networks: [
+				{
+					network_id: NET_ONE,
+					name: "identity-test-mesh",
+					epoch: 1,
+					trust: "active",
+					members: [first, second].map((device) =>
+						member(device.id, { name: device.name }),
+					),
+				},
+			],
+		}),
+		peers: peerList({ self_device_id: DEVICE_A, peers: [] }),
+	});
+	assert.ok(
+		meshSummary(graph).endsWith(`this device is ${firstText}`),
+		"the real summary producer uses that same identity, not the raw stored name",
+	);
+});
+
+test("compact member ids widen on collisions and fail safe without graph context", () => {
+	const displayed = [DEVICE_A, DEVICE_B];
+	assert.equal(compactDeviceId(DEVICE_A, displayed), "d_aaaaaaaa…");
+	assert.equal(compactDeviceId("d_short", ["d_short"]), "d_short");
+	assert.notEqual(
+		compactDeviceId(DEVICE_A, displayed),
+		compactDeviceId(DEVICE_B, displayed),
+	);
+	assert.equal(
+		compactDeviceId(DEVICE_A),
+		DEVICE_A,
+		"a caller that cannot see the other ids must not guess at a unique prefix",
+	);
+
+	const samePrefix = "d_0123456789abcdef0123456789abcdef";
+	const samePrefixOther = "d_0123456789abcdef0123456789abcde0";
+	const colliding = [samePrefix, samePrefixOther];
+	const compactA = compactDeviceId(samePrefix, colliding);
+	const compactB = compactDeviceId(samePrefixOther, colliding);
+	assert.notEqual(compactA, compactB);
+	assert.equal(compactA, samePrefix);
+	assert.equal(compactB, samePrefixOther);
+
+	const widened = ["d_012345678abcdef", "d_012345679abcdef"];
+	assert.equal(compactDeviceId(widened[0], widened), "d_012345678…");
+	assert.equal(compactDeviceId(widened[1], widened), "d_012345679…");
 });
 
 /* --------------------------------------------------------------- positions */
@@ -3320,7 +3378,7 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 	assert.equal(offload.kind, "plan");
 	assert.equal(offload.plan.to, PEER);
 	assert.equal(offload.plan.keep, false);
-	assert.match(offload.plan.verb, /^Move to devon-laptop$/);
+	assert.equal(offload.plan.verb, 'Move to "devon-laptop" d_bbbbbbbb…');
 	assert.equal(offload.alternatives.length, 1);
 	assert.equal(
 		offload.alternatives[0].keep,
@@ -3328,7 +3386,10 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 		"the reversible half is offered",
 	);
 	assert.equal(offload.alternatives[0].lost, null, "a copy loses nothing");
-	assert.match(offload.plan.lost, /deleted once devon-laptop has it/);
+	assert.equal(
+		offload.plan.lost,
+		'The copy on this device is deleted once "devon-laptop" d_bbbbbbbb… has it.',
+	);
 
 	// A recall: the opposite protocol, through the same route.
 	const recall = resolveDrop(

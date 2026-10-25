@@ -342,6 +342,8 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 
 type DeviceNodeProps = {
 	device: MeshDevice;
+	/** Every id on this canvas, so equal names cannot hide a compact-id collision. */
+	deviceIds: readonly string[];
 	x: number;
 	y: number;
 	nowSeconds: number;
@@ -369,6 +371,7 @@ type DeviceNodeProps = {
 };
 export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 	device,
+	deviceIds,
 	x,
 	y,
 	nowSeconds,
@@ -519,6 +522,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					<MeshDeviceIdentity
 						className="min-w-0 flex-1 text-body-sm text-ink"
 						deviceId={device.id}
+						deviceIds={deviceIds}
 						name={device.name}
 						compact
 					/>

@@ -54,7 +54,7 @@ import {
 	suspectWords,
 } from "./mesh-reach";
 import type { DeviceSessions } from "./mesh-sessions";
-import type { MeshSessionRow } from "./mesh-types";
+import { type MeshSessionRow, deviceIdentityText } from "./mesh-types";
 
 /**
  * The destinations a conversation can go to, from wherever it is now.
@@ -91,6 +91,7 @@ export function moveDestinations(
 	const owner =
 		session.locality === "local" ? selfDeviceId : session.owner_device;
 	const destinations: MoveDestination[] = [];
+	const deviceIds = devices.map((device) => device.id);
 	for (const device of devices) {
 		if (device.id === owner) continue;
 		if (device.id === selfDeviceId) {
@@ -102,11 +103,12 @@ export function moveDestinations(
 			});
 			continue;
 		}
+		const identity = deviceIdentityText(device, deviceIds, true);
 		destinations.push({
 			deviceId: device.id,
-			label: device.label,
-			verb: t("ui.mesh.mesh_card.move_to", { device: device.label }),
-			keepVerb: t("ui.mesh.mesh_card.copy_to", { device: device.label }),
+			label: identity,
+			verb: t("ui.mesh.mesh_card.move_to", { device: identity }),
+			keepVerb: t("ui.mesh.mesh_card.copy_to", { device: identity }),
 		});
 	}
 	return destinations;
@@ -289,6 +291,8 @@ export const SessionMoveMenu: FC<{
  */
 export const DevicePanel: FC<{
 	device: MeshDevice;
+	/** The graph's ids, needed to keep this compact identity unambiguous. */
+	deviceIds: readonly string[];
 	sessions: DeviceSessions;
 	/** The catalogue's own count, which may exceed the rows in hand. */
 	sessionTotal: number;
@@ -309,6 +313,7 @@ export const DevicePanel: FC<{
 	onRemoveMember: (device: MeshDevice, networkId: string) => void;
 }> = ({
 	device,
+	deviceIds,
 	sessions,
 	sessionTotal,
 	nowSeconds,
@@ -396,7 +401,7 @@ export const DevicePanel: FC<{
 	return (
 		<aside
 			aria-label={t("ui.mesh.mesh_card.device_details", {
-				device: device.label,
+				device: deviceIdentityText(device),
 			})}
 			data-mesh-panel={device.id}
 			data-glass-block=""
@@ -413,7 +418,12 @@ export const DevicePanel: FC<{
 					{t("ui.mesh.mesh_actions.close")}
 				</Button>
 				<h2 className="text-body-sm text-ink">
-					<MeshDeviceIdentity deviceId={device.id} name={device.name} compact />
+					<MeshDeviceIdentity
+						deviceId={device.id}
+						deviceIds={deviceIds}
+						name={device.name}
+						compact
+					/>
 				</h2>
 				{/*
 				 * THE STATE IS WORDS FIRST and the hue second (WCAG 1.4.1): the same rule the

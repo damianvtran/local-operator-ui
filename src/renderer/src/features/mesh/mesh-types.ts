@@ -786,12 +786,40 @@ export function deviceDisplayName(device: { name?: string }): string {
 }
 
 /**
- * A stable compact id for fixed-width nodes and panels. Eight leading hex
- * digits leave enough room for the name; list rows carry the complete id.
+ * A compact id that is unique within the graph being painted, not merely short.
+ * Eight leading hex digits are the normal budget; a shared prefix widens only the
+ * colliding ids until they differ. Without the displayed graph there is no sound
+ * way to abbreviate, so the full id is the fail-safe rather than a 32-bit guess.
  */
-export function compactDeviceId(deviceId: string): string {
+export function compactDeviceId(
+	deviceId: string,
+	displayedDeviceIds?: readonly string[],
+): string {
 	const id = text(deviceId);
-	return id.length > 10 ? `${id.slice(0, 10)}…` : id;
+	if (!displayedDeviceIds) return id;
+	const others = displayedDeviceIds
+		.map(text)
+		.filter((candidate) => candidate.length > 0 && candidate !== id);
+	let length = Math.min(10, id.length);
+	while (
+		length < id.length &&
+		others.some((candidate) => candidate.startsWith(id.slice(0, length)))
+	) {
+		length += 1;
+	}
+	return length < id.length ? `${id.slice(0, length)}…` : id;
+}
+
+/** The one inline name+id spelling used by sentences, menus and dialogs. */
+export function deviceIdentityText(
+	device: { id: string; name?: string },
+	displayedDeviceIds?: readonly string[],
+	compact = false,
+): string {
+	const id = compact
+		? compactDeviceId(device.id, displayedDeviceIds)
+		: text(device.id);
+	return `${deviceDisplayName(device)} ${id}`;
 }
 
 /** A network's display label: its name, else the id's tail. */
