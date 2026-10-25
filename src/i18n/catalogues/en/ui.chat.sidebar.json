@@ -12,7 +12,7 @@
 	"ui.chat.sidebar.catalogue.total_search_clipped": "Showing {shown, number, ::group-off}+ {shown, plural, one {match} other {matches}} of {total, number, ::group-off} chats",
 	"ui.chat.sidebar.drafts.clear_all": "Clear all",
 	"ui.chat.sidebar.drafts.clear_all_label": "Clear all drafts",
-	"ui.chat.sidebar.groups.badge": "{badge, number, ::group-off} chats in this group",
+	"ui.chat.sidebar.groups.badge": "{badge, plural, one {# chat in this group} other {# chats in this group}}",
 	"ui.chat.sidebar.header.create": "New agent or team",
 	"ui.chat.sidebar.header.create_agent": "New agent",
 	"ui.chat.sidebar.header.create_team": "New team",
