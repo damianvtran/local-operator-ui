@@ -410,14 +410,27 @@ test("a refused press is reported once, as an ordinary sonner toast, with a retr
 	assert.match(failure, /setArchiveUndo\(null\)/);
 	assert.match(failure, /clearArchiveFailure\(\)/);
 	/*
-	 * LIFETIMES ARE SONNER'S, NOT A PANEL CLOCK (2026-09-27). The draws carry the
-	 * documented durations - the refusal's ten seconds, the offer's eight - and the
-	 * entry's life pauses while the reader holds it, which the `Infinity` + clock pair
-	 * could not do. The value is cleared when its MESSAGE ends, so nothing re-draws
-	 * later: both ending routes (timed end, the close button/swipe) call `settle`.
+	 * LIFETIMES ARE SONNER'S, NOT A PANEL CLOCK (2026-09-27), AND A LOCALE REDRAW
+	 * KEEPS THE ORIGINAL DEADLINE (R1-5). The draw now passes the REMAINING life:
+	 * `raisedAt + duration - Date.now()` when the same message is being redrawn in a
+	 * new language, and the documented constant - the refusal's ten seconds, the
+	 * offer's eight - for a new message. Asserting only a literal `duration:` would
+	 * pass while the redraw silently re-armed the timer, which is the bug this pair
+	 * exists to catch.
 	 */
-	assert.match(failure, /duration: ARCHIVE_FAILURE_TOAST_MS/);
-	assert.match(failure, /duration: ARCHIVE_UNDO_TOAST_MS/);
+	assert.match(
+		failure,
+		/const duration = sameMessage\s*\?\s*raised\.raisedAt \+ raised\.duration - Date\.now\(\)\s*:\s*ARCHIVE_FAILURE_TOAST_MS;/,
+	);
+	assert.match(
+		failure,
+		/const duration = sameMessage\s*\?\s*raised\.raisedAt \+ raised\.duration - Date\.now\(\)\s*:\s*ARCHIVE_UNDO_TOAST_MS;/,
+	);
+	assert.equal(
+		failure.match(/id: ARCHIVE_TOAST_ID,\s*\n\s*duration,/g)?.length,
+		2,
+		"both draws pass the computed remaining lifetime through to sonner",
+	);
 	assert.doesNotMatch(
 		code(TOASTS),
 		/Number\.POSITIVE_INFINITY|ARCHIVE_TOAST_PERSISTENT/,
