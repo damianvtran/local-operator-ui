@@ -29,10 +29,15 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
+import { notificationsFrameRecord } from "@shared/hooks/use-desktop-feed";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import {
+	type QueryClient,
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+} from "@tanstack/react-query";
+import { useEffect, useSyncExternalStore } from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -175,20 +180,39 @@ export function useNotificationsCount(enabled: boolean) {
  * ask-queue changes: a same-count ask replacement or an ask read mark can carry
  * the same numeric revision. Frame identity, not that sequence, is the signal
  * (R1/Q1). The frame's counts paint immediately, then queries reconcile.
+ *
+ * OPENS NO SUBSCRIPTION OF ITS OWN. It reads the module-scope frame record the
+ * app's existing feed subscriptions publish to (`notificationsFrameRecord` in
+ * `use-desktop-feed.ts`, which says why), so mounting it on the rail, the page,
+ * the drawer and every transcript adds no IPC listener, and a server render
+ * (the transcript paint tests) reads the record's null server snapshot instead
+ * of touching `window`.
+ *
+ * ONE APPLICATION PER FRAME PER CLIENT. Every mounted consumer sees the same
+ * record; the first effect to run applies it and the rest find it applied, so
+ * N consumers cost one invalidation rather than N cancel-and-refetch cycles.
  */
+const appliedNotificationsFrame = new WeakMap<QueryClient, string>();
+
 export function useNotificationsFeedInvalidation() {
-	const { notificationsRevision } = useDesktopFeed();
+	const frame = useSyncExternalStore(
+		notificationsFrameRecord.subscribe,
+		notificationsFrameRecord.snapshot,
+		notificationsFrameRecord.serverSnapshot,
+	);
 	const { client, provided } = useOptionalQueryClient();
 	useEffect(() => {
-		if (!provided || !notificationsRevision) return;
+		if (!provided || !frame) return;
+		if (appliedNotificationsFrame.get(client) === frame.key) return;
+		appliedNotificationsFrame.set(client, frame.key);
 		client.setQueryData<DesktopNotificationsCount>(notificationKeys.count, {
-			unread_count: notificationsRevision.unreadCount,
-			waiting_count: notificationsRevision.waitingCount,
-			waiting_unread_count: notificationsRevision.waitingUnreadCount,
-			high_water: notificationsRevision.revision,
+			unread_count: frame.unreadCount,
+			waiting_count: frame.waitingCount,
+			waiting_unread_count: frame.waitingUnreadCount,
+			high_water: frame.revision,
 		});
 		void client.invalidateQueries({ queryKey: notificationKeys.all });
-	}, [notificationsRevision, client, provided]);
+	}, [frame, client, provided]);
 }
 
 /** The target half of a write, as the contract's request schema spells it. */

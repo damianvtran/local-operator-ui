@@ -2061,7 +2061,6 @@ export const rendererDriverApi = Object.freeze({
 	waitForBridge,
 	verb,
 	capture,
-	resolvedWindowMode,
 	reapLiveBoots,
 });
 

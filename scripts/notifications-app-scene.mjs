@@ -44,7 +44,6 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { isEntryPoint } from "./entry-point.mjs";
-import { rendererDriverApi as api } from "./renderer-driver.mjs";
 
 const OUT = resolve("artifacts/notifications-native");
 const SESSION = "aaaaaaaaaaa1";
@@ -70,11 +69,16 @@ const refuseUnlessSanctioned = () => {
 		"LOCAL_OPERATOR_CORE_REF",
 	])
 		if (!process.env[name]) missing.push(name);
-	if (missing.length > 0)
-		throw new Error(
-			`notifications native scene refused: this environment cannot honestly own a foreground desktop. Missing ${missing.join(", ")}. No headless fallback is taken: headless proves only the negative half.`,
-		);
+	return missing;
 };
+
+/*
+ * The refusal sentence, one line on stderr with no stack: it is the scene's
+ * CLI verdict (pinned through both spellings by `entry-point.test.mjs`), not a
+ * crash, and a stack would name the spelling it was reached through.
+ */
+const refusal = (missing) =>
+	`notifications native scene refused: this environment cannot honestly own a foreground desktop. Missing ${missing.join(", ")}. No headless fallback is taken: headless proves only the negative half.`;
 
 const freePort = () =>
 	new Promise((done, fail) => {
@@ -175,7 +179,21 @@ const mainFacts = (nodeCdp) =>
 	);
 
 async function main() {
-	refuseUnlessSanctioned();
+	const missing = refuseUnlessSanctioned();
+	if (missing.length > 0) {
+		console.error(refusal(missing));
+		process.exitCode = 1;
+		return;
+	}
+	/*
+	 * THE DRIVER IS IMPORTED ONLY AFTER THE DOOR OPENS. `renderer-driver.mjs`
+	 * resolves the Electron runtime from the working directory at import, so a
+	 * static import made every refused run die on "cannot resolve the Electron
+	 * runtime" first - the refusal, which is the property this scene's gate
+	 * exists for, was unreachable anywhere Electron is not installed. The same
+	 * late load `asks-app-regression.mjs` uses for the same driver.
+	 */
+	const { rendererDriverApi: api } = await import("./renderer-driver.mjs");
 	mkdirSync(OUT, { recursive: true });
 
 	const root = join(tmpdir(), `lo-notifications-scene-${process.pid}`);
