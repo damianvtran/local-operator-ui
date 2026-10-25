@@ -581,20 +581,24 @@ jobs:
       !cancelled() &&
       needs.changes.outputs.unit != 'false'
     runs-on: ubuntu-latest
-    # RAISED FROM 50 TO 75 on 2026-10-25, measured a third time. The cap is per
-    # SHARD, and the partitions are balanced by file COUNT, not by runtime:
-    # shard 2/3 took 428 s on an M-series host, while the same shard on the CI
-    # runner ran past the 50-minute ceiling on three consecutive attempts (runs
-    # 40160038927, 40169799731 and 40169840176, cancelled at the cap). Two PRs
-    # were blocked at once; on the two later runs shards 0 and 1 were green with
-    # no failing tests, and the earliest run's shard-1 failures were a separate
-    # harness race since fixed at its source.
-    # 75 minutes gives the job room to finish instead of being cut mid-suite:
-    # the same shard takes well under this on other branches, so this is
-    # headroom for the runner's slower jsdom lanes, not a claim about a general
-    # slowdown. Balancing shards by measured runtime is the real fix and a
-    # follow-up, not a guess made here.
-    timeout-minutes: 75
+    # BACK TO 50 AFTER A ONE-DAY RAISE TO 75 on 2026-10-25, because the raise
+    # turned out to compensate for a defect rather than for a slow suite.
+    #
+    # The three shard-2 cancellations that prompted the raise were caused by a
+    # stall: `scripts/completion-view-ack.test.mjs` imported two esbuild bundles
+    # as `data:text/javascript;base64,...` specifiers, and a diagnostic naming
+    # those specifiers dumped the whole bundle into one 8,264,707-byte log line.
+    # #1407 (d52be1696c) removed that, cutting the diagnostic to 163 bytes.
+    # Shard 2 then completed in 17m55s, and the runs either side of the fix
+    # measured 25m14s / 15m18s / 15m24s - all inside the ORIGINAL 50-minute cap.
+    #
+    # Output volume alone is not the trigger: the same shard still emits 3.93 MB
+    # `data:` lines from `link-actions.test.mjs` and finishes fine. The raise is
+    # reverted rather than kept as unexplained headroom, because a raised ceiling
+    # makes the next stall take 75 minutes to fail and produces the same
+    # unreadable log. If a future run hits 50, read the log before raising this
+    # again - the bound was doing its job.
+    timeout-minutes: 50
 
     strategy:
       fail-fast: false
