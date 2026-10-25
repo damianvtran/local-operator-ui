@@ -20,6 +20,13 @@
  * `en-US` for every option set the migrated sites pass
  * (`scripts/i18n/format.test.mjs` pins that equivalence).
  *
+ * A RAW TAG IS NOT A CATALOGUE TAG. Keeping the device's spelling costs nothing
+ * where the tag is only data — `document.documentElement.lang` and text
+ * direction want `fr-FR`/`ur-PK` (`./direction`), and Intl formatters read the
+ * region — but no catalogue is named `fr-FR`, so the COPY runtime canonicalises
+ * the tag before a lookup (`./catalogue-locale`). The store therefore answers
+ * "which tag is active"; it does not answer "which catalogue holds it".
+ *
  * This module is framework-free on purpose: the React binding lives in
  * `src/renderer/src/shared/i18n/use-locale.ts`, and the main process gets its
  * own catalogue later (RFC §3.2) without importing renderer code. It is also
@@ -46,7 +53,11 @@ export type LocaleCapabilities = {
 export type LocaleSource = "backend" | "device" | "default" | "manual";
 
 export type LocaleState = {
-	/** A BCP-47 tag: the backend's resolved tag, or the device's own. */
+	/**
+	 * A BCP-47 tag: the backend's resolved tag, or the device's own. The copy
+	 * runtime canonicalises it before a catalogue lookup (`./catalogue-locale`),
+	 * so this is not necessarily a catalogue spelling.
+	 */
 	locale: string;
 	source: LocaleSource;
 };
