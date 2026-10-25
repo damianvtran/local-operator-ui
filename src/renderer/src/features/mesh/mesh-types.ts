@@ -776,6 +776,24 @@ export function deviceLabel(device: {
 	});
 }
 
+/**
+ * The name half of the security identity: real names are quoted, absence is not.
+ * JSON quoting also prevents a stored quote or newline from forging a second row.
+ */
+export function deviceDisplayName(device: { name?: string }): string {
+	const name = text(device.name);
+	return name ? JSON.stringify(name) : t("ui.mesh.mesh_types.unnamed_device");
+}
+
+/**
+ * A stable compact id for fixed-width nodes and panels. Eight leading hex
+ * digits leave enough room for the name; list rows carry the complete id.
+ */
+export function compactDeviceId(deviceId: string): string {
+	const id = text(deviceId);
+	return id.length > 10 ? `${id.slice(0, 10)}…` : id;
+}
+
 /** A network's display label: its name, else the id's tail. */
 export function networkLabel(network: {
 	network_id: string;

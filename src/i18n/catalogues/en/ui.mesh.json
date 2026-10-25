@@ -221,6 +221,7 @@
 	"ui.mesh.mesh_store.the_mesh_could_not_be_read": "The mesh could not be read.",
 	"ui.mesh.mesh_store.the_move_answered_and_this_app_could": "The move answered, and this app could not read which session it moved. Read the list again before asking for another.",
 	"ui.mesh.mesh_types.device_suffix": "device …{suffix}",
+	"ui.mesh.mesh_types.unnamed_device": "(unnamed device)",
 	"ui.mesh.mesh_types.network_suffix": "network …{suffix}",
 	"ui.mesh.mesh_actions.this_moves_the_conversation": "This moves the conversation.",
 	"ui.mesh.mesh_actions.the_device": "the device",

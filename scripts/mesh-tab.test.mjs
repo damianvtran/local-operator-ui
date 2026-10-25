@@ -116,6 +116,8 @@ const {
 	networkTopology,
 	meshGraph,
 	meshSummary,
+	deviceDisplayName,
+	compactDeviceId,
 	deviceStatLine,
 	meshNodeCount,
 	assignSlots,
@@ -996,6 +998,28 @@ test("the node draws a rail and a state line, and the sentence moved to its name
 		/deviceNodeStatLine/,
 		"there is no second, node-width rendering of the sentence left to drift from the first",
 	);
+});
+
+test("member identity quotes real names and keeps absence visually distinct", () => {
+	assert.equal(deviceDisplayName({ name: "shared-node" }), '"shared-node"');
+	assert.equal(
+		deviceDisplayName({ name: "(unnamed device)" }),
+		'"(unnamed device)"',
+		"a real name cannot impersonate the absent-name state",
+	);
+	assert.equal(deviceDisplayName({ name: "" }), "(unnamed device)");
+	assert.equal(deviceDisplayName({}), "(unnamed device)");
+	assert.equal(
+		deviceDisplayName({ name: 'a "quoted"\nname' }),
+		'"a \\"quoted\\"\\nname"',
+		"stored quotes and newlines cannot forge another visual row",
+	);
+});
+
+test("compact member ids are stable and explicitly abbreviated", () => {
+	assert.equal(compactDeviceId(DEVICE_A), "d_aaaaaaaa…");
+	assert.equal(compactDeviceId("d_short"), "d_short");
+	assert.notEqual(compactDeviceId(DEVICE_A), compactDeviceId(DEVICE_B));
 });
 
 /* --------------------------------------------------------------- positions */

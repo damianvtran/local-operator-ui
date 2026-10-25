@@ -241,5 +241,6 @@
 	"ui.mesh.mesh_store.the_mesh_could_not_be_read": "Не удалось прочитать меш-сеть.",
 	"ui.mesh.mesh_store.the_move_answered_and_this_app_could": "Получен ответ на запрос перемещения, но приложение не смогло прочитать, какую сессию оно переместило. Прочитайте список заново, прежде чем запрашивать ещё одно.",
 	"ui.mesh.mesh_types.device_suffix": "устройство …{suffix}",
+	"ui.mesh.mesh_types.unnamed_device": "(устройство без имени)",
 	"ui.mesh.mesh_types.network_suffix": "сеть …{suffix}"
 }

@@ -44,6 +44,7 @@ import { t } from "../../../../i18n/messages";
 import { resolveDrop } from "./mesh-drop";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { agoSentence, conversationUnit } from "./mesh-graph";
+import { MeshDeviceIdentity } from "./mesh-identity";
 import { chipFact, chipLabel } from "./mesh-node";
 import {
 	attemptWords,
@@ -411,7 +412,9 @@ export const DevicePanel: FC<{
 				>
 					{t("ui.mesh.mesh_actions.close")}
 				</Button>
-				<h2 className="text-body-sm text-ink">{device.label}</h2>
+				<h2 className="text-body-sm text-ink">
+					<MeshDeviceIdentity deviceId={device.id} name={device.name} compact />
+				</h2>
 				{/*
 				 * THE STATE IS WORDS FIRST and the hue second (WCAG 1.4.1): the same rule the
 				 * node's stripe follows, stated here because a panel has room to name it.

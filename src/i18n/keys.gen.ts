@@ -5465,6 +5465,7 @@ export type MessageParams = {
 	"ui.mesh.mesh_store.the_move_answered_and_this_app_could": undefined;
 	"ui.mesh.mesh_types.device_suffix": { suffix: string };
 	"ui.mesh.mesh_types.network_suffix": { suffix: string };
+	"ui.mesh.mesh_types.unnamed_device": undefined;
 	"ui.miniView.alternates": { first: string; second: string };
 	"ui.miniView.context": { used: string };
 	"ui.miniView.context_estimated": { used: string };

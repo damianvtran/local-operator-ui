@@ -29,6 +29,7 @@ import {
 } from "./mesh-card";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { deviceStatLine } from "./mesh-graph";
+import { MeshDeviceIdentity } from "./mesh-identity";
 import {
 	REACH_INK,
 	attemptWords,
@@ -321,12 +322,15 @@ export const MeshList: FC<MeshListProps> = ({
 											data-mesh-device-open={device.id}
 											onClick={() => onSelect(device.id)}
 											className={cn(
-												"min-w-0 flex-1 truncate text-start text-body-sm text-ink",
+												"min-w-0 flex-1 text-start text-body-sm text-ink",
 												"hover:text-ink-muted",
 												"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 											)}
 										>
-											{device.label}
+											<MeshDeviceIdentity
+												deviceId={device.id}
+												name={device.name}
+											/>
 										</button>
 										{/*
 										 * The state IN WORDS on every row, WITH THE INK FROM THE ONE TABLE

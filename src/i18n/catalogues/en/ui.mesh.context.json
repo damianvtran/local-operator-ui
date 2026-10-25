@@ -1124,6 +1124,11 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Unnamed network/device label: names/explains device suffix. Placeholders: suffix = literal last six characters of a technical id. Length: keep the unnamed record fallback label compact, around the English footprint; no hard cell cap is defined."
 	},
+	"ui.mesh.mesh_types.unnamed_device": {
+		"role": "member identity — absent device name",
+		"tone": "Plain explanatory language; preserve the security distinction",
+		"note": "Shown without quotation marks beside the device id when no name is stored. Real stored names are always quoted, so this phrase must remain visually distinct and must not be used as a real-name fallback."
+	},
 	"ui.mesh.mesh_types.network_suffix": {
 		"role": "unnamed record fallback label — unnamed network/device label",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",

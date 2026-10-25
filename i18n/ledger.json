@@ -3692,8 +3692,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.mesh",
-			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
-			"target_sha256": "8ca7bc27a7c2239a82312e194c37ca5bc8dba560878d95aa1735ba2bed7a5e4a",
+			"source_sha256": "6b2df37af5c79e404888a00b279ec4f6eda46bf8a68e70ffec0fa6002cd41a44",
+			"target_sha256": "e061afc1b6a7cf17f5324e2feb4b7db9fb31a87222e474326edc00f662ad13f6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3701,20 +3701,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-chat",
-					"date": "2026-10-24",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "d30b20f4de1e",
+					"instance": "4e5c84cceada-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d30b20f4de1e.json",
-					"receipt_sha256": "29c93941b73244192fc1a431dc8bfc6cdc368d2126697325ba661bef8fa51728",
-					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
+					"receipt": "i18n/receipts/4e5c84cceada-es.json",
+					"receipt_sha256": "af2386e0ae4dfd07d17e6a7b29638a6fbb8b71c5592489ef50d69ec0dae3b6c5",
+					"scope": "ui.mesh.mesh_types.unnamed_device only"
 				}
 			],
 			"status": "audited",
@@ -3760,6 +3760,29 @@
 							},
 							"receipt": "i18n/receipts/04112bb1ce33.json",
 							"receipt_sha256": "e34b98dcadf107710c6c9d4b149b115cdc22250daade32eb72c9b9c2472e1b8f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+					"target_sha256": "8ca7bc27a7c2239a82312e194c37ca5bc8dba560878d95aa1735ba2bed7a5e4a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-chat",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "d30b20f4de1e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d30b20f4de1e.json",
+							"receipt_sha256": "29c93941b73244192fc1a431dc8bfc6cdc368d2126697325ba661bef8fa51728",
+							"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 						}
 					],
 					"status": "audited"
@@ -9159,8 +9182,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.mesh",
-			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
-			"target_sha256": "3aa8d776350353385f5906cf63e342f0f4947c60d390ee23ceb27e0e29ebe76d",
+			"source_sha256": "6b2df37af5c79e404888a00b279ec4f6eda46bf8a68e70ffec0fa6002cd41a44",
+			"target_sha256": "8ce19adee13e99d3af4e8d72af04bb44f9bf5be4bb58002074a4311621a95641",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -9168,20 +9191,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-chat",
-					"date": "2026-10-24",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "3c29edabebe5",
+					"instance": "4e5c84cceada-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3c29edabebe5.json",
-					"receipt_sha256": "490aceee0adbb9200991befe0860e4e6cc5b489fecf89b8a4fe43b0f9926cf76",
-					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
+					"receipt": "i18n/receipts/4e5c84cceada-fr.json",
+					"receipt_sha256": "fc113f5d0174ecd0cc41d54c77cba1d20d6ef723e4132d4f0153fcf5df9d0355",
+					"scope": "ui.mesh.mesh_types.unnamed_device only"
 				}
 			],
 			"status": "audited",
@@ -9227,6 +9250,29 @@
 							},
 							"receipt": "i18n/receipts/ca2e127f4069.json",
 							"receipt_sha256": "8ff69154b561c9e07366990ad591f3f418a8ff7c04f8da36544c518e5c85e1a0"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+					"target_sha256": "3aa8d776350353385f5906cf63e342f0f4947c60d390ee23ceb27e0e29ebe76d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-chat",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "3c29edabebe5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3c29edabebe5.json",
+							"receipt_sha256": "490aceee0adbb9200991befe0860e4e6cc5b489fecf89b8a4fe43b0f9926cf76",
+							"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 						}
 					],
 					"status": "audited"
@@ -14984,8 +15030,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.mesh",
-			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
-			"target_sha256": "c2b77593e736b5f64581f7077f02c62744de6f29a81774707096a1f5ccd04bb6",
+			"source_sha256": "6b2df37af5c79e404888a00b279ec4f6eda46bf8a68e70ffec0fa6002cd41a44",
+			"target_sha256": "943b7403b20d22f80cca20c9904bdfe338bc0f576f41af377af1443bb355b4c2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14993,20 +15039,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-chat",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "f30162bb4fad",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "4e5c84cceada-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f30162bb4fad-hi.json",
-					"receipt_sha256": "c1237747a943aebcb0df16bee9292f2cfa61e17d871e1cedda3be813e60ce2ae",
-					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
+					"receipt": "i18n/receipts/4e5c84cceada-hi.json",
+					"receipt_sha256": "2bf57aa5a549a29be37a85b4b7878e200c7cc8ecb88a1dc4982ab9e741ed59ef",
+					"scope": "ui.mesh.mesh_types.unnamed_device only"
 				}
 			],
 			"status": "audited",
@@ -15077,6 +15123,29 @@
 							},
 							"receipt": "i18n/receipts/5bb0b059e0c8.json",
 							"receipt_sha256": "f0a856b992c2a970f31e4162b70023ca66a39780c5947fcfbdcb89b37e802dcf"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+					"target_sha256": "c2b77593e736b5f64581f7077f02c62744de6f29a81774707096a1f5ccd04bb6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-chat",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "f30162bb4fad",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f30162bb4fad-hi.json",
+							"receipt_sha256": "c1237747a943aebcb0df16bee9292f2cfa61e17d871e1cedda3be813e60ce2ae",
+							"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 						}
 					],
 					"status": "audited"
@@ -20459,8 +20528,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.mesh",
-			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
-			"target_sha256": "bced28c8b3e25761ca11d6adb99b113b89ebb552799dbba75458c0a9bb09c789",
+			"source_sha256": "6b2df37af5c79e404888a00b279ec4f6eda46bf8a68e70ffec0fa6002cd41a44",
+			"target_sha256": "52fcf4ea97eb89e9edcc832a196c390ef01978cd51396b33709e9810312ddf8e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -20468,20 +20537,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-chat",
-					"date": "2026-10-24",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "571e819540ec",
+					"instance": "4e5c84cceada-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/571e819540ec.json",
-					"receipt_sha256": "8a0f84a7b5504bbc549ff313037eb243f71b9635e9004441e695ffcebabfe995",
-					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
+					"receipt": "i18n/receipts/4e5c84cceada-ru.json",
+					"receipt_sha256": "8a4191ba1e1fc90186bbaba020d0060b9cf6cac06478db4f855661fb4e8ec063",
+					"scope": "ui.mesh.mesh_types.unnamed_device only"
 				}
 			],
 			"status": "audited",
@@ -20527,6 +20596,29 @@
 							},
 							"receipt": "i18n/receipts/b258b0452d8b.json",
 							"receipt_sha256": "3685a3ac31bd201a800e15aed0397f2789b798260716d776aac7ca15c341e724"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+					"target_sha256": "bced28c8b3e25761ca11d6adb99b113b89ebb552799dbba75458c0a9bb09c789",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-chat",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "571e819540ec",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/571e819540ec.json",
+							"receipt_sha256": "8a0f84a7b5504bbc549ff313037eb243f71b9635e9004441e695ffcebabfe995",
+							"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 						}
 					],
 					"status": "audited"
@@ -26009,8 +26101,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.mesh",
-			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
-			"target_sha256": "1abccb2ffedceb8a081266adcd75508286fd2e729dae41cac7fcb85fce29ec1e",
+			"source_sha256": "6b2df37af5c79e404888a00b279ec4f6eda46bf8a68e70ffec0fa6002cd41a44",
+			"target_sha256": "e55a66c06f77342391f4b73c5b32d12491972dea01726fd594d7b48e669880e1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -26018,20 +26110,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-chat",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "e73be64ade76",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "4e5c84cceada-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e73be64ade76.json",
-					"receipt_sha256": "1451a86c62b454a2b766b16d0c68ff847607ada5e42df836cfe1af744e6214cb",
-					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
+					"receipt": "i18n/receipts/4e5c84cceada-ur.json",
+					"receipt_sha256": "6384c2a083fcab9a651da0763311a3903a5bc4e732bca956f49c1dbf14991dfa",
+					"scope": "ui.mesh.mesh_types.unnamed_device only"
 				}
 			],
 			"status": "audited",
@@ -26078,6 +26170,29 @@
 							},
 							"receipt": "i18n/receipts/332e346e02ff.json",
 							"receipt_sha256": "6667fc93fd4e89197a00d035d6f686d26fe979581d73926b043424fa55f468ce"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+					"target_sha256": "1abccb2ffedceb8a081266adcd75508286fd2e729dae41cac7fcb85fce29ec1e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-chat",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "e73be64ade76",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e73be64ade76.json",
+							"receipt_sha256": "1451a86c62b454a2b766b16d0c68ff847607ada5e42df836cfe1af744e6214cb",
+							"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 						}
 					],
 					"status": "audited"
@@ -31382,8 +31497,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.mesh",
-			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
-			"target_sha256": "7a1398aedbe87638c362604b6c13e1772323df34c0abad41594791ed1b5d96ea",
+			"source_sha256": "6b2df37af5c79e404888a00b279ec4f6eda46bf8a68e70ffec0fa6002cd41a44",
+			"target_sha256": "945290eec8604bcdc594e058ca7794cf90f32b22fb698e3c3b1781ee4ba7dc90",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -31391,20 +31506,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-chat",
-					"date": "2026-10-24",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "d507767766d2",
+					"instance": "4e5c84cceada-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d507767766d2.json",
-					"receipt_sha256": "934a823466ea64c7f611d8b44c20ef1c6dc8bc96a6150ad4d8abc98889f1e19a",
-					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
+					"receipt": "i18n/receipts/4e5c84cceada-vi.json",
+					"receipt_sha256": "51dd9788e967a4aa81c88a50497195bb62ecbdbe5967457bbdcf3352e36dc985",
+					"scope": "ui.mesh.mesh_types.unnamed_device only"
 				}
 			],
 			"status": "audited",
@@ -31499,6 +31614,29 @@
 							},
 							"receipt": "i18n/receipts/07ffa6b6bc78.json",
 							"receipt_sha256": "d96d0386bf66343aca46c2879e94bbae24261c5f2784b440e8500cae532be196"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+					"target_sha256": "7a1398aedbe87638c362604b6c13e1772323df34c0abad41594791ed1b5d96ea",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-chat",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "d507767766d2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d507767766d2.json",
+							"receipt_sha256": "934a823466ea64c7f611d8b44c20ef1c6dc8bc96a6150ad4d8abc98889f1e19a",
+							"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 						}
 					],
 					"status": "audited"
@@ -37474,8 +37612,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.mesh",
-			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
-			"target_sha256": "9e7554059375a27d6c78c5b21d33570c7995384bf4083a791b85e62c8f3cd77b",
+			"source_sha256": "6b2df37af5c79e404888a00b279ec4f6eda46bf8a68e70ffec0fa6002cd41a44",
+			"target_sha256": "459f5d451689af8d6587a6af38caf29a1f7e8e55e3d186b254edcc467b85b543",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -37484,20 +37622,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-chat",
-					"date": "2026-10-24",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-25",
 					"result": "clean-with-findings",
-					"instance": "878a55c1f552",
+					"instance": "4e5c84cceada-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/878a55c1f552.json",
-					"receipt_sha256": "3289a97415d49dc1bed3437943b5f0e63509651281ad369db11b2dbbc1262c4e",
-					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
+					"receipt": "i18n/receipts/4e5c84cceada-zh-cn.json",
+					"receipt_sha256": "e9c9d1e4e0a97b1bb6477785777bf764a5f7fc78c0e2a71d8f6d096f86ae4041",
+					"scope": "ui.mesh.mesh_types.unnamed_device only"
 				}
 			],
 			"status": "audited",
@@ -37568,6 +37706,29 @@
 							},
 							"receipt": "i18n/receipts/d4205b08276b.json",
 							"receipt_sha256": "0fe6106cba78ffc22ec696769d9acbfc8ad5346a5d2619d826c976e8350509a4"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+					"target_sha256": "9e7554059375a27d6c78c5b21d33570c7995384bf4083a791b85e62c8f3cd77b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-chat",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "878a55c1f552",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/878a55c1f552.json",
+							"receipt_sha256": "3289a97415d49dc1bed3437943b5f0e63509651281ad369db11b2dbbc1262c4e",
+							"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 						}
 					],
 					"status": "audited"
