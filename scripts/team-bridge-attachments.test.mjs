@@ -2372,7 +2372,7 @@ test(
 		}),
 );
 
-test("R1-01: an account mismatch is explained as a sign-in problem, never as a quota", async () => {
+test("R1-01: an account change is its own sentence — never a quota, never a sign-out", async () => {
 	const element = document.createElement("div");
 	document.body.append(element);
 	const root = createRoot(element);
@@ -2394,8 +2394,13 @@ test("R1-01: an account mismatch is explained as a sign-in problem, never as a q
 		const text = element.textContent;
 		assert.match(
 			text,
-			/signed out|sign in/i,
-			"the sign-in explanation is shown",
+			/Signed-in account has changed since this message was started/i,
+			"the account-change sentence is shown",
+		);
+		assert.equal(
+			/signed out/i.test(text),
+			false,
+			"a sign-out is a different fact and must not be claimed",
 		);
 		assert.equal(
 			/too many images/i.test(text),

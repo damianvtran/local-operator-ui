@@ -162,6 +162,7 @@
 	"ui.teamBridge.attachments.error_invalid": "No se pudo leer esta imagen. Puede estar dañada.",
 	"ui.teamBridge.attachments.error_rate": "Demasiadas imágenes a la vez. Espera un minuto y vuelve a intentarlo.",
 	"ui.teamBridge.attachments.error_quota": "Tienes demasiadas imágenes pendientes de envío. Envía o quita algunas y vuelve a intentarlo.",
+	"ui.teamBridge.attachments.error_account_changed": "La cuenta con la que has iniciado sesión ha cambiado desde que empezaste a escribir este mensaje. Inicia sesión de nuevo para enviarlo.",
 	"ui.teamBridge.attachments.error_offline": "No se pudo subir la imagen porque Local Operator no está disponible. Vuelve a intentarlo cuando lo esté.",
 	"ui.teamBridge.attachments.error_upload": "No se pudo subir la imagen. Vuelve a intentarlo o quítala.",
 	"ui.teamBridge.attachments.expired_staged": "Esta imagen ya no está lista para enviarse. Quítala y vuelve a añadirla.",

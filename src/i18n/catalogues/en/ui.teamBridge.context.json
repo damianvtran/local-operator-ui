@@ -1204,6 +1204,13 @@
 		"placeholders": {},
 		"note": "Upload refused because the author's pending-image allowance is used up."
 	},
+	"ui.teamBridge.attachments.error_account_changed": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise, not alarmed",
+		"length": "One or two sentences.",
+		"placeholders": {},
+		"note": "The captured-owner guard refused an upload because the signed-in account is no longer the one this composer was authorised under. States the change and the action (sign in again); never a quota, never a sign-out."
+	},
 	"ui.teamBridge.attachments.error_offline": {
 		"role": "image attachment control or status",
 		"tone": "plain, concise",

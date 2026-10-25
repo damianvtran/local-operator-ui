@@ -162,6 +162,7 @@
 	"ui.teamBridge.attachments.error_invalid": "Impossible de lire cette image. Elle est peut-être endommagée.",
 	"ui.teamBridge.attachments.error_rate": "Trop d’images à la fois. Patientez une minute, puis réessayez.",
 	"ui.teamBridge.attachments.error_quota": "Trop d’images attendent d’être envoyées. Envoyez-en ou retirez-en, puis réessayez.",
+	"ui.teamBridge.attachments.error_account_changed": "Le compte avec lequel vous êtes connecté a changé depuis que vous avez commencé à écrire ce message. Reconnectez-vous pour l’envoyer.",
 	"ui.teamBridge.attachments.error_offline": "L’image n’a pas pu être téléversée, car Local Operator est injoignable. Réessayez lorsqu’il sera de nouveau disponible.",
 	"ui.teamBridge.attachments.error_upload": "L’image n’a pas pu être téléversée. Réessayez ou retirez-la.",
 	"ui.teamBridge.attachments.expired_staged": "Cette image n’est plus prête à être envoyée. Retirez-la, puis ajoutez-la de nouveau.",
