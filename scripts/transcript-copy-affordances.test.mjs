@@ -37,6 +37,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -86,6 +87,7 @@ for (const name of [
 const RE_CREDENTIALS = /@shared\/hooks\/use-credentials/;
 const RE_TOAST = /@shared\/utils\/toast-manager/;
 const RE_ANY = /.*/;
+const RE_COPY_MODULE = /[\\/]transcript-copy\.ts$/;
 
 const bundle = await build({
 	stdin: {
@@ -126,6 +128,24 @@ const bundle = await build({
 		{
 			name: "copy-affordance-fixtures",
 			setup(builder) {
+				/* Count the actual pure derivations, not getter calls: a getter may
+				 * be read repeatedly while open without re-parsing its cached record.
+				 * Fail closed if the source signatures change under this probe. */
+				builder.onLoad({ filter: RE_COPY_MODULE }, async ({ path }) => {
+					let contents = await readFile(path, "utf8");
+					for (const name of ["copyTextForRecord", "copyMarkdownForRecord"]) {
+						const signature = `export function ${name}(record: TranscriptRecord): string {`;
+						assert.ok(
+							contents.includes(signature),
+							`${name} probe signature exists`,
+						);
+						contents = contents.replace(
+							signature,
+							`${signature}\n globalThis.__copyPayloadReads?.push({ id: record.id, format: ${JSON.stringify(name)} });`,
+						);
+					}
+					return { contents, loader: "ts" };
+				});
 				builder.onResolve({ filter: RE_CREDENTIALS }, () => ({
 					path: "probe",
 					namespace: "fixture",
@@ -1911,6 +1931,135 @@ test("a record replaced under a mounted row copies the replacement, not the cach
 	);
 	assert.notEqual(second.text, first.text, "and it is not the cached payload");
 	await rig.unmount();
+});
+
+/*
+ * R1: keep the menu OPEN across the same-ID streaming → settled replacement.
+ * Reopening hid the stale-payload defect: the open callback refreshed the cache
+ * before the old regression test pressed Copy. Here the very same menu node
+ * stays mounted and its existing item is pressed after the row is replaced.
+ */
+for (const [label, format] of [
+	["Copy text", "text"],
+	["Copy as Markdown", "markdown"],
+]) {
+	for (const [start, initiallyDisabled] of [
+		["Streaming **draft** with `old` words.", false],
+		["---", true],
+	]) {
+		test(`R1 still-open ${label} follows a streaming replacement (${initiallyDisabled ? "empty" : "nonempty"} opening payload)`, async () => {
+			const original = MULTI_TURN.records.find((row) => row.id === "a2");
+			const streaming = {
+				...original,
+				text: start,
+				streaming: true,
+				complete: false,
+				stopReason: null,
+			};
+			const withRecord = (record) => ({
+				...MULTI_TURN,
+				records: MULTI_TURN.records.map((row) =>
+					row.id === record.id ? record : row,
+				),
+			});
+			const rig = await mountTranscript(withRecord(streaming));
+			try {
+				const menu = await rig.openMenu(() =>
+					rig.dom.window.document.querySelector(
+						'[data-record-kind][data-record-id="a2"]',
+					),
+				);
+				assert.equal(
+					rig.menuItem(menu, label).getAttribute("aria-disabled") === "true",
+					initiallyDisabled,
+				);
+				const settled = {
+					...original,
+					text: "Streaming finished: **two** invoices remain, including `inv-41`.",
+				};
+				await rig.rerender(withRecord(settled));
+				assert.equal(
+					rig.dom.window.document.querySelector("[data-lo-copy-menu]"),
+					menu,
+					"the SAME menu stayed open; no reopen can refresh it for this test",
+				);
+				const item = rig.menuItem(menu, label);
+				assert.notEqual(
+					item.getAttribute("aria-disabled"),
+					"true",
+					"a nonempty replacement enables the already-open item",
+				);
+				await rig.click(item);
+				const expected =
+					format === "text"
+						? mod.copyTextForRecord(settled)
+						: mod.copyMarkdownForRecord(settled);
+				assert.deepEqual(
+					rig.written,
+					[expected],
+					"the existing menu item writes the CURRENT record's bytes",
+				);
+			} finally {
+				await rig.unmount();
+			}
+		});
+	}
+}
+
+test("lazy row payloads derive only on demand and unchanged opens/actions reuse the record cache", async () => {
+	const reads = [];
+	globalThis.__copyPayloadReads = reads;
+	const rig = await mountTranscript(MULTI_TURN);
+	try {
+		assert.equal(
+			reads.length,
+			0,
+			"mounting closed rows derives no copy payloads",
+		);
+		const target = () =>
+			rig.dom.window.document.querySelector(
+				'[data-record-kind][data-record-id="a2"]',
+			);
+		await rig.openMenu(target);
+		assert.deepEqual(
+			reads.map((read) => [read.id, read.format]),
+			[
+				["a2", "copyTextForRecord"],
+				["a2", "copyMarkdownForRecord"],
+			],
+			"first demand derives only that record's two forms",
+		);
+		await rig.rerender({ ...MULTI_TURN });
+		assert.equal(
+			reads.length,
+			2,
+			"an open-menu render reuses the unchanged record cache",
+		);
+		await closeMenu(rig);
+		const menu = await rig.openMenu(target);
+		await rig.click(rig.menuItem(menu, "Copy text"));
+		assert.equal(
+			reads.length,
+			2,
+			"reopening and pressing Copy still reuse that cache",
+		);
+		await closeMenu(rig);
+
+		const original = MULTI_TURN.records.find((row) => row.id === "a2");
+		const replacement = { ...original, text: "Replacement **after** closing." };
+		await rig.rerender({
+			...MULTI_TURN,
+			records: MULTI_TURN.records.map((row) =>
+				row.id === "a2" ? replacement : row,
+			),
+		});
+		assert.equal(reads.length, 2, "a replacement while CLOSED remains lazy");
+		await rig.openMenu(target);
+		assert.equal(reads.length, 4, "new demand derives the replacement once");
+	} finally {
+		await rig.unmount();
+		globalThis.__copyPayloadReads = undefined;
+	}
 });
 
 test("a dismissed ask copies one sentence, not a question with no answer", () => {

@@ -22,8 +22,8 @@
  * inside the transcript's mount task - 174 ms of a long cold open, for a menu
  * almost no row is ever asked for (renderer profile §4 L2-a). A caller whose
  * payload is expensive therefore hands `getPayload` instead of the strings; it
- * is called on open, so the menu shows exactly what the caller's CURRENT record
- * says at the press, and the caller memoises it per record identity. Callers
+ * is read while open and at the copy press, so even a record replaced under an
+ * open menu stays current; the caller memoises it per record identity. Callers
  * whose payload is already a cheap string (a fold header, a turn bar) keep
  * passing `text`/`markdown`.
  *
@@ -70,9 +70,9 @@ export type TranscriptCopyMenuProps = TranscriptCopyMenuBase &
 		| (TranscriptCopyPayload & { getPayload?: never })
 		| {
 				/**
-				 * Called when the menu OPENS (pointer, Shift+F10, the ContextMenu
-				 * key - every opener goes through Radix's `onOpenChange`), never at
-				 * render. Must return the payload of the line as it is at that moment.
+				 * Read only on demand: while the menu is open (all pointer/keyboard
+				 * openers use Radix's `onOpenChange`) and at the copy press, never
+				 * during a closed row's render. Memoise by current record identity.
 				 */
 				getPayload: () => TranscriptCopyPayload;
 				text?: never;
@@ -92,13 +92,17 @@ export const TranscriptCopyMenu = (props: TranscriptCopyMenuProps) => {
 	const { children, className, getPayload } = props;
 	useI18nLocale();
 	/*
-	 * The lazily derived payload, held only while it is the one the reader
-	 * opened the menu on. `null` until the first open; the menu's items are not
-	 * mounted before then, so nothing reads it in that window.
+	 * Demand lasts while the menu is OPEN, not just for its opening gesture.
+	 * A streaming row can be replaced while its menu stays open: freezing the
+	 * opening payload copied stale text and kept its old disabled state (R1).
+	 * Re-read on open-menu renders; the row's record-identity cache makes an
+	 * unchanged record free, and closed rows still never derive a payload.
 	 */
-	const [opened, setOpened] = useState<TranscriptCopyPayload | null>(null);
+	const [isOpen, setIsOpen] = useState(false);
 	const { text, markdown } = getPayload
-		? (opened ?? EMPTY_PAYLOAD)
+		? isOpen
+			? getPayload()
+			: EMPTY_PAYLOAD
 		: { text: props.text ?? "", markdown: props.markdown ?? "" };
 	/*
 	 * Captured on OPEN rather than compared at render time: Radix mounts the
@@ -110,13 +114,8 @@ export const TranscriptCopyMenu = (props: TranscriptCopyMenuProps) => {
 	return (
 		<ContextMenu
 			onOpenChange={(open) => {
+				setIsOpen(open);
 				if (!open) return;
-				/*
-				 * Before the selection read, in the same handler: Radix renders the
-				 * content after this callback, so the items' `disabled` state and
-				 * their presses see the payload of THIS open.
-				 */
-				if (getPayload) setOpened(getPayload());
 				/*
 				 * THE READER'S HIGHLIGHT, CAPTURED ON OPEN - and guarded because the
 				 * transcript is also rendered in jsdom with no window (the copy
@@ -147,7 +146,12 @@ export const TranscriptCopyMenu = (props: TranscriptCopyMenuProps) => {
 				<ContextMenuItem
 					disabled={!hasText}
 					onSelect={() => {
-						void write(text, t("ui.common.actions.copied"));
+						// Resolve at the press too: an already-dispatched menu action
+						// must not capture the previous render's record version.
+						void write(
+							getPayload ? getPayload().text : text,
+							t("ui.common.actions.copied"),
+						);
 					}}
 				>
 					{t("ui.chat.transcript_copy.menu.copy_text")}
@@ -156,7 +160,7 @@ export const TranscriptCopyMenu = (props: TranscriptCopyMenuProps) => {
 					disabled={!hasText}
 					onSelect={() => {
 						void write(
-							markdown,
+							getPayload ? getPayload().markdown : markdown,
 							t("ui.chat.transcript_copy.toast.copied_markdown"),
 						);
 					}}
