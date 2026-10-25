@@ -231,7 +231,10 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 					className="mt-0.5 size-4 shrink-0 text-warning"
 				/>
 				<div className="min-w-0 grow">
-					<p className="text-body text-ink" data-tour-tag="browser-consent-who">
+					<p
+						className="text-body text-ink [overflow-wrap:anywhere]"
+						data-tour-tag="browser-consent-who"
+					>
 						{who} {t("ui.browser.browser_consent_request.wants_to_open")}{" "}
 						<span className="font-mono text-mono-sm">{request.authority}</span>.
 					</p>
