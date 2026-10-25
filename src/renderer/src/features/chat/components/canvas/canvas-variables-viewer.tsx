@@ -20,6 +20,8 @@ import {
 	useSessionVariables,
 	useUpdateSessionVariable,
 } from "@shared/hooks/use-session-variables";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -57,8 +59,10 @@ import { VariableFormDialog } from "./variable-form-dialog";
  * the transport is what knows whether the socket was refused or the bearer was
  * wrong, and neither of those is anything this constant can say.
  */
-const BACKEND_SILENT =
-	"The backend did not answer, so this chat's code memory could not be read. Nothing was changed. Try again in a moment.";
+const BACKEND_SILENT = () =>
+	t(
+		"ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
+	);
 
 type CanvasVariablesViewerProps = {
 	/**
@@ -129,6 +133,7 @@ type VariableDisplayProps = {
 
 const VariableRow: FC<VariableDisplayProps> = memo(
 	({ variable, onEdit, onDelete }) => {
+		useI18nLocale();
 		const [expanded, setExpanded] = useState(false);
 		const [copied, setCopied] = useState(false);
 		const contentId = useId();
@@ -260,7 +265,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 						{expanded ? (
 							<ChevronDown
 								aria-hidden="true"
-								className="size-3 shrink-0 text-ink-dim"
+								className="size-3 shrink-0 text-ink-dim rtl:-scale-x-100"
 							/>
 						) : (
 							<ChevronRight
@@ -294,23 +299,29 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 							"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
 						)}
 					>
-						<Tooltip content={copied ? "Copied" : "Copy value"}>
+						<Tooltip
+							content={
+								copied
+									? t("ui.canvas.variables_viewer.copied")
+									: t("ui.canvas.variables_viewer.copy_value")
+							}
+						>
 							<Button
 								variant="ghost"
 								size="icon-sm"
 								onClick={handleCopy}
-								aria-label="Copy value"
+								aria-label={t("ui.canvas.variables_viewer.copy_value")}
 							>
 								<Copy />
 							</Button>
 						</Tooltip>
 						{isEditable ? (
-							<Tooltip content="Edit variable">
+							<Tooltip content={t("ui.canvas.variables_viewer.edit_variable")}>
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									onClick={handleEdit}
-									aria-label="Edit variable"
+									aria-label={t("ui.canvas.variables_viewer.edit_variable")}
 								>
 									<Pen />
 								</Button>
@@ -328,15 +339,19 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 									// name gate is this panel saying the row cannot be
 									// addressed at all (review round 2, C-06).
 									isWritable
-										? "This variable can't be edited because its type is not yet supported for editing."
-										: "This variable's name can't be edited from here. Copy it to the session under a new name if you need to change it."
+										? t(
+												"ui.canvas.variables_viewer.this_variable_can_t_be_edited_because_its_type_is_not_yet_supported_for",
+											)
+										: t(
+												"ui.canvas.variables_viewer.this_variable_s_name_can_t_be_edited_from_here_copy_it_to_the_session_un",
+											)
 								}
 							>
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									aria-disabled="true"
-									aria-label="Edit variable"
+									aria-label={t("ui.canvas.variables_viewer.edit_variable")}
 									className={cn(
 										"cursor-default text-ink-disabled hover:bg-transparent hover:text-ink-disabled",
 									)}
@@ -350,12 +365,14 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 						 * spends the danger role on a state where nothing is wrong.
 						 */}
 						{isDeletable && (
-							<Tooltip content="Delete variable">
+							<Tooltip
+								content={t("ui.canvas.variables_viewer.delete_variable")}
+							>
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									onClick={handleDelete}
-									aria-label="Delete variable"
+									aria-label={t("ui.canvas.variables_viewer.delete_variable")}
 									className={cn("hover:bg-danger-wash hover:text-danger")}
 								>
 									<Trash2 />
@@ -383,6 +400,7 @@ VariableRow.displayName = "VariableRow";
 
 export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 	({ sessionId, turnTerminal }) => {
+		useI18nLocale();
 		const [isFormOpen, setIsFormOpen] = useState(false);
 		const [editingVariable, setEditingVariable] =
 			useState<SessionVariable | null>(null);
@@ -540,7 +558,9 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<Spinner size="sm" />
-					<p className={cn("text-body-sm text-ink-muted")}>Loading variables</p>
+					<p className={cn("text-body-sm text-ink-muted")}>
+						{t("ui.canvas.variables_viewer.loading_variables")}
+					</p>
 				</CenteredState>
 			);
 		}
@@ -559,10 +579,10 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<p className={cn("text-heading text-ink")}>
-						Could not reach the backend
+						{t("ui.canvas.variables_viewer.could_not_reach_the_backend")}
 					</p>
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						{userFacingMessage(capabilities.error, BACKEND_SILENT)}
+						{userFacingMessage(capabilities.error, BACKEND_SILENT())}
 					</p>
 				</CenteredState>
 			);
@@ -572,7 +592,9 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<p className={cn("text-heading text-ink")}>
-						Update the backend to read code memory.
+						{t(
+							"ui.canvas.variables_viewer.update_the_backend_to_read_code_memory",
+						)}
 					</p>
 					{/*
 					 * The gate is deliberately control-free (the frozen state table says
@@ -582,9 +604,9 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 					 * section that installs it (`app-updates-section.tsx`).
 					 */}
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						This app can read code memory; the backend it is running against is
-						older than that. Settings, then Application updates and info,
-						installs the newer one.
+						{t(
+							"ui.canvas.variables_viewer.this_app_can_read_code_memory_the_backend_it_is_running_against_is_older",
+						)}
 					</p>
 				</CenteredState>
 			);
@@ -599,7 +621,9 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<p className={cn("text-heading text-ink")}>
-						Code memory starts when you send your first message.
+						{t(
+							"ui.canvas.variables_viewer.code_memory_starts_when_you_send_your_first_message",
+						)}
 					</p>
 				</CenteredState>
 			);
@@ -609,7 +633,9 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<Spinner size="sm" />
-					<p className={cn("text-body-sm text-ink-muted")}>Loading variables</p>
+					<p className={cn("text-body-sm text-ink-muted")}>
+						{t("ui.canvas.variables_viewer.loading_variables")}
+					</p>
 				</CenteredState>
 			);
 		}
@@ -630,11 +656,14 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 				return (
 					<CenteredState>
 						<p className={cn("text-heading text-ink")}>
-							Update the backend to read code memory.
+							{t(
+								"ui.canvas.variables_viewer.update_the_backend_to_read_code_memory",
+							)}
 						</p>
 						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-							Settings, then Application updates and info, installs the newer
-							backend.
+							{t(
+								"ui.canvas.variables_viewer.settings_then_application_updates_and_info_installs_the_newer_backend",
+							)}
 						</p>
 					</CenteredState>
 				);
@@ -643,12 +672,14 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 				return (
 					<CenteredState>
 						<p className={cn("text-heading text-ink")}>
-							Could not load variables
+							{t("ui.canvas.variables_viewer.could_not_load_variables")}
 						</p>
 						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
 							{userFacingMessage(
 								error,
-								"The backend does not have a chat with this session id.",
+								t(
+									"ui.canvas.variables_viewer.the_backend_does_not_have_a_chat_with_this_session_id",
+								),
 							)}
 						</p>
 					</CenteredState>
@@ -657,10 +688,10 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<p className={cn("text-heading text-ink")}>
-						Could not load variables
+						{t("ui.canvas.variables_viewer.could_not_load_variables")}
 					</p>
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						{BACKEND_SILENT}
+						{BACKEND_SILENT()}
 					</p>
 				</CenteredState>
 			);
@@ -670,7 +701,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<p className={cn("text-heading text-ink")}>
-						This chat cannot read code memory.
+						{t("ui.canvas.variables_viewer.this_chat_cannot_read_code_memory")}
 					</p>
 				</CenteredState>
 			);
@@ -681,7 +712,9 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 				return (
 					<CenteredState>
 						<Spinner size="sm" />
-						<p className={cn("text-body-sm text-ink-muted")}>Reading…</p>
+						<p className={cn("text-body-sm text-ink-muted")}>
+							{t("ui.canvas.variables_viewer.reading")}
+						</p>
 					</CenteredState>
 				);
 			}
@@ -699,11 +732,12 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 				return (
 					<CenteredState>
 						<p className={cn("text-heading text-ink")}>
-							Too large to show here
+							{t("ui.canvas.variables_viewer.too_large_to_show_here")}
 						</p>
 						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-							This chat keeps a value bigger than this panel can list, so
-							nothing is shown here. It is still there for the next step.
+							{t(
+								"ui.canvas.variables_viewer.this_chat_keeps_a_value_bigger_than_this_panel_can_list_so_nothing_is_sh",
+							)}
 						</p>
 					</CenteredState>
 				);
@@ -719,12 +753,18 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<p className={cn("text-heading text-ink")}>
-						{kernelAbsent ? "No code memory yet" : "Nothing stored yet"}
+						{kernelAbsent
+							? t("ui.canvas.variables_viewer.no_code_memory_yet")
+							: t("ui.canvas.variables_viewer.nothing_stored_yet")}
 					</p>
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
 						{kernelAbsent
-							? "It fills in when code runs in this chat."
-							: "When the agent runs code for you, the values it keeps around between steps show up here. You can add one yourself too."}
+							? t(
+									"ui.canvas.variables_viewer.it_fills_in_when_code_runs_in_this_chat",
+								)
+							: t(
+									"ui.canvas.variables_viewer.when_the_agent_runs_code_for_you_the_values_it_keeps_around_between_step",
+								)}
 					</p>
 					{kernelAbsent ? null : (
 						<Button
@@ -733,7 +773,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 							onClick={handleOpenCreateForm}
 						>
 							<Plus aria-hidden="true" />
-							New variable
+							{t("ui.canvas.variables_viewer.new_variable")}
 						</Button>
 					)}
 				</CenteredState>
@@ -758,10 +798,13 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 							"flex min-w-0 items-center truncate text-body-sm text-ink-muted",
 						)}
 					>
-						<span className={cn("font-medium text-ink")}>Code memory</span>
+						<span className={cn("font-medium text-ink")}>
+							{t("ui.canvas.variables_viewer.code_memory")}
+						</span>
 						<span className={cn("mx-1.5 text-ink-dim")}>·</span>
-						{variables.length}{" "}
-						{variables.length === 1 ? "variable" : "variables"}
+						{t("ui.canvas.variables_viewer.count", {
+							count: variables.length,
+						})}
 						{/*
 						 * Busy keeps the list it was showing and says, quietly, that
 						 * it is re-reading. It is not an error: the last answer is
@@ -772,7 +815,9 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 							<>
 								<span className={cn("mx-1.5 text-ink-dim")}>·</span>
 								<Spinner size="xs" />
-								<span className={cn("ms-1.5")}>Reading…</span>
+								<span className={cn("ms-1.5")}>
+									{t("ui.canvas.variables_viewer.reading")}
+								</span>
 							</>
 						) : null}
 					</p>
@@ -784,7 +829,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 						 * D6). The header is one line; the two extra words fit and say what
 						 * appears.
 						 */}
-						New variable
+						{t("ui.canvas.variables_viewer.new_variable")}
 					</Button>
 				</div>
 				{/*
@@ -813,18 +858,20 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 				{variableToDeleteKey && ( // Render modal only if there's a key to delete
 					<ConfirmationModal
 						open={isDeleteConfirmOpen}
-						title="Delete variable"
+						title={t("ui.canvas.variables_viewer.delete_variable")}
 						message={
 							<>
-								Are you sure you want to delete the variable{" "}
+								{t(
+									"ui.canvas.variables_viewer.are_you_sure_you_want_to_delete_the_variable",
+								)}{" "}
 								<strong className={cn("font-mono text-ink")}>
 									{variableToDeleteKey}
 								</strong>
-								? This action cannot be undone.
+								{t("ui.canvas.variables_viewer.this_action_cannot_be_undone")}
 							</>
 						}
-						confirmText="Delete"
-						cancelText="Cancel"
+						confirmText={t("ui.canvas.variables_viewer.delete")}
+						cancelText={t("ui.canvas.variables_viewer.cancel")}
 						isDangerous
 						onConfirm={confirmDeleteVariable}
 						onCancel={() => {

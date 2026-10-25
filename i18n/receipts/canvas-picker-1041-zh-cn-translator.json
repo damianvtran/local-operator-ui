@@ -1,0 +1,518 @@
+{
+  "schema": 1,
+  "kind": "translator-provenance",
+  "locale": "zh-CN",
+  "date": "2026-10-24",
+  "agent": "translator",
+  "team": "lopdev",
+  "session": "04d5644fbe5a",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback_used": false,
+  "worktree_head": "eb963e1baa63078a708161efd19336d4a32429c7",
+  "status": "translated",
+  "manifest": {
+    "path": "/Users/damian/.local-operator/sessions/df7760fbd1c2/scratchpad/i18n-canvas-new-keys.json",
+    "sha256": "b9faa8d3abc3f81c100b54657549e4065135f98ba2e12a10c4f606c5b4dd778e",
+    "base_sha": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+    "assigned_keys": 1041
+  },
+  "namespaces": {
+    "ui.canvas": {
+      "status": "translated",
+      "keys": 290,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.canvas.json",
+        "zh-CN": "src/i18n/catalogues/zh-CN/ui.canvas.json",
+        "context": "src/i18n/catalogues/en/ui.canvas.context.json"
+      },
+      "sha256": {
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "zh-CN": "22f05638c559a2bca58dea34e51e34a918dcb960209d721189f6d08c647509bd",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+      }
+    },
+    "ui.chat.pickers": {
+      "status": "translated",
+      "keys": 686,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "zh-CN": "4bf412e3dd88fe982e0075688eed2df1b574c9f9cb1d4d3cb990535909a30616",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+      }
+    },
+    "ui.common.actions": {
+      "status": "translated",
+      "keys": 30,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.actions.json",
+        "zh-CN": "src/i18n/catalogues/zh-CN/ui.common.actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+      },
+      "sha256": {
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "zh-CN": "9cabbd92edbad4245d1382e7f09f0b098b00fb114ea7f2b5ed10755711343618",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+      }
+    },
+    "ui.common.forms": {
+      "status": "translated",
+      "keys": 10,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.forms.json",
+        "zh-CN": "src/i18n/catalogues/zh-CN/ui.common.forms.json",
+        "context": "src/i18n/catalogues/en/ui.common.forms.context.json"
+      },
+      "sha256": {
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "zh-CN": "1b365ede79da0c08c9aae2532dda478b08c944293121421352646da57d155b7a",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+      }
+    },
+    "ui.common.layout": {
+      "status": "translated",
+      "keys": 8,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.layout.json",
+        "zh-CN": "src/i18n/catalogues/zh-CN/ui.common.layout.json",
+        "context": "src/i18n/catalogues/en/ui.common.layout.context.json"
+      },
+      "sha256": {
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "zh-CN": "c02cd9a6bf613448b3da6b3e03285a055243446b66543a58a56b36c9b2bb750f",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+      }
+    },
+    "ui.common.speech": {
+      "status": "translated",
+      "keys": 5,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.speech.json",
+        "zh-CN": "src/i18n/catalogues/zh-CN/ui.common.speech.json",
+        "context": "src/i18n/catalogues/en/ui.common.speech.context.json"
+      },
+      "sha256": {
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "zh-CN": "cde7779d2cba788609576948d2a8798c0972171550b8b8bf995ee37c03d75ce0",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+      }
+    },
+    "ui.common.updates": {
+      "status": "translated",
+      "keys": 8,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.updates.json",
+        "zh-CN": "src/i18n/catalogues/zh-CN/ui.common.updates.json",
+        "context": "src/i18n/catalogues/en/ui.common.updates.context.json"
+      },
+      "sha256": {
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "zh-CN": "859754d92e281d0ce8360c6e6610684b666dcd938b22b3c492c4cc5b12ad37e7",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+      }
+    },
+    "ui.common.viewer": {
+      "status": "translated",
+      "keys": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "zh-CN": "src/i18n/catalogues/zh-CN/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "zh-CN": "83c9f72cb2d6a79ace1fc64d56fa1473599d324e9b7e6b7d3a1e367f9174ef96",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+      }
+    }
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "terminology_choices": {
+    "canvas": "画布",
+    "credentials": "凭据（与既有 zh-CN 目录一致）",
+    "code_memory": "代码记忆（2026-10-24 第二轮修订；内存 保留给 RAM）",
+    "canonical_session": "规范会话",
+    "llm_tokens": "token（遵循 zh-CN 风格指南，不使用词元）",
+    "theme_ports": "移植主题",
+    "exact_one_plural_compatibility": "仅在4个同时携带 noun/pluralnoun 或 label/plurallabel 的组合消息中使用 =1 + other，保留全部参数且 CLDR 类别仅为 other",
+    "spend_vs_cost": "支出（spend）/ 费用（cost），与既有“额度、限额与支出”一致",
+    "credits": "额度（沿用 ui.settings.account 的既有用语）",
+    "range_vs_scope": "区间（Range）/ 范围（Scope）",
+    "install": "安装实例（the install），用于 info_panel 章节标题与更新说明"
+  },
+  "validation": {
+    "scoped_structural_icu_pseudo": "1041 keys; 4288 formatted and 4288 pseudo-expanded cases; 37 plural nodes; 14 select nodes; 17 category-select cases; problems=0",
+    "targeted_tests": "55 passed, 0 failed (format, zh-CN activation, canvas-picker remediation, runtime, typed keys, common control/status copy)",
+    "generate_check": "byte-identical to fresh generation",
+    "check_types": "main and renderer passed",
+    "broad_locale_parity": "43 tests: 35 passed, 8 failed; zh-CN placeholder parity passed; remaining failures are pre-integration namespace coverage and literal-token identity rows",
+    "audit_scope": "Translator provenance only. No independent semantic audit, rendered-fit verdict, full-coverage claim, or ledger status is asserted.",
+    "source_fix_recheck": {
+      "source_fix_commit": "eb963e1baa63078a708161efd19336d4a32429c7",
+      "keys_retranslated": [
+        "ui.canvas.file_row.ui_canvas_files_fileactions",
+        "ui.canvas.file_viewer.ui_canvas_files_saveerror",
+        "ui.canvas.finder_files_view.ui_canvas_files_fileactions",
+        "ui.canvas.finder_files_view.ui_canvas_files_imageactions",
+        "ui.canvas.finder_files_view.ui_canvas_files_searchplaceholder"
+      ],
+      "values": {
+        "ui.canvas.file_row.ui_canvas_files_fileactions": "文件操作",
+        "ui.canvas.file_viewer.ui_canvas_files_saveerror": "无法保存文件",
+        "ui.canvas.finder_files_view.ui_canvas_files_fileactions": "文件操作",
+        "ui.canvas.finder_files_view.ui_canvas_files_imageactions": "图片操作",
+        "ui.canvas.finder_files_view.ui_canvas_files_searchplaceholder": "搜索文件"
+      },
+      "note": "The five values mirror the existing zh-CN ui.canvas.files.* constants they alias, so the surfaces read identically wherever they appear.",
+      "key_id_values_remaining": 0,
+      "generate_check": "byte-identical to fresh generation after the edit",
+      "structural_check": "1041 keys; 4288 formatted and 4288 pseudo-expanded cases; 37 plural nodes; 14 select nodes; 17 category-select cases; problems=0"
+    }
+  },
+  "model_provenance": {
+    "batch_translation": "openrouter/moonshotai/kimi-k3.1-pro (session 04d5644fbe5a)",
+    "source_fix_correction": "radient/auto — the harness served radient/auto for the continuation turn that translated the five canvas alias keys after commit eb963e1baa",
+    "fallback_used": true,
+    "reason": "The continuation turn reports radient/auto as its served model; the five-key correction was authored under it and is disclosed rather than attributed to the batch model."
+  },
+  "revisions": [
+    {
+      "commit": "3c94ff6983037cc5073e2fa3223cd8bf30043d59",
+      "base": "8dc527533d9aaa9b53d110658bf34e78b4220989",
+      "note": "Initial 1,041-key batch. Superseded by the rebase below; retained here as history."
+    },
+    {
+      "commit": "6320065f20d38593bc1fd3e9761a8d2af897cd99",
+      "base": "eb963e1baa63078a708161efd19336d4a32429c7",
+      "note": "Rebased onto the en source fix; same 1,041 translated keys, no key added or removed. English text for the five alias keys was read from the catalogue, because the extracted manifest still carries the old key-id stubs."
+    }
+  ],
+  "remediation": {
+    "round": 2,
+    "date": "2026-10-24",
+    "head_before": "187a1a272a31c6723fda51bfc0c3914d97c5a73b",
+    "scope": "Unified remediation of both independent audits. 47 zh-CN values changed: ui.canvas 16, ui.chat.pickers 30, ui.common.updates 1. No key added or removed; ICU arguments, skeletons, key order and every value outside the changed keys are untouched.",
+    "source_audits": [
+      {
+        "path": "/Users/damian/.local-operator/sessions/372975985dd8/scratchpad/zh-canvas-picker-1041-r1-372975985dd8.json",
+        "sha256": "1431bb7a13b71b5883fe14f229d3bcf7acce8d8a61e831921013688e9529dfe4",
+        "overall": "changes_requested"
+      },
+      {
+        "path": "/Users/damian/.local-operator/sessions/10f0ee26b505/scratchpad/zh-audit/zh-cn-canvas-pickers-1041-audit2-receipt.json",
+        "sha256": "5d1be2f8d2c68159c9d04ac2cf3c4400e991c33c1263502175783cda0c31a0d0",
+        "overall": "passed"
+      }
+    ],
+    "dispositions": [
+      {
+        "ids": [
+          "ZH-PICKERS-1"
+        ],
+        "severity": "MAJOR",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.usage_view.resets_in: 后重置 → 距重置",
+        "evidence": "usage-view.tsx:289,349 place the label before the countdown; rendered sample reads 距重置 3h24m in both the row and the binding-block column."
+      },
+      {
+        "ids": [
+          "ZH-CANVAS-1"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "代码内存 → 代码记忆 in code_memory and its six sibling sentences (code_memory_starts_when_you_send_your_first_message, no_code_memory_yet, this_chat_cannot_read_code_memory, the_backend_did_not_answer…, update_the_backend_to_read_code_memory, this_app_can_read_code_memory…); 内存 stays the RAM term elsewhere."
+      },
+      {
+        "ids": [
+          "ZH-CANVAS-2"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.canvas.inline_edit.edit_instructions: 编辑说明 → 编辑指令"
+      },
+      {
+        "ids": [
+          "ZH-CANVAS-3",
+          "T-C04"
+        ],
+        "severity": "MINOR/NIT",
+        "disposition": "fixed",
+        "change": "ui.canvas.wysiwyg_markdown_editor.checklist: 核对清单 → 任务列表",
+        "evidence": "Both audits asked for the same fix with different nouns; 任务列表 was chosen because the same toolbar already says 项目符号列表 and 编号列表, so the 列表 family keeps the control set coherent, while 清单 appears nowhere else in this toolbar."
+      },
+      {
+        "ids": [
+          "ZH-CANVAS-4",
+          "T-C02"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.canvas.file_viewer.file_no_longer_exists_at: 文件已不存在于{value} → {value}处的文件已不存在",
+        "evidence": "Both audits rejected the 于 calque. The path-fronted form from T-C02 was chosen over 文件已不在以下位置：{value}: it reads as one clause, needs no colon before a long path, and mirrors the sibling file_no_longer_exists toast."
+      },
+      {
+        "ids": [
+          "ZH-CANVAS-5"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "该值仍会在下一步中使用 → 该值仍会保留供下一步使用"
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-2"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "Count labels now carry the classifier the tally needs: window → 个时间窗口, exhausted → 个已耗尽, model_cap_exhausted → 个模型额度耗尽, near_limit → 个接近上限, reported_balance → 个余额报告, without_a_limit → 个无上限",
+        "evidence": "statsTerms() + UsageTally render `${count} ${label}` (usage-view-model.ts:726-766, usage-view.tsx:458-474); rendered sample: 6 个时间窗口 · 1 个已耗尽 · 1 个模型额度耗尽 · 1 个接近上限 · 2 个余额报告 · 3 个无上限 · 2 未报告."
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-3"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.session_panel.records_run_from: 记录运行起始 → 记录时间范围：",
+        "evidence": "Chosen over T-P05 记录起始时间: the caller composes label + first date + 至 + last date (session-panel.tsx:657-663), so the label names a range, not a start."
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-4"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.destination_pickers.nothing_was_running: 没有正在运行的内容 → 没有正在运行的会话"
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-5",
+          "T-P04"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.usage_view.no_usage_reports…: 登录会发布配额的提供商 → 登录一个会发布配额的提供商",
+        "evidence": "T-P04 wording adopted over ZH-PICKERS-5 请登录…: the zh-CN style guide reserves 请 for an explicit English \"please\", which this source does not say; adding 一个 supplies the missing complement."
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-6"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "cache_reads…: —表示… → 显示“—”表示…"
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-7",
+          "T-P03"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.info_model.still_connecting_deferred_servers: 仍在连接延迟服务器 → 仍在连接延后启动的服务器"
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-8"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.session_report_model.without_a_tracked_basis: 没有已跟踪依据 → 未跟踪的计费依据"
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-9"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.usage_view_model.credits: 积分 → 额度, matching the locale's existing Credits/可用额度/已消耗额度"
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-10"
+        ],
+        "severity": "NIT",
+        "disposition": "fixed",
+        "change": "spend → 支出 in eight keys (analytics_model.spend, analytics_model.daily_spend, analytics_panel.spend, analytics_panel.daily_spend, analytics_panel.channel_spend…, session_report_model.spend_by_basis, spend_by_basis_own, subagent_spend_not_measured), leaving cost → 费用 distinct"
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-11"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "session_panel.no_model_rows… and no_purpose_rows…: 记录行 → 此会话没有按模型统计的记录。/ 此会话没有按用途统计的记录.",
+        "evidence": "The audit text showed the proposals without the source sentence period; the values keep the trailing 。 because the English source ends with a full stop."
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-12"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "analytics_panel.no_call_in_this_window… and session_report_model.no_call_in_this_session…: predicate order fixed to 没有已发布价格的调用"
+      },
+      {
+        "ids": [
+          "ZH-PICKERS-13"
+        ],
+        "severity": "NIT",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.analytics_model.tok_s_wall: tok/s（实际耗时） → tok/s（实际）"
+      },
+      {
+        "ids": [
+          "T-C01"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "create_file_dialog.plain_text_txt: 纯文本（.txt） → 纯文本 (.txt); shell_script_sh: Shell脚本（.sh） → Shell脚本 (.sh), matching the other 27 file-type entries"
+      },
+      {
+        "ids": [
+          "T-C03"
+        ],
+        "severity": "NIT",
+        "disposition": "fixed",
+        "change": "create_file_dialog.the_file_will_be_created_in_this_working_directory: 文件将创建在此工作目录中。 → 文件将在此工作目录中创建。"
+      },
+      {
+        "ids": [
+          "T-C05"
+        ],
+        "severity": "NIT",
+        "disposition": "fixed",
+        "change": "use_file_freshness.your_save_replaced_the_change_on_disk: 你的保存… → 保存操作已覆盖磁盘上的更改。",
+        "evidence": "The sibling your_save_replaced_the_version_that_had_changed_on_disk… was changed the same way in this round, because leaving one 你的保存 beside one 保存操作 would read as two voices on the same screen."
+      },
+      {
+        "ids": [
+          "T-P01"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.destination_pickers.takes_an_argument: 需要参数 → 可带参数",
+        "evidence": "destination-pickers.tsx:4663-4664 selects takes_an_argument only when the argument is optional, so the two labels must differ; needs_an_argument keeps 需要参数."
+      },
+      {
+        "ids": [
+          "T-P06"
+        ],
+        "severity": "NIT",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.info_panel.install: 安装 → 安装实例"
+      },
+      {
+        "ids": [
+          "T-P07"
+        ],
+        "severity": "MINOR",
+        "disposition": "fixed",
+        "change": "ui.chat.pickers.session_panel.range: 范围 → 区间",
+        "evidence": "session-panel.tsx:651 titles the Scope section 范围 in the same panel, while :566 heads the timings table; 区间 now names Range only."
+      },
+      {
+        "ids": [
+          "ZH-UPDATES-1",
+          "T-U01"
+        ],
+        "severity": "NIT",
+        "disposition": "fixed",
+        "change": "ui.common.updates…rebuilding_the_server…: 重新构建会就地重新安装此安装 → 重新构建会就地重新安装当前安装实例",
+        "evidence": "The two audits proposed 当前安装 and 当前安装实例. 当前安装实例 was chosen because this round also adopts 安装实例 for info_panel.install (T-P06), so the batch uses one noun for the install."
+      }
+    ],
+    "advisories": [
+      "ui.chat.pickers.usage_view_model.not_reported stays 未报告 although it is a tally label: the same key also backs NOT_REPORTED() (usage-view-model.ts:518), the row value shown when a vendor reports no number, where a classifier would be wrong. The tally therefore ends with one bare status (2 未报告).",
+      "The callers still append ASCII punctuation and raw English tokens in places the audit recorded as code-level advisories (mediaLabel \"image\"/\"asset\", backend loop status, the trailing \".\" after the session-panel sentence). This round is catalogue-only and does not edit code."
+    ],
+    "conflict_summary": [
+      "checklist: 任务清单 (ZH-CANVAS-3) vs 任务列表 (T-C04) — chose 任务列表 (toolbar sibling 列表 family).",
+      "file_no_longer_exists_at: 文件已不在以下位置：{value} (ZH-CANVAS-4) vs {value}处的文件已不存在 (T-C02) — chose T-C02.",
+      "records_run_from: 记录时间范围： (ZH-PICKERS-3) vs 记录起始时间 (T-P05) — chose ZH-PICKERS-3 (the value is a range).",
+      "no_usage_reports: 请登录… (ZH-PICKERS-5) vs 登录一个… (T-P04) — chose T-P04 (请 is reserved for \"please\").",
+      "install wording: 当前安装 (ZH-UPDATES-1) vs 当前安装实例 (T-U01) — chose 当前安装实例 (matches 安装实例 adopted for T-P06 in this round)."
+    ],
+    "changed_keys": {
+      "ui.canvas": [
+        "ui.canvas.file_viewer.file_no_longer_exists_at",
+        "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
+        "ui.canvas.variables_viewer.update_the_backend_to_read_code_memory",
+        "ui.canvas.variables_viewer.this_app_can_read_code_memory_the_backend_it_is_running_against_is_older",
+        "ui.canvas.variables_viewer.code_memory_starts_when_you_send_your_first_message",
+        "ui.canvas.variables_viewer.this_chat_cannot_read_code_memory",
+        "ui.canvas.variables_viewer.this_chat_keeps_a_value_bigger_than_this_panel_can_list_so_nothing_is_sh",
+        "ui.canvas.variables_viewer.no_code_memory_yet",
+        "ui.canvas.variables_viewer.code_memory",
+        "ui.canvas.create_file_dialog.plain_text_txt",
+        "ui.canvas.create_file_dialog.shell_script_sh",
+        "ui.canvas.create_file_dialog.the_file_will_be_created_in_this_working_directory",
+        "ui.canvas.inline_edit.edit_instructions",
+        "ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk",
+        "ui.canvas.use_file_freshness.your_save_replaced_the_version_that_had_changed_on_disk_re_read_the_file",
+        "ui.canvas.wysiwyg_markdown_editor.checklist"
+      ],
+      "ui.chat.pickers": [
+        "ui.chat.pickers.destination_pickers.nothing_was_running",
+        "ui.chat.pickers.destination_pickers.takes_an_argument",
+        "ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c",
+        "ui.chat.pickers.analytics_model.tok_s_wall",
+        "ui.chat.pickers.analytics_model.daily_spend",
+        "ui.chat.pickers.analytics_panel.channel_spend_for_this_conversation_from_the_published_channel_ledger",
+        "ui.chat.pickers.analytics_panel.daily_spend",
+        "ui.chat.pickers.analytics_panel.spend",
+        "ui.chat.pickers.analytics_panel.no_call_in_this_window_has_a_published_price",
+        "ui.chat.pickers.info_model.still_connecting_deferred_servers",
+        "ui.chat.pickers.info_panel.install",
+        "ui.chat.pickers.session_panel.no_model_rows_recorded_for_this_session",
+        "ui.chat.pickers.session_panel.no_purpose_rows_recorded_for_this_session",
+        "ui.chat.pickers.session_panel.records_run_from",
+        "ui.chat.pickers.session_report_model.no_call_in_this_session_has_a_published_price",
+        "ui.chat.pickers.session_report_model.subagent_spend_not_measured",
+        "ui.chat.pickers.session_report_model.without_a_tracked_basis",
+        "ui.chat.pickers.session_report_model.spend_by_basis_own",
+        "ui.chat.pickers.session_report_model.spend_by_basis",
+        "ui.chat.pickers.usage_view_model.window",
+        "ui.chat.pickers.usage_view_model.exhausted",
+        "ui.chat.pickers.usage_view_model.model_cap_exhausted",
+        "ui.chat.pickers.usage_view_model.near_limit",
+        "ui.chat.pickers.usage_view_model.reported_balance",
+        "ui.chat.pickers.usage_view_model.without_a_limit",
+        "ui.chat.pickers.usage_view.resets_in",
+        "ui.chat.pickers.usage_view.no_usage_reports_sign_in_to_a_provider_that_publishes_quota_then_ask_pro",
+        "ui.chat.pickers.analytics_model.spend",
+        "ui.chat.pickers.session_panel.range",
+        "ui.chat.pickers.usage_view_model.credits"
+      ],
+      "ui.common.actions": [],
+      "ui.common.forms": [],
+      "ui.common.layout": [],
+      "ui.common.speech": [],
+      "ui.common.updates": [
+        "ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th"
+      ],
+      "ui.common.viewer": []
+    },
+    "validation": {
+      "generate_check": "generate.mjs --check: keys.gen.ts byte-identical to a fresh generation (no ICU argument changed).",
+      "structure": "Scoped structural/ICU/pseudo check over all 1,041 assigned keys: 4,288 formatted + 4,288 pseudo-expanded cases, 37 plural nodes, 14 select nodes, 17 category-select cases, 0 problems.",
+      "activation": "node --test scripts/i18n/zh-CN-activation.test.mjs: 3 tests, 3 passed.",
+      "rendered_samples": [
+        "resets row: 距重置 3h24m",
+        "tally: 6 个时间窗口 · 1 个已耗尽 · 1 个模型额度耗尽 · 1 个接近上限 · 2 个余额报告 · 3 个无上限 · 2 未报告",
+        "records: 记录时间范围： 2026-10-01 至 2026-10-24。以上费用和token仅涵盖此会话",
+        "credits: 1,234 额度",
+        "toast: /Users/x/notes.md处的文件已不存在"
+      ],
+      "scope_check": "git diff changes exactly the 47 keys listed in changed_keys; no key added, removed or reordered; no context, en, ledger, allowance or gate file touched."
+    },
+    "audit_scope": "Translator remediation record. Independent round-2 audit and rendered-fit evidence remain with the auditors."
+  }
+}

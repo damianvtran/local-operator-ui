@@ -2548,15 +2548,23 @@ test("the picker is wired to the shared predicate, not to a copy of the read", (
 	);
 	// The honest branch and the fixed-effort branch must BOTH remain reachable:
 	// deleting either is how this regresses without the import disappearing.
-	assert.match(picker, /has not reported its effort levels yet/);
-	assert.match(picker, /has no adjustable effort/);
+	assert.match(
+		picker,
+		/has_not_reported_its_effort_levels_yet/,
+		"the honest unresolved branch keeps its key",
+	);
+	assert.match(
+		picker,
+		/has_no_adjustable_effort/,
+		"the fixed-effort branch keeps its key",
+	);
 	// The claim must be gated on the predicate, never on the empty read alone -
 	// deriving it from `options.length` is the defect U12 named.
 	const gate = picker.slice(
 		picker.indexOf("const unresolved = specUnresolved"),
 	);
-	const honest = gate.indexOf("has not reported its effort levels yet");
-	const fixed = gate.indexOf("has no adjustable effort");
+	const honest = gate.indexOf("has_not_reported_its_effort_levels_yet");
+	const fixed = gate.indexOf("has_no_adjustable_effort");
 	assert.ok(
 		honest > 0 && fixed > honest,
 		"unresolved must be tested before the capability claim",
@@ -2594,12 +2602,15 @@ test("both pickers describe a row in the backend's words, not the live_state tok
 	);
 	// Both consumers of the shared read use the same rule. Spelled separately per
 	// string so that deleting either call site is a failure rather than a comment.
-	assert.match(picker, /sessionActivity\(row, "cold \(no owner running\)"\)/);
+	assert.match(
+		picker,
+		/sessionActivity\(\s*row,\s*t\("ui\.chat\.pickers\.destination_pickers\.cold_no_owner_running"\),\s*\)/,
+	);
 	assert.match(
 		picker,
 		// Whitespace-tolerant: the formatter wraps a call whose arguments overrun the
 		// line, and what is being asserted is the call rather than its layout.
-		/sessionActivity\(\s*row,\s*"cold, reopens on the next message",?\s*\)/,
+		/sessionActivity\(\s*row,\s*t\(\s*"ui\.chat\.pickers\.destination_pickers\.cold_reopens_on_the_next_message",?\s*\),\s*\)/,
 	);
 	// And the exact expression the finding named is gone — `row.live_state` may
 	// still be asked WHICH branch to take, but it may not be printed.

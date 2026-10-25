@@ -3167,7 +3167,9 @@ export const UpdateNotification = ({
 										STARTED while the rebuild runs - is real and is not dressed up; it is
 										what the second half of the sentence still warns about.
 									*/
-									`Rebuilding the server from this machine's checkout. The app waited for the turns running on this machine to finish first, and the rebuild reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
+									t(
+										"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th",
+									)
 								: /*
 									 * THE ROLLOVER'S OWN SENTENCE (copy consult, 2026-09-30): the
 									 * designer's recommended form, verbatim - "the server"
@@ -3190,7 +3192,9 @@ export const UpdateNotification = ({
 										{
 											detail: String(
 												readableVersion(backendUpdateInfo?.latestVersion) ??
-													"the new build",
+													t(
+														"ui.common.updates.update_notification.the_new_build",
+													),
 											),
 										},
 									)
