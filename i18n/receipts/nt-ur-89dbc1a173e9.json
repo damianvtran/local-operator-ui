@@ -1,0 +1,55 @@
+{
+  "locale": "ur",
+  "namespace": "ui.notifications",
+  "instance": "89dbc1a173e9",
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "89dbc1a173e9",
+    "model": "openai/gpt-6.1-sol",
+    "independence": "Independent of tr-ur translator; authored none of the audited copy; no catalogue edits. Same task/context performed direct side-by-side review before reporting.",
+    "actual_model_source": "Session model-switch event to openai/gpt-6.1-sol after provider quota failures; original requested anthropic/claude-opus-5-5 was not the model that performed this audit."
+  },
+  "en_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+  "target_sha256": "d5c4a7e21e450d9a21a06b85198bd8a2ed78cd2d5c007e0ab10c930d60fdae4d",
+  "context_sha256": "3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e",
+  "date": "2026-10-25",
+  "key_count": 130,
+  "source_pin": "d2bcaf95",
+  "observed_head": "49ea8f474bbb1f309c5415f0fa2263d47d84e5ac",
+  "translator": {
+    "agent": "tr-ur (translator child)",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-25",
+    "source": "delegating task brief"
+  },
+  "findings": [
+    {
+      "id": "T-UR-UI-1",
+      "key": "ui.notifications.group.week",
+      "severity": "minor",
+      "current_text": "اس ہفتے",
+      "proposed_text": "اس ہفتے کے پچھلے دن",
+      "reason": "Drops the earlier qualifier, making a disjoint time bucket sound like it includes the adjacent Today and Yesterday groups."
+    },
+    {
+      "id": "T-UR-UI-2",
+      "key": "ui.notifications.seen.live",
+      "severity": "minor",
+      "current_text": "آتے ہی دیکھی گئی",
+      "proposed_text": "آتے ہی دیکھی",
+      "reason": "Accurate and idiomatic, but the quiet row provenance label grows from 9 to 16 code points (+78%); Nastaliq shaping/height and adjacent metadata require a rendered-fit check. Shorter proposal is optional if the current phrase fits.",
+      "resolution": "Rendered-fit check deferred to design/QA as requested; not a proven clipping defect."
+    }
+  ],
+  "status": "passed",
+  "result": "clean-with-findings",
+  "limitations": [
+    "LLM textual audit, not a native-speaker certification.",
+    "No browser or rendered Nastaliq/RTL proof; that evidence belongs to design/QA."
+  ],
+  "mechanical_output": "Parser: repository dependency @formatjs/icu-messageformat-parser\nKey parity: 130 130 PASS\nParsed messages: 260 / 260\nArgument/type/skeleton/select/plural-branch/pound parity: PASS []\nUrdu plural nodes: 9 categories restricted to one/other or exact selectors; other required\nManual bidi controls: 0 []\nIdentical: [\"ui.notifications.filter.chip\",\"ui.notifications.row.chip.repeat\"]\nIdentical exemptions: PASS\nSHA256 src/i18n/catalogues/en/ui.notifications.json ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae\nSHA256 src/i18n/catalogues/ur/ui.notifications.json d5c4a7e21e450d9a21a06b85198bd8a2ed78cd2d5c007e0ab10c930d60fdae4d\nSHA256 src/i18n/catalogues/en/ui.notifications.context.json 3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e\nSTATIC CODEPOINT LENGTH ui.notifications.seen.live {\"en\":\"Seen live\",\"enLength\":9,\"ur\":\"آتے ہی دیکھی گئی\",\"urLength\":16}\nSTATIC CODEPOINT LENGTH ui.notifications.row.mark_read {\"en\":\"Mark read\",\"enLength\":9,\"ur\":\"پڑھا ہوا نشان زد کریں\",\"urLength\":21}\nSTATIC CODEPOINT LENGTH ui.notifications.action.mark_all_read {\"en\":\"Mark all read\",\"enLength\":13,\"ur\":\"سب پڑھا ہوا نشان زد کریں\",\"urLength\":24}\nSTATIC CODEPOINT LENGTH ui.notifications.filter.unread {\"en\":\"Unread\",\"enLength\":6,\"ur\":\"نہ پڑھی گئی\",\"urLength\":11}\nSTATIC CODEPOINT LENGTH ui.notifications.group.week {\"en\":\"Earlier this week\",\"enLength\":17,\"ur\":\"اس ہفتے\",\"urLength\":7}\nNastaliq glyph width/line-height, bidi rendering, truncation: NOT MEASURED; design/QA rendered pass required\n",
+  "guidance_hashes": {
+    "core_i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "core_i18n/style-guides/ur.md": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  }
+}
