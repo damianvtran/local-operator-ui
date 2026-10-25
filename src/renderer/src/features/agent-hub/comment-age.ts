@@ -41,3 +41,16 @@ export function commentAge(
 		},
 	});
 }
+
+/**
+ * The provenance age on the browse surfaces.
+ *
+ * Same meaning as `commentAge` — a strict distance plus "ago", including the
+ * historical behaviour of saying "ago" for future dates — so it delegates
+ * rather than duplicating the six ICU messages into seven locales. The name
+ * exists so a card or details page does not import a symbol called
+ * `commentAge` for an agent's `updated_at`.
+ */
+export function hubAge(date: Date, now: Date | number = Date.now()): string {
+	return commentAge(date, now);
+}

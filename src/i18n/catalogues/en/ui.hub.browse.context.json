@@ -1,0 +1,207 @@
+{
+	"ui.hub.browse.action.trying": {
+		"note": "Same control as action.try_again, disabled and aria-busy while the retry runs. U+2026, not three periods.",
+		"role": "button label while the retry is in flight",
+		"tone": "plain; the app's ellipsis progress idiom"
+	},
+	"ui.hub.browse.card.download_aria": {
+		"note": "{name} is the agent's hub display name (escaped display bytes), never translated or slugified. Must keep containing the visible card.get word where the language allows.",
+		"role": "accessible name for the card's download button",
+		"tone": "plain, specific"
+	},
+	"ui.hub.browse.card.downloads_tooltip": {
+		"note": "A count label, not a verb: the count beside it is record data. Plural form is irrelevant — the message is the bare noun on purpose.",
+		"role": "tooltip on the download-count cluster",
+		"tone": "plain noun"
+	},
+	"ui.hub.browse.card.favourite.aria_unknown": {
+		"note": "The viewer's favourite state could not be read, so the control never claims 'not favourited'. Explains an unknown rather than a state.",
+		"role": "accessible name of a disabled star",
+		"tone": "plain, states the limit"
+	},
+	"ui.hub.browse.card.favourite.tooltip_favourited": {
+		"note": "Filled star; the press removes the favourite.",
+		"role": "tooltip and accessible name",
+		"tone": "plain verb"
+	},
+	"ui.hub.browse.card.favourite.tooltip_signed_out": {
+		"note": "Signed-out viewer. Radient is a product name and stays English.",
+		"role": "tooltip on a disabled star",
+		"tone": "plain, explains why disabled"
+	},
+	"ui.hub.browse.card.favourite.tooltip_unfavourited": {
+		"note": "Empty star; the press adds the favourite.",
+		"role": "tooltip and accessible name",
+		"tone": "plain verb"
+	},
+	"ui.hub.browse.card.favourite.tooltip_unknown": {
+		"note": "Explains a failed viewer-state read; never asserts the agent is unfavourited.",
+		"role": "tooltip on a disabled star",
+		"tone": "plain, full sentence"
+	},
+	"ui.hub.browse.card.get": {
+		"note": "The card's only labelled action; downloads the agent to this machine. Keep it short: the button sits in a narrow footer beside a count.",
+		"role": "button label on an agent card",
+		"tone": "short, plain imperative"
+	},
+	"ui.hub.browse.card.like.aria_unknown": {
+		"note": "Mirror of card.favourite.aria_unknown for likes: a failed read is not 'not liked'.",
+		"role": "accessible name of a disabled heart",
+		"tone": "plain, states the limit"
+	},
+	"ui.hub.browse.card.like.tooltip_liked": {
+		"note": "Filled heart; the press removes the like.",
+		"role": "tooltip and accessible name",
+		"tone": "plain verb"
+	},
+	"ui.hub.browse.card.like.tooltip_signed_out": {
+		"note": "Signed-out viewer. Radient stays English.",
+		"role": "tooltip on a disabled heart",
+		"tone": "plain, explains why disabled"
+	},
+	"ui.hub.browse.card.like.tooltip_unknown": {
+		"note": "Mirror of card.favourite.tooltip_unknown for likes.",
+		"role": "tooltip on a disabled heart",
+		"tone": "plain, full sentence"
+	},
+	"ui.hub.browse.card.like.tooltip_unliked": {
+		"note": "Empty heart; the press adds the like.",
+		"role": "tooltip and accessible name",
+		"tone": "plain verb"
+	},
+	"ui.hub.browse.card.unknown_author": {
+		"note": "The hub sent no author name; the line prints this instead of a name. Sentence case.",
+		"role": "inline fallback in the provenance line",
+		"tone": "plain, factual"
+	},
+	"ui.hub.browse.card.updated": {
+		"note": "{age} is the COMPLETE strict relative age including its 'ago'/'in' wording, formatted with the active locale's plural rules by the shared hub age helper. Do not append another preposition. Keep the leading lowercase word before the placeholder.",
+		"role": "inline provenance fragment",
+		"tone": "plain, quiet"
+	},
+	"ui.hub.browse.details.back_aria": {
+		"note": "Returns to the Agent Hub list. 'Agent Hub' is a surface name, title case.",
+		"role": "accessible name for an icon-only back arrow",
+		"tone": "plain, names the destination"
+	},
+	"ui.hub.browse.details.catalogue_no_answer": {
+		"note": "Passed to the shared backend-error mapper, which appends the transport detail after it. Radient is a product name.",
+		"role": "base sentence inside a danger alert",
+		"tone": "calm, names the cause"
+	},
+	"ui.hub.browse.details.created": {
+		"note": "{age} is a complete relative age including its preposition; {date} is an already-formatted calendar date. The parentheses and the colon are part of the message.",
+		"role": "metadata line on the detail page",
+		"tone": "plain, factual"
+	},
+	"ui.hub.browse.details.created_by": {
+		"note": "{author} is assembled by the caller: the name, plus the email in parentheses only when the hub sent one. Never concatenate the email here.",
+		"role": "metadata line on the detail page",
+		"tone": "plain, factual"
+	},
+	"ui.hub.browse.details.delist_aria": {
+		"note": "Opens the delist confirmation. Should contain the same verb as details.delist_confirm so speech control finds it.",
+		"role": "accessible name for the owner-only delist button",
+		"tone": "plain, names the action"
+	},
+	"ui.hub.browse.details.delist_body": {
+		"note": "{name} is the agent's hub display name (escaped display bytes). Says the removal is immediate and that re-uploading restores it, so severity is explicit. Two sentences, wraps freely, no width cap.",
+		"role": "delist confirmation body",
+		"tone": "direct, honest about reversibility"
+	},
+	"ui.hub.browse.details.delist_confirm": {
+		"note": "Commits the delist. Not a danger button: re-uploading undoes it.",
+		"role": "primary button label",
+		"tone": "plain verb"
+	},
+	"ui.hub.browse.details.delist_title": {
+		"note": "Names the object acted on. Sentence case; the question mark is the app's confirmation convention.",
+		"role": "confirmation dialog title",
+		"tone": "plain question"
+	},
+	"ui.hub.browse.details.delist_tooltip": {
+		"note": "'Permanently' describes removal from the public listing, not account deletion. Agent Hub is a surface name.",
+		"role": "tooltip on the delist icon",
+		"tone": "plain, states effect"
+	},
+	"ui.hub.browse.details.delisting": {
+		"note": "Labelled by the spinner while the delist request is in flight; the confirming button is disabled meanwhile.",
+		"role": "status text announced while the request runs",
+		"tone": "plain"
+	},
+	"ui.hub.browse.details.download_aria": {
+		"note": "Detail-page counterpart of card.download_aria; here the name is generic because the button sits under the agent's own title.",
+		"role": "accessible name for the icon-only download button",
+		"tone": "plain, names the action"
+	},
+	"ui.hub.browse.details.download_tooltip": {
+		"note": "Says the agent is copied to this computer, which is the promise the action keeps.",
+		"role": "tooltip on the download button",
+		"tone": "plain, states destination"
+	},
+	"ui.hub.browse.details.failure.delist": {
+		"note": "One of four per-action headlines; never a generic 'something went wrong'.",
+		"role": "alert headline after a failed delist",
+		"tone": "plain, names what did not happen"
+	},
+	"ui.hub.browse.details.failure.download": {
+		"note": "Says nothing started rather than 'failed', which matches what the user saw.",
+		"role": "alert headline after a failed download",
+		"tone": "plain, names what did not happen"
+	},
+	"ui.hub.browse.details.failure.favourite": {
+		"note": "Mirror of details.failure.like for the star.",
+		"role": "alert headline after a failed favourite press",
+		"tone": "plain, names what did not happen"
+	},
+	"ui.hub.browse.details.failure.like": {
+		"note": "Uses the noun the UI uses for this control; the retry sits beneath it.",
+		"role": "alert headline after a failed like press",
+		"tone": "plain, names what did not happen"
+	},
+	"ui.hub.browse.details.last_modified": {
+		"note": "Same shape as details.created with the last-modified timestamp.",
+		"role": "metadata line on the detail page",
+		"tone": "plain, factual"
+	},
+	"ui.hub.browse.details.load_failed_title": {
+		"note": "The whole record could not be loaded (distinct from a failed action on a loaded record).",
+		"role": "alert title",
+		"tone": "calm, specific"
+	},
+	"ui.hub.browse.details.not_found": {
+		"note": "The route's agent id resolved to nothing; retrying would not help, so there is no control beside it.",
+		"role": "empty-state sentence",
+		"tone": "plain, factual"
+	},
+	"ui.hub.browse.details.sign_in_hint": {
+		"note": "Shared by both controls on the detail page; the same sentence the card uses per control. Radient stays English.",
+		"role": "tooltip on like/favourite while signed out",
+		"tone": "plain, explains why disabled"
+	},
+	"ui.hub.browse.details.unknown_author": {
+		"note": "The hub sent no author name. Unlike card.unknown_author this one is a fragment inside details.created_by, so it carries no article.",
+		"role": "inline fallback inside the author line",
+		"tone": "plain, factual"
+	},
+	"ui.hub.browse.details.viewer_unknown": {
+		"note": "One failed read for the whole page: says why no viewer state is shown instead of letting every control read as 'not liked'.",
+		"role": "status line in an output element",
+		"tone": "plain, explains an absence"
+	},
+	"ui.hub.browse.pager.aria": {
+		"note": "Default only; callers whose list is not agents pass their own translated label (the skills library does).",
+		"role": "accessible name for the pager nav",
+		"tone": "plain, names the paged list"
+	},
+	"ui.hub.browse.pager.next": {
+		"note": "Steps one page forward; paired with a chevron icon.",
+		"role": "button label",
+		"tone": "plain"
+	},
+	"ui.hub.browse.pager.previous": {
+		"note": "Steps one page back; paired with a chevron icon.",
+		"role": "button label",
+		"tone": "plain"
+	}
+}

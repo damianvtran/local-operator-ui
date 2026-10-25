@@ -349,21 +349,25 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 	try {
 		const baselinePath = join(dir, "baseline.json");
 		/*
-		 * A REAL, baselined file rather than the excluded fixture: `--update`
-		 * scans the tree's own corpus (fixtures are outside it by design), and
-		 * 99 sits above this file's real count so the update has something to
-		 * lower; the raise-target entry sits BELOW its real count so the raise case
-		 * has something to refuse.
+		 * Two real, counted files outside any in-flight extraction, so the harness
+		 * is not coupled to a migration's progress: a file whose literals were all
+		 * keyed stops being "a file `--update` can lower", and the assertion that
+		 * pinned this to the agent-hub details page failed exactly that way when
+		 * its last sixteen literals were extracted.
+		 *
+		 * 99 sits above the lower target's real count so the update has something
+		 * to lower; the raise target is recorded at 1 while the tree carries more,
+		 * so the raise is refused and its entry stays intact.
 		 */
 		const lowerTarget =
-			"src/renderer/src/features/agent-hub/agent-details-page.tsx";
+			"src/renderer/src/features/chat/components/message-item/error-block.tsx";
 		const raiseTarget =
-			"src/renderer/src/features/agent-hub/agent-hub-page.tsx";
+			"src/renderer/src/features/chat/components/mermaid-diagram.tsx";
 		saveBaseline(baselinePath, { [lowerTarget]: 99, [raiseTarget]: 1 }, "note");
 		const options = { baselinePath, allowlistPath: ALLOWLIST };
 		assert.equal(main(["--update", lowerTarget], options), 0);
-		assert.equal(loadBaseline(baselinePath).files[lowerTarget], 16);
-		// A file recorded at 1 while the tree carries 12: refused, entry intact.
+		assert.equal(loadBaseline(baselinePath).files[lowerTarget], 18);
+		// A file recorded at 1 while the tree carries 15: refused, entry intact.
 		assert.equal(main(["--update", raiseTarget], options), 1);
 		assert.equal(loadBaseline(baselinePath).files[raiseTarget], 1);
 		// The preceding refusal proves raiseTarget still has literals. Remove

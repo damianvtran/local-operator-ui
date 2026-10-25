@@ -2,10 +2,7 @@
 	"schema": 2,
 	"note": "per-file literal ceilings (shrink-only). A file with counted literals and no entry FAILS; a zero-literal file carries no entry and --init prunes it. Add or raise an entry only through a reviewed `--init --force` capture. See scripts/i18n/check-strings.mjs.",
 	"files": {
-		"src/renderer/src/features/agent-hub/agent-details-page.tsx": 16,
 		"src/renderer/src/features/agent-hub/agent-hub-page.tsx": 12,
-		"src/renderer/src/features/agent-hub/components/agent-card.tsx": 4,
-		"src/renderer/src/features/agent-hub/components/hub-pager.tsx": 6,
 		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx": 7,
 		"src/renderer/src/features/agent-hub/components/public-teams-library.tsx": 22,
 		"src/renderer/src/features/agents/components/agent-detail.tsx": 52,

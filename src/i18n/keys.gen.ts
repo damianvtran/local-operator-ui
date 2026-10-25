@@ -73,6 +73,7 @@ import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
 import enUiCommonViewer from "./catalogues/en/ui.common.viewer.json";
 import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
+import enUiHubBrowse from "./catalogues/en/ui.hub.browse.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
 import enUiHubTaxonomy from "./catalogues/en/ui.hub.taxonomy.json";
@@ -756,6 +757,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommonViewer,
 	...enUiConsoleErrors,
 	...enUiConsole,
+	...enUiHubBrowse,
 	...enUiHubComments,
 	...enUiHub,
 	...enUiHubTaxonomy,
@@ -4720,6 +4722,47 @@ export type MessageParams = {
 	"ui.console.unavailable.pty.detail": undefined;
 	"ui.console.unavailable.title": undefined;
 	"ui.console.unavailable.unknown.detail": undefined;
+	"ui.hub.browse.action.trying": undefined;
+	"ui.hub.browse.card.download_aria": { name: string };
+	"ui.hub.browse.card.downloads_tooltip": undefined;
+	"ui.hub.browse.card.favourite.aria_unknown": undefined;
+	"ui.hub.browse.card.favourite.tooltip_favourited": undefined;
+	"ui.hub.browse.card.favourite.tooltip_signed_out": undefined;
+	"ui.hub.browse.card.favourite.tooltip_unfavourited": undefined;
+	"ui.hub.browse.card.favourite.tooltip_unknown": undefined;
+	"ui.hub.browse.card.get": undefined;
+	"ui.hub.browse.card.like.aria_unknown": undefined;
+	"ui.hub.browse.card.like.tooltip_liked": undefined;
+	"ui.hub.browse.card.like.tooltip_signed_out": undefined;
+	"ui.hub.browse.card.like.tooltip_unknown": undefined;
+	"ui.hub.browse.card.like.tooltip_unliked": undefined;
+	"ui.hub.browse.card.unknown_author": undefined;
+	"ui.hub.browse.card.updated": { age: string };
+	"ui.hub.browse.details.back_aria": undefined;
+	"ui.hub.browse.details.catalogue_no_answer": undefined;
+	"ui.hub.browse.details.created": { age: string; date: string };
+	"ui.hub.browse.details.created_by": { author: string };
+	"ui.hub.browse.details.delist_aria": undefined;
+	"ui.hub.browse.details.delist_body": { name: string };
+	"ui.hub.browse.details.delist_confirm": undefined;
+	"ui.hub.browse.details.delist_title": undefined;
+	"ui.hub.browse.details.delist_tooltip": undefined;
+	"ui.hub.browse.details.delisting": undefined;
+	"ui.hub.browse.details.download_aria": undefined;
+	"ui.hub.browse.details.download_tooltip": undefined;
+	"ui.hub.browse.details.failure.delist": undefined;
+	"ui.hub.browse.details.failure.download": undefined;
+	"ui.hub.browse.details.failure.favourite": undefined;
+	"ui.hub.browse.details.failure.like": undefined;
+	"ui.hub.browse.details.last_modified": { age: string; date: string };
+	"ui.hub.browse.details.load_failed_title": undefined;
+	"ui.hub.browse.details.not_found": undefined;
+	"ui.hub.browse.details.sign_in_hint": undefined;
+	"ui.hub.browse.details.unknown_author": undefined;
+	"ui.hub.browse.details.viewer_unknown": undefined;
+	"ui.hub.browse.pager.aria": undefined;
+	"ui.hub.browse.pager.next": undefined;
+	"ui.hub.browse.pager.previous": undefined;
 	"ui.hub.comments.age.days": { count: number };
 	"ui.hub.comments.age.fallback": { duration: string };
 	"ui.hub.comments.age.hours": { count: number };

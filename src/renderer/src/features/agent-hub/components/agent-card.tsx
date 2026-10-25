@@ -1,12 +1,14 @@
 import type { Agent } from "@shared/api/radient/types";
 import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { formatDistanceToNowStrict } from "date-fns";
 import { Download, Heart, Star } from "lucide-react";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { hubAge } from "../comment-age";
 import { hubDisplayName } from "../display-name";
 import { AgentTagsAndCategories } from "./agent-tags-and-categories";
 import { OrgOriginBadge } from "./org-origin-badge";
@@ -102,6 +104,9 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 }) => {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth();
+	// Re-read `t()` when the locale changes: the labels below are computed in
+	// render, so the subscription is what makes them follow the picker.
+	useI18nLocale();
 
 	const description = agent.description ?? "";
 
@@ -134,34 +139,34 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 	}, []);
 
 	const likeTooltip = !isAuthenticated
-		? "Log in to Radient to like agents"
+		? t("ui.hub.browse.card.like.tooltip_signed_out")
 		: !viewerStateKnown
-			? "Your likes could not be read, so this is not shown as unliked."
+			? t("ui.hub.browse.card.like.tooltip_unknown")
 			: isLiked
-				? "Unlike agent"
-				: "Like agent";
+				? t("ui.hub.browse.card.like.tooltip_liked")
+				: t("ui.hub.browse.card.like.tooltip_unliked");
 	const favouriteTooltip = !isAuthenticated
-		? "Log in to Radient to favourite agents"
+		? t("ui.hub.browse.card.favourite.tooltip_signed_out")
 		: !viewerStateKnown
-			? "Your favourites could not be read, so this is not shown as unfavourited."
+			? t("ui.hub.browse.card.favourite.tooltip_unknown")
 			: isFavourited
-				? "Unfavourite agent"
-				: "Favourite agent";
+				? t("ui.hub.browse.card.favourite.tooltip_favourited")
+				: t("ui.hub.browse.card.favourite.tooltip_unfavourited");
 	/*
 	 * The unknown state has its own two labels. A screen reader is told the same
 	 * thing the tooltip says: not "like this agent", and not "unlike it" either,
 	 * because neither is a claim this card can make.
 	 */
 	const likeLabel = !viewerStateKnown
-		? "Like state unavailable"
+		? t("ui.hub.browse.card.like.aria_unknown")
 		: isLiked
-			? "Unlike agent"
-			: "Like agent";
+			? t("ui.hub.browse.card.like.tooltip_liked")
+			: t("ui.hub.browse.card.like.tooltip_unliked");
 	const favouriteLabel = !viewerStateKnown
-		? "Favourite state unavailable"
+		? t("ui.hub.browse.card.favourite.aria_unknown")
 		: isFavourited
-			? "Unfavourite agent"
-			: "Favourite agent";
+			? t("ui.hub.browse.card.favourite.tooltip_favourited")
+			: t("ui.hub.browse.card.favourite.tooltip_unfavourited");
 
 	/*
 	 * Whether this row lives in an organization's private workspace (§1.5).
@@ -243,11 +248,14 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 					 * it and whether it is still being looked after.
 					 */}
 					<p className="truncate text-ink-dim text-meta">
-						{agent.account_metadata?.name ?? "Unknown author"}
+						{agent.account_metadata?.name ??
+							t("ui.hub.browse.card.unknown_author")}
 						<span aria-hidden="true" className="mx-1.5">
 							·
 						</span>
-						updated {formatDistanceToNowStrict(new Date(agent.updated_at))} ago
+						{t("ui.hub.browse.card.updated", {
+							age: hubAge(new Date(agent.updated_at)),
+						})}
 					</p>
 				</div>
 			</button>
@@ -383,7 +391,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 							</Tooltip>
 						</>
 					)}
-					<Tooltip content="Downloads">
+					<Tooltip content={t("ui.hub.browse.card.downloads_tooltip")}>
 						<span className="ml-1 inline-flex items-center gap-1 pr-1 text-ink-dim">
 							<Download aria-hidden="true" className="size-3.5" />
 							<span className="inline-flex h-4 min-w-6 items-center font-mono text-mono-sm">
@@ -406,11 +414,13 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 							size="sm"
 							onClick={() => onDownload(agent)}
 							disabled={isDownloading}
-							aria-label={`Download ${displayName}`}
+							aria-label={t("ui.hub.browse.card.download_aria", {
+								name: displayName,
+							})}
 							data-tour-tag="agent-hub-download-button"
 						>
 							<Download data-testid="agent-download" />
-							Get
+							{t("ui.hub.browse.card.get")}
 						</Button>
 					</div>
 				)}
@@ -434,7 +444,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 					<span className="min-w-0 flex-1">{actionError}</span>
 					{onRetryAction && (
 						<Button variant="ghost" size="sm" onClick={onRetryAction}>
-							Try again
+							{t("ui.common.actions.retry_again")}
 						</Button>
 					)}
 				</output>

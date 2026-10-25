@@ -1,4 +1,6 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
 
@@ -49,7 +51,10 @@ export const HubPager: FC<{
 	onChange: (page: number) => void;
 	/** Preserve existing agent label; sibling libraries name their own kind. */
 	ariaLabel?: string;
-}> = ({ page, count, onChange, ariaLabel = "Agent pages" }) => {
+}> = ({ page, count, onChange, ariaLabel = t("ui.hub.browse.pager.aria") }) => {
+	// The default label and the step words are read through `t()` during render;
+	// the subscription is what makes them follow a locale change.
+	useI18nLocale();
 	const previousRef = useRef<HTMLButtonElement>(null);
 	const nextRef = useRef<HTMLButtonElement>(null);
 	/** The sibling that should take focus once the pressed button has disabled. */
@@ -70,7 +75,10 @@ export const HubPager: FC<{
 			data-testid="agent-hub-pager"
 		>
 			<span className="select-none text-meta text-ink-dim">
-				Page {page} of {count}
+				{t("ui.common.forms.pagination.position", {
+					page: String(page),
+					count: String(count),
+				})}
 			</span>
 			<div className="flex items-center gap-2">
 				<Button
@@ -82,10 +90,10 @@ export const HubPager: FC<{
 						onChange(page - 1);
 					}}
 					disabled={page <= 1}
-					aria-label="Previous page"
+					aria-label={t("ui.common.forms.compact_pagination.previous_page")}
 				>
 					<ChevronLeft aria-hidden="true" />
-					Previous
+					{t("ui.hub.browse.pager.previous")}
 				</Button>
 				<Button
 					variant="secondary"
@@ -96,9 +104,9 @@ export const HubPager: FC<{
 						onChange(page + 1);
 					}}
 					disabled={page >= count}
-					aria-label="Next page"
+					aria-label={t("ui.common.forms.compact_pagination.next_page")}
 				>
-					Next
+					{t("ui.hub.browse.pager.next")}
 					<ChevronRight aria-hidden="true" />
 				</Button>
 			</div>
