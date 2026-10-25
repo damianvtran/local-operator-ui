@@ -1,0 +1,127 @@
+{
+	"ui.agents.config.about": [
+		"inline label and tooltip on the selected row",
+		"plain, smallest register",
+		"Names what the next request is about: {kind} is the read-only word 'agent' or 'team' from the row's kind, {name} is the row's own name (data, never translated). The visible span truncates at 224 px; the tooltip carries the whole string."
+	],
+	"ui.agents.config.action.clear": [
+		"button label",
+		"plain",
+		"Drops the selected 'about' row so the next request is not scoped to it. Short ghost button next to the composer."
+	],
+	"ui.agents.config.action.dismiss": [
+		"button label",
+		"plain",
+		"Clears a finished run's strip from the dock. Pairs with watch/stop in the same trailing row."
+	],
+	"ui.agents.config.action.retry": [
+		"button label",
+		"plain",
+		"Re-sends the request after a message-call failure. The text is still in the box, so this is the same call again, not a new one."
+	],
+	"ui.agents.config.action.stop": [
+		"button label",
+		"plain, decisive",
+		"Interrupts a live configuration run. Not a danger colour: the run writes through as it goes and a stop is not a rollback (see stopped.*)."
+	],
+	"ui.agents.config.action.watch": [
+		"button label with aria-expanded",
+		"plain",
+		"Expands the run's own tool rows under the strip. Toggles; the chevron mirrors in RTL."
+	],
+	"ui.agents.config.activity.empty": [
+		"empty-state sentence inside the run's detail region",
+		"plain, factual",
+		"The run has started but has not called a tool yet. Says what is missing without sounding like a failure; full sentence, wraps inside a bounded region."
+	],
+	"ui.agents.config.background_only": [
+		"inline sentence under the idle box",
+		"plain, factual",
+		"Says the run is not part of the conversation transcript, which is why it has its own surface. Two sentences; the second one is what a reader needs before pressing Send."
+	],
+	"ui.agents.config.composer.label": [
+		"screen-reader label for the composer region",
+		"plain, names the task",
+		"The surface takes free text that asks for a change to an agent or a team. Not a placeholder: it is the region's accessible name."
+	],
+	"ui.agents.config.definitions": [
+		"count phrase embedded in a summary sentence",
+		"plain, counted",
+		"{count} is how many files the run touched. English needs one/other; use the language's own plural categories. Sits between 'Configured' and the rest of the row, so it must read as a noun phrase."
+	],
+	"ui.agents.config.error.stop_refused": [
+		"error sentence under the live strip",
+		"direct, no blame",
+		"The backend refused the interrupt and the run is still writing. The refusal's own reason sits beneath it, already localised by the backend."
+	],
+	"ui.agents.config.examples.add_twice": [
+		"clickable example request",
+		"plain, imperative",
+		"Second of three hero examples; fills the box when clicked. 'release-crew' and 'coder' are example data used across the app's samples and stay as written."
+	],
+	"ui.agents.config.examples.reads_code": [
+		"clickable example request",
+		"plain, descriptive",
+		"First of three hero examples; fills the box when clicked. Sits in a wrapping ghost row, so length is forgiving."
+	],
+	"ui.agents.config.examples.team_shipping": [
+		"clickable example request",
+		"plain, imperative",
+		"Third hero example; fills the box when clicked. 'shipping' is an example team name, kept as written."
+	],
+	"ui.agents.config.result.changed": [
+		"prefix in the list of changed rows",
+		"plain",
+		"Prefixed to a definition's name: 'Changed <name>'. A separate span carries the name, so this message is a bare verb in past tense."
+	],
+	"ui.agents.config.result.configured": [
+		"screen-reader prefix on the settled status",
+		"plain",
+		"Spoken before the definitions count ('Configured 2 definitions'); also reused inside the live-region sentence after a full stop. No trailing punctuation: the caller supplies it."
+	],
+	"ui.agents.config.result.created": [
+		"prefix in the list of changed rows",
+		"plain",
+		"Prefixed to a definition's name: 'Created <name>'. Use the same verb form as result.changed."
+	],
+	"ui.agents.config.state.sending": [
+		"button label while the request is in flight",
+		"plain, progress",
+		"Replaces action.retry while the retry is being sent. U+2026, not three periods."
+	],
+	"ui.agents.config.state.stopping": [
+		"button label while the interrupt is in flight",
+		"plain, progress",
+		"Replaces action.stop while the stop request runs; the button is disabled meanwhile. U+2026."
+	],
+	"ui.agents.config.status.attached": [
+		"notice inside the run's detail region",
+		"plain, explains an outcome",
+		"The page attached to a configuration run that was already going instead of starting its own; the typed request stays in the box. Two sentences, second one reassures about the draft."
+	],
+	"ui.agents.config.stopped.kept": [
+		"settled sentence after a stop that wrote something",
+		"plain, factual",
+		"Cancellation is not rollback: whatever the run had already written is still there. Must not imply the machine was reverted."
+	],
+	"ui.agents.config.stopped.nothing": [
+		"settled sentence after a stop before any write",
+		"plain, factual",
+		"The empty-result counterpart of stopped.kept; says nothing had been changed yet, rather than showing a kept-changes list with no rows."
+	],
+	"ui.agents.config.summary.no_changes": [
+		"settled sentence when the run changed nothing",
+		"plain, factual",
+		"The run answered a question instead of editing definitions. The answer itself follows as free text."
+	],
+	"ui.agents.config.summary.nothing_else": [
+		"settled sentence under the changed rows",
+		"plain, factual",
+		"Says the listed changes are the whole change set, so a reader does not go looking for more. One line."
+	],
+	"ui.agents.config.summary.you_asked": [
+		"quoted request under the answer",
+		"plain, factual",
+		"{topic} is the operator's own typed text, unvalidated and possibly long: it wraps, and it is never translated or reworded."
+	]
+}

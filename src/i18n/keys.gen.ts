@@ -23,6 +23,7 @@
 
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
+import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
 import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
@@ -710,6 +711,7 @@ import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
 	...enUiAgentMessagesSettings,
+	...enUiAgentsConfig,
 	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
 	...enUiAgents,
@@ -1520,6 +1522,31 @@ export type MessageParams = {
 	"ui.agentMessages.settings.state.read_only": undefined;
 	"ui.agentMessages.settings.state.turned_off_org": undefined;
 	"ui.agentMessages.settings.state.turned_off_title": undefined;
+	"ui.agents.config.about": { kind: string; name: string };
+	"ui.agents.config.action.clear": undefined;
+	"ui.agents.config.action.dismiss": undefined;
+	"ui.agents.config.action.retry": undefined;
+	"ui.agents.config.action.stop": undefined;
+	"ui.agents.config.action.watch": undefined;
+	"ui.agents.config.activity.empty": undefined;
+	"ui.agents.config.background_only": undefined;
+	"ui.agents.config.composer.label": undefined;
+	"ui.agents.config.definitions": { count: number };
+	"ui.agents.config.error.stop_refused": undefined;
+	"ui.agents.config.examples.add_twice": undefined;
+	"ui.agents.config.examples.reads_code": undefined;
+	"ui.agents.config.examples.team_shipping": undefined;
+	"ui.agents.config.result.changed": undefined;
+	"ui.agents.config.result.configured": undefined;
+	"ui.agents.config.result.created": undefined;
+	"ui.agents.config.state.sending": undefined;
+	"ui.agents.config.state.stopping": undefined;
+	"ui.agents.config.status.attached": undefined;
+	"ui.agents.config.stopped.kept": undefined;
+	"ui.agents.config.stopped.nothing": undefined;
+	"ui.agents.config.summary.no_changes": undefined;
+	"ui.agents.config.summary.nothing_else": undefined;
+	"ui.agents.config.summary.you_asked": { topic: string };
 	"ui.agents.detail.action.discard_changes": undefined;
 	"ui.agents.detail.action.discard_question": undefined;
 	"ui.agents.detail.action.keep_editing": undefined;

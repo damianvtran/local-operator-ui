@@ -9,7 +9,6 @@
 		"src/renderer/src/features/agents/components/agent-detail.tsx": 52,
 		"src/renderer/src/features/agents/components/team-detail.tsx": 35,
 		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx": 25,
-		"src/renderer/src/features/agents/config-run/config-composer.tsx": 13,
 		"src/renderer/src/features/chat/canonical/image-gen-card.tsx": 1,
 		"src/renderer/src/features/chat/canonical/message-actions-row.tsx": 1,
 		"src/renderer/src/features/chat/canonical/quote-toolkit.tsx": 1,
