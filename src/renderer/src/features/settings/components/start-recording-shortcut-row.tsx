@@ -1,8 +1,10 @@
 import {
 	type BackendSettings,
+	DesktopControlError,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import { Button, Input, Label } from "@shared/components/ui";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
 import {
@@ -85,14 +87,32 @@ export function StartRecordingShortcutRow() {
 			);
 			await settings.refetch();
 		} catch (cause) {
+			let refusal: string | undefined;
+			if (cause instanceof DesktopControlError) {
+				const detail = cause.detail;
+				if (
+					typeof detail === "object" &&
+					detail !== null &&
+					"code" in detail &&
+					detail.code === "keymap.conflict" &&
+					"label" in detail &&
+					typeof detail.label === "string"
+				) {
+					refusal = assignedTo(detail.label);
+				}
+			}
+			// The structured conflict above never displays main's diagnostic
+			// sentence, which would nest one refusal inside another. Other
+			// backend sentences already follow the server's localization contract.
 			setError(
-				cause instanceof Error
-					? cause.message
-					: t(
-							op === "settings.edit"
-								? "ui.settings.configuration.backend_settings_section.the_setting_could_not_be_saved"
-								: "ui.settings.configuration.backend_settings_section.the_setting_could_not_be_reset",
-						),
+				refusal ??
+					(cause instanceof Error
+						? cause.message
+						: t(
+								op === "settings.edit"
+									? "ui.settings.configuration.backend_settings_section.the_setting_could_not_be_saved"
+									: "ui.settings.configuration.backend_settings_section.the_setting_could_not_be_reset",
+							)),
 			);
 		} finally {
 			window.electron?.recordingShortcut?.markPending();
@@ -118,80 +138,76 @@ export function StartRecordingShortcutRow() {
 			<h3 className="pt-1 text-body-sm font-medium text-ink">
 				{t("ui.settings.shortcuts.category.speech_to_text")}
 			</h3>
-			<div className="group flex min-w-0 flex-col gap-1.5">
-				<div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-					<label
-						htmlFor={id}
-						className="w-32 shrink-0 py-1.5 text-body-sm text-ink-muted"
-					>
+			<div className="group flex min-w-0 flex-col gap-1">
+				<div className="flex flex-wrap items-center gap-2">
+					<Label htmlFor={id} className="w-32 text-body-sm text-ink">
 						{setting.label}
-					</label>
-					<div className="flex min-w-0 items-start gap-2">
-						<input
-							ref={fieldRef}
-							id={id}
-							aria-label={t(
-								"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want",
-								{ label: setting.label },
-							)}
-							aria-describedby={`${id}-hint`}
-							aria-busy={saving}
-							data-shortcut-action={setting.key}
-							className="w-52 shrink-0 rounded-md border border-control bg-canvas px-3 py-1.5 text-left font-mono text-body-sm text-ink outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-							value={chordGlyph(saved, platform)}
-							placeholder={t(
-								"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels",
-							)}
-							readOnly
-							onKeyDown={(event) => {
-								if (saving) return;
-								if (
-									END_EDIT_KEYS.has(event.key) ||
-									MODIFIER_ONLY_KEYS.has(event.key)
-								) {
-									if (END_EDIT_KEYS.has(event.key)) setError(null);
-									event.preventDefault();
-									return;
-								}
-								const candidate = chordFromEvent(event);
-								if (candidate === null) return;
+					</Label>
+					<Input
+						ref={fieldRef}
+						id={id}
+						aria-label={t(
+							"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want",
+							{ label: setting.label },
+						)}
+						aria-describedby={`${id}-hint`}
+						aria-busy={saving}
+						data-shortcut-action={setting.key}
+						className="w-52 text-left font-mono text-body-sm"
+						value={chordGlyph(saved, platform)}
+						placeholder={t(
+							"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels",
+						)}
+						readOnly
+						onKeyDown={(event) => {
+							if (saving) return;
+							if (
+								END_EDIT_KEYS.has(event.key) ||
+								MODIFIER_ONLY_KEYS.has(event.key)
+							) {
+								if (END_EDIT_KEYS.has(event.key)) setError(null);
 								event.preventDefault();
-								if (
-									canonicalRecordingChord(candidate) ===
-									canonicalRecordingChord(stored)
-								) {
-									setError(null);
-									return;
-								}
-								const bindings =
-									useUiPreferencesStore.getState().shortcutBindings;
-								const claims = recordingExternalClaims(
-									recording,
-									assignedTo(setting.label),
-								);
-								for (const action of KEYMAP_ACTIONS) {
-									const effective = bindings[action.id] ?? action.defaultChord;
-									if (effective)
-										claims.set(effective, assignedTo(action.label));
-								}
-								const refusal = captureRefusal(
-									candidate,
-									"panel.console",
-									{},
-									platform,
-									claims,
-								);
-								if (refusal !== null) {
-									setError(refusal);
-									return;
-								}
-								void write("settings.edit", candidate);
-							}}
-						/>
-						<button
-							type="button"
-							className="rounded-md px-2 py-1.5 text-body-sm text-ink-muted transition-colors hover:bg-control hover:text-ink disabled:invisible"
-							disabled={isDefault || saving}
+								return;
+							}
+							const candidate = chordFromEvent(event);
+							if (candidate === null) return;
+							event.preventDefault();
+							if (
+								canonicalRecordingChord(candidate) ===
+								canonicalRecordingChord(stored)
+							) {
+								setError(null);
+								return;
+							}
+							const bindings =
+								useUiPreferencesStore.getState().shortcutBindings;
+							const claims = recordingExternalClaims(
+								recording,
+								assignedTo(setting.label),
+							);
+							for (const action of KEYMAP_ACTIONS) {
+								const effective = bindings[action.id] ?? action.defaultChord;
+								if (effective) claims.set(effective, action.label);
+							}
+							const refusal = captureRefusal(
+								candidate,
+								"panel.console",
+								{},
+								platform,
+								claims,
+							);
+							if (refusal !== null) {
+								setError(refusal);
+								return;
+							}
+							void write("settings.edit", candidate);
+						}}
+					/>
+					{!isDefault && (
+						<Button
+							variant="secondary"
+							size="sm"
+							disabled={saving}
 							aria-label={t(
 								"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default",
 								{ label: setting.label },
@@ -199,10 +215,10 @@ export function StartRecordingShortcutRow() {
 							onClick={() => void write("settings.reset")}
 						>
 							{t("ui.settings.shortcuts.keyboard_shortcuts_section.reset")}
-						</button>
-					</div>
+						</Button>
+					)}
 				</div>
-				<div className="ml-0 max-w-88 text-meta text-ink-muted sm:ml-36">
+				<div className="ml-0 max-w-88 text-meta text-ink-muted sm:ml-34">
 					<p>{setting.help}</p>
 					<p id={`${id}-hint`} className="hidden group-focus-within:block">
 						{t(
@@ -211,7 +227,9 @@ export function StartRecordingShortcutRow() {
 					</p>
 					{recording.shadowedBy && !error && (
 						<output className="block text-danger">
-							{recording.shadowedBy}
+							{t("ui.settings.shortcuts.recording.inactive_claimed", {
+								label: recording.shadowedBy,
+							})}
 						</output>
 					)}
 					{recording.problem && !error && (

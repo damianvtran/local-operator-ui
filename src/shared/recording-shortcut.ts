@@ -168,7 +168,7 @@ function keyTokenMatches(
 	return SINGLE_KEY.test(token) && token === key;
 }
 
-/** Exact, non-repeating keyDown matching; the value is already cached by main. */
+/** Exact, non-repeating keyDown matching; `primary` keeps its platform semantics. */
 export function recordingShortcutMatches(
 	value: string,
 	input: RecordingShortcutInput,
@@ -181,15 +181,35 @@ export function recordingShortcutMatches(
 	const key = tokens.at(-1) ?? "";
 	if (!keyTokenMatches(key, input)) return false;
 	const modifiers = new Set(tokens.slice(0, -1));
-	const primaryToken = platform === "darwin" ? "meta" : "ctrl";
-	const control =
-		(input.control === true) ===
-		(modifiers.has("ctrl") ||
-			(modifiers.has("primary") && primaryToken === "ctrl"));
-	const meta =
-		(input.meta === true) ===
-		(modifiers.has("meta") ||
-			(modifiers.has("primary") && primaryToken === "meta"));
+	// On macOS `primary` deliberately preserves the legacy fixed door: either
+	// Control OR Command alone fires. Literal `ctrl`/`meta` bindings stay exact.
+	// `primary+meta` requires Meta but not Control; `primary+ctrl` explicitly
+	// names both physical modifiers. Elsewhere primary remains Control only.
+	const primary = modifiers.has("primary");
+	const explicitCtrl = modifiers.has("ctrl");
+	const explicitMeta = modifiers.has("meta");
+	let control: boolean;
+	let meta: boolean;
+	if (platform !== "darwin") {
+		control = (input.control === true) === (explicitCtrl || primary);
+		meta = (input.meta === true) === explicitMeta;
+	} else if (primary && explicitCtrl && !explicitMeta) {
+		// `primary+ctrl` explicitly names both physical modifiers.
+		control = input.control === true;
+		meta = input.meta === true;
+	} else if (primary && explicitMeta && !explicitCtrl) {
+		// `primary+meta` names Command, with Control explicitly excluded.
+		control = input.control !== true;
+		meta = input.meta === true;
+	} else if (primary && !explicitCtrl && !explicitMeta) {
+		// The legacy collapsed primary accepts either modifier, never both.
+		control = input.control === true ? input.meta !== true : true;
+		meta =
+			input.meta === true ? input.control !== true : input.control === true;
+	} else {
+		control = (input.control === true) === explicitCtrl;
+		meta = (input.meta === true) === explicitMeta;
+	}
 	return (
 		control &&
 		meta &&

@@ -88,7 +88,10 @@ const setting = {
 	hotkey_scope: "desktop",
 };
 
-async function mount({ backend = true, saveStatus = 200 }, run) {
+async function mount(
+	{ backend = true, saveStatus = 200, structuredConflict = false },
+	run,
+) {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
 		pretendToBeVisual: true,
@@ -148,7 +151,13 @@ async function mount({ backend = true, saveStatus = 200 }, run) {
 							status: saveStatus,
 							body: {
 								status: saveStatus,
-								detail: "Chord already assigned to Quick send.",
+								detail: structuredConflict
+									? {
+											code: "keymap.conflict",
+											label: "Console",
+											text: "Start recording cannot use this shortcut: Already assigned to Console..",
+										}
+									: "Chord already assigned to Quick send.",
 							},
 						};
 					live = {
@@ -322,10 +331,32 @@ test("self capture is a no-op and panel conflicts use one exact sentence", async
 			api.text().includes("Already assigned to Open console."),
 			true,
 		);
-		assert.equal(
-			api.text().includes("Already assigned to Already assigned"),
-			false,
+		const conflictOutputs = Array.from(
+			api.window.document.querySelectorAll("output"),
+			(node) => node.textContent,
+		).filter((text) => text?.includes("Already assigned"));
+		assert.deepEqual(conflictOutputs, ["Already assigned to Open console."]);
+	});
+});
+
+test("a structured conflict uses its label once, never main's nested sentence", async () => {
+	await mount({ saveStatus: 409, structuredConflict: true }, async (api) => {
+		const input = api.$('input[data-shortcut-action="keymap.start_recording"]');
+		await act(async () =>
+			input.dispatchEvent(
+				new api.window.KeyboardEvent("keydown", {
+					key: "r",
+					ctrlKey: true,
+					altKey: true,
+					bubbles: true,
+					cancelable: true,
+				}),
+			),
 		);
+		assert.ok(api.text().includes("Already assigned to Console."));
+		assert.equal(api.text().includes("Start recording cannot"), false);
+		assert.equal(api.text().includes(".."), false);
+		assert.equal(input.value, "Ctrl+Shift+S");
 	});
 });
 

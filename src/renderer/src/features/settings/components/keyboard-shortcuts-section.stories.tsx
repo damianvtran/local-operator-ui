@@ -147,7 +147,14 @@ export const Cleared: Story = {
 const RecordingBackendStory: FC<{
 	value?: string;
 	refuseSave?: boolean;
-}> = ({ value = "primary+shift+s", refuseSave = false }) => {
+	loadDelayMs?: number;
+	focusWhenReady?: boolean;
+}> = ({
+	value = "primary+shift+s",
+	refuseSave = false,
+	loadDelayMs = 0,
+	focusWhenReady = false,
+}) => {
 	const [client] = useState(
 		() => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
 	);
@@ -177,8 +184,11 @@ const RecordingBackendStory: FC<{
 			body: { status: 200, message: "ok", result },
 		});
 		const request = async (input: DesktopRequest): Promise<DesktopResponse> => {
-			if (input.op === "settings.list")
+			if (input.op === "settings.list") {
+				if (loadDelayMs > 0)
+					await new Promise((resolve) => setTimeout(resolve, loadDelayMs));
 				return ok({ sections: [], settings: [setting] });
+			}
 			if (input.op === "settings.edit") {
 				if (refuseSave)
 					return {
@@ -222,7 +232,18 @@ const RecordingBackendStory: FC<{
 			window.electron = previousElectron;
 			client.clear();
 		};
-	}, [client, refuseSave, value]);
+	}, [client, loadDelayMs, refuseSave, value]);
+	useEffect(() => {
+		if (!focusWhenReady || loadDelayMs <= 0) return;
+		const timer = window.setTimeout(() => {
+			document
+				.querySelector<HTMLInputElement>(
+					'input[data-shortcut-action="keymap.start_recording"]',
+				)
+				?.focus();
+		}, loadDelayMs + 200);
+		return () => window.clearTimeout(timer);
+	}, [focusWhenReady, loadDelayMs]);
 	return (
 		<QueryClientProvider client={client}>
 			<Section />
@@ -259,4 +280,14 @@ export const RecordingSaveRefused: Story = {
 		);
 		expect(field).toHaveValue("Ctrl+Shift+S");
 	},
+};
+
+/** Delayed backend response exposes the reserved loading slot before settling. */
+export const RecordingLoading: Story = {
+	render: () => <RecordingBackendStory loadDelayMs={60_000} />,
+};
+
+/** The same delayed request after it settles, with the recording field focused. */
+export const RecordingFocused: Story = {
+	render: () => <RecordingBackendStory loadDelayMs={1_500} focusWhenReady />,
 };

@@ -147,7 +147,8 @@ export class RecordingShortcutCoordinator {
 				status: 409,
 				detail: {
 					code: "keymap.conflict",
-					text: `Start recording cannot use this shortcut: ${label}.`, // i18n: ignore main-process API diagnostic; renderer replaces it with localized refusal copy
+					label,
+					text: `Start recording cannot use this shortcut: ${label}.`, // i18n: ignore main-process diagnostic; structured label drives localized renderer copy
 				},
 			},
 		};

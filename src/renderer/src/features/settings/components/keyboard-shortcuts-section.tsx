@@ -91,10 +91,7 @@ const rowLabel = (action: KeymapAction): string => {
 	}
 };
 
-const recordingClaimLabel = () =>
-	t("ui.settings.shortcuts.capture.already_assigned", {
-		label: t("ui.settings.shortcuts.reserved.speech_to_text"),
-	});
+const recordingClaimLabel = () => t("ui.chat.composer.start_recording");
 
 /** Main owns the effective claims snapshot; revision ordering drops stale sends. */
 export function useSyncRecordingClaims(): void {
@@ -106,9 +103,7 @@ export function useSyncRecordingClaims(): void {
 			for (const action of KEYMAP_ACTIONS) {
 				const chord = effectiveChord(action.id, bindings);
 				if (!chord) continue;
-				const label = t("ui.settings.shortcuts.capture.already_assigned", {
-					label: rowLabel(action),
-				});
+				const label = rowLabel(action);
 				for (const variant of recordingConflictVariants(
 					chord,
 					rendererPlatform(),

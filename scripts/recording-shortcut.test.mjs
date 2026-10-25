@@ -98,7 +98,17 @@ test("the default preserves Cmd/Ctrl+Shift+S and rejects nearby chords", () => {
 			press({ control: true, shift: true }),
 			"darwin",
 		),
+		true,
+		"the legacy Cmd/Ctrl+Shift+S default must keep accepting Control on macOS",
+	);
+	assert.equal(
+		recordingShortcutMatches(
+			DEFAULT_START_RECORDING_VALUE,
+			press({ control: true, meta: true, shift: true }),
+			"darwin",
+		),
 		false,
+		"primary accepts either physical modifier, not both at once",
 	);
 	assert.equal(
 		recordingShortcutMatches(
@@ -128,6 +138,11 @@ test("a saved rebind moves the native door and the old chord is inert", () => {
 	assert.equal(
 		matches(rebound, { control: true, alt: true, key: "r" }, "linux"),
 		true,
+	);
+	assert.equal(
+		matches(rebound, { control: true, alt: true, key: "r" }),
+		true,
+		"the same Ctrl+Opt+R press that capture canonicalizes must dispatch",
 	);
 	assert.equal(matches(rebound, { meta: true, shift: true }), false);
 	assert.equal(matches(rebound, { meta: true, key: "r" }), false);

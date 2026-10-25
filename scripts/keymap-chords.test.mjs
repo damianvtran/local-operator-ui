@@ -293,11 +293,9 @@ test("captureRefusal: the four sentences, in precedence order", () => {
 			"panel.console",
 			{},
 			"linux",
-			new Map([
-				["primary+shift+s", "Start recording already uses this chord."],
-			]),
+			new Map([["primary+shift+s", "Start recording"]]),
 		),
-		"Start recording already uses this chord.",
+		"Already assigned to Start recording.",
 	);
 });
 
