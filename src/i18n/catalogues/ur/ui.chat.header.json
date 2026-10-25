@@ -8,5 +8,7 @@
 	"ui.chat.header.transcript_display": "ٹرانسکرپٹ کی نمائش",
 	"ui.chat.header.delete": "گفتگو حذف کریں…",
 	"ui.chat.header.close_run_details": "تفصیلات بند کریں",
-	"ui.chat.header.open_run_details": "تفصیلات کھولیں"
+	"ui.chat.header.open_run_details": "تفصیلات کھولیں",
+	"ui.chat.header.new_chat": "نئی چیٹ",
+	"ui.chat.header.new_chat_with": "{target} کے ساتھ نئی چیٹ"
 }
