@@ -1,4 +1,5 @@
 import { openConversation } from "@features/chat/open-conversation";
+import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 /**
  * The Notifications page (`/notifications`, `/notifications/:id`): one reel of
  * open asks and agent-raised updates across every conversation, with a detail
@@ -57,6 +58,7 @@ import {
 	showInfoToast,
 	showSuccessToast,
 } from "@shared/utils/toast-manager";
+import { useQuery } from "@tanstack/react-query";
 import {
 	Bell,
 	Check,
@@ -95,6 +97,7 @@ import {
 	type NotificationsTarget,
 	type NotificationsVerb,
 	notificationKeys,
+	readSessionDismissCounts,
 	tokensOf,
 	useNotificationDetail,
 	useNotificationsList,
@@ -117,9 +120,41 @@ import {
 } from "../notifications-model";
 import { NotificationDetail } from "./notification-detail";
 import { NotificationRow } from "./notification-row";
+import { OperationProgressLine } from "./operation-progress-line";
 
 /** The design's Undo window (§ 0.8): 6 s, after which the toast leaves. */
 export const UNDO_WINDOW_MS = 6_000;
+/*
+ * THE INLINE STATUS LINE IS NOT A PERMANENT RECORD (code round 2, minor 1).
+ * It reports work in flight and rows still without a conclusive answer; once
+ * the operation settles with nothing unconfirmed the toast is the receipt, and
+ * a strip that stayed on screen would read as an action still running. Anything
+ * unresolved stays visible, because a lost response is exactly the case where
+ * clearing it would imply the rows were untouched.
+ */
+const settleOperationProgress = (
+	receipt: { pending: unknown[]; error?: unknown } | null,
+	setProgress: (next: OperationProgress | null) => void,
+) => {
+	if (receipt && (receipt.pending.length > 0 || receipt.error !== undefined))
+		return;
+	setProgress(null);
+};
+
+const useSessionScopeCounts = (
+	throughId: number | undefined,
+	enabled: boolean,
+): Record<string, number> | undefined => {
+	const query = useQuery({
+		queryKey: ["desktop", "notifications", "session-scope-counts", throughId],
+		enabled: enabled && throughId !== undefined,
+		queryFn: () => readSessionDismissCounts(throughId as number),
+		retry: retryDesktopQuery,
+		staleTime: 5_000,
+	});
+	return query.data;
+};
+
 const operationText = (progress: OperationProgress) =>
 	t("ui.notifications.operation.progress", progress);
 
@@ -276,6 +311,10 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * render nobody can vouch for.
 	 */
 	const refreshFailed = list.isError && Boolean(loaded);
+	const scopeCounts = useSessionScopeCounts(
+		loaded?.high_water,
+		Boolean(loaded),
+	);
 	const writesPaused = refreshFailed || operationBusy;
 	const openItem = notificationId
 		? (byId.get(notificationId) ?? detail.data?.item ?? null)
@@ -329,6 +368,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			operationLock.current = true;
 			setOperationBusy(true);
 			lastUndo.current = null;
+			let settled: { pending: unknown[]; error?: unknown } | null = null;
 			try {
 				const receipt = await applyNotificationOperation(
 					writeNotifications,
@@ -349,9 +389,11 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				if (isCompleteInverse(receipt, undoItems.length))
 					showSuccessToast(t("ui.notifications.toast.undone"));
 				else showInfoToast(operationText(progress));
+				settled = receipt;
 			} finally {
 				operationLock.current = false;
 				setOperationBusy(false);
+				settleOperationProgress(settled, setOperationProgress);
 				void client.invalidateQueries({ queryKey: notificationKeys.all });
 			}
 		},
@@ -371,6 +413,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			if (operationLock.current && !ownsLock) return;
 			operationLock.current = true;
 			setOperationBusy(true);
+			let settled: { pending: unknown[]; error?: unknown } | null = null;
 			// A failed original operation cannot leave a keyboard Undo for work
 			// that was never confirmed. Populate only from actual changed receipts.
 			lastUndo.current = null;
@@ -444,9 +487,11 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 							: undefined,
 					},
 				);
+				settled = receipt;
 			} finally {
 				operationLock.current = false;
 				setOperationBusy(false);
+				settleOperationProgress(settled, setOperationProgress);
 				void client.invalidateQueries({ queryKey: notificationKeys.all });
 			}
 		},
@@ -995,6 +1040,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 										onFocusRow={(item) => setFocusId(item.id)}
 										onDismissSession={requestDismissSession}
 										sessionCount={(sessionId) =>
+											scopeCounts?.[sessionId] ??
 											sessionDismissCount([...waiting, ...items], sessionId)
 										}
 									/>
@@ -1020,10 +1066,13 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								nowMs={nowMs}
 								narrow={narrow}
 								writesPaused={writesPaused}
-								sessionDismissCount={sessionDismissCount(
-									[...waiting, ...items],
-									openItem.session.id,
-								)}
+								sessionDismissCount={
+									scopeCounts?.[openItem.session.id] ??
+									sessionDismissCount(
+										[...waiting, ...items],
+										openItem.session.id,
+									)
+								}
 								onClose={closeDetail}
 								onOpenConversation={openSource}
 								onToggleRead={(item) => toggleRead([item])}
@@ -1056,12 +1105,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				<Spinner label={t("ui.notifications.page.loading")} />
 			)}
 			{operationProgress && (
-				<output
-					className="shrink-0 px-6 py-1 text-meta text-ink-muted"
-					data-notification-operation=""
-				>
-					{t("ui.notifications.operation.progress", operationProgress)}
-				</output>
+				<OperationProgressLine progress={operationProgress} />
 			)}
 			{confirmSession && (
 				<ConfirmDismissSession

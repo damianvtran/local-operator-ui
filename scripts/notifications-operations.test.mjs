@@ -27,6 +27,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/notifications/notification-operations";',
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
+			'export { readSessionDismissCounts } from "./src/renderer/src/features/notifications/notifications-api";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -35,6 +36,11 @@ const bundle = await build({
 	format: "esm",
 	write: false,
 	logLevel: "silent",
+	/* The renderer's own path aliases, resolved the way vite.config.ts does. */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 });
 const ops = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -256,5 +262,48 @@ test("R1/Q1: an ask-only feed frame is not deduplicated by the notify high-water
 		frames[0].waiting_unread_count,
 		frames[1].waiting_unread_count,
 		"but a real ask-state change, which the frame must deliver",
+	);
+});
+
+test("the Dismiss-all header number is the scope the dialog applies, not the page", async () => {
+	// 160 notify rows across three conversations: more than one page, so the
+	// loaded set cannot answer "how many will this conversation lose".
+	const sessions = ["aaaaaaaaaaa1", "bbbbbbbbbbb2", "ccccccccccc3"];
+	const rows = Array.from({ length: 160 }, (_, index) =>
+		item(
+			`n_${"d".repeat(12)}${String.fromCharCode(97 + Math.floor(index / 26))}${String.fromCharCode(97 + (index % 26))}`,
+			{ seq: index + 1, session: { id: sessions[index % 3], title: "t" } },
+		),
+	);
+	rows[4].dismissed = true;
+	const fixture = ops.createNotificationFixture(rows, [
+		ask("ask:bbbbbbbbbbb2:affff3", { seq: 200 }),
+	]);
+	const counts = await ops.readSessionDismissCounts(
+		fixture.counts().high_water,
+		(request) => fixture.list(request),
+	);
+	// 160 rows round-robin over three conversations: 54/53/53, minus the one
+	// dismissed row in the second (index 4), which the write also excludes.
+	assert.deepEqual(counts, {
+		aaaaaaaaaaa1: 54,
+		bbbbbbbbbbb2: 52,
+		ccccccccccc3: 53,
+	});
+	assert.notEqual(
+		counts.bbbbbbbbbbb2,
+		rows.filter((row) => row.session.id === sessions[1]).length,
+		"the dismissed row is excluded, as the write excludes it",
+	);
+	// The first page alone would have promised a smaller number.
+	const firstPage = fixture.list({
+		state: "all",
+		limit: 100,
+		throughSeq: fixture.counts().high_water,
+	});
+	assert.ok(
+		firstPage.items.filter((row) => row.session.id === sessions[0]).length <
+			counts.aaaaaaaaaaa1,
+		"the page count under-promises, which is the defect this replaced",
 	);
 });

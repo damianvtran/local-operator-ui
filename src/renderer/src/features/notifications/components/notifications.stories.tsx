@@ -24,6 +24,7 @@ import { createNotificationFixture } from "../notifications-fixture";
  */
 import { DrawerTabs, DrawerUpdates } from "./drawer-updates";
 import { FlagLine, FlagLinesProvider } from "./flag-line";
+import { OperationProgressLine } from "./operation-progress-line";
 import "../../../styles/index.css";
 import "../../chat/components/story-electron-shim";
 import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
@@ -595,7 +596,18 @@ export const MultiSelect: Story = {
  * happened to be wider would photograph the easy case: the pair is same-size
  * control, not two different viewports.
  */
-const narrow = (locale: "en" | "fr") => {
+const narrow = () => {
+	/*
+	 * THE LOCALE COMES FROM THE STORY'S OWN `locale` ARG (design round 2, D3).
+	 *
+	 * `parameters.locale` is not a channel this Storybook reads — the preview
+	 * decorator pins through `context.args.locale`, and it re-asserts the pin
+	 * against a bridge stub whose `capabilities` answer carries a fixed
+	 * `language`. So a story claiming French in its name used to render in
+	 * whatever the host resolved to. The two narrow stories now declare the arg
+	 * themselves; opening either by id alone is a real frame in that language,
+	 * and `?args=locale:` still overrides it for an ad-hoc capture.
+	 */
 	const state = { items: POPULATED, waiting: WAITING };
 	return (
 		<FreshCache>
@@ -610,7 +622,6 @@ const narrow = (locale: "en" | "fr") => {
 			</RouteTo>
 			{(() => {
 				install(state);
-				void locale;
 				return null;
 			})()}
 		</FreshCache>
@@ -618,18 +629,71 @@ const narrow = (locale: "en" | "fr") => {
 };
 
 export const NarrowEnglish: Story = {
-	render: () => narrow("en"),
-	parameters: { locale: "en" },
+	render: () => narrow(),
+	args: { locale: "en" },
 };
 
 export const NarrowFrench: Story = {
-	render: () => narrow("fr"),
-	parameters: { locale: "fr" },
+	render: () => narrow(),
+	args: { locale: "fr" },
 };
 
 /** Below the capability: the page states it and reads nothing. */
 export const Unsupported: Story = {
 	render: () => page({ items: [], waiting: [], capability: false }),
+};
+
+/* --------------------------------------------------- partial-result status */
+
+/*
+ * THE PARTIAL RESULT, SEEDED (design round 2, D4).
+ *
+ * `ui.notifications.operation.progress` only ever appears after a bulk read,
+ * dismiss or Undo has actually run, and the state worth signing off is the one
+ * that says the operation did NOT fully land: some rows confirmed, some
+ * explicitly skipped, some without a conclusive answer. A reviewer cannot
+ * summon that by hand — it needs a racing write or a dropped connection — so
+ * the line is rendered here from fixed counts, through the same component and
+ * the same catalogue key the page uses. Nothing about the fixture decides the
+ * wording; the translations do.
+ */
+const ProgressPanel = ({
+	progress,
+}: {
+	progress: { changed: number; skipped: number; pending: number };
+}) => (
+	<div className="flex w-[520px] flex-col gap-2 bg-elevated p-4">
+		<span className="text-body-sm text-ink-muted">
+			{upperBoundLabel(progress)}
+		</span>
+		<OperationProgressLine progress={progress} />
+	</div>
+);
+
+/** What the three counts mean, stated in the frame so the numbers cannot be read as a percentage. */
+const upperBoundLabel = (progress: {
+	changed: number;
+	skipped: number;
+	pending: number;
+}) =>
+	`Partial result: ${progress.changed} confirmed, ${progress.skipped} refused by the server, ${progress.pending} without a conclusive answer.`;
+
+/** A bulk Undo that landed partially: this is the state the toast must not call "Restored". */
+export const OperationStatusPartial: Story = {
+	render: () => (
+		<FreshCache>
+			<ProgressPanel progress={{ changed: 118, skipped: 2, pending: 3 }} />
+		</FreshCache>
+	),
+};
+
+/** A lost response mid-batch: nothing is claimed about the unanswered rows. */
+export const OperationStatusNotConfirmed: Story = {
+	render: () => (
+		<FreshCache>
+			<ProgressPanel progress={{ changed: 40, skipped: 0, pending: 60 }} />
+		</FreshCache>
+	),
 };
 
 /* ------------------------------------------------------------- drawer tab */
@@ -661,50 +725,63 @@ const DRAWER_ITEMS: DesktopNotificationItem[] = [
  * three unrelated labels into one 360px line.
  */
 const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
+	/*
+	 * THE REAL DIRECTION SEAM, ON THIS STORY TOO (design round 2, D2).
+	 *
+	 * `dir="auto"` guessed a direction from the first strong character of the
+	 * container's text, which is not what the product does and produced an
+	 * "RTL" frame of Urdu in an LTR layout. The app resolves direction from the
+	 * locale store, so this fixture mounts the same provider and the same
+	 * document writer the page stories do: under a pinned `ur` locale the
+	 * subtree is RTL because <html dir> is, and nothing here decides it.
+	 */
+	useDocumentDirection();
 	const [current, setCurrent] = useState<"asks" | "updates" | "all">(tab);
 	const [rows, setRows] = useState<PendingAsk[]>([ASK]);
 	const updates = fixture.counts().unread_count;
 	return (
-		<div className="flex h-[560px] w-[404px] shrink-0 bg-canvas" dir="auto">
-			<div className="min-w-0 flex-1">
-				<AskDrawer
-					frontend={{
-						asks: rows,
-						asks_open: rows.length,
-						asks_truncated: false,
-					}}
-					scope={current === "all" ? "fleet" : "session"}
-					onClose={() => {}}
-					onAnswer={(askId) =>
-						setRows((list) => list.filter((row) => row.ask_id !== askId))
-					}
-					onDecline={() => {}}
-					onRevise={() => {}}
-					nowMs={NOW}
-					tabs={{
-						strip: (
-							<DrawerTabs
-								tab={current}
-								onTab={setCurrent}
-								asks={rows.length}
-								unreadUpdates={updates}
-								sessionless={false}
-							/>
-						),
-						body:
-							current === "updates" ? (
-								<DrawerUpdates sessionId="aaaaaaaaaaa1" nowMs={NOW} />
-							) : null,
-					}}
+		<LocaleDirectionProvider>
+			<div className="flex h-[560px] w-[404px] shrink-0 bg-canvas">
+				<div className="min-w-0 flex-1">
+					<AskDrawer
+						frontend={{
+							asks: rows,
+							asks_open: rows.length,
+							asks_truncated: false,
+						}}
+						scope={current === "all" ? "fleet" : "session"}
+						onClose={() => {}}
+						onAnswer={(askId) =>
+							setRows((list) => list.filter((row) => row.ask_id !== askId))
+						}
+						onDecline={() => {}}
+						onRevise={() => {}}
+						nowMs={NOW}
+						tabs={{
+							strip: (
+								<DrawerTabs
+									tab={current}
+									onTab={setCurrent}
+									asks={rows.length}
+									unreadUpdates={updates}
+									sessionless={false}
+								/>
+							),
+							body:
+								current === "updates" ? (
+									<DrawerUpdates sessionId="aaaaaaaaaaa1" nowMs={NOW} />
+								) : null,
+						}}
+					/>
+				</div>
+				<PanelRailFrame
+					sessionId="aaaaaaaaaaa1"
+					askScope={current === "all" ? "fleet" : "session"}
+					askCount={rows.length}
+					askUpdates={updates}
 				/>
 			</div>
-			<PanelRailFrame
-				sessionId="aaaaaaaaaaa1"
-				askScope={current === "all" ? "fleet" : "session"}
-				askCount={rows.length}
-				askUpdates={updates}
-			/>
-		</div>
+		</LocaleDirectionProvider>
 	);
 };
 

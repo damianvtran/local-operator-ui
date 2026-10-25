@@ -272,3 +272,68 @@ export function postNotificationsSeen(input: {
 		...input,
 	});
 }
+
+/** The one page shape this counter asks for: notify rows under a fixed boundary. */
+export type SessionCountPageRequest = {
+	state: "all";
+	source: "notify";
+	limit: number;
+	throughSeq: number;
+	cursor?: string;
+};
+
+/**
+ * How many rows each conversation would actually lose to "Dismiss all from this
+ * conversation".
+ *
+ * WHY THIS EXISTS RATHER THAN A COUNT OVER THE LOADED PAGE. The confirm dialog
+ * freezes the FULL scope of the conversation (contract § 5.2: `sessionId` +
+ * `through_seq` + every observed token), so a header that counted only the rows
+ * this page happens to hold promised a smaller number than the dialog then
+ * applied — the header and its own dialog disagreed (code round 2, minor 2).
+ * One enumeration under the same boundary the write will use answers both, so
+ * the number an operator reads before clicking is the number they are shown at
+ * confirmation.
+ *
+ * The count is per conversation and deliberately scoped like the write: notify
+ * rows that are not dismissed and not keyset-collapsed. An open ask is never
+ * dismissed from the reel (contract § 2.3), so it is never counted.
+ */
+export async function readSessionDismissCounts(
+	throughSeq: number,
+	/*
+	 * The page reader is a parameter for the same reason
+	 * `observeNotificationScope` takes one: the counting rule is what a test
+	 * needs to pin, and a hit-testable seam is not.
+	 */
+	readPage: (
+		request: SessionCountPageRequest,
+	) => Promise<DesktopNotificationsList> = (request) =>
+		desktopResult<DesktopNotificationsList>({
+			op: "notifications.list",
+			...request,
+		}),
+): Promise<Record<string, number>> {
+	const counts: Record<string, number> = {};
+	let cursor: string | undefined;
+	const seen = new Set<string>();
+	for (;;) {
+		const answer = await readPage({
+			state: "all",
+			source: "notify",
+			limit: 100,
+			throughSeq,
+			...(cursor ? { cursor } : {}),
+		});
+		for (const item of answer.items) {
+			if (item.dismissed || item.source === "ask") continue;
+			counts[item.session.id] = (counts[item.session.id] ?? 0) + 1;
+		}
+		const next = answer.next_cursor ?? undefined;
+		if (!next) return counts;
+		// A cursor that does not advance would loop forever on a server bug.
+		if (seen.has(next)) return counts;
+		seen.add(next);
+		cursor = next;
+	}
+}
