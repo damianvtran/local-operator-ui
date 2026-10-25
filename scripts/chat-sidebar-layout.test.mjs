@@ -4,18 +4,23 @@
  * The reason the module exists is stated on it: a layout decision written as a
  * JSX condition is a decision no test in this suite can reach, because
  * `pnpm test:desktop` bundles the shipped TypeScript in memory rather than
- * rendering components. So the three window modes, the resize clamp and the
- * chord are all asserted here against `chat-sidebar-layout.ts` itself.
+ * rendering components. So both sidebar modes, the render-only width cap and
+ * the chord are all asserted here against `chat-sidebar-layout.ts` itself.
  *
  * WHAT THIS CANNOT SAY. That the sidebar LOOKS right at those widths - the
  * frames do that, and the AFTER capture in the redesign's evidence set is where
  * the claim is checked. This file says the decision is right.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
 const ROOT = process.cwd();
+const ON_COLLAPSE = /onCollapse: toggleSidebar/;
+const ON_TOGGLE = /const onToggle = useCallback\(([\s\S]*?)\n\t\);/;
+const TOGGLE_SIDEBAR = /toggleSidebar\(\);/;
+const VIEWPORT_WIDTH = /viewportWidth/;
 
 const layoutBundle = await build({
 	stdin: {
@@ -37,10 +42,8 @@ const {
 	PANEL_RAIL_WIDTH_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DEFAULT_WIDTH,
-	SIDEBAR_DOCK_MIN_PX,
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
-	SIDEBAR_SHEET_WIDTH,
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
 	canvasDockWidth,
@@ -48,31 +51,24 @@ const {
 	clampSidebarWidth,
 	isSidebarTogglePress,
 	resolveSidebarLayout,
+	sidebarDockCapacity,
 	sidebarToggleCap,
 	sidebarYieldsToCanvas,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(layoutBundle.outputFiles[0].text).toString("base64")}`
 );
 
-test("the dock threshold is where the arithmetic crosses, not a round number", () => {
-	assert.equal(SIDEBAR_DOCK_MIN_PX, 1024);
+test("the canvas fit floor stays independent of the sidebar preference", () => {
 	/*
-	 * 1024 - 260 leaves 764 for the chat pane, and the reading measure plus its
-	 * two 24px gutters needs 688: the dock is free at this width with 76px over,
-	 * and the width below it is the first that would take the dock's cost out of
-	 * the column.
-	 */
-	assert.equal(
-		SIDEBAR_DOCK_MIN_PX - SIDEBAR_DEFAULT_WIDTH - (640 + 2 * 24),
-		76,
-	);
-	/*
-	 * The pane's own floor is a second, independent fact - and the two are not the
-	 * same number, which is why the strip/overlay boundary is recorded rather than
-	 * derived from the dock's width.
+	 * The 880px canvas fit rule is a separate contract from docking preference:
+	 * chat 480 + canvas 400. Keeping it pinned prevents the #1077 change from
+	 * silently rewriting the canvas/ask yield that must remain unchanged.
 	 */
 	assert.equal(CHAT_PANE_WITH_DOCK_MIN_PX, 880);
-	assert.ok(CHAT_PANE_WITH_DOCK_MIN_PX > SIDEBAR_DEFAULT_WIDTH + 480);
+	assert.equal(
+		CHAT_PANE_WITH_DOCK_MIN_PX,
+		CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX,
+	);
 });
 
 test("the resize range is the one the message list already occupied", () => {
@@ -80,7 +76,6 @@ test("the resize range is the one the message list already occupied", () => {
 	assert.equal(SIDEBAR_MAX_WIDTH, 320);
 	assert.equal(SIDEBAR_DEFAULT_WIDTH, 260);
 	assert.equal(SIDEBAR_COLLAPSED_WIDTH, 56);
-	assert.equal(SIDEBAR_SHEET_WIDTH, SIDEBAR_DEFAULT_WIDTH);
 });
 
 test("a stored width is clamped at the render boundary, not refused", () => {
@@ -93,68 +88,91 @@ test("a stored width is clamped at the render boundary, not refused", () => {
 });
 
 test("docked: the dock owns the width and offers the divider", () => {
-	const layout = resolveSidebarLayout(1380, false, false, 300);
+	const layout = resolveSidebarLayout(1380, false, 300);
 	assert.equal(layout.mode, "docked");
 	assert.equal(layout.width, 300);
 	assert.equal(layout.collapsed, false);
 	assert.equal(layout.resizable, true);
-	assert.equal(layout.sheetOpen, false);
 });
 
 test("docked and collapsed is the strip, and the divider goes with the dock", () => {
-	const layout = resolveSidebarLayout(1024, true, false, 300);
+	const layout = resolveSidebarLayout(1024, true, 300);
 	assert.equal(layout.mode, "strip");
 	assert.equal(layout.width, SIDEBAR_COLLAPSED_WIDTH);
 	assert.equal(layout.collapsed, true);
 	assert.equal(layout.resizable, false);
 });
 
-test("below the dock width the preference is OVERRIDDEN but not rewritten", () => {
-	/*
-	 * The state the user chose is still in the store - this function is handed it
-	 * and returns a strip anyway - which is what makes widening the window put the
-	 * sidebar back exactly as they left it.
-	 */
-	const narrow = resolveSidebarLayout(1024 - 1, false, false, 300);
-	assert.equal(narrow.mode, "strip");
-	assert.equal(narrow.collapsed, true);
-	assert.equal(narrow.width, SIDEBAR_COLLAPSED_WIDTH);
-	assert.equal(narrow.resizable, false);
-
-	/* And the same preference at the dock width is the dock. */
-	const wide = resolveSidebarLayout(SIDEBAR_DOCK_MIN_PX, false, false, 300);
-	assert.equal(wide.mode, "docked");
-	assert.equal(wide.width, 300);
+test("the expanded preference stays docked at every window width", () => {
+	for (const viewportWidth of [1380, 1024, 1023, 800]) {
+		const layout = resolveSidebarLayout(viewportWidth, false, 300);
+		assert.equal(
+			layout.mode,
+			"docked",
+			`${viewportWidth}px must honour expanded`,
+		);
+		assert.equal(layout.collapsed, false);
+		assert.equal(layout.resizable, true);
+		/*
+		 * At 800 the 44px rail and the chat's 480px floor leave 276px. Cap only
+		 * the drawn width: the stored 300px preference survives for a wider window.
+		 */
+		assert.equal(
+			layout.width,
+			Math.min(300, viewportWidth - 480 - PANEL_RAIL_WIDTH_PX),
+		);
+	}
 });
 
-test("the sheet opens below the dock width, and never beside a dock", () => {
-	const sheet = resolveSidebarLayout(800, false, true, 300);
-	assert.equal(sheet.mode, "overlay");
-	assert.equal(sheet.sheetOpen, true);
-	assert.equal(sheet.width, SIDEBAR_SHEET_WIDTH);
-	/*
-	 * The user's own width is not the sheet's: the sheet is a fixed 260px panel
-	 * over the pane, and a 320px stored width would have it cover the column it
-	 * exists to leave visible.
-	 */
-	assert.notEqual(sheet.width, 320);
-
-	const dockedRequest = resolveSidebarLayout(1380, false, true, 300);
-	assert.equal(dockedRequest.sheetOpen, false);
-	assert.equal(dockedRequest.mode, "docked");
+test("the collapsed preference stays a strip at every window width", () => {
+	for (const viewportWidth of [1380, 1023, 800]) {
+		const layout = resolveSidebarLayout(viewportWidth, true, 300);
+		assert.equal(
+			layout.mode,
+			"strip",
+			`${viewportWidth}px must honour collapsed`,
+		);
+		assert.equal(layout.collapsed, true);
+		assert.equal(layout.width, SIDEBAR_COLLAPSED_WIDTH);
+		assert.equal(layout.resizable, false);
+	}
 });
 
-test("both breakpoints are inclusive at their own width", () => {
-	assert.equal(
-		resolveSidebarLayout(SIDEBAR_DOCK_MIN_PX, false, false).mode,
-		"docked",
+test("the render-only capacity cap preserves the chat floor and rail", () => {
+	assert.equal(sidebarDockCapacity(800), 276);
+	assert.equal(sidebarDockCapacity(800, 0), 320);
+	assert.equal(sidebarDockCapacity(1023), SIDEBAR_MAX_WIDTH);
+	assert.equal(sidebarDockCapacity(1380), SIDEBAR_MAX_WIDTH);
+});
+
+test("a stored 320px width fits an 800px chat window without being rewritten", () => {
+	const narrow = resolveSidebarLayout(800, false, 320);
+	assert.equal(narrow.mode, "docked");
+	assert.equal(narrow.width, 800 - CHAT_PANE_MIN_PX - PANEL_RAIL_WIDTH_PX);
+	assert.equal(narrow.width, 276);
+	assert.equal(narrow.width + CHAT_PANE_MIN_PX + PANEL_RAIL_WIDTH_PX, 800);
+	/* The same stored preference is restored whole when the window has room. */
+	assert.equal(resolveSidebarLayout(1380, false, 320).width, 320);
+});
+
+test("both shell controls write the preference, with no narrow overlay branch", () => {
+	/*
+	 * The shipped-module cases above prove the geometry; this source guard keeps
+	 * the two DOM controls wired to that same contract. The built-Electron scene
+	 * supplies the real keyboard/pointer and no-sheet evidence.
+	 */
+	const shell = readFileSync(
+		"src/renderer/src/shared/components/common/chat-layout.tsx",
+		"utf8",
 	);
-	assert.equal(resolveSidebarLayout(1023, false, false).mode, "strip");
-	assert.equal(
-		resolveSidebarLayout(CHAT_PANE_WITH_DOCK_MIN_PX, false, false).mode,
-		"strip",
-	);
-	assert.equal(resolveSidebarLayout(879, false, true).mode, "overlay");
+	assert.ok(!shell.includes("SIDEBAR_DOCK_MIN_PX"));
+	assert.ok(!shell.includes("sheetRequested"));
+	assert.ok(!shell.includes("SheetContent"));
+	assert.match(shell, ON_COLLAPSE);
+	const chord = ON_TOGGLE.exec(shell);
+	assert.ok(chord, "the sidebar keyboard handler is missing");
+	assert.match(chord[1], TOGGLE_SIDEBAR);
+	assert.doesNotMatch(chord[1], VIEWPORT_WIDTH);
 });
 
 test("the chord is ⌘B / Ctrl+B, and no near miss answers it", () => {
@@ -208,10 +226,7 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
 	 * 400px floor - so the canvas would stop docking. With the strip (56) the row is
 	 * 968 and the dock is 488, so the chat keeps its 480 floor beside it.
 	 */
-	assert.equal(
-		sidebarYieldsToCanvas(SIDEBAR_DOCK_MIN_PX, SIDEBAR_DEFAULT_WIDTH),
-		true,
-	);
+	assert.equal(sidebarYieldsToCanvas(1024, SIDEBAR_DEFAULT_WIDTH), true);
 	assert.equal(canvasDockWidth(1024 - SIDEBAR_DEFAULT_WIDTH), 284);
 	assert.ok(
 		canvasDockWidth(1024 - SIDEBAR_DEFAULT_WIDTH) < CANVAS_PANE_MIN_PX,
@@ -234,7 +249,6 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
 	const yielded = resolveSidebarLayout(
 		1024,
 		false,
-		false,
 		SIDEBAR_DEFAULT_WIDTH,
 		true,
 	);
@@ -249,7 +263,7 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
 
 	/* Reversible, and the preference is not rewritten: closing the canvas restores it. */
 	assert.equal(
-		resolveSidebarLayout(1024, false, false, SIDEBAR_DEFAULT_WIDTH, false).mode,
+		resolveSidebarLayout(1024, false, SIDEBAR_DEFAULT_WIDTH, false).mode,
 		"docked",
 	);
 
@@ -262,16 +276,20 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
 	assert.equal(sidebarYieldsToCanvas(1024, SIDEBAR_MIN_WIDTH), true);
 
 	/*
-	 * AND A STRIP THAT WOULD NOT HELP DOES NOT COLLAPSE ANYTHING. Below the dock
-	 * threshold the sidebar is a strip for its own reasons, and the canvas still
-	 * cannot hold its floor: yielding there would take the panel away for nothing.
+	 * AND A STRIP THAT WOULD NOT HELP DOES NOT COLLAPSE ANYTHING. At 900 even
+	 * the strip cannot let the canvas dock, so the fit-yield is false and the
+	 * user's expanded preference keeps the dock; the canvas overlays instead.
 	 */
 	assert.equal(sidebarYieldsToCanvas(900, SIDEBAR_DEFAULT_WIDTH), false);
 	assert.equal(canvasPaneMode(900 - SIDEBAR_COLLAPSED_WIDTH), "overlay");
+	assert.equal(
+		resolveSidebarLayout(900, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
+		"docked",
+	);
 
 	/* An already-collapsed sidebar is a strip whatever the canvas does. */
 	assert.equal(
-		resolveSidebarLayout(1024, true, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
+		resolveSidebarLayout(1024, true, SIDEBAR_DEFAULT_WIDTH, true).mode,
 		"strip",
 	);
 });
@@ -284,9 +302,15 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
  * 1140-1183 at the default 260 is the D24 defect again: the sidebar stays docked, the
  * real row is 44px short of the canvas's floor, and the canvas stops docking.
  */
-test("the yield counts the 44px panel rail: the band is 1024-1183 at the default sidebar", () => {
+test("the yield counts the 44px panel rail: the band is 980-1183 at the default sidebar", () => {
 	assert.equal(PANEL_RAIL_WIDTH_PX, 44);
-	for (const width of [1024, 1100, 1139, 1140, 1160, 1183]) {
+	/* 979 is below the band: even the strip leaves only 879 for chat + canvas. */
+	assert.equal(sidebarYieldsToCanvas(979, SIDEBAR_DEFAULT_WIDTH), false);
+	assert.equal(
+		resolveSidebarLayout(979, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
+		"docked",
+	);
+	for (const width of [980, 1023, 1024, 1100, 1139, 1140, 1160, 1183]) {
 		const row = width - SIDEBAR_DEFAULT_WIDTH - PANEL_RAIL_WIDTH_PX;
 		assert.equal(
 			canvasPaneMode(row),
@@ -304,8 +328,7 @@ test("the yield counts the 44px panel rail: the band is 1024-1183 at the default
 			`${width} must yield: the rail is taken out of the row`,
 		);
 		assert.equal(
-			resolveSidebarLayout(width, false, false, SIDEBAR_DEFAULT_WIDTH, true)
-				.mode,
+			resolveSidebarLayout(width, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
 			"strip",
 		);
 	}
@@ -316,7 +339,7 @@ test("the yield counts the 44px panel rail: the band is 1024-1183 at the default
 	);
 	assert.equal(sidebarYieldsToCanvas(1184, SIDEBAR_DEFAULT_WIDTH), false);
 	assert.equal(
-		resolveSidebarLayout(1184, false, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
+		resolveSidebarLayout(1184, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
 		"docked",
 	);
 	/*
@@ -327,8 +350,7 @@ test("the yield counts the 44px panel rail: the band is 1024-1183 at the default
 	assert.equal(sidebarYieldsToCanvas(1140, SIDEBAR_DEFAULT_WIDTH, 0), false);
 	assert.equal(sidebarYieldsToCanvas(1139, SIDEBAR_DEFAULT_WIDTH, 0), true);
 	assert.equal(
-		resolveSidebarLayout(1140, false, false, SIDEBAR_DEFAULT_WIDTH, true, 0)
-			.mode,
+		resolveSidebarLayout(1140, false, SIDEBAR_DEFAULT_WIDTH, true, 0).mode,
 		"docked",
 	);
 });

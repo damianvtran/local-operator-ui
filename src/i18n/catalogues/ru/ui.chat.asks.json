@@ -1,0 +1,14 @@
+{
+	"ui.chat.asks.context.messages_since": "{count, plural, one {# сообщение от вас с момента этого запроса} few {# сообщения от вас с момента этого запроса} many {# сообщений от вас с момента этого запроса} other {# сообщения от вас с момента этого запроса}} (последнее сообщение: {time})",
+	"ui.chat.asks.dismiss.answered_in_chat.note": "вы уже ответили в чате",
+	"ui.chat.asks.dismiss.answered_in_chat.title": "Ответ дан в чате",
+	"ui.chat.asks.dismiss.cancel": "Отмена",
+	"ui.chat.asks.dismiss.heading": "Убрать этот запрос",
+	"ui.chat.asks.dismiss.in_flight": "Убираем…",
+	"ui.chat.asks.dismiss.moot.note": "агент больше не будет ждать ответа",
+	"ui.chat.asks.dismiss.moot.title": "Больше не нужно",
+	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Убрано — решено в чате",
+	"ui.chat.asks.dismiss.receipt.moot": "Убрано — больше не нужно",
+	"ui.chat.asks.dismiss.refused": "Не удалось убрать этот запрос — ничего не отправлено.",
+	"ui.chat.asks.dismiss.trigger": "Убрать…"
+}

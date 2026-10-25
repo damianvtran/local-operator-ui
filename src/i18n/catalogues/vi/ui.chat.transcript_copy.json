@@ -1,0 +1,11 @@
+{
+	"ui.chat.transcript_copy.menu.copy_text": "Sao chép văn bản",
+	"ui.chat.transcript_copy.menu.copy_markdown": "Sao chép Markdown",
+	"ui.chat.transcript_copy.menu.copy_selection": "Sao chép phần đã chọn",
+	"ui.chat.transcript_copy.toast.copied_markdown": "Đã sao chép Markdown",
+	"ui.chat.transcript_copy.toast.copied_selection": "Đã sao chép phần đã chọn",
+	"ui.chat.transcript_copy.row.your_message": "Tin nhắn của bạn",
+	"ui.chat.transcript_copy.row.agent_message": "Tin nhắn của tác nhân",
+	"ui.chat.transcript_copy.selection.copy": "Sao chép phần đã chọn",
+	"ui.chat.transcript_copy.selection.toolbar": "Thao tác với phần đã chọn"
+}

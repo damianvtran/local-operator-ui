@@ -98,6 +98,7 @@ import { PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type {
+	AskDismissReason,
 	AskDraft,
 	AskOutcome,
 	AskPresentation,
@@ -251,6 +252,13 @@ export type AskDrawerProps = {
 	 * the whole-map body is built inside the card where the edit buffer lives.
 	 */
 	onRevise?: (askId: string, answers: Record<string, string[]>) => void;
+	/**
+	 * PUT AN OPEN ASK AWAY (harness PR #2833, SA-D5), addressed by ask id for the
+	 * same reason the three doors above are. Absent where the backend does not
+	 * advertise `features.ask_dismiss`, so the panel draws no button — the gate is
+	 * the CALLER's, resolved where the capabilities are.
+	 */
+	onDismiss?: (askId: string, reason: AskDismissReason) => void;
 	answering?: boolean;
 	/** This surface's own record of the asks it posted for: `AskOutcome`, passed through untouched. */
 	outcomes?: Record<string, AskOutcome | undefined>;
@@ -289,6 +297,7 @@ export const AskDrawer = ({
 	onAnswer,
 	onDecline,
 	onRevise,
+	onDismiss,
 	answering = false,
 	outcomes,
 	drafts,
@@ -1037,7 +1046,7 @@ export const AskDrawer = ({
 						onClick={() => onClose({ dismissSlot: true })}
 						data-tour-tag="close-asks-button"
 					>
-						<PanelRightClose aria-hidden="true" />
+						<PanelRightClose aria-hidden="true" className="rtl:-scale-x-100" />
 					</Button>
 				</Tooltip>
 			</div>
@@ -1073,6 +1082,11 @@ export const AskDrawer = ({
 							onRevise === undefined
 								? undefined
 								: (task, answers) => onRevise(task.ask_id, answers)
+						}
+						onDismiss={
+							onDismiss === undefined
+								? undefined
+								: (task, reason) => onDismiss(task.ask_id, reason)
 						}
 						/*
 						 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see

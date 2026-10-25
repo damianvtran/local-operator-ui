@@ -89,7 +89,7 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 				)}
 			>
 				{value.map((tag) => (
-					<Badge key={tag} className="gap-1 pr-1 text-ink">
+					<Badge key={tag} className="gap-1 pe-1 text-ink">
 						{tag}
 						<button
 							type="button"
@@ -139,7 +139,7 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 				)}
 			</div>
 			{value.length === 0 && !input && (
-				<span className="mt-1 ml-1 block text-ink-dim text-meta">
+				<span className="mt-1 ms-1 block text-ink-dim text-meta">
 					No tags added
 				</span>
 			)}

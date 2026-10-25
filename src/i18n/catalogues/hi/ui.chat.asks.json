@@ -1,0 +1,14 @@
+{
+	"ui.chat.asks.context.messages_since": "{count, plural, one {इस सवाल के बाद से आपका # संदेश} other {इस सवाल के बाद से आपके # संदेश}} (अंतिम संदेश {time})",
+	"ui.chat.asks.dismiss.answered_in_chat.note": "आप बातचीत में पहले ही जवाब दे चुके हैं",
+	"ui.chat.asks.dismiss.answered_in_chat.title": "चैट में जवाब दिया गया",
+	"ui.chat.asks.dismiss.cancel": "रद्द करें",
+	"ui.chat.asks.dismiss.heading": "यह सवाल हटाएँ",
+	"ui.chat.asks.dismiss.in_flight": "हटाया जा रहा है…",
+	"ui.chat.asks.dismiss.moot.note": "एजेंट अब जवाब का इंतज़ार नहीं करेगा",
+	"ui.chat.asks.dismiss.moot.title": "अब ज़रूरत नहीं",
+	"ui.chat.asks.dismiss.receipt.answered_in_chat": "हटाया गया — चैट में तय हो गया",
+	"ui.chat.asks.dismiss.receipt.moot": "हटाया गया — अब ज़रूरत नहीं",
+	"ui.chat.asks.dismiss.refused": "यह सवाल हटाया नहीं जा सका — कुछ भी नहीं भेजा गया।",
+	"ui.chat.asks.dismiss.trigger": "हटाएँ…"
+}

@@ -1,0 +1,14 @@
+{
+	"ui.chat.attachments.pending_caption": "अभी तक नहीं भेजा गया",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "स्थानांतरित या हटाया गया",
+	"ui.chat.attachments.file_retained": "अभी भी अनुलग्नक स्टोर में सुरक्षित है ({digest})",
+	"ui.chat.attachments.file_unnamed": "अनुलग्नक फ़ाइल",
+	"ui.chat.attachments.copy_path": "पाथ कॉपी करें",
+	"ui.chat.attachments.path_copied": "पाथ कॉपी हो गया",
+	"ui.chat.attachments.file_missing_recovery": "फ़ाइल अब इस पाथ पर नहीं है।",
+	"ui.chat.attachments.file_type_unknown": "फ़ाइल",
+	"ui.chat.attachments.copy_saved_path": "सहेजी गई प्रति का पाथ कॉपी करें",
+	"ui.chat.attachments.saved_path_copied": "सहेजी गई प्रति का पाथ कॉपी हो गया",
+	"ui.chat.attachments.saved_copy_label": "सहेजी गई प्रति"
+}

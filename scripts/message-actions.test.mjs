@@ -970,20 +970,20 @@ const compactedTurn = () => {
 	});
 };
 
-test("the closing line keeps the caption at its left and the actions at its right, stamp last", () => {
+test("the closing line keeps the caption at inline-start and the actions at inline-end, stamp last", () => {
 	/*
 	 * THE OPERATOR'S ASK, as a document-order claim (2026-10-01): "rearrange so
 	 * those are on the leftmost extent and the action buttons are to the
 	 * right". The caption used to follow the buttons, so at rest - the buttons
 	 * are opacity-only-hidden but hold their box - it read indented by the
 	 * buttons' own width. The line must now paint caption first, the actions'
-	 * `ml-auto` wrapper after it, and the stamp last; only a markup assertion
+	 * `ms-auto` wrapper after it, and the stamp last; only a markup assertion
 	 * can pin the ORDER, which is what the report was about (the geometry
 	 * script reads the boxes; the frames show them).
 	 */
 	const html = transcriptMarkup(compactedTurn().records);
 	const captionAt = html.indexOf("Worked for");
-	const spacerAt = html.indexOf('class="ml-auto flex shrink-0"');
+	const spacerAt = html.indexOf('class="ms-auto flex shrink-0"');
 	const actionsAt = html.indexOf("data-lo-answer-actions");
 	const stampAt = html.lastIndexOf("<time");
 	assert.ok(
@@ -992,11 +992,11 @@ test("the closing line keeps the caption at its left and the actions at its righ
 	);
 	assert.ok(
 		captionAt < spacerAt && spacerAt < actionsAt,
-		"the caption leads the line and the actions' wrapper is the right cluster's first box (its ml-auto is what pushes the cluster)",
+		"the caption leads the line and the actions' wrapper is the inline-end cluster's first box (its ms-auto is what pushes the cluster)",
 	);
 	assert.ok(
 		stampAt > actionsAt,
-		"and the stamp closes the line, rightmost, exactly as it did before the rearrangement",
+		"and the stamp closes the line at inline-end, exactly as it did before the rearrangement",
 	);
 });
 

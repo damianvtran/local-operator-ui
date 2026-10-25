@@ -1,0 +1,1151 @@
+{
+  "head": "6f2fb31ff81332c64a7be7c19396c7e594870581",
+  "backend": "http://127.0.0.1:18080",
+  "mechanism": {
+    "app": "built Electron via rendererDriverApi.launchApp",
+    "nativeResize": "main-process inspector -> BrowserWindow.setContentSize",
+    "input": "CDP Input.dispatchKeyEvent / Input.dispatchMouseEvent",
+    "capture": "main-process dev-driver -> webContents.capturePage()",
+    "emulationSetDeviceMetricsOverrideUsed": false
+  },
+  "setup": {
+    "driver": {
+      "scratch": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/tmp/lo-renderer-driver-75318",
+      "home": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/tmp/lo-renderer-driver-75318/home",
+      "config": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/tmp/lo-renderer-driver-75318/config",
+      "appCwd": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/tmp/lo-renderer-driver-75318/cwd",
+      "frames": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames",
+      "apiUrl": "http://127.0.0.1:18080"
+    },
+    "linkedServeRecords": [
+      "75266.json"
+    ],
+    "daemonRecord": {
+      "name": "75266.json",
+      "pid": 75266,
+      "port": 18080,
+      "host": "127.0.0.1",
+      "url": "http://127.0.0.1:18080"
+    },
+    "healthStatus": 200,
+    "finalGeometry": {
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 1380,
+        "clientWidth": 1380,
+        "bodyScrollWidth": 1380
+      },
+      "theme": "localOperatorDark",
+      "mode": "docked",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 260,
+        "height": 900,
+        "right": 260,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 260,
+        "y": 0,
+        "width": 1076,
+        "height": 900,
+        "right": 1336,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 1336,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 1380,
+        "bottom": 900
+      },
+      "row": {
+        "x": 260,
+        "y": 0,
+        "width": 1076,
+        "height": 900,
+        "right": 1336,
+        "bottom": 900
+      },
+      "canvas": null,
+      "canvasMode": null,
+      "ask": null,
+      "askMode": null,
+      "preference": {
+        "collapsed": false,
+        "width": 260
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 0,
+      "populated": {
+        "question": false,
+        "answer": false,
+        "characters": 0
+      }
+    }
+  },
+  "cases": [
+    {
+      "status": "PASS",
+      "name": "owned daemon serve record matches exact pid and isolated port",
+      "actual": {
+        "name": "75266.json",
+        "pid": 75266,
+        "port": 18080,
+        "host": "127.0.0.1",
+        "url": "http://127.0.0.1:18080"
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "isolated mock daemon health",
+      "actual": {
+        "status": 200
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "persist: built renderer and native headless window identity",
+      "actual": {
+        "hello": {
+          "armed": true,
+          "outDir": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames",
+          "title": "Local Operator",
+          "route": "/chat",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/index.html#/chat",
+          "theme": "localOperatorDark",
+          "viewport": {
+            "width": 1380,
+            "height": 900,
+            "devicePixelRatio": 2
+          },
+          "visibilityState": "visible",
+          "hasFocus": false,
+          "apiBaseUrl": "http://127.0.0.1:18080",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.41.2 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+        },
+        "facts": {
+          "windowMode": "headless",
+          "appVersion": "0.41.2",
+          "platform": "darwin",
+          "title": "Local Operator",
+          "windowSize": {
+            "width": 1380,
+            "height": 900
+          },
+          "contentBounds": {
+            "width": 1380,
+            "height": 900
+          },
+          "visible": false,
+          "focused": false,
+          "minimized": false,
+          "frames": [],
+          "outDir": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames"
+        }
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "native BrowserWindow resize preflight moved 1380 -> 1023 -> 1380",
+      "actual": {
+        "readings": 2,
+        "last": {
+          "requested": {
+            "width": 1380,
+            "height": 900
+          },
+          "native": {
+            "id": 2,
+            "before": {
+              "bounds": {
+                "x": 174,
+                "y": 45,
+                "width": 1023,
+                "height": 900
+              },
+              "contentBounds": {
+                "x": 174,
+                "y": 45,
+                "width": 1023,
+                "height": 900
+              }
+            },
+            "after": {
+              "bounds": {
+                "x": 174,
+                "y": 45,
+                "width": 1380,
+                "height": 900
+              },
+              "contentBounds": {
+                "x": 174,
+                "y": 45,
+                "width": 1380,
+                "height": 900
+              }
+            },
+            "visible": false,
+            "focused": false
+          },
+          "facts": {
+            "windowMode": "headless",
+            "appVersion": "0.41.2",
+            "platform": "darwin",
+            "title": "Local Operator",
+            "windowSize": {
+              "width": 1380,
+              "height": 900
+            },
+            "contentBounds": {
+              "width": 1380,
+              "height": 900
+            },
+            "visible": false,
+            "focused": false,
+            "minimized": false,
+            "frames": [],
+            "outDir": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames"
+          },
+          "css": {
+            "width": 1380,
+            "height": 900,
+            "devicePixelRatio": 2
+          }
+        }
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "auto-provisioned synthetic rows archived; daemon lists zero",
+      "actual": {
+        "rounds": [
+          {
+            "round": 1,
+            "before": 2,
+            "after": 0,
+            "archived": [
+              {
+                "id": "9f456f856977",
+                "status": 200
+              },
+              {
+                "id": "7ea2feca1f33",
+                "status": 200
+              }
+            ]
+          }
+        ],
+        "remaining": 0
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "empty initial canonical/query/DOM readings",
+      "actual": {
+        "state": {
+          "route": "/chat",
+          "theme": "localOperatorDark",
+          "commandPaletteOpen": false,
+          "canvasOpen": false,
+          "runPanelOpen": false,
+          "browserPaneOpen": false,
+          "rightSlotWidth": 0,
+          "rightSlotKey": "draft:7245057e-1088-4fea-9801-6703309b8652",
+          "rightSlotMemory": [],
+          "activeSessionId": null,
+          "activeDraftKey": "draft:7245057e-1088-4fea-9801-6703309b8652",
+          "drafts": {
+            "draft:7245057e-1088-4fea-9801-6703309b8652": {
+              "sessionId": null,
+              "error": false,
+              "undelivered": false,
+              "submitted": false,
+              "admissionAttempted": false
+            }
+          },
+          "sessionCount": 2,
+          "cataloguePinnedCount": 2,
+          "cataloguePageable": true,
+          "catalogueActivityHead": true,
+          "scopes": {},
+          "countsTotal": 0,
+          "archiveAttempts": 2,
+          "archiveFailure": null,
+          "onboardingVisible": false
+        },
+        "queries": [
+          {
+            "key": "[\"desktop\",\"capabilities\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317418,
+            "failureCount": 0,
+            "observers": 51
+          },
+          {
+            "key": "[\"desktop\",\"auth\",\"providers\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317481,
+            "failureCount": 0,
+            "observers": 5
+          },
+          {
+            "key": "[\"server-health\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317402,
+            "failureCount": 0,
+            "observers": 13
+          },
+          {
+            "key": "[\"config\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317450,
+            "failureCount": 0,
+            "observers": 10
+          },
+          {
+            "key": "[\"internet-connectivity\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317400,
+            "failureCount": 0,
+            "observers": 8
+          },
+          {
+            "key": "[\"open-credentials\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"radient-user\",\"user\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317497,
+            "failureCount": 0,
+            "observers": 10
+          },
+          {
+            "key": "[\"team-bridge\",\"status\",\"account\",\"unresolved-owner\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 2
+          },
+          {
+            "key": "[\"memberships\",\"account\",\"unresolved-owner\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"settings\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317480,
+            "failureCount": 0,
+            "observers": 4
+          },
+          {
+            "key": "[\"team-bridge\",\"unread\",\"all\",\"account\",\"unresolved-owner\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 2
+          },
+          {
+            "key": "[\"team-bridge\",\"conversations\",\"all\",\"account\",\"unresolved-owner\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"mesh\",\"networks\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317466,
+            "failureCount": 0,
+            "observers": 5
+          },
+          {
+            "key": "[\"desktop\",\"mesh\",\"peers\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317478,
+            "failureCount": 0,
+            "observers": 3
+          },
+          {
+            "key": "[\"desktop\",\"mesh\",\"sessions\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"aida\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317465,
+            "failureCount": 0,
+            "observers": 5
+          },
+          {
+            "key": "[\"radient-prices\",\"prices\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317523,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"mesh\",\"approvals\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"sidebar_layout\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317476,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"asks\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317444,
+            "failureCount": 0,
+            "observers": 3
+          },
+          {
+            "key": "[\"desktop\",\"profiles\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317481,
+            "failureCount": 0,
+            "observers": 2
+          },
+          {
+            "key": "[\"desktop\",\"teams\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317472,
+            "failureCount": 0,
+            "observers": 3
+          },
+          {
+            "key": "[\"desktop\",\"hub-updates\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317480,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"hub-links\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317478,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"sessions\",\"search\",\"\",false]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"agents\",1,1,null,null,null]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317508,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"mcp\",\"\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"entities\",null,\"effort\",\"\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"session-preview\",\"~\",null,null,null,null]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317502,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"commands\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317476,
+            "failureCount": 0,
+            "observers": 2
+          },
+          {
+            "key": "[\"credentials\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317508,
+            "failureCount": 0,
+            "observers": 2
+          },
+          {
+            "key": "[\"desktop\",\"code-requests\",\"\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 2
+          },
+          {
+            "key": "[\"desktop\",\"entities\",\"\",\"agent\",\"\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"entities\",\"\",\"model\",\"\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"auth\",\"accounts\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"mcp-catalog\",\"\",\"\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"skills\",\"catalogue\",\"~\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317503,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"auth\",\"accounts\",\"session-issue\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317480,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"quota-notice\",\"\",\"\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 0
+          },
+          {
+            "key": "[\"desktop\",\"quota-notice\",\"test\",\"mock-model\"]",
+            "status": "success",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": true,
+            "updatedAt": 1792801317503,
+            "failureCount": 0,
+            "observers": 1
+          }
+        ],
+        "dom": {
+          "sidebarText": "Local Operator\nNew chat\n⌘\nN\nSearch\n⌘\nP\nAida\nLibrary\nProjects\nAgents\nSchedules\nBrowser\nMore\n\nAgents\n\nNo agents yet\n\n12 built-in agents are ready to install — aida, architect, coder, copy-reviewer, designer, librarian, manager, qa-tester, reviewer, scout, tui-designer and ux-reviewer. You can edit them once installed.\n\nInstall all built-in agents\nCreate agent\nTeams\nCreate team\n\nShowing 0 of 0 chats\n\nUser",
+          "bodyText": "Local Operator\nNew chat\n⌘\nN\nSearch\n⌘\nP\nAida\nLibrary\nProjects\nAgents\nSchedules\nBrowser\nMore\n\nAgents\n\nNo agents yet\n\n12 built-in agents are ready to install — aida, architect, coder, copy-reviewer, designer, librarian, manager, qa-tester, reviewer, scout, tui-designer and ux-reviewer. You can edit them once installed.\n\nInstall all built-in agents\nCreate agent\nTeams\nCreate team\n\nShowing 0 of 0 chats\n\nUser\nNew chat\n​\nNew on this device\nWhat can I help you with today?\nSet up Linear MCP for me\nCreate a team of agents\nTurn on phone access\nShow me what the agent did last turn\nsearch chats and agents to reopen an earlier session\nmock-model\nWorking directory:\n~",
+          "sessionRows": 0,
+          "spinners": 0
+        }
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "empty-catalogue-chat-dark: settled app-owned frame",
+      "actual": {
+        "path": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames/empty-catalogue-chat-dark.png",
+        "bytes": 261060,
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "stable": true
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "empty-catalogue-chat-light: settled app-owned frame",
+      "actual": {
+        "path": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames/empty-catalogue-chat-light.png",
+        "bytes": 259302,
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "stable": true
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "empty fixture is settled empty, not a spinner mislabeled empty",
+      "actual": {
+        "countsTotal": 0,
+        "retainedIncludingArchived": 2,
+        "sessionRows": 0,
+        "text": "Local Operator\nNew chat\n⌘\nN\nSearch\n⌘\nP\nAida\nLibrary\nProjects\nAgents\nSchedules\nBrowser\nMore\n\nAgents\n\nNo agents yet\n\n12 built-in agents are ready to install — aida, architect, coder, copy-reviewer, designer, librarian, manager, qa-tester, reviewer, scout, tui-designer and ux-reviewer. You can edit them once installed.\n\nInstall all built-in agents\nCreate agent\nTeams\nCreate team\n\nShowing 0 of 0 chats\n\nUser\nNew chat\n​\nNew on this device\nWhat can I help you with today?\nSet up Linear MCP for me\nCreate a team of agents\nTurn on phone access\nShow me what the agent did last turn\nsearch chats and agents to reopen an earlier session\nmock-model\nWorking directory:\n~"
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "empty catalogue and empty conversation in dark/light",
+      "actual": {
+        "text": "Local Operator\nNew chat\n⌘\nN\nSearch\n⌘\nP\nAida\nLibrary\nProjects\nAgents\nSchedules\nBrowser\nMore\n\nAgents\n\nNo agents yet\n\n12 built-in agents are ready to install — aida, architect, coder, copy-reviewer, designer, librarian, manager, qa-tester, reviewer, scout, tui-designer and ux-reviewer. You can edit them once installed.\n\nInstall all built-in agents\nCreate agent\nTeams\nCreate team\n\nShowing 0 of 0 chats\n\nUser\nNew chat\n​\nNew on this device\nWhat can I help you with today?\nSet up Linear MCP for me\nCreate a team of agents\nTurn on phone access\nShow me what the agent did last turn\nsearch chats and agents to reopen an earlier session\nmock-model\nWorking directory:\n~",
+        "sessionQueries": [
+          {
+            "key": "[\"desktop\",\"mesh\",\"sessions\"]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          },
+          {
+            "key": "[\"desktop\",\"sessions\",\"search\",\"\",false]",
+            "status": "pending",
+            "fetchStatus": "idle",
+            "isLoading": false,
+            "error": null,
+            "hasData": false,
+            "updatedAt": 0,
+            "failureCount": 0,
+            "observers": 1
+          }
+        ]
+      }
+    },
+    {
+      "status": "PASS",
+      "name": "persist: app stopped by exact pid",
+      "actual": {
+        "reason": "QA matrix complete",
+        "pid": 75320,
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "alive": false
+      }
+    }
+  ],
+  "nativeResizes": [
+    {
+      "requested": {
+        "width": 1023,
+        "height": 900
+      },
+      "native": {
+        "id": 2,
+        "before": {
+          "bounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1380,
+            "height": 900
+          },
+          "contentBounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1380,
+            "height": 900
+          }
+        },
+        "after": {
+          "bounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1023,
+            "height": 900
+          },
+          "contentBounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1023,
+            "height": 900
+          }
+        },
+        "visible": false,
+        "focused": false
+      },
+      "facts": {
+        "windowMode": "headless",
+        "appVersion": "0.41.2",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1023,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1023,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [],
+        "outDir": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames"
+      },
+      "css": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    },
+    {
+      "requested": {
+        "width": 1380,
+        "height": 900
+      },
+      "native": {
+        "id": 2,
+        "before": {
+          "bounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1023,
+            "height": 900
+          },
+          "contentBounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1023,
+            "height": 900
+          }
+        },
+        "after": {
+          "bounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1380,
+            "height": 900
+          },
+          "contentBounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1380,
+            "height": 900
+          }
+        },
+        "visible": false,
+        "focused": false
+      },
+      "facts": {
+        "windowMode": "headless",
+        "appVersion": "0.41.2",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1380,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [],
+        "outDir": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames"
+      },
+      "css": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  ],
+  "keyboard": [],
+  "captures": [
+    {
+      "frame": {
+        "label": "empty-catalogue-chat-dark",
+        "path": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames/empty-catalogue-chat-dark.png",
+        "bytes": 261060,
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      },
+      "stable": true,
+      "settledGeometry": {
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "document": {
+          "scrollWidth": 1380,
+          "clientWidth": 1380,
+          "bodyScrollWidth": 1380
+        },
+        "theme": "localOperatorDark",
+        "mode": "docked",
+        "sidebar": {
+          "x": 0,
+          "y": 0,
+          "width": 260,
+          "height": 900,
+          "right": 260,
+          "bottom": 900
+        },
+        "chat": {
+          "x": 260,
+          "y": 0,
+          "width": 1076,
+          "height": 900,
+          "right": 1336,
+          "bottom": 900
+        },
+        "rail": {
+          "x": 1336,
+          "y": 32,
+          "width": 44,
+          "height": 868,
+          "right": 1380,
+          "bottom": 900
+        },
+        "row": {
+          "x": 260,
+          "y": 0,
+          "width": 1076,
+          "height": 900,
+          "right": 1336,
+          "bottom": 900
+        },
+        "canvas": null,
+        "canvasMode": null,
+        "ask": null,
+        "askMode": null,
+        "preference": {
+          "collapsed": false,
+          "width": 260
+        },
+        "sheetCount": 0,
+        "openDialogCount": 0,
+        "sessionRows": 0,
+        "populated": {
+          "question": false,
+          "answer": false,
+          "characters": 0
+        }
+      }
+    },
+    {
+      "frame": {
+        "label": "empty-catalogue-chat-light",
+        "path": "/Users/damian/.local-operator/sessions/79b8288ca16e/scratchpad/issue-1077-qa/native-empty-5/frames/empty-catalogue-chat-light.png",
+        "bytes": 259302,
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      },
+      "stable": true,
+      "settledGeometry": {
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "document": {
+          "scrollWidth": 1380,
+          "clientWidth": 1380,
+          "bodyScrollWidth": 1380
+        },
+        "theme": "localOperatorLight",
+        "mode": "docked",
+        "sidebar": {
+          "x": 0,
+          "y": 0,
+          "width": 260,
+          "height": 900,
+          "right": 260,
+          "bottom": 900
+        },
+        "chat": {
+          "x": 260,
+          "y": 0,
+          "width": 1076,
+          "height": 900,
+          "right": 1336,
+          "bottom": 900
+        },
+        "rail": {
+          "x": 1336,
+          "y": 32,
+          "width": 44,
+          "height": 868,
+          "right": 1380,
+          "bottom": 900
+        },
+        "row": {
+          "x": 260,
+          "y": 0,
+          "width": 1076,
+          "height": 900,
+          "right": 1336,
+          "bottom": 900
+        },
+        "canvas": null,
+        "canvasMode": null,
+        "ask": null,
+        "askMode": null,
+        "preference": {
+          "collapsed": false,
+          "width": 260
+        },
+        "sheetCount": 0,
+        "openDialogCount": 0,
+        "sessionRows": 0,
+        "populated": {
+          "question": false,
+          "answer": false,
+          "characters": 0
+        }
+      }
+    }
+  ],
+  "diagnostics": {
+    "boots": [
+      {
+        "tag": "persist",
+        "console": [],
+        "consoleErrors": [],
+        "networkFailures": [],
+        "requests": [
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/browser-webauthn-prompt-B6QRRhr4.js",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/brand-mark-Bv0Hu-Cz.png",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/index.html",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/index-DWa94DVM.js",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/index-BDzV3bGH.js",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/path-utils-CKvVXTlE.js",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/error-boundary-ZYkSCpZC.js",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/conversation-input-sync-ChaymZjk.js",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/console-mirror-0VCyM-hV.js",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/index-ZovyVTxQ.css",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/conversation-input-sync-CAX4_ErH.css",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/console-mirror-DOrYoP_4.css",
+          "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-qa-6f2fb31/out/renderer/assets/index-DHKnfVbX.css"
+        ],
+        "exceptions": [],
+        "httpErrors": [],
+        "logErrors": []
+      }
+    ],
+    "exceptions": [],
+    "httpErrors": [],
+    "logErrors": []
+  },
+  "summary": {
+    "failures": 0,
+    "blocked": 0,
+    "verdict": "PASS"
+  }
+}

@@ -455,16 +455,21 @@ export function closeOthersIntent(
  * creates after the press is not to the right of anything the user saw and
  * survives, which the strip then shows honestly.
  *
- * `null` for the last tab in the order (nothing is to its right) and for an
+ * `null` at the physical right edge (nothing is to its right) and for an
  * anchor that is not in the list at all.
  */
 export function closeToTheRightIntent(
 	orderedTabs: readonly TabInput[],
 	anchorTabId: number,
+	direction: "ltr" | "rtl" = "ltr",
 ): CloseTabsByIdsIntent | null {
 	const at = orderedTabs.findIndex((tab) => tab.tabId === anchorTabId);
 	if (at < 0) return null;
-	const tabIds = orderedTabs.slice(at + 1).map((tab) => tab.tabId);
+	// DOM order runs right-to-left in RTL: the physical right set precedes the
+	// anchor, while LTR keeps the historical following set and its ordering.
+	const candidates =
+		direction === "rtl" ? orderedTabs.slice(0, at) : orderedTabs.slice(at + 1);
+	const tabIds = candidates.map((tab) => tab.tabId);
 	return tabIds.length ? { mode: "ids", tabIds } : null;
 }
 

@@ -315,7 +315,7 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 					</Tooltip>
 				</div>
 				{helperText && (
-					<p className="mt-1 ml-0.5 text-ink-muted text-meta">{helperText}</p>
+					<p className="mt-1 ms-0.5 text-ink-muted text-meta">{helperText}</p>
 				)}
 			</div>
 		</LocalizationProvider>

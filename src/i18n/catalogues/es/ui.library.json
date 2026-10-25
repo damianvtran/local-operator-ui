@@ -135,6 +135,7 @@
 	"ui.library.page.loaded_count": "{loaded} de {total} recursos",
 	"ui.library.page.preview": "Vista previa del recurso",
 	"ui.library.page.results": "Resultados de la Biblioteca",
+	"ui.library.page.resize_preview": "Cambiar el tamaño del panel de detalles. Doble clic para restablecer.",
 	"ui.library.preview.unavailable": "Este recurso no está disponible",
 	"ui.library.preview.unavailable_detail": "Puede que ya no esté en el catálogo.",
 	"ui.library.preview.pptx_preparing": "Preparando la presentación…",

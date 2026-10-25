@@ -218,6 +218,8 @@
 	"ui.browser.page_context_menu.open_link_in_new_tab": "Mở liên kết trong tab mới",
 	"ui.browser.page_context_menu.paste": "Dán",
 	"ui.browser.page_context_menu.select_all": "Chọn tất cả",
+	"ui.browser.page_context_menu.redo": "Làm lại",
+	"ui.browser.page_context_menu.undo": "Hoàn tác",
 	"ui.browser.use_browser_chrome.downloads_folder_failed": "Không thể mở thư mục tải xuống. {message}",
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": "Yêu cầu đó không còn chờ xử lý.",
 	"ui.browser.webauthn_chooser.a_site": "Một trang web",

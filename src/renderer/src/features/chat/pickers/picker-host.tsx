@@ -705,6 +705,12 @@ export const PickerRow: FC<PickerRowProps> = memo(
 			data-current={option.current || undefined}
 			data-hovered={isHovered || undefined}
 			data-picked={isPicked || undefined}
+			/*
+			 * The ROW'S OWN VALUE, so a scene picks a named row rather than a position or
+			 * a label: `fast-picker-options.ts` already publishes `on`/`off` as the value
+			 * it posts, and the label beside it is catalogue copy a locale may reword.
+			 */
+			data-option-value={option.value}
 			onMouseEnter={() => onHover(index)}
 			onMouseDown={(event) => {
 				// mousedown, not click: keeps focus in the search input, the same
@@ -861,7 +867,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * way. Registered here, in the one funnel BOTH hosts render through, rather
 	 * than in each panel, so a picker added tomorrow inherits it.
 	 */
-	useSuppressBrowserView(open, "panel-picker");
+	// A modal presentation (the shell below), not a popover: it covers the content
+	// area with a scrim, so the dialog rule — always pause while open — is right.
+	useSuppressBrowserView(open, "dialog", "panel-picker");
 	const [query, setQuery] = useState("");
 	// The keyboard's selection: the row Enter picks, and the row
 	// `aria-activedescendant` names. Moved by the arrow keys only — see
@@ -1303,7 +1311,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 					inputRef.current?.focus();
 				}}
 			>
-				<div className="flex flex-col gap-1 px-5 pt-5 pr-12">
+				<div className="flex flex-col gap-1 px-5 pt-5 pe-12">
 					<DialogTitle className="text-heading text-ink">{title}</DialogTitle>
 					{description ? (
 						<DialogDescription className="text-body-sm text-ink-muted">
@@ -1332,7 +1340,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 						 */}
 						<div className="relative">
 							<Search
-								className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim"
+								className="-translate-y-1/2 pointer-events-none absolute top-1/2 start-2.5 size-4 text-ink-dim"
 								aria-hidden="true"
 							/>
 							<Input
@@ -1348,7 +1356,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								onChange={(event) => setQuery(event.target.value)}
 								onKeyDown={onKeyDown}
 								placeholder={searchPlaceholder}
-								className="pl-8"
+								className="ps-8"
 								autoComplete="off"
 								spellCheck={false}
 							/>
@@ -1580,7 +1588,18 @@ export const PickerHost: FC<PickerHostProps> = ({
 
 				{result && (
 					<div className="px-5 pt-3">
+						{/*
+						 * `data-picker-result` is the TONE, published for the same reason
+						 * every other scene hook here is a data attribute: a capture can
+						 * read the sentence, and only this attribute says whether the pick
+						 * was applied or refused without a scene matching copy (which the
+						 * i18n catalogues make locale-dependent). The draft scenes read it
+						 * to require that what the dialog CLAIMS and what the pane RECORDED
+						 * agree (issue #1265) - a success sentence over an unrecorded dial
+						 * is exactly the silent drop that route must not ship.
+						 */}
 						<output
+							data-picker-result={result.tone}
 							className={cn(
 								"block rounded-md border px-3 py-2 text-body-sm",
 								TONE_CLASS[result.tone],

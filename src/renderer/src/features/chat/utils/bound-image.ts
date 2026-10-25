@@ -57,6 +57,16 @@ export type WireImageMime =
 export type WireImage = {
 	data_b64: string;
 	mime_type: WireImageMime;
+	/**
+	 * The absolute path this image was read from, when it came from disk.
+	 *
+	 * Provenance only - the daemon carries it to `ImageContent.path` and provider
+	 * serializers ignore it (attachment contract v1 §1.3). Preserved through every
+	 * re-encode below, because shrinking the pixels does not change where the file
+	 * lives and a bounded image that lost its path would tell the model less than
+	 * the original did.
+	 */
+	origin_path?: string;
 };
 
 /**
@@ -234,7 +244,11 @@ async function reEncode(
 	if (edgeIsHard && scale < 1)
 		return { data_b64: toBase64(best.bytes), mime_type: best.mime_type };
 	if (bestBytes >= originalBytes) return original;
-	return { data_b64: toBase64(best.bytes), mime_type: best.mime_type };
+	return {
+		data_b64: toBase64(best.bytes),
+		mime_type: best.mime_type,
+		...(original.origin_path ? { origin_path: original.origin_path } : {}),
+	};
 }
 
 /**

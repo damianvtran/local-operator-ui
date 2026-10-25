@@ -113,7 +113,7 @@ const kindLabel = (kind: string): string => {
 	}
 };
 const REVEAL =
-	"pointer-events-none absolute top-1 right-1 flex gap-1 opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
+	"pointer-events-none absolute top-1 end-1 flex gap-1 opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
 
 type Props = {
 	conversationId: string;
@@ -800,20 +800,24 @@ export function FinderFilesView({
 										aria-disabled={narrowing}
 										onClick={() => toggle(section.id)}
 										className={cn(
-											"flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left font-medium text-body-sm text-ink hover:bg-row-hover",
+											"flex h-8 w-full items-center gap-2 rounded-sm px-2 text-start font-medium text-body-sm text-ink hover:bg-row-hover",
 											narrowing && "cursor-default hover:bg-surface",
 											section.id !== "Working files" &&
 												!section.highlights &&
 												sections.some(
 													(entry) => entry.id === "Working files",
 												) &&
-												"pl-4",
+												"ps-4",
 										)}
 									>
 										{section.open ? (
 											<ChevronDown size={14} aria-hidden="true" />
 										) : (
-											<ChevronRight size={14} aria-hidden="true" />
+											<ChevronRight
+												size={14}
+												aria-hidden="true"
+												className="rtl:-scale-x-100"
+											/>
 										)}
 										{sectionLabels[section.id]?.() ?? section.label}
 										<span
@@ -1068,7 +1072,7 @@ function FinderEntry({
 					setMenuOpen(true);
 				}}
 			>
-				<div className={cn("flex min-w-0 items-center gap-2 pr-8")}>
+				<div className={cn("flex min-w-0 items-center gap-2 pe-8")}>
 					<button
 						type="button"
 						ref={(node) => {
@@ -1089,7 +1093,7 @@ function FinderEntry({
 							} else onKeyDown(event);
 						}}
 						className={cn(
-							"min-w-0 flex-1 truncate rounded-sm py-1 text-left text-body-sm",
+							"min-w-0 flex-1 truncate rounded-sm py-1 text-start text-body-sm",
 							item.row.missing ? "text-ink-muted" : "text-ink",
 						)}
 					>
@@ -1167,8 +1171,8 @@ function FinderEntry({
 					} else onKeyDown(event);
 				}}
 				className={cn(
-					"w-full min-w-0 rounded-sm p-1 text-left",
-					!tiled && "flex items-center gap-2 pr-8",
+					"w-full min-w-0 rounded-sm p-1 text-start",
+					!tiled && "flex items-center gap-2 pe-8",
 					item.row.missing && "text-ink-muted",
 				)}
 				style={{ height: band.height - (tiled ? 4 : 0) }}

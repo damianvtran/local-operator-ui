@@ -4,8 +4,9 @@
  * size the user drags to is written to disk and read back.
  *
  * WHY A FILE OF ITS OWN, beside `chat-sidebar-layout.test.mjs` and
- * `sidebar-split.test.mjs`. The layout suite pins the sidebar's WIDTH axis (260
- * docked, 56 strip, the 1024/880 thresholds); the split suite pins the boundary's
+ * `sidebar-split.test.mjs`. The layout suite pins the sidebar's WIDTH axis
+ * (user-controlled dock versus 56px strip plus the canvas fit-yield); the split
+ * suite pins the boundary's
  * arithmetic case by case, against a fixture panel. This file pins the operator's
  * request as a contract (2026-09-24: "make sure that we have visible sections for
  * agent+teams and chats ... but keep the UX of being able to relatively size them
@@ -50,7 +51,6 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/sidebar-split";',
-			'export { SIDEBAR_DOCK_MIN_PX } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
 			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 		].join("\n"),
 		resolveDir: ROOT,
@@ -150,8 +150,9 @@ test("each section's floor is 72px, and neither can be dragged below it", () => 
 
 test("the split is offered at every docked window height the app draws", () => {
 	/*
-	 * The app's minimum window is 800x600 and the dock appears at 1024 wide; the
-	 * shortest docked case the frames take is 673 tall, where the shared box is
+	 * The app's minimum window is 800x600 and the user's expanded preference may
+	 * dock at that width; the shortest docked case the frames take is 673 tall,
+	 * where the shared box is
 	 * 325 - comfortably over two floors (144), so the boundary is draggable there.
 	 */
 	assert.equal(SIDEBAR_SPLIT_OFFERED_PX, 144);

@@ -1,0 +1,85 @@
+{
+ "auditor": "task",
+ "model": "anthropic/claude-opus-5-5",
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-2 pass. No provider fallback occurred. The session runtime restarted once mid-task (Python kernel reset), but the model did not change.",
+ "instance": "pr5-20261023-r2-ur",
+ "session": "fb125765ab49",
+ "parent_session": "1cfce255 (team lopdev manager; id prefix as exposed in this session's spawn chain)",
+ "date": "2026-10-23",
+ "locale": "ur",
+ "namespace": "ui.chat.asks",
+ "round": 2,
+ "status": "passed",
+ "result": "clean",
+ "keys_audited": 10,
+ "keys_changed_since_round1": 1,
+ "source_head": "7ecde120ded63e6c97e9593daf730513bbeb7e84",
+ "scope": "PR #1363 round-2 re-check of all 10 ui.chat.asks keys for ur at 7ecde120d. Every value was re-read, not only the 1 changed by 4cecb7a2a. Each round-1 finding was verified against the new bytes. ICU, placeholders, CLDR plural arms (rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run. The en catalogue is unchanged; the en context changed only in the dismiss.moot.note tone/note fields (other fields reordered, no value changes). No rendered-fit claim.",
+ "sha256": {
+  "en": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+  "ur": "7d86acb011841467a079f01851e8bfd70baa3acd857eb971b7ecdad1670fa57f",
+  "context": "5e0c467aeb72a886d6f32ef8311b48b4c73b4bc39669b75441e878b98366542c"
+ },
+ "findings": [
+  {
+   "id": "ur-r2-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "Round-1 major fixed: the note now names the agent as the one who stops waiting, matching the revised en context tone line and the harness terminal/phone note."
+  },
+  {
+   "id": "ur-r2-i2",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "RTL: logical storage order; no manual bidi controls; the Latin-digit time run (e.g. 7:36 PM) stays contiguous inside mirrored parentheses. Not counted."
+  }
+ ],
+ "round1_verification": [
+  {
+   "round1_id": "ur-M1",
+   "round1_severity": "MAJOR",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "disposition": "fixed as proposed",
+   "head_value": "ایجنٹ اب جواب کا انتظار نہیں کرے گا"
+  }
+ ],
+ "history": [
+  {
+   "round": 1,
+   "path": "i18n/receipts/pr5-ur.json",
+   "sha256": "a6d5e1110ea24157937da0bac5dbe74cd7526c98aae08c192f6037a42844b5f6",
+   "instance": "pr5-20261023-ur",
+   "result": "changes_requested",
+   "target_sha256": "f585ffa1486ba6e7e116d3647ff1ac7182cfa23844bcda09f77d06a31ece618a",
+   "context_sha256": "f5e2f62d5630e4873ee3084265c8e487beac4854a690df4e824ce0a6135747ea"
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "one",
+   "other"
+  ],
+  "cldr_categories": [
+   "one",
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "key_parity": "10/10",
+  "nfc": true,
+  "bidi_controls": 0,
+  "plural_samples": {
+   "1": "اس سوال کے بعد سے آپ کا 1 پیغام (آخری 7:36 PM)",
+   "2": "اس سوال کے بعد سے آپ کے 2 پیغامات (آخری 7:36 PM)",
+   "5": "اس سوال کے بعد سے آپ کے 5 پیغامات (آخری 7:36 PM)",
+   "1000000": "اس سوال کے بعد سے آپ کے 1,000,000 پیغامات (آخری 7:36 PM)"
+  }
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+  "contract_docs_I18N_md_origin_main": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as round 1. This session produced none of the reviewed copy: the round-2 values were applied by the coder in 4cecb7a2a. It did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation."
+}

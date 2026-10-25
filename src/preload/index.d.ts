@@ -5,6 +5,10 @@ import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
 } from "../main/update-service";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	AddressHistoryRequest,
@@ -149,6 +153,22 @@ declare global {
 				setChordFocus: (focused: boolean) => Promise<void>;
 				reopenTab: (sessionId?: string | null) => Promise<unknown>;
 				focusPage: () => Promise<void>;
+				/** S6b: the native approvals card. The renderer passes the resolved
+				 * locale and direction; main has no catalogue. */
+				openApprovalsCard: (input: {
+					locale?: string;
+					dir?: "ltr" | "rtl";
+					theme?: "light" | "dark";
+					palette?: string | null;
+				}) => Promise<unknown>;
+				closeApprovalsCard: () => Promise<unknown>;
+				setApprovalsCardContext: (input: {
+					locale?: string;
+					dir?: "ltr" | "rtl";
+					theme?: "light" | "dark";
+					palette?: string | null;
+					requesterLabels?: Readonly<Record<string, string>>;
+				}) => Promise<unknown>;
 				onChord: (
 					callback: (
 						message: import("../shared/browser-chord").BrowserChordMessage,
@@ -198,6 +218,9 @@ declare global {
 					/** Why the view is hidden, when it is: the browser's own state
 					 * page rather than an overlay. See `registry.ts:chromeVisible`. */
 					ownPage?: boolean,
+					/** The browser's own content state even while an overlay hides it;
+					 * controls are refused on it (QA Q3-1). */
+					ownStatePage?: boolean,
 				) => Promise<unknown>;
 				handOver: (tabId: number, sessionId: string) => Promise<unknown>;
 				revokeHandOver: (tabId: number) => Promise<unknown>;
@@ -460,6 +483,14 @@ declare global {
 				filePath: string,
 				maxBytes?: number,
 			) => Promise<ReadFileBytesResponse>;
+			/**
+			 * Upload one composer attachment to the daemon's attachment store. Main owns
+			 * the read and the multipart POST; the renderer receives the stored record
+			 * or a typed refusal carrying the sentence it renders (contract v1 §1.1).
+			 */
+			uploadAttachment: (
+				source: AttachmentUploadSource,
+			) => Promise<AttachmentUploadResult>;
 			/**
 			 * Resolve and stat a batch of paths, returning the RESOLVED path each one
 			 * maps to. That resolved path is the Files panel's identity for a file.

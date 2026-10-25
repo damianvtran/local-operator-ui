@@ -1,0 +1,13 @@
+{
+	"ui.chat.analytics.filters.top_level_only": "Chỉ phiên cấp cao nhất",
+	"ui.chat.analytics.search.clear": "Xóa tìm kiếm",
+	"ui.chat.analytics.search.sessions": "Tìm phiên",
+	"ui.chat.analytics.sections.by_channel": "Theo kênh",
+	"ui.chat.analytics.sections.by_model": "Theo mô hình",
+	"ui.chat.analytics.sections.by_provider": "Theo nhà cung cấp",
+	"ui.chat.analytics.sections.by_session": "Theo phiên",
+	"ui.chat.analytics.sections.totals": "Tổng",
+	"ui.chat.analytics.title": "Phân tích",
+	"ui.chat.analytics.toolbar.refreshing": "Đang làm mới",
+	"ui.chat.analytics.toolbar.this_session_only": "Chỉ phiên này"
+}

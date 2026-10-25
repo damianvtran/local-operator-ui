@@ -1286,6 +1286,40 @@ test("D1 - a policy open speaks one sentence in the live region; a door press an
 	);
 });
 
+/*
+ * U8, SCOPED TO THE ARM THE HOOK CAN ACTUALLY SEE (UX round 2). The settle writes the
+ * region while the drawer stays open. The shipped drawer closes itself over an emptied
+ * queue in the same frame, and the close clears the region - so the sentence is never
+ * left stale, but it is also not heard in the single-ask case. This pins the hook's own
+ * side of that: the transition, the sentence, and the fact that the hook does not close
+ * the drawer. The end-to-end arm is the drawer's, and the PR note is scoped to match.
+ */
+test("U8 - the live region speaks the settled clause when the queue empties with the drawer still open", async () => {
+	const Harness = ({ view }) => {
+		const text = useAskOpenPolicy({
+			sessionId: "c-u8",
+			composerId: "c-u8",
+			view,
+		});
+		return h("output", { "data-u8-announcer": "" }, text);
+	};
+	// Store state is shared across this file: start from the closed drawer the arm assumes.
+	useUiPreferencesStore.getState().setAskDrawerOpen(false, "session");
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const render = async (view) =>
+		act(async () => root.render(h(Harness, { view })));
+	await render(askQueueView(withRows([ask("open")])));
+	const region = () => container.querySelector("output")?.textContent;
+	assert.equal(region(), "Opened your questions: 1 question waiting.");
+	await render(askQueueView(withRows([])));
+	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+	assert.equal(region(), "All asks settled.");
+	await act(async () => root.unmount());
+	container.remove();
+});
+
 test("D1 - the drawer's own empty close clears the sentence, and a fresh view re-announces", async (t) => {
 	const view = await rig(t);
 	const region = () => view.container.querySelector("output");

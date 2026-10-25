@@ -1,0 +1,32 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"instance": "i18n-audit-attachments-20261023-ur",
+	"locale": "ur",
+	"date": "2026-10-23",
+	"status": "passed",
+	"namespace": "ui.chat.attachments",
+	"sha256": {
+		"ur": "caa1c5745ea215067eba6c3f49407999a4e1be286e640583fe3c4d6ddd2b2db4",
+		"en": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271"
+	},
+	"context_sha256": "185f3f901f0e2832ab2f433c445f094b99e42385e30b5db4ea86ce3f9c908c59",
+	"scope": "Full independent audit of all 5 keys for ur: English meaning and the en context sidecar, core glossary and the ur style guide, structural parity (key set/order, {type}/{size}/{digest}, ICU parse and format), NFC, manual bidi controls, and sibling terminology in the shipped catalogues.",
+	"model_provenance": "Served model label reported by this session is radient/auto (routed); the underlying provider model is not exposed to the session, so none is invented.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+			"revision": "local-operator 24dbccbb78"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"languages_manifest": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		}
+	},
+	"findings": []
+}

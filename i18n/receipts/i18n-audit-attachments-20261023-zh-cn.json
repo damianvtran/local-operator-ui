@@ -1,0 +1,33 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"instance": "i18n-audit-attachments-20261023-zh-cn",
+	"locale": "zh-CN",
+	"date": "2026-10-23",
+	"status": "passed",
+	"namespace": "ui.chat.attachments",
+	"sha256": {
+		"zh-CN": "4663e57dfb3523d34c484a10f4469cb38253b4d1ec802a033896f4c6002bf59b",
+		"en": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271"
+	},
+	"context_sha256": "185f3f901f0e2832ab2f433c445f094b99e42385e30b5db4ea86ce3f9c908c59",
+	"scope": "Full independent audit of all 5 keys for zh-CN: English meaning and the en context sidecar, core glossary and the zh-CN style guide, structural parity (key set/order, {type}/{size}/{digest}, ICU parse and format), NFC, manual bidi controls, full-width punctuation, and sibling terminology in the shipped catalogues.",
+	"model_provenance": "Served model label reported by this session is radient/auto (routed); the underlying provider model is not exposed to the session, so none is invented.",
+	"instance_note": "Instance lowercased for ledger-assemble's [a-z0-9_-]+ instance rule; locale stays zh-CN.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+			"revision": "local-operator 24dbccbb78"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"languages_manifest": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		}
+	},
+	"findings": []
+}

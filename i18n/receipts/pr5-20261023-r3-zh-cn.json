@@ -1,0 +1,72 @@
+{
+ "auditor": "task",
+ "model": "anthropic/claude-opus-5-5",
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-3 pass. No provider fallback occurred. The session runtime restarted at the start of this round (Python kernel reset), but the model did not change.",
+ "instance": "pr5-20261023-r3-zh-cn",
+ "session": "fb125765ab49",
+ "parent_session": "1cfce255 (team lopdev manager; id prefix as exposed in this session's spawn chain)",
+ "date": "2026-10-23",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.asks",
+ "round": 3,
+ "status": "passed",
+ "result": "clean",
+ "keys_audited": 11,
+ "keys_substantive": 2,
+ "keys_verified_unchanged": 9,
+ "source_head": "b47b4dd8a2eabb935fe9a0f910b00387ac3109ce",
+ "previous_head": "7ecde120ded63e6c97e9593daf730513bbeb7e84",
+ "scope": "PR #1363 round-3 delta audit of ui.chat.asks for zh-CN at b47b4dd8a: new key dismiss.in_flight and changed context.messages_since (design D4, the parenthetical names 'last message'). The other 9 keys were verified byte-identical to the round-2 audited target (parsed value comparison against 7ecde120d), so the round-2 linguistic verdict carries for them. ICU, placeholders, CLDR plural arms (rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run over all 11 keys. The en context changed only for these two keys. No rendered-fit claim.",
+ "sha256": {
+  "en": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+  "zh-CN": "d0ecc3cc3dbbb837fda8a3ab0a84dec2f9764d29771dc5a7c44e71092b244de7",
+  "context": "218cc05ebbb63f375875be61cd418caa2d0aac8043bcc9346e19b521d3d37d7c"
+ },
+ "findings": [
+  {
+   "id": "zh-cn-r3-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.in_flight / ui.chat.asks.context.messages_since",
+   "issue": "in_flight «正在关闭……» matches the trigger «关闭……» and keeps the two-mark ellipsis. messages_since «（最后一条消息于{time}）» names the stamp, with no space before digits. Not counted."
+  }
+ ],
+ "history": [
+  {
+   "round": 2,
+   "path": "i18n/receipts/pr5-zh-cn-r2.json",
+   "sha256": "c358b1f1f2c715b0f28cc4e8b10d48af04774ec1be7227dd954ba410cf723add",
+   "instance": "pr5-20261023-r2-zh-cn",
+   "result": "clean",
+   "target_sha256": "fa7fa2170460f7097b1f53ae629ce60926f99aaeb02e0857eda67dbce79633e6",
+   "context_sha256": "5e0c467aeb72a886d6f32ef8311b48b4c73b4bc39669b75441e878b98366542c",
+   "assembled_copy": "i18n/receipts/pr5-20261023-r2-zh-cn.json (byte-identical)"
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "other"
+  ],
+  "cldr_categories": [
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "key_parity": "11/11",
+  "nfc": true,
+  "bidi_controls": 0,
+  "plural_samples": {
+   "1": "自提出这个请求以来你发来了1条消息（最后一条消息于19:36）",
+   "2": "自提出这个请求以来你发来了2条消息（最后一条消息于19:36）",
+   "5": "自提出这个请求以来你发来了5条消息（最后一条消息于19:36）",
+   "1000000": "自提出这个请求以来你发来了1,000,000条消息（最后一条消息于19:36）"
+  },
+  "unchanged_keys_byte_identical_to_round2": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+  "contract_docs_I18N_md_origin_main": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as rounds 1 and 2. This session produced none of the reviewed copy: the round-3 values were written by the coder in b47b4dd8a. It did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation."
+}

@@ -68,6 +68,10 @@
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
@@ -78,9 +82,15 @@ import {
 	answerQueuedAsk,
 	createSendLock,
 	declineQueuedAsk,
+	dismissQueuedAsk,
 	reviseQueuedAsk,
 } from "../../ask-answer";
-import type { AskDraft, AskOutcome, AskPresentation } from "../../ask-queue";
+import type {
+	AskDismissReason,
+	AskDraft,
+	AskOutcome,
+	AskPresentation,
+} from "../../ask-queue";
 import { askRefusalIsOwner, askRefusalSentence } from "../../ask-queue";
 import {
 	FLEET_ASKS_QUERY_KEY,
@@ -110,6 +120,17 @@ export const FleetAskDrawer = ({
 }) => {
 	const { rows, frontend } = useFleetAsks();
 	const { client } = useOptionalQueryClient();
+	/*
+	 * THE DISMISS DOOR'S GATE (harness PR #2833, SA-D5): a backend that does not
+	 * advertise `features.ask_dismiss` refuses a body carrying `dismiss` with a 422
+	 * (`Answer` is `extra="forbid"`), so the card offers no control there. Fails
+	 * closed while the capabilities read is in flight or errored.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const dismissEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"ask_dismiss",
+	);
 	const lock = useRef(createSendLock()).current;
 	const [drafts, setDrafts] =
 		useState<Record<string, AskDraft>>(EMPTY_ASK_DRAFTS);
@@ -339,6 +360,51 @@ export const FleetAskDrawer = ({
 		setDrafts((current) => ({ ...current, [askId]: next }));
 	}, []);
 
+	/*
+	 * THE DISMISS DOOR (harness PR #2833, SA-D5), the decline's sibling. It settles
+	 * a row that belongs to another conversation, so the receipt is the toast
+	 * naming that conversation — the card itself leaves the pane on the refresh.
+	 */
+	const onDismiss = useCallback(
+		(askId: string, reason: AskDismissReason) => {
+			const sessionId = fleetAskSessionFor(rows ?? [], askId);
+			if (!sessionId || lock.held) return;
+			setAnswering(true);
+			setOutcomes((current) => ({
+				...current,
+				[askId]: { sending: true, refused: null },
+			}));
+			void (async () => {
+				let outcome: AnswerOutcome;
+				try {
+					outcome = await dismissQueuedAsk(
+						{ taskId: askId, reason, sessionId, lock },
+						(request) => desktopResult(request),
+					);
+				} finally {
+					setAnswering(false);
+				}
+				if (outcome.status !== "sent") {
+					/*
+					 * `settle` clears the in-flight flag and records the sentence, for the
+					 * same reasons the session scope's `settleAskOutcome` call does: a
+					 * transport failure carries the owner's words, and a `refused` outcome
+					 * reached nothing and records neither.
+					 */
+					settle(askId, outcome, "Dismissed the ask in");
+					return;
+				}
+				setOutcomes((current) => ({
+					...current,
+					[askId]: { sending: false, refused: null, dismissed: reason },
+				}));
+				receipt("Dismissed the ask in", askId);
+				refresh();
+			})();
+		},
+		[lock, rows, receipt, refresh, settle],
+	);
+
 	return (
 		<AskDrawer
 			frontend={frontend}
@@ -347,6 +413,7 @@ export const FleetAskDrawer = ({
 			onAnswer={onAnswer}
 			onDecline={onDecline}
 			onRevise={onRevise}
+			onDismiss={dismissEnabled ? onDismiss : undefined}
 			answering={answering}
 			outcomes={outcomes}
 			drafts={drafts}

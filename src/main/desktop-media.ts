@@ -192,6 +192,21 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			width: z.number().int().min(1).max(480).optional(),
 		})
 		.strict(),
+	/*
+	 * A Library audio asset's PRE-RENDER peaks sidecar, the same `{version,
+	 * bars, peaks}` document a generated sound's attachment route serves. It
+	 * rides this relay for the reason `library.content` does: the renderer must
+	 * not learn the store's layout or hold the bearer, and the asset id has to
+	 * be validated before it becomes a path segment. The route answers 404 when
+	 * the catalog has no sidecar for the asset (a path-backed file imported
+	 * rather than generated), which the renderer draws as its flat scrubber.
+	 */
+	z
+		.object({
+			op: z.literal("library.waveform"),
+			assetId: z.string().regex(/^la_[0-9a-f]{16}$/),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -257,6 +272,11 @@ function endpoint(request: DesktopMediaRequest): {
 		case "library.thumbnail":
 			return {
 				path: `/v1/desktop/library/assets/${request.assetId}/thumbnail?w=${request.width ?? 480}`,
+				method: "GET",
+			};
+		case "library.waveform":
+			return {
+				path: `/v1/desktop/library/assets/${request.assetId}/waveform`,
 				method: "GET",
 			};
 		case "team_bridge.attachment.upload":
@@ -358,6 +378,7 @@ export async function requestDesktopMediaOutcome(
 		request.op === "sessions.supplementDocument" ||
 		request.op === "library.content" ||
 		request.op === "library.thumbnail" ||
+		request.op === "library.waveform" ||
 		request.op === "team_bridge.attachment"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.

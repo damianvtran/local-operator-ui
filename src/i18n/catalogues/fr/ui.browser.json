@@ -191,6 +191,8 @@
 	"ui.browser.page_context_menu.copy": "Copier",
 	"ui.browser.page_context_menu.paste": "Coller",
 	"ui.browser.page_context_menu.select_all": "Tout sélectionner",
+	"ui.browser.page_context_menu.redo": "Rétablir",
+	"ui.browser.page_context_menu.undo": "Annuler",
 	"ui.browser.page_context_menu.copy_page_address": "Copier l’adresse de la page",
 	"ui.browser.browser_url_bar.home": "Accueil",
 	"ui.browser.browser_url_bar.site_secure": "Connexion sécurisée à {origin}",

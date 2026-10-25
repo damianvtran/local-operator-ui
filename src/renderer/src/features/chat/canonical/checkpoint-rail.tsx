@@ -34,7 +34,7 @@ import {
 } from "./checkpoint-model";
 
 /**
- * The transcript's checkpoint rail: the right-edge overlay whose marks are the
+ * The transcript's checkpoint rail: the inline-end overlay whose marks are the
  * conversation's material checkpoints, with a hover card naming each one and a
  * press that jumps to it (design D5, slice UI-A; reworked 2026-09-29 on the
  * operator's feedback, dsh study `dsh-rail-study.md`).
@@ -42,7 +42,7 @@ import {
  * ## Geometry (dsh)
  *
  * One mark per checkpoint, drawn as a SHORT HORIZONTAL DASH (20x2px) in a
- * fixed 10px pitch, right-aligned inside a 28px frame at `right: 12px`, the
+ * fixed 10px pitch, inline-end-aligned inside a 28px frame at `inset-inline-end: 12px`, the
  * frame vertically centred with `max-height: min(band - 64px, 420px)` and its
  * own scroll (24px mask fades, no chrome) when the conversation outgrows it.
  * The rail hides below a 900px chat column: the marks need the transcript's
@@ -282,7 +282,7 @@ const CheckpointMark = memo(function CheckpointMark({
 			<span
 				aria-hidden="true"
 				className={cn(
-					"ml-auto mr-1.5 block h-0.5 w-5 origin-right rounded-full",
+					"ms-auto me-1.5 block h-0.5 w-5 origin-right rtl:origin-left rounded-full",
 					"transition-[transform,background-color] duration-fast ease-out-quart",
 					"motion-reduce:transition-none",
 					CHECKPOINT_MARK_CLASS[state],
@@ -717,7 +717,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			 * above the scroller (z-auto), below the in-thread search overlay's 20.
 			 */
 			className={cn(
-				"pointer-events-none absolute inset-y-0 right-3 z-10 hidden w-7 select-none",
+				"pointer-events-none absolute inset-y-0 end-3 z-10 hidden w-7 select-none",
 				"flex-col justify-center",
 				"@[900px]/chatcol:flex",
 			)}
@@ -756,7 +756,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 						aria-hidden="true"
 						data-rail-building=""
 						className={cn(
-							"ml-auto mr-1.5 block h-0.5 w-5 animate-pulse-visible rounded-full bg-ink-dim",
+							"ms-auto me-1.5 block h-0.5 w-5 animate-pulse-visible rounded-full bg-ink-dim",
 						)}
 					/>
 				)}

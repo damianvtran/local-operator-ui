@@ -135,6 +135,7 @@
 	"ui.library.page.loaded_count": "{loaded} एसेट कुल {total} में से",
 	"ui.library.page.preview": "एसेट का प्रीव्यू",
 	"ui.library.page.results": "लाइब्रेरी के नतीजे",
+	"ui.library.page.resize_preview": "विवरण ड्रॉअर का आकार बदलें। रीसेट करने के लिए दो बार क्लिक करें।",
 	"ui.library.preview.unavailable": "यह एसेट उपलब्ध नहीं है",
 	"ui.library.preview.unavailable_detail": "हो सकता है यह अब कैटलॉग में न हो।",
 	"ui.library.preview.pptx_preparing": "प्रस्तुति तैयार हो रही है…",

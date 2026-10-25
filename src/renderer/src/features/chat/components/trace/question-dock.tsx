@@ -73,6 +73,7 @@ import type { PendingDesktopGate } from "../../../../../../shared/desktop-sessio
 import { APPROVAL_OPTIONS, gateIsSecret } from "../../ask-answer";
 import { composerField, focusComposer } from "../../composer-field";
 import { MarkdownRenderer } from "../markdown-renderer";
+import { ApprovalEscape } from "./approval-escape";
 import { AskOptions } from "./ask-options";
 
 export type QuestionDockProps = {
@@ -120,6 +121,14 @@ export type QuestionDockProps = {
 		 */
 		muted?: boolean;
 	} | null;
+	/**
+	 * The session this gate belongs to. `PendingDesktopGate` carries the request,
+	 * not the session, and the approval card's policy handles address the LIVE
+	 * gate by session id (`/approvals auto`), so the panel passes it here. Absent
+	 * on a surface with no session (a draft, a story): the handles are then not
+	 * rendered at all, because there is no gate to address.
+	 */
+	sessionId?: string;
 	/** Extra classes on the dock's outer box (the caller owns the measure). */
 	className?: string;
 };
@@ -329,6 +338,7 @@ export const QuestionDock = ({
 	onAnswerSecret,
 	answering = false,
 	answer = null,
+	sessionId,
 	className,
 }: QuestionDockProps) => {
 	const key = questionKeyOf(gate);
@@ -588,12 +598,28 @@ export const QuestionDock = ({
 				 * across the whole window between a press and the gate moving.
 				 */}
 				{gate.kind === "approval" && (
-					<AskOptions
-						options={APPROVAL_OPTIONS}
-						requestId={gate.request_id}
-						busy={busy}
-						onAnswer={(label) => onAnswer?.(label)}
-					/>
+					<>
+						<AskOptions
+							options={APPROVAL_OPTIONS}
+							requestId={gate.request_id}
+							busy={busy}
+							onAnswer={(label) => onAnswer?.(label)}
+						/>
+						{/*
+						 * THE POLICY HANDLES, kept BELOW the pair the card exists for. They
+						 * own their own busy state, so a policy call in flight disables only
+						 * these two links; a policy failure never disables Approve or Deny.
+						 * They are absent where there is no session to address.
+						 */}
+						{sessionId ? (
+							<ApprovalEscape
+								sessionId={sessionId}
+								approvalMode={gate.approval_mode}
+								approvalProvenance={gate.approval_provenance}
+								approvalGlobalMode={gate.approval_global_mode}
+							/>
+						) : null}
+					</>
 				)}
 				<p className="text-ink-dim text-meta">{questionDockHint(gate, held)}</p>
 				{/*

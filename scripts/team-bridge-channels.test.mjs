@@ -288,8 +288,17 @@ test("the notify options restore both cached pages when the write is refused", a
 	const row = conversation({ id: "bcv_2", notify: "all", muted: false });
 	const sibling = conversation({ id: "bcv_3" });
 	const page = { conversations: [row, sibling], has_more: true };
-	const orgKey = ui.teamBridgeKeys.conversations("tnt_1");
-	const allKey = ui.teamBridgeKeys.conversations("all");
+	const orgKey = ui.teamBridgeKeys.conversations("tnt_1", "acct_self");
+	const allKey = ui.teamBridgeKeys.conversations("all", "acct_self");
+	client.setQueryData(["radient-user", "user"], {
+		account: { id: "acct_self" },
+	});
+	client.setQueryData(ui.teamBridgeKeys.statusFor("acct_self"), {
+		account_id: "acct_self",
+		state: "ready",
+		local: { enabled: true },
+		read_only: false,
+	});
 	client.setQueryData(orgKey, structuredClone(page));
 	client.setQueryData(allKey, structuredClone(page));
 	// The claim under test is the snapshot restore, not the settle-time re-read.

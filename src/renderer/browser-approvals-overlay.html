@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en" data-theme="localOperatorDark">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Local Operator Approvals Card</title>
+    <!--
+      S6b's approvals card document (docs/design/browser-approvals-card.md).
+
+      THIS DOCUMENT RUNS BEHIND A PURPOSE-BUILT PRELOAD: exactly two verbs cross
+      to main (`dismiss`, `decide`) and the model arrives through
+      `window.__approvalsCard.setModel` (the seam S6a proved for the count). It
+      carries no inline script, no inline style, no remote content and no
+      `innerHTML`; every string is written with `textContent`. More options and
+      Review all are local view changes: they never cross the boundary.
+
+      CSP: every capability the card does not need is denied. Script and style
+      are emitted by the app's own build (`script-src 'self'`, `style-src
+      'self'`), so there is no inline allowance and no hash to keep in sync.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <link rel="stylesheet" href="/src/styles/themes.generated.css" />
+    <link rel="stylesheet" href="/src/approvals-overlay/card.css" />
+  </head>
+  <body>
+    <main
+      id="approvals-card"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="approvals-title"
+      tabindex="-1"
+    >
+      <p class="card-brand" id="approvals-brand"></p>
+      <header class="card-header">
+        <h1 id="approvals-title"></h1>
+        <button type="button" class="card-close" id="approvals-close"></button>
+      </header>
+      <div class="card-body">
+        <section id="approvals-request">
+          <!--
+            ONE SENTENCE, like the band's consent card: requester, the verb and
+            the exact origin inline in monospace. Three block rows read as three
+            unrelated facts and lose the subject of the request (D2).
+          -->
+          <p class="card-request-line">
+            <span id="approvals-requester" class="card-requester"></span>
+            <span id="approvals-lead"></span>
+            <code id="approvals-origin" class="card-origin"></code>
+          </p>
+          <p class="card-expiry" id="approvals-expiry"></p>
+          <button
+            type="button"
+            class="card-primary"
+            id="approvals-allow-once"
+          ></button>
+          <!--
+            ONE GLOSS LINE. The scoped decisions share the line and update it on
+            focus/hover, so the honesty text is available without five repeated
+            paragraphs pushing the deny button under the fold (D10/Q2).
+          -->
+          <p class="card-gloss" id="approvals-gloss"></p>
+          <div class="card-secondary" id="approvals-secondary"></div>
+        </section>
+        <section id="approvals-list" hidden>
+          <div class="card-rows" id="approvals-rows" role="list"></div>
+        </section>
+        <footer class="card-footer">
+          <p class="card-error" id="approvals-error" role="alert" hidden></p>
+          <button type="button" class="card-review" id="approvals-review"></button>
+          <button type="button" class="card-review" id="approvals-back" hidden></button>
+        </footer>
+      </div>
+    </main>
+    <script type="module" src="/src/approvals-overlay/main.ts"></script>
+  </body>
+</html>

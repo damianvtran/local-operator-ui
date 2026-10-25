@@ -15,6 +15,7 @@ import type { TeamBridgeReaction } from "../../../../shared/team-bridge-contract
 import { EMOJI_ENTRIES, toggleReaction } from "./team-bridge-emoji-model";
 import { TeamBridgeEmojiPicker } from "./team-bridge-emoji-picker";
 import { canRenderEmoji } from "./team-bridge-emoji-support";
+import { TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-reaction-gate";
 import { useReactionPreferences } from "./team-bridge-reaction-preferences";
 
 // A stable empty snapshot matters: a new [] default on every render retriggers
@@ -56,16 +57,24 @@ export function useTeamBridgeReactionState({
 	disabled = false,
 	toggle = TeamBridgeApi.react,
 }: Omit<Props, "defaultOpen">) {
-	const [rows, setRows] = useState(reactions);
+	/*
+	 * THE HOLD, INSIDE THE HOOK. Hooks run unconditionally (a conditional hook
+	 * would break every caller), but while the constant is false this returns an
+	 * INERT state and `choose` is a no-op: no reaction state is projected from
+	 * the message and no toggle can be issued. The shipped runtime serves no
+	 * reaction route, and the old path is not reviewed for account/retry safety.
+	 */
+	const held = !TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD;
+	const [rows, setRows] = useState(held ? EMPTY_REACTIONS : reactions);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState(false);
 	const busy = useRef(false);
 	const record = useReactionPreferences((s) => s.record);
 	useEffect(() => {
-		if (!busy.current) setRows(reactions);
-	}, [reactions]);
+		if (!busy.current && !held) setRows(reactions);
+	}, [reactions, held]);
 	const choose = async (emoji: string) => {
-		if (busy.current || disabled) return;
+		if (held || busy.current || disabled) return;
 		const previous = rows;
 		const active = !rows.some((r) => r.emoji === emoji && r.reacted_by_me);
 		busy.current = true;
@@ -92,11 +101,11 @@ export function useTeamBridgeReactionState({
 	};
 	return {
 		accountId,
-		rows,
-		pending,
-		error,
-		disabled,
-		unavailable: disabled || pending,
+		rows: held ? EMPTY_REACTIONS : rows,
+		pending: held ? false : pending,
+		error: held ? false : error,
+		disabled: disabled || held,
+		unavailable: held || disabled || pending,
 		choose,
 	};
 }
@@ -109,17 +118,28 @@ export type TeamBridgeReactionState = ReturnType<
  * chips' `+`, or the message toolbar's react button). Radix returns focus to
  * that trigger on close, so the caller's control is where the reader lands.
  */
-export function TeamBridgeReactionPicker({
-	state,
-	open,
-	onOpenChange,
-	children,
-}: {
+type TeamBridgeReactionPickerProps = {
 	state: TeamBridgeReactionState;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	children: ReactElement;
-}) {
+};
+
+/**
+ * THE HOLD AT THE PICKER'S FRONT DOOR. The story/rig export is guarded before
+ * the body renders, so a direct mount cannot reach the emoji grid.
+ */
+export function TeamBridgeReactionPicker(props: TeamBridgeReactionPickerProps) {
+	if (!TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD) return null;
+	return <TeamBridgeReactionPickerBody {...props} />;
+}
+
+function TeamBridgeReactionPickerBody({
+	state,
+	open,
+	onOpenChange,
+	children,
+}: TeamBridgeReactionPickerProps) {
 	return (
 		<Popover open={open} onOpenChange={onOpenChange}>
 			<PopoverTrigger asChild>{children}</PopoverTrigger>
@@ -151,13 +171,24 @@ export function TeamBridgeReactionPicker({
  * where the thread reply tool sat; the two overlapped once #1304 and #1308
  * met (the stack-integration finding), so the row now has one toolbar.
  */
-export function TeamBridgeReactionChips({
-	state,
-	defaultOpen = false,
-}: {
+type TeamBridgeReactionChipsProps = {
 	state: TeamBridgeReactionState;
 	defaultOpen?: boolean;
-}) {
+};
+
+/**
+ * THE HOLD AT THE CHIPS' FRONT DOOR: no hook runs while the constant is false,
+ * so even a direct mount (a story, a rig, a future call site) renders nothing.
+ */
+export function TeamBridgeReactionChips(props: TeamBridgeReactionChipsProps) {
+	if (!TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD) return null;
+	return <TeamBridgeReactionChipsBody {...props} />;
+}
+
+function TeamBridgeReactionChipsBody({
+	state,
+	defaultOpen = false,
+}: TeamBridgeReactionChipsProps) {
 	const descriptionId = useId();
 	const locale = useI18nLocale();
 	const [open, setOpen] = useState(defaultOpen);
@@ -241,7 +272,12 @@ export function TeamBridgeReactionChips({
 
 /** Standalone chips for one message (stories and component tests): the state
  * hook and the chips, without a message row or its toolbar. */
-export function TeamBridgeReactions({ defaultOpen = false, ...props }: Props) {
+export function TeamBridgeReactions(props: Props) {
+	if (!TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD) return null;
+	return <TeamBridgeReactionsBody {...props} />;
+}
+
+function TeamBridgeReactionsBody({ defaultOpen = false, ...props }: Props) {
 	const state = useTeamBridgeReactionState(props);
 	return <TeamBridgeReactionChips state={state} defaultOpen={defaultOpen} />;
 }

@@ -598,6 +598,8 @@ against its own signature and stays inert if they differ.
   near-identical Electron browser that filed the same class of bug,
   freedom-browser#347.
 
+Shipped status (2026-10): passkeys are not supported in the built-in browser. The release omits Apple's web-browser passkey entitlement, so WebAuthn requests cannot be completed here; sites that require a passkey must be completed in the system browser.
+
 ---
 
 ## 4. Evidence

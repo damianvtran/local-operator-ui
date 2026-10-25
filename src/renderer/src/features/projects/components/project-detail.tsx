@@ -58,6 +58,7 @@ import { Alert, Badge, Button } from "@shared/components/ui";
 import {
 	admitChatDraft,
 	paneDraftKey,
+	remoteOwnedId,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -67,8 +68,9 @@ import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { openConversation } from "../../chat/open-conversation";
-import { encodeImageAttachments } from "../../chat/utils/attachment-encode";
+import { encodeAttachments } from "../../chat/utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "../../chat/utils/attachment-read";
@@ -207,7 +209,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						variant="secondary"
 						onClick={() => void navigate("/projects")}
 					>
-						<ArrowLeft />
+						<ArrowLeft className="rtl:-scale-x-100" />
 						{t("ui.projects.project_detail.all_projects")}
 					</Button>
 				</div>
@@ -276,11 +278,15 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 		const key = paneDraftKey(null, sessionId, store.drafts);
 		if (!key) return false;
 		try {
-			const { images, unreadable, overflow } = await encodeImageAttachments(
-				attachments,
-				text,
-			);
-			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			const { images, files, failures, overflow, fileOverflow } =
+				await encodeAttachments(attachments, text, {
+					remoteOwned: remoteOwnedId(
+						store.sessions,
+						store.placementFacts,
+						sessionId,
+					),
+				});
+			const unreadableRefusal = unreadableAttachmentRefusal(failures);
 			if (unreadableRefusal) {
 				showErrorToast(unreadableRefusal);
 				return false;
@@ -290,6 +296,11 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 				showErrorToast(overflowRefusal);
 				return false;
 			}
+			const fileOverflowMessage = fileOverflowRefusal(fileOverflow);
+			if (fileOverflowMessage) {
+				showErrorToast(fileOverflowMessage);
+				return false;
+			}
 			const budgetRefusal = messageBudgetRefusal(text, images);
 			if (budgetRefusal) {
 				showErrorToast(budgetRefusal);
@@ -297,7 +308,14 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 			}
 			const admitted = await admitChatDraft(
 				key,
-				{ text, attachments, images, mode, cwd: store.cwd },
+				{
+					text,
+					attachments,
+					images,
+					mode,
+					cwd: store.cwd,
+					...(files.length ? { files } : {}),
+				},
 				sessionId,
 			);
 			if (admitted === null) {
@@ -400,7 +418,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						onClick={() => void navigate("/projects")}
 						className="flex w-fit items-center gap-1.5 text-body-sm text-ink-muted hover:text-ink"
 					>
-						<ArrowLeft className="size-4" />
+						<ArrowLeft className="size-4 rtl:-scale-x-100" />
 						{t("ui.projects.project_detail.all_projects")}
 					</button>
 

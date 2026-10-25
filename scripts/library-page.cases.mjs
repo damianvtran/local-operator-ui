@@ -45,10 +45,25 @@ for (const name of ["Event", "CustomEvent", "MouseEvent", "KeyboardEvent"]) {
 dom.window.Element.prototype.scrollIntoView = () => {};
 globalThis.localStorage = dom.window.localStorage;
 globalThis.sessionStorage = dom.window.sessionStorage;
+const RESIZE_OBSERVERS = [];
 globalThis.ResizeObserver = class {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
+	constructor(callback) {
+		this.callback = callback;
+		this.targets = new Set();
+		RESIZE_OBSERVERS.push(this);
+	}
+
+	observe(target) {
+		this.targets.add(target);
+	}
+
+	unobserve(target) {
+		this.targets.delete(target);
+	}
+
+	disconnect() {
+		this.targets.clear();
+	}
 };
 /*
  * A CONTROLLABLE IntersectionObserver. jsdom has no layout and implements no
@@ -1041,6 +1056,230 @@ test("the rail renders as the page row's first column at 1380px", async () => {
 		await act(async () => root.unmount());
 	} finally {
 		dom.window.Element.prototype.getBoundingClientRect = original;
+		sessionStorage.removeItem("library-filters");
+	}
+});
+
+test("the dock resizes by keyboard and pointer, persists, and clamps to the workspace", async () => {
+	ANSWER.rows = ROWS;
+	const originalInnerWidth = dom.window.innerWidth;
+	Object.defineProperty(dom.window, "innerWidth", {
+		configurable: true,
+		value: 1380,
+	});
+	let workspaceWidth = 1380;
+	const original = dom.window.Element.prototype.getBoundingClientRect;
+	dom.window.Element.prototype.getBoundingClientRect = function () {
+		if (this.hasAttribute?.("data-glass-split")) {
+			return {
+				width: workspaceWidth,
+				height: 900,
+				top: 0,
+				left: 0,
+				right: workspaceWidth,
+				bottom: 900,
+				x: 0,
+				y: 0,
+				toJSON: () => ({}),
+			};
+		}
+		return original.call(this);
+	};
+	const resizeWorkspace = async (width) => {
+		workspaceWidth = width;
+		await act(async () => {
+			for (const observer of RESIZE_OBSERVERS) {
+				for (const target of observer.targets) {
+					if (target.hasAttribute?.("data-glass-split")) {
+						observer.callback([{ contentRect: { width } }], observer);
+					}
+				}
+			}
+		});
+		await flush(1);
+	};
+	const openDock = async () => {
+		const mounted = await mount();
+		await act(async () =>
+			mounted.container
+				.querySelector('[data-library-card-id="la_0000000000000011"] button')
+				?.click(),
+		);
+		await flush(8);
+		return mounted;
+	};
+	try {
+		localStorage.removeItem("library-details-width");
+		let { container, root } = await openDock();
+		let dock = container.querySelector("[data-library-dock]");
+		let separator = container.querySelector('[role="separator"]');
+		assert.equal(dock?.style.width, "448px");
+		assert.equal(separator?.getAttribute("aria-valuemin"), "320");
+		assert.equal(separator?.getAttribute("aria-valuemax"), "720");
+		assert.ok(dock?.className.includes("panel-top-pad"));
+		assert.ok(dock?.className.includes("bg-surface"));
+		assert.equal(dock?.getAttribute("data-glass-region"), "pane");
+		assert.equal(
+			container
+				.querySelector("[data-library-preview]")
+				?.getAttribute("data-glass-region"),
+			"pane",
+			"the inner preview is nested inside the outer alpha owner",
+		);
+		assert.ok(
+			container
+				.querySelector("[data-library-preview]")
+				?.className.includes("w-full"),
+			"the preview fills every resized width",
+		);
+		const composer = container.querySelector("[data-library-composer]");
+		assert.ok(composer?.className.includes("bg-sunken"));
+		assert.ok(composer?.className.includes("px-4"));
+		assert.ok(composer?.className.includes("pt-3"));
+		assert.ok(composer?.className.includes("pb-1"));
+		const search = container.querySelector(
+			'input[placeholder="Search the Library"]',
+		);
+		assert.ok(search?.parentElement?.className.includes("min-w-0"));
+		const toolbar = container.querySelector("[data-library-toolbar]");
+		const sort = [...(toolbar?.querySelectorAll("button") ?? [])].find(
+			(button) => button.textContent === "Sort",
+		);
+		assert.ok(sort?.className.includes("shrink-0"));
+		assert.ok(
+			toolbar
+				?.querySelector('[aria-label="Reverse the order"]')
+				?.className.includes("shrink-0"),
+		);
+
+		await act(async () => {
+			separator.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "ArrowLeft",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.equal(dock.style.width, "464px");
+		assert.equal(separator.getAttribute("aria-valuenow"), "464");
+		assert.equal(localStorage.getItem("library-details-width"), "464");
+
+		await act(async () =>
+			container.querySelector('[aria-label="Close the preview"]').click(),
+		);
+		await flush(2);
+		assert.equal(container.querySelector("[data-library-dock]"), null);
+		await act(async () =>
+			container
+				.querySelector('[data-library-card-id="la_0000000000000011"] button')
+				?.click(),
+		);
+		await flush(8);
+		dock = container.querySelector("[data-library-dock]");
+		assert.equal(dock?.style.width, "464px", "close/reopen keeps the width");
+
+		await act(async () => root.unmount());
+		({ container, root } = await openDock());
+		dock = container.querySelector("[data-library-dock]");
+		separator = container.querySelector('[role="separator"]');
+		assert.equal(dock?.style.width, "464px", "remount restores the width");
+
+		await act(async () => {
+			separator.dispatchEvent(
+				new dom.window.MouseEvent("mousedown", {
+					bubbles: true,
+					button: 0,
+					clientX: 600,
+				}),
+			);
+			dom.window.dispatchEvent(
+				new dom.window.MouseEvent("mousemove", { clientX: 560 }),
+			);
+		});
+		assert.equal(dock.style.width, "504px");
+		assert.equal(dom.window.document.body.style.userSelect, "none");
+		await act(async () => {
+			dom.window.dispatchEvent(new dom.window.MouseEvent("mouseup"));
+		});
+		assert.equal(dom.window.document.body.style.userSelect, "");
+		await act(async () => {
+			dom.window.dispatchEvent(
+				new dom.window.MouseEvent("mousemove", { clientX: 300 }),
+			);
+		});
+		assert.equal(dock.style.width, "504px", "the drag is really disposed");
+
+		await act(async () => {
+			separator.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "End",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.equal(dock.style.width, "720px");
+		await resizeWorkspace(1200);
+		assert.equal(dock.style.width, "688px");
+		assert.equal(separator.getAttribute("aria-valuemax"), "688");
+		assert.equal(separator.getAttribute("aria-valuenow"), "688");
+		await resizeWorkspace(1152);
+		assert.equal(dock.style.width, "640px");
+		assert.equal(separator.getAttribute("aria-valuemax"), "640");
+		assert.equal(separator.getAttribute("aria-valuenow"), "640");
+		await resizeWorkspace(1380);
+		assert.equal(
+			dock.style.width,
+			"720px",
+			"the preference survives a temporary workspace clamp",
+		);
+		await act(async () => {
+			separator.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.equal(dock.style.width, "448px");
+		assert.equal(localStorage.getItem("library-details-width"), "448");
+		await act(async () => {
+			separator.dispatchEvent(
+				new dom.window.MouseEvent("mousedown", {
+					bubbles: true,
+					button: 0,
+					clientX: 600,
+				}),
+			);
+		});
+		assert.equal(dom.window.document.body.style.userSelect, "none");
+		await act(async () => root.unmount());
+		assert.equal(
+			dom.window.document.body.style.userSelect,
+			"",
+			"unmounting mid-drag restores selection and removes global listeners",
+		);
+
+		for (const [stored, expected] of [
+			["not-a-number", "448px"],
+			["-100", "320px"],
+			["9999", "720px"],
+		]) {
+			localStorage.setItem("library-details-width", stored);
+			({ container, root } = await openDock());
+			assert.equal(
+				container.querySelector("[data-library-dock]")?.style.width,
+				expected,
+				`stored ${stored} restores defensively`,
+			);
+			await act(async () => root.unmount());
+		}
+	} finally {
+		dom.window.Element.prototype.getBoundingClientRect = original;
+		Object.defineProperty(dom.window, "innerWidth", {
+			configurable: true,
+			value: originalInnerWidth,
+		});
+		localStorage.removeItem("library-details-width");
 		sessionStorage.removeItem("library-filters");
 	}
 });

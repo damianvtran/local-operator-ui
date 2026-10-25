@@ -1,16 +1,16 @@
 import {
 	Avatar,
 	AvatarFallback,
+	BrowserSafeTooltip,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-	Tooltip,
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
-import { useI18nLocale } from "@shared/i18n/use-locale";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import { LogOut, RotateCw, Settings, Shield, User } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -56,7 +56,7 @@ type UserProfileSidebarProps = {
  */
 export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 	({ expanded, useAuth = false }) => {
-		useI18nLocale();
+		const direction = useTextDirection();
 		const navigate = useNavigate();
 
 		const { user, isAuthenticated, accountRead, signOut } = useRadientAuth();
@@ -234,12 +234,22 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 
 		/* Collapsed, the tooltip is the only name on screen; the accessible name
 		   is the button's own `aria-label`. */
+		/*
+		 * Collapsed, the tooltip is the visible name. It stays on every route
+		 * without a mounted browser view; with one, it would open right into the
+		 * native page and be clipped, so `aria-label` is the channel there
+		 * (`BrowserSafeTooltip`). The round-1 cut deleted it unconditionally and
+		 * lost the name on chat, schedules and settings too.
+		 */
 		const labelled = expanded ? (
 			row
 		) : (
-			<Tooltip content={collapsedLabel} side="right">
+			<BrowserSafeTooltip
+				content={collapsedLabel}
+				side={direction === "rtl" ? "left" : "right"}
+			>
 				{row}
-			</Tooltip>
+			</BrowserSafeTooltip>
 		);
 
 		if (!useAuth) return labelled;
@@ -257,9 +267,12 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				{expanded ? (
 					<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
 				) : (
-					<Tooltip content={collapsedLabel} side="right">
+					<BrowserSafeTooltip
+						content={collapsedLabel}
+						side={direction === "rtl" ? "left" : "right"}
+					>
 						<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
-					</Tooltip>
+					</BrowserSafeTooltip>
 				)}
 				<DropdownMenuContent align="end" side="top" className="min-w-50">
 					{reconnect ? (

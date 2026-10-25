@@ -174,7 +174,10 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	 */
 	const storedForQuery = settingsQuery.isSuccess ? stored : null;
 	const preview = useQuery({
-		...draftPreviewQuery(previewTarget),
+		...draftPreviewQuery(
+			previewTarget,
+			desktopFeatureEnabled(capabilities.data, "draft_fast"),
+		),
 		queryKey: [
 			...draftPreviewKey(previewTarget),
 			"model_effort",

@@ -48,7 +48,7 @@ export const ReplyPreview: FC<ReplyPreviewProps> = ({
 		{replies.map((reply) => (
 			<div
 				key={reply.id}
-				className="flex items-center gap-2 border-hairline border-l-2 py-0.5 pl-2"
+				className="flex items-center gap-2 border-hairline border-s-2 py-0.5 ps-2"
 			>
 				<span
 					className="flex-1 truncate text-body-sm text-ink-muted"

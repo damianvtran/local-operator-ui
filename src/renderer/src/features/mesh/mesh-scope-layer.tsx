@@ -142,8 +142,10 @@ export const MeshScopeLayer: FC<MeshScopeLayerProps> = ({
 								 * SOLID VS DASHED IS THE GRAMMAR (design round § 6): a dashed boundary is
 								 * arithmetic on two published values, a solid one rests on an interface this
 								 * process runs on (or on the operator's own declaration). The two must not be
-								 * told apart by hue alone - the dash is the non-colour channel, and it is the
-								 * same one a revoked membership already uses on the edge layer.
+								 * told apart by hue alone - the dash is the non-colour channel, and nothing else
+								 * on this layer wears it, so a dashed boundary can only read as "probable".
+								 * (It used to share the idiom with the edge layer's revoked-membership dash;
+								 * the tombstone change removed that dash, so this layer is its only user.)
 								 */
 								group.tier === "probable"
 									? "border border-dashed border-hairline-strong"

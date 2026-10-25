@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { unlink, writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -25,8 +25,10 @@ import React, { act } from "react";
  * input store. What is faked, and only that: the run handle, which is a plain
  * object — the composer's contract is with that object, not with the hook.
  *
- * WHAT IT IS NOT: evidence about pixels. jsdom has no layout engine, so nothing
- * here says how the box sits on the page; that is the frames' job.
+ * WHAT IT IS NOT: new evidence about pixels. jsdom has no layout engine. The
+ * boundary assertions below audit the committed native-QA record and tie its
+ * placeholder to the mounted current string; they do not mistake jsdom for a
+ * renderer.
  */
 
 const DOM = new JSDOM("<!doctype html><html><body></body></html>", {
@@ -609,31 +611,70 @@ test("the invitation is true on both tabs: object-free in the hero, both objects
 			`and names both objects or neither, never one (got ${placeholder})`,
 		);
 		/*
-		 * AND IT FITS ONE LINE (design D1 = QA Q1 = UX U3): the idle docked box does
-		 * not auto-grow, so a wrapped placeholder is clipped. THE SHIPPED STRING IS
-		 * PINNED EXACTLY, not bounded by a length, because no character count
-		 * guarantees a width (agent review round 3, M1: the old `length <= 50` was
-		 * arithmetic on a per-character figure that the measurement itself refuted -
-		 * 301.2 px for 44 characters is 6.85 px each, so 50 characters would be ~342 px
-		 * against a 320 px text area).
+		 * AND IT STAYS READABLE (design D1 = QA Q1 = UX U3): the idle docked box does
+		 * not auto-grow. Readable wrapping is accepted; clipping and vertical overflow
+		 * are not. Equal scroll/client heights prove the latter, not a one-line render.
+		 * THE SHIPPED STRING IS PINNED EXACTLY, not bounded by a length, because no
+		 * character count guarantees a width (agent review round 3, M1: the old
+		 * `length <= 50` was arithmetic on a per-character figure that the measurement
+		 * itself refuted - 301.2 px for 44 characters is 6.85 px each, so 50 characters
+		 * would be ~342 px against a 320 px text area).
 		 *
-		 * WHAT WAS MEASURED, and what a change to this string invalidates: this exact
-		 * sentence is 301.2 px in the box's own font (14 px system-ui, canvas
-		 * `measureText`) and the NARROWEST docked box is the 416 px pane (the shell
-		 * sidebar docks from 1024 px at up to 320 px, the roster is a fixed 288 px),
-		 * whose 336 px textarea has a 320 px text area: 18.8 px spare, and the textarea
-		 * reported `scrollHeight == clientHeight` (34 == 34, no thumb) there. The 71
-		 * characters this replaced measured 444 px. ANY edit needs the sweep again:
-		 * Storybook `agents-teams-page--team-selected`, `<main>` pinned to 416 px,
-		 * then `textarea.scrollHeight === textarea.clientHeight` and the width of
-		 * the string measured in `getComputedStyle(textarea).font` (the rig is
-		 * `after-r4`'s `probe-placeholder.mjs` in the PR's evidence record).
-		 * "Definition" is the run counter's noun, not the page's (D5).
+		 * WHAT WAS MEASURED, and what a change to this string invalidates: native QA
+		 * drove the reusable-profile route at 1000 px, where sidebar 320 + roster 288
+		 * leaves the NARROWEST docked detail pane at 392 px. The unwrapped sentence
+		 * measures 301.1709 px against the 304 px content box (pane less 88 px of
+		 * insets). The frame shows readable wrapping with nothing clipped, and the
+		 * textarea reported `scrollHeight == clientHeight` (55 == 55, no vertical
+		 * overflow). The raw record is `qa-native-3-results.json` beside this PR's
+		 * evidence; the assertions below check its dimensions and placeholder against
+		 * this mounted component, not a line count. ANY edit needs the native boundary
+		 * check again. The 71 characters this replaced measured 444 px. "Definition"
+		 * is the run counter's noun, not the page's (D5).
 		 */
 		assert.equal(
 			placeholder,
 			"Ask for a change, or describe something new\u2026",
-			"the docked placeholder is the string measured at 301.2 px; re-measure at the 416 px pane before changing it",
+			"the docked placeholder is the string measured at 301.1709 px; re-measure at the native 1000/392 boundary before changing it",
+		);
+		const nativeQa = JSON.parse(
+			await readFile(
+				"docs/pr-evidence/sidebar-docking/qa-native-3-results.json",
+				"utf8",
+			),
+		);
+		const boundary = nativeQa.cases.find(
+			(entry) => entry.name === "agents detail at native 1000/392 boundary",
+		);
+		assert.ok(
+			boundary,
+			"the committed native-QA 1000/392 boundary record exists",
+		);
+		assert.equal(boundary.status, "PASS");
+		assert.equal(
+			boundary.actual.sidebar.width +
+				boundary.actual.roster.width +
+				boundary.actual.pane.width,
+			1000,
+			"the native 1000px route tiles sidebar + roster + detail without a chat rail",
+		);
+		assert.equal(boundary.actual.pane.width, 392);
+		assert.equal(boundary.actual.rail, null);
+		assert.equal(boundary.actual.placeholder, placeholder);
+		assert.equal(boundary.actual.fieldClientWidth, 304);
+		assert.ok(
+			boundary.actual.placeholderWidth <= boundary.actual.fieldClientWidth,
+			"the unwrapped placeholder measurement fits the 304px content box; this is not a line-count assertion",
+		);
+		assert.equal(
+			boundary.actual.fieldScrollWidth,
+			boundary.actual.fieldClientWidth,
+			"native QA measured no horizontal overflow at the 392px boundary",
+		);
+		assert.equal(
+			boundary.actual.fieldScrollHeight,
+			boundary.actual.fieldClientHeight,
+			"native QA accepted readable wrapping with no vertical overflow; equal heights do not prove one line",
 		);
 		assert.notEqual(
 			placeholder,

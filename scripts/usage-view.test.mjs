@@ -46,6 +46,7 @@ const {
 	formatAge,
 	formatAmount,
 	formatCountdown,
+	formatPercentValue,
 	fractionOf,
 	isStale,
 	limitRow,
@@ -354,6 +355,47 @@ test("a percent prints as an integer with a suffix and no denominator", () => {
 		"82%",
 	);
 	assert.equal(formatAmount(amount({ used: 100, unit: "percent" })), "100%");
+});
+
+test("a percent row keeps a sub-one-percent reading visible", () => {
+	// Mirrors `test_a_percent_row_keeps_a_sub_one_percent_reading_visible` in
+	// `tests/unit/tui/test_usage_panel.py` (`_format_percent`). Kimi's monthly
+	// pool reads 0.06% used on a real account; zero-places rounding would say
+	// `0%`, which claims a window that has started is untouched. The reading
+	// stays honest without spending cells on a whole percentage.
+	assert.equal(
+		formatAmount(amount({ used: 0.06, limit: 100, unit: "percent" })),
+		"<1%",
+	);
+	assert.equal(
+		formatAmount(amount({ used: 0.95, limit: 100, unit: "percent" })),
+		"<1%",
+	);
+	assert.equal(
+		formatAmount(amount({ used: 1, limit: 100, unit: "percent" })),
+		"1%",
+	);
+	assert.equal(
+		formatAmount(amount({ used: 0, limit: 100, unit: "percent" })),
+		"0%",
+	);
+	assert.equal(
+		formatAmount(amount({ used_fraction: 0.0006, unit: "percent" })),
+		"<1% used",
+	);
+});
+
+test("the percent helper keeps half-even at its own boundary", () => {
+	// The whole rule, called directly, so the edge between the sub-1 branch and
+	// zero-places half-even is stated at the helper rather than inferred from
+	// `formatAmount`. 2.5 is the even tie: Python's `f"{2.5:.0f}"` is `2`, so
+	// the `<1` branch must not swallow it on the way past.
+	assert.equal(formatPercentValue(0.5), "<1");
+	assert.equal(formatPercentValue(0.9999), "<1");
+	assert.equal(formatPercentValue(1), "1");
+	assert.equal(formatPercentValue(1.5), "2");
+	assert.equal(formatPercentValue(2.5), "2");
+	assert.equal(formatPercentValue(0), "0");
 });
 
 test("USD keeps its cents and prints both halves of a used/limit pair", () => {
@@ -667,6 +709,48 @@ test("the binding summary states the label, an integer percent, and a countdown"
 	assert.equal(block.text, "5-hour 82%");
 	assert.equal(block.countdown, "3h24m");
 	assert.equal(block.status, "ok");
+});
+
+test("a sub-one-percent binding window is not shown as zero", () => {
+	// Mirrors `test_a_sub_one_percent_binding_window_is_not_shown_as_zero` in
+	// `tests/unit/tui/test_usage_panel.py`. The headline asks the same question
+	// as the rows and must not answer it with a different number: a 0.06%
+	// monthly pool binding over a 0% 5h window printed `Monthly total 0%` above
+	// a row that said `<1%`.
+	const block = bindingSummary(
+		report({
+			provider: "kimi",
+			limits: [
+				limit({
+					id: "kimi:0",
+					label: "5h limit",
+					window: "5h limit",
+					amount: amount({
+						used: 0,
+						limit: 100,
+						used_fraction: 0,
+						unit: "percent",
+					}),
+					shared: true,
+				}),
+				limit({
+					id: "kimi:monthly-total",
+					label: "Monthly total",
+					window: "monthly",
+					amount: amount({
+						used: 0.06,
+						remaining: 99.94,
+						used_fraction: 0.0006,
+						unit: "percent",
+					}),
+					shared: true,
+				}),
+			],
+		}),
+		NOW,
+	);
+	assert.equal(block.percent, "<1%");
+	assert.equal(block.text, "Monthly total <1%");
 });
 
 /* ---------------------------------------------------- the tally (SPEC rule 12) */

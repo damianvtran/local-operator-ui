@@ -16,6 +16,8 @@
 	"ui.chat.composer.starting_recording": "Démarrage de l’enregistrement",
 	"ui.chat.composer.start_recording_hint": "Démarrer l’enregistrement ({shortcut} ou maintenir {pushToTalk})",
 	"ui.chat.composer.processing_audio": "Traitement de l’audio",
+	"ui.chat.composer.dictation_failed_transient": "Échec de la dictée : le service de transcription a subi une panne temporaire. Réessayez.",
+	"ui.chat.composer.dictation_failed_transient_take_kept": "Échec de la dictée : le service de transcription a subi une panne temporaire. Votre enregistrement est conservé — Réessayer l’envoie à nouveau.",
 	"ui.chat.composer.welcome": "Comment puis-je vous aider aujourd’hui ?",
 	"ui.chat.composer.delivery_remedies_hint": "Le message qui n’a pas pu être délivré dispose des commandes Renvoyer et Modifier dans la conversation, au-dessus de ce champ : appuyez sur Maj+Tab pour les atteindre.",
 	"ui.chat.composer.secret_ask_notice": "L’agent demande un secret. Saisissez-le dans le panneau des demandes — vous pouvez continuer à discuter entre-temps.",

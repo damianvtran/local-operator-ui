@@ -29,7 +29,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, UI_PREFERENCES_VERSION, resolveRightSlotWidth, resolveRightSlotOccupied, resolveRightSlotYieldsSidebar, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, DEFAULT_RIGHT_SLOT_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
-			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth, resolveSidebarLayout, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_DOCK_MIN_PX } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
+			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth, resolveSidebarLayout, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COLLAPSED_WIDTH } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -69,7 +69,6 @@ const {
 	resolveSidebarLayout,
 	SIDEBAR_DEFAULT_WIDTH,
 	SIDEBAR_COLLAPSED_WIDTH,
-	SIDEBAR_DOCK_MIN_PX,
 } = mod;
 
 /** The store's state with the shared width set to `width` and one pane open. */
@@ -365,8 +364,9 @@ test("publishing facts that did not move wakes nobody and writes nothing (#868, 
 
 test("a flag that outlived its route does not collapse the docked sidebar (#868, review R2)", () => {
 	/*
-	 * The reporter's window is 1024 wide, inside the band (1024-1139 at the
-	 * default 260px sidebar) where a docked sidebar and a DOCKING canvas cannot
+	 * The reporter's window is 1024 wide, inside the band (980-1183 at the
+	 * default 260px sidebar and 44px rail) where a docked sidebar and a DOCKING
+	 * canvas cannot
 	 * both keep their floors, so a claimed canvas/asks pane steps the sidebar down
 	 * to the strip. That step is right for a pane that is drawn and wrong for a
 	 * flag with no pane behind it - the 1280px frames cannot show the difference.
@@ -375,17 +375,16 @@ test("a flag that outlived its route does not collapse the docked sidebar (#868,
 		resolveSidebarLayout(
 			width,
 			false,
-			false,
 			SIDEBAR_DEFAULT_WIDTH,
 			resolveRightSlotYieldsSidebar(state),
 		);
 	// The control: what the bare flag did. If this stops collapsing, the band
 	// moved and the cells below no longer discriminate.
 	assert.equal(
-		resolveSidebarLayout(1024, false, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
+		resolveSidebarLayout(1024, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
 		"strip",
 	);
-	for (const width of [SIDEBAR_DOCK_MIN_PX, 1100, 1139, 1183]) {
+	for (const width of [1024, 1100, 1139, 1183]) {
 		// Stale: the session drawer's flag on a draft, and a canvas flag on a
 		// route with no chat surface. Both must leave the sidebar docked.
 		for (const stale of [
@@ -418,7 +417,7 @@ test("a flag that outlived its route does not collapse the docked sidebar (#868,
 		}
 	}
 	// Outside the band nothing yields, drawn or not: 1184 keeps both floors (the
-	// band is 1024-1183 since the 44px panel rail joined the row's deficit, #872).
+	// band is 980-1183 since the 44px panel rail joined the row's deficit, #872).
 	assert.equal(
 		layoutFor(1184, claimed("canvas", route(true, false))).mode,
 		"docked",

@@ -135,6 +135,7 @@
 	"ui.library.page.loaded_count": "{total} اثاثوں میں سے {loaded}",
 	"ui.library.page.preview": "اثاثے کا پیش منظر",
 	"ui.library.page.results": "لائبریری کے نتائج",
+	"ui.library.page.resize_preview": "تفصیلات کے پینل کی چوڑائی بدلیں۔ ڈبل کلک کر کے ری سیٹ کریں۔",
 	"ui.library.preview.unavailable": "یہ اثاثہ دستیاب نہیں",
 	"ui.library.preview.unavailable_detail": "ممکن ہے اب یہ کیٹلاگ میں نہ ہو۔",
 	"ui.library.preview.pptx_preparing": "پریزنٹیشن تیار ہو رہی ہے…",

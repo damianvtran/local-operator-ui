@@ -438,6 +438,65 @@ test("a row with sounds draws them in both forms; a row without draws nothing", 
 	);
 });
 
+test("fourteen sounds draw one collage cell each, in both forms", () => {
+	/*
+	 * THE OPERATOR'S WALL (2026-10-23). The producer now sends every sound it
+	 * generated, so fourteen arrived as fourteen stacked rows. The fix is a
+	 * width-driven grid: the container answers to the BLOCK's own width, a
+	 * single sound still fills the row, and no cell is dropped - the brief's
+	 * explicit rule is no slice, no cap, no pagination.
+	 */
+	const sounds = Array.from({ length: 14 }, (_, index) =>
+		sound(`collage-${index}`, `Take ${index + 1}`, 6 + index),
+	);
+	const record = supplement({ sounds });
+	for (const condensed of [false, true]) {
+		const markup = render(record, condensed);
+		assert.equal(
+			(markup.match(/data-supplement-sounds=""/g) ?? []).length,
+			1,
+			"one section in both forms",
+		);
+		assert.equal(
+			(markup.match(/data-supplement-sound=""/g) ?? []).length,
+			14,
+			"every distinct digest gets its own cell",
+		);
+		assert.equal(
+			(markup.match(/data-supplement-sound-placeholder=""/g) ?? []).length,
+			14,
+			"every cell carries its player's own seat (bytes resolve in the mount)",
+		);
+		assert.equal(
+			(markup.match(/data-supplement-sound-title=""/g) ?? []).length,
+			14,
+			"each cell keeps the producer's title",
+		);
+		assert.ok(
+			markup.includes("grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]"),
+			"the collage is a responsive grid, not the old column",
+		);
+		assert.equal(
+			(markup.match(/data-sound-player="compact"/g) ?? []).length,
+			0,
+			"the players mount once the resolver answers, never before",
+		);
+	}
+});
+
+test("a single sound keeps today's full-width row", () => {
+	const markup = render(
+		supplement({ sounds: [sound("only", "Solo take", 4)] }),
+		false,
+	);
+	assert.equal((markup.match(/data-supplement-sound=""/g) ?? []).length, 1);
+	assert.equal(
+		markup.includes("auto-fit"),
+		false,
+		"one sound must not be squeezed into a multi-column template",
+	);
+});
+
 test("a row whose sounds are absent or empty renders no sounds section at all", () => {
 	for (const sounds of [
 		/*

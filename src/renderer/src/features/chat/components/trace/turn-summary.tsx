@@ -349,7 +349,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 					 * slot's pull are laid out from — stays exactly where it was; either
 					 * half alone would move the chevron 8px.
 					 */
-					"-ml-2 -mr-2 w-[calc(100%+1rem)] rounded-sm pl-2 pr-6",
+					"-ms-2 -me-2 w-[calc(100%+1rem)] rounded-sm ps-2 pe-6",
 					"hover:bg-row-hover",
 				)}
 				/*
@@ -439,7 +439,13 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 											className="shrink-0 text-body-sm text-ink-muted"
 											title={partial ? actionClauseTitle : undefined}
 										>
-											{actionClause}
+											{/*
+											 * The clause is an English count (`1 action`) rendered inside the
+											 * locale's paragraph; isolated so an RTL base cannot reorder the
+											 * number and its noun (design round 1, D4b). Translation of these
+											 * two strings is a catalogue change and out of this round.
+											 */}
+											<bdi>{actionClause}</bdi>
 										</span>
 									</>
 								)}
@@ -504,7 +510,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 										title={partial ? actionClauseTitle : undefined}
 										aria-label={partial ? actionClauseTitle : undefined}
 									>
-										{actionClause}
+										<bdi>{actionClause}</bdi>
 									</span>
 								)}
 							</>
@@ -550,7 +556,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 							 * round 1, D6 measured the two: foot 1043 vs bar 1007; the value edge is
 							 * the one the design round judged better).
 							 */
-							<span className={cn("ml-auto")}>
+							<span className={cn("ms-auto")}>
 								<TurnTimestamp timestamp={stampTs} scope="answer" />
 							</span>
 						)}
