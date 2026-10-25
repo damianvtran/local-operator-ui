@@ -218,6 +218,8 @@
 	"ui.browser.page_context_menu.open_link_in_new_tab": "Открыть ссылку в новой вкладке",
 	"ui.browser.page_context_menu.paste": "Вставить",
 	"ui.browser.page_context_menu.select_all": "Выделить всё",
+	"ui.browser.page_context_menu.redo": "Повторить",
+	"ui.browser.page_context_menu.undo": "Отменить",
 	"ui.browser.use_browser_chrome.downloads_folder_failed": "Не удалось открыть папку загрузок. {message}",
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": "Этот запрос больше не ожидает.",
 	"ui.browser.webauthn_chooser.a_site": "Сайт",

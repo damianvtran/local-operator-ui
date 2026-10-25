@@ -152,7 +152,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 			<FileGlyph path={actionPath} />
 			<button
 				type="button"
-				className="min-w-0 flex-1 truncate text-left text-ink hover:text-ink-dim"
+				className="min-w-0 flex-1 truncate text-start text-ink hover:text-ink-dim"
 				data-supplement-file=""
 				title={actionPath}
 				onClick={() => {
@@ -161,7 +161,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 			>
 				{displayText(label)}
 				{suffix && suffix !== label && (
-					<span className="ml-2 text-ink-muted">{displayText(suffix)}</span>
+					<span className="ms-2 text-ink-muted">{displayText(suffix)}</span>
 				)}
 			</button>
 			{size && <span className="shrink-0 text-ink-dim">{size}</span>}
@@ -228,7 +228,7 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 	 * leave the reader looking at an unnamed line and then watch it reflow.
 	 */
 	return (
-		<div className="flex min-w-0 flex-col gap-0.5">
+		<div data-supplement-sound="" className="flex min-w-0 flex-col gap-0.5">
 			{sound.title && (
 				<span
 					data-supplement-sound-title=""
@@ -243,8 +243,13 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 			) : source.state === "resolving" ? (
 				// A reserved line at the player's height (the same reason the two
 				// media components reserve): the block must not jump when the bytes
-				// land.
-				<div className="h-11" aria-hidden={true} />
+				// land. The marker is what a static render can count per sound -
+				// the player's own controls exist only once the resolver answered.
+				<div
+					data-supplement-sound-placeholder=""
+					className="h-11"
+					aria-hidden={true}
+				/>
 			) : (
 				<SoundPlayer
 					variant="compact"
@@ -745,7 +750,26 @@ export const SupplementRow = memo(function SupplementRow({
 	 */
 	const soundsSection =
 		sounds.length > 0 ? (
-			<div className="flex flex-col gap-1" data-supplement-sounds="">
+			/*
+			 * A COLLAGE, NOT A COLUMN. Fourteen sounds rendered as fourteen
+			 * stacked rows is an unreadable wall that pushes the answer off the
+			 * screen; the producer now sends every generated sound, so the layout
+			 * has to bound its height without hiding any of them (no slice, no
+			 * cap, no pagination - the brief's rule). `auto-fit` over a 15rem
+			 * minimum makes the grid answer to the BLOCK's own width: a typical
+			 * answer column fits two or three cells, a narrow pane one, and a
+			 * single sound still fills the row (auto-fit collapses the empty
+			 * tracks). The container is the same element in the expanded and
+			 * condensed forms - collapsing changes frame mounting, never media.
+			 */
+			<div
+				data-supplement-sounds=""
+				className={
+					sounds.length > 1
+						? "grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-1"
+						: "flex flex-col gap-1"
+				}
+			>
 				{sounds.map((sound) => (
 					<SupplementSoundLine
 						key={sound.attachment}

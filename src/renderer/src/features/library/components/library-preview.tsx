@@ -357,7 +357,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	return (
 		<div
 			ref={rootRef}
-			className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-surface"
+			className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-surface"
 			data-library-preview={asset.id}
 			data-library-compact={compact ? "" : undefined}
 			data-glass-region="pane"
@@ -566,7 +566,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						<Button
 							variant="link"
 							size="sm"
-							className="h-auto max-w-full min-w-0 justify-start whitespace-normal text-left"
+							className="h-auto max-w-full min-w-0 justify-start whitespace-normal text-start"
 							title={`${t("ui.library.preview.from_conversation", {
 								title:
 									asset.occurrences[0].session_title ||
@@ -647,8 +647,8 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 			 * mounted when the asset has a linked conversation OR a send created one
 			 * this mount; otherwise it renders nothing and the composer sits at the
 			 * foot alone. Bounded by its own `basis`/`max-h` so it can never squeeze
-			 * the viewer out of usable height, and grounded in `canvas` against the
-			 * `surface` panel — a tone step, never a rule between the two.
+			 * the viewer out of usable height, and grounded in `sunken` with the
+			 * viewer and composer — one continuous region, never a rule between them.
 			 */}
 			{chatSessionId && (
 				<LibraryTrajectory

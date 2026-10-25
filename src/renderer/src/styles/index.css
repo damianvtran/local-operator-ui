@@ -1877,8 +1877,7 @@ html[data-glass~="sidebar"] [data-glass-region="sidebar"] {
  */
 html[data-glass~="sidebar"]
 	[data-glass-region="sidebar"]
-	[data-glass-region="sidebar"],
-html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-region="pane"] {
+	[data-glass-region="sidebar"] {
 	background-color: transparent;
 }
 /*
@@ -1949,6 +1948,16 @@ html[data-glass~="pane"]
 		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
 		transparent
 	);
+}
+/* The clear comes AFTER every raw/net/split pane paint. The generic rule wins
+ * the raw tie; the main-qualified rule matches net/split specificity and wins
+ * by order, so no descendant can compound a second alpha over its outer pane. */
+html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-region="pane"],
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"]
+	[data-glass-region="pane"] {
+	background-color: transparent;
 }
 /*
  * A PANEL is one of the page's own large list frames or rails (the Schedules list, the
@@ -2330,6 +2339,18 @@ html[data-glass~="pane"] [data-glass-chrome-live] [data-glass-region="chrome"] {
 		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
 		transparent
 	);
+}
+/*
+ * The ROUTE's outer chrome wrapper paints from y0 through the tab track. The
+ * nested strip keeps its chrome role (including the segmented-track exclusion
+ * and active-tab stacking contract), but must not lay the same alpha over the
+ * wrapper a second time. Pane-hosted strips have no chrome ancestor and keep
+ * their existing paint unchanged.
+ */
+html[data-glass~="pane"]
+	[data-browser-route-chrome]
+	[data-glass-region="chrome"] {
+	background-color: transparent;
 }
 /*
  * A chrome band inside a CONVERSATION's rail pane (the browser opened beside a

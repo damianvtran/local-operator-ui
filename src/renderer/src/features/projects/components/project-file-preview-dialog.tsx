@@ -82,7 +82,7 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 	 * over a page with a browser pane mounted must stand the view down - the
 	 * same call the shared lightbox makes.
 	 */
-	useSuppressBrowserView(open, "project-file-preview");
+	useSuppressBrowserView(open, "dialog", "project-file-preview");
 	const [state, setState] = useState<PreviewState>({ status: "loading" });
 	const path = attachment?.path ?? null;
 	const markdown = attachment
@@ -142,7 +142,7 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 					target.focus();
 				}}
 			>
-				<div className="shrink-0 border-hairline border-b px-4 py-3 pr-12">
+				<div className="shrink-0 border-hairline border-b px-4 py-3 pe-12">
 					<DialogTitle className="truncate text-title" title={path ?? ""}>
 						{name}
 					</DialogTitle>

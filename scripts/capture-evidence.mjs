@@ -5582,6 +5582,35 @@ export const STORIES = [
 	["chat-message-input--pending-send-chip-row-small-view", 440, 400],
 	["chat-message-input--pending-send-payload-small-view", 440, 400],
 	["chat-message-input--pending-send-small-view", 440, 300],
+	/* THE FILE CARDS THE CONTRACT ADDED (attachment contract v1 §5/§6): a PDF chip
+	   and a mixed image+PDF row, plus the sent history card in its two existence
+	   states. 400 tall, like the chip-row frames beside them: the file card is
+	   100px like the tile, and `pending_caption` adds one meta line under the row.
+	   `sent-file-card` renders the leaf at 1024x240, centred: it is a row, not a
+	   composer, and the frames are read against the pending chip above. */
+	["chat-message-input--pending-send-pdf", 1024, 400],
+	["chat-message-input--pending-send-pdf-remove-focus", 1024, 400],
+	["chat-message-input--pending-send-mixed", 1024, 400],
+	/* The largest row a send can carry, and the narrow rung where it wraps: the
+	   single-PDF frame cannot show either (design round 1, D3). 520 tall because
+	   eight cards at two rows plus the caption exceed the 400px used above. */
+	["chat-message-input--pending-send-many-files", 1024, 520],
+	["chat-message-input--pending-send-narrow-long-name", 440, 460],
+	/* The image remove control over real fixture pixels, focused - the image
+	   half of the reserved-corner claim. */
+	["chat-message-input--pending-send-image-remove-focus", 1024, 400],
+	["chat-sent-file-card--sent-file", 1024, 240],
+	/* A long path whose visible line is truncated and whose copy control is the
+	   only way to the full value (design D1), and a conversation whose placement
+	   is not known (agent review n3). */
+	["chat-sent-file-card--sent-file-long-path", 1024, 240],
+	["chat-sent-file-card--placement-unknown-no-claim", 1024, 240],
+	["chat-sent-file-card--moved-or-deleted", 1024, 240],
+	/* An older row with no store path: no copy control at all, rather than one
+	   that copies the dead origin path (design D2 follow-up). */
+	["chat-sent-file-card--moved-or-deleted-no-stored-path", 1024, 240],
+	["chat-canonical-user-card-measure--file-attachment", 1024, 620],
+
 	/* THE NOTICE A FAILED SEND LEAVES - the six states the operator's own screen
 	   was one of. Their frames answer the report directly: the message and its
 	   file are IN the composer, and the sentence beside them is one line with at
@@ -9050,6 +9079,108 @@ export const STORIES = [
 	],
 	["common-updatenotification--backend-update-failed", 1280, 900],
 	/*
+	 * THE INCIDENT'S OWN FRAME (2026-10-24): the update stopped because PyPI still
+	 * served 0.88.4 while the target was 0.89.0, and the panel used to show the
+	 * stream head - two startup advisories - with no cause. The claims are the
+	 * clauses this change adds, so a frame that loses the structured cause cannot
+	 * be admitted as evidence for it.
+	 */
+	[
+		"common-updatenotification--backend-update-failed-publication",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"Publish step",
+				"Version 0.89.0 is not on PyPI yet.",
+				"The release is still publishing; try again in a few minutes.",
+			],
+		},
+	],
+	[
+		/*
+		 * THE EXPANDED RECORD (QA round 2 decision): the disclosure is opened and
+		 * its pre is parked at the end, so the frame shows the updater's exact
+		 * sentence the reader is asking for. A distinct `dir` keeps the collapsed
+		 * frame under its own name.
+		 */
+		"common-updatenotification--backend-update-failed-publication",
+		1280,
+		900,
+		{
+			dir: "backend-update-failed-publication-expanded",
+			press: 'button[aria-expanded="false"]',
+			scrollToEnd: "pre",
+			expectSentence: [
+				"fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+				"Version 0.89.0 is not on PyPI yet.",
+			],
+		},
+	],
+	[
+		"common-updatenotification--backend-update-failed-publication-es",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"Paso de publicación",
+				"La versión 0.89.0 aún no está en PyPI.",
+				"La versión aún se está publicando; vuelve a intentarlo en unos minutos.",
+			],
+		},
+	],
+	[
+		"common-updatenotification--backend-update-failed-publication-es",
+		1280,
+		900,
+		{
+			dir: "backend-update-failed-publication-es-expanded",
+			press: 'button[aria-expanded="false"]',
+			scrollToEnd: "pre",
+			expectSentence: [
+				"fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+				"La versión 0.89.0 aún no está en PyPI.",
+			],
+		},
+	],
+	[
+		"common-updatenotification--backend-update-failed-publication-narrow",
+		320,
+		568,
+		{
+			expectSentence: [
+				"Publish step",
+				"Version 0.89.0 is not on PyPI yet.",
+				"The release is still publishing; try again in a few minutes.",
+			],
+		},
+	],
+	[
+		"common-updatenotification--backend-update-failed-serve",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"The server is still on the old version",
+				"Services step",
+				"The install finished, but the server is still running 0.88.4.",
+				"The app started this server, so it can restart it now.",
+			],
+		},
+	],
+	[
+		"common-updatenotification--backend-update-failed-unknown",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"Install step",
+				"The updater did not name a cause.",
+				"Copy the details below and try again",
+			],
+		},
+	],
+	/*
 	 * THE REFUSAL, which is not the failure above it (design round 1, D1/D5). The
 	 * fleet did not drain, so the app waited its bounded time and left the server
 	 * alone - a deliberate, bounded decision that used to be painted in the failure
@@ -9233,7 +9364,12 @@ export const STORIES = [
 		1280,
 		900,
 		{
-			expectSentence: "Resolved 55 packages in 1.25s",
+			/*
+			 * The claim moved from the raw output to the sentence: the output is a
+			 * collapsed disclosure now (design D2), so the frame's subject is the
+			 * stopped-updater sentence, not a transcript line behind a click.
+			 */
+			expectSentence: "The updater was stopped",
 		},
 	],
 	[

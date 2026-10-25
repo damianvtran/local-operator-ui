@@ -1,0 +1,69 @@
+{
+ "auditor": "task",
+ "model": "anthropic/claude-opus-5-5",
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole pass (skill reading, contract reading, catalogue review, ICU validation and artifacts). No provider fallback occurred.",
+ "instance": "pr5-20261023-es",
+ "session": "fb125765ab49",
+ "parent_session": "1cfce255 (team lopdev manager; id prefix as exposed in this session's spawn chain)",
+ "date": "2026-10-23",
+ "locale": "es",
+ "namespace": "ui.chat.asks",
+ "status": "changes_requested",
+ "result": "changes_requested",
+ "keys_audited": 10,
+ "keys_substantive": 10,
+ "source_head": "9571f33c537c9ce5d9432f691f969f0b3f86b37a",
+ "requested_head": "5b10cb570b555752ec714d45a777c93bd5925c38",
+ "scope": "PR5 ask-dismiss copy: full fresh audit of all 10 ui.chat.asks keys for es, read side by side with en and the en context. Requested head 5b10cb570 had moved to 9571f33c5 by audit time; `git diff 5b10cb570 9571f33c5 -- src/i18n i18n` is empty, so the audited bytes are those of both heads. Cross-surface comparison against harness tui.asks/relay.ask at 93f798ddb (lo-stale-ask-surfaces, unmerged branch). No rendered-fit claim.",
+ "sha256": {
+  "en": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+  "es": "03d4bf03164142f77be49eabe3669f2ab936a6ea88d34c35ba0b097bc3d5eb0e",
+  "context": "f5e2f62d5630e4873ee3084265c8e487beac4854a690df4e824ce0a6135747ea"
+ },
+ "findings": [
+  {
+   "id": "es-M1",
+   "severity": "MAJOR",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "The note addresses the operator with a second-person imperative (tú-imperative «deja de esperar»), so it reads as telling the operator to stop waiting for a reply. Per the context sidecar the actor is the agent: dismissing means the agent stops waiting on this ask. The terminal/phone copy for the same English (tui.asks.dismiss.moot_note, relay.ask.dismiss.moot_note) was corrected for exactly this in its own independent audit and names the agent. Root cause is upstream of the translation: the en context sets `tone: \"lowercase fragment, imperative\"` for this key while its `note` says the agent stops waiting, so a translator following the tone line lands on an operator-addressed imperative. Coder should also change that tone line (e.g. 'lowercase fragment naming what the agent stops doing') so a re-translation does not regress.",
+   "current": "deja de esperar una respuesta",
+   "proposed": "el agente dejará de esperar respuesta"
+  },
+  {
+   "id": "es-m1",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.context.messages_since",
+   "issue": "The many arm renders {count} while one/other render #, so 1.000.000 renders as the unformatted '1000000 de mensajes' (verified with the repo's intl-messageformat); the es style guide says '# renders the formatted number'. Reachable only at exact multiples of 10⁶ messages, so user impact is negligible; graded MINOR because it breaks a style-guide rule.",
+   "current": "{count, plural, one {# mensaje tuyo desde que se hizo esta consulta (último: {time})} many {{count} de mensajes tuyos desde que se hizo esta consulta (último: {time})} other {# mensajes tuyos desde que se hizo esta consulta (último: {time})}}",
+   "proposed": "{count, plural, one {# mensaje tuyo desde que se hizo esta consulta (último: {time})} many {# de mensajes tuyos desde que se hizo esta consulta (último: {time})} other {# mensajes tuyos desde que se hizo esta consulta (último: {time})}}"
+  },
+  {
+   "id": "es-n1",
+   "severity": "NIT",
+   "key": "ui.chat.asks.dismiss.answered_in_chat.title",
+   "issue": "Term diverges from the terminal/phone surfaces («Respondido en la conversación», «Descartada — respondida en la conversación»), and from this namespace's own note («ya respondiste en la conversación»). «chat» is acceptable in es desktop, so this is alignment only. Also applies to dismiss.receipt.answered_in_chat.",
+   "current": "Respondida en el chat | Descartada — resuelta en el chat",
+   "proposed": "Respondida en la conversación | Descartada — resuelta en la conversación"
+  },
+  {
+   "id": "es-n2",
+   "severity": "NIT",
+   "key": "ui.chat.asks.dismiss.heading",
+   "issue": "Cross-surface divergence: the terminal/phone heading uses «pregunta» for the ask, the desktop uses «consulta». Kept deliberately: «consulta» matches the desktop's own asks panel and rail on the same screen (ui.chat.composer.secret_ask_open «Abrir consultas», ui.shell.rail.ask.aria «Consultas»). Recorded so the two surfaces can converge in one direction; no catalogue change proposed here.",
+   "current": "Descartar esta consulta",
+   "proposed": "(no change: keep «consulta»)"
+  }
+ ],
+ "proposed_values": {
+  "ui.chat.asks.dismiss.moot.note": "el agente dejará de esperar respuesta",
+  "ui.chat.asks.context.messages_since": "{count, plural, one {# mensaje tuyo desde que se hizo esta consulta (último: {time})} many {# de mensajes tuyos desde que se hizo esta consulta (último: {time})} other {# mensajes tuyos desde que se hizo esta consulta (último: {time})}}",
+  "ui.chat.asks.dismiss.answered_in_chat.title": "Respondida en la conversación",
+  "ui.chat.asks.dismiss.receipt.answered_in_chat": "Descartada — resuelta en la conversación"
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+  "contract_docs_I18N_md_origin_main": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager. This session produced none of the reviewed copy: it did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used; all linguistic judgement is the auditor's own. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation."
+}

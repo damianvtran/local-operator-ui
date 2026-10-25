@@ -1,4 +1,3 @@
-import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { Button, Tooltip } from "@shared/components/ui";
 import {
 	DropdownMenu,
@@ -31,7 +30,7 @@ import {
 	VolumeX,
 	X,
 } from "lucide-react";
-import type { FC, ReactNode } from "react";
+import type { FC } from "react";
 import {
 	Fragment,
 	useCallback,
@@ -40,6 +39,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { textDirectionFor } from "../../../../../i18n/direction";
 import type { BrowserTabView } from "../hooks/use-browser-chrome";
 import {
 	type CloseTabsIntent,
@@ -51,6 +51,11 @@ import {
 	pooledTabs,
 	sessionDisplayName,
 } from "../model/tab-index-model";
+import {
+	physicalMoveTarget,
+	physicalScrollEdges,
+	pointerIsAfterTab,
+} from "./browser-tab-direction";
 
 /**
  * The tab strip. Design: docs/design/ui-browser-tab.md 6.1 (the controls), 6.2
@@ -95,13 +100,12 @@ import {
  * notch moved with it — left on `canvas` they drew a 1px seam where the sheet
  * used to be, in every theme.
  *
- * WHY THE ROW ACTIONS ARE A REGISTERED POPOUT (operator report, 2026-09-28; this
- * SUPERSEDES the in-band ruling of the previous round). The actions expand in a
- * `DropdownMenu` portaled over the content area, and the menu REGISTERS ITSELF
- * with the overlay policy while it is open (`useSuppressBrowserView(…,
- * "browser-tab-actions")`) - so the native view hides exactly as it does for a
- * dialog, the paused note paints behind the menu, and dismissing it brings the
- * page back. The in-band row it replaces was itself the answer to an occluded
+ * WHY THE ROW ACTIONS ARE A POPOUT (operator report, 2026-09-28; this SUPERSEDES
+ * the in-band ruling of the previous round). The actions expand in a
+ * `DropdownMenu` portaled over the content area, and the panel's shared
+ * primitive registers a MEASURED pause (S5): a menu wholly inside the band does
+ * nothing, and one that crosses into the page hides the native view exactly as a
+ * dialog does — measured, because the band below is the page's own top edge. The in-band row it replaces was itself the answer to an occluded
  * dropdown, and it cost the page: opening it grew the strip by its own height
  * (~214px at the worst case it was designed to) and pushed the page and the URL
  * bar down - which is the operator's report. A registered popout takes neither
@@ -126,14 +130,6 @@ import {
  */
 
 export interface BrowserTabStripProps {
-	/** The S4b address trigger, page menu and (when waiting) approvals control.
-	 * Rendered at the trailing edge, before the new-tab control; the strip owns
-	 * the row geometry, the surface owns these controls. */
-	trailing?: ReactNode;
-	/** True while the address popout covers the strip: every control here must
-	 * stop being focusable and clickable, or Tab would walk tabs underneath a
-	 * row the user cannot see. */
-	chromeInert?: boolean;
 	/** The host's OWN list — the pane's strip is scoped to a conversation, the route's is
 	 * everything — and it is the list every count in the band is taken from (design R5 as
 	 * the operator ruled it in review round 2, settling U7 against round 1's A3).
@@ -316,7 +312,7 @@ const TabMark: FC<{
 				<Status
 					data-tour-tag={`browser-tab-${status}`}
 					className={cn(
-						"absolute bottom-0 right-0 size-2.5 rounded-full bg-elevated",
+						"absolute bottom-0 end-0 size-2.5 rounded-full bg-elevated",
 						status === "failed" ? "text-danger" : "text-ink-muted",
 					)}
 				/>
@@ -334,6 +330,17 @@ const tabLabel = (title: string): string => {
 		? trimmed
 		: `${trimmed.slice(0, 23).trimEnd()}\u2026`;
 };
+
+/**
+ * `tabLabel` as an ISOLATED RUN inside a catalogue sentence (design round 2,
+ * D7). The menu quotes the title and is portalled into an RTL paragraph: an
+ * LTR title's ellipsis drifted to the start of the Latin run (`"…accessibility"`).
+ * FSI/PDI (U+2068/U+2069) is the inline equivalent of `<bdi>` — a catalogue
+ * message cannot carry an element - and it wraps the VALUE, never the copy, so
+ * a translation keeps its own quotes and punctuation.
+ */
+const isolatedTabLabel = (title: string): string =>
+	`\u2068${tabLabel(title)}\u2069`;
 
 /**
  * The state chips a row can carry, IN SURVIVAL ORDER — the order the cap spends.
@@ -449,10 +456,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	onTabAction,
 	onHandOver,
 	onRevokeHandOver,
-	trailing,
-	chromeInert = false,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
+	const direction = textDirectionFor(locale);
 	const copy = {
 		error: t("ui.browser.chrome.error_title"),
 		left: t("ui.browser.chrome.move_left"),
@@ -515,9 +521,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	const closeChord = chordCaption("primary+w", isMac ? "mac" : "linux");
 	const [overflowOpen, setOverflowOpen] = useState(false);
 	const stripRootRef = useRef<HTMLDivElement | null>(null);
-	useEffect(() => {
-		stripRootRef.current?.toggleAttribute("inert", chromeInert);
-	}, [chromeInert]);
 	const scrollerRef = useRef<HTMLDivElement | null>(null);
 	/** The pinned control's own element, so dismissing the list hands focus back to the
 	 * control that opened it — the same contract the actions menu has with its trigger
@@ -529,19 +532,15 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	/** The list's own scroller, for the reveal below. */
 	const overflowScrollerRef = useRef<HTMLDivElement | null>(null);
 
-	/**
-	 * Register the popout with the overlay policy while it is OPEN.
-	 *
-	 * THE REGISTRATION IS THE CHANGE (2026-09-28, operator report). The menu
-	 * floats over the content area, where a native `WebContentsView` paints above
-	 * all DOM, so an unregistered menu would be invisible - which is why the
-	 * actions used to be an in-band row at all. Registering hides the view while
-	 * the menu is open, exactly as `BaseDialog` does; the paused note paints
-	 * behind the menu, and dismissing it brings the page back. The id is a NAME
-	 * (`browser-tab-actions`), and the policy suffixes it with a `useId` so two
-	 * mounts cannot cancel each other's registration out.
+	/*
+	 * NO REGISTRATION HERE ANY MORE (S5). The tab-actions panel is a shared
+	 * `DropdownMenuContent`, and that primitive now registers a MEASURED pause:
+	 * a panel wholly inside the strip's band measures no intersection and does
+	 * nothing, while one that crosses into the page pauses from the measurement.
+	 * Registering unconditionally here was the older, coarser rule — it hid the
+	 * page for a menu that happened not to reach it, and it could not express the
+	 * inside-band case the S5 ruling asks for.
 	 */
-	useSuppressBrowserView(actionsTabId !== null, "browser-tab-actions");
 
 	/**
 	 * A TAB THAT STOPS EXISTING TAKES ITS MENU WITH IT — AND RELEASES THE VIEW.
@@ -904,7 +903,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	const closeOthers =
 		actionsTabId === null ? null : closeOthersIntent(tabs, actionsTabId);
 	const closeRight =
-		actionsTabId === null ? null : closeToTheRightIntent(ordered, actionsTabId);
+		actionsTabId === null
+			? null
+			: closeToTheRightIntent(ordered, actionsTabId, direction);
 	/** The failed set's counted close: every tab in the visible list whose last
 	 * navigation was refused — the tabs the strip paints its `Failed` chips on, and
 	 * exactly the set the session store now refuses to restore. Read from the same
@@ -932,10 +933,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			}
 			setTabsOffScreen(offScreen);
 			setViewportWidth(strip.clientWidth);
-			setScrollEdges({
-				left: strip.scrollLeft > 1,
-				right: strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 1,
-			});
+			setScrollEdges(
+				physicalScrollEdges(
+					strip.scrollLeft,
+					strip.clientWidth,
+					strip.scrollWidth,
+					direction,
+				),
+			);
 		};
 
 		measure();
@@ -947,7 +952,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			strip.removeEventListener("scroll", measure);
 			observer.disconnect();
 		};
-	}, [ordered]);
+	}, [ordered, direction]);
 
 	return (
 		<div
@@ -964,14 +969,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			 * only nothing selects it and the flat `sunken` track is unchanged.
 			 */
 			data-glass-region="chrome"
-			className={cn(
-				"flex flex-col border-hairline border-b bg-sunken",
-				// The popout is opaque and covers this band; `invisible` is what
-				// stops the trailing controls and `+` painting THROUGH it (measured
-				// in the S4b owner frame: the trigger/host and plus sat over the
-				// field, because inert hides interaction but not pixels).
-				chromeInert && "invisible",
-			)}
+			className="flex flex-col border-hairline border-b bg-sunken"
 			role="tablist"
 			aria-label={t("ui.browser.browser_tab_strip.browser_tabs")}
 			data-tour-tag="browser-tab-strip"
@@ -1004,21 +1002,28 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				data-tour-tag="browser-tab-strip-row"
 			>
 				{hasOverflow && (
-					<Tooltip side="top" content={copy.scrollLeft}>
+					<Tooltip
+						side="top"
+						content={direction === "rtl" ? copy.scrollRight : copy.scrollLeft}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							className="shrink-0 self-center focus-visible:-outline-offset-2!"
-							aria-label={copy.scrollLeft}
-							disabled={!scrollEdges.left}
+							aria-label={
+								direction === "rtl" ? copy.scrollRight : copy.scrollLeft
+							}
+							disabled={
+								direction === "rtl" ? !scrollEdges.right : !scrollEdges.left
+							}
 							onClick={() =>
 								scrollerRef.current?.scrollBy({
-									left: -240,
+									left: direction === "rtl" ? 240 : -240,
 									behavior: "instant",
 								})
 							}
 						>
-							<ChevronLeft aria-hidden className="size-4" />
+							<ChevronLeft aria-hidden className="size-4 rtl:-scale-x-100" />
 						</Button>
 					</Tooltip>
 				)}
@@ -1059,6 +1064,18 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						const waitingOrdinal = waiting[tab.tabId];
 						// One identity/menu slot + title + close. Status text does not spend
 						// the title's budget; the complete name remains accessible at every width.
+						const moveLeft = physicalMoveTarget(
+							index,
+							ordered.length,
+							"left",
+							direction,
+						);
+						const moveRight = physicalMoveTarget(
+							index,
+							ordered.length,
+							"right",
+							direction,
+						);
 						const floor = tabFloor(active, 0);
 						const previous = index > 0 ? ordered[index - 1] : null;
 						/**
@@ -1190,10 +1207,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											event.preventDefault();
 											setDropTarget(tab.tabId);
 											setDropAfter(
-												event.clientX >
+												pointerIsAfterTab(
+													event.clientX,
 													event.currentTarget.getBoundingClientRect().x +
 														event.currentTarget.getBoundingClientRect().width /
 															2,
+													direction,
+												),
 											);
 										}
 									}}
@@ -1205,7 +1225,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											move(
 												dragging,
 												tab.tabId,
-												event.clientX > rect.x + rect.width / 2,
+												pointerIsAfterTab(
+													event.clientX,
+													rect.x + rect.width / 2,
+													direction,
+												),
 											);
 										}
 										setDragging(null);
@@ -1334,9 +1358,15 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											);
 											let next = at;
 											if (event.key === "ArrowRight")
-												next = (at + 1) % ordered.length;
+												next =
+													direction === "rtl"
+														? (at + ordered.length - 1) % ordered.length
+														: (at + 1) % ordered.length;
 											else if (event.key === "ArrowLeft")
-												next = (at + ordered.length - 1) % ordered.length;
+												next =
+													direction === "rtl"
+														? (at + 1) % ordered.length
+														: (at + ordered.length - 1) % ordered.length;
 											else if (event.key === "Home") next = 0;
 											else if (event.key === "End") next = ordered.length - 1;
 											else return;
@@ -1361,12 +1391,21 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										 * content (mark, chips, title) and is a SIBLING of the notch, so
 										 * clipping here keeps the guarantee and leaves the notch painting.
 										 */
-										className="flex min-w-0 grow items-center gap-1.5 overflow-hidden py-1.5 text-left focus-visible:-outline-offset-2!"
+										className="flex min-w-0 grow items-center gap-1.5 overflow-hidden py-1.5 text-start focus-visible:-outline-offset-2!"
 										data-tour-tag="browser-tab"
 									>
 										<span
-											className="min-w-0 grow truncate"
+											className="min-w-0 grow truncate rtl:text-right"
 											title={tab.title}
+											/*
+											 * A TAB TITLE IS THE PAGE'S OWN TEXT, not the tab's chrome: a
+											 * Latin title inside the RTL tab row put its ellipsis at the
+											 * logical end and ate the first character (`3 …rowser
+											 * chrome`). `dir="auto"` gives the run its own base direction
+											 * from its first strong character, while the badge and close
+											 * keep the tab's RTL order (design round 1, D5).
+											 */
+											dir="auto"
 											data-tour-tag="browser-tab-title"
 										>
 											{tab.title}
@@ -1376,12 +1415,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 									    while its trigger is the row's leading identity slot. No overlay
 									    covers title text on hover or focus. */}
 									<div className="contents">
-										{/* The tab's actions, as a REGISTERED POPOUT (2026-09-28, operator
-										    report). It floats over the content area, where a native
-										    view paints above all DOM, so the strip registers it with
-										    the overlay policy while it is open: the view hides, the
-										    paused note shows behind the menu, and dismissing it brings
-										    the page back. The strip does not grow and the page does not
+										{/* The tab's actions, as a popout whose panel is a MEASURED
+										    pause (S5). It floats over the content area, where a native
+										    view paints above all DOM, so the shared `DropdownMenuContent`
+										    primitive registers only while its painted panel intersects
+										    the view: a panel that stays inside the band does nothing,
+										    and one that crosses hides the view with the paused note
+										    behind it. The strip does not grow and the page does not
 										    move — see the component docstring for the in-band row this
 										    replaces and why. */}
 										<DropdownMenu
@@ -1458,7 +1498,16 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													 * longer covered; a panel that fits is untouched); the bound is what
 													 * the pinned middleware actually is.
 													 */
-													collisionPadding={{ right: 120 }}
+													/*
+													 * `collisionPadding` is PHYSICAL (Radix measures it against window
+													 * edges), while the pill sits at the window's inline END: the right
+													 * edge in LTR, the left in Urdu. Keeping the LTR inset in RTL would
+													 * protect the edge the pill is not on and let the panel cover it on
+													 * the other (design round 1, D1).
+													 */
+													collisionPadding={
+														direction === "rtl" ? { left: 120 } : { right: 120 }
+													}
 													/*
 													 * THE CLOSE RECORD WINS (QA round 2, Q2-1): while a close this menu
 													 * started is still deciding where the caret goes, Radix's own
@@ -1477,7 +1526,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												>
 													<DropdownMenuLabel className="truncate">
 														{t("ui.browser.browser_tab_strip.actions_for", {
-															title: tabLabel(tab.title),
+															title: isolatedTabLabel(tab.title),
 														})}
 													</DropdownMenuLabel>
 													{!tab.active && (
@@ -1491,7 +1540,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															data-tour-tag="browser-tab-watch"
 														>
 															{t("ui.browser.browser_tab_strip.watch", {
-																title: tabLabel(tab.title),
+																title: isolatedTabLabel(tab.title),
 															})}
 														</DropdownMenuItem>
 													)}
@@ -1508,7 +1557,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															{t(
 																"ui.browser.browser_tab_strip.let_an_agent_use",
 																{
-																	title: tabLabel(tab.title),
+																	title: isolatedTabLabel(tab.title),
 																},
 															)}
 															…
@@ -1522,7 +1571,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															{t(
 																"ui.browser.browser_tab_strip.stop_letting_the_agent_use",
 																{
-																	title: tabLabel(tab.title),
+																	title: isolatedTabLabel(tab.title),
 																},
 															)}
 														</DropdownMenuItem>
@@ -1556,22 +1605,28 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													{onReorder && (
 														<>
 															<DropdownMenuItem
-																disabled={index === 0}
-																onSelect={() =>
-																	move(tab.tabId, ordered[index - 1].tabId)
-																}
+																disabled={moveLeft === null}
+																onSelect={() => {
+																	if (moveLeft !== null)
+																		move(
+																			tab.tabId,
+																			ordered[moveLeft].tabId,
+																			moveLeft > index,
+																		);
+																}}
 															>
 																{copy.left}
 															</DropdownMenuItem>
 															<DropdownMenuItem
-																disabled={index === ordered.length - 1}
-																onSelect={() =>
-																	move(
-																		tab.tabId,
-																		ordered[index + 1].tabId,
-																		true,
-																	)
-																}
+																disabled={moveRight === null}
+																onSelect={() => {
+																	if (moveRight !== null)
+																		move(
+																			tab.tabId,
+																			ordered[moveRight].tabId,
+																			moveRight > index,
+																		);
+																}}
 															>
 																{copy.right}
 															</DropdownMenuItem>
@@ -1634,7 +1689,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 														data-tour-tag="browser-tab-actions-close"
 													>
 														{t("ui.browser.browser_tab_strip.close", {
-															title: tabLabel(tab.title),
+															title: isolatedTabLabel(tab.title),
 														})}
 													</DropdownMenuItem>
 													{/*
@@ -1806,7 +1861,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											aria-hidden
 											className={cn(
 												"pointer-events-none absolute inset-y-1 w-0.5 bg-accent",
-												dropAfter ? "right-0" : "left-0",
+												dropAfter ? "end-0" : "start-0",
 											)}
 											data-tour-tag="browser-tab-drop-marker"
 										/>
@@ -1817,21 +1872,28 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					})}
 				</div>
 				{hasOverflow && (
-					<Tooltip side="top" content={copy.scrollRight}>
+					<Tooltip
+						side="top"
+						content={direction === "rtl" ? copy.scrollLeft : copy.scrollRight}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							className="shrink-0 self-center focus-visible:-outline-offset-2!"
-							aria-label={copy.scrollRight}
-							disabled={!scrollEdges.right}
+							aria-label={
+								direction === "rtl" ? copy.scrollLeft : copy.scrollRight
+							}
+							disabled={
+								direction === "rtl" ? !scrollEdges.left : !scrollEdges.right
+							}
 							onClick={() =>
 								scrollerRef.current?.scrollBy({
-									left: 240,
+									left: direction === "rtl" ? -240 : 240,
 									behavior: "instant",
 								})
 							}
 						>
-							<ChevronRight aria-hidden className="size-4" />
+							<ChevronRight aria-hidden className="size-4 rtl:-scale-x-100" />
 						</Button>
 					</Tooltip>
 				)}
@@ -1902,42 +1964,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						</Button>
 					</Tooltip>
 				)}
-				{/* THE TRAILING CLUSTER HOLDS THE RIGHT EDGE (design round 1, D1). It used
-				    to follow the last tab, so the site/address trigger and its menu moved
-				    with the tab count — the page menu sat ~490px further left at rest than
-				    when the popout replaced the strip. `ml-auto` parks the cluster against
-				    the far edge and the leading hairline separates it from the tab run;
-				    the new-tab control stays outside it, because `+` belongs to the tabs,
-				    not to the origin. */}
-				{trailing != null && (
-					/*
-					 * THE RULE HAS ITS OWN GAP, not the cluster's border (design round 2,
-					 * D10). As `border-l` on the cluster it sat flush against the last
-					 * control in the run — the overflow count chip — and read as a strike
-					 * through the chip's right edge in the tabs-fill and narrow frames.
-					 *
-					 * THE MARGIN IS 16px BECAUSE THE CHIP IS WIDER THAN ITS BUTTON (QA round
-					 * 3, Q5). The count chip protrudes 7px past the 28px overflow button's
-					 * right edge, so `ml-2`'s 8px left margin left the chip only 1px from
-					 * the rule — measured, chipRight 446 vs ruleLeft 447 at the 560px strip
-					 * and 1266 vs 1267 when filled. The margin is the whole distance from
-					 * that button to the rule, so `ml-4` keeps 16 - 7 = 9px of clearance at
-					 * both widths. Fitting the chip inside the button would widen the
-					 * control by ~16px and take that width from the tab run; moving the
-					 * rule costs 8px, and the trailing cluster already owns the right edge
-					 * (D1).
-					 */
-					<div
-						className="ml-auto flex shrink-0 items-center"
-						data-tour-tag="browser-strip-trailing"
-					>
-						<span
-							aria-hidden
-							className="ml-4 w-px shrink-0 self-stretch bg-hairline"
-						/>
-						<div className="flex items-center pl-1">{trailing}</div>
-					</div>
-				)}
 				{tabs.length > 0 && (
 					<Tooltip
 						content={`${newTabLabel} (${newChord.glyph})`}
@@ -1947,7 +1973,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className="ml-2 shrink-0 self-center focus-visible:-outline-offset-2!"
+							className="ms-2 shrink-0 self-center focus-visible:-outline-offset-2!"
 							aria-label={newTabLabel}
 							aria-keyshortcuts={newChord.aria}
 							onClick={onNewTab}
@@ -1962,10 +1988,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				/*
 				 * THE BAND ROW THE PINNED CONTROL OPENS, and the reason it is a row and not
 				 * a menu: a Radix menu anchored in the band paints DOWNWARD into the content
-				 * rect, where the native view wins — `browser-view-policy.ts:34-38`
-				 * deliberately does not register menus in the band, and no z-index beats a
-				 * native sibling view. This row is outside that rectangle, so nothing here can
-				 * be occluded and nothing needs suppressing; the strip grows by its height and
+				 * rect, where the native view wins. Menus now register a MEASURED pause
+				 * (S5), so a crossing panel would hide the page to be readable — an oxymoron
+				 * for a list whose job is to be read BESIDE the page. This row is outside
+				 * that rectangle, so nothing here can be occluded and nothing needs
+				 * suppressing; the strip grows by its height and
 				 * the page's own rectangle shrinks by exactly the same amount, because the
 				 * content element is measured by a `ResizeObserver` and the host re-bounds the
 				 * view. The same trade the dock makes — the page narrows rather than hides —
@@ -2037,7 +2064,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										}}
 										aria-current={tab.tabId === activeTabId}
 										data-tab-id={tab.tabId}
-										className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+										className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-start text-body-sm text-ink-muted hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
 										data-tour-tag="browser-tab-overflow-row"
 									>
 										<Check
@@ -2048,7 +2075,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											)}
 										/>
 										<TabMark tab={tab} />
-										<span className="min-w-0 grow truncate" title={tab.title}>
+										<span
+											className="min-w-0 grow truncate rtl:text-right"
+											dir="auto"
+											title={tab.title}
+										>
 											{tab.title}
 										</span>
 									</button>
@@ -2061,7 +2092,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						size="icon-sm"
 						aria-label={t("ui.browser.browser_tab_strip.hide_all_tabs")}
 						onClick={closeOverflow}
-						className="absolute top-1 right-2"
+						className="absolute top-1 end-2"
 						data-tour-tag="browser-tab-overflow-dismiss"
 					>
 						{/* One shape for "this band row goes away": the pinned list is the

@@ -895,7 +895,7 @@ test("a non-closing FINAL response states its own time on its meta row", async (
 	 * ones."
 	 *
 	 * The stamp rides the meta row this response already reserves - AFTER the
-	 * action row, inside the same `ml-auto` span - so the arrival of the pointer
+	 * action row, inside the same `ms-auto` span - so the arrival of the pointer
 	 * fades the icons in beside a stamp that was already painted, and the icons
 	 * never move it. No `Worked for` caption and no bar: those are facts about a
 	 * TURN that finished, and this row is a mid-turn handover.
@@ -913,9 +913,9 @@ test("a non-closing FINAL response states its own time on its meta row", async (
 		"it rides the meta row, in the same span as the icons",
 	);
 	assert.equal(
-		control.parentElement.className.includes("ml-auto"),
+		control.parentElement.className.includes("ms-auto"),
 		true,
-		"right-aligned with them, at the row's trailing edge",
+		"inline-end with them, at the row's trailing edge",
 	);
 	assert.equal(
 		stamp.closest(".opacity-0") ?? null,
@@ -1749,4 +1749,29 @@ test("the shared strip never mounts beside an owning strip without an observer",
 		"and the shared strip did not mount beside it without an observer to stand it down",
 	);
 	await rig.unmount();
+});
+
+/*
+ * A DISMISSAL IS A RECEIPT, NOT AN ANSWER FRAME. The row carries the ask's
+ * questions, but nothing was answered, so copying it must not manufacture
+ * "No answer given" for each of them — the harness refuses the same shape in
+ * `asks/render.py::response_text`. The sentence is the whole receipt.
+ */
+test("a dismissed ask copies one sentence, not a question with no answer", () => {
+	const record = {
+		kind: "ask_response",
+		id: "ask-response-a1",
+		ts: 0,
+		askId: "a1",
+		status: "dismissed",
+		by: { surface: "desktop" },
+		reason: "moot",
+		questions: [{ id: "q1", question: "Which environment?" }],
+		answers: {},
+		secretLost: false,
+	};
+	assert.equal(
+		mod.copyTextForRecord(record),
+		"Dismissed by you (desktop) — no longer needed (ask a1)",
+	);
 });

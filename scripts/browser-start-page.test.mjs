@@ -116,6 +116,8 @@ const ENTRY = `
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserSurface } from "./src/renderer/src/features/browser/components/browser-surface";
+import { browserOwnStateFor } from "./src/renderer/src/features/browser/model/start-page";
+export { browserOwnStateFor };
 
 /**
  * Mount the surface over a fake bridge.
@@ -168,7 +170,7 @@ export function mount(container, options = {}) {
 	};
 	const refused = [];
 	/**
-	 * EVERY view-visibility report, in order, as [visible, ownPage].
+	 * EVERY view-visibility report, in order, as [visible, ownPage, ownStatePage].
 	 *
 	 * "ownPage" is the surface's answer to "why is the native view hidden?": its
 	 * own state page (start page / load failure) versus an overlay covering the
@@ -180,8 +182,12 @@ export function mount(container, options = {}) {
 	let notify = () => {};
 	const explicit = {
 		state: async () => structuredClone(state),
-		setViewVisible: async (visible, ownPage) => {
-			visibility.push([visible, ownPage === true]);
+		setViewVisible: async (visible, ownPage, ownStatePage) => {
+			visibility.push([
+				visible,
+				ownPage === true,
+				(ownStatePage ?? ownPage) === true,
+			]);
 		},
 		// The projection store subscribes on the 0 -> 1 consumer edge and stops on
 		// the way back, so these have to answer an unsubscribe function. The app's own
@@ -310,9 +316,12 @@ const bundle = await build({
 const bundlePath = new URL(`./_start-page-${process.pid}.mjs`, import.meta.url);
 let mount;
 let suppressBrowserView;
+let browserOwnStateFor;
 try {
 	await writeFile(bundlePath, bundle.outputFiles[0].text);
-	({ mount, suppressBrowserView } = await import(bundlePath.href));
+	({ mount, suppressBrowserView, browserOwnStateFor } = await import(
+		bundlePath.href
+	));
 } finally {
 	await unlink(bundlePath).catch(() => {});
 }
@@ -327,12 +336,12 @@ try {
  */
 function reading(container) {
 	const within = container ?? document;
-	const field = within.querySelector(
-		'[data-tour-tag="browser-start-page-address"]',
-	);
+	// S5: the row is the only address field on every state, including this one.
+	const field = within.querySelector('[data-tour-tag="browser-address"]');
 	return {
 		startPage: !!within.querySelector('[data-tour-tag="browser-start-page"]'),
 		fieldValue: field ? field.value : null,
+		placeholder: field ? field.placeholder : null,
 		// `textContent`, not `innerText`: jsdom implements the first and leaves the
 		// second undefined, which is exactly how this reading came back empty.
 		band: within.querySelector('[data-tour-tag="browser-error"]')
@@ -362,7 +371,7 @@ function freshContainer() {
 	return host;
 }
 
-test("an invalid address from the START PAGE's own field returns to the start page with the address restored", async () => {
+test("an invalid address from the row returns to the start page with the address restored", async () => {
 	const container = freshContainer();
 	const handle = mount(container);
 	await flush();
@@ -376,32 +385,37 @@ test("an invalid address from the START PAGE's own field returns to the start pa
 		"",
 		"and its field starts empty, so a restored value below is the fix rather than a leftover",
 	);
+	assert.equal(
+		reading(container).placeholder,
+		"example.com",
+		"the empty start field carries the brief's placeholder rather than a bare globe",
+	);
 
 	// Drive the page's OWN field: the path QA's first matrix missed, and the one
 	// the finding is about.
-	const field = document.querySelector(
-		'[data-tour-tag="browser-start-page-address"]',
-	);
+	const field = container.querySelector('[data-tour-tag="browser-address"]');
 	const setter = Object.getOwnPropertyDescriptor(
 		dom.window.HTMLInputElement.prototype,
 		"value",
 	).set;
 	await act(async () => {
-		setter.call(field, "foo bar");
+		setter.call(field, "refused.example");
 		field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
 	});
 	await act(async () => {
-		field
-			.closest("form")
-			.dispatchEvent(
-				new dom.window.Event("submit", { bubbles: true, cancelable: true }),
-			);
+		field.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
 	});
 	await flush();
 
 	assert.deepEqual(
 		handle.refused(),
-		["foo bar"],
+		["refused.example"],
 		"the typed address reached main through the surface's own navigate path",
 	);
 	const after = reading(container);
@@ -411,7 +425,7 @@ test("an invalid address from the START PAGE's own field returns to the start pa
 	);
 	assert.equal(
 		after.fieldValue,
-		"foo bar",
+		"refused.example",
 		`the refused address is restored into the field rather than lost with the unmount (reading: ${JSON.stringify(after)})`,
 	);
 	assert.ok(
@@ -434,9 +448,9 @@ test("an invalid address from the START PAGE's own field returns to the start pa
  * in step with the component.
  */
 async function submitFromStartField(container, value) {
-	const field = container.querySelector(
-		'[data-tour-tag="browser-start-page-address"]',
-	);
+	// S5: the permanent row is the field the start state types into. Enter is the
+	// commit path the row owns (there is no form to submit any more).
+	const field = container.querySelector('[data-tour-tag="browser-address"]');
 	const setter = Object.getOwnPropertyDescriptor(
 		dom.window.HTMLInputElement.prototype,
 		"value",
@@ -446,11 +460,13 @@ async function submitFromStartField(container, value) {
 		field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
 	});
 	await act(async () => {
-		field
-			.closest("form")
-			.dispatchEvent(
-				new dom.window.Event("submit", { bubbles: true, cancelable: true }),
-			);
+		field.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
 	});
 }
 
@@ -474,11 +490,11 @@ test("the restored address SURVIVES the page being destroyed and rebuilt (F6, ro
 	const handle = mount(container);
 	await flush();
 
-	await submitFromStartField(container, "foo bar");
+	await submitFromStartField(container, "refused.example");
 	await flush();
 	assert.equal(
 		reading(container).fieldValue,
-		"foo bar",
+		"refused.example",
 		"the refusal restored the address",
 	);
 
@@ -496,7 +512,7 @@ test("the restored address SURVIVES the page being destroyed and rebuilt (F6, ro
 	await flush();
 	assert.equal(
 		reading(container).fieldValue,
-		"foo bar",
+		"refused.example",
 		"the address is seeded into the rebuilt page; with the seed removed this reads empty",
 	);
 	await act(async () => {
@@ -513,11 +529,11 @@ test("a refused address does NOT leak into a fresh tab, and the refused tab keep
 	const handle = mount(container);
 	await flush();
 
-	await submitFromStartField(container, "foo bar");
+	await submitFromStartField(container, "refused.example");
 	await flush();
 	assert.equal(
 		reading(container).fieldValue,
-		"foo bar",
+		"refused.example",
 		"tab 1 restored its refused address",
 	);
 
@@ -541,7 +557,7 @@ test("a refused address does NOT leak into a fresh tab, and the refused tab keep
 	await flush();
 	assert.equal(
 		reading(container).fieldValue,
-		"foo bar",
+		"refused.example",
 		"and the tab that made the attempt still restores its own address",
 	);
 	await act(async () => {
@@ -604,7 +620,7 @@ test("the surface reports WHY the view is hidden: its own state page versus a re
 	const visibility = handle.visibility();
 	assert.deepEqual(
 		visibility.at(-1),
-		[false, true],
+		[false, true, true],
 		`the start page hides the view for its OWN page (reports: ${JSON.stringify(visibility)})`,
 	);
 
@@ -617,15 +633,15 @@ test("the surface reports WHY the view is hidden: its own state page versus a re
 	await flush();
 	assert.deepEqual(
 		visibility.at(-1),
-		[false, false],
-		`an overlay is not the browser's own page (reports: ${JSON.stringify(visibility)})`,
+		[false, false, true],
+		`an overlay owns the keyboard, but the START PAGE is still not a controllable page (reports: ${JSON.stringify(visibility)})`,
 	);
 	await act(async () => release());
 	await flush();
 	assert.deepEqual(
 		visibility.at(-1),
-		[false, true],
-		"closing the dialog restores the state page's reason",
+		[false, true, true],
+		"closing the dialog restores the state page's keyboard reason",
 	);
 
 	// Landing a page restores the native view; the reason no longer applies.
@@ -635,10 +651,43 @@ test("the surface reports WHY the view is hidden: its own state page versus a re
 	await flush();
 	assert.deepEqual(
 		visibility.at(-1),
-		[true, false],
+		[true, false, false],
 		`a live page shows the native view again (reports: ${JSON.stringify(visibility)})`,
 	);
+	// The renderer wire for the loaded page under an overlay: neither reason is
+	// "own page", so main's `hiddenByOverlay` admits a page control (round-4
+	// reviewer minor). This is the counterpart of the start-page case above.
+	await act(async () => {
+		release = suppressBrowserView("dialog:landed");
+	});
+	await flush();
+	assert.deepEqual(
+		visibility.at(-1),
+		[false, false, false],
+		`a loaded page under an overlay reports no own-state reason (reports: ${JSON.stringify(visibility)})`,
+	);
+	await act(async () => release());
+	await flush();
+	assert.deepEqual(visibility.at(-1), [true, false, false]);
 	await act(async () => {
 		handle.unmount();
 	});
+});
+
+test("own-state treats an empty start projection as a page to refuse until a submission is pending", () => {
+	assert.equal(
+		browserOwnStateFor({ url: "" }, null),
+		true,
+		"a fresh empty projection is a start page even if the projection also says loading",
+	);
+	assert.equal(
+		browserOwnStateFor({ url: "about:blank" }, "https://example.com"),
+		false,
+		"a submitted navigation makes the blank tab a page the controls may act on",
+	);
+	assert.equal(
+		browserOwnStateFor({ url: "https://example.com" }, null),
+		false,
+		"a loaded page is never own-state",
+	);
 });

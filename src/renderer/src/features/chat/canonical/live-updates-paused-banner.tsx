@@ -124,7 +124,7 @@ export const LiveUpdatesPausedBannerView = ({
 							? t("ui.chat.live_updates.reload_failed")
 							: t("ui.chat.live_updates.paused")}
 					</span>
-					<span className="ml-auto flex min-h-7 shrink-0 items-center gap-2">
+					<span className="ms-auto flex min-h-7 shrink-0 items-center gap-2">
 						<Button
 							variant="primary"
 							size="sm"

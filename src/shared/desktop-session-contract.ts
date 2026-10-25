@@ -631,6 +631,38 @@ export type PendingDesktopGate = {
 	 */
 	persist?: boolean;
 	/**
+	 * The session's EFFECTIVE approval mode, for the approval card's policy line.
+	 *
+	 * ADDITIVE and OPTIONAL: a backend older than the effective-policy contract
+	 * omits it, and the card then draws no line rather than guessing from the
+	 * pending request. The request can outlive a policy change, so the provenance
+	 * describes the session's current policy (as stamped by the runtime), not a
+	 * reading derived from this question.
+	 *
+	 * `""` is the core's NOT-STATED stamp (an ask card, an older runtime, or a
+	 * publisher that could not read the policy); it is treated exactly like an
+	 * absent field.
+	 */
+	approval_mode?: "ask" | "auto" | "";
+	/**
+	 * Where `approval_mode` came from: the machine default (`global`), this
+	 * conversation's own recorded choice (`session`), or the run's `--yolo` pin
+	 * (`pin`). Optional for the same version-skew reason as `approval_mode`; the
+	 * card omits its line when either field is absent. `""` is not stated.
+	 */
+	approval_provenance?: "global" | "session" | "pin" | "";
+	/**
+	 * The machine default (`tool_approval_mode`) when it differs from an effective
+	 * `session` override, so the card can name what the conversation overrides
+	 * (`Approvals: Ask — session override; global Auto.`).
+	 *
+	 * ADDITIVE and OPTIONAL: a backend that publishes provenance without the
+	 * default omits it, and the line then says `session override.` without
+	 * inventing a comparison. It is never read as the effective mode. `""` is
+	 * the core's not-stated stamp, like the two fields above.
+	 */
+	approval_global_mode?: "ask" | "auto" | "";
+	/**
 	 * The session's display name, for the notification banner only.
 	 *
 	 * ADDITIVE and OPTIONAL: absent on any backend older than the composed
@@ -792,6 +824,34 @@ export type PendingAsk = {
 	 * between a receipt and a promise.
 	 */
 	delivered?: boolean;
+	/**
+	 * How many messages the USER sent in this conversation after this ask was
+	 * queued, and the epoch-ms stamp of the latest one (SA-D7's manager override;
+	 * harness PR #2833).
+	 *
+	 * The pair is the card's honesty about a stale ask: an ask can sit open across
+	 * a conversation that has already moved past it, and a reader deciding whether
+	 * it is still worth answering needs to know the conversation kept going.
+	 *
+	 * ADDITIVE AND OPTIONAL, and absent is "cannot say" rather than zero: an older
+	 * runtime omits both keys, and a card that defaulted them to 0 would claim the
+	 * user had said nothing since the ask when the truth is it never asked. Both
+	 * keys travel together from the queue's projection (`(None, None)` when there
+	 * is no admitted user message to count), so a count without a stamp is a shape
+	 * this client does not render a line for.
+	 */
+	user_messages_since?: number | null;
+	last_user_message_at?: number | null;
+	/**
+	 * WHEN a dismissed ask was put away, and WHY (harness PR-4c, SA-D8). Optional and
+	 * absent on every wire this app could read before that release, INCLUDING the one
+	 * #2833 ships: a dismissal written by an older build carries neither key, and the
+	 * surfaces read absence as the contract's own "no reply was sent" rather than as a
+	 * reason. `dismissed_reason` is the wire's own vocabulary (`moot` |
+	 * `answered_in_chat`), narrowed at the reader (`askDismissReason`).
+	 */
+	dismissed_at?: number | null;
+	dismissed_reason?: string | null;
 	questions: PendingAskQuestion[];
 	/**
 	 * The answers, keyed by question id; each a LIST because a question may be
@@ -1695,14 +1755,44 @@ export type CanonicalFrontendSync = {
  * the next reader of this wire does not have to rediscover it.
  */
 export type CanonicalContentBlock = {
-	/** Absent on durable rows: the encoder drops pydantic defaults. */
-	type?: "text" | "image";
+	/** Absent on durable rows: the encoder drops pydantic defaults. A document
+	 *  block is `type: "document"`; a legacy row that predates the discriminator
+	 *  carries `filename` beside `mime_type` and an `attachment` digest instead
+	 *  (contract v1 §5). */
+	type?: "text" | "image" | "document" | "artifact";
 	text?: string;
 	/** Inline base64. Live events always; durable rows only under 1 KiB. */
 	data?: string;
-	/** Attachment-store digest. Durable rows over 1 KiB. */
+	/** Attachment-store digest. Durable rows over 1 KiB. On an ARTIFACT block
+	 *  this is a declared field (the local copy), not an encoding detail. */
 	attachment?: string;
 	mime_type?: string;
+	// --- document fields (DocumentContent, attachment contract v1 §2/§5) ---
+	/** The file's display name. */
+	filename?: string;
+	/** The origin absolute path, display/provenance only. */
+	path?: string;
+	/** The attachment store's absolute path (the retained copy), when the row
+	 *  carries one. The missing state copies THIS, never the dead origin path. */
+	stored_path?: string;
+	/** Byte size of the original file. */
+	bytes?: number;
+	/** How the turn reached the model; historical metadata only. */
+	injection?: "native" | "extracted" | "reference";
+	// --- output-artifact fields (AttachmentContent) ---
+	/** "image" | "video" | "audio". REQUIRED on an artifact, so it is always
+	 *  present on durable rows (the encoder drops only defaults). */
+	kind?: string;
+	/** MIME of the cached bytes; the artifact's mime_type equivalent. */
+	content_type?: string;
+	/** Provider URL (provenance / re-fetch fallback). */
+	source_url?: string;
+	size_bytes?: number;
+	width?: number;
+	height?: number;
+	duration_s?: number;
+	/** Short display handle. Never a filesystem path. */
+	name?: string;
 };
 /**
  * One durable row as a page, a payload subset or a dependency subset carries

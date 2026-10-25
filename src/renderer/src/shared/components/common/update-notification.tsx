@@ -1,6 +1,7 @@
-import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { useSuppressBrowserViewWhileIntersecting } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { formatByteSize } from "@shared/lib/format-bytes";
@@ -520,7 +521,7 @@ export const UpdateContainer = ({
 	}, [onClose]);
 
 	/*
-	 * This card is `fixed top-4 right-4`, so it paints over the top-right of the
+	 * This card is `fixed top-4 end-4`, so it paints over the top-inline-end of the
 	 * content area — which over the browser route is the native view, and a native
 	 * view paints above all DOM (design 11.3). Registering here rather than at each
 	 * caller is the same funnel argument as `BaseDialog`'s: mounting this wrapper IS
@@ -546,7 +547,11 @@ export const UpdateContainer = ({
 	 * put while the notes move, so the cap and the clip moved one level down and
 	 * this box became the one that never scrolls.
 	 */
-	useSuppressBrowserView(true, "update-notice");
+	useSuppressBrowserViewWhileIntersecting(
+		true,
+		"notice-card",
+		() => cardRef.current,
+	);
 	return (
 		<div
 			/* The drag-strip opt-out; see the note above. */
@@ -581,7 +586,7 @@ export const UpdateContainer = ({
 					: undefined
 			}
 			className={cn(
-				"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
+				"fixed top-4 end-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
 				"rounded-lg bg-elevated shadow-overlay",
 				"[&_a]:text-accent [&_a]:underline-offset-4 [&_a]:hover:underline",
 				className,
@@ -611,7 +616,7 @@ export const UpdateContainer = ({
 					size="icon-sm"
 					onClick={onClose}
 					aria-label={closeLabel}
-					className="absolute top-2 right-2 z-10"
+					className="absolute top-2 end-2 z-10"
 				>
 					<X aria-hidden="true" />
 				</Button>
@@ -639,8 +644,8 @@ export const UpdateContainer = ({
  *
  * Why an icon and not `text-danger` on the words: the two failure states were
  * typographically identical to the informational one - same 16px `text-ink`
- * heading, same body, same right-aligned buttons - so a user who had learned
- * "top-right panel = an update is available" read a broken install as one more
+ * heading, same body, same inline-end-aligned buttons - so a user who had learned
+ * "top-inline-end panel = an update is available" read a broken install as one more
  * notice (review D1). `danger` as TEXT on `elevated` measures 3.76:1 in monokai
  * and 3.81:1 in dracula, under the 4.5:1 text floor `check-themes` asserts for
  * every theme, while the same ink as a graphical mark clears the 3:1 non-text
@@ -680,34 +685,235 @@ export const UpdateHeading = ({
 export const InstallerOutput = ({ output }: { output: string }) => {
 	useI18nLocale();
 	const [copied, setCopied] = useState(false);
+	/*
+	 * COLLAPSED BY DEFAULT (design D2). The raw stream is the fallback record, and
+	 * on the incident it was the part that carried two startup advisories while the
+	 * cause sat above them. A disclosure keeps the record one click away without
+	 * putting unrelated machine text in the primary block. The copy control moves
+	 * inside, so a reader who wants the output opens the one thing that shows it.
+	 */
 	return (
-		<div className="mt-2">
-			<div className="flex items-center justify-between gap-2">
+		<Disclosure
+			className="mt-2"
+			summary={
 				<span className="text-meta text-ink-dim">
 					{t("ui.common.updates.update_notification.installer_output")}
 				</span>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={() => {
-						void navigator.clipboard
-							.writeText(output)
-							.then(() => setCopied(true))
-							.catch(() => undefined);
-					}}
-				>
-					{copied ? <Check /> : <Copy />}
-					{copied
-						? t("ui.common.updates.update_notification.copied")
-						: t("ui.common.updates.update_notification.copy_output")}
-				</Button>
+			}
+		>
+			<div className="mt-1">
+				<div className="flex items-center justify-end gap-2">
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => {
+							void navigator.clipboard
+								.writeText(output)
+								.then(() => setCopied(true))
+								.catch(() => undefined);
+						}}
+					>
+						{copied ? <Check /> : <Copy />}
+						{copied
+							? t("ui.common.updates.update_notification.copied")
+							: t("ui.common.updates.update_notification.copy_output")}
+					</Button>
+				</div>
+				<pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-sunken p-2 font-mono text-mono-sm text-ink-dim">
+					{output}
+				</pre>
 			</div>
-			<pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-sunken p-2 font-mono text-mono-sm text-ink-dim">
-				{output}
-			</pre>
-		</div>
+		</Disclosure>
 	);
 };
+
+/**
+ * The structured cause a backend that emits `update.report.v1` carries.
+ *
+ * The fields beyond `error` are what let the RENDERER compose a localized cause
+ * and remedy (review U4): `target` names the version a publication did not reach,
+ * the reading pair names what the server is still running, and the two ownership
+ * flags decide whether a `serve` failure may offer a restart rather than a repeat
+ * install. They are optional because a producer that predates them is still a
+ * valid report.
+ */
+export type BackendUpdateFailureDetail = {
+	step: string;
+	kind: string;
+	exitCode: number;
+	error: string;
+	target?: string | null;
+	installVersion?: string | null;
+	runningVersion?: string | null;
+	restartable?: boolean;
+	appOwnedEnvironment?: boolean;
+	command?: string | null;
+	/**
+	 * Whether the whole process group was still alive after the stop signal.
+	 *
+	 * The legacy sentence says "the updater was stopped; something it started may
+	 * still be replacing the install" for this case; the structured arm carries the
+	 * reading so it can say the equivalent in the reader's language (R2-F3).
+	 */
+	groupSurvived?: boolean;
+};
+
+/**
+ * The stage label above the cause, or null for a step this build does not know.
+ *
+ * A CLOSED SWITCH, like the parser's contract: the step is a machine key and must
+ * never be interpolated into copy. An unknown value renders no label rather than
+ * a made-up one.
+ */
+export function failureStepLabel(step: string): string | null {
+	switch (step) {
+		case "check":
+			return t("ui.common.updates.update_notification.failure_step_check");
+		case "publish":
+			return t("ui.common.updates.update_notification.failure_step_publish");
+		case "download":
+			return t("ui.common.updates.update_notification.failure_step_download");
+		case "environment":
+			return t(
+				"ui.common.updates.update_notification.failure_step_environment",
+			);
+		case "install":
+			return t("ui.common.updates.update_notification.failure_step_install");
+		case "promote":
+			return t("ui.common.updates.update_notification.failure_step_promote");
+		case "services":
+			return t("ui.common.updates.update_notification.failure_step_services");
+		case "lock":
+			return t("ui.common.updates.update_notification.failure_step_lock");
+		case "report":
+			return t("ui.common.updates.update_notification.failure_step_report");
+		default:
+			return null;
+	}
+}
+
+/**
+ * The plain-language cause line, in the reader's language.
+ *
+ * WHY THE RENDERER OWNS THIS WHEN `failure` IS PRESENT (review U4, and the
+ * manager's shape): the legacy `message` is composed in the main process, which
+ * has no locale, so a structured failure must not use it as the primary line. The
+ * legacy arm keeps the main sentence byte-for-byte; this arm composes from the
+ * translated keys.
+ */
+export function failureCauseLine(failure: BackendUpdateFailureDetail): string {
+	switch (failure.kind) {
+		case "publication":
+			return failure.target
+				? t("ui.common.updates.update_notification.failure_cause_publication", {
+						target: failure.target,
+					})
+				: t(
+						"ui.common.updates.update_notification.failure_cause_publication_no_version",
+					);
+		case "serve": {
+			/*
+			 * ONLY THE RUNNING READING NAMES A RUNNING VERSION (review round 2, R2-F2).
+			 * Falling back to `installVersion` or `target` could put the version that
+			 * just landed after "still running" when the server's own reading was the
+			 * fact that could not be read. The no-version sentence says what is true.
+			 */
+			return failure.runningVersion
+				? t("ui.common.updates.update_notification.failure_cause_serve", {
+						version: failure.runningVersion,
+					})
+				: t(
+						"ui.common.updates.update_notification.failure_cause_serve_no_version",
+					);
+		}
+		case "network":
+			return t("ui.common.updates.update_notification.failure_cause_network");
+		case "lock":
+			return t("ui.common.updates.update_notification.failure_cause_lock");
+		case "disk":
+			return t("ui.common.updates.update_notification.failure_cause_disk");
+		case "ownership":
+			return t("ui.common.updates.update_notification.failure_cause_ownership");
+		case "refused":
+			return t("ui.common.updates.update_notification.failure_cause_refused");
+		default:
+			return t("ui.common.updates.update_notification.failure_cause_unknown");
+	}
+}
+
+/**
+ * The one next step for this kind (review U1-U3, U5).
+ *
+ * THE SERVE ARM IS THE ONE THAT DEPENDS ON WHAT THE APP MAY DO: a restart control
+ * is only honest when the app started both the install and the daemon
+ * (`restartable` and `appOwnedEnvironment`), so the external arm names the owning
+ * account instead of promising a press that cannot act. The refused arm maps the
+ * one reason the app can name (a stale checkout) and otherwise points outside the
+ * app without offering a bypass. `unknown` is an honest fallback: copy the
+ * details, retry once, then read the log.
+ */
+export function failureRemedyLine(failure: BackendUpdateFailureDetail): string {
+	switch (failure.kind) {
+		case "network":
+			return t("ui.common.updates.update_notification.failure_remedy_network");
+		case "publication":
+			return t(
+				"ui.common.updates.update_notification.failure_remedy_publication",
+			);
+		case "lock":
+			return t("ui.common.updates.update_notification.failure_remedy_lock");
+		case "disk":
+			return t("ui.common.updates.update_notification.failure_remedy_disk");
+		case "ownership":
+			return t(
+				"ui.common.updates.update_notification.failure_remedy_ownership",
+			);
+		case "serve":
+			return failure.restartable && failure.appOwnedEnvironment
+				? t(
+						"ui.common.updates.update_notification.failure_remedy_serve_restartable",
+					)
+				: t(
+						"ui.common.updates.update_notification.failure_remedy_serve_external",
+					);
+		case "refused":
+			return /REFUSING to release a stale ref/i.test(failure.error)
+				? t(
+						"ui.common.updates.update_notification.failure_remedy_refused_checkout",
+					)
+				: t("ui.common.updates.update_notification.failure_remedy_refused");
+		default:
+			return t("ui.common.updates.update_notification.failure_remedy_unknown");
+	}
+}
+
+/**
+ * Whether "Nothing was restarted." is true for this failure (review F1).
+ *
+ * The claim holds only while the install has not been promoted. A report at the
+ * services or report step means the install landed - the backend's generic
+ * exception path can carry `kind: unknown` there - and `serve` says so by name.
+ */
+export function failureNothingRestarted(
+	failure: BackendUpdateFailureDetail,
+): boolean {
+	return (
+		failure.kind !== "serve" &&
+		failure.step !== "services" &&
+		failure.step !== "report"
+	);
+}
+
+/** Whether this failure may offer a restart instead of a repeat install (U1). */
+export function failureCanRestartServer(
+	failure: BackendUpdateFailureDetail,
+): boolean {
+	return (
+		failure.kind === "serve" &&
+		failure.restartable === true &&
+		failure.appOwnedEnvironment === true
+	);
+}
 
 /**
  * Split a failure report into its sentence and the installer's output.
@@ -1183,6 +1389,18 @@ export const UpdateNotification = ({
 		/** The installer's own lines, when the failing branch had any to send. */
 		installerOutput?: string;
 		/**
+		 * The updater's structured cause, when the backend emits one (contract
+		 * 2026-10-24).
+		 *
+		 * HELD BESIDE `message`, not instead of it: the sentence is the app's copy and
+		 * is what the panel reads, while these fields are the machine-readable half a
+		 * surface can act on without parsing English. The panel does not re-compose
+		 * copy from them - that would be the second author `serverUpdateFailureReason`
+		 * exists to prevent - but a later surface that must branch on the kind (a
+		 * restart rather than a retry, for `serve`) has it here.
+		 */
+		failure?: BackendUpdateFailureDetail;
+		/**
 		 * The update service log the failing branch wrote, when it named one.
 		 *
 		 * The panel's sentence points at that log, so the pointer is only honest if
@@ -1640,7 +1858,7 @@ export const UpdateNotification = ({
 		 * this step, the band's press and the settings button's check all inherit it
 		 * rather than each re-stating it. Both channels can report available in one
 		 * check - the whole point of the aggregate - and the two cards are
-		 * `fixed top-4 right-4 z-50` in a single early-return chain, so two open flags
+		 * `fixed top-4 end-4 z-50` in a single early-return chain, so two open flags
 		 * painted one card and QUEUED the other. The surface that gives way keeps its
 		 * OFFER, so it comes back as a band item rather than disappearing. The last
 		 * one this check opens holds the card - "show what the press was about", the
@@ -2655,6 +2873,7 @@ export const UpdateNotification = ({
 						// The installer's own lines travel with the report (the producer's own field),
 						// rather than being re-derived from the sentence here (review round 5, M1).
 						installerOutput: report.installerOutput,
+						failure: report.failure,
 						logPath: report.logPath,
 						/*
 						 * AND WHETHER THIS WAS A REFUSAL RATHER THAN A FAILURE (design round 1,
@@ -3290,7 +3509,7 @@ export const UpdateNotification = ({
 										href={getReleaseUrl(updateInfo)}
 										target="_blank"
 										rel="noopener noreferrer"
-										className="ml-2"
+										className="ms-2"
 									>
 										{t(
 											"ui.common.updates.update_notification.view_full_release_notes",
@@ -3644,6 +3863,147 @@ export const UpdateNotification = ({
 				</UpdateContainer>,
 			);
 		}
+		/*
+		 * THE STRUCTURED ARM (reviews D1/D2/D3, U1-U6). When the backend names a
+		 * failure, the panel is three lines - step, cause, remedy - and the machine
+		 * record is a collapsed disclosure below them. The main process's `message`
+		 * is deliberately unused here: it is the legacy sentence, composed without a
+		 * locale, and using it beside translated controls is what produced an English
+		 * cause under a Spanish heading (U4).
+		 */
+		const structured = backendUpdateFailure.failure;
+		if (structured) {
+			const stepLabel = failureStepLabel(structured.step);
+			const canRestart = failureCanRestartServer(structured);
+			const refused = structured.kind === "refused";
+			return withErrorToast(
+				<UpdateContainer tone="failed">
+					<UpdateHeading tone="failed">
+						{structured.kind === "serve"
+							? t("ui.common.updates.update_notification.failure_heading_serve")
+							: t(
+									"ui.common.updates.update_notification.the_server_update_didn_t_finish",
+								)}
+					</UpdateHeading>
+					{stepLabel && <p className="text-meta text-ink-dim">{stepLabel}</p>}
+					{structured.kind === "unknown" ? (
+						/*
+						 * ONE PARAGRAPH FOR THE UNCLASSIFIED ARM (review U3): its remedy
+						 * sentence already begins by saying the updater named no cause, so
+						 * rendering a cause line above it repeated the same clause twice.
+						 * The fallback is read once, as the primary line.
+						 */
+						<p className="mt-1 text-body text-ink">
+							{failureRemedyLine(structured)}
+						</p>
+					) : (
+						<>
+							<p className="mt-1 text-body text-ink">
+								{failureCauseLine(structured)}
+							</p>
+							<p className="mt-1 text-body-sm text-ink-muted">
+								{failureRemedyLine(structured)}
+							</p>
+						</>
+					)}
+					{structured.groupSurvived && (
+						<p className="mt-1 text-body-sm text-ink-muted">
+							{t(
+								"ui.common.updates.update_notification.failure_consequence_group_survived",
+							)}
+						</p>
+					)}
+					{failureNothingRestarted(structured) && (
+						<p className="mt-1 text-body-sm text-ink-muted">
+							{t(
+								"ui.common.updates.update_notification.failure_consequence_nothing_restarted",
+							)}
+						</p>
+					)}
+					{/*
+					 * THE TERMINAL ESCAPE HATCH for a refusal: the app cannot make this
+					 * change, so it hands over the command the plan named instead of
+					 * offering a retry that re-enters the same refusal (review U2). No
+					 * bypass flag is ever named here.
+					 */}
+					{refused && structured.command && (
+						<div className="mt-3">
+							<p className="text-body-sm text-ink-muted">
+								{t(
+									"ui.common.updates.update_notification.to_update_now_run_this_yourself_in_a_terminal",
+								)}
+							</p>
+							<CommandBlock command={structured.command} />
+						</div>
+					)}
+					{/*
+					 * THE RAW RECORD, collapsed and already stripped of the cause
+					 * sentence by the producer (review F2). It is evidence, not the
+					 * diagnosis: the cause and remedy above are the primary block.
+					 */}
+					{backendUpdateFailure.installerOutput && (
+						<InstallerOutput output={backendUpdateFailure.installerOutput} />
+					)}
+					{backendUpdateFailure.logPath && (
+						<div className="mt-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									void window.api.showItemInFolder(
+										backendUpdateFailure.logPath as string,
+									);
+								}}
+							>
+								{t("ui.common.updates.update_notification.reveal_update_log")}
+							</Button>
+						</div>
+					)}
+					<UpdateActions>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleDismissBackendUpdateFailure}
+						>
+							{t("ui.common.updates.update_notification.update_later")}
+						</Button>
+						{canRestart ? (
+							/*
+							 * THE PRIMARY ACTION IS THE REMEDY (review U1): the app started
+							 * this server, so the press restarts it onto the build already on
+							 * disk rather than repeating the install.
+							 */
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={() =>
+									void updateBackend(
+										structured.installVersion ?? structured.target ?? undefined,
+									)
+								}
+							>
+								{t("ui.common.updates.update_notification.restart_the_server")}
+							</Button>
+						) : refused || structured.kind === "serve" ? null : (
+							/*
+							 * NO REPEAT-INSTALL CONTROL ON THE SERVES THE APP MAY NOT BOUNCE
+							 * (review U1): the remedy names the owning account, and a `Try
+							 * again` beside it would perform the install that already landed.
+							 * A refusal is the same shape: its own sentence points outside the
+							 * app, so the only control left is `Update later`.
+							 */
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={() => void updateBackend()}
+							>
+								{t("ui.common.actions.retry_again")}
+							</Button>
+						)}
+					</UpdateActions>
+				</UpdateContainer>,
+			);
+		}
 		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
@@ -3967,7 +4327,7 @@ export const UpdateNotification = ({
 				)}
 			</UpdateContainer>,
 			/*
-			 * NO NOTICE ON THIS BRANCH (review D6). The panel top-right already says
+			 * NO NOTICE ON THIS BRANCH (review D6). The panel top-inline-end already says
 			 * "Server version X is available", so the toast in the opposite corner was
 			 * the same news twice in two spellings - "v0.56.0" and "0.56.0" - and it
 			 * only ever appeared for the arm that manages the update, i.e. the arm whose

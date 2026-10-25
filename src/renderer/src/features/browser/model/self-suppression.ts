@@ -15,14 +15,14 @@
  * keeps two layers from drifting into two opinions about which ids are ours.
  *
  * The trailing colon is deliberate: `useSuppressBrowserView` registers
- * `${name}:${useId()}`, so a prefix match is exact against the name and cannot
- * swallow a future id such as "browser-start-page-help".
+ * `${kind}:${label}:${useId()}`, so a prefix match is exact against the label and
+ * cannot swallow a future id such as "browser-start-page-help".
  */
 export const BROWSER_SELF_SUPPRESSION_PREFIXES = [
-	// The load-failure panel (`browser-surface.tsx`, "browser-load-failure").
-	"browser-load-failure:",
-	// The start page (LOH-13 slice B, "browser-start-page").
-	"browser-start-page:",
+	// The load-failure panel (`browser-surface.tsx`, label "browser-load-failure").
+	"browser-state:browser-load-failure:",
+	// The start page (LOH-13 slice B, label "browser-start-page").
+	"browser-state:browser-start-page:",
 ] as const;
 
 export function isBrowserSelfSuppression(id: string): boolean {

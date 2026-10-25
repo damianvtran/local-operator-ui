@@ -14,6 +14,7 @@ import { withOriginGate } from "./actions/gate";
 import * as geometryActions from "./actions/geometry";
 import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
+import * as queryActions from "./actions/query";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import { collectAddressHistory, mergeAddressHistory } from "./address-history";
@@ -67,6 +68,12 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	// `query` is a read of the CURRENT document's DOM (CSS in, descriptors out),
+	// so it is authorized against that document on entry and again on the result
+	// exactly as `read` is: an answer that raced a navigation it did not cause
+	// must be discarded, not reported as the new page's (agent review round 2 on
+	// the query slice — the action was missing from BOTH sets).
+	"query",
 	"screenshot",
 	"click",
 	"type",
@@ -168,6 +175,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	"query",
 	"screenshot",
 	"click",
 	"type",
@@ -284,9 +292,36 @@ export interface LoadFailure {
  *
  * A zero code is the "provisional load failed" marker Electron also emits; it names
  * no failure either.
+ *
+ * RE-EVALUATED 2026-10-24 against the current recovery paths. `did-start-loading`
+ * clears the mark when a retry (or any new load) starts and `did-navigate` clears
+ * it on the commit (`browser/index.ts`), so a stop, a redirect chain and a
+ * superseded load never leave a stale panel behind. Measured on Electron 44.3.0:
+ * a superseded load rejects with `ERR_ABORTED (-3)` while a redirect chain
+ * resolves on its final commit; the read-only `query` action (DOCUMENT_SCOPED and
+ * TAB_SCOPED) never navigates, so it cannot produce either. The decision stands:
+ * reporting aborts would make the panel cry wolf on ordinary browsing.
  */
 export function isReportableLoadFailure(code: number): boolean {
 	return code !== 0 && code !== -3;
+}
+
+/**
+ * Whether a `history.restore()` rejection is the superseded-navigation abort.
+ *
+ * THE RESTORE PATH DOES NOT GET A NUMERIC NET CODE, unlike `did-fail-load`: the
+ * rejection is an `Error` whose message is the only place Electron puts
+ * `ERR_ABORTED (-3)`. Matching the message here is deliberate and narrow — the
+ * same reason `isReportableLoadFailure` exists one layer down — because a
+ * superseding navigation is ordinary browsing, not a restore failure. If that
+ * superseding page is then stopped before its `did-navigate`, no commit ever
+ * arrives to clear a mark written here, and `lastLoadFailed` would skip the tab
+ * on the next launch. The timeout and a deliberate Stop reject with different
+ * text (`ERR_FAILED (-2)` for a stop), so they still mark.
+ */
+function isSupersededRestore(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.includes("ERR_ABORTED (-3)");
 }
 
 /**
@@ -347,6 +382,29 @@ export interface BrowserHostOptions {
 	 * is recorded or written. The production wiring passes
 	 * `<userData>/browser-history.json`. */
 	historyFilePath?: string;
+	/**
+	 * S6b: the native approvals card, when the launch opt-in built one. Absent
+	 * means the shield keeps using the DOM tray/dock, so an ordinary launch is
+	 * unchanged.
+	 */
+	approvalsCard?: {
+		open: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}) => void;
+		close: () => void;
+		setContext: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}) => void;
+		state: () => { available: boolean; open: boolean };
+	};
 }
 
 export class BrowserHost implements BrowserActionContext {
@@ -379,6 +437,8 @@ export class BrowserHost implements BrowserActionContext {
 	readonly facts: () => HostFacts;
 	/** The session's per-origin storage clear, injected (see `BrowserHostOptions`). */
 	private readonly forgetSiteData: (origin: string) => Promise<void>;
+	/** S6b's native card, when the launch built one (see `BrowserHostOptions`). */
+	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
 	/** S4b's popout health, read from the controller (or the launch's platform
 	 * answer when no controller exists). The strip reads this from the same
 	 * projection as the tabs, so the renderer has one source for "child or
@@ -408,7 +468,11 @@ export class BrowserHost implements BrowserActionContext {
 
 	constructor(options: BrowserHostOptions) {
 		this.registry = options.registry;
-		this.pageControls = new PageControls(() => this.onChanged());
+		this.pageControls = new PageControls(
+			() => this.onChanged(),
+			5000,
+			(tabId) => this.registry.hiddenByOverlay(tabId),
+		);
 		this.cdp = options.cdp;
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
@@ -420,6 +484,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.tabAudio = new TabAudioTracker(() => this.onChanged());
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
+		this.approvalsCard = options.approvalsCard;
 		this.addressOverlayMode =
 			options.addressOverlayMode ??
 			(() => ({ mode: "suspend", reason: "unavailable" }));
@@ -617,6 +682,8 @@ export class BrowserHost implements BrowserActionContext {
 				return geometryActions.hitTest(this, params);
 			case "ancestors":
 				return geometryActions.ancestors(this, params);
+			case "query":
+				return queryActions.query(this, params);
 			case "snapshot":
 				return pageActions.snapshot(this, params);
 			case "scroll":
@@ -820,6 +887,10 @@ export class BrowserHost implements BrowserActionContext {
 		);
 		return {
 			addressOverlay: this.addressOverlayMode(),
+			approvalsCard: this.approvalsCard?.state() ?? {
+				available: false,
+				open: false,
+			},
 			pageControls: this.pageControls.state(active),
 			tabs: this.chromeTabOrder
 				.project(this.registry.snapshot())
@@ -1104,7 +1175,7 @@ export class BrowserHost implements BrowserActionContext {
 			if (
 				!active ||
 				active.tabId !== tabId ||
-				!active.presented ||
+				(!active.presented && !this.registry.hiddenByOverlay(tabId)) ||
 				active.view.webContents.isDestroyed()
 			)
 				throw new Error("The browser tab is no longer presented.");
@@ -1502,15 +1573,19 @@ export class BrowserHost implements BrowserActionContext {
 			// to a sentence the user can act on, and this fallback exists only for the
 			// failures that path cannot see.
 			//
-			// AN ABORT IS NOT EXEMPTED HERE, unlike the view's own `did-fail-load`
-			// path (`isReportableLoadFailure` drops `ERR_ABORTED`): that path reads a
-			// NUMERIC net code and this catch has none — its own timeout rejection is
-			// the only shape it produces itself — so a parity check would be a second,
-			// guessing spelling of the exemption. Nothing committed and nothing came
-			// back, so the mark is honest; a stop or a superseding navigation clears it
-			// through the same wiring on the commit that follows (round-1 n-1).
+			// AN ABORT IS EXEMPTED HERE TOO. The earlier reading — that a
+			// supersede always commits before this catch runs, so the commit
+			// guard covers it — was too strong: on Electron 44.3.0 a restore
+			// superseded mid-flight rejects `ERR_ABORTED (-3)` at 928ms while
+			// the superseding page's `did-navigate` did not arrive until 4960ms
+			// (and fast runs showed 611ms vs 678ms). If that superseding load is
+			// then stopped, no `did-navigate` ever arrives, so a mark written here
+			// would survive and `lastLoadFailed` would skip the tab next launch.
+			// The rejection is the ordinary supersede, not a restore failure; the
+			// timeout and a deliberate Stop still carry different text and mark.
 			if (
 				!committed &&
+				!isSupersededRestore(error) &&
 				!this.loadFailures.has(tabId) &&
 				this.registry.get(tabId) &&
 				!contents.isDestroyed()
@@ -1783,8 +1858,12 @@ export class BrowserHost implements BrowserActionContext {
 	 * main tell the browser's own state pages (start page, load failure - hidden so
 	 * their DOM can paint) from an overlay covering them. Shortcut ownership keys
 	 * on it; presentation does not. See `TabRegistry.chromeVisible`. */
-	setViewVisible(visible: boolean, ownPage = false): Record<string, unknown> {
-		this.registry.setViewVisible(visible, ownPage);
+	setViewVisible(
+		visible: boolean,
+		ownPage = false,
+		ownStatePage = ownPage,
+	): Record<string, unknown> {
+		this.registry.setViewVisible(visible, ownPage, ownStatePage);
 		// Suppressed by an overlay: the page must not keep the native key owner.
 		// True for a state page too - there is no presented page either way.
 		if (!visible) this.clearPageFocus();
@@ -1840,6 +1919,80 @@ export class BrowserHost implements BrowserActionContext {
 		const result = this.approvals.respond(entryId, decision);
 		this.onChanged();
 		return { ...result, ...this.chromeState() };
+	}
+
+	/**
+	 * Open the native approvals card from the shield (S6b).
+	 *
+	 * The renderer passes the locale and direction it resolved: main has no
+	 * catalogue, and the card is a second document whose `lang`/`dir` must follow
+	 * the app rather than the device tag (UX U2). The theme is the evidence
+	 * palette today; S6b's product path keeps the dark default it was reviewed in.
+	 */
+	openApprovalsCard(input: unknown): Record<string, unknown> {
+		const request =
+			input && typeof input === "object"
+				? (input as Record<string, unknown>)
+				: {};
+		const locale =
+			typeof request.locale === "string" ? request.locale : undefined;
+		const dir =
+			request.dir === "rtl" || request.dir === "ltr" ? request.dir : undefined;
+		const theme =
+			request.theme === "light" || request.theme === "dark"
+				? request.theme
+				: undefined;
+		const palette =
+			request.palette === null
+				? null
+				: typeof request.palette === "string"
+					? request.palette
+					: undefined;
+		this.approvalsCard?.open({ locale, dir, theme, palette });
+		// The renderer discards the returned projection for the shield toggle
+		// (M2); the push is what makes aria-expanded and the button's selected
+		// style follow main. `onChanged` also re-renders a route that mounted
+		// after the card opened (U1).
+		this.onChanged();
+		return { ...this.chromeState() };
+	}
+
+	/** Close the native card without deciding (shield's second click / Escape). */
+	closeApprovalsCard(): Record<string, unknown> {
+		this.approvalsCard?.close();
+		this.onChanged();
+		return { ...this.chromeState() };
+	}
+
+	/** The renderer's resolved locale/theme, pushed on mount and on change (U5). */
+	setApprovalsCardContext(input: unknown): void {
+		const request =
+			input && typeof input === "object"
+				? (input as Record<string, unknown>)
+				: {};
+		const labels =
+			request.requesterLabels &&
+			typeof request.requesterLabels === "object" &&
+			!Array.isArray(request.requesterLabels)
+				? (request.requesterLabels as Record<string, string>)
+				: undefined;
+		this.approvalsCard?.setContext({
+			locale: typeof request.locale === "string" ? request.locale : undefined,
+			dir:
+				request.dir === "rtl" || request.dir === "ltr"
+					? request.dir
+					: undefined,
+			theme:
+				request.theme === "light" || request.theme === "dark"
+					? request.theme
+					: undefined,
+			...(request.palette === null
+				? { palette: null }
+				: typeof request.palette === "string"
+					? { palette: request.palette }
+					: {}),
+			...(labels ? { requesterLabels: labels } : {}),
+		});
 	}
 
 	/** Revoke one origin's approvals (design 9.4). Separate from closing a tab and

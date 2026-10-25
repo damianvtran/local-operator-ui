@@ -68,6 +68,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
+			export { setLocale } from "./src/i18n/locale";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -94,6 +95,7 @@ const bundle = await build({
 							export const jsx = (type, props) => ({ type, props });
 							export const jsxs = jsx;
 							export const forwardRef = (fn) => fn;
+							export const useSyncExternalStore = (_subscribe, getSnapshot) => getSnapshot();
 							export const useState = (initial) => [typeof initial === "function" ? initial() : initial, () => {}];
 							export const useRef = (current) => ({ current });
 							export const useMemo = (fn) => fn();
@@ -114,7 +116,8 @@ runInNewContext(bundle.outputFiles[0].text, {
 	module: module_,
 	exports: module_.exports,
 });
-const container = module_.exports.ThemedToastContainer({ duration: undefined });
+const { ThemedToastContainer, setLocale } = module_.exports;
+const container = ThemedToastContainer({ duration: undefined });
 const inline = container.props.toastOptions.style;
 
 /**
@@ -302,6 +305,29 @@ test("the shipped theme leaves exactly one inset governing, and it is the right 
 		insets: { left: "auto", right: "0px" },
 		governing: "right",
 	});
+});
+
+test("Urdu mirrors the container and close corner, then restores LTR", () => {
+	try {
+		setLocale("ur");
+		const urdu = ThemedToastContainer({ duration: undefined });
+		assert.equal(urdu.props.dir, "rtl");
+		assert.equal(urdu.props.position, "bottom-left");
+		const style = urdu.props.toastOptions.style;
+		assert.deepEqual(resolve(style, rtl), {
+			insets: { left: "0px", right: "auto" },
+			governing: "left",
+		});
+		assert.equal(style[TRANSFORM], ltr[TRANSFORM]);
+		assert.ok(transformX(style[TRANSFORM]) < 0);
+
+		setLocale("en");
+		const english = ThemedToastContainer({ duration: undefined });
+		assert.equal(english.props.dir, "ltr");
+		assert.equal(english.props.position, "bottom-right");
+	} finally {
+		setLocale("en");
+	}
 });
 
 test("the shipped transform is sonner's own RTL one, and it points out of the side that governs", () => {

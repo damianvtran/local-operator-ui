@@ -218,6 +218,8 @@
 	"ui.browser.page_context_menu.open_link_in_new_tab": "在新标签页中打开链接",
 	"ui.browser.page_context_menu.paste": "粘贴",
 	"ui.browser.page_context_menu.select_all": "全选",
+	"ui.browser.page_context_menu.redo": "重做",
+	"ui.browser.page_context_menu.undo": "撤销",
 	"ui.browser.use_browser_chrome.downloads_folder_failed": "无法打开下载文件夹。{message}",
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": "此请求已不再等待处理。",
 	"ui.browser.webauthn_chooser.a_site": "某个网站",

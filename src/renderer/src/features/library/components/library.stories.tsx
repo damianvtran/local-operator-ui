@@ -15,11 +15,12 @@
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { useAudioEngineStore } from "@shared/store/audio-engine-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor } from "@storybook/test";
 import type { FC, ReactNode } from "react";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { glassPaintFor } from "../../../../../shared/window-glass";
 import "../../../styles/index.css";
@@ -417,6 +418,8 @@ type StubState = {
 	building: boolean;
 	failList: string | null;
 	media: "text" | "pptx" | "error";
+	/** `none` serves the 404 a path-backed audio asset answers for peaks. */
+	waveform: "stored" | "none";
 	linkedChat: boolean;
 	/**
 	 * What the linked conversation's stream paints, or null for a stream that
@@ -434,6 +437,7 @@ let stub: StubState = {
 	building: false,
 	failList: null,
 	media: "text",
+	waveform: "stored",
 	linkedChat: false,
 	trajectory: null,
 	brightThumbnails: [],
@@ -446,6 +450,7 @@ let stub: StubState = {
  * script does not know and the story would fail rather than show the chip.
  */
 let extraTags: { id: string; name: string; category: string }[] = [];
+let longContent = false;
 
 /*
  * HOW MANY CONTENT READS THE PREVIEW HAS ISSUED THIS STORY. `library.content` is
@@ -473,6 +478,52 @@ const PptxBytes = (() => {
 			async (response) => new Uint8Array(await response.arrayBuffer()),
 		);
 		return promise;
+	};
+})();
+
+/** The envelope every audio story draws: deterministic, 240 bars. */
+const AUDIO_PEAKS = Array.from({ length: 240 }, (_, index) =>
+	Math.min(1, 0.12 + Math.abs(Math.sin(index / 9)) * 0.82),
+);
+
+/**
+ * A short valid WAV the shared player can resolve into a blob URL. A story
+ * never plays it (the playing frames write the ENGINE's state directly, the
+ * `sound-player.stories.tsx` convention), so this only has to be a real sound
+ * of the right shape rather than a long one.
+ */
+const AudioBytes = (() => {
+	let cached: Uint8Array | null = null;
+	return () => {
+		if (cached) return cached;
+		const rate = 8000;
+		const samples = rate / 4;
+		const wav = new Uint8Array(44 + samples * 2);
+		const view = new DataView(wav.buffer);
+		const ascii = (offset: number, text: string) => {
+			for (let index = 0; index < text.length; index += 1)
+				view.setUint8(offset + index, text.charCodeAt(index));
+		};
+		ascii(0, "RIFF");
+		view.setUint32(4, wav.length - 8, true);
+		ascii(8, "WAVEfmt ");
+		view.setUint32(16, 16, true);
+		view.setUint16(20, 1, true);
+		view.setUint16(22, 1, true);
+		view.setUint32(24, rate, true);
+		view.setUint32(28, rate * 2, true);
+		view.setUint16(32, 2, true);
+		view.setUint16(34, 16, true);
+		ascii(36, "data");
+		view.setUint32(40, samples * 2, true);
+		for (let index = 0; index < samples; index += 1)
+			view.setInt16(
+				44 + index * 2,
+				Math.round(6000 * Math.sin((2 * Math.PI * 220 * index) / rate)),
+				true,
+			);
+		cached = wav;
+		return wav;
 	};
 })();
 
@@ -786,6 +837,27 @@ const install = () => {
 			const row =
 				stub.rows.find((item) => item.id === String(request.assetId ?? "")) ??
 				null;
+			if (request.op === "library.waveform") {
+				// The sidecar the producer writes beside generated audio. A
+				// path-backed import has none, and the `none` story is that 404:
+				// the player must draw its flat scrubber rather than a guessed
+				// shape.
+				if (stub.waveform === "none")
+					return {
+						status: 404,
+						kind: "error",
+						detail: "No peaks sidecar for this asset.",
+					};
+				return {
+					status: 200,
+					kind: "json",
+					body: {
+						version: 1,
+						bars: AUDIO_PEAKS.length,
+						peaks: AUDIO_PEAKS,
+					},
+				};
+			}
 			if (request.op === "library.thumbnail") {
 				thumbnailReads.push(String(request.assetId ?? ""));
 				if (row?.kind === "image" && row.exists) {
@@ -848,12 +920,25 @@ const install = () => {
 					mimeType: "video/mp4",
 					data: await Mp4Bytes(),
 				};
+			if (row?.kind === "audio")
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "audio/wav",
+					data: AudioBytes(),
+				};
 			return {
 				status: 200,
 				kind: "bytes",
 				mimeType: "text/markdown",
 				data: new TextEncoder().encode(
-					"# March invoices\n\nReconcile the March run against the ledger.\n\n- Net 30\n- Two currencies\n- One disputed line\n",
+					longContent
+						? Array.from(
+								{ length: 36 },
+								(_, index) =>
+									`## Entry ${index + 1}\n\nA deliberately long reconciliation note keeps the real viewer scrollable.`,
+							).join("\n\n")
+						: "# March invoices\n\nReconcile the March run against the ledger.\n\n- Net 30\n- Two currencies\n- One disputed line\n",
 				),
 			};
 		},
@@ -920,14 +1005,18 @@ const ShellLibrary: FC<{ nowMs: number; route?: string }> = ({
 	</div>
 );
 
-const RouteTo: FC<{ path: string; children: ReactNode }> = ({
+const RouteTo: FC<{ path: string; fixed?: boolean; children: ReactNode }> = ({
 	path,
+	fixed = true,
 	children,
 }) => {
 	const navigate = useNavigate();
+	const routed = useRef(false);
 	useEffect(() => {
+		if (routed.current && !fixed) return;
+		routed.current = true;
 		navigate(path, { replace: true });
-	}, [navigate, path]);
+	}, [fixed, navigate, path]);
 	return (
 		<Routes>
 			<Route path="/library" element={children} />
@@ -941,6 +1030,12 @@ const page = (
 		route?: string;
 		view?: "grid" | "list";
 		shell?: boolean;
+		compact?: boolean;
+		docked?: boolean;
+		workspaceWidth?: number;
+		preserveDockWidth?: boolean;
+		freeNavigation?: boolean;
+		longContent?: boolean;
 	},
 ) => {
 	stub = {
@@ -950,6 +1045,7 @@ const page = (
 		building: false,
 		failList: null,
 		media: "text",
+		waveform: "stored",
 		linkedChat: false,
 		trajectory: null,
 		brightThumbnails: [],
@@ -958,10 +1054,13 @@ const page = (
 	extraTags = [];
 	contentReads = 0;
 	thumbnailReads = [];
+	longContent = Boolean(state.longContent);
 	install();
 	try {
 		if (state.view) localStorage.setItem("library-view", state.view);
 		else localStorage.removeItem("library-view");
+		if (!state.preserveDockWidth)
+			localStorage.removeItem("library-details-width");
 		sessionStorage.removeItem("library-filters");
 	} catch {
 		/* storage is not what these stories are about */
@@ -970,8 +1069,11 @@ const page = (
 	return state.shell ? (
 		<ShellLibrary nowMs={NOW} route={route} />
 	) : (
-		<div className="h-screen">
-			<RouteTo path={route}>
+		<div
+			className={`${state.compact ? "h-[640px]" : "h-screen"} ${state.docked ? "flex" : ""}`}
+			style={{ width: state.workspaceWidth }}
+		>
+			<RouteTo path={route} fixed={!state.freeNavigation}>
 				<LibraryPage nowMs={NOW} />
 			</RouteTo>
 		</div>
@@ -1121,6 +1223,224 @@ export const RowsFavouritedOnBright: Story = {
 };
 
 /*
+ * The real page and shell at the dock's default and keyboard-driven bounds.
+ * The plays leave the actual persisted width in place, so these frames also
+ * prove the separator's value and the drawer's painted width agree.
+ */
+export const DockedPreview: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		await waitFor(() => {
+			expect(
+				document
+					.querySelector("[data-library-dock]")
+					?.getAttribute("data-glass-region"),
+			).toBe("pane");
+			expect(document.querySelector("[data-library-preview]")).not.toBeNull();
+			expect(document.querySelector("[data-library-composer]")).not.toBeNull();
+		});
+	},
+};
+export const DockedImage: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000021",
+		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(
+				document.querySelector('[data-library-media-trigger="image"]'),
+			).not.toBeNull(),
+		);
+	},
+};
+export const DockedLongContent: Story = {
+	render: () =>
+		page({
+			docked: true,
+			longContent: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		await waitFor(() => {
+			const scroller = document.querySelector<HTMLElement>(
+				"[data-lo-pane-edge-cues]",
+			);
+			if (!scroller) throw new Error("the text scroller is not mounted");
+			expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight);
+			scroller.scrollTop = scroller.scrollHeight;
+		});
+		await waitFor(() => {
+			const scroller = document.querySelector<HTMLElement>(
+				"[data-lo-pane-edge-cues]",
+			);
+			expect(scroller?.scrollTop).toBeGreaterThan(0);
+			expect(scroller ? scroller.scrollTop + scroller.clientHeight : 0).toBe(
+				scroller?.scrollHeight,
+			);
+		});
+	},
+};
+export const DockedPreviewNarrow: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		const separator = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>('[role="separator"]');
+			if (!node) throw new Error("the dock separator is not mounted");
+			return node;
+		});
+		separator.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "Home", bubbles: true }),
+		);
+		await waitFor(() =>
+			expect(
+				document.querySelector<HTMLElement>("[data-library-dock]")?.style.width,
+			).toBe("320px"),
+		);
+	},
+};
+const playResizeEnd =
+	(expected: string): Story["play"] =>
+	async () => {
+		const separator = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>('[role="separator"]');
+			if (!node) throw new Error("the dock separator is not mounted");
+			return node;
+		});
+		separator.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "End", bubbles: true }),
+		);
+		await waitFor(() =>
+			expect(
+				document.querySelector<HTMLElement>("[data-library-dock]")?.style.width,
+			).toBe(expected),
+		);
+	};
+
+export const DockedPreviewWide: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: playResizeEnd("720px"),
+};
+/* The smallest dock-eligible workspaces exercise the real toolbar at its
+ * 320px results floor, rather than leaving a deceptively comfortable surplus. */
+export const DockedPreviewConstrained1152: Story = {
+	render: () =>
+		page({
+			docked: true,
+			workspaceWidth: 1152,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: playResizeEnd("640px"),
+};
+export const DockedPreviewConstrained1200: Story = {
+	render: () =>
+		page({
+			docked: true,
+			workspaceWidth: 1200,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: playResizeEnd("688px"),
+};
+/* These two fixtures deliberately KEEP the stored width: cross-document
+ * restoration and close/reopen need the real preference read, not a reset. */
+export const DockedPreviewPersistent: Story = {
+	render: () =>
+		page({
+			docked: true,
+			preserveDockWidth: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: DockedPreview.play,
+};
+export const DockedReopen: Story = {
+	render: () =>
+		page({ docked: true, preserveDockWidth: true, freeNavigation: true }),
+};
+export const StandaloneNarrow: Story = {
+	render: () =>
+		page({
+			docked: true,
+			workspaceWidth: 1000,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		await waitFor(() => {
+			expect(
+				document
+					.querySelector('[aria-label="Asset preview"]')
+					?.getAttribute("data-glass-region"),
+			).toBe("pane");
+			expect(document.querySelector("[data-library-preview]")).not.toBeNull();
+			expect(document.querySelector('[role="separator"]')).toBeNull();
+		});
+	},
+};
+export const DockedEmpty: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_missing",
+		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(
+				document
+					.querySelector("[data-library-dock]")
+					?.getAttribute("data-glass-region"),
+			).toBe("pane"),
+		);
+	},
+};
+export const DockedPreviewCompact: Story = {
+	render: () =>
+		page({
+			compact: true,
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: DockedPreview.play,
+};
+export const TrajectoryCompact: Story = {
+	render: () =>
+		page({
+			compact: true,
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+			linkedChat: true,
+			trajectory: "populated",
+		}),
+	play: async () => {
+		const disclosure = await waitFor(() => {
+			const node = [...document.querySelectorAll("button")].find((button) =>
+				button.textContent?.includes("Chat about this asset"),
+			);
+			if (!node) throw new Error("the trajectory disclosure is not mounted");
+			return node;
+		});
+		await userEvent.click(disclosure);
+		await waitFor(() => {
+			expect(document.querySelector("[data-library-composer]")).not.toBeNull();
+			expect(document.body.textContent).toContain(
+				"Which invoices are still open for March?",
+			);
+		});
+	},
+};
+
+/*
  * THE CONVERSATION STATES THE QA ROUND ASKED FOR, painted from a real snapshot
  * frame through the stream's native transport (see `TrajectoryState`). Each is
  * the same dock with the same asset; only the stream's answer changes.
@@ -1215,6 +1535,108 @@ export const PreviewLinkedChat: Story = {
 			),
 		);
 	},
+};
+
+/*
+ * SOUND CARDS AND THE SOUND DRAWER (operator report, 2026-10-23).
+ *
+ * The card used to paint a glyph and only played after the drawer opened. These
+ * stories are the three states the fix is judged on - idle with a real
+ * envelope, playing in place (the ENGINE's state written directly, the
+ * `sound-player.stories.tsx` convention: a story never starts real playback),
+ * and a 404 sidecar that must degrade to the flat scrubber rather than vanish -
+ * plus the drawer, whose native control is gone in favour of the same player.
+ */
+const AUDIO_ROWS: DesktopLibraryAsset[] = [
+	asset("la_0000000000000061", {
+		name: "Storm swell",
+		derived_name: "storm-swell.wav",
+		kind: "audio",
+		category: "sound",
+		origin: "generated",
+		origin_group: "generated",
+		ref: {
+			type: "artifact",
+			path: null,
+			display_path: "attachments/storm-swell.wav",
+			digest: "11111111111111111111111111111111",
+			content_type: "audio/wav",
+		},
+		duration_s: 12,
+		size_bytes: 96_000,
+	}),
+	asset("la_0000000000000062", {
+		name: "Door chime",
+		derived_name: "door-chime.wav",
+		kind: "audio",
+		category: "sound",
+		origin: "generated",
+		origin_group: "generated",
+		ref: {
+			type: "artifact",
+			path: null,
+			display_path: "attachments/door-chime.wav",
+			digest: "22222222222222222222222222222222",
+			content_type: "audio/wav",
+		},
+		duration_s: 6,
+		size_bytes: 48_000,
+	}),
+];
+
+/** Drives the shared engine so the card's own player paints a playing frame. */
+const CardEnginePlaying: FC<{ assetId: string }> = ({ assetId }) => {
+	const ownerId = `sound:library:${assetId}`;
+	useEffect(() => {
+		useAudioEngineStore.setState({
+			element: { currentTime: 4.2, duration: 12 } as HTMLAudioElement,
+			ownerId,
+			url: "story://silent",
+			status: "playing",
+			currentTime: 4.2,
+			duration: 12,
+			volume: 1,
+			playbackRate: 1,
+		});
+		return () => {
+			useAudioEngineStore.setState({
+				element: null,
+				ownerId: null,
+				url: null,
+				status: "idle",
+				currentTime: 0,
+				duration: 0,
+			});
+		};
+	}, [ownerId]);
+	return null;
+};
+
+/** Audio cards, idle: every well carries the shared player and its envelope. */
+export const AudioCards: Story = { render: () => page({ rows: AUDIO_ROWS }) };
+
+/** The same cards with one transport running, in place, without a drawer. */
+export const AudioCardPlaying: Story = {
+	name: "Audio card / playing",
+	render: () => (
+		<>
+			<CardEnginePlaying assetId={AUDIO_ROWS[0].id} />
+			{page({ rows: AUDIO_ROWS })}
+		</>
+	),
+};
+
+/** No sidecar: the player must still work, on its honest flat scrubber. */
+export const AudioCardNoPeaks: Story = {
+	name: "Audio card / no peaks",
+	render: () => page({ rows: AUDIO_ROWS, waveform: "none" }),
+};
+
+/** The drawer: the shared full player, and no native `<audio controls>`. */
+export const PreviewAudio: Story = {
+	name: "Audio drawer",
+	render: () =>
+		page({ rows: AUDIO_ROWS, route: `/library/assets/${AUDIO_ROWS[0].id}` }),
 };
 
 /*
@@ -1595,9 +2017,54 @@ export const InShellPreviewGlass: Story = {
 	parameters: { glass: true },
 	render: () =>
 		page({ shell: true, route: "/library/assets/la_0000000000000023" }),
+	play: async () => {
+		await waitFor(() => {
+			const outer = document.querySelector("[data-library-dock]");
+			const inner = document.querySelector("[data-library-preview]");
+			expect(outer).not.toBeNull();
+			expect(inner).not.toBeNull();
+			if (!outer || !inner) return;
+			expect(getComputedStyle(outer).backgroundColor).not.toBe(
+				"rgba(0, 0, 0, 0)",
+			);
+			/* Bare-page stories miss the main-scoped net-pane selector. This is
+			 * the shipped ChatLayout composition, so its computed clear is the
+			 * regression pin for the old specificity defect. */
+			expect(getComputedStyle(inner).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+		});
+	},
+};
+export const InShellEmptyGlass: Story = {
+	parameters: { glass: true },
+	render: () => page({ shell: true, route: "/library/assets/la_missing" }),
+	play: DockedEmpty.play,
+};
+export const InShellImageGlass: Story = {
+	parameters: { glass: true },
+	render: () =>
+		page({ shell: true, route: "/library/assets/la_0000000000000021" }),
+	play: DockedImage.play,
+};
+export const InShellLongContentGlass: Story = {
+	parameters: { glass: true },
+	render: () =>
+		page({
+			shell: true,
+			longContent: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: DockedLongContent.play,
 };
 
 export const InShellFullView: Story = {
+	render: () =>
+		page({
+			shell: true,
+			route: "/library/assets/la_0000000000000023?full=1",
+		}),
+};
+export const InShellFullViewGlass: Story = {
+	parameters: { glass: true },
 	render: () =>
 		page({
 			shell: true,
@@ -1725,6 +2192,7 @@ const installPreviewStub = (row: DesktopLibraryAsset) => {
 		hang: false,
 		building: false,
 		failList: null,
+		waveform: "stored",
 		media: "text",
 		linkedChat: false,
 		trajectory: null,
@@ -2067,6 +2535,7 @@ const previewSwitchPane = () => {
 		],
 		detail: ROWS[2],
 		hang: false,
+		waveform: "stored",
 		building: false,
 		failList: null,
 		media: "text",

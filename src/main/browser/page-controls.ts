@@ -39,7 +39,19 @@ export class PageControls {
 	constructor(
 		private changed: () => void,
 		private resultTimeoutMs = 5000,
+		/**
+		 * "Hidden by our own overlay" is not "not presented" (QA Q2-F1): a menu
+		 * pauses the native view so DOM can be seen, while the page itself is still
+		 * the active, laid-out document. Without this, opening the ⋯ menu makes Find
+		 * and Print no-ops and leaves Reset zoom reporting 1.25 — the chrome's own
+		 * pause breaking the chrome's own controls.
+		 */
+		private hiddenByOverlay: (tabId: number) => boolean = () => false,
 	) {}
+	/** A presented page, or the same page waiting under an app overlay. */
+	private shown(active: TabRecord): boolean {
+		return active.presented || this.hiddenByOverlay(active.tabId);
+	}
 	private stopTimer(): void {
 		if (this.timer) clearTimeout(this.timer);
 		this.timer = null;
@@ -49,7 +61,7 @@ export class PageControls {
 		if (
 			this.record &&
 			(active !== this.record ||
-				!active.presented ||
+				!this.shown(active) ||
 				active.documentEpoch !== this.epoch ||
 				active.view.webContents.isDestroyed())
 		)
@@ -57,7 +69,7 @@ export class PageControls {
 	}
 	state(active: TabRecord | null) {
 		this.reconcile(active);
-		if (active?.tabId !== this.noticeTabId || !active?.presented)
+		if (active?.tabId !== this.noticeTabId || !active || !this.shown(active))
 			this.notice = null;
 		return {
 			find: this.find ? { ...this.find } : null,
@@ -81,7 +93,7 @@ export class PageControls {
 	}
 	open(active: TabRecord): void {
 		this.reconcile(active);
-		if (!active.presented) return;
+		if (!this.shown(active)) return;
 		if (this.record === active) return;
 		this.clear();
 		this.record = active;
@@ -105,7 +117,7 @@ export class PageControls {
 		) => {
 			if (
 				this.record !== active ||
-				!active.presented ||
+				!this.shown(active) ||
 				active.documentEpoch !== this.epoch ||
 				result.requestId !== this.requestId ||
 				!this.find
@@ -165,7 +177,7 @@ export class PageControls {
 			this.timer = null;
 			if (
 				this.record !== active ||
-				!active.presented ||
+				!this.shown(active) ||
 				active.documentEpoch !== this.epoch ||
 				this.requestId !== request ||
 				!this.find
@@ -222,7 +234,7 @@ export class PageControls {
 	 * (cancelled is the person changing their mind, not a failure) only
 	 * surfaces through `notice` when Electron names a real reason. */
 	print(active: TabRecord): void {
-		if (!active.presented) return;
+		if (!this.shown(active)) return;
 		const wc = active.view.webContents;
 		if (wc.isDestroyed() || !wc.print) {
 			// A MAIN-SIDE LITERAL, DELIBERATELY (LOH-13 slice C, review minor 2).

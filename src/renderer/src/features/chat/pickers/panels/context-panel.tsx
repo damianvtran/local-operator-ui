@@ -218,7 +218,7 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 								/>
 								<p
 									className={cn(
-										"ml-auto shrink-0 font-mono text-body-sm tabular-nums",
+										"ms-auto shrink-0 font-mono text-body-sm tabular-nums",
 										measured.fraction === null ? "text-ink-dim" : "text-ink",
 									)}
 								>

@@ -1,0 +1,512 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "locale": "fr",
+  "batch": "surface-copy batch",
+  "pr": 1389,
+  "audited_heads": {
+    "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+    "surfaces": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c"
+  },
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev) — not a translator on either batch",
+    "instance": "d94011de0dc0",
+    "model": "radient/auto",
+    "model_note": "Session banner reports radient/auto; no provider fallback was reported or observed during this run. The translators disclosed kimi-k3.1-pro → radient/auto switches; that does not make this a different instance.",
+    "independence": "This session produced no catalogue, receipt, ledger, allowance or code change for either batch. Translator receipts: fr-canvas-pickers-20261024.json (session 0749478e57b2) and fr-surface-extraction-20261024.json / fr-surface-remediation-r1-20261024.json (session f707a5a88dbb). Prior audits were different sessions (canvas: 32d8c951fea8, 125915832871; surfaces: 37b58fd63a32, 0cf3c0ed2c7b)."
+  },
+  "guidance": {
+    "glossary": {
+      "path": "local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "label": "current checkout"
+    },
+    "style_guide": {
+      "path": "local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39",
+      "label": "current checkout"
+    },
+    "contracts": [
+      "local-operator/docs/I18N.md",
+      "local-operator-ui/docs/I18N.md",
+      "local-operator-ui/AGENTS.md § Internationalization"
+    ]
+  },
+  "scope": "23 fr namespace file(s) at the composed head; every French value added or changed by the batch (471 values) read against the English source and the English context sidecar; the full namespace key sets checked for coverage and orphan keys.",
+  "method": [
+    "Read all scoped fr values with their en source and, where present, the en context sidecar (role/tone/length/note).",
+    "Byte-compared en and fr values; every exact match among the batch's values classified as a token/cognate IDENTICAL_OK candidate with a reason, or as a stub. Stubs: 0.",
+    "Extracted interpolation arguments with a regex restricted to `{name}` / `{name, type, ...}` nodes (not branch labels) and compared en↔fr per key.",
+    "Parsed each `plural` block at brace depth 0 to read its CLDR categories; checked `other` presence and rejected `few`/`two`/`zero` for fr.",
+    "Compared every `{n, number, ::...}` skeleton token-for-token.",
+    "Typographic scan outside ICU braces: ASCII space before : ; ! ?, NBSP before punctuation, missing space before ? ! : ;, ASCII ellipsis, straight apostrophes, « » spacing; NFC; bidi control characters.",
+    "Register scan for tu/te/ton/ta/tes/toi and for « Veuillez ».",
+    "Coverage: en keys missing from fr, and fr keys absent from en, per namespace.",
+    "Read the call sites for every value whose meaning, gender or referent depended on context (image/variables previews, inline-edit status, analytics window guards, hub kind noun, credential toast, loader notice)."
+  ],
+  "identical_summary": {
+    "count": 0,
+    "stubs": 0,
+    "note": "Counts only exact matches among the batch's own values (not pre-existing keys): there are none — all 471 values differ from their English source, so no IDENTICAL_OK entry is proposed for this batch."
+  },
+  "informational_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 6,
+    "nit": 4
+  },
+  "verdict": "passed — 0 blocker, 0 major, 6 minor, 4 nit across 23 namespace(s); 471 values read; 0 exact matches classified, 0 untranslated stubs.",
+  "observations": [
+    "Prior dispositions not re-opened, with the reason read from the receipts: ui.settings.shortcuts.row.canvas and .row.console stay lowercase (« canvas », « console ») because the capitalised forms are byte-identical to en and the no-stub guard rejects them without an IDENTICAL_OK entry (FR-SURF-m3/m4, FR2-SHORTCUT-FIT); ui.hub.updates.kind.agent stays « Agent » for the same guard reason (FR2-HUB-CASE, status not applied); ui.settings.shortcuts.row.execution's rendered fit is still unmeasured (FR-SURF-i3). These are gate/test-lane decisions, not translation defects I re-report.",
+    "This head has 0 exact matches to English in the 471 batch values: every value differs from its source. Coverage is complete (471/471 in the 23 namespaces; 0 missing, 0 orphan).",
+    "Prior remediation: the surfaces lane's remediation round 2 (12e143d5, 29 changed values in 8 namespaces) is inside the audited head. Because the manager asked for a batch audit, I read the composed head rather than only that 29-value delta; the prior rounds' fixed keys are unchanged.",
+    "Shared namespaces: ui.common.actions (6 shared keys), ui.common.updates (127), ui.common.viewer (4) and ui.common.speech (0) also carry canvas-batch keys (PR #1388), with 0 value conflicts; a hand-union is safe but the merged bytes will differ from both heads, so the ledger must bind post-merge hashes for those namespaces (see the canvas receipt's observation).",
+    "Terminology left as an observation, not a finding: « asset » is « ressource » in ui.library.errors.asset_read (this batch) and « Élément » in ui.common.viewer.image_lightbox.asset_of (canvas batch, PR #1388). They are different surfaces and different batches, so no single receipt should force one; the merge owner should either settle one term or record the split as deliberate.",
+    "Not a translation finding (code scope): hub-update-mark.tsx builds its aria-labels as English template literals around the localized HUB_KIND_NOUN (« Update all ${available} ${noun} updates from the hub »), so the localized noun never reaches a screen reader today.",
+    "Typographic and structural checks found no defects: 0 straight apostrophes outside CLI/JSON literals, 0 ASCII ellipses, U+202F before every prose : ; ! ?, « » with U+202F inside, no NBSP, NFC-clean, 0 bidi controls; 11 plural blocks in the batch, every one carrying one/many/other with `other` and no few/two/zero (the only `=0` arm is the English-mirrored one in session_report_model.totals_meta).",
+    "Width: no fr key in this batch declares a `maxCells` budget in its context sidecar. 75 values are ≥1.35× their English source on sources of 40 characters or fewer — again mostly wrapping sentences and status lines (« Application de bureau » for « Desktop », « Détails d’exécution » for « Run details », « Demandes » for « Asks »). The one fixed-row label worth a rendered frame is ui.settings.shortcuts.row.execution (11→19 characters), which is the prior round's still-open FR-SURF-i3 item; it is recorded there, not as a new finding."
+  ],
+  "namespaces": {
+    "ui.browser.errors": {
+      "status": "passed",
+      "keys_total": 2,
+      "keys_in_batch_delta": 2,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+      "fr_sha256": "4f962f5096c65f8d7b46531fcef90bdc43c64dffdc50132e82178baa3d9d5289",
+      "context_sha256": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_total": 47,
+      "keys_in_batch_delta": 17,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+      "fr_sha256": "f2aedbc1eff8b46a73cc77917b5049c3e15c57d600be4bd1b183023e4805c211",
+      "context_sha256": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
+    },
+    "ui.chat.composer": {
+      "status": "passed",
+      "keys_total": 47,
+      "keys_in_batch_delta": 11,
+      "identical_to_en": [],
+      "findings": [
+        {
+          "id": "FR-SA-01",
+          "severity": "minor",
+          "namespace": "ui.chat.composer",
+          "key": "ui.chat.composer.placeholder.aside",
+          "keys": [
+            "ui.chat.composer.placeholder.aside",
+            "ui.chat.composer.placeholder.waiting"
+          ],
+          "current": "Posez votre question en aparté — Esc ferme l’aparté",
+          "current_by_key": {
+            "ui.chat.composer.placeholder.aside": "Posez votre question en aparté — Esc ferme l’aparté",
+            "ui.chat.composer.placeholder.waiting": "Orientez l’agent. Entrée envoie · Esc arrête"
+          },
+          "proposed": null,
+          "proposed_by_key": {
+            "ui.chat.composer.placeholder.aside": "Posez votre question en aparté — Échap ferme l’aparté",
+            "ui.chat.composer.placeholder.waiting": "Orientez l’agent. Entrée envoie · Échap arrête"
+          },
+          "reason": "One key name, two French spellings in the shipped corpus: this batch writes « Esc » while the established French copy writes « Échap » (canvas: « Annuler l’enregistrement (Échap) », « Échap pour fermer », « Faites glisser pour réorganiser · Échap annule »). The same placeholder already localizes « Entrée », so leaving the key name English is a register mismatch on one screen. The prior surfaces round localized « Entrée »/« Maj » but did not settle « Esc »."
+        }
+      ],
+      "en_sha256": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
+      "fr_sha256": "737512fcb82a2a0e253fd86defbf6e52a92474cd72a8306c492432464324f754",
+      "context_sha256": "3a45a24f1ce79edec4d13b2c0f11272c3dd3974812f05d8009f04ab787da8e63"
+    },
+    "ui.code_review": {
+      "status": "passed",
+      "keys_total": 76,
+      "keys_in_batch_delta": 1,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+      "fr_sha256": "7f27f1d909eb316174bfeb411c175cf25a2cf02a8891881c3e8a7da9161af650",
+      "context_sha256": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
+    },
+    "ui.common.account": {
+      "status": "passed",
+      "keys_total": 38,
+      "keys_in_batch_delta": 20,
+      "identical_to_en": [],
+      "findings": [
+        {
+          "id": "FR-SA-08",
+          "severity": "nit",
+          "namespace": "ui.common.account",
+          "key": "ui.common.account.out_unverified_inbox",
+          "keys": [
+            "ui.common.account.out_unverified_inbox"
+          ],
+          "current": "Consultez le lien envoyé par Radient dans votre boîte de réception.",
+          "current_by_key": {
+            "ui.common.account.out_unverified_inbox": "Consultez le lien envoyé par Radient dans votre boîte de réception."
+          },
+          "proposed": "Consultez votre boîte de réception : le lien envoyé par Radient s’y trouve.",
+          "proposed_by_key": {
+            "ui.common.account.out_unverified_inbox": "Consultez votre boîte de réception : le lien envoyé par Radient s’y trouve."
+          },
+          "reason": "« Consultez le lien … dans votre boîte de réception » reads as instructions to consult a link that is in the inbox, rather than to look in the inbox for the link. A native sentence leads with the inbox."
+        }
+      ],
+      "en_sha256": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+      "fr_sha256": "1dbf4a46f91c5521f5e639d209cdb21383d3e1d64ededeb3f3fb52698c66ca06",
+      "context_sha256": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_total": 20,
+      "keys_in_batch_delta": 14,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+      "fr_sha256": "60653bef21ec1340d355f32bad3be1d4ef14605d0941114e6e24c2385f618161",
+      "context_sha256": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+    },
+    "ui.common.connection": {
+      "status": "passed",
+      "keys_total": 37,
+      "keys_in_batch_delta": 27,
+      "identical_to_en": [],
+      "findings": [
+        {
+          "id": "FR-SA-05",
+          "severity": "minor",
+          "namespace": "ui.common.connection",
+          "key": "ui.common.connection.backend.compatibility_deadline",
+          "keys": [
+            "ui.common.connection.backend.compatibility_deadline",
+            "ui.common.connection.backend.compatibility_unreachable"
+          ],
+          "current": "{diagnosis} La connexion aux fournisseurs, les paramètres, les commandes slash et la gestion MCP nécessitent sa réponse.",
+          "current_by_key": {
+            "ui.common.connection.backend.compatibility_deadline": "{diagnosis} La connexion aux fournisseurs, les paramètres, les commandes slash et la gestion MCP nécessitent sa réponse.",
+            "ui.common.connection.backend.compatibility_unreachable": "{diagnosis} La connexion aux fournisseurs, les paramètres, les commandes slash et la gestion MCP nécessitent son exécution."
+          },
+          "proposed": null,
+          "proposed_by_key": {
+            "ui.common.connection.backend.compatibility_deadline": "{diagnosis} La connexion aux fournisseurs, les paramètres, les commandes slash et la gestion MCP ne fonctionnent que s’il répond.",
+            "ui.common.connection.backend.compatibility_unreachable": "{diagnosis} La connexion aux fournisseurs, les paramètres, les commandes slash et la gestion MCP ne fonctionnent que s’il est en marche."
+          },
+          "reason": "« nécessitent sa réponse » / « nécessitent son exécution » are calques of « need it answering » / « need it running »: a French reader parses « sa réponse » as a reply the services need, not as the server being up. « ne fonctionnent que s’il répond / s’il est en marche » says the condition idiomatically."
+        }
+      ],
+      "en_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+      "fr_sha256": "9531dbd77c4462d9b1ef23d707f54cd33a1b1d74943d51fef7cd514580a3eb5c",
+      "context_sha256": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+    },
+    "ui.common.errors": {
+      "status": "passed",
+      "keys_total": 135,
+      "keys_in_batch_delta": 131,
+      "identical_to_en": [],
+      "findings": [
+        {
+          "id": "FR-SA-06",
+          "severity": "minor",
+          "namespace": "ui.common.errors",
+          "key": "ui.common.errors.speech_radient_sign_in",
+          "keys": [
+            "ui.common.errors.speech_radient_sign_in",
+            "ui.common.errors.speech_radient_sign_in_legacy"
+          ],
+          "current": "Votre connexion à Radient ne fonctionne plus. Authentifiez-vous à nouveau dans les paramètres.",
+          "current_by_key": {
+            "ui.common.errors.speech_radient_sign_in": "Votre connexion à Radient ne fonctionne plus. Authentifiez-vous à nouveau dans les paramètres.",
+            "ui.common.errors.speech_radient_sign_in_legacy": "Votre connexion à Radient ne fonctionne plus. Authentifiez-vous à nouveau sur la page des paramètres."
+          },
+          "proposed": null,
+          "proposed_by_key": {
+            "ui.common.errors.speech_radient_sign_in": "Votre connexion à Radient ne fonctionne plus. Connectez-vous à nouveau dans les paramètres.",
+            "ui.common.errors.speech_radient_sign_in_legacy": "Votre connexion à Radient ne fonctionne plus. Connectez-vous à nouveau sur la page des paramètres."
+          },
+          "reason": "The locale renders « sign-in » as « connexion / se connecter » (190 values, including ui.common.speech.control.recording_sign_in = « … en vous connectant à Radient … »), but these two switch to « Authentifiez-vous », a different register for the same action. Two names for one action inside one error family."
+        }
+      ],
+      "en_sha256": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+      "fr_sha256": "d905b4356277a0810c8f88ef4251ca3e83bcff53b11d350ea9c75ed57c49d55d",
+      "context_sha256": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+    },
+    "ui.common.speech": {
+      "status": "passed",
+      "keys_total": 11,
+      "keys_in_batch_delta": 11,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+      "fr_sha256": "cf413ebc850591f19b88ccb727e35034fa60f0acd513cb3ba652a07f290d4bbd",
+      "context_sha256": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
+    },
+    "ui.common.time": {
+      "status": "passed",
+      "keys_total": 1,
+      "keys_in_batch_delta": 1,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+      "fr_sha256": "acde397f72b34b71035c3bda3ce2214dd883556452d9b84968d96c018fb59a97",
+      "context_sha256": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
+    },
+    "ui.common.updates": {
+      "status": "passed",
+      "keys_total": 138,
+      "keys_in_batch_delta": 11,
+      "identical_to_en": [],
+      "findings": [
+        {
+          "id": "FR-SA-07",
+          "severity": "nit",
+          "namespace": "ui.common.updates",
+          "key": "ui.common.updates.error.check_incomplete",
+          "keys": [
+            "ui.common.updates.error.check_incomplete"
+          ],
+          "current": "Vérification interrompue. L’application réessaiera à la prochaine vérification.",
+          "current_by_key": {
+            "ui.common.updates.error.check_incomplete": "Vérification interrompue. L’application réessaiera à la prochaine vérification."
+          },
+          "proposed": "La vérification n’a pas pu aboutir. L’application réessaiera à la prochaine vérification.",
+          "proposed_by_key": {
+            "ui.common.updates.error.check_incomplete": "La vérification n’a pas pu aboutir. L’application réessaiera à la prochaine vérification."
+          },
+          "reason": "« Vérification interrompue » asserts an interruption the English does not: « could not finish » leaves the cause open (network, timeout, crash). « n’a pas pu aboutir » keeps that neutrality."
+        }
+      ],
+      "en_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+      "fr_sha256": "2eb6633209a88e8bdc2c19b454b7688763dfd0b200c8cfe625b0f6f9a0e42f0d",
+      "context_sha256": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "keys_total": 5,
+      "keys_in_batch_delta": 1,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+      "fr_sha256": "45e4782fc883b1cab1bdff5ecc9ba8e1011fe9914ca76b91803cc93d4a3c3eb5",
+      "context_sha256": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
+    },
+    "ui.console.errors": {
+      "status": "passed",
+      "keys_total": 1,
+      "keys_in_batch_delta": 1,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+      "fr_sha256": "e6cd88bfa73f5585effb14a89a5f60a4caa1abc4085713bd25597d45b8f58baf",
+      "context_sha256": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
+    },
+    "ui.hub.updates": {
+      "status": "passed",
+      "keys_total": 56,
+      "keys_in_batch_delta": 56,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+      "fr_sha256": "c544c37c48de1c1042c4063ae9da2525ebc8091ec759811ecdc4d6e17c4308f0",
+      "context_sha256": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
+    },
+    "ui.installer": {
+      "status": "passed",
+      "keys_total": 22,
+      "keys_in_batch_delta": 4,
+      "identical_to_en": [],
+      "findings": [
+        {
+          "id": "FR-SA-09",
+          "severity": "nit",
+          "namespace": "ui.installer",
+          "key": "ui.installer.phase.state.failed",
+          "keys": [
+            "ui.installer.phase.state.failed"
+          ],
+          "current": " - échec",
+          "current_by_key": {
+            "ui.installer.phase.state.failed": " - échec"
+          },
+          "proposed": " - en échec",
+          "proposed_by_key": {
+            "ui.installer.phase.state.failed": " - en échec"
+          },
+          "reason": "The sibling phase states are participial or adverbial (« - terminé », « - en cours », « - en attente »); « - échec » is a bare noun, so one state in the same column has a different grammatical shape. « en échec » matches the set."
+        }
+      ],
+      "en_sha256": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+      "fr_sha256": "c75440729ac20ff9c52ea74db558b8a5c6b9ae9c871a060737ab190468fdfeb3",
+      "context_sha256": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
+    },
+    "ui.library.errors": {
+      "status": "passed",
+      "keys_total": 3,
+      "keys_in_batch_delta": 3,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+      "fr_sha256": "cbf5655c5bca9c52022b26d40f05a446ecc1c38efcb9cb53e731a04e9ddfe1d6",
+      "context_sha256": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
+    },
+    "ui.mesh.errors": {
+      "status": "passed",
+      "keys_total": 1,
+      "keys_in_batch_delta": 1,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+      "fr_sha256": "cb3156073f3e2e35072fdb3503225fdf5f59ce055796694f52caea2f94da3246",
+      "context_sha256": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
+    },
+    "ui.miniView": {
+      "status": "passed",
+      "keys_total": 34,
+      "keys_in_batch_delta": 34,
+      "identical_to_en": [],
+      "findings": [
+        {
+          "id": "FR-SA-02",
+          "severity": "minor",
+          "namespace": "ui.miniView",
+          "key": "ui.miniView.hint",
+          "keys": [
+            "ui.miniView.hint"
+          ],
+          "current": "Entrée envoie, Maj+Entrée ajoute une ligne, Esc masque",
+          "current_by_key": {
+            "ui.miniView.hint": "Entrée envoie, Maj+Entrée ajoute une ligne, Esc masque"
+          },
+          "proposed": "Entrée envoie, Maj+Entrée ajoute une ligne, Échap masque",
+          "proposed_by_key": {
+            "ui.miniView.hint": "Entrée envoie, Maj+Entrée ajoute une ligne, Échap masque"
+          },
+          "reason": "Same drift as ui.chat.composer.placeholder.*: « Maj+Entrée » is localized in the same sentence while « Esc » is not, and the fr corpus elsewhere uses « Échap » for this key. One shortcut reminder should not mix the locale's key names."
+        }
+      ],
+      "en_sha256": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+      "fr_sha256": "7e171186248b6d4b1d75e7919225bcd3daacbecd80d56f39c4ae5765b697c2ef",
+      "context_sha256": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
+    },
+    "ui.projects": {
+      "status": "passed",
+      "keys_total": 427,
+      "keys_in_batch_delta": 3,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+      "fr_sha256": "06eb8d1ccf57ab4f3b69debe3efae5672358be06e58cf3f6e7998f4dfcc67c48",
+      "context_sha256": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
+    },
+    "ui.schedules.errors": {
+      "status": "passed",
+      "keys_total": 3,
+      "keys_in_batch_delta": 3,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+      "fr_sha256": "0034d975ee0833eda8fe0c097067d35c626fb60ddc3f4256c6064bbe88467a32",
+      "context_sha256": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
+    },
+    "ui.settings": {
+      "status": "passed",
+      "keys_total": 45,
+      "keys_in_batch_delta": 6,
+      "identical_to_en": [],
+      "findings": [
+        {
+          "id": "FR-SA-10",
+          "severity": "nit",
+          "namespace": "ui.settings",
+          "key": "ui.settings.section.delegated_enabled.help",
+          "keys": [
+            "ui.settings.section.delegated_enabled.help"
+          ],
+          "current": "Réservé aux exécutions de sous-agents, shells d’agents et tâches en arrière-plan.",
+          "current_by_key": {
+            "ui.settings.section.delegated_enabled.help": "Réservé aux exécutions de sous-agents, shells d’agents et tâches en arrière-plan."
+          },
+          "proposed": "Réservé aux exécutions de sous-agents, aux shells d’agents et aux exécutions en arrière-plan.",
+          "proposed_by_key": {
+            "ui.settings.section.delegated_enabled.help": "Réservé aux exécutions de sous-agents, aux shells d’agents et aux exécutions en arrière-plan."
+          },
+          "reason": "English « runs » is « exécutions » in the sibling ui.settings.section.delegated_max_age.help (« une exécution en arrière-plan »), and the programme glossary reserves « tâche » for « job ». « tâches en arrière-plan » gives one French word two English sources and breaks the parallel list."
+        }
+      ],
+      "en_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+      "fr_sha256": "5452293e28cbf1d77eb0979122425a0c1369767927c73acf7c6b29ef606a0353",
+      "context_sha256": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
+    },
+    "ui.settings.appearance": {
+      "status": "passed",
+      "keys_total": 69,
+      "keys_in_batch_delta": 59,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+      "fr_sha256": "53810f97f857d42993f4ee6b15e68be0cfe6dda1e0892262f6c6ea134ced2651",
+      "context_sha256": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
+    },
+    "ui.settings.shortcuts": {
+      "status": "passed",
+      "keys_total": 63,
+      "keys_in_batch_delta": 54,
+      "identical_to_en": [],
+      "findings": [
+        {
+          "id": "FR-SA-03",
+          "severity": "minor",
+          "namespace": "ui.settings.shortcuts",
+          "key": "ui.settings.shortcuts.reserved.chat_tags",
+          "keys": [
+            "ui.settings.shortcuts.reserved.chat_tags"
+          ],
+          "current": "Réservé : ouvre les tags de la conversation active.",
+          "current_by_key": {
+            "ui.settings.shortcuts.reserved.chat_tags": "Réservé : ouvre les tags de la conversation active."
+          },
+          "proposed": "Réservé : ouvre les étiquettes de la conversation active.",
+          "proposed_by_key": {
+            "ui.settings.shortcuts.reserved.chat_tags": "Réservé : ouvre les étiquettes de la conversation active."
+          },
+          "reason": "English « tags » is « étiquettes » everywhere else in fr (93 values, e.g. ui.chat.tags.label = « Étiquettes », ui.agents.settings.general.add_tag = « Ajouter une étiquette… »). This is the only fr value that keeps the English « tags », so the same concept has two names in the same product."
+        },
+        {
+          "id": "FR-SA-04",
+          "severity": "minor",
+          "namespace": "ui.settings.shortcuts",
+          "key": "ui.settings.shortcuts.reserved.browser_back",
+          "keys": [
+            "ui.settings.shortcuts.reserved.browser_back",
+            "ui.settings.shortcuts.reserved.browser_forward",
+            "ui.settings.shortcuts.reserved.close",
+            "ui.settings.shortcuts.reserved.find",
+            "ui.settings.shortcuts.reserved.zoom_reset"
+          ],
+          "current": "Réservé : revient en arrière dans le navigateur, ou entre les conversations en dehors.",
+          "current_by_key": {
+            "ui.settings.shortcuts.reserved.browser_back": "Réservé : revient en arrière dans le navigateur, ou entre les conversations en dehors.",
+            "ui.settings.shortcuts.reserved.browser_forward": "Réservé : avance dans le navigateur, ou entre les conversations en dehors.",
+            "ui.settings.shortcuts.reserved.close": "Réservé : ferme l’onglet du navigateur, ou la fenêtre en dehors.",
+            "ui.settings.shortcuts.reserved.find": "Réservé : recherche dans la page du navigateur, ou dans la transcription en dehors.",
+            "ui.settings.shortcuts.reserved.zoom_reset": "Réservé : réinitialise le zoom de la page du navigateur, ou celui de l’application en dehors."
+          },
+          "proposed": null,
+          "proposed_by_key": {
+            "ui.settings.shortcuts.reserved.browser_back": "Réservé : revient en arrière dans le navigateur, ou entre les conversations hors du navigateur.",
+            "ui.settings.shortcuts.reserved.browser_forward": "Réservé : avance dans le navigateur, ou entre les conversations hors du navigateur.",
+            "ui.settings.shortcuts.reserved.close": "Réservé : ferme l’onglet du navigateur, ou la fenêtre hors du navigateur.",
+            "ui.settings.shortcuts.reserved.find": "Réservé : recherche dans la page du navigateur, ou dans la transcription hors du navigateur.",
+            "ui.settings.shortcuts.reserved.zoom_reset": "Réservé : réinitialise le zoom de la page du navigateur, ou celui de l’application hors du navigateur."
+          },
+          "reason": "All five end in a dangling « en dehors » that translates English « outside it » word-for-word: an adverb with no complement, at the end of the sentence (e.g. « ferme l’onglet du navigateur, ou la fenêtre en dehors »). French needs the scope named; « hors du navigateur » keeps the English meaning and the sentence grammatical."
+        }
+      ],
+      "en_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+      "fr_sha256": "44385a5e62798e571e456f6e54b44ffe5ab3ab9bf04b0c3d741367ccaa288e36",
+      "context_sha256": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+    }
+  }
+}

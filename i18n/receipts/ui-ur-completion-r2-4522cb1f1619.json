@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": null,
+  "instance": "ui-ur-completion-r2-4522cb1f1619",
+  "session": "4522cb1f1619",
+  "date": "2026-10-23",
+  "locale": "ur",
+  "round": 2,
+  "status": "passed",
+  "verdict": "clean-with-findings",
+  "keys_audited": 52,
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "scope": {
+    "base": "8e1814b92ea7c7afa809997e77e157781c73eaa0",
+    "head": "eb732d52cbddcc1b4a6023523a88c0852a5b1bc9",
+    "translator_session": "a8963d4aa6bf",
+    "kind": "Scoped remediation delta plus direct neighbors in ui.presence and ui.chat.sidebar only. The other nine round-1 namespaces were not re-audited.",
+    "changed_catalogue_values": [
+      "ui.presence.hours_ago",
+      "ui.chat.sidebar.search.searching"
+    ],
+    "other_changed_file": "i18n/receipts/ui-ur-completion-a8963d4aa6bf.json (target-hash updates only)"
+  },
+  "independence": "This auditor did not author or translate the contribution or remediation and is a different session from translator a8963d4aa6bf. No catalogue, context, ledger, allowance, generated or other repository file was edited; no PR or commit was created.",
+  "previous_receipt": {
+    "path": "/Users/damian/.local-operator/sessions/4522cb1f1619/scratchpad/ur-completion-audit-4522cb1f1619/ui-ur-completion-r1-4522cb1f1619.json",
+    "sha256": "74a81beb8b8046ed59931c8653381b6cf0db1045b5a0b6a568b141468a428b26",
+    "round": 1
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "namespaces": {
+    "ui.presence": {
+      "status": "passed",
+      "keys_audited": 9,
+      "changed_keys": [
+        "ui.presence.hours_ago"
+      ],
+      "unchanged_values_byte_verified": 8,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "ur": "d9a74ddecafc812311a97695780ce283f81c959f7119041522c80e7eaf32b395",
+        "context": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44"
+      },
+      "findings": [
+        {
+          "id": "UR2",
+          "severity": "MINOR",
+          "key": "ui.presence.minutes_ago",
+          "current": "{count, number} منٹ پہلے",
+          "proposed": "Keep the current grammatical text and run the narrow-sidebar rendered check; if it truncates, choose a native/design-reviewed compact unit without dropping پہلے, because this fragment is also inserted into “آخری بار {age} دیکھا گیا”.",
+          "reason": "The sidecar requires a compact unit for narrow sidebar rows; formatted 4m ago is 6 code points versus 4 منٹ پہلے at 10 (+66.7%), while the fragment must retain its ago meaning in the composed last-seen sentence.",
+          "disposition": "carried — intentionally unchanged in eb732d52cbdd as a rendered-fit watch, not an unresolved copy MAJOR and not a request for another copy-remediation round."
+        }
+      ],
+      "remediations": [
+        {
+          "id": "UR1",
+          "status": "fixed",
+          "key": "ui.presence.hours_ago",
+          "current": "{count, plural, one {{count, number} گھنٹہ پہلے} other {{count, number} گھنٹے پہلے}}",
+          "evidence": "Real outputs: 0 گھنٹے پہلے; 1 گھنٹہ پہلے; 2 گھنٹے پہلے; 1,234 گھنٹے پہلے. CLDR categories: other/one/other/other."
+        }
+      ],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_problems": []
+      }
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "keys_audited": 43,
+      "changed_keys": [
+        "ui.chat.sidebar.search.searching"
+      ],
+      "unchanged_values_byte_verified": 42,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "ur": "872f25eb7db98a41750a371a079d666165b5f4c9a82655a5536260b116fb933d",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [],
+      "remediations": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_problems": []
+      }
+    }
+  },
+  "evidence": {
+    "delta": "Git diff names exactly three modified files: the translator receipt and the two scoped Urdu catalogues. Object comparison derives exactly one changed value per namespace; ui.presence has 8 unchanged values and ui.chat.sidebar has 42. English and context hashes are unchanged from round 1.",
+    "icu": "Exact key and context order passes for all 52 scoped keys. Argument names survive everywhere. All non-remediated ICU descriptors are source-equivalent; hours_ago intentionally adds target-required count plural one/other, retains {count, number} in both arms, and preserves the English number style. pins.failure select arms still format. No ICU problems or formatting errors.",
+    "hours_ago_real_outputs": {
+      "0": {
+        "category": "other",
+        "formatted": "0 گھنٹے پہلے",
+        "digits": "0"
+      },
+      "1": {
+        "category": "one",
+        "formatted": "1 گھنٹہ پہلے",
+        "digits": "1"
+      },
+      "2": {
+        "category": "other",
+        "formatted": "2 گھنٹے پہلے",
+        "digits": "2"
+      },
+      "1234": {
+        "category": "other",
+        "formatted": "1,234 گھنٹے پہلے",
+        "digits": "1,234"
+      }
+    },
+    "sidebar_terminology": "Current “گفتگو میں تلاش جاری ہے…” is byte-identical to established ui.command_palette.command_palette.searching_conversations and ui.command_palette.palette_search.searching_conversations. Direct neighbor names_only still uses plural گفتگوؤں for “inside conversations”; unavailable consistently uses the generic noun phrase گفتگو کی تلاش. No glossary/register drift found.",
+    "direct_neighbors": "minutes_ago and days_ago remain byte-identical; link_down_last_seen, device_link_down and link_down_compact still compose with the age fragment. Sidebar names_only/no_match/unavailable and command-palette searching terminology were checked around the changed value.",
+    "unicode_bidi": "Both complete target files are NFC; zero RLM/LRM/FSI/PDI or other manual bidi controls. The remediation introduces no Latin prose; new plural/one/other tokens are ICU syntax. Static logical-order and technical-token checks pass.",
+    "pseudo_localization": {
+      "method": "All 52 values in the two changed namespaces were formatted with deterministic arguments and wrapped in ⟦…⟧ with 40% visible-length padding; all three pins.failure select arms were included.",
+      "formatted_samples": 54,
+      "distinct_keys": 52,
+      "format_errors": 0,
+      "pseudo_length_min": 10,
+      "pseudo_length_max": 176
+    },
+    "static_overflow": "searching is 23 code points against 24 English (and shorter than the old Urdu), so it adds no expansion. hours_ago raw-template growth is ICU syntax, not rendered copy; judge its actual formatted outputs above. minutes_ago remains the sole carried MINOR width watch; no new overflow finding.",
+    "repository_checks": "At eb732d52cbdd: node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/format.test.mjs => 51 tests, 51 pass, 0 fail; node scripts/i18n/generate.mjs --check => byte-identical; node scripts/i18n/context-parity.mjs => ok with 131 existing allowed gaps.",
+    "commands": [
+      "node scratchpad/ur-completion-audit-4522cb1f1619/audit-r2.mjs (final result: errors=[], 54 formatted samples across 52 keys)",
+      "node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/format.test.mjs",
+      "node scripts/i18n/generate.mjs --check",
+      "node scripts/i18n/context-parity.mjs"
+    ],
+    "rtl_limit": "Static RTL text safety only. No rendered RTL, glyph shaping, visual punctuation order, mirrored layout, truncation or real-app frame evidence is claimed; the separate frame gate remains."
+  },
+  "out_of_scope_unchanged_namespaces": [
+    "ui.chat.pickers",
+    "ui.chat.canonical",
+    "ui.chat.analytics",
+    "ui.chat.transcript_copy",
+    "ui.common.file_actions",
+    "ui.common.viewer",
+    "ui.chat.tag_dialogs",
+    "ui.chat.run_details",
+    "ui.chat.commentary_actions"
+  ],
+  "limitations": [
+    "Round-2 scoped catalogue audit only; unchanged namespaces retain their round-1 coverage and were not semantically re-audited here.",
+    "minutes_ago remains an intentional rendered-fit watch. This receipt does not claim that the watch itself has been visually resolved."
+  ]
+}

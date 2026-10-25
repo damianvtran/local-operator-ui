@@ -1,0 +1,13 @@
+{
+  "auditor": "reviewer",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "instance": "4b5d6178a790-es",
+  "status": "passed",
+  "namespace": "ui.library",
+  "scope": "Independent one-key ui.library.page.resize_preview audit",
+  "sha256": {
+    "es": "97277c6a42c1f85f35b715c6746e76404cf5f13a05ac6daf07adce72970fd5f3",
+    "en": "f573e43a8f348747a364b0f37d7aa882d7c2fae7b2b17f4167986aeccbe1d71c"
+  },
+  "findings": []
+}

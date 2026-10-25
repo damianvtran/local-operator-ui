@@ -49,6 +49,10 @@ import type { PendingDesktopGate } from "../../../../../shared/desktop-session-c
 import "../../../styles/index.css";
 import { answerUnconfirmedMessage } from "../ask-answer";
 import {
+	ApprovalEscapeControls,
+	type ApprovalEscapeStatus,
+} from "../components/trace/approval-escape";
+import {
 	QuestionDock,
 	type QuestionDockProps,
 } from "../components/trace/question-dock";
@@ -57,6 +61,12 @@ import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 
 const REQUEST = "11111111-1111-4111-8111-111111111111";
 const TS = 1_760_000_000_000;
+/**
+ * A session id for the approval stories. The policy handles only ADDRESS the
+ * session; they do not run on render, so a fixture is enough to draw the card
+ * exactly as `chat-content.tsx` does.
+ */
+const SESSION = "aaaaaaaaaaaa";
 
 /*
  * Every frame carries the user turn that provoked the question.
@@ -108,6 +118,7 @@ const Frame = ({
 	answering = false,
 	answer = null,
 	onAnswerSecret,
+	sessionId = SESSION,
 }: {
 	pending: PendingDesktopGate;
 	/** The user turn the question is an answer to. See `transcriptWith`. */
@@ -116,6 +127,12 @@ const Frame = ({
 	width?: string;
 	/** An answer is in flight: every option is disabled. */
 	answering?: boolean;
+	/**
+	 * The session this pane is addressing. Passed to the dock because the
+	 * approval card's policy handles need it; absent on a surface with no
+	 * session, where they are not drawn at all.
+	 */
+	sessionId?: string;
 	/**
 	 * This pane's record of the gate it answered — what `chat-page.tsx` hands the
 	 * dock once an outcome landed. A refused answer renders the held card; the
@@ -181,6 +198,7 @@ const Frame = ({
 				answer={answer}
 				onAnswer={() => {}}
 				onAnswerSecret={onAnswerSecret}
+				sessionId={sessionId}
 				className="pt-2"
 			/>
 		</div>
@@ -605,12 +623,18 @@ const SecretAnswerHeldFrame = () => {
  * labels (`APPROVAL_OPTIONS`), and pressing one posts the strict boolean the
  * answer route takes. This replaced `ApprovalUnchanged`, which photographed the
  * old yes/no-only card precisely so this change could not go unnoticed.
+ *
+ * The two policy handles under the pair are the card's escape hatch: they change
+ * the MODE (this session, or the saved default) and deliberately leave this
+ * request unanswered, which each confirmation says. The handles sit below
+ * Approve/Deny and never move them; this frame is the one to compare when the
+ * pair's position is in question.
  */
 export const Approval: Story = {
 	render: () => (
 		<Frame
 			asked="Clean the build output before rebuilding."
-			height={360}
+			height={500}
 			pending={gate({
 				kind: "approval",
 				// The live wire's own shape for a shell call: the tool's name as
@@ -637,7 +661,7 @@ export const ApprovalAnswerInFlight: Story = {
 	render: () => (
 		<Frame
 			asked="Clean the build output before rebuilding."
-			height={360}
+			height={500}
 			answering={true}
 			pending={gate({
 				kind: "approval",
@@ -646,5 +670,145 @@ export const ApprovalAnswerInFlight: Story = {
 				options: [],
 			})}
 		/>
+	),
+};
+
+/**
+ * The approval card when the effective mode is a SESSION OVERRIDE of a
+ * different global default: this conversation asks, the machine does not.
+ *
+ * The line above the handles is the one D2 asked for — the person deciding
+ * between the two destinations can see that this conversation's `ask` outranks
+ * the machine's `auto` before acting, rather than inferring it from the
+ * confirmation afterwards. The gate fields are additive: this story is the only
+ * fixture that sets them, and the `Approval` frame shows the no-line state an
+ * older backend still produces.
+ */
+export const ApprovalSessionOverride: Story = {
+	render: () => (
+		<Frame
+			asked="Clean the build output before rebuilding."
+			height={500}
+			pending={gate({
+				kind: "approval",
+				title: "bash",
+				detail: "run: rm -rf ./dist",
+				options: [],
+				approval_mode: "ask",
+				approval_provenance: "session",
+				approval_global_mode: "auto",
+			})}
+		/>
+	),
+};
+
+/**
+ * The approval card at a narrow pane.
+ *
+ * The two policy handles take a second line here rather than truncating either
+ * destination: the pair is a wrapped row (`flex-wrap`), and each label is the
+ * full name of what it changes. Read it with the wide `Approval` frame — the
+ * property is that Approve/Deny keep their rows at both widths.
+ */
+export const ApprovalNarrow: Story = {
+	render: () => (
+		<Frame
+			asked="Clean the build output before rebuilding."
+			height={640}
+			width="300px"
+			pending={gate({
+				kind: "approval",
+				title: "bash",
+				detail: "run: rm -rf ./dist",
+				options: [],
+			})}
+		/>
+	),
+};
+
+/**
+ * Every state of the policy handles, including the two a live backend cannot be
+ * asked to produce on cue: the confirmation after each route, a refusal, and the
+ * half-succeeded all-sessions arm (the default saved, this conversation's
+ * command refused).
+ *
+ * These render the presentational half directly, which is the same component
+ * the card mounts; the wide `Approval` frame is where their place under the
+ * answer pair is judged. The refusal's detail is a fixture sentence — in the
+ * app it is the backend's own detail, prefixed `Unchanged: `.
+ */
+const ESCAPE_STATES: Array<{
+	label: string;
+	status: ApprovalEscapeStatus;
+	busy?: boolean;
+}> = [
+	{ label: "Idle (reserved slot)", status: { kind: "idle" } },
+	{ label: "Session mode saved", status: { kind: "session-saved" } },
+	{ label: "Default saved", status: { kind: "default-saved" } },
+	{
+		label: "Default saved; this conversation did not follow",
+		status: {
+			kind: "default-saved-session-failed",
+			detail: "this session needs operator authority",
+		},
+	},
+	{
+		label: "Refused",
+		status: {
+			kind: "refused",
+			detail: "this install has no operator anchor",
+		},
+	},
+	{
+		label: "A policy call is in flight",
+		status: { kind: "idle" },
+		busy: true,
+	},
+];
+
+export const ApprovalEscapeStates: Story = {
+	render: () => (
+		<div className="flex flex-col gap-6 bg-surface p-6">
+			{ESCAPE_STATES.map((state) => (
+				<section key={state.label} className="flex flex-col gap-2">
+					<p className="text-ink-dim text-meta">{state.label}</p>
+					<ApprovalEscapeControls
+						status={state.status}
+						busy={state.busy}
+						onSetSession={() => {}}
+						onSetAll={() => {}}
+					/>
+				</section>
+			))}
+		</div>
+	),
+};
+
+/**
+ * The same states at the card's own content measure (218px at a 300px pane),
+ * which is where the D1 reflow was measured. The status box must be the SAME
+ * height in every state whose sentence fits the reserved two lines; the
+ * dictated default/partial sentences are longer and grow the slot rather than
+ * being clipped, which this frame makes visible.
+ */
+export const ApprovalEscapeNarrowStates: Story = {
+	render: () => (
+		<div className="flex flex-col gap-6 bg-surface p-6">
+			{ESCAPE_STATES.map((state) => (
+				<section
+					key={state.label}
+					className="flex flex-col gap-2"
+					style={{ width: 218 }}
+				>
+					<p className="text-ink-dim text-meta">{state.label}</p>
+					<ApprovalEscapeControls
+						status={state.status}
+						busy={state.busy}
+						onSetSession={() => {}}
+						onSetAll={() => {}}
+					/>
+				</section>
+			))}
+		</div>
 	),
 };

@@ -25,6 +25,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { PageHeader } from "@shared/components/common/page-header";
+import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { Spinner } from "@shared/components/common/spinner";
 import {
 	Alert,
@@ -87,9 +88,16 @@ import { LibraryPreview, type LibraryPreviewFocus } from "./library-preview";
 
 const VIEW_STORAGE_KEY = "library-view";
 const FILTER_STORAGE_KEY = "library-filters";
+const DOCK_WIDTH_STORAGE_KEY = "library-details-width";
 
 /** The dock's minimum workspace width, from the design spec's own budget. */
 const DOCK_MIN_WORKSPACE_PX = 1152;
+const DOCK_DEFAULT_WIDTH_PX = 448;
+const DOCK_MIN_WIDTH_PX = 320;
+const DOCK_MAX_WIDTH_PX = 720;
+/* Resizing may spend the surplus, never the results column's reading measure. */
+const DOCK_MIN_RESULTS_PX = 320;
+const FILTER_RAIL_WIDTH_PX = 192;
 /** The rail's minimum viewport and workspace widths. */
 const RAIL_MIN_VIEWPORT_PX = 1200;
 const RAIL_MIN_WORKSPACE_PX = 900;
@@ -101,6 +109,22 @@ function readView(): LibraryView {
 		return localStorage.getItem(VIEW_STORAGE_KEY) === "list" ? "list" : "grid";
 	} catch {
 		return "grid";
+	}
+}
+
+function readDockWidth(): number {
+	try {
+		const raw = localStorage.getItem(DOCK_WIDTH_STORAGE_KEY);
+		if (!raw) return DOCK_DEFAULT_WIDTH_PX;
+		const parsed = Number(raw);
+		return Number.isFinite(parsed)
+			? Math.min(
+					DOCK_MAX_WIDTH_PX,
+					Math.max(DOCK_MIN_WIDTH_PX, Math.round(parsed)),
+				)
+			: DOCK_DEFAULT_WIDTH_PX;
+	} catch {
+		return DOCK_DEFAULT_WIDTH_PX;
 	}
 }
 
@@ -122,6 +146,14 @@ function readFilters(): LibraryListFilters {
 		};
 	} catch {
 		return NO_LIBRARY_FILTERS;
+	}
+}
+
+function writeDockWidth(width: number) {
+	try {
+		localStorage.setItem(DOCK_WIDTH_STORAGE_KEY, String(width));
+	} catch {
+		/* a storage refusal must not disable resizing */
 	}
 }
 
@@ -229,7 +261,7 @@ const LibrarianRow: FC<{ enabled: boolean; nowMs: number }> = ({
 					{t("ui.library.librarian.unorganized", { count: unorganized })}
 				</span>
 			)}
-			<div className="ml-auto flex items-center gap-1">
+			<div className="ms-auto flex items-center gap-1">
 				<Button
 					variant="ghost"
 					size="sm"
@@ -340,6 +372,11 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	const [search, setSearch] = useState("");
 	const debouncedSearch = useDebouncedValue(search, 200);
 	const [view, setView] = useState<LibraryView>(readView);
+	const [dockWidthPreference, setDockWidthPreference] = useState(readDockWidth);
+	const updateDockWidth = useCallback((width: number) => {
+		setDockWidthPreference(width);
+		writeDockWidth(width);
+	}, []);
 	const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 	const [composerFocusSignal, setComposerFocusSignal] = useState(0);
 	const [focusRequest, setFocusRequest] = useState<{
@@ -355,6 +392,17 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	 */
 	const dockEligible =
 		workspaceWidth >= DOCK_MIN_WORKSPACE_PX && Boolean(selectedId) && !fullView;
+	const maxDockWidth = Math.max(
+		DOCK_MIN_WIDTH_PX,
+		Math.min(
+			DOCK_MAX_WIDTH_PX,
+			workspaceWidth -
+				(railVisible ? FILTER_RAIL_WIDTH_PX : 0) -
+				DOCK_MIN_RESULTS_PX,
+		),
+	);
+	/* Keep the preference intact while a smaller workspace temporarily clamps it. */
+	const dockWidth = Math.min(dockWidthPreference, maxDockWidth);
 
 	useEffect(() => {
 		setFilters((current) =>
@@ -795,13 +843,13 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 							<h1 className="text-title text-ink">
 								{t("ui.library.page.title")}
 							</h1>
-							<span className="ml-2 text-meta tabular-nums text-ink-dim">
+							<span className="ms-2 text-meta tabular-nums text-ink-dim">
 								{t("ui.library.page.loaded_count", {
 									loaded: String(rows.length),
 									total: String(total),
 								})}
 							</span>
-							<div className="ml-auto flex items-center rounded-sm border border-control">
+							<div className="ms-auto flex items-center rounded-sm border border-control">
 								<Button
 									variant="ghost"
 									size="icon-sm"
@@ -822,12 +870,15 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 								</Button>
 							</div>
 						</div>
-						<div className="flex h-12 min-w-0 items-center gap-2">
-							<div className="relative min-w-60 flex-1">
+						<div
+							data-library-toolbar=""
+							className="flex h-12 min-w-0 items-center gap-2"
+						>
+							<div className="relative min-w-0 flex-1">
 								<Search
 									size={14}
 									aria-hidden="true"
-									className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-dim"
+									className="pointer-events-none absolute top-1/2 start-2.5 -translate-y-1/2 text-ink-dim"
 								/>
 								<Input
 									ref={searchRef}
@@ -839,7 +890,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 									placeholder={t("ui.library.page.search")}
 									aria-label={t("ui.library.page.search")}
 									data-library-search=""
-									className="border-0 bg-elevated pl-8"
+									className="border-0 bg-elevated ps-8"
 								/>
 							</div>
 							<DropdownMenu>
@@ -847,7 +898,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 									<Button
 										variant="ghost"
 										size="sm"
-										className="bg-elevated text-ink"
+										className="shrink-0 bg-elevated text-ink"
 									>
 										<ArrowDownWideNarrow aria-hidden="true" />
 										{t("ui.library.page.sort")}
@@ -878,6 +929,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 							<Button
 								variant="ghost"
 								size="icon-sm"
+								className="shrink-0"
 								aria-label={t("ui.library.page.reverse_order")}
 								onClick={() =>
 									setFilters((current) => ({
@@ -1078,29 +1130,46 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			)}
 
 			{dockEligible && selected && (
-				<aside
-					/*
-					 * THE DOCK IS A PANEL: its `surface` starts at y0 and its header and
-					 * scroller begin below the strip. This is the aside the operator's
-					 * screenshot caught beginning 32px down.
-					 */
-					className="panel-top-pad flex h-full w-[448px] shrink-0 bg-surface"
-					aria-label={t("ui.library.page.preview")}
-				>
-					<LibraryPreview
-						asset={selected}
-						nowMs={clock}
-						onClose={goBack}
-						onOpenConversation={openConversationFor}
-						onFilterSession={filterSession}
-						onAsk={() => setComposerFocusSignal((value) => value + 1)}
-						onToggleFavorite={() => toggleFavorite(selected)}
-						composerFocusSignal={composerFocusSignal}
-						focusRequest={focusRequest}
-						onExpand={openFullView}
-						mediaSiblings={mediaSiblings}
+				<>
+					<ResizableDivider
+						sidebarWidth={dockWidth}
+						onSidebarWidthChange={updateDockWidth}
+						minWidth={DOCK_MIN_WIDTH_PX}
+						maxWidth={maxDockWidth}
+						side="left"
+						homeEnd="value"
+						onDoubleClick={() => updateDockWidth(DOCK_DEFAULT_WIDTH_PX)}
+						label={t("ui.library.page.resize_preview")}
 					/>
-				</aside>
+					<aside
+						/*
+						 * THE DOCK IS A PANEL: its `surface` starts at y0 and its header and
+						 * scroller begin below the strip. This is the aside the operator's
+						 * screenshot caught beginning 32px down. The OUTER padded box must
+						 * own the pane alpha too: marking only the inner preview made the
+						 * 32px lane opaque while the content below it was translucent.
+						 */
+						data-library-dock=""
+						data-glass-region="pane"
+						style={{ width: dockWidth }}
+						className="panel-top-pad flex h-full shrink-0 bg-surface"
+						aria-label={t("ui.library.page.preview")}
+					>
+						<LibraryPreview
+							asset={selected}
+							nowMs={clock}
+							onClose={goBack}
+							onOpenConversation={openConversationFor}
+							onFilterSession={filterSession}
+							onAsk={() => setComposerFocusSignal((value) => value + 1)}
+							onToggleFavorite={() => toggleFavorite(selected)}
+							composerFocusSignal={composerFocusSignal}
+							focusRequest={focusRequest}
+							onExpand={openFullView}
+							mediaSiblings={mediaSiblings}
+						/>
+					</aside>
+				</>
 			)}
 			{standalone && (
 				<div
@@ -1112,6 +1181,8 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 					 * 1, D2). The panel that owns the pad owns the ground, which also
 					 * grounds the spinner and `UnavailableAsset` arms.
 					 */
+					/* Standalone has the same outer alpha owner as the docked panel. */
+					data-glass-region="pane"
 					className="panel-top-pad min-w-0 flex-1 bg-surface"
 					aria-label={t("ui.library.page.preview")}
 				>
@@ -1139,15 +1210,36 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 				</div>
 			)}
 			{!standalone && !selected && dockEligible && (
-				<div className="panel-top-pad hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex">
-					<p className="max-w-60 text-center text-body-sm text-ink-dim">
-						{t("ui.library.page.select_asset")}
-					</p>
-				</div>
+				<>
+					<ResizableDivider
+						sidebarWidth={dockWidth}
+						onSidebarWidthChange={updateDockWidth}
+						minWidth={DOCK_MIN_WIDTH_PX}
+						maxWidth={maxDockWidth}
+						side="left"
+						homeEnd="value"
+						onDoubleClick={() => updateDockWidth(DOCK_DEFAULT_WIDTH_PX)}
+						label={t("ui.library.page.resize_preview")}
+					/>
+					<div
+						data-library-dock=""
+						/* No inner preview exists here, so this root owns the whole pane. */
+						data-glass-region="pane"
+						style={{ width: dockWidth }}
+						className="panel-top-pad hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"
+					>
+						<p className="max-w-60 text-center text-body-sm text-ink-dim">
+							{t("ui.library.page.select_asset")}
+						</p>
+					</div>
+				</>
 			)}
 
 			<Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-				<SheetContent side="left" className="w-80 max-w-[calc(100vw-32px)] p-0">
+				<SheetContent
+					side="start"
+					className="w-80 max-w-[calc(100vw-32px)] p-0"
+				>
 					<div className="flex h-full flex-col">
 						<div className="flex items-center justify-between px-4 py-3">
 							<span className="text-heading text-ink">
