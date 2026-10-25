@@ -34,6 +34,7 @@ import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
+import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
@@ -723,6 +724,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsSettings,
 	...enUiAgentsStarters,
 	...enUiAgentsTeams,
+	...enUiAgentsUpload,
 	...enUiBrowserChrome,
 	...enUiBrowserErrors,
 	...enUiBrowser,
@@ -1841,6 +1843,29 @@ export type MessageParams = {
 	"ui.agents.teams.section.members_aria": undefined;
 	"ui.agents.teams.section.project_brief": undefined;
 	"ui.agents.teams.section.what_for": undefined;
+	"ui.agents.upload.action.edit_agent": undefined;
+	"ui.agents.upload.action.open_listing": undefined;
+	"ui.agents.upload.availability.agent_label": undefined;
+	"ui.agents.upload.availability.checking": undefined;
+	"ui.agents.upload.availability.free": undefined;
+	"ui.agents.upload.availability.taken": undefined;
+	"ui.agents.upload.error.cannot_publish": undefined;
+	"ui.agents.upload.field.name_hint": undefined;
+	"ui.agents.upload.field.name_label": undefined;
+	"ui.agents.upload.list.instructions": undefined;
+	"ui.agents.upload.list.name": undefined;
+	"ui.agents.upload.list.surface": undefined;
+	"ui.agents.upload.published.listed": { name: string };
+	"ui.agents.upload.published.republished": { name: string };
+	"ui.agents.upload.sign_in.needed": undefined;
+	"ui.agents.upload.sign_in.nothing_left": undefined;
+	"ui.agents.upload.sign_in.reauthenticate": undefined;
+	"ui.agents.upload.target.label": undefined;
+	"ui.agents.upload.target.orgs_unread": undefined;
+	"ui.agents.upload.target.upgrade": undefined;
+	"ui.agents.upload.terms.lead": undefined;
+	"ui.agents.upload.terms.link": undefined;
+	"ui.agents.upload.terms.tail": undefined;
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;
