@@ -77,6 +77,11 @@ export type DragPayload = {
 	session: MeshSessionRow;
 	/** The device that holds it NOW, resolved (a local row's owner is this device). */
 	ownerDeviceId: string;
+	/**
+	 * The caller's display text for the owner. {@link resolveDrop} never builds its
+	 * own sentences from it: this text may be a raw wire name or an already formatted
+	 * identity, and neither is proof of WHICH device it names (agent review round 3).
+	 */
 	ownerLabel: string;
 };
 
@@ -314,14 +319,27 @@ export function resolveDrop(
 	target: DropTarget,
 	context: DropContext,
 ): DropVerdict {
-	const { session, ownerDeviceId, ownerLabel: suppliedOwnerLabel } = payload;
+	const { session, ownerDeviceId } = payload;
 	const { selfDeviceId, devices, networks } = context;
 	const displayedDeviceIds = [...devices.keys()];
 	const owner = devices.get(ownerDeviceId);
-	/* Destructive copy must not trust a caller's potentially raw duplicate name. */
+	/*
+	 * DESTRUCTIVE COPY NAMES THE OWNER BY ID, never by the caller's text (agent review
+	 * round 2 F1, round 3 F1 / QA Q-1). Two devices may share a name, so a sentence
+	 * that says which copy is deleted must carry the id that tells them apart.
+	 *
+	 * A graph-resident owner gets the compact id, which is unique within the drawn
+	 * graph. An owner ABSENT from the graph (a stale row, or an owner the join could
+	 * not place - `mesh-sessions.ts`) has no graph to prove a short prefix unique, so
+	 * it gets the FULL id; its name half is the session's own wire name, quoted, and
+	 * an empty name reads as the unnamed-device word rather than as a name.
+	 */
 	const ownerLabel = owner
 		? deviceIdentityText(owner, displayedDeviceIds, true)
-		: suppliedOwnerLabel;
+		: deviceIdentityText({
+				id: ownerDeviceId,
+				name: session.owner_device_name,
+			});
 
 	if (target.kind === "ground") return { kind: "none" };
 

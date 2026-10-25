@@ -3508,6 +3508,63 @@ test("duplicate recall sources have distinct destructive loss sentences", () => 
 	}
 });
 
+test("absent recall owners are named by their full id, not the caller's text", () => {
+	// Agent review round 3 F1 / QA round 3 Q-1: an owner the graph does not hold
+	// has no graph to prove a short prefix unique, so its full id is what tells two
+	// same-named owners apart in the destructive confirmation.
+	const context = duplicateDropContext();
+	const ABSENT_ONE = `d_${"1".repeat(32)}`;
+	const ABSENT_TWO = `d_${"2".repeat(32)}`;
+	const lossFor = (ownerId, ownerName, suppliedLabel) => {
+		const verdict = resolveDrop(
+			drag(
+				session({
+					locality: "remote",
+					owner_device: ownerId,
+					owner_device_name: ownerName,
+				}),
+				ownerId,
+				suppliedLabel,
+			),
+			{ kind: "device", deviceId: SELF },
+			context,
+		);
+		assert.equal(verdict.kind, "plan");
+		return verdict.plan.lost;
+	};
+
+	assert.equal(context.devices.has(ABSENT_ONE), false);
+	assert.equal(context.devices.has(ABSENT_TWO), false);
+	const absent = [ABSENT_ONE, ABSENT_TWO].map((ownerId) =>
+		lossFor(ownerId, "shared-node", "shared-node"),
+	);
+	assert.deepEqual(absent, [
+		`The copy on "shared-node" ${ABSENT_ONE} is deleted once this device has it.`,
+		`The copy on "shared-node" ${ABSENT_TWO} is deleted once this device has it.`,
+	]);
+	assert.notEqual(absent[0], absent[1]);
+
+	// An empty wire name reads as absence, never as a quoted empty name.
+	assert.equal(
+		lossFor(ABSENT_ONE, "", ""),
+		`The copy on (unnamed device) ${ABSENT_ONE} is deleted once this device has it.`,
+	);
+
+	// Caller text that merely LOOKS formatted is not identity: a spoofed label
+	// naming another device's id cannot replace the owner's own id.
+	assert.equal(
+		lossFor(ABSENT_ONE, "shared-node", `"shared-node" ${ABSENT_TWO}`),
+		absent[0],
+	);
+
+	// Known-owner control: a graph-resident owner keeps the graph-unique compact
+	// id, so the absent branch's full id is not leaking into the ordinary case.
+	assert.equal(
+		lossFor(PEER, "shared-node", `"shared-node" ${ABSENT_TWO}`),
+		'The copy on "shared-node" d_bbbbbbbb… is deleted once this device has it.',
+	);
+});
+
 test("duplicate suspect targets have distinct refusal identities", () => {
 	const context = duplicateDropContext(true);
 	const sentences = [PEER, THIRD].map((deviceId) => {
