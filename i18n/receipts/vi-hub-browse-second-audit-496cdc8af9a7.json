@@ -1,0 +1,293 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "second-independent-audit",
+	"round": 2,
+	"locale": "vi",
+	"source_locale": "en",
+	"namespace": "ui.hub.browse",
+	"namespace_keys": 41,
+	"target_file": "src/i18n/catalogues/vi/ui.hub.browse.json",
+	"source_file": "src/i18n/catalogues/en/ui.hub.browse.json",
+	"context_file": "src/i18n/catalogues/en/ui.hub.browse.context.json",
+	"target_binding": "Uncommitted working-tree candidate in worktree ~/local-operator-ui/.worktrees/i18n-agent-hub-copy (branch i18n-agent-hub-copy, HEAD 5f44362a9fa4e738efd5eaca308642f9b574d4e3, local only); a remediation of an earlier draft that exists in no commit. Every hash below was computed from disk at audit time; source and context match the hashes this audit was commissioned against.",
+	"source_commit": "5f44362a9fa4e738efd5eaca308642f9b574d4e3",
+	"source_commit_state": "branch i18n-agent-hub-copy, local only at audit time",
+	"date": "2026-10-25",
+	"instance": "496cdc8af9a7",
+	"instance_basis": "this run's harness session id (Session ID 496cdc8af9a7), distinct from the first audit's ffe76b9c2ba2",
+	"model": "radient/auto",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"role": "independent translation auditor (team lopdev); did not translate, review or remediate this namespace",
+		"model": "radient/auto",
+		"route": "radient/auto — auto-routed by the Radient router; the resolved provider/model id is not exposed to this session, so no finer id is claimed",
+		"fallback": "none reported or observed during this run — no model substitution was made or needed",
+		"independence": "This session wrote no catalogue, ledger, allowance or key; it is not the translator and never saw the translator's or remediator's run. SEQUENCING DISCLOSURE: the earlier first-audit receipt was opened early — right after binding the hashes, before the glossary, English source and target were read — so its three NITs and its observations were in view during the read, contrary to the commissioned order. Every one of its claims was then re-derived from the bytes rather than assumed: two of its supporting figures proved wrong on recount (301 → 282 “tác nhân” strings; “three” → four strings naming Radient), and the findings recorded here, including the delist containment measurement and the load/download check, were formed and verified from the source, context, target, code and shipped catalogues.",
+		"round": 2,
+		"passes": "two passes over all 41 keys: a full read, then an independent re-read of the destructive, permission and error strings (delist family, four failure headlines, unknown-state tooltips, load/not-found) with the consuming code open"
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": [
+		{
+			"id": "VI-HB2-1",
+			"severity": "nit",
+			"key": "ui.hub.browse.card.favourite.tooltip_unknown",
+			"current": "Không đọc được mục yêu thích của bạn nên nút này không hiển thị như thể chưa yêu thích.",
+			"problem": "The first draft's false reading (“hidden while unfavourited”) is gone, but the clause chooses the display verb where the intended object is the state: “không hiển thị như thể chưa yêu thích” can still be taken as “is not displayed, as though unfavourited”, because “không hiển thị” is a complete predicate in Vietnamese. The button is in fact shown and disabled; naming the state removes the opening and ties the tooltip to the sibling “Trạng thái yêu thích không khả dụng”.",
+			"proposed": "Không đọc được mục yêu thích của bạn nên nút này không hiển thị trạng thái chưa yêu thích.",
+			"why": "“không hiển thị trạng thái chưa yêu thích” can only parse as “does not show the unfavourited state”, which is the English claim; 90 codepoints vs 87, and the tooltip's role (“explains a failed read; never asserts the agent is unfavourited”) is unchanged.",
+			"gating": false
+		},
+		{
+			"id": "VI-HB2-2",
+			"severity": "nit",
+			"key": "ui.hub.browse.card.like.tooltip_unknown",
+			"current": "Không đọc được lượt thích của bạn nên nút này không hiển thị như thể chưa thích.",
+			"problem": "Mirror of VI-HB2-1: the same verb-first clause leaves the same “not displayed” reading available, where the English says the button is not shown AS the unliked state.",
+			"proposed": "Không đọc được lượt thích của bạn nên nút này không hiển thị trạng thái chưa thích.",
+			"why": "Same repair as VI-HB2-1 for the heart: the state noun removes the garden path and keeps the failed-read explanation; 83 codepoints vs 80.",
+			"gating": false
+		},
+		{
+			"id": "VI-HB2-3",
+			"severity": "nit",
+			"key": "ui.hub.browse.details.viewer_unknown",
+			"current": "Không đọc được lượt thích và mục yêu thích của bạn nên không hiển thị trạng thái của bạn với tác nhân này.",
+			"problem": "“trạng thái của bạn với tác nhân này” is an abstract rendering of “this agent's viewer state”; in Vietnamese that phrase usually names a relationship or permission status (“your status with X”), not the like/favourite state the controls read. The first clause makes the meaning recoverable, but the second half does not name what is missing.",
+			"proposed": "Không đọc được lượt thích và mục yêu thích của bạn nên không hiển thị trạng thái tương tác của bạn với tác nhân này.",
+			"why": "“trạng thái tương tác” names the viewer state the batched read carries, keeps the cause→consequence order and the status line's role; 116 codepoints vs 106, in a status element the code lays out with flex-wrap.",
+			"gating": false
+		}
+	],
+	"findings_summary": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 3
+	},
+	"observations": [
+		{
+			"id": "O1",
+			"severity": "observation",
+			"keys": [
+				"*"
+			],
+			"verdict": "verified mechanically",
+			"note": "Valid JSON; 41/41 keys present, same set and same order as English, none added or dropped. ICU: all 41 Vietnamese messages parsed with @formatjs/icu-messageformat-parser 3.5.21 from the repo's own node_modules using requiresOtherClause: true — 41/41 parsed, 0 errors, 8 argument nodes over exactly 4 names ({name}, {age}, {date}, {author}), identical sets and node types to English, and 0 plural/select/selectordinal nodes in the namespace, so no CLDR category is required and none can be missing. Repo validators from the worktree root: generate.mjs --check (keys.gen.ts byte-identical to a fresh generation), check-duplicates.mjs (772 files, 0 duplicate keys), context-parity.mjs (every English key covered, apart from the recorded 131 allowed gaps) all exit 0."
+		},
+		{
+			"id": "O2",
+			"severity": "observation",
+			"keys": [
+				"*"
+			],
+			"verdict": "open gate elsewhere — not this file",
+			"note": "node scripts/i18n/ledger-check.mjs FAILS (exit 1, 7 findings) with “<locale>/ui.hub.browse: shipped without a ledger entry — an unaudited locale must not ship” for all seven locales, vi included. That is the post-audit ledger write this pass was told not to make (one receipt, no other file edits). Recorded so this audit is not read as covering the ledger gate; nothing in the catalogue bytes causes it."
+		},
+		{
+			"id": "O3",
+			"severity": "observation",
+			"keys": [
+				"ui.hub.browse.card.favourite.tooltip_unknown",
+				"ui.hub.browse.card.like.tooltip_unknown",
+				"ui.hub.browse.details.failure.delist"
+			],
+			"verdict": "first-audit findings resolved in the bytes",
+			"note": "The earlier receipt i18n/receipts/ffe76b9c2ba2.json (sha256 790bdf4f6f3cdfe293929d4c7c721f44896536878aacb519f211cb354dcff5f1) recorded three NITs. All three are applied verbatim in the candidate: the two unknown-state tooltips and failure.delist “Không gỡ được tác nhân khỏi trung tâm.”; git diff --numstat shows 3 insertions / 3 deletions in this file and no other changed line, so nothing else moved with the remediation. None was declined."
+		},
+		{
+			"id": "O4",
+			"severity": "observation",
+			"keys": [
+				"ui.hub.browse.card.download_aria",
+				"ui.hub.browse.card.get",
+				"ui.hub.browse.details.delist_aria",
+				"ui.hub.browse.details.delist_confirm",
+				"ui.hub.browse.pager.next",
+				"ui.hub.browse.pager.previous"
+			],
+			"verdict": "label-in-name checked; literal delist containment does NOT hold, the sidecar's stated rule does",
+			"note": "card.download_aria “Tải {name}” contains the visible card.get “Tải” as a whole word. The pager's aria-labels come from ui.common.forms.compact_pagination (“Trang sau”/“Trang trước”) and contain the visible words “Sau”/“Trước” (case-insensitively). By contrast delist_confirm “Gỡ khỏi trung tâm” is NOT a substring of delist_aria “Gỡ tác nhân khỏi trung tâm” (17 vs 26 codepoints; “tác nhân” splits it). The sidecar's requirement for that key is “the same verb as details.delist_confirm”, and “Gỡ … khỏi trung tâm” holds it; the trigger is an icon-only trash button and the confirm button carries its own visible label, so WCAG 2.5.3 is not engaged. Ruled acceptable, recorded so the manager's literal containment check is answered rather than implied."
+		},
+		{
+			"id": "O5",
+			"severity": "observation",
+			"keys": [
+				"*"
+			],
+			"verdict": "terminology consistent with the glossary and shipped vi",
+			"note": "agent = “tác nhân” (glossary §2; 282 occurrences in shipped vi, candidate excluded). The hub surface is “Trung tâm tác nhân” (ui.shell.sidebar_navigation.agent_hub, ui.command_palette.use_palette_sources.agent_hub); the object sense is the shipped lowercase “trung tâm” (“Tải lên trung tâm”, “Bản của trung tâm”), which is what delist_aria/delist_confirm/title use. favourite = “yêu thích”, matching ui.library.menu.favorite “Thêm vào yêu thích” / unfavorite “Bỏ yêu thích”. Like is new to this namespace: “lượt thích” is the count noun, matching the sibling “lượt tải” for downloads, while the verbs follow standard Vietnamese UI usage (“Thích”/“Bỏ thích”); shipped vi has the favourite verb pair but no prior like string. Radient stays English in all four strings that name it; no other Latin residue."
+		},
+		{
+			"id": "O6",
+			"severity": "observation",
+			"keys": [
+				"ui.hub.browse.card.updated",
+				"ui.hub.browse.details.created",
+				"ui.hub.browse.details.last_modified"
+			],
+			"verdict": "age/date joins verified against the helper",
+			"note": "hubAge() delegates to commentAge(), which returns a COMPLETE vi phrase from ui.hub.comments.age.* (“{count} ngày trước”, other-only per the vi plural rule). So “cập nhật {age}” = “cập nhật 3 ngày trước”, “Đã tạo: {age} ({date})” and “Sửa đổi lần cuối: {age} ({date})” read with one preposition, no duplication; {date} is the formatter's calendar date (formatCalendarDate → the i18n formatter layer), and the parentheses/colon are supplied by the message as the sidecar requires. The leading lowercase word in card.updated is kept."
+		},
+		{
+			"id": "O7",
+			"severity": "observation",
+			"keys": [
+				"*"
+			],
+			"verdict": "register per the vi style guide",
+			"note": "In this catalogue “bạn” appears in five keys: four as the possessive “của bạn” and one as direct address in the delist consequence sentence (“Bạn có thể tải lên lại sau.”), which is a blocking decision — allowed by the style guide, while the possessives are not address at all; no “Vui lòng”, no “!”, sentence case throughout, plain verb labels (“Tải”, “Sau”, “Trước”, “Gỡ khỏi trung tâm”). Matches the shipped vi voice."
+		},
+		{
+			"id": "O8",
+			"severity": "observation",
+			"keys": [
+				"*"
+			],
+			"verdict": "punctuation and typography per the vi style guide",
+			"note": "Curly “ ” around {name} in delist_body; no space before punctuation; U+2026 in action.trying and no ASCII “...”; no straight quotes or apostrophes; no manual bidi controls. All four failure headlines end with a full stop where English AlertTitles have none — internally consistent across the four and accepted (a single design ruling for alert titles, if wanted, is theirs, not a per-string defect)."
+		},
+		{
+			"id": "O9",
+			"severity": "observation",
+			"keys": [
+				"*"
+			],
+			"verdict": "Unicode and width measured by codepoint",
+			"note": "All 41 values are NFC; no bidi controls, zero-width characters or NBSP. Codepoint deltas against English: viewer_unknown +19 (106), like.tooltip_unknown +18 (80), favourite.tooltip_unknown +15 (87), delist_aria +14 (26), aria_unknown +8/+14 (35/36), delist_title +13 (31), delist_confirm 17 vs 6. card.get stays 3 codepoints, so the narrow card footer is unchanged; pager 3/5. This sidecar carries no maxChars/maxCells hint, so no stated budget is violated. No pixel, clipping or rendered-fit claim is made: no browser host in this session."
+		},
+		{
+			"id": "O10",
+			"severity": "observation",
+			"keys": [
+				"ui.hub.browse.details.load_failed_title"
+			],
+			"verdict": "“tải” load/download ambiguity checked; accepted",
+			"note": "“Không tải được tác nhân này” can in principle be read as a failed download, and the same page's download control says “Tải xuống tác nhân”. Checked the shipped catalogue instead of assuming: “Không tải được …” is the attested vi pattern for load failures (27 shipped occurrences, e.g. ui.canvas.files.error, ui.browser.chrome.error_title), “tải xuống” is reserved for downloads, and the alert's description names the Radient catalogue, so the context disambiguates. No change requested."
+		},
+		{
+			"id": "O11",
+			"severity": "observation",
+			"keys": [
+				"*"
+			],
+			"verdict": "governance inputs — path disclosed",
+			"note": "Neither i18n/glossary.md nor i18n/style-guides/vi.md exists in this UI worktree (checked with git ls-files; i18n/ holds only allowlist, audits, baseline, allowances, languages, ledger, receipts). The locale policy was read from the core repository checkout at ~/local-operator/i18n/glossary.md and ~/local-operator/i18n/style-guides/vi.md — the shared programme policy; these are exactly the two files named by the core HOWTO that this UI's docs/I18N.md links — plus docs/I18N.md. Stated explicitly rather than implied."
+		},
+		{
+			"id": "O12",
+			"severity": "observation",
+			"keys": [
+				"*"
+			],
+			"verdict": "rendered check not performed",
+			"note": "No browser host in this session; the audit is a bytes-and-code pass. Fit judgements are codepoint counts and layout-reading of the consuming components only. The card footer is the only width-sensitive surface the context sidecar names; the delist dialog (maxWidth xs) is the other one read from the code."
+		}
+	],
+	"checks": {
+		"keys": {
+			"english": 41,
+			"translated": 41,
+			"missing": [],
+			"extra": [],
+			"order_matches_english": true,
+			"all_41_read_twice": true
+		},
+		"placeholders": {
+			"sets_equal": true,
+			"missing": [],
+			"added": [],
+			"literal_tokens_checked": [
+				"{name}",
+				"{age}",
+				"{date}",
+				"{author}"
+			],
+			"argument_type_mismatches": 0
+		},
+		"icu": {
+			"parser": "@formatjs/icu-messageformat-parser 3.5.21 (repo node_modules)",
+			"messages_parsed": 41,
+			"messages_total": 41,
+			"requires_other_clause": true,
+			"plural_select_selectordinal_messages": 0,
+			"argument_nodes": 8
+		},
+		"unicode": {
+			"nfc_all": true,
+			"bidi_or_zero_width": [],
+			"three_dot_ellipsis": [],
+			"u2026_in_action_trying": true,
+			"straight_quotes_or_apostrophes": []
+		},
+		"widths_codepoints": {
+			"card_get": {
+				"en": 3,
+				"vi": 3
+			},
+			"delist_confirm": {
+				"en": 6,
+				"vi": 17
+			},
+			"delist_aria": {
+				"en": 12,
+				"vi": 26
+			},
+			"pager_next": {
+				"en": 4,
+				"vi": 3
+			},
+			"pager_previous": {
+				"en": 8,
+				"vi": 5
+			},
+			"largest_expansions": [
+				"details.viewer_unknown +19",
+				"card.like.tooltip_unknown +18",
+				"card.favourite.tooltip_unknown +15",
+				"details.delist_aria +14"
+			],
+			"note": "codepoint counts only; this sidecar has no maxChars/maxCells hint, and no rendered or pixel claim is made"
+		},
+		"terminology_evidence": {
+			"agent": "“tác nhân” — glossary §2; 282 occurrences in shipped vi catalogues (candidate excluded)",
+			"hub_surface": "ui.shell.sidebar_navigation.agent_hub and ui.command_palette.use_palette_sources.agent_hub = “Trung tâm tác nhân”",
+			"hub_object": "lowercase “trung tâm” in shipped hub-object strings (e.g. ui.agents.dialogs.menu.upload “Tải lên trung tâm”)",
+			"favourite": "ui.library.menu.favorite/unfavorite = “Thêm vào yêu thích”/“Bỏ yêu thích”",
+			"like": "“lượt thích” count noun; verbs “Thích”/“Bỏ thích” (standard vi UI usage; no prior shipped like string)",
+			"sign_in": "ui.common.account.radient_auth_buttons.sign_in_to_radient = “Đăng nhập Radient”",
+			"pager": "ui.common.forms.pagination.position “Trang {page} trên {count}”; compact_pagination “Trang sau”/“Trang trước”",
+			"curly_quotes": "shipped vi uses “…”"
+		},
+		"register": {
+			"address_form": "in this catalogue, “bạn” as possessive (4 keys) or direct address in the blocking delist consequence sentence (1 key)",
+			"case": "sentence case; plain imperatives",
+			"radient": "kept in English in all four strings that name it"
+		},
+		"consuming_code_read": [
+			"src/renderer/src/features/agent-hub/components/agent-card.tsx",
+			"src/renderer/src/features/agent-hub/agent-details-page.tsx",
+			"src/renderer/src/features/agent-hub/components/hub-pager.tsx",
+			"src/renderer/src/features/agent-hub/comment-age.ts",
+			"src/renderer/src/shared/api/local-operator/backend-error.ts",
+			"src/renderer/src/shared/utils/date-utils.ts"
+		]
+	},
+	"namespace_verdicts": {
+		"ui.hub.browse": "passed (clean-with-findings) — 41/41 strings read twice; no placeholder, ICU, encoding, punctuation, terminology or label-in-name defect; destructive, permission and error copy faithful and safe; three nit-level wording suggestions (VI-HB2-1..3), none gating"
+	},
+	"verdict": "pass — clean-with-findings: 0 blocker, 0 major, 0 minor, 3 nit. The earlier first-audit findings are all resolved in bytes; the remaining nits are wording polish on two unknown-state tooltips and one status line.",
+	"ledger_note": "2nd independent audit (i18n-auditor, radient/auto): 0 blocker/major/minor, 3 nit wording notes. Receipt i18n/receipts/vi-hub-browse-second-audit-496cdc8af9a7.json; hashes from disk 2026-10-25.",
+	"method": "Bytes-only audit: English + context sidecar + vi candidate + consuming components + shipped vi catalogues; repo validators and ICU parser executed as recorded; no translation/MT service used, no back-translation. Glossary/style-guide path disclosed in O11.",
+	"notes": "Artifacts: this receipt only (audit JSON). The command output backing O1/O2 and the deriveReceiptAudit run are cited by command name in the observations; no separate log is claimed. No catalogue, ledger or allowance file was edited by this audit. Input-order deviation from the commissioned sequence is disclosed in auditor.independence rather than left implicit.",
+	"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+	"target_sha256": "1a80d80735dff0574e2386ee225ded92ab7d56d4558b2e3648c28312ee03710d",
+	"context_sha256": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de",
+	"sha256": {
+		"en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+		"vi": "1a80d80735dff0574e2386ee225ded92ab7d56d4558b2e3648c28312ee03710d",
+		"context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+	}
+}

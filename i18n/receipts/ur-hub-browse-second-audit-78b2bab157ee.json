@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "kind": "i18n-namespace-audit-receipt",
+  "audit": "second",
+  "namespace": "ui.hub.browse",
+  "locale": "ur",
+  "locale_dir": "rtl",
+  "instance": "78b2bab157ee",
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "model_route": "radient/auto, the host-declared session model; the resolved upstream model is not exposed to this session, and no fallback model was selected by this run (none was requested or observed)",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "date": "2026-10-25",
+  "repository": "damianvtran/local-operator-ui",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-agent-hub-copy",
+  "target_state": "uncommitted candidate file (remediation of the first-audit draft) in that worktree; bound by sha256, not by any commit",
+  "keys_read": 41,
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "7a707b75692b11cfa45c3fc7bf37b233a8c49f74d0c12726735f857c5aea89de",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "ur": "7a707b75692b11cfa45c3fc7bf37b233a8c49f74d0c12726735f857c5aea89de",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "shipped_locale_catalogue": {
+      "path": "src/i18n/catalogues/ur/ui.hub.comments.json",
+      "sha256": "ee80c56eef1174f69498d6e1b014597dbf52632acc9f89e41e87863b94b2e741"
+    },
+    "consuming_code": {
+      "src/renderer/src/features/agent-hub/components/agent-card.tsx": "9a1ce459b63f562c208f6faa0a95d7f4c16264cee2aaa13d5949befca95d97bc",
+      "src/renderer/src/features/agent-hub/agent-details-page.tsx": "23d0e43f35aef7b53f79323bbab804b0bf3604da4238cedcdaf0d7cb57dbe712",
+      "src/renderer/src/features/agent-hub/components/hub-pager.tsx": "6dee6f7b34b2b81b1d02a54e691016fdc8a08fe1d7ffccd22bcf2e75965edb64",
+      "src/renderer/src/features/agent-hub/comment-age.ts": "226249afb5c0e1e416ae0dbb6f5f6365614ab905d51a186851003042c21a5955"
+    }
+  },
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.hub.browse.card.like.tooltip_liked",
+      "current": "ایجنٹ کا لائک ہٹائیں",
+      "proposed": "ایجنٹ سے لائک ہٹائیں",
+      "reason": "English is 'Unlike agent': the like is the viewer's, made on the agent. The Urdu possessive کا attaches it to the agent instead ('the agent's like'), a calque of English's object-first phrasing, while the mirrored star in the same file says ایجنٹ کو پسندیدہ سے ہٹائیں (remove the agent from favourites). The intent still lands - the filled heart's own state and the aria keep the referent unambiguous - so this is idiom, not a polarity error; but it is the tooltip AND accessible name of the filled heart, so a native reader hears the wrong possession every time. The proposal keeps the agent named while placing the like where it belongs."
+    }
+  ],
+  "observations": [
+    {
+      "id": "O1",
+      "about": "translator's visible change: card.get -> ڈاؤن لوڈ",
+      "ruling": "accepted, resolves first-audit F1 without a new defect",
+      "evidence": "Label-in-name holds on the bytes: card.get ڈاؤن لوڈ is a contiguous substring of card.download_aria '{name} ڈاؤن لوڈ کریں' (checked as a codepoint substring, not by eye). The word also matches the shipped ur sense of the action: 39 shipped ur values render download as ڈاؤن لوڈ and ui.chat.directory.folder.downloads already uses ڈاؤن لوڈز for the count noun, so the card and the detail page no longer name one action two ways. Peer locales that name the action rather than 'get' do the same (es Descargar, ru Скачать, vi Tải, zh-CN 下载). At 8 codepoints it is one shorter than the 9-codepoint حاصل کریں the first audit measured, so the width finding did not regress."
+    },
+    {
+      "id": "O2",
+      "about": "translator's visible change: delist_confirm kept as the full phrase",
+      "ruling": "accepted; the first audit's nit N2 (shorten to ہٹا دیں) is reasonably declined",
+      "evidence": "The phrase Agent Hub سے ہٹائیں is a contiguous substring of details.delist_aria ایجنٹ کو Agent Hub سے ہٹائیں - the aria constraint the first audit itself set. The shorter ہٹا دیں would NOT be contained in that aria (ہٹائیں vs ہٹا دیں), so adopting N2 would have forced a second change to the aria and produced exactly the speech-control mismatch the note warns about. Naming the object in the primary button also matches peer decisions (fr Retirer du hub, ru Снять с публикации, vi Gỡ khỏi trung tâm). It is 6 -> 19 codepoints in a maxWidth xs dialog whose footer is flex-col-reverse at mobile and a nowrap row at sm; no pixel claim is made and the rendered check the first audit asked for is still outstanding because no browser is available to this run."
+    },
+    {
+      "id": "O3",
+      "about": "translator's visible change: Agent Hub in all delist strings",
+      "ruling": "accepted; internal drift removed",
+      "evidence": "All seven delist-bearing values name Agent Hub (aria, title, body, confirm, tooltip, delisting, failure.delist); none says the bare ہب any more, and the tooltip the first audit cited as the inconsistent one now agrees with the aria on the same button. One verb root ہٹا carries every one of the seven delist values, distinct from حذف کریں (delete) and from the unpull wording used for skills, so 'delist' cannot be misread as deleting the agent. Non-delist strings keep the shipped Agent Hub spelling too (details.back_aria)."
+    },
+    {
+      "id": "O4",
+      "about": "mechanical verification (my own, beyond the repo validators)",
+      "ruling": "verified clean",
+      "evidence": "41/41 keys, key order identical to English, no keys added or dropped, valid UTF-8 JSON, byte-identical to json.dumps(indent='\\t') + trailing newline (so the generator's formatting is preserved). Placeholder sets identical for all 41 keys ({name}, {age}, {date}, {author}); zero ICU plural/select in both English and Urdu, so no CLDR category can be missing; zero markup, Rich tags, backticks, commands, flags, paths or identifiers to preserve; NFC-normalised; no manual bidi controls (U+200E/200F/202A-202E/2066-2069/061C absent); U+2026 in action.trying is the single ellipsis and there is no '...'; no Latin digits and no ASCII sentence punctuation in the target at all. Punctuation inventory is exactly Urdu ۔ (7), ، (4), ؟ (1), “ ” (2) plus the message's own ':' and '(' ')' pairs and the ellipsis - no Hindi danda."
+    },
+    {
+      "id": "O5",
+      "about": "register, script and product names",
+      "ruling": "verified clean",
+      "evidence": "One address form throughout: آپ plus polite کریں/جائیں (delist_body آپ اسے بعد میں دوبارہ اپ لوڈ کر سکتے ہیں); no تم/تو, no '!', no 'براہ کرم' padding where English has no 'please'. Product names stay Latin and untransliterated (Radient in 5, 11, 17, 35; Agent Hub in 16 and the delist family); Agent Hub is never wrapped in Urdu punctuation and keeps its position inside the sentence. Glossary terms used: agent -> ایجنٹ wherever the term appears, with singular/plural/oblique forms consistent (ایجنٹ، ایجنٹس، ایجنٹوں), matching the core glossary row."
+    },
+    {
+      "id": "O6",
+      "about": "age and date joins",
+      "ruling": "verified clean",
+      "evidence": "hubAge returns the complete strict distance plus پہلے from ui.hub.comments.age.* ({count} دن پہلے; one and other are identical for سیکنڈ، منٹ، دن، سال and inflected for گھنٹہ/گھنٹے and مہینہ/مہینے), so card.updated renders '3 دن پہلے اپ ڈیٹ ہوا' with no second preposition, and details.created / details.last_modified render 'تخلیق کا وقت: 3 دن پہلے (10 اکتوبر، 2026)' with {date} already formatted by the i18n date layer (formatCalendarDate -> formatDate, not date-fns' English pattern). Urdu is verb-final, so the age-before-verb order is the natural one; English's 'keep the leading lowercase word' is a casing note that cannot apply to a caseless script. The inherited comment-age.ts behaviour of saying 'ago' for future dates is identical in every locale and predates this namespace - not a ur defect."
+    },
+    {
+      "id": "O7",
+      "about": "bidi hazard found in the consuming component, not in the copy",
+      "ruling": "out of scope for this catalogue; route to the implementer",
+      "evidence": "hub-pager.tsx renders ChevronLeft before Previous and ChevronRight after Next with no rtl:-scale-x-100, while sibling directional icons in this repo do flip (agent-details-page.tsx line 340 uses ArrowLeft className='rtl:-scale-x-100'). Under dir=rtl those two chevrons would point the LTR way. This is a source-level observation only - no browser is available to this run, so no rendered claim is made, and the pager.aria/next/previous COPY itself is correct and contains no arrow glyph. Recorded here so the bidi gap is not lost because the copy passed."
+    },
+    {
+      "id": "O8",
+      "about": "fit, codepoints only",
+      "ruling": "recorded; no pixel claim and no rendered check possible on this host",
+      "evidence": "No maxCells/maxChars hints exist in the English sidecar (its fields are note/role/tone only), so fit was judged by codepoints and container: card.get 3 -> 8, details.delist_confirm 6 -> 19, action.trying 7 -> 13, card.download_aria 15 -> 20, details.delist_aria 12 -> 28, details.delisting 15 -> 34, details.sign_in_hint 38 -> 56, details.viewer_unknown 87 -> 120. Ten of 41 values exceed English by more than 50%. The card footer is flex-wrap with a shrink-0 action, the viewer-state sentence is a flex-wrap output at text-meta, and tooltips wrap; the one nowrap row is the dialog footer at sm. These are codepoint counts, not measured widths."
+    },
+    {
+      "id": "O9",
+      "about": "English source tension, reported not counted",
+      "ruling": "not a ur defect",
+      "evidence": "details.delist_tooltip says 'Permanently delist' while details.delist_body says the agent can be uploaded again; the Urdu renders both faithfully (مستقل طور پر ... ہٹائیں / آپ اسے بعد میں دوبارہ اپ لوڈ کر سکتے ہیں), so the contradiction belongs to the English source owner, as the first audit also recorded."
+    },
+    {
+      "id": "O10",
+      "about": "ur is not in the backend shipped set (per the audit brief)",
+      "ruling": "context, not a defect",
+      "evidence": "The brief states ur is not in the backend shipped set; I did not re-read the backend shipped manifest in this run, so this is sourced from the brief rather than re-derived here. The renderer does bundle ur, so these strings can surface pre-connection from a device ur locale. This receipt is evidence about the bytes, not evidence that ur ships or that it was rendered."
+    },
+    {
+      "id": "O11",
+      "about": "independence and second-pass method",
+      "ruling": "stated",
+      "evidence": "This run translated nothing and edited nothing in the catalogue. Findings were formed from the English catalogue, its sidecar, the target bytes, the four consuming components and the shipped ur catalogues (plus glossary and ur style guide) before i18n/receipts/ur-hub-browse-first-audit-8cf41aa92398.json was opened; that receipt was then read only to confirm each of its findings was resolved or reasonably declined (F1-F4, N1 resolved; N2 declined with the containment reason in O2). The high-visibility group therefore has two independent passes on the record, and this one re-derived the mechanical checks rather than trusting the first."
+    }
+  ],
+  "first_audit": {
+    "receipt": "i18n/receipts/ur-hub-browse-first-audit-8cf41aa92398.json",
+    "receipt_sha256": "24dd7f2ce40ea23d20c2d2ced60a2a7d615ede2520c30ffbea338304a53a4a12",
+    "audited_target_sha256": "39cb1df0e3cc7625eb7ce589da672e37a017f1ea0d72841dd5547f47d6f113f",
+    "dispositions": [
+      {
+        "finding": "F1 minor card.download_aria",
+        "disposition": "resolved",
+        "evidence": "card.download_aria now {name} ڈاؤن لوڈ کریں and card.get ڈاؤن لوڈ; containment verified as a codepoint substring."
+      },
+      {
+        "finding": "F2 minor card.favourite.tooltip_unknown + like mirror",
+        "disposition": "resolved",
+        "evidence": "both now use یہ نہیں دکھایا گیا کہ … instead of غیر پسندیدہ / غیر لائک; no negative adjective is asserted."
+      },
+      {
+        "finding": "F3 minor delist_aria + title/body/delisting/failure.delist",
+        "disposition": "resolved",
+        "evidence": "all five now say Agent Hub, matching the tooltip; no bare ہب remains in the namespace."
+      },
+      {
+        "finding": "F4 minor pager.aria",
+        "disposition": "resolved",
+        "evidence": "now ایجنٹوں کے صفحات, the oblique plural the shipped ur catalogues use."
+      },
+      {
+        "finding": "N1 nit details.created",
+        "disposition": "resolved",
+        "evidence": "now تخلیق کا وقت:, the shipped ur rendering of Created."
+      },
+      {
+        "finding": "N2 nit details.delist_confirm",
+        "disposition": "reasonably declined",
+        "evidence": "kept as Agent Hub سے ہٹائیں; the shorter ہٹا دیں would break the delist_aria containment the same receipt required. Rendered check remains outstanding (no browser)."
+      }
+    ]
+  },
+  "checks": {
+    "tools": {
+      "node": "v24.22.1"
+    },
+    "commands": [
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "exit": 0,
+        "observed": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+      },
+      {
+        "command": "node scripts/i18n/check-duplicates.mjs",
+        "exit": 0,
+        "observed": "check-duplicates: ok — 772 file(s) scanned, 0 duplicate key(s)"
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "exit": 0,
+        "observed": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+      },
+      {
+        "command": "node scripts/i18n/check-strings.mjs",
+        "exit": 0,
+        "observed": "check-strings.mjs: ok — 1368 file(s) scanned, 347 literal(s) at or below the baseline"
+      },
+      {
+        "command": "node scripts/i18n/ledger-check.mjs",
+        "exit": 1,
+        "observed": "FAILED — 7 finding(s) across 595 ledger entr(ies): each of es/fr/hi/ru/ur/vi/zh-CN ui.hub.browse is 'shipped without a ledger entry — an unaudited locale must not ship'. Expected while these seven translations are an uncommitted candidate: the ur row needs this receipt plus the implementer's ledger entry. Not counted as a finding in the ur bytes and not a reason to edit another file in this run."
+      },
+      {
+        "command": "python3 (self-check over the bytes)",
+        "exit": 0,
+        "observed": "41/41 keys, key order identical, placeholder sets identical, 0 ICU plural/select, 0 markup/backticks, NFC true, 0 bidi controls, 0 ASCII sentence punctuation, formatting byte-identical to indented JSON + newline, containment card.get card.download_aria true / delist_confirm delist_aria true."
+      }
+    ],
+    "not_run": [
+      "No build, type-check, test suite or desktop run (out of scope for a catalogue audit and forbidden by the brief).",
+      "No browser or rendered-frame check: no browser tool is available to this run, so fit and the pager chevron hazard are codepoint/source observations only.",
+      "No translation or MT service was used at any point; every judgement is my own reading of the Urdu and English."
+    ],
+    "audit_notes_not_execution_log": "The 'commands' entries above are the commands this run actually executed, with the output it observed. The observations are reasoning and source reading, not command output."
+  }
+}

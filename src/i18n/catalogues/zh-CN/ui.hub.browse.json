@@ -20,7 +20,7 @@
 	"ui.hub.browse.details.created": "创建：{age}（{date}）",
 	"ui.hub.browse.details.created_by": "创建者：{author}",
 	"ui.hub.browse.details.delist_aria": "下架智能体",
-	"ui.hub.browse.details.delist_body": "这会立即将“{name}”从中心下架，任何人都将无法下载。你之后可以重新上传。",
+	"ui.hub.browse.details.delist_body": "这会立即将“{name}”从中心下架，任何人都无法下载。你之后可以重新上传。",
 	"ui.hub.browse.details.delist_confirm": "下架",
 	"ui.hub.browse.details.delist_title": "要下架此智能体吗？",
 	"ui.hub.browse.details.delist_tooltip": "将此智能体从智能体中心永久下架",

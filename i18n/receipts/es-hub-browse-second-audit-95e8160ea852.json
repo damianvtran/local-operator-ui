@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "kind": "i18n-namespace-audit-receipt",
+  "audit": "second",
+  "namespace": "ui.hub.browse",
+  "locale": "es",
+  "locale_dir": "ltr",
+  "instance": "95e8160ea852",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "e101eb75a456",
+    "model": "radient/auto",
+    "route": "radient/auto — the host-declared session model; the resolved upstream provider/model id is not exposed to this session, so no finer id is claimed",
+    "fallback": "none observed — no model substitution was made or needed in this run",
+    "independence": "independent of the translator and of the remediator; no translator or remediation report was provided or read. The earlier first-audit receipt was consulted for the disposition section the task requires; every assessment below was re-derived from the current English source, context sidecar, Spanish bytes and consuming code."
+  },
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "repository": "damianvtran/local-operator-ui",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-agent-hub-copy",
+  "source_commit": "5f44362a9fa4e738efd5eaca308642f9b574d4e3",
+  "binding": "Bind by hash, not commit. The English source and the context sidecar are committed at this HEAD and bound by sha256; the Spanish target is an UNCOMMITTED working-tree remediation candidate, bound by its own sha256. All three hashes were computed from disk for this audit.",
+  "target_state": "uncommitted working-tree candidate (remediation of an earlier draft); no commit contains these bytes",
+  "keys_read": 41,
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "766dd5f9adba7151f804d4b13b7bcdb841cc5e770ca9750b5efd3497b9c34593",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "es": "766dd5f9adba7151f804d4b13b7bcdb841cc5e770ca9750b5efd3497b9c34593",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "mechanical": {
+    "validators": [
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "exit": 0,
+        "output": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "exit": 0,
+        "output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+      },
+      {
+        "command": "node scripts/i18n/check-duplicates.mjs",
+        "exit": 0,
+        "output": "check-duplicates: ok — 772 file(s) scanned, 0 duplicate key(s)"
+      },
+      {
+        "command": "node scripts/i18n/ledger-check.mjs",
+        "exit": 1,
+        "output": "ledger-check: FAILED — 7 finding(s) across 595 ledger entr(ies); one per candidate locale (es, fr, hi, ru, ur, vi, zh-CN): '<locale>/ui.hub.browse: shipped without a ledger entry — an unaudited locale must not ship'. Expected pre-ledger-assembly: this worktree has no ledger row for ui.hub.browse in any locale yet. The failure is namespace-wide across all seven candidate locales, not an es defect and not evidence about this target."
+      }
+    ],
+    "key_parity": "41/41 keys present, identical key set and identical order to English; no key added or dropped; valid JSON object.",
+    "placeholders": "Placeholder names and types identical to source for every key, parsed in both locales with @formatjs/icu-messageformat-parser 3.5.21: {name} in card.download_aria and details.delist_body; {age} in card.updated, details.created and details.last_modified; {date} in details.created and details.last_modified; {author} in details.created_by. No literal placeholder was renamed, reordered, duplicated or dropped.",
+    "icu": "No select, plural, selectordinal, number, date or time argument exists in this namespace in either locale, so no CLDR category is present, required or missing here. Every value parses as a valid ICU message. Ages arrive complete from ui.hub.comments.age.*, which already carries es one/many/other branches.",
+    "encoding": "UTF-8 without BOM; LF only (no CR); 41 values; key order preserved; trailing newline present.",
+    "unicode": "All values NFC. No bidi control characters (U+061C, U+200E/200F, U+202A–U+202E, U+2066–U+2069 absent). No NBSP (U+00A0), NNBSP (U+202F) or ZWSP (U+200B) — correct for es, which takes no space before : ; ? !. No leading, trailing or double spaces. U+2026 in action.trying; no three-period ellipsis anywhere. Curly quotes “ ” balanced in the 7 values that use them; no ASCII double quote, no guillemets, no backticks, no HTML/Rich markup. Terminal punctuation matches English for all 41 keys.",
+    "widths": "No maxCells or maxChars hint exists in this namespace's context sidecar, so width was judged by codepoint count only. Largest expansions: card.get 3→9 (3.00x), card.like.tooltip_unliked 10→27 (2.70x), card.like.tooltip_liked 12→30 (2.50x), pager.next 4→9 (2.25x), card.like.tooltip_signed_out 32→52 (1.63x); the median across the 41 values is about 1.26x. Longest values: details.viewer_unknown 119 cp (renders in a flex-wrap <output>), details.delist_body 104 cp (dialog body, sidecar says no width cap and it wraps freely), details.delist_tooltip 58 cp (tooltip). card.get is the only tight-space control: agent-card.tsx:290 gives the footer flex-wrap and :411 keeps the action shrink-0/ml-auto so a longer label drops to a second line instead of clipping. No pixel, clipping or rendered-frame claim is made; no browser host exists in this session.",
+    "label_in_name": "Read from the consuming code, not assumed. agent-card.tsx:417-423 renders card.get 'Descargar' as the visible button text and card.download_aria 'Descargar {name}' as its accessible name, so the visible label is contained. agent-details-page.tsx:459/608 renders details.delist_aria 'Retirar el agente' on the icon-only delist control and details.delist_confirm 'Retirar' as the dialog's committing button, so the same verb is contained. hub-pager.tsx:74-110 renders pager.previous 'Anterior' / pager.next 'Siguiente' inside the es shared aria labels 'Página anterior' / 'Página siguiente' (ui.common.forms.compact_pagination.previous_page / next_page), which contain the visible words case-insensitively."
+  },
+  "prior_audit": {
+    "receipt": "i18n/receipts/es-hub-browse-first-audit-c32f6ed93615.json",
+    "instance": "c32f6ed93615",
+    "audited_target_sha256": "6a2a129554dca91ff9d96043cdcad834ff81573f235f7c1cf528c9e22aef1457",
+    "dispositions": [
+      {
+        "finding": "card.like.tooltip_liked unquoted noun",
+        "ruling": "resolved in the current bytes",
+        "evidence": "Current value is 'Quitar el “me gusta” al agente'. The same quoting was applied to card.like.tooltip_unliked ('Dar un “me gusta” al agente'), so all noun uses of the loan phrase in the file now use curly quotes while the verb phrases ('dar me gusta a agentes', 'si te gusta este agente') correctly stay unquoted."
+      },
+      {
+        "finding": "card.favourite.aria_unknown singular 'favorito' (also details.failure.favourite)",
+        "ruling": "resolved in the current bytes",
+        "evidence": "Current value is 'Estado de favoritos no disponible', parallel to 'Estado de “me gusta” no disponible'; details.failure.favourite is now 'No se guardó en favoritos', also plural."
+      },
+      {
+        "finding": "card.get 'Descargar' width cost, rendered check requested",
+        "ruling": "reasonably declined — no text change; residual layout risk remains unverified",
+        "evidence": "9 codepoints is a short Spanish verb label and there is no maxCells/maxChars hint for this key. The footer is flex-wrap with a shrink-0/ml-auto action, so its designed fallback is a second line, not clipping. 'Obtener' would save 2 codepoints but would break label-in-name against 'Descargar {name}' and drift from the shipped es download vocabulary. No browser exists in this session, so the card-height question is not claimed either way; if the hub design owner can show the action wrapping badly at the narrowest column, the source-side icon-only control is the right fix, not a translation change."
+      },
+      {
+        "finding": "details.viewer_unknown optional second possessive",
+        "ruling": "reasonably declined",
+        "evidence": "The coordination 'tus “me gusta” y favoritos' is grammatical, unambiguous under one possessive and parallel to the two tooltip_unknown sentences; repeating 'tus' is optional style, not a defect."
+      }
+    ]
+  },
+  "findings": [],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "observations": [
+    {
+      "id": "O1",
+      "keys": ["ui.hub.browse.details.delist_aria", "ui.hub.browse.details.delist_title", "ui.hub.browse.details.delist_confirm", "ui.hub.browse.details.delist_tooltip", "ui.hub.browse.details.delisting", "ui.hub.browse.details.failure.delist"],
+      "verdict": "accepted",
+      "note": "'Delist' → 'Retirar' is the right per-locale call. Shipped es already uses retirar for withdrawing public content ('...pero no retira nada que ya sea público', ui.hub.subscriptions.enable_public) and reserves eliminar for real deletion (ui.agents.dialogs.delete.question); the three delist control strings share the verb root, so speech control finds the confirm from the aria name. The reversible action is described honestly in the body."
+    },
+    {
+      "id": "O2",
+      "keys": ["ui.hub.browse.card.get", "ui.hub.browse.card.download_aria", "ui.hub.browse.details.download_aria", "ui.hub.browse.details.download_tooltip"],
+      "verdict": "accepted",
+      "note": "'Get' → 'Descargar' is not drift: shipped es names the hub download action descargar (ui.hub.skills.download 'Descargar', ui.hub.skills.pull_title 'Descargar {item} desde {source}'), the detail page's counterpart in this same namespace is 'Descargar el agente', and the aria 'Descargar {name}' must contain the visible label. 'Obtener' exists in shipped es for non-download senses (ui.onboarding.search.row.get_your 'Obtener {name}'), so using it here would split one action across two verbs."
+    },
+    {
+      "id": "O3",
+      "keys": ["ui.hub.browse.card.updated", "ui.hub.browse.details.created", "ui.hub.browse.details.last_modified"],
+      "verdict": "verified",
+      "note": "Age joins checked against the emitting code, not guessed. card.updated and both detail metadata lines pass {age} from hubAge → commentAge (comment-age.ts), whose es values in ui.hub.comments.age.* already contain 'hace' ('hace {count} días'). So they render 'actualizado hace 3 días', 'Creado: hace 3 días (10 oct 2026)' and 'Última modificación: hace 3 días (10 oct 2026)': no doubled preposition, no missing one, and the leading lowercase 'actualizado' follows the sidecar's instruction. {date} is preformatted by formatCalendarDate and is never hand-patterned here."
+    },
+    {
+      "id": "O4",
+      "keys": ["ui.hub.browse.card.favourite.tooltip_unknown", "ui.hub.browse.card.like.tooltip_unknown", "ui.hub.browse.details.viewer_unknown"],
+      "verdict": "accepted",
+      "note": "The three unknown-state sentences preserve the sidecar's core requirement — a failed read is never asserted as 'not favourited' or 'not liked'. The wording spells out the absence in plain Spanish ('esto no significa que no esté en favoritos', 'no se muestra si te gusta este agente o lo tienes en favoritos') rather than calquing a 'viewer state' noun, which has no natural es equivalent. Reads as native product explanation, and the two card mirrors stay parallel."
+    },
+    {
+      "id": "O5",
+      "keys": ["*"],
+      "verdict": "verified",
+      "note": "Register and typography are consistent across all 41 values: tú throughout ('Inicia sesión', 'Puedes volver a subirlo', 'tus favoritos', 'no te guste'); infinitive action labels ('Descargar', 'Retirar', 'Añadir', 'Quitar', 'Dar', 'Volver'); sentence case; no exclamation; curly “ ” quotes; the one whole question carries '¿…?'; no space before colons; no NBSP/NNBSP. Lowercase 'del hub' in delist_body mirrors English's generic 'the hub' and shipped 'Subir al hub' (ui.agents.dialogs.menu.upload); capitalised 'Hub de agentes' in back_aria/delist_tooltip mirrors the shipped es navigation label (ui.shell.sidebar_navigation.agent_hub, ui.command_palette.use_palette_sources.agent_hub), so the two forms are the source's own named/generic distinction, not drift."
+    },
+    {
+      "id": "O6",
+      "keys": ["*"],
+      "verdict": "verified",
+      "note": "Terminology against the glossary and shipped es: 'agente' for agent; 'Radient' kept as the product name in the four strings that name it; no tool names, flags, paths, commands or machine tokens occur in this namespace, so nothing needed keeping byte-identical beyond 'Radient' and the {placeholders}. 'equipo' in download_tooltip means this machine, matching the shipped es installation vocabulary (51 occurrences of 'tu equipo' or 'este equipo' across shipped es, e.g. ui.common.updates), and the team sense of equipo does not occur in this namespace."
+    },
+    {
+      "id": "O7",
+      "keys": ["ui.hub.browse.details.delist_tooltip", "ui.hub.browse.details.delist_body", "ui.hub.browse.details.catalogue_no_answer"],
+      "verdict": "not an es defect",
+      "note": "The source's own tension between 'Permanently delist' (delist_tooltip) and 'You can upload it again later' (delist_body) is rendered faithfully, not amplified: 'de forma permanente' describes removal from the public listing, and the body states the re-upload route. catalogue_no_answer is a lead sentence joined by a single space to the shared backendLoadErrorMessage diagnosis/remedy, so its final period produces correct punctuation, not a double stop."
+    },
+    {
+      "id": "O8",
+      "keys": ["*"],
+      "verdict": "verified",
+      "note": "The high-visibility second pass was run as a fresh read of all 41 values and then a focused rejection pass over the destructive, error and permission strings (delist_title/body/confirm/aria/tooltip/delisting/failure.delist, load_failed_title, not_found, catalogue_no_answer, sign_in_hint, and the four action-failure headlines). No unsafe wording, no overstatement of severity, no claim that data or the account is deleted, and no negation error was found. The remediated bytes introduced no new issue."
+    },
+    {
+      "id": "O9",
+      "keys": ["*"],
+      "verdict": "stated",
+      "note": "Independence and method: this audit did not translate, remediate or edit any catalogue. Findings were formed by reasoning over the English catalogue, context sidecar, Spanish bytes, the four consuming files and shipped es catalogues; no translation/MT service or back-translation was used. No browser or rendered frame was available, so no pixel/clipping/frame claim is made anywhere in this receipt."
+    }
+  ],
+  "out_of_scope": [
+    {
+      "about": "untranslated English literal on the same surface",
+      "evidence": "src/renderer/src/features/agent-hub/agent-details-page.tsx:558 renders the literal 'No description provided.' when agent.description is empty. It is not a key in ui.hub.browse, is absent from every catalogue, and is outside this audit's bytes; flagged for the hub owner or a follow-up extraction, not counted as a finding here."
+    }
+  ],
+  "not_verified": [
+    "No rendered frame, browser or pixel measurement exists in this session; card.get's wrap behaviour at the narrowest card column and every other layout question remain unverified.",
+    "No ledger row was written for ui.hub.browse; ledger-check therefore fails namespace-wide for all seven candidate locales until the manager assembles the row. That is pre-landing state, not a defect in this target.",
+    "The Spanish target is uncommitted, so no commit hash can bind these bytes; the sha256 above is the binding."
+  ],
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean"
+}

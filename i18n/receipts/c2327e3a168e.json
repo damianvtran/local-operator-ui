@@ -1,0 +1,223 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "second-audit-by-source-bytes",
+  "audit_round": 2,
+  "date": "2026-10-25",
+  "locale": "zh-CN",
+  "locale_name": "Simplified Chinese",
+  "namespace": "ui.hub.browse",
+  "instance": "c2327e3a168e",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent second auditor (team lopdev); did not translate or remediate this candidate and has no translator disposition",
+    "session": "c2327e3a168e",
+    "model": "radient/auto",
+    "actual_model_source": "session configuration states Model radient/auto (auto-routed); the resolved provider/model id is not exposed to this session, so no finer id is claimed",
+    "fallback": "none observed — no provider-substitution event surfaced in this run",
+    "independence": "The findings below were derived from the English source, the context sidecar, the target bytes, the consuming code and the shipped zh-CN catalogues. The earlier first-audit receipt was read during this audit to confirm its single finding against the bytes (as the brief permits); no finding or verdict was taken from it."
+  },
+  "model": "radient/auto",
+  "previous_receipt": "i18n/receipts/zh-cn-hub-browse-first-audit-e3f309fa9f33.json",
+  "previous_instance": "e3f309fa9f33",
+  "previous_audit_target_sha256": "fd814145dc7efe8ec3043dda8f610023c45726297e285c8196a10eefd522ffad",
+  "source_commit": "5f44362a9fa4e738efd5eaca308642f9b574d4e3",
+  "source_commit_note": "LOCAL ONLY. Worktree ~/local-operator-ui/.worktrees/i18n-agent-hub-copy, branch i18n-agent-hub-copy; the seven locale candidates and this wave's receipts are uncommitted, so the audit binds to bytes by sha256, not to a commit.",
+  "binding": "Bind by hash: the target is an uncommitted working-tree candidate. The earlier first-audit receipt audited the HEAD blob of the same path (sha256 fd814145…, verified with git show HEAD:…), and the working tree differs from that blob in exactly one value (details.delist_body: 任何人都将无法下载 → 任何人都无法下载), which is the first audit's single nit and is resolved here.",
+  "source_file": "src/i18n/catalogues/en/ui.hub.browse.json",
+  "target_file": "src/i18n/catalogues/zh-CN/ui.hub.browse.json",
+  "context_file": "src/i18n/catalogues/en/ui.hub.browse.context.json",
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "82bbd332912b3eef2916a10083869878850c4e5ad0dfdcb38f36cecfb04669fd",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "zh-CN": "82bbd332912b3eef2916a10083869878850c4e5ad0dfdcb38f36cecfb04669fd",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "keys_read": {
+    "english": 41,
+    "context": 41,
+    "target": 41
+  },
+  "inputs_read": {
+    "english": "src/i18n/catalogues/en/ui.hub.browse.json",
+    "context": "src/i18n/catalogues/en/ui.hub.browse.context.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.hub.browse.json",
+    "consuming_code": [
+      "src/renderer/src/features/agent-hub/components/agent-card.tsx",
+      "src/renderer/src/features/agent-hub/agent-details-page.tsx",
+      "src/renderer/src/features/agent-hub/components/hub-pager.tsx",
+      "src/renderer/src/features/agent-hub/comment-age.ts",
+      "src/renderer/src/shared/api/local-operator/backend-error.ts (composition of details.catalogue_no_answer)",
+      "src/renderer/src/shared/utils/date-utils.ts (formatCalendarDate)"
+    ],
+    "shipped_zh_cn_catalogues": "all 5,453 shipped zh-CN values across src/i18n/catalogues/zh-CN/*.json (context siblings excluded), for register and terminology comparison",
+    "governance": "docs/I18N.md, i18n/glossary.md, i18n/style-guides/zh-CN.md (harness repo)"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "Passed — clean-with-findings: 0 blocker, 0 major, 1 minor, 2 nit across 41 keys.",
+  "namespace_verdicts": {
+    "ui.hub.browse": "passed (clean-with-findings) — 41/41 strings read twice; placeholders, ICU structure, key set, NFC, punctuation and terminology verified; one minor wording finding (abstract calque in details.viewer_unknown) and two mirrored nit suggestions in the two tooltip_unknown values; no blocker or major."
+  },
+  "findings": [
+    {
+      "id": "ZH-HB2-1",
+      "severity": "minor",
+      "key": "ui.hub.browse.details.viewer_unknown",
+      "current": "无法读取你的点赞和收藏，因此此处不显示你对此智能体的状态。",
+      "problem": "“你对此智能体的状态” is a literal rendering of the English jargon “this agent's viewer state”. In Chinese, 对此 collocates with 态度/看法/反应, not 状态, and the phrase leaves 状态 unspecified one clause after the sentence has already named the only two states there are. Meaning is recoverable, so this is a clarity/idiom defect rather than an accuracy error — but it is the one sentence in the file that reads translated rather than written.",
+      "proposed": "无法读取你的点赞和收藏，因此此处不显示你与该智能体的互动状态。 (terser alternative: 因此此处不显示相关状态。)",
+      "impact": "Non-gating; meaning and polarity unchanged. The current string is safe to ship if the wave does not take another polish round."
+    },
+    {
+      "id": "ZH-HB2-2",
+      "severity": "nit",
+      "key": "ui.hub.browse.card.favourite.tooltip_unknown",
+      "current": "无法读取你的收藏，因此此处不会显示为“未收藏”。",
+      "problem": "“此处” makes a place the subject, while the English “this” is the star control; “此处不会显示为” is slightly stiff for a tooltip. Dropping 此处 keeps the never-assert-unfavourited point and reads more like a statement about the control.",
+      "proposed": "无法读取你的收藏，因此不会显示为“未收藏”。",
+      "impact": "Optional polish; no meaning change."
+    },
+    {
+      "id": "ZH-HB2-3",
+      "severity": "nit",
+      "key": "ui.hub.browse.card.like.tooltip_unknown",
+      "current": "无法读取你的点赞，因此此处不会显示为“未点赞”。",
+      "problem": "Mirror of ZH-HB2-2 for the heart; the two strings should move together if taken.",
+      "proposed": "无法读取你的点赞，因此不会显示为“未点赞”。",
+      "impact": "Optional polish; no meaning change."
+    }
+  ],
+  "findings_note": "One MINOR wording finding and two mirrored NITs; nothing in the file changes meaning, polarity, safety or terminology. No BLOCKER or MAJOR remains, so the namespace verdict is passed.",
+  "earlier_findings_resolution": [
+    {
+      "first_audit_finding": "details.delist_body — “任何人都将无法下载” carried a second 将 alongside the 将…下架 construction (nit)",
+      "resolution": "RESOLVED in the audited bytes: the value now reads 任何人都无法下载. Verified by reading the value and by diffing the working tree against HEAD (git diff shows this as the only changed value in the file)."
+    }
+  ],
+  "checks": {
+    "validator_runs": {
+      "result": "PASS for the catalogue gates; ledger-check is red for all seven hub.browse candidates because their ledger rows do not exist yet (pre-merge state, not a translation finding)",
+      "commands": [
+        {
+          "command": "node scripts/i18n/generate.mjs --check",
+          "actual": "src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+          "exit": 0
+        },
+        {
+          "command": "node scripts/i18n/check-duplicates.mjs",
+          "actual": "check-duplicates: ok — 772 file(s) scanned, 0 duplicate key(s)",
+          "exit": 0
+        },
+        {
+          "command": "node scripts/i18n/check-strings.mjs",
+          "actual": "check-strings.mjs: ok — 1368 file(s) scanned, 347 literal(s) at or below the baseline",
+          "exit": 0
+        },
+        {
+          "command": "node scripts/i18n/context-parity.mjs",
+          "actual": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s).",
+          "exit": 0
+        },
+        {
+          "command": "node scripts/i18n/ledger-check.mjs",
+          "actual": "FAILED — 7 finding(s) across 595 ledger entr(ies); each of the seven hub.browse candidates (es, fr, hi, ru, ur, vi, zh-CN) is reported as 'shipped without a ledger entry — an unaudited locale must not ship'.",
+          "exit": 1,
+          "note": "Expected until the wave writes ledger rows; identical for all seven locales and not attributable to this translation. Recording it so the gate state is not mistaken for green."
+        }
+      ]
+    },
+    "placeholder_integrity": {
+      "result": "PASS",
+      "detail": "Parsed all 82 values (en + zh-CN) with the runtime parser (intl-messageformat from the repo's node_modules). Argument nodes are identical in name and multiplicity: {name} in card.download_aria and details.delist_body; {age} in card.updated, details.created, details.last_modified; {date} in details.created and details.last_modified; {author} in details.created_by. 8 argument nodes over exactly 4 names on both sides; no renamed, dropped, added or reordered placeholder; braces balanced in all 41 target values."
+    },
+    "icu_structure": {
+      "result": "PASS",
+      "detail": "Verified, not assumed: 0 plural / select / selectordinal / number / date / time nodes in either side of the namespace. With no plural message, no zh-CN CLDR category (other) is required or missing. Every target message parses without error under the zh-CN locale; format samples: 更新于3天前 · 创建：3天前（2026年10月25日） · 创建者：张三 (a@b.com)."
+    },
+    "key_coverage": {
+      "result": "PASS",
+      "detail": "41/41 keys present, no extra, no missing; identical key set and identical order to the English source; context sidecar covers the same 41 keys; JSON has no duplicate members (object_pairs_hook scan), no BOM, no CRLF, tab indentation, trailing newline — same shape as the English file."
+    },
+    "accuracy": {
+      "result": "PASS",
+      "detail": "Every value checked against the English and the sidecar's role/tone. Safe/never-assert semantics preserved: the two tooltip_unknown strings and viewer_unknown explain an unread state without ever claiming the agent is unfavourited/unliked; the four failure headlines state what did not happen (智能体未下架 / 下载未开始 / 收藏未成功 / 点赞未成功) with no added blame; delist copy keeps immediacy plus reversibility (任何人都无法下载。你之后可以重新上传。); the delist dialog names the object and the same verb as its confirm button. No omission, addition, negation or polarity error found."
+    },
+    "register": {
+      "result": "PASS",
+      "detail": "你 everywhere (0 您), matching the style guide's recorded decision and the shipped locale (174 occurrences of 你 in 148 shipped values; 0 您). The target itself contains no 请 and no ！. Terse labels stay terse (下载 / 下架 / 未知 / 下一页). No sentence-final 。 on short labels or alert headlines; full sentences keep 。. The three 登录Radient以… strings use a construction with eight occurrences in shipped catalogues outside this file (ui.common.errors.speech_sign_in_enable, ui.common.speech.control.*, ui.hub.links.sign_in_to_publish, ui.hub.updates.sign_in), so it is locale house style, not a calque."
+    },
+    "terminology": {
+      "result": "PASS",
+      "detail": "Glossary: agent → 智能体 (365 occurrences across the zh-CN catalogues, this candidate included), consistent through card, details and aria; no drift to 代理 or 智能代理. Favourite family 收藏 / 取消收藏 matches the shipped ui.library terms (status.favorites, menu.favorite, menu.unfavorite). Like family 点赞 / 取消点赞 has no earlier shipped zh-CN use, so this namespace sets it; 点赞 is the standard social verb and pairs consistently with the favourite family across aria, tooltip and failure strings. Delist family 下架 (aria, confirm, title, tooltip, body, status, failure) is the standard marketplace term and uses one verb throughout. 智能体中心 is the shipped rendering of Agent Hub in four other catalogues (ui.shell.sidebar_navigation.agent_hub, ui.command_palette.use_palette_sources.agent_hub, ui.hub.updates.error.model_unavailable, ui.agents.dialogs.create.hub_link); 中心 as its short form in delist_body matches shipped 上传到中心. Radient stays Latin in all four occurrences. 更新于 has a shipped precedent (ui.settings.imports.session_updated = 更新于{date})."
+    },
+    "accessible_names": {
+      "result": "PASS",
+      "detail": "Label-in-name containment verified against the rendered pairs: visible card.get 下载 is contained in card.download_aria 下载{name}; visible delist_confirm 下架 is contained in details.delist_aria 下架智能体; pager visible 下一页/上一页 equal the shipped compact-pagination accessible labels. Icon-only controls (back, download, star, heart) have non-empty accessible names; the disabled unknown-state names state the limit rather than a false state."
+    },
+    "age_date_joins": {
+      "result": "PASS",
+      "detail": "hubAge delegates to the ui.hub.comments.age.* ICU messages, whose zh-CN values end in 前 ({count}天前), and formatCalendarDate is Intl year/month/day long, which renders 2026年10月25日 in zh-CN. So card.updated reads 更新于3天前 (no second preposition, leading word kept before the placeholder) and details.created reads 创建：3天前（2026年10月25日） with the fullwidth parentheses wrapping a complete date, not a fragment."
+    },
+    "punctuation_typography": {
+      "result": "PASS",
+      "detail": "Verified in bytes: 0 ASCII spaces and 0 ASCII , ; : ! ? ( ) in all 41 values; prose uses fullwidth ，。：？！（） and curly “”; ellipsis is …… (two U+2026), which honours the sidecar's 'U+2026, not three periods' and the zh-CN house convention; no space inserted between Chinese and Latin runs (登录Radient…, Radient智能体目录…), per the style guide. NFC: every value equals its NFC normalisation. No U+200E/200F/202A–202E/2066–2069 bidi controls and no invisible format characters."
+    },
+    "width_codepoints_only": {
+      "result": "PASS",
+      "detail": "Codepoint/cell arithmetic only (CJK + fullwidth punctuation = 2 cells, ASCII = 1); no pixel, font, clipping or browser claim. Four values are longer in cells, and only two clear 1.35x: action.trying 正在重试…… 10 vs 7 (1.43x), pager.next 下一页 6 vs 4 (1.50x), card.get 下载 4 vs 3 (1.33x) and card.like.tooltip_liked 取消点赞智能体 14 vs 12 (1.17x). All four are absolutely small and sit in controls that also carry an icon or spinner, so no overflow risk is plausible. The other 37 values are equal to or shorter than English (delist_title 18 vs 18; delist_body 68 vs 117 cells). The namespace carries no maxCells hints in its sidecar, so no budget was exceeded."
+    },
+    "rtl": {
+      "result": "N/A",
+      "detail": "zh-CN is LTR; no direction-sensitive tokens, arrows or mirrored glyphs are introduced by the target."
+    }
+  },
+  "observations": [
+    {
+      "id": "O1",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.details.back_aria",
+        "ui.hub.browse.details.delist_tooltip",
+        "ui.hub.browse.details.delist_body"
+      ],
+      "note": "Agent Hub is rendered 智能体中心 (and 中心 in delist_body), not kept in English. The English sidecar calls Agent Hub a surface name, but i18n/glossary.md's keep-English table does not list it, every shipped locale localises that surface, and four shipped zh-CN catalogues already use 智能体中心 for it. Consistency with the shipped product wins; no finding."
+    },
+    {
+      "id": "O2",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.details.catalogue_no_answer"
+      ],
+      "note": "Caller-side, not this catalogue: backendLoadErrorMessage (src/renderer/src/shared/api/local-operator/backend-error.ts:182-186) joins lead, diagnosis and remedy with ASCII ' '. For zh-CN this renders a U+0020 between fullwidth sentences ('…没有响应。 后端…'), against the locale's no-ASCII-space convention. The diagnosis and remedy are themselves translated via t(). Changing the join is a code change and is not counted against the translation."
+    },
+    {
+      "id": "O3",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.details.created_by"
+      ],
+      "note": "Caller-side: agent-details-page.tsx:124-129 assembles the author as `${name} (${email})` with an ASCII space and ASCII parentheses, so a zh-CN detail page can render 创建者：张三 (a@b.com) inside an otherwise fullwidth line. No catalogue value can fix it; not counted as a finding."
+    },
+    {
+      "id": "O4",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.details.delist_tooltip",
+        "ui.hub.browse.details.delist_body"
+      ],
+      "note": "Source-level: the tooltip says 永久下架 while the dialog body says the agent can be re-uploaded later. The same tension exists in English ('Permanently delist' vs 'upload it again later') and the sidecar explains 'permanently' as removal from the public listing, not account deletion. The translation mirrors the source faithfully rather than resolving it; not a translation defect."
+    }
+  ],
+  "rendered_check": "Not performed — no browser host was available to this session, and no pixel, clipping, frame or rendered-fit claim is made anywhere in this receipt. Widths are codepoint arithmetic only.",
+  "method": "Two independent read-throughs. Pass 1: key-by-key accuracy, polarity, safety and idiom against the English and the sidecar's role/tone, with the consuming code open (agent-card.tsx, agent-details-page.tsx, hub-pager.tsx, comment-age.ts, backend-error.ts, date-utils.ts). Pass 2: a fresh side-by-side re-read of all 41 pairs for register, parallel structure between the like and favourite families, and any addition/omission the first pass missed; it confirmed the three wording findings and found no new blocker or major. Mechanical work ran through the repo's own gates plus a programmatic pass (JSON/member/order checks, intl-messageformat AST argument comparison, NFC, punctuation and bidi scans, codepoint widths) and a term-frequency comparison against all 5,453 shipped zh-CN values. No catalogue edits, no builds, no test suites, no git writes, no translation/MT service used.",
+  "counts": {
+    "keys_read": 41,
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2,
+    "observations": 4
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "schema": 1,
+  "receipt_kind": "independent-second-audit",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "7905494174dd",
+    "model": "radient/auto",
+    "route": "radient/auto - auto-routed by the Radient model router; the concrete upstream provider/model id is not exposed to this session, so none is claimed",
+    "fallback": "none observed - the audit ran on the configured route above; no model substitution was requested or observed",
+    "independence": "independent second pass: did not translate, draft or remediate this file and did not see those runs; findings were formed from the English source, its context sidecar, the shipped ru catalogues, the consuming components (agent-card.tsx, agent-page detail, hub-pager.tsx, comment-age.ts) and the style guide/glossary before the first-audit receipt was read, and that receipt was then used only to check whether each of its findings was resolved or reasonably declined"
+  },
+  "locale": "ru",
+  "namespace": "ui.hub.browse",
+  "date": "2026-10-25",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "namespace_verdicts": {
+    "ui.hub.browse": "passed (clean-with-findings) - 41/41 keys read; 0 blocker, 0 major; 1 minor and 2 nits recorded. Placeholders/ICU, NFC/byte hygiene, register (вы, infinitive actions, sentence case), glossary terms and age/date joins pass. No maxCells/maxChars hint exists in the sidecar, so no width budget is violated; fit is judged by codepoint only (no pixel or rendered claim)."
+  },
+  "binding": "Bound by hash to working-tree bytes read in worktree ~/local-operator-ui/.worktrees/i18n-agent-hub-copy. The Russian target is an UNCOMMITTED candidate (second-round remediation of an earlier draft whose bytes hashed 7edfc11a3e16a2aaf0b87ac7f225f9f0f830ad454f4d6e2b39547a34d2572828 in receipt ru-hub-browse-first-audit-e0e70a13fe0d); source_sha256/target_sha256 below are the hashes of the files on disk at audit time, not committed blobs.",
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "8415dca28ad9387723bc785d59da597edad74badc30e5405263e90deffbf27be",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "ru": "8415dca28ad9387723bc785d59da597edad74badc30e5405263e90deffbf27be",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "keys_read": 41,
+  "guides": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    }
+  },
+  "prior_audit": {
+    "receipt": "i18n/receipts/ru-hub-browse-first-audit-e0e70a13fe0d.json",
+    "receipt_sha256": "a00de0236ebbba9ad7e71ebe67a2fb90116fdc9e24dfba7977a8d6212b318212",
+    "prior_target_sha256": "7edfc11a3e16a2aaf0b87ac7f225f9f0f830ad454f4d6e2b39547a34d2572828",
+    "read_after_own_findings": true,
+    "outcomes": [
+      {
+        "id": "RU-HB-1",
+        "severity": "minor",
+        "resolution": "resolved - action.trying is now «Повторная попытка…», matching the shipped ru retry idiom (ui.agents.navigation.updates.action.retrying and five siblings); U+2026 preserved"
+      },
+      {
+        "id": "RU-HB-2",
+        "severity": "minor",
+        "resolution": "partially resolved - the «нельзя показать» modal was dropped as proposed, but the passive «не показано, что…» frame remains and is recorded again here as F1 (minor, two keys)"
+      },
+      {
+        "id": "RU-HB-3",
+        "severity": "nit",
+        "resolution": "resolved - sign_in_hint now reads «пользоваться этой функцией»"
+      },
+      {
+        "id": "RU-HB-4",
+        "severity": "nit",
+        "resolution": "accepted as recommended - card.get keeps «Скачать»; the rendered check it asked for still could not be performed and is not claimed (O8)"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "minor",
+      "keys": [
+        "ui.hub.browse.card.favourite.tooltip_unknown",
+        "ui.hub.browse.card.like.tooltip_unknown"
+      ],
+      "current": "Не удалось прочитать ваше избранное, поэтому не показано, что агента нет в избранном. / Не удалось прочитать ваши лайки, поэтому не показано, что лайка нет.",
+      "proposed": "Не удалось прочитать ваше избранное, поэтому нельзя утверждать, что агент не в избранном. / Не удалось прочитать ваши лайки, поэтому нельзя утверждать, что лайка нет.",
+      "problem": "The second clause is a stilted impersonal passive («не показано, что…») and is briefly ambiguous: «не показано» can be read as 'the control is not shown', when the control IS shown and only the state claim is withheld. Meaning and polarity are correct and the state-claim hedge survives; this is an idiom defect, not an accuracy one.",
+      "reason_suggested": "«нельзя утверждать, что…» keeps the epistemic hedge in a construction Russian actually uses for 'we are not asserting X', and removes the passive that invites the wrong reading. An acceptable alternative if the house voice prefers the first person plural: «…поэтому мы не показываем, что агент не в избранном».",
+      "context_check": "Sidecar says: explains a failed viewer-state read; never asserts the agent is unfavourited. Both the current and proposed wording satisfy that."
+    },
+    {
+      "id": "F2",
+      "severity": "nit",
+      "key": "ui.hub.browse.details.delist_aria",
+      "current": "Снять агента с публикации",
+      "proposed": "Снять с публикации (or lengthen delist_confirm to match)",
+      "problem": "Strict label-in-name containment fails: the visible confirm label «Снять с публикации» is not a contiguous substring of the accessible name «Снять агента с публикации», which English satisfies («Delist» inside «Delist agent»). The source's own stated bar - the aria should contain the same VERB as delist_confirm so speech control finds it - is met («Снять»), and WCAG 2.5.3 does not bind here because the trigger is icon-only and carries no visible text, so the risk is confined to voice-control discoverability of the icon button. Recorded rather than churned.",
+      "fit": "25 codepoints against English 12; the control is an icon button, so no visible label can clip."
+    },
+    {
+      "id": "F3",
+      "severity": "nit",
+      "key": "ui.hub.browse.details.viewer_unknown",
+      "current": "Не удалось прочитать ваши лайки и избранное, поэтому отметки для этого агента не показаны.",
+      "proposed": "Не удалось прочитать ваши лайки и избранное, поэтому состояние для этого агента не показано.",
+      "problem": "One concept, two words on the same page: the disabled controls' accessible names say «Состояние лайка/избранного неизвестно», while this status line says «отметки … не показаны». Both are readable; the drift is only that a screen-reader user hears two names for one condition. «отметки» is a defensible humanisation of the code's 'viewer state' - if the team prefers it, change the two aria_unknown strings instead, not neither."
+    }
+  ],
+  "observations": [
+    {
+      "id": "O1",
+      "severity": "info",
+      "verdict": "verified",
+      "note": "Mechanical: 41/41 messages parse with @formatjs/icu-messageformat-parser; argument sets identical to English ({name}, {age}, {date}, {author}); 0 plural/select/selectordinal messages in this namespace, so no CLDR category set can be incomplete; all 41 format under IntlMessageFormat locale ru; key order identical to English; no key added or dropped; no value byte-identical to English."
+    },
+    {
+      "id": "O2",
+      "severity": "info",
+      "verdict": "verified",
+      "note": "Age/date joins: hubAge() delegates to commentAge() and returns a COMPLETE strict phrase ending in «назад» (shipped ui.hub.comments.age.* one/few/many/other). Renders: «обновлено 2 дня назад» (card), «Создано: 2 дня назад (25 октября 2026 г.)», «Последнее изменение: 1 час назад (25 октября 2026 г.)». No extra preposition is appended by the message, and the leading lowercase word precedes the placeholder as the context requires. {date} comes from formatCalendarDate, never hand-written."
+    },
+    {
+      "id": "O3",
+      "severity": "info",
+      "verdict": "verified",
+      "note": "Byte hygiene on the final target: 4030 bytes, UTF-8, NFC-stable, tab indent, LF only, one trailing newline, no BOM, no NBSP/U+202F, no bidi controls (none expected in ru), no \\uXXXX escapes, one U+2026 (action.trying) and no three-dot ellipsis, «ёлочки» only in delist_body, no space before : ; ! ? and no double spaces."
+    },
+    {
+      "id": "O4",
+      "severity": "info",
+      "verdict": "verified",
+      "note": "Terminology vs shipped ru: «Хаб агентов» capitalised for the surface name (ui.shell.sidebar_navigation.agent_hub, ui.command_palette) and lowercase «хаба» in generic prose (matches ui.agents.dialogs.menu.upload «Загрузить в хаб»); «избранное» family matches ui.library (Избранное / В избранное / Убрать из избранного); «снять с публикации» is the settled unpublish term; Radient stays Latin and undeclined in all four strings that name it. No glossary §1/§2 term is violated."
+    },
+    {
+      "id": "O5",
+      "severity": "info",
+      "verdict": "ruled on",
+      "note": "Label-in-name for the card: «Скачать» (card.get) IS a contiguous substring of «Скачать {name}» (card.download_aria), and the pager's visible «Следующая»/«Предыдущая» are contained in the shipped aria names «Следующая страница»/«Предыдущая страница». Only the delist pair is non-strict (F2)."
+    },
+    {
+      "id": "O6",
+      "severity": "info",
+      "verdict": "ruled on",
+      "note": "«Скачивания» as card.downloads_tooltip: accepted. It is the nominative plural of the action noun used as a bare metrics heading in Russian dashboards, which is exactly what the sidecar asks for ('a count label, not a verb'); «Скачиваний» (genitive) would bind to a number that the tooltip does not contain. No shipped competitor exists to drift from (ui.common.updates uses the singular «Скачивание:» for progress)."
+    },
+    {
+      "id": "O7",
+      "severity": "info",
+      "verdict": "ruled on",
+      "note": "«Не удалось загрузить этого агента» for load_failed_title: accepted. «загрузить» also carries the upload sense in this same namespace (delist_body «загрузить его снова»), but the shipped catalogues use the same verb for load failures in dozens of strings (46 phrase matches across the ru catalogues, a few of them uploads), and the alert's position on a page that failed to load disambiguates. No translation change warranted."
+    },
+    {
+      "id": "O8",
+      "severity": "info",
+      "verdict": "not performed",
+      "note": "No rendered check: the browser host is unavailable in this session, so no pixel, clipping, wrap or frame claim is made anywhere in this record. Widths are codepoint counts only: card.get 7 (en 3), delist_confirm 18 (en 6), delist_aria 25 (en 12), delist_title 32 (en 18), pager.next 9 (en 4), pager.previous 10 (en 8), action.trying 18 (en 7). The card footer is flex-wrap by design (agent-card.tsx comment: the action drops to a second line rather than off the card) and the delist dialog is max-w-md (xs maps to max-w-md in base-dialog.tsx) with 400 px of content beside «Отмена», so the longer labels have a designed place to go; neither figure is a measurement of rendered text."
+    },
+    {
+      "id": "O9",
+      "severity": "info",
+      "verdict": "out of scope, flagged",
+      "note": "English leaks in the consuming components, outside ui.hub.browse and outside the translator's file: agent-details-page.tsx:284 <Spinner label=\"Loading agent details\" />, agent-details-page.tsx:558 agent.description || \"No description provided.\", and agent-card.tsx:203 aria-label={`View details for ${displayName}`}. All three violate the AGENTS.md i18n policy (no unkeyed copy, including aria-label) and would surface in English on a Russian build. Not counted as findings against this namespace; reported so the manager can route them."
+    },
+    {
+      "id": "O10",
+      "severity": "info",
+      "verdict": "state of the tree",
+      "note": "pnpm check-i18n:catalogues in this worktree passes generate --check, check-duplicates, check-strings and context-parity, and ledger-check FAILS with 7 findings ('shipped without a ledger entry') for es/fr/hi/ru/ur/vi/zh-CN ui.hub.browse - the candidate namespaces are not yet registered in i18n/ledger.json. That is the expected pre-landing state of an unassembled wave, not a defect in the Russian bytes; the ledger rows are the manager's assemble step after the audits."
+    }
+  ],
+  "counts": {
+    "keys_read": 41,
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2,
+    "observations": 10
+  },
+  "validator_runs": [
+    {
+      "command": "pnpm check-i18n:catalogues",
+      "exit": 1,
+      "output": "$ node scripts/i18n/generate.mjs --check && node scripts/i18n/check-duplicates.mjs && node scripts/i18n/check-strings.mjs && node scripts/i18n/ledger-check.mjs && node scripts/i18n/context-parity.mjs\nsrc/i18n/keys.gen.ts is byte-identical to a fresh generation.\ncheck-duplicates: ok - 772 file(s) scanned, 0 duplicate key(s)\ncheck-strings.mjs: ok - 1368 file(s) scanned, 347 literal(s) at or below the baseline\nledger-check: es/ui.hub.browse: shipped without a ledger entry - an unaudited locale must not ship\nledger-check: fr/ui.hub.browse: shipped without a ledger entry - an unaudited locale must not ship\nledger-check: hi/ui.hub.browse: shipped without a ledger entry - an unaudited locale must not ship\nledger-check: ru/ui.hub.browse: shipped without a ledger entry - an unaudited locale must not ship\nledger-check: ur/ui.hub.browse: shipped without a ledger entry - an unaudited locale must not ship\nledger-check: vi/ui.hub.browse: shipped without a ledger entry - an unaudited locale must not ship\nledger-check: zh-CN/ui.hub.browse: shipped without a ledger entry - an unaudited locale must not ship\nledger-check: FAILED - 7 finding(s) across 595 ledger entr(ies)\n[ELIFECYCLE] Command failed with exit code 1"
+    },
+    {
+      "command": "node --input-type=module (ICU/arity/byte probe on en+ru+context; @formatjs/icu-messageformat-parser, intl-messageformat)",
+      "exit": 0,
+      "output": "keys en=41 ru=41 sameOrder=true\nsha256 8415dca28ad9387723bc785d59da597edad74badc30e5405263e90deffbf27be\nbytes 4030 NFC-stable true\nBOM false endsWithOneNL true\ntabs-indent true LF only true\nchar ellipsis 1\nbackslash-u escapes false\nissues 0"
+    },
+    {
+      "command": "grep -rho 'ui\\.hub\\.browse\\.[A-Za-z_.]*' src/renderer/src | sort -u  (vs catalogue keys)",
+      "exit": 0,
+      "output": "used-not-in-catalogue: []\ncatalogue-not-used: []\ncounts used/cat: 41 41 intersection 41"
+    }
+  ],
+  "verdict": "Overall: passed, clean-with-findings. 41/41 keys read; no blocker and no major remain on these bytes. One minor (the two 'unknown' tooltips' passive frame, F1) and two nits (strict delist label-in-name containment, F2; «отметки» vs «состояние», F3). The first audit's RU-HB-1, RU-HB-3 and RU-HB-4 are resolved or reasonably declined; RU-HB-2 was partially remediated and its remainder is F1. Nothing here should gate the merge of the Russian namespace.",
+  "notes_vs_logs": "The `validator_runs` entries above are verbatim outputs of commands actually executed in this session on these bytes. Observations O1-O10 are audit notes and reasoning, not execution logs; where no command was run (the rendered check, O8) the record says so rather than inferring a result."
+}

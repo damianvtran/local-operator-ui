@@ -39563,6 +39563,223 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.hub.browse",
+			"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+			"target_sha256": "766dd5f9adba7151f804d4b13b7bcdb841cc5e770ca9750b5efd3497b9c34593",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "95e8160ea852",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/95e8160ea852.json",
+					"receipt_sha256": "018983692c55e42826b99a2a08a929647394d0ec54000e48dd1f97ce7115c2f8",
+					"scope": "Round-2 independent audit of the final remediated ui.hub.browse bytes (41/41 keys); remediation delta plus whole-namespace re-read.",
+					"note": "Final bytes authored by i18n-translator run deeb29f13a57 after remediating the first audit; initial drafts by translation-auditor-profile run e7ae8e779f26 were superseded. Auditor i18n-auditor/radient auto is a different run. No rendered proof."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.hub.browse",
+			"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+			"target_sha256": "d8e913b4c447184eba7d5309ba74b7b8b6f1f443a7bd7250840d02347de8aa94",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "3cc1d8b197e0",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/3cc1d8b197e0.json",
+					"receipt_sha256": "e881cb50dcee6339d3f9e2ecb760cf8802f9eae5b7f48d90effc6e0a39e33ee8",
+					"scope": "Round-2 independent audit of the final remediated ui.hub.browse bytes (41/41 keys); remediation delta plus whole-namespace re-read.",
+					"note": "Final bytes authored by i18n-translator run eae6292f8411 after remediating the first audit; initial drafts by translation-auditor-profile run 67a42792c128 were superseded. Auditor i18n-auditor/radient auto is a different run. No rendered proof."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.hub.browse",
+			"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+			"target_sha256": "b8bb1ff2c6cadf9470fe60ac4fe17800aabae569559b086b9c6c0c11ec03981f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "0cf2e5ffb26f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/0cf2e5ffb26f.json",
+					"receipt_sha256": "7682df0cb4079618dd8baf3888326a8f8b7a1970b5b3bc8b45177bd0c9c57540",
+					"scope": "Round-2 independent audit of the final remediated ui.hub.browse bytes (41/41 keys); remediation delta plus whole-namespace re-read.",
+					"note": "Final bytes authored by i18n-translator run 286a7e7aa8c1 after remediating the first audit; initial drafts by translation-auditor-profile run 5a7e3ce23483 were superseded. Auditor i18n-auditor/radient auto is a different run. No rendered proof."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.hub.browse",
+			"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+			"target_sha256": "8415dca28ad9387723bc785d59da597edad74badc30e5405263e90deffbf27be",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "7905494174dd",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/7905494174dd.json",
+					"receipt_sha256": "53e98ced517196204628ef96337bfacf8c4083a5a838d2bf563123d283f6034e",
+					"scope": "Round-2 independent audit of the final remediated ui.hub.browse bytes (41/41 keys); remediation delta plus whole-namespace re-read.",
+					"note": "Final bytes authored by i18n-translator run 8cc94d64f4c4 after remediating the first audit; initial drafts by translation-auditor-profile run 9bc3df261d7b were superseded. Auditor i18n-auditor/radient auto is a different run. No rendered proof."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.hub.browse",
+			"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+			"target_sha256": "7a707b75692b11cfa45c3fc7bf37b233a8c49f74d0c12726735f857c5aea89de",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "78b2bab157ee",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/78b2bab157ee.json",
+					"receipt_sha256": "26e6b4dfb364b7d6d478f2712d0617ab753ff7a7675b798ad3c8d80079a4fa0d",
+					"scope": "Round-2 independent audit of the final remediated ui.hub.browse bytes (41/41 keys); remediation delta plus whole-namespace re-read.",
+					"note": "Final bytes authored by i18n-translator run 64c870300d8b after remediating the first audit; initial drafts by translation-auditor-profile run 0009f5b86e09 were superseded. Auditor i18n-auditor/radient auto is a different run. No rendered proof."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.hub.browse",
+			"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+			"target_sha256": "1a80d80735dff0574e2386ee225ded92ab7d56d4558b2e3648c28312ee03710d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "496cdc8af9a7",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/496cdc8af9a7.json",
+					"receipt_sha256": "0d3ff144bc070caeeef9a0272aaa0dde14e8c3dc393a603e90699b8dd7db511b",
+					"scope": "Round-2 independent audit of the final remediated ui.hub.browse bytes (41/41 keys); remediation delta plus whole-namespace re-read.",
+					"note": "Final bytes authored by i18n-translator run 5ec4753434a1 after remediating the first audit; initial drafts by translation-auditor-profile run dbc7b81921e5 were superseded. Auditor i18n-auditor/radient auto is a different run. No rendered proof."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.hub.browse",
+			"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+			"target_sha256": "82bbd332912b3eef2916a10083869878850c4e5ad0dfdcb38f36cecfb04669fd",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "c2327e3a168e",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/c2327e3a168e.json",
+					"receipt_sha256": "ee61d8ff1d2ec02915ffe9850fe1d18e77b1afa32dd150a141075765ed6ee2de",
+					"scope": "Round-2 independent audit of the final remediated ui.hub.browse bytes (41/41 keys); remediation delta plus whole-namespace re-read.",
+					"note": "Final bytes authored by i18n-translator run 3e9a2756fb61 after remediating the first audit; initial drafts by translation-auditor-profile run 23239fc5288c were superseded. Auditor i18n-auditor/radient auto is a different run. No rendered proof."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

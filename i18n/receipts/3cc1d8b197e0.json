@@ -1,0 +1,207 @@
+{
+  "schema": 1,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "model": "radient/auto",
+    "route": "radient/auto — auto-routed by the Radient router; the resolved provider/model id is not exposed to this session, so no finer id is claimed",
+    "fallback": "none observed — this run used the configured route above; no model substitution was made or needed",
+    "independence": "independent second audit: this session did not translate, review or remediate the candidate and never saw the translator's or first auditor's disposition. Findings were formed from the catalogue bytes, the context sidecar, the consuming code and the shipped French catalogues first; the earlier first-audit receipt was opened only after that, and only to check whether each of its findings was resolved or reasonably declined in the bytes",
+    "round": 2,
+    "passes": "two passes over all 41 keys: a full read, then an independent re-read of the destructive, permission and error strings (delist family, failure family, unknown-state tooltips) with the consuming code open"
+  },
+  "model": "radient/auto",
+  "instance": "3cc1d8b197e0",
+  "locale": "fr",
+  "namespace": "ui.hub.browse",
+  "date": "2026-10-25",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Bind by hash: the target is an UNCOMMITTED working-tree candidate in worktree ~/local-operator-ui/.worktrees/i18n-agent-hub-copy (branch i18n-agent-hub-copy, HEAD 5f44362a9f, local only) — a remediation of an earlier draft whose bytes are not on disk and therefore not diffable. Every hash below was computed from disk at audit time; the English and context hashes match the values this audit was commissioned against.",
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "d8e913b4c447184eba7d5309ba74b7b8b6f1f443a7bd7250840d02347de8aa94",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "fr": "d8e913b4c447184eba7d5309ba74b7b8b6f1f443a7bd7250840d02347de8aa94",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "keys_read": 41,
+  "inputs_read": {
+    "english": "src/i18n/catalogues/en/ui.hub.browse.json",
+    "context": "src/i18n/catalogues/en/ui.hub.browse.context.json",
+    "target": "src/i18n/catalogues/fr/ui.hub.browse.json",
+    "consuming_code": [
+      "src/renderer/src/features/agent-hub/components/agent-card.tsx",
+      "src/renderer/src/features/agent-hub/agent-details-page.tsx",
+      "src/renderer/src/features/agent-hub/components/hub-pager.tsx",
+      "src/renderer/src/features/agent-hub/comment-age.ts"
+    ],
+    "shipped_fr_catalogues": "all src/i18n/catalogues/fr/*.json (context siblings excluded), for terminology and register comparison",
+    "governance": "docs/I18N.md; i18n/ledger.json; scripts/i18n/ledger-rules.mjs",
+    "glossary_and_style_guide": "NOT PRESENT in this repository: neither i18n/glossary.md nor i18n/style-guides/<locale>.md exists at HEAD 5f44362a9f (git ls-files finds no glossary or style-guide file, and i18n/ holds only allowlist, audits, baseline, allowances, languages, ledger and receipts). The instruction to read them could therefore not be followed; register and terminology were judged against docs/I18N.md, the context sidecar's per-key role/tone notes and the shipped French catalogues. Stated, not implied."
+  },
+  "rendered_check": "not performed — no browser host in this session; no pixel, clipping, frame or rendered-fit claim is made anywhere in this receipt. Widths are reported as codepoint counts only.",
+  "findings_note": "Three NIT-level wording suggestions; no BLOCKER, MAJOR or MINOR. Eleven observations record verified-correct checks, one open gate elsewhere, one unresolved statistic, out-of-scope notes and source-level copy questions; they carry severity 'observation', are not defects and are not counted.",
+  "findings": [
+    {
+      "id": "FR-HB2-1",
+      "severity": "nit",
+      "key": "ui.hub.browse.details.viewer_unknown",
+      "current": "Vos j’aime et vos favoris n’ont pas pu être lus ; l’état de cet agent pour vous n’est donc pas affiché.",
+      "problem": "« pour vous » is a calque of the English « for you ». French does not attach a viewer to an object with « pour »; read cold, « l’état de cet agent pour vous » can be taken as « the state of this agent, for you », which is the wrong relation (the sentence wants the viewer's own per-account state).",
+      "proposed": "Vos j’aime et vos favoris n’ont pas pu être lus ; l’état de cet agent pour votre compte n’est donc pas affiché.",
+      "why": "« pour votre compte » names the viewer the way the rest of the French catalogue does for per-account state, keeps the sentence's information order and its explanation of why the controls read as unknown.",
+      "gating": false
+    },
+    {
+      "id": "FR-HB2-2",
+      "severity": "nit",
+      "key": "ui.hub.browse.pager.aria",
+      "current": "Pages des agents",
+      "problem": "Literal mirror of « Agent pages », but « Pages des agents » reads as pages belonging to agents rather than the pager for the agent list. It is the accessible name of the nav landmark, so it is what a screen-reader user hears before the two step buttons.",
+      "proposed": "Pagination des agents",
+      "why": "Names the control's function, and matches the shipped French siblings the landmark contains — ui.common.forms.pagination.position « Page {page} sur {count} », compact_pagination.previous_page « Page précédente », next_page « Page suivante ».",
+      "gating": false
+    },
+    {
+      "id": "FR-HB2-3",
+      "severity": "nit",
+      "key": "ui.hub.browse.card.favourite.tooltip_favourited",
+      "current": "Retirer l’agent des favoris",
+      "problem": "On a details page this string is the accessible name of the star AND ui.hub.browse.details.delist_aria « Retirer l’agent du hub » is the accessible name of the trash button: an owner who has favourited the agent meets two icon-only buttons whose spoken names share the prefix « Retirer l’agent d… », which is a speech-input hazard. English keeps them apart at the first noun (« Unfavourite agent » / « Delist agent »).",
+      "proposed": "Retirer des favoris",
+      "why": "Diverges from the delist name at the second word and reuses the exact shipped wording of ui.library.menu.unfavorite « Retirer des favoris »; the object is not needed here because the control sits on the agent's own card and page. Attack surface unchanged: the string is still the same control's tooltip and accessible name, and tooltip_unfavourited « Ajouter l’agent aux favoris » needs no change.",
+      "gating": false
+    }
+  ],
+  "observations": [
+    {
+      "id": "O1",
+      "severity": "observation",
+      "keys": [
+        "*"
+      ],
+      "verdict": "verified mechanically",
+      "note": "Valid JSON, 41/41 keys present, same key set AND same order as English, none added or dropped. ICU: all 41 French messages parsed with @formatjs/icu-messageformat-parser (requiresOtherClause: true) from the repo's own node_modules — 41/41 parsed, 0 errors, 8 argument nodes over exactly 4 names {name, age, date, author}, identical argument sets and names to English, and 0 plural/select/selectordinal nodes anywhere in the namespace, so no CLDR category is required and none can be missing. Repo validators run from the worktree root: generate.mjs --check (keys.gen.ts byte-identical to a fresh generation), check-duplicates.mjs (772 files, 0 duplicate keys) and context-parity.mjs (every English key covered) all exit 0."
+    },
+    {
+      "id": "O2",
+      "severity": "observation",
+      "keys": [
+        "*"
+      ],
+      "verdict": "open gate elsewhere — not this file",
+      "note": "node scripts/i18n/ledger-check.mjs FAILS (exit 1, 7 findings) with « <locale>/ui.hub.browse: shipped without a ledger entry » for all seven locales, including fr. That is the post-audit ledger write, which this audit was told not to make (one receipt, no other file edits); it is recorded so nobody reads this pass as covering the ledger gate. Nothing in the catalogue bytes causes it."
+    },
+    {
+      "id": "O3",
+      "severity": "observation",
+      "keys": [
+        "*"
+      ],
+      "verdict": "verified in the bytes",
+      "note": "Typography and encoding: 35 U+2019 apostrophes and zero ASCII apostrophes (which also keeps ICU quoting out of play); U+202F narrow no-break space before all seven ; : ? occurrences and inside both guillemets of « {name} »; U+2026 for the ellipsis, not three periods; « » only, no ASCII double quotes in values; every value NFC; no U+200E/U+200F/U+202A-U+202E/U+2066-U+2069 bidi controls and no other Cf/Cc characters; no double, leading or trailing spaces. All punctuation checks were made on codepoints, not by eye."
+    },
+    {
+      "id": "O4",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.card.updated",
+        "ui.hub.browse.details.created",
+        "ui.hub.browse.details.last_modified"
+      ],
+      "verdict": "verified against the emitting code",
+      "note": "Age joins checked in the round trip, not just in the catalogue: comment-age.ts hubAge() delegates to commentAge(), which formats through ui.hub.comments.age.* in the same locale, and every shipped French value there already contains « il y a » (e.g. « il y a {count} heures »). So « mis à jour il y a 2 heures », « Créé : il y a 2 heures (date) » and « Dernière modification : il y a 2 heures (date) » read correctly with no doubled preposition and no missing one; {date} is supplied by formatCalendarDate in the caller. The leading lowercase fragment « mis à jour » is right for the mid-sentence slot in the card's provenance row."
+    },
+    {
+      "id": "O5",
+      "severity": "observation",
+      "keys": [
+        "*"
+      ],
+      "verdict": "terminology verified against shipped French",
+      "note": "Surface name: « Hub des agents » matches shipped ui.shell.sidebar_navigation.agent_hub and ui.command_palette.use_palette_sources.agent_hub, and the generic lowercase « hub » inside the delist family mirrors the source's own « the hub » / « Agent Hub » split — looks like drift, is not. « favoris » matches ui.library.menu.favorite/unfavorite « Ajouter aux favoris » / « Retirer des favoris »; delist_body's « l’envoyer à nouveau vers le hub » matches ui.agents.dialogs.menu.upload « Envoyer vers le hub »; « sur cet ordinateur » matches the shipped « cet ordinateur » wording; « Connectez-vous à Radient pour… » matches the shipped sign-in pattern. Register is vous throughout, with zero tu/ton/ta/tes anywhere in the 41 strings, and no « délister » calque. « Obtenir » for Get beside « Télécharger » for Download mirrors the source's own split and is precedented in shipped fr (ui.onboarding.search.row.get_your)."
+    },
+    {
+      "id": "O6",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.card.get",
+        "ui.hub.browse.card.download_aria",
+        "ui.hub.browse.details.delist_confirm",
+        "ui.hub.browse.details.delist_aria",
+        "ui.hub.browse.pager.previous",
+        "ui.hub.browse.pager.next"
+      ],
+      "verdict": "label-in-name checked in both directions",
+      "note": "Checked against the code, and the French is better than the English in one place rather than worse. Card button: the visible « Obtenir » IS contained in the accessible name « Obtenir l’agent {name} » — in English the visible « Get » is NOT contained in « Download {name} », so the French satisfies 2.5.3 where the source does not. Delist: icon-only trigger, so 2.5.3 does not bind and there is no visible label to contain; « Retirer du hub » is not a contiguous substring of « Retirer l’agent du hub », but the shared verb the sidecar asks for (« the same verb as delist_confirm ») is present, and FR-HB2-3 records the neighbouring speech-control concern. Pager: visible « Précédent »/« Suivant » are contained (case-insensitively) in the shipped accessible names « Page précédente »/« Page suivante » from ui.common.forms."
+    },
+    {
+      "id": "O7",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.card.like.aria_unknown",
+        "ui.hub.browse.card.like.tooltip_liked",
+        "ui.hub.browse.card.like.tooltip_signed_out",
+        "ui.hub.browse.card.like.tooltip_unknown",
+        "ui.hub.browse.card.like.tooltip_unliked",
+        "ui.hub.browse.details.failure.like",
+        "ui.hub.browse.details.viewer_unknown"
+      ],
+      "verdict": "earlier first-audit finding confirmed resolved",
+      "note": "The earlier first audit's only finding asked for « J’aime » to be lowercased in these seven keys. All seven now carry lowercase « j’aime » in the bytes (and « Vos j’aime » stays invariable, which is correct for this attested noun, with « lus » agreeing masculine plural). Confirmed from the bytes, not from a translator report. « un j’aime » is dictionary-attested and the choice is consistent across the namespace; no further change asked."
+    },
+    {
+      "id": "O8",
+      "severity": "observation",
+      "keys": [
+        "*"
+      ],
+      "verdict": "earlier receipt's statistic not reproducible — noted, not relied on",
+      "note": "The earlier first-audit receipt states 21 U+2019 apostrophes; these bytes contain 35. The earlier draft is uncommitted and its bytes are not on disk, so the two candidates cannot be diffed, and I record only what I measured here (35). None of that receipt's counts is treated as evidence in this verdict."
+    },
+    {
+      "id": "O9",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.details.delist_tooltip",
+        "ui.hub.browse.details.delist_body",
+        "ui.hub.updates.error.model_unavailable"
+      ],
+      "verdict": "source-level and out-of-scope notes",
+      "note": "Two notes for the manager, neither a translation defect. (a) The source is in tension with itself: delist_tooltip says « Permanently delist » while delist_body says the upload can be repeated later; the French mirrors both faithfully, so the resolution belongs in the English copy. (b) Shipped fr ui.hub.updates.error.model_unavailable says « Paramètres › Agent Hub » where every other French string names the surface « Hub des agents » — pre-existing drift in another namespace, outside this candidate and untouched here."
+    },
+    {
+      "id": "O10",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.card.get",
+        "ui.hub.browse.details.delist_title",
+        "ui.hub.browse.card.updated",
+        "ui.hub.browse.pager.previous"
+      ],
+      "verdict": "flagged for a rendered check only — no pixel claim",
+      "note": "Codepoint widths only, since there is no browser host in this session: « Obtenir » is +4 characters on « Get » in a shrink-0 sm button in the card footer beside two counts; « Retirer cet agent du hub ? » is 26 characters against 18 inside a maxWidth=xs dialog title; « mis à jour {age} » is +3 inside a single-line `truncate` provenance row that already ellipsises; « Précédent »/« Suivant » are +1/+3 in a justify-between pager row. The footer wraps and the provenance row truncates, so none is a proven defect; these are the strings to inspect first if a rendered pass is ever run."
+    },
+    {
+      "id": "O11",
+      "severity": "observation",
+      "keys": [
+        "*"
+      ],
+      "verdict": "second independent pass",
+      "note": "The high-visibility second pass re-read every destructive, permission and error string with the emitting code open, deliberately looking for the failure modes a first read misses: negation flipping, a success claim inside a failure message, an unknown-state string asserting « not liked », and impersonality that hides who must act. None present: the four failure strings all state non-completion without claiming side effects, the two tooltip_unknown strings explain a failed read without asserting a state, the signed-out strings name the action needed, and delist_body states both the immediate effect and the reversal path. No meaning, polarity, omission or addition defect found in either pass."
+    }
+  ],
+  "namespace_verdicts": {
+    "ui.hub.browse": "passed (clean-with-findings) — 41/41 strings read twice; no placeholder, ICU, encoding, punctuation or terminology defect; vous register uniform; destructive and error copy faithful and safe; three nit-level wording suggestions (FR-HB2-1..3), none affecting meaning"
+  },
+  "verdict": "Passed with three nits and no blocker, major or minor. The French candidate is accurate, consistently registered, terminologically aligned with the shipped French hub catalogues and typographically exact (U+202F before ; : ?, U+2019 apostrophes, NFC, no bidi controls). The earlier first-audit minor is confirmed resolved in the bytes. Nothing here should gate the merge: the nits are optional polish, and the one real gate in the neighbourhood is the missing ledger row (O2), which is a separate write step and not a property of this file.",
+  "counts": {
+    "keys_read": 41,
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 3,
+    "observations": 11
+  }
+}
