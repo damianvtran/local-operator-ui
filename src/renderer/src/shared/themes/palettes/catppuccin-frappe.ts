@@ -39,7 +39,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const catppuccinFrappe: ThemeDefinition = {
 	id: "catppuccinFrappe",
 	name: "Catppuccin Frappé",
-	description: "The middle flavour — warm slate under the Catppuccin pastels.",
+	descriptionKey: "ui.settings.appearance.theme.catppuccin_frappe",
 	palette: {
 		mode: "dark",
 

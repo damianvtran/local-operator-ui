@@ -34,7 +34,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const kanagawaWave: ThemeDefinition = {
 	id: "kanagawaWave",
 	name: "Kanagawa Wave",
-	description: "Hokusai ink-wash night, muted paper tones on deep sumi.",
+	descriptionKey: "ui.settings.appearance.theme.kanagawa_wave",
 	palette: {
 		mode: "dark",
 

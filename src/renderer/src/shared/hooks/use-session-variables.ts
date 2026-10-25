@@ -44,7 +44,7 @@ export const useSessionVariables = (
 		queryKey: sessionVariablesQueryKey(sessionId),
 		queryFn: async () => {
 			if (!sessionId) {
-				throw new Error("A session id is required to read code memory.");
+				throw new Error(t("ui.common.errors.session_id_required"));
 			}
 			return listSessionVariables(sessionId);
 		},

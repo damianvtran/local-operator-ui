@@ -1,0 +1,5 @@
+{
+	"ui.library.errors.preview_load": "无法加载此预览。",
+	"ui.library.errors.asset_read": "无法读取资源内容。",
+	"ui.library.errors.empty_bytes": "字节数据为空。"
+}

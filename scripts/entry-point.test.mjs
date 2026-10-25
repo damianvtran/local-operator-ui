@@ -177,6 +177,29 @@ function cases(root) {
 	mkdirSync(noPython, { recursive: true });
 	const scriptsScope = scriptsScopeRepo(root);
 	const classifier = classifierRepo(root);
+	/*
+	 * The payload scan's two answers, built from the shapes it exists for rather
+	 * than a paraphrase of them: an ordinary long line, which is a log a reader
+	 * can still read, and the multi-megabyte `data:` frame that stalled shard 2/3
+	 * at its 50-minute cap. The second is 8 MB of base64 on ONE line, which is
+	 * what the incident measured (8,264,707 bytes).
+	 */
+	const quietLog = join(root, "quiet-suite.log");
+	writeFileSync(
+		quietLog,
+		["# Subtest: an ordinary reading", `ok 1 - ${"x".repeat(64_000)}`, ""].join(
+			"\n",
+		),
+	);
+	const payloadLog = join(root, "payload-suite.log");
+	writeFileSync(
+		payloadLog,
+		[
+			"# Subtest: a superseded refusal ends the loop",
+			`#     at desktopResult (data:text/javascript;base64,${"QUJD".repeat(2_000_000)}:50450:21)`,
+			"",
+		].join("\n"),
+	);
 	return [
 		{ ...desktopShardRefusal, cwd: plain, env: {} },
 		{
@@ -466,6 +489,31 @@ function cases(root) {
 			env: {},
 			status: 0,
 			stdout: /check-scripts-lint: no file under scripts\/ changed since main/,
+			stderr: /^$/,
+		},
+		{
+			// `ci.yml`'s payload-scan step, on the shape it must NOT complain about:
+			// an ordinary long line is not a payload, and a gate that fires on one is a
+			// gate the next reader routes around.
+			script: "ci-log-guard.mjs",
+			args: ["check", quietLog],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /ci-log-guard: clean/,
+			stderr: /^$/,
+		},
+		{
+			// ...and on the shape it exists for: the 8 MB `data:` frame from the
+			// incident, named by rule, frame and the file it came from, in a finding
+			// short enough that a reader can act on it.
+			script: "ci-log-guard.mjs",
+			args: ["check", payloadLog],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout:
+				/::error::ci-log-guard \[data-uri\][\s\S]*desktopResult[\s\S]*data-uri=1, oversized-line=1/,
 			stderr: /^$/,
 		},
 		{

@@ -82,6 +82,7 @@ import {
 	type CanonicalSessionRow,
 	LEGACY_CATALOGUE_PAGE,
 	catalogueScopeKey,
+	conversationTitleForDisplay,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -2519,7 +2520,7 @@ export function ChatSidebar({
 			if (!fact.pinned || listed.has(id)) continue;
 			out.push({
 				session_id: id,
-				title: fact.title || "Untitled chat",
+				title: fact.title || "",
 				updated_at: fact.updated_at,
 				pinned: true,
 			});
@@ -3154,7 +3155,9 @@ export function ChatSidebar({
 	 * (round 2, M2). The fallback is the row render's own ("Untitled chat").
 	 */
 	const rowLabel = (id: string): string =>
-		matching.find((row) => row.session_id === id)?.title || "Untitled chat";
+		conversationTitleForDisplay(
+			matching.find((row) => row.session_id === id)?.title,
+		);
 	const orderedPinned = orderPinnedRows(pinned, view.pins);
 	const pinnedDrawnIds = orderedPinned.map((row) => row.session_id);
 	const pinnedIndex = new Map(
@@ -4423,7 +4426,7 @@ export function ChatSidebar({
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
-		const label = row.title || "Untitled chat";
+		const label = conversationTitleForDisplay(row.title);
 		/*
 		 * ARCHIVED, as THIS row knows it: the wire's value, or the client's own when it
 		 * has written one that this row's answer predates (`archiveFacts` - the same
@@ -4613,7 +4616,7 @@ export function ChatSidebar({
 		const rowTooltip = (
 			<>
 				<span className="block">
-					{row.title || "Untitled chat"}
+					{conversationTitleForDisplay(row.title)}
 					{bindingClause(row)}
 				</span>
 				<span className="block">
@@ -4873,7 +4876,7 @@ export function ChatSidebar({
 				 * fade and the reduced-motion off switch are all that module's, with the
 				 * reasoning for each.
 				 */}
-				<ChatRowTitle text={row.title || "Untitled chat"} />
+				<ChatRowTitle text={conversationTitleForDisplay(row.title)} />
 				{/*
 				 * THE SUBAGENT INDICATOR, immediately after the title and before the
 				 * trailing statement - the placement `sidebar-row-space.md` §2 forces:
@@ -6447,7 +6450,7 @@ export function ChatSidebar({
 					 * `rename` through `useSessionCommand` - asked for the way the Fork item above
 					 * asks, because the sidebar owns no presenter. The request names THIS row's
 					 * conversation (the pane's own is generally not the row's) AND carries the name
-					 * the row draws (`row.title || "Untitled chat"`), so the dialog's field opens on
+					 * the row draws (`conversationTitleForDisplay(row.title)`), so the dialog's field opens on
 					 * the name the user pointed at rather than on the pane's title - the row is the
 					 * only party that holds its own name (see `PanelRequest.subjectName`). A third
 					 * door to ONE write, not a second mechanism.
@@ -6467,7 +6470,7 @@ export function ChatSidebar({
 									`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
 								),
 								row.session_id,
-								{ subjectName: row.title || "Untitled chat" },
+								{ subjectName: conversationTitleForDisplay(row.title) },
 							);
 							// The palette's own guard, minus its first clause (the Fork item's
 							// reasoning, verbatim): `session.rename` is pane-only, so the request
@@ -8936,7 +8939,7 @@ export function ChatSidebar({
 		<p ref={pinRef} className="pb-2 text-meta text-warning">
 			{t("ui.chat.sidebar.pins.failure", {
 				action: pinFailure.pinned ? "pin" : "unpin",
-				title: pinFailure.title,
+				title: conversationTitleForDisplay(pinFailure.title, "this_chat"),
 			})}
 			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
 			<button

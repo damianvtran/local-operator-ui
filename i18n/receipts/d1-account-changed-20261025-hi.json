@@ -1,0 +1,18 @@
+{
+  "auditor": "translation-auditor",
+  "model": "unreported-by-delegating-agent",
+  "model_provenance": "The independent audit ran in the delegating agent's session (translator and a separate auditor). That session reported: clean/terminal, 0 blocker, 0 major, four phrasing improvements and one naming correction, all incorporated before landing. This record transcribes that verdict; it does not claim this session performed or re-modelled the audit.",
+  "instance": "d1-account-changed-20261025-hi",
+  "date": "2026-10-25",
+  "locale": "hi",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 1,
+  "scope": "One-key delta for PR #1314: ui.teamBridge.attachments.error_account_changed. English and hi read against the context sidecar and the rendering call site (attachment chip, captured-owner refusal). Four phrasing improvements and the mismatch->changed rename were applied before landing; no unresolved findings.",
+  "sha256": {
+    "en": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+    "hi": "9e99a05e61266bb001e19d448f7a2c72b48b04f392a1bb90b6691aeeb978d94d"
+  },
+  "findings": []
+}

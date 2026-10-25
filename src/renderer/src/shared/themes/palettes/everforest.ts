@@ -40,7 +40,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const everforest: ThemeDefinition = {
 	id: "everforest",
 	name: "Everforest",
-	description: "Low-contrast forest night, moss green over warm slate.",
+	descriptionKey: "ui.settings.appearance.theme.everforest",
 	palette: {
 		mode: "dark",
 

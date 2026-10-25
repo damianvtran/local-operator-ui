@@ -40,7 +40,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const desert: ThemeDefinition = {
 	id: "desert",
 	name: "Desert",
-	description: "Warm dark sand under a terracotta glow and cactus green.",
+	descriptionKey: "ui.settings.appearance.theme.desert",
 	palette: {
 		mode: "dark",
 		/*

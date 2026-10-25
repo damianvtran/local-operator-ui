@@ -28,5 +28,22 @@
 	"ui.chat.canonical.transcript.source_unavailable": "Cette conversation reste lisible, mais l’ordre de ses messages n’a pas pu être confirmé auprès de la source pour le moment.",
 	"ui.chat.canonical.transcript.stale_caption": "Affichage de la dernière vue enregistrée — recherche de messages plus récents.",
 	"ui.chat.canonical.transcript.start_new_chat": "Démarrer une nouvelle conversation",
-	"ui.chat.canonical.transcript.stopped_before_finishing": "Arrêtée avant la fin"
+	"ui.chat.canonical.transcript.stopped_before_finishing": "Arrêtée avant la fin",
+	"ui.chat.canonical.send_failure.unconfirmed": "Impossible de confirmer l’envoi de votre message. Vous pouvez le renvoyer sans risque.",
+	"ui.chat.canonical.send_failure.unreachable": "Local Operator est injoignable. Votre message n’a peut-être pas été envoyé.",
+	"ui.chat.canonical.send_failure.busy": "L’agent est occupé ; votre message n’a pas été envoyé.",
+	"ui.chat.canonical.send_failure.aside_not_answered": "L’aparté n’a pas reçu de réponse.",
+	"ui.chat.canonical.send_failure.aside_still_answering": "L’aparté répond encore. Appuyez à nouveau sur Entrée une fois la réponse terminée.",
+	"ui.chat.canonical.send_failure.retiring": "Local Operator redémarre ; votre message n’a pas été envoyé. Réessayez dans un instant.",
+	"ui.chat.canonical.send_failure.not_ready": "Cette conversation n’est pas encore prête ; votre message n’a pas été envoyé.",
+	"ui.chat.canonical.send_failure.generic": "Votre message n’a pas été envoyé.",
+	"ui.chat.canonical.send_failure.gone": "Cette conversation n’existe plus ; votre message n’a pas été envoyé.",
+	"ui.chat.canonical.send_failure.send_lock": "Votre dernier message est encore en cours d’envoi.",
+	"ui.chat.canonical.send_failure.gate_lock": "Répondez d’abord à la question ci-dessus.",
+	"ui.chat.canonical.send_failure.queued_send": "Votre message sera envoyé dès que la conversation sera prête.",
+	"ui.chat.canonical.send_failure.late_delivery": "Votre message précédent a été remis.",
+	"ui.chat.canonical.send_failure.late_delivery_draft": "Votre message précédent a été remis. Le texte actuel n’a pas été envoyé.",
+	"ui.chat.canonical.send_failure.late_delivery_overlap": "Votre message précédent a été remis. Son texte figure encore dans le champ ; le renvoyer le dupliquerait.",
+	"ui.chat.canonical.untitled": "Conversation sans titre",
+	"ui.chat.canonical.this_chat": "cette conversation"
 }

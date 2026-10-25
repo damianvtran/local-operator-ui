@@ -34,5 +34,19 @@
 	"ui.common.actions.text_selection_controls.open_in_browser": "Abrir en el navegador",
 	"ui.common.actions.confirmation_modal.confirm": "Confirmar",
 	"ui.common.actions.confirmation_modal.cancel": "Cancelar",
-	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} de {matchcount, number, ::group-off}"
+	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} de {matchcount, number, ::group-off}",
+	"ui.common.actions.agent_created": "Agente creado",
+	"ui.common.actions.agent_deleted": "Agente eliminado",
+	"ui.common.actions.agent_imported": "Agente importado",
+	"ui.common.actions.agent_exported": "Agente exportado",
+	"ui.common.actions.agent_updated": "Agente actualizado",
+	"ui.common.actions.agent_system_prompt_updated": "Prompt del sistema del agente actualizado",
+	"ui.common.actions.conversation_cleared": "Conversación borrada",
+	"ui.common.actions.variable_created": "Variable creada",
+	"ui.common.actions.variable_updated": "Variable actualizada",
+	"ui.common.actions.variable_deleted": "Variable eliminada",
+	"ui.common.actions.configuration_updated": "Configuración actualizada",
+	"ui.common.actions.system_prompt_updated": "Prompt del sistema actualizado",
+	"ui.common.actions.credential_updated": "Credencial “{key}” actualizada",
+	"ui.common.actions.clear": "Borrar"
 }

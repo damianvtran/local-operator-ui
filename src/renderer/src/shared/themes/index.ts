@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 import type { ThemeCollection, ThemeName, ThemeOption } from "../types/theme";
 import { createBaseTheme } from "./base-theme";
 import type { ThemeDefinition } from "./palette-contract";
@@ -205,7 +206,17 @@ export const themes: ThemeCollection = Object.fromEntries(
 		{
 			id: definition.id,
 			name: definition.name,
-			description: definition.description,
+			/*
+			 * Resolve the description KEY here, at read time. The palette files are
+			 * colour data and carry no copy: a `t()` at their module scope froze
+			 * bootstrap English (and broke `check-design-kit`, whose esbuild fixture
+			 * has no i18n module to resolve). Reading here keeps the picker in step
+			 * with a live language switch for the same reason the earlier getter
+			 * existed.
+			 */
+			get description() {
+				return t(definition.descriptionKey);
+			},
 			theme: createBaseTheme(definition.palette),
 		},
 	]),

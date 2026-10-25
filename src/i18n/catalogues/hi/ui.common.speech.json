@@ -3,5 +3,16 @@
 	"ui.common.speech.speak_control.replay_speech": "स्पीच फिर चलाएँ",
 	"ui.common.speech.speak_control.speak_aloud": "ज़ोर से पढ़ें",
 	"ui.common.speech.speak_control.stop": "रोकें",
-	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": "पहले {tolocalestring} अक्षर पढ़े जा रहे हैं। बाकी को ज़ोर से नहीं पढ़ा जाएगा।"
+	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": "पहले {tolocalestring} अक्षर पढ़े जा रहे हैं। बाकी को ज़ोर से नहीं पढ़ा जाएगा।",
+	"ui.common.speech.control.checking": "आपका Radient साइन-इन जाँचा जा रहा है…",
+	"ui.common.speech.control.recording_sign_in": "रिकॉर्डिंग चालू करने के लिए सेटिंग्स में Radient में साइन इन करें",
+	"ui.common.speech.control.recording_unknown": "आपका Radient साइन-इन जाँचा नहीं जा सका, इसलिए अभी रिकॉर्डिंग उपलब्ध नहीं है",
+	"ui.common.speech.control.recording_offline": "Local Operator के ऑफ़लाइन होने पर रिकॉर्डिंग उपलब्ध नहीं है",
+	"ui.common.speech.control.speaking_sign_in": "बोलकर सुनाना चालू करने के लिए सेटिंग्स में Radient में साइन इन करें",
+	"ui.common.speech.control.speaking_unknown": "आपका Radient साइन-इन जाँचा नहीं जा सका, इसलिए अभी बोलकर सुनाना उपलब्ध नहीं है",
+	"ui.common.speech.control.speaking_offline": "Local Operator के ऑफ़लाइन होने पर बोलकर सुनाना उपलब्ध नहीं है",
+	"ui.common.speech.settings.checking": "जाँचा जा रहा है कि यह मशीन बोलकर सुना सकती है या नहीं…",
+	"ui.common.speech.settings.sign_in": "अभी कुछ भी बोलकर नहीं सुनाया जा सकता: साइन इन करने के लिए /login radient चलाएँ, या मॉडल प्रोवाइडर सेक्शन में प्रोवाइडर कुंजी सहेजें",
+	"ui.common.speech.settings.unknown": "अभी कुछ भी बोलकर नहीं सुनाया जा सकता। इसके लिए Radient साइन-इन या सहेजी हुई प्रोवाइडर कुंजी ज़रूरी है",
+	"ui.common.speech.settings.offline": "Local Operator ऑफ़लाइन है, इसलिए अभी कुछ भी बोलकर नहीं सुनाया जा सकता"
 }

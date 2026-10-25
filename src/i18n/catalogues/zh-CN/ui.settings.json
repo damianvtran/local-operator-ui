@@ -37,5 +37,11 @@
 	"ui.settings.profile.account_read_failed_retry": "无法读取Radient账户，因此下方的姓名和邮箱只是占位内容，并非你的账户信息。重试。",
 	"ui.settings.profile.account_read_failed_refused": "无法读取Radient账户，因此下方的姓名和邮箱只是占位内容，并非你的账户信息。重试，或重新登录Radient。",
 	"ui.settings.profile.retry": "重试",
-	"ui.settings.profile.retrying": "正在重试"
+	"ui.settings.profile.retrying": "正在重试",
+	"ui.settings.section.delegated_enabled.gate_label": "自动移除",
+	"ui.settings.section.delegated_enabled.help": "仅适用于子智能体运行、智能体Shell和后台运行。",
+	"ui.settings.section.delegated_enabled.label": "自动移除委派会话",
+	"ui.settings.section.delegated_max_age.help": "保留时长：委派会话（子智能体或后台运行）空闲超过此时长后会被移除。",
+	"ui.settings.section.delegated_max_age.label": "移除前空闲时长",
+	"ui.settings.section.session_delegated.title": "委派工作：子智能体和后台会话"
 }

@@ -43,7 +43,7 @@ export const useAgentSystemPrompt = (agentId: string) => {
 
 				if (response.status >= 400) {
 					throw new Error(
-						response.message || "Failed to fetch agent system prompt",
+						response.message || t("ui.common.errors.agent_prompt_fetch"),
 					);
 				}
 
@@ -52,7 +52,7 @@ export const useAgentSystemPrompt = (agentId: string) => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while fetching agent system prompt";
+						: t("ui.common.errors.agent_prompt_fetch_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -95,7 +95,8 @@ export const useUpdateAgentSystemPrompt = (agentId: string) => {
 
 				if (response.status >= 400) {
 					throw new Error(
-						response.message || "Failed to update agent system prompt",
+						response.message ||
+							t("ui.common.errors.agent_prompt_update_simple"),
 					);
 				}
 
@@ -104,7 +105,7 @@ export const useUpdateAgentSystemPrompt = (agentId: string) => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while updating agent system prompt";
+						: t("ui.common.errors.agent_prompt_update_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;

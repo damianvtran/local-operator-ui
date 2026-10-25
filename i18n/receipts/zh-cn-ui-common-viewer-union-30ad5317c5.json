@@ -1,0 +1,260 @@
+{
+  "schema": 1,
+  "audit_kind": "translation-audit",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor (lopdev team)",
+  "model": "deepseek/deepseek-flash",
+  "model_fallback": "none",
+  "model_note": "Harness session model tag deepseek/deepseek-flash; no model switch or fallback occurred during this run.",
+  "session": "a816cdf135c7",
+  "instance": "zh-cn-ui-common-viewer-union-30ad5317c5",
+  "instance_scope": "Artifact-scoped receipt instance for this locale. All seven receipts were authored in one session (a816cdf135c7); they are not seven independent reviewers.",
+  "date": "2026-10-25",
+  "locale": "zh-CN",
+  "namespace": "ui.common.viewer",
+  "head": "30ad5317c5965fb1dfd40cb78b16525977129035",
+  "merge_parents": {
+    "A": "649a09fe302bd422e3db30804b8f278e78f64e24",
+    "B": "ece9ae92191a50950e0a7987b93163a7fba8b288"
+  },
+  "status": "clean-with-findings",
+  "verdict": "PASS — clean-with-findings. Union provenance is exact: all 13 values are byte-identical to one merge parent (8 to both, 4 B-only, 1 A-only), the key set equals English and the parent union, and there are no duplicate keys. All live strings are clean and idiomatic. Findings: the shared structural minor on image_progress, which equals position's other arm. 1 minor / 0 nit, 0 blocker/major.",
+  "keys_read": 13,
+  "keys_audited": 13,
+  "sha256": {
+    "en": "abfb7cc367dfbe11730a4ee57f5fbb19b67c67dbff1b919ae4575d72fa0fa537",
+    "zh-CN": "f7fbeeee0874645f3c11afd6c999a43729ca471befcca0c7fa8d6ba4c7c4d657",
+    "context": "e01d781a09d1bf5cc6368e79e3f7f89a8b25d923ac5e8fc93f137198325a5d2d"
+  },
+  "key_set": {
+    "english": 13,
+    "parent_A": 9,
+    "parent_B": 12,
+    "parent_union": 13,
+    "target": 13,
+    "equals_english": true,
+    "equals_parent_union": true,
+    "missing": [],
+    "extra": []
+  },
+  "duplicate_keys": {
+    "decoded_json": [],
+    "decoded_json_parent_A": [],
+    "decoded_json_parent_B": [],
+    "raw_duplicate_lines": [],
+    "note": "Checked with json.loads(object_pairs_hook=...) so last-wins parsing cannot hide a repeated member, and again at the raw line level. None found in any of the eight files."
+  },
+  "union": {
+    "A_only": [
+      "ui.common.viewer.image_progress"
+    ],
+    "B_only": [
+      "ui.common.viewer.close",
+      "ui.common.viewer.next",
+      "ui.common.viewer.position",
+      "ui.common.viewer.previous"
+    ],
+    "both": [
+      "ui.common.viewer.opening",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out",
+      "ui.common.viewer.image_lightbox.previous",
+      "ui.common.viewer.image_lightbox.next",
+      "ui.common.viewer.image_lightbox.close",
+      "ui.common.viewer.image_lightbox.asset_of"
+    ],
+    "neither": []
+  },
+  "per_key": [
+    {
+      "key": "ui.common.viewer.close",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {关闭图片} asset {关闭资源} other {关闭}}",
+      "raw_value_sha256": "462cde386b4c1caa764f325c59156a0d6cb1a7b2dd428c2b6c6ec249dbc50081"
+    },
+    {
+      "key": "ui.common.viewer.next",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {下一张图片} asset {下一个资源} other {下一个}}",
+      "raw_value_sha256": "a0158d55749aa12d076d03006ca6e72041e2d9756e43fedbf4802522cd4d4d84"
+    },
+    {
+      "key": "ui.common.viewer.opening",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "正在打开……",
+      "raw_value_sha256": "32c6a5d9be30b99abeef7d1b37abd2585f5d3982b6e77d42dc897a01b02f44f2"
+    },
+    {
+      "key": "ui.common.viewer.position",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {第{index, number, ::group-off}张图片，共{count, number, ::group-off}张} asset {第{index, number, ::group-off}个资源，共{count, number, ::group-off}个} other {第{index, number, ::group-off}张，共{count, number, ::group-off}张}}",
+      "raw_value_sha256": "7285d03e63293567e8fc3af2327f6d528c7cf3455a5488396c5063b0d6757ffb"
+    },
+    {
+      "key": "ui.common.viewer.previous",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {上一张图片} asset {上一个资源} other {上一个}}",
+      "raw_value_sha256": "4fc872356c6bb60991264833ca31f4e6df284f9a0d2ed579705bb473d34338a3"
+    },
+    {
+      "key": "ui.common.viewer.reset_view",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "重置视图",
+      "raw_value_sha256": "32e0fbe80119c555b6ee4a837e1523144b4454d1e603a884a7e0721058fbbb82"
+    },
+    {
+      "key": "ui.common.viewer.zoom_in",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "放大",
+      "raw_value_sha256": "c5cfd170e3c22807a5684c37b2817ca86642356d3521dd556cb4bc2e2658123c"
+    },
+    {
+      "key": "ui.common.viewer.zoom_out",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "缩小",
+      "raw_value_sha256": "4810fff39577bc71ee08c92ea2af6de9bde90a2f4a9c12f6607e22c77b3b46e9"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.previous",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "上一个{medialabel}",
+      "raw_value_sha256": "5e0d3bac67300bc35d61646b2cf4efff5506585abc8a8d3140f00cb926480dc5"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.next",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "下一个{medialabel}",
+      "raw_value_sha256": "705fc801062ea07716da75738e79a12ed20a01514f4b2704bd0ea88370ea6cbc"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.close",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "关闭{medialabel}",
+      "raw_value_sha256": "53823050082cc4067251e30948ff66a35f6eacd09701e627aa3aee5d52cf361c"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.asset_of",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "第{index, number, ::group-off}项，共{count, number, ::group-off}项",
+      "raw_value_sha256": "650512c824569fde85ead88a2c05e3fbc255b338dcec98df1689024dedbd78ac"
+    },
+    {
+      "key": "ui.common.viewer.image_progress",
+      "source": "A",
+      "present_in_A": true,
+      "present_in_B": false,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": false,
+      "value": "第{index, number, ::group-off}张，共{count, number, ::group-off}张",
+      "raw_value_sha256": "af3fbae490239581f961a470fb197ad0472d7b267b40cb5a1a934d91b2a2fada"
+    }
+  ],
+  "icu": {
+    "runtime": "intl-messageformat 12.1.3 on Node 24.22.1",
+    "keys_compiled": 13,
+    "select_messages": 4,
+    "select_arms": 12,
+    "arm_names": [
+      "image",
+      "asset",
+      "other"
+    ],
+    "number_skeletons": {
+      "occurrences": 10,
+      "skeleton": "::group-off",
+      "all_match_english": true
+    },
+    "render_samples": {
+      "position_3_of_5": "第3张图片，共5张",
+      "position_index_1234_count_1500000": "第1234张图片，共1500000张",
+      "image_progress_3_of_5": "第3张，共5张"
+    },
+    "errors": []
+  },
+  "image_progress": {
+    "referenced_in_code": false,
+    "evidence": "git grep image_progress at 30ad5317c5 matches only src/i18n/catalogues/**, src/i18n/keys.gen.ts and historical i18n/receipts/**. The current counter call sites are src/renderer/src/shared/lib/image-viewer-model.ts:92 and src/renderer/src/shared/components/common/image-lightbox.tsx:429, both ui.common.viewer.position. The four ui.common.viewer.image_lightbox.* keys are likewise unreferenced in app code.",
+    "superseded_caller": "Parent A's image-viewer-model.ts:92 called image_progress; parent B's identical function calls position with kind: image. The merge resolved the code to B and the catalogue to A ∪ B.",
+    "same_as_position_image_arm": false,
+    "same_as_position_other_arm": true,
+    "recommendation": "remove — dead copy that carries a second counter wording; do not leave it as an unused alternative"
+  },
+  "findings": [
+    {
+      "id": "ZH-CN-UNION-01",
+      "severity": "minor",
+      "category": "dead-copy",
+      "key": "ui.common.viewer.image_progress",
+      "current": "第{index, number, ::group-off}张，共{count, number, ::group-off}张",
+      "proposed": "remove ui.common.viewer.image_progress from the English source, its context sidecar and all seven targets, together with the four unreferenced ui.common.viewer.image_lightbox.* keys, in a follow-up extraction change; if a progress counter is needed later, reuse ui.common.viewer.position",
+      "reason": "At 30ad5317c5 the key has no caller: parent A's image-viewer-model.ts:92 used it, parent B's identical function calls ui.common.viewer.position with kind: image, and the merge resolved the code to B while unioning A's key. It restates position's image-counter role without a kind select, so it cannot serve assets, and its sidecar is boilerplate (role \"Hub update \") rather than viewer context. Seven locales now maintain a second source of truth for the same counter.",
+      "locale_detail": "Equals position's other arm (第{index}张，共{count}张), not its image arm; if activated for an image it drops 图片 and reads as a different counter.",
+      "introduced_by": "merge 30ad5317c5 (A 649a09fe30 + B ece9ae9219)",
+      "disposition": "non-gating minor; recommend removal in a follow-up extraction PR, not in this audit (removal changes key sets, keys.gen.ts and every locale)"
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "observations": [
+    "Union was checked at the raw JSON literal level: each value's bytes (escapes included) equal the same key's bytes in A or B; no value was rewritten, re-escaped or round-tripped.",
+    "Key order is parent B's order with A's single unique key (image_progress) appended; no existing line was reordered. Ordering is not semantically required and is not part of this binding.",
+    "No duplicate JSON members and no duplicate raw key lines in any of the eight files (en + seven locales); the silent auto-merge duplicate class seen elsewhere did not occur here.",
+    "Byte hygiene: no BOM, no bidi controls (U+200E/F, U+202A–E, U+2066–9), no ZWSP/ZWNJ/ZWJ, no NBSP/U+202F, no trailing spaces; every value is NFC.",
+    "The four ui.common.viewer.image_lightbox.* keys are also unreferenced at HEAD (and were already unreferenced in both parents); they belong in the same cleanup as image_progress.",
+    "image_progress's English context sidecar says role \"Hub update \" (trailing space) and describes a 'plural selector' although the message uses a number skeleton — evidence it was imported from a bulk wave, not authored for the viewer."
+  ],
+  "limitations": "Read-only audit from the working tree at 30ad5317c5; no catalogue, context, ledger, allowance or generated file was edited, and this receipt is the only file written. No browser or native render was run, so this is a source-copy, ICU and provenance audit; rendered fit remains unproven. Width figures quoted are cell estimates from the ICU render, not measured pixels."
+}

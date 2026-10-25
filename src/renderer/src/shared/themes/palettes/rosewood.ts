@@ -39,7 +39,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const rosewood: ThemeDefinition = {
 	id: "rosewood",
 	name: "Rosewood",
-	description: "Dark rosewood with dried-rose reds and a glint of brass.",
+	descriptionKey: "ui.settings.appearance.theme.rosewood",
 	palette: {
 		mode: "dark",
 		/*

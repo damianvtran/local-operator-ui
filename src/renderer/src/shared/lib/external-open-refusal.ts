@@ -1,4 +1,3 @@
-import { showErrorToast } from "@shared/utils/toast-manager";
 /**
  * The sentence a refused external open shows, and the listener that shows it
  * (round-2 R-4).
@@ -16,7 +15,8 @@ import { showErrorToast } from "@shared/utils/toast-manager";
  * is pinned on the main side (`window-guards.test.mjs`'s refusal table), so the
  * two cannot drift into disagreeing about what "loopback or private" is.
  */
-import { t } from "../../../../i18n";
+import { t } from "@shared/i18n";
+import { showErrorToast } from "@shared/utils/toast-manager";
 
 /** The one sentence, per refusal class. */
 export const externalOpenFailure = (reason: string): string =>

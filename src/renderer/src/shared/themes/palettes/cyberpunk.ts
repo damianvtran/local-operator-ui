@@ -61,8 +61,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const cyberpunk: ThemeDefinition = {
 	id: "cyberpunk",
 	name: "Cyberpunk",
-	description:
-		"Construction yellow and glare cyan over violet-black Night City.",
+	descriptionKey: "ui.settings.appearance.theme.cyberpunk",
 	palette: {
 		mode: "dark",
 

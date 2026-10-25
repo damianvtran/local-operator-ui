@@ -31,7 +31,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const dracula: ThemeDefinition = {
 	id: "dracula",
 	name: "Dracula",
-	description: "Blue-grey ground with the signature Dracula purple.",
+	descriptionKey: "ui.settings.appearance.theme.dracula",
 	palette: {
 		mode: "dark",
 

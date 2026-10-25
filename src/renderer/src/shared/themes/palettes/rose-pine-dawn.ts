@@ -52,7 +52,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const rosePineDawn: ThemeDefinition = {
 	id: "rosePineDawn",
 	name: "Rosé Pine Dawn",
-	description: "Rosé Pine by daylight: warm rose paper with pine and gold ink.",
+	descriptionKey: "ui.settings.appearance.theme.rose_pine_dawn",
 	palette: {
 		mode: "light",
 

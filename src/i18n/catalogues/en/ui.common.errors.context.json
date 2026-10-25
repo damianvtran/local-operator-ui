@@ -38,5 +38,954 @@
 		"role": "error explanation",
 		"tone": "Reassuring, actionable two-sentence copy.",
 		"note": "Fallback after a component crash; retry is offered first, support only if the failure persists."
+	},
+	"ui.common.errors.agent_delete": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Failed to delete agent {agentId}",
+		"placeholders": {
+			"agentId": "Agent identifier; keep verbatim."
+		}
+	},
+	"ui.common.errors.agent_delete_unknown": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: An unknown error occurred while deleting agent {agentId}",
+		"placeholders": {
+			"agentId": "Agent identifier; keep verbatim."
+		}
+	},
+	"ui.common.errors.agent_export_unknown": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: An unknown error occurred while exporting agent {agentId}",
+		"placeholders": {
+			"agentId": "Agent identifier; keep verbatim."
+		}
+	},
+	"ui.common.errors.agent_fetch": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Failed to fetch agent {agentId}",
+		"placeholders": {
+			"agentId": "Agent identifier; keep verbatim."
+		}
+	},
+	"ui.common.errors.agent_fetch_unknown": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: An unknown error occurred while fetching agent {agentId}",
+		"placeholders": {
+			"agentId": "Agent identifier; keep verbatim."
+		}
+	},
+	"ui.common.errors.agent_update": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Failed to update agent {agentId}",
+		"placeholders": {
+			"agentId": "Agent identifier; keep verbatim."
+		}
+	},
+	"ui.common.errors.agent_update_unknown": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: An unknown error occurred while updating agent {agentId}",
+		"placeholders": {
+			"agentId": "Agent identifier; keep verbatim."
+		}
+	},
+	"ui.common.errors.unknown": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Unknown error"
+	},
+	"ui.common.errors.conversation_clear": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Failed to clear conversation: {error}",
+		"placeholders": {
+			"error": "Available error detail; do not translate technical identifiers inside it."
+		}
+	},
+	"ui.common.errors.variable_create": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The variable could not be created."
+	},
+	"ui.common.errors.variable_update": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The variable could not be updated."
+	},
+	"ui.common.errors.variable_delete": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The variable could not be deleted."
+	},
+	"ui.common.errors.chats_refresh": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Chats could not refresh. Retry to reconnect."
+	},
+	"ui.common.errors.chats_load_more": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Could not load more chats."
+	},
+	"ui.common.errors.chats_load_group": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Could not load this group's chats."
+	},
+	"ui.common.errors.chat_start": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Chat could not start. Retry with the same draft."
+	},
+	"ui.common.errors.session_unvalidated": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready."
+	},
+	"ui.common.errors.leading_slash_message": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: A message can't start with / — that is a command. Move it below your text, or send it on its own."
+	},
+	"ui.common.errors.file_preview_cap": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {filePath} is {size} bytes, over the {cap}-byte preview cap",
+		"placeholders": {
+			"cap": "Maximum preview size in bytes.",
+			"filePath": "Local file path; keep verbatim.",
+			"size": "Measured file size in bytes."
+		}
+	},
+	"ui.common.errors.file_preview_no_bridge": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Local file access is unavailable outside the desktop app."
+	},
+	"ui.common.errors.no_details": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: No error details available"
+	},
+	"ui.common.errors.job_processing": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Sorry, there was an error processing your request."
+	},
+	"ui.common.errors.desktop_refusal_placeholder": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This server did not answer the request for its desktop controls."
+	},
+	"ui.common.errors.media_request": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The media request failed."
+	},
+	"ui.common.errors.audio_playback": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Error playing audio."
+	},
+	"ui.common.errors.dictation_radient_credits": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Dictation failed: you're out of Radient credits. Get more credits, then try again."
+	},
+	"ui.common.errors.dictation_sign_in_refused": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Dictation failed: your Radient sign-in was refused. Sign in to Radient, then try again."
+	},
+	"ui.common.errors.dictation_account_credits": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Dictation failed: the account behind dictation is out of credits. If it's yours, top it up."
+	},
+	"ui.common.errors.dictation_no_reason": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Dictation failed: the server gave no reason. Try again, or report it with the app's log."
+	},
+	"ui.common.errors.dictation_credits_destination": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Dictation failed: the account behind dictation is out of credits. If it's yours, top it up at {destination}.",
+		"placeholders": {
+			"destination": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.common.errors.dictation_provider_credits_destination": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Dictation failed: the {provider} account behind dictation is out of credits. If it's yours, top it up at {destination}.",
+		"placeholders": {
+			"destination": "Runtime value; preserve the placeholder and insert it without translation.",
+			"provider": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.common.errors.dictation_unknown": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Dictation failed: {reason}. Try again, or report it with the app's log.",
+		"placeholders": {
+			"reason": "Already localized hub refusal sentence."
+		}
+	},
+	"ui.common.errors.dictation_unknown_clipped": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Dictation failed: {reason} Try again, or report it with the app's log.",
+		"placeholders": {
+			"reason": "Already localized hub refusal sentence."
+		}
+	},
+	"ui.common.errors.dictation_empty": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: No words were picked up. Try again a little closer to the microphone."
+	},
+	"ui.common.errors.speech_failure": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Couldn't speak this aloud. Try again."
+	},
+	"ui.common.errors.speech_radient_sign_in": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Your Radient sign-in has stopped working. Sign in again in Settings."
+	},
+	"ui.common.errors.speech_radient_credits": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue."
+	},
+	"ui.common.errors.speech_temporarily_unavailable": {
+		"role": "Speech generation refusal",
+		"tone": "Calm temporary failure with a retry remedy.",
+		"length": "One error toast sentence.",
+		"note": "Exact UI rendering of the daemon's 'Speech is temporarily unavailable. Try again in a moment.' protocol refusal. Keep distinct from the shorter 'temporarily unavailable' and 'unavailable right now' variants."
+	},
+	"ui.common.errors.speech_unavailable": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Speech is unavailable right now. Try again in a moment."
+	},
+	"ui.common.errors.speech_unavailable_short": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Speech is temporarily unavailable."
+	},
+	"ui.common.errors.speech_sign_in_enable": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Sign in to Radient in Settings to enable speaking aloud."
+	},
+	"ui.common.errors.speech_unknown_agent": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This conversation's agent is no longer available."
+	},
+	"ui.common.errors.speech_elevenlabs_key": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: ElevenLabs refused your API key. Replace it."
+	},
+	"ui.common.errors.speech_elevenlabs_credits": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Your ElevenLabs credit balance is too low for speech. Add credits with ElevenLabs to continue."
+	},
+	"ui.common.errors.speech_openai_key": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: OpenAI refused your API key. Replace it."
+	},
+	"ui.common.errors.speech_openai_credits": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Your OpenAI credit balance is too low for speech. Add credits with OpenAI to continue."
+	},
+	"ui.common.errors.speech_radient_sign_in_legacy": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Your Radient sign-in has stopped working. Sign in again in the settings page."
+	},
+	"ui.common.errors.speech_sign_in_enable_legacy": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Sign in to Radient in the settings page to enable text to speech."
+	},
+	"ui.common.errors.request_http": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped."
+		}
+	},
+	"ui.common.errors.agents_list": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_create": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_get": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_update_request": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_delete_request": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_history": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_clear": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_prompt_get": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_prompt_update": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_upload_request": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.agent_upload": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"prose": "Server-provided failure prose; insert verbatim."
+		}
+	},
+	"ui.common.errors.publish_unsupported": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim."
+	},
+	"ui.common.errors.teams_unsupported": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim."
+	},
+	"ui.common.errors.chat_request": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.chat_agent": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.chat_async": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.chat_agent_async": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.chat_edit_file": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.credentials_list": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.credentials_fetch": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim."
+	},
+	"ui.common.errors.credential_update_request": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.job_cancel": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.jobs_list": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.jobs_cleanup": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.providers_list": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.models_list": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.schedules_list_all": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.schedule_create": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.schedules_list_agent": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.schedule_get": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.schedule_edit": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.schedule_remove": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped.",
+			"statusText": "HTTP response status text from fetch; insert verbatim."
+		}
+	},
+	"ui.common.errors.public_hub_status": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim.",
+		"placeholders": {
+			"status": "Numeric HTTP response status; ungrouped."
+		}
+	},
+	"ui.common.errors.public_hub_unreachable": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim."
+	},
+	"ui.common.errors.public_hub_json": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim."
+	},
+	"ui.common.errors.public_hub_body": {
+		"role": "API error message",
+		"tone": "Factual failure detail; no blame or alarm.",
+		"length": "One error line or toast; keep the operation and HTTP detail intact.",
+		"note": "Returned as Error.message and may be rendered by the calling surface. Preserve HTTP status and status-text placeholders verbatim."
+	},
+	"ui.common.errors.desktop_backend_offline": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Desktop controls could not reach the backend process."
+	},
+	"ui.common.errors.desktop_backend_compatibility": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Desktop controls need a compatible backend connection."
+	},
+	"ui.common.errors.sign_in_not_waiting": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: This sign-in is no longer waiting for a browser."
+	},
+	"ui.common.errors.sign_in_invalid_address": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: The provider returned an invalid sign-in address."
+	},
+	"ui.common.errors.media_unexpected_response": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: The media request returned an unexpected response."
+	},
+	"ui.common.errors.wake_needs_conversation": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: A scheduled task needs somewhere to run. Pick a conversation or a new one."
+	},
+	"ui.common.errors.configuration_fetch": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to fetch configuration"
+	},
+	"ui.common.errors.server_offline": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Server is offline. Please check your connection."
+	},
+	"ui.common.errors.file_too_large": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Too large to preview"
+	},
+	"ui.common.errors.file_missing": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: File no longer exists"
+	},
+	"ui.common.errors.file_not_file": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Not a file"
+	},
+	"ui.common.errors.file_unreadable": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Could not be read"
+	},
+	"ui.common.errors.agents_fetch": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to fetch agents"
+	},
+	"ui.common.errors.agents_fetch_unknown": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: An unknown error occurred while fetching agents"
+	},
+	"ui.common.errors.agent_create_unknown": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: An unknown error occurred while creating the agent"
+	},
+	"ui.common.errors.agent_import": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to import agent"
+	},
+	"ui.common.errors.agent_import_unknown": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: An unknown error occurred while importing the agent"
+	},
+	"ui.common.errors.agent_prompt_fetch": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to fetch agent system prompt"
+	},
+	"ui.common.errors.agent_prompt_fetch_unknown": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: An unknown error occurred while fetching agent system prompt"
+	},
+	"ui.common.errors.agent_prompt_update_unknown": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: An unknown error occurred while updating agent system prompt"
+	},
+	"ui.common.errors.execution_history_fetch": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to fetch execution history"
+	},
+	"ui.common.errors.system_prompt_fetch": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to fetch system prompt"
+	},
+	"ui.common.errors.system_prompt_fetch_unknown": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: An unknown error occurred while fetching system prompt"
+	},
+	"ui.common.errors.configuration_update": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to update configuration"
+	},
+	"ui.common.errors.configuration_update_unknown": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: An unknown error occurred while updating configuration"
+	},
+	"ui.common.errors.credential_update": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to update credential"
+	},
+	"ui.common.errors.credential_update_unknown": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: An unknown error occurred while updating credential"
+	},
+	"ui.common.errors.system_prompt_update": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to update system prompt"
+	},
+	"ui.common.errors.system_prompt_update_unknown": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: An unknown error occurred while updating system prompt"
+	},
+	"ui.common.errors.tenant_missing": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Tenant ID not available"
+	},
+	"ui.common.errors.credit_balance_invalid": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Invalid credit balance response format"
+	},
+	"ui.common.errors.usage_rollup_invalid": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Invalid usage rollup response format"
+	},
+	"ui.common.errors.speech_no_audio": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Speech generation failed, no audio data received."
+	},
+	"ui.common.errors.speech_generation": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Failed to generate speech"
+	},
+	"ui.common.errors.external_open_private": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Could not open that link. The app does not open links to your own machine or local network."
+	},
+	"ui.common.errors.external_open": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Could not open that link."
+	},
+	"ui.common.errors.chat_start_simple": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Chat could not start."
+	},
+	"ui.common.errors.conversation_delete": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: The conversation could not be deleted."
+	},
+	"ui.common.errors.event_stream_failed": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: The event stream failed."
+	},
+	"ui.common.errors.event_stream_closed": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: The event stream closed unexpectedly."
+	},
+	"ui.common.errors.agent_create_simple": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Failed to create agent"
+	},
+	"ui.common.errors.agent_prompt_update_simple": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Failed to update agent system prompt"
+	},
+	"ui.common.errors.agent_publish": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The agent could not be published."
+	},
+	"ui.common.errors.conversation_messages_fetch": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Failed to fetch conversation messages"
+	},
+	"ui.common.errors.conversation_messages_fetch_unknown": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: An unknown error occurred while fetching conversation messages"
+	},
+	"ui.common.errors.session_id_required": {
+		"role": "Error message",
+		"tone": "Factual and actionable without blame.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: A session id is required to read code memory."
 	}
 }

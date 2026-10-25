@@ -1,0 +1,20 @@
+{
+	"ui.library.errors.preview_load": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: This preview could not be loaded."
+	},
+	"ui.library.errors.asset_read": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: The asset content could not be read."
+	},
+	"ui.library.errors.empty_bytes": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: The bytes were empty."
+	}
+}

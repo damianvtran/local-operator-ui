@@ -39,7 +39,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const ocean: ThemeDefinition = {
 	id: "ocean",
 	name: "Ocean",
-	description: "Deep-sea blue-green under a pale sea-foam accent.",
+	descriptionKey: "ui.settings.appearance.theme.ocean",
 	palette: {
 		mode: "dark",
 		/*

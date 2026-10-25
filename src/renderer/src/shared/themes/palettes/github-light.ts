@@ -45,7 +45,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const githubLight: ThemeDefinition = {
 	id: "githubLight",
 	name: "GitHub Light",
-	description: "GitHub's daylight canvas, white panels and Primer blue.",
+	descriptionKey: "ui.settings.appearance.theme.github_light",
 	palette: {
 		mode: "light",
 

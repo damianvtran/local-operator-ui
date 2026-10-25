@@ -31,7 +31,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const duskfox: ThemeDefinition = {
 	id: "duskfox",
 	name: "Duskfox",
-	description: "Nordfox at dusk: the same slate warmed into violet plum.",
+	descriptionKey: "ui.settings.appearance.theme.duskfox",
 	palette: {
 		mode: "dark",
 

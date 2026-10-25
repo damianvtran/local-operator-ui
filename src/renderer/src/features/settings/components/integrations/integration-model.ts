@@ -825,7 +825,7 @@ export function integrationStatus(
 				};
 			// No detail line: "Ready" on every idle row followed by the same sentence
 			// would be the loudest thing on a page of healthy servers. The sentence
-			// is the status's tooltip instead (`READY_EXPLANATION`).
+			// is the status's tooltip instead (`READY_EXPLANATION_KEY`).
 			return {
 				label: t("ui.settings.integrations.integration_model.ready"),
 				tone: "neutral",
@@ -875,9 +875,7 @@ export function publicSignInReason(
 	return /\.$/.test(stripped) ? stripped : `${stripped}.`;
 }
 
-/** What "Ready" means, for the status's tooltip. */
-export const READY_EXPLANATION =
-	"Nothing is wrong. It starts when a chat uses it.";
+/** What "Ready" means, for the status's tooltip. Resolved at render by the row. */
 export const READY_EXPLANATION_KEY =
 	"ui.settings.integrations.integration_model.copy_ready_explanation";
 
@@ -895,8 +893,9 @@ export const READY_EXPLANATION_KEY =
  * rule). What is left says the state and why the row is nonetheless one of the
  * fine ones - each chat runs its own servers - and leaves the control, when
  * there is one, to say itself.
+ *
+ * A key, resolved by the row at render.
  */
-export const NOT_CONNECTED_EXPLANATION = "Not running in this chat.";
 export const NOT_CONNECTED_EXPLANATION_KEY =
 	"ui.settings.integrations.integration_model.copy_not_connected_explanation";
 
@@ -2275,10 +2274,11 @@ export const CATALOG_REFUSAL_COPY: Record<string, string> = {
  * renderer is allowed to know. A code this build has never seen is still a
  * refusal, so the reader gets the honest generic sentence and the row keeps its
  * own controls.
+ *
+ * A key, resolved by the failure mapping at call time; the test resolves it
+ * through `t` too rather than pinning a copy snapshot.
  */
-export const CATALOG_REFUSAL_FALLBACK =
-	"The server refused it, so nothing was changed. Try again.";
-const CATALOG_REFUSAL_FALLBACK_KEY =
+export const CATALOG_REFUSAL_FALLBACK_KEY =
 	"ui.settings.integrations.integration_model.copy_catalog_refusal_fallback";
 
 /**

@@ -36,7 +36,7 @@ export const HealthApi = {
 	 * Handles backward compatibility with older server versions
 	 *
 	 * @param healthResponse - The health check response
-	 * @returns The server version or "Unknown (update required)" if not available
+	 * @returns The server version or the stable unknown-version sentinel
 	 */
 	getServerVersion(healthResponse: HealthCheckResponse): string {
 		// Check if the response has the result field with version information

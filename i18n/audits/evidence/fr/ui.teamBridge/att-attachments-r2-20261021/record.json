@@ -1,0 +1,150 @@
+{
+ "audit_id": "att-attachments-r2-20261021",
+ "date": "2026-10-21",
+ "locale": "fr",
+ "namespace": "ui.teamBridge",
+ "source_commit": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "scope": "Round-2 delta of #1314 (cf1d7c616c..8cf05961d6): 10 fr values changed/added applying att-r1-fr and design D1, including the changed en attachments.expired_staged and new attachments.expired_staged_retry / attachments.preview_unavailable. Other 161 values byte-unchanged and inherited from att-r1-fr.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "bc0c4b952eaa",
+  "commit": "cedfe88fc6"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean",
+   "instance": "att-r2-fr",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/att-r2-fr.json",
+   "receipt_sha256": "13c3adee6e328f0605d8be8a43478c4ad7df39ea0c9065e2a2dffa1f975b01c5",
+   "scope": "Team Bridge image attachments round 2: remediation delta (10 keys) independently audited at head 8cf05961d6; all att-r1-fr findings verified applied or superseded by the D1 source change. Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 2: no findings. All round-1 findings closed. No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-fr",
+   "session": "4177e47d05b0",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4",
+   "findings": [
+    {
+     "id": "ATT-FR-01",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.remove"
+    },
+    {
+     "id": "ATT-FR-02",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.error_upload"
+    },
+    {
+     "id": "ATT-FR-03",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.send_blocked"
+    },
+    {
+     "id": "ATT-FR-04",
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.error_type"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-fr.json",
+    "sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "att-r2-fr",
+   "session": "12aab7b684ab",
+   "job": "d8717b64c01a",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 10,
+   "target_sha256": "64093579763efc8c0c1b3edf81b35b22ea0021181241cdade19e4d2aa2b3f6db",
+   "findings": [],
+   "round1_dispositions": [
+    {
+     "finding": "ATT-FR-01",
+     "keys": "remove/retry",
+     "verified": "applied: U+202F (bytes e2 80 af) before ':' verified in both values ('Retirer : {label}', 'Réessayer : {label}')"
+    },
+    {
+     "finding": "ATT-FR-02",
+     "keys": "error_upload/error_offline/uploading",
+     "verified": "applied verbatim: 'téléversée' in error_upload and error_offline, 'Téléversement de l’image…' in uploading; upload/send verbs now separated in all three"
+    },
+    {
+     "finding": "ATT-FR-03",
+     "keys": "send_blocked",
+     "verified": "applied verbatim: 'Avant d’envoyer, retirez les images signalées en erreur ou réessayez de les téléverser.'"
+    },
+    {
+     "finding": "ATT-FR-04",
+     "keys": "error_type",
+     "verified": "applied verbatim: 'Utilisez un fichier PNG, JPEG, WebP ou GIF.'"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r2-fr.json",
+    "sha256": "13c3adee6e328f0605d8be8a43478c4ad7df39ea0c9065e2a2dffa1f975b01c5"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+   "sha256": "64093579763efc8c0c1b3edf81b35b22ea0021181241cdade19e4d2aa2b3f6db"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  }
+ },
+ "independence": "Translator (coder session 03594b2dcc02, job bc0c4b952eaa) and round-2 auditor (translation-auditor session 12aab7b684ab, job d8717b64c01a) are different agents in different sessions; the round-2 auditor is also distinct from the round-1 auditor session 4177e47d05b0. The auditor never edited catalogues, ran no git operations and did not run ledger-assemble.",
+ "limitations": [
+  "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+  "Round 2 covers the remediation delta and direct regression surfaces only; unchanged values rely on att-r1 and its inherited receipts."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-fr.json",
+   "sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9"
+  },
+  {
+   "path": "i18n/receipts/att-r2-fr.json",
+   "sha256": "13c3adee6e328f0605d8be8a43478c4ad7df39ea0c9065e2a2dffa1f975b01c5"
+  }
+ ]
+}

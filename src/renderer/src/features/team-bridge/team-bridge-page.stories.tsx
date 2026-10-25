@@ -2,7 +2,12 @@ import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fireEvent, userEvent, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { type CSSProperties, useLayoutEffect, useState } from "react";
+import {
+	type CSSProperties,
+	useEffect,
+	useLayoutEffect,
+	useState,
+} from "react";
 import type {
 	DesktopRequest,
 	DesktopResponse,
@@ -1291,6 +1296,99 @@ export const ThreadReadAcknowledgement: Story = {
 			/>
 		);
 	},
+};
+
+/*
+ * F9 frames: enough history to overflow, so the designer can confirm the
+ * timeline OPENS at the newest message (not scrollTop 0) and that a send keeps
+ * it in view. The newest body names itself so the frame is self-checking.
+ */
+const longHistory: TeamBridgeMessage[] = Array.from(
+	{ length: 24 },
+	(_, index) => ({
+		...messages[index % messages.length],
+		id: `bcmsg_long_${index + 1}`,
+		seq: index + 1,
+		body:
+			index === 23
+				? "Newest message — this should be in view when the conversation opens."
+				: `Earlier message ${index + 1} in a long conversation.`,
+		created_at: new Date(Date.now() - (24 - index) * 5 * 60_000).toISOString(),
+	}),
+);
+export const LongHistoryOpensAtNewest: Story = {
+	args: { messages: longHistory },
+};
+
+/*
+ * D14 (timeline): growth that is NOT a new message. Two seconds after open,
+ * the newest message gains a thread rollup (a reply count), which grows the
+ * timeline's inner column without changing the message list's key - the case
+ * the inner-column ResizeObserver exists for (r8 m1). A pinned reader stays
+ * at the bottom with the rollup in view. Scroll up first and it does not move.
+ */
+const RollupGrowth = (args: Story["args"]) => {
+	const [rolled, setRolled] = useState(false);
+	useEffect(() => {
+		const timer = setTimeout(() => setRolled(true), 2000);
+		return () => clearTimeout(timer);
+	}, []);
+	const shown: TeamBridgeMessage[] = longHistory.map((message, index) =>
+		rolled && index === longHistory.length - 1
+			? {
+					...message,
+					reply_count: 3,
+					reply_participants: [message.sender.display_label],
+					last_reply_at: new Date().toISOString(),
+				}
+			: message,
+	);
+	return (
+		<TeamBridgePageView
+			{...(args as Parameters<typeof TeamBridgePageView>[0])}
+			messages={shown}
+		/>
+	);
+};
+export const LongHistoryRollupGrowsWhilePinned: Story = {
+	render: (args) => <RollupGrowth {...args} />,
+};
+
+/*
+ * D14 (timeline): a message ARRIVES while the reader is scrolled up. Every
+ * 3 s a new message is appended. Scroll to the top first: the reader is not
+ * moved. Scroll back to the bottom and later messages are followed again.
+ */
+const ArrivingMessages = (args: Story["args"]) => {
+	const [shown, setShown] = useState(longHistory);
+	useEffect(() => {
+		const timer = setInterval(() => {
+			setShown((current) =>
+				current.length >= longHistory.length + 8
+					? current
+					: [
+							...current,
+							{
+								...longHistory[longHistory.length - 1],
+								id: `bcmsg_arrived_${current.length + 1}`,
+								seq: current.length + 1,
+								body: `Arrived message ${current.length + 1}.`,
+								created_at: new Date().toISOString(),
+							},
+						],
+			);
+		}, 3000);
+		return () => clearInterval(timer);
+	}, []);
+	return (
+		<TeamBridgePageView
+			{...(args as Parameters<typeof TeamBridgePageView>[0])}
+			messages={shown}
+		/>
+	);
+};
+export const MessageArrivesWhileScrolledUp: Story = {
+	render: (args) => <ArrivingMessages {...args} />,
 };
 
 /*

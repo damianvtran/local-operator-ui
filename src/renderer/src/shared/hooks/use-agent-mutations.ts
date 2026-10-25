@@ -26,7 +26,9 @@ export const useCreateAgent = () => {
 				const response = await client.agents.createAgent(newAgent);
 
 				if (response.status >= 400) {
-					throw new Error(response.message || "Failed to create agent");
+					throw new Error(
+						response.message || t("ui.common.errors.agent_create_simple"),
+					);
 				}
 
 				return response.result;
@@ -34,7 +36,7 @@ export const useCreateAgent = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while creating the agent";
+						: t("ui.common.errors.agent_create_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -67,7 +69,7 @@ export const useDeleteAgent = () => {
 
 				if (response.status >= 400) {
 					throw new Error(
-						response.message || `Failed to delete agent ${agentId}`,
+						response.message || t("ui.common.errors.agent_delete", { agentId }),
 					);
 				}
 
@@ -76,7 +78,7 @@ export const useDeleteAgent = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: `An unknown error occurred while deleting agent ${agentId}`;
+						: t("ui.common.errors.agent_delete_unknown", { agentId });
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -113,7 +115,9 @@ export const useImportAgent = () => {
 				const response = await client.agents.importAgent(file);
 
 				if (response.status >= 400) {
-					throw new Error(response.message || "Failed to import agent");
+					throw new Error(
+						response.message || t("ui.common.errors.agent_import"),
+					);
 				}
 
 				return response.result;
@@ -121,7 +125,7 @@ export const useImportAgent = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while importing the agent";
+						: t("ui.common.errors.agent_import_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -155,7 +159,7 @@ export const useExportAgent = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: `An unknown error occurred while exporting agent ${agentId}`;
+						: t("ui.common.errors.agent_export_unknown", { agentId });
 
 				showErrorToast(errorMessage);
 				throw error;

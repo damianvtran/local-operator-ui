@@ -10,5 +10,6 @@
 	"ui.common.viewer.image_lightbox.previous": "Предыдущее: {medialabel}",
 	"ui.common.viewer.image_lightbox.next": "Следующее: {medialabel}",
 	"ui.common.viewer.image_lightbox.close": "Закрыть: {medialabel}",
-	"ui.common.viewer.image_lightbox.asset_of": "Материал {index, number, ::group-off} из {count, number, ::group-off}"
+	"ui.common.viewer.image_lightbox.asset_of": "Материал {index, number, ::group-off} из {count, number, ::group-off}",
+	"ui.common.viewer.image_progress": "Изображение {index, number, ::group-off} из {count, number, ::group-off}"
 }

@@ -1,0 +1,73 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r1-fr",
+ "session": "4177e47d05b0",
+ "date": "2026-10-21",
+ "locale": "fr",
+ "translator": "coder",
+ "translator_session": "bc0c4b952eaa",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 23,
+ "scope": "23-key image-attachment delta: all ui.teamBridge.attachments.* keys (22 added in en at 715c864171, remove_all added at b8aad1066b, unsupported shortened at 0906d747e5; fr for all 23 added at 0906d747e5), per git diff 5005cfe8b6..cf1d7c616c of en/ui.teamBridge.json filtered to attachments. The 8 replies.* keys in that diff arrive via the #1304 merge (8913528) and the other 138 values via #1309 (5005cfe); all 146 non-attachment fr values verified byte-unchanged versus 5005cfe8b6/8913528e50 and are OUT of scope (owned by their own audits). PR head cf1d7c616c re-checked, unchanged. Catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+  "fr": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4",
+  "context": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+ },
+ "findings": [
+  {
+   "id": "ATT-FR-01",
+   "severity": "MINOR",
+   "key": "ui.teamBridge.attachments.remove",
+   "related_keys": [
+    "ui.teamBridge.attachments.retry"
+   ],
+   "current": "Retirer : {label}",
+   "proposed": "Retirer : {label}",
+   "note": "The space before the colon is U+0020 (bytes 20 3a 20) in both remove and retry (« Réessayer : {label} » → « Réessayer : {label} »); the binding fr style guide requires U+202F before : and the namespace already uses it (scope.trigger « Organisation : {name} », compose.to « À : »). Visible in the chip button title tooltip. The colon itself is a sound choice: it avoids « Retirer Image 1 sur 3 » with a capitalised placeholder mid-phrase."
+  },
+  {
+   "id": "ATT-FR-02",
+   "severity": "MINOR",
+   "key": "ui.teamBridge.attachments.error_upload",
+   "related_keys": [
+    "ui.teamBridge.attachments.error_offline",
+    "ui.teamBridge.attachments.uploading"
+   ],
+   "current": "L’image n’a pas pu être envoyée. Réessayez ou retirez-la.",
+   "proposed": "L’image n’a pas pu être téléversée. Réessayez ou retirez-la.",
+   "note": "English separates upload (staging an image before the message goes out) from send (the message), and these strings appear on a composer chip before Send is pressed; rendering upload as « envoyer », the same verb this namespace uses for sending messages (unsupported, error_quota, expired_staged, composer.error), reads as if the message failed to send. Same fix for error_offline (« …n’a pas pu être téléversée, car Local Operator est injoignable. Réessayez lorsqu’il sera de nouveau disponible. ») and uploading (« Téléversement de l’image… », spinner label/aria only, no width risk); « téléversement » follows the existing fr precedent ui.browser…dismiss_upload_notice « Masquer l’avis de téléversement ». « importée/Importation » (Drive/Dropbox fr usage) is an acceptable alternative if the owner prefers, but pick one and use it for all three keys."
+  },
+  {
+   "id": "ATT-FR-03",
+   "severity": "MINOR",
+   "key": "ui.teamBridge.attachments.send_blocked",
+   "current": "Retirez ou renvoyez les images signalées par une erreur avant d’envoyer.",
+   "proposed": "Avant d’envoyer, retirez les images signalées en erreur ou réessayez de les téléverser.",
+   "note": "retry drifts to « renvoyez » here while every other retry in this locale and on the same composer is « Réessayer » (attachments.retry, retry_load, list.retry); « renvoyer » also means resend/send back, so the alert does not point at the chip button the user must press. « signalées en erreur » is also more idiomatic than « signalées par une erreur ». 12 px wrapping role=alert paragraph, so the extra length (≈85 vs 63 chars) is not a fit risk."
+  },
+  {
+   "id": "ATT-FR-04",
+   "severity": "NIT",
+   "key": "ui.teamBridge.attachments.error_type",
+   "current": "Ce fichier n’est pas une image pouvant être envoyée. Utilisez PNG, JPEG, WebP ou GIF.",
+   "proposed": "Ce fichier n’est pas une image pouvant être envoyée. Utilisez un fichier PNG, JPEG, WebP ou GIF.",
+   "note": "« Utilisez PNG » is a calque of the bare English; French needs a noun before the format names (« un fichier PNG… » or « le format PNG… »). Wrapping status line, no width concern."
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "validation": {
+  "independence": "Auditor session 4177e47d05b0 is distinct from the translating coder job bc0c4b952eaa (commit 0906d747e5); no translator summary relied on — every value read from the working-tree bytes at head cf1d7c616c (catalogues clean vs HEAD); no catalogue or code edited, nothing staged or committed.",
+  "semantics": "All 23 values read beside en, the context sidecar and their call sites: team-bridge-attachments.tsx (icon Button aria-label/title add, limit as title when full; ul aria-label strip; chip li aria-label « {position}. {reason} »; size-5 icon buttons remove/retry with aria-label+title; Spinner label uploading; 12 px status/alert line for unsupported/limit/error_*/expired_staged; 144×96 px role=img placeholder expired/unavailable with retry_load text button; message image group aria-label in_message and thumbnail open), team-bridge-page.tsx and team-bridge-thread-pane.tsx (send_blocked role=alert), team-bridge-scheduled.tsx (remove_all ghost sm Button in the reschedule dialog). unsupported matches the shortened en (no stale « Only the text was pasted »). Glossary: image→image, remove→Retirer (= compose.remove, ui.chat « Retirer la pièce jointe »), retry→Réessayer (drift only in send_blocked, ATT-FR-03), organization→organisation, Local Operator untranslated without article, unreachable→injoignable (= ui.presence/mesh). Upload/send conflation: ATT-FR-02. Register: vous throughout, imperatives (Utilisez, Patientez, Retirez, Réessayez), no « Veuillez », sentence case, no T/V drift.",
+  "icu": "Parsed en and fr for all 23 keys with @formatjs/icu-messageformat-parser from the repo node_modules: argument sets identical (position/open {index,count}; in_message {count} plural; remove/retry {label}; limit {max} plural; 17 argument-free), 0 mismatches. fr plurals carry one/many/other per the style guide (no few); en has one/other. Formatted with intl-messageformat (fr): in_message 0→« 0 image », 1→« 1 image », 2→« 2 images », 1000000→« 1 000 000 d’images » (many), 1500000→« 1 500 000 images » (other); limit likewise; position(1,3)→« Image 1 sur 3 »; open(2,3)→« Ouvrir l’image 2 sur 3 »; remove→« Retirer : Image 1 sur 3 »; retry→« Réessayer : Image 1 sur 3 ». Count is used in every branch.",
+  "typography": "All 23 values NFC; no bidi controls; all apostrophes U+2019 (no U+0027); uploading ends with U+2026; digits Latin; only colons are in remove/retry and carry U+0020 instead of U+202F (ATT-FR-01); no ; ! ? or « » in scope. 146 non-attachment fr values byte-identical to 5005cfe8b6/8913528e50; en and fr key sets identical (169).",
+  "overflow": "Ratios 1.0–1.8×. Highest ratios are on non-visible or wrapping surfaces: add 1.8× (aria-label/title of an icon button), limit 1.65× (title tooltip / wrapping 12 px status), retry 1.46× and remove 1.21× (aria-label/title of size-5 icon buttons), error_size 1.59× and unsupported 1.54× (wrapping status p). Visible fixed-width text: expired « Image expirée » 13 and unavailable « Image indisponible » 18 in a w-36 text-center placeholder, retry_load « Réessayer » 9, remove_all « Retirer les images » 18 in a dialog ghost button — all safe. No string flagged for rendered check.",
+  "rtl": "Not applicable (fr is LTR).",
+  "limitations": "Browser not used for this catalogue audit; no screenshots, glyph metrics, visual-fit or activation claim. No catalogue/code edits."
+ }
+}

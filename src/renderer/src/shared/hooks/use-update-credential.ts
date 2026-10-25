@@ -41,7 +41,9 @@ export const useUpdateCredential = (options?: { successToasts?: boolean }) => {
 					await client.credentials.updateCredential(credentialUpdate);
 
 				if (response.status >= 400) {
-					throw new Error(response.message || "Failed to update credential");
+					throw new Error(
+						response.message || t("ui.common.errors.credential_update"),
+					);
 				}
 
 				return response;
@@ -49,7 +51,7 @@ export const useUpdateCredential = (options?: { successToasts?: boolean }) => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while updating credential";
+						: t("ui.common.errors.credential_update_unknown");
 
 				// Not gated by `successToasts`: the deduped toast is the failure's
 				// backstop once the row's own register unmounts with the step (U5).

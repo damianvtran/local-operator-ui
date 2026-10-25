@@ -62,7 +62,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const vaporwave: ThemeDefinition = {
 	id: "vaporwave",
 	name: "Vaporwave",
-	description: "Dusty pink and faded teal pastels on deep mall-purple.",
+	descriptionKey: "ui.settings.appearance.theme.vaporwave",
 	palette: {
 		mode: "dark",
 

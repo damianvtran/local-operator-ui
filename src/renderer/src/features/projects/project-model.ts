@@ -1343,7 +1343,10 @@ export function milestoneSummaryLabel(
 	total: number,
 ): string {
 	if (total <= 0) return "";
-	return `${completed} of ${total} complete`;
+	return t("ui.projects.project_model.milestone_summary", {
+		completed,
+		total,
+	});
 }
 
 /** The to-dos a linked session reported, or `null` when it never did. */
@@ -1376,7 +1379,10 @@ export function todosAggregate(
 
 /** `3 open of 7`, the one spelling for a row's and the aggregate's counts. */
 export function todosCountLabel(summary: TodosSummary): string {
-	return `${summary.open} open of ${summary.total}`;
+	return t("ui.projects.project_model.todos_summary", {
+		open: summary.open,
+		total: summary.total,
+	});
 }
 
 /* ------------------------------------------------ slice 2: session actions -- */
@@ -1409,6 +1415,8 @@ export function defaultSendTarget(
  * (name + title), where it stands (the progress snippet, which IS the latest
  * history entry's text server-side), and what happens next.
  */
+// Model-facing prompt text deliberately stays English (RFC §2.7): this is
+// composed for the agent to read, not rendered as interface copy.
 export function startSessionPrompt(project: {
 	name: string;
 	title?: string | null;
@@ -1506,8 +1514,8 @@ function milestonesAre(count: number): string {
  */
 const DONE_GATE_TAIL =
 	"complete them, or pass force_done=true to close with them open";
-const DONE_GATE_TAIL_COPY =
-	"complete or remove the incomplete milestones, then mark it done";
+const doneGateTailCopy = (): string =>
+	t("ui.projects.project_model.done_gate_tail");
 /** The daemon's head, in the shape the gate raises it: count, plural, names. */
 const DONE_GATE_HEAD =
 	/^cannot set status 'done': (\d+) milestones? still incomplete \((.+)\) — /;
@@ -1527,7 +1535,7 @@ export function refusalCopy(message: string): string {
 		);
 	}
 	if (!message.includes(DONE_GATE_TAIL)) return message;
-	return message.replace(DONE_GATE_TAIL, DONE_GATE_TAIL_COPY);
+	return message.replace(DONE_GATE_TAIL, doneGateTailCopy());
 }
 
 /* ------------------------- the done-gate refusal, as a choice to make ---- */

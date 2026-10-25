@@ -1,0 +1,5 @@
+{
+	"ui.schedules.errors.agent_id_required": "Se necesita el ID del agente para crear una programación.",
+	"ui.schedules.errors.agent_id_missing": "Falta el ID del agente para enviar la programación.",
+	"ui.schedules.errors.base_url_missing": "No está configurada la URL base de la API de Local Operator."
+}

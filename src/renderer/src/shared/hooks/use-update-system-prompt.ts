@@ -28,7 +28,9 @@ export const useUpdateSystemPrompt = () => {
 				const response = await client.config.updateSystemPrompt(update);
 
 				if (response.status >= 400) {
-					throw new Error(response.message || "Failed to update system prompt");
+					throw new Error(
+						response.message || t("ui.common.errors.system_prompt_update"),
+					);
 				}
 
 				return response.result;
@@ -36,7 +38,7 @@ export const useUpdateSystemPrompt = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while updating system prompt";
+						: t("ui.common.errors.system_prompt_update_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;

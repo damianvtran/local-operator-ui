@@ -27,7 +27,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const monokai: ThemeDefinition = {
 	id: "monokai",
 	name: "Monokai",
-	description: "The Monokai scheme: olive-black ground with the acid green.",
+	descriptionKey: "ui.settings.appearance.theme.monokai",
 	palette: {
 		mode: "dark",
 

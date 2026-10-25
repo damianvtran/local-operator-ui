@@ -63,8 +63,12 @@
  */
 
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	conversationTitleForDisplay,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import {
 	dismissToast,
 	showInfoToast,
@@ -123,6 +127,7 @@ const BULK_READ_DEFERRAL_TOAST_MS = 8000;
  * toast in the app uses.
  */
 export function UndoToasts() {
+	useI18nLocale();
 	const archiveFailure = useCanonicalSessionsStore(
 		(state) => state.archiveFailure,
 	);
@@ -160,6 +165,9 @@ export function UndoToasts() {
 	 * `null` is also "no archive message is on screen", which is what lets the
 	 * empty branch below know whether a dismissal is owed.
 	 */
+	const archiveFailureTitle = conversationTitleForDisplay(
+		archiveFailure?.title,
+	);
 	const archiveDrawnRef = useRef<{
 		kind: "offer" | "failure";
 		at: number;
@@ -251,7 +259,7 @@ export function UndoToasts() {
 		};
 		if (newest === "failure" && archiveFailure) {
 			showWarningToast(
-				`${archiveFailure.archived ? t("ui.notices.chat.archive_failed", { title: archiveFailure.title }) : t("ui.notices.chat.unarchive_failed", { title: archiveFailure.title })}${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
+				`${archiveFailure.archived ? t("ui.notices.chat.archive_failed", { title: archiveFailureTitle }) : t("ui.notices.chat.unarchive_failed", { title: archiveFailureTitle })}${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
 				{
 					id: ARCHIVE_TOAST_ID,
 					duration: ARCHIVE_FAILURE_TOAST_MS,
@@ -357,6 +365,7 @@ export function UndoToasts() {
 			);
 		}
 	}, [
+		archiveFailureTitle,
 		archiveFailure,
 		archiveUndo,
 		setArchiveUndo,

@@ -41,10 +41,11 @@
  */
 
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, useLayoutEffect } from "react";
 import fixtureJson from "../../../../../../scripts/fixtures/backend-settings-registry.json";
-import { UNAVAILABLE_SENTENCE } from "./speech-section";
+import { UNAVAILABLE_SENTENCE_KEY } from "./speech-section";
 import { SpeechSection } from "./speech-section";
 
 type BridgeRequest = {
@@ -282,7 +283,7 @@ const nextFrame = () =>
  * nothing in its own payload produces it.
  */
 const settleTargetFor = (state: StoryState): string | null => {
-	if (state === "unreadable") return UNAVAILABLE_SENTENCE;
+	if (state === "unreadable") return t(UNAVAILABLE_SENTENCE_KEY);
 	return resolutionFor(state)?.reason ?? null;
 };
 

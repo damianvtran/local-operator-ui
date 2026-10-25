@@ -1,0 +1,167 @@
+{
+ "audit_id": "tbstack-1314-union-20261022",
+ "date": "2026-10-22",
+ "locale": "vi",
+ "namespace": "ui.teamBridge",
+ "source_commit": "bbf4d1c0cc33ed658d1894d9587983c8111f19cd",
+ "source_base": "9aa14137dec1562dac0ee72a5f056010d5438432",
+ "merge_parents": {
+  "own_pre_merge": "69c71578b680d6baa44128927f854d0745bca9fa",
+  "integrated": "3751b6750bfc1a6ff90c6b8b7956ca6f559a686c"
+ },
+ "scope": "PR #1314 (feat/tb-attachments) merged head bbf4d1c0cc: union integrity of all 174 vi ui.teamBridge values over parents 69c71578b6/3751b6750b; no new or changed values. Terminology checked namespace-wide.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "8c0c0af95212",
+  "job": "e5d5efa8017f"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "tbstack-r1-1314-vi",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbstack-r1-1314-vi.json",
+   "receipt_sha256": "1b19f95df1dbe4431769c5b541fb353199decba8edb10e5e63c63963508ae8a3",
+   "scope": "Team Bridge stack union at bbf4d1c0cc (#1314): 174 values verified equal to their source side and traced to audited snapshots. Catalogue audit, not activation or release approval.",
+   "note": "Union audit; inherits att-r3-vi, tbd-sender-r1-vi. Record: i18n/audits/evidence/vi/ui.teamBridge/tbstack-1314-union-20261022/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1314-vi",
+   "session": "c0d3d761bdad",
+   "job": "cc3ccc31983c",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 174,
+   "keys_substantive": 0,
+   "en_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+   "context_sha256": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13",
+   "target_sha256": "b261333a19d24a4cca31f80b8397e002d6c26ae02b2c1621e19bfb3ec6a0787f",
+   "findings": [],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r1-1314-vi.json",
+    "sha256": "1b19f95df1dbe4431769c5b541fb353199decba8edb10e5e63c63963508ae8a3"
+   }
+  }
+ ],
+ "inherited_receipts": [
+  {
+   "base": "69c71578b6",
+   "reached_via_parent": "69c71578b6",
+   "path": "i18n/receipts/att-r3-vi.json",
+   "sha256": "2f74b6bd1ec0a4d2ac393c0edee267c40144bedafadcdc2eb581bd6bc0a70f2a",
+   "instance": "att-r3-vi",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+   "base_target_sha256": "51afb668e31af62fb2050dd50ad3e62e607a8e310f651e69baa5b51bd69880d8",
+   "keys_inherited": 172,
+   "unchanged_values_verified": 172
+  },
+  {
+   "base": "fd926568e3",
+   "reached_via_parent": "3751b6750b",
+   "path": "i18n/receipts/tbh-r1-vi.json",
+   "sha256": "6bdc2b3a8750028e0529f5526063213564c1762cece8fe38cdfaad1e673e7245",
+   "instance": "tbh-r1-vi",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+   "base_target_sha256": "0b6d510710c29488180fc315a4f44fdb62bf9e24a76fe172cb893964a09eaab8",
+   "keys_inherited": 0,
+   "unchanged_values_verified": 0
+  },
+  {
+   "base": "9aa14137de",
+   "reached_via_parent": "9aa14137de",
+   "path": "i18n/receipts/tbd-sender-r1-vi.json",
+   "sha256": "129595328b3631706971cb678011f957efe4b4a1ce28a64fb41c47e2bb589b5b",
+   "instance": "tbd-sender-r1-vi",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+   "base_target_sha256": "998baa1266abfdd624ec0bb0f37f286bf17873ed1c7603f9d599dfed8e9aa8c3",
+   "keys_inherited": 2,
+   "unchanged_values_verified": 2
+  }
+ ],
+ "union_integrity": {
+  "tool": "scripts/i18n/catalogue-union-parity.mjs",
+  "tool_sha256": "cec426a66faf52c04bfec2f9b602237430560fb34998decd4d28ced0b3e5f065",
+  "result": "PASS (exit 0)",
+  "output": {
+   "path": "tb-attachments/union-parity-fr-es-vi.txt (auditor staging; not a repo path)",
+   "sha256": "fd0c0ba0beb8ee93c0f51f8d63a76bee545cec84ade9d133fae36c53defe559c"
+  },
+  "own_side_only": 34,
+  "integrated_side_only": 2,
+  "shared": 138,
+  "dropped": 0,
+  "shared_altered": 0,
+  "uncovered_by_audited_snapshot": []
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+   "sha256": "b261333a19d24a4cca31f80b8397e002d6c26ae02b2c1621e19bfb3ec6a0787f"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/vi.md",
+   "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  }
+ },
+ "independence": "Translator(s) and auditor are different agents in different sessions: translator/coder vs translation-auditor session c0d3d761bdad. The auditor edited no catalogue and no repo file; every byte was read with git show. The auditor neither translated nor assembled the ledger; ledger rows are for ledger-assemble.mjs.",
+ "limitations": [
+  "Catalogue audit only. No rendered-fit, pseudo-localization, activation or release evidence is claimed; the browser was not used.",
+  "Inherited values rest on their own receipts. This audit re-verified their bytes and audited (en, target) pairing, not their translation quality."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1314-vi.json",
+   "sha256": "1b19f95df1dbe4431769c5b541fb353199decba8edb10e5e63c63963508ae8a3"
+  }
+ ]
+}

@@ -3,5 +3,16 @@
 	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": "Đang đọc {tolocalestring} ký tự đầu. Phần còn lại sẽ không được đọc.",
 	"ui.common.speech.speak_control.replay_speech": "Phát lại giọng đọc",
 	"ui.common.speech.speak_control.speak_aloud": "Đọc to",
-	"ui.common.speech.speak_control.stop": "Dừng"
+	"ui.common.speech.speak_control.stop": "Dừng",
+	"ui.common.speech.control.checking": "Đang kiểm tra đăng nhập Radient…",
+	"ui.common.speech.control.recording_sign_in": "Đăng nhập Radient trong Cài đặt để bật ghi âm",
+	"ui.common.speech.control.recording_unknown": "Không thể kiểm tra đăng nhập Radient nên tạm thời không thể ghi âm",
+	"ui.common.speech.control.recording_offline": "Không thể ghi âm khi Local Operator đang ngoại tuyến",
+	"ui.common.speech.control.speaking_sign_in": "Đăng nhập Radient trong Cài đặt để bật đọc to",
+	"ui.common.speech.control.speaking_unknown": "Không thể kiểm tra đăng nhập Radient nên tạm thời không thể đọc to",
+	"ui.common.speech.control.speaking_offline": "Không thể đọc to khi Local Operator đang ngoại tuyến",
+	"ui.common.speech.settings.checking": "Đang kiểm tra khả năng đọc to trên máy này…",
+	"ui.common.speech.settings.sign_in": "Chưa thể đọc to: chạy /login radient để đăng nhập hoặc lưu khóa nhà cung cấp trong phần Nhà cung cấp mô hình",
+	"ui.common.speech.settings.unknown": "Chưa thể đọc to. Cần đăng nhập Radient hoặc có khóa nhà cung cấp đã lưu để bật tính năng này",
+	"ui.common.speech.settings.offline": "Local Operator đang ngoại tuyến nên hiện không thể đọc to"
 }
