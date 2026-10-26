@@ -1240,6 +1240,26 @@ test("a superseded subscription's queued frames commit nothing", async () => {
 		readingsBefore,
 		"nor replace the readings the live connection published",
 	);
+	/*
+	 * THE SUCCESSOR IS SETTLED BEFORE THE CASE ENDS. This is the one case in the
+	 * file that leaves a SECOND subscription open (the resync's), and a pane whose
+	 * new connection never receives its snapshot is a pane holding work the rig
+	 * cannot see. Handing it the open+snapshot it is waiting for ends the case in
+	 * the state a real one reaches, instead of leaving a live connection and its
+	 * pending work behind for the rest of the shard's process.
+	 */
+	deliver(openFrame(10, false));
+	deliver(
+		snapshotFrame(11, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	assert.equal(panel.status(), "live", "the successor connection settles");
 });
 
 test("the bridge's own open/replay/snapshot shapes apply: open carries the cutoff, not a floor", async () => {
@@ -1407,6 +1427,16 @@ test("a page dispatched before a live write cannot rewrite that row", async () =
 			"a page read before the live write does not rewrite the row",
 		);
 	} finally {
+		/*
+		 * THE GATE IS RELEASED EVEN WHEN AN ASSERTION THREW - defensive cleanup,
+		 * on the repository's own rule that a file hanging on an unsettled promise
+		 * must release it in its own cleanup. The exact mechanism by which this
+		 * file wedged CI's shard 0 is NOT proven (the bisect proved only that the
+		 * file, and not the production change, was responsible: 55 minutes
+		 * against a 45-minute ceiling with `# fail 0`, and green once the file was
+		 * reverted). Releasing is idempotent; a second resolve is a no-op.
+		 */
+		release({ entries: [], has_more: false, cursor_missing: false });
 		globalThis.__gapTail = realTail;
 	}
 });
