@@ -335,6 +335,55 @@ async function aimOffScreen(cdp, id) {
 	return aim;
 }
 
+/** The control the onboarding door offers, already on the page. */
+const ONBOARDING_SKIP = "button[data-onboarding-skip], button";
+
+/** What the shell looks like right now, from the renderer's own answers. */
+const pageState = (cdp) =>
+	cdp.evaluate(
+		`({ hash: location.hash, onboarding: Boolean(document.querySelector("[data-onboarding-modal]")), rows: [...document.querySelectorAll("[data-notification-row]")].map((element) => element.dataset.notificationRow) })`,
+	);
+
+/** Poll `check` until it answers true, or the budget runs out. */
+async function waitFor(check, ms, gap = 250) {
+	const deadline = Date.now() + ms;
+	for (;;) {
+		if (await check()) return true;
+		if (Date.now() > deadline) return false;
+		await new Promise((resolve) => setTimeout(resolve, gap));
+	}
+}
+
+/**
+ * Wait for a control to exist, then answer where to press it.
+ *
+ * The onboarding door is the first thing the app draws and its button carries no
+ * stable hook of its own in every locale, so this matches its ACCESSIBLE TEXT -
+ * the same words a person reads - and reports what it found so a failure says
+ * which half was missing rather than "not found".
+ */
+async function waitForElement(cdp, ms, selector) {
+	const deadline = Date.now() + ms;
+	for (;;) {
+		const found = await cdp.evaluate(
+			`(() => {
+				const skip = [...document.querySelectorAll(${JSON.stringify(selector)})]
+					.find((element) => /skip for now/i.test(element.textContent || ""));
+				if (!skip) return { found: false };
+				const rect = skip.getBoundingClientRect();
+				const x = Math.round(rect.x + rect.width / 2);
+				const y = Math.round(rect.y + rect.height / 2);
+				const inside = rect.width > 0 && rect.height > 0 && x >= 0 && y >= 0 && x <= innerWidth && y <= innerHeight;
+				const top = inside ? document.elementFromPoint(x, y) : null;
+				return { found: true, x, y, inside, uncovered: Boolean(top && (top === skip || skip.contains(top))) };
+			})()`,
+		);
+		if (found?.found) return found;
+		if (Date.now() > deadline) return { found: false };
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+}
+
 /** MAIN's own window facts: the real BrowserWindow, never a DOM approximation. */
 const mainFacts = (nodeCdp) =>
 	nodeCdp.evaluate(
@@ -455,26 +504,55 @@ async function main() {
 		nodeCdp = await api.CdpClient.attachNode(handle.inspectPort);
 		await api.waitForPage(cdp);
 
-		// Onboarding is skipped through its OWN control, never a CLI seed flag.
-		await cdp.evaluate(`(() => {
-			const skip = [...document.querySelectorAll('button,a')].find((element) => /skip for now/i.test(element.textContent || ""));
-			if (skip) skip.click();
-			return Boolean(skip);
-		})()`);
+		/*
+		 * ONBOARDING IS DISMISSED THROUGH ITS OWN CONTROL, WITH REAL INPUT, and it
+		 * is waited for: the first version clicked a `<button>` found by text the
+		 * instant the page reported ready, before the modal had rendered, so the
+		 * modal stayed up and the reel behind it never mounted ('
+		 * the seeded item never rendered: {"rows":[],"onboarding":true}').
+		 * A `Skip for now` that is genuinely on screen is pressed where it is, which
+		 * is also the gesture a person makes.
+		 */
+		const skip = await waitForElement(cdp, 45_000, ONBOARDING_SKIP);
+		receipt.onboarding = skip;
+		if (skip.found) {
+			assert.ok(
+				skip.inside && skip.uncovered,
+				`the onboarding control is not pressable: ${JSON.stringify(skip)}`,
+			);
+			for (const [type, button] of [
+				["mouseMoved", "none"],
+				["mousePressed", "left"],
+				["mouseReleased", "left"],
+			])
+				await cdp.send("Input.dispatchMouseEvent", {
+					type,
+					button,
+					clickCount: type === "mouseMoved" ? 0 : 1,
+					x: skip.x,
+					y: skip.y,
+				});
+			const cleared = await waitFor(
+				() => pageState(cdp).then((state) => !state.onboarding),
+				15_000,
+			);
+			assert.ok(
+				cleared,
+				"the onboarding modal did not close after its own button was pressed",
+			);
+		}
 		/* The same line the removed `navigate` verb ran: the hash router's URL. */
 		await cdp.evaluate(`(window.location.hash = "#/notifications")`);
 
 		const deadline = Date.now() + 60_000;
 		let rendered = null;
 		do {
-			rendered = await cdp.evaluate(
-				`({rows:[...document.querySelectorAll('[data-notification-row]')].map((element) => ({id: element.dataset.notificationRow, text: (element.textContent || "").slice(0, 90)})), onboarding: Boolean(document.querySelector('[data-onboarding-modal]'))})`,
-			);
-			if (rendered.rows.some((row) => row.id === TARGET)) break;
+			rendered = await pageState(cdp);
+			if (rendered.rows.includes(TARGET)) break;
 			await pause(250);
 		} while (Date.now() < deadline);
 		assert.ok(
-			rendered.rows.some((row) => row.id === TARGET),
+			rendered.rows.includes(TARGET),
 			`the seeded item never rendered: ${JSON.stringify(rendered)}`,
 		);
 		receipt.rendered = rendered;
