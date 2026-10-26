@@ -161,8 +161,8 @@ const seed = (configDir) =>
 			"import json",
 			"from local_operator.notifications.store import NotificationStore",
 			`store = NotificationStore(${JSON.stringify(configDir)})`,
-			`def put(key, title, body, priority="normal"):`,
-			`    return store.notify(${JSON.stringify(SESSION)}, key=key, title=title, body_md=body, priority=priority)`,
+			`def put(key, title, body, priority="normal", session=${JSON.stringify(SESSION)}):`,
+			"    return store.notify(session, key=key, title=title, body_md=body, priority=priority)",
 			`target = put("daily", "Chargeback spike on 3 merchants", "Disputes up 4.1x.", "high")`,
 			`unrelated = put("nightly", "Nightly build finished", "Two flaky tests.")`,
 			`raced = put("watch", "Watching merchant m_4821", "Baseline recomputed.")`,
@@ -176,13 +176,23 @@ const seed = (configDir) =>
 			 * the three named rows, so the named rows are the OLDEST and scrolling to
 			 * the bottom of the list really does carry them out of the port.
 			 */
-			`for index in range(${FILLER_ROWS}):`,
-			`    put(f"filler-{index}", f"Background note {index + 1}", "Routine tick, nothing to act on.")`,
+			/*
+			 * SPREAD ACROSS SESSIONS BECAUSE THE STORE HAS ITS OWN CAP. The core refuses
+			 * a 31st NEW item from one conversation inside a rolling hour ("this
+			 * conversation already raised 30 new items in the last hour", store.py:517),
+			 * and that cap is a product guard this scene must not circumvent: it writes
+			 * through the same public `notify` any agent uses. Twelve rows on each of
+			 * four synthetic conversations stays under it, and the reel is one flat
+			 * time-ordered list, so it is just as long.
+			 */
+			`for conv in range(${FILLER_CONVERSATIONS}):`,
+			`    for index in range(${FILLER_PER_CONVERSATION}):`,
+			`        put(f"filler-{conv}-{index}", f"Background note {conv + 1}.{index + 1}", "Routine tick, nothing to act on.", session=f"aaaaaaaaaaa{conv + 2}")`,
 			"print(json.dumps({",
 			`    "target": {"id": target.item_id, "revision": target.revision},`,
 			`    "unrelated": {"id": unrelated.item_id, "revision": unrelated.revision},`,
 			`    "raced": {"id": raced.item_id, "revision": raced.revision},`,
-			`    "fillers": ${FILLER_ROWS},`,
+			`    "fillers": ${FILLER_PER_CONVERSATION * FILLER_CONVERSATIONS},`,
 			"}))",
 		].join("\n"),
 	);
@@ -423,14 +433,16 @@ async function aimOffScreen(cdp, id) {
 const ONBOARDING_SKIP = "button[data-onboarding-skip], button";
 
 /**
- * How many filler rows the seeded session carries beyond the three named ones.
+ * How many filler rows the scene seeds beyond the three named ones, and why they
+ * are spread over several conversations rather than piled on one.
  *
  * Sized so the reel is taller than its port at every window size this scene can
  * see (each row is 56px, so 40 rows is ~2,240px against a 900px window): the
  * off-screen negative needs a row that can actually leave the port, and a
  * three-row list cannot provide one.
  */
-const FILLER_ROWS = 40;
+const FILLER_CONVERSATIONS = 4;
+const FILLER_PER_CONVERSATION = 12;
 
 /** What the shell looks like right now, from the renderer's own answers. */
 const pageState = (cdp) =>
