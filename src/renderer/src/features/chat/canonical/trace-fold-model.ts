@@ -348,6 +348,23 @@ export const actionClass = (
 export type FoldSummarySpec = {
 	units: string[];
 	/**
+	 * THE SAME SUMMARY AS STRUCTURED COUNT SEGMENTS, beside the words.
+	 *
+	 * WHY A SECOND FIELD RATHER THAN PARSING `units`. A cross-client parity
+	 * fixture cannot compare English: another surface owns its own vocabulary for
+	 * the same counts (the phone says `3 tool calls` where this app says
+	 * `Explored 3 files`), and asserting a shared string would either forbid that
+	 * or silently drift. The identifier and the number are the shared facts; the
+	 * words are per-surface. `class:agent`-style ids come from the same derivation
+	 * that builds the sentence above, so the two can never disagree, and
+	 * `generateCondenseFixture` (scripts/traces) is the only reader today.
+	 *
+	 * It is the CLASS/noun line (`foldCountSegments`) in EVERY case, including the
+	 * two-class sentence form, because a surface that renders only the count line
+	 * must still be comparable to one that renders the sentence.
+	 */
+	countUnits: FoldCountSegment[];
+	/**
 	 * True for the SENTENCE form (a single flowing clause): the browser's own
 	 * line breaking is correct for it, so the header does NOT hold it whole.
 	 */
@@ -362,12 +379,14 @@ export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 		if (cls === null) unknown += 1;
 		else counts.set(cls, (counts.get(cls) ?? 0) + 1);
 	}
+	const segments = foldCountSegments(actions);
 	if (unknown > 0 || counts.size > 2) {
-		const units = foldCountUnits(foldCountSegments(actions));
+		const units = foldCountUnits(segments);
 		// Only reachable for an empty run, which `foldRuns` never emits a summary for.
 		return {
 			units: units.length === 0 ? [`${actions.length} actions`] : units,
 			prose: false,
+			countUnits: segments,
 		};
 	}
 
@@ -396,7 +415,11 @@ export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 			parts.push(`Delegated ${count} task${count === 1 ? "" : "s"}`);
 	}
 	if (parts.length === 0)
-		return { units: [`${actions.length} actions`], prose: true };
+		return {
+			units: [`${actions.length} actions`],
+			prose: true,
+			countUnits: segments,
+		};
 	// A two-class sentence reads as "Explored 4 files, 1 search"; the second part
 	// keeps the join's own lowercase, which is why the first part is the only one
 	// that capitalises.
@@ -407,6 +430,7 @@ export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 				: `${parts[0]}, ${parts[1].charAt(0).toLowerCase()}${parts[1].slice(1)}`,
 		],
 		prose: true,
+		countUnits: segments,
 	};
 };
 
@@ -554,12 +578,28 @@ export const foldCountUnits = (
 };
 
 /**
+ * ONE COUNT-LINE SEGMENT: the shared decision, plus this surface's word for it.
+ *
+ * `key` and `count` are the cross-client facts (`kind:shell`, `class:files`,
+ * `name:<display name>`); `label` is this app's own phrasing of them. A surface
+ * with a different vocabulary renders `key` through its own catalogue and
+ * compares only `{key, count}` against a parity fixture - see `FoldSummarySpec`.
+ */
+export type FoldCountSegment = {
+	/** The stable identifier: `class:<class>`, `kind:<tool>`, or `name:<label>`. */
+	key: string;
+	/** This app's words for the key and count (`3 shell`, `2 files`). */
+	label: string;
+	count: number;
+};
+
+/**
  * The per-kind segments of a run's count line, in the line's own order and NOT
  * yet capped - `foldCountUnits` applies the cap.
  */
-const foldCountSegments = (
+export const foldCountSegments = (
 	actions: FoldableAction[],
-): { label: string; count: number }[] => {
+): FoldCountSegment[] => {
 	type Kind = { noun: string; plural: string | null };
 	const counts = new Map<string, { kind: Kind; count: number }>();
 	const bump = (key: string, kind: Kind) => {
@@ -640,13 +680,17 @@ const foldCountSegments = (
 		"kind:team",
 		"kind:hub",
 	];
-	const segments: { label: string; count: number }[] = [];
+	const segments: FoldCountSegment[] = [];
 	const fact = (count: number, kind: Kind) =>
 		`${count} ${count === 1 || kind.plural === null ? kind.noun : kind.plural}`;
 	for (const key of order) {
 		const seen = counts.get(key);
 		if (seen)
-			segments.push({ label: fact(seen.count, seen.kind), count: seen.count });
+			segments.push({
+				key,
+				label: fact(seen.count, seen.kind),
+				count: seen.count,
+			});
 	}
 	const rest = [...counts.entries()]
 		.filter(([key]) => !order.includes(key))
@@ -654,8 +698,12 @@ const foldCountSegments = (
 			([, a], [, b]) =>
 				b.count - a.count || a.kind.noun.localeCompare(b.kind.noun),
 		);
-	for (const [, seen] of rest)
-		segments.push({ label: fact(seen.count, seen.kind), count: seen.count });
+	for (const [key, seen] of rest)
+		segments.push({
+			key,
+			label: fact(seen.count, seen.kind),
+			count: seen.count,
+		});
 	return segments;
 };
 
@@ -965,15 +1013,20 @@ export function foldRuns(
 			 * is the same shape and the ` · ` boundaries are the only grammar.
 			 * A receipt-only run has no action units at all - never `0 actions`.
 			 */
-			const actionSpec: FoldSummarySpec =
-				actions.length === 0
-					? { units: [], prose: false }
-					: receiptUnits.length > 0
-						? {
-								units: foldCountUnits(foldCountSegments(actions)),
-								prose: false,
-							}
-						: foldSummarySpec(actions);
+			const actionSpec: FoldSummarySpec = (() => {
+				if (actions.length === 0)
+					return { units: [], prose: false, countUnits: [] };
+				/* ONE derivation of the count segments, whichever shape the words take,
+				 * so `countUnits` is the same list the line is built from. */
+				const countUnits = foldCountSegments(actions);
+				return receiptUnits.length > 0
+					? {
+							units: foldCountUnits(countUnits),
+							prose: false,
+							countUnits,
+						}
+					: foldSummarySpec(actions);
+			})();
 			groups.push({
 				kind: "run",
 				id: run[0].record.id,
@@ -983,6 +1036,7 @@ export function foldRuns(
 				summary: {
 					units: [...actionSpec.units, ...receiptUnits],
 					prose: actionSpec.prose,
+					countUnits: actionSpec.countUnits,
 				},
 				failedCount: actions.filter((action) => action.failed).length,
 				span: foldSpan(actions),

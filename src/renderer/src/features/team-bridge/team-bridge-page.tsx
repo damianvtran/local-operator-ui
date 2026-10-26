@@ -1651,8 +1651,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.read_only.composer")}
 								</p>
 							) : (
-								/* Bound localized recovery controls without consuming the whole timeline. */
-								<div className="min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pb-4">
+								/* Bound localized recovery controls without consuming the whole timeline.
+								   `pt-1` is the focus ring's room: the box below draws its ring
+								   OUTSIDE itself (2px outline at a 2px offset = 4px), and this
+								   overflow container clips at its padding box, so with no top
+								   padding the ring's top edge was cut off while the sides and
+								   bottom (inside px-4/pb-4) drew whole. It is the container's
+								   own padding so the room holds whichever alert or box is first;
+								   pinned by scripts/team-bridge-composer-ring.test.mjs. */
+								<div className="min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pt-1 pb-4">
 									{scheduleFailed && (
 										<p role="alert" className="text-sm text-danger">
 											{t("ui.teamBridge.schedule.failed")}
