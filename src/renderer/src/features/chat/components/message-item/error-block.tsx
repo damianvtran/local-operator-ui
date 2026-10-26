@@ -7,6 +7,8 @@
  * the only reason this file knew about MUI.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Info } from "lucide-react";
 import type { FC } from "react";
 import { Link } from "react-router-dom";
@@ -27,97 +29,146 @@ export type ErrorBlockProps = {
  * resolves `?section=` against its own `sectionRefs`, and the route scan
  * (`scripts/settings-section-routes.test.mjs`) can only verify a route whose
  * section is a LITERAL in the source. A label that NAMES a section must carry
- * that section — `settingsLink("Providers section")` used to render the word
- * "Providers" over a bare `/settings`, so the reader who followed it landed on
- * General, the same dead-end class this area was just fixed for (design review
- * round 2, D7). Callers that mean the whole page keep the default.
+ * that section — the providers link used to render the word "Providers" over a
+ * bare `/settings`, so the reader who followed it landed on General, the same
+ * dead-end class this area was just fixed for (design review round 2, D7).
+ * Callers that mean the whole page keep the default.
+ *
+ * The label is a KEY, not a string: `t()` is called when this helper renders,
+ * which is the only moment the active locale is known.
  */
-const settingsLink = (label = "settings page", to = "/settings") => (
+const settingsLink = (
+	labelKey:
+		| "ui.chat.error_block.link.settings"
+		| "ui.chat.error_block.link.providers" = "ui.chat.error_block.link.settings",
+	to = "/settings",
+) => (
 	<Link to={to} className="text-accent underline underline-offset-2">
-		{label}
+		{t(labelKey)}
 	</Link>
 );
 
-const errorSuggestions: Record<string, React.ReactNode> = {
-	"Hosting platform is not configured": (
-		<p>
-			You haven't selected an AI provider yet. Go to the {settingsLink()} to
-			configure it for all your agents. If you don't have an AI provider, you
-			can sign in to Radient to get access for free to start.
-		</p>
-	),
-	"Model name is not configured": (
-		<p>
-			You haven't selected an AI model yet. Go to the {settingsLink()} to select
-			a model for all your agents. If you don't have an AI provider, you can
-			sign in to Radient to get access for free to start.
-		</p>
-	),
-	"Rate limit": (
-		<p>
-			You've hit the rate limit for your AI provider. Please try again later or
-			get Radient Pass in the {settingsLink()} to access AI models with no rate
-			limits at low prices.
-		</p>
-	),
-	"Rate-limit": (
-		<p>
-			You've hit the rate limit for your AI provider. Please try again later or
-			get Radient Pass in the {settingsLink()} to access all AI models with no
-			rate limits at low prices.
-		</p>
-	),
-	"Invalid API key": (
-		<p>
-			Your API key is invalid. Update it in the{" "}
-			{settingsLink("Providers section", "/settings?section=providers")}, or
-			sign in to the provider again.
-		</p>
-	),
-	"404 models": (
-		<p>
-			The model you're trying to use is not available. Go to the{" "}
-			{settingsLink()} to select a different model, or use Radient to get access
-			to hundreds of models with no rate limits
-		</p>
-	),
-	"Call ListModels": (
-		<p>
-			The model you're trying to use is not available. Go to the{" "}
-			{settingsLink()} to select a different model, or use Radient to get access
-			to hundreds of models with no rate limits
-		</p>
-	),
-	"Failed to interpret action": (
-		<p>
-			The model tried to perform an action but was unable to express its intent
-			in the required schema. Typically this happens because the model can't
-			follow the complex instructions required for agentic AI.
-			<br />
-			<br />
-			Change your model in the {settingsLink()} to fix this. We recommend using
-			Radient Automatic to have the best combo of cheap and smart picked for you
-			based on your requests (typically cheaper than bringing your own key), or
-			use one of the recommended models with a star icon.
-		</p>
-	),
+/*
+ * WHY THIS TABLE HOLDS MATCHERS AND NOT SENTENCES.
+ *
+ * The map used to be `Record<backend token, ReactNode>` of English sentences,
+ * built at module load. `t()` resolves against the locale that is active when
+ * it is CALLED, so a module-scope table would answer once — at import — and
+ * keep answering English after a language switch. The tokens on the left are
+ * machine strings matched against the wire's error text (`toLowerCase()`), so
+ * they stay English by contract; the copy is built during render, in
+ * `suggestionFor` below.
+ *
+ * Each sentence is split around its settings link because `t()` returns TEXT,
+ * not elements: the clause before the link and the clause after it are
+ * separate keys, and the link's label is a third. That split is the cost of
+ * keeping a real <Link> inside the sentence — a single string could not route
+ * the reader anywhere. Translators get the two halves plus the link label with
+ * the sentence's context in `ui.chat.error_block.context.json`, so the halves
+ * must be translated as one sentence.
+ */
+type SuggestionKind =
+	| "provider"
+	| "model"
+	| "rate_limit"
+	| "rate_limit_all"
+	| "invalid_key"
+	| "unavailable"
+	| "schema";
+
+const SUGGESTION_MATCHERS: readonly (readonly [string, SuggestionKind])[] = [
+	["Hosting platform is not configured", "provider"],
+	["Model name is not configured", "model"],
+	["Rate limit", "rate_limit"],
+	["Rate-limit", "rate_limit_all"],
+	["Invalid API key", "invalid_key"],
+	["404 models", "unavailable"],
+	["Call ListModels", "unavailable"],
+	["Failed to interpret action", "schema"],
+];
+
+/** The suggestion sentence for a matched backend failure, in the active locale. */
+const suggestionFor = (kind: SuggestionKind): React.ReactNode => {
+	switch (kind) {
+		case "provider":
+			return (
+				<p>
+					{t("ui.chat.error_block.provider.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.provider.after")}
+				</p>
+			);
+		case "model":
+			return (
+				<p>
+					{t("ui.chat.error_block.model.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.model.after")}
+				</p>
+			);
+		case "rate_limit":
+			return (
+				<p>
+					{t("ui.chat.error_block.rate_limit.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.rate_limit.after")}
+				</p>
+			);
+		case "rate_limit_all":
+			return (
+				<p>
+					{t("ui.chat.error_block.rate_limit.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.rate_limit.all_after")}
+				</p>
+			);
+		case "invalid_key":
+			return (
+				<p>
+					{t("ui.chat.error_block.invalid_key.before")}{" "}
+					{settingsLink(
+						"ui.chat.error_block.link.providers",
+						"/settings?section=providers",
+					)}
+					{t("ui.chat.error_block.invalid_key.after")}
+				</p>
+			);
+		case "unavailable":
+			return (
+				<p>
+					{t("ui.chat.error_block.unavailable.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.unavailable.after")}
+				</p>
+			);
+		case "schema":
+			return (
+				<p>
+					{t("ui.chat.error_block.schema.before")}
+					<br />
+					<br />
+					{t("ui.chat.error_block.schema.after_before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.schema.after")}
+				</p>
+			);
+	}
 };
 
 export const ErrorBlock: FC<ErrorBlockProps> = ({ error }) => {
+	// `t()` reads the current locale at call time; this subscription is what
+	// makes an error block already on screen follow a language switch.
+	useI18nLocale();
 	if (!error || error === "[No error output]") return null;
 
 	const lowercasedTrimmedError = error.trim().toLowerCase();
 	let suggestion: React.ReactNode | undefined;
-	for (const key in errorSuggestions) {
-		if (lowercasedTrimmedError.includes(key.toLowerCase())) {
-			suggestion = errorSuggestions[key];
+	for (const [token, kind] of SUGGESTION_MATCHERS) {
+		if (lowercasedTrimmedError.includes(token.toLowerCase())) {
+			suggestion = suggestionFor(kind);
 			break;
 		}
 	}
 
 	return (
 		<div className="mb-4 w-full">
-			<span className="mb-1 block text-danger text-meta">Error</span>
+			<span className="mb-1 block text-danger text-meta">
+				{t("ui.chat.error_block.heading")}
+			</span>
 			<pre className="flex max-h-[200px] w-full flex-col-reverse overflow-auto whitespace-pre-wrap rounded-sm border border-danger-border bg-danger-wash p-3 font-mono text-danger text-mono-sm">
 				{error}
 			</pre>

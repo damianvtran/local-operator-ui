@@ -33,6 +33,7 @@ import {
 import { useSyncExternalStore } from "react";
 
 import {
+	beginRadientAuthoritySignOut,
 	beginRadientAuthorityTransition,
 	radientAuthorityEpoch,
 	radientUserKeys,
@@ -510,7 +511,9 @@ export const useRadientUserQuery = ({
 
 	const signOutMutation = useMutation({
 		onMutate: () => {
-			beginRadientAuthorityTransition(queryClient);
+			// Deliberate: identity is known gone, so this publishes settled absence
+			// and main withdraws the departing account's banners on the press.
+			beginRadientAuthoritySignOut(queryClient);
 			setIsSigningOut(true);
 		},
 		mutationFn: async () => {

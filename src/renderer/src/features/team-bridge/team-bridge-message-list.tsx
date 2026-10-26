@@ -2,12 +2,26 @@ import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, UserRound } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import type { FC } from "react";
-import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
+import type {
+	TeamBridgeDirectoryMember,
+	TeamBridgeMessage,
+} from "../../../../shared/team-bridge-contract";
+import {
+	teamBridgeArrivalStreamKey,
+	teamBridgeLiveArrivals,
+	teamBridgeObserveArrivals,
+	teamBridgeSuspendArrivals,
+} from "./team-bridge-arrival-model";
 import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
+import {
+	TeamBridgeAvatar,
+	TeamBridgeProfileCard,
+} from "./team-bridge-profile-card";
 import {
 	TeamBridgeReactionChips,
 	useTeamBridgeReactionState,
@@ -50,9 +64,86 @@ import { threadSummary } from "./team-bridge-threads-model";
  * italic with a neutral glyph. An initial avatar under a plausible word is what
  * made "Member" read as somebody's name (operator report, 2026-10-22).
  */
+/**
+ * The rows that must animate, held for the length of the motion.
+ *
+ * Deriving the class per render meant any unrelated update during the 240ms
+ * window (a label resolving, a reaction, a parent re-render) dropped it and the
+ * row snapped to its final state mid-motion. The ids persist instead, and they
+ * are cleared DETERMINISTICALLY - review round 1, A1: `animationend` alone is
+ * not enough, because it never fires when the row unmounts mid-motion (the
+ * reader switches conversation inside 240ms) and never fires at all under
+ * `prefers-reduced-motion`, so a leftover id went on to light up a row in the
+ * next conversation.
+ *
+ * Three locks, in order of certainty:
+ *   1. the ids are scoped to the stream - a state whose key does not match the
+ *      current one reads as EMPTY, so a conversation switch cannot carry them;
+ *   2. `animationend` clears them the moment the motion finishes;
+ *   3. a timer bounded above the animation token clears them whatever happens.
+ *
+ * The list always OBSERVES the page (the journal must learn which ids exist,
+ * including a page this list is not allowed to animate), but only the enabled
+ * read may tokenise them.
+ */
+const ARRIVAL_CLEAR_MS = 600;
+
+function useArrivingRows(
+	key: string,
+	messages: readonly TeamBridgeMessage[],
+	enabled: boolean,
+): { has: (message: TeamBridgeMessage) => boolean; end: () => void } {
+	const [held, setHeld] = useState<{ key: string; ids: ReadonlySet<string> }>(
+		() => ({ key, ids: new Set() }),
+	);
+	useLayoutEffect(() => {
+		const fresh = enabled
+			? teamBridgeLiveArrivals(key, messages, { commit: false })
+			: new Set<string>();
+		// Observe AFTER reading, and before the browser paints: React may run this
+		// tree twice, so the journal must be written by an effect, not a render.
+		teamBridgeObserveArrivals(key, messages);
+		if (fresh.size > 0)
+			setHeld((current) => ({
+				key,
+				ids: new Set([...(current.key === key ? current.ids : []), ...fresh]),
+			}));
+	}, [key, enabled, messages]);
+	// Suspend on UNMOUNT only. A dependency-change cleanup would suspend the
+	// stream on every unrelated re-render and turn the next live message into a
+	// "restore" that never animates.
+	useEffect(() => () => teamBridgeSuspendArrivals(key), [key]);
+	const ids = held.key === key ? held.ids : EMPTY_IDS;
+	useEffect(() => {
+		if (ids.size === 0) return;
+		const timer = setTimeout(
+			() => setHeld({ key, ids: new Set() }),
+			ARRIVAL_CLEAR_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [key, ids]);
+	const has = useCallback(
+		(message: TeamBridgeMessage) => ids.has(message.id),
+		[ids],
+	);
+	const end = useCallback(() => {
+		setHeld((current) =>
+			current.ids.size === 0 ? current : { key: current.key, ids: new Set() },
+		);
+	}, []);
+	return { has, end };
+}
+
+const EMPTY_IDS: ReadonlySet<string> = new Set();
+
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
+	profileFor?: (
+		sender: TeamBridgeMessage["sender"],
+	) => TeamBridgeDirectoryMember | undefined;
+	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
+	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	reactionContext?: ReactionContext;
 	onReply?: (message: TeamBridgeMessage) => void;
 	/** Story/capture seed only: show every row's toolbar without hover. */
@@ -73,17 +164,30 @@ export const TeamBridgeMessageList: FC<{
 	accountId?: string;
 	/* `compact`: the thread pane's narrow column (see `boxFor`). */
 	density?: "regular" | "compact";
+	/** Stable stream identity; a conversation/thread switch is a new stream. */
+	arrivalKey?: string;
+	/** A paged read restores history; it never introduces a live arrival. */
+	arrivalsEnabled?: boolean;
 }> = ({
 	messages,
 	labelFor,
+	profileFor,
+	onMessagePerson,
+	canMessagePerson,
 	reactionContext,
 	onReply,
 	forceToolbar,
 	tenantId,
 	density,
 	accountId,
+	arrivalKey = teamBridgeArrivalStreamKey(
+		tenantId,
+		messages[0]?.conversation_id,
+	),
+	arrivalsEnabled = true,
 }) => {
 	const locale = useI18nLocale();
+	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
 	const items = threadItems(messages, new Date());
 	return (
 		<ol className="mt-auto flex flex-col pt-4 pb-2">
@@ -96,6 +200,9 @@ export const TeamBridgeMessageList: FC<{
 						message={item.message}
 						continuation={item.continuation}
 						label={labelFor(item.message.sender)}
+						member={profileFor?.(item.message.sender)}
+						onMessagePerson={onMessagePerson}
+						canMessagePerson={canMessagePerson}
 						locale={locale}
 						reactionContext={reactionContext}
 						onReply={onReply}
@@ -103,6 +210,8 @@ export const TeamBridgeMessageList: FC<{
 						tenantId={tenantId}
 						accountId={accountId}
 						density={density}
+						arriving={arriving.has(item.message)}
+						onArrivalEnd={arriving.end}
 					/>
 				),
 			)}
@@ -155,6 +264,9 @@ const MessageRow: FC<{
 	message: TeamBridgeMessage;
 	continuation: boolean;
 	label: string | null;
+	member?: TeamBridgeDirectoryMember;
+	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
+	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	locale: string;
 	reactionContext?: ReactionContext;
 	onReply?: (message: TeamBridgeMessage) => void;
@@ -162,6 +274,8 @@ const MessageRow: FC<{
 	tenantId?: string;
 	accountId?: string;
 	density?: "regular" | "compact";
+	arriving?: boolean;
+	onArrivalEnd?: () => void;
 }> = ({ reactionContext, ...props }) =>
 	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
@@ -189,6 +303,9 @@ type MessageRowProps = {
 	message: TeamBridgeMessage;
 	continuation: boolean;
 	label: string | null;
+	member?: TeamBridgeDirectoryMember;
+	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
+	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	locale: string;
 	reactions?: ReturnType<typeof useTeamBridgeReactionState>;
 	onReply?: (message: TeamBridgeMessage) => void;
@@ -196,12 +313,17 @@ type MessageRowProps = {
 	tenantId?: string;
 	accountId?: string;
 	density?: "regular" | "compact";
+	arriving?: boolean;
+	onArrivalEnd?: () => void;
 };
 
 const MessageRowView: FC<MessageRowProps> = ({
 	message,
 	continuation,
 	label: known,
+	member,
+	onMessagePerson,
+	canMessagePerson,
 	locale,
 	reactions,
 	onReply,
@@ -209,6 +331,8 @@ const MessageRowView: FC<MessageRowProps> = ({
 	tenantId,
 	accountId,
 	density,
+	arriving = false,
+	onArrivalEnd,
 }) => {
 	const summary = threadSummary(message);
 	/* One-level threads: only a timeline root can open a thread - and none can
@@ -233,55 +357,110 @@ const MessageRowView: FC<MessageRowProps> = ({
 	const full = valid
 		? formatDate(at, { dateStyle: "full", timeStyle: "short" }, locale)
 		: "";
+	const canMessage = Boolean(
+		member &&
+			onMessagePerson &&
+			(canMessagePerson?.(message.sender) ?? true) &&
+			member.account_id !== accountId &&
+			member.bridge_enabled &&
+			["active", "paused"].includes(member.bridge_state) &&
+			(!agent || member.agent),
+	);
+	const messagePerson = () => onMessagePerson?.(message.sender);
+	const avatar = member ? (
+		<TeamBridgeProfileCard
+			member={member}
+			label={label}
+			agentName={agent ? label : undefined}
+			onMessage={messagePerson}
+			canMessage={canMessage}
+		>
+			<button
+				type="button"
+				className="mt-0.5 block size-9 shrink-0 rounded-md text-start"
+			>
+				<TeamBridgeAvatar
+					member={member}
+					label={label}
+					size={36}
+					className="size-9 rounded-md bg-media-surface text-ink-muted text-[14px]"
+					fallback={
+						agent ? (
+							<Bot size={18} />
+						) : known === null ? (
+							<UserRound size={18} />
+						) : (
+							known.trim().charAt(0).toUpperCase() || "?"
+						)
+					}
+				/>
+			</button>
+		</TeamBridgeProfileCard>
+	) : null;
 	return (
 		<li
 			data-message-id={message.id}
+			onAnimationEnd={arriving ? onArrivalEnd : undefined}
 			className={cn(
 				"group/message relative flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				// Transform/opacity only: the row reserves its final layout box
+				// immediately, so arrival cannot move the scroll geometry.
+				arriving && "lo-team-bridge-arrival",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
 			)}
 		>
 			{/* The 36px gutter holds the avatar on a run's first message and the
 			    hover clock on its continuations, so bodies share one left edge. */}
 			<div className="w-9 shrink-0">
-				{continuation ? (
-					valid && (
-						<time
-							dateTime={message.created_at}
-							title={full}
-							className="block pt-0.5 text-right text-[11px] text-ink-dim opacity-0 group-hover/message:opacity-100"
-						>
-							{clock}
-						</time>
-					)
-				) : (
-					<span
-						aria-hidden="true"
-						data-sender-avatar={
-							agent ? "agent" : known === null ? "unknown" : "initial"
-						}
-						className={cn(
-							// A rounded SQUARE, as the operator's reference draws it:
-							// Slack's people are squares, and a circle here would read as
-							// the app's own account avatar.
-							"mt-0.5 flex size-9 items-center justify-center rounded-md font-medium text-[14px]",
-							/* `border-control` because the row's hover is a row state:
-							   `sunken` sits on the hover's own rung on some palettes, and
-							   the plate would vanish into the row (selection guard). */
-							agent
-								? "border border-control bg-accent-wash text-accent"
-								: "border border-control bg-sunken text-ink-muted",
-						)}
-					>
-						{agent ? (
-							<Bot size={18} />
-						) : known === null ? (
-							<UserRound size={18} />
-						) : (
-							known.trim().charAt(0).toUpperCase() || "?"
-						)}
-					</span>
-				)}
+				{continuation
+					? valid && (
+							<time
+								dateTime={message.created_at}
+								title={full}
+								className="block pt-0.5 text-right text-[11px] text-ink-dim opacity-0 group-hover/message:opacity-100"
+							>
+								{clock}
+							</time>
+						)
+					: (avatar ?? (
+							<span
+								aria-hidden="true"
+								data-sender-avatar={
+									agent ? "agent" : known === null ? "unknown" : "initial"
+								}
+								className={cn(
+									// A rounded SQUARE, as the operator's reference draws it:
+									// Slack's people are squares, and a circle here would read as
+									// the app's own account avatar.
+									// Fixed box, clipped: an account picture can replace the
+									// initial later without moving a pixel of the row.
+									"mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-[14px]",
+									/* BORDERLESS, SEPARATED BY VALUE (operator ask, 2026-10-26).
+							   The plate used to need a `border-control` ring because
+							   `sunken` lands on the row-hover rung on some palettes
+							   (ΔE00 1.86 on iceberg) and vanished into a hovered row.
+							   `media-surface` is the app's borderless-tile fill: it
+							   deepens AWAY from the ground, so it clears `canvas`
+							   (ΔE00 >= 4.0, its contract floor), `surface` (>= 5.96)
+							   AND `row-hover` (>= 3.70) on all 59 palettes. Agents use
+							   the SAME fill with an accent Bot glyph: `accent-wash` is
+							   not a safe substitute, since it sits within ΔE00 1.38 of
+							   row-hover on obsidian and 1.56 on oneLight. The fill and
+							   glyph pair is registered in `scripts/contrast-contract.mjs`. */
+									agent
+										? "bg-media-surface text-accent"
+										: "bg-media-surface text-ink-muted",
+								)}
+							>
+								{agent ? (
+									<Bot size={18} />
+								) : known === null ? (
+									<UserRound size={18} />
+								) : (
+									known.trim().charAt(0).toUpperCase() || "?"
+								)}
+							</span>
+						))}
 			</div>
 			<div className="min-w-0 flex-1">
 				{/* First in the column so it floats beside the first line; see
@@ -293,17 +472,35 @@ const MessageRowView: FC<MessageRowProps> = ({
 				/>
 				{!continuation && (
 					<div className="flex items-baseline gap-2">
-						<span
-							data-sender={known === null ? "unknown" : "known"}
-							className={cn(
-								"truncate text-[14px]",
-								known === null
-									? "text-ink-muted italic"
-									: "font-semibold text-ink",
-							)}
-						>
-							{label}
-						</span>
+						{member ? (
+							<TeamBridgeProfileCard
+								member={member}
+								label={label}
+								agentName={agent ? label : undefined}
+								onMessage={messagePerson}
+								canMessage={canMessage}
+							>
+								<button
+									type="button"
+									data-sender={known === null ? "unknown" : "known"}
+									className="min-w-0 truncate rounded-sm text-start font-semibold text-[14px] text-ink"
+								>
+									{label}
+								</button>
+							</TeamBridgeProfileCard>
+						) : (
+							<span
+								data-sender={known === null ? "unknown" : "known"}
+								className={cn(
+									"truncate text-[14px]",
+									known === null
+										? "text-ink-muted italic"
+										: "font-semibold text-ink",
+								)}
+							>
+								{label}
+							</span>
+						)}
 						{valid && (
 							<time
 								dateTime={message.created_at}

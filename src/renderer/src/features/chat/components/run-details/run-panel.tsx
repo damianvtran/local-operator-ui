@@ -44,6 +44,8 @@
 
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
 import type { RunPanelSection } from "@shared/store/ui-preferences-store";
@@ -186,6 +188,9 @@ export const RunPanel = ({
 	previewPage = null,
 	onClose,
 }: RunPanelProps) => {
+	// Subscribes the pane to language changes; `t()` resolves against the current
+	// locale at render time (see `ui.chat.run_details.*` in the English catalogue).
+	useI18nLocale();
 	const openChildId = readerChildId;
 	/**
 	 * The pane's own root, for the Escape ladder's guard: a press belongs to the
@@ -713,7 +718,7 @@ export const RunPanel = ({
 			 * the `aria-label`, because a name is copy and this is a hook.
 			 */
 			data-run-panel-pane=""
-			aria-label="Run details"
+			aria-label={t("ui.chat.run_details.pane_label")}
 			tabIndex={-1}
 			/*
 			 * THE SLOT'S GROUND IS THE DRAWER'S RUNG, and the canvas states the rule
@@ -794,7 +799,7 @@ export const RunPanel = ({
 							 * operator reported — no way back up out of a first-level reader.
 							 */}
 							<nav
-								aria-label="Subagent path"
+								aria-label={t("ui.chat.run_details.subagent_path_label")}
 								className={cn(
 									"flex min-w-0 items-center gap-1 overflow-hidden",
 								)}
@@ -806,7 +811,7 @@ export const RunPanel = ({
 										"shrink-0 truncate rounded-sm px-1 text-meta text-ink-muted hover:text-ink",
 									)}
 								>
-									Run details
+									{t("ui.chat.run_details.title")}
 								</button>
 								{/*
 								 * The ancestors are CAPPED and the current node takes the rest.
@@ -869,7 +874,7 @@ export const RunPanel = ({
 						</>
 					) : (
 						<span className={cn("px-1 text-meta text-ink-dim")}>
-							Run details
+							{t("ui.chat.run_details.title")}
 						</span>
 					)}
 				</div>
@@ -902,22 +907,22 @@ export const RunPanel = ({
 							)}
 							{siblings.length > 1 && (
 								<>
-									<Tooltip content="Previous subagent">
+									<Tooltip content={t("ui.chat.run_details.previous_subagent")}>
 										<Button
 											variant="ghost"
 											size="icon-sm"
-											aria-label="Previous subagent"
+											aria-label={t("ui.chat.run_details.previous_subagent")}
 											disabled={!previous}
 											onClick={() => previous && openChild(previous.id)}
 										>
 											<ChevronLeft aria-hidden="true" />
 										</Button>
 									</Tooltip>
-									<Tooltip content="Next subagent">
+									<Tooltip content={t("ui.chat.run_details.next_subagent")}>
 										<Button
 											variant="ghost"
 											size="icon-sm"
-											aria-label="Next subagent"
+											aria-label={t("ui.chat.run_details.next_subagent")}
 											disabled={!next}
 											onClick={() => next && openChild(next.id)}
 										>
@@ -928,11 +933,11 @@ export const RunPanel = ({
 							)}
 						</>
 					)}
-					<Tooltip content="Close run details">
+					<Tooltip content={t("ui.chat.run_details.close_label")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Close run details"
+							aria-label={t("ui.chat.run_details.close_label")}
 							onClick={onClose}
 							data-tour-tag="close-run-panel-button"
 						>
@@ -1049,10 +1054,7 @@ export const RunPanel = ({
 								"flex flex-col gap-2 px-3 pt-2 pb-1 text-meta text-ink-muted",
 							)}
 						>
-							<p>
-								Opening a subagent's conversation needs a newer Local Operator
-								backend. Update the backend and restart the app.
-							</p>
+							<p>{t("ui.chat.run_details.children_unopenable")}</p>
 							<div className={cn("flex items-center gap-2")}>
 								{canUpdateBackend && (
 									<Button
@@ -1061,7 +1063,9 @@ export const RunPanel = ({
 										disabled={updatingBackend}
 										onClick={updateBackend}
 									>
-										{updatingBackend ? "Updating" : "Update backend"}
+										{updatingBackend
+											? t("ui.chat.run_details.updating_backend")
+											: t("ui.chat.run_details.update_backend")}
 									</Button>
 								)}
 								<Button variant="outline" size="sm" onClick={retryCapabilities}>
@@ -1074,7 +1078,7 @@ export const RunPanel = ({
 									 * carries the `border-control` floor, so the action reads as an
 									 * action beside `Update backend` without competing with it.
 									 */}
-									Retry
+									{t("ui.chat.run_details.retry")}
 								</Button>
 								{updateBackendError && (
 									<span className={cn("text-danger")}>
@@ -1086,7 +1090,7 @@ export const RunPanel = ({
 					)}
 					{unopenable && (
 						<p className={cn("px-3 pt-2 text-meta text-ink-muted")}>
-							That subagent's conversation could not be opened.
+							{t("ui.chat.run_details.unopenable")}
 						</p>
 					)}
 					<RunDetailsPanel

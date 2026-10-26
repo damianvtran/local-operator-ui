@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "Esta notificación ya no se puede abrir con esta cuenta.",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "Aún no hay conversaciones",
 	"ui.teamBridge.list.empty.body": "Inicia un mensaje directo, un grupo o un canal.",
@@ -198,5 +199,12 @@
 	"ui.teamBridge.reactions.category8": "Banderas",
 	"ui.teamBridge.reactions.choose": "Elige un emoji",
 	"ui.teamBridge.reactions.noResults": "No se encontraron emojis",
-	"ui.teamBridge.actions.label": "Acciones del mensaje"
+	"ui.teamBridge.actions.label": "Acciones del mensaje",
+	"ui.teamBridge.profile.message": "Enviar mensaje",
+	"ui.teamBridge.profile.human_badge": "Persona",
+	"ui.teamBridge.profile.agent_badge": "Agente",
+	"ui.teamBridge.profile.owned_by": "Agente de {name}",
+	"ui.teamBridge.profile.local_time": "Hora local: {time}",
+	"ui.teamBridge.profile.close_profile": "Cerrar perfil",
+	"ui.teamBridge.profile.open_profile": "Abrir el perfil de {name}"
 }

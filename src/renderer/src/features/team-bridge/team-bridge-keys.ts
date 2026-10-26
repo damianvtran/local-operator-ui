@@ -13,6 +13,10 @@ export const teamBridgeKeys = {
 	conversations: (scope: TeamBridgeScope, accountId?: string) =>
 		[...ROOT, "conversations", scope, ...readOwner(accountId)] as const,
 	conversationsPrefix: [...ROOT, "conversations"] as const,
+	// Notification dispatch must distinguish optimistic display policy from a
+	// settled write, without mixing pending mutations from another auth epoch.
+	notifyMutation: (accountId: string | undefined, epoch: number) =>
+		[...ROOT, "notify-policy", accountId ?? "unresolved-owner", epoch] as const,
 	messages: (conversationId: string, tenantId?: string, accountId?: string) =>
 		[
 			...ROOT,

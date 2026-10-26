@@ -45,5 +45,18 @@
 	"ui.chat.canonical.send_failure.late_delivery_draft": "Your earlier message was delivered. What's here now hasn't been sent.",
 	"ui.chat.canonical.send_failure.late_delivery_overlap": "Your earlier message was delivered. Its words are still in the box, so sending again would repeat them.",
 	"ui.chat.canonical.untitled": "Untitled chat",
-	"ui.chat.canonical.this_chat": "this chat"
+	"ui.chat.canonical.this_chat": "this chat",
+	"ui.chat.canonical.older_history.transport.short": "Not loaded",
+	"ui.chat.canonical.older_history.transport.long": "Earlier messages did not load",
+	"ui.chat.canonical.older_history.failed.short": "Did not load",
+	"ui.chat.canonical.older_history.failed.long": "Could not load earlier messages",
+	"ui.chat.canonical.older_history.try_again": "Try again",
+	"ui.chat.canonical.older_history.loading": "Loading earlier messages",
+	"ui.chat.canonical.older_history.load": "Load earlier messages",
+	"ui.chat.canonical.older_history.windowed.title": "Earlier history above",
+	"ui.chat.canonical.older_history.windowed.title_gesture": "Earlier history above — scroll up to load",
+	"ui.chat.canonical.older_history.windowed.short_gesture": "Scroll up for earlier",
+	"ui.chat.canonical.older_history.unproven.short": "Earlier not loaded",
+	"ui.chat.canonical.older_history.unproven.long": "Earlier history not loaded",
+	"ui.chat.canonical.older_history.conversation_start": "Start of conversation"
 }

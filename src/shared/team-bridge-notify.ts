@@ -139,7 +139,57 @@ export function safeTeamBridgeBannerText(
 		: truncateTeamBridgeText(line, Math.max(0, maxUnits - 1), "units");
 }
 
+/** Captured from the credential-write journal, never inferred from a banner.
+ * Epochs are document-local; main revokes the document on navigation/destruction. */
+export type TeamBridgeNotifyAuthority = {
+	accountId?: string;
+	epoch: number;
+	/** Credential refresh is unresolved, not a completed sign-out. */
+	settling?: boolean;
+};
+export type TeamBridgeNotifyOwner = TeamBridgeNotifyAuthority & {
+	accountId: string;
+};
+
+export function parseTeamBridgeNotifyAuthority(
+	value: unknown,
+): TeamBridgeNotifyAuthority | null {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+	const input = value as Record<string, unknown>;
+	if (
+		typeof input.epoch !== "number" ||
+		!Number.isSafeInteger(input.epoch) ||
+		input.epoch < 0
+	)
+		return null;
+	if (input.accountId !== undefined && cleanId(input.accountId) === null)
+		return null;
+	if (input.settling !== undefined && typeof input.settling !== "boolean")
+		return null;
+	return {
+		epoch: input.epoch,
+		...(input.settling === undefined ? {} : { settling: input.settling }),
+		...(input.accountId === undefined
+			? {}
+			: { accountId: input.accountId as string }),
+	};
+}
+
+/** Missing/legacy owners fail closed, including at the renderer's last route boundary. */
+export function teamBridgeNotifyOwnerMatches(
+	owner: unknown,
+	current: TeamBridgeNotifyAuthority | null,
+): boolean {
+	const parsed = parseTeamBridgeNotifyAuthority(owner);
+	return Boolean(
+		parsed?.accountId &&
+			current?.accountId === parsed.accountId &&
+			current.epoch === parsed.epoch,
+	);
+}
+
 export type TeamBridgeNotifyRequest = {
+	owner: TeamBridgeNotifyOwner;
 	conversationId: string;
 	tenantId: string;
 	title: string;
@@ -168,8 +218,12 @@ export type TeamBridgeNotifyRequest = {
 	viewing?: boolean;
 };
 
+/** Stale-click feedback carries no departing account or conversation IDs. */
+export type TeamBridgeOpenResult = TeamBridgeOpenTarget | { unavailable: true };
+
 /** What a click names: the organization and the conversation to open. */
 export type TeamBridgeOpenTarget = {
+	owner: TeamBridgeNotifyOwner;
 	conversationId: string;
 	tenantId: string;
 	/** See `TeamBridgeNotifyRequest.threadId`. Absent unless one was sent. */
@@ -201,6 +255,7 @@ export function parseTeamBridgeNotifyRequest(
 		return null;
 	}
 	const input = value as Record<string, unknown>;
+	const owner = parseTeamBridgeNotifyAuthority(input.owner);
 	const conversationId = cleanId(input.conversationId);
 	const tenantId = cleanId(input.tenantId);
 	const title = cleanText(input.title, TEAM_BRIDGE_NOTIFY_MAX_TITLE);
@@ -227,6 +282,7 @@ export function parseTeamBridgeNotifyRequest(
 		return null;
 	}
 	if (
+		!owner?.accountId ||
 		conversationId === null ||
 		tenantId === null ||
 		title === null ||
@@ -239,6 +295,7 @@ export function parseTeamBridgeNotifyRequest(
 		return null;
 	}
 	return {
+		owner: { accountId: owner.accountId, epoch: owner.epoch },
 		conversationId,
 		tenantId,
 		title,

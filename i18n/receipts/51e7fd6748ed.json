@@ -1,0 +1,992 @@
+{
+	"schema": 1,
+	"receipt_kind": "merge-integration (narrow union) audit of frozen catalogue copies: main's ui.teamBridge.notify.unavailable added onto the account-profile branch's 207 entries. Verifies the seven frozen ui.teamBridge.profile.* values are byte-identical to the audited branch copy, proves the merged value set is exactly the union of both parents, and audits the one incoming key in seven locales. It is not a fresh linguistic audit of the 200 inherited entries.",
+	"audit_id": "teambridge-profile-union-audit-51e7fd6748ed",
+	"audit_date": "2026-10-26",
+	"date": "2026-10-26",
+	"instance": "51e7fd6748ed",
+	"instance_note": "This session's own id. Distinct from the profile rounds 7fe70d68b963 and 3d4473001f4b and from main's 72781433def7: this is a separate immutable run over the MERGED bytes.",
+	"auditor": "i18n-auditor (independent translation auditor; did not translate, merge or edit the audited catalogues)",
+	"agent": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "The harness session header reports 'Model: radient/auto', an auto-routed alias; the session's selected_model payload records selector 'radient/auto', effort 'auto'. No concrete provider/model id is given to this session and no LOP_*/provider model variable is set (env variable NAMES checked; only LOP_SPAWN_CHAIN is present). The delegating team may pin a role model for this subagent and such a pin would not be visible here; that is disclosed as unknown rather than guessed. No fallback was announced or observed during this run; if the harness routed to a fallback upstream it is invisible from inside the session and is not asserted.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false,
+		"note": "No quota/fallback message appeared in this run. The concrete upstream model behind radient/auto is not claimed."
+	},
+	"independence": "Independent auditor. This run produced none of the audited strings and edited no catalogue byte, no ledger row, no source file. It read the worktree and Git objects, ran the four named i18n scripts plus read-only checks, and wrote exactly one file: this receipt. The worktree's existing unstaged change to src/renderer/src/features/team-bridge/team-bridge-profile-card.tsx is not this run's and was not touched.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"translator": {
+		"agent": "not identified by this run",
+		"note": "Incoming copy was authored on main under receipt 72781433def7 (translator job8d4e6d78c133, model not supplied there). The seven frozen profile values were authored on the profile branch and audited under teambridge-profile-audit-r2-3d4473001f4b."
+	},
+	"integration": {
+		"worktree": "/Users/damian/local-operator-ui/.worktrees/account-profile",
+		"state": "merge in progress and uncommitted (i18n/ledger.json unresolved)",
+		"head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+		"merge_head": "4ebb63bf53d8620e75ab8e959d2aef13490b37f4",
+		"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+		"merge_base": "acc6a5bc9c20ae9c92cfa3cf322271610b72c0b6",
+		"branch_feature_commit": "70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+		"reviewed_tree_identified_by": "the nine sha256 values below, not by a commit sha"
+	},
+	"key_count": 208,
+	"key_count_note": "208 keys in every catalogue and in the context sidecar at the reviewed tree (200 merge-base + 7 profile + 1 incoming notification key). One key was linguistically audited per locale; the other 207 are inherited on byte identity.",
+	"scope": {
+		"namespace": "ui.teamBridge",
+		"keys_audited_linguistically": [
+			"ui.teamBridge.notify.unavailable"
+		],
+		"keys_bound_by_hash": 208,
+		"frozen_profile_keys_verified_unchanged": [
+			"ui.teamBridge.profile.message",
+			"ui.teamBridge.profile.human_badge",
+			"ui.teamBridge.profile.agent_badge",
+			"ui.teamBridge.profile.owned_by",
+			"ui.teamBridge.profile.local_time",
+			"ui.teamBridge.profile.close_profile",
+			"ui.teamBridge.profile.open_profile"
+		],
+		"delta_kind": "merge union: one incoming key from main onto a frozen branch copy",
+		"base_note": "The instruction called the frozen profile values byte-identical to the acc6a5bc base. Measured: acc6a5bc carries none of the seven profile keys at all (it has 200 namespaced keys). Those keys are introduced by the branch commit 70a4c0cb, which adds exactly those seven entries and changes nothing else. The frozen values are therefore byte-identical to 70a4c0cb — the base plus exactly the seven profile entries — which is the only reading the tree supports; no acc6a5bc-side bytes for those keys exist to compare against.",
+		"not_covered": "No fresh linguistic review of the 200 inherited namespace entries beyond the seven profile keys' byte identity, and no re-audit of those seven beyond confirming their bytes are the round-2 bytes. No rendered/toast frame review: the story exists (team-bridge-notify-unavailable.stories.tsx) but this branch's frames are review evidence, not committed sweep frames, so no RTL/layout proof is claimed from this lane."
+	},
+	"inputs": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06"
+		},
+		"targets": {
+			"fr": {
+				"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+				"sha256": "6b1d333ec0301f509457ea95db8dd2bc51d1c85c3620e0ef027f30b32ab9c30a"
+			},
+			"es": {
+				"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+				"sha256": "a6cbec42e47929f5655ba65b5bc2b4602758295ce70bd87c0232d12e90c9c952"
+			},
+			"zh-CN": {
+				"path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+				"sha256": "8d7ef1f10f59a92087648c944d46df8d6b6adad1088854ba6b379169eb50631f"
+			},
+			"ru": {
+				"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+				"sha256": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe"
+			},
+			"vi": {
+				"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+				"sha256": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32"
+			},
+			"ur": {
+				"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+				"sha256": "a769a7be043183de9ba33aec506ec7eb307214c4a31e3329c1d2d7b077d15153"
+			},
+			"hi": {
+				"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+				"sha256": "cf0dfe8b38a1078b498ad262d57a8106424043f85a2221218392b699bccd145a"
+			}
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guides": {
+			"fr": {
+				"path": "~/local-operator/i18n/style-guides/fr.md",
+				"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+			},
+			"es": {
+				"path": "~/local-operator/i18n/style-guides/es.md",
+				"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+			},
+			"zh-CN": {
+				"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+				"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+			},
+			"ru": {
+				"path": "~/local-operator/i18n/style-guides/ru.md",
+				"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+			},
+			"vi": {
+				"path": "~/local-operator/i18n/style-guides/vi.md",
+				"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+			},
+			"ur": {
+				"path": "~/local-operator/i18n/style-guides/ur.md",
+				"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+			},
+			"hi": {
+				"path": "~/local-operator/i18n/style-guides/hi.md",
+				"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+			}
+		},
+		"contract": {
+			"path": "docs/I18N.md",
+			"sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+		},
+		"ledger_rules": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		}
+	},
+	"union_proof": {
+		"method": "For each of the eight catalogues and the context sidecar: parse the merge base (acc6a5bc), the branch feature commit (70a4c0cb), main (4ebb63bf) and the merged file; compare key sets and every value; then do the byte check — remove the single line carrying the incoming key and compare the remainder to the branch feature commit byte-for-byte, and compare that removed line to main's line.",
+		"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+		"merge_base": "acc6a5bc9c20ae9c92cfa3cf322271610b72c0b6",
+		"branch_feature_commit": "70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+		"main_parent": "4ebb63bf53d8620e75ab8e959d2aef13490b37f4",
+		"per_locale": {
+			"en": {
+				"merged_keys": 208,
+				"merge_base_keys": 200,
+				"branch_feature_keys": 207,
+				"main_keys": 201,
+				"added_vs_branch_feature": [
+					"ui.teamBridge.notify.unavailable"
+				],
+				"removed_vs_branch_feature": [],
+				"changed_vs_branch_feature": [],
+				"every_main_entry_equal_in_merged": true,
+				"every_frozen_profile_value_equal_to_branch": true,
+				"key_set_is_exact_union": true,
+				"byte_level": {
+					"lines_removed": 1,
+					"remainder_byte_identical_to_branch_feature": true,
+					"inserted_line_byte_identical_to_main": true
+				},
+				"incoming_key_chars": 57,
+				"incoming_key_cells": 57
+			},
+			"fr": {
+				"merged_keys": 208,
+				"merge_base_keys": 200,
+				"branch_feature_keys": 207,
+				"main_keys": 201,
+				"added_vs_branch_feature": [
+					"ui.teamBridge.notify.unavailable"
+				],
+				"removed_vs_branch_feature": [],
+				"changed_vs_branch_feature": [],
+				"every_main_entry_equal_in_merged": true,
+				"every_frozen_profile_value_equal_to_branch": true,
+				"key_set_is_exact_union": true,
+				"byte_level": {
+					"lines_removed": 1,
+					"remainder_byte_identical_to_branch_feature": true,
+					"inserted_line_byte_identical_to_main": true
+				},
+				"incoming_key_chars": 60,
+				"incoming_key_cells": 60
+			},
+			"es": {
+				"merged_keys": 208,
+				"merge_base_keys": 200,
+				"branch_feature_keys": 207,
+				"main_keys": 201,
+				"added_vs_branch_feature": [
+					"ui.teamBridge.notify.unavailable"
+				],
+				"removed_vs_branch_feature": [],
+				"changed_vs_branch_feature": [],
+				"every_main_entry_equal_in_merged": true,
+				"every_frozen_profile_value_equal_to_branch": true,
+				"key_set_is_exact_union": true,
+				"byte_level": {
+					"lines_removed": 1,
+					"remainder_byte_identical_to_branch_feature": true,
+					"inserted_line_byte_identical_to_main": true
+				},
+				"incoming_key_chars": 55,
+				"incoming_key_cells": 55
+			},
+			"zh-CN": {
+				"merged_keys": 208,
+				"merge_base_keys": 200,
+				"branch_feature_keys": 207,
+				"main_keys": 201,
+				"added_vs_branch_feature": [
+					"ui.teamBridge.notify.unavailable"
+				],
+				"removed_vs_branch_feature": [],
+				"changed_vs_branch_feature": [],
+				"every_main_entry_equal_in_merged": true,
+				"every_frozen_profile_value_equal_to_branch": true,
+				"key_set_is_exact_union": true,
+				"byte_level": {
+					"lines_removed": 1,
+					"remainder_byte_identical_to_branch_feature": true,
+					"inserted_line_byte_identical_to_main": true
+				},
+				"incoming_key_chars": 16,
+				"incoming_key_cells": 32
+			},
+			"ru": {
+				"merged_keys": 208,
+				"merge_base_keys": 200,
+				"branch_feature_keys": 207,
+				"main_keys": 201,
+				"added_vs_branch_feature": [
+					"ui.teamBridge.notify.unavailable"
+				],
+				"removed_vs_branch_feature": [],
+				"changed_vs_branch_feature": [],
+				"every_main_entry_equal_in_merged": true,
+				"every_frozen_profile_value_equal_to_branch": true,
+				"key_set_is_exact_union": true,
+				"byte_level": {
+					"lines_removed": 1,
+					"remainder_byte_identical_to_branch_feature": true,
+					"inserted_line_byte_identical_to_main": true
+				},
+				"incoming_key_chars": 57,
+				"incoming_key_cells": 57
+			},
+			"vi": {
+				"merged_keys": 208,
+				"merge_base_keys": 200,
+				"branch_feature_keys": 207,
+				"main_keys": 201,
+				"added_vs_branch_feature": [
+					"ui.teamBridge.notify.unavailable"
+				],
+				"removed_vs_branch_feature": [],
+				"changed_vs_branch_feature": [],
+				"every_main_entry_equal_in_merged": true,
+				"every_frozen_profile_value_equal_to_branch": true,
+				"key_set_is_exact_union": true,
+				"byte_level": {
+					"lines_removed": 1,
+					"remainder_byte_identical_to_branch_feature": true,
+					"inserted_line_byte_identical_to_main": true
+				},
+				"incoming_key_chars": 55,
+				"incoming_key_cells": 55
+			},
+			"ur": {
+				"merged_keys": 208,
+				"merge_base_keys": 200,
+				"branch_feature_keys": 207,
+				"main_keys": 201,
+				"added_vs_branch_feature": [
+					"ui.teamBridge.notify.unavailable"
+				],
+				"removed_vs_branch_feature": [],
+				"changed_vs_branch_feature": [],
+				"every_main_entry_equal_in_merged": true,
+				"every_frozen_profile_value_equal_to_branch": true,
+				"key_set_is_exact_union": true,
+				"byte_level": {
+					"lines_removed": 1,
+					"remainder_byte_identical_to_branch_feature": true,
+					"inserted_line_byte_identical_to_main": true
+				},
+				"incoming_key_chars": 44,
+				"incoming_key_cells": 44
+			},
+			"hi": {
+				"merged_keys": 208,
+				"merge_base_keys": 200,
+				"branch_feature_keys": 207,
+				"main_keys": 201,
+				"added_vs_branch_feature": [
+					"ui.teamBridge.notify.unavailable"
+				],
+				"removed_vs_branch_feature": [],
+				"changed_vs_branch_feature": [],
+				"every_main_entry_equal_in_merged": true,
+				"every_frozen_profile_value_equal_to_branch": true,
+				"key_set_is_exact_union": true,
+				"byte_level": {
+					"lines_removed": 1,
+					"remainder_byte_identical_to_branch_feature": true,
+					"inserted_line_byte_identical_to_main": true
+				},
+				"incoming_key_chars": 41,
+				"incoming_key_cells": 41
+			}
+		},
+		"context_sidecar": {
+			"merged_entries": 208,
+			"merge_base_keys": 200,
+			"branch_feature_keys": 207,
+			"main_keys": 201,
+			"added_vs_branch_feature": [
+				"ui.teamBridge.notify.unavailable"
+			],
+			"added_vs_merge_base": [
+				"ui.teamBridge.notify.unavailable",
+				"ui.teamBridge.profile.agent_badge",
+				"ui.teamBridge.profile.close_profile",
+				"ui.teamBridge.profile.human_badge",
+				"ui.teamBridge.profile.local_time",
+				"ui.teamBridge.profile.message",
+				"ui.teamBridge.profile.open_profile",
+				"ui.teamBridge.profile.owned_by"
+			],
+			"removed": [],
+			"changed": []
+		},
+		"conclusion": "Every merged catalogue and the context sidecar is exactly the union: the branch feature commit's entries byte-for-byte, plus main's one added key byte-for-byte. No key was dropped, renamed, reordered across files or altered on either side. Nothing differs from both parents.",
+		"brief_wording_correction": "The brief asks for the frozen ui.teamBridge.profile.* values to be 'byte-identical to the acc6a5bc side'. They cannot be: acc6a5bc (the merge base) contains no profile keys (0 of 7). They are byte-identical to the branch feature commit 70a4c0cb, which is acc6a5bc plus exactly those seven keys. Recorded as a wording correction, not a defect."
+	},
+	"audited_strings": {
+		"en": "That notification is no longer available on this account.",
+		"fr": "Cette notification ne peut plus être ouverte avec ce compte.",
+		"es": "Esta notificación ya no se puede abrir con esta cuenta.",
+		"zh-CN": "这条通知已无法在当前账号下打开。",
+		"ru": "Это уведомление больше нельзя открыть в текущем аккаунте.",
+		"vi": "Không thể mở thông báo này bằng tài khoản hiện tại nữa.",
+		"ur": "اس اکاؤنٹ سے اب یہ اطلاع نہیں کھولی جا سکتی۔",
+		"hi": "इस खाते से अब यह सूचना नहीं खोली जा सकती।"
+	},
+	"namespaces": {
+		"ui.teamBridge": {
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 1,
+			"keys_bound": 208,
+			"keys_checked_per_catalogue": 208,
+			"context_keys_verified": 208,
+			"sha256": {
+				"en": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+				"fr": "6b1d333ec0301f509457ea95db8dd2bc51d1c85c3620e0ef027f30b32ab9c30a",
+				"es": "a6cbec42e47929f5655ba65b5bc2b4602758295ce70bd87c0232d12e90c9c952",
+				"zh-CN": "8d7ef1f10f59a92087648c944d46df8d6b6adad1088854ba6b379169eb50631f",
+				"ru": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
+				"vi": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
+				"ur": "a769a7be043183de9ba33aec506ec7eb307214c4a31e3329c1d2d7b077d15153",
+				"hi": "cf0dfe8b38a1078b498ad262d57a8106424043f85a2221218392b699bccd145a"
+			},
+			"context_sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06",
+			"counts_note": "Namespace aggregate: blocker 0, major 0, minor 3, nit 1, all four on the incoming key. scripts/i18n/ledger-rules.mjs derives counts from this single findings array, so deriveReceiptAudit reports the same aggregate (3 minor / 1 nit) for every locale; per_locale below is the human-readable locale split. No blocker or major remains, so the result is clean-with-findings and the status is passed.",
+			"findings": [
+				{
+					"id": "U1",
+					"severity": "minor",
+					"locale": "fr",
+					"key": "ui.teamBridge.notify.unavailable",
+					"current": "Cette notification ne peut plus être ouverte avec ce compte.",
+					"problem": "« ouvrir … avec ce compte » is not the settled French collocation for opening something account-scoped: French pairs it with « depuis », or recasts with « accessible ». As written it reads as a calque of the English « with this account ». The meaning survives, so it is non-gating.",
+					"fix": "« Cette notification ne peut plus être ouverte depuis ce compte. » — or, closer to the source's « no longer available »: « Cette notification n'est plus accessible depuis ce compte. »",
+					"gating": false,
+					"status": "open"
+				},
+				{
+					"id": "U2",
+					"severity": "minor",
+					"locale": "zh-CN",
+					"key": "ui.teamBridge.notify.unavailable",
+					"current": "这条通知已无法在当前账号下打开。",
+					"problem": "「账号」 is used nowhere else in the zh-CN catalogues (1 occurrence: this string). The product's settled rendering is « 账户 » (72 occurrences), including twice in this same namespace (people.identity_loading 「正在查找你的账户」, attachments.error_account_changed 「当前登录的账户已变更」). The toast therefore names the account with a different term than the screen that raised it. Understandable, so non-gating.",
+					"fix": "这条通知已无法在当前账户下打开。 (账号 → 账户; the rest of the sentence is fine)",
+					"gating": false,
+					"status": "open"
+				},
+				{
+					"id": "U3",
+					"severity": "minor",
+					"locale": "ru",
+					"key": "ui.teamBridge.notify.unavailable",
+					"current": "Это уведомление больше нельзя открыть в текущем аккаунте.",
+					"problem": "« аккаунт » is the only occurrence in the ru catalogues (104 use « учётная запись »), and this namespace already says « Учётная запись, под которой выполнен вход… ». « открыть в аккаунте » is also not the usual collocation. Understandable, so non-gating.",
+					"fix": "Это уведомление больше нельзя открыть из текущей учётной записи.",
+					"gating": false,
+					"status": "open"
+				},
+				{
+					"id": "U4",
+					"severity": "nit",
+					"locale": "vi",
+					"key": "ui.teamBridge.notify.unavailable",
+					"current": "Không thể mở thông báo này bằng tài khoản hiện tại nữa.",
+					"problem": "« không thể … nữa » without « được » is clipped; the settled Vietnamese pattern for 'can no longer …' is « không còn … được nữa ». Understandable and non-gating.",
+					"fix": "Thông báo này không còn mở được bằng tài khoản hiện tại.",
+					"gating": false,
+					"status": "open"
+				}
+			],
+			"per_locale": {
+				"en": {
+					"status": "passed",
+					"result": "clean",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"target_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+					"note": "English source read against its call site; no finding."
+				},
+				"fr": {
+					"status": "passed",
+					"result": "clean-with-findings",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"target_sha256": "6b1d333ec0301f509457ea95db8dd2bc51d1c85c3620e0ef027f30b32ab9c30a",
+					"note": "U1 (minor): « avec ce compte » collocation."
+				},
+				"es": {
+					"status": "passed",
+					"result": "clean",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"target_sha256": "a6cbec42e47929f5655ba65b5bc2b4602758295ce70bd87c0232d12e90c9c952",
+					"note": "No finding."
+				},
+				"zh-CN": {
+					"status": "passed",
+					"result": "clean-with-findings",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"target_sha256": "8d7ef1f10f59a92087648c944d46df8d6b6adad1088854ba6b379169eb50631f",
+					"note": "U2 (minor): 账号 where the product uses 账户."
+				},
+				"ru": {
+					"status": "passed",
+					"result": "clean-with-findings",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"target_sha256": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
+					"note": "U3 (minor): аккаунт where the product uses учётная запись; « в аккаунте » collocation."
+				},
+				"vi": {
+					"status": "passed",
+					"result": "clean-with-findings",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"target_sha256": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
+					"note": "U4 (nit): « không thể … nữa » without « được »."
+				},
+				"ur": {
+					"status": "passed",
+					"result": "clean",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"target_sha256": "a769a7be043183de9ba33aec506ec7eb307214c4a31e3329c1d2d7b077d15153",
+					"note": "No finding; RTL and bidi check clean."
+				},
+				"hi": {
+					"status": "passed",
+					"result": "clean",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"target_sha256": "cf0dfe8b38a1078b498ad262d57a8106424043f85a2221218392b699bccd145a",
+					"note": "No finding."
+				}
+			},
+			"observations": [
+				{
+					"id": "O1",
+					"status": "INFO",
+					"locale": "en",
+					"note": "Source read against the call site (src/renderer/src/features/team-bridge/use-team-bridge-notification-open.ts:76): showInfoToast(t(\"ui.teamBridge.notify.unavailable\")) with no arguments, reached after the signed-in account settles when the clicked notification is unavailable, ownerless or owned by another account. The sentence states the fact without naming the other account or conversation — accurate and non-disclosing. No placeholder, no ICU structure, no markup."
+				},
+				{
+					"id": "O2",
+					"status": "INFO",
+					"locale": "es",
+					"note": "No finding. « Esta notificación ya no se puede abrir con esta cuenta. » is idiomatic neutral Spanish ('tú' register, no address needed here), correct punctuation, no region-marked wording."
+				},
+				{
+					"id": "O3",
+					"status": "INFO",
+					"locale": "ur",
+					"note": "No finding. RTL: logical order preserved; the sentence contains no Latin/digit islands and no manual bidi controls (the render layer applies FSI/PDI; the guide forbids inserting them). Urdu full stop ۔ correct. Length 44 cells, no overflow risk."
+				},
+				{
+					"id": "O4",
+					"status": "INFO",
+					"locale": "hi",
+					"note": "No finding. « इस खाते से अब यह सूचना नहीं खोली जा सकती। » — feminine agreement with सूचना correct, danda correct, खाता consistent with the other two account strings in this namespace."
+				},
+				{
+					"id": "O5",
+					"status": "INFO",
+					"locale": "all",
+					"note": "Shared adaptation: all seven render 'no longer available on this account' as 'can no longer be opened with/from this account'. That is a defensible fit to the call site (the click cannot open the conversation) and it does not disclose the previous account. Recorded as an accepted shared choice, not a finding."
+				},
+				{
+					"id": "O6",
+					"status": "INFO",
+					"locale": "all",
+					"note": "Provenance check of main's receipt 72781433def7. First read looked like a dead hash; a full `git log --all` over the sidecar finds it. All eight catalogue sha256 values AND its context_sha256 are the blobs at commit c11633a717df (\"fix(team-bridge): retain banners across renderer lifecycle and answer stale clicks\", 2026-10-25), an ancestor of the merged parent 4ebb63bf. The receipt therefore binds a real main commit exactly, not a phantom state. Its catalogue bytes did not change between c11633a717df and 4ebb63bf, so the audited translations are the ones being merged. The sidecar DID change: on main the ui.teamBridge.notify.unavailable entry was later expanded from a bare note string to the full {role,tone,length,placeholders,note} object, whose note also adds \"and not for a banner merely replaced by a newer one or dismissed by the OS\". The merged sidecar carries that later object. So the receipt binds the incoming copy but not the current sidecar entry text; the sidecar is English-only internal metadata, not product copy. Non-gating provenance note, recorded rather than assumed."
+				},
+				{
+					"id": "O7",
+					"status": "INFO",
+					"locale": "all",
+					"note": "i18n/ledger.json is an unresolved three-way conflict (<<<<<<< markers from line 4836; the conflict is exactly the branch's audit hashes vs main's). ledger-check.mjs therefore reports 'not valid JSON' and check-coverage.mjs throws before checking. Nothing about the catalogues; the merged rows need re-assembly with ledger-assemble against this receipt once the conflict is resolved, and rows whose bytes are unchanged from a passing receipt should keep their existing auditor entries."
+				}
+			]
+		}
+	},
+	"prior_receipts": [
+		{
+			"path": "i18n/receipts/teambridge-profile-audit-r2-3d4473001f4b.json",
+			"sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
+			"result": "clean-with-findings (passed)",
+			"role": "Binds the seven frozen profile values and the whole branch copy at 70a4c0cb: its sha256 map equals the 70a4c0cb blobs (en 610582fa…, fr 59a3ae6e…, es 8d5009ca…, zh-CN 322f03f5…, ru 355e3cc6…, vi ae998f69…, ur 3d143821…, hi 8af4ea56…; context 10d47bb5…) and this receipt confirms the merged files still contain those values unchanged."
+		},
+		{
+			"path": "i18n/receipts/72781433def7.json",
+			"sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+			"result": "clean (passed)",
+			"role": "Main's audit of the incoming key. Its eight catalogue hashes bind 4ebb63bf exactly; its sidecar entry was revised after that audit (see O6)."
+		}
+	],
+	"mechanical": {
+		"json_valid": "all eight catalogues and the context sidecar parse as JSON",
+		"key_counts": {
+			"en": 208,
+			"fr": 208,
+			"es": 208,
+			"zh-CN": 208,
+			"ru": 208,
+			"vi": 208,
+			"ur": 208,
+			"hi": 208
+		},
+		"key_sets_equal_to_en": true,
+		"context_entries": 208,
+		"context_covers_every_key": true,
+		"placeholders_in_incoming_key": 0,
+		"icu_structures_in_incoming_key": 0,
+		"markup_or_backticks_in_incoming_key": 0,
+		"encoding": {
+			"nfc": true,
+			"manual_bidi_controls": 0,
+			"note": "checked on the incoming key in all eight catalogues"
+		},
+		"width": {
+			"en": {
+				"chars": 57,
+				"cells": 57
+			},
+			"fr": {
+				"chars": 60,
+				"cells": 60
+			},
+			"es": {
+				"chars": 55,
+				"cells": 55
+			},
+			"zh-CN": {
+				"chars": 16,
+				"cells": 32
+			},
+			"ru": {
+				"chars": 57,
+				"cells": 57
+			},
+			"vi": {
+				"chars": 55,
+				"cells": 55
+			},
+			"ur": {
+				"chars": 44,
+				"cells": 44
+			},
+			"hi": {
+				"chars": 41,
+				"cells": 41
+			}
+		},
+		"width_note": "The sidecar asks for a short sentence fitting two lines in the 356 px toast; no maxCells is declared for this key. Longest cell count is 60 (fr), 57 (en/ru) — within two lines at the toast's width; CJK is 32 cells.",
+		"gate_state": "ledger-check.mjs and check-coverage.mjs cannot run on the conflicted i18n/ledger.json (see O7). They fail on the merge state, not on copy."
+	},
+	"execution": [
+		{
+			"command": "node --test scripts/i18n/locale-parity.test.mjs",
+			"output": "✔ [zh-CN] names only keys the English source defines (4.5745ms)\n✔ [zh-CN] preserves every ICU placeholder from the English source (12.744ms)\n✔ [zh-CN] is not an English stub (no value identical to the source) (4.714083ms)\n✔ a locale-scoped identical-value exemption does not exempt another locale (0.116667ms)\nℹ tests 44\nℹ suites 0\nℹ pass 44\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 467.995709",
+			"verbatim": "tail: last 12 lines of stdout",
+			"exit": 0
+		},
+		{
+			"command": "node scripts/i18n/context-parity.mjs",
+			"output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).",
+			"verbatim": true,
+			"exit": 0
+		},
+		{
+			"command": "node scripts/i18n/check-duplicates.mjs",
+			"output": "check-duplicates: ok — 763 file(s) scanned, 0 duplicate key(s)",
+			"verbatim": true,
+			"exit": 0
+		},
+		{
+			"command": "node scripts/i18n/generate.mjs --check",
+			"output": "/Users/damian/local-operator-ui/.worktrees/account-profile/src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+			"verbatim": true,
+			"exit": 0
+		},
+		{
+			"command": "node scripts/i18n/ledger-check.mjs",
+			"output": "ledger-check: ledger is not valid JSON: Expected double-quoted property name in JSON at position 162261 (line 4836 column 1)\nledger-check: FAILED — 1 finding(s) across 0 ledger entr(ies)",
+			"verbatim": true,
+			"exit": 1,
+			"note": "Fails on the unresolved merge conflict in i18n/ledger.json, not on copy."
+		},
+		{
+			"command": "node scripts/i18n/check-coverage.mjs",
+			"output": "SyntaxError: Expected double-quoted property name in JSON at position 162261 (line 4836 column 1)",
+			"verbatim": "the error line, verbatim; the surrounding stack frames are omitted",
+			"exit": 1,
+			"note": "Same conflicted ledger; no coverage result exists for this tree."
+		},
+		{
+			"command": "sha256 of the nine inputs + per-key union comparison (Python, on disk and via git show)",
+			"output": "All nine hashes equal the values bound below; per-locale key sets 208 = 200 base + 7 profile + 1 incoming; no changed or removed key.",
+			"verbatim": "derived by this run; not a transcript line",
+			"exit": 0
+		}
+	],
+	"audit_notes_not_execution_log": [
+		"The union table is derived by the audit's own script, not hand-written; it is a computation over the bytes recorded in inputs, reproducible with the same three Git revisions.",
+		"The linguistic judgements (U1-U4) are the auditor's reading; no translation/MT service was used to produce or compare them.",
+		"No rendered frame was inspected, so no claim is made about the toast's real line wrapping, RTL shaping or hover-card layout."
+	],
+	"limitations": [
+		"Delta audit: only ui.teamBridge.notify.unavailable was judged linguistically. The other 207 entries are inherited on byte identity, which is what the union proof establishes — not a fresh review of them.",
+		"The reviewed tree is the uncommitted working tree of a merge in progress; the nine hashes, not a commit sha, identify it. Committing the merge must not change those bytes.",
+		"No build, app, Storybook or screenshot ran in this lane; i18n scripts only.",
+		"Main's receipt 72781433def7 binds commit c11633a717df exactly, but the sidecar entry for this key was later expanded on main (O6); this receipt binds the merged sidecar by its own hash, which is the current one.",
+		"i18n/ledger.json was deliberately not edited. Row assembly belongs to the merge owner."
+	],
+	"evidence_root_note": "The canonical per-locale evidence bundle (i18n/audits/evidence/<locale>/ui.teamBridge/<audit-id>/record.json) was not written separately: this run's instructions permit exactly one new file, this receipt. The equivalent record content is carried in evidence_records below so nothing is lost; add the bundles in the landing commit if the programme requires the per-locale files.",
+	"evidence_records": [
+		{
+			"audit_id": "teambridge-profile-union-audit-51e7fd6748ed",
+			"date": "2026-10-26",
+			"locale": "en",
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean",
+			"keys_read": 208,
+			"keys_audited": 1,
+			"auditor": {
+				"agent": "i18n-auditor",
+				"model": "radient/auto",
+				"session": "51e7fd6748ed",
+				"instance": "51e7fd6748ed"
+			},
+			"files": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+					"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+					"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+					"sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06"
+				}
+			},
+			"merge_parents": [
+				"70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+				"4ebb63bf53d8620e75ab8e959d2aef13490b37f4"
+			],
+			"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+			"canonical_path": "i18n/audits/evidence/en/ui.teamBridge/teambridge-profile-union-audit-51e7fd6748ed/record.json",
+			"record_written": false
+		},
+		{
+			"audit_id": "teambridge-profile-union-audit-51e7fd6748ed",
+			"date": "2026-10-26",
+			"locale": "fr",
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_read": 208,
+			"keys_audited": 1,
+			"auditor": {
+				"agent": "i18n-auditor",
+				"model": "radient/auto",
+				"session": "51e7fd6748ed",
+				"instance": "51e7fd6748ed"
+			},
+			"files": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+					"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+					"sha256": "6b1d333ec0301f509457ea95db8dd2bc51d1c85c3620e0ef027f30b32ab9c30a"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+					"sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06"
+				}
+			},
+			"merge_parents": [
+				"70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+				"4ebb63bf53d8620e75ab8e959d2aef13490b37f4"
+			],
+			"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+			"canonical_path": "i18n/audits/evidence/fr/ui.teamBridge/teambridge-profile-union-audit-51e7fd6748ed/record.json",
+			"record_written": false
+		},
+		{
+			"audit_id": "teambridge-profile-union-audit-51e7fd6748ed",
+			"date": "2026-10-26",
+			"locale": "es",
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean",
+			"keys_read": 208,
+			"keys_audited": 1,
+			"auditor": {
+				"agent": "i18n-auditor",
+				"model": "radient/auto",
+				"session": "51e7fd6748ed",
+				"instance": "51e7fd6748ed"
+			},
+			"files": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+					"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+					"sha256": "a6cbec42e47929f5655ba65b5bc2b4602758295ce70bd87c0232d12e90c9c952"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+					"sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06"
+				}
+			},
+			"merge_parents": [
+				"70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+				"4ebb63bf53d8620e75ab8e959d2aef13490b37f4"
+			],
+			"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+			"canonical_path": "i18n/audits/evidence/es/ui.teamBridge/teambridge-profile-union-audit-51e7fd6748ed/record.json",
+			"record_written": false
+		},
+		{
+			"audit_id": "teambridge-profile-union-audit-51e7fd6748ed",
+			"date": "2026-10-26",
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_read": 208,
+			"keys_audited": 1,
+			"auditor": {
+				"agent": "i18n-auditor",
+				"model": "radient/auto",
+				"session": "51e7fd6748ed",
+				"instance": "51e7fd6748ed"
+			},
+			"files": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+					"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+					"sha256": "8d7ef1f10f59a92087648c944d46df8d6b6adad1088854ba6b379169eb50631f"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+					"sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06"
+				}
+			},
+			"merge_parents": [
+				"70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+				"4ebb63bf53d8620e75ab8e959d2aef13490b37f4"
+			],
+			"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+			"canonical_path": "i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-profile-union-audit-51e7fd6748ed/record.json",
+			"record_written": false
+		},
+		{
+			"audit_id": "teambridge-profile-union-audit-51e7fd6748ed",
+			"date": "2026-10-26",
+			"locale": "ru",
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_read": 208,
+			"keys_audited": 1,
+			"auditor": {
+				"agent": "i18n-auditor",
+				"model": "radient/auto",
+				"session": "51e7fd6748ed",
+				"instance": "51e7fd6748ed"
+			},
+			"files": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+					"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+					"sha256": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+					"sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06"
+				}
+			},
+			"merge_parents": [
+				"70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+				"4ebb63bf53d8620e75ab8e959d2aef13490b37f4"
+			],
+			"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+			"canonical_path": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-profile-union-audit-51e7fd6748ed/record.json",
+			"record_written": false
+		},
+		{
+			"audit_id": "teambridge-profile-union-audit-51e7fd6748ed",
+			"date": "2026-10-26",
+			"locale": "vi",
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_read": 208,
+			"keys_audited": 1,
+			"auditor": {
+				"agent": "i18n-auditor",
+				"model": "radient/auto",
+				"session": "51e7fd6748ed",
+				"instance": "51e7fd6748ed"
+			},
+			"files": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+					"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+					"sha256": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+					"sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06"
+				}
+			},
+			"merge_parents": [
+				"70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+				"4ebb63bf53d8620e75ab8e959d2aef13490b37f4"
+			],
+			"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+			"canonical_path": "i18n/audits/evidence/vi/ui.teamBridge/teambridge-profile-union-audit-51e7fd6748ed/record.json",
+			"record_written": false
+		},
+		{
+			"audit_id": "teambridge-profile-union-audit-51e7fd6748ed",
+			"date": "2026-10-26",
+			"locale": "ur",
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean",
+			"keys_read": 208,
+			"keys_audited": 1,
+			"auditor": {
+				"agent": "i18n-auditor",
+				"model": "radient/auto",
+				"session": "51e7fd6748ed",
+				"instance": "51e7fd6748ed"
+			},
+			"files": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+					"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+					"sha256": "a769a7be043183de9ba33aec506ec7eb307214c4a31e3329c1d2d7b077d15153"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+					"sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06"
+				}
+			},
+			"merge_parents": [
+				"70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+				"4ebb63bf53d8620e75ab8e959d2aef13490b37f4"
+			],
+			"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+			"canonical_path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-profile-union-audit-51e7fd6748ed/record.json",
+			"record_written": false
+		},
+		{
+			"audit_id": "teambridge-profile-union-audit-51e7fd6748ed",
+			"date": "2026-10-26",
+			"locale": "hi",
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean",
+			"keys_read": 208,
+			"keys_audited": 1,
+			"auditor": {
+				"agent": "i18n-auditor",
+				"model": "radient/auto",
+				"session": "51e7fd6748ed",
+				"instance": "51e7fd6748ed"
+			},
+			"files": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+					"sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+					"sha256": "cf0dfe8b38a1078b498ad262d57a8106424043f85a2221218392b699bccd145a"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+					"sha256": "f42ab97369135dfbd7f87153652496d738ddd828d983d360b40b97142879de06"
+				}
+			},
+			"merge_parents": [
+				"70a4c0cbbb06462cc797d0e56268eb9bd42c2c96",
+				"4ebb63bf53d8620e75ab8e959d2aef13490b37f4"
+			],
+			"reviewed_head": "6bed7303588cbbed7b59e7dffc65e189aacba9b4",
+			"canonical_path": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-profile-union-audit-51e7fd6748ed/record.json",
+			"record_written": false
+		}
+	]
+}

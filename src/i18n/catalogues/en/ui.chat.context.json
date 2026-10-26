@@ -5,10 +5,123 @@
 		"note": "Follows the turn's own stop control, so it names what the reader did rather than a failure.",
 		"placeholders": {}
 	},
+	"ui.chat.composer.status.goal_collapse": {
+		"role": "accessible name of the session goal while its disclosure is open; the press closes it",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal's own text follows after an em dash, so this string carries no final punctuation. 'Session goal' is the region's name, kept identical to the expand arm's.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss": {
+		"role": "visible word on the control that puts a finished goal's chip away",
+		"tone": "one verb, sentence case, no trailing punctuation",
+		"note": "Not a deletion: the finished goal stays in the goal history, which the longer name states. This word sits on a 24px row and is dropped below the narrow column floor, where the control keeps its icon and accessible name.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss_keep": {
+		"role": "middle clause of the finished goal's dismiss accessible name",
+		"tone": "declarative clause, lower-case start, no trailing punctuation",
+		"note": "Relays that the dismissal hides the row and keeps the record. It is joined between em dashes, so it stays lower case and takes no full stop.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss_name": {
+		"role": "head of the finished goal's dismiss tooltip and accessible name",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "Followed by the keep clause and the goal itself, both after em dashes. It names dismissing the chip, not deleting the record that the next clause says survives.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_done": {
+		"role": "visible word on the control that records the goal as done",
+		"tone": "one verb, sentence case",
+		"note": "It marks the goal finished and records the decision; it is not a dismissing 'Done' from a dialog. A separate longer key names the action for screen readers, because 'Done' alone would not say what is done.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_done_name": {
+		"role": "head of the goal's done control in its accessible name and tooltip",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal text follows after a dash. Nothing is destroyed: the record stays in the goal history.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_expand": {
+		"role": "accessible name of the session goal while its disclosure is closed; the press opens it",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal's own text follows after an em dash. 'Session goal' is the region's name, identical in both arms so the name does not change identity when it opens.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_label": {
+		"role": "visible label at the head of the session goal chip",
+		"tone": "noun with a colon, sentence case",
+		"note": "The row's chips lead with the fact's name and a colon; the disambiguating words live in the accessible names.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.jobs_action": {
+		"role": "head of the jobs chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The count and state clauses follow after an em dash. 'Open' moves the reader to the run pane's Jobs section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_clear": {
+		"role": "action label on the loop chip's dismiss control once the loop has settled",
+		"tone": "verb plus object, sentence case, no trailing punctuation",
+		"note": "The settled state is cleared, never stopped - 'Stop' belongs to the running state only. This press sends no command: it clears the row's own acknowledgement of a settled loop.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_label": {
+		"role": "visible label at the head of the loop chip",
+		"tone": "noun with a colon, sentence case",
+		"note": "The wire's own status word follows, untranslated, so the chip and the loop picker spell one state the same way.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_progress_of_turns": {
+		"role": "turn progress clause inside the loop chip and its accessible name",
+		"tone": "two counts with a trailing noun",
+		"note": "Rendered after a comma that follows the wire's status word. Keep both numbers and the noun; the wording is a fact about turns completed out of the loop's allowance.",
+		"placeholders": {
+			"completed": "number of turns the loop has completed",
+			"total": "number of turns the loop was allowed"
+		}
+	},
+	"ui.chat.composer.status.loop_progress_turns": {
+		"role": "turn count clause inside the loop chip when the loop carries no allowance",
+		"tone": "a counted noun, pluralized by the locale's own rules",
+		"note": "Rendered after a comma that follows the wire's status word. Plural categories are the locale's own; do not copy English's two-arm shape.",
+		"placeholders": {
+			"count": "number of turns completed so far"
+		}
+	},
+	"ui.chat.composer.status.loop_stop": {
+		"role": "action label on the loop chip's dismiss control while the loop is running",
+		"tone": "verb plus object, sentence case, no trailing punctuation",
+		"note": "The running state is stopped; a settled loop is cleared instead, which is a separate key. The loop picker's own primary button says 'Cancel loop' - that dialog is a different control and does not share this wording.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.monitors_action": {
+		"role": "head of the monitors chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The armed-monitor count clause follows after an em dash. 'Open' moves the reader to the run pane's Monitors section instead of disclosing something in place; the plural matches that section's own heading.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.plan_action": {
+		"role": "head of the plan chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The to-do count clause follows after an em dash. 'Open' moves the reader to the run pane's To-dos section instead of disclosing something in place.",
+		"placeholders": {}
+	},
 	"ui.chat.composer.status.session_goal": {
 		"role": "accessible name of the region that holds the authored session goal",
 		"tone": "noun phrase, sentence case",
 		"note": "A group name, not a heading: the goal is one authored paragraph that a keyboard reader must be able to scroll.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.subagents_action": {
+		"role": "head of the subagents chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The count and state clauses follow after an em dash. 'Open' moves the reader to the run pane's Subagents section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.wakes_action": {
+		"role": "head of the wakes chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The armed-schedule count clause follows after an em dash. 'Open' moves the reader to the run pane's Wakes section instead of disclosing something in place.",
 		"placeholders": {}
 	},
 	"ui.chat.header_identity.loading": {
@@ -242,5 +355,58 @@
 		"tone": "one word, sentence case",
 		"note": "Switches the conversation pane to the raw message payload; `Raw` is the app's established word for machine JSON.",
 		"placeholders": {}
-	}
+	},
+	"ui.chat.mermaid.zoom_in": "Diagram control tooltip and accessible name for the zoom-in button.",
+	"ui.chat.mermaid.zoom_out": "Diagram control tooltip and accessible name for the zoom-out button.",
+	"ui.chat.mermaid.pan": "Accessible name for the pan (hand) control on a diagram.",
+	"ui.chat.mermaid.pan_hint": "Tooltip explaining that the diagram is dragged to pan it.",
+	"ui.chat.mermaid.reset_view": "Diagram control tooltip and accessible name that restores zoom and pan.",
+	"ui.chat.mermaid.save_svg": "Diagram control tooltip and accessible name that downloads the diagram as an SVG file.",
+	"ui.chat.mermaid.copied": "Brief confirmation state of the copy control, after the diagram source was copied.",
+	"ui.chat.mermaid.copy_text": "Tooltip and accessible name of the control that copies the mermaid source.",
+	"ui.chat.mermaid.error_title": "Heading of the danger alert shown when a diagram cannot be parsed or rendered.",
+	"ui.chat.mermaid.unexpected_error": "Fallback sentence shown when the render failed without a message of its own.",
+	"ui.chat.mermaid.error_contained": "Reassurance that the failure did not break the rest of the conversation.",
+	"ui.chat.mermaid.chart_label": "Small label above the raw diagram source shown in the error alert.",
+	"ui.chat.mermaid.loading": "Placeholder while the diagram is being rendered.",
+	"ui.chat.mermaid.rendering_error": "Heading of the alert for a failure inside the render path.",
+	"ui.chat.mermaid.render_failed": "Body of the alert for a failure inside the render path.",
+	"ui.chat.mermaid.fullscreen": "Tooltip on the control that opens the diagram fullscreen.",
+	"ui.chat.mermaid.open_fullscreen": "Accessible name of the control that opens the diagram fullscreen.",
+	"ui.chat.mermaid.diagram_title": "Title of the fullscreen dialog that holds a diagram.",
+	"ui.chat.mermaid.close_fullscreen": "Tooltip and accessible name that closes the fullscreen diagram dialog.",
+	"ui.chat.aside.question_label": "Screen-reader label that introduces the question in an aside exchange.",
+	"ui.chat.aside.you_label": "Visible quiet marker naming the asker of the aside question.",
+	"ui.chat.aside.thinking": "Placeholder while the aside answer is still streaming.",
+	"ui.chat.aside.title": "Heading of the aside panel: an off-the-record exchange beside the conversation.",
+	"ui.chat.aside.off_record": "Sub-heading stating that the aside is not part of the conversation.",
+	"ui.chat.aside.close_label": "Accessible name of the control that closes the aside panel.",
+	"ui.chat.aside.exchange_label": "Accessible name of the scrollable region holding the aside question and answers.",
+	"ui.chat.aside.empty": "Empty state of the aside panel before any question was asked.",
+	"ui.chat.aside.add_to_conversation": "Action that adopts the aside answer into the conversation.",
+	"ui.chat.error_block.heading": "Label above the danger block that shows raw error output.",
+	"ui.chat.error_block.link.settings": "Link text inside a suggestion sentence pointing at the settings page.",
+	"ui.chat.error_block.link.providers": "Link text pointing at the Providers section of settings.",
+	"ui.chat.error_block.provider.before": "First half of the sentence; a settings link follows, then `provider.after`.",
+	"ui.chat.error_block.provider.after": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English.",
+	"ui.chat.error_block.model.before": "First half of the sentence; a settings link follows, then `model.after`.",
+	"ui.chat.error_block.model.after": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English.",
+	"ui.chat.error_block.rate_limit.before": "First half of the rate-limit sentence; a settings link follows, then one of the two `after` keys.",
+	"ui.chat.error_block.rate_limit.after": "Second half of the rate-limit sentence, after the settings link. 'Radient Pass' is a product name and stays English.",
+	"ui.chat.error_block.rate_limit.all_after": "Second half of the rate-limit sentence for the hyphenated wire variant, after the settings link.",
+	"ui.chat.error_block.invalid_key.before": "First half of the invalid-key sentence; the Providers link follows, then `invalid_key.after` which starts with a comma.",
+	"ui.chat.error_block.invalid_key.after": "Second half of the invalid-key sentence; starts with a comma because it follows the link directly.",
+	"ui.chat.error_block.unavailable.before": "First half of the unavailable-model sentence; a settings link follows, then `unavailable.after`.",
+	"ui.chat.error_block.unavailable.after": "Second half of the unavailable-model sentence, after the settings link. 'Radient' is a product name and stays English.",
+	"ui.chat.error_block.schema.before": "First paragraph of the schema-failure suggestion, before a line break.",
+	"ui.chat.error_block.schema.after_before": "Start of the second paragraph; a settings link follows, then `schema.after`.",
+	"ui.chat.error_block.schema.after": "Second half of the schema paragraph, after the settings link. 'Radient Automatic' is a product name and stays English.",
+	"ui.chat.approval.reply_required": "Error shown when an approval answer is neither yes/no nor a listed option.",
+	"ui.chat.question_dock.hint.approval": "Hint under an approval card naming all three exits.",
+	"ui.chat.question_dock.hint.approval_held": "Held-state hint: the card's own buttons cannot send until the outcome is known.",
+	"ui.chat.question_dock.hint.prefix": "Prefix for a multi-question ask; trailing space is intentional, the sentence follows.",
+	"ui.chat.question_dock.hint.secret": "Hint for a secret answer: the card's own field, Enter, and the dock's collapse.",
+	"ui.chat.question_dock.hint.secret_held": "Held-state secret hint: nothing can send, only the card's own Escape works.",
+	"ui.chat.question_dock.hint.type": "Hint when the question offers no options.",
+	"ui.chat.question_dock.hint.options": "Hint when options are offered; {digits} is a precomputed key range such as '1-3'."
 }
