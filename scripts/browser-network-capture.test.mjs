@@ -579,7 +579,7 @@ test("unrecognised network events cannot defeat the metadata byte bound", async 
 });
 
 test("stop detaches the subscription without waiting on Network.disable", async () => {
-	const { ctx, emit, start } = fixture();
+	const { ctx, commands, emit, start } = fixture();
 	const started = await start();
 	assert.equal(started.active, true);
 	const stopped = await mod.networkStop(
@@ -588,9 +588,18 @@ test("stop detaches the subscription without waiting on Network.disable", async 
 		"request",
 	);
 	assert.equal(stopped.active, false);
+	// The assertion that makes this a regression test rather than a shape test:
+	// the pre-fix implementation issued `Network.disable` and awaited it, and a
+	// disable that never replied is what wedged the attachment (QA finding Q3).
+	// A fake that resolves cannot show the wedge, so the COMMAND itself is what
+	// is pinned — stop must send no disable at all.
+	assert.equal(
+		commands.includes("Network.disable"),
+		false,
+		"stop must not send Network.disable: a non-replying disable serialises every later command on the attachment",
+	);
 	// Events after stop reach no capture, and a second start works on the same
-	// tab: the review-round-2 QA found a host wedged here because stop awaited a
-	// `Network.disable` reply that never came.
+	// tab.
 	emit("Network.requestWillBeSent", {
 		requestId: "after-stop",
 		request: { url: "https://e.test/after", method: "GET" },
