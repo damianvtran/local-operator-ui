@@ -40,6 +40,7 @@ import {
 	readdirSync,
 	writeFileSync,
 } from "node:fs";
+import { statSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -202,6 +203,138 @@ const readRow = (configDir, itemId) =>
 const sha256 = (path) =>
 	createHash("sha256").update(readFileSync(path)).digest("hex");
 
+/**
+ * One frame from the app itself, through the browser's own screenshot path.
+ *
+ * The driver's `capture` verb is not available here (see the `armed: false` note),
+ * and the raw protocol call is the same picture without the verb's palette
+ * assertions - those belong to the story rigs, not to this proof.
+ */
+async function screenshot(cdp, label) {
+	const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
+	const path = join(OUT, `${label}.png`);
+	writeFileSync(path, Buffer.from(shot.data, "base64"));
+	return { path, bytes: statSync(path).size };
+}
+
+/** Whether the element's centre is inside the viewport and not covered. */
+const inViewAndUncovered = (selector) =>
+	`(() => {
+		const element = document.querySelector(${JSON.stringify(selector)});
+		if (!element) return { found: false };
+		const rect = element.getBoundingClientRect();
+		const cx = rect.x + rect.width / 2;
+		const cy = rect.y + rect.height / 2;
+		const inside = cx >= 0 && cy >= 0 && cx <= innerWidth && cy <= innerHeight;
+		const top = inside ? document.elementFromPoint(cx, cy) : null;
+		return {
+			found: true,
+			x: Math.round(cx),
+			y: Math.round(cy),
+			width: Math.round(rect.width),
+			height: Math.round(rect.height),
+			inside,
+			uncovered: Boolean(top && (top === element || element.contains(top))),
+		};
+	})()`;
+
+/**
+ * Hover the row (which reveals its actions) and return the centre of its own
+ * Mark read control, asserting the control is on screen and uncovered.
+ */
+async function hoverReadControl(cdp, id) {
+	const row = await cdp.evaluate(
+		inViewAndUncovered(`[data-notification-row="${id}"]`),
+	);
+	assert.ok(row?.found, "the seeded row is not in the document");
+	assert.ok(
+		row.inside,
+		`the seeded row is off-viewport: ${JSON.stringify(row)}`,
+	);
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		button: "none",
+		x: row.x,
+		y: row.y,
+	});
+	await pause(250);
+	const control = await cdp.evaluate(
+		inViewAndUncovered(
+			`[data-notification-row="${id}"] [data-row-action="read"]`,
+		),
+	);
+	assert.ok(control?.found, "the row drew no Mark read control");
+	assert.ok(
+		control.inside,
+		`the Mark read control is off-viewport: ${JSON.stringify(control)}`,
+	);
+	assert.ok(
+		control.uncovered,
+		`the Mark read control is covered: ${JSON.stringify(control)}`,
+	);
+	return { x: control.x, y: control.y, control: control.width };
+}
+
+/**
+ * The same measurement for a row deliberately left off screen: this asserts the
+ * aim MISSES (the point resolves to nothing the row owns) rather than skipping
+ * the control it is aiming at, so the negative arm cannot pass by doing nothing.
+ */
+async function aimOffScreen(cdp, id) {
+	await cdp.evaluate(
+		`(() => {
+			/* The nearest ancestor that actually scrolls: the reel is an inner
+			   scroller, so setting the document's scrollTop moves nothing. */
+			let node = document.querySelector('[data-notification-row="${id}"]');
+			while (node && node !== document.body) {
+				const overflow = getComputedStyle(node).overflowY;
+				if ((overflow === "auto" || overflow === "scroll") && node.scrollHeight > node.clientHeight) {
+					node.scrollTop = node.scrollHeight;
+					return { scrolled: node.scrollTop > 0 };
+				}
+				node = node.parentElement;
+			}
+			document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight;
+			return { scrolled: document.scrollingElement.scrollTop > 0 };
+		})()`,
+	);
+	await pause(400);
+	const aim = await cdp.evaluate(
+		`(() => {
+			const row = document.querySelector('[data-notification-row="${id}"]');
+			if (!row) return { found: false };
+			const rect = row.getBoundingClientRect();
+			const inside = rect.bottom > 0 && rect.top < innerHeight && rect.width > 0;
+			// Aim where the row would be if it were scrolled to: the point is inside
+			// the window, so the input is really delivered, and it lands on whatever
+			// is actually there.
+			const x = Math.round(Math.min(innerWidth - 1, Math.max(1, rect.x + rect.width / 2)));
+			const y = Math.round(Math.min(innerHeight - 40, Math.max(40, rect.y + rect.height / 2)));
+			return { found: true, inside, x, y, rowTop: Math.round(rect.top), rowBottom: Math.round(rect.bottom) };
+		})()`,
+	);
+	assert.ok(aim?.found, "the off-screen row is not in the document");
+	assert.equal(
+		aim.inside,
+		false,
+		`the row aimed at as off-screen is still on screen: ${JSON.stringify(aim)}`,
+	);
+	for (const [type, button] of [
+		["mouseMoved", "none"],
+		["mousePressed", "left"],
+		["mouseReleased", "left"],
+	]) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type,
+			button,
+			clickCount: type === "mouseMoved" ? 0 : 1,
+			x: aim.x,
+			y: aim.y,
+		});
+	}
+	return aim;
+}
+
 /** MAIN's own window facts: the real BrowserWindow, never a DOM approximation. */
 const mainFacts = (nodeCdp) =>
 	nodeCdp.evaluate(
@@ -294,8 +427,16 @@ async function main() {
 
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = token;
 		const _context = api.prepareDriverContext({ apiUrl: base });
+		/*
+		 * NOT ARMED. The renderer dev driver refuses to arm in a "normal" window
+		 * (`resolveDevDriverArming`, dev-driver.ts:205-209), and this scene needs a
+		 * SHOWN window more than it needs the driver: main's foreground guard reads
+		 * the real BrowserWindow. So the whole instrument below is the page's CDP
+		 * plus real dispatched input, and the receipt is read from the store - no
+		 * verb, no bridge, no capture helper.
+		 */
 		const handle = await api.launchApp({
-			armed: true,
+			armed: false,
 			apiUrl: base,
 			tag: "notifications-native",
 			logName: "notifications-native.log",
@@ -313,7 +454,6 @@ async function main() {
 		cdp = await api.CdpClient.attach(handle.port, "out/renderer/index.html");
 		nodeCdp = await api.CdpClient.attachNode(handle.inspectPort);
 		await api.waitForPage(cdp);
-		await api.waitForBridge(cdp);
 
 		// Onboarding is skipped through its OWN control, never a CLI seed flag.
 		await cdp.evaluate(`(() => {
@@ -321,7 +461,8 @@ async function main() {
 			if (skip) skip.click();
 			return Boolean(skip);
 		})()`);
-		await api.verb(cdp, "navigate", "/notifications");
+		/* The same line the removed `navigate` verb ran: the hash router's URL. */
+		await cdp.evaluate(`(window.location.hash = "#/notifications")`);
 
 		const deadline = Date.now() + 60_000;
 		let rendered = null;
@@ -345,18 +486,23 @@ async function main() {
 		assert.equal(before?.visible, true, "the runner owns no visible window");
 		assert.equal(before?.minimized, false, "the window is minimised");
 		assert.equal(before?.focused, true, "the window is not focused");
-		await api.capture(cdp, "notifications-native-before");
+		await screenshot(cdp, "notifications-native-before");
 
-		// A trusted pointer press on the real row: renderer -> preload -> main guard
-		// -> the pinned backend's PATCH. Nothing here calls the bridge directly.
-		const box = await cdp.evaluate(
-			`(() => { const row = document.querySelector('[data-notification-row="${TARGET}"]'); if (!row) return null; const rect = row.getBoundingClientRect(); return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) }; })()`,
-		);
-		assert.ok(box, "the seeded row has no measurable box");
-		for (const type of ["mouseMoved", "mousePressed", "mouseReleased"])
+		/*
+		 * THE READ GESTURE IS THE ROW'S OWN CONTROL, and it takes two real inputs
+		 * because the control is hover-revealed: a pointer move over the row makes
+		 * `[data-row-action="read"]` visible, then a press on its centre is the
+		 * gesture the product treats as "the operator marked this read". Pressing
+		 * the row BODY would open the detail and commit nothing - which is what the
+		 * previous version of this scene did, so its read assertion could never have
+		 * passed even with a driver.
+		 */
+		const box = await hoverReadControl(cdp, TARGET);
+		receipt.readControl = box;
+		for (const type of ["mousePressed", "mouseReleased"])
 			await cdp.send("Input.dispatchMouseEvent", {
 				type,
-				button: type === "mouseMoved" ? "none" : "left",
+				button: "left",
 				clickCount: 1,
 				x: box.x,
 				y: box.y,
@@ -401,7 +547,28 @@ async function main() {
 			"0",
 			"the raced revision was read",
 		);
-		await api.capture(cdp, "notifications-native-after");
+		await screenshot(cdp, "notifications-native-after");
+
+		/*
+		 * NEGATIVE CONTROL: THE SAME GESTURE AIMED AT A ROW THAT IS NOT ON SCREEN.
+		 *
+		 * This is what makes the instrument a measurement of the VIEW rather than of
+		 * the process: the item exists, it is unread, and the input is dispatched at
+		 * the coordinates its control WOULD occupy - but the reel is scrolled and the
+		 * row is off-viewport, so nothing is revealed, nothing is pressed, and no
+		 * receipt may appear. A harness that could mark a row read without it being
+		 * visible would prove nothing about what the operator saw.
+		 */
+		const offScreen = await aimOffScreen(cdp, UNRELATED);
+		receipt.offScreenAim = offScreen;
+		await pause(5_000);
+		const unrelatedAfter = readRow(config, UNRELATED);
+		receipt.unrelatedAfterOffScreenAim = unrelatedAfter;
+		assert.equal(
+			String(unrelatedAfter.read).toLowerCase(),
+			"0",
+			"an item that was never on screen was marked read",
+		);
 
 		// NEGATIVE: the same gesture on a window main can see is not foreground.
 		await nodeCdp.evaluate(
