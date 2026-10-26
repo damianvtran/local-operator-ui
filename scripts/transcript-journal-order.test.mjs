@@ -1502,6 +1502,80 @@ test("a partly placed older page keeps its unplaced rows beside their own page n
 	assert.deepEqual(actual, { local: expected, peer: expected });
 });
 
+test("a peer payload read keeps a placed page row's continuation stamp, so an unanswered page-mate stays with its page", () => {
+	// QA round 3 Q8: the peer lane admits bodies through the `source_read=payload`
+	// subset (`applyPeerSourcePayload`), which rebuilds each answered record. A
+	// rebuild that drops `sourcePrecedes` leaves the unanswered row (the owner's
+	// index lacks it) with no page-mate to sit behind, so it falls to the
+	// boundary of the row the page was loaded in front of (`y0 y2 y3 y1 t4 t5`).
+	const building = (entries) => ({
+		entries: entries.map(({ journal_seq: _seq, ...entry }) => entry),
+		has_more: true,
+		cursor_missing: false,
+		journal_order_state: "building",
+	});
+	const series = {};
+	for (const unanswered of ["y1", "y0"]) {
+		let state = R.applyHistoryPage(
+			R.EMPTY_TRANSCRIPT,
+			page([row("t4", 4), row("t5", 5)]),
+			{ authoritative: true, peerSource: true },
+		);
+		state = R.applyHistoryPage(
+			state,
+			building([row("y0", 0), row("y1", 1), row("y2", 2), row("y3", 3)]),
+			{ pagedBefore: "t4", peerSource: true },
+		);
+		const answered = ["y0", "y1", "y2", "y3"].filter((id) => id !== unanswered);
+		// The facts lookup owes the bodies; the payload subset admits them.
+		state = R.applyPeerSourceFacts(
+			state,
+			lookupPage(
+				"scope-A",
+				Object.fromEntries(answered.map((id) => [id, Number(id[1])])),
+			),
+			{ authoritative: false },
+		);
+		state = R.applyPeerSourcePayload(
+			state,
+			page(
+				answered.map((id) => row(id, Number(id[1]))),
+				"scope-A",
+				{
+					source_present_ids: answered,
+				},
+			),
+		);
+		const admitted = ids(state).join(" ");
+		const stamps = answered
+			.map((id) => state.records.find((record) => record.id === id))
+			.map((record) => `${record.id}:${record.sourcePrecedes ?? "-"}`)
+			.join(" ");
+		state = R.applyEvent(
+			state,
+			{ type: "message_end", message: msg("live", "assistant") },
+			900000,
+		);
+		series[`${unanswered} unanswered`] = {
+			admitted,
+			stamps,
+			live: ids(state).join(" "),
+		};
+	}
+	assert.deepEqual(series, {
+		"y1 unanswered": {
+			admitted: "y0 y1 y2 y3 t4 t5",
+			stamps: "y0:t4 y2:t4 y3:t4",
+			live: "y0 y1 y2 y3 t4 t5 live",
+		},
+		"y0 unanswered": {
+			admitted: "y0 y1 y2 y3 t4 t5",
+			stamps: "y1:t4 y2:t4 y3:t4",
+			live: "y0 y1 y2 y3 t4 t5 live",
+		},
+	});
+});
+
 test("two stacked building pages corrected users-first keep page order after each batch, in both lanes", () => {
 	// Review round 2 R2-m1, the realistic route: the owner's correction sends
 	// user rows first (`journal_order_correction_batches`, 128 per event), so

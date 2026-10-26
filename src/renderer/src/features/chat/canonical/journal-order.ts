@@ -381,7 +381,9 @@ function arrivalPlacement(
  * page (`LoadedOrder.page`). It must sort after that row's own (0), owned (1)
  * and arrival (2) classes, and a row loaded `depth` hops in front of it takes
  * `BEHIND_PAGE_MATE - depth`, which has to stay above 2 for any chain length a
- * transcript can hold.
+ * transcript can hold. That holds only because the value is `MAX_SAFE_INTEGER`:
+ * no realistic chain depth reaches the owned/arrival classes, and a small
+ * constant here would let a deep chain sort into them.
  */
 const BEHIND_PAGE_MATE = Number.MAX_SAFE_INTEGER;
 

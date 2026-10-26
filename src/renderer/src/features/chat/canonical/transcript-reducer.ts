@@ -4330,7 +4330,24 @@ export function applyPeerSourcePayload(
 			if (!current) continue;
 			let record = durableRecord(entry, current);
 			if (!record) continue;
-			record = { ...record, sourceEntryId: entry.id };
+			/*
+			 * The continuation stamp is the ROW's, not the read's (the rule
+			 * `applyHistoryPage` keeps for a re-read row): a placed page row that
+			 * lost it here leaves an unanswered page-mate (one the owner's index
+			 * lacks) with nothing of its own page to rank beside, and it drops to
+			 * the boundary of the row the page was loaded in front of (QA round 3
+			 * Q8, `y0 y2 y3 y1 t4 t5`). `durableRecord` never sets one, so the
+			 * carry cannot overwrite a fresher stamp. The arrival anchor is not
+			 * carried here, which is unchanged from v0.44.0 and matches a page
+			 * re-read (`applyHistoryPage` carries only this stamp).
+			 */
+			record = {
+				...record,
+				sourceEntryId: entry.id,
+				...(current.sourcePrecedes
+					? { sourcePrecedes: current.sourcePrecedes }
+					: {}),
+			};
 			if (peerOrdinal(entry.journal_seq)) {
 				record = admitPeerBodyRecord(
 					record,
