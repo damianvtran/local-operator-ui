@@ -881,43 +881,269 @@ test("a printed count is taken at the live high-water mark, never a frozen one",
 	assert.equal(model.scopeCountBoundary(undefined), undefined);
 });
 
-test("R4-4: a bounded window keeps page one, which is where the waiting asks live", () => {
+/*
+ * R5-1: THE REEL CAN REACH OLD ROWS. The R4-4 fix trimmed from the tail, which is
+ * exactly where the cursor appends its next page - so every scroll near the bottom
+ * fetched a page and discarded it, and nothing older than the newest window was ever
+ * reachable again (8 fetches over 900 rows left rows 401-900 with the next-page flag
+ * still true). These three tests drive the shipped model function; each fails on
+ * `a2b3199441`, where `slideNotificationWindow` did not exist and the tail trim did.
+ */
+
+/** Page `page` (1 = newest) covering rows 900-801, 800-701, ... so failures read. */
+const reelPage = (page) => ({
+	page,
+	waiting: page === 1 ? [{ id: "ask:aaaaaaaaaaa1:affff1" }] : [],
+	high_water: 1000,
+	unread_count: 12,
+	items: Array.from({ length: 100 }, (_, index) => ({
+		id: `n_p${page}_${index}`,
+		row: 900 - (page - 1) * 100 - index,
+	})),
+});
+
+test("R5-1a: 900 rows over 9 fetches stay reachable, once each, with no duplicates", () => {
+	const limit = model.NOTIFICATIONS_PAGE_WINDOW;
+	let pages = [];
+	let pageParams = [];
+	const hidden = { value: 0 };
+	const scrolled = [];
+	for (let page = 1; page <= 9; page += 1) {
+		pages.push(reelPage(page));
+		pageParams.push(
+			page === 1 ? undefined : { cursor: `c${page}`, throughSeq: 1000 },
+		);
+		const window = model.slideNotificationWindow(
+			pages,
+			pageParams,
+			limit,
+			hidden.value,
+		);
+		hidden.value = window.hiddenNewer;
+		/* The reader's viewport is the page it just scrolled into. */
+		scrolled.push(...window.pages.at(-1).items.map((item) => item.row));
+		/* Write the window back, as the hook does after every successful fetch. */
+		pages = [...window.pages];
+		pageParams = [...window.pageParams];
+	}
+	assert.equal(pages.length, limit, "the window is bounded");
+	assert.equal(
+		pages.at(-1).page,
+		9,
+		"the page just fetched SURVIVES: the cursor's own next page is never the one dropped",
+	);
+	assert.equal(pages[0].page, 1, "page one is pinned, with its waiting asks");
+	assert.equal(pages[0].waiting.length, 1);
+	const rows = [...new Set(scrolled)].sort((left, right) => right - left);
+	assert.equal(rows.length, 900, "every row was reachable exactly once");
+	assert.equal(rows[0], 900, "the newest row");
+	assert.equal(rows.at(-1), 1, "the OLDEST row - unreachable before this fix");
+});
+
+test("R5-1b: deep scroll, a late arrival, then a refresh keep page one's facts and Mark all's asks", () => {
+	const limit = model.NOTIFICATIONS_PAGE_WINDOW;
+	let pages = [];
+	let pageParams = [];
+	const hidden = { value: 0 };
+	for (let page = 1; page <= 9; page += 1) {
+		pages.push(reelPage(page));
+		pageParams.push(
+			page === 1 ? undefined : { cursor: `c${page}`, throughSeq: 1000 },
+		);
+		const window = model.slideNotificationWindow(
+			pages,
+			pageParams,
+			limit,
+			hidden.value,
+		);
+		hidden.value = window.hiddenNewer;
+		pages = [...window.pages];
+		pageParams = [...window.pageParams];
+	}
+	assert.ok(
+		model.slideNotificationWindow(pages, pageParams, limit, hidden.value)
+			.hiddenNewer > 0,
+		"the head of the scroll run is dropped, which is the state under test",
+	);
 	/*
-	 * The reel pages newest-first, so page one carries `waiting`, the counts and the
-	 * high-water mark. `useInfiniteQuery`'s own `maxPages` evicts from the FRONT: with
-	 * a cap of five, a deep scroll dropped page one and with it the waiting asks, so a
-	 * late arrival stayed hidden and Mark all read could not see unread asks.
+	 * Refresh: page one refetches and now carries a late arrival and a second waiting
+	 * ask. The window must keep BOTH kinds of fact - page one's (`waiting`, counts,
+	 * boundary) and the deep pages' reachability.
 	 */
-	const pages = [
-		{ page: 1, waiting: [{ id: "ask:aaaaaaaaaaa1:affff1" }], newest: 700 },
-		...Array.from({ length: 6 }, (_, index) => ({
-			page: index + 2,
-			waiting: [],
-			newest: 600 - index * 100,
-		})),
-	];
-	const kept = model.trimNotificationPages(
+	const fresh = {
+		...reelPage(1),
+		unread_count: 13,
+		high_water: 1001,
+		waiting: [
+			{ id: "ask:aaaaaaaaaaa1:affff1" },
+			{ id: "ask:aaaaaaaaaaa1:affff2" },
+		],
+		items: [
+			{ id: "n_late", row: 1001, revision: 2 },
+			...reelPage(1).items.slice(0, 99),
+		],
+	};
+	const window = model.slideNotificationWindow(
+		[fresh, ...pages.slice(1)],
+		[pageParams[0], ...pageParams.slice(1)],
+		limit,
+		hidden.value,
+	);
+	assert.equal(window.pages[0].page, 1, "page one survives the refresh");
+	assert.equal(
+		window.pages[0].waiting.length,
+		2,
+		"both pending asks are still listed",
+	);
+	assert.equal(
+		window.pages[0].high_water,
+		1001,
+		"Mark all read enumerates under 1001",
+	);
+	assert.equal(
+		window.pages[0].unread_count,
+		13,
+		"the count is the refreshed one",
+	);
+	assert.equal(
+		window.pages.at(-1).page,
+		9,
+		"the deepest page is still there, so older rows are still reachable",
+	);
+});
+
+test("R5-1c: back to top drops the scroll pages and restores the newest row", () => {
+	const limit = model.NOTIFICATIONS_PAGE_WINDOW;
+	let pages = [];
+	let pageParams = [];
+	for (let page = 1; page <= 9; page += 1) {
+		pages.push(reelPage(page));
+		pageParams.push(page === 1 ? undefined : { cursor: `c${page}` });
+		const window = model.slideNotificationWindow(pages, pageParams, limit);
+		pages = [...window.pages];
+		pageParams = [...window.pageParams];
+	}
+	const back = model.pinFirstPage(pages, pageParams);
+	assert.equal(
+		back.pages.length,
+		1,
+		"only page one is left, so the next read pages one",
+	);
+	assert.equal(back.pageParams.length, 1, "params stay aligned with pages");
+	assert.equal(
+		model.slideNotificationWindow(back.pages, back.pageParams, limit)
+			.hiddenNewer,
+		0,
+		"nothing is hidden after the return, so the pill is gone",
+	);
+	assert.equal(
+		back.pages[0].items[0].row,
+		900,
+		"the newest row is the top of the reel again",
+	);
+});
+
+test("R5-1d: the drawer keeps its own 10-page window, not the reel's 5", () => {
+	const pages = Array.from({ length: 11 }, (_, index) => ({
+		page: index + 1,
+		items: Array.from({ length: 20 }, (_, row) => ({ id: `p${index}_${row}` })),
+	}));
+	const window = model.slideNotificationWindow(
 		pages,
 		pages.map((_, index) => index),
+		model.DRAWER_PAGE_WINDOW,
 	);
-	assert.equal(kept.pages.length, model.NOTIFICATIONS_PAGE_WINDOW);
 	assert.equal(
-		kept.pages[0].page,
-		1,
-		"page one survives a deep scroll, with its waiting asks",
-	);
-	assert.equal(kept.pages[0].waiting.length, 1);
-	assert.equal(
-		kept.pages.at(-1).page,
+		model.NOTIFICATIONS_PAGE_WINDOW,
 		5,
-		"the window is bounded from the TAIL, so the oldest pages are the ones dropped",
+		"the reel's bound is unchanged",
 	);
-	/* The library's own policy, stated so the difference is explicit: it drops the head. */
-	const libraryPolicy = pages.slice(-model.NOTIFICATIONS_PAGE_WINDOW);
 	assert.equal(
-		libraryPolicy[0].page,
-		1 + 2,
-		"`maxPages` would have dropped page one - the defect this policy replaces",
+		model.DRAWER_PAGE_WINDOW,
+		10,
+		"the drawer's bound is ten pages, not five",
+	);
+	assert.equal(window.pages.length, 10, "eleven pages fold to ten");
+	assert.equal(
+		window.pages[0].page,
+		1,
+		"the drawer's first page is still pinned",
+	);
+	assert.equal(window.pages.at(-1).page, 11, "the deepest page survives");
+	assert.equal(
+		window.hiddenNewer,
+		20,
+		"one page of rows left memory, and says so",
+	);
+	/* The 5-page window would have cut the drawer off at 500 rows. */
+	const wrongly = model.slideNotificationWindow(
+		pages,
+		pages.map((_, index) => index),
+		model.NOTIFICATIONS_PAGE_WINDOW,
+	);
+	assert.equal(
+		wrongly.pages.length,
+		5,
+		"this is the bound QA measured on the drawer",
+	);
+});
+
+test("Q12: a successful conversation dismiss removes the rows this window kept drawn", () => {
+	/* After mark-all the rows stayed on screen, read but present; the dismissal then
+	   covered all of them, and the list kept drawing ~101 rows against a server that
+	   listed 0 for that conversation. */
+	const drawn = new Set(
+		Array.from({ length: 101 }, (_, index) => `n_keep${index}`),
+	);
+	const changed = [...drawn, "n_somewhere_else"];
+	const leaving = model.coveredByWrite(drawn, changed);
+	assert.equal(
+		leaving.size,
+		101,
+		"every drawn row the write covered leaves the list",
+	);
+	assert.ok(
+		!leaving.has("n_somewhere_else"),
+		"an id this window never drew is ignored",
+	);
+	const kept = [...drawn].filter((id) => !leaving.has(id));
+	assert.equal(kept.length, 0, "no row from that conversation remains drawn");
+});
+
+test("R5-2: the scope count is keyed by this conversation's rows, not the store's mark", () => {
+	const own = (revision, read) => ({
+		id: "n_own",
+		revision,
+		read,
+		dismissed: false,
+		session: { id: "aaaaaaaaaaa1" },
+	});
+	const foreign = (id, revision = 4, read = false) => ({
+		id,
+		revision,
+		read,
+		dismissed: false,
+		session: { id: "bbbbbbbbbbb2" },
+	});
+	const before = model.scopeCountSignature(
+		[own(3, false), foreign("n_other")],
+		"aaaaaaaaaaa1",
+	);
+	assert.equal(
+		model.scopeCountSignature(
+			[own(3, false), foreign("n_other", 9, true)],
+			"aaaaaaaaaaa1",
+		),
+		before,
+		"a mark in another conversation must not buy a whole-store walk (30 reads for 3 marks before)",
+	);
+	assert.notEqual(
+		model.scopeCountSignature(
+			[own(4, true), foreign("n_other")],
+			"aaaaaaaaaaa1",
+		),
+		before,
+		"a change to THIS conversation does re-walk, which is what R4-1 needs",
 	);
 });
 

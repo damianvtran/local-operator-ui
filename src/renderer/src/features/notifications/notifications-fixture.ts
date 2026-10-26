@@ -169,6 +169,17 @@ export function createNotificationFixture(
 				};
 			},
 		},
+		/**
+		 * A NEW row arrives (code round 5, R5-3). `revise` re-stamps an existing row;
+		 * a real arrival is a different event - a new id, a new seq and a fresh unread
+		 * row - and only this can show a count that grew.
+		 */
+		arrive(item: DesktopNotificationItem) {
+			const next = { ...item, seq: ++highWater, read: false, dismissed: false };
+			items.unshift(next);
+			publish();
+			return next;
+		},
 		/** Ask changes intentionally preserve notify high-water (R1 regression). */
 		replaceAsk(next: DesktopNotificationItem) {
 			waiting.splice(0, waiting.length, next);

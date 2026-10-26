@@ -37,7 +37,13 @@ import {
 	useMutation,
 	useQuery,
 } from "@tanstack/react-query";
-import { useEffect, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -46,8 +52,10 @@ import type {
 	DesktopNotificationsWriteResult,
 } from "../../../../shared/desktop-control-contract";
 import {
+	DRAWER_PAGE_WINDOW,
 	NOTIFICATIONS_PAGE_WINDOW,
-	trimNotificationPages,
+	pinFirstPage,
+	slideNotificationWindow,
 } from "./notifications-model";
 
 export const notificationKeys = {
@@ -71,28 +79,68 @@ export function useNotificationsEnabled(): boolean {
 }
 
 /**
- * Trim a loaded infinite window from the TAIL, keeping page one (code round 4,
- * R4-4). Runs after each successful fetch, so a deep scroll is bounded without the
- * library ever evicting the head: page one carries `waiting`, the counts and the
- * high-water mark, and losing it is what made late arrivals invisible.
+ * Hold the reel's page window to a bound that keeps OLDER rows reachable (code
+ * round 5, R5-1).
+ *
+ * Trimming from the tail made the cursor's own next page the first thing evicted,
+ * so the reel could never reach past its newest window. The window now slides from
+ * the head of the scroll run and always keeps page one, whose `waiting` group and
+ * counts are the facts the reel and Mark all read enumerate under. `hiddenNewer` is
+ * the number of rows dropped above the viewport, which the page renders as the
+ * back-to-top affordance.
  */
-function useTailTrim(
+function useReelWindow(
 	client: ReturnType<typeof useOptionalQueryClient>["client"],
 	key: readonly unknown[],
 	trigger: number | undefined,
-) {
+	limit: number = NOTIFICATIONS_PAGE_WINDOW,
+): { hiddenNewer: number; resetToTop: () => void } {
+	const [hiddenNewer, setHiddenNewer] = useState(0);
+	/* Cumulative until the operator returns to the top (R5-1): a row dropped two
+	   fetches ago is still above the viewport, so the pill keeps counting it. */
+	const hiddenSoFar = useRef(0);
 	useEffect(() => {
 		if (!client || trigger === undefined) return;
+		const current = client.getQueryData<{
+			pages: { items: readonly unknown[] }[];
+			pageParams: unknown[];
+		}>([...key]);
+		if (!current || current.pages.length <= limit) return;
+		const next = slideNotificationWindow(
+			current.pages,
+			current.pageParams,
+			limit,
+			hiddenSoFar.current,
+		);
+		client.setQueryData([...key], {
+			pages: next.pages,
+			pageParams: next.pageParams,
+		});
+		hiddenSoFar.current = next.hiddenNewer;
+		setHiddenNewer(next.hiddenNewer);
+	}, [client, key, trigger, limit]);
+
+	/*
+	 * Back to top drops every scroll page and refetches page one, so the operator
+	 * lands on the newest rows with fresh counts rather than a stale pinned page.
+	 */
+	const resetToTop = useCallback(() => {
+		if (!client) return;
 		const current = client.getQueryData<{
 			pages: unknown[];
 			pageParams: unknown[];
 		}>([...key]);
-		if (!current || current.pages.length <= NOTIFICATIONS_PAGE_WINDOW) return;
+		if (!current) return;
 		client.setQueryData(
 			[...key],
-			trimNotificationPages(current.pages, current.pageParams),
+			pinFirstPage(current.pages, current.pageParams),
 		);
-	}, [client, key, trigger]);
+		hiddenSoFar.current = 0;
+		setHiddenNewer(0);
+		void client.invalidateQueries({ queryKey: [...key] });
+	}, [client, key]);
+
+	return { hiddenNewer, resetToTop };
 }
 
 /**
@@ -157,8 +205,16 @@ export function useNotificationsList(
 		 * read blind to unread asks. `trimNotificationPages` keeps the head instead.
 		 */
 	});
-	useTailTrim(client, notificationKeys.list(state), answer.dataUpdatedAt);
-	return answer;
+	const reel = useReelWindow(
+		client,
+		notificationKeys.list(state),
+		answer.dataUpdatedAt,
+	);
+	return {
+		...answer,
+		hiddenNewer: reel.hiddenNewer,
+		resetToTop: reel.resetToTop,
+	};
 }
 
 /**
@@ -217,12 +273,17 @@ export function useSessionNotifications(
 		/* Same policy as the reel (code round 4, R4-4): bound from the tail, never
 		   evict the head, so the door's badge and the flag lines keep page one. */
 	});
-	useTailTrim(
+	const drawer = useReelWindow(
 		client,
 		notificationKeys.session(sessionId ?? ""),
 		answer.dataUpdatedAt,
+		DRAWER_PAGE_WINDOW,
 	);
-	return answer;
+	return {
+		...answer,
+		hiddenNewer: drawer.hiddenNewer,
+		resetToTop: drawer.resetToTop,
+	};
 }
 
 /**

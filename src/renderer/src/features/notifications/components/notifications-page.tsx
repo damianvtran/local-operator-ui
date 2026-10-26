@@ -109,6 +109,7 @@ import {
 	type NotificationFilters,
 	type NotificationGroup,
 	type NotificationGrouping,
+	coveredByWrite,
 	dismissPlan,
 	filterItems,
 	filtersActive,
@@ -168,6 +169,7 @@ const settleOperationProgress = (
 const useSessionScopeCounts = (
 	throughId: number | undefined,
 	enabled: boolean,
+	scopeKey: string,
 ): {
 	counts: Record<string, number> | undefined;
 	/** `true` until an answer for THIS boundary exists; `false` once one does. */
@@ -189,11 +191,23 @@ const useSessionScopeCounts = (
 	 * re-walking. Correctness of a number the operator agrees to beats a walk that
 	 * only happens while that number is on screen.
 	 */
+	/*
+	 * ONE WALK PER CHANGE OF THIS CONVERSATION (code round 5, R5-2). Keying the query
+	 * on the store's high-water mark re-walked the whole store whenever anything
+	 * anywhere moved: 3 marks over 900 rows cost 30 page reads, and every frame cost
+	 * the same again. `scopeKey` is this conversation's own rows, so a foreign mark
+	 * leaves the cached number alone - while the boundary the walk uses is still the
+	 * live one, read at fetch time, which is what the confirm enumerates under.
+	 */
+	const boundaryRef = useRef(throughId);
+	boundaryRef.current = throughId;
 	const query = useQuery({
-		queryKey: ["desktop", "notifications", "session-scope-counts", throughId],
+		queryKey: ["desktop", "notifications", "session-scope-counts", scopeKey],
 		enabled: enabled && throughId !== undefined,
 		queryFn: () =>
-			readSessionDismissCounts(scopeCountBoundary(throughId) as number),
+			readSessionDismissCounts(
+				scopeCountBoundary(boundaryRef.current) as number,
+			),
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
 		refetchOnWindowFocus: false,
@@ -406,6 +420,20 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		loaded?.high_water,
 		Boolean(loaded) &&
 			sessionScopeCountsEnabled(grouping, Boolean(notificationId)),
+		/*
+		 * The detail's own row identity: its id, revision and read state, plus its
+		 * pending asks. Whatever a frame elsewhere in the store says, this string only
+		 * moves when a row of THIS conversation does.
+		 */
+		[
+			detail.data?.item.id ?? "",
+			detail.data?.item.revision ?? 0,
+			detail.data?.item.read ? "r" : "u",
+			detail.data?.item.dismissed ? "d" : "",
+			detail.data?.asks.length ?? 0,
+			notificationId ?? "",
+			grouping,
+		].join("|"),
 	);
 	const scopeCounts = scopeCount.counts;
 	const writesPaused = refreshFailed || operationBusy;
@@ -793,10 +821,23 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				observed: [...snapshot.tokens],
 			},
 			[...snapshot.tokens],
-			(result) =>
-				t("ui.notifications.toast.dismissed", { count: result.changed.length }),
+			/*
+			 * Q12 (QA round 3): rows this window KEPT on screen after mark-all are read,
+			 * not gone - `serverLists` no longer returns them once they are dismissed, so
+			 * leaving them drawn showed ~101 rows against a conversation the server lists
+			 * as empty. The ids the server confirmed leave through the same exit the
+			 * gesture path uses.
+			 */
+			(result) => {
+				const drawn = new Set(order.map((item) => item.id));
+				const leaving = coveredByWrite(drawn, result.changed);
+				if (leaving.size > 0) beginExit(leaving);
+				return t("ui.notifications.toast.dismissed", {
+					count: result.changed.length,
+				});
+			},
 		);
-	}, [confirmSession, navigate, notificationId, runWrite]);
+	}, [confirmSession, navigate, notificationId, runWrite, order, beginExit]);
 
 	/* Mark ALL is global, independent of the From/Kind/Priority display filters.
 	 * Read every notify page under the first rendered boundary, retain the first
@@ -1183,21 +1224,30 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [scrollbar-gutter:stable]"
 								data-notifications-list=""
 							>
-								{newIds.size > 0 && (
+								{(newIds.size > 0 || list.hiddenNewer > 0) && (
+									/*
+									 * BACK TO TOP (code round 5, R5-1). While the operator is scrolled
+									 * deep the page window slides: older pages stay reachable and the
+									 * rows just above the viewport leave memory. This pill says how
+									 * many, and pressing it is the way back - page one refetches, so
+									 * the counts and the waiting asks on it are fresh.
+									 */
 									<div className="sticky top-0 z-[2] flex shrink-0 justify-center bg-canvas py-1">
 										<Button
 											size="sm"
 											variant="secondary"
+											data-notifications-back-to-top=""
 											onClick={() => {
 												listRef.current?.scrollTo({
 													top: 0,
 													behavior: "smooth",
 												});
 												setNewIds(new Set());
+												list.resetToTop();
 											}}
 										>
 											{t("ui.notifications.new_pill", {
-												count: formatNumber(newIds.size),
+												count: formatNumber(newIds.size + list.hiddenNewer),
 											})}
 										</Button>
 									</div>

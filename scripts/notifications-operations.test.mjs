@@ -309,43 +309,38 @@ test("the Dismiss-all header number is the scope the dialog applies, not the pag
 	);
 });
 
-test("the detail's number follows the boundary the confirm uses, through the store's churn", async () => {
+test("R4-1 / R5-3: the printed count, the confirm and the covered set agree at every step", async () => {
 	/*
-	 * CODE ROUND 4, R4-1. The detail advertised a number counted at ONE boundary
-	 * captured when the walk first ran, while the confirm counts under the CURRENT
-	 * high-water mark - and the store re-stamps a row's seq on every read or
-	 * dismiss, including the read that opening the detail performs. Measured on
-	 * this fixture: 129 against 130 after that read, 129 against 131 after a late
-	 * arrival, and a vanished button against 131 after mark-all-read.
+	 * CODE ROUND 4, R4-1, REWRITTEN INDEPENDENTLY (code round 5, R5-3).
 	 *
-	 * This drives the SHIPPED walk, confirm and write through exactly that churn.
-	 * At every step it asserts the detail's number equals the confirm's equals the
-	 * write's covered set, and it states the drift explicitly: counting under the
-	 * boundary the page first saw is strictly smaller, so a frozen boundary cannot
-	 * pass this test.
+	 * The detail printed a number counted at ONE boundary captured when the walk first
+	 * ran, while its confirm enumerates under the CURRENT high-water mark - and the
+	 * store re-stamps a row's seq on every read or dismiss, including the read that
+	 * opening the detail performs. Measured on this fixture: 129 against 130.
+	 *
+	 * The first version of this test ran its three steps against ONE fixture and
+	 * dismissed everything on its way through, so after step 1 the remaining steps
+	 * compared 0 to 0 to 0 and could no longer fail - and its "late arrival" was just
+	 * another read. Each step below builds its OWN fixture, and the arrival step
+	 * inserts a genuinely new row.
 	 */
 	const session = "aaaaaaaaaaa1";
-	const rows = Array.from({ length: 130 }, (_, index) => {
-		const row = item(
-			`n_${"f".repeat(12)}${String.fromCharCode(97 + Math.floor(index / 26))}${String.fromCharCode(97 + (index % 26))}`,
-			{
+	const rowId = (index) =>
+		`n_${"f".repeat(12)}${String.fromCharCode(97 + Math.floor(index / 26))}${String.fromCharCode(97 + (index % 26))}`;
+	const seed = (count) =>
+		Array.from({ length: count }, (_, index) => {
+			const row = item(rowId(index), {
 				seq: index + 1,
 				session: { id: session, title: "one long conversation" },
-			},
-		);
-		row.read = false;
-		return row;
-	});
-	const fixture = ops.createNotificationFixture(rows, []);
+			});
+			row.read = false;
+			return row;
+		});
 	const token = (row) => ({ id: row.id, revision: row.revision });
 
-	/*
-	 * THE BOUNDARY COMES FROM THE SHIPPED RULE, not from the test (code round 4,
-	 * R4-1). This is what makes the test discriminate: on the pre-fix sources the
-	 * rule a frozen boundary would have replaced does not exist, so the read fails
-	 * here rather than quietly counting a set the dialog will not agree with.
-	 */
-	const measure = async (highWater, label) => {
+	/* Each step: the shipped walk (the number the page prints), the shipped confirm
+	   enumeration and the shipped write, all at the live mark. */
+	const measure = async (fixture, highWater, label) => {
 		const boundary = ops.scopeCountBoundary(highWater);
 		const printed = await ops.readSessionDismissCounts(highWater, (request) =>
 			fixture.list(request),
@@ -387,39 +382,76 @@ test("the detail's number follows the boundary the confirm uses, through the sto
 		return numbers;
 	};
 
-	// 1. Opening the detail reads a row, which re-stamps its seq and moves the mark.
-	const firstBoundary = fixture.counts().high_water;
-	await fixture.patch("read", { items: [token(rows[0])] });
-	const afterRead = fixture.counts().high_water;
-	assert.ok(
-		afterRead > firstBoundary,
-		"the detail's own read advanced the mark",
-	);
-	const stale = await ops.readSessionDismissCounts(
-		ops.scopeCountBoundary(firstBoundary),
-		(request) => fixture.list(request),
-	);
-	assert.ok(
-		(stale[session] ?? 0) < 130,
-		"counting at the boundary the page first saw is smaller - the drift this fixes",
-	);
-	const step1 = await measure(afterRead, "after the detail's own read");
-	assert.equal(
-		step1.printed,
-		130,
-		"130 rows remain dismissable at the live mark",
-	);
+	// STEP 1 - the detail's own read moves the mark; the number follows it.
+	{
+		const rows = seed(130);
+		const fixture = ops.createNotificationFixture(rows, []);
+		const firstBoundary = fixture.counts().high_water;
+		await fixture.patch("read", { items: [token(rows[0])] });
+		const afterRead = fixture.counts().high_water;
+		assert.ok(
+			afterRead > firstBoundary,
+			"the detail's own read advanced the mark",
+		);
+		const stale = await ops.readSessionDismissCounts(
+			ops.scopeCountBoundary(firstBoundary),
+			(request) => fixture.list(request),
+		);
+		assert.ok(
+			(stale[session] ?? 0) < 130,
+			"counting at the boundary the page first saw is smaller - the drift this fixes",
+		);
+		const step = await measure(
+			fixture,
+			afterRead,
+			"after the detail's own read",
+		);
+		assert.equal(
+			step.printed,
+			130,
+			"130 rows are dismissable at the live mark",
+		);
+	}
 
-	// 2. A late arrival on the same conversation moves both numbers together.
-	await fixture.patch("read", { items: [token(rows[1])] });
-	const afterArrival = fixture.counts().high_water;
-	await measure(afterArrival, "after a late arrival");
+	// STEP 2 - a REAL new row arrives on the same conversation: 131, all three agree.
+	{
+		const rows = seed(130);
+		const fixture = ops.createNotificationFixture(rows, []);
+		const arrival = fixture.arrive(
+			item(rowId(200), {
+				seq: 131,
+				session: { id: session, title: "one long conversation" },
+			}),
+		);
+		assert.equal(arrival.read, false, "the arrival is unread");
+		assert.equal(
+			fixture.counts().high_water,
+			131,
+			"the store minted a new high-water mark",
+		);
+		const step = await measure(
+			fixture,
+			fixture.counts().high_water,
+			"after a real arrival",
+		);
+		assert.equal(step.printed, 131, "the arrival is counted, not just re-read");
+	}
 
-	// 3. Mark-all-read: nothing left to dismiss, and the confirm agrees.
-	await fixture.patch("read", { items: rows.map((row) => token(row)) });
-	const afterMarkAll = fixture.counts().high_water;
-	const final = await measure(afterMarkAll, "after mark-all-read");
-	assert.equal(final.printed, 0, "no number is offered when nothing is left");
+	// STEP 3 - its own fixture, every row already dismissed: the button offers nothing.
+	{
+		const rows = seed(130).map((row) => ({
+			...row,
+			read: true,
+			dismissed: true,
+		}));
+		const fixture = ops.createNotificationFixture(rows, []);
+		const step = await measure(
+			fixture,
+			fixture.counts().high_water,
+			"with nothing left to dismiss",
+		);
+		assert.equal(step.printed, 0, "no number is offered when nothing is left");
+	}
 });
 
 test("R4-6: the unread count comes from the server's walk, not the loaded page", async () => {

@@ -274,19 +274,131 @@ export const mergeConfirmedReads = (
 			: item;
 	});
 
+/**
+ * How many pages the reel keeps in memory (code round 5, R5-1).
+ *
+ * WHY A WINDOW AT ALL: `useInfiniteQuery` refetches every loaded page on each
+ * invalidation, and the feed invalidates on frames, so an unbounded reel turns one
+ * frame into as many reads as the operator has scrolled.
+ */
 export const NOTIFICATIONS_PAGE_WINDOW = 5;
 
-export const trimNotificationPages = <Page, Param>(
-	pages: Page[],
-	pageParams: Param[],
+/**
+ * The drawer's bound: ten pages (code round 5, R5-1 - QA measured the drawer still
+ * on the reel's five, so both bounds are exported from here and the tests pin them).
+ */
+export const DRAWER_PAGE_WINDOW = 10;
+
+/** Page one is pinned: it is the only page carrying `waiting`, the counts and the
+ * high-water mark the reel and Mark all read enumerate under. */
+const PINNED_PAGES = 1;
+
+export interface NotificationPageLike {
+	readonly items: readonly unknown[];
+}
+
+/**
+ * Slide the reel's page window so OLDER rows stay reachable (code round 5, R5-1).
+ *
+ * The previous fix trimmed from the TAIL, which is where the cursor appends: the
+ * next page was fetched and thrown away in the same tick, so nothing older than the
+ * newest window was ever reachable again - "8 scroll fetches over 900 rows leave
+ * rows 401-900, and every scroll near the bottom fetches a page and discards it".
+ *
+ * This keeps page one (pinned, see above) plus the NEWEST OF THE OLDER PAGES - the
+ * end of the array, where the cursor continues - and drops from the head of the
+ * scroll run: the rows just above the viewport, which the reader reaches again by
+ * scroll-to-top.
+ *
+ * `hiddenSoFar` is carried in because a row dropped two fetches ago is still hidden:
+ * the count is cumulative until the operator returns to the top, and that running
+ * total is what the affordance shows.
+ *
+ * Page params travel with their pages: page one keeps its sentinel param and the
+ * tail keeps its cursors, so `getNextPageParam` still asks for the page after the
+ * oldest one loaded rather than re-fetching from the start.
+ */
+export function slideNotificationWindow<
+	Page extends NotificationPageLike,
+	Param,
+>(
+	pages: readonly Page[],
+	pageParams: readonly Param[],
+	limit: number = NOTIFICATIONS_PAGE_WINDOW,
+	hiddenSoFar = 0,
+): { pages: Page[]; pageParams: Param[]; hiddenNewer: number } {
+	if (pages.length <= limit)
+		return {
+			pages: [...pages],
+			pageParams: [...pageParams],
+			hiddenNewer: hiddenSoFar,
+		};
+	const tailCount = Math.max(limit - PINNED_PAGES, 1);
+	const dropped = pages.slice(PINNED_PAGES, pages.length - tailCount);
+	const hiddenNewer =
+		hiddenSoFar + dropped.reduce((total, page) => total + page.items.length, 0);
+	return {
+		pages: [pages[0] as Page, ...pages.slice(pages.length - tailCount)],
+		pageParams: [pageParams[0] as never, ...pageParams.slice(-tailCount)],
+		hiddenNewer,
+	};
+}
+
+/**
+ * Back to top: page one alone, with fresh facts (code round 5, R5-1). Dropping the
+ * scroll pages is what makes the next read page one again, and page one's own
+ * refetch is the "fresh facts" half of the return.
+ */
+export const pinFirstPage = <Page, Param>(
+	pages: readonly Page[],
+	pageParams: readonly Param[],
 ) => ({
-	pages: pages.slice(0, NOTIFICATIONS_PAGE_WINDOW),
-	pageParams: pageParams.slice(0, NOTIFICATIONS_PAGE_WINDOW),
+	pages: pages.slice(0, PINNED_PAGES),
+	pageParams: pageParams.slice(0, PINNED_PAGES),
 });
+
+/**
+ * Which drawn rows a successful write removes (QA round 3, Q12).
+ *
+ * A conversation-wide dismiss covers rows this window did not necessarily draw - and
+ * rows the mark-all path deliberately KEPT on screen after reading them ("stay as
+ * already-read until the next refresh"). When the dismiss succeeds those kept rows
+ * are no longer part of anything the server lists, so leaving them drawn showed ~101
+ * rows against a server list of 0. The exit machinery is the existing way a row
+ * leaves the list: hand it the ids the server confirmed.
+ */
+export const coveredByWrite = (
+	drawnIds: ReadonlySet<string>,
+	changed: readonly string[],
+): Set<string> => new Set(changed.filter((id) => drawnIds.has(id)));
 
 export const scopeCountBoundary = (
 	highWaterMark: number | undefined,
 ): number | undefined => highWaterMark;
+
+/**
+ * What the scope count is keyed by, so it re-walks only when THIS conversation
+ * changed (code round 5, R5-2).
+ *
+ * The walk is bought under the live high-water mark because the confirm enumerates
+ * under it (R4-1). Keying the query on that mark made every frame - and every mark
+ * anywhere in the store - re-walk: 3 marks over 900 rows cost 30 page reads. A mark
+ * in another conversation cannot change this conversation's answer, so the key is
+ * this conversation's own rows: their ids and revisions, which move only when one
+ * of them is read, dismissed or updated.
+ */
+export const scopeCountSignature = (
+	items: readonly DesktopNotificationItem[],
+	sessionId: string,
+): string =>
+	items
+		.filter((item) => item.session.id === sessionId)
+		.map(
+			(item) =>
+				`${item.id}@${item.revision}:${item.read ? 1 : 0}${item.dismissed ? "d" : ""}`,
+		)
+		.sort()
+		.join(",");
 
 export const sessionScopeCountsEnabled = (
 	grouping: NotificationGrouping,

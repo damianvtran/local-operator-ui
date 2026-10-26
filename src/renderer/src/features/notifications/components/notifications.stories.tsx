@@ -521,6 +521,34 @@ export const AskDetail: Story = {
 };
 
 /** A hundred and sixty rows over six conversations: the From menu sorts by volume. */
+/**
+ * DEEP SCROLL: enough rows that the reel pages past its window (code round 5, R5-1).
+ *
+ * The page window is five pages of 100, so nothing about the sliding behaviour is
+ * visible on a fixture that fits in one or two: this story seeds 700 rows, which is
+ * seven fetches, so scrolling to the bottom slides the window, the rows above the
+ * viewport leave memory and the back-to-top pill appears with a real count.
+ */
+const DEEP_VOLUME: DesktopNotificationItem[] = Array.from(
+	{ length: 700 },
+	(_, index) =>
+		item({
+			id: `n_deep${String.fromCharCode(97 + Math.floor(index / 676))}${String.fromCharCode(97 + (Math.floor(index / 26) % 26))}${String.fromCharCode(97 + (index % 26))}`,
+			priority: index % 11 === 0 ? "high" : "normal",
+			title: `Deep scroll row ${index + 1}`,
+			excerpt: `Row ${index + 1} of a seven-hundred-row conversation.`,
+			seq: 7000 - index,
+		}),
+);
+
+export const DeepScroll: Story = {
+	render: () =>
+		page(
+			{ items: DEEP_VOLUME, waiting: WAITING },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+};
+
 export const HighVolume: Story = {
 	render: () =>
 		page(
