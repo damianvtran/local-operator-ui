@@ -64,6 +64,7 @@
 	"ui.chat.run_details.todos.blocked": "Inline tag on a blocked to-do item with no stated reason.",
 	"ui.chat.run_details.todos.blocked_reason": "Inline tag on a blocked to-do item, followed by its reason.",
 	"ui.chat.run_details.todos.hidden": "Note on a to-do phase whose remaining items are folded away; {count} is a row count.",
+	"ui.chat.run_details.todos.hidden_summary": "Standalone statement under a phase listing only part of its rows: how many of them are not shown. Count is a number of hidden to-do items; English keeps 'hidden' at every count, so the plural arms are identical there and a locale may need different ones. count formatting uses ICU number ::group-off on both arms, because the label is a plain integer count of folded rows and bare # would group it (1000 rendered as 1,000).",
 	"ui.chat.run_details.wakes.title": "Heading of the wakes section.",
 	"ui.chat.run_details.wake.cancel": "Cancels this wake.",
 	"ui.chat.run_details.wake.cancelled": "State of a wake whose cancel succeeded.",

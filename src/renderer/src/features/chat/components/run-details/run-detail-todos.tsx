@@ -330,7 +330,9 @@ export const RunDetailTodos = ({
 								<li className={cn("pe-3")}>
 									<Disclosure
 										disabled={true}
-										summary={`${phase.hidden} hidden`}
+										summary={t("ui.chat.run_details.todos.hidden_summary", {
+											count: phase.hidden,
+										})}
 										className={cn("ps-9 text-meta")}
 									/>
 								</li>

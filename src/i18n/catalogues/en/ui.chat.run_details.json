@@ -52,6 +52,7 @@
 	"ui.chat.run_details.todos.blocked": "— blocked",
 	"ui.chat.run_details.todos.blocked_reason": "— blocked: {reason}",
 	"ui.chat.run_details.todos.hidden": "· {count} hidden",
+	"ui.chat.run_details.todos.hidden_summary": "{count, plural, one {{count, number, ::group-off} hidden} other {{count, number, ::group-off} hidden}}",
 	"ui.chat.run_details.wakes.title": "Wakes",
 	"ui.chat.run_details.wake.cancel": "Cancel",
 	"ui.chat.run_details.wake.cancelled": "Cancelled",

@@ -3831,6 +3831,7 @@ export type MessageParams = {
 	"ui.chat.run_details.todos.blocked_reason": { reason: string };
 	"ui.chat.run_details.todos.dropped": undefined;
 	"ui.chat.run_details.todos.hidden": { count: string };
+	"ui.chat.run_details.todos.hidden_summary": { count: number };
 	"ui.chat.run_details.todos.title": undefined;
 	"ui.chat.run_details.unopenable": undefined;
 	"ui.chat.run_details.update_backend": undefined;
