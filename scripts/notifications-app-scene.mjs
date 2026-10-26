@@ -211,9 +211,21 @@ const sha256 = (path) =>
  * assertions - those belong to the story rigs, not to this proof.
  */
 async function screenshot(cdp, label) {
-	const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
+	/*
+	 * `CdpClient.send` resolves the WHOLE CDP message, not its `result` member
+	 * (`evaluate` reads `reply.result` for the same reason), so the frame is
+	 * `reply.result.data`. Reading `reply.data` wrote `undefined` into
+	 * `Buffer.from` and failed the run at the first frame - after the window and
+	 * the reel had already been proved.
+	 */
+	const reply = await cdp.send("Page.captureScreenshot", { format: "png" });
+	const data = reply?.result?.data ?? reply?.data;
+	if (typeof data !== "string" || data.length === 0)
+		throw new Error(
+			`the screenshot reply carried no frame: ${JSON.stringify(Object.keys(reply ?? {}))}`,
+		);
 	const path = join(OUT, `${label}.png`);
-	writeFileSync(path, Buffer.from(shot.data, "base64"));
+	writeFileSync(path, Buffer.from(data, "base64"));
 	return { path, bytes: statSync(path).size };
 }
 
