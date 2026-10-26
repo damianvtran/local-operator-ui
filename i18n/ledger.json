@@ -41290,7 +41290,7 @@
 			"locale": "fr",
 			"namespace": "ui.agents.pages",
 			"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
-			"target_sha256": "33b4134fec995c556c89b730e4e28d07d84054caa7be559fc307de803ca5dab8",
+			"target_sha256": "f47cf6722ca91cfde0d32701dc03305fcc1c7651396d1e19d992bf039ba8caef",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -41302,18 +41302,43 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "caa0f0b9574d",
+					"instance": "3b643ef5ba8a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/caa0f0b9574d.json",
-					"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+					"receipt": "i18n/receipts/3b643ef5ba8a.json",
+					"receipt_sha256": "31c91570ef864f08dc03032185dfc83f270f6ed8c76c5c9c5c0995fa7997393a",
+					"note": "fit remediation: singular class labels (Tout/Créé/Installé/Intégré) so the shared key reads right both as a filter segment and as one agent's source chip; round 4 passed 0/0/0/0; r3 receipt 1a77ecf49a12 (changes_requested) superseded"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+					"target_sha256": "33b4134fec995c556c89b730e4e28d07d84054caa7be559fc307de803ca5dab8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "caa0f0b9574d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/caa0f0b9574d.json",
+							"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -41754,7 +41779,7 @@
 			"locale": "ru",
 			"namespace": "ui.agents.pages",
 			"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
-			"target_sha256": "e5130e0f01fefec0274fde626a88d4f9c4981afea6d6beefef579f8fc12e32ba",
+			"target_sha256": "14e83197e6b0aad504c18e41e2c14d8bd0815c192fbf1435b8d9ad61e95314f6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -41765,19 +41790,44 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "a7f4f2fdf169",
+					"result": "clean-with-findings",
+					"instance": "5ce4f1b89cb7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/a7f4f2fdf169.json",
-					"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+					"receipt": "i18n/receipts/5ce4f1b89cb7.json",
+					"receipt_sha256": "be9b2a33e0fadc04fe1f42f5dc3348fd339e04dc2cb05a9e340ddd36bc95fef5",
+					"note": "fit remediation: installed scope label shortened to 'С хаба' (width-driven; measured 230.24 px in the real render vs 283.90 px); 1 minor (из/с хаба preposition drift) and 1 nit recorded"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+					"target_sha256": "e5130e0f01fefec0274fde626a88d4f9c4981afea6d6beefef579f8fc12e32ba",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a7f4f2fdf169",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a7f4f2fdf169.json",
+							"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",

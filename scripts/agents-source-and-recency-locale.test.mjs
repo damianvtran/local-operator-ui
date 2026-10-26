@@ -36,7 +36,10 @@
  * D. THE OLD SHAPE IS GONE, PROVABLY. For every non-English locale the string
  *    must DIFFER from the English one the pre-fix code printed ("3 days ago",
  *    "Built-in"), and must not contain it: that is the negative control, and
- *    reverting either call site turns it red.
+ *    reverting either call site turns it red. The English side of that
+ *    comparison is read from the `en` catalogue at run time rather than pinned
+ *    here, so a legitimately refined translation cannot fail a test whose
+ *    subject - the call site - is correct.
  *
  * WHAT IT DOES NOT PROVE: pixels and the repaint on a live language switch. The
  * callers re-render through `useI18nLocale()` (`agents-page.tsx` for the roster
@@ -95,6 +98,9 @@ const AUDITED = ["fr", "ur"];
 /** The English the pre-fix code printed, hoisted: Biome's `useTopLevelRegex`. */
 const LEGACY_ENGLISH = /Built-in|Installed|Custom|\bago\b|just now/;
 
+/** Latin letters, for the non-Latin script check: RTL Urdu carries none. */
+const LATIN_LETTERS = /[A-Za-z]/;
+
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-09-30T12:00:00.000Z");
 
@@ -152,22 +158,63 @@ test("the source chip paints the scope catalogue's word in every locale", () => 
 	}
 });
 
-test("the audited locales: the chip is not English", () => {
-	/* The three words per locale, as the shipped catalogues carry them. */
-	const expected = {
-		fr: { builtin: "Intégrées", installed: "Installées", custom: "Créées" },
-		ur: { builtin: "بلٹ ان", installed: "انسٹال شدہ", custom: "حسب ضرورت" },
+test("the audited locales: the chip is the locale's word, never English", () => {
+	/* NO SPELLINGS ARE PINNED HERE, deliberately. This test's claim is
+	 * "differs from English", not "equals this word": an audit may legitimately
+	 * refine a translation (fr's scope labels were singularised once it was
+	 * found the same keys also label ONE agent on each roster row's chip), and
+	 * a pinned word then fails on a refinement that left the behaviour under
+	 * test correct - the exact rot the catalogue-derived assertion above this
+	 * one exists to avoid. So every expectation is read from the catalogues:
+	 * the locale's own value for the key, and the `en` value as the baseline
+	 * the non-English locales must not have. */
+	const KEYS = {
+		builtin: "ui.agents.pages.scope.builtin",
+		installed: "ui.agents.pages.scope.installed",
+		custom: "ui.agents.pages.scope.custom",
 	};
-	for (const [tag, words] of Object.entries(expected)) {
+	lib.locale.setLocale("en");
+	const english = {};
+	for (const [source, key] of Object.entries(KEYS)) {
+		english[source] = lib.t(key);
+		/* The baseline is provably the pre-fix vocabulary: if `en` were ever
+		 * reworded, the comparison would stop measuring the old shape. */
+		assert.match(
+			english[source],
+			LEGACY_ENGLISH,
+			`en/${source}: the catalogue still carries the pre-fix label`,
+		);
+	}
+	for (const tag of AUDITED) {
 		lib.locale.setLocale(tag);
-		for (const [source, want] of Object.entries(words)) {
-			assert.equal(chipText(source, "text"), want, `${tag}/${source}`);
+		for (const [source, key] of Object.entries(KEYS)) {
+			const rendered = chipText(source, "text");
+			assert.equal(
+				rendered,
+				lib.t(key),
+				`${tag}/${source}: the catalogue's word`,
+			);
+			assert.notEqual(
+				rendered,
+				english[source],
+				`${tag}/${source}: the English label leaked through`,
+			);
 			assert.doesNotMatch(
-				chipText(source, "text"),
+				rendered,
 				LEGACY_ENGLISH,
 				`${tag}/${source}: still printing the hardcoded English label`,
 			);
 		}
+	}
+	/* Urdu is RTL and non-Latin, so Latin letters on that page are English by
+	 * construction - a property no translation refinement can invalidate. */
+	lib.locale.setLocale("ur");
+	for (const source of Object.keys(KEYS)) {
+		assert.doesNotMatch(
+			chipText(source, "text"),
+			LATIN_LETTERS,
+			`ur/${source}: Latin letters on an Urdu page`,
+		);
 	}
 });
 
