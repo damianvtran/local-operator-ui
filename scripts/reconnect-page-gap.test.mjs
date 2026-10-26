@@ -1458,6 +1458,38 @@ test("a journal-order correction below the snapshot watermark is still applied",
 		"domain-after",
 		"a correction behind the watermark is applied, not dropped",
 	);
+	/*
+	 * AND IT DOES NOT BECOME THE MARK (agent review round 4). If a correction at 6
+	 * were allowed to lower the watermark, the frames it "proves" are behind us
+	 * would be admitted: the reset replay at 7 below must still be refused, and
+	 * the published reconnect receipt must still say 7, or a reconnect asks for a
+	 * tail it has already read.
+	 */
+	assert.equal(
+		panel.handle().receipt?.seq,
+		7,
+		"the correction does not lower the reconnect receipt",
+	);
+	deliver(
+		eventFrame(7, {
+			type: "history_delta",
+			history_generation: "g",
+			reset: true,
+			messages: [
+				{
+					id: rows[0].id,
+					role: "user",
+					content: [{ type: "text", text: "stale replacement" }],
+				},
+			],
+		}),
+	);
+	await pump();
+	assert.equal(
+		panel.row(rows[0].id)?.text,
+		"r-0",
+		"a stale reset at the watermark is still refused after the correction",
+	);
 
 	reset({ transcript: makeTranscript(rows) });
 	panel = await mountWithJournalOrder();

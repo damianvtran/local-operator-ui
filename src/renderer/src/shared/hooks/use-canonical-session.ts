@@ -4649,24 +4649,28 @@ export function useCanonicalSessionStream(
 						};
 						/*
 						 * A JOURNAL-ORDER CORRECTION IS ORDERED BY THE JOURNAL, NOT BY THIS
-						 * RECEIPT, and the bridge sends those AFTER the snapshot at or below
-						 * its watermark on purpose (`desktop_sessions.py::events`:
-						 * `frame["seq"] > snapshot["seq"] or (order_fact and not
-						 * already_replayed)`; `docs/DESKTOP_API.md`: "a snapshot's sequence
-						 * watermark cannot supersede an off-page correction" - the frame is
-						 * metadata-only and its IDs need not be in a bounded page, so the
-						 * snapshot cannot stand in for it). Refusing it because its seq is
-						 * low is exactly the #994 mis-ordering returning: rows keep the wrong
-						 * placement until an unrelated later correction arrives.
+						 * RECEIPT, AND IT MUST NOT BECOME THE RECEIPT.
 						 *
-						 * So it is EXEMPT from the ordering gate, and it does NOT move the
-						 * mark - a correction states where existing rows belong, never that
-						 * the stream has advanced, so moving the mark down would let genuinely
-						 * stale frames through afterwards.
+						 * Why it may be applied below the watermark: the bridge sends those
+						 * AFTER the snapshot at or below its seq on purpose
+						 * (`desktop_sessions.py::events`' `frame["seq"] > snapshot["seq"] or
+						 * (order_fact and not already_replayed)`; `docs/DESKTOP_API.md`: "a
+						 * snapshot's sequence watermark cannot supersede an off-page
+						 * correction" - the frame is metadata-only and its IDs need not be in
+						 * a bounded page). Refusing it on seq alone is the #994 mis-ordering
+						 * returning.
+						 *
+						 * Why it may not ADVANCE the mark (agent review round 4): a
+						 * correction at 6 arriving after a snapshot at 7 would otherwise
+						 * lower the mark to 6, and the next genuinely stale frame at 7 - a
+						 * reset replay, a `message_start` - would be admitted, which is this
+						 * PR's own first bug reached through the new door. So it advances
+						 * neither `acceptedReceipt` nor the published `receiptRef`, and it is
+						 * the one frame type that can be applied while the mark stays put.
 						 */
-						if (isJournalOrderCorrection(frame)) {
-							// Deliberately no `acceptedReceipt` assignment.
-						} else if (
+						const orderCorrection = isJournalOrderCorrection(frame);
+						if (
+							!orderCorrection &&
 							!isNewerDesktopFrame(acceptedReceipt, cursor, {
 								// The snapshot is the state AT the watermark, so it may sit on
 								// it (see the option's own note); nothing else may.
@@ -4674,14 +4678,17 @@ export function useCanonicalSessionStream(
 							})
 						)
 							continue;
-						acceptedReceipt = cursor;
+						if (!orderCorrection) acceptedReceipt = cursor;
 					}
 					// The cursor as it stood BEFORE this frame is read first and kept
 					// beside the assignment, because `frontend.replace` below is ordered
 					// against it: checking the value this very frame is about to write
 					// would reject every replacement (remediation contract § C).
 					const priorCursor = receiptRef.current;
-					if (frame.type === "open" || "seq" in frame) {
+					if (
+						(frame.type === "open" || "seq" in frame) &&
+						!isJournalOrderCorrection(frame)
+					) {
 						receiptRef.current = { epoch: frame.epoch, seq: frame.seq };
 						next = { ...next, receipt: receiptRef.current };
 					}
