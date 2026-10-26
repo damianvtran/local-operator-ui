@@ -1,0 +1,193 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "model_source": "harness session banner ('Model: deepseek/deepseek-flash'); no fallback used",
+  "instance": "9f5bb1122705",
+  "locale": "hi",
+  "namespace": "ui.notices",
+  "branch": "feat/i18n-toasts",
+  "head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+  "date": "2026-10-25",
+  "audit_kind": "first audit of a newly translated namespace (not a re-bind)",
+  "result": "clean-with-findings",
+  "status": "passed",
+  "keys_read": 93,
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 2
+  },
+  "sha256": {
+    "en": "f473fa10e95b24f50ce13647ae50a923b34d8efd31249d99d6c437e183722277",
+    "hi": "dde060bfb4e23e2295c0f21c258f4a13d3f8db056b9919d35c937257cedd67a3",
+    "en_context": "acce3fd5c70232afcc3ca2dec3c3bc7d63ab0869485900de3e6b6b03bd4e9379"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.notices.json",
+    "context": "src/i18n/catalogues/en/ui.notices.context.json",
+    "target": "src/i18n/catalogues/hi/ui.notices.json",
+    "style_guide": "~/local-operator/i18n/style-guides/hi.md",
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "established_terminology_sampled": [
+      "src/i18n/catalogues/hi/ui.chat.asks.json",
+      "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+      "src/i18n/catalogues/hi/ui.chat.pickers.json",
+      "src/i18n/catalogues/hi/ui.chat.header.json",
+      "src/i18n/catalogues/hi/ui.chat.dialogs.json",
+      "src/i18n/catalogues/hi/ui.common.updates.json",
+      "src/i18n/catalogues/hi/ui.common.actions.json",
+      "src/i18n/catalogues/hi/ui.agents.refusals.json",
+      "src/i18n/catalogues/hi/ui.agents.settings.json",
+      "src/i18n/catalogues/hi/ui.agents.dialogs.json",
+      "src/i18n/catalogues/hi/ui.browser.json",
+      "src/i18n/catalogues/hi/ui.hub.json",
+      "src/i18n/catalogues/hi/ui.canvas.json",
+      "src/i18n/catalogues/hi/ui.mesh.json",
+      "src/i18n/catalogues/hi/ui.settings.json",
+      "src/i18n/catalogues/hi/ui.schedules.json",
+      "src/i18n/catalogues/hi/ui.teamBridge.json"
+    ],
+    "terminology_scan_scope": "all 78 hi namespace files (every value), for the term-consistency and duplicate-English checks"
+  },
+  "translator": {
+    "agent": "not recorded",
+    "note": "i18n/ledger.json carries no hi/ui.notices row at this head (539 rows, none for ui.notices in any locale); the namespace arrived in commit ec4518da56 'feat(i18n): translate the toast and notification copy into all seven locales'. This auditor is a different instance from whoever produced the values and edited no catalogue, ledger, allowance or generated file."
+  },
+  "findings": [
+    {
+      "id": "HIN-1",
+      "severity": "minor",
+      "key": "ui.notices.main.update_hold_body",
+      "current": "वर्ज़न {version} का अपडेट अभी इंस्टॉल हो रहा है — इस समय ऐप खोलने पर वह रद्द हो जाएगा। {relaunch} इस सूचना पर क्लिक करने से ऐप जल्दी नहीं खुलेगा।",
+      "proposed": "संस्करण {version} का अपडेट अभी इंस्टॉल हो रहा है — इस समय ऐप खोलने पर वह रद्द हो जाएगा। {relaunch} इस सूचना पर क्लिक करने से ऐप जल्दी नहीं खुलेगा।",
+      "reason": "One English term, two local terms: \"version\" is संस्करण in 57 hi strings (63 occurrences) — including the update surfaces this notice sits beside (ui.common.updates.check_for_updates_button.version = \"संस्करण {liveversion} चल रहा है।\", .the_last_update_to_version = \"पिछला अपडेट, संस्करण\", .server_version_v2 = \"आप अभी संस्करण {shown} इस्तेमाल कर रहे हैं।\") — and वर्ज़न appears in this one key and nowhere else in the hi catalogue. The swap costs no width (7 vs 6 code points) and keeps the placeholder exact."
+    },
+    {
+      "id": "HIN-2",
+      "severity": "minor",
+      "key": "ui.notices.credentials.unstored",
+      "current": "{count, plural, one {1 क्रेडेंशियल} other {{count} क्रेडेंशियल}} सहेजे नहीं जा सके ({keys}); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "proposed": "{count, plural, one {1 क्रेडेंशियल सहेजा नहीं जा सका} other {{count} क्रेडेंशियल सहेजे नहीं जा सके}} ({keys}); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "reason": "Agreement across the arms, and the fix is structural: the finite verb \"सहेजे नहीं जा सके\" sits OUTSIDE the plural selector, so one verb has to serve both subjects — plural, which is right for \"2 क्रेडेंशियल\" and wrong for \"1 क्रेडेंशियल\". Hindi's established singular agreement for this noun is masculine singular: ui.chat.pickers.destination_pickers.the_credential_was_not_stored renders \"क्रेडेंशियल सहेजा नहीं गया\", its sibling for the removed credential renders \"क्रेडेंशियल नहीं हटाया गया\", and no_credentials_stored_yet uses the same noun with the masculine plural \"सहेजे नहीं गए हैं\" under a plural subject. The verb therefore has to move inside each arm (one arm सहेजा नहीं जा सका, other arm सहेजे नहीं जा सके); the argument set and the plural categories are unchanged by that move, and the other arm is word-for-word what ships today. The sibling key drafts_offered_verb shows the translator did inflect per arm (मिटा दिया गया / मिटा दिए गए), so this reads as an oversight rather than a convention. Meaning is unaffected, which is why this is minor and not major. The neighbouring credentials.unconfirmed is correct as it stands: \"सहेजे जाने की पुष्टि\" is an invariant verbal noun outside the arms."
+    },
+    {
+      "id": "HIN-3",
+      "severity": "nit",
+      "key": "ui.notices.chat.mark_all_read_cleared",
+      "keys": [
+        "ui.notices.agents.config_run_changed",
+        "ui.notices.agents.config_run_updated",
+        "ui.notices.chat.drafts_offered_name",
+        "ui.notices.chat.mark_all_read_cleared",
+        "ui.notices.chat.mark_all_read_deferred",
+        "ui.notices.chat.mark_all_read_superseded",
+        "ui.notices.chat.mark_all_read_unknown",
+        "ui.notices.credentials.unconfirmed",
+        "ui.notices.credentials.unstored"
+      ],
+      "current": "{count} चैट को पढ़ा हुआ चिह्नित किया। (bare {count}; the same bare form in the other eight keys)",
+      "proposed": "No change in this locale: the skeleton has to be added to the English source first (\"{count, number} chats\"), after which hi renders the Indian grouping for free — verified: {count, number} at 1000000 → \"12,34,567\", bare {count} → \"1000000\".",
+      "reason": "A bare {count} is not number-formatted by this renderer (intl-messageformat 12.1.3), so a large count prints ungrouped. English has the same shape in the same nine keys, so this is a shared source convention, not a translation regression, and it is invisible below 1000 — the one realistically reachable large case is a bulk mark-all-read on a big inbox. Recorded rather than churned because main.consent_body_many in this same file already carries the {count, number} skeleton, so the namespace itself shows the intended form."
+    },
+    {
+      "id": "HIN-4",
+      "severity": "nit",
+      "key": "ui.notices.chat.archive_offered_verb",
+      "current": "को संग्रहित किया गया।",
+      "proposed": "Keep as is; flag for a rendered check at narrow widths if the quoted title reads squeezed. No shorter grammatical form exists that serves both heads.",
+      "reason": "Measured through CoreText at the card's own 13px (sonner --width 356px, 16px padding → 322px content box; no --width override in toastThemeFor): the hi tail is 108.2px against English's 52.7px, 2.05x, because Hindi needs the object marker plus the passive auxiliary. The tail is shrink-0 and never ellipsises, so it takes ~55px out of the title's share (roughly 20 Latin characters of title lost before truncation). Nothing overflows the card and the tail always fits. \"संग्रहित किया गया।\" (90.9px measured) would save 3 cells but breaks the no-name head, where \"बातचीत\" needs को (\"बातचीत संग्रहित किया गया।\" is ungrammatical), so shortening would require splitting this key from the title head — a code change, not a copy change."
+    }
+  ],
+  "checks": [
+    {
+      "check": "key-set parity both directions",
+      "result": "PASS",
+      "detail": "93 en keys, 93 hi keys, no missing, no extra, identical order. Both files are new in ec4518da56 (git diff origin/main...HEAD: +95 lines each), so this is a first audit of new copy, not a re-bind."
+    },
+    {
+      "check": "ICU argument integrity",
+      "result": "PASS",
+      "detail": "Every one of the 93 messages parsed with @formatjs/icu-messageformat-parser 3.5.21: argument names, element types and number styles are identical to English. {count} {name} {title} {keys} {goal} {origin} {version} {relaunch} {reason} {detail} {stored} {published} {existing} {key} all survive; the two number skeletons the English carries survive untouched — {index, number} in credentials.removed and {count, number} in main.consent_body_many. Nothing added, dropped, renamed or re-styled."
+    },
+    {
+      "check": "plural categories are the locale's CLDR set",
+      "result": "PASS",
+      "detail": "Ten hi plural messages, all selecting from {one, other} — hi's own set (Intl.PluralRules('hi'): 0→one, 1→one, 2→other, 5→other, 21→other, 1000000→other). No zero/few/many arm invented, no English count === 1 rule carried in."
+    },
+    {
+      "check": "plural category parity vs the English arms",
+      "result": "PASS",
+      "detail": "English is also one/other, so every English arm has a hi counterpart key for key and the arm sets match exactly in all ten. drafts_offered_verb prints no number in either arm in both locales, matching that key's own contract that the head carries the count."
+    },
+    {
+      "check": "hardcoded-1 arms are only reachable at count >= 1",
+      "result": "PASS",
+      "detail": "Because hi's one covers 0 as well as 1, an arm that prints a literal \"1\" would be false at zero. Every call site was read and gates the count: use-config-run.ts:412 (results.length > 0), mark-all-read.ts:186/198/203/206/208 (attempted 0 → separate key; superseded, unknown, deferred and cleared each gated > 0), canonical-sessions-store.ts:8086 (removedKeys.length === 0 returns early, so the drafts offer never exists empty), message-input.tsx:2922/2932/3074/3076 (credential lists gated on .length > 0). No zero render is reachable, so the literal-1 arms are correct as written."
+    },
+    {
+      "check": "kept tokens byte-identical",
+      "result": "PASS",
+      "detail": "/credential (2), /goal (1), 'bash', 'Local Operator' (3), 'Aida', 'ID' (2) and the glossary wave-2 kept-English 'pull' (3, inflected around: \"pull की गई\") are unchanged; every placeholder survives. The ASCII single quotes inside /goal '<text>' are untouched — ICU consumes them identically in both locales (en and hi both render \"/goal <text>\"), so the hi line reproduces the English behaviour rather than diverging from it."
+    },
+    {
+      "check": "no English left untranslated",
+      "result": "PASS",
+      "detail": "Zero hi values equal their English source. Every Latin-script token in the file is a placeholder name/spelling, a kept product or command token (Local Operator, Aida, /credential, /goal, bash, ID), or a documented kept word (pull). No untranslated sentence, no half-translated clause."
+    },
+    {
+      "check": "register and address form",
+      "result": "PASS",
+      "detail": "आप throughout and nowhere तुम/तू; the only standalone दो in the file is the numeral in \"दो एजेंट\", not the informal imperative. Imperatives are the polite -एँ/-ें set (देखें, चिपकाएँ, बदलें, दें, खुद शुरू करें). No कृपया (English has no \"please\"), no exclamation mark, no padding honorifics. Receipts are terse past passives matching the guide's \"सहेजा गया, not a full sentence\" register, and \"successfully\" is correctly dropped in sessions.signed_out."
+    },
+    {
+      "check": "typography and spacing",
+      "result": "PASS",
+      "detail": "Sentence counts agree key for key (English periods vs hi dandas: 0 mismatches over all 93). Curly “ ” throughout; em dash used with spaces (agents.proactive, agents.reactive, chat.goal_done, hub.downloaded_renamed, main.update_hold_body); danda after Latin tokens and after the parenthetical in hub.team_pulled_collision, mirroring the English period placement; no space before : ; ? !; no double spaces; no leading/trailing space; no Cf/Cc characters (so no ZWJ/ZWNJ, no bidi controls); nukta kept consistently (कॉन्फ़िगरेशन, फ़ाइल, सिर्फ़, वर्ज़न, ड्राफ़्ट)."
+    },
+    {
+      "check": "direction / bidi",
+      "result": "N/A",
+      "detail": "hi is left-to-right; the Cf/Cc sweep above found no bidi control characters and no manual direction marks."
+    },
+    {
+      "check": "composed sentences (head + tail joined at runtime)",
+      "result": "PASS",
+      "detail": "Rendered through the repo's intl-messageformat with the same values the components pass, then joined as the components join them. Archive offer, named: \"“Quarterly retention sweep and the transcript” को संग्रहित किया गया।\"; no-name: \"बातचीत को संग्रहित किया गया।\". Drafts offer: 1 → \"ड्राफ़्ट मिटा दिया गया।\", 2 → \"2 ड्राफ़्ट मिटा दिए गए।\", 5 → \"5 ड्राफ़्ट मिटा दिए गए।\", 21 → \"21 ड्राफ़्ट मिटा दिए गए।\". Bulk-read receipt, cleared 5 + superseded 2 + unknown 1 + deferred 2: \"5 चैट को पढ़ा हुआ चिह्नित किया। 2 चैट में नए परिणाम आ चुके हैं, इसलिए वे अपठित रहती हैं। 1 चैट साफ़ नहीं हो सकी और वह अपठित रहती है। 2 चैट दूसरे डिवाइसों पर हैं और उन डिवाइसों के अपडेट होने पर पढ़ी हुई हो जाएँगी।\" Every joined form is a sentence with correct agreement, and the tail's leading postposition (को) is what makes the archive sentence grammatical — the shape the frame's comment invites a translator to use."
+    },
+    {
+      "check": "wide-count render",
+      "result": "PASS with HIN-3",
+      "detail": "0, 1, 2, 5, 21 and 1000000 rendered for all ten plural messages: no missing-category fallback, no ERROR arm, agreement holds in the other arm (बदलीं / अपडेट हुईं / हैं / हो सकीं / जाएँगी / दिए गए). The million arm is grammatical; only the numeral is ungrouped, which is HIN-3 and mirrors the English source."
+    },
+    {
+      "check": "overflow",
+      "result": "PASS with HIN-4",
+      "detail": "Code-point growth over the 83 non-plural keys is 1.064x (3012 → 3206), and CoreText measurement at the card's 13px shows Devanagari often narrower than the English it replaces (main.update_hold_body 448.7px vs 503.0px; main.consent_title 116.7px vs 122.9px; chat.archive_offered_no_name 37.3px vs 76.6px). The only fixed, non-shrinking strings are the two offer tails: drafts_offered_verb 75.4px / 66.7px vs 60.0px (fine); archive_offered_verb 108.2px vs 52.7px (recorded as HIN-4). The longest plain key, files.open_failed 73 → 106 chars, is a wrapping toast body, not a fixed span."
+    },
+    {
+      "check": "glossary and established-terminology conformance",
+      "result": "PASS with HIN-1",
+      "detail": "Verified against the hi catalogue's own usage, term by term: agent एजेंट, session सत्र, conversation बातचीत (matching ui.chat.dialogs.options.clear_conversation \"बातचीत मिटाएँ\"), chat चैट (feminine, invariant plural — this file's रहती है / हो सकी agrees with ui.canvas.variables_viewer.this_chat_cannot_read_code_memory \"यह चैट ... नहीं पढ़ सकती\"), credential क्रेडेंशियल with invariant plural (glossary note 6), variable वेरिएबल, team टीम, hub हब, archive संग्रहित and unarchive बहाल (matching ui.chat.header.archived_hint), dismiss हटाया (matching ui.chat.asks.dismiss.receipt.*), decline अस्वीकार, proactive पहल करना (matching ui.agents.refusals.class.label.proactive \"पहल करने वाला\"), pull as Latin (glossary wave-2), configuration कॉन्फ़िगरेशन, install इंस्टॉल, path पाथ (matching ui.chat.attachments.copy_path), seed सीड, backend बैकएंड, environment variable एनवायरनमेंट वेरिएबल, ID as Latin (matching ui.chat.header.copy_id). The goal-history clause repeats ui.chat.pickers.destination_pickers.this_goal_is_settled... verbatim (\"यह लक्ष्य इतिहास में रहता है\"). Cross-namespace duplicate check: all eleven exact-duplicate English values (Conversation, Undo, Unknown error, Seed must be a valid number, Failed to copy file path) render identically in hi everywhere else. The single inconsistency is \"version\" — HIN-1."
+    },
+    {
+      "check": "mechanical gates at this head",
+      "result": "PASS",
+      "detail": "node scripts/i18n/generate.mjs --check: keys.gen.ts byte-identical to a fresh generation (exit 0). node scripts/i18n/context-parity.mjs: ok (exit 0) — the 131 allowed gaps it reports sit in 4 other namespaces, and ui.notices' own sidecar covers 93/93 keys (checked directly). node scripts/i18n/check-coverage.mjs: ok, 7 gated languages over 78 namespaces, 0 remaining allowed keys (exit 0). No ledger gate was run: i18n/ledger.json has no hi/ui.notices row at this head, which is the assembler's step after this receipt, not a defect in the translation."
+    }
+  ],
+  "namespace_verdict": {
+    "ui.notices": "clean-with-findings — 93 of 93 keys read; 0 blocker, 0 major, 2 minor, 2 nit. Meaning, placeholders, plural categories, kept tokens, register, typography, composed sentences and established terminology all hold. The findings are one glossary-drift term (HIN-1: वर्ज़न where the catalogue says संस्करण 63 times), one agreement slip confined to a plural arm (HIN-2), and two recorded nits (HIN-3 number skeleton shared with the English source, HIN-4 the necessarily long archive tail)."
+  },
+  "overall_verdict": "clean-with-findings (0 blocker, 0 major) — shippable as it stands. HIN-1 and HIN-2 are worth one small remediation commit; HIN-3 and HIN-4 are recorded, not churned. No placeholder, plural category, kept token or sentence-composition defect was found.",
+  "evidence_provenance": "Every check above was executed in this worktree, reading the committed head bytes (git show HEAD:...) whose sha256 are recorded above; at the time of measurement the worktree files matched those blobs byte for byte. Tools: Node 24 with the repository's own intl-messageformat 12.1.3 and @formatjs/icu-messageformat-parser 3.5.21 for the structural parse, the renders and the wide-count runs; Python 3.14 for the parity, typography, invisibles, Latin-token and cross-namespace duplicate scans over all 78 hi namespace files; macOS CoreText via ctypes for the pixel widths at the card's own 13px (Kohinoor Devanagari vs Helvetica); node scripts/i18n/{generate,context-parity,check-coverage}.mjs for the gates at this head. Call-site reachability was read from source, not assumed. No result is quoted from a translator's report. This audit edited no catalogue, ledger, allowance or generated file; its scratch scripts live outside the repo under $LOCAL_OPERATOR_SCRATCHPAD.",
+  "binding_note": "This receipt binds the committed head ec4518da56 (git show HEAD:src/i18n/catalogues/{en,hi}/ui.notices.json). At the start of the audit the worktree files were byte-identical to those blobs; both sha256 values above were computed then and still verify against git show HEAD.",
+  "concurrent_working_tree_drift": {
+    "observed": "2026-10-25, during this audit and after the byte reads",
+    "what": "Another writer changed the shared worktree while this audit ran: en/ui.notices.json gained a new key \"ui.notices.chat.archive_offered_title\" (\"“{title}”\") with a context entry, keys.gen.ts and src/renderer/src/features/chat/archive-undo.ts moved with it, and fr/hi/ru/ui.notices.json were edited (hi: the eight plural one-arms that printed a literal 1 now print {count}).",
+    "not_mine": "This auditor wrote no catalogue, code, ledger or generated file; the only file it added is this receipt.",
+    "effect_on_this_receipt": "None on the findings, which were read from the head bytes named above. A reader recomputing the worktree hash will get a different value than sha256.hi; the head blobs still match.",
+    "note_for_the_bind": "If those bytes land, this audit needs a re-bind against the new head. The in-flight hi edit fixes the theoretical zero-count hazard of the literal-1 arms but does not touch HIN-2: the one arm of credentials.unstored still reads \"{count} क्रेडेंशियल सहेजे नहीं जा सके\" and renders \"1 क्रेडेंशियल सहेजे नहीं जा सके\" at count 1, i.e. the plural verb against a singular subject survives the edit."
+  }
+}

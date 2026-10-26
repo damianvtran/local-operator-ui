@@ -221,7 +221,9 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 						void navigator.clipboard
 							.writeText(actionPath)
 							.then(() => setCopied(true))
-							.catch(() => showErrorToast("Failed to copy file path"));
+							.catch(() =>
+								showErrorToast(t("ui.notices.files.copy_path_failed")),
+							);
 					}}
 				>
 					<ClipboardCopy aria-hidden="true" />

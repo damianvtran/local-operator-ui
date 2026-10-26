@@ -1,0 +1,310 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor",
+ "model": "deepseek/deepseek-flash",
+ "instance": "fe70232709bc",
+ "locale": "es",
+ "namespace": "ui.notices",
+ "branch": "feat/i18n-toasts",
+ "head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+ "previous_head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+ "date": "2026-10-25",
+ "round": 2,
+ "audit_kind": "delta re-audit of the remediation commit against the previous receipt (ES-1..ES-8 verification)",
+ "scope": "ec4518da56..a32f7349e3",
+ "result": "clean-with-findings",
+ "status": "passed",
+ "keys_read": 94,
+ "keys_audited": 94,
+ "delta": {
+  "previous_head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+  "head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+  "previous_keys": 93,
+  "head_keys": 94,
+  "changed": 15,
+  "new": 1,
+  "removed": 0,
+  "changed_keys": [
+   "ui.notices.agents.config_run_changed",
+   "ui.notices.agents.config_run_updated",
+   "ui.notices.chat.drafts_offered_name",
+   "ui.notices.chat.mark_all_read_cleared",
+   "ui.notices.chat.mark_all_read_deferred",
+   "ui.notices.chat.mark_all_read_superseded",
+   "ui.notices.chat.mark_all_read_unknown",
+   "ui.notices.chat.unread_not_cleared",
+   "ui.notices.credentials.stored",
+   "ui.notices.credentials.unconfirmed",
+   "ui.notices.credentials.unstored",
+   "ui.notices.hub.team_pulled",
+   "ui.notices.hub.team_pulled_collision",
+   "ui.notices.hub.team_pulled_renamed",
+   "ui.notices.links.open_local_blocked"
+  ],
+  "new_keys": [
+   "ui.notices.chat.archive_offered_title"
+  ],
+  "keys_read_in_delta": 16
+ },
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 0
+ },
+ "sha256": {
+  "en": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+  "es": "31214a70f416f7b2de397cc8bdab50061f3e3b1f198de68cce50cf291a11c57f",
+  "en_context": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859",
+  "es_previous": "bbb9a203e918bafd123ace9de59f103da017693d1f04a90114b50b6e4be32aae",
+  "en_previous": "f473fa10e95b24f50ce13647ae50a923b34d8efd31249d99d6c437e183722277"
+ },
+ "inputs": {
+  "source": "src/i18n/catalogues/en/ui.notices.json",
+  "context": "src/i18n/catalogues/en/ui.notices.context.json",
+  "target": "src/i18n/catalogues/es/ui.notices.json",
+  "style_guide": "~/local-operator/i18n/style-guides/es.md",
+  "glossary": "~/local-operator/i18n/glossary.md",
+  "established_terminology_sampled": [
+   "src/i18n/catalogues/es/ui.hub.json",
+   "src/i18n/catalogues/es/ui.mesh.json",
+   "src/i18n/catalogues/es/ui.teamBridge.json"
+  ]
+ },
+ "remediation": [
+  {
+   "id": "ES-1",
+   "status": "fixed",
+   "key": "ui.notices.links.open_local_blocked",
+   "evidence": "now “La app no abre enlaces a tu propia máquina ni a tu red local.”; machine = máquina matches ui.mesh (esta máquina) and no longer collides with equipo = team."
+  },
+  {
+   "id": "ES-2",
+   "status": "fixed",
+   "key": "ui.notices.chat.unread_not_cleared",
+   "evidence": "now “No se borraron las marcas de mensajes sin leer.”; unread is “sin leer” as in the sibling arms and ui.teamBridge."
+  },
+  {
+   "id": "ES-3",
+   "status": "fixed",
+   "keys": [
+    "ui.notices.hub.team_pulled",
+    "ui.notices.hub.team_pulled_collision",
+    "ui.notices.hub.team_pulled_renamed"
+   ],
+   "evidence": "all three now use “Se hizo pull de …”; pull is the glossary's wave-2 kept-English hub operation and matches ui.hub.subscriptions.pull “Pull ahora”."
+  },
+  {
+   "id": "ES-4",
+   "status": "still-open-after-remediation",
+   "key": "ui.notices.credentials.stored",
+   "evidence": "the plural now fixes two keys but breaks the single-key case; see findings[0] and render.es4_single_key."
+  },
+  {
+   "id": "ES-5",
+   "status": "fixed",
+   "key": "ui.notices.credentials.unstored",
+   "evidence": "now “El guardado de … falló ({keys})”; definite refusal, distinct from unconfirmed's “no se pudo confirmar”."
+  },
+  {
+   "id": "ES-6",
+   "status": "fixed",
+   "keys": [
+    "ui.notices.agents.config_run_changed",
+    "ui.notices.agents.config_run_updated",
+    "ui.notices.chat.drafts_offered_name",
+    "ui.notices.chat.mark_all_read_cleared",
+    "ui.notices.chat.mark_all_read_deferred",
+    "ui.notices.chat.mark_all_read_superseded",
+    "ui.notices.chat.mark_all_read_unknown",
+    "ui.notices.credentials.unconfirmed",
+    "ui.notices.credentials.unstored"
+   ],
+   "evidence": "all nine now format the number with {count, number}; no bare {count} remains anywhere in the file (0 occurrences); rendered 1.000.000 / 1.000.001 confirm es grouping."
+  },
+  {
+   "id": "ES-7",
+   "status": "fixed",
+   "keys": [
+    "ui.notices.chat.mark_all_read_deferred",
+    "ui.notices.chat.mark_all_read_superseded",
+    "ui.notices.chat.mark_all_read_unknown"
+   ],
+   "evidence": "many arm added to all three; at 1.000.000 each renders “1.000.000 de chats …”, matching mark_all_read_cleared's “de” rule."
+  },
+  {
+   "id": "ES-8",
+   "status": "fixed",
+   "key": "ui.notices.credentials.unconfirmed",
+   "evidence": "now preterite “no se pudo confirmar” and “se avisó al agente”, matching agents.save_unconfirmed and the namespace's receipts."
+  }
+ ],
+ "findings": [
+  {
+   "id": "ES-4",
+   "severity": "minor",
+   "status": "still-open-after-remediation",
+   "key": "ui.notices.credentials.stored",
+   "current": "Guardado: {keys}. Se inyectan en cada comando de bash como variables de entorno; el agente no puede leer el valor.",
+   "proposed": "Guardado: {keys}. Cada clave se inyecta en cada comando de bash como variable de entorno; el agente no puede leer el valor.",
+   "reason": "ES-4 asked for the multi-key case to stop being ungrammatical; the remediation made the verb and noun plural, which fixes two keys but is ungrammatical for the single key that the common single-paste path stores and renders (storedNotice is called whenever carried.stored.length > 0; the head renders “Guardado: OPENAI_API_KEY. Se inyectan … como variables de entorno”). A distributive clause agrees with both one and many without needing a count placeholder."
+  }
+ ],
+ "checks": [
+  {
+   "check": "key-set parity both directions",
+   "result": "PASS",
+   "detail": "94 en keys, 94 es keys, no missing, no extra, identical order; all seven locales carry the new key."
+  },
+  {
+   "check": "ICU argument integrity",
+   "result": "PASS",
+   "detail": "Parsed all 94 values with @formatjs/icu-messageformat-parser: argument-name sets equal to English for 94/94; the nine changed plurals keep {count} as the selector and format it with {count, number}; credentials.* keep {keys}."
+  },
+  {
+   "check": "plural categories are the locale's CLDR set",
+   "result": "PASS",
+   "detail": "Ten es plural messages; every one selects from one/many/other (no few/two). Intl.PluralRules('es') at 1/2/1000000/1000001 returns one/other/many/other, and the rendered output follows the same categories."
+  },
+  {
+   "check": "plural category parity vs the English arms",
+   "result": "PASS",
+   "detail": "Every English arm has an es counterpart; the extra many arm is the documented es addition (exact multiples of 10^6)."
+  },
+  {
+   "check": "number formatting at 1, 2, 1000000, 1000001",
+   "result": "PASS",
+   "detail": "Rendered through the repo's real t() with es: grouping appears only from 1000 (1.000.000; 1.000.001), 1 and 2 stay bare, and the many/other split puts “de” only on exact millions (see render matrix)."
+  },
+  {
+   "check": "composed sentences head + tail",
+   "result": "PASS for drafts, archive and mark-all-read",
+   "detail": "“1 borrador descartado.” → “1.000.000 de borradores descartados.”; ““Informe trimestral” archivada.” / “Conversación archivada.”; the mark-all-read receipt joins lead + up to three remainder sentences with spaces and reads correctly at all four counts."
+  },
+  {
+   "check": "register and address form",
+   "result": "PASS",
+   "detail": "tú throughout the changed values (tu propia máquina, ya tienes, Vuelve a pegar); no usted/vosotros."
+  },
+  {
+   "check": "glossary and term consistency",
+   "result": "PASS",
+   "detail": "team = equipo; machine = máquina; pull kept English; credentials = credenciales; unread = sin leer. The credentials one arms were byte-checked (sha256 894979babc0457aa for “1 credencial”, base64 MSBjcmVkZW5jaWFs) because the tool display redacts that noun."
+  },
+  {
+   "check": "typography and spacing",
+   "result": "PASS",
+   "detail": "“ ” quotes (including the new archive title), no space before : ; ? !, em dash with spaces where present, full stops intact."
+  },
+  {
+   "check": "no English left untranslated",
+   "result": "PASS",
+   "detail": "No value equals its English source except the new archive_offered_title, whose value is only the locale's own “ ” pair around {title} and is allowlisted in locale-parity.test.mjs with that reason."
+  },
+  {
+   "check": "RTL",
+   "result": "N/A",
+   "detail": "es is left-to-right."
+  },
+  {
+   "check": "overflow",
+   "result": "PASS",
+   "detail": "No changed string is materially longer than its English source beyond the locale's normal 15-25% expansion; all are toast-card sentences, and the context sidecars specify no maxCells for this namespace."
+  },
+  {
+   "check": "mechanical gates at this head",
+   "result": "PASS",
+   "detail": "node --test scripts/i18n/locale-parity.test.mjs: 44/44 pass (all seven locales). typed-keys + context-parity + es-activation: 17/17 pass, including “keys.gen.ts is byte-identical to a fresh generation” and the real es t() activation."
+  }
+ ],
+ "render": {
+  "tool": "intl-messageformat 12.1.3, Node v24.22.1, ICU 78.3; rendered through the repo's own t() (esbuild bundle of src/i18n/messages) with locale set to es",
+  "counts": [
+   1,
+   2,
+   1000000,
+   1000001
+  ],
+  "samples": {
+   "ui.notices.agents.config_run_changed": [
+    "La ejecución de configuración terminó: 1 definición cambiada.",
+    "La ejecución de configuración terminó: 2 definiciones cambiadas.",
+    "La ejecución de configuración terminó: 1.000.000 de definiciones cambiadas.",
+    "La ejecución de configuración terminó: 1.000.001 definiciones cambiadas."
+   ],
+   "ui.notices.agents.config_run_updated": [
+    "La ejecución de configuración terminó: 1 definición actualizada.",
+    "La ejecución de configuración terminó: 2 definiciones actualizadas.",
+    "La ejecución de configuración terminó: 1.000.000 de definiciones actualizadas.",
+    "La ejecución de configuración terminó: 1.000.001 definiciones actualizadas."
+   ],
+   "ui.notices.chat.drafts_offered_name": [
+    "1 borrador",
+    "2 borradores",
+    "1.000.000 de borradores",
+    "1.000.001 borradores"
+   ],
+   "ui.notices.chat.mark_all_read_cleared": [
+    "Se marcó 1 chat como leído.",
+    "Se marcaron 2 chats como leídos.",
+    "Se marcaron 1.000.000 de chats como leídos.",
+    "Se marcaron 1.000.001 chats como leídos."
+   ],
+   "ui.notices.chat.mark_all_read_deferred": [
+    "1 está en otro dispositivo y se borrará cuando ese dispositivo se actualice.",
+    "2 están en otros dispositivos y se borrarán cuando esos dispositivos se actualicen.",
+    "1.000.000 de chats están en otros dispositivos y se borrarán cuando esos dispositivos se actualicen.",
+    "1.000.001 están en otros dispositivos y se borrarán cuando esos dispositivos se actualicen."
+   ],
+   "ui.notices.chat.mark_all_read_superseded": [
+    "1 tiene un resultado más reciente y sigue sin leer.",
+    "2 tienen resultados más recientes y siguen sin leer.",
+    "1.000.000 de chats tienen resultados más recientes y siguen sin leer.",
+    "1.000.001 tienen resultados más recientes y siguen sin leer."
+   ],
+   "ui.notices.chat.mark_all_read_unknown": [
+    "1 no se pudo borrar y sigue sin leer.",
+    "2 no se pudieron borrar y siguen sin leer.",
+    "1.000.000 de chats no se pudieron borrar y siguen sin leer.",
+    "1.000.001 no se pudieron borrar y siguen sin leer."
+   ],
+   "ui.notices.credentials.unconfirmed": [
+    "El guardado de 1 credencial no se pudo confirmar (KEY_A, KEY_B); se avisó al agente para que compruebe el valor antes de usarlo. Vuelve a pegar el valor después de /credential para guardarlo de nuevo.",
+    "El guardado de 2 credenciales no se pudo confirmar (KEY_A, KEY_B); se avisó al agente para que compruebe el valor antes de usarlo. Vuelve a pegar el valor después de /credential para guardarlo de nuevo.",
+    "El guardado de 1.000.000 de credenciales no se pudo confirmar (KEY_A, KEY_B); se avisó al agente para que compruebe el valor antes de usarlo. Vuelve a pegar el valor después de /credential para guardarlo de nuevo.",
+    "El guardado de 1.000.001 credenciales no se pudo confirmar (KEY_A, KEY_B); se avisó al agente para que compruebe el valor antes de usarlo. Vuelve a pegar el valor después de /credential para guardarlo de nuevo."
+   ],
+   "ui.notices.credentials.unstored": [
+    "El guardado de 1 credencial falló (KEY_A, KEY_B); se avisó al agente. Vuelve a pegar el valor después de /credential para reintentarlo.",
+    "El guardado de 2 credenciales falló (KEY_A, KEY_B); se avisó al agente. Vuelve a pegar el valor después de /credential para reintentarlo.",
+    "El guardado de 1.000.000 de credenciales falló (KEY_A, KEY_B); se avisó al agente. Vuelve a pegar el valor después de /credential para reintentarlo.",
+    "El guardado de 1.000.001 credenciales falló (KEY_A, KEY_B); se avisó al agente. Vuelve a pegar el valor después de /credential para reintentarlo."
+   ]
+  },
+  "composed": {
+   "drafts_toast": [
+    "1 borrador descartado.",
+    "2 borradores descartados.",
+    "1.000.000 de borradores descartados.",
+    "1.000.001 borradores descartados."
+   ],
+   "archive_toast": [
+    "“Informe trimestral” archivada.",
+    "Conversación archivada."
+   ],
+   "mark_all_read_receipt_lead_plus_three_remainders": [
+    "Se marcó 1 chat como leído. 1 tiene un resultado más reciente y sigue sin leer. 1 no se pudo borrar y sigue sin leer. 1 está en otro dispositivo y se borrará cuando ese dispositivo se actualice.",
+    "Se marcaron 2 chats como leídos. 2 tienen resultados más recientes y siguen sin leer. 2 no se pudieron borrar y siguen sin leer. 2 están en otros dispositivos y se borrarán cuando esos dispositivos se actualicen.",
+    "Se marcaron 1.000.000 de chats como leídos. 1.000.000 de chats tienen resultados más recientes y siguen sin leer. 1.000.000 de chats no se pudieron borrar y siguen sin leer. 1.000.000 de chats están en otros dispositivos y se borrarán cuando esos dispositivos se actualicen.",
+    "Se marcaron 1.000.001 chats como leídos. 1.000.001 tienen resultados más recientes y siguen sin leer. 1.000.001 no se pudieron borrar y siguen sin leer. 1.000.001 están en otros dispositivos y se borrarán cuando esos dispositivos se actualicen."
+   ]
+  },
+  "es4_single_key": "Guardado: OPENAI_API_KEY. Se inyectan en cada comando de bash como variables de entorno; el agente no puede leer el valor.",
+  "es4_two_keys": "Guardado: OPENAI_API_KEY, ANTHROPIC_API_KEY. Se inyectan en cada comando de bash como variables de entorno; el agente no puede leer el valor."
+ },
+ "namespace_verdict": {
+  "ui.notices": "delta clean-with-findings — 94 of 94 keys read (15 changed values + 1 new key audited); 0 blocker, 0 major, 1 minor. ES-1, ES-2, ES-3, ES-5, ES-6, ES-7 and ES-8 verified fixed in the bytes and in rendered output; ES-4 was overcorrected (plural now breaks the single-key case) and remains open as a minor."
+ },
+ "overall_verdict": "delta clean-with-findings (0 blocker, 0 major) — the remediation is honest on seven of eight findings and the {count, number} switch renders correctly at 1, 2, 1000000 and 1000001 in every changed plural; one minor remains: credentials.stored's plural is ungrammatical when one credential is stored.",
+ "evidence_provenance": "Executed in /Users/damian/local-operator-ui/.worktrees/i18n-toasts at a32f7349e3 (git status clean; HEAD blob sha256 of the es catalogue = 31214a70f416f7b2de397cc8bdab50061f3e3b1f198de68cce50cf291a11c57f). Renders used the repository's own intl-messageformat 12.1.3 through a bundle of src/i18n/messages with locale set to es (Node v24.22.1, ICU 78.3). No catalogue, message, ledger, generated or code file was edited; this receipt is the only file written."
+}

@@ -162,7 +162,7 @@ const STUB_CONTENTS = {
    of this file's cases reach it (each overrides the store action it is about), so
    a refusal-shaped default would be a second instrument; it answers an empty ok. */
 export const desktopResult = request => globalThis.__ack(request);`,
-	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled, desktopFeatureState} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled, desktopFeatureState, desktopKeys} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
 	)}
 export const useDesktopCapabilities = () => ({ data: { desktop_available: true, features: {} }, error: null, isLoading: false, refetch: async () => undefined });`,
@@ -200,7 +200,8 @@ const bundle = await build({
 			' export { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";' +
 			' export { ARCHIVE_UNDO_TOAST_MS } from "./src/renderer/src/features/chat/archive-undo";' +
 			' export { ARCHIVE_FAILURE_TOAST_MS } from "./src/renderer/src/features/chat/archive-undo";' +
-			' export { toast as sonnerToast } from "sonner";',
+			' export { toast as sonnerToast } from "sonner";' +
+			' export { setLocale } from "./src/i18n/index";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -269,6 +270,7 @@ const {
 	ARCHIVE_UNDO_TOAST_MS,
 	ARCHIVE_FAILURE_TOAST_MS,
 	sonnerToast,
+	setLocale,
 } = await import(bundlePath.href);
 const { createRoot } = await import("react-dom/client");
 
@@ -434,6 +436,118 @@ test("the archive offer is an ordinary toast: the documented eight seconds, no p
 	assert.equal(call.options.classNames?.content, "min-w-0");
 	const action = toast.querySelector("[data-button]");
 	assert.equal(action?.textContent?.trim(), "Undo");
+});
+
+test("a locale change redraws an open offer in place without extending its life", async () => {
+	await reset();
+	await mountSurface();
+	await act(async () => {
+		store.setState({ archiveUndo: archiveOffer() });
+	});
+	const toast = await waitForToast("archived.");
+	assert.notEqual(toast, null, "the offer never painted");
+	const first = toastCalls.infos.at(-1);
+	assert.equal(first.options.duration, ARCHIVE_UNDO_TOAST_MS);
+	const firstPaint = toast.textContent ?? "";
+	// Let the clock the redraw reads advance, so "remaining < full" is a real
+	// measurement rather than a same-millisecond coincidence.
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 60));
+	});
+
+	/*
+	 * THE SUBSCRIPTION IS THE FIX (agent review round 1, R1-5): a language switch
+	 * while the offer stands updates the SAME id in place, so the listener still
+	 * has an Undo - and the time it gets is the ORIGINAL raise's remainder, not the
+	 * full documented life again. Without the second half, flipping languages
+	 * would keep an offer alive indefinitely.
+	 */
+	await act(async () => {
+		setLocale("fr");
+	});
+	await settleFrames();
+	const french = await waitForToast("archivée.");
+	assert.notEqual(
+		french,
+		null,
+		`the offer did not follow the locale: ${firstPaint}`,
+	);
+	assert.equal(
+		french,
+		toast,
+		"the offer must update in place, not stack a second card",
+	);
+	assert.equal(
+		french.querySelector("[data-button]")?.textContent?.trim(),
+		"Annuler",
+		"the action follows the catalogue and is still there",
+	);
+	const redraw = toastCalls.infos.at(-1);
+	assert.equal(redraw.options.id, ARCHIVE_TOAST_ID);
+	assert.ok(
+		redraw.options.duration > 0 &&
+			redraw.options.duration <= ARCHIVE_UNDO_TOAST_MS,
+		`a redraw must carry the remaining life, got ${redraw.options.duration}`,
+	);
+	assert.ok(
+		redraw.options.duration < ARCHIVE_UNDO_TOAST_MS,
+		"a locale redraw re-armed the offer's full life",
+	);
+	const remaining = redraw.options.duration;
+
+	// A second flip may shorten the remainder; it may never grow it back.
+	await act(async () => {
+		setLocale("ru");
+	});
+	await settleFrames();
+	const second = toastCalls.infos.at(-1);
+	assert.ok(
+		second.options.duration <= remaining,
+		"each language flip must not extend the standing offer",
+	);
+	assert.notEqual(
+		second.options.action,
+		undefined,
+		"the redraw lost the Undo action",
+	);
+	await act(async () => {
+		setLocale("en");
+	});
+});
+
+test("a locale change redraws an open discard offer too, with its action intact", async () => {
+	await reset();
+	await mountSurface();
+	await act(async () => {
+		store.setState({ draftsUndo: draftsOffer() });
+	});
+	const toast = await waitForToast("discarded.");
+	assert.notEqual(toast, null, "the discard offer never painted");
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 60));
+	});
+
+	await act(async () => {
+		setLocale("fr");
+	});
+	await settleFrames();
+	const french = await waitForToast("supprimé.");
+	assert.notEqual(french, null, "the discard offer did not follow the locale");
+	assert.equal(french, toast, "the discard offer must update in place");
+	assert.equal(
+		french.querySelector("[data-button]")?.textContent?.trim(),
+		"Annuler",
+	);
+	const redraw = toastCalls.infos.at(-1);
+	assert.ok(
+		redraw.options.duration > 0 &&
+			redraw.options.duration < ARCHIVE_UNDO_TOAST_MS,
+		`the discard redraw must carry the remaining life, got ${redraw.options.duration}`,
+	);
+	assert.notEqual(redraw.options.action, undefined);
+	await act(async () => {
+		setLocale("en");
+	});
 });
 
 test("a press is answered 3ms later and the message survives in place: the create-on-dismissed-id window is never entered", async () => {

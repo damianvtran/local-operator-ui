@@ -662,7 +662,11 @@ export function TeamDetail({
 			 * "CREATED" FOR A CREATE, "SAVED" FOR AN EDIT (review round 1, UX nit):
 			 * the agent form already said Created, so the same act had two names.
 			 */
-			showSuccessToast(`${creating ? "Created" : "Saved"} ${result.name}.`);
+			showSuccessToast(
+				creating
+					? t("ui.notices.agents.created_named", { name: result.name })
+					: t("ui.notices.agents.saved", { name: result.name }),
+			);
 			if (creating) requestHeadingFocus();
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {

@@ -912,8 +912,15 @@ const api = {
 			ipcRenderer.invoke("browser-reopen-tab", sessionId ?? null),
 		focusPage: (): Promise<void> => ipcRenderer.invoke("browser-focus-page"),
 		/** S6b: open/close the native approvals card. The renderer passes the
-		 * locale and direction it resolved; main has no catalogue, and the card is
-		 * a second document whose lang/dir must follow the app (UX U2). */
+		 * locale and direction it resolved: the card is a SECOND DOCUMENT whose
+		 * lang/dir must follow the app, and the renderer is the process that owns
+		 * the negotiation.
+		 *
+		 * This is NOT because main lacks copy (it imports `t()` for its own
+		 * notifications, and `main-locale.ts` mirrors the backend's resolved tag
+		 * there). The card's document is the renderer's to describe, and the same
+		 * call carries the theme and palette, so lang/dir travel with them rather
+		 * than main re-deriving what the caller already knows. */
 		openApprovalsCard: (input: {
 			locale?: string;
 			dir?: "ltr" | "rtl";

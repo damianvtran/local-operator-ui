@@ -27,6 +27,7 @@ import {
 	previewFailureReason,
 	useFileBlobUrl,
 } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, memo, useCallback } from "react";
@@ -321,7 +322,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				// exactly what a toast is for; see `error-view` for the other half
 				// of the policy.
 				showErrorToast(
-					`Could not open ${getFileName(filePath)}. The file may have been moved, renamed, or deleted.`,
+					t("ui.notices.files.open_failed", { name: getFileName(filePath) }),
 				);
 			}
 		}, []);

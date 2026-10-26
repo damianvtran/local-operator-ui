@@ -40,6 +40,7 @@ import {
 	type UpdateInfo,
 	autoUpdater,
 } from "electron-updater";
+import { currentLocaleState, isLanguageTag } from "../i18n/locale";
 import {
 	type DriftAbsence,
 	type DriftRestartHold,
@@ -50,6 +51,7 @@ import {
 	servingInstallReadings,
 } from "./backend-version-drift";
 import type { BackendServiceManager } from "./backend/backend-service";
+import { applyHoldLocale } from "./main-locale";
 import {
 	type UpdateReport,
 	type UpdateReportFailureKind,
@@ -2168,6 +2170,29 @@ export function holdLaunchForLiveInstall(options: {
 	// Before the quit, never after: the notice's promise - and, on the branch where
 	// nothing could be arranged, its warning - is about what happens once this
 	// process is gone, and only a watchdog can make the promise good.
+	/*
+	 * THE HOLD SPEAKS THE USER'S LANGUAGE BEFORE IT SPEAKS AT ALL (R1-1).
+	 *
+	 * This path runs before any window and, on a cold start, before a backend is
+	 * reachable, so the ordinary backend-ready refresh may not have happened. The
+	 * marker written by the quitting process carries the tag the BACKEND had
+	 * resolved; a legacy marker has no field, and the fallback is Electron's own
+	 * device reading - not a fresh parse of config, which would be a second
+	 * language decision in the one path that must not improvise.
+	 *
+	 * Applied BEFORE the relaunch job is built: the shell script's notices are
+	 * composed from this process's locale at that moment.
+	 */
+	const localeSource = applyHoldLocale(reading.marker, app);
+	options.log(
+		`The hold's notice and watchdog messages speak ${
+			localeSource === "marker"
+				? "the language the quitting app recorded"
+				: localeSource === "device"
+					? "this machine's preferred language"
+					: "the previous locale"
+		}.`,
+	);
 	const relaunchEnsured = ensureRelaunchWatchdog({
 		marker: reading.marker,
 		startWatchdog: options.startWatchdog ?? defaultStartRelaunchWatchdog,
@@ -5631,6 +5656,20 @@ export class UpdateService {
 			const watchdogPid = this.launchWatchdog(targetVersion, installerPid);
 			let marker: PendingInstallMarker;
 			try {
+				/*
+				 * The locale the NEXT process needs for its pre-window notices. The
+				 * store's own source is the gate: only a tag the BACKEND resolved is
+				 * recorded, never a device guess and never a manual pin - the marker
+				 * must not become a second preference. Absent when the backend has not
+				 * answered yet, which is the honest state and the same shape an older
+				 * version wrote.
+				 */
+				const activeLocale = currentLocaleState();
+				const markerLanguage =
+					activeLocale.source === "backend" &&
+					isLanguageTag(activeLocale.locale)
+						? { language: activeLocale.locale }
+						: {};
 				marker = writePendingInstallMarker(this.markerDir(), {
 					targetVersion,
 					artifactPath:
@@ -5640,6 +5679,7 @@ export class UpdateService {
 					startedAt: new Date().toISOString(),
 					watchdogPid,
 					installerPid,
+					...markerLanguage,
 				});
 			} catch (error) {
 				/*
