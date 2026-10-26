@@ -386,21 +386,38 @@ async function hoverReadControl(cdp, id) {
 async function aimOffScreen(cdp, id) {
 	const scroll = await cdp.evaluate(
 		`(() => {
+			const row = document.querySelector('[data-notification-row="${id}"]');
+			if (!row) return { scrolled: false, port: false };
 			/* The nearest ancestor that actually scrolls: the reel is an inner
 			   scroller, so setting the document's scrollTop moves nothing. */
-			let node = document.querySelector('[data-notification-row="${id}"]');
-			const row = node;
-			while (node && node !== document.body) {
-				const overflow = getComputedStyle(node).overflowY;
-				if ((overflow === "auto" || overflow === "scroll") && node.scrollHeight > node.clientHeight) {
-					const offset = row.getBoundingClientRect().top - node.getBoundingClientRect().top;
-					node.scrollTop = Math.max(0, node.scrollTop + offset - 8);
-					return { scrolled: true, port: true };
-				}
-				node = node.parentElement;
+			let port = row.parentElement;
+			while (port && port !== document.body) {
+				const overflow = getComputedStyle(port).overflowY;
+				if ((overflow === "auto" || overflow === "scroll") && port.scrollHeight > port.clientHeight) break;
+				port = port.parentElement;
 			}
-			document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight;
-			return { scrolled: document.scrollingElement.scrollTop > 0, port: false };
+			const scrollable = Boolean(port && port !== document.body);
+			if (!scrollable) {
+				document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight;
+				return { scrolled: document.scrollingElement.scrollTop > 0, port: false };
+			}
+			const rect = () => row.getBoundingClientRect();
+			const portRect = () => port.getBoundingClientRect();
+			const inside = () => {
+				const r = rect();
+				const p = portRect();
+				return r.bottom > p.top && r.top < p.bottom && r.right > p.left && r.left < p.right;
+			};
+			/* An extreme, not an offset: drive the port to one end, and to the other
+			   if the row is still inside. A row can only survive both ends if the list
+			   is shorter than its port - which the caller then fails on by name. */
+			port.scrollTop = port.scrollHeight;
+			let at = "bottom";
+			if (inside()) {
+				port.scrollTop = 0;
+				at = "top";
+			}
+			return { scrolled: true, port: true, at, stillInside: inside() };
 		})()`,
 	);
 	await pause(400);
@@ -447,7 +464,7 @@ async function aimOffScreen(cdp, id) {
 	assert.ok(aim?.found, "the off-screen row left the document");
 	assert.ok(
 		aim.scrolled,
-		`the reel never scrolled, so no row can be off screen: ${JSON.stringify(aim)}`,
+		`the reel never scrolled, so no row can be off screen: ${JSON.stringify({ aim, scroll })}`,
 	);
 	assert.equal(
 		aim.inPort,
