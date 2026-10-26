@@ -985,10 +985,21 @@ test("the prose about a name paints the derived form too", async () => {
 	const roster = read(
 		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
 	);
-	assert.match(roster, /`Pull team \$\{hubDisplayName\(team\.name\)\}`/);
+	/*
+	 * THE PULL CONTROLS' PROSE, now that the sentences are catalogue copy: the pin
+	 * follows the KEY and checks that the catalogue is what carries the wording.
+	 * The subject is still for the roster to supply — the English template has a
+	 * `{name}` slot, and the name put in it is the hub's own `name` field.
+	 */
 	assert.match(
 		roster,
-		/`"\$\{hubDisplayName\(team\.name\)\}" could not be pulled\.`/,
+		/t\(\s*"ui\.hub\.teams\.pull_target",\s*\{\s*name: hubDisplayName\(team\.name\),?\s*\}\s*\)/,
+		"the accessible name is composed from the derived name",
+	);
+	assert.match(
+		roster,
+		/t\(\s*"ui\.hub\.teams\.pull_failed",\s*\{\s*name: hubDisplayName\(team\.name\),?\s*\}\s*\)/,
+		"the failure sentence is composed from the derived name",
 	);
 });
 
