@@ -1,0 +1,18 @@
+{
+	"ui.agents.pages.back_to_list": "Назад к списку",
+	"ui.agents.pages.browse_aria": "Просмотр агентов и команд по типу",
+	"ui.agents.pages.discard_bar.agent": "Сбросить несохранённые изменения этого агента?",
+	"ui.agents.pages.discard_bar.team": "Сбросить несохранённые изменения этой команды?",
+	"ui.agents.pages.heading": "Агенты и команды",
+	"ui.agents.pages.loading_saved": "Загрузка сохранённого агента…",
+	"ui.agents.pages.scope.all": "Все",
+	"ui.agents.pages.scope.builtin": "Встроенные",
+	"ui.agents.pages.scope.custom": "Свои",
+	"ui.agents.pages.scope.installed": "Установленные",
+	"ui.agents.pages.scope_legend": "Чьи определения показывать",
+	"ui.agents.pages.search.agents": "Поиск агентов",
+	"ui.agents.pages.search.teams": "Поиск команд",
+	"ui.agents.pages.search_aria": "Поиск агентов и команд",
+	"ui.agents.pages.tab.agents": "Агенты",
+	"ui.agents.pages.tab.teams": "Команды"
+}
