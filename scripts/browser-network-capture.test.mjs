@@ -85,14 +85,25 @@ test("safe URLs retain only query keys and bodies need exact approved scope", as
 		}),
 		/network body capture requires an exact HTTP/,
 	);
-	// A bare origin is the root path, which is a valid exact scope; it is not a
-	// wildcard, and the body test below pins that a sibling path never matches.
-	const root = await start({
-		include_request_body: true,
-		url: "https://root.test",
-		approved: true,
-	});
-	assert.equal(root.active, true);
+	// A bare origin normalizes to `/`, which is REFUSED: an exact-scope approval
+	// names a path the operator was shown, and accepting the root would capture
+	// every root-path request on that origin (agent review round 1, R1-1).
+	await assert.rejects(
+		start({
+			include_request_body: true,
+			url: "https://root.test",
+			approved: true,
+		}),
+		/non-root path/,
+	);
+	await assert.rejects(
+		start({
+			include_request_body: true,
+			url: "https://root.test/",
+			approved: true,
+		}),
+		/non-root path/,
+	);
 	await assert.rejects(
 		start({
 			include_request_body: true,

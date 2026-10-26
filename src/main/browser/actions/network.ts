@@ -145,13 +145,16 @@ function requireScope(
 ): string {
 	const url = stringParam(params, "url");
 	const scope = normalizedOriginPath(url);
-	// A bare origin is the ROOT PATH only (`https://example.test/`), never a
-	// wildcard: matching below is equality on origin+path, so omitting a path
-	// cannot widen it.
-	if (!scope || url.includes("#")) {
+	// A NON-ROOT path is required, not merely an exact one. A bare origin
+	// normalizes to `/`, and equality on origin+path would then accept every
+	// root-path request of that origin; the approval names a capture scope, so
+	// the scope has to be a path the operator was actually shown. The harness
+	// refuses `/` too, and this is the trust boundary that has to hold when the
+	// caller is not the harness (agent review round 1, R1-1).
+	if (!scope || url.includes("#") || new URL(scope).pathname === "/") {
 		throw new BrowserHostError(
 			"origin_denied",
-			"network body capture requires an exact HTTP(S) URL",
+			"network body capture requires an exact HTTP(S) URL with a non-root path",
 		);
 	}
 	if (approved && params.approved !== true) {
