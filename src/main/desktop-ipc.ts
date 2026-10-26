@@ -4,6 +4,7 @@ import {
 	ipcMain,
 	shell,
 } from "electron";
+import { LANGUAGE_SETTING_KEY } from "../i18n/locale";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
@@ -38,6 +39,31 @@ function isAcceptedKeymapEdit(
 		request.op === "settings.edit" &&
 		typeof request.key === "string" &&
 		request.key.startsWith("keymap.")
+	);
+}
+
+/**
+ * Whether this request is a language write the backend ACCEPTED.
+ *
+ * Same split as `isAcceptedKeymapEdit`: the op and key are read from the
+ * REQUEST, acceptance from the RESPONSE. Crucially the VALUE is never read -
+ * an accepted write is a signal to re-read the backend's resolved tag, so a
+ * compromised or confused renderer that posts `ui`/`zh-CN` gains nothing but a
+ * round trip; a refused write changed nothing, so it triggers nothing.
+ *
+ * `settings.reset` is included because resetting the language row returns the
+ * setting to `auto`, which can resolve to a different tag than the one on screen.
+ */
+export function isAcceptedLanguageEdit(
+	input: unknown,
+	response: DesktopResponse,
+): boolean {
+	if (response.status < 200 || response.status >= 300) return false;
+	if (input === null || typeof input !== "object") return false;
+	const request = input as { op?: unknown; key?: unknown };
+	return (
+		(request.op === "settings.edit" || request.op === "settings.reset") &&
+		request.key === LANGUAGE_SETTING_KEY
 	);
 }
 
@@ -242,6 +268,20 @@ export function registerDesktopIPC(
 	 * `noteLeftSession` callback into a notifier argument in the JS harnesses.
 	 */
 	teamBridgeNotifier?: TeamBridgeNotifier,
+	/**
+	 * The language setting's write-through tap, the twin of the keymap one above.
+	 *
+	 * APPENDED after `teamBridgeNotifier` rather than placed beside its keymap
+	 * sibling, for the reason that parameter's own note gives: every existing
+	 * caller passes the earlier parameters positionally, and inserting one above
+	 * any of them would silently reinterpret a callback in the harnesses.
+	 *
+	 * It carries no payload. The callback re-reads the backend's resolved language
+	 * (`{ op: "capabilities" }`) rather than accepting whatever the renderer wrote,
+	 * because the setting has one owner and main only mirrors what the backend
+	 * answers.
+	 */
+	onLanguageSettingEdited?: () => void,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -273,6 +313,15 @@ export function registerDesktopIPC(
 			outcome.then(
 				(response) => {
 					if (isAcceptedKeymapEdit(input, response)) onKeymapSettingEdited();
+				},
+				() => {},
+			);
+		}
+		if (onLanguageSettingEdited) {
+			outcome.then(
+				(response) => {
+					if (isAcceptedLanguageEdit(input, response))
+						onLanguageSettingEdited();
 				},
 				() => {},
 			);
@@ -392,12 +441,41 @@ export function registerDesktopIPC(
 	 * target for the next renderer, which asks for it exactly once.
 	 */
 	if (teamBridgeNotifier) {
+		const watched = new WeakSet<IpcMainInvokeEvent["sender"]>();
+		const authorizeNotifications = (event: IpcMainInvokeEvent) => {
+			// Only the shell owns the auth journal, not an admitted auxiliary pane.
+			if (!isAdmittedSender(event, [{ window: window(), url: expectedUrl }])) {
+				throw new Error("This document cannot use Team Bridge notifications.");
+			}
+		};
+		ipcMain.handle("team-bridge:authority", (event, input: unknown) => {
+			authorizeNotifications(event);
+			if (!watched.has(event.sender)) {
+				watched.add(event.sender);
+				const contents = event.sender;
+				// Electron 44 emits did-start-navigation BEFORE the guard can cancel
+				// will-frame-navigate; cancellation has no commit event. Reset only
+				// on a committed document replacement, never on an attempted link.
+				// Frame/URL admission above still rejects departing/foreign frames.
+				contents.on(
+					"did-frame-navigate",
+					(_event, _url, _code, _text, mainFrame) => {
+						if (mainFrame) teamBridgeNotifier.resetAuthority();
+					},
+				);
+				contents.on("render-process-gone", () =>
+					teamBridgeNotifier.resetAuthority(),
+				);
+				contents.once("destroyed", () => teamBridgeNotifier.resetAuthority());
+			}
+			teamBridgeNotifier.setAuthority(input);
+		});
 		ipcMain.handle("team-bridge:notify", (event, input: unknown) => {
-			authorize(event);
+			authorizeNotifications(event);
 			return teamBridgeNotifier.notify(input);
 		});
 		ipcMain.handle("team-bridge:pending-open", (event) => {
-			authorize(event);
+			authorizeNotifications(event);
 			return teamBridgeNotifier.takePendingOpen();
 		});
 	}

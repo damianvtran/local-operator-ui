@@ -10,5 +10,19 @@
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "ہٹا دیا — چیٹ میں طے ہو گیا",
 	"ui.chat.asks.dismiss.receipt.moot": "ہٹا دیا — اب ضرورت نہیں",
 	"ui.chat.asks.dismiss.refused": "یہ سوال ہٹایا نہیں جا سکا — کچھ نہیں بھیجا گیا۔",
-	"ui.chat.asks.dismiss.trigger": "ہٹائیں…"
+	"ui.chat.asks.dismiss.trigger": "ہٹائیں…",
+	"ui.chat.asks.other_label": "دیگر",
+	"ui.chat.asks.urgent": "فوری۔",
+	"ui.chat.asks.no_answer": "کوئی جواب نہیں دیا گیا",
+	"ui.chat.asks.changed_handoff": "تبدیل شدہ — ابھی ایجنٹ کو یہ نہیں دیا گیا۔",
+	"ui.chat.asks.send_answer": "جواب بھیجیں",
+	"ui.chat.asks.decline": "انکار کریں",
+	"ui.chat.asks.update_answer": "جواب اپ ڈیٹ کریں",
+	"ui.chat.asks.cancel": "منسوخ کریں",
+	"ui.chat.asks.change_answer": "جواب بدلیں",
+	"ui.chat.asks.filter_label": "سوالات فلٹر کریں",
+	"ui.chat.asks.settled_heading": "طے شدہ",
+	"ui.chat.asks.close_asks": "سوالات بند کریں",
+	"ui.chat.asks.all_asks": "تمام سوالات",
+	"ui.chat.asks.conversation_asks": "اس گفتگو کے سوالات"
 }

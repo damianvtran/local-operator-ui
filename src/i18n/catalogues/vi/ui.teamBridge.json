@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "Không thể mở thông báo này bằng tài khoản hiện tại nữa.",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "Chưa có cuộc trò chuyện nào",
 	"ui.teamBridge.list.empty.body": "Bắt đầu một tin nhắn trực tiếp, một nhóm hoặc một kênh.",
@@ -198,5 +199,12 @@
 	"ui.teamBridge.reactions.category8": "Cờ",
 	"ui.teamBridge.reactions.choose": "Chọn biểu tượng cảm xúc",
 	"ui.teamBridge.reactions.noResults": "Không tìm thấy biểu tượng cảm xúc",
-	"ui.teamBridge.actions.label": "Thao tác với tin nhắn"
+	"ui.teamBridge.actions.label": "Thao tác với tin nhắn",
+	"ui.teamBridge.profile.message": "Nhắn tin",
+	"ui.teamBridge.profile.human_badge": "Con người",
+	"ui.teamBridge.profile.agent_badge": "Tác nhân",
+	"ui.teamBridge.profile.owned_by": "Tác nhân của {name}",
+	"ui.teamBridge.profile.local_time": "Giờ địa phương: {time}",
+	"ui.teamBridge.profile.close_profile": "Đóng hồ sơ",
+	"ui.teamBridge.profile.open_profile": "Mở hồ sơ của {name}"
 }

@@ -1,0 +1,148 @@
+{
+ "audit_id": "cs-20261025",
+ "kind": "independent-multi-namespace-translation-audit",
+ "date": "2026-10-25",
+ "audit_date": "2026-10-25",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.run_details",
+ "audit_kind": "independent-multi-namespace-audit-of-uncommitted-working-tree-candidates",
+ "batch": "chat-surfaces",
+ "branch": "i18n-chat-surfaces",
+ "head": "732c568cdd",
+ "binding": "The translations are UNCOMMITTED working-tree candidates; this audit binds to the sha256 of the bytes on disk at 732c568cdd, not to a commit. A later commit that changes any value voids the binding.",
+ "instance": "8e6e444eddc0-chat-surfaces",
+ "key_count": 81,
+ "key_count_new": 79,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "8e6e444eddc0",
+  "team": "lopdev",
+  "model": "radient/auto",
+  "route": "radient/auto",
+  "fallback_used": true,
+  "actual_model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+  "actual_model_source": "harness [model switch] notices in this session: radient/auto returned provider failure quota HTTP 402 and the descent served [redacted]/claude-sonnet-5-5, openai/gpt-6.1-sol, deepseek/deepseek-flash, then openrouter/deepseek/deepseek-v4.1-flash-1017. Every judgement here was made under the last of these, not under radient/auto.",
+  "independent_from_translator_session": true,
+  "independence_basis": "Separate agent and session from the translator: this session wrote no catalogue byte, read no translator report and edited nothing. Translation authorship is the coder session's; this run only read the bytes at 732c568cdd."
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+   "sha256": "b3f23e9248e81ec57d30778e4e4b452c27f0e04842c325cb125d2135d5d886a7"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+   "sha256": "2cc9f66ec5cbd5c6c9cfbc34526ce4d91d48ea5b50bcdb925be8f1b1fe2df78b"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.chat.run_details.json",
+   "sha256": "e36a5040604772f7c44f44caf9d1cdf62c4179eae3db67bc2d08d9ee755730ec"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "i18n/glossary.md",
+   "repo": "local-operator (core)",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/zh-CN.md",
+   "repo": "local-operator (core)",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "repo": "local-operator-ui"
+  }
+ },
+ "scope": "ui.chat.run_details for zh-CN: every value in the namespace (81 keys, 79 new in this wave) read against the English source, its en context sidecar entry and the consuming renderer code. Findings here: 1.",
+ "artifacts": [
+  {
+   "path": "i18n/receipts/zh-cn-chat-surfaces-audit-8e6e444eddc0.json",
+   "sha256": "2ca54d51f7c923f4aaf62d9dcb2d79c57f13646f25a6e7969ba52e9f7847c77e",
+   "role": "receipt of record for this namespace (one receipt covers all four chat-surface namespaces)"
+  }
+ ],
+ "findings": [
+  {
+   "id": "ZH-CS-2",
+   "severity": "blocker",
+   "category": "accuracy",
+   "key": "ui.chat.run_details.chip.todos_closed",
+   "source": "All to-dos closed",
+   "current": "待办已全部取消",
+   "proposed": "待办已全部结束",
+   "reason": "Wrong state, and it contradicts the same namespace. src/renderer/src/features/chat/components/run-details/run-detail-model.ts todoClause() returns this string when counts.droppedTodos > 0 and counts.openTodos === 0 — the plan is settled and AT LEAST ONE item was dropped; the docblock above it explicitly keeps dropped beside the fraction for exactly that reason. 取消 is this namespace's word for 'dropped' (todos.dropped = ——已取消, rendered as the inline settled tag), so 待办已全部取消 tells the reader every item was cancelled even when most were completed, and the chip then reads the same as the dropped tag it sits beside. 结束 keeps the neutral settled reading next to 待办已全部解决 ('All to-dos resolved'); 待办已全部关闭 is the alternative if the pane prefers the 关闭 family.",
+   "pre_existing": false,
+   "new_key": true
+  }
+ ],
+ "current_report_verdict": {
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "unresolved_blocker_major_count": 1,
+  "severity_counts": {
+   "blocker": 1,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  },
+  "finding_ids": [
+   "ZH-CS-2"
+  ],
+  "independent_of_translator": true
+ },
+ "validation": {
+  "json_parsed": true,
+  "key_parity": "81/81 en↔zh-CN, same order",
+  "placeholder_parity": true,
+  "icu_structure_parity": true,
+  "plural_categories": [
+   "other"
+  ],
+  "plural_categories_verified_with": "Intl.PluralRules('zh-CN').resolvedOptions().pluralCategories",
+  "select_branches_preserved": true,
+  "nfc": true,
+  "bidi_controls": 0,
+  "ascii_ellipsis": 0,
+  "cjk_latin_space_inserted": 0,
+  "identical_to_english": 0,
+  "width_claims": "codepoint cell counts only; no browser or rendered frame in this run",
+  "repo_gates_run": [
+   "scripts/i18n/generate.mjs --check",
+   "scripts/i18n/check-duplicates.mjs",
+   "scripts/i18n/context-parity.mjs",
+   "scripts/i18n/check-strings.mjs",
+   "scripts/i18n/check-coverage.mjs"
+  ],
+  "repo_gates_result": "all five pass in the worktree; scripts/i18n/ledger-check.mjs fails repo-wide only because no receipt backed these uncommitted bytes before this one"
+ },
+ "deriveReceiptAudit": {
+  "module_path": "scripts/i18n/ledger-rules.mjs",
+  "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+  "execution": "node --input-type=module imported deriveReceiptAudit from the worktree module and was called once per namespace with the real en/target sha256 from disk; all four calls returned, none refused. No assembler or ledger write was executed.",
+  "derived": {
+   "agent": "i18n-auditor",
+   "instance": "8e6e444eddc0-chat-surfaces",
+   "model": "radient/auto",
+   "result": "changes_requested",
+   "findings": {
+    "blocker": 1,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "b3f23e9248e81ec57d30778e4e4b452c27f0e04842c325cb125d2135d5d886a7",
+   "target_sha256": "e36a5040604772f7c44f44caf9d1cdf62c4179eae3db67bc2d08d9ee755730ec",
+   "receipt_sha256": "2ca54d51f7c923f4aaf62d9dcb2d79c57f13646f25a6e7969ba52e9f7847c77e"
+  }
+ },
+ "audit_notes_not_execution_log": "This record states conclusions, not a command transcript. The five repo gates named above were run and their verdicts are quoted from their own output; no log file is attached for them. The ICU parse, the byte-hygiene scan and the Intl.PluralRules reading were run in-session over the four namespaces.",
+ "limitations": [
+  "No browser or rendered frame was available, so no pixel or overflow claim is made; widths are codepoint cell counts against the two maxCells budgets the sidecars carry.",
+  "The 105 pre-existing keys were checked for contradiction with this wave's new values and for the mandated consistency dimensions, not re-translated from scratch.",
+  "No native-speaker sign-off is claimed; the audit is an independent agent read of the locale.",
+  "The translations are uncommitted working-tree bytes at 732c568cdd; committing different bytes voids this receipt."
+ ],
+ "record_path": "i18n/audits/evidence/zh-CN/ui.chat.run_details/cs-20261025/record.json"
+}

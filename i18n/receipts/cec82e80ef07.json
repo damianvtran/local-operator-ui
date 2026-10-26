@@ -1,0 +1,217 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-receipt",
+	"audit_kind": "independent-translation-audit",
+	"batch": "agents-surfaces",
+	"round": 3,
+	"head": "91231e66c955197e86cec5b1bf7c6f488eff48de",
+	"branch": "i18n-agents-pages",
+	"locale": "ru",
+	"locale_name": "Russian",
+	"date": "2026-10-26",
+	"audit_date": "2026-10-26",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"harness": "Local Operator",
+		"team": "lopdev",
+		"session": "cec82e80ef07",
+		"instance": "cec82e80ef07",
+		"model": "radient/auto",
+		"actual_model": "radient/auto",
+		"actual_model_source": "Harness session header for this run: 'Model: radient/auto'. The upstream provider/model id the router resolved to is not exposed to the agent, so none is claimed or inferred.",
+		"model_provenance": "Single route for the whole round: reading, gate runs, diffs, call-site reads, the render proof, verdicts, receipt authoring and deriveReceiptAudit all ran in this session on radient/auto. No provider error, quota incident or mid-run switch was surfaced in this session. No fallback is claimed and none is hidden.",
+		"independence": "Independent of the translator and of the remediation author: different session (the round-2 receipt was written by instance a7f4f2fdf169; this one is cec82e80ef07), wrote no catalogue value and no remediation. DISCLOSED CONFIRMATION-BIAS RISK: the round-2 receipt of this role proposed the exact replacement strings for the round-2 findings, and the translator applied them verbatim; every string below was therefore re-derived from the English source and its .context.json sidecar before it was compared with the applied wording, and the not_defects list records what was re-examined rather than assumed. No translation/MT service was used; no catalogue, ledger or git state was edited; the only repository file written is this receipt.",
+		"independent_from_translator_session": true
+	},
+	"agent": "i18n-auditor",
+	"instance": "cec82e80ef07",
+	"session": "cec82e80ef07",
+	"model": "radient/auto",
+	"scope": {
+		"worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+		"branch": "i18n-agents-pages",
+		"head": "91231e66c955197e86cec5b1bf7c6f488eff48de",
+		"namespaces": [
+			"ui.agents.config",
+			"ui.hub.teams",
+			"ui.agents.publication"
+		],
+		"note": "Focused round 3 over the CURRENT working-tree bytes of the three namespaces the translator touched, bound by sha256. The three ru files differ from HEAD, and from the bytes the round-2 receipt audited, in exactly FIVE keys: ui.agents.config.summary.hidden_changes (round-2 MAJOR), ui.hub.teams.org.aria (round-2 minor), and the three round-2 nits ui.agents.config.examples.team_shipping, ui.agents.publication.category.unclear_dual_use, ui.agents.publication.pull.not_found. No other key was re-read as changed: the byte diff is the scope proof. Namespaces the round-2 receipt passed unchanged (ui.agents.pages, ui.agents.detail, ui.hub.pages, ui.agents.teams, ui.agents.upload of this locale) were not re-audited."
+	},
+	"reference": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		}
+	},
+	"keys_audited": 171,
+	"namespace_count": 3,
+	"input_verification": {
+		"pinned_target_hashes": "Bound manifest ~/.local-operator/sessions/3ef6295a5545/scratchpad/agents-r3-hashes.txt: recomputed all three ru files from disk, 3/3 match (config 8f9fbebe…, hub.teams 293db853…, publication 07fff8cd…), no mismatch, so the audit ran on the bytes the manifest binds.",
+		"round2_baseline_reproduced": "git show HEAD:src/i18n/catalogues/ru/<ns>.json yields exactly the round-2 receipt's recorded ru hashes: config c062ef23…, hub.teams b762cc10…, publication 9ab58eaa…. The round-2 bytes are therefore reproducible from HEAD, which is what makes the diff below a real 'nothing else moved' proof.",
+		"english_and_context_unchanged": "All three en catalogues and their .context.json sidecars hash identically to the round-2 receipt (en config aa4fde04…, hub.teams 32d6df8d…, publication 20056e56…; context 5dd8f962…, 9a6f5f35…, 69ceeff1…). Nothing was added to or removed from the English source between rounds.",
+		"diff_scope": "diff -u <HEAD bytes> <working tree> per file: exactly 5 changed lines — the 5 keys named above — and zero added, removed, reordered or reformatted lines elsewhere. 171 en keys vs 171 ru keys, same order in every file (28 / 47 / 96).",
+		"post_audit_stability": "The three ru files were re-hashed after the receipt was written and before the derivation below: 8f9fbebe…, 293db853…, 07fff8cd… again - no drift under this session, so the receipt names the bytes that were audited."
+	},
+	"method": {
+		"read": "The ru style guide (90 lines) and glossary first, then the three en catalogues with their sidecars, then the changed bytes and the negative space around them. Call sites read: src/renderer/src/features/agents/config-run/config-composer.tsx RunSummary (lines 808-829: the composition created|updated + ' (kind)' + ': ' + changes|hidden_changes), src/renderer/src/features/agents/config-run/summary.ts diffCatalogue (the team arm and the empty-change update path), src/renderer/src/features/agent-hub/components/org-teams-list.tsx (lines 225-247: the section has no visible heading, so the aria-label is its only name; {org} = orgName ?? ui.hub.pages.scope.org_unnamed), and src/renderer/src/features/agents/utils/publication-failure.ts pullRefusalMessage (lines 744-800 and the call at 860: the subject handed to pull.not_found).",
+		"requirement_check": "Each of the five fix requirements was turned into a statement about the source, the sidecar and the call site, and the applied string was judged against that: record-neutrality for an agent OR a team result (sidecars for summary.created/updated say '{name} is the agent or team name'), the sharing relation in the region name (source 'Teams shared with {org}', no visible heading), the bare Latin role token in an example, the 'sentence' vs 'proposal' ambiguity, and the impersonal 'не найти' with its placeholder case.",
+		"render_proof": "Rendered, not eyeballed: a Node script loaded the ru catalogue with intl-messageformat and rebuilt the RunSummary string exactly as config-composer.tsx composes it (created/updated + ' (kind)' + ': ' + changes|hidden_changes), for a team target and an agent target, plus the org roster aria-label with a real org name and with the unnamed stand-in. Command and verbatim output in render_proof.",
+		"typography": "All five changed values: Russian guillemets preserved in subject.name and joined correctly by the new sentence; lowercase sentence continuation after the colon in summary.hidden_changes (correct for a predicate continuation); comma before 'затем' and before 'поэтому'; no double spaces, no NBSP, no zero-width or bidi controls, NFC.",
+		"not_run": "No builds, no browser/rendered-frame pass, no ledger read or edit, no ledger-check (the ledger is not to be touched this round), no git writes. No translation/MT service was used at any point. Fit beyond glyph count is QA's: the sidecars carry no maxCells/maxChars for any of these namespaces (0 hints in 28/47/96 entries).",
+		"notes_vs_log": "The 'mechanical', 'render_proof' and 'input_verification' fields quote commands this session actually ran and their real output; prose in 'method' and 'not_defects' is audit reasoning, not an execution log."
+	},
+	"mechanical": {
+		"locale_parity": "node --test --test-name-pattern='ru' scripts/i18n/locale-parity.test.mjs -> tests 6, pass 6, fail 0 (ships at least one message; defines each key in at most one namespace file; carries EVERY key; names only keys the English source defines; preserves every ICU placeholder; is not an English stub).",
+		"context_parity": "node scripts/i18n/context-parity.mjs -> 'context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).' exit 0.",
+		"duplicates": "node scripts/i18n/check-duplicates.mjs -> 'check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s)' exit 0.",
+		"generate": "node scripts/i18n/generate.mjs --check -> '/Users/damian/local-operator-ui/.worktrees/i18n-agents-pages/src/i18n/keys.gen.ts is byte-identical to a fresh generation.' exit 0.",
+		"own_icu_check": "All 171 en/ru pairs parsed with @formatjs/icu-messageformat-parser and compared: 0 argument-name, argument-style, selector or category differences. No message in the three namespaces carries rich-text/HTML markup on either side, so tag parity is vacuous here. The three plural messages in scope (ui.agents.config.definitions, ui.hub.teams.member_count, ui.hub.teams.public.match_line) each carry ru's full CLDR set one/few/many/other.",
+		"structural": "All three files: valid JSON, tab-indented, exactly one trailing newline, NFC on every value, no bidi/zero-width controls, no NBSP, no double spaces, no edge whitespace, and no value identical to the English source. Key sets and key ORDER identical to English in all three.",
+		"derivation": "deriveReceiptAudit (scripts/i18n/ledger-rules.mjs) called per namespace on these final receipt bytes, with the en and ru hashes read from disk: all three derive as result 'clean', findings 0/0/0/0, agent i18n-auditor, instance cec82e80ef07, model radient/auto."
+	},
+	"render_proof": {
+		"command": "node <scratchpad>/r3/render-ru.mjs (run from the worktree root; rebuilds the config-composer.tsx RunSummary composition and the org-teams-list.tsx aria-label from the ru catalogue via intl-messageformat)",
+		"agent_result": "Обновлено release-bot (agent): изменены свойства. Список не показывает инструкции, поэтому откройте запись, чтобы увидеть, что в ней записано.",
+		"team_result": "Обновлено release-crew (team): изменены свойства. Список не показывает инструкции, поэтому откройте запись, чтобы увидеть, что в ней записано.",
+		"created_line": "Создано coder (agent)  [created results append no hidden_changes clause, per the call site]",
+		"team_with_listed_change": "Обновлено release-crew (team): изменены участники",
+		"org_aria_named": "Команды, открытые для Minerva  |  Команды, открытые для Acme Corp",
+		"org_aria_unnamed": "Команды, открытые для этой организации  [ui.hub.pages.scope.org_unnamed is the genitive 'этой организации', so the 'для' frame is grammatical]",
+		"why_reachable": "summary.ts diffCatalogue pushes {target:{kind:'team',…}, created:false, changes:[]} whenever a touched team's catalogue fields did not move (the loop reads after.teams and diffs fields), and config-composer.tsx renders hidden_changes for exactly that arm — so the team rendering above is a reachable state, not a hypothetical one.",
+		"script_provenance": {
+			"path": "<session scratch>/r3/render-ru.mjs",
+			"sha256": "2550c27c6ad9b33e0651d56bab6bc7626f9899f3779d4a4a674aa94d46e638b1",
+			"note": "Session scratch, not a tracked artifact: the evidence of record is the verbatim output embedded in this receipt, reproducible from the intl-messageformat runtime plus the two catalogue files named by hash above."
+		}
+	},
+	"round2_resolution": [
+		{
+			"id": "ru-r2-agc-01",
+			"severity": "major",
+			"key": "ui.agents.config.summary.hidden_changes",
+			"was": "изменены свойства. Список не показывает инструкции, поэтому откройте агента, чтобы увидеть, что записано.",
+			"now": "изменены свойства. Список не показывает инструкции, поэтому откройте запись, чтобы увидеть, что в ней записано.",
+			"disposition": "resolved",
+			"why": "The agent-only noun is gone; 'запись' is record-neutral, agrees with the feminine 'в ней', and the sentence is grammatical after both 'Обновлено <agent> (agent): ' and 'Обновлено <team> (team): ' (rendered above). The English source and the created/updated sidecars ('{name} is the agent or team name') make neutrality the requirement; it is met."
+		},
+		{
+			"id": "R2-ru-HUT-01",
+			"severity": "minor",
+			"key": "ui.hub.teams.org.aria",
+			"was": "Команды {org}",
+			"now": "Команды, открытые для {org}",
+			"disposition": "resolved",
+			"why": "Names the sharing relation instead of ownership, and matches the namespace's own phrasing for the same fact (org.empty 'Команды, открытые для участников {org}…', org.unreadable '…команды, открытые для этой организации'). Renders grammatical with a real org name and with the genitive unnamed stand-in (above). Still a correct landmark name where the section has no visible heading."
+		},
+		{
+			"id": "ru-r2-agc-02",
+			"severity": "nit",
+			"key": "ui.agents.config.examples.team_shipping",
+			"was": "Команда shipping с менеджером и двумя coder",
+			"now": "Команда shipping с менеджером и двумя агентами coder",
+			"disposition": "resolved",
+			"why": "A noun now carries the instrumental numeral ('двумя агентами') and the role token stays undeclined, per the keep-English identifier rule. Reads as intended: 'a team called shipping with a manager and two coder agents'. 43 -> 52 characters; the example fills the input box and the sidecar sets no cell or char budget, so this is an observation for QA's rendered pass, not a fit finding."
+		},
+		{
+			"id": "ru-r2-agp-01",
+			"severity": "nit",
+			"key": "ui.agents.publication.category.unclear_dual_use",
+			"was": "… Добавьте предложение об области применения и цели и опубликуйте снова.",
+			"now": "… Добавьте фразу об области применения и цели, затем опубликуйте снова.",
+			"disposition": "resolved",
+			"why": "'фразу' removes the 'proposal' reading of 'предложение'; 'затем' mirrors the source's 'then'. The refusal claim and its remedy are unchanged, and the comma before 'затем' is correct."
+		},
+		{
+			"id": "ru-r2-agp-02",
+			"severity": "nit",
+			"key": "ui.agents.publication.pull.not_found",
+			"was": "В хабе {subject} больше не найти, поэтому ничего не загружено.",
+			"now": "В хабе больше нет {subject}, поэтому ничего не загружено.",
+			"disposition": "resolved",
+			"why": "Plain declarative instead of the impersonal 'не найти'. 'нет' governs the genitive, and the call site (publication-failure.ts pullRefusalMessage) supplies only subject.name ('«{name}»') or subject.unknown ('этого агента', genitive) — the nominative subject.agent/subject.team stand-ins belong to publicationTreatment's {name} on the publish surface and never reach this key. So the sentence is grammatical for every reachable substitution: 'В хабе больше нет «release-crew», поэтому ничего не загружено.' / 'В хабе больше нет этого агента, поэтому ничего не загружено.'"
+		}
+	],
+	"not_defects": [
+		{
+			"key": "ui.agents.config.summary.hidden_changes",
+			"why": "Re-examined rather than assumed, because this role proposed the wording in round 2. 'запись' is the catalogue's established word for a stored record ('В этом окне нет записей…', the memory-record plurals) and is the shortest record-neutral noun; alternatives weighed and rejected: 'откройте агента или команду' (unambiguous but ~15 chars longer in a list row and names two things where the source says 'it'), 'элемент' (technical, not product voice), 'карточку' (not this app's vocabulary). The echo 'запись … что в ней записано' is a mild pleonasm but reads naturally in technical Russian and keeps the source's 'see what was written'."
+		},
+		{
+			"key": "ui.agents.publication.pull.not_found",
+			"why": "Genitive government verified against the code, not just the sidecar: pull.not_found is called at publication-failure.ts:757 and :791 inside pullRefusalMessage only, whose subject is the quoted name or 'этого агента'. Both compose with 'больше нет'. The r2 not_defects note that the placeholder is genitive still holds and is now the correct form for this sentence too."
+		},
+		{
+			"key": "ui.hub.teams.org.aria",
+			"why": "The only slightly arguable point is 'открытые для' ('open to') against the source's 'shared with'. It states the same access relation the roster actually shows, is the phrasing this namespace already uses for org.empty and org.unreadable, and composes with the genitive stand-in. Consistent over literal, as the style guide asks."
+		},
+		{
+			"key": "ui.agents.config.examples.team_shipping",
+			"why": "Fit is not claimed as proven: 52 chars in a clickable example chip that fills the input box, no maxCells/maxChars in the sidecar. Nothing suggests truncation (the chip wraps in the hero), so this is recorded as an observation for QA's rendered pass, not a finding."
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	},
+	"verdict": "All three namespaces pass on the current bytes. The round-2 major (config summary.hidden_changes, wrong record type for a team) is resolved and renders correctly for both an agent and a team result; the round-2 minor (hub.teams org.aria, missing sharing relation) is resolved and grammatical with both org placeholder forms; all three round-2 nits are closed. No blocker, major, minor or nit remains and none is raised on the changed bytes. The five-key diff proves nothing else moved.",
+	"namespaces": {
+		"ui.agents.config": {
+			"namespace": "ui.agents.config",
+			"status": "passed",
+			"keys_audited": 28,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+				"ru": "8f9fbebe156c89773d1316782390d0021e2c7a845d2c4249f49726738d9e2e07"
+			},
+			"context_sha256": "5dd8f962ad021b0dc4004ea2531257b3fd70904e834f77b5f9b7b2d7266a48db",
+			"findings": []
+		},
+		"ui.hub.teams": {
+			"namespace": "ui.hub.teams",
+			"status": "passed",
+			"keys_audited": 47,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+				"ru": "293db853e0f9f5e4cee72a92073d47ebc4f933f858babf9a01854ddbb1359161"
+			},
+			"context_sha256": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651",
+			"findings": []
+		},
+		"ui.agents.publication": {
+			"namespace": "ui.agents.publication",
+			"status": "passed",
+			"keys_audited": 96,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+				"ru": "07fff8cdf30c40d28d48162a0567100b40c59e403eea24585f43eaabf5f53546"
+			},
+			"context_sha256": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90",
+			"findings": []
+		}
+	},
+	"keys_audited_note": "171 = the three namespaces' full key set (28 / 47 / 96). Five of those keys changed and were judged on the new bytes against the English source, its sidecar and the call site; the other 166 are byte-identical (NFC, tab indent, key order included) to the content the round-2 receipt passed as instance a7f4f2fdf169, so they were carried by that proof rather than re-judged."
+}

@@ -11,10 +11,11 @@ import { t } from "../../../../i18n/messages";
  *   with the OWNER epoch/sequence checked independently of the HTTP receipt
  *   cursor — the two cursors are different clocks.
  * - `event` frames carry typed canonical AgentEvents; a terminal event is what
- *   resolves the "Waiting to start" latch. The receipt cursor is for
- *   dedupe/reconnect — at the receipt and, per row, at the reducer's cursor
- *   gate (a re-delivered `message_update` is refused rather than appended) —
- *   and never for deciding what is newer paint state.
+ *   resolves the "Waiting to start" latch. The receipt cursor is a monotonic
+ *   high-water mark: a same-epoch frame at or behind it is stale and may not
+ *   repaint the transcript, including a reset replay that would otherwise
+ *   replace the whole viewport. Per-row cursor checks remain a second guard
+ *   for partial streaming updates.
  * - A `gap` frame (or any replay-with-gap open) says the receipt lost continuity:
  *   painted FRONTEND state is dropped, and the transcript's in-flight rows are
  *   KEPT and marked uncertain (`markLiveRecordsTruncated`) rather than erased,
@@ -112,6 +113,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { desktopRequestTimeoutMs } from "../../../../shared/desktop-contract";
 import {
 	acceptFrontendReplace,
+	isNewerDesktopFrame,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
 import type {
@@ -120,6 +122,7 @@ import type {
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 	DesktopSnapshot,
+	DesktopStreamCursor,
 } from "../../../../shared/desktop-session-contract";
 import {
 	DESKTOP_STREAM_DETAIL,
@@ -2352,6 +2355,23 @@ function markPageBorn(
 	for (const entry of entries) pageBorn.add(entryRecordKey(entry));
 }
 
+/**
+ * Whether a frame is a JOURNAL-ORDER CORRECTION rather than frontend state.
+ *
+ * The bridge publishes `journal_order_ready` as an `event` frame whose payload
+ * names rows the journal has since placed, and it deliberately keeps those
+ * frames through the open handshake even when their receipt is at or below the
+ * snapshot's watermark - "a snapshot's sequence watermark cannot supersede an
+ * off-page correction" (`docs/DESKTOP_API.md`; the backend's own condition is
+ * `desktop_sessions.py::events`' `order_fact and not already_replayed`), because
+ * a bounded snapshot page need not contain the IDs the correction refers to.
+ *
+ * So the receipt high-water mark must not decide whether one is applied: its
+ * ordering is the JOURNAL's, not the stream's.
+ */
+const isJournalOrderCorrection = (frame: DesktopSessionFrame): boolean =>
+	frame.type === "event" && frame.payload?.type === "journal_order_ready";
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -2863,11 +2883,30 @@ export function useCanonicalSessionStream(
 	 */
 	const historyReadsRef = useRef(0);
 	const generationRef = useRef(0);
+	/**
+	 * Identity of the LIVE SUBSCRIPTION, superseded on every `connect`.
+	 *
+	 * The session `generation` above answers "is this still the same visit", which
+	 * is the right question for an effect teardown and the wrong one for a queued
+	 * frame: a resync or a peer rebind opens a new subscription INSIDE one visit,
+	 * so a callback the old subscription already handed to the transport would
+	 * still pass a generation check. `connect` reads and increments this, and the
+	 * callback refuses anything that is not its own connection.
+	 */
+	const connectionRef = useRef(0);
 
 	useEffect(() => {
 		if (!sessionId || !enabled) return;
 		const generation = ++generationRef.current;
 		const orderFrameRevisions = new WeakMap<object, JournalOrderRead>();
+		/*
+		 * The frame pump's receipt high-water mark. It is LOCAL to this stream
+		 * effect, not the reconnect cursor: a fresh `open` starts a new receipt
+		 * domain, while the reconnect cursor survives to ask for the missing tail.
+		 * `receiptRef` below remains the published/reconnect cursor and is updated
+		 * only for frames accepted by this guard.
+		 */
+		let acceptedReceipt: { epoch: string; seq: number } | null = null;
 		/*
 		 * WHETHER A SNAPSHOT'S HISTORY PAGE IS FENCED OUT - THE PAGE, NEVER THE
 		 * FRAME. A snapshot is tagged with the order revision current when it was
@@ -3476,6 +3515,16 @@ export function useCanonicalSessionStream(
 			 */
 			const coldAtDispatch = viewRef.current.cold;
 			/*
+			 * THE RECEIPT THE PANE HAD WHEN THIS READ WENT OUT, captured beside the
+			 * other dispatch witnesses. It is what lets a page commit answer the one
+			 * question content cannot: was a row on screen written by a frame NEWER
+			 * than this read? (`applyHistoryPage`'s `readWitness`.)
+			 */
+			const receiptNow = receiptRef.current;
+			const readWitnessAtDispatch: DesktopStreamCursor | null = receiptNow
+				? { epoch: receiptNow.epoch, seq: receiptNow.seq }
+				: null;
+			/*
 			 * THE LABEL GOAL, the half the walk used to lack. It stopped as soon as a
 			 * page CONNECTED to a painted row, but the label gap needs a page that
 			 * reaches back to the OLDEST missing call's assistant row, which on a turn
@@ -3738,6 +3787,13 @@ export function useCanonicalSessionStream(
 						authoritative: true,
 						orderRead,
 						peerSource: streamDeclaredNow(),
+						/*
+						 * The receipt the pane had when THIS read went out: a row a newer
+						 * live frame wrote must not be rewritten by an older answer
+						 * (`pageRowIsOlderThanLiveRow`). Captured at dispatch, not read
+						 * here, because the walk's own await may have let newer frames in.
+						 */
+						readWitness: readWitnessAtDispatch,
 					});
 					/*
 					 * THE IDS **THIS COMMIT** LABELLED ARE RELEASED IN THE SAME COMMIT, and
@@ -4531,6 +4587,12 @@ export function useCanonicalSessionStream(
 				for (const frame of frames) {
 					if (frame.type === "heartbeat") continue;
 					if (frame.type === "gap") {
+						/*
+						 * A gap has no receipt cursor of its own. It marks the replay
+						 * boundary, so the next `open` establishes a fresh high-water
+						 * mark rather than rejecting the reconnect's lower sequence.
+						 */
+						acceptedReceipt = null;
 						// Receipt continuity broke: the authoritative snapshot that follows
 						// is the only thing that can say what happened in the interval, so
 						// painted FRONTEND state is dropped and the view says "reconnecting"
@@ -4563,12 +4625,70 @@ export function useCanonicalSessionStream(
 					}
 					// From here the frame is a receipt with an epoch/seq cursor.
 					//
+					/*
+					 * THE OPEN FRAME'S `seq` IS A CUTOFF, NOT A STATE POSITION, so it
+					 * cannot seed the high-water mark: the bridge sets it to
+					 * `bridge.sequence` and then replays every retained frame with
+					 * `after_seq < seq <= cutoff` before the snapshot
+					 * (`docs/DESKTOP_API.md`). Seeding from it rejects the whole replay
+					 * AND the snapshot on every real open - the pane stuck at
+					 * "connecting". The mark is therefore CLEARED at the open, and what
+					 * makes that safe is the connection witness above: a superseded
+					 * subscription's frames can no longer arrive here, so a fresh
+					 * connection is free to restate the world from its own replay.
+					 */
+					if (frame.type === "open") {
+						acceptedReceipt = null;
+					} else if ("seq" in frame) {
+						// `"seq" in frame` is what narrows away the two cursor-less
+						// members (`gap`/`heartbeat`, both handled above); every remaining
+						// shape carries the receipt pair.
+						const cursor: DesktopStreamCursor = {
+							epoch: frame.epoch,
+							seq: frame.seq,
+						};
+						/*
+						 * A JOURNAL-ORDER CORRECTION IS ORDERED BY THE JOURNAL, NOT BY THIS
+						 * RECEIPT, AND IT MUST NOT BECOME THE RECEIPT.
+						 *
+						 * Why it may be applied below the watermark: the bridge sends those
+						 * AFTER the snapshot at or below its seq on purpose
+						 * (`desktop_sessions.py::events`' `frame["seq"] > snapshot["seq"] or
+						 * (order_fact and not already_replayed)`; `docs/DESKTOP_API.md`: "a
+						 * snapshot's sequence watermark cannot supersede an off-page
+						 * correction" - the frame is metadata-only and its IDs need not be in
+						 * a bounded page). Refusing it on seq alone is the #994 mis-ordering
+						 * returning.
+						 *
+						 * Why it may not ADVANCE the mark (agent review round 4): a
+						 * correction at 6 arriving after a snapshot at 7 would otherwise
+						 * lower the mark to 6, and the next genuinely stale frame at 7 - a
+						 * reset replay, a `message_start` - would be admitted, which is this
+						 * PR's own first bug reached through the new door. So it advances
+						 * neither `acceptedReceipt` nor the published `receiptRef`, and it is
+						 * the one frame type that can be applied while the mark stays put.
+						 */
+						const orderCorrection = isJournalOrderCorrection(frame);
+						if (
+							!orderCorrection &&
+							!isNewerDesktopFrame(acceptedReceipt, cursor, {
+								// The snapshot is the state AT the watermark, so it may sit on
+								// it (see the option's own note); nothing else may.
+								allowEqual: frame.type === "snapshot",
+							})
+						)
+							continue;
+						if (!orderCorrection) acceptedReceipt = cursor;
+					}
 					// The cursor as it stood BEFORE this frame is read first and kept
 					// beside the assignment, because `frontend.replace` below is ordered
 					// against it: checking the value this very frame is about to write
 					// would reject every replacement (remediation contract § C).
 					const priorCursor = receiptRef.current;
-					if (frame.type === "open" || "seq" in frame) {
+					if (
+						(frame.type === "open" || "seq" in frame) &&
+						!isJournalOrderCorrection(frame)
+					) {
 						receiptRef.current = { epoch: frame.epoch, seq: frame.seq };
 						next = { ...next, receipt: receiptRef.current };
 					}
@@ -4681,6 +4801,13 @@ export function useCanonicalSessionStream(
 									authoritative: true,
 									orderRead: dispatched,
 									peerSource: streamDeclaredNow(),
+									/*
+									 * The snapshot is the frame being folded, so its own cursor is
+									 * the witness: a row the batch's EARLIER frames (or the replay
+									 * before it) wrote is newer than this page and keeps its text.
+									 * `applyLiveSeed` follows and folds the seed's own events.
+									 */
+									readWitness: { epoch: frame.epoch, seq: frame.seq },
 								});
 								performance.mark("lop:open:history:end");
 								performance.measure(
@@ -5389,6 +5516,39 @@ export function useCanonicalSessionStream(
 
 		const connect = () => {
 			const sourceRead = journalOrderRead(viewRef.current.transcript);
+			/*
+			 * THE CONNECTION'S OWN IDENTITY, AND WHY A GENERATION IS NOT ENOUGH.
+			 * `generation` names the session VISIT; this names the SUBSCRIPTION. A
+			 * resync, a reopen, a peer rebind and a retry all open a new connection
+			 * while the visit stays the same, and a frame callback captured by the
+			 * OLD connection can still be queued when the new one opens (the preload
+			 * resolves its stream id through a promise, so a frame already delivered
+			 * to the handler can reach the consumer after `dispose()`).
+			 *
+			 * Without this, such a frame is accepted as ordinary state: it carries
+			 * the old connection's cursor, so a same-epoch high-water check reads it
+			 * as an advance, and a DIFFERENT epoch is accepted by definition (cross-
+			 * epoch frames are always applied, because an owner rebuild restarts the
+			 * numbering). Both directions let a superseded subscription's snapshot or
+			 * reset replace the paint its successor already committed - the reported
+			 * "history jumps back to an older state" arriving from a disposed stream
+			 * rather than from an out-of-order receipt.
+			 */
+			const connection = ++connectionRef.current;
+			/*
+			 * AND THE OLD CONNECTION'S QUEUED FRAMES ARE LEFT TO FLUSH. An earlier
+			 * draft of this guard flushed `pending` here and that was wrong twice:
+			 * the newest frames of the connection being replaced are exactly the
+			 * ones a re-render-triggered resync arrives on top of, so dropping them
+			 * discarded the snapshot of a stream that had just opened and left the
+			 * pane waiting for a first snapshot that had already been delivered.
+			 * That missing-frame path is reproduced by the review's timing probe;
+			 * CI also stopped mid-file behind an `act(...)` warning wall, but that
+			 * symptom is not proof of the mechanism or of a render loop. The frames
+			 * cannot be stale: `open` clears the receipt mark, and the callback
+			 * guard above refuses anything a superseded connection sends from here
+			 * on.
+			 */
 			clearSnapshotTimer();
 			snapshotTimer = window.setTimeout(() => {
 				snapshotTimer = 0;
@@ -5454,6 +5614,13 @@ export function useCanonicalSessionStream(
 				},
 				(event) => {
 					if (generationRef.current !== generation) return;
+					/*
+					 * A SUPERSEDED CONNECTION COMMITS NOTHING - see `connection` at
+					 * `connect`. Checked before the event kind, because a queued `data`
+					 * frame and a queued `end` are the same hazard: the one would paint
+					 * an older projection and the other would tear down the successor.
+					 */
+					if (connectionRef.current !== connection) return;
 					// `end` and `error` are the same event for this consumer: the stream
 					// is gone. `end` is not ignorable, because the only paths that end a
 					// stream we did not ask to end are a transport failure or main's relay
@@ -6971,6 +7138,15 @@ export function useCanonicalSessionStream(
 			const requested = sessionId;
 			refreshingTailRef.current = true;
 			const sourceRevision = currentOrderRevision(viewRef.current.transcript);
+			/*
+			 * The receipt when this refresh was dispatched: a row a NEWER live frame
+			 * wrote must not be rewritten by this answer (`pageRowIsOlderThanLiveRow`).
+			 * Copied, because `receiptRef` moves with every accepted frame.
+			 */
+			const receiptNow = receiptRef.current;
+			const tailWitness: DesktopStreamCursor | null = receiptNow
+				? { epoch: receiptNow.epoch, seq: receiptNow.seq }
+				: null;
 			try {
 				const page = await desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
@@ -7015,6 +7191,9 @@ export function useCanonicalSessionStream(
 								transcript: applyHistoryPage(current.transcript, page, {
 									keepPaging: true,
 									peerSource: streamDeclaredNow(),
+									// The receipt when this refresh was dispatched; see
+									// `pageRowIsOlderThanLiveRow`.
+									readWitness: tailWitness,
 								}),
 							},
 				);

@@ -1,5 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 
 /**
@@ -177,6 +179,11 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 	onLoadOlder,
 	onRetryHydration,
 }) => {
+	// Subscribes this row to language changes: `t()` reads the current locale at
+	// call time, and without this subscription a language switch would leave the
+	// mounted row in the previous language until something else re-rendered it.
+	useI18nLocale();
+
 	// What assistive technology is told, and ONLY what the visible row does not
 	// already say. The visible button and text are in the accessibility tree
 	// already, so mirroring their sentence into a live region made a screen
@@ -190,13 +197,13 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 	// same contradiction D4 removes from the visual row.
 	const announcement =
 		state === "loading"
-			? "Loading earlier messages"
+			? t("ui.chat.canonical.older_history.loading")
 			: state === "failed"
 				? transportDown
-					? "Earlier messages did not load"
-					: "Could not load earlier messages"
+					? t("ui.chat.canonical.older_history.transport.long")
+					: t("ui.chat.canonical.older_history.failed.long")
 				: state === "unproven"
-					? "Earlier history not loaded"
+					? t("ui.chat.canonical.older_history.unproven.long")
 					: null;
 
 	const busy = state === "loading";
@@ -239,8 +246,12 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 				 * second red claim on the transcript's own notice.
 				 */
 				<span className="min-w-0 truncate text-ink-dim text-meta">
-					<span className={SHORT_COPY}>Not loaded</span>
-					<span className={FULL_COPY}>Earlier messages did not load</span>
+					<span className={SHORT_COPY}>
+						{t("ui.chat.canonical.older_history.transport.short")}
+					</span>
+					<span className={FULL_COPY}>
+						{t("ui.chat.canonical.older_history.transport.long")}
+					</span>
 				</span>
 			) : state === "failed" ? (
 				// Red, and not the terminal UI's quiet note. The TUI can afford a
@@ -257,10 +268,14 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 				<>
 					<span
 						className="min-w-0 truncate text-danger text-meta"
-						title="Could not load earlier messages"
+						title={t("ui.chat.canonical.older_history.failed.long")}
 					>
-						<span className={SHORT_COPY}>Did not load</span>
-						<span className={FULL_COPY}>Could not load earlier messages</span>
+						<span className={SHORT_COPY}>
+							{t("ui.chat.canonical.older_history.failed.short")}
+						</span>
+						<span className={FULL_COPY}>
+							{t("ui.chat.canonical.older_history.failed.long")}
+						</span>
 					</span>
 					<Button
 						variant="ghost"
@@ -268,7 +283,7 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 						className="shrink-0"
 						onClick={onLoadOlder}
 					>
-						Try again
+						{t("ui.chat.canonical.older_history.try_again")}
 					</Button>
 				</>
 			) : busy ? (
@@ -285,11 +300,11 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 					className="text-ink-muted"
 				>
 					<Spinner size="sm" />
-					Loading earlier messages
+					{t("ui.chat.canonical.older_history.loading")}
 				</Button>
 			) : state === "idle" ? (
 				<Button variant="ghost" size="sm" onClick={onLoadOlder}>
-					Load earlier messages
+					{t("ui.chat.canonical.older_history.load")}
 				</Button>
 			) : state === "windowed" ? (
 				/*
@@ -330,8 +345,8 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 					className="min-w-0 truncate text-ink-dim text-meta"
 					title={
 						transportDown
-							? "Earlier history above"
-							: "Earlier history above — scroll up to load"
+							? t("ui.chat.canonical.older_history.windowed.title")
+							: t("ui.chat.canonical.older_history.windowed.title_gesture")
 					}
 				>
 					{/* The gesture is the payload, so it is the clause that goes when
@@ -339,11 +354,14 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 					    cannot deliver it). Truncation would have dropped the gesture
 					    instead, which is the half a reader cannot infer. */}
 					<span className={SHORT_COPY}>
-						{transportDown ? "Earlier history above" : "Scroll up for earlier"}
+						{transportDown
+							? t("ui.chat.canonical.older_history.windowed.title")
+							: t("ui.chat.canonical.older_history.windowed.short_gesture")}
 					</span>
 					<span className={FULL_COPY}>
-						Earlier history above
-						{transportDown ? "" : " — scroll up to load"}
+						{transportDown
+							? t("ui.chat.canonical.older_history.windowed.title")
+							: t("ui.chat.canonical.older_history.windowed.title_gesture")}
 					</span>
 				</span>
 			) : state === "unproven" ? (
@@ -362,7 +380,7 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 				<>
 					<span
 						className="min-w-0 truncate text-ink-dim text-meta"
-						title="Earlier history not loaded"
+						title={t("ui.chat.canonical.older_history.unproven.long")}
 					>
 						{/* The short spelling keeps its SUBJECT (design review round 1, D3):
 						    four characters away the transport-down fault line renders "Not
@@ -371,8 +389,12 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 						    sentence. "Earlier not loaded" is 18 characters and fits the
 						    252px box with room to spare (measured in the narrow renders beside
 						    the arm's own spelling). */}
-						<span className={SHORT_COPY}>Earlier not loaded</span>
-						<span className={FULL_COPY}>Earlier history not loaded</span>
+						<span className={SHORT_COPY}>
+							{t("ui.chat.canonical.older_history.unproven.short")}
+						</span>
+						<span className={FULL_COPY}>
+							{t("ui.chat.canonical.older_history.unproven.long")}
+						</span>
 					</span>
 					{!transportDown && onRetryHydration && (
 						<Button
@@ -381,7 +403,7 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 							className="shrink-0"
 							onClick={onRetryHydration}
 						>
-							Try again
+							{t("ui.chat.canonical.older_history.try_again")}
 						</Button>
 					)}
 				</>
@@ -393,7 +415,7 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 				// the whole component exists to prevent. The terminal UI keeps its
 				// head notice for the same reason.
 				<span className="min-w-0 truncate text-ink-dim text-meta">
-					Start of conversation
+					{t("ui.chat.canonical.older_history.conversation_start")}
 				</span>
 			)}
 		</div>

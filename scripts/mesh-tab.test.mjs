@@ -116,6 +116,9 @@ const {
 	networkTopology,
 	meshGraph,
 	meshSummary,
+	deviceDisplayName,
+	deviceIdentityText,
+	compactDeviceId,
 	deviceStatLine,
 	meshNodeCount,
 	assignSlots,
@@ -160,6 +163,7 @@ const {
 	deviceSessionTotal,
 	resolveDrop,
 	planConfirm,
+	moveOptionCaption,
 	hoverSentence,
 	DRAG_THRESHOLD_PX,
 	IDLE_DRAG,
@@ -876,7 +880,7 @@ test("the summary line is a sentence about this mesh, and this device", () => {
 	const graph = meshGraph({ topology, peers });
 	assert.equal(
 		meshSummary(graph),
-		"2 networks · 3 devices · 1 reached · 1 no answer · this device is device …aaaaaa",
+		"2 networks · 3 devices · 1 reached · 1 no answer · this device is (unnamed device) d_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"counted by REACH (mesh redesign, D3), so an unanswered device is not filed as a failure it never was",
 	);
 	/*
@@ -921,7 +925,7 @@ test("the summary line is a sentence about this mesh, and this device", () => {
 	});
 	assert.equal(
 		meshSummary(census),
-		"1 network · 4 devices · 1 of them suspected · 2 no answer · 1 unknown · this device is device …aaaaaa",
+		"1 network · 4 devices · 1 of them suspected · 2 no answer · 1 unknown · this device is (unnamed device) d_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"the suspect fact is a qualifier on the census, and `unknown` is named so the six counts can be added up",
 	);
 });
@@ -996,6 +1000,85 @@ test("the node draws a rail and a state line, and the sentence moved to its name
 		/deviceNodeStatLine/,
 		"there is no second, node-width rendering of the sentence left to drift from the first",
 	);
+});
+
+test("member identity quotes real names and keeps absence visually distinct", () => {
+	assert.equal(deviceDisplayName({ name: "shared-node" }), '"shared-node"');
+	assert.equal(
+		deviceDisplayName({ name: "(unnamed device)" }),
+		'"(unnamed device)"',
+		"a real name cannot impersonate the absent-name state",
+	);
+	assert.equal(deviceDisplayName({ name: "" }), "(unnamed device)");
+	assert.equal(deviceDisplayName({}), "(unnamed device)");
+	assert.equal(
+		deviceDisplayName({ name: 'a "quoted"\nname' }),
+		'"a \\"quoted\\"\\nname"',
+		"stored quotes and newlines cannot forge another visual row",
+	);
+});
+
+test("member identity text always carries the authenticated id", () => {
+	const first = { id: DEVICE_A, name: "shared-node" };
+	const second = { id: DEVICE_B, name: "shared-node" };
+	const firstText = deviceIdentityText(first);
+	const secondText = deviceIdentityText(second);
+	assert.equal(firstText, `"shared-node" ${DEVICE_A}`);
+	assert.equal(secondText, `"shared-node" ${DEVICE_B}`);
+	assert.notEqual(
+		firstText,
+		secondText,
+		"equal stored names cannot make summary or action labels interchangeable",
+	);
+	const graph = meshGraph({
+		topology: networkTopology({
+			self_device_id: DEVICE_A,
+			networks: [
+				{
+					network_id: NET_ONE,
+					name: "identity-test-mesh",
+					epoch: 1,
+					trust: "active",
+					members: [first, second].map((device) =>
+						member(device.id, { name: device.name }),
+					),
+				},
+			],
+		}),
+		peers: peerList({ self_device_id: DEVICE_A, peers: [] }),
+	});
+	assert.ok(
+		meshSummary(graph).endsWith(`this device is ${firstText}`),
+		"the real summary producer uses that same identity, not the raw stored name",
+	);
+});
+
+test("compact member ids widen on collisions and fail safe without graph context", () => {
+	const displayed = [DEVICE_A, DEVICE_B];
+	assert.equal(compactDeviceId(DEVICE_A, displayed), "d_aaaaaaaa…");
+	assert.equal(compactDeviceId("d_short", ["d_short"]), "d_short");
+	assert.notEqual(
+		compactDeviceId(DEVICE_A, displayed),
+		compactDeviceId(DEVICE_B, displayed),
+	);
+	assert.equal(
+		compactDeviceId(DEVICE_A),
+		DEVICE_A,
+		"a caller that cannot see the other ids must not guess at a unique prefix",
+	);
+
+	const samePrefix = "d_0123456789abcdef0123456789abcdef";
+	const samePrefixOther = "d_0123456789abcdef0123456789abcde0";
+	const colliding = [samePrefix, samePrefixOther];
+	const compactA = compactDeviceId(samePrefix, colliding);
+	const compactB = compactDeviceId(samePrefixOther, colliding);
+	assert.notEqual(compactA, compactB);
+	assert.equal(compactA, samePrefix);
+	assert.equal(compactB, samePrefixOther);
+
+	const widened = ["d_012345678abcdef", "d_012345679abcdef"];
+	assert.equal(compactDeviceId(widened[0], widened), "d_012345678…");
+	assert.equal(compactDeviceId(widened[1], widened), "d_012345679…");
 });
 
 /* --------------------------------------------------------------- positions */
@@ -3296,7 +3379,7 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 	assert.equal(offload.kind, "plan");
 	assert.equal(offload.plan.to, PEER);
 	assert.equal(offload.plan.keep, false);
-	assert.match(offload.plan.verb, /^Move to devon-laptop$/);
+	assert.equal(offload.plan.verb, 'Move to "devon-laptop" d_bbbbbbbb…');
 	assert.equal(offload.alternatives.length, 1);
 	assert.equal(
 		offload.alternatives[0].keep,
@@ -3304,7 +3387,10 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 		"the reversible half is offered",
 	);
 	assert.equal(offload.alternatives[0].lost, null, "a copy loses nothing");
-	assert.match(offload.plan.lost, /deleted once devon-laptop has it/);
+	assert.equal(
+		offload.plan.lost,
+		'The copy on this device is deleted once "devon-laptop" d_bbbbbbbb… has it.',
+	);
 
 	// A recall: the opposite protocol, through the same route.
 	const recall = resolveDrop(
@@ -3347,6 +3433,220 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 		resolveDrop(offloadDrag, { kind: "ground" }, context).kind,
 		"none",
 		"a drop on empty ground is a change of mind, not an error to report",
+	);
+});
+
+function duplicateDropContext(suspect = false) {
+	const graph = meshGraph({
+		topology: networkTopology({
+			self_device_id: SELF,
+			networks: [
+				{
+					network_id: NET_HOME,
+					name: "identity-test-mesh",
+					epoch: 1,
+					trust: "active",
+					members: [
+						member(SELF, { name: "studio-mac" }),
+						...[PEER, THIRD].map((id) =>
+							member(id, {
+								name: "shared-node",
+								suspect,
+								capabilities: ["sessions", "transfer"],
+							}),
+						),
+					],
+				},
+			],
+		}),
+		peers: peerList({
+			self_device_id: SELF,
+			peers: [PEER, THIRD].map((device_id) => ({
+				device_id,
+				name: "shared-node",
+				reachable: true,
+				session_count: 1,
+			})),
+		}),
+	});
+	return {
+		selfDeviceId: graph.selfDeviceId,
+		devices: new Map(graph.devices.map((device) => [device.id, device])),
+		networks: new Map(graph.networks.map((network) => [network.id, network])),
+	};
+}
+
+test("duplicate recall sources have distinct destructive loss sentences", () => {
+	const context = duplicateDropContext();
+	const losses = [PEER, THIRD].map((ownerId) => {
+		const remote = session({
+			locality: "remote",
+			owner_device: ownerId,
+			owner_device_name: "shared-node",
+		});
+		const verdict = resolveDrop(
+			// Deliberately supply the old raw label: the resolver must not trust it.
+			drag(remote, ownerId, "shared-node"),
+			{ kind: "device", deviceId: SELF },
+			context,
+		);
+		assert.equal(verdict.kind, "plan");
+		return verdict.plan.lost;
+	});
+	assert.deepEqual(losses, [
+		'The copy on "shared-node" d_bbbbbbbb… is deleted once this device has it.',
+		'The copy on "shared-node" d_eeeeeeee… is deleted once this device has it.',
+	]);
+	assert.notEqual(losses[0], losses[1]);
+
+	for (const file of ["mesh-page.tsx", "mesh-card.tsx", "mesh-canvas.tsx"]) {
+		assert.ok(
+			!source(`src/renderer/src/features/mesh/${file}`).includes(
+				"owner?.label",
+			),
+			`${file} must not reintroduce the raw owner-label bypass`,
+		);
+	}
+});
+
+test("each move option's caption names the copy its own direction deletes (UX U1)", () => {
+	// UX review round 1, U1: the recall dialog's body named the OWNER's copy as
+	// deleted while the preselected option said "the copy here is deleted" - here
+	// being the device that gains it. Each caption is pinned from a real resolver
+	// verdict, so a direction-blind caption cannot pass on either arm.
+	const context = duplicateDropContext();
+	const recall = resolveDrop(
+		drag(
+			session({
+				locality: "remote",
+				owner_device: PEER,
+				owner_device_name: "shared-node",
+			}),
+			PEER,
+			"shared-node",
+		),
+		{ kind: "device", deviceId: SELF },
+		context,
+	);
+	const outbound = resolveDrop(
+		drag(session(), SELF, "studio-mac"),
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(recall.kind, "plan");
+	assert.equal(outbound.kind, "plan");
+	assert.equal(recall.plan.to, "local");
+	assert.notEqual(outbound.plan.to, "local");
+
+	const captions = (verdict) =>
+		[verdict.plan, ...verdict.alternatives].map((option) => [
+			option.keep ? "copy" : "move",
+			moveOptionCaption(option),
+		]);
+	assert.deepEqual(captions(recall), [
+		["move", "the copy there is deleted once it arrives here"],
+		["copy", "the original stays where it is"],
+	]);
+	assert.deepEqual(captions(outbound), [
+		["move", "the copy here is deleted once it arrives"],
+		["copy", "the original stays where it is"],
+	]);
+	// The recall caption and the body it sits under name the same, remote copy.
+	assert.match(
+		recall.plan.lost,
+		/^The copy on "shared-node" d_bbbbbbbb… is deleted/,
+	);
+
+	// The dialog paints the helper, not a second, direction-blind branch.
+	const actions = source("src/renderer/src/features/mesh/mesh-actions.tsx");
+	assert.match(actions, /\{moveOptionCaption\(option\)\}/);
+	assert.ok(
+		!actions.includes("ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it"),
+		"mesh-actions.tsx must not pick a deletion caption without the plan's direction",
+	);
+});
+
+test("absent recall owners are named by their full id, not the caller's text", () => {
+	// Agent review round 3 F1 / QA round 3 Q-1: an owner the graph does not hold
+	// has no graph to prove a short prefix unique, so its full id is what tells two
+	// same-named owners apart in the destructive confirmation.
+	const context = duplicateDropContext();
+	const ABSENT_ONE = `d_${"1".repeat(32)}`;
+	const ABSENT_TWO = `d_${"2".repeat(32)}`;
+	const lossFor = (ownerId, ownerName, suppliedLabel) => {
+		const verdict = resolveDrop(
+			drag(
+				session({
+					locality: "remote",
+					owner_device: ownerId,
+					owner_device_name: ownerName,
+				}),
+				ownerId,
+				suppliedLabel,
+			),
+			{ kind: "device", deviceId: SELF },
+			context,
+		);
+		assert.equal(verdict.kind, "plan");
+		return verdict.plan.lost;
+	};
+
+	assert.equal(context.devices.has(ABSENT_ONE), false);
+	assert.equal(context.devices.has(ABSENT_TWO), false);
+	const absent = [ABSENT_ONE, ABSENT_TWO].map((ownerId) =>
+		lossFor(ownerId, "shared-node", "shared-node"),
+	);
+	assert.deepEqual(absent, [
+		`The copy on "shared-node" ${ABSENT_ONE} is deleted once this device has it.`,
+		`The copy on "shared-node" ${ABSENT_TWO} is deleted once this device has it.`,
+	]);
+	assert.notEqual(absent[0], absent[1]);
+
+	// An empty wire name reads as absence, never as a quoted empty name.
+	assert.equal(
+		lossFor(ABSENT_ONE, "", ""),
+		`The copy on (unnamed device) ${ABSENT_ONE} is deleted once this device has it.`,
+	);
+
+	// Caller text that merely LOOKS formatted is not identity: a spoofed label
+	// naming another device's id cannot replace the owner's own id.
+	assert.equal(
+		lossFor(ABSENT_ONE, "shared-node", `"shared-node" ${ABSENT_TWO}`),
+		absent[0],
+	);
+
+	// Known-owner control: a graph-resident owner keeps the graph-unique compact
+	// id, so the absent branch's full id is not leaking into the ordinary case.
+	assert.equal(
+		lossFor(PEER, "shared-node", `"shared-node" ${ABSENT_TWO}`),
+		'The copy on "shared-node" d_bbbbbbbb… is deleted once this device has it.',
+	);
+});
+
+test("duplicate suspect targets have distinct refusal identities", () => {
+	const context = duplicateDropContext(true);
+	const sentences = [PEER, THIRD].map((deviceId) => {
+		const verdict = resolveDrop(
+			drag(session(), SELF, SELF_LABEL),
+			{ kind: "device", deviceId },
+			context,
+		);
+		assert.equal(verdict.kind, "refused");
+		assert.equal(verdict.code, "suspect_device");
+		return verdict.sentence;
+	});
+	assert.match(sentences[0], /"shared-node" d_bbbbbbbb…/);
+	assert.match(sentences[1], /"shared-node" d_eeeeeeee…/);
+	assert.notEqual(sentences[0], sentences[1]);
+	assert.ok(
+		!source("src/renderer/src/features/mesh/mesh-node.tsx").includes(
+			"ownerLabel={device.label}",
+		),
+	);
+	assert.ok(
+		!source("src/renderer/src/features/mesh/mesh-card.tsx").includes(
+			"chipFact(session, device.label",
+		),
 	);
 });
 
@@ -3645,7 +3945,7 @@ test("the chip's spoken fact reads the reach model, and its stripe the same reac
 	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
 	assert.match(
 		card,
-		/chipFact\(session, device\.label, deviceReach\(device\)\)/,
+		/chipFact\(\s*session,\s*deviceIdentityText\(device, deviceIds, true\),\s*deviceReach\(device\),?\s*\)/,
 	);
 });
 

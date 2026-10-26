@@ -29,8 +29,10 @@
  */
 
 import assert from "node:assert/strict";
-import { unlink, writeFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { after, test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -115,11 +117,30 @@ const bundle = await build({
 	},
 	write: false,
 });
-const bundlePath = new URL(
-	`./_radient-session-issue-${process.pid}.mjs`,
-	import.meta.url,
+/*
+ * WRITTEN UNDER `node_modules/.cache/`, NOT BESIDE THIS FILE. `packages:
+ * "external"` keeps bare specifiers bare, so the bundle needs a real path - but
+ * a path under `scripts/` is a path the harness scans: `python-bytecode-cache`'s
+ * `harnessSources()` lists every `.mjs` under `scripts/` and reads each one, so a
+ * bundle created and unlinked while that other lane runs made the scan read a
+ * file that had just vanished (ENOENT, shard 0, twice). The cache directory
+ * resolves the same bare specifiers, is outside every scan, and follows
+ * `chat-sidebar-pins`'s convention.
+ */
+const bundleDir = join(
+	process.cwd(),
+	"node_modules/.cache/radient-session-issue",
 );
+await mkdir(bundleDir, { recursive: true });
+const bundlePath = join(bundleDir, `session-issue-${process.pid}.mjs`);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
+let bundled;
+try {
+	bundled = await import(pathToFileURL(bundlePath).href);
+} finally {
+	// The import is the only reader, so the file goes even when it throws.
+	await unlink(bundlePath).catch(() => {});
+}
 const {
 	QueryClient,
 	QueryClientProvider,
@@ -127,8 +148,7 @@ const {
 	radientSessionIssueKey,
 	radientUserKeys,
 	useRadientSessionIssue,
-} = await import(bundlePath.href);
-await unlink(bundlePath);
+} = bundled;
 
 const { createRoot } = await import("react-dom/client");
 const h = React.createElement;

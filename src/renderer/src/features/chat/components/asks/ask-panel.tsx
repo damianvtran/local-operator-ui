@@ -704,7 +704,7 @@ const AskQuestionField = ({
 					>
 						<AskMark chosen={other.open} multi={multi} />
 						<span className="min-w-0 flex-1">
-							<span>Other</span>
+							<span>{t("ui.chat.asks.other_label")}</span>
 							{/*
 							 * A REAL SPACE between the label and the hint, not just the `ms-1.5`
 							 * margin: a margin is invisible to the accessible-name computation,
@@ -1217,7 +1217,9 @@ const AskRow = ({
 					size={16}
 				/>
 				<span className="min-w-0 flex-1 text-ink text-xs">
-					{urgent ? <span className="sr-only">Urgent. </span> : null}
+					{urgent ? (
+						<span className="sr-only">{t("ui.chat.asks.urgent")} </span>
+					) : null}
 					{statusDismissReason === null
 						? askStatusText(ask, nowMs)
 						: dismissReceipt(statusDismissReason)}
@@ -1295,13 +1297,15 @@ const AskRow = ({
 												 */
 												<span className="text-ink-muted text-xs">
 													<span aria-hidden="true">{" \u00b7 "}</span>
-													Other
+													{t("ui.chat.asks.other_label")}
 												</span>
 											) : null}
 										</span>
 									))
 								) : (
-									<span className="text-ink text-sm">No answer given</span>
+									<span className="text-ink text-sm">
+										{t("ui.chat.asks.no_answer")}
+									</span>
 								)}
 							</div>
 						);
@@ -1393,9 +1397,7 @@ const AskRow = ({
 						size={14}
 						className="mt-0.5 shrink-0 text-success"
 					/>
-					<span className="text-ink">
-						Changed — the agent has not been handed it yet.
-					</span>
+					<span className="text-ink">{t("ui.chat.asks.changed_handoff")}</span>
 				</p>
 			) : null}
 			{/*
@@ -1445,7 +1447,7 @@ const AskRow = ({
 								: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
 						)}
 					>
-						Send answer
+						{t("ui.chat.asks.send_answer")}
 					</button>
 					{canDecline ? (
 						/*
@@ -1463,7 +1465,7 @@ const AskRow = ({
 							onClick={() => onDecline(ask)}
 							className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
 						>
-							Decline
+							{t("ui.chat.asks.decline")}
 						</button>
 					) : null}
 				</div>
@@ -1520,7 +1522,7 @@ const AskRow = ({
 									 * `Send answer` as the same act done twice rather than as a second
 									 * mechanic with its own vocabulary.
 									 */}
-									Update answer
+									{t("ui.chat.asks.update_answer")}
 								</button>
 								<button
 									type="button"
@@ -1533,7 +1535,7 @@ const AskRow = ({
 									 */
 									className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
 								>
-									Cancel
+									{t("ui.chat.asks.cancel")}
 								</button>
 							</div>
 						</>
@@ -1558,7 +1560,7 @@ const AskRow = ({
 							}}
 							className="self-start rounded-md border border-control px-3 py-1.5 text-ink text-sm hover:bg-sunken"
 						>
-							Change answer
+							{t("ui.chat.asks.change_answer")}
 						</button>
 					)}
 				</div>
@@ -2227,7 +2229,7 @@ export const AskPanel = ({
 		 */
 		<fieldset
 			data-lo-ask-filter={filter}
-			aria-label="Filter asks"
+			aria-label={t("ui.chat.asks.filter_label")}
 			className="m-0 flex items-center gap-1 border-0 p-0 px-1"
 		>
 			{(
@@ -2418,7 +2420,9 @@ export const AskPanel = ({
 					 * row, a legend above them names twice what the rows already say.
 					 */}
 					{showPending && shown.pending.length > 0 ? (
-						<p className="px-3 pt-1 text-ink-dim text-meta">Settled</p>
+						<p className="px-3 pt-1 text-ink-dim text-meta">
+							{t("ui.chat.asks.settled_heading")}
+						</p>
 					) : null}
 					{(showPending ? shown.settled : settled).map((presentation) =>
 						collapsedRow(presentation),

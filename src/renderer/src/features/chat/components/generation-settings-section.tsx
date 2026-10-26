@@ -11,6 +11,7 @@ import type {
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Info, Settings, SlidersHorizontal } from "lucide-react";
@@ -432,7 +433,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 
 						// Validate that the seed is a valid number if provided
 						if (value.trim() && Number.isNaN(seedValue as number)) {
-							showErrorToast("Seed must be a valid number");
+							showErrorToast(t("ui.notices.chat.seed_invalid"));
 							return;
 						}
 

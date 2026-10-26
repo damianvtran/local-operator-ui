@@ -1,0 +1,393 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-round-2-translation-audit-of-uncommitted-chat-surfaces-candidates",
+  "batch": "chat-surfaces",
+  "round": 2,
+  "branch": "i18n-chat-surfaces",
+  "head": "e1ca500e5abcce535f8eabeb899197014dd7b787",
+  "base": "20225f33d00eb4a06e349322dc92e826b29b2e8e",
+  "pr": null,
+  "locale": "es",
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "actual_model": "not separately observable for this run: this session's own records name provider=radient, model=auto (transcript.jsonl; tail-anchor.v1.json selector radient/auto). No descent, failover or second model id is recorded, so no concrete upstream model is asserted.",
+  "model_route": {
+    "requested": "radient/auto",
+    "configured": {
+      "provider": "radient",
+      "model": "auto"
+    },
+    "observed_fallback": "none recorded in this session's model provenance; absence of a record is not proof that no provider-side routing happened, so none is claimed either way",
+    "evidence": [
+      "transcript.jsonl: provider=radient, model_id=auto",
+      "tail-anchor.v1.json: selection_payloads[0].details.selector=radient/auto"
+    ],
+    "caveat": "The harness does not expose a distinct served-model id to a subagent session. Reported as the configured route rather than invented."
+  },
+  "session": "41f2961e15d5",
+  "instance": "41f2961e15d5",
+  "date": "2026-10-26",
+  "independence": "Independent session from the chat-surfaces translator: this auditor did not translate these files and edited none of them. No translation API, SDK or MT service was used to compare or back-translate; every judgement is reasoning over the source and target bytes.",
+  "source_dir": "src/i18n/catalogues/en",
+  "target_dir": "src/i18n/catalogues/es",
+  "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide_sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+  "method": "Working-tree candidates bound by hash (head e1ca500e5abc, uncommitted). Read the es style guide and glossary, then the English catalogue, its .context.json sidecar and the target file for every key in the four namespaces (283 keys), and checked with the repository's own ICU runtime (intl-messageformat / @formatjs/icu-messageformat-parser, the module src/i18n/messages.ts renders with) that every target message parses, carries exactly the source's placeholder names and types, and declares every CLDR category es can produce. Rendered the new key and every plural key in the group at 0/1/2/5/1000 (plus 1,000,000 and 1,500,000 for the many/other boundary). Round 1's receipt was read afterwards, only to confirm its findings against the current bytes.",
+  "keys_audited": 283,
+  "keys_new": 178,
+  "identical_values": [],
+  "identical_stub_count": 0,
+  "input_hashes": [
+    {
+      "role": "source",
+      "namespace": "ui.chat",
+      "path": "src/i18n/catalogues/en/ui.chat.json",
+      "sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0"
+    },
+    {
+      "role": "context",
+      "namespace": "ui.chat",
+      "path": "src/i18n/catalogues/en/ui.chat.context.json",
+      "sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+    },
+    {
+      "role": "target",
+      "namespace": "ui.chat",
+      "path": "src/i18n/catalogues/es/ui.chat.json",
+      "sha256": "4937072e3526f94fe91b7e930eed83ac938dd7c42342a5a47a21b075fed0c4a5"
+    },
+    {
+      "role": "source",
+      "namespace": "ui.chat.canonical",
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce"
+    },
+    {
+      "role": "context",
+      "namespace": "ui.chat.canonical",
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+    },
+    {
+      "role": "target",
+      "namespace": "ui.chat.canonical",
+      "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+      "sha256": "c37e3318c2fdfbbe853136957fdb7ef5b81b5094016dbf305f1b34a1007a12d7"
+    },
+    {
+      "role": "source",
+      "namespace": "ui.chat.run_details",
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+      "sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51"
+    },
+    {
+      "role": "context",
+      "namespace": "ui.chat.run_details",
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+      "sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+    },
+    {
+      "role": "target",
+      "namespace": "ui.chat.run_details",
+      "path": "src/i18n/catalogues/es/ui.chat.run_details.json",
+      "sha256": "f52290c0fcc471ed7d8d31b7ff06c4d3d198b2619fed5777a8910a88670f6381"
+    },
+    {
+      "role": "source",
+      "namespace": "ui.chat.asks",
+      "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+      "sha256": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd"
+    },
+    {
+      "role": "context",
+      "namespace": "ui.chat.asks",
+      "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+      "sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+    },
+    {
+      "role": "target",
+      "namespace": "ui.chat.asks",
+      "path": "src/i18n/catalogues/es/ui.chat.asks.json",
+      "sha256": "e4f16c61a73ebcd952987740bbfe42b17b6cf38654da3e98866165f46014130f"
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "verdict": "passed",
+  "verdict_reason": "No BLOCKER or MAJOR remains. Round 1's one BLOCKER (a literal redaction token) and one MAJOR (an ungrammatical wake stamp) are both resolved, six of seven minors/nits are resolved with the suggested wording, and the remaining MINOR is a missing style-guide record rather than a copy defect. The added key todos.hidden_summary carries a valid es plural (one/many/other) and renders correctly at 0, 1, 2, 5, 1000, 1,000,000 and 1,500,000. No adjacent breakage found: label-in-name references match the labels the es UI actually renders, joined fragments still compose, approval words the app prints in English are kept English, typography follows the es guide and no string is non-NFC or carries a manual bidi mark.",
+  "round1_receipt": "i18n/receipts/es-chat-surfaces-audit-9af5567c776b.json",
+  "round1_receipt_sha256": "7d2cb6551d41422d410886f5f5273d3d8ca4463770119fb5ee65ffe899865f40",
+  "round1_resolution": [
+    {
+      "id": "es-chat-rd-B1",
+      "severity": "blocker",
+      "key": "ui.chat.run_details.mcp.credential_removed",
+      "resolution": "resolved",
+      "current": "Se eliminó la credencial guardada.",
+      "evidence": "No bracketed English token remains anywhere in the four files; the value is decked plain text with the glossary term 'credencial' (singular of es 'credenciales'), and nothing in the string is a display artefact."
+    },
+    {
+      "id": "es-chat-rd-M1",
+      "severity": "major",
+      "key": "ui.chat.run_details.wake.cancel_wake_due",
+      "resolution": "resolved",
+      "current": "Cancelar el despertar previsto para {due}",
+      "evidence": "'previsto para' takes both shapes the placeholder can now produce: a bare clock on the same day and a date plus clock otherwise. The source was also fixed since round 1: formatWakeDue uses currentLocale() and the shared Intl layer (run-detail-model.ts:1611-1650), so {due} no longer carries English month names or a pinned 12-hour clock."
+    },
+    {
+      "id": "es-chat-m1",
+      "severity": "minor",
+      "key": "ui.chat.error_block.heading",
+      "resolution": "resolved-with-alternative",
+      "current": "Detalle del error",
+      "suggestion_applied": false,
+      "evidence": "The reported defect was the Error/Failed inversion ('Fallo' where English says 'Error'). 'Detalle del error' removes the inversion and names the block's content; the family now reads Detalle del error / Error en el diagrama de Mermaid / Error de renderizado, and the outcome verb is reserved for Falló. Different from the suggested 'Error' but a reasonable choice."
+    },
+    {
+      "id": "es-chat-n1",
+      "severity": "nit",
+      "key": "ui.chat.aside.title",
+      "resolution": "resolved",
+      "current": "Consulta al margen"
+    },
+    {
+      "id": "es-chat-canonical-n1",
+      "severity": "nit",
+      "key": "ui.chat.canonical.older_history.windowed.title",
+      "resolution": "resolved",
+      "current": "Historial anterior arriba"
+    },
+    {
+      "id": "es-chat-rd-m1",
+      "severity": "minor",
+      "key": "ui.chat.run_details.todos.hidden",
+      "resolution": "resolved",
+      "current": "· {count} sin mostrar",
+      "evidence": "The invariant participle removes the 1-row agreement break, and it still renders from the pre-formatted string the component passes."
+    },
+    {
+      "id": "es-chat-rd-m2",
+      "severity": "minor",
+      "key": "ui.chat.run_details.monitors.title",
+      "resolution": "open",
+      "current": "Monitores",
+      "evidence": "The word was kept as recommended, but the recommended style-guide record was not made: ~/local-operator/i18n/style-guides/es.md is byte-identical to the round-1 hash. Carried forward as es-chat-rd-r2-m1."
+    },
+    {
+      "id": "es-chat-rd-m3",
+      "severity": "minor",
+      "key": "ui.chat.run_details.reader.failed",
+      "resolution": "resolved",
+      "current": "Falló"
+    },
+    {
+      "id": "es-chat-asks-m1",
+      "severity": "minor",
+      "key": "ui.chat.asks.settled_heading",
+      "resolution": "resolved",
+      "current": "Atendidas",
+      "evidence": "Covers both halves of the settled set, whose rows read 'Descartada — resuelta en la conversación' and 'Descartada — ya no hace falta'."
+    }
+  ],
+  "new_key_check": {
+    "key": "ui.chat.run_details.todos.hidden_summary",
+    "en": "{count, plural, one {{count, number, ::group-off} hidden} other {{count, number, ::group-off} hidden}}",
+    "es": "{count, plural, one {{count, number, ::group-off} tarea oculta} many {{count, number, ::group-off} de tareas ocultas} other {{count, number, ::group-off} tareas ocultas}}",
+    "categories": {
+      "declared": [
+        "one",
+        "many",
+        "other"
+      ],
+      "cldr_es": [
+        "one",
+        "many",
+        "other"
+      ],
+      "complete": true,
+      "note": "'few' correctly absent; es style guide forbids it."
+    },
+    "rendered_with": "IntlMessageFormat(es) + Intl.PluralRules('es')",
+    "render_matrix": {
+      "0": "0 tareas ocultas",
+      "1": "1 tarea oculta",
+      "2": "2 tareas ocultas",
+      "5": "5 tareas ocultas",
+      "1000": "1000 tareas ocultas",
+      "1000000": "1000000 de tareas ocultas",
+      "1500000": "1500000 tareas ocultas"
+    },
+    "render_note": "Grouping is off by design on both arms (source note: a plain integer count of folded rows), so 1000 renders ungrouped; 1,000,000 takes the many arm and 1,500,000 the other arm, exactly as the es rule states.",
+    "usage": "src/renderer/src/features/chat/components/run-details/run-detail-todos.tsx:333 passes phase.hidden as a number into the Disclosure summary; the round-1 observation that this line was a hardcoded English literal is fixed at source."
+  },
+  "mechanical": {
+    "icu_parser": "@formatjs/icu-messageformat-parser 3.5.21 via intl-messageformat, resolved from the worktree's own node_modules",
+    "keys_checked": 283,
+    "placeholder_and_type_mismatches": 0,
+    "select_option_key_mismatches": 0,
+    "plural_declaration_diffs": [
+      "7 plural messages add the es 'many' arm to the source's one/other pair: ui.chat.composer.status.loop_progress_turns, ui.chat.run_details.todos.hidden_summary, chip.todos_open, chip.subagents_failed, chip.attention, chip.mcp_attention, ui.chat.asks.context.messages_since - all required by the es guide, none missing a reachable category"
+    ],
+    "plural_render_sweep": "every plural key in the group rendered at 0/1/2/5/1000; all grammatical (0 and 2 take other, 1 takes one)",
+    "nfc": "all 283 target values are NFC (no combining-mark drift)",
+    "markup_and_tokens": "no rich-text tags in this group; backticked spans, --flags, paths, identifiers and file extensions identical to source; no control or format characters",
+    "typography": "curly quotes, spaced em dashes and the ellipsis character per the es guide; no space before : ; ? !; no straight quotes; no exclamation marks; inverted punctuation only on whole-string questions",
+    "formality": "tu throughout; no usted/vosotros; imperative verbs in the infinitive or tu-imperative per guide; no Title Case beyond product and surface names",
+    "repo_validators": [
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "exit": 0,
+        "result": "src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+        "verbatim": true
+      },
+      {
+        "command": "node scripts/i18n/check-duplicates.mjs",
+        "exit": 0,
+        "result": "ok — 763 file(s) scanned, 0 duplicate key(s)",
+        "verbatim": true
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "exit": 0,
+        "result": "ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).",
+        "verbatim": true
+      },
+      {
+        "command": "node scripts/i18n/check-strings.mjs",
+        "exit": 0,
+        "result": "ok — 1368 file(s) scanned, 262 literal(s) at or below the baseline",
+        "verbatim": true
+      },
+      {
+        "command": "node scripts/i18n/check-coverage.mjs",
+        "exit": 0,
+        "result": "ok — 7 gated language(s) over 85 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).",
+        "verbatim": true
+      },
+      {
+        "command": "node scripts/i18n/ledger-check.mjs",
+        "exit": 1,
+        "result": "FAILED — 91 finding(s) across 595 ledger entr(ies)",
+        "note": "Expected in-flight state, not an es copy defect: every shipped locale's rows still point at pre-round-1 receipts and pre-round-1 bytes (for es the four rows name the committed target hashes 33f6d45/bcdca68/cc95b9c/1a47de5 and the English hashes before the source fix). Re-pointing those rows is the owner's step once the round-2 receipts land, and this receipt is the es input to it.",
+        "verbatim": true
+      }
+    ],
+    "repo_validators_note": "Results are the tail line each command printed in this run (verbatim, absolute path prefix omitted). ledger-check's failure is the in-flight ledger state described in its note, not an es copy defect."
+  },
+  "adjacent_checks": [
+    {
+      "check": "label-in-name",
+      "result": "pass",
+      "detail": "'Copiar ruta del archivo' matches ui.common.file_actions.copy_file_path; 'Ajustes' matches the es surface name; 'seccion Proveedores' matches ui.settings.model.provider_callout.providers_link 'Proveedores'; 'Approve o Deny' matches the client's own English APPROVAL_OPTIONS (src/renderer/src/features/chat/approval-words.ts:48-51), which are not catalogue copy."
+    },
+    {
+      "check": "joined fragments",
+      "result": "pass",
+      "detail": "error_block before/link/after arms compose with the feminine link nouns the es file supplies (la pagina de ajustes, la seccion Proveedores), including the comma-first invalid_key arm."
+    },
+    {
+      "check": "approval words printed in English",
+      "result": "pass",
+      "detail": "yes / no / 1 / 2 stay unquoted-and-quoted literals in the es hints; they are what the answer route accepts, and the hints keep them as typed tokens inside curly quotes."
+    },
+    {
+      "check": "typography and spacing",
+      "result": "pass",
+      "detail": "es punctuation rules hold across all four files; the only EN/ES difference is the progress ellipsis (English '...' vs the guide's '…'), which is the guide's own rule."
+    },
+    {
+      "check": "NFC / bidi",
+      "result": "pass",
+      "detail": "no value is non-NFC and none contains LRM/RLM/embedding marks; es is LTR so no mirrored-glyph risk."
+    }
+  ],
+  "observations_outside_the_catalogue": [
+    {
+      "where": "src/renderer/src/features/chat/components/run-details/run-detail-model.ts:1611-1650",
+      "note": "formatWakeDue is now locale-driven (currentLocale(), shared Intl formatter, comma stripped for embedding), so {due} renders the locale's own month names and clock convention. Round 1's English-months observation is fixed at source. Not a catalogue finding."
+    },
+    {
+      "where": "src/renderer/src/features/chat/components/run-details/run-detail-todos.tsx:290,333",
+      "note": "The phase header uses todos.hidden ('· 5 sin mostrar') while the partial-shed footer uses todos.hidden_summary ('5 tareas ocultas'). The two never render together (the footer is suppressed when the header already carries the count), so the different wording is a deliberate positional difference, not an inconsistency. Noted so a later reader does not 'fix' it into one string."
+    },
+    {
+      "where": "src/i18n/catalogues/es/ui.chat.canonical.json:23-24",
+      "note": "'Este equipo' is used for 'this machine' while 'equipo' is also the recorded rendering of 'team'. Judged acceptable and not raised as a finding: 'Este equipo' is the established es-ES rendering (Windows uses it for 'This PC'), the sentences read as a machine from context, and round 1 approved the same bytes."
+    }
+  ],
+  "limitations": [
+    "No rendered frame: widths and overflow are codepoint reasoning against the sidecar hints (two maxCells hints in this group: 18 and 16 cells, both met), not a browser or screenshot claim.",
+    "This is the round-2 pass for the es locale; it re-read the whole group rather than only the remediation delta, but the error/approval family was re-read a second time within this same session, which is not an independent second auditor.",
+    "The ledger row for each namespace is not rewritten here (auditor scope): the four es rows remain changes_requested in ledger-check until the owner re-points them at this receipt."
+  ],
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 115,
+      "keys_new": 71,
+      "sha256": {
+        "en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+        "es": "4937072e3526f94fe91b7e930eed83ac938dd7c42342a5a47a21b075fed0c4a5"
+      },
+      "context_sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372",
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 60,
+      "keys_new": 13,
+      "sha256": {
+        "en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+        "es": "c37e3318c2fdfbbe853136957fdb7ef5b81b5094016dbf305f1b34a1007a12d7"
+      },
+      "context_sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04",
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_audited": 82,
+      "keys_new": 80,
+      "sha256": {
+        "en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+        "es": "f52290c0fcc471ed7d8d31b7ff06c4d3d198b2619fed5777a8910a88670f6381"
+      },
+      "context_sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919",
+      "findings": [
+        {
+          "id": "es-chat-rd-r2-m1",
+          "severity": "minor",
+          "key": "ui.chat.run_details.monitors.title",
+          "current": "Monitores",
+          "problem": "Glossary section 2 records es monitor -> monitorizacion, and the es style guide still carries no object/activity call, so the copy's object term has no recorded authority (glossary footnote 7 records exactly this split for hi). Round 1 raised the same point (es-chat-rd-m2) and recommended keeping the object word and recording the split; the word was kept and the guide is byte-identical (sha256 6546611...), so the recorded call is still missing. The copy itself is consistent: es uses the object term for monitors everywhere and uses no activity term at all (zero occurrences of monitorizacion in the es catalogues), so nothing else reads wrong.",
+          "suggestion": "Record in i18n/style-guides/es.md, under Locale calls: monitor (stored object, section heading and cancel copy) -> monitor; monitoring (activity) -> monitorizacion, mirroring glossary footnote 7's hi precedent. No catalogue change needed.",
+          "gating": false,
+          "owner": "es translation lane / style-guide owner (auditor cannot edit)"
+        }
+      ]
+    },
+    "ui.chat.asks": {
+      "namespace": "ui.chat.asks",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 26,
+      "keys_new": 14,
+      "sha256": {
+        "en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+        "es": "e4f16c61a73ebcd952987740bbfe42b17b6cf38654da3e98866165f46014130f"
+      },
+      "context_sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c",
+      "findings": []
+    }
+  }
+}

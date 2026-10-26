@@ -67,43 +67,61 @@ import { orgSurfaceNotice, orgSurfaceReady } from "./org-surface-gate";
  * upstream, so an option this control offered that the API does not implement
  * would be a sort that does not happen.
  */
+/**
+ * The sort options' WORDS, as catalogue keys. A union of literals rather than
+ * `MessageKey`, because `t()` only accepts a bare key when the message takes no
+ * arguments and the compiler must be able to see that from the type.
+ */
+type SortLabel =
+	| "ui.hub.pages.sort.most_downloaded"
+	| "ui.hub.pages.sort.most_liked"
+	| "ui.hub.pages.sort.most_favourited"
+	| "ui.hub.pages.sort.newest"
+	| "ui.hub.pages.sort.recently_updated"
+	| "ui.hub.pages.sort.name_asc";
+
 const SORT_OPTIONS: {
 	value: string;
-	label: string;
+	label: SortLabel;
 	sort: PublicAgentSort;
 	order: "asc" | "desc";
 }[] = [
 	{
 		value: "download_count:desc",
-		label: "Most downloaded",
+		label: "ui.hub.pages.sort.most_downloaded",
 		sort: "download_count",
 		order: "desc",
 	},
 	{
 		value: "like_count:desc",
-		label: "Most liked",
+		label: "ui.hub.pages.sort.most_liked",
 		sort: "like_count",
 		order: "desc",
 	},
 	{
 		value: "favourite_count:desc",
-		label: "Most favourited",
+		label: "ui.hub.pages.sort.most_favourited",
 		sort: "favourite_count",
 		order: "desc",
 	},
 	{
 		value: "created_at:desc",
-		label: "Newest",
+		label: "ui.hub.pages.sort.newest",
 		sort: "created_at",
 		order: "desc",
 	},
 	{
 		value: "updated_at:desc",
-		label: "Recently updated",
+		label: "ui.hub.pages.sort.recently_updated",
 		sort: "updated_at",
 		order: "desc",
 	},
-	{ value: "name:asc", label: "Name (A to Z)", sort: "name", order: "asc" },
+	{
+		value: "name:asc",
+		label: "ui.hub.pages.sort.name_asc",
+		sort: "name",
+		order: "asc",
+	},
 ];
 
 /**
@@ -116,8 +134,8 @@ const SORT_OPTIONS: {
  * the control that says which question is being asked.
  */
 const SEARCH_SCOPES = [
-	{ value: "name", label: "Name" },
-	{ value: "description", label: "Description" },
+	{ value: "name", label: "ui.hub.pages.search_field.name" },
+	{ value: "description", label: "ui.hub.pages.search_field.description" },
 ] as const;
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -716,10 +734,19 @@ export const AgentHubPage: React.FC = () => {
 	 * layout (D1).
 	 */
 	const scopePhrase = orgScopeId
-		? `shared with ${orgName ?? "this organization"}`
-		: "in the public hub";
-	const countPhrase = (count: number, noun: string) =>
-		`${count} ${noun}${count === 1 ? "" : "s"} ${scopePhrase}`;
+		? t("ui.hub.pages.status.scope.shared_with", {
+				org: orgName ?? t("ui.hub.pages.scope.org_unnamed"),
+			})
+		: t("ui.hub.pages.status.scope.public");
+	/*
+	 * One whole sentence per record kind rather than a noun with an "s" appended:
+	 * the plural rule, and the way a count joins the scope phrase, are the locale's
+	 * to decide, not this file's.
+	 */
+	const countPhrase = (count: number, noun: "agent" | "team") =>
+		noun === "team"
+			? t("ui.hub.pages.status.count.teams", { count, scope: scopePhrase })
+			: t("ui.hub.pages.status.count.agents", { count, scope: scopePhrase });
 	let statusSentence: string;
 	if (view === "skills") {
 		statusSentence = "\u00a0"; // The sibling owns its source/count/loading line.
@@ -731,28 +758,34 @@ export const AgentHubPage: React.FC = () => {
 		 * replaced). A non-breaking space, not "", so the line keeps its box (D1).
 		 */
 		if (!orgScopeId) statusSentence = "\u00a0";
-		else if (teamsQuery.isLoading) statusSentence = "Loading teams…";
+		else if (teamsQuery.isLoading)
+			statusSentence = t("ui.hub.pages.status.loading_teams");
 		else if (teamsTabCount !== null)
 			statusSentence = countPhrase(teamsTabCount, "team");
 		/*
 		 * A refused or failed read still says WHOSE view this is (agent review
 		 * round 1, m5): the line used to go to zero height here and the roster's
 		 * alert landed 17px higher than in every other state.
-		 */ else statusSentence = `Teams ${scopePhrase}`;
+		 */ else
+			statusSentence = t("ui.hub.pages.status.teams_scope", {
+				scope: scopePhrase,
+			});
 	} else if (isColdLoading) {
-		statusSentence = "Loading agents…";
+		statusSentence = t("ui.hub.pages.status.loading_agents");
 	} else if (pagination) {
 		statusSentence = countPhrase(pagination.totalRecords, "agent");
 	} else {
-		statusSentence = `Agents ${scopePhrase}`;
+		statusSentence = t("ui.hub.pages.status.agents_scope", {
+			scope: scopePhrase,
+		});
 	}
 
 	return (
 		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
 		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
-				title="Agent Hub"
-				subtitle="Discover and download agents, teams and skills on Radient"
+				title={t("ui.hub.pages.header.title")}
+				subtitle={t("ui.hub.pages.header.subtitle")}
 				icon={Store}
 			/>
 			{/*
@@ -792,7 +825,7 @@ export const AgentHubPage: React.FC = () => {
 						className="max-w-2xl"
 						data-testid="agent-hub-org-unavailable"
 					>
-						<AlertTitle>Organizations are unavailable</AlertTitle>
+						<AlertTitle>{t("ui.hub.pages.orgs_unavailable")}</AlertTitle>
 						<AlertDescription>{orgNotice}</AlertDescription>
 					</Alert>
 				)}
@@ -827,7 +860,7 @@ export const AgentHubPage: React.FC = () => {
 					data-testid="agent-hub-browse-bar"
 				>
 					<Tabs value={view} onValueChange={(next) => setView(next as HubView)}>
-						<TabsList aria-label="Browse the hub by type">
+						<TabsList aria-label={t("ui.hub.pages.browse_aria")}>
 							{(
 								[
 									"agents",
@@ -851,9 +884,9 @@ export const AgentHubPage: React.FC = () => {
 										data-testid={`agent-hub-view-${value}`}
 									>
 										{value === "agents"
-											? "Agents"
+											? t("ui.hub.pages.tab.agents")
 											: value === "teams"
-												? "Teams"
+												? t("ui.hub.pages.tab.teams")
 												: t("ui.hub.skills.title")}
 										{tabCount !== null && (
 											<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
@@ -891,23 +924,26 @@ export const AgentHubPage: React.FC = () => {
 							 * `aria-hidden` rather than announced twice.
 							 */}
 							<span aria-hidden="true" className="text-meta text-ink-muted">
-								Showing
+								{t("ui.hub.pages.scope_label")}
 							</span>
 							<fieldset
 								className="m-0 min-w-0 border-0 p-0"
 								data-testid="agent-hub-scope"
 							>
-								<legend className="sr-only">Show the hub of</legend>
+								<legend className="sr-only">
+									{t("ui.hub.pages.scope_legend")}
+								</legend>
 								<div className="flex flex-wrap gap-0.5 rounded-md bg-sunken p-0.5">
 									{[
 										{
 											value: PUBLIC_SCOPE,
-											label: "Public hub",
+											label: t("ui.hub.pages.scope.public"),
 											Icon: Globe,
 										},
 										...selectableOrgs.map((org) => ({
 											value: org.tenant_id,
-											label: org.tenant_name || "Organization",
+											label:
+												org.tenant_name || t("ui.hub.pages.scope.org_label"),
 											Icon: Building2,
 										})),
 									].map(({ value, label, Icon }) => (
@@ -1025,8 +1061,8 @@ export const AgentHubPage: React.FC = () => {
 											 * right already says which field is searched, and a placeholder
 											 * derived from it was the same sentence twice.
 											 */
-											placeholder="Search agents"
-											aria-label="Search agents"
+											placeholder={t("ui.hub.pages.search.placeholder")}
+											aria-label={t("ui.hub.pages.search.aria")}
 											className="h-8 min-w-0 flex-1 border-0 bg-transparent outline-none"
 											data-testid="agent-hub-search"
 										/>
@@ -1042,7 +1078,7 @@ export const AgentHubPage: React.FC = () => {
 												 * that. `w-auto` because the trigger's own variant is full-width.
 												 */
 												className="w-auto shrink-0 border-y-0 border-l border-hairline border-r-0 bg-transparent pl-2 outline-none"
-												aria-label="Search in"
+												aria-label={t("ui.hub.pages.search.scope_aria")}
 												data-testid="agent-hub-search-scope"
 											>
 												<SelectValue />
@@ -1050,7 +1086,7 @@ export const AgentHubPage: React.FC = () => {
 											<SelectContent>
 												{SEARCH_SCOPES.map((scope) => (
 													<SelectItem key={scope.value} value={scope.value}>
-														{scope.label}
+														{t(scope.label)}
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -1059,7 +1095,7 @@ export const AgentHubPage: React.FC = () => {
 									<Select value={sortValue} onValueChange={setSortValue}>
 										<SelectTrigger
 											className="w-48"
-											aria-label="Sort agents"
+											aria-label={t("ui.hub.pages.sort.aria")}
 											data-testid="agent-hub-sort"
 										>
 											<SelectValue />
@@ -1067,7 +1103,7 @@ export const AgentHubPage: React.FC = () => {
 										<SelectContent>
 											{SORT_OPTIONS.map((option) => (
 												<SelectItem key={option.value} value={option.value}>
-													{option.label}
+													{t(option.label)}
 												</SelectItem>
 											))}
 										</SelectContent>
@@ -1111,7 +1147,9 @@ export const AgentHubPage: React.FC = () => {
 								{view === "agents" && isRefreshing ? (
 									<>
 										{" "}
-										<span data-testid="agent-hub-updating">Updating…</span>
+										<span data-testid="agent-hub-updating">
+											{t("ui.hub.pages.updating")}
+										</span>
 									</>
 								) : null}
 							</p>
@@ -1136,10 +1174,7 @@ export const AgentHubPage: React.FC = () => {
 											className="mb-3 flex flex-wrap items-center gap-2 text-meta text-warning"
 											data-testid="agent-hub-status-unknown"
 										>
-											<span>
-												Your likes and favourites could not be read, so no card
-												shows a viewer state.
-											</span>
+											<span>{t("ui.hub.pages.viewer_unknown")}</span>
 											<Button
 												variant="ghost"
 												size="sm"
@@ -1464,7 +1499,7 @@ export const AgentHubPage: React.FC = () => {
 																variant="secondary"
 																onClick={() => navigate("/agents")}
 															>
-																Publish an agent
+																{t("ui.hub.pages.publish")}
 															</Button>
 														)}
 													</div>

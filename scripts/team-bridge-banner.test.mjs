@@ -110,6 +110,7 @@ test("the preview is one line and carries nothing main would refuse", () => {
 	// The same validator main runs must accept it inside a payload.
 	assert.ok(
 		contract.parseTeamBridgeNotifyRequest({
+			owner: { accountId: "acct_a", epoch: 1 },
 			conversationId: "bcv_1",
 			tenantId: "tnt_1",
 			title: "Ada",
@@ -309,6 +310,7 @@ function harness({ focused = false, platform = "darwin" } = {}) {
 			return banner;
 		},
 	});
+	notifier.setAuthority({ accountId: "acct_a", epoch: 1 });
 	return {
 		notifier,
 		banners,
@@ -321,6 +323,7 @@ function harness({ focused = false, platform = "darwin" } = {}) {
 }
 
 const request = (patch = {}) => ({
+	owner: { accountId: "acct_a", epoch: 1 },
 	conversationId: "bcv_abc123",
 	tenantId: "tnt_1",
 	title: "Ada Lovelace",
@@ -338,8 +341,8 @@ test("macOS gets title, native subtitle and preview, under a stable id", () => {
 		assert.equal(options.title, "Ada Lovelace");
 		assert.equal(options.subtitle, "#general · Minerva");
 		assert.equal(options.body, "Can you look at the deploy?");
-		assert.equal(options.id, "team-bridge:bcv_abc123");
-		assert.equal(options.groupId, "team-bridge:bcv_abc123");
+		assert.equal(options.id, "team-bridge:acct_a:bcv_abc123");
+		assert.equal(options.groupId, "team-bridge:acct_a:bcv_abc123");
 		assert.equal(options.silent, false);
 	} finally {
 		h.cleanup();
@@ -432,6 +435,7 @@ test("the thread hook stays off the held open path", () => {
 		h.banners[0].emit("click");
 		const target = h.notifier.takePendingOpen();
 		assert.deepEqual(target, {
+			owner: { accountId: "acct_a", epoch: 1 },
 			conversationId: "bcv_abc123",
 			tenantId: "tnt_1",
 			threadId: "bms_root1",
@@ -448,13 +452,14 @@ test("the thread hook stays off the held open path", () => {
 
 test("the additive fields are optional and refused whole when malformed", () => {
 	const minimal = {
+		owner: { accountId: "acct_a", epoch: 1 },
 		conversationId: "bcv_1",
 		tenantId: "tnt_1",
 		title: "Ada",
 		body: "hi",
 		seq: 1,
 	};
-	// An older renderer's payload still parses, and gains no fields.
+	// Display additions remain optional; the captured owner is mandatory.
 	assert.deepEqual(contract.parseTeamBridgeNotifyRequest(minimal), minimal);
 	for (const bad of [
 		{ subtitle: "<i>x</i>" },
@@ -586,6 +591,7 @@ test("retained handlers receive only routing IDs, never the preview-bearing requ
 		);
 		assert.deepEqual(retained, [
 			{
+				owner: { accountId: "acct_a", epoch: 1 },
 				conversationId: "bcv_abc123",
 				tenantId: "tnt_1",
 				threadId: "bms_root1",

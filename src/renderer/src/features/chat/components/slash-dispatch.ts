@@ -57,9 +57,9 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { t } from "@shared/i18n";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
-	SEND_FAILURE_COPY,
 	admitChatDraft,
 	composerIdentityFor,
 	isRefusedBeforeAdmission,
@@ -790,7 +790,7 @@ export function useSlashDispatch({
 										 */
 										if (admitted === null) {
 											returnAidaText(key, target, message);
-											showInfoToast(SEND_FAILURE_COPY.sendLock);
+											showInfoToast(t("ui.notices.chat.send_in_flight"));
 										}
 									})
 									.catch((error) => {
@@ -811,7 +811,7 @@ export function useSlashDispatch({
 											showErrorToast(
 												placed
 													? aidaControlFailureCopy(error)
-													: `${SEND_FAILURE_COPY.sendLock} ${aidaControlFailureCopy(error)}`,
+													: `${t("ui.notices.chat.send_in_flight")} ${aidaControlFailureCopy(error)}`,
 											);
 											return;
 										}

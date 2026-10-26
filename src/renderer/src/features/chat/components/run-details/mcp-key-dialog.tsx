@@ -12,6 +12,8 @@ import {
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import { Button, DialogDescription, Input, Label } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
@@ -65,6 +67,7 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 	onOpenSettings,
 	onSave,
 }) => {
+	useI18nLocale();
 	const [values, setValues] = useState<Record<string, string>>({});
 	const [replace, setReplace] = useState(false);
 	const keyNames = target?.keyNames ?? [];
@@ -91,17 +94,25 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 			maxWidth="sm"
 			title={
 				keyNames.length === 1
-					? `Enter the key for ${target?.name ?? ""}`
-					: `Enter the credentials for ${target?.name ?? ""}`
+					? t("ui.chat.run_details.mcp_key.title_key", {
+							server: target?.name ?? "",
+						})
+					: t("ui.chat.run_details.mcp_key.title_credentials", {
+							server: target?.name ?? "",
+						})
 			}
 			actions={
 				<>
-					<SecondaryButton onClick={onCancel}>Cancel</SecondaryButton>
+					<SecondaryButton onClick={onCancel}>
+						{t("ui.chat.run_details.mcp_key.cancel")}
+					</SecondaryButton>
 					<PrimaryButton
 						onClick={() => onSave(values, replace ? [...keyNames] : [])}
 						disabled={!filled || saving}
 					>
-						{saving ? "Saving…" : "Save and reconnect"}
+						{saving
+							? t("ui.chat.run_details.mcp_key.saving")
+							: t("ui.chat.run_details.mcp_key.save")}
 					</PrimaryButton>
 				</>
 			}
@@ -127,8 +138,7 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 						 * returned snapshot and says the server still needs sign-in when it does,
 						 * which is true against a backend with the resolver and one without it.
 						 */}
-						Saved to the encrypted secret store, then this server is
-						reconnected. These keys may be shared by other servers and sessions.
+						{t("ui.chat.run_details.mcp_key.saved_note")}
 					</p>
 					{keyNames.map((name) => (
 						<div key={name} className="flex flex-col gap-1">
@@ -157,7 +167,7 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 							checked={replace}
 							onChange={(event) => setReplace(event.target.checked)}
 						/>
-						Replace existing values for these shared keys.
+						{t("ui.chat.run_details.mcp_key.replace")}
 					</label>
 					{failure ? (
 						<>

@@ -1,0 +1,266 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "fc8af5bacdfc",
+  "locale": "vi",
+  "namespace": "ui.notices",
+  "branch": "feat/i18n-toasts",
+  "head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+  "date": "2026-10-25",
+  "audit_kind": "first audit of a newly translated namespace (not a re-bind)",
+  "result": "clean-with-findings",
+  "status": "passed",
+  "keys_read": 93,
+  "keys_total": 93,
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 3
+  },
+  "sha256": {
+    "en": "f473fa10e95b24f50ce13647ae50a923b34d8efd31249d99d6c437e183722277",
+    "vi": "106472f1936b7fa856f0171b996d1edabf88a472a979828af2c3bdd71b05d414",
+    "en_context": "acce3fd5c70232afcc3ca2dec3c3bc7d63ab0869485900de3e6b6b03bd4e9379"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.notices.json",
+    "context": "src/i18n/catalogues/en/ui.notices.context.json",
+    "target": "src/i18n/catalogues/vi/ui.notices.json",
+    "style_guide": "~/local-operator/i18n/style-guides/vi.md",
+    "style_guide_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "glossary_core_revision": "local-operator 24dbccbb78",
+    "languages_manifest": "i18n/languages.json",
+    "languages_manifest_sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63",
+    "established_terminology_sampled": [
+      "src/i18n/catalogues/vi/ui.hub.json",
+      "src/i18n/catalogues/vi/ui.chat.asks.json",
+      "src/i18n/catalogues/vi/ui.chat.sidebar.json",
+      "src/i18n/catalogues/vi/ui.chat.dialogs.json",
+      "src/i18n/catalogues/vi/ui.agents.settings.json",
+      "src/i18n/catalogues/vi/ui.agents.refusals.json",
+      "src/i18n/catalogues/vi/ui.agents.dialogs.json",
+      "src/i18n/catalogues/vi/ui.canvas.json",
+      "src/i18n/catalogues/vi/ui.chat.pickers.json",
+      "src/i18n/catalogues/vi/ui.common.actions.json",
+      "src/i18n/catalogues/vi/ui.browser.json",
+      "src/i18n/catalogues/vi/ui.teamBridge.json",
+      "src/i18n/catalogues/vi/ui.schedules.json",
+      "src/i18n/catalogues/vi/ui.settings.configuration.json"
+    ]
+  },
+  "translator": {
+    "agent": "not recorded",
+    "note": "i18n/ledger.json carries no vi/ui.notices row at this head, and commit ec4518da56 records no translator identity, so the translator agent/model was not available to this audit. Independence is established by role: this audit neither authored nor edited any catalogue byte, the ledger, or any generated file."
+  },
+  "plural_policy": {
+    "verdict": "correct, and not a shortcut",
+    "locale_cldr_cardinal_categories": [
+      "other"
+    ],
+    "measured": "node -e \"new Intl.PluralRules('vi').resolvedOptions().pluralCategories\" -> [\"other\"]; select(0)=other, select(1)=other, select(2)=other, select(5)=other, select(21)=other, select(100)=other, select(1000000)=other.",
+    "authority": "core glossary §3 ('vi other only') and the vi style guide §Plurals ('`other` only — Vietnamese has no plural agreement; never add one/other branches').",
+    "namespace_evidence": "10 of 93 keys carry a plural: agents.config_run_changed, agents.config_run_updated, chat.drafts_offered_name, chat.drafts_offered_verb, chat.mark_all_read_cleared, chat.mark_all_read_deferred, chat.mark_all_read_superseded, chat.mark_all_read_unknown, credentials.unconfirmed, credentials.unstored. Each parses to exactly one `other` arm, no `one`/`few`/`many` arm, no ICU offset, and formats without error for counts 0/1/2/5/21/100. `one` would be unreachable in vi (PluralRules routes 1 to `other`), and the style guide forbids it, so the other-only shape is the locale's correct CLDR form rather than a convenience.",
+    "count_is_printed_where_the_source_prints_it": "Every plural head that prints English's count prints Vietnamese's: config_run_changed/updated, drafts_offered_name, mark_all_read_* (all four), credentials.unconfirmed/unstored. drafts_offered_verb deliberately prints no number in either language (the head carries it) and still receives {count} for agreement; vi's single arm needs no agreement, which is why one arm suffices there too."
+  },
+  "checks": [
+    {
+      "check": "key-set parity both directions",
+      "result": "PASS",
+      "detail": "93 en keys, 93 vi keys, no missing, no extra, identical order."
+    },
+    {
+      "check": "ICU argument integrity",
+      "result": "PASS",
+      "detail": "Parsed every message with the repository's own @formatjs/icu-messageformat-parser 3.5.21. Argument sets identical to English in all 93 keys: {count}, {name}, {title}, {keys}, {goal}, {index}, {origin}, {version}, {relaunch}, {reason}, {detail}, {stored}, {published}, {existing}, {key}. No argument added, dropped or renamed; no select arms and no <Trans> tags in either catalogue."
+    },
+    {
+      "check": "number/date skeletons preserved byte-for-byte",
+      "result": "PASS",
+      "detail": "2 keys carry a typed number and match exactly: credentials.removed keeps #{index, number}; main.consent_body_many keeps {count, number}. No date/time skeletons in the namespace. (The nine plural keys that print a count do so as a bare {count}, mirroring English's own bare {count}; 39 shipped vi strings use the same bare form, so this is not a locale regression.)"
+    },
+    {
+      "check": "plural categories are the locale's CLDR set",
+      "result": "PASS",
+      "detail": "See plural_policy: vi has exactly one cardinal category, `other`; all 10 plural keys use only `other`; none is missing `other`; no arm outside vi CLDR; offsets 0 preserved."
+    },
+    {
+      "check": "format at rendered counts",
+      "result": "PASS",
+      "detail": "Every message formatted through intl-messageformat 12.1.3 with vi locale hints at counts 0, 1, 2, 5, 21, 100 and with sample strings for the other arguments. Zero throws, zero empty output, zero residual '{' or 'undefined' in output. English formatted with the same arguments for control: zero throws."
+    },
+    {
+      "check": "NFC precomposition",
+      "result": "PASS",
+      "detail": "All 93 vi values compare equal to their String.normalize('NFC') form (style guide requires NFC; combined forms would break TUI width counting)."
+    },
+    {
+      "check": "bidi / control characters",
+      "result": "PASS",
+      "detail": "No U+200E/U+200F/U+202A-U+202E/U+2066-U+2069, no zero-width characters, no combining marks outside NFC, no C0/C1 control characters in any value. Locale is LTR, so RTL punctuation rules do not apply; none of vi's strings is RTL-sensitive."
+    },
+    {
+      "check": "English-leftover scan",
+      "result": "PASS",
+      "detail": "Latin runs after removing ICU spans: Local Operator, Aida, bash, backend, prompt, tab, web, ID, Seed, /credential, /goal, and `pull` (reported as VI-2). Local Operator/Aida are product names; bash/ID/Seed/tab/web are established Latin tokens in shipped vi copy (ui.agents.settings 'Seed', ui.chat.header 'ID phiên', ui.browser 'tab'); prompt and backend are the locale's standing renderings (glossary - vi keeps 'prompt'; backend appears in ui.canvas and ui.chat.pickers); /credential and /goal are literal commands. No unexplained English prose."
+    },
+    {
+      "check": "punctuation and typography",
+      "result": "PASS",
+      "detail": "Curly quotes “ ” used throughout (including where English uses straight ASCII quotes); em dash is ' — ' with spaces; no ASCII '...'; no space before punctuation; no double spaces or edge whitespace; no terminal '!' anywhere; sentence case for all labels and titles."
+    },
+    {
+      "check": "register and address form",
+      "result": "PASS",
+      "detail": "One address form: 'bạn' (style guide's recorded decision), used in 6 of 93 strings — the personal-statement/hazard places — and absent elsewhere; no 'anh/chị', no 'Quý khách', no 'Vui lòng' where English has no 'please'. Receipts uniformly use the 'Đã …' past marker; failures uniformly use 'Không … được'."
+    },
+    {
+      "check": "established terminology",
+      "result": "PASS",
+      "detail": "Verified against shipped vi copy: agent→tác nhân, conversation→cuộc trò chuyện, session→phiên, team→nhóm, hub→trung tâm (15 shipped uses in ui.hub), configuration→cấu hình, variable→biến, goal→mục tiêu, archive→lưu trữ, highlights→điểm nhấn, approvals→phê duyệt, deny→từ chối, unread→chưa đọc, clipboard→bộ nhớ tạm, copy→sao chép, file→tệp, sign out→đăng xuất, proactive/reactive→chủ động/phản hồi (ui.agents.refusals labels), unknown error→Lỗi không xác định, credentials→thông tin xác thực, 'ask'→câu hỏi (ui.chat.asks 'Bỏ qua câu hỏi này'), ID phiên (ui.chat.header), 'lượt chạy' for an agent run. Pull is the one drifted term (VI-2)."
+    },
+    {
+      "check": "composed sentences rendered",
+      "result": "PASS (with VI-1, VI-3 recorded)",
+      "detail": "Rendered every runtime composition at counts 1, 2, 5 and 21. Archive offer at runtime joins a quoted name to the verb: “Dự án Apollo” đã lưu trữ. / Cuộc trò chuyện đã lưu trữ. (source: archive-undo.ts wraps the title in “”, undo-toasts.tsx lays name and verb out as flex siblings with gap-1, verb shrink-0). Drafts offer: 1 bản nháp đã xóa. / 2 bản nháp đã xóa. / 5 bản nháp đã xóa. / 21 bản nháp đã xóa. — all read correctly and the non-truncating tails (11 and 7 chars) stay shorter than the space they must never lose. Bulk-read receipt composes four sentences: reads correctly at 1/2/5/21 except the third remainder, which lacks its noun (VI-1). Unread toast: 'Backend không phản hồi. Không xóa được đánh dấu chưa đọc.' reads correctly. Update-hold banner with the relaunch clause reads correctly. Credential receipts read correctly at 1/2/5/21."
+    },
+    {
+      "check": "overflow / width budget",
+      "result": "PASS",
+      "detail": "No per-key maxCells is declared in the en sidecar for this namespace. Measured all 93 lengths: the only strings materially longer than English are short labels that wrap in a toast body (hub.agent_delisted 14→29 chars, chat.undo 4→8, chat.ask_answered 14→22, agents.updated 13→20). The two non-truncating tails are 11 chars ('đã lưu trữ.') vs en 9 and 7 chars ('đã xóa.') vs en 10 — both short enough that a narrow card never truncates them. OS-banner bodies stay under their stated limits: consent_body_many 99 chars (~170 limit), consent_body_one 76, update_hold_body 149 (~250 limit), update_hold_no_relaunch 93. The 182-char credentials.unconfirmed is shorter than its 215-char English source."
+    },
+    {
+      "check": "duplicate English strings map to one rendering",
+      "result": "PASS (one nit)",
+      "detail": "Cross-referenced every en value against the other 77 en namespaces. 11 duplicate hits: 10 already match the shipped vi rendering byte-for-byte (Conversation, Undo, Failed to copy file path, Unknown error x3, etc.); 1 drifts — chat.seed_invalid vs ui.agents.settings.chat.error.invalid_seed for the identical 'Seed must be a valid number' (VI-4)."
+    },
+    {
+      "check": "runtime key typing",
+      "result": "PASS",
+      "detail": "The vi values satisfy the generated shapes in src/i18n/keys.gen.ts: every typed key (name/title/keys/goal/index/origin/version/relaunch/reason/detail/stored/published/existing/key/count) is supplied and no untyped key carries one. No catalogue, ledger or generated file was edited by this audit."
+    }
+  ],
+  "findings": [
+    {
+      "id": "VI-1",
+      "severity": "minor",
+      "key": "ui.notices.chat.mark_all_read_superseded",
+      "current": "{count, plural, other {{count} có kết quả mới hơn và vẫn chưa đọc.}}",
+      "proposed": "{count, plural, other {{count} cuộc trò chuyện có kết quả mới hơn và vẫn chưa đọc.}}",
+      "reason": "The composed bulk-read receipt renders '2 có kết quả mới hơn và vẫn chưa đọc.' — a numeral heading a clause with no noun is not idiomatic Vietnamese, and this is the only one of the receipt's three remainders that omits it (siblings read '{count} cuộc trò chuyện nằm trên thiết bị khác…' and 'Không xóa được {count} cuộc trò chuyện…'); all six sibling locales make the clause grammatical — four name the noun (fr 'conversations', ru 'отметки', zh '个对话', hi 'चैट') and two carry plural agreement (es 'tienen', ur 'آ چکے ہیں') — so the bare numeral is a Vietnamese-only gap rather than a faithful ellipsis. Meaning survives; the sentence just reads unfinished."
+    },
+    {
+      "id": "VI-2",
+      "severity": "minor",
+      "key": "ui.notices.hub.team_pulled",
+      "current": "Đã pull nhóm “{name}”.",
+      "proposed": "Đã tải nhóm “{name}”.",
+      "reason": "The locale already names this hub operation in Vietnamese: ui.hub.subscriptions.pull 'Pull now' → 'Tải về ngay', 'Manual pull stays available' → 'Bạn vẫn có thể tải về thủ công', and hub.skills.installed_alias 'Downloaded {item} from {source}' → 'Đã tải {item} từ {source}'. The notices are the only vi surface that keeps the English verb, so a user who pressed 'Tải về ngay' is told 'Đã pull'. The glossary's wave-2 kept-English set permits `pull`, so this is locale-consistency (same act, two names) rather than a policy violation — hence minor, not major.",
+      "keys": [
+        {
+          "key": "ui.notices.hub.team_pulled",
+          "current": "Đã pull nhóm “{name}”.",
+          "proposed": "Đã tải nhóm “{name}”."
+        },
+        {
+          "key": "ui.notices.hub.team_pulled_collision",
+          "current": "Đã pull “{stored}” (bạn đã có nhóm tên “{published}”).",
+          "proposed": "Đã tải “{stored}” (bạn đã có nhóm tên “{published}”)."
+        },
+        {
+          "key": "ui.notices.hub.team_pulled_renamed",
+          "current": "Đã pull “{stored}”. Tên công bố “{published}” không dùng được trên máy này, nên nhóm được lưu dưới tên “{stored}”.",
+          "proposed": "Đã tải “{stored}”. Tên công bố “{published}” không dùng được trên máy này, nên nhóm được lưu dưới tên “{stored}”."
+        }
+      ]
+    },
+    {
+      "id": "VI-3",
+      "severity": "minor",
+      "key": "ui.notices.chat.ask_answered",
+      "current": "Đã gửi câu trả lời đến",
+      "proposed": "Đã gửi câu trả lời",
+      "reason": "These four 'plain' arms are the whole toast when the destination conversation cannot be named (fleet-ask-drawer.tsx line 260-261 renders the plain key alone), and each ends on a dangling preposition — 'đến', 'cho', 'trong', 'trong' — which reads unfinished in Vietnamese. Five of the six other locales complete the plain arm (fr 'Réponse envoyée', ru 'Ответ отправлен в разговор', zh '回答已发送', hi 'जवाब भेजा गया', ur 'جواب بھیج دیا گیا'); only es mirrors English's dangling preposition. Dropping the preposition keeps the receipt complete without inventing a name; the named variants already carry 'đến/cho/trong {name}'. If the destination must stay named, the alternative is to name the generic noun instead ('đến/cho/trong cuộc trò chuyện').",
+      "keys": [
+        {
+          "key": "ui.notices.chat.ask_answered",
+          "current": "Đã gửi câu trả lời đến",
+          "proposed": "Đã gửi câu trả lời"
+        },
+        {
+          "key": "ui.notices.chat.ask_changed",
+          "current": "Đã đổi câu trả lời cho",
+          "proposed": "Đã đổi câu trả lời"
+        },
+        {
+          "key": "ui.notices.chat.ask_declined",
+          "current": "Đã từ chối câu hỏi trong",
+          "proposed": "Đã từ chối câu hỏi"
+        },
+        {
+          "key": "ui.notices.chat.ask_dismissed",
+          "current": "Đã bỏ qua câu hỏi trong",
+          "proposed": "Đã bỏ qua câu hỏi"
+        }
+      ]
+    },
+    {
+      "id": "VI-4",
+      "severity": "nit",
+      "key": "ui.notices.chat.seed_invalid",
+      "current": "Seed phải là một số hợp lệ",
+      "proposed": "Seed phải là số hợp lệ",
+      "reason": "ui.agents.settings.chat.error.invalid_seed carries the identical English 'Seed must be a valid number' as 'Seed phải là số hợp lệ' in the shipped catalogue. Both are grammatical; one English string should not acquire two Vietnamese spellings, and the shipped form is terser."
+    },
+    {
+      "id": "VI-5",
+      "severity": "nit",
+      "key": "ui.notices.agents.config_run_changed",
+      "current": "Lượt chạy cấu hình đã xong: {count} định nghĩa đã thay đổi.",
+      "proposed": "Lần chạy cấu hình đã xong: {count} định nghĩa đã thay đổi.",
+      "reason": "The only prior rendering of 'configuration run' in vi is ui.hub.conflict.body 'lần chạy cấu hình'; this namespace introduces 'lượt chạy cấu hình' for the same noun phrase. Both 'lượt chạy' (7 uses) and 'lần chạy' (11 uses) are live in the locale — 'lượt chạy' being the agent-run term — so this is alignment, not a correction.",
+      "keys": [
+        {
+          "key": "ui.notices.agents.config_run_changed",
+          "current": "Lượt chạy cấu hình đã xong: {count} định nghĩa đã thay đổi.",
+          "proposed": "Lần chạy cấu hình đã xong: {count} định nghĩa đã thay đổi."
+        },
+        {
+          "key": "ui.notices.agents.config_run_updated",
+          "current": "Lượt chạy cấu hình đã xong: {count} định nghĩa đã cập nhật.",
+          "proposed": "Lần chạy cấu hình đã xong: {count} định nghĩa đã cập nhật."
+        }
+      ]
+    },
+    {
+      "id": "VI-6",
+      "severity": "nit",
+      "key": "ui.notices.main.update_hold_body",
+      "current": "Bản cập nhật lên phiên bản {version} vẫn đang cài — mở ứng dụng lúc này sẽ hủy quá trình cài. {relaunch} Bấm vào thông báo này cũng không mở sớm hơn.",
+      "proposed": "Bản cập nhật lên phiên bản {version} vẫn đang cài — mở ứng dụng lúc này sẽ hủy quá trình cài. {relaunch} Bấm vào thông báo này cũng không mở được sớm hơn.",
+      "reason": "The closing clause has no object and no resultative: 'không mở sớm hơn' reads intransitively, while the English 'Clicking this notice will not open it any sooner' means the app will not open sooner. 'không mở được sớm hơn' restores that reading in one syllable; meaning is inferable either way, hence nit."
+    }
+  ],
+  "namespace_verdict": {
+    "ui.notices": "clean-with-findings — 93 of 93 keys read; 0 blocker, 0 major, 3 minor, 3 nit. All 93 values were read side by side with the English source and its 93 context entries; ICU structure, number skeletons, plural categories, NFC, punctuation and composed-sentence rendering all hold. The findings are one missing noun in a composed remainder (VI-1), one cross-namespace term drift on 'pull' (VI-2), four fallback arms ending on a dangling preposition (VI-3), and three consistency/fluency nits (VI-4 seed wording, VI-5 'configuration run', VI-6 update-hold clause).",
+    "by_group": {
+      "agents (15 keys)": "clean — 0 blocker/major/minor, 1 nit (VI-5); proactive/reactive match the shipped 'Chủ động'/'Phản hồi' labels.",
+      "chat (31 keys)": "clean-with-findings — 2 minor (VI-1 missing noun in the bulk-read remainder, VI-3 dangling-preposition fallback arms), 1 nit (VI-4); archive/drafts compositions and all four mark-all-read sentences otherwise render correctly at 1/2/5/21.",
+      "credentials (5 keys)": "clean — placeholders #{index, number} and {keys} preserved, the confirmed/unconfirmed distinction kept ('không lưu được' vs 'không xác nhận được là đã lưu'), 'thông tin xác thực' per glossary.",
+      "files (11 keys)": "clean — 'tệp', 'bộ nhớ tạm', 'điểm nhấn' match shipped copy; failure and gone variants distinguish correctly.",
+      "hub (7 keys)": "clean-with-findings — 1 minor (VI-2 'pull' vs the locale's 'tải về'); 'trung tâm' matches 15 shipped uses; collision/rename sentences keep both user-data names and the rename instruction.",
+      "links (2 keys)": "clean — the loopback/private-network refusal is stated plainly, not softened.",
+      "main (7 keys)": "clean — OS-banner bodies under their length guidance; consent and update-hold sentences complete; 1 nit (VI-6).",
+      "sessions (7 keys)": "clean — 'xóa cuộc trò chuyện' matches the shipped Clear conversation copy; 'ID phiên' and 'đăng xuất' match.",
+      "settings (2 keys)": "clean.",
+      "variables (6 keys)": "clean — 'biến' throughout, all six success/failure receipts consistent."
+    }
+  },
+  "post_head_worktree_note": "While this audit was closing, the shared worktree gained uncommitted changes from concurrent remediation of other locales: src/i18n/catalogues/en/ui.notices.json and its context sidecar add one line (a 94th key, ui.notices.chat.archive_offered_title, value '“{title}”'), archive-undo.ts now calls it, and fr/hi/ru received fixes. The vi catalogue is untouched by that work, and none of the 93 English values this receipt read changed (the en diff is a single insertion). This receipt binds the COMMITTED head ec4518da56 and names those bytes; it does not audit the in-flight key. When that key lands on the branch, vi will need it too - the same '“{title}”' pair, since vi's style guide uses the same curly quotes - and the namespace will need a delta re-audit before the ledger row can claim coverage of the new head.",
+  "overall_verdict": "clean-with-findings (0 blocker, 0 major) — shippable as is. VI-1 to VI-3 are worth one remediation commit (they are user-visible sentences, not preferences); VI-4 to VI-6 are recorded, not churned. The other-only plural shape is correct for vi CLDR and required by the style guide, not a shortcut.",
+  "model_provenance": "This session ran as deepseek/deepseek-flash (the model label the harness reports); no provider fallback was used or observed during the audit. The model named here is the one that read the bytes and ran the checks, not a role/default pin.",
+  "evidence_provenance": "Every check above was executed in this worktree at ec4518da56 using the repository's own node_modules (@formatjs/icu-messageformat-parser 3.5.21, intl-messageformat 12.1.3) and Python 3. Catalogue and reference hashes were taken from the bytes on disk with sha256. The audit edited no catalogue, no ledger, no generated file, and no receipt other than its own."
+}

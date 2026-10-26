@@ -19,9 +19,9 @@ import type {
 	SessionVariablesResult,
 	VariableWrite,
 } from "@shared/api/local-operator/session-variables-api";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { t } from "../../../../i18n/messages";
 
 /**
  * Read a session's code memory.
@@ -88,11 +88,11 @@ export const useCreateSessionVariable = () => {
 		mutationFn: ({ sessionId, ...write }) =>
 			createSessionVariable(sessionId, write),
 		onSuccess: async () => {
-			showSuccessToast(t("ui.common.actions.variable_created"));
+			showSuccessToast(t("ui.notices.variables.created"));
 		},
 		onError: (error) => {
 			showErrorToast(
-				userFacingMessage(error, t("ui.common.errors.variable_create")),
+				userFacingMessage(error, t("ui.notices.variables.create_failed")),
 			);
 		},
 		onSettled: invalidateSessionVariables(queryClient),
@@ -106,11 +106,11 @@ export const useUpdateSessionVariable = () => {
 		mutationFn: ({ sessionId, ...write }) =>
 			updateSessionVariable(sessionId, write),
 		onSuccess: async () => {
-			showSuccessToast(t("ui.common.actions.variable_updated"));
+			showSuccessToast(t("ui.notices.variables.updated"));
 		},
 		onError: (error) => {
 			showErrorToast(
-				userFacingMessage(error, t("ui.common.errors.variable_update")),
+				userFacingMessage(error, t("ui.notices.variables.update_failed")),
 			);
 		},
 		onSettled: invalidateSessionVariables(queryClient),
@@ -129,11 +129,11 @@ export const useDeleteSessionVariable = () => {
 	return useMutation<unknown, Error, { sessionId: string; key: string }>({
 		mutationFn: ({ sessionId, key }) => deleteSessionVariable(sessionId, key),
 		onSuccess: async () => {
-			showSuccessToast(t("ui.common.actions.variable_deleted"));
+			showSuccessToast(t("ui.notices.variables.deleted"));
 		},
 		onError: (error) => {
 			showErrorToast(
-				userFacingMessage(error, t("ui.common.errors.variable_delete")),
+				userFacingMessage(error, t("ui.notices.variables.delete_failed")),
 			);
 		},
 		onSettled: invalidateSessionVariables(queryClient),

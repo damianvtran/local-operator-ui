@@ -51,9 +51,9 @@ import { type FC, useEffect, useId, useState } from "react";
 // language-writing capabilities; the locale subscription is the separate hook leaf.
 import { t } from "../../../../i18n/messages";
 import type { MovePlan } from "./mesh-drop";
-import { planConfirm } from "./mesh-drop";
+import { moveOptionCaption, planConfirm } from "./mesh-drop";
 import { INVITE_ROLES, type InviteRole } from "./mesh-store";
-import type { MeshRefusal } from "./mesh-types";
+import { type MeshRefusal, deviceIdentityText } from "./mesh-types";
 
 /**
  * The move confirmation: the operation, the loss, and the reversible alternative.
@@ -147,11 +147,7 @@ export const MoveConfirmDialog: FC<{
 									 * that the user can see where their work is going.
 									 */}
 									<span className="mt-0.5 block text-meta text-ink-dim">
-										{option.keep
-											? t("ui.mesh.mesh_actions.the_original_stays_where_it_is")
-											: t(
-													"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it",
-												)}
+										{moveOptionCaption(option)}
 									</span>
 								</span>
 							</label>
@@ -208,8 +204,8 @@ export const InviteDialog: FC<{
 	 * again, so `mesh-page.tsx` does that arithmetic where the graph is in hand.
 	 */
 	options: readonly { id: string; label: string }[];
-	/** The device this invite is bound to, when it was started from a node. */
-	deviceLabel: string | null;
+	/** The unformatted wire name; the dialog owns the shared identity rendering. */
+	deviceName?: string;
 	onClose: () => void;
 	onInvite: (ask: {
 		networkId: string;
@@ -224,7 +220,7 @@ export const InviteDialog: FC<{
 }> = ({
 	open,
 	options,
-	deviceLabel,
+	deviceName,
 	onClose,
 	onInvite,
 	pending,
@@ -255,7 +251,12 @@ export const InviteDialog: FC<{
 						 * there is no act that makes a device a member from here.
 						 */}
 						{t("ui.mesh.mesh_actions.admission_is_two_sided_so_this_mints")}
-						{deviceLabel ?? t("ui.mesh.mesh_actions.the_device")}{" "}
+						{deviceId
+							? deviceIdentityText({
+									id: deviceId,
+									name: deviceName,
+								})
+							: t("ui.mesh.mesh_actions.the_device")}{" "}
 						{t(
 							"ui.mesh.mesh_actions.proves_the_short_authentication_string_when_it",
 						)}
@@ -384,7 +385,8 @@ export const InviteDialog: FC<{
 export const RemoveMemberDialog: FC<{
 	open: boolean;
 	networkLabel: string;
-	deviceLabel: string;
+	deviceId: string;
+	deviceName?: string;
 	onClose: () => void;
 	onConfirm: (typed: string) => void;
 	pending: boolean;
@@ -393,7 +395,8 @@ export const RemoveMemberDialog: FC<{
 }> = ({
 	open,
 	networkLabel,
-	deviceLabel,
+	deviceId,
+	deviceName,
 	onClose,
 	onConfirm,
 	pending,
@@ -402,6 +405,7 @@ export const RemoveMemberDialog: FC<{
 }) => {
 	useI18nLocale();
 	const [typed, setTyped] = useState("");
+	const identity = deviceIdentityText({ id: deviceId, name: deviceName });
 	const fieldId = useId();
 	useEffect(() => {
 		if (open) setTyped("");
@@ -412,12 +416,12 @@ export const RemoveMemberDialog: FC<{
 				<DialogHeader>
 					<DialogTitle>
 						{t("ui.mesh.mesh_actions.remove")}
-						{deviceLabel} {t("ui.mesh.mesh_actions.from")}
+						{identity} {t("ui.mesh.mesh_actions.from")}
 						{networkLabel}?
 					</DialogTitle>
 					<DialogDescription>
 						{t("ui.mesh.mesh_actions.every_device_in_the_network_is_rekeyed")}
-						{deviceLabel}{" "}
+						{identity}{" "}
 						{t("ui.mesh.mesh_actions.is_locked_out_on_its_next_handshake")}
 					</DialogDescription>
 				</DialogHeader>

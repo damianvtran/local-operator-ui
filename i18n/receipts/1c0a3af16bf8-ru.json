@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "auditor": "agent-shell (lop exec independent translation auditor; origin.json origin 'agent-shell', no agent profile)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Served model anthropic/claude-sonnet-5-5 for the whole run: the session's selected_model is anthropic/claude-sonnet-5-5 and every assistant turn is stamped claude-sonnet-5-5; no fallback or route change is recorded. Self-report (log section 1): \"I ran as `anthropic/claude-sonnet-5-5`.\"",
+  "instance": "1c0a3af16bf8-ru",
+  "audit_session": "1c0a3af16bf8",
+  "exec_job": "24aaf1cac0f0",
+  "launched_by": "manager session 7c8130c573dd (team lopdev), which records 'Background job 24aaf1cac0f0: starting'",
+  "locale": "ru",
+  "namespace": "ui.mesh",
+  "date": "2026-10-25",
+  "scope": "ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it only: recall-direction meaning (the remote copy is deleted, never this device's), here/there consistency with ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it and ui.mesh.mesh_card.copy_here_leave_it_there, placeholders/ICU, locale style",
+  "audited_head": "audited at e99f4ecde9 (pre-rewrite); tree 21ad1eff62 identical to 0c693fe85e",
+  "status": "passed",
+  "sha256": {
+    "en": "74f7394cd1bacf632dbb5de3497f7b0c6b0a5e0f4e068bfcbb6c57033585ca9b",
+    "ru": "f1733ffba01cd9ab42242adfd0c936de3a5595714cdd342e4d2f5329eacd95a9"
+  },
+  "findings": [],
+  "verbatim_value": "копия там удаляется после прибытия сюда",
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "5288cb806d5144bb2a1a518a6f72a17543cb592da7fd0671d5aec0b10dacd476",
+    "read": "refused: catalogue keys and values must be strings"
+  },
+  "standards": {
+    "glossary": "Read in full: the first read truncated at line 111 of 161 and the auditor continued with range 112-312 (returned through line 161).",
+    "root": "~/local-operator/i18n (files unchanged since commit e433b2c54a, 2026-10-12)",
+    "sha256": {
+      "glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "style-guides/ru.md": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "8a1b00106d98",
+    "session_label": "Mesh tab remediation (coder subagent of manager 7c8130c573dd)",
+    "date": "2026-10-25",
+    "attribution": "The model active on the authoring turns (session 8a1b00106d98; single model transition at transcript line 901 to claude-opus-5-5, authoring lines 978/1008/1009), not a per-line model stamp. Earlier turns of that session ran openrouter/moonshotai/kimi-k3.1-pro; kimi did NOT author these strings. Only lines 978/979/1008/1009 carry the seven target values, and every assistant turn from the transition onward is claude-opus-5-5. Draft recorded in PR comment 6400562335."
+  },
+  "independence": "The auditor session authored no catalogue value and is a different agent and session from the translator (coder session 8a1b00106d98); it read the committed blobs only through read_public_copy and edited no file.",
+  "read_trail": {
+    "source": "~/.local-operator/audit/public-copy-reads.jsonl",
+    "note": "sha256 is the reader's served payload ({key: value}); it matches this key's committed value",
+    "entries": [
+      {
+        "ts": "2026-10-25T20:10:25Z",
+        "path": "src/i18n/catalogues/ru/ui.mesh.json",
+        "key": "ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it",
+        "sha256": "fe5f55d533554d2a5f6f19fa24be8825929eb35cd77db1a9b4877128fddb75dd",
+        "chars": 104
+      }
+    ]
+  },
+  "evidence": {
+    "log": "~/.local-operator/logs/exec-20261025-160955-You-are-an-INDEPENDENT-translation-audit-24aaf1cac0f0.log",
+    "log_sha256": "8902ab32be76dd46920fd8194ccc534025e96eec5daba41f3e280b7716d086dd",
+    "verdict_location": "log sections \"## 2. Per-locale results\" and \"## 3. Findings\""
+  },
+  "non_claims": [
+    "NON-CLAIM: no width/fit/maxCells check. The context sidecar read (src/i18n/catalogues/en/ui.mesh.context.json, this key) was refused by the reader with `refused: catalogue keys and values must be strings`, so no length budget was read. Fit evidence is to come from the design/UX rendered frames.",
+    "No rendered/compiled-native check. The auditor reported no file hashes; the sha256 values here were computed by the recording coder from the committed catalogues at the audited tree."
+  ],
+  "notes": "Receipt written by the recording coder (session 8880e786a4ce) from the primary exec log and session transcript; findings are quoted verbatim, not paraphrased."
+}

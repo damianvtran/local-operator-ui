@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "That notification is no longer available on this account.",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "No conversations yet",
 	"ui.teamBridge.list.empty.body": "Start a direct message, a group or a channel.",
@@ -198,5 +199,12 @@
 	"ui.teamBridge.reactions.category8": "Flags",
 	"ui.teamBridge.reactions.choose": "Choose an emoji",
 	"ui.teamBridge.reactions.noResults": "No emoji found",
-	"ui.teamBridge.actions.label": "Message actions"
+	"ui.teamBridge.actions.label": "Message actions",
+	"ui.teamBridge.profile.message": "Message",
+	"ui.teamBridge.profile.human_badge": "Person",
+	"ui.teamBridge.profile.agent_badge": "Agent",
+	"ui.teamBridge.profile.owned_by": "{name}’s agent",
+	"ui.teamBridge.profile.local_time": "Local time {time}",
+	"ui.teamBridge.profile.close_profile": "Close profile",
+	"ui.teamBridge.profile.open_profile": "Open profile for {name}"
 }
