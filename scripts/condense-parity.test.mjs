@@ -32,7 +32,7 @@
  * is `local-operator`'s `scripts/check-condense-parity-latest.mjs`.
  */
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -301,9 +301,13 @@ test("at most one case in eight is unexpressible on the relay wire", () => {
 		entry.tokens.split(/\s+/).some((token) => token === "Z" || token === "R"),
 	).length;
 	const share = unexpressible / FIXTURE.cases.length;
+	/* THE ASSERTION MATCHES THE NAME (round 3, C0-n1: it said 1/6 under a
+	 * "one in eight" title, and the round-2 reply claimed a fix that never landed).
+	 * The derived number is printed in the failure message so a future tightening is
+	 * a decision, not a guess. */
 	assert.ok(
-		share <= 1 / 6,
-		`${unexpressible}/${FIXTURE.cases.length} cases are unexpressible (${share.toFixed(2)})`,
+		share <= 1 / 8,
+		`${unexpressible}/${FIXTURE.cases.length} cases are unexpressible (${share.toFixed(3)}), above the one-in-eight budget`,
 	);
 });
 
@@ -351,19 +355,101 @@ test("the generator's entry point is resolved, not guessed", () => {
 	const link = join(linkRoot, "tree");
 	symlinkSync(join(HERE, ".."), link, "dir");
 	try {
-		const output = execFileSync(
+		/*
+		 * STATUS CAPTURED, NOT THROWN (round 3, C0-n3). `execFileSync` throws on a
+		 * non-zero exit, so on an ordinary STALE tree this test failed with "Command
+		 * failed: node ..." instead of the message it exists to produce - red for the
+		 * wrong reason, and unreadable exactly when it mattered.
+		 */
+		const run = spawnSync(
 			"node",
 			[join(link, "scripts/generate-condense-parity.mjs"), "--check"],
 			{
 				encoding: "utf8",
 			},
 		);
+		assert.equal(
+			run.status,
+			0,
+			`a symlinked invocation must run and exit 0 (stderr: ${String(run.stderr ?? "").trim() || "none"})`,
+		);
 		assert.match(
-			output,
+			String(run.stdout),
 			/condense parity fixture is current/,
 			"a symlinked invocation must actually run",
 		);
 	} finally {
 		rmSync(linkRoot, { recursive: true, force: true });
 	}
+});
+
+/*
+ * ----------------- THE PIN MUST NOT DEPEND ON THE CALLER'S CWD -----------------
+ *
+ * WHY THIS TEST EXISTS (agent review round 3, C0-M3). esbuild keys
+ * `metafile.inputs` relative to `absWorkingDir`, which defaults to `process.cwd()`,
+ * while `resolveDir` pins only module RESOLUTION. With the default, the source list
+ * arrived one directory short from `scripts/`, the absolute cwd was prepended from
+ * `/` (a crash), and a plain regeneration from a scratch directory WROTE the fixture
+ * with `../../../Users/...` paths in `modelSources` - a committed file whose content
+ * depended on where the operator stood.
+ *
+ * The tree is unchanged by this test: `--check` reads, and `--print` emits the bytes
+ * a regeneration would write without writing them.
+ */
+test("the pin and the emitted bytes are identical from any working directory", () => {
+	const cwds = [
+		join(HERE, ".."), // the repository root
+		HERE, // scripts/
+		"/", // the pathological one: an absolute cwd the old code prepended
+		tmpdir(), // a directory outside the repository entirely
+	];
+	const generator = join(HERE, "generate-condense-parity.mjs");
+	const digests = [];
+	const bodies = [];
+	for (const cwd of cwds) {
+		const check = spawnSync("node", [generator, "--check"], {
+			cwd,
+			encoding: "utf8",
+		});
+		assert.equal(
+			check.status,
+			0,
+			`--check from ${cwd} must pass (stderr: ${String(check.stderr ?? "").trim() || "none"})`,
+		);
+		assert.match(
+			String(check.stdout),
+			/condense parity fixture is current/,
+			`--check from ${cwd}`,
+		);
+		const printed = spawnSync("node", [generator, "--print"], {
+			cwd,
+			encoding: "utf8",
+		});
+		assert.equal(
+			printed.status,
+			0,
+			`--print from ${cwd} must succeed (stderr: ${String(printed.stderr ?? "").trim() || "none"})`,
+		);
+		bodies.push(String(printed.stdout));
+		digests.push(createHash("sha256").update(bodies.at(-1)).digest("hex"));
+	}
+	/* Same bytes, not merely same verdict: a `--print` that wrote cwd-relative paths
+	 * would differ here even while `--check` agreed with itself. */
+	assert.equal(
+		new Set(digests).size,
+		1,
+		`--print differs by cwd: ${[...new Set(digests)].join(", ")}`,
+	);
+	assert.equal(
+		digests[0],
+		MANIFEST.sha256,
+		"the bytes a regeneration would write must be the committed fixture's bytes",
+	);
+	/* And no absolute path leaked into the emitted provenance. */
+	assert.doesNotMatch(
+		bodies[0],
+		/Users\/|\/home\/|\.\.\//,
+		"the emitted fixture carries an absolute or relative-up path",
+	);
 });

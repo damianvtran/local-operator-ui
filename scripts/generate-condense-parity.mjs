@@ -222,6 +222,18 @@ async function bundleModel() {
 		platform: "node",
 		write: false,
 		metafile: true,
+		/*
+		 * ABSOLUTE WORKING DIRECTORY, or the pin is checkout-relative (agent review
+		 * round 3, C0-M3). esbuild keys `metafile.inputs` relative to
+		 * `absWorkingDir`, which defaults to `process.cwd()`; `resolveDir` pins
+		 * RESOLUTION only. From `scripts/` the keys arrived one directory short and
+		 * `readFileSync(join(ROOT, key))` crashed with ENOENT, from `/` the absolute
+		 * cwd was prepended into the joined path, and from a scratch directory a plain
+		 * regeneration WROTE the fixture with `../../../Users/...` entries in
+		 * `modelSources` - a committed file whose content depended on where the
+		 * operator stood. With this set the keys are repo-relative by construction.
+		 */
+		absWorkingDir: ROOT,
 	});
 	return {
 		code: bundle.outputFiles[0].text,
@@ -603,6 +615,13 @@ function serialize(value) {
 
 async function main() {
 	const check = process.argv.includes("--check");
+	/*
+	 * `--print` emits the exact FIXTURE bytes a regeneration would write, and writes
+	 * nothing. It exists for the cwd-independence regression: proving "the same bytes
+	 * from any directory" must not require running a real regeneration from a foreign
+	 * cwd, which is precisely the accident C0-M3 describes.
+	 */
+	const print = process.argv.includes("--print");
 	const fixture = await generate();
 	const body = serialize(fixture);
 	const digest = createHash("sha256").update(body).digest("hex");
@@ -621,6 +640,14 @@ async function main() {
 		null,
 		"\t",
 	)}\n`;
+
+	if (print) {
+		/* ONLY the fixture bytes: the manifest's `sha256` covers exactly these, so a
+		 * caller can compare the emitted hash with the pin directly. The manifest's own
+		 * bytes are covered by `--check`, which compares both files. */
+		process.stdout.write(body);
+		return;
+	}
 
 	if (check) {
 		const current = existsSync(FIXTURE) ? readFileSync(FIXTURE, "utf8") : "";
