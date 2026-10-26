@@ -776,6 +776,52 @@ export function deviceLabel(device: {
 	});
 }
 
+/**
+ * The name half of the security identity: real names are quoted, absence is not.
+ * JSON quoting also prevents a stored quote or newline from forging a second row.
+ */
+export function deviceDisplayName(device: { name?: string }): string {
+	const name = text(device.name);
+	return name ? JSON.stringify(name) : t("ui.mesh.mesh_types.unnamed_device");
+}
+
+/**
+ * A compact id that is unique within the graph being painted, not merely short.
+ * Eight leading hex digits are the normal budget; a shared prefix widens only the
+ * colliding ids until they differ. Without the displayed graph there is no sound
+ * way to abbreviate, so the full id is the fail-safe rather than a 32-bit guess.
+ */
+export function compactDeviceId(
+	deviceId: string,
+	displayedDeviceIds?: readonly string[],
+): string {
+	const id = text(deviceId);
+	if (!displayedDeviceIds) return id;
+	const others = displayedDeviceIds
+		.map(text)
+		.filter((candidate) => candidate.length > 0 && candidate !== id);
+	let length = Math.min(10, id.length);
+	while (
+		length < id.length &&
+		others.some((candidate) => candidate.startsWith(id.slice(0, length)))
+	) {
+		length += 1;
+	}
+	return length < id.length ? `${id.slice(0, length)}…` : id;
+}
+
+/** The one inline name+id spelling used by sentences, menus and dialogs. */
+export function deviceIdentityText(
+	device: { id: string; name?: string },
+	displayedDeviceIds?: readonly string[],
+	compact = false,
+): string {
+	const id = compact
+		? compactDeviceId(device.id, displayedDeviceIds)
+		: text(device.id);
+	return `${deviceDisplayName(device)} ${id}`;
+}
+
 /** A network's display label: its name, else the id's tail. */
 export function networkLabel(network: {
 	network_id: string;
