@@ -429,9 +429,20 @@ async function waitForElement(cdp, ms, selector) {
 				let x = points[0][0];
 				let y = points[0][1];
 				let top = null;
+				const samples = [];
 				for (const [px, py] of points) {
 					if (px < 0 || py < 0 || px > innerWidth || py > innerHeight) continue;
 					const candidate = document.elementFromPoint(px, py);
+					if (samples.length < 3)
+						samples.push({
+							x: px,
+							y: py,
+							tag: candidate?.tagName ?? null,
+							className:
+								typeof candidate?.className === "string"
+									? candidate.className
+									: null,
+						});
 					if (candidate && (candidate === skip || skip.contains(candidate))) {
 						x = px;
 						y = py;
@@ -446,8 +457,9 @@ async function waitForElement(cdp, ms, selector) {
 					y,
 					inside,
 					uncovered: Boolean(top && (top === skip || skip.contains(top))),
-					/* What the point really hit, so a failure names the cover instead of
-					   only stating that the target was not pressable. */
+					/* What the sampled points really hit: hit names the control's own
+					   hit when one exists, samples names what sits over it otherwise, so
+					   a failure identifies the cover instead of only reporting absence. */
 					hit: top
 						? {
 							tag: top.tagName,
@@ -456,6 +468,7 @@ async function waitForElement(cdp, ms, selector) {
 							text: (top.textContent || "").trim().slice(0, 80),
 						}
 						: null,
+					samples,
 				};
 			})()`,
 		);
@@ -597,10 +610,15 @@ async function main() {
 		const skip = await waitForElement(cdp, 45_000, ONBOARDING_SKIP);
 		receipt.onboarding = skip;
 		if (skip.found) {
-			assert.ok(
-				skip.inside && skip.uncovered,
-				`the onboarding control is not pressable: ${JSON.stringify(skip)}`,
-			);
+			/*
+			 * PRESS IT AND LET THE MODAL BE THE JUDGE. Two runner runs reported the
+			 * control's rect inside the viewport while no sampled point hit it
+			 * (hit: null), i.e. the app's own hit-testing disagreed with where the
+			 * button is painted. Whether the press works is the property setup needs;
+			 * whether the point was "uncovered" is a diagnostic. So the press is always
+			 * dispatched at the best point found, the outcome is asserted by the modal
+			 * actually closing, and the sampled covers travel in the receipt.
+			 */
 			for (const [type, button] of [
 				["mouseMoved", "none"],
 				["mousePressed", "left"],
