@@ -965,12 +965,25 @@ test("the prose about a name paints the derived form too", async () => {
 		/const displayName = agent \? hubDisplayName\(agent\.name\) : ""/,
 		"the page derives the name once",
 	);
-	assert.match(details, /This takes "\{displayName\}" off the hub/);
+	/*
+	 * The confirmation body is catalogue copy now, so the pin follows the key and
+	 * its argument: the name put into the `{name}` slot must be the derived form,
+	 * never `agent.name`.
+	 */
+	assert.match(
+		details,
+		/t\("ui\.hub\.browse\.details\.delist_body",\s*\{\s*name: displayName,?\s*\}\)/,
+		"the confirmation names the derived form",
+	);
 	assert.match(
 		details,
 		/agentActionFailureMessage\(\s*failure\.action,\s*failure\.error,\s*displayName,/,
 	);
-	assert.doesNotMatch(details, /This takes "\{agent\.name\}"/);
+	assert.doesNotMatch(
+		details,
+		/delist_body",\s*\{\s*name: agent\.name/,
+		"the unfiltered name never reaches the confirmation",
+	);
 
 	const container = read(
 		"src/renderer/src/features/agent-hub/components/agent-card-container.tsx",

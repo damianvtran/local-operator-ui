@@ -1661,8 +1661,32 @@ test("the status sentence names the scope, and the pager keeps its labels", () =
 	const pager = read(
 		"src/renderer/src/features/agent-hub/components/hub-pager.tsx",
 	);
-	assert.match(pager, /aria-label="Previous page"/);
-	assert.match(pager, /aria-label="Next page"/);
+	/*
+	 * The step buttons' accessible names are catalogue copy now (the #1420
+	 * extraction keyed them onto the shared compact-pagination strings), so each
+	 * is pinned twice like the status phrases above: the key the pager renders,
+	 * and the English that key carries. The names stay "Previous page" / "Next
+	 * page", which is what the stories' plays and assistive tech address.
+	 */
+	assert.match(
+		pager,
+		/aria-label=\{t\("ui\.common\.forms\.compact_pagination\.previous_page"\)\}/,
+	);
+	assert.match(
+		pager,
+		/aria-label=\{t\("ui\.common\.forms\.compact_pagination\.next_page"\)\}/,
+	);
+	const compactPaginationCopy = JSON.parse(
+		read("src/i18n/catalogues/en/ui.common.forms.json"),
+	);
+	assert.equal(
+		compactPaginationCopy["ui.common.forms.compact_pagination.previous_page"],
+		"Previous page",
+	);
+	assert.equal(
+		compactPaginationCopy["ui.common.forms.compact_pagination.next_page"],
+		"Next page",
+	);
 	assert.match(pager, /min-h-13/);
 	// The sidebar's stepper is not the hub's footer any more, and is untouched.
 	assert.doesNotMatch(page, /import \{ CompactPagination \}/);
