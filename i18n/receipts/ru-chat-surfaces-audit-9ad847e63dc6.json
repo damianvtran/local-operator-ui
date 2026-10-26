@@ -1,0 +1,314 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-namespace-audit-chat-surfaces",
+ "date": "2026-10-25",
+ "locale": "ru",
+ "batch": "chat-surfaces",
+ "branch": "i18n-chat-surfaces",
+ "audited_head": "732c568cdda4a127ed80b893d3bf676024612fa9",
+ "candidate_state": "UNCOMMITTED working-tree catalogues bound by sha256; HEAD has no ru values for the new keys",
+ "round": 1,
+ "instance": "9ad847e63dc6",
+ "status": "changes_requested",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "9ad847e63dc6",
+  "model": "radient/auto",
+  "actual_model_source": "harness session route radient/auto at dispatch. The harness switched this session to anthropic/claude-sonnet-5-5 mid-audit (provider failure: quota HTTP 402, cross-vendor descent). Work before the switch (hash verification, validators, ICU parse, key-by-key read of all 282 values with sidecars, consumer tracing incl. approval labels) ran under radient/auto; the remaining checks (plural renders, parity, label-in-name, usage/wake/loop consumers, glossary scans), the severity classification and this receipt were produced under anthropic/claude-sonnet-5-5.",
+  "fallback": {
+   "used": true,
+   "model": "anthropic/claude-sonnet-5-5",
+   "reason": "provider failure: quota HTTP 402 (cross-vendor descent for pinned radient/auto)",
+   "scope": "second half of the audit incl. classification and receipt authoring"
+  },
+  "independent_from_translators": true,
+  "independence_basis": "Separate session from the translator; did not read any translator report; made no catalogue or repo edits other than this receipt; no translation/MT service used.",
+  "instance": "9ad847e63dc6"
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  }
+ },
+ "scope": "All 282 ru values across ui.chat (115; 71 new), ui.chat.canonical (60; 13 new), ui.chat.run_details (81; 79 new) and ui.chat.asks (26; 14 new), read against English plus the context sidecar; new keys in depth, pre-existing values (git HEAD, 0 changed) checked only for contradiction by new values. Catalogue audit only: no rendered-fit, no browser, no screenshots, no native-speaker sign-off beyond this reader.",
+ "method": [
+  "Verified en and context sha256 against the manager's list and recomputed all four ru target hashes from disk; all matched.",
+  "Ran node scripts/i18n/generate.mjs --check (ok), check-strings.mjs (ok), context-parity.mjs (ok, 131 allowed gaps; 6 ui.chat keys have no sidecar).",
+  "Parsed every en/ru pair with @formatjs/icu-messageformat-parser: argument names/types and select arms identical; the only structural differences are the 6 plural arms where ru adds few/many (required). Intl.PluralRules('ru') categories = one,few,many,other; all 6 ru plurals carry all four.",
+  "Rendered ru plurals/selects with intl-messageformat at 0,1,2,5,11,21,22,25,1.5 (e.g. '21 задача открыта', '22 MCP-сервера требуют внимания', '1,5 хода') and all four hub_update_all_label arms; no defects in those.",
+  "Checked NFC, bidi/zero-width controls, ASCII '...' and quotes, leading/trailing whitespace parity (hint.prefix trailing space preserved), NBSP in '2 000'; zero issues.",
+  "Traced consumers for fragment joins (error-block.tsx before/link/after, question-dock.tsx prefix, run-child-subagents 'Subagents of', todos tags, wake due label), approval words (approval-words.ts, ask-options.tsx) and label-in-name pairs (composer-status-row.tsx, hub-update-mark.tsx).",
+  "Scanned all ru catalogues for glossary/precedent terms (запрос, хаб, подробности запуска, пробуждение, монитор*, разрешение, устройство, бэкенд, навык, Approve/Deny).",
+  "Widths by codepoint only; the two sidecar maxCells hints (choose_model 18, last_reading 16) are met by the unchanged values.",
+  "Findings are carried in per-namespace blocks (not a root list) on purpose: root-list attribution in ledger-rules.mjs matches key prefixes in object order, and 'ui.chat.' would swallow every 'ui.chat.canonical./run_details./asks.' key."
+ ],
+ "limitations": [
+  "Browser unavailable; no rendered-fit or screenshot evidence.",
+  "No ledger-check run (ledger rows not edited by this auditor).",
+  "No tracked evidence bundle under i18n/audits/evidence was written (task limited edits to this one receipt); scratch notes live in the session scratchpad only and are not artifacts of record."
+ ],
+ "namespaces": {
+  "ui.chat": {
+   "keys": 115,
+   "new_keys": 71,
+   "sha256": {
+    "en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+    "ru": "924873b58177e60e2b7df8ffe19e73d366b23b8e167e291ce506c6fe7d8342fa"
+   },
+   "context_sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372",
+   "status": "changes_requested",
+   "verdict": "changes_requested",
+   "findings": [
+    {
+     "id": "RU-CHAT-1",
+     "severity": "major",
+     "namespace": "ui.chat",
+     "key": "ui.chat.question_dock.hint.approval",
+     "current": "Выберите «Одобрить» или «Отклонить» выше, введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход.",
+     "proposed": "Выберите «Approve» или «Deny» выше, введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход.",
+     "reason": "The two buttons are client-owned English labels: APPROVAL_OPTIONS in src/renderer/src/features/chat/approval-words.ts:48-51 ({label:'Approve'},{label:'Deny'}) rendered verbatim by ask-options.tsx (option.label, no t()). The ru text names «Одобрить»/«Отклонить», which never appear on screen, so the instruction points at controls that do not exist. fr/es/vi/ur in this same working tree keep Approve/Deny. If the labels are localised later, change both together."
+    },
+    {
+     "id": "RU-CHAT-2",
+     "severity": "major",
+     "namespace": "ui.chat",
+     "key": "ui.chat.hub_update.update_all_label",
+     "current": "…{agents {Применить все обновления агентов из хаба ({count, number, ::group-off})}} … (4 arms, all start 'Применить все обновления')",
+     "proposed": "{kind, select, agents {Обновить все ({count, number, ::group-off}) — обновления агентов из хаба} teams {Обновить все ({count, number, ::group-off}) — обновления команд из хаба} skills {Обновить все ({count, number, ::group-off}) — обновления навыков из хаба} other {Обновить все ({count, number, ::group-off}) — обновления из хаба}}",
+     "reason": "Label-in-name (WCAG 2.5.3): hub-update-mark.tsx:255-275 renders the visible text ui.chat.hub_update.update_all = 'Обновить все (N)' and uses this key as aria-label. English contains the visible words ('Update all N …'); the ru name starts 'Применить все обновления', so it does not contain the visible label and voice-control 'click Обновить все' fails. Proposal rendered with intl-messageformat at count=12: 'Обновить все (12) — обновления агентов из хаба'; no plural needed because the count is not governing a noun."
+    },
+    {
+     "id": "RU-CHAT-3",
+     "severity": "major",
+     "namespace": "ui.chat",
+     "key": "ui.chat.composer.status.goal_done_name",
+     "current": "Отметить цель выполненной",
+     "proposed": "Отметить цель: готово",
+     "reason": "Label-in-name: sidecar and composer-status-row.tsx:1045 state the accessible name must contain the visible word (en 'Done' inside 'Mark the goal done'). Visible word is ui.chat.composer.status.goal_done = 'Готово'; the ru name 'Отметить цель выполненной' does not contain it. 'Отметить цель: готово' contains the visible word and still states the act (rendered name: 'Отметить цель: готово — <goal>')."
+    },
+    {
+     "id": "RU-CHAT-4",
+     "severity": "major",
+     "namespace": "ui.chat",
+     "key": "ui.chat.composer.status.loop_progress_of_turns",
+     "current": "{completed, number, ::group-off} из {total, number, ::group-off} ходов",
+     "proposed": "{completed, number, ::group-off} из {total, plural, one {{total, number, ::group-off} хода} other {{total, number, ::group-off} ходов}}",
+     "reason": "Number agreement: after 'из' the noun is genitive and agrees with {total}; hard-coded 'ходов' is wrong for totals ending in 1 (except 11): 'из 1 ходов', 'из 21 ходов'. Verified by rendering the proposal with intl-messageformat locale ru: total 1 -> 'из 1 хода', 21 -> 'из 21 хода', 2/5/22 -> 'ходов' (one={хода}, few/many/other={ходов} is the full integer mapping; the sketch above uses one/other and Intl.PluralRules('ru') puts 2-4 in few, so write few, many and other arms explicitly: one {хода} few {ходов} many {ходов} other {ходов}). Same latent defect exists in the earlier shipped ui.chat.pickers.use_picker_backend.loop_turns ({iterations} after 'из'); not new here but outside this audit's scope."
+    },
+    {
+     "id": "RU-CHAT-5",
+     "severity": "major",
+     "namespace": "ui.chat",
+     "key": "ui.chat.composer.status.monitors_action",
+     "current": "Открыть мониторы в подробностях запуска",
+     "proposed": "Открыть мониторинг в подробностях запуска",
+     "reason": "Glossary violation: core glossary row 'monitor' prescribes 'мониторинг' for ru and the ru style guide records no exception. «монитор/мониторы» is a different term and, in Russian, primarily means a display screen, so 'Открыть мониторы' reads as opening screens. Same term decision affects ui.chat.run_details (RU-RD-1); fix both together. No shipped ru value uses either form yet (grep of all ru catalogues), so there is no precedent to conflict with."
+    },
+    {
+     "id": "RU-CHAT-6",
+     "severity": "minor",
+     "namespace": "ui.chat",
+     "key": "ui.chat.usage.eligibility_unknown",
+     "current": "Право на расход неизвестно",
+     "proposed": "Доступность расхода неизвестна",
+     "reason": "'Право на расход' is a stiff calque of 'spend eligibility' (a legal-entitlement reading); mirror of ui.chat.usage.blocked 'Расход недоступен'. The six ui.chat.usage.* and highlights keys have no sidecar entry (i18n/context-allowance.json gap), so the translator had no role/tone to go on; consider adding sidecar entries."
+    },
+    {
+     "id": "RU-CHAT-7",
+     "severity": "minor",
+     "namespace": "ui.chat",
+     "key": "ui.chat.error_block.schema.after",
+     "current": "— это исправит ошибку. Рекомендуем Radient Automatic: она подберёт под ваши запросы оптимальное сочетание дешевизны и ума (обычно дешевле, чем со своим ключом), либо выберите одну из рекомендованных моделей со значком звезды.",
+     "proposed": "— это исправит ошибку. Рекомендуем Radient Automatic: этот режим сам подберёт под ваши запросы оптимальное сочетание цены и качества (обычно дешевле, чем со своим ключом), либо выберите одну из рекомендованных моделей со значком звезды.",
+     "reason": "'дешевизны и ума' is a literal calque of 'cheap and smart' and reads jocular in an error message; «она» has no clear antecedent (Radient Automatic has no stated grammatical gender). Not a meaning error, hence minor."
+    },
+    {
+     "id": "RU-CHAT-8",
+     "severity": "minor",
+     "namespace": "ui.chat",
+     "key": "ui.chat.mermaid.zoom_in",
+     "current": "Приблизить / Отдалить",
+     "proposed": "Увеличить / Уменьшить",
+     "reason": "Image-viewer zoom already ships as ui.common.viewer.zoom_in/zoom_out = «Увеличить»/«Уменьшить»; «Приблизить»/«Отдалить» is the project-timeline wording. Diagram zoom is the viewer analogue, so one control in two places should read alike.",
+     "also_keys": [
+      "ui.chat.mermaid.zoom_out"
+     ]
+    },
+    {
+     "id": "RU-CHAT-9",
+     "severity": "minor",
+     "namespace": "ui.chat",
+     "key": "ui.chat.question_dock.hint.secret_held",
+     "current": "{prefix}Удержано, пока судьба ответа неизвестна: возможно, он уже доставлен, поэтому отправить снова ничего нельзя · Esc в карточке скрывает",
+     "proposed": "{prefix}Отправка заблокирована, пока неизвестно, дошёл ли ответ: возможно, он уже доставлен, поэтому повторно отправить нельзя · Esc в карточке скрывает",
+     "reason": "'Удержано' without a subject and 'судьба ответа' are literal carries of 'Held … fate'; 'ничего нельзя' is awkward word order. Meaning (answer may have landed, resending impossible) is preserved, so minor."
+    },
+    {
+     "id": "RU-CHAT-10",
+     "severity": "minor",
+     "namespace": "ui.chat",
+     "key": "ui.chat.highlights.file_resolution_failed",
+     "current": "Не удалось найти этот файл в рабочем каталоге сессии. Скопируйте путь к файлу и сверьте его с рабочим пространством этой сессии, затем повторите попытку.",
+     "proposed": "(wording acceptable; no change required to the ru value)",
+     "reason": "Source-side observation, not a translation fault: English tells the reader to 'Use Copy file path', naming the menu item, but the supplement menu that raises this toast hard-codes the English label (src/renderer/src/features/chat/canonical/supplement-file-actions.tsx:228 renders literal 'Copy file path'), so an ru reader is told to copy a path and finds an English item. Localising that span with the shipped ui.common.file_actions.copy_file_path ('Скопировать путь к файлу') would close it. No sidecar entry exists for this key."
+    },
+    {
+     "id": "RU-CHAT-11",
+     "severity": "nit",
+     "namespace": "ui.chat",
+     "key": "ui.chat.mermaid.pan",
+     "current": "Панорамирование перетаскиванием",
+     "proposed": "Сдвиг перетаскиванием",
+     "reason": "'Панорамирование' is heavy for an aria-label of a drag surface; pan_hint 'Перетащите диаграмму для панорамирования' could read 'Перетащите диаграмму, чтобы сдвинуть вид'.",
+     "also_keys": [
+      "ui.chat.mermaid.pan_hint"
+     ]
+    },
+    {
+     "id": "RU-CHAT-12",
+     "severity": "nit",
+     "namespace": "ui.chat",
+     "key": "ui.chat.aside.exchange_label",
+     "current": "Переписка в отдельном вопросе",
+     "proposed": "Обмен репликами в отдельном вопросе",
+     "reason": "'Переписка … в вопросе' is odd (a question does not contain correspondence); 'обмен репликами' is neutral. Term 'отдельный вопрос' for aside matches the earlier audited canonical values and is kept."
+    },
+    {
+     "id": "RU-CHAT-13",
+     "severity": "nit",
+     "namespace": "ui.chat",
+     "key": "ui.chat.question_dock.hint.approval_held",
+     "current": "Ответьте из поля ввода: …",
+     "proposed": "Ответьте через поле ввода: …",
+     "reason": "'из поля ввода' reads as the source of the answer rather than the channel; 'через поле ввода'. Everything else (yes/no/1/2 kept Latin as approvalAnswerValue expects 'y/yes/approve/ok/allow' and 'n/no/deny/reject/cancel') is correct."
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 5,
+    "minor": 5,
+    "nit": 3
+   }
+  },
+  "ui.chat.canonical": {
+   "keys": 60,
+   "new_keys": 13,
+   "sha256": {
+    "en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+    "ru": "4706c9ff504913cea9d62e44a89c01744f8b385a2d9185c7fa5f9c33eee38756"
+   },
+   "context_sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04",
+   "status": "passed",
+   "verdict": "clean-with-findings",
+   "findings": [
+    {
+     "id": "RU-CAN-1",
+     "severity": "minor",
+     "namespace": "ui.chat.canonical",
+     "key": "ui.chat.canonical.older_history.windowed.short_gesture",
+     "current": "Прокрутите вверх",
+     "proposed": "Вверх — ранние сообщения",
+     "reason": "English 'Scroll up for earlier' states the purpose; the ru drops 'for earlier', so the narrow-column row names only a gesture. 'Вверх — ранние сообщения' is 23 codepoints vs en 21; the sidecar sets no maxCells for this key."
+    },
+    {
+     "id": "RU-CAN-2",
+     "severity": "minor",
+     "namespace": "ui.chat.canonical",
+     "key": "ui.chat.canonical.older_history.unproven.short",
+     "current": "История не загружена",
+     "proposed": "Ранняя история не загружена",
+     "reason": "English 'Earlier not loaded' keeps 'earlier'; the ru short form drops it and, in a narrow row at the top of loaded messages, can be read as the whole history being unloaded (the long form «Более ранняя история не загружена» is correct). 27 codepoints vs en 20; sidecar sets no maxCells."
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 0
+   }
+  },
+  "ui.chat.run_details": {
+   "keys": 81,
+   "new_keys": 79,
+   "sha256": {
+    "en": "b3f23e9248e81ec57d30778e4e4b452c27f0e04842c325cb125d2135d5d886a7",
+    "ru": "7e48a73135e8813a29d7ac8f441240c82f46bf859785dbf7d7e9927855f42d3a"
+   },
+   "context_sha256": "2cc9f66ec5cbd5c6c9cfbc34526ce4d91d48ea5b50bcdb925be8f1b1fe2df78b",
+   "status": "changes_requested",
+   "verdict": "changes_requested",
+   "findings": [
+    {
+     "id": "RU-RD-1",
+     "severity": "major",
+     "namespace": "ui.chat.run_details",
+     "key": "ui.chat.run_details.monitors.title",
+     "current": "Мониторы",
+     "proposed": "Мониторинг",
+     "reason": "Glossary violation (row 'monitor' -> мониторинг; no ru style-guide exception) and homograph risk: «монитор» is primarily a display screen. Apply consistently: monitor_cancel.title 'Отменить этот монитор?' -> 'Отменить этот мониторинг?' (or 'Отменить мониторинг «{name}»?'), monitor_cancel.confirm 'Остановить монитор' -> 'Остановить мониторинг'. Companion fix RU-CHAT-5 in ui.chat.",
+     "also_keys": [
+      "ui.chat.run_details.monitor_cancel.title",
+      "ui.chat.run_details.monitor_cancel.confirm"
+     ]
+    },
+    {
+     "id": "RU-RD-2",
+     "severity": "nit",
+     "namespace": "ui.chat.run_details",
+     "key": "ui.chat.run_details.wake_cancel.cancelling",
+     "current": "Отмена…",
+     "proposed": "Отменяется…",
+     "reason": "Same English ('Cancelling…') is 'Отменяется…' in ui.chat.run_details.wake.cancelling; 'Отмена…' is also the shape of a 'Cancel' button that opens a dialog and sits next to a 'Отменить' button (shipped ui.settings.imports.cancelling has the same form, so precedent exists)."
+    },
+    {
+     "id": "RU-RD-3",
+     "severity": "nit",
+     "namespace": "ui.chat.run_details",
+     "key": "ui.chat.run_details.mcp.credentials_in_settings",
+     "current": "Учётные данные этого сервера задаются в настройках",
+     "proposed": "Задайте учётные данные этого сервера в настройках",
+     "reason": "English is an imperative pointer ('Manage … in Settings'); ru turns it into a declarative. Meaning preserved; keep if the row's other remedies read declaratively."
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 0,
+    "nit": 2
+   }
+  },
+  "ui.chat.asks": {
+   "keys": 26,
+   "new_keys": 14,
+   "sha256": {
+    "en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+    "ru": "8e63e3183a15e40a4188dfa718039819a3f3d05024b14fa942568f1ba679ef23"
+   },
+   "context_sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c",
+   "status": "passed",
+   "verdict": "clean-with-findings",
+   "findings": [
+    {
+     "id": "RU-ASK-1",
+     "severity": "minor",
+     "namespace": "ui.chat.asks",
+     "key": "ui.chat.asks.close_asks",
+     "current": "Закрыть запросы",
+     "proposed": "Закрыть панель запросов",
+     "reason": "Tooltip/accessible name of the control that closes the asks drawer (sidecar). 'Закрыть запросы' can be read as closing/resolving the asks themselves, an act this app also has (dismiss). English 'Close asks' shares the ambiguity, but ru can disambiguate for free."
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  }
+ }
+}

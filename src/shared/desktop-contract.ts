@@ -23,8 +23,9 @@ import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
 import type {
+	TeamBridgeNotifyAuthority,
 	TeamBridgeNotifyRequest,
-	TeamBridgeOpenTarget,
+	TeamBridgeOpenResult,
 } from "./team-bridge-notify";
 
 const id = z
@@ -6634,6 +6635,20 @@ export type DesktopMediaRequest =
 			expectedAccountId: string;
 	  }
 	/*
+	 * Account avatars are private, content-addressed images. The renderer sends
+	 * typed ids/hash/size, never a URL. Main calls the closed core binary relay:
+	 * only core owns the hub credential. expectedAccountId is the commissioning
+	 * viewer, not the target; core verifies its authority before dispatch and
+	 * after receiving bytes. Older runtimes refuse with 404, leaving initials.
+	 */
+	| {
+			op: "team_bridge.avatar";
+			expectedAccountId: string;
+			accountId: string;
+			hash: string;
+			size: 64 | 256;
+	  }
+	/*
 	 * A Library audio asset's PRE-RENDER peaks, as the same `{version, bars,
 	 * peaks}` JSON a generated sound's attachment waveform route serves. Audio
 	 * assets that came from a session carry the sidecar the producer wrote; a
@@ -6733,9 +6748,10 @@ export type DesktopAPI = {
 	 * loading or reloading renderer is not lost.
 	 */
 	teamBridge?: {
+		setAuthority: (authority: TeamBridgeNotifyAuthority) => Promise<void>;
 		notify: (input: TeamBridgeNotifyRequest) => Promise<{ shown: boolean }>;
 		onOpen: (callback: () => void) => () => void;
-		pendingOpen: () => Promise<TeamBridgeOpenTarget | null>;
+		pendingOpen: () => Promise<TeamBridgeOpenResult | null>;
 	};
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**

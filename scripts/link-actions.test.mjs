@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 /*
@@ -19,6 +23,35 @@ import { build } from "esbuild";
  * owns the rest of that rule and asserts the exclusion its `QUOTE_TOOLKIT_ATTR`
  * half depends on.
  */
+
+/*
+ * Import the bundle from a short temporary FILE, not a `data:` URI.
+ *
+ * The bundle is a few hundred KB of base64, and a `data:` specifier is named in
+ * every diagnostic that touches this module: a probe that throws, a rejected
+ * promise whose stack names the module, an assertion that renders the frame.
+ * Writing the specifier puts the whole bundle on one log line, and a log line
+ * that size is a log nobody can read - the failure class that stalled Desktop
+ * Tests shard 2/3 at its ceiling (see `scripts/ci-log-guard.mjs`).
+ *
+ * Measured on a GREEN run: Desktop Tests shard 2/3, run 40181028498 job
+ * 121131988804, contains two lines of 3,933,710 and 3,933,712 bytes, both
+ * `at probeTarget(s) (data:text/javascript;base64,...)` frames from this file.
+ * Neither failed the suite; both made that job's log unreadable at a glance.
+ *
+ * A file URL is short, so the same failure reads `/tmp/lop-link-XXXX/link-actions.mjs:58851`.
+ * The import semantics are unchanged: same source, same module graph, same
+ * evaluation. The directory lives for the process, like #1407's ack fixture.
+ */
+let bundleDirPromise;
+function importBundle(source, name) {
+	bundleDirPromise ??= mkdtemp(join(tmpdir(), "lop-link-"));
+	return bundleDirPromise.then(async (dir) => {
+		const file = join(dir, name);
+		await writeFile(file, source, "utf8");
+		return import(pathToFileURL(file).href);
+	});
+}
 
 const bundle = await build({
 	stdin: {
@@ -77,9 +110,7 @@ const {
 	selectionWhollyWithin,
 	subscribeProbes,
 	LINK_TARGET_ATTR,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+} = await importBundle(bundle.outputFiles[0].text, "link-actions.mjs");
 
 /* ------------------------------------------------------------- classifyHref */
 

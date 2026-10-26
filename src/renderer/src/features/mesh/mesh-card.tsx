@@ -44,6 +44,7 @@ import { t } from "../../../../i18n/messages";
 import { resolveDrop } from "./mesh-drop";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { agoSentence, conversationUnit } from "./mesh-graph";
+import { MeshDeviceIdentity } from "./mesh-identity";
 import { chipFact, chipLabel } from "./mesh-node";
 import {
 	attemptWords,
@@ -53,7 +54,7 @@ import {
 	suspectWords,
 } from "./mesh-reach";
 import type { DeviceSessions } from "./mesh-sessions";
-import type { MeshSessionRow } from "./mesh-types";
+import { type MeshSessionRow, deviceIdentityText } from "./mesh-types";
 
 /**
  * The destinations a conversation can go to, from wherever it is now.
@@ -90,6 +91,7 @@ export function moveDestinations(
 	const owner =
 		session.locality === "local" ? selfDeviceId : session.owner_device;
 	const destinations: MoveDestination[] = [];
+	const deviceIds = devices.map((device) => device.id);
 	for (const device of devices) {
 		if (device.id === owner) continue;
 		if (device.id === selfDeviceId) {
@@ -101,11 +103,12 @@ export function moveDestinations(
 			});
 			continue;
 		}
+		const identity = deviceIdentityText(device, deviceIds, true);
 		destinations.push({
 			deviceId: device.id,
-			label: device.label,
-			verb: t("ui.mesh.mesh_card.move_to", { device: device.label }),
-			keepVerb: t("ui.mesh.mesh_card.copy_to", { device: device.label }),
+			label: identity,
+			verb: t("ui.mesh.mesh_card.move_to", { device: identity }),
+			keepVerb: t("ui.mesh.mesh_card.copy_to", { device: identity }),
 		});
 	}
 	return destinations;
@@ -169,7 +172,13 @@ export function destinationsWithVerdicts(
 			{
 				session,
 				ownerDeviceId,
-				ownerLabel: owner?.label ?? session.owner_device_name,
+				ownerLabel: owner
+					? deviceIdentityText(
+							owner,
+							graph.devices.map((device) => device.id),
+							true,
+						)
+					: session.owner_device_name,
 			},
 			{ kind: "device", deviceId: destination.deviceId },
 			context,
@@ -288,6 +297,8 @@ export const SessionMoveMenu: FC<{
  */
 export const DevicePanel: FC<{
 	device: MeshDevice;
+	/** The graph's ids, needed to keep this compact identity unambiguous. */
+	deviceIds: readonly string[];
 	sessions: DeviceSessions;
 	/** The catalogue's own count, which may exceed the rows in hand. */
 	sessionTotal: number;
@@ -308,6 +319,7 @@ export const DevicePanel: FC<{
 	onRemoveMember: (device: MeshDevice, networkId: string) => void;
 }> = ({
 	device,
+	deviceIds,
 	sessions,
 	sessionTotal,
 	nowSeconds,
@@ -395,7 +407,7 @@ export const DevicePanel: FC<{
 	return (
 		<aside
 			aria-label={t("ui.mesh.mesh_card.device_details", {
-				device: device.label,
+				device: deviceIdentityText(device),
 			})}
 			data-mesh-panel={device.id}
 			data-glass-block=""
@@ -411,7 +423,14 @@ export const DevicePanel: FC<{
 				>
 					{t("ui.mesh.mesh_actions.close")}
 				</Button>
-				<h2 className="text-body-sm text-ink">{device.label}</h2>
+				<h2 className="text-body-sm text-ink">
+					<MeshDeviceIdentity
+						deviceId={device.id}
+						deviceIds={deviceIds}
+						name={device.name}
+						compact
+					/>
+				</h2>
 				{/*
 				 * THE STATE IS WORDS FIRST and the hue second (WCAG 1.4.1): the same rule the
 				 * node's stripe follows, stated here because a panel has room to name it.
@@ -573,7 +592,11 @@ export const DevicePanel: FC<{
 									{chipLabel(session)}
 								</span>
 								<span className="shrink-0 text-meta text-ink-dim">
-									{chipFact(session, device.label, deviceReach(device))}
+									{chipFact(
+										session,
+										deviceIdentityText(device, deviceIds, true),
+										deviceReach(device),
+									)}
 								</span>
 								{movingSessionId === session.id ? (
 									<span className="shrink-0 text-meta text-ink-muted">

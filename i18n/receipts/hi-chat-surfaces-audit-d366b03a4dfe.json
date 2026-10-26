@@ -1,0 +1,186 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+	"instance": "d366b03a4dfe",
+	"locale": "hi",
+	"date": "2026-10-25",
+	"round": 1,
+	"branch": "i18n-chat-surfaces",
+	"source_head": "732c568cdd",
+	"scope": "Round-1 independent audit of the four chat-surface catalogues for hi at head 732c568cdd (uncommitted working-tree candidates, bound by sha256). All 177 new keys read in depth (ui.chat 71, ui.chat.canonical 13, ui.chat.run_details 79, ui.chat.asks 14) plus the rest of each namespace for consistency with the shipped hi values. Sources: English catalogue + context sidecar per key, the consuming code in src/renderer (split-sentence joins, chip label seams, ICU call sites, label-in-name), the shipped hi catalogues, and the core glossary + hi style guide.",
+	"independence": "Auditor is not the translator: this session did not translate these files, never read a translator report, and does not edit them.",
+	"model_provenance": "Task pinned radient/auto; that route failed with provider quota HTTP 402 (cross-vendor descent). The session was served, in order, anthropic/claude-sonnet-5-5, openai/gpt-6.1-sol, deepseek/deepseek-flash, then openrouter/deepseek/deepseek-v4.1-flash-1017, which is the label it carried for the audit work recorded here. No provider model id beyond these harness-reported labels is invented.",
+	"overall_verdict": "changes_requested",
+	"gates_run": [
+		"node scripts/i18n/check-strings.mjs - ok, 1368 files, 262 literals at or below baseline",
+		"node scripts/i18n/context-parity.mjs - ok, 131 allowed gaps in 4 namespaces",
+		"node scripts/i18n/check-duplicates.mjs - ok, 763 files, 0 duplicate keys",
+		"Intl.PluralRules('hi').resolvedOptions().pluralCategories = [one, other]; 0 and 1 select one",
+		"structural parity per key: {placeholders} set-equal to English, ICU plural/select arms preserved with locale categories, no markup/backtick-code drift, key sets equal (115/60/81/26), valid JSON",
+		"typing: NFC clean, no manual bidi controls, no Devanagari digits, no NBSP/ZWJ/ZWNJ, ellipsis and danda policy matched per key",
+		"ledger-check.mjs was NOT used as a pass signal: it reports stale ledger hashes for these uncommitted candidates, which is the pre-ledger state this receipt is written for"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"languages_manifest": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		}
+	},
+	"namespaces": {
+		"ui.chat": {
+			"status": "passed",
+			"keys_audited": 115,
+			"new_keys_audited": 71,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 3
+			},
+			"sha256": {
+				"en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+				"hi": "cd60e08d06f2e63e9036a3ad6b6ebf9d2cddfebdc56fdd85e4da8e995a1fea2c",
+				"context": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+			},
+			"findings": [
+				{
+					"id": "chat-N1",
+					"severity": "nit",
+					"key": "ui.chat.error_block.provider.before",
+					"also": "ui.chat.error_block.model.before, ui.chat.error_block.rate_limit.before",
+					"current": "…अपने सभी एजेंट के लिए इसे सेट करने हेतु (link) खोलें।",
+					"problem": "The split-sentence error group mixes the formal connective हेतु (three pre-link clauses) with के लिए (schema.after_before, invalid_key.before), so the same paragraph family sounds officialese in half its sentences; the hi guide prefers everyday Hindi over heavier registers.",
+					"suggestion": "Keep one connective for the group. Where हेतु was chosen to avoid a second के लिए after 'सभी एजेंट के लिए', 'अपने सभी एजेंट के लिए इसे सेट करने हेतु' may instead read 'इसे अपने सभी एजेंट के लिए सेट करने हेतु'; otherwise use के लिए in all five halves.",
+					"verified_by": "error-block.tsx:96-146 (each half joined as before + \" \" + <Link> + \" \" + after)"
+				},
+				{
+					"id": "chat-N2",
+					"severity": "nit",
+					"key": "ui.chat.mermaid.unexpected_error",
+					"also": "joined with ui.chat.mermaid.error_contained",
+					"current": "डायग्राम रेंडर करते समय अप्रत्याशित त्रुटि हुई",
+					"problem": "This half carries no final stop and the component appends error_contained directly after a space (mermaid-diagram.tsx:539-540), so Hindi renders '…त्रुटि हुई त्रुटि डायग्राम कंपोनेंट तक ही रही।' as one run-on. English has the same missing stop, so the gap is inherited from the source; Hindi makes it more visible because there is no capital to mark the new sentence.",
+					"suggestion": "Close the half with a danda: 'डायग्राम रेंडर करते समय अप्रत्याशित त्रुटि हुई।' (and note the matching EN fix for the source)."
+				},
+				{
+					"id": "chat-N3",
+					"severity": "nit",
+					"key": "ui.chat.error_block.rate_limit.all_after",
+					"current": "खोलें — सभी AI मॉडल बिना रेट सीमा के, कम दाम पर पाने के लिए।",
+					"problem": "The comma between 'बिना रेट सीमा के' and 'कम दाम पर' breaks one coordinated phrase and forces a pause that reads as a list of two unrelated conditions; the sibling rate_limit.after has no such break.",
+					"suggestion": "खोलें — सभी AI मॉडल बिना रेट सीमा के और कम दाम पर पाने के लिए। (or drop the comma)"
+				}
+			]
+		},
+		"ui.chat.canonical": {
+			"status": "passed",
+			"keys_audited": 60,
+			"new_keys_audited": 13,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+				"hi": "ec10c3996470b4d445307acaeb5c23d3a387cd3e5d3f545192baaac2d46ef0f6",
+				"context": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+			},
+			"findings": [
+				{
+					"id": "canonical-M1",
+					"severity": "minor",
+					"key": "ui.chat.canonical.older_history.transport.short",
+					"also": "ui.chat.canonical.older_history.unproven.short",
+					"current": "लोड नहीं / पहले लोड नहीं",
+					"problem": "Both narrow-column labels drop the copula, so they read as clipped ('load no'), not as a state. They also disagree with the third arm of the same row family, failed.short 'लोड नहीं हुए'. The three short labels are visible text (SHORT_COPY span in older-history-slot.tsx:248-278), not tooltips, and no maxCells hint constrains them.",
+					"suggestion": "लोड नहीं हुआ / पहले लोड नहीं हुआ; and, for a distinct failure arm, लोड नहीं हो सका instead of लोड नहीं हुए."
+				}
+			]
+		},
+		"ui.chat.run_details": {
+			"status": "changes_requested",
+			"keys_audited": 81,
+			"new_keys_audited": 79,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 1,
+				"minor": 2,
+				"nit": 2
+			},
+			"sha256": {
+				"en": "b3f23e9248e81ec57d30778e4e4b452c27f0e04842c325cb125d2135d5d886a7",
+				"hi": "851acad0deaae12eac9db644210a44415233b3fd766a2f0a04c41473245f305c",
+				"context": "2cc9f66ec5cbd5c6c9cfbc34526ce4d91d48ea5b50bcdb925be8f1b1fe2df78b"
+			},
+			"findings": [
+				{
+					"id": "run_details-M1",
+					"severity": "major",
+					"key": "ui.chat.run_details.subagents_of",
+					"current": "मूल एजेंट",
+					"problem": "English 'Subagents of <owner>' labels the list below as the owner's subagents. 'मूल एजेंट' names the owner as the parent agent instead, so the section heading no longer says what the rows are; the word 'subagents' is lost. The component renders prefix + ownerName (run-child-subagents.tsx:223-233), so a Hindi postpositional order ('<name> के उप-एजेंट') is not available in this slot. Handled as MAJOR rather than BLOCKER because the statement made is true of the owner — it is the parent — rather than false; the list is simply left unnamed.",
+					"suggestion": "उप-एजेंट — मूल एजेंट (renders 'उप-एजेंट — मूल एजेंट Reviewer': names the list and its owner). If the prefix must stay one noun phrase, keep मूल एजेंट but record the deviation as an accepted per-locale call in the hi style guide."
+				},
+				{
+					"id": "run_details-M2",
+					"severity": "minor",
+					"key": "ui.chat.run_details.reader.delegated_with",
+					"current": "साथ सौंपा गया",
+					"problem": "Standing alone as a section label over the subagent's brief (run-child-reader.tsx:386), the fragment leaves its object unstated and 'साथ' in first position reads as 'delegated together (with someone)', not 'the brief it was delegated with'.",
+					"suggestion": "साथ दिए गए निर्देश (or सौंपा गया ब्रीफ़) — a label that names the block below it."
+				},
+				{
+					"id": "run_details-M3",
+					"severity": "minor",
+					"key": "ui.chat.run_details.todos.hidden",
+					"current": "· {count} छिपे",
+					"problem": "The adjective is fixed plural, so a single hidden to-do renders '· 1 छिपे'. Agreement cannot be fixed with an ICU plural at this call site because run-detail-todos.tsx:290-292 passes an already-formatted string as {count}.",
+					"suggestion": "Either accept and document it, or change the call site to pass the number so the string can become {count, plural, one {# छिपा} other {# छिपे}}. A number-neutral rephrasing in this slot is not available in Hindi."
+				},
+				{
+					"id": "run_details-N1",
+					"severity": "nit",
+					"key": "ui.chat.run_details.wake_cancel.keep",
+					"current": "चलने दें",
+					"problem": "'चलने दें' ('let it run') fits the monitor dialog it is shared with, but this key is the wake popover's keep button (wake-cancel-popover.tsx:232) and a scheduled wake does not run; the verb is borrowed from the wrong object.",
+					"suggestion": "रहने दें (or रद्द न करें) in wake_cancel.keep, keeping चलने दें for monitor_cancel.keep."
+				},
+				{
+					"id": "run_details-N2",
+					"severity": "nit",
+					"key": "ui.chat.run_details.reader.error_shortened",
+					"current": "वायर पर छोटा किया गया।",
+					"problem": "'वायर' has no precedent in the shipped hi catalogues (every other वायर hit is एनवायरनमेंट) and is not one of the guide's settled loans, so the opening clause leans on an in-house metaphor in transliteration.",
+					"suggestion": "भेजते समय छोटा किया गया। (or ट्रांसपोर्ट पर छोटा किया गया। if the transport term is preferred)."
+				}
+			]
+		},
+		"ui.chat.asks": {
+			"status": "passed",
+			"keys_audited": 26,
+			"new_keys_audited": 14,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+				"hi": "3451a4efede78e11ed1eb7471110109abff2f8d808189c472438c76fe0b30538",
+				"context": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+			},
+			"findings": []
+		}
+	}
+}

@@ -1,6 +1,6 @@
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import {
 	Navigate,
 	Route,
@@ -37,6 +37,7 @@ import { OnboardingProvider } from "@features/onboarding/components/onboarding-p
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import { SessionSwitcher } from "@features/session-switcher/components/session-switcher";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
+import { useTeamBridgeNotificationOpen } from "@features/team-bridge/use-team-bridge-notification-open";
 import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
 import {
 	desktopFeatureEnabled,
@@ -52,10 +53,6 @@ import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
-import {
-	type TeamBridgeOpenTarget,
-	teamBridgeOpenPath,
-} from "../../shared/team-bridge-notify";
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -490,27 +487,7 @@ const App: FC = () => {
 	 * dropped, the target is still in main, and the mount pull claims it. The pull
 	 * is one-shot, so a normal launch pays one cheap IPC call and nothing else.
 	 */
-	const [teamBridgeTarget, setTeamBridgeTarget] =
-		useState<TeamBridgeOpenTarget | null>(null);
-	useEffect(() => {
-		const bridge = window.api?.desktop?.teamBridge;
-		const pull = () => {
-			void bridge
-				?.pendingOpen?.()
-				.then((target) => {
-					if (target) setTeamBridgeTarget(target);
-				})
-				.catch(() => undefined);
-		};
-		const unsubscribe = bridge?.onOpen?.(pull);
-		pull();
-		return () => unsubscribe?.();
-	}, []);
-	useEffect(() => {
-		if (!teamBridgeTarget || bridgeState !== "enabled") return;
-		navigate(teamBridgeOpenPath(teamBridgeTarget));
-		setTeamBridgeTarget(null);
-	}, [teamBridgeTarget, bridgeState, navigate]);
+	useTeamBridgeNotificationOpen(bridgeState === "enabled", navigate);
 
 	/*
 	 * AN AGENT'S `reveal`, handled in the shell because the shell is what knows

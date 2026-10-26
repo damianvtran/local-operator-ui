@@ -600,6 +600,10 @@ jobs:
     # makes the next stall take 75 minutes to fail and produces the same
     # unreadable log. If a future run hits 50, read the log before raising this
     # again - the bound was doing its job.
+    #
+    # THE GUARD IS THE `Scan the suite log for payload lines` STEP BELOW, not a
+    # larger number: the finding was a multi-megabyte line, and a ceiling cannot
+    # name one.
     timeout-minutes: 50
 
     strategy:
@@ -709,6 +713,14 @@ jobs:
 
       - name: Run the desktop suite and assert it actually ran
         id: desktop_suite
+        # A STEP ceiling below the job's, because a job cancelled at its own
+        # `timeout-minutes` runs no further steps: without this, the payload
+        # scan below is skipped in exactly the case it exists for. A step
+        # timeout kills this step's process and the job continues, so a stall
+        # ends at 45 minutes and the scan reads the truncated tee file. 45 is
+        # ~1.9x the slowest measured shard (23.9 minutes, run 40182194704) and
+        # leaves the job's last five minutes for the scan.
+        timeout-minutes: 45
         # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
         # once for its exit status and again inside its own count assertions,
         # which doubled the dominant cost of the job for no signal. `pipefail`
@@ -819,6 +831,32 @@ jobs:
             echo "The desktop suite exited $SUITE_RC while reporting pass=$PASS fail=$FAIL."
             exit 1
           fi
+
+      # A CEILING CANNOT NAME A MULTI-MEGABYTE LINE, so this step does. It is
+      # deliberately a SEPARATE step: the suite step's body is extracted and run
+      # by `scripts/ci-scope.test.mjs`, and a check that has to fail on its own
+      # must not change what that pin executes.
+      #
+      # WHAT IT CATCHES, measured rather than imagined: the 8,264,707-byte line
+      # that stalled this shard at the 50-minute cap (run 40169799731), and the
+      # 3,933,710/3,933,712-byte `at probeTarget(s) (data:...)` frames that a
+      # GREEN run still carried (run 40181028498, `scripts/link-actions.test.mjs`).
+      # Each finding names the test file and the nearest subtest, which is the
+      # thing nobody could do from a truncated log.
+      #
+      # WHAT IT CANNOT DO, so nobody expects it to: a job cancelled at
+      # `timeout-minutes` runs no further steps, so a run that stalls on its own
+      # log output is never scanned here. This names the class for every run that
+      # survives; the prevention is the emitter fix (a bundle imported from a
+      # file, not a data: URI), not this scan.
+      #
+      # THE THRESHOLD IS PER LINE (1 MiB), never on total size: a suite log is
+      # several megabytes and entirely readable. `data:` URIs are refused at any
+      # size, because a 900 KB base64 payload is as useless to a reader as a 4 MB
+      # one.
+      - name: Scan the suite log for payload lines
+        if: ${{ always() && steps.desktop_suite.outcome != 'skipped' }}
+        run: node scripts/ci-log-guard.mjs check /tmp/desktop-tests.log --max-line-bytes 1048576
 
       - name: Record successful shard coverage
         if: ${{ steps.desktop_suite.outcome == 'success' }}

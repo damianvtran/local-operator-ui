@@ -63,8 +63,9 @@ import {
 } from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import type {
+	TeamBridgeNotifyAuthority,
 	TeamBridgeNotifyRequest,
-	TeamBridgeOpenTarget,
+	TeamBridgeOpenResult,
 } from "../shared/team-bridge-notify";
 import {
 	type WebauthnRequestPayload,
@@ -148,6 +149,8 @@ const api = {
 		 * the renderer is loading is delivered on the next pull rather than dropped.
 		 */
 		teamBridge: {
+			setAuthority: (authority: TeamBridgeNotifyAuthority): Promise<void> =>
+				ipcRenderer.invoke("team-bridge:authority", authority),
 			notify: (input: TeamBridgeNotifyRequest): Promise<{ shown: boolean }> =>
 				ipcRenderer.invoke("team-bridge:notify", input),
 			onOpen: (callback: () => void) => {
@@ -157,7 +160,7 @@ const api = {
 					ipcRenderer.removeListener("team-bridge:open", handler);
 				};
 			},
-			pendingOpen: (): Promise<TeamBridgeOpenTarget | null> =>
+			pendingOpen: (): Promise<TeamBridgeOpenResult | null> =>
 				ipcRenderer.invoke("team-bridge:pending-open"),
 		},
 		/**

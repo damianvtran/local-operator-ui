@@ -1,0 +1,277 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-translation-audit-of-uncommitted-chat-surfaces-candidates",
+  "batch": "chat-surfaces",
+  "branch": "i18n-chat-surfaces",
+  "head": "732c568cdda4a127ed80b893d3bf676024612fa9",
+  "base": "20225f33d00eb4a06e349322dc92e826b29b2e8e",
+  "pr": null,
+  "locale": "es",
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "actual_model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+  "model_route": {
+    "requested": "radient/auto",
+    "fallback_occurred": true,
+    "reason": "provider failure: quota HTTP 402 (cross-vendor descent for pinned radient/auto)",
+    "descent": [
+      "anthropic/claude-sonnet-5-5",
+      "openai/gpt-6.1-sol",
+      "deepseek/deepseek-flash",
+      "openrouter/deepseek/deepseek-v4.1-flash-1017"
+    ],
+    "note": "The audit ran across this descent; findings and this receipt were formed and written on the final entry of the list. Disclosed rather than reported as the requested route."
+  },
+  "session": "9af5567c776b",
+  "instance": "9af5567c776b-chat-surfaces",
+  "date": "2026-10-25",
+  "independence": "Independent session from the chat-surfaces translator. No translated file was edited by this auditor; no translation or MT service was used for comparison or back-translation.",
+  "source_dir": "src/i18n/catalogues/en",
+  "target_dir": "src/i18n/catalogues/es",
+  "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide_sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+  "method": "Working-tree candidates bound by hash (head 732c568cdd, local-only, uncommitted). Read the English catalogue, the per-key .context.json sidecar entry and the consuming component for every key of all four namespaces, then the es value. Mechanical: scripts/i18n/locale-parity.test.mjs (44/44 pass) and context-parity.mjs (ok) in this checkout, then an independent ICU pass with @formatjs/icu-messageformat-parser comparing argument names, plural/select branch sets, offsets and tags per key (0 failures over 282 keys); Intl.PluralRules('es') confirmed one/many/other and that 0 is other and 10^6 is many; ICU ::skeleton strings byte-compared (0 diffs); NFC, manual-bidi, zero-width and control-char scan over all 282 values (clean); backtick, edge-whitespace and U+2026 policy checks. Width judged in codepoints only - no browser was available, so nothing here is a pixel or rendered-frame claim.",
+  "keys_audited": 282,
+  "keys_new": 177,
+  "identical_values": [],
+  "identical_stub_count": 0,
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 115,
+      "keys_new": 71,
+      "sha256": {
+        "en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+        "es": "74329725312f08784821fcff12e71d3f5c80e392496ed422408201d76d36507d"
+      },
+      "context_sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372",
+      "findings": [
+        {
+          "id": "es-chat-m1",
+          "severity": "minor",
+          "key": "ui.chat.error_block.heading",
+          "current": "Fallo",
+          "problem": "EN is \"Error\". The same namespace renders mermaid failures as \"Error de renderizado\"/\"Error en el diagrama de Mermaid\", so the error block's own heading uses the only different word in the family; with the run_details finding below, the EN Error/Failed pair is inverted in Spanish.",
+          "suggestion": "Error"
+        },
+        {
+          "id": "es-chat-n1",
+          "severity": "nit",
+          "key": "ui.chat.aside.title",
+          "current": "Al margen",
+          "problem": "'Al margen' is an adverbial phrase, not a noun, and it is an <h2> panel heading (aside-panel.tsx). The shipped es copy for the same object already names the noun: ui.chat.aside.close_label 'Cerrar la consulta al margen' and ui.chat.canonical.send_failure.aside_not_answered 'Consulta al margen sin respuesta.'",
+          "suggestion": "Consulta al margen"
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 60,
+      "keys_new": 13,
+      "sha256": {
+        "en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+        "es": "eb2bf7529f75c4abdd904dee86b74cc1a257bfb801b6a03613a9e253fd84b393"
+      },
+      "context_sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04",
+      "findings": [
+        {
+          "id": "es-chat-canonical-n1",
+          "severity": "nit",
+          "key": "ui.chat.canonical.older_history.windowed.title",
+          "current": "Hay historial anterior arriba",
+          "problem": "EN is a bare fragment, and every sibling in this family is a fragment too ('Historial anterior sin cargar', 'Lo anterior sin cargar'). Turning this one arm into a full existential sentence makes the status line change shape between states.",
+          "suggestion": "Historial anterior arriba"
+        }
+      ]
+    },
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "changes_requested",
+      "verdict": "changes_requested",
+      "keys_audited": 81,
+      "keys_new": 79,
+      "sha256": {
+        "en": "b3f23e9248e81ec57d30778e4e4b452c27f0e04842c325cb125d2135d5d886a7",
+        "es": "3ae3627507c58e0f487279f7c479b8f318bd383d2dd0e51f324b20534a5621fb"
+      },
+      "context_sha256": "2cc9f66ec5cbd5c6c9cfbc34526ce4d91d48ea5b50bcdb925be8f1b1fe2df78b",
+      "findings": [
+        {
+          "id": "es-chat-rd-B1",
+          "severity": "blocker",
+          "key": "ui.chat.run_details.mcp.credential_removed",
+          "current": "Se eliminó la [redacted] guardada.",
+          "problem": "A redaction marker ships in user-facing copy. Codepoints 15-24 of the value are 91 114 101 100 97 99 116 101 100 93: an opening bracket, the seven-letter English past participle r-e-d-a-c-t-e-d, and a closing bracket. sha256 of that substring equals sha256 of the same bracketed word, both computed from the file's own bytes, so no display filter is involved. The sibling locales are clean in the same key: fr codepoints 76 8217 105 100 101 110 116 105 102 105 97 110 116 spell the French word for identifier, and ru codepoints 1057 1086 1093 1088 1072 1085 1105 1085 1085 1099 1077 spell the Russian word for stored. So this is an es-only defect. Glossary section 2 gives es credentials as the plural 'credenciales', so the noun to restore is that word's singular.",
+          "suggestion": "Se eliminó la credencial guardada."
+        },
+        {
+          "id": "es-chat-rd-M1",
+          "severity": "major",
+          "key": "ui.chat.run_details.wake.cancel_wake_due",
+          "current": "Cancelar el despertar que se activa {due}",
+          "problem": "{due} is formatWakeDue's absolute stamp - '02:15 PM CET' on the same day, 'Oct 26 02:15 PM CET' otherwise (run-detail-model.ts:1614, WAKE_MONTHS). 'que se activa' + a bare stamp is ungrammatical either way: a clock needs 'a las' and a dated stamp needs 'el', and no single preposition fits both, so the accessible name reads broken.",
+          "suggestion": "Cancelar el despertar previsto para {due}"
+        },
+        {
+          "id": "es-chat-rd-m1",
+          "severity": "minor",
+          "key": "ui.chat.run_details.todos.hidden",
+          "current": "· {count} ocultas",
+          "problem": "Agreement breaks at one hidden row. The arm renders when fullyShed is true (phase.items.length === 0 && phase.hidden > 0, run-detail-todos.tsx:231), so phase.hidden can be 1, and the count reaches the message pre-formatted as a string (formatNumber), so an ICU plural cannot be used here and '· 1 ocultas' ships. An invariant adjective is the fix that does not need a component change.",
+          "suggestion": "· {count} sin mostrar"
+        },
+        {
+          "id": "es-chat-rd-m2",
+          "severity": "minor",
+          "key": "ui.chat.run_details.monitors.title",
+          "current": "Monitores",
+          "problem": "Glossary section 2 records es monitor -> 'monitorización'; a stored monitor object is a different term, and the es style guide has no extension recording that split (glossary footnote 7 does exactly this for hi). Either the guide gets the object/activity call or the word aligns with the glossary.",
+          "suggestion": "keep 'Monitores' and record the object/activity split in i18n/style-guides/es.md"
+        },
+        {
+          "id": "es-chat-rd-m3",
+          "severity": "minor",
+          "key": "ui.chat.run_details.reader.failed",
+          "current": "Error",
+          "problem": "EN 'Failed' is a label above the subagent's own error text, so it states the outcome; 'Error' instead names the thing printed underneath it, and it is the mirror of ui.chat.error_block.heading rendering EN 'Error' as 'Fallo'. Fixing the pair restores the source's distinction.",
+          "suggestion": "Falló"
+        }
+      ]
+    },
+    "ui.chat.asks": {
+      "namespace": "ui.chat.asks",
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 26,
+      "keys_new": 14,
+      "sha256": {
+        "en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+        "es": "92bab10570506f8be39f41a205f73ec6b27e41ffc037b2c038a338af164a5793"
+      },
+      "context_sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c",
+      "findings": [
+        {
+          "id": "es-chat-asks-m1",
+          "severity": "minor",
+          "key": "ui.chat.asks.settled_heading",
+          "current": "Resueltas",
+          "problem": "The settled half holds dismissed asks as well as answered ones - its rows read 'Descartada — ya no hace falta' - and 'resuelta' is already the word the answered receipt uses ('Descartada — resuelta en la conversación'). EN 'Settled' is deliberately neutral so it covers both; 'Resueltas' claims a resolution a dismissed ask did not get.",
+          "suggestion": "Atendidas"
+        }
+      ]
+    }
+  },
+  "input_hashes": [
+    {
+      "role": "glossary",
+      "path": "i18n/glossary.md",
+      "repo": "damianvtran/local-operator",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    {
+      "role": "style_guide",
+      "path": "i18n/style-guides/es.md",
+      "repo": "damianvtran/local-operator",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    {
+      "role": "source",
+      "namespace": "ui.chat",
+      "path": "src/i18n/catalogues/en/ui.chat.json",
+      "sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0"
+    },
+    {
+      "role": "source",
+      "namespace": "ui.chat.canonical",
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce"
+    },
+    {
+      "role": "source",
+      "namespace": "ui.chat.run_details",
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+      "sha256": "b3f23e9248e81ec57d30778e4e4b452c27f0e04842c325cb125d2135d5d886a7"
+    },
+    {
+      "role": "source",
+      "namespace": "ui.chat.asks",
+      "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+      "sha256": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd"
+    },
+    {
+      "role": "context",
+      "namespace": "ui.chat",
+      "path": "src/i18n/catalogues/en/ui.chat.context.json",
+      "sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+    },
+    {
+      "role": "context",
+      "namespace": "ui.chat.canonical",
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+    },
+    {
+      "role": "context",
+      "namespace": "ui.chat.run_details",
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+      "sha256": "2cc9f66ec5cbd5c6c9cfbc34526ce4d91d48ea5b50bcdb925be8f1b1fe2df78b"
+    },
+    {
+      "role": "context",
+      "namespace": "ui.chat.asks",
+      "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+      "sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+    },
+    {
+      "role": "target",
+      "namespace": "ui.chat",
+      "path": "src/i18n/catalogues/es/ui.chat.json",
+      "sha256": "74329725312f08784821fcff12e71d3f5c80e392496ed422408201d76d36507d"
+    },
+    {
+      "role": "target",
+      "namespace": "ui.chat.canonical",
+      "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+      "sha256": "eb2bf7529f75c4abdd904dee86b74cc1a257bfb801b6a03613a9e253fd84b393"
+    },
+    {
+      "role": "target",
+      "namespace": "ui.chat.run_details",
+      "path": "src/i18n/catalogues/es/ui.chat.run_details.json",
+      "sha256": "3ae3627507c58e0f487279f7c479b8f318bd383d2dd0e51f324b20534a5621fb"
+    },
+    {
+      "role": "target",
+      "namespace": "ui.chat.asks",
+      "path": "src/i18n/catalogues/es/ui.chat.asks.json",
+      "sha256": "92bab10570506f8be39f41a205f73ec6b27e41ffc037b2c038a338af164a5793"
+    }
+  ],
+  "counts": {
+    "blocker": 1,
+    "major": 1,
+    "minor": 5,
+    "nit": 2
+  },
+  "verdict": "changes_requested",
+  "verdict_reason": "ui.chat.run_details carries one BLOCKER (a literal redaction token in shipped copy) and one MAJOR (an accessible name that cannot compose with its own placeholder). The other three namespaces are clean of blocker/major; their minors and nits are recorded here rather than churned.",
+  "observations_outside_the_catalogue": [
+    {
+      "where": "src/renderer/src/features/chat/components/run-details/run-detail-todos.tsx:333",
+      "note": "summary={`${phase.hidden} hidden`} is a hardcoded English string in new code (Disclosure summary, user-visible), so it stays English in every locale. Not a catalogue finding: it needs a key."
+    },
+    {
+      "where": "src/renderer/src/features/chat/components/run-details/run-detail-model.ts:1476,1618",
+      "note": "formatWakeDue builds its label from an English WAKE_MONTHS table and a 12-hour AM/PM clock, so {due} renders English month names and AM/PM inside every locale. Not a catalogue finding; the es sentence defect in es-chat-rd-M1 is separate and fixable in the catalogue alone."
+    }
+  ],
+  "limitations": [
+    "No rendered frame: widths and overflow are codepoint reasoning only, not a browser or screenshot claim.",
+    "This is the single pass taken for this run. The brief's second independent pass for high-visibility groups was not requested for this task and no second auditor was dispatched; the error/approval family was re-read here once, by the same session, which is not an independent second pass."
+  ]
+}

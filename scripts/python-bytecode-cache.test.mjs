@@ -2079,7 +2079,22 @@ function childProcessBindings(raw) {
 function findChildProcessSites(files = mainProcessSources()) {
 	const sites = [];
 	for (const file of files) {
-		const raw = readFileSync(file, "utf8");
+		let raw;
+		try {
+			raw = readFileSync(file, "utf8");
+		} catch (error) {
+			/*
+			 * A LISTED FILE THAT NO LONGER EXISTS HAS NO SITES. The harness lanes run
+			 * concurrently inside one CI shard, and several of them build a transient
+			 * esbuild bundle next to their own sources: the walk lists it, the lane
+			 * that wrote it removes it, and the read lands on nothing. That is not a
+			 * gap in the scan - the vanished file is a bundle of sources this file
+			 * reads directly - so it is skipped. Any other read error is still a real
+			 * failure and must not be swallowed.
+			 */
+			if (error?.code === "ENOENT") continue;
+			throw error;
+		}
 		const source = blankComments(raw);
 		const { named, namespaces } = childProcessBindings(raw);
 		if (
@@ -3014,6 +3029,51 @@ test("the scan reads the CommonJS require binding a `.cjs` harness uses", () => 
 
 // ---------------------------------------------------------------------------
 // Which interpreter environment an instance uses
+
+/*
+ * THE SCAN MUST SURVIVE A FILE THAT VANISHES BETWEEN LIST AND READ. Harness lanes
+ * share one CI shard and several of them write a transient bundle under
+ * `scripts/` and remove it again; `harnessSources()` can list such a file a
+ * moment before its owner unlinks it. That is the shard-0 red this guards: the
+ * read threw ENOENT and took the whole lane down. A directory where a source is
+ * expected still has to fail - silently returning no sites would hide a scanner
+ * that stopped reading anything.
+ */
+test("a listed file that vanished before the read is skipped, and a real read error still throws", () => {
+	const root = mkdtempSync(join(tmpdir(), "lo-scan-vanish-"));
+	try {
+		const gone = join(root, "gone.cjs");
+		writeFileSync(
+			gone,
+			'const { spawnSync } = require("node:child_process");\nspawnSync("python3", ["-c", "x"]);\n',
+		);
+		const kept = join(root, "kept.cjs");
+		writeFileSync(
+			kept,
+			'const { spawnSync } = require("node:child_process");\nspawnSync("python3", ["-c", "x"]);\n',
+		);
+		// The list is taken while both exist; the unlink is the owner finishing.
+		const listed = [gone, kept];
+		rmSync(gone);
+		const sites = findChildProcessSites(listed);
+		assert.equal(
+			sites.length,
+			1,
+			`the surviving file is still scanned: ${JSON.stringify(sites.map((site) => site.file))}`,
+		);
+		assert.equal(sites[0].file, relative(process.cwd(), kept));
+
+		const notAFile = join(root, "a-directory.cjs");
+		mkdirSync(notAFile);
+		assert.throws(
+			() => findChildProcessSites([notAFile]),
+			/EISDIR/,
+			"a non-ENOENT read error is a failure, not an empty scan",
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
 
 test("a packaged and an unpackaged instance never share a venv", () => {
 	for (const platform of ["darwin", "linux", "win32"]) {

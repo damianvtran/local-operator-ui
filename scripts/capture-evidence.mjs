@@ -9403,6 +9403,14 @@ export const STORIES = [
 	["settings-language-door--external-toast", 1280, 800],
 	["settings-language-door--dialog-loading", 1280, 800],
 	["settings-language-door--dialog-cold-failure", 1280, 800],
+	/*
+	 * The stale-banner sentence (design round 2, D6/D7): a banner click that can no
+	 * longer route answers with one neutral line naming neither the account nor the
+	 * conversation. The story holds `capturePending` until sonner has drawn a real
+	 * toast - its container exists only once a toast does - so this row needs no
+	 * selector of its own.
+	 */
+	["team-bridge-notification-unavailable-toast--stale-click", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 	/*
 	 * The roster rows (issues #844, #849): the `@` scope's agent and team rows, one
@@ -11364,7 +11372,7 @@ export const STORIES = [
 				from: `[data-mesh-session="0123456789ab"]`,
 				to: `[data-mesh-device="d_${"b".repeat(32)}"]`,
 			},
-			expectSentence: "Move to cloud-node-1",
+			expectSentence: 'Move to "cloud-node-1" d_bbbbbbbb…',
 		},
 	],
 	[

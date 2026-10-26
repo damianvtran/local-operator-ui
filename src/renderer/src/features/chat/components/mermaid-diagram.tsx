@@ -6,6 +6,8 @@ import {
 	Button,
 	Tooltip,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
@@ -418,61 +420,71 @@ const DiagramControls: FC<DiagramControlsProps> = ({
 			className,
 		)}
 	>
-		<Tooltip content="Zoom in">
+		<Tooltip content={t("ui.chat.mermaid.zoom_in")}>
 			<Button
 				variant="ghost"
 				size="icon-sm"
-				aria-label="Zoom in"
+				aria-label={t("ui.chat.mermaid.zoom_in")}
 				onClick={onZoomIn}
 			>
 				<ZoomIn />
 			</Button>
 		</Tooltip>
 
-		<Tooltip content="Zoom out">
+		<Tooltip content={t("ui.chat.mermaid.zoom_out")}>
 			<Button
 				variant="ghost"
 				size="icon-sm"
-				aria-label="Zoom out"
+				aria-label={t("ui.chat.mermaid.zoom_out")}
 				onClick={onZoomOut}
 			>
 				<ZoomOut />
 			</Button>
 		</Tooltip>
 
-		<Tooltip content="Drag the diagram to pan">
-			<Button variant="ghost" size="icon-sm" aria-label="Drag to pan">
+		<Tooltip content={t("ui.chat.mermaid.pan_hint")}>
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				aria-label={t("ui.chat.mermaid.pan")}
+			>
 				<Move />
 			</Button>
 		</Tooltip>
 
-		<Tooltip content="Reset view">
+		<Tooltip content={t("ui.chat.mermaid.reset_view")}>
 			<Button
 				variant="ghost"
 				size="icon-sm"
-				aria-label="Reset view"
+				aria-label={t("ui.chat.mermaid.reset_view")}
 				onClick={onReset}
 			>
 				<RotateCcw />
 			</Button>
 		</Tooltip>
 
-		<Tooltip content="Save as SVG">
+		<Tooltip content={t("ui.chat.mermaid.save_svg")}>
 			<Button
 				variant="ghost"
 				size="icon-sm"
-				aria-label="Save as SVG"
+				aria-label={t("ui.chat.mermaid.save_svg")}
 				onClick={onSave}
 			>
 				<Download />
 			</Button>
 		</Tooltip>
 
-		<Tooltip content={copied ? "Copied" : "Copy mermaid text"}>
+		<Tooltip
+			content={
+				copied ? t("ui.chat.mermaid.copied") : t("ui.chat.mermaid.copy_text")
+			}
+		>
 			<Button
 				variant="ghost"
 				size="icon-sm"
-				aria-label={copied ? "Copied" : "Copy mermaid text"}
+				aria-label={
+					copied ? t("ui.chat.mermaid.copied") : t("ui.chat.mermaid.copy_text")
+				}
 				onClick={onCopy}
 			>
 				<CopyIcon className={cn(copied && "text-success")} />
@@ -523,10 +535,9 @@ class MermaidErrorBoundary extends Component<
 		if (this.state.hasError) {
 			return (
 				this.props.fallback || (
-					<DiagramError title="Mermaid diagram error">
-						{this.state.error?.message ||
-							"An unexpected error occurred while rendering the diagram"}{" "}
-						The error was contained within the diagram component.
+					<DiagramError title={t("ui.chat.mermaid.error_title")}>
+						{this.state.error?.message || t("ui.chat.mermaid.unexpected_error")}{" "}
+						{t("ui.chat.mermaid.error_contained")}
 					</DiagramError>
 				)
 			);
@@ -540,6 +551,11 @@ class MermaidErrorBoundary extends Component<
  * Enhanced Mermaid diagram component with zoom, pan, save SVG, reset, fullscreen, and copy controls
  */
 const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
+	// The class-based error boundary beside this component cannot subscribe to
+	// locale changes, so the subscription lives here — every one of this
+	// component's own copy sites (`t()` calls in its render) re-renders when the
+	// language setting changes.
+	useI18nLocale();
 	const elementRef = useRef<HTMLDivElement>(null);
 	const fullscreenElementRef = useRef<HTMLDivElement>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -823,9 +839,11 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 
 	if (error) {
 		return (
-			<DiagramError title="Mermaid diagram error">
+			<DiagramError title={t("ui.chat.mermaid.error_title")}>
 				{error}
-				<span className={cn("mt-2 block text-ink-muted")}>Chart</span>
+				<span className={cn("mt-2 block text-ink-muted")}>
+					{t("ui.chat.mermaid.chart_label")}
+				</span>
 				<span
 					className={cn(
 						"mt-1 block whitespace-pre-wrap font-mono text-mono-sm",
@@ -866,7 +884,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 				>
 					{isLoading ? (
 						<div className={cn("p-4 text-body-sm text-ink-muted")}>
-							Loading diagram...
+							{t("ui.chat.mermaid.loading")}
 						</div>
 					) : svgContent ? (
 						<div
@@ -884,8 +902,8 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		} catch (err) {
 			console.error("Error rendering diagram content:", err);
 			return (
-				<DiagramError title="Rendering error">
-					Failed to render diagram content.
+				<DiagramError title={t("ui.chat.mermaid.rendering_error")}>
+					{t("ui.chat.mermaid.render_failed")}
 				</DiagramError>
 			);
 		}
@@ -910,11 +928,11 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 					onSave={handleSaveSVG}
 					onCopy={handleCopy}
 				>
-					<Tooltip content="Fullscreen">
+					<Tooltip content={t("ui.chat.mermaid.fullscreen")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Open diagram fullscreen"
+							aria-label={t("ui.chat.mermaid.open_fullscreen")}
 							onClick={() => handleFullscreenToggle(true)}
 						>
 							<Maximize2 />
@@ -926,7 +944,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 			<BaseDialog
 				open={isFullscreen}
 				onClose={() => handleFullscreenToggle(false)}
-				title="Mermaid diagram"
+				title={t("ui.chat.mermaid.diagram_title")}
 				maxWidth="xl"
 				fullWidth
 				dialogProps={{ className: "h-[90vh] max-h-[90vh]" }}
@@ -948,11 +966,11 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 						onSave={handleSaveSVG}
 						onCopy={handleFullscreenCopy}
 					>
-						<Tooltip content="Close fullscreen">
+						<Tooltip content={t("ui.chat.mermaid.close_fullscreen")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Close fullscreen"
+								aria-label={t("ui.chat.mermaid.close_fullscreen")}
 								onClick={() => handleFullscreenToggle(false)}
 							>
 								<X />

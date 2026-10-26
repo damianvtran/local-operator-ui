@@ -1,0 +1,200 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "batch": "chat-surfaces",
+  "pr": null,
+  "head": "732c568cdda4a127ed80b893d3bf676024612fa9",
+  "base": "20225f33d00eb4a06e349322dc92e826b29b2e8e",
+  "locale": "ur",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "radient/auto",
+  "session": "360d964a9f0b",
+  "instance": "360d964a9f0b",
+  "date": "2026-10-25",
+  "independence": "Independent audit: I did not translate these files, did not see the translator's run, and did not read any translator report. The verdict was formed from the English source, its en context sidecar entry per key, the consuming code under src/renderer, the shipped ur catalogues and the core glossary/style guide. I edited no catalogue and ran no translation or MT service.",
+  "actual_model_source": "Requested route radient/auto. The provider returned HTTP 402 (quota) mid-run and the harness descended through anthropic/claude-sonnet-5-5, openai/gpt-6.1-sol, deepseek/deepseek-flash and openrouter/deepseek/deepseek-v4.1-flash-1017 for this request. Disclosed because the audit was carried out on whichever model the harness had active at each step; 'radient/auto' is recorded as the routed model this receipt is filed under.",
+  "source_dir": "src/i18n/catalogues/en",
+  "target_dir": "src/i18n/catalogues/ur",
+  "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide_sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+  "method": "All 282 keys read in full: 177 new in this wave (ui.chat 71, canonical 13, run_details 79, asks 14) examined closely, the remaining 105 read for consistency against the shipped ur locale. Mechanical pass by script over all four files: key parity and order; @formatjs/icu-messageformat-parser AST comparison of every message (argument names and types, select/plural option sets, tag names, pound counts) - no differences; CLDR plural categories for ur verified with Intl.PluralRules (one, other only) rather than assumed; code spans, --flags, tags, NFC, manual bidi controls (RLM/LRM/FSI/PDI and U+202A-E/2066-9), edge whitespace and ellipsis policy compared against the source; width checked by codepoint against the two maxCells hints in the sidecars (both within budget). Link-half keys checked by reading the JSX that joins them (error-block.tsx) and the client-owned approval words in approval-words.ts, so the Latin 'Approve'/'Deny'/'yes'/'no' in the dock hint were confirmed correct rather than untranslated. No rendered frame or pixel measurement was taken: this run had no browser, so all fit statements are codepoint counts against the sidecar hint.",
+  "keys_audited": 282,
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "changes_requested",
+      "keys_audited": 115,
+      "sha256": {
+        "en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+        "ur": "9363112725c78a7bc5d470d8e0231b345d2fcc7bea0da8a69a7b82762f2a55df"
+      },
+      "context_sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372",
+      "findings": [
+        {
+          "id": "U-01",
+          "severity": "major",
+          "category": "terminology",
+          "key": "ui.chat.composer.status.session_goal",
+          "related_keys": [
+            "ui.chat.composer.status.goal_expand",
+            "ui.chat.composer.status.goal_collapse",
+            "ui.chat.composer.status.goal_label"
+          ],
+          "source": "Session goal",
+          "current": "سیشن کا مقصد",
+          "proposed": "سیشن کا ہدف",
+          "reason": "The sidecar says this key is the accessible name of the region whose disclosure controls are goal_expand/goal_collapse, so one region is announced under two different nouns. Six sibling keys in this namespace render \"goal\" as ہدف (goal_label \"ہدف:\", goal_expand \"سیشن کا ہدف پھیلائیں\", goal_collapse \"سیشن کا ہدف سمیٹیں\", goal_dismiss_name, goal_done_name, goal_dismiss_keep), and the shipped ur locale uses ہدف in every occurrence of \"goal\" (ui.canvas.shell.goal \"ہدف\"; ui.canvas.goals_viewer.count ہدف/اہداف; ui.chat.pickers.destination_pickers.goal \"ہدف\"; set_goal \"ہدف مقرر کریں\"). مقصد is not free either: it is the shipped ur rendering of the different term \"purpose\" (ui.chat.pickers.session_panel.purpose \"مقصد\", by_purpose \"مقصد کے لحاظ سے\"), so this key both drops the word used for goal everywhere else and reuses the locale's word for purpose.",
+          "disposition": "open"
+        },
+        {
+          "id": "U-02",
+          "severity": "nit",
+          "category": "idiom",
+          "key": "ui.chat.composer.status.loop_progress_of_turns",
+          "source": "{completed, number, ::group-off} of {total, number, ::group-off} turns",
+          "current": "{completed, number, ::group-off} / {total, number, ::group-off} باریاں",
+          "proposed": "{completed, number, ::group-off} از {total, number, ::group-off} باریاں, or reuse the \"میں سے\" idiom the ask prefix already uses",
+          "reason": "Replacing \"of\" with \"/\" is read aloud as \"slash\" in an accessible name. The sibling prefix key in this same wave uses the natural Urdu counting idiom (\"{total} میں سے سوال {index}\"), so the two turn readings differ in register.",
+          "disposition": "open"
+        }
+      ],
+      "result_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 0,
+        "nit": 1
+      }
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "keys_audited": 60,
+      "sha256": {
+        "en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+        "ur": "0bf7c9139b8a028a720022be94c1811e931804b26864355cd38e155557ee8995"
+      },
+      "context_sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04",
+      "findings": [
+        {
+          "id": "C-01",
+          "severity": "minor",
+          "category": "consistency",
+          "key": "ui.chat.canonical.older_history.unproven.short",
+          "related_keys": [
+            "ui.chat.canonical.older_history.windowed.title",
+            "ui.chat.canonical.older_history.windowed.short_gesture",
+            "ui.chat.canonical.older_history.transport.long",
+            "ui.chat.canonical.older_history.failed.long"
+          ],
+          "source": "Earlier not loaded / Earlier history above / Scroll up for earlier",
+          "current": "پرانے لوڈ نہیں ہوئے / اوپر مزید تاریخ / پرانے کے لیے اوپر سکرول",
+          "proposed": "پچھلے لوڈ نہیں ہوئے / اوپر پچھلی تاریخ / پچھلے کے لیے اوپر سکرول",
+          "reason": "This 13-key delta renders the same source word \"earlier\" three ways: پچھلے in the four longer forms (\"پچھلے پیغامات لوڈ نہیں ہوئے\", \"پچھلے پیغامات لوڈ کریں\"), پچھلی in unproven.long, and پرانے/مزید in these three. پرانے reads as \"old/outdated\" rather than \"earlier\", so the narrow-column forms name a different idea from the full sentence they stand in for.",
+          "disposition": "open"
+        }
+      ],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "changes_requested",
+      "keys_audited": 81,
+      "sha256": {
+        "en": "b3f23e9248e81ec57d30778e4e4b452c27f0e04842c325cb125d2135d5d886a7",
+        "ur": "995abc40f5be4dd0d8b2ff87183b3242e1b51086d05705e19d848ddf07dd3ec2"
+      },
+      "context_sha256": "2cc9f66ec5cbd5c6c9cfbc34526ce4d91d48ea5b50bcdb925be8f1b1fe2df78b",
+      "findings": [
+        {
+          "id": "R-01",
+          "severity": "major",
+          "category": "terminology",
+          "key": "ui.chat.run_details.jobs",
+          "related_keys": [
+            "ui.chat.composer.status.jobs_action",
+            "ui.chat.run_details.todos.title",
+            "ui.chat.run_details.chip.todos_open"
+          ],
+          "source": "Jobs",
+          "current": "کام",
+          "proposed": "جابز (with ui.chat.composer.status.jobs_action → \"رن کی تفصیلات میں جابز کھولیں\")",
+          "reason": "کام is the shipped ur word for a to-do item (ui.projects.count.todo \"کام\", ui.projects.project_todos.to_dos \"کاموں کی فہرست\"), and this pane renders a Jobs section and a To-dos section side by side (run-detail-jobs.tsx:177, run-detail-todos.tsx:201) whose chip clauses already read \"تمام کام بند\" and \"تمام کام مکمل\". So one word names two different lists in one view, and \"کام\" on its own means \"work\" rather than a background job. جابز is the spelling the shipped locale already uses for jobs in ui.common.errors (\"جابز کی فہرست\", \"جابز کی صفائی\"), so the change adds no new term.",
+          "disposition": "open"
+        },
+        {
+          "id": "R-02",
+          "severity": "minor",
+          "category": "grammar",
+          "key": "ui.chat.run_details.mcp_auth.checking",
+          "source": "Checking this server's sign-in method…",
+          "current": "اس سرور کا سائن ان طریقہ جانچا جا رہا ہے…",
+          "proposed": "اس سرور کے سائن ان کا طریقہ جانچا جا رہا ہے…",
+          "reason": "طریقہ needs its ezafe: without کا between سائن ان and طریقہ the two nouns sit in bare juxtaposition, which Urdu does not form here (unlike a settled compound such as سائن ان صفحہ). Neighbouring keys in the same dialog build the same relation with a possessive (\"اس سرور کی اسناد\", \"اس سرور کی موجودہ اجازت\", \"اس سرور کی کلید\").",
+          "disposition": "open"
+        },
+        {
+          "id": "R-03",
+          "severity": "minor",
+          "category": "idiom",
+          "key": "ui.chat.run_details.reader.error_shortened",
+          "source": "Shortened at the wire. The runtime records at most the first 2,000 characters of an error.",
+          "current": "راستے میں ہی مختصر کر دیا گیا۔ رن ٹائم کسی خرابی کے زیادہ سے زیادہ پہلے 2,000 حروف محفوظ کرتا ہے۔",
+          "proposed": "…رن ٹائم کسی خرابی کے صرف پہلے 2,000 حروف تک محفوظ کرتا ہے۔",
+          "reason": "\"زیادہ سے زیادہ پہلے\" stacks two modifiers ahead of the noun (\"at most the first\") and reads as a calque of the English word order; صرف … تک carries the \"only up to / at most\" limit where Urdu puts it, after the noun.",
+          "disposition": "open"
+        },
+        {
+          "id": "R-04",
+          "severity": "nit",
+          "category": "grammar",
+          "key": "ui.chat.run_details.todos.hidden",
+          "source": "· {count} hidden",
+          "current": "· {count} چھپے ہوئے",
+          "proposed": "· {count, plural, one {# چھپا ہوا} other {# چھپے ہوئے}} — or a count-neutral phrasing",
+          "reason": "The masculine plural adjective is wrong at count=1 (\"1 چھپے ہوئے\"). The source carries no plural arm, so this is recorded rather than demanded; the wave that adds an arm should take the singular.",
+          "disposition": "open"
+        },
+        {
+          "id": "R-05",
+          "severity": "nit",
+          "category": "terminology",
+          "key": "ui.chat.run_details.reader.no_session_id",
+          "source": "This subagent's row carries no session id, so there is no conversation to open from here.",
+          "current": "اس ذیلی ایجنٹ کی قطار میں کوئی سیشن آئی ڈی نہیں، اس لیے یہاں سے کھولنے کے لیے کوئی گفتگو نہیں۔",
+          "proposed": "…ردیف میں… (or سطری)",
+          "reason": "قطار is a queue or a line of people; the term for a row in a table or list is ردیف/سطری. The sentence is about the subagent's row in the parent's list.",
+          "disposition": "open"
+        }
+      ],
+      "result_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 2,
+        "nit": 2
+      }
+    },
+    "ui.chat.asks": {
+      "namespace": "ui.chat.asks",
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+        "ur": "10d9e1e9b04d1d81014c5b339368309fdcb4cf0b453bcd9a60496761bdf1103b"
+      },
+      "context_sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c",
+      "findings": [],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  }
+}
