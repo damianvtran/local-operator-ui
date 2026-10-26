@@ -48,6 +48,13 @@ export type ThreadPaneProps = {
 	/* Null = nobody names this sender (directory loading/failed, a member who
 	   left, the legacy "Member" label); the list renders it as unknown. */
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
+	profileFor?: React.ComponentProps<typeof TeamBridgeMessageList>["profileFor"];
+	canMessagePerson?: React.ComponentProps<
+		typeof TeamBridgeMessageList
+	>["canMessagePerson"];
+	onMessagePerson?: React.ComponentProps<
+		typeof TeamBridgeMessageList
+	>["onMessagePerson"];
 	onClose: () => void;
 	onRetry: () => void;
 	onSend: (
@@ -122,6 +129,9 @@ function TeamBridgeThreadPaneBody({
 	replies,
 	state,
 	labelFor,
+	profileFor,
+	canMessagePerson,
+	onMessagePerson,
 	onClose,
 	onRetry,
 	onSend,
@@ -279,6 +289,9 @@ function TeamBridgeThreadPaneBody({
 						arrivalKey={`${teamBridgeArrivalStreamKey(tenantId, root.conversation_id)}/root`}
 						arrivalsEnabled={false}
 						labelFor={labelFor}
+						profileFor={profileFor}
+						canMessagePerson={canMessagePerson}
+						onMessagePerson={onMessagePerson}
 						tenantId={tenantId}
 						accountId={accountId}
 						density="compact"
@@ -320,6 +333,9 @@ function TeamBridgeThreadPaneBody({
 						arrivalsEnabled={!paging}
 						accountId={accountId}
 						labelFor={labelFor}
+						profileFor={profileFor}
+						canMessagePerson={canMessagePerson}
+						onMessagePerson={onMessagePerson}
 						tenantId={tenantId}
 						density="compact"
 						reactionContext={reactionContext}
@@ -429,6 +445,9 @@ export type ThreadPaneMountProps = {
 	initialRoot?: TeamBridgeMessage;
 	readOnly: boolean;
 	labelFor: ThreadPaneProps["labelFor"];
+	profileFor?: ThreadPaneProps["profileFor"];
+	canMessagePerson?: ThreadPaneProps["canMessagePerson"];
+	onMessagePerson?: ThreadPaneProps["onMessagePerson"];
 	onClose: () => void;
 	reactionContext?: ThreadPaneProps["reactionContext"];
 	/* The attachment lane's two additions ride the mount props, so the shipped-
@@ -447,6 +466,9 @@ function TeamBridgeThreadPaneMount({
 	initialRoot,
 	readOnly,
 	labelFor,
+	profileFor,
+	canMessagePerson,
+	onMessagePerson,
 	onClose,
 	reactionContext,
 	accountId,
@@ -525,6 +547,9 @@ function TeamBridgeThreadPaneMount({
 			replies={replies}
 			state={query.isPending ? "loading" : query.isError ? "error" : "ready"}
 			labelFor={labelFor}
+			profileFor={profileFor}
+			canMessagePerson={canMessagePerson}
+			onMessagePerson={onMessagePerson}
 			onClose={onClose}
 			onRead={acknowledge}
 			onRetry={() => void query.refetch()}

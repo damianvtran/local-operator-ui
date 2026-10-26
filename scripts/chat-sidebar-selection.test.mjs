@@ -2085,7 +2085,15 @@ const classTokens = (text) =>
  * override paints the primitive's `sunken`. Read from the component's own class
  * expression by the test below rather than trusted here.
  */
+const TEAM_BRIDGE_PROFILE =
+	"src/renderer/src/features/team-bridge/team-bridge-profile-card.tsx";
 const CARRIED_GROUNDS = {
+	// Extraction must not make the rail's shared avatar invisible to the sweep.
+	TeamBridgeAvatar: {
+		ground: "bg-surface,bg-media-surface",
+		file: TEAM_BRIDGE_PROFILE,
+		anchor: "export function TeamBridgeAvatar",
+	},
 	AvatarFallback: {
 		ground: "bg-sunken",
 		file: "src/renderer/src/shared/components/ui/avatar.tsx",
@@ -2296,10 +2304,13 @@ const carriersInsideRowStates = async () => {
 				if (own !== null) {
 					const tokens = classTokens(own);
 					const grounds = GROUND_ROLES.filter((role) => tokens.includes(role));
-					if (grounds.length === 0) continue;
-					seen.add(inner[0]);
-					found.push({ file, element, host, grounds, classes: own });
-					continue;
+					if (grounds.length > 0) {
+						seen.add(inner[0]);
+						found.push({ file, element, host, grounds, classes: own });
+						continue;
+					}
+					// A size/ink override does not remove a primitive's own ground.
+					// Fall through to its carrier instead of losing the extracted plate.
 				}
 				const carried = CARRIED_GROUNDS[element];
 				if (!carried) continue;
@@ -2308,8 +2319,8 @@ const carriersInsideRowStates = async () => {
 					file,
 					element,
 					host,
-					grounds: [carried.ground],
-					classes: expressionAfter(carried.file, carried.anchor),
+					grounds: carried.ground.split(","),
+					classes: `${expressionAfter(carried.file, carried.anchor)} ${own ?? ""}`,
 				});
 			}
 		}
@@ -2378,7 +2389,8 @@ const PLATES_INSIDE_ROW_STATES = [
 		 * pass: the sweep stops finding this entry and the stale-entry assertion
 		 * fires. The same plate is drawn on the rail, in the compose suggestions and
 		 * in the thread-intro header; the sweep sees the three call sites that sit
-		 * inside a row state; `teamBridgePlateSites` below covers all five.
+		 * inside a row state; `TEAM_BRIDGE_PLATE_SITES` below also follows the shared
+		 * primitive and the caller overrides after profile extraction.
 		 */
 		what: "the Team Bridge thread's sender avatar",
 		file: TEAM_BRIDGE_MESSAGES,
@@ -2398,11 +2410,24 @@ const PLATES_INSIDE_ROW_STATES = [
 		fact: "bg-media-surface",
 	},
 	{
-		/* The rail's person initial: the same plate again, on a row whose hover and
-		   selection states it must survive. */
-		what: "the Team Bridge rail person initial",
+		/* Directory-backed suggestions use the shared primitive; the span above
+		   remains the fallback for recipients without a directory member. The
+		   scanner inventories both possible primitive fills conservatively, while
+		   this caller uses its default unselected media-surface fill. */
+		what: "the Team Bridge compose suggestion's shared avatar",
+		file: TEAM_BRIDGE_COMPOSE,
+		element: "TeamBridgeAvatar",
+		ground: "bg-surface,bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
+	},
+	{
+		/* The chief's inline shared avatar is visible to the row-state sweep.
+		   The person's precomputed avatar uses the same primitive; its selection
+		   forwarding and both call-site overrides are pinned below. */
+		what: "the Team Bridge rail shared avatar",
 		file: TEAM_BRIDGE_RAIL,
-		element: "span",
+		element: "TeamBridgeAvatar",
 		/* TWO GROUNDS, the shape this table already allows: the plate takes
 		   `media-surface` on a plain row and `surface` on the SELECTED row, because
 		   `rowSelected` is where the quiet fill bottoms out (design round 1, D1). */
@@ -2456,7 +2481,7 @@ const PLATES_INSIDE_ROW_STATES = [
 ];
 
 /*
- * THE FIVE PLATE CALL SITES, AND THE EDGE THAT MUST NOT COME BACK.
+ * THE PLATE CALL SITES AND SHARED PRIMITIVE, AND THE EDGE THAT MUST NOT COME BACK.
  *
  * The row-state sweep above records that a plate NEEDS no edge (`edge: false`),
  * but nothing there rejects one: re-adding `border border-control` to a plate
@@ -2472,6 +2497,11 @@ const PLATES_INSIDE_ROW_STATES = [
  */
 const TEAM_BRIDGE_PLATE_SITES = [
 	{
+		what: "the shared rail avatar's initial plate",
+		file: TEAM_BRIDGE_PROFILE,
+		anchor: 'selected ? "bg-surface" : "bg-media-surface"',
+	},
+	{
 		what: "the message row's sender plate",
 		file: "src/renderer/src/features/team-bridge/team-bridge-message-list.tsx",
 		anchor: '? "bg-media-surface text-accent"',
@@ -2479,14 +2509,12 @@ const TEAM_BRIDGE_PLATE_SITES = [
 	{
 		what: "the rail's person plate",
 		file: "src/renderer/src/features/team-bridge/team-bridge-rail.tsx",
-		anchor:
-			'"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] font-medium text-[10px]"',
+		anchor: 'className="rounded-[5px] text-[10px]"',
 	},
 	{
 		what: "the rail's chief plate",
 		file: "src/renderer/src/features/team-bridge/team-bridge-rail.tsx",
-		anchor:
-			'"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] text-accent"',
+		anchor: 'className="rounded-[5px] text-accent"',
 	},
 	{
 		what: "the compose suggestion's initial",
@@ -2502,6 +2530,66 @@ const TEAM_BRIDGE_PLATE_SITES = [
 
 const EDGE_LIKE =
 	/(^|[\s"'`])(border(-[a-z]+)?|ring(-[a-z0-9]+)?|divide(-[a-z]+)?|shadow(-[a-z0-9]+)?)([\s"'`]|$)/;
+
+// The person's avatar is computed before the row JSX, so the lexical row sweep
+// cannot follow that variable. Pin both callers to the same selected-aware
+// primitive as well as sweeping the chief's inline carrier.
+function assertRailAvatarContract(rail, expression) {
+	const calls = [...rail.matchAll(/<TeamBridgeAvatar\b[\s\S]*?\/>/g)];
+	assert.equal(
+		calls.length,
+		2,
+		"both rail avatars must use the shared primitive",
+	);
+	for (const [call] of calls) {
+		assert.match(
+			call,
+			/selected=\{selected\}/,
+			"rail selection must reach the avatar",
+		);
+	}
+	assert.match(
+		expression,
+		/selected\s*\?\s*"bg-surface"\s*:\s*"bg-media-surface"/,
+		"the selected avatar must retain its distinct fill",
+	);
+	assert.doesNotMatch(
+		expression,
+		EDGE_LIKE,
+		"the shared initial plate must stay borderless",
+	);
+}
+
+test("shared rail avatars preserve selection and reject broken paint contracts", () => {
+	const rail = sourceOf(TEAM_BRIDGE_RAIL);
+	const expression = expressionAfter(
+		TEAM_BRIDGE_PROFILE,
+		"export function TeamBridgeAvatar",
+	);
+	assertRailAvatarContract(rail, expression);
+	// Negative controls prove the extraction guard still rejects the regressions
+	// the old inline-span anchors were intended to prevent.
+	assert.throws(
+		() =>
+			assertRailAvatarContract(
+				rail.replace("selected={selected}", "selected={false}"),
+				expression,
+			),
+		/rail selection must reach the avatar/,
+	);
+	assert.throws(
+		() =>
+			assertRailAvatarContract(
+				rail,
+				expression.replace('"bg-surface"', '"bg-media-surface"'),
+			),
+		/selected avatar must retain its distinct fill/,
+	);
+	assert.throws(
+		() => assertRailAvatarContract(rail, `${expression} "border-control"`),
+		/shared initial plate must stay borderless/,
+	);
+});
 
 test("no Team Bridge initial plate regrows a border, ring, divider or shadow", () => {
 	for (const site of TEAM_BRIDGE_PLATE_SITES) {
@@ -2568,7 +2656,7 @@ test("every object a row state can paint over keeps an edge, or records why it n
 			.split(/["'\s]+/)
 			.filter(Boolean);
 		assert.ok(
-			tokens.includes(carried.ground),
+			carried.ground.split(",").every((ground) => tokens.includes(ground)),
 			`<${name}> no longer paints \`${carried.ground}\` in its own class expression (${carried.file}, ${carried.anchor}), so a call site with no \`className\` is no longer an object over its row and \`CARRIED_GROUNDS\` is stale. Got: ${JSON.stringify(tokens.filter((t) => t.startsWith("bg-")))}`,
 		);
 	}

@@ -7833,6 +7833,13 @@ export type MessageParams = {
 	"ui.teamBridge.preview.chip": undefined;
 	"ui.teamBridge.preview.join": undefined;
 	"ui.teamBridge.preview.join_error": undefined;
+	"ui.teamBridge.profile.agent_badge": undefined;
+	"ui.teamBridge.profile.close_profile": undefined;
+	"ui.teamBridge.profile.human_badge": undefined;
+	"ui.teamBridge.profile.local_time": { time: string };
+	"ui.teamBridge.profile.message": undefined;
+	"ui.teamBridge.profile.open_profile": { name: string };
+	"ui.teamBridge.profile.owned_by": { name: string };
 	"ui.teamBridge.reactions.add": undefined;
 	"ui.teamBridge.reactions.all": undefined;
 	"ui.teamBridge.reactions.categories": undefined;

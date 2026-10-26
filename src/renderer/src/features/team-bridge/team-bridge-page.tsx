@@ -87,6 +87,10 @@ import {
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
 import { useBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
 import {
+	TeamBridgeAvatar,
+	TeamBridgeProfileCard,
+} from "./team-bridge-profile-card";
+import {
 	ChiefRailRow,
 	ConversationRailRow,
 	PersonRailRow,
@@ -660,6 +664,45 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		},
 		tenantId: string,
 	) => participantLabel(participant, rosterFor(tenantId), chiefLabel, self);
+	const profileFor = (sender: TeamBridgeMessage["sender"], tenantId: string) =>
+		rosterFor(tenantId).find(
+			(member) => member.account_id === sender.account_id,
+		);
+	const messageTarget = (
+		sender: TeamBridgeMessage["sender"],
+		tenantId: string,
+	) => {
+		const member = profileFor(sender, tenantId);
+		if (
+			!identityKnown ||
+			!member ||
+			member.account_id === selfAccountId ||
+			!member.bridge_enabled ||
+			!["active", "paused"].includes(member.bridge_state) ||
+			(sender.kind === "agent" && !member.agent)
+		)
+			return null;
+		return profileMessageTarget(
+			sender,
+			tenantId,
+			listRows,
+			selfAccountId,
+			readOnly,
+			mergedView,
+		);
+	};
+	const messagePerson = (
+		sender: TeamBridgeMessage["sender"],
+		tenantId: string,
+	) => {
+		const next = messageTarget(sender, tenantId);
+		if (!next) return;
+		// Existing history remains available in read-only mode; a new draft
+		// switches scope first so its send cannot inherit the merged tenant.
+		if (next.type !== "conversation" && mergedView)
+			onScopeChange(asTeamBridgeTenantId(tenantId));
+		selectTarget(next);
+	};
 	/* A title has no "Unknown person" styling to lean on, so an unnamed peer
 	   keeps the same visibly-placeholder wording the thread uses. */
 	const titleFor = (
@@ -1497,6 +1540,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							<TeamBridgeComposeBar
 								recipients={composeRecipients}
 								candidates={candidates}
+								profileFor={(recipient) =>
+									people.find(
+										(member) => member.account_id === recipient.accountId,
+									)
+								}
 								onChange={(recipients) =>
 									selectTarget({ type: "compose", recipients })
 								}
@@ -1610,24 +1658,54 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											</p>
 										) : (
 											<>
-												<span
-													aria-hidden="true"
-													className={cn(
-														"flex size-14 items-center justify-center overflow-hidden rounded-xl font-semibold text-[22px]",
-														// The same borderless fill pair as the message
-														// rows' plates, so one person reads alike everywhere.
-														target.type === "chief"
-															? "bg-media-surface text-accent"
-															: "bg-media-surface text-ink-muted",
-													)}
-												>
-													{target.type === "chief" ? (
-														<Bot size={26} />
-													) : (
-														(paneTitle ?? "").trim().charAt(0).toUpperCase() ||
-														"?"
-													)}
-												</span>
+												{draftPerson ? (
+													<TeamBridgeProfileCard
+														member={draftPerson}
+														label={paneTitle ?? ""}
+														agentName={
+															target.type === "chief"
+																? (paneTitle ?? "")
+																: undefined
+														}
+														onMessage={() => {}}
+														canMessage={false}
+													>
+														<button type="button" className="rounded-xl">
+															<TeamBridgeAvatar
+																member={draftPerson}
+																label={paneTitle ?? ""}
+																size={56}
+																className="rounded-xl text-[22px]"
+																fallback={
+																	target.type === "chief" ? (
+																		<Bot size={26} />
+																	) : undefined
+																}
+															/>
+														</button>
+													</TeamBridgeProfileCard>
+												) : (
+													<span
+														aria-hidden="true"
+														className={cn(
+															"flex size-14 items-center justify-center overflow-hidden rounded-xl font-semibold text-[22px]",
+															// The same borderless fill pair as the message
+															// rows' plates, so one person reads alike everywhere.
+															target.type === "chief"
+																? "bg-media-surface text-accent"
+																: "bg-media-surface text-ink-muted",
+														)}
+													>
+														{target.type === "chief" ? (
+															<Bot size={26} />
+														) : (
+															(paneTitle ?? "")
+																.trim()
+																.charAt(0)
+																.toUpperCase() || "?"
+														)}
+													</span>
+												)}
 												<p className="font-semibold text-[17px] text-ink">
 													{paneTitle}
 												</p>
@@ -1661,6 +1739,18 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : (
 									<TeamBridgeMessageList
 										messages={messages}
+										profileFor={(sender) =>
+											profileFor(sender, shown?.tenant_id ?? "")
+										}
+										canMessagePerson={(sender) =>
+											messageTarget(sender, shown?.tenant_id ?? "") !== null
+										}
+										onMessagePerson={
+											identityKnown
+												? (sender) =>
+														messagePerson(sender, shown?.tenant_id ?? "")
+												: undefined
+										}
 										arrivalKey={timelineArrivalKey}
 										tenantId={shown?.tenant_id}
 										accountId={selfAccountId}
@@ -1933,6 +2023,18 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							<TeamBridgeThreadPane
 								key={`${threadSelection.tenantId}:${threadSelection.conversationId}:${threadSelection.rootId}`}
 								target={threadSelection}
+								canMessagePerson={(sender) =>
+									messageTarget(sender, threadSelection.tenantId) !== null
+								}
+								profileFor={(sender) =>
+									profileFor(sender, threadSelection.tenantId)
+								}
+								onMessagePerson={
+									identityKnown
+										? (sender) =>
+												messagePerson(sender, threadSelection.tenantId)
+										: undefined
+								}
 								initialRoot={messages.find(
 									(message) => message.id === threadSelection.rootId,
 								)}
@@ -2613,3 +2715,33 @@ const TeamBridgeOwnedPage: FC<{
 		</>
 	);
 };
+
+/** The existing DM resolver remains the authority, scoped before looking up an
+ * account shared by several organizations. Read-only permits history, not drafts. */
+export function profileMessageTarget(
+	sender: TeamBridgeMessage["sender"],
+	tenantId: string,
+	conversations: readonly TeamBridgeConversation[],
+	selfAccountId: string | undefined,
+	readOnly: boolean,
+	mergedView = true,
+): TeamBridgeTarget | null {
+	const next: TeamBridgeTarget = {
+		type: sender.kind === "agent" ? "chief" : "person",
+		accountId: sender.account_id,
+	};
+	const existing = targetConversation(
+		next,
+		conversations.filter((row) => row.tenant_id === tenantId),
+		selfAccountId,
+	);
+	// The single-tenant rail owns this DM through its person/chief target.
+	// In merged scope only an exact conversation target preserves tenant identity.
+	return existing
+		? mergedView
+			? { type: "conversation", id: existing.id }
+			: next
+		: readOnly
+			? null
+			: next;
+}

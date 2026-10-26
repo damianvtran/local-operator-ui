@@ -4,7 +4,10 @@ import { cn } from "@shared/lib/utils";
 import { Bot, UserRound } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import type { FC } from "react";
-import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
+import type {
+	TeamBridgeDirectoryMember,
+	TeamBridgeMessage,
+} from "../../../../shared/team-bridge-contract";
 import {
 	teamBridgeArrivalStreamKey,
 	teamBridgeLiveArrivals,
@@ -15,6 +18,10 @@ import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
+import {
+	TeamBridgeAvatar,
+	TeamBridgeProfileCard,
+} from "./team-bridge-profile-card";
 import {
 	TeamBridgeReactionChips,
 	useTeamBridgeReactionState,
@@ -132,6 +139,11 @@ const EMPTY_IDS: ReadonlySet<string> = new Set();
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
+	profileFor?: (
+		sender: TeamBridgeMessage["sender"],
+	) => TeamBridgeDirectoryMember | undefined;
+	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
+	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	reactionContext?: ReactionContext;
 	onReply?: (message: TeamBridgeMessage) => void;
 	/** Story/capture seed only: show every row's toolbar without hover. */
@@ -159,6 +171,9 @@ export const TeamBridgeMessageList: FC<{
 }> = ({
 	messages,
 	labelFor,
+	profileFor,
+	onMessagePerson,
+	canMessagePerson,
 	reactionContext,
 	onReply,
 	forceToolbar,
@@ -185,6 +200,9 @@ export const TeamBridgeMessageList: FC<{
 						message={item.message}
 						continuation={item.continuation}
 						label={labelFor(item.message.sender)}
+						member={profileFor?.(item.message.sender)}
+						onMessagePerson={onMessagePerson}
+						canMessagePerson={canMessagePerson}
 						locale={locale}
 						reactionContext={reactionContext}
 						onReply={onReply}
@@ -246,6 +264,9 @@ const MessageRow: FC<{
 	message: TeamBridgeMessage;
 	continuation: boolean;
 	label: string | null;
+	member?: TeamBridgeDirectoryMember;
+	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
+	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	locale: string;
 	reactionContext?: ReactionContext;
 	onReply?: (message: TeamBridgeMessage) => void;
@@ -282,6 +303,9 @@ type MessageRowProps = {
 	message: TeamBridgeMessage;
 	continuation: boolean;
 	label: string | null;
+	member?: TeamBridgeDirectoryMember;
+	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
+	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	locale: string;
 	reactions?: ReturnType<typeof useTeamBridgeReactionState>;
 	onReply?: (message: TeamBridgeMessage) => void;
@@ -297,6 +321,9 @@ const MessageRowView: FC<MessageRowProps> = ({
 	message,
 	continuation,
 	label: known,
+	member,
+	onMessagePerson,
+	canMessagePerson,
 	locale,
 	reactions,
 	onReply,
@@ -330,6 +357,46 @@ const MessageRowView: FC<MessageRowProps> = ({
 	const full = valid
 		? formatDate(at, { dateStyle: "full", timeStyle: "short" }, locale)
 		: "";
+	const canMessage = Boolean(
+		member &&
+			onMessagePerson &&
+			(canMessagePerson?.(message.sender) ?? true) &&
+			member.account_id !== accountId &&
+			member.bridge_enabled &&
+			["active", "paused"].includes(member.bridge_state) &&
+			(!agent || member.agent),
+	);
+	const messagePerson = () => onMessagePerson?.(message.sender);
+	const avatar = member ? (
+		<TeamBridgeProfileCard
+			member={member}
+			label={label}
+			agentName={agent ? label : undefined}
+			onMessage={messagePerson}
+			canMessage={canMessage}
+		>
+			<button
+				type="button"
+				className="mt-0.5 block size-9 shrink-0 rounded-md text-start"
+			>
+				<TeamBridgeAvatar
+					member={member}
+					label={label}
+					size={36}
+					className="size-9 rounded-md bg-media-surface text-ink-muted text-[14px]"
+					fallback={
+						agent ? (
+							<Bot size={18} />
+						) : known === null ? (
+							<UserRound size={18} />
+						) : (
+							known.trim().charAt(0).toUpperCase() || "?"
+						)
+					}
+				/>
+			</button>
+		</TeamBridgeProfileCard>
+	) : null;
 	return (
 		<li
 			data-message-id={message.id}
@@ -345,30 +412,30 @@ const MessageRowView: FC<MessageRowProps> = ({
 			{/* The 36px gutter holds the avatar on a run's first message and the
 			    hover clock on its continuations, so bodies share one left edge. */}
 			<div className="w-9 shrink-0">
-				{continuation ? (
-					valid && (
-						<time
-							dateTime={message.created_at}
-							title={full}
-							className="block pt-0.5 text-right text-[11px] text-ink-dim opacity-0 group-hover/message:opacity-100"
-						>
-							{clock}
-						</time>
-					)
-				) : (
-					<span
-						aria-hidden="true"
-						data-sender-avatar={
-							agent ? "agent" : known === null ? "unknown" : "initial"
-						}
-						className={cn(
-							// A rounded SQUARE, as the operator's reference draws it:
-							// Slack's people are squares, and a circle here would read as
-							// the app's own account avatar.
-							// Fixed box, clipped: an account picture can replace the
-							// initial later without moving a pixel of the row.
-							"mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-[14px]",
-							/* BORDERLESS, SEPARATED BY VALUE (operator ask, 2026-10-26).
+				{continuation
+					? valid && (
+							<time
+								dateTime={message.created_at}
+								title={full}
+								className="block pt-0.5 text-right text-[11px] text-ink-dim opacity-0 group-hover/message:opacity-100"
+							>
+								{clock}
+							</time>
+						)
+					: (avatar ?? (
+							<span
+								aria-hidden="true"
+								data-sender-avatar={
+									agent ? "agent" : known === null ? "unknown" : "initial"
+								}
+								className={cn(
+									// A rounded SQUARE, as the operator's reference draws it:
+									// Slack's people are squares, and a circle here would read as
+									// the app's own account avatar.
+									// Fixed box, clipped: an account picture can replace the
+									// initial later without moving a pixel of the row.
+									"mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-[14px]",
+									/* BORDERLESS, SEPARATED BY VALUE (operator ask, 2026-10-26).
 							   The plate used to need a `border-control` ring because
 							   `sunken` lands on the row-hover rung on some palettes
 							   (ΔE00 1.86 on iceberg) and vanished into a hovered row.
@@ -380,20 +447,20 @@ const MessageRowView: FC<MessageRowProps> = ({
 							   not a safe substitute, since it sits within ΔE00 1.38 of
 							   row-hover on obsidian and 1.56 on oneLight. The fill and
 							   glyph pair is registered in `scripts/contrast-contract.mjs`. */
-							agent
-								? "bg-media-surface text-accent"
-								: "bg-media-surface text-ink-muted",
-						)}
-					>
-						{agent ? (
-							<Bot size={18} />
-						) : known === null ? (
-							<UserRound size={18} />
-						) : (
-							known.trim().charAt(0).toUpperCase() || "?"
-						)}
-					</span>
-				)}
+									agent
+										? "bg-media-surface text-accent"
+										: "bg-media-surface text-ink-muted",
+								)}
+							>
+								{agent ? (
+									<Bot size={18} />
+								) : known === null ? (
+									<UserRound size={18} />
+								) : (
+									known.trim().charAt(0).toUpperCase() || "?"
+								)}
+							</span>
+						))}
 			</div>
 			<div className="min-w-0 flex-1">
 				{/* First in the column so it floats beside the first line; see
@@ -405,17 +472,35 @@ const MessageRowView: FC<MessageRowProps> = ({
 				/>
 				{!continuation && (
 					<div className="flex items-baseline gap-2">
-						<span
-							data-sender={known === null ? "unknown" : "known"}
-							className={cn(
-								"truncate text-[14px]",
-								known === null
-									? "text-ink-muted italic"
-									: "font-semibold text-ink",
-							)}
-						>
-							{label}
-						</span>
+						{member ? (
+							<TeamBridgeProfileCard
+								member={member}
+								label={label}
+								agentName={agent ? label : undefined}
+								onMessage={messagePerson}
+								canMessage={canMessage}
+							>
+								<button
+									type="button"
+									data-sender={known === null ? "unknown" : "known"}
+									className="min-w-0 truncate rounded-sm text-start font-semibold text-[14px] text-ink"
+								>
+									{label}
+								</button>
+							</TeamBridgeProfileCard>
+						) : (
+							<span
+								data-sender={known === null ? "unknown" : "known"}
+								className={cn(
+									"truncate text-[14px]",
+									known === null
+										? "text-ink-muted italic"
+										: "font-semibold text-ink",
+								)}
+							>
+								{label}
+							</span>
+						)}
 						{valid && (
 							<time
 								dateTime={message.created_at}
