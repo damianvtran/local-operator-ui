@@ -1338,7 +1338,7 @@ const fakeSettleClock = () => {
 	};
 };
 
-test("M1 an unresolved credential refresh withdraws banners at the deadline", () => {
+test("QA-M1 an unresolved credential refresh withdraws banners at the deadline", () => {
 	const { dir, file } = tempFile();
 	try {
 		const clock = fakeSettleClock();
@@ -1372,8 +1372,77 @@ test("M1 an unresolved credential refresh withdraws banners at the deadline", ()
 	}
 });
 
+/*
+ * Round-3 code m1 == QA m1. `revoke()` already answers a parked click as
+ * unavailable, but nothing TOLD the renderer: it pulls the answer only when
+ * main signals or a window mounts. The deadline must therefore signal after it
+ * withdraws, and it must be exactly one signal - the later settled-absence
+ * update carries the same epoch and no account, so `setAuthority` dedupes it
+ * and it can never signal on its own.
+ */
+test("CODE-M1 QA-M1 a click parked through the deadline is signalled and answers unavailable", () => {
+	const { dir, file } = tempFile();
+	try {
+		const clock = fakeSettleClock();
+		const h = harness({ file, timers: clock });
+		assert.deepEqual(h.notifier.notify(request()), { shown: true });
+		h.notifier.setAuthority({ epoch: 2, settling: true });
+		h.banners[0].emit("click");
+		const parkedSignals = h.signals.length;
+		assert.equal(
+			h.notifier.takePendingOpen(),
+			null,
+			"a click during a hold stays parked, unread",
+		);
+		assert.equal(clock.fire(), 1);
+		assert.equal(
+			h.signals.length,
+			parkedSignals + 1,
+			"the deadline tells the renderer exactly once",
+		);
+		assert.deepEqual(
+			h.notifier.takePendingOpen(),
+			{ unavailable: true },
+			"the parked click resolves as unavailable rather than waiting on an unrelated event",
+		);
+		const settledSignals = h.signals.length;
+		h.notifier.setAuthority({ epoch: 2, settling: false });
+		assert.equal(
+			h.signals.length,
+			settledSignals,
+			"a deduped settled-absence update signals nothing of its own",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("CODE-M1 QA-M1 a deduped signed-out settlement still answers the parked click", () => {
+	const { dir, file } = tempFile();
+	try {
+		const clock = fakeSettleClock();
+		const h = harness({ file, timers: clock });
+		h.notifier.notify(request());
+		h.notifier.setAuthority({ epoch: 2, settling: true });
+		h.banners[0].emit("click");
+		assert.equal(clock.fire(), 1);
+		// The account read finally answers "still signed out": the very state the
+		// deadline already wrote, so this update is deduped and signals nothing.
+		h.notifier.setAuthority({ epoch: 2, settling: false });
+		const signals = h.signals.length;
+		assert.deepEqual(
+			h.notifier.takePendingOpen(),
+			{ unavailable: true },
+			"the click is answered, not stranded by the dedupe",
+		);
+		assert.equal(signals, h.signals.length);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
 for (const nextAccount of ["acct_a", "acct_b"]) {
-	test(`M1 a refresh settling to ${nextAccount} clears the deadline`, () => {
+	test(`QA-M1 a refresh settling to ${nextAccount} clears the deadline`, () => {
 		const { dir, file } = tempFile();
 		try {
 			const clock = fakeSettleClock();
@@ -1398,7 +1467,7 @@ for (const nextAccount of ["acct_a", "acct_b"]) {
 	});
 }
 
-test("M1 document replacement cancels a pending deadline instead of expiring it", () => {
+test("QA-M1 document replacement cancels a pending deadline instead of expiring it", () => {
 	const { dir, file } = tempFile();
 	try {
 		const clock = fakeSettleClock();
@@ -1424,7 +1493,7 @@ test("M1 document replacement cancels a pending deadline instead of expiring it"
  * fence used to reject outright - leaving the hold stuck with the departing
  * account's previews still delivered.
  */
-test("M1 an out-of-band account switch at the same epoch withdraws and answers", () => {
+test("CODE-M1 an out-of-band account switch at the same epoch withdraws and answers", () => {
 	const { dir, file } = tempFile();
 	try {
 		const h = harness({ file });
@@ -1471,7 +1540,7 @@ test("M1 an out-of-band account switch at the same epoch withdraws and answers",
  * withdrew may answer with the stale sentence.
  */
 for (const how of ["replaced by a newer message", "dismissed by the OS"]) {
-	test(`m1 a banner ${how} still routes under the same account`, () => {
+	test(`CODE-m1 a banner ${how} still routes under the same account`, () => {
 		const { dir, file } = tempFile();
 		try {
 			const h = harness({ file });
@@ -1492,7 +1561,7 @@ for (const how of ["replaced by a newer message", "dismissed by the OS"]) {
 	});
 }
 
-test("m1 a banner withdrawn by a sign-out still answers as stale", () => {
+test("CODE-m1 a banner withdrawn by a sign-out still answers as stale", () => {
 	const { dir, file } = tempFile();
 	try {
 		const h = harness({ file });

@@ -257,7 +257,8 @@ export class TeamBridgeNotifier {
 	/** Only the authorized shell's journal subscription calls this, NEVER notify.
 	 * Delayed requests cannot promote their captured owner to live authority.
 	 * Epochs only advance; same-epoch settlement may resolve an unknown owner,
-	 * but a different known owner cannot replace it without a credential write.
+	 * and a different known owner replaces it only through a real credential
+	 * write OR a document reload (whose fresh journal restarts the counter).
 	 * This fences client races, not a compromised renderer or server-side auth. */
 	setAuthority(input: unknown): void {
 		const next = parseTeamBridgeNotifyAuthority(input);
@@ -357,6 +358,17 @@ export class TeamBridgeNotifier {
 				? { epoch: this.authority.epoch, settling: false }
 				: null;
 			this.revoke();
+			/*
+			 * The parked click has to be told, not wait for an unrelated event.
+			 * `revoke()` already answers it as unavailable, but the renderer only
+			 * reads that answer when main signals it or the window is asked for a
+			 * target on mount - and a settled-to-absent update carrying the same
+			 * epoch and no account is DEDUPED by `setAuthority` above, so a later
+			 * sign-out settlement would never signal either. Signalling here is
+			 * what makes the deadline a second exit rather than a privacy-only
+			 * withdrawal.
+			 */
+			if (this.pendingOpen) this.options.host.signalOpen();
 		}, TEAM_BRIDGE_SETTLE_TIMEOUT_MS);
 	}
 

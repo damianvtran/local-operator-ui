@@ -2,7 +2,7 @@
 	"ui.teamBridge.notify.unavailable": {
 		"role": "toast",
 		"tone": "neutral, factual, non-accusatory",
-		"length": "One short sentence; must fit one line in the toast at 375px.",
+		"length": "One short sentence; must fit at most two lines in the 356 px toast.",
 		"placeholders": {},
 		"note": "Neutral info toast after a stale native Team Bridge notification click. The app foregrounds but must not navigate or reveal the previous account or conversation. Shown only after the signed-in account settles; not during credential refresh, and not for a banner merely replaced by a newer one or dismissed by the OS."
 	},
