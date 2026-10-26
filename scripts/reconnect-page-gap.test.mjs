@@ -127,7 +127,7 @@ const bundle = await build({
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { openFrameFacts } from "./src/renderer/src/features/chat/canonical/open-frame";
-			export { paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { paintPendingSend, resyncCanonicalSession } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { __resetPendingSends, __resetLabelGapBookkeeping } from "./src/renderer/src/shared/hooks/use-canonical-session";
 		`,
@@ -187,6 +187,7 @@ const {
 	applyHistoryPage,
 	sealDisjointBlock,
 	paintPendingSend,
+	resyncCanonicalSession,
 	openFrameFacts,
 } = hook;
 
@@ -1017,6 +1018,197 @@ async function mount(sessionIdOf = () => SESSION_A) {
 		rerender: () => runtime.rerender(),
 	};
 }
+
+/*
+ * RECEIPT-ORDER REGRESSIONS (operator report, 2026-10-26).
+ *
+ * The bridge emits replay frames before the snapshot, all on one monotonic
+ * `(epoch, seq)` cursor. A renderer may therefore see an older frame after a
+ * newer one only when delivery/reconnect work has made the older answer late;
+ * accepting it as a new commit is never a legitimate way to reconcile paint.
+ * These cases drive the REAL hook, not a reducer-only approximation, and record
+ * the row ids after every committed flush so a backwards transition is visible.
+ */
+test("a late reset replay cannot remove a newer live transcript tail", async () => {
+	const oldRows = Array.from({ length: 24 }, (_, index) =>
+		userRow(`old-${index}`, 1_700_000_000 + index, `old-${index}`),
+	);
+	const transcript = makeTranscript(oldRows);
+	reset({ transcript });
+	const panel = await mount();
+	const commits = [];
+	const capture = (source) => commits.push({ source, ids: panel.ids() });
+
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: oldRows.at(-1).id,
+			entries: oldRows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	capture("snapshot-old");
+
+	deliver(
+		eventFrame(3, {
+			type: "message_start",
+			message: { id: "live-new", role: "user", content: [{ text: "live" }] },
+		}),
+	);
+	await pump();
+	capture("live-new");
+
+	// This is the stale replay's shape: a full-history reset, not a small delta.
+	deliver(
+		eventFrame(2, {
+			type: "history_delta",
+			reset: true,
+			messages: oldRows.map((entry) => ({
+				id: entry.id,
+				role: "user",
+				content: [{ text: entry.payload.content[0].text }],
+			})),
+		}),
+	);
+	await pump();
+	capture("late-reset");
+	console.log("stale reset commits", JSON.stringify(commits));
+	assert.equal(panel.ids().at(-1), "live-new");
+	assert.equal(panel.ids().length, oldRows.length + 1);
+});
+
+test("a stale reset in the same flush cannot remove a live row", async () => {
+	const oldRows = Array.from({ length: 24 }, (_, index) =>
+		userRow(`old-${index}`, 1_700_000_000 + index, `old-${index}`),
+	);
+	reset({ transcript: makeTranscript(oldRows) });
+	const panel = await mount();
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: oldRows.at(-1).id,
+			entries: oldRows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	deliver(
+		eventFrame(3, {
+			type: "message_start",
+			message: { id: "live-new", role: "user", content: [{ text: "live" }] },
+		}),
+	);
+	// No pump between these deliveries: the guard must order frames within the
+	// flush too, not merely compare the last React-rendered state.
+	deliver(
+		eventFrame(2, {
+			type: "history_delta",
+			reset: true,
+			messages: oldRows.map((entry) => ({
+				id: entry.id,
+				role: "user",
+				content: [{ text: entry.payload.content[0].text }],
+			})),
+		}),
+	);
+	await pump();
+	assert.equal(panel.ids().at(-1), "live-new");
+});
+
+test("a superseded subscription's queued frames commit nothing", async () => {
+	/*
+	 * The connection-identity half of the same invariant. A resync, a reopen or a
+	 * peer rebind opens a new subscription INSIDE one session visit, so the
+	 * visit's `generation` still matches for a callback the old subscription had
+	 * already handed to the transport. Without a connection witness such a frame
+	 * is ordinary state - and after a `gap` frame it is exactly the shape that
+	 * repaints an older projection, because replay is open again and a snapshot
+	 * applies its page AND its readings wholesale.
+	 *
+	 * The stale payload deliberately disagrees with the row rather than stating a
+	 * prefix of it: a prefix is refused by the merge's own older-projection rule,
+	 * so it would not isolate THIS guard.
+	 */
+	const rows = Array.from({ length: 12 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+	reset({ transcript: makeTranscript(rows) });
+	const panel = await mount();
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	const NEW_TEXT = "The assembled answer, as the live stream ended it.";
+	deliver(
+		eventFrame(3, {
+			type: "message_end",
+			message: {
+				id: "a-live",
+				role: "assistant",
+				content: [{ type: "text", text: NEW_TEXT }],
+				stop_reason: "stop",
+			},
+		}),
+	);
+	await pump();
+	const liveRow = () => panel.row("a-live");
+	assert.equal(liveRow()?.text, NEW_TEXT, "the live end is the control");
+	const readingsBefore = panel.readings()?.sequence;
+
+	const superseded = subscriptions.filter((entry) => !entry.disposed).at(-1);
+	assert.ok(superseded, "the first subscription is still the live one");
+	resyncCanonicalSession(SESSION_A);
+	await pump();
+	assert.ok(superseded.disposed, "the resync disposed it");
+
+	// The queued frames of the dead connection, in their original order: a gap
+	// (which opens replay again) and then an older snapshot that carries a
+	// different, older answer for the same row and a different reading.
+	superseded.onEvent({
+		kind: "data",
+		data: JSON.stringify({ session_id: SESSION_A, type: "gap" }),
+	});
+	const stale = snapshotFrame(9, {
+		cursor: rows.at(-1).id,
+		entries: [...rows, userRow("a-live", 1_700_000_900, "x")],
+		liveEvents: [],
+		streaming: false,
+		hasMore: false,
+	});
+	stale.payload.frontend.snapshot.sequence = 99;
+	superseded.onEvent({
+		kind: "data",
+		data: JSON.stringify(stale),
+	});
+	await pump();
+	assert.equal(
+		liveRow()?.text,
+		NEW_TEXT,
+		"a superseded connection cannot rewrite a newer answer",
+	);
+	assert.equal(
+		panel.ids().filter((id) => id.startsWith("r-")).length,
+		rows.length,
+		"and its page cannot append the dead connection's rows",
+	);
+	assert.equal(
+		panel.readings()?.sequence,
+		readingsBefore,
+		"nor replace the readings the live connection published",
+	);
+});
 
 test("a receipt gap keeps the answer being written, and a mid-turn join agrees with the end", async () => {
 	const plan = conversation({ withSteer: false, awayRows: 0 });

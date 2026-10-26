@@ -31,6 +31,7 @@ import {
 	type CanonicalContentBlock,
 	type CanonicalFrontendState,
 	type DesktopHistoryPage,
+	type DesktopStreamCursor,
 	epochMsFromSeconds,
 } from "../../../../../shared/desktop-session-contract";
 import {
@@ -3092,6 +3093,42 @@ function isSettleOnlyAsk(
 	return queuedEngine === true && String(toolName ?? "") === ASK_TOOL_NAME;
 }
 
+/**
+ * Whether a page row is OLDER than the live frame that last wrote the row on
+ * screen - the one question that decides which of two disagreeing states wins.
+ *
+ * THE OPERATOR'S REPORT, at the merge that decides it (2026-10-26: "the history
+ * jitters back to an earlier state of an agent response, then returns to the
+ * latest"). A `/history` read and a live frame are two sources with two clocks,
+ * and neither content nor timestamps can order them: the page may state an
+ * owner's mid-stream projection (its `_live_history` row for a message still
+ * being written, `session/attached.py::display_history_window`) while the live
+ * stream has already delivered the assembled end - and a genuine CORRECTION is
+ * a page that disagrees with the live text too, which is why "disagrees" can
+ * never be the test.
+ *
+ * So the comparison is between CLOCKS THE CALLER CAN WITNESS. Every record a
+ * live frame writes carries `frame` (its epoch/seq), and every history read is
+ * dispatched with the receipt high-water mark the pane had at that moment. If
+ * the row's stamp is NEWER than the read's dispatch, the page was answered from
+ * a source that had not seen that write, whatever a clock says - so the page
+ * cannot rewrite it. A page dispatched after the write still wins, which is
+ * what keeps a correction (including one that SHORTENS an answer) landing.
+ *
+ * Kept deliberately narrow: no witness (a first hydration), another epoch (an
+ * owner rebuild restarts the numbering), or no stamp (a row no live frame wrote)
+ * all fall through to durable-wins-by-id.
+ */
+function pageRowIsOlderThanLiveRow(
+	current: TranscriptRecord,
+	witness: DesktopStreamCursor | null | undefined,
+): boolean {
+	const stamp = "frame" in current ? current.frame : undefined;
+	if (!stamp || !witness) return false;
+	if (stamp.epoch !== witness.epoch) return false;
+	return stamp.seq > witness.seq;
+}
+
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
@@ -4354,6 +4391,17 @@ export function applyHistoryPage(
 		replace?: boolean;
 		keepPaging?: boolean;
 		/**
+		 * The receipt high-water mark the pane had when THIS read was dispatched.
+		 *
+		 * The page carries no cursor of its own, so this is the only witness that
+		 * can order the answer against live frames that landed while it was out:
+		 * a row a NEWER live frame wrote must not be rewritten by an older read
+		 * (see `pageRowIsOlderThanLiveRow`). Absent means "no witness" - a first
+		 * hydration, or a caller that has no stream - and every row then keeps the
+		 * durable-wins-by-id rule.
+		 */
+		readWitness?: DesktopStreamCursor | null;
+		/**
 		 * The caller's ASSERTION that this page was fetched with
 		 * `before_id = pagedBefore`, i.e. it is a CONTINUATION of the reader's
 		 * walk backwards and not a tail-type read (snapshot, reconcile, refresh).
@@ -4519,6 +4567,19 @@ export function applyHistoryPage(
 			 */
 			record = stripPeerAdmission(record);
 		}
+		/*
+		 * DURABLE-WINS-BY-ID HAS ONE EXCEPTION, and it is the reported flicker:
+		 * a page row that is a shorter projection of a row this view has already
+		 * finished keeps the row on screen. See `pageIsOlderProjection` for why a
+		 * prefix is the proof and why every other disagreement still lets the page
+		 * win (a correction must land).
+		 */
+		if (
+			record &&
+			previous &&
+			pageRowIsOlderThanLiveRow(previous, options.readWitness)
+		)
+			continue;
 		if (record) incoming.push(freezeRecordDeep(record));
 	}
 	// Tool call args live on the assistant row's `tool_calls`; carry the intent
@@ -5718,6 +5779,15 @@ export function applyEvent(
 						: now,
 				stopReason: (message.stop_reason as string | null) ?? null,
 				error: Boolean(message.is_error),
+				/*
+				 * THE SETTLED ROW KEEPS ITS WIRE CURSOR, and that is what makes an
+				 * older history read unable to rewrite it (`pageRowIsOlderThanLiveRow`).
+				 * `frame` used to be described as a streaming-row fact, which was safe
+				 * only while a settled row refused later deltas; a settled row is
+				 * exactly the one a stale page competes with, so the stamp belongs on
+				 * it too, for the same reason and from the same frame.
+				 */
+				...(incoming ? { frame: incoming } : {}),
 			};
 			return upsert(state, settled);
 		}

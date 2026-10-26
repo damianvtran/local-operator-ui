@@ -4876,6 +4876,89 @@ test("an anchor of epoch 0 is no anchor, so a settling frame is refused whatever
 	);
 });
 
+test("a page read before a live write cannot rewrite the row, and a later read can", () => {
+	/*
+	 * THE OPERATOR'S FLICKER, at the merge that decides it (report, 2026-10-26:
+	 * "the history jitters back to an earlier state of an agent response, then
+	 * returns to the latest").
+	 *
+	 * Neither content nor timestamps can order two sources, and both of the two
+	 * obvious tests are wrong: "the page disagrees" is also what a CORRECTION
+	 * looks like, and "the page is shorter" is also what a correction that
+	 * SHORTENS an answer looks like. So the merge compares clocks the caller can
+	 * witness: the row carries the live frame that wrote it, and the read carries
+	 * the receipt the pane had when it was dispatched.
+	 */
+	const older =
+		"Four invoices were late: 1042, 1088, 1103 and 1177. I have started chasing them.";
+	const live = applyEvent(
+		applyHistoryPage(
+			EMPTY_TRANSCRIPT,
+			pageOf([messageEntry("a1", 1_760_000_000, assistant("a1", ""))]),
+		),
+		{
+			type: "message_end",
+			message: { ...assistant("a1", older), stop_reason: "stop" },
+		},
+		5_000,
+		{ frame: { epoch: "e", seq: 5 } },
+	);
+	assert.equal(live.records.at(-1).text, older, "the live end is the control");
+	assert.deepEqual(
+		"frame" in live.records.at(-1) ? live.records.at(-1).frame : null,
+		{ epoch: "e", seq: 5 },
+		"the settled row keeps the frame that wrote it",
+	);
+
+	// A read dispatched at seq 2 was answered from a source that had not seen the
+	// live write, so its mid-stream projection cannot rewrite the row.
+	const stalePage = pageOf([
+		messageEntry("a1", 1_759_999_000, assistant("a1", older.slice(0, 40))),
+	]);
+	assert.equal(
+		applyHistoryPage(live, stalePage, {
+			readWitness: { epoch: "e", seq: 2 },
+		}).records.at(-1).text,
+		older,
+		"a shorter mid-stream projection from an older read keeps the newer text",
+	);
+
+	/*
+	 * AND THE CORRECTION STILL LANDS, including one that SHORTENS the answer -
+	 * the case a prefix test cannot tell apart from a stale projection. This read
+	 * went out after the live write, so its answer is the authority.
+	 */
+	const corrected = "Four invoices were late: 1042 and 1088.";
+	const laterPage = pageOf([
+		messageEntry("a1", 1_760_000_100, assistant("a1", corrected)),
+	]);
+	assert.equal(
+		applyHistoryPage(live, laterPage, {
+			readWitness: { epoch: "e", seq: 9 },
+		}).records.at(-1).text,
+		corrected,
+		"a suffix-deleting correction from a later read replaces the answer",
+	);
+
+	// A different epoch is a replaced owner: its numbering says nothing here, and
+	// the page keeps durable-wins-by-id rather than being refused.
+	assert.equal(
+		applyHistoryPage(live, laterPage, {
+			readWitness: { epoch: "other", seq: 1 },
+		}).records.at(-1).text,
+		corrected,
+		"a cross-epoch witness does not suppress the page",
+	);
+
+	// No witness at all: a first hydration has no clock to compare, so the page
+	// is applied exactly as it always was.
+	assert.equal(
+		applyHistoryPage(live, laterPage).records.at(-1).text,
+		corrected,
+		"an unwitnessed page keeps durable-wins-by-id",
+	);
+});
+
 test("a history_delta that states reset replaces the viewport it cannot extend", () => {
 	// Two of the three producers send the WHOLE history with `reset=True`
 	// (`HistoryDeltaEvent.reset`: "a replay-changing generation cannot be appended
