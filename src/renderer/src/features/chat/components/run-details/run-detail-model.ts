@@ -1,3 +1,4 @@
+import { currentLocale, formatDate, formatTime, t } from "@shared/i18n";
 import type { TranscriptRecord } from "../../canonical/transcript-reducer";
 import type { WorkingLineState } from "../../canonical/working-line-model";
 
@@ -1465,29 +1466,6 @@ const toWireList = (value: unknown): Array<Record<string, unknown>> =>
  * popover shows the SESSION's plan rather than each child's.
  */
 /**
- * The month abbreviations `formatWakeDue` prints.
- *
- * A static table rather than `Intl`, and the port's own reason (see
- * `formatWakeDue`): the label's shape is fixed by the TUI's `%b`, and a locale
- * formatter is free to spell the same month another way in another language,
- * which is precisely the drift this function exists to not have.
- */
-const WAKE_MONTHS = [
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
-];
-
-/**
  * The duration units `formatWakeDuration` decomposes over, largest first.
  *
  * Milliseconds, and the ORDER is the algorithm: the walk takes the largest unit
@@ -1553,9 +1531,16 @@ export const formatWakeDuration = (ms: number): string => {
  * implied (`format_wake_time`), and `tzname()` is what it prints. A zone name is
  * what makes that readable; the numeric offset is the same fallback the TUI
  * keeps for a zone that has no name.
+ *
+ * The name is spelled in the ACTIVE locale (`EDT` under `en-US`, `UTC−4` under
+ * `fr`), and the formatter is built here rather than asked of the shared layer
+ * because `formatDate` returns a whole formatted string: with `timeZoneName` as
+ * its only option it prints the DATE beside the zone on every locale measured,
+ * and this label needs the one part. `locale` is a parameter rather than a
+ * second read of the store, so the caller's tag is the only one this can use.
  */
-const wakeZone = (due: Date): string => {
-	const named = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+const wakeZone = (due: Date, locale: string): string => {
+	const named = new Intl.DateTimeFormat(locale, { timeZoneName: "short" })
 		.formatToParts(due)
 		.find((part) => part.type === "timeZoneName")?.value;
 	if (named) return named;
@@ -1576,21 +1561,24 @@ const wakeZone = (due: Date): string => {
  * `toLocaleTimeString(navigator.language, …)`, which spells the same instant
  * differently per machine, and it prints NO ZONE — so a reader in a UTC locale
  * gets a bare `9:30` that implies UTC when the wake fires at 09:30 local. This
- * label exists to answer "when does this actually fire", so it takes the TUI's
- * four rules verbatim:
+ * label exists to answer "when does this actually fire", so it keeps the TUI's
+ * four rules and hands their SPELLING to the locale the app already renders in:
  *
  * - the local clock, converted from the instant rather than from today's offset,
  *   so the label is right across a DST transition;
  * - a date when the due instant is not on today's local date, and a year when it
- *   is not this year;
- * - an explicit `AM`/`PM`, never the locale's `%p` (which can be empty);
- * - the zone, always, as the platform's SHORT zone name.
+ *   is not this year, in the active locale's own month name and element order
+ *   (`Mar 14 2026`, `14 mars 2026`, `2026年3月14日`);
+ * - the clock in that locale's own convention — a day period where it writes one
+ *   (`9:30 AM` under `en`), a 24-hour clock where it does not (`21:30` under
+ *   `fr`) — instead of the TUI's fixed `%I:%M %p`;
+ * - the zone, always, as the platform's SHORT zone name, in the same locale.
  *
  * The last rule is the one this label does not take verbatim, and the difference
  * is stated rather than glossed (agent review round 1's minor 3): the Python
  * prints `due.tzname()`, the tz database's abbreviation (`AEST`, `CET`), while
- * this formats through `Intl.DateTimeFormat(undefined, { timeZoneName: "short" })`,
- * whose answer is the NAVIGATOR'S LOCALE's name for the zone and is frequently an
+ * this formats through `Intl.DateTimeFormat(<locale>, { timeZoneName: "short" })`,
+ * whose answer is the ACTIVE LOCALE's name for the zone and is frequently an
  * offset — measured: `en-US`/Sydney gives `GMT+11` where Python gives `AEST`, and
  * `de-DE`/Berlin gives `MEZ` where Python gives `CET`. An offset is still a zone
  * token and it is the same fallback the Python keeps for a nameless zone, so the
@@ -1599,9 +1587,19 @@ const wakeZone = (due: Date): string => {
  * price this label is worth paying.
  *
  * `24h` is the TUI's `display.time_format` setting and this app has no such
- * setting, so the TUI's own default — 12-hour — is what ships. Stated because a
- * reader who has set the terminal to 24-hour will see the two spellings differ:
- * that is a missing preference in this app, not a disagreement about the instant.
+ * setting, so the LOCALE's default — not the TUI's fixed 12-hour rule — decides
+ * the clock, and the month names and day order come from that same locale.
+ * Stated because a reader who has set the terminal to 24-hour will see the two
+ * spellings differ: that is a missing preference in this app, not a disagreement
+ * about the instant. English is unchanged byte for byte, which
+ * `scripts/run-detail-wake-label-locale.test.mjs` pins next to the French case
+ * that proves the month name and the clock are locale-driven.
+ *
+ * The locale is READ from the one store (`currentLocale`, the same one `t()`
+ * reads) rather than passed in: a parameter would be a second place to get it
+ * wrong, and the components that render this label subscribe through
+ * `useI18nLocale()`, so a language change re-renders it with the rest of the
+ * pane. The signature stays the two instants the model is derived from.
  *
  * `nowMs` is passed rather than read from the clock for the model's own rule:
  * the derivation is a function of the wire FRAME, so a story that pins `nowMs`
@@ -1613,23 +1611,46 @@ const wakeZone = (due: Date): string => {
 export const formatWakeDue = (epochMs: number, nowMs: number): string => {
 	const due = new Date(epochMs);
 	const now = new Date(nowMs);
-	const hour = due.getHours();
-	const clock = `${hour % 12 === 0 ? 12 : hour % 12}:${String(
-		due.getMinutes(),
-	).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
+	const locale = currentLocale();
 	const sameDay =
 		due.getFullYear() === now.getFullYear() &&
 		due.getMonth() === now.getMonth() &&
 		due.getDate() === now.getDate();
 	const sameYear = due.getFullYear() === now.getFullYear();
-	const date = sameDay
-		? ""
-		: `${WAKE_MONTHS[due.getMonth()]} ${String(due.getDate()).padStart(
-				2,
-				"0",
-			)} ${sameYear ? "" : `${due.getFullYear()} `}`;
-	return `${date}${clock} ${wakeZone(due)}`;
+	const date = sameDay ? "" : `${wakeDate(due, locale, sameYear)} `;
+	return `${date}${wakeClock(due, locale)} ${wakeZone(due, locale)}`;
 };
+
+/**
+ * The date half — the locale's own month name and element order.
+ *
+ * `formatDate` is the shared Intl layer (RFC §2.8: it owns locale resolution and
+ * the formatter cache), so the only thing this helper decides is the comma: the
+ * label is EMBEDDED in a sentence (`Cancel the wake that fires {due}`), and
+ * English's `Mar 14, 2026` would put sentence punctuation inside the
+ * placeholder. Stripping it leaves every locale's own order intact —
+ * `Mar 14 2026`, `14 mars 2026`, `14. März 2026`, `2026年3月14日` — and keeps the
+ * English label byte-identical to the hand-built one it replaces.
+ */
+const wakeDate = (due: Date, locale: string, sameYear: boolean): string =>
+	formatDate(
+		due,
+		sameYear
+			? { month: "short", day: "2-digit" }
+			: { month: "short", day: "2-digit", year: "numeric" },
+		locale,
+	).replace(/,/g, "");
+
+/**
+ * The clock half — the locale's own convention: `9:30 AM` where it writes a day
+ * period, `21:30` where it writes a 24-hour clock.
+ *
+ * No `hour12` is pinned, deliberately: pinning it would carry the TUI's fixed
+ * 12-hour rule into every locale, and this app has no time-format preference of
+ * its own to impose (`formatWakeDue` states the cost).
+ */
+const wakeClock = (due: Date, locale: string): string =>
+	formatTime(due, { hour: "numeric", minute: "2-digit" }, locale);
 
 /**
  * A schedule's recurrence as a reader reads it: `once`, `every 1h30m`, or the
@@ -3096,7 +3117,7 @@ export function mcpTally(
 	rows: readonly McpServerRow[],
 	maxChars?: number,
 ): string {
-	if (mcpServersAreCold(rows)) return MCP_COLD_LINE;
+	if (mcpServersAreCold(rows)) return t(MCP_COLD_LINE);
 	const connected = rows.filter((row) => row.status === "connected").length;
 	const problems = rows.filter((row) => row.problem).length;
 	const base = `${connected} of ${rows.length} connected`;
@@ -3139,8 +3160,7 @@ export function mcpTally(
  * claiming three servers are down when none was asked to be up. It lights no
  * dot, because nothing is wrong.
  */
-export const MCP_COLD_LINE =
-	"No session is running — server status cannot be checked.";
+export const MCP_COLD_LINE = "ui.chat.run_details.mcp.cold_label";
 
 /** Every MCP name that is asking for something right now. */
 export function mcpProblemNames(rows: readonly McpServerRow[]): string[] {
@@ -3832,15 +3852,19 @@ type TodoClauseCounts = Pick<RunDetails, "openTodos" | "droppedTodos">;
  */
 export const todoClause = (counts: TodoClauseCounts): string => {
 	if (counts.openTodos > 0) {
-		return counts.openTodos === 1
-			? "1 to-do open"
-			: `${counts.openTodos} to-dos open`;
+		// ICU, not a hand-built plural: the arms carry this locale’s CLDR
+		// categories and translators receive the count as an argument.
+		return t("ui.chat.run_details.chip.todos_open", {
+			count: counts.openTodos,
+		});
 	}
-	return counts.droppedTodos > 0 ? "All to-dos closed" : "All to-dos resolved";
+	return counts.droppedTodos > 0
+		? t("ui.chat.run_details.chip.todos_closed")
+		: t("ui.chat.run_details.chip.todos_resolved");
 };
 
 const failureClause = (count: number): string =>
-	`${plural(count, "subagent")} failed`;
+	t("ui.chat.run_details.chip.subagents_failed", { count });
 
 /**
  * The attention GRAMMAR, stated once (`§ 3.4`, `§ 7.2`; round 3's nit).
@@ -3854,16 +3878,13 @@ const failureClause = (count: number): string =>
  * two surfaces a single reader sees together, and nothing but review would have
  * caught it. `needs` for a count of one, `need` otherwise.
  */
-const attentionVerb = (count: number): string =>
-	count === 1 ? "needs" : "need";
-
 /** The clause that names no subject: `1 needs attention`, `3 need attention`. */
 const attentionClause = (count: number): string =>
-	`${count} ${attentionVerb(count)} attention`;
+	t("ui.chat.run_details.chip.attention", { count });
 
 /** The MCP ledger's clause, with the protocol's own name left singular. */
 const mcpClause = (count: number): string =>
-	`${plural(count, "MCP server")} ${attentionVerb(count)} attention`;
+	t("ui.chat.run_details.chip.mcp_attention", { count });
 
 /**
  * The tooltip and `aria-label` copy (`§3.3`, `§6.2`).

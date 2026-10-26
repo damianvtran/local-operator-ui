@@ -1,0 +1,381 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-namespace-audit-chat-surfaces-r2",
+	"date": "2026-10-26",
+	"audit_date": "2026-10-26",
+	"locale": "ru",
+	"batch": "chat-surfaces",
+	"branch": "i18n-chat-surfaces",
+	"audited_head": "e1ca500e5abcce535f8eabeb899197014dd7b787",
+	"candidate_state": "COMMITTED at HEAD: the four ru chat catalogues carry no working-tree modification; every verdict below is bound to the sha256 of the bytes on disk, recomputed here and matched against the manager's list before reading",
+	"round": 2,
+	"instance": "r2-44322c0b8b28",
+	"status": "changes_requested",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "r2-44322c0b8b28",
+		"instance": "r2-44322c0b8b28",
+		"model": "radient/auto",
+		"actual_model_source": "Harness session route radient/auto as dispatched for this round; no mid-audit model switch was observed in this session. Declared plainly because radient/auto is an alias, not a vendor model id, and the round-1 audit on the same route was descended cross-vendor to anthropic/claude-sonnet-5-5 mid-run by a provider quota failure (receipt i18n/receipts/ru-chat-surfaces-audit-9ad847e63dc6.json); this record cannot see the resolved vendor model behind the alias.",
+		"fallback": {
+			"used": false,
+			"reason": "no fallback event observed during this audit",
+			"scope": "whole round"
+		},
+		"independent_from_translators": true,
+		"independence_basis": "Separate session from the translator and from the remediation commit author; read the round-1 receipt only AFTER the bytes, to confirm whether each earlier finding was resolved or declined. Made no catalogue, code or generated-file edit; the only write is this receipt. No translation/MT service was used to compare or back-translate."
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"round_1_receipt": {
+			"path": "i18n/receipts/ru-chat-surfaces-audit-9ad847e63dc6.json",
+			"used_for": "resolution check of its 20 findings only; not as a source of wording"
+		}
+	},
+	"scope": "All 283 ru values across ui.chat (115), ui.chat.canonical (60), ui.chat.run_details (82, incl. the new key todos.hidden_summary) and ui.chat.asks (26), read against English plus the context sidecar, and re-read against consumers for label-in-name, joined fragments and the English approval labels the app prints. Catalogue audit only: no rendered-fit, no browser, no screenshots, no native-speaker sign-off beyond this reader.",
+	"method": [
+		"Recomputed all four target sha256 and the four English sha256 from disk; all eight matched the manager's list before any judgement was written.",
+		"Ran the repo validators on the current tree: generate.mjs --check (byte-identical), check-strings.mjs (ok, 1368 files, 262 literals at baseline), context-parity.mjs (ok, 131 allowed gaps in 4 namespaces), check-duplicates.mjs (ok, 0 duplicates). No other command touched the repo.",
+		"Parsed every en/ru pair with @formatjs/icu-messageformat-parser: argument names/types, select arms, Rich/tag names and backtick code spans identical; key sets identical per namespace (115/60/82/26). The only structural deltas are the ru few/many arms on 7 plural keys, which Intl.PluralRules('ru') requires.",
+		"Rendered all 7 ru plurals plus hub_update.update_all_label through intl-messageformat at 0/1/2/5/21/22/25/1000/1.5; todos.hidden_summary gives «0 задач скрыто», «1 задача скрыта», «2 задачи скрыты», «5 задач скрыто», «1000 задач скрыто», «1,5 задачи скрыто» — correct case in every arm, ::group-off honoured.",
+		"Checked NFC, manual bidi controls (none), leading/trailing whitespace parity (hint.prefix keeps its trailing space), «ёлочки» and nested-quote use, em dash with spaces, ellipsis, and no space before : ; ! ? — all clean.",
+		"Traced the compositions the round-1 majors turned on: composer-status-row.tsx (goal_done_name + LABEL_SEAM + goal, goalDismissLabel, chip labels), hub-update-mark.tsx update-all caption vs accessible name, question-dock.tsx hint.approval/approval_held against APPROVAL_OPTIONS (English Approve/Deny), run-detail-wakes.tsx:304 with formatWakeDue (run-detail-model.ts:1611,1823), run-child-subagents.tsx:229, run-child-reader.tsx:386.",
+		"Widths were checked against the two maxCells hints in these sidecars (choose_model 18, last_reading 16); both ru values fit. No other key in the four namespaces carries maxCells."
+	],
+	"limitations": [
+		"No browser or rendered-fit evidence was produced in this round: the audit was catalogue-only by the task's scope, so the narrow-column older-history rows were judged by codepoint width and the sidecar note, not by a rendered frame.",
+		"No ledger-check run and no ledger row edit (out of scope for this auditor).",
+		"No tracked evidence bundle under i18n/audits/evidence was written: the task confined this round to one receipt, whose per-namespace input hashes make it self-verifying; working notes stayed in session scratch and are not artifacts of record."
+	],
+	"namespaces": {
+		"ui.chat": {
+			"keys": 115,
+			"new_keys": 71,
+			"sha256": {
+				"en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+				"ru": "0d9127303efe19b968db579b5fae3fd62103f5ad7276e0775c2de8dd62fca9d9"
+			},
+			"context_sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372",
+			"input_hashes": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.chat.json",
+					"sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.chat.context.json",
+					"sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/ru/ui.chat.json",
+					"sha256": "0d9127303efe19b968db579b5fae3fd62103f5ad7276e0775c2de8dd62fca9d9"
+				}
+			},
+			"status": "passed",
+			"verdict": "clean",
+			"current_report_verdict": {
+				"status": "passed",
+				"unresolved_blocker_major_count": 0,
+				"finding_ids": []
+			},
+			"findings": [],
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			}
+		},
+		"ui.chat.canonical": {
+			"keys": 60,
+			"new_keys": 13,
+			"sha256": {
+				"en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+				"ru": "48efc0477738bcab1c01997a9907341fbeab4810711464c1f0432c9ca6a712fd"
+			},
+			"context_sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04",
+			"input_hashes": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+					"sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+					"sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+					"sha256": "48efc0477738bcab1c01997a9907341fbeab4810711464c1f0432c9ca6a712fd"
+				}
+			},
+			"status": "passed",
+			"verdict": "clean",
+			"current_report_verdict": {
+				"status": "passed",
+				"unresolved_blocker_major_count": 0,
+				"finding_ids": []
+			},
+			"findings": [],
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			}
+		},
+		"ui.chat.run_details": {
+			"keys": 82,
+			"new_keys": 80,
+			"sha256": {
+				"en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+				"ru": "fe16c390d923aeba701a2c2770e71a2d2f265e8782039cc4999a4d8eee5329d0"
+			},
+			"context_sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919",
+			"input_hashes": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+					"sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+					"sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/ru/ui.chat.run_details.json",
+					"sha256": "fe16c390d923aeba701a2c2770e71a2d2f265e8782039cc4999a4d8eee5329d0"
+				}
+			},
+			"status": "changes_requested",
+			"verdict": "changes_requested",
+			"current_report_verdict": {
+				"status": "changes_requested",
+				"unresolved_blocker_major_count": 1,
+				"finding_ids": [
+					"RU-RD-R2-1",
+					"RU-RD-R2-2",
+					"RU-CHAT-R2-1"
+				]
+			},
+			"findings": [
+				{
+					"id": "RU-RD-R2-1",
+					"severity": "major",
+					"namespace": "ui.chat.run_details",
+					"key": "ui.chat.run_details.wake.cancel_wake_due",
+					"current": "Отменить пробуждение, которое сработает {due}",
+					"proposed": "Отменить пробуждение, запланированное на {due}",
+					"reason": "{due} is formatWakeDue's output (run-detail-model.ts:1611, wired at :1823): a bare clock plus zone, e.g. «10:30 GMT+3», with a date prefix only when the instant is not today. Russian needs «в» before a bare clock — «сработает 10:30» is ungrammatical — and the same-day case is the common one, so this accessible name is wrong on the ordinary row. Adding «в» would break the dated shape («в 10 окт. 10:30»), whereas «запланированное на {due}» governs both. Every other locale supplies the preposition (es «para», vi «lúc», hi «पर», ur «کو», zh «将于»); only fr «prévu {due}» and ru omit it. Alternative that also avoids the grammar: «Отменить пробуждение: {due}», the colon shape mcp_auth.title_for_server and wake.cancel_wake_named already use for a value."
+				},
+				{
+					"id": "RU-RD-R2-2",
+					"severity": "nit",
+					"namespace": "ui.chat.run_details",
+					"key": "ui.chat.run_details.reader.delegated_with",
+					"current": "Что делегировано",
+					"proposed": "Поручение",
+					"reason": "Section label over the subagent's brief (run-child-reader.tsx:386). English 'Delegated with' names the instrument the delegation was made with; «Что делегировано» names the delegated object instead, and above a block of instruction text it reads as a question the block then answers. Sidecar note asks for 'the tools/capabilities a subagent was delegated with', which the current wording also does not name. «Поручение» labels the brief itself, which is what the block holds."
+				},
+				{
+					"id": "RU-CHAT-R2-1",
+					"severity": "nit",
+					"namespace": "ui.chat.run_details",
+					"key": "ui.chat.run_details.mcp_auth.title",
+					"current": "Войти в MCP-сервер",
+					"proposed": "Войти на MCP-сервер",
+					"reason": "«войти в сервер» is the calque of English 'sign in to'; Russian takes a server with «на» (вход на сервер) and keeps «в» for accounts and systems (войти в систему, войти в аккаунт). Understandable and applied consistently, hence nit. Same call in mcp_auth.title_for_server («Войти в {server}» -> «Войти на {server}») and mcp_auth.no_session («...чтобы войти в этот сервер» -> «...чтобы войти на этот сервер»); mcp_auth.checking «Проверка способа входа в этот сервер…» follows.",
+					"also_keys": [
+						"ui.chat.run_details.mcp_auth.title_for_server",
+						"ui.chat.run_details.mcp_auth.no_session",
+						"ui.chat.run_details.mcp_auth.checking"
+					]
+				}
+			],
+			"severity_counts": {
+				"blocker": 0,
+				"major": 1,
+				"minor": 0,
+				"nit": 2
+			}
+		},
+		"ui.chat.asks": {
+			"keys": 26,
+			"new_keys": 14,
+			"sha256": {
+				"en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+				"ru": "363b1b10db8ca84f850f16e9e68c3269a23c6653d0f8593a8361f09a42ec5bd2"
+			},
+			"context_sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c",
+			"input_hashes": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.chat.asks.json",
+					"sha256": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+					"sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/ru/ui.chat.asks.json",
+					"sha256": "363b1b10db8ca84f850f16e9e68c3269a23c6653d0f8593a8361f09a42ec5bd2"
+				}
+			},
+			"status": "passed",
+			"verdict": "clean",
+			"current_report_verdict": {
+				"status": "passed",
+				"unresolved_blocker_major_count": 0,
+				"finding_ids": []
+			},
+			"findings": [],
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			}
+		}
+	},
+	"round_1_resolution": {
+		"method": "each of the 20 round-1 findings was re-read against the current bytes for its key(s) before this round's own reading was finalised",
+		"resolved": [
+			{
+				"id": "RU-CHAT-1",
+				"finding": "major",
+				"status": "resolved",
+				"current": "hint.approval now names «Approve»/«Deny»; APPROVAL_OPTIONS (approval-words.ts) still prints those English labels verbatim"
+			},
+			{
+				"id": "RU-CHAT-2",
+				"finding": "major",
+				"status": "resolved",
+				"current": "update_all_label is «Обновить все ({count}) — обновления … из хаба», so the visible caption «Обновить все (N)» sits verbatim inside the accessible name (WCAG 2.5.3)"
+			},
+			{
+				"id": "RU-CHAT-3",
+				"finding": "major",
+				"status": "resolved",
+				"current": "goal_done_name is «Отметить цель: готово» and the visible word is «Готово» (composer-status-row.tsx:2482); the name composes as «Отметить цель: готово — <goal>»"
+			},
+			{
+				"id": "RU-CHAT-4",
+				"finding": "major",
+				"status": "resolved",
+				"current": "loop_progress_of_turns now pluralises {total}; renders «1 из 1 хода», «2 из 2 ходов», «5 из 5 ходов», «1,5 из 1,5 хода»"
+			},
+			{
+				"id": "RU-CHAT-5",
+				"finding": "major",
+				"status": "resolved",
+				"current": "monitors_action is «Открыть мониторинг в подробностях запуска», the glossary rendering"
+			},
+			{
+				"id": "RU-CHAT-6",
+				"finding": "minor",
+				"status": "resolved",
+				"current": "usage.eligibility_unknown is «Доступность расхода неизвестна»"
+			},
+			{
+				"id": "RU-CHAT-7",
+				"finding": "minor",
+				"status": "resolved",
+				"current": "schema.after rebuilt as «— это исправит ошибку. Рекомендуем Radient Automatic: … оптимальное сочетание цены и качества …»"
+			},
+			{
+				"id": "RU-CHAT-8",
+				"finding": "minor",
+				"status": "resolved",
+				"current": "mermaid.zoom_in/zoom_out are «Увеличить»/«Уменьшить»"
+			},
+			{
+				"id": "RU-CHAT-9",
+				"finding": "minor",
+				"status": "resolved",
+				"current": "hint.secret_held rebuilt; the held state, the may-have-landed clause and the no-resend rule all survive"
+			},
+			{
+				"id": "RU-CHAT-11",
+				"finding": "nit",
+				"status": "resolved",
+				"current": "mermaid.pan «Сдвиг перетаскиванием», pan_hint «Перетащите диаграмму, чтобы сдвинуть её»"
+			},
+			{
+				"id": "RU-CHAT-12",
+				"finding": "nit",
+				"status": "resolved",
+				"current": "aside.exchange_label is «Обмен репликами в отдельном вопросе»"
+			},
+			{
+				"id": "RU-CHAT-13",
+				"finding": "nit",
+				"status": "resolved",
+				"current": "hint.approval_held now «Ответьте через поле ввода: …»; yes/no/1/2 kept Latin as approvalAnswerValue expects"
+			},
+			{
+				"id": "RU-CAN-1",
+				"finding": "minor",
+				"status": "resolved",
+				"current": "windowed.short_gesture is «Вверх — ранние сообщения»"
+			},
+			{
+				"id": "RU-RD-1",
+				"finding": "major",
+				"status": "resolved",
+				"current": "monitors.title «Мониторинг», monitor_cancel.title «Отменить этот мониторинг?», monitor_cancel.confirm «Остановить мониторинг» — glossary row applied"
+			},
+			{
+				"id": "RU-RD-2",
+				"finding": "nit",
+				"status": "resolved",
+				"current": "wake_cancel.cancelling is «Отменяется…», matching wake.cancelling"
+			},
+			{
+				"id": "RU-RD-3",
+				"finding": "nit",
+				"status": "resolved",
+				"current": "mcp.credentials_in_settings is now an imperative pointer: «Укажите учётные данные этого сервера в настройках»"
+			},
+			{
+				"id": "RU-ASK-1",
+				"finding": "minor",
+				"status": "resolved",
+				"current": "close_asks is «Закрыть панель запросов»"
+			}
+		],
+		"declined_or_accepted": [
+			{
+				"id": "RU-CAN-2",
+				"finding": "minor",
+				"status": "accepted-as-is",
+				"current": "unproven.short is «Ранняя история не загружена» (was «История не загружена»): the short form now names EARLY history, which is the distinction the round-1 note asked for; «Более ранняя» stays in the long form. Narrow-column length 26 codepoints, no maxCells set."
+			},
+			{
+				"id": "RU-CHAT-10",
+				"finding": "minor",
+				"status": "declined (source-side)",
+				"current": "the ru value is unchanged and still correct; the English-only 'Copy file path' menu item it points at is out of this catalogue's scope, so nothing in ru could close it"
+			}
+		]
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/ru-chat-surfaces-audit-r2-r2-44322c0b8b28.json",
+			"role": "this receipt (the served record of the round)"
+		}
+	],
+	"audit_notes_not_execution_log": "The method list records what was done and what was seen; the validators' and renderers' verbatim output is not reproduced here. Scratch working notes lived in the session scratchpad and are not artifacts of record.",
+	"overall_report_verdict": {
+		"status": "changes_requested",
+		"unresolved_blocker_major_count": 1,
+		"finding_ids": [
+			"RU-RD-R2-1",
+			"RU-RD-R2-2",
+			"RU-CHAT-R2-1"
+		]
+	}
+}
