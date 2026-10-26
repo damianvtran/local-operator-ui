@@ -109,6 +109,12 @@ export const METHODS = [
 	// holds. THIS host serves both.
 	"download",
 	"upload",
+	// Desktop-only network capture. The extension does not implement these
+	// methods; backend capability discovery must gate them by host.
+	"network_start",
+	"network_stop",
+	"network_read",
+	"network_clear",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -165,6 +171,10 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	// `upload` is local: the browser reads the bytes off disk, so the budget covers
 	// the attach plus the read-back that proves the DOM holds them.
 	upload: 60.0,
+	network_start: 20.0,
+	network_stop: 20.0,
+	network_read: 20.0,
+	network_clear: 20.0,
 };
 
 /**
@@ -295,6 +305,14 @@ export const HOST_CAPABILITIES: readonly Method[] = [
 	"query",
 	"download",
 	"upload",
+	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
+	// attached only for the duration of an action, so it holds no standing session
+	// to keep a `Network` subscription on. The backend therefore gates these four
+	// on this list rather than on `PROTO_VERSION`.
+	"network_start",
+	"network_stop",
+	"network_read",
+	"network_clear",
 ];
 
 export interface Request {
