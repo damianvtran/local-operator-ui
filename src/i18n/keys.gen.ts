@@ -23,13 +23,17 @@
 
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
+import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
+import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
+import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
+import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
@@ -75,7 +79,9 @@ import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
+import enUiHubPages from "./catalogues/en/ui.hub.pages.json";
 import enUiHubTaxonomy from "./catalogues/en/ui.hub.taxonomy.json";
+import enUiHubTeams from "./catalogues/en/ui.hub.teams.json";
 import enUiHubUpdates from "./catalogues/en/ui.hub.updates.json";
 import enUiInstaller from "./catalogues/en/ui.installer.json";
 import enUiLibraryErrors from "./catalogues/en/ui.library.errors.json";
@@ -706,13 +712,17 @@ import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
 	...enUiAgentMessagesSettings,
+	...enUiAgentsConfig,
+	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
 	...enUiAgents,
 	...enUiAgentsModels,
 	...enUiAgentsNavigation,
+	...enUiAgentsPages,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
 	...enUiAgentsStarters,
+	...enUiAgentsUpload,
 	...enUiBrowserChrome,
 	...enUiBrowserErrors,
 	...enUiBrowser,
@@ -758,7 +768,9 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiConsole,
 	...enUiHubComments,
 	...enUiHub,
+	...enUiHubPages,
 	...enUiHubTaxonomy,
+	...enUiHubTeams,
 	...enUiHubUpdates,
 	...enUiInstaller,
 	...enUiLibraryErrors,
@@ -1512,6 +1524,12 @@ export type MessageParams = {
 	"ui.agentMessages.settings.state.read_only": undefined;
 	"ui.agentMessages.settings.state.turned_off_org": undefined;
 	"ui.agentMessages.settings.state.turned_off_title": undefined;
+	"ui.agents.config.placeholder.about": { name: string };
+	"ui.agents.config.placeholder.docked": undefined;
+	"ui.agents.config.placeholder.hero": undefined;
+	"ui.agents.detail.meta.delegates": undefined;
+	"ui.agents.detail.read.show_all": undefined;
+	"ui.agents.detail.read.show_less": undefined;
 	"ui.agents.dialogs.clear.cancel": undefined;
 	"ui.agents.dialogs.clear.confirm": undefined;
 	"ui.agents.dialogs.clear.title": undefined;
@@ -1624,6 +1642,14 @@ export type MessageParams = {
 	"ui.agents.navigation.updates.preview.local": undefined;
 	"ui.agents.navigation.updates.preview.nothing": undefined;
 	"ui.agents.navigation.updates.preview.remote": undefined;
+	"ui.agents.pages.add_manual.agent": undefined;
+	"ui.agents.pages.add_manual.team": undefined;
+	"ui.agents.pages.ask.body_agent": undefined;
+	"ui.agents.pages.ask.body_team": undefined;
+	"ui.agents.pages.ask.heading_agent": undefined;
+	"ui.agents.pages.ask.heading_team": undefined;
+	"ui.agents.pages.ask.manual_agent": undefined;
+	"ui.agents.pages.ask.manual_team": undefined;
 	"ui.agents.refusals.class.effect.proactive": undefined;
 	"ui.agents.refusals.class.effect.reactive": undefined;
 	"ui.agents.refusals.class.error.install_landed": { reason: string };
@@ -1718,6 +1744,12 @@ export type MessageParams = {
 	"ui.agents.starters.summary.sentence": { parts: string };
 	"ui.agents.starters.summary.separator": undefined;
 	"ui.agents.starters.summary.skipped": { count: number };
+	"ui.agents.upload.title.publish_org": { name: string; destination: string };
+	"ui.agents.upload.title.publish_public": { name: string };
+	"ui.agents.upload.title.published_org": { name: string; destination: string };
+	"ui.agents.upload.title.published_public": { name: string };
+	"ui.agents.upload.title.republished": { name: string };
+	"ui.agents.upload.title.update_listing": { name: string };
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;
@@ -4241,6 +4273,7 @@ export type MessageParams = {
 	"ui.common.actions.find_replace_widget.switch_to_replace": undefined;
 	"ui.common.actions.retry": undefined;
 	"ui.common.actions.retry_again": undefined;
+	"ui.common.actions.retrying": undefined;
 	"ui.common.actions.system_prompt_updated": undefined;
 	"ui.common.actions.text_selection_controls.ask_for_an_edit": undefined;
 	"ui.common.actions.text_selection_controls.copy": undefined;
@@ -5126,6 +5159,8 @@ export type MessageParams = {
 	"ui.hub.subscriptions.subscribe_description": { source: string };
 	"ui.hub.subscriptions.subscribe_description_blocked": { source: string };
 	"ui.hub.subscriptions.unsupported": undefined;
+	"ui.hub.pages.card.get": undefined;
+	"ui.hub.pages.card.updated": { when: string };
 	"ui.hub.taxonomy.all": undefined;
 	"ui.hub.taxonomy.category.accounting": undefined;
 	"ui.hub.taxonomy.category.analysis": undefined;
@@ -5147,6 +5182,8 @@ export type MessageParams = {
 	"ui.hub.taxonomy.origin.named": { name: string };
 	"ui.hub.taxonomy.origin.organization": undefined;
 	"ui.hub.taxonomy.origin.unnamed": undefined;
+	"ui.hub.teams.recency.created": { when: string };
+	"ui.hub.teams.recency.updated": { when: string };
 	"ui.hub.updates.action.details": undefined;
 	"ui.hub.updates.action.retry": undefined;
 	"ui.hub.updates.action.review": undefined;

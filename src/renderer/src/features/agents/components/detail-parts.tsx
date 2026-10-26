@@ -15,6 +15,8 @@
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -131,6 +133,9 @@ export function ReadBlock({
 	const [expanded, setExpanded] = useState(false);
 	const [overflows, setOverflows] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
+	/* The expander's two labels are catalogue copy; subscribe so a language switch
+	 * repaints them with the rest of the pane. */
+	useI18nLocale();
 
 	/*
 	 * Measured, not assumed from a character count: what overflows depends on the
@@ -201,7 +206,9 @@ export function ReadBlock({
 					aria-expanded={expanded}
 					onClick={() => setExpanded((value) => !value)}
 				>
-					{expanded ? "Show less" : "Show all"}
+					{expanded
+						? t("ui.agents.detail.read.show_less")
+						: t("ui.agents.detail.read.show_all")}
 				</Button>
 			) : null}
 		</div>

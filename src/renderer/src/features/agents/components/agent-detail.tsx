@@ -54,6 +54,7 @@ import {
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
@@ -164,11 +165,12 @@ function changedFields(base: Draft, draft: Draft): Record<string, unknown> {
  * "Proactive" is the roster's word for the class (`CLASS_LABEL`), not a second
  * spelling; reactive is the default and is not said.
  */
-function AgentMeta({ profile }: { profile: ReusableProfile }) {
+export function AgentMeta({ profile }: { profile: ReusableProfile }) {
+	useI18nLocale();
 	const facts = [
 		sourceLabel(profile.source),
 		classOf(profile) === "proactive" ? CLASS_LABEL.proactive : null,
-		profile.delegate ? "Delegates" : null,
+		profile.delegate ? t("ui.agents.detail.meta.delegates") : null,
 		profile.kind === "specialist" ? "Specialist" : null,
 	].filter(Boolean);
 	return (

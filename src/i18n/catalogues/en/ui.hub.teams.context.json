@@ -1,0 +1,20 @@
+{
+	"ui.hub.teams.recency.updated": {
+		"role": "Recency segment in an organization team row's provenance line",
+		"tone": "Quiet, lowercase fragment; it follows the project and author segments after a dot.",
+		"length_hint": "Two words plus the age in English. The row's provenance line is a single truncated line, so keep the surrounding words short.",
+		"placeholders": {
+			"when": "The localized relative phrase produced by the hub's shared age messages (ui.hub.comments.age.*), for example '2 days ago' or 'just now'. It already contains its own 'ago'; translate only the verb around it."
+		},
+		"note": "ONE whole sentence, so the target language can put the time before the verb. It is used when updated_at supplied the date; the created sibling is used only when updated_at is missing or unparseable, and the two must stay distinguishable. Never put 'updated' over a creation date."
+	},
+	"ui.hub.teams.recency.created": {
+		"role": "Recency segment when only the team's creation date is usable",
+		"tone": "Quiet, lowercase fragment, sibling of recency.updated.",
+		"length_hint": "Same single truncated line as recency.updated.",
+		"placeholders": {
+			"when": "The same localized relative phrase as recency.updated carries."
+		},
+		"note": "The fallback arm: it must say the date is the creation date, not claim the team was updated. Keep it parallel to recency.updated so only the verb differs."
+	}
+}

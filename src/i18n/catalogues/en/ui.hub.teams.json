@@ -1,0 +1,4 @@
+{
+	"ui.hub.teams.recency.updated": "updated {when}",
+	"ui.hub.teams.recency.created": "created {when}"
+}

@@ -4,7 +4,6 @@
 	"files": {
 		"src/renderer/src/features/agent-hub/agent-details-page.tsx": 16,
 		"src/renderer/src/features/agent-hub/agent-hub-page.tsx": 12,
-		"src/renderer/src/features/agent-hub/components/agent-card.tsx": 4,
 		"src/renderer/src/features/agent-hub/components/hub-pager.tsx": 6,
 		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx": 7,
 		"src/renderer/src/features/agent-hub/components/public-teams-library.tsx": 22,

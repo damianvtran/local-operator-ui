@@ -53,6 +53,8 @@ import {
 } from "@shared/components/composer";
 import { Button } from "@shared/components/ui/button";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -936,6 +938,13 @@ export function ConfigComposer({
 	onClearAbout: () => void;
 }) {
 	const inputRef = useRef<MessageInputHandle | null>(null);
+	/*
+	 * THE BOX'S COPY IS CATALOGUE COPY, so the component subscribes to the locale
+	 * store: the placeholder is read at call time by `t()`, and without this hook a
+	 * language switch would repaint the page around a box still holding the old
+	 * language's invitation.
+	 */
+	useI18nLocale();
 	const recordingProbe = useRadientCredentialProbe();
 	/*
 	 * THE IDLE BOX'S READINGS COME FROM THE DRAFT PREVIEW, the same resolution a
@@ -1084,11 +1093,11 @@ export function ConfigComposer({
 	 * Do not lengthen it without re-running the native pane-width boundary check.
 	 */
 	const placeholder = about
-		? `Change ${about.name}…`
+		? t("ui.agents.config.placeholder.about", { name: about.name })
 		: run.enabled
 			? hero
-				? "Describe what you want…"
-				: "Ask for a change, or describe something new…"
+				? t("ui.agents.config.placeholder.hero")
+				: t("ui.agents.config.placeholder.docked")
 			: DISABLED_GATE_LINE;
 
 	/*

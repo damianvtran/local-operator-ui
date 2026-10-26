@@ -159,6 +159,54 @@ type PublishedOutcome = {
 	localPolicies: "complete" | "pending" | null;
 };
 
+/**
+ * The dialog's title, as one whole catalogue message per state.
+ *
+ * WHY A FUNCTION RATHER THAN THE TERNARY INLINE. Three things decide the sentence
+ * — whether the publication has been ANSWERED, whether it went into an
+ * organization or the public hub, and whether an existing listing is being
+ * updated — and every arm is user-facing prose with a name inside it. Keeping the
+ * choice here means the locale test renders the same sentence the dialog paints,
+ * instead of a second copy of the branch it would have to keep in step. Each arm
+ * is ONE message with its name (and, for an organization, its destination) as an
+ * ICU placeholder, so a target language can put the verb, the name and the
+ * destination in its own order.
+ */
+export function publishDialogTitle({
+	agentName,
+	published,
+	targetIsOrg,
+	targetDisplayName,
+	hasListing,
+}: {
+	agentName: string;
+	published: PublishedOutcome | null;
+	targetIsOrg: boolean;
+	targetDisplayName: string;
+	hasListing: boolean;
+}): string {
+	if (published) {
+		if (published.orgName) {
+			return t("ui.agents.upload.title.published_org", {
+				name: agentName,
+				destination: published.orgName,
+			});
+		}
+		return published.republished
+			? t("ui.agents.upload.title.republished", { name: agentName })
+			: t("ui.agents.upload.title.published_public", { name: agentName });
+	}
+	if (targetIsOrg) {
+		return t("ui.agents.upload.title.publish_org", {
+			name: agentName,
+			destination: targetDisplayName,
+		});
+	}
+	return hasListing
+		? t("ui.agents.upload.title.update_listing", { name: agentName })
+		: t("ui.agents.upload.title.publish_public", { name: agentName });
+}
+
 /** The picker's value for the public hub — the one value no tenant id can be. */
 const PUBLIC_TARGET = "public";
 
@@ -558,17 +606,13 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * saying the listing was CREATED — and the two states became impossible to tell
 	 * apart from their own frames.
 	 */
-	const title = published
-		? published.orgName
-			? `Published "${agentName}" to ${published.orgName}`
-			: published.republished
-				? `Updated the Agent Hub listing for "${agentName}"`
-				: `Published "${agentName}" to the Agent Hub`
-		: targetIsOrg
-			? `Publish "${agentName}" to ${targetDisplayName}?`
-			: listing
-				? `Update the Agent Hub listing for "${agentName}"?`
-				: `Publish "${agentName}" to the Agent Hub?`;
+	const title = publishDialogTitle({
+		agentName,
+		published,
+		targetIsOrg,
+		targetDisplayName,
+		hasListing: Boolean(listing),
+	});
 
 	/*
 	 * Where focus goes when a RESULT renders, and why it goes to a SINK.

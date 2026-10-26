@@ -1147,7 +1147,9 @@ export const AgentHubPage: React.FC = () => {
 												disabled={viewerStateIsFetching}
 												aria-busy={viewerStateIsFetching}
 											>
-												{viewerStateIsFetching ? "Trying…" : "Try again"}
+												{viewerStateIsFetching
+													? t("ui.common.actions.retrying")
+													: t("ui.common.actions.retry_again")}
 											</Button>
 										</output>
 									)}
