@@ -69,6 +69,29 @@ export interface AddressSearchRow {
 	targetUrl: string;
 }
 
+/**
+ * The text the user typed, offered back as a destination ("Open <address>").
+ *
+ * WHY IT EXISTS: a URL-shaped input with no history match used to produce an
+ * EMPTY list (URL intent has no search row), so a brand-new address - the
+ * ordinary case on a fresh profile or a new tab - got a "no matching pages"
+ * notice and nothing to press. The row is the typed value itself, so the
+ * highlighted default for URL intent is exactly what Enter has always done:
+ * navigate the trimmed text. It is NOT offered next to history candidates (the
+ * reported case was "no history"; a typed row above real matches would push
+ * the matches down and fight the inline completion for the same Enter).
+ */
+export interface AddressTypedRow {
+	kind: "typed";
+	/** The text the user typed, trimmed. The UI wraps it in the localized row
+	 * copy; the model owns no user-facing strings. */
+	address: string;
+	/** What Enter navigates: the trimmed text, byte for byte. Scheme handling (an
+	 * HTTPS upgrade of a bare host, a refused scheme) stays with the host's own
+	 * navigation path, exactly as for a typed Enter before this row existed. */
+	targetUrl: string;
+}
+
 export interface AddressCandidateRow {
 	kind: "candidate";
 	candidate: AddressCandidate;
@@ -77,13 +100,18 @@ export interface AddressCandidateRow {
 /**
  * One row of the unified list.
  *
- * ORDER, and it is the product decision: search row (when there is one),
- * history matches by score, then open-tab matches. There are deliberately no
+ * ORDER, and it is the product decision: the typed-address row (URL intent
+ * with no match at all) or the search row (search intent), history matches by
+ * score, then open-tab matches. A URL-intent input with no match is
+ * [typed address, search row]. There are deliberately no
  * section-heading rows: the native overlay protocol S4b owns has uniform row
  * heights and a row count, so a heading row would be a row the user can select
  * and a height the child cannot paint in its own model.
  */
-export type AddressRow = AddressSearchRow | AddressCandidateRow;
+export type AddressRow =
+	| AddressSearchRow
+	| AddressTypedRow
+	| AddressCandidateRow;
 
 export interface AddressSuggestions {
 	inline: InlineCompletion | null;
@@ -91,8 +119,11 @@ export interface AddressSuggestions {
 	candidates: AddressCandidate[];
 	/** The unified list: at most five rows, the search row included. */
 	rows: AddressRow[];
-	/** The search row, or null when this input is not search intent. */
+	/** The search row: first for search intent, second (after the typed row) for a
+	 * URL-shaped input with no match at all, null otherwise. */
 	search: AddressSearchRow | null;
+	/** The typed-address row, only for URL intent with no history/tab match. */
+	typed: AddressTypedRow | null;
 	intent: AddressIntent;
 }
 
@@ -108,6 +139,7 @@ const BARE_SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 const HAS_WHITESPACE = /\s/;
 const LEADING_DOUBLE_SLASH = /^\/\//;
 const URL_BOUNDARY = /[/?#]/;
+const FILE_SCHEME_TYPED = /^file:/i;
 const CONTROL_CHARS = /[\p{Cc}]/u;
 const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
@@ -440,12 +472,22 @@ export function suggestAddresses(
 		 * with no visible completion, and filtering then makes the list claim
 		 * there is no match while Enter commits the shorter, wrong host. */
 		inlineShown?: boolean;
+		/** False when the field is not being edited: the text is then the tab's
+		 * live URL, not something typed, so there is nothing to offer back. */
+		offerTyped?: boolean;
 	} = {},
 ): AddressSuggestions {
 	const inlineShown = options.inlineShown ?? true;
 	const intent = addressIntent(raw);
 	if (intent === "blocked") {
-		return { inline: null, candidates: [], rows: [], search: null, intent };
+		return {
+			inline: null,
+			candidates: [],
+			rows: [],
+			search: null,
+			typed: null,
+			intent,
+		};
 	}
 	const shape = queryShape(raw);
 	const seen = new Set<string>();
@@ -487,10 +529,27 @@ export function suggestAddresses(
 			};
 		}
 	}
-	// THE SEARCH ROW IS A ROW, not a banner: it takes the first slot, which is
-	// also why the candidate cap is one lower when it is present.
+	// THE TYPED ROW: a URL-shaped input that matched NOTHING (no history entry and
+	// no open tab - `ranked`, not `candidates`, because the inline target is
+	// filtered out of `candidates` and would otherwise look like "no match" while
+	// a completion is on screen). `file:` is URL intent so it is never searched,
+	// and it is refused on Enter, so it is not offered as something to open.
+	// `usableRawAddress` is the same gate Enter applies to the raw text, so the row
+	// can never offer something the commit path would refuse (control characters).
+	const typedAddress = usableRawAddress(raw);
+	const typed: AddressTypedRow | null =
+		(options.offerTyped ?? true) &&
+		intent === "url" &&
+		ranked.length === 0 &&
+		typedAddress !== null &&
+		!FILE_SCHEME_TYPED.test(typedAddress)
+			? { kind: "typed", address: typedAddress, targetUrl: typedAddress }
+			: null;
+	// THE SEARCH ROW IS A ROW, not a banner: it takes the first slot for search
+	// intent, which is also why the candidate cap is one lower when it is present.
+	// Behind the typed row it is the "or search for it" alternative.
 	const search: AddressSearchRow | null =
-		intent === "search" && raw.trim().length > 0
+		(intent === "search" || typed !== null) && raw.trim().length > 0
 			? {
 					kind: "search",
 					query: raw.trim(),
@@ -503,12 +562,13 @@ export function suggestAddresses(
 		)
 		.slice(0, search ? MAX_ADDRESS_ROWS - 1 : MAX_ADDRESS_ROWS);
 	const rows: AddressRow[] = [
+		...(typed ? [typed] : []),
 		...(search ? [search] : []),
 		...candidates.map(
 			(candidate): AddressCandidateRow => ({ kind: "candidate", candidate }),
 		),
 	];
-	return { inline, candidates, rows, search, intent };
+	return { inline, candidates, rows, search, typed, intent };
 }
 
 /**
@@ -564,7 +624,8 @@ export function rowTarget(
 	if (activeIndex >= 0) {
 		const row = suggestions.rows[activeIndex];
 		if (!row) return null;
-		return row.kind === "search" ? row.targetUrl : row.candidate.url;
+		if (row.kind === "search" || row.kind === "typed") return row.targetUrl;
+		return row.candidate.url;
 	}
 	return suggestions.inline?.targetUrl ?? null;
 }

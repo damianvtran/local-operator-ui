@@ -162,10 +162,18 @@ export interface BrowserUrlBarProps {
 	/** The row is too narrow for the hint sentence to sit beside typed text: keep
 	 * it as the field's description only (round 3, U18). */
 	narrow?: boolean;
-	/** The view is hidden for a browser-owned state (start page, load failure), so
-	 * main refuses suggestion projections. The field says so once the user types,
-	 * rather than leaving a silent dead list. */
-	suggestionsUnavailable?: boolean;
+	/** The tab is a browser-owned state (start page, load failure). No native page
+	 * competes for the pixels there - the start page is DOM and main hides the
+	 * page view - so the suggestion list paints as a DOM listbox anchored under the
+	 * field instead of a native child (which main cannot show while the page is not
+	 * presented). It is the SAME rows, active descendant and commit path as the
+	 * native mirror; it is never "unavailable". */
+	ownState?: boolean;
+	/** Why main's address overlay is not in `popout` mode (`addressOverlay.reason`
+	 * from the projection): `platform` is a platform without the native list
+	 * (Windows/Linux, Tier 1), anything else a child that failed or a controller
+	 * that was disposed. Only read while `overlayMode` is `suspend`. */
+	overlayReason?: string | null;
 	/** Escape or Enter on an untouched draft: abandon the draft and hand focus
 	 * back. The intent is escape or cancel; the surface requests page focus for
 	 * both whenever a page is presented, and falls back to the chord root on the
@@ -220,7 +228,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	focusRequest = null,
 	placeholder,
 	narrow = false,
-	suggestionsUnavailable = false,
+	ownState = false,
+	overlayReason = null,
 	onDismiss,
 	onCommitted,
 	addressHistory,
@@ -289,8 +298,14 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * does not; Windows and Linux stay here). It must not fetch history it has no
 	 * surface for, because a query with no presenter is work whose result nobody
 	 * sees.
+	 *
+	 * OWN-STATE HAS A PRESENTER OF ITS OWN: the DOM listbox below. It does not
+	 * depend on the native child, so it works in `suspend` too (a Windows new tab
+	 * gets its list even though a Windows page does not).
 	 */
-	const suggestionsEnabled = mode === "popout" && addressHistory !== undefined;
+	const domList = ownState && addressHistory !== undefined;
+	const suggestionsEnabled =
+		addressHistory !== undefined && (domList || mode === "popout");
 	const inputEl = useRef<HTMLInputElement | null>(null);
 
 	/**
@@ -461,11 +476,49 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		completion && completion.raw === raw ? completion : null;
 	const value = currentCompletion ? currentCompletion.text : raw;
 	const editing = draft !== null;
-	/** The unavailable-suggestions sentence, shown wherever the list cannot be. */
-	const hintShown =
-		(mode === "suspend" && !editing) ||
-		(suggestionsUnavailable && editing && raw.length > 0);
-	/*
+	/**
+	 * WHY THE LIST IS NOT THERE, or null when it is (or simply has nothing to
+	 * say). "Unavailable" is only ever said for a REAL failure, and each cause names
+	 * itself and what the user can do: one sentence for every cause sent the
+	 * operator hunting for a history fault on a plain new tab (the hint used to read
+	 * "unavailable" for any browser-owned state).
+	 *   - `platform`: this platform has no native list (Tier 1; Windows/Linux);
+	 *   - `restart`: the native child failed or was disposed (main's `reason`);
+	 *   - `narrow`: the pane is below the list's width floor.
+	 * Own-state never gets one of these: its DOM list needs no native child. A
+	 * rejected history READ is a separate fact (`autocomplete.error`) that the list
+	 * itself says - the DOM list, or the native child's notice - so it is not a
+	 * hint pill as well.
+	 */
+	// A NULL reason with `suspend` is the moment before main's first projection
+	// reaches the surface (it reads `popout` only once it has the state): it names
+	// no cause, so it says nothing rather than blaming the platform.
+	const standingKind: "platform" | "restart" | "narrow" | null = domList
+		? null
+		: overlayMode !== "popout"
+			? overlayReason === null
+				? null
+				: overlayReason === "platform"
+					? "platform"
+					: "restart"
+			: narrowAnchor
+				? "narrow"
+				: null;
+	const standingText =
+		standingKind === "platform"
+			? t("ui.browser.browser_url_bar.address_suggestions_unavailable_platform")
+			: standingKind === "restart"
+				? t(
+						"ui.browser.browser_url_bar.address_suggestions_unavailable_restart",
+					)
+				: standingKind === "narrow"
+					? t(
+							"ui.browser.browser_url_bar.address_suggestions_unavailable_narrow",
+						)
+					: null;
+	/** The sentence rides the field at rest (a standing fact of this platform or a
+	 * failed child) and once the user types (their text is what has no list). */
+	const hintShown = standingText !== null && (!editing || raw.length > 0); /*
 	 * THE ONE LIVE PATH FOR THE SENTENCE (round-4 Q4-2). The hint itself is a
 	 * description, not a live region: a region that also carried text on mount
 	 * would speak twice in suspend, where `announcement` already exists and was
@@ -474,29 +527,36 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * announces the transition once and is silent otherwise.
 	 */
 	useEffect(() => {
-		if (!hintShown) return;
-		setAnnouncement(
-			t("ui.browser.browser_url_bar.address_suggestions_unavailable"),
-		);
-	}, [hintShown]);
+		if (!hintShown || standingText === null) return;
+		setAnnouncement(standingText);
+	}, [hintShown, standingText]);
 	const hintPainted = hintShown && !narrow;
 	const suggestions = useMemo(
 		() =>
 			suggestAddresses(autocomplete.entries, query, {
 				inlineShown: currentCompletion !== null,
+				offerTyped: editing,
 			}),
-		[autocomplete.entries, query, currentCompletion],
+		[autocomplete.entries, query, currentCompletion, editing],
 	);
 	/** The header must be true for the rows it sits over: a search row or an
 	 * open-tab row under "From your history" is a false claim (design D1), so the
-	 * mixed list gets its own sentence. Empty uses the mixed/neutral sentence. */
+	 * mixed list gets its own sentence. Empty uses the mixed/neutral sentence.
+	 * A rejected history read replaces it: the rows beneath are then only the
+	 * typed address and the search (there is no history to be "from"), and the
+	 * failure has to be said where the user is looking - the rows view of the
+	 * native child has no notice line. A typed-address row is not history either,
+	 * so it also makes the list "Suggestions". */
 	const listLabel = t(
-		suggestions.rows.length > 0 &&
-			suggestions.rows.every(
-				(row) => row.kind === "candidate" && row.candidate.source === "history",
-			)
-			? "ui.browser.browser_url_bar.address_suggestions_label"
-			: "ui.browser.browser_url_bar.address_suggestions_label_mixed",
+		autocomplete.error
+			? "ui.browser.browser_url_bar.address_suggestions_unavailable"
+			: suggestions.rows.length > 0 &&
+					suggestions.rows.every(
+						(row) =>
+							row.kind === "candidate" && row.candidate.source === "history",
+					)
+				? "ui.browser.browser_url_bar.address_suggestions_label"
+				: "ui.browser.browser_url_bar.address_suggestions_label_mixed",
 	);
 	/**
 	 * Row copy. The model owns no user-facing strings, and a live-tab row is
@@ -509,9 +569,13 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			? t("ui.browser.browser_url_bar.address_search_row", {
 					query: row.query,
 				})
-			: row.candidate.displayText;
+			: row.kind === "typed"
+				? t("ui.browser.browser_url_bar.address_open_row", {
+						address: row.address,
+					})
+				: row.candidate.displayText;
 	const rowSubtitle = (row: AddressRow): string => {
-		if (row.kind === "search") return "";
+		if (row.kind === "search" || row.kind === "typed") return "";
 		if (row.candidate.source !== "tab") return row.candidate.title;
 		return row.candidate.title.length > 0
 			? t("ui.browser.browser_url_bar.address_suggestion_open_tab", {
@@ -520,7 +584,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			: t("ui.browser.browser_url_bar.address_suggestion_open_tab_untitled");
 	};
 	const rowKey = (row: AddressRow): string =>
-		row.kind === "search" ? `search:${row.targetUrl}` : row.candidate.url;
+		row.kind === "search"
+			? `search:${row.targetUrl}`
+			: row.kind === "typed"
+				? `typed:${row.targetUrl}`
+				: row.candidate.url;
 	/** The option spoken by assistive tech. A tab row appends its source mark:
 	 * the native child is `aria-hidden`, so without this the open-tab/history
 	 * distinction would be sighted-only (design D6). */
@@ -758,7 +826,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * candidates this renderer still has before it reaches `commit()`.
 	 */
 	useAddressOverlayMirror({
-		enabled: suggestionsEnabled,
+		// Never in own-state: main refuses every projection while the page is not
+		// presented, and the DOM listbox is the presenter there.
+		enabled: suggestionsEnabled && !domList,
 		tabId,
 		visible: listVisible,
 		active: activeIndex,
@@ -1016,7 +1086,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			}
 			// ENTER PRECEDENCE, in the code's own order: (1) a highlighted row
 			// commits that row — the search row searches, a candidate row
-			// navigates; (2) an accepted suffix commits its canonical target;
+			// navigates, and the typed-address row (URL intent with no match at
+			// all, the highlighted default there) navigates the trimmed text exactly
+			// as step (5) would; (2) an accepted suffix commits its canonical target;
 			// (3) a displayed inline completion commits its canonical target;
 			// (4) with none of those, search intent commits the DuckDuckGo URL;
 			// (5) otherwise the raw text is navigated (or, equal to the live URL,
@@ -1146,11 +1218,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	// the active row and the viewport's offset together: an active descendant
 	// naming a vanished row and a scroll offset belonging to the previous set are
 	// the same stale state, and the URL KEY catches swaps the count cannot.
-	const candidateKey = suggestions.rows
-		.map((row) =>
-			row.kind === "search" ? `search:${row.targetUrl}` : row.candidate.url,
-		)
-		.join("\n");
+	const candidateKey = suggestions.rows.map(rowKey).join("\n");
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `candidateKey` is the trigger, not a value the body reads - the URL SET changing is what must reset the selection and the scroll, and a same-length swap changes no count.
 	useEffect(() => {
 		// AN EXPLICIT SELECTION SURVIVES A LATE ANSWER for the same query (UX U4):
@@ -1170,9 +1238,16 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		// Otherwise (review A-4) a changed SET is a new list: a same-length swap
 		// can leave the old index naming a row the new query never ranked, and
 		// Enter would commit that unseen destination. The search row is the
-		// default when present; no explicit selection otherwise.
+		// default when present, and the typed-address row is the same default for a
+		// URL-shaped input that matched nothing (it is the destination Enter has
+		// always navigated); no explicit selection otherwise.
 		explicitSelection.current = null;
-		setActiveIndex(suggestions.rows[0]?.kind === "search" ? 0 : -1);
+		setActiveIndex(
+			suggestions.rows[0]?.kind === "search" ||
+				suggestions.rows[0]?.kind === "typed"
+				? 0
+				: -1,
+		);
 	}, [candidateKey]);
 
 	// The completion is REAL SELECTED TEXT, set here rather than overlaid: the
@@ -1202,13 +1277,13 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				setAnnouncement(
 					t("ui.browser.browser_url_bar.address_suggestions_unavailable"),
 				);
-			} else if (suggestions.rows.length > 0 && !suggestionsUnavailable) {
+			} else if (suggestions.rows.length > 0) {
 				setAnnouncement(
 					t("ui.browser.browser_url_bar.address_suggestions_available", {
 						count: suggestions.rows.length,
 					}),
 				);
-			} else if (!autocomplete.loading && !suggestionsUnavailable) {
+			} else if (!autocomplete.loading) {
 				setAnnouncement(listNotice);
 			}
 		} else if (!listVisible && wasListOpen.current) {
@@ -1221,7 +1296,6 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		autocomplete.loading,
 		listNotice,
 		suggestions.rows.length,
-		suggestionsUnavailable,
 	]);
 
 	// THE FOCUS CONTRACT, ON A NONCE (S5). The row is permanently mounted, so a
@@ -1246,11 +1320,96 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 
 	// Tier 1 is a fact the user must be told once, not a silent missing list.
 	useEffect(() => {
-		if (mode === "suspend")
-			setAnnouncement(
-				t("ui.browser.browser_url_bar.address_suggestions_unavailable"),
-			);
-	}, [mode]);
+		if (standingText !== null) setAnnouncement(standingText);
+	}, [standingText]);
+
+	/**
+	 * THE ONE LISTBOX. The native child paints rows for a presented page and this
+	 * element carries the accessible contract (options, `aria-selected`, the ids
+	 * `aria-activedescendant` names). In own-state the same element is also the
+	 * VISIBLE list (`visible`): rows get a real look and a press commits through
+	 * the same `commit(rowTarget(...))` the native child's `{seq,index}` event
+	 * uses, so the visible row and the committed row cannot disagree.
+	 */
+	const listboxEl = (
+		// biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the listbox is reached through aria-activedescendant.
+		// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a listbox cannot be a native <select> and must stay a list of options.
+		// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
+		<div
+			id={listId}
+			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
+			role="listbox"
+			aria-labelledby={listLabelId}
+			data-address-suggestions-list
+			className={domList ? "py-0.5" : undefined}
+		>
+			{suggestions.rows.map((row, index) => (
+				// biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the active option is announced through aria-activedescendant.
+				// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
+				// biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard path is the combobox input (ArrowUp/Down + Enter); an option is never a tab stop.
+				<div
+					key={rowKey(row)}
+					id={optionId(index)}
+					// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
+					role="option"
+					aria-selected={index === activeIndex}
+					data-address-suggestion
+					data-address-suggestion-search={
+						row.kind === "search" ? "true" : undefined
+					}
+					data-address-suggestion-typed={
+						row.kind === "typed" ? "true" : undefined
+					}
+					data-address-suggestion-source={
+						row.kind === "candidate" ? row.candidate.source : undefined
+					}
+					data-address-suggestion-url={
+						row.kind === "candidate" ? row.candidate.url : undefined
+					}
+					className={
+						domList
+							? cn(
+									"relative flex h-[35.5px] items-center gap-3 overflow-hidden px-3 hover:bg-row-hover",
+									index === activeIndex && "bg-accent-wash",
+								)
+							: undefined
+					}
+					// Keep DOM focus in the field: a press that blurred it would abandon
+					// the edit before the click could commit.
+					onMouseDown={domList ? (event) => event.preventDefault() : undefined}
+					onClick={
+						domList
+							? () => {
+									const target = rowTarget(suggestions, index);
+									if (target) commit(target);
+								}
+							: undefined
+					}
+				>
+					{domList ? (
+						<>
+							{index === activeIndex && (
+								<span
+									aria-hidden
+									className="absolute inset-y-0 start-0 w-0.5 bg-accent"
+								/>
+							)}
+							<span className="min-w-0 shrink truncate font-mono text-mono-sm text-ink">
+								{rowText(row)}
+							</span>
+							{rowSubtitle(row).length > 0 && (
+								<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
+									{rowSubtitle(row)}
+								</span>
+							)}
+						</>
+					) : (
+						rowAccessibleText(row)
+					)}
+				</div>
+			))}
+		</div>
+	);
 
 	return (
 		<div
@@ -1450,56 +1609,55 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						}
 						data-tour-tag="browser-address-unavailable"
 					>
-						{t("ui.browser.browser_url_bar.address_suggestions_unavailable")}
+						{standingText}
 					</span>
+				)}
+				{domList && listVisible && (
+					/* THE OWN-STATE LIST IS PLAIN DOM, ANCHORED UNDER THE FIELD. A new tab
+					   or a load failure has no native page competing for the pixels (the
+					   start page is DOM and main hides the page view), and main refuses
+					   every native projection there, so the list is an ordinary
+					   absolutely-positioned listbox over the start content: field width,
+					   leaves the flow (the 37px band and the 0px rest-state hold), and
+					   inside `rowEl` so a press on it is INSIDE for the outside-press
+					   rule. It registers no native-view suppression: nothing here touches
+					   the page view. */
+					<div
+						className="absolute start-0 end-0 top-[calc(100%+5px)] z-20 overflow-hidden rounded-md border border-hairline bg-elevated shadow-overlay"
+						data-tour-tag="browser-address-suggestions"
+						data-address-list-placement="dom"
+					>
+						{suggestions.rows.length > 0 ? (
+							<>
+								<div
+									id={listLabelId}
+									className="flex h-7 items-center truncate border-hairline border-b px-3 text-meta text-ink-muted"
+								>
+									{listLabel}
+								</div>
+								{listboxEl}
+							</>
+						) : (
+							<p
+								aria-hidden="true"
+								className="px-3 py-2 text-body-sm text-ink-muted"
+							>
+								{listNotice}
+							</p>
+						)}
+					</div>
 				)}
 			</div>
 			{menu}
 			{/* THE ACCESSIBLE LIST lives in the parent and is clipped, never in flow:
 			    the visual rows are the native child, which is `aria-hidden`. One
 			    option per mirrored row keeps `aria-activedescendant` and the row
-			    the user actually presses naming the same candidate. */}
-			{listVisible && suggestions.rows.length > 0 && (
+			    the user actually presses naming the same candidate. In own-state the
+			    SAME listbox is the visible one (see `ownStateList` in the field). */}
+			{listVisible && suggestions.rows.length > 0 && !domList && (
 				<div className="sr-only" data-tour-tag="browser-address-suggestions">
 					<span id={listLabelId}>{listLabel}</span>
-					{/* biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the listbox is reached through aria-activedescendant. */}
-					{/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a listbox cannot be a native <select> and must stay a list of options. */}
-					{/* biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>. */}
-					<div
-						id={listId}
-						// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
-						role="listbox"
-						aria-labelledby={listLabelId}
-						data-address-suggestions-list
-					>
-						{suggestions.rows.map((row, index) => (
-							// biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the active option is announced through aria-activedescendant.
-							// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
-							<div
-								key={
-									row.kind === "search"
-										? `search:${row.targetUrl}`
-										: row.candidate.url
-								}
-								id={optionId(index)}
-								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
-								role="option"
-								aria-selected={index === activeIndex}
-								data-address-suggestion
-								data-address-suggestion-search={
-									row.kind === "search" ? "true" : undefined
-								}
-								data-address-suggestion-source={
-									row.kind === "candidate" ? row.candidate.source : undefined
-								}
-								data-address-suggestion-url={
-									row.kind === "search" ? undefined : row.candidate.url
-								}
-							>
-								{rowAccessibleText(row)}
-							</div>
-						))}
-					</div>
+					{listboxEl}
 				</div>
 			)}
 			{suggestions.rows.length === 0 && (

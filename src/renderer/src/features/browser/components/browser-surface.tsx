@@ -1052,7 +1052,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 							? t("ui.browser.browser_new_tab.address_placeholder")
 							: undefined
 					}
-					suggestionsUnavailable={browserOwnState}
+					ownState={browserOwnState}
+					overlayReason={overlayHealth?.reason ?? null}
 					narrow={rowWidth > 0 && rowWidth < 360}
 					onNavigate={(url, expectedTabId) =>
 						void chrome.navigate(url, expectedTabId)

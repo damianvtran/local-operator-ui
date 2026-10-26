@@ -4111,8 +4111,13 @@ test("the unavailable sentence is announced and does not name implementation sta
 	);
 	assert.match(
 		surfaceSource,
-		/suggestionsUnavailable=\{browserOwnState\}/,
-		"the field's unavailable copy reads the same own-state fact (Q5 U27)",
+		/ownState=\{browserOwnState\}/,
+		"the field's DOM list reads the same own-state fact (Q5 U27)",
+	);
+	assert.match(
+		surfaceSource,
+		/overlayReason=\{overlayHealth\?\.reason \?\? null\}/,
+		"main's overlay reason reaches the bar so the hint names its cause",
 	);
 	const chordsSource = readFileSync(
 		"src/renderer/src/features/browser/hooks/use-browser-chords.ts",
@@ -4130,17 +4135,17 @@ test("the unavailable sentence is announced and does not name implementation sta
 	);
 	assert.match(
 		bar,
-		/else if \(!autocomplete\.loading && !suggestionsUnavailable\)/,
-		"the empty-list fallthrough is silent while the field says unavailable (U25)",
+		/else if \(!autocomplete\.loading\) \{\s*setAnnouncement\(listNotice\)/,
+		"the empty-list fallthrough announces the list's own notice",
+	);
+	assert.doesNotMatch(
+		bar,
+		/suggestionsUnavailable/,
+		"own-state is a DOM list now: nothing says 'unavailable' for a start page",
 	);
 	assert.match(
 		bar,
-		/suggestions\.rows\.length > 0 && !suggestionsUnavailable/,
-		"no 'suggestions available' announcement while the field says unavailable (U25)",
-	);
-	assert.match(
-		bar,
-		/if \(!hintShown\) return;\s*setAnnouncement\(\s*t\(/,
+		/if \(!hintShown \|\| standingText === null\) return;\s*setAnnouncement\(standingText\)/,
 		"the sentence reaches the existing status region on the transition (U18/U21)",
 	);
 	assert.match(bar, /content=\{t\("ui\.browser\.browser_url_bar\.home"\)\}/);
