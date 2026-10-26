@@ -42,6 +42,10 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"fr:ui.teamBridge.profile.agent_badge",
+		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
+	],
+	[
 		"ui.console.pane.label",
 		// A shared UI term, not a copy of untranslated English: French uses
 		// « Console » for this surface verbatim, and the English string IS that same
@@ -647,6 +651,22 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « images » has the same spelling.",
 	],
 	[
+		"ui.notices.chat.archive_offered_title",
+		// The value is the locale's quotation marks around a user-data placeholder —
+		// there is no prose to translate. hi, vi, zh-CN and es legitimately use the
+		// same “ ” pair as English; fr uses « » with narrow no-break spaces and ru
+		// « » closed up. An identical value here is the locale's own typography,
+		// not an untranslated string.
+		"quotation marks around an untranslated user-data placeholder",
+	],
+	[
+		"ui.notices.chat.archive_offered_no_name",
+		// Fallback noun used when the archived conversation has to be shown without
+		// its title. French spells it the same way and it is the correct French noun,
+		// so the identical value is the translation rather than an English copy.
+		"French cognate: « Conversation » has the same spelling.",
+	],
+	[
 		"ui.library.category.video",
 		// es writes the unaccented « video » (Latin American usage; Spain accents
 		// « vídeo »). The identical value is the es spelling, not an English copy,
@@ -715,6 +735,16 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.shell.sidebar_navigation.agent_hub",
 		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
+	],
+	// The browse page's own title, same product name as the sidebar entry above.
+	// The ur agents-surfaces audit ruled MAJOR that it must read Latin 'Agent Hub'
+	// so the page title matches the sidebar that opens it (receipt
+	// i18n/receipts/74bd1d94a511.json, finding H1). Scoped to ur: only Urdu uses
+	// the Latin product name here — the other six locales carry their own
+	// rendering of the hub's title and must keep being checked for it.
+	[
+		"ur:ui.hub.pages.header.title",
+		"Product name (Agent Hub); Urdu keeps the Latin name so the page title matches the sidebar that opens it.",
 	],
 	// --- Audit-classified identical values: canvas and surfaces batches --------
 	// Seven independent auditors classified every value below as legitimately
@@ -1179,6 +1209,57 @@ const IDENTICAL_OK = new Map([
 	[
 		"zh-CN:ui.chat.directory.folder.program_files_x86",
 		"Chinese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	// --- The agents/hub surfaces. Eleven French words that ARE the translation,
+	// not skipped copy: each is a French common noun (or the French plural of one)
+	// whose spelling coincides with the English source, so the translated value is
+	// byte-identical without anything being left untranslated. Scoped to `fr` for
+	// the same reason as the folder labels above: hi/zh-CN/ru/ur/vi must translate
+	// these, and a global row would let an English copy pass there. The reasons
+	// name the part of the string that is language-neutral and where it renders.
+	[
+		"fr:ui.agents.detail.origin.source",
+		"French common noun « source » has the same spelling; labels the packaged-seed origin under the « Provenance » heading",
+	],
+	[
+		"fr:ui.agents.detail.section.instructions",
+		"French plural « instructions » has the same spelling; shipped fr already uses « Instructions » in ui.settings.model.system_prompt.instructions",
+	],
+	[
+		"fr:ui.agents.pages.tab.agents",
+		"French plural of « agent » is « agents »; a bare noun beside its live count",
+	],
+	[
+		"fr:ui.agents.publication.invalid.field.description",
+		"French noun « description » has the same spelling, plus the French-attached full stop; the sibling description_with_rule reads « Description : {rule}. »",
+	],
+	[
+		"fr:ui.agents.teams.col.type",
+		"French noun « type » has the same spelling; the column's values are agent vs team, so « Rôle » would misdescribe them",
+	],
+	[
+		"fr:ui.agents.teams.kind.agent",
+		"French noun « agent » has the same spelling; option and Type-column value, paired with the translated « Équipe »",
+	],
+	[
+		"fr:ui.agents.teams.section.description",
+		"French noun « description » has the same spelling; section heading",
+	],
+	[
+		"fr:ui.hub.pages.search_field.description",
+		"French noun « description » has the same spelling; search option paired with the translated « Nom »",
+	],
+	[
+		"fr:ui.hub.pages.status.agents_scope",
+		"Only the French plural « Agents » plus {scope} is identical; the scope phrases are translated (« dans le hub public »)",
+	],
+	[
+		"fr:ui.hub.pages.tab.agents",
+		"French plural « agents » has the same spelling; the hub tab has the same shape as the agents-page tab",
+	],
+	[
+		"fr:ui.hub.teams.brief.trigger",
+		"French noun « brief » has the same spelling; the namespace's long forms are « Brief de collaboration » / « Brief de projet » and its aria is « Voir le brief de {name} »",
 	],
 ]);
 

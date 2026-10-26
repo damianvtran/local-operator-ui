@@ -1,0 +1,295 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "namespace delta re-audit of a remediation round: 12 changed values, 1 added key, 81 byte-identical",
+  "date": "2026-10-25",
+  "pr": "#1413",
+  "branch": "feat/i18n-toasts",
+  "locale": "vi",
+  "locale_name": "Vietnamese",
+  "namespace": "ui.notices",
+  "auditor": {
+    "agent": "translation-auditor",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "764e58f063cb",
+    "instance": "764e58f063cb",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session model (system prompt reports Model: deepseek/deepseek-flash). No fallback was used or observed in this run.",
+    "independent_from_translator": true,
+    "independence_basis": "This run authored no catalogue value, no ledger row, no generated file and no receipt other than its own. It read both heads from git objects and the working tree; the remediation commit a32f7349e3 carries no translation-auditor authorship."
+  },
+  "base": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+  "base_short": "ec4518da56",
+  "head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+  "head_short": "a32f7349e3",
+  "supersedes": {
+    "receipt": "i18n/receipts/vi-ui-notices-audit-ec4518da56.json",
+    "receipt_sha256": "2026f0b1ab801d78fd86538385dc13e0c9077fc29d5427b21b395b1d4708108f",
+    "relationship": "Delta re-audit, not a full re-bind. The 81 keys whose bytes did not change between the two heads passed in that receipt and are byte-identical here; this receipt binds the new head and re-derives every mechanical check over all 94 keys. The prior receipt remains the authority for the unchanged values' prose review."
+  },
+  "result": "clean",
+  "status": "passed",
+  "keys_read": 94,
+  "keys_total": 94,
+  "keys_changed": 12,
+  "keys_added": 1,
+  "keys_unchanged_byte_identical": 81,
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "sha256": {
+    "en": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+    "vi": "5b6a5b143fa3ef1c7d54d2c7d54aba19dd3c5cd84f97a4d0a63e90bd270620b9",
+    "en_context": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859"
+  },
+  "sha256_base": {
+    "vi": "106472f1936b7fa856f0171b996d1edabf88a472a979828af2c3bdd71b05d414"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.notices.json",
+    "context": "src/i18n/catalogues/en/ui.notices.context.json",
+    "target": "src/i18n/catalogues/vi/ui.notices.json",
+    "style_guide": "~/local-operator/i18n/style-guides/vi.md",
+    "style_guide_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "glossary_core_revision": "local-operator 24dbccbb78",
+    "languages_manifest": "i18n/languages.json",
+    "languages_manifest_sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63",
+    "established_terminology_sampled": [
+      "src/i18n/catalogues/vi/ui.hub.json",
+      "src/i18n/catalogues/vi/ui.chat.asks.json",
+      "src/i18n/catalogues/vi/ui.agents.settings.json",
+      "src/i18n/catalogues/vi/ui.chat.composer.json",
+      "src/i18n/catalogues/vi/ui.code_review.json",
+      "src/i18n/catalogues/vi/ui.chat.sidebar.json"
+    ]
+  },
+  "scope": "Delta scope only: ec4518da560867e897c290ddf8abc3b2496a4b59..a32f7349e3efff461cdfa63674b86ddbc21bf955 for vi ui.notices. The delta is 12 changed values plus 1 added key (ui.notices.chat.archive_offered_title); the other 81 keys are byte-identical to the previously passed head. Every changed value and the new key were read against the English source and its context entry, rendered in the sentence each takes part in, and checked for arguments, plural categories, register, punctuation, terminology and width. All 94 keys were re-parsed and re-formatted mechanically.",
+  "remediation_verified": [
+    {
+      "id": "VI-1",
+      "severity_at_base": "minor",
+      "key": "ui.notices.chat.mark_all_read_superseded",
+      "base_value": "{count, plural, other {{count} có kết quả mới hơn và vẫn chưa đọc.}}",
+      "head_value": "{count, plural, other {{count} cuộc trò chuyện có kết quả mới hơn và vẫn chưa đọc.}}",
+      "verdict": "fixed",
+      "evidence": "Head equals the proposed text byte-for-byte. Rendered in the composed bulk-read receipt at counts 1/2/5/21 the remainder now reads '2 cuộc trò chuyện có kết quả mới hơn và vẫn chưa đọc.' — a noun heads the clause like its two sibling remainders, and the receipt parses as four complete sentences."
+    },
+    {
+      "id": "VI-2",
+      "severity_at_base": "minor",
+      "keys": [
+        {
+          "key": "ui.notices.hub.team_pulled",
+          "head_value": "Đã tải nhóm “{name}”."
+        },
+        {
+          "key": "ui.notices.hub.team_pulled_collision",
+          "head_value": "Đã tải “{stored}” (bạn đã có nhóm tên “{published}”)."
+        },
+        {
+          "key": "ui.notices.hub.team_pulled_renamed",
+          "head_value": "Đã tải “{stored}”. Tên công bố “{published}” không dùng được trên máy này, nên nhóm được lưu dưới tên “{stored}”."
+        }
+      ],
+      "verdict": "fixed",
+      "evidence": "All three head values equal the proposed text byte-for-byte. 'Đã tải' now names the act the same way the audited shipped hub surface does: ui.hub.subscriptions.pull 'Tải về ngay', ui.hub.skills.pull_title 'Tải {item} từ {source}', ui.hub.skills.pulled 'Đã tải — đã theo dõi' (audited passing in i18n/receipts/2bbbaaf9c97d.json), ui.hub.skills.unpull_* 'Xóa bản sao cục bộ'. Placeholders {name}/{stored}/{published} unchanged; the collision and rename sentences still keep the two user-data names distinct."
+    },
+    {
+      "id": "VI-3",
+      "severity_at_base": "minor",
+      "keys": [
+        {
+          "key": "ui.notices.chat.ask_answered",
+          "base_value": "Đã gửi câu trả lời đến",
+          "head_value": "Đã gửi câu trả lời"
+        },
+        {
+          "key": "ui.notices.chat.ask_changed",
+          "base_value": "Đã đổi câu trả lời cho",
+          "head_value": "Đã đổi câu trả lời"
+        },
+        {
+          "key": "ui.notices.chat.ask_declined",
+          "base_value": "Đã từ chối câu hỏi trong",
+          "head_value": "Đã từ chối câu hỏi"
+        },
+        {
+          "key": "ui.notices.chat.ask_dismissed",
+          "base_value": "Đã bỏ qua câu hỏi trong",
+          "head_value": "Đã bỏ qua câu hỏi"
+        }
+      ],
+      "verdict": "fixed",
+      "evidence": "All four head values equal the proposed text byte-for-byte. The renderer uses each plain key alone when the destination conversation cannot be named (fleet-ask-drawer.tsx lines 257-262: name ? named : plain), so each is now a complete standalone sentence — 'Đã gửi câu trả lời', 'Đã đổi câu trả lời', 'Đã từ chối câu hỏi', 'Đã bỏ qua câu hỏi' — with no dangling preposition. The four *_named variants are byte-identical to the base and still carry destination-specific 'đến/cho/trong {name}'."
+    },
+    {
+      "id": "VI-4",
+      "severity_at_base": "nit",
+      "key": "ui.notices.chat.seed_invalid",
+      "base_value": "Seed phải là một số hợp lệ",
+      "head_value": "Seed phải là số hợp lệ",
+      "verdict": "fixed",
+      "evidence": "Head equals the proposal and is byte-identical to the shipped ui.agents.settings.chat.error.invalid_seed for the same English string; the cross-namespace duplicate scan finds no other changed value with an exact twin."
+    },
+    {
+      "id": "VI-5",
+      "severity_at_base": "nit",
+      "keys": [
+        {
+          "key": "ui.notices.agents.config_run_changed",
+          "head_value": "{count, plural, other {Lần chạy cấu hình đã xong: {count} định nghĩa đã thay đổi.}}"
+        },
+        {
+          "key": "ui.notices.agents.config_run_updated",
+          "head_value": "{count, plural, other {Lần chạy cấu hình đã xong: {count} định nghĩa đã cập nhật.}}"
+        }
+      ],
+      "verdict": "fixed",
+      "evidence": "Both head values carry the proposed inner text inside the retained {count, plural, other {…}} arm (the prior receipt's proposal field showed only the prose). 'Lần chạy cấu hình' is the term the shipped ui.hub.conflict.body uses; 'Lượt chạy cấu hình' no longer appears in the namespace."
+    },
+    {
+      "id": "VI-6",
+      "severity_at_base": "nit",
+      "key": "ui.notices.main.update_hold_body",
+      "base_value": "Bản cập nhật lên phiên bản {version} vẫn đang cài — mở ứng dụng lúc này sẽ hủy quá trình cài. {relaunch} Bấm vào thông báo này cũng không mở sớm hơn.",
+      "head_value": "Bản cập nhật lên phiên bản {version} vẫn đang cài — mở ứng dụng lúc này sẽ hủy quá trình cài. {relaunch} Bấm vào thông báo này cũng không mở được sớm hơn.",
+      "verdict": "fixed",
+      "evidence": "Head equals the proposal byte-for-byte. Rendered with both relaunch clauses it reads as a complete warning: the closing clause now has the resultative 'mở được sớm hơn' instead of the intransitive 'mở sớm hơn'."
+    }
+  ],
+  "new_key_review": {
+    "key": "ui.notices.chat.archive_offered_title",
+    "en": "“{title}”",
+    "vi": "“{title}”",
+    "context_role": "the conversation title wrapped in the locale's quotation marks, in an archive confirmation; the title is user data and must not be translated",
+    "verdict": "correct",
+    "checks": [
+      "Placeholder {title} preserved exactly, once, with no arguments added or dropped.",
+      "The pair is the “ ” pair the vi style guide mandates, precomposed NFC, no internal or edge spaces.",
+      "archive-undo.ts now calls t() with the title instead of hardcoding English curly quotes, so the locale supplies the pair and the value is not double-quoted. The no-name path still returns the plain noun.",
+      "Composition verified both ways: with a title -> “Dự án Apollo” đã lưu trữ.; without -> Cuộc trò chuyện đã lưu trữ.",
+      "Identical to the English value is correct here and is recorded as such in scripts/i18n/locale-parity.test.mjs's IDENTICAL_OK map; the value is typography around an untranslated placeholder, not untranslated prose.",
+      "Same 9-character length as English and it sits in the same truncating name span as before; the fixed verb tail is untouched."
+    ]
+  },
+  "checks": [
+    {
+      "check": "key-set parity, both directions",
+      "result": "PASS",
+      "detail": "94 en keys, 94 vi keys, no missing, no extra, identical order. The only structural change is one inserted key at its English-relative position; no key was removed."
+    },
+    {
+      "check": "delta containment at the file level",
+      "result": "PASS",
+      "detail": "A JSON diff of ec4518da56 against the head reports exactly 12 changed values, 1 added key and 0 removed keys; the other 81 values are byte-identical. No vi line outside those 13 keys changed. The English diff is a single insertion with no changed value, so every English string the prior audit read is unchanged."
+    },
+    {
+      "check": "all six prior findings applied",
+      "result": "PASS",
+      "detail": "VI-1 to VI-6: each head value equals the prior receipt's proposed text byte-for-byte; VI-5's proposal field omitted the ICU wrapper, and its inner text is present inside the retained plural arm. See remediation_verified."
+    },
+    {
+      "check": "ICU argument and typed-skeleton integrity",
+      "result": "PASS",
+      "detail": "Parsed all 94 messages with the repository's @formatjs/icu-messageformat-parser 3.5.21. Argument sets identical to English in every key: {count}, {name}, {title}, {keys}, {goal}, {index}, {origin}, {version}, {relaunch}, {reason}, {detail}, {stored}, {published}, {existing}, {key}. Typed skeletons identical: credentials.removed keeps #{index, number}; main.consent_body_many keeps {count, number}. No date/time skeletons, no select arms, no <Trans> tags in either catalogue."
+    },
+    {
+      "check": "plural categories are the locale's CLDR set",
+      "result": "PASS",
+      "detail": "10 plural messages. Intl.PluralRules('vi').resolvedOptions().pluralCategories is exactly ['other']; every vi plural arm is within that set and every plural message has 'other'. The selector variable and offset (0) match English in all 10. English's one/other split is not copied. The two changed config-run keys and mark_all_read_superseded print {count} exactly where English prints it."
+    },
+    {
+      "check": "format at rendered counts",
+      "result": "PASS",
+      "detail": "Every one of the 94 messages formatted through intl-messageformat 12.1.3 with locale vi at counts 0, 1, 2, 5, 21 and 100, with sample strings for the other arguments. Zero throws, zero empty output, zero residual '{' or 'undefined' in output. English formatted with the same arguments as a control: zero throws."
+    },
+    {
+      "check": "new key: archive title quotes",
+      "result": "PASS",
+      "detail": "See new_key_review: placeholder exact, vi's own “ ” pair, NFC, no double quoting, correct in both compositions, identical value justified and allowlisted in the parity test."
+    },
+    {
+      "check": "composed sentences rendered",
+      "result": "PASS",
+      "detail": "Rendered every runtime composition the delta touches: the four plain fleet-ask receipts alone; the four named forms; the archive offer with and without a title; the bulk-read receipt as four joined sentences at counts 1/2/5/21, and the nothing-cleared arm; the three hub team receipts; both update-hold variants; the seed refusal. Every sentence is grammatical and complete, names its count where English does, and keeps user-data names unaltered. Exact outputs in composed_sentences."
+    },
+    {
+      "check": "NFC precomposition",
+      "result": "PASS",
+      "detail": "All 94 vi values compare equal to their String.normalize('NFC') form, including every changed value and the new key (the style guide requires NFC; decomposed forms break TUI width counting)."
+    },
+    {
+      "check": "bidi / control characters",
+      "result": "PASS",
+      "detail": "No U+200E/U+200F/U+202A-U+202E/U+2066-U+2069, no zero-width characters, no C0/C1 controls in any of the 94 values. vi is LTR, so RTL punctuation rules do not apply."
+    },
+    {
+      "check": "typography scan",
+      "result": "PASS",
+      "detail": "No leading/trailing whitespace, no double spaces, no space before punctuation, no '!', no ASCII '...'; every opening “ has a closing ” and there are no single curly quotes. The em dash is ' — ' with spaces. All 94 values pass."
+    },
+    {
+      "check": "register and address form",
+      "result": "PASS",
+      "detail": "Every changed receipt keeps the locale's 'Đã …' past marker (Đã tải, Đã gửi, Đã đổi, Đã từ chối, Đã bỏ qua) or the 'Không … được' failure/refusal shape where applicable; no 'anh/chị', no 'Quý khách', no added 'Vui lòng'. No new 'bạn': the only changed key containing it is the pre-existing clause 'bạn đã có nhóm tên' in the collision sentence, the second-person hazard/personal-statement place the style guide allows."
+    },
+    {
+      "check": "terminology and glossary consistency",
+      "result": "PASS",
+      "detail": "tải now matches the audited hub surface; 'lần chạy cấu hình' matches ui.hub.conflict.body; 'Seed phải là số hợp lệ' matches the shipped ui.agents.settings string byte-for-byte; 'câu hỏi' matches ui.chat.asks 'Bỏ qua câu hỏi này'. A cross-namespace exact-duplicate scan of the changed English values found only 'Seed must be a valid number' with a twin, and the vi renderings now agree. No drift within the changed set: one term, one rendering."
+    },
+    {
+      "check": "overflow / width budget",
+      "result": "PASS",
+      "detail": "No maxCells is declared in the en sidecar for this namespace. Of the changed keys, three are longer than English and all are short: ask_answered 18 vs 14 chars (still a short toast line), team_pulled_renamed 113 vs 112, update_hold_body 154 vs 151 (OS-banner guidance ~250 chars). Everything else is shorter. The new title key is the same 9 characters as English and lives in the same truncating name span as before; the fixed verb tail is unchanged, so the R2-3 no-truncated-verb rule still holds."
+    },
+    {
+      "check": "source context read",
+      "result": "PASS",
+      "detail": "Read the 13 English context entries covering the delta. The plain ask keys' entries say 'Used alone only when the conversation's name is unknown', which the renderer confirms (fleet-ask-drawer.tsx lines 257-262), so the plain forms must be complete alone — they are. The archive-title entry requires the locale's own quotation marks around untranslated user data — met. The configuration-run and update-hold entries still describe the sentences the head renders."
+    }
+  ],
+  "composed_sentences": [
+    "Đã gửi câu trả lời",
+    "Đã đổi câu trả lời",
+    "Đã từ chối câu hỏi",
+    "Đã bỏ qua câu hỏi",
+    "Đã gửi câu trả lời đến Dự án Apollo",
+    "Đã đổi câu trả lời cho Dự án Apollo",
+    "Đã từ chối câu hỏi trong Dự án Apollo",
+    "Đã bỏ qua câu hỏi trong Dự án Apollo",
+    "“Dự án Apollo” đã lưu trữ.",
+    "Cuộc trò chuyện đã lưu trữ.",
+    "Đã đánh dấu 1 cuộc trò chuyện là đã đọc. 2 cuộc trò chuyện có kết quả mới hơn và vẫn chưa đọc. Không xóa được 2 cuộc trò chuyện nên vẫn chưa đọc. 1 cuộc trò chuyện nằm trên thiết bị khác — đánh dấu sẽ được xóa khi thiết bị đó cập nhật.",
+    "Không có gì được xóa. 3 cuộc trò chuyện có kết quả mới hơn và vẫn chưa đọc.",
+    "Đã tải nhóm “Đội ngũ Apollo”.",
+    "Đã tải “Bản lưu” (bạn đã có nhóm tên “Bản công bố”).",
+    "Đã tải “Bản lưu”. Tên công bố “Bản công bố” không dùng được trên máy này, nên nhóm được lưu dưới tên “Bản lưu”.",
+    "Lần chạy cấu hình đã xong: 1 định nghĩa đã thay đổi.",
+    "Lần chạy cấu hình đã xong: 5 định nghĩa đã cập nhật.",
+    "Bản cập nhật lên phiên bản 1.2.3 vẫn đang cài — mở ứng dụng lúc này sẽ hủy quá trình cài. Local Operator sẽ tự mở khi quá trình cài xong. Bấm vào thông báo này cũng không mở được sớm hơn.",
+    "Bản cập nhật lên phiên bản 1.2.3 vẫn đang cài — mở ứng dụng lúc này sẽ hủy quá trình cài. Bản cài này không thể tự khởi chạy lại, nên khi quá trình cài xong, hãy tự mở Local Operator. Bấm vào thông báo này cũng không mở được sớm hơn.",
+    "Seed phải là số hợp lệ"
+  ],
+  "residual_notes": [
+    {
+      "topic": "ask_changed plain and answer_changed are now the same Vietnamese string",
+      "note": "ui.notices.chat.ask_changed plain is 'Đã đổi câu trả lời', byte-identical to ui.notices.chat.answer_changed. This is the direct, approved consequence of VI-3: the English pair differs only by the dangling 'for' ('Answer changed' vs 'Answer changed for'), and the plain ask variant is shown only when the destination cannot be named, where the named variant ('Đã đổi câu trả lời cho {name}') carries the distinction. Both read correctly; not a finding, no action."
+    },
+    {
+      "topic": "the style guide's kept-English list names `pull`",
+      "note": "~/local-operator/i18n/style-guides/vi.md lists pull among kept-English technical terms, and core glossary §2's wave-2 set says 'merge / pull / push / commit (git/hub operations)'. The shipped, audited vi hub surface nevertheless renders this operation in Vietnamese: ui.hub.subscriptions.pull 'Tải về ngay', ui.hub.skills.pull_title 'Tải {item} từ {source}', ui.hub.skills.pulled 'Đã tải — đã theo dõi' (audited passing in i18n/receipts/2bbbaaf9c97d.json), ui.hub.skills.unpull_* 'Xóa bản sao cục bộ'. VI-2 aligned the notices with that audited surface, which is the locale's settled naming for the act. The tension is between the core docs' kept-English list and the audited catalogue bytes, not inside this namespace; it is pre-existing and is not a gate for this delta. If the team wants the glossary to win, that change belongs in the hub catalogue and the core glossary, not in a revert of these receipts."
+    }
+  ],
+  "namespace_verdict": "clean — 94 of 94 keys read: the 13 delta keys (12 changed + 1 added) were read against the English source and its context entries and rendered in composition; the 81 unchanged keys are byte-identical to the head this locale already passed and were re-parsed mechanically. 0 blocker, 0 major, 0 minor, 0 nit. All six prior findings are fixed, exactly as proposed (VI-5 inside its retained plural arm). The new archive-title key carries vi's “ ” pair around the untouched placeholder and composes correctly both with a title and with the no-name noun. The four plain fleet-ask receipts now stand alone as complete Vietnamese sentences.",
+  "overall_verdict": "clean (0 blocker, 0 major) — the remediation is complete, no value that passed at ec4518da56 was disturbed, and vi/ui.notices is ready for a ledger row at a32f7349e3. No new blocker, major, minor or nit was found.",
+  "model_provenance": "This session ran as deepseek/deepseek-flash (the model label the harness reports); no provider fallback was used or observed during the audit. The model named here is the one that read the bytes and ran the checks, not a role/default pin.",
+  "evidence_provenance": "Every check above was executed in the i18n-toasts worktree against the committed bytes at a32f7349e3, using the repository's own node_modules (@formatjs/icu-messageformat-parser 3.5.21, intl-messageformat 12.1.3) and Python 3. Hash comparisons cover both heads (git show ec4518da56:... vs the working tree at a32f7349e3). This audit edited no catalogue, no ledger, no generated file and no other receipt."
+}

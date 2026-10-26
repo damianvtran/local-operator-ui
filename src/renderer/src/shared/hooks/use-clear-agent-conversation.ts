@@ -3,11 +3,11 @@
  */
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
 import { useChatStore } from "@shared/store/chat-store";
 import { useMessageHistoryStore } from "@shared/store/message-history-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { t } from "../../../../i18n/messages";
 
 /**
  * Hook that provides a mutation for clearing an agent's conversation history
@@ -44,16 +44,16 @@ export const useClearAgentConversation = () => {
 			clearMessageHistory(variables.agentId);
 
 			// Show success toast
-			showSuccessToast(t("ui.common.actions.conversation_cleared"));
+			showSuccessToast(t("ui.notices.sessions.cleared"));
 		},
 		onError: (error) => {
 			console.error("Error clearing agent conversation:", error);
 			showErrorToast(
-				t("ui.common.errors.conversation_clear", {
-					error:
+				t("ui.notices.sessions.clear_failed", {
+					detail:
 						error instanceof Error
 							? error.message
-							: t("ui.common.errors.unknown"),
+							: t("ui.notices.sessions.unknown_error"),
 				}),
 			);
 		},

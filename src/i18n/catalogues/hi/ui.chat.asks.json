@@ -10,5 +10,19 @@
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "हटाया गया — चैट में तय हो गया",
 	"ui.chat.asks.dismiss.receipt.moot": "हटाया गया — अब ज़रूरत नहीं",
 	"ui.chat.asks.dismiss.refused": "यह सवाल हटाया नहीं जा सका — कुछ भी नहीं भेजा गया।",
-	"ui.chat.asks.dismiss.trigger": "हटाएँ…"
+	"ui.chat.asks.dismiss.trigger": "हटाएँ…",
+	"ui.chat.asks.other_label": "अन्य",
+	"ui.chat.asks.urgent": "ज़रूरी।",
+	"ui.chat.asks.no_answer": "कोई जवाब नहीं दिया गया",
+	"ui.chat.asks.changed_handoff": "बदला गया — एजेंट को अभी यह नहीं सौंपा गया।",
+	"ui.chat.asks.send_answer": "जवाब भेजें",
+	"ui.chat.asks.decline": "अस्वीकार करें",
+	"ui.chat.asks.update_answer": "जवाब अपडेट करें",
+	"ui.chat.asks.cancel": "रद्द करें",
+	"ui.chat.asks.change_answer": "जवाब बदलें",
+	"ui.chat.asks.filter_label": "सवाल फ़िल्टर करें",
+	"ui.chat.asks.settled_heading": "निपटे हुए",
+	"ui.chat.asks.close_asks": "सवाल बंद करें",
+	"ui.chat.asks.all_asks": "सभी सवाल",
+	"ui.chat.asks.conversation_asks": "इस बातचीत के सवाल"
 }

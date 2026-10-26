@@ -2045,7 +2045,7 @@ function SessionPanel({
 					const approved = approvalAnswerValue(typed ?? content);
 					if (approved === null)
 						throw new UserFacingError(
-							"Reply yes or no to answer the approval request.",
+							t("ui.chat.approval.reply_required"),
 							ANSWER_NOT_SENT_CODE,
 						);
 					await desktopResult({
@@ -3013,7 +3013,8 @@ function SessionPanel({
 		 * nothing, leaving the card's own receipt (below, in `AskPanel`) as the only
 		 * trace on one side and a stale frame on the other.
 		 */
-		if (outcome.status === "sent") showSuccessToast("Answer changed");
+		if (outcome.status === "sent")
+			showSuccessToast(t("ui.notices.chat.answer_changed"));
 	};
 	const declineAsk = async (taskId: string) => {
 		if (!sessionId || sendLock.held) return;

@@ -33,10 +33,14 @@ import {
 	conversationTitle,
 	isPreviewConversation,
 	personDisplayLabel,
-	personInitial,
 	personRowState,
 	showsMutedGlyph,
 } from "./team-bridge-model";
+
+import {
+	TeamBridgeAvatar,
+	TeamBridgeProfileCard,
+} from "./team-bridge-profile-card";
 
 /**
  * The single-organization rail, Slack's sidebar in Local Operator's chrome.
@@ -316,26 +320,34 @@ export const PersonRailRow: FC<{
 		? personRowState(member, selfAccountId)
 		: "unknown";
 	const avatar = (
-		<span
-			aria-hidden="true"
-			className={cn(
-				"flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-sunken font-medium text-[10px]",
-				state === "unavailable" ? "text-ink-disabled" : "text-ink-muted",
-			)}
-		>
-			{personInitial(label)}
-		</span>
+		<TeamBridgeAvatar
+			member={member}
+			label={label}
+			size={20}
+			selected={selected}
+			className="rounded-[5px] text-[10px]"
+		/>
 	);
 
 	if (state === "self") {
 		return (
 			<li>
-				<div className={cn(ROW, "cursor-default text-ink-muted")}>
-					{avatar}
-					<span className="min-w-0 flex-1 truncate">
-						{t("ui.teamBridge.people.self_named", { name: label })}
-					</span>
-				</div>
+				<TeamBridgeProfileCard
+					member={member}
+					label={label}
+					onMessage={onSelect}
+					canMessage={false}
+				>
+					<button
+						type="button"
+						className={cn(ROW, "cursor-default text-ink-muted")}
+					>
+						{avatar}
+						<span className="min-w-0 flex-1 truncate">
+							{t("ui.teamBridge.people.self_named", { name: label })}
+						</span>
+					</button>
+				</TeamBridgeProfileCard>
 			</li>
 		);
 	}
@@ -354,31 +366,40 @@ export const PersonRailRow: FC<{
 	if (inertCue) {
 		return (
 			<li>
-				<button
-					type="button"
-					aria-disabled="true"
-					aria-describedby={cueId}
-					/*
-					 * THE REASON IS ON THE ROW, NOT BEHIND IT (design round 1, D1).
-					 * A sighted reader got only a tooltip, and the dimmed name alone
-					 * read as "broken" rather than "not yet". The cue is a second
-					 * line at `ink-dim` (the muted step that still clears contrast),
-					 * the name keeps `ink-muted`, and `aria-describedby` points at the
-					 * same visible text so both readers get one sentence.
-					 */
-					className={cn(
-						ROW,
-						"h-auto min-h-[30px] cursor-default py-1 text-ink-muted",
-					)}
+				<TeamBridgeProfileCard
+					member={member}
+					label={label}
+					onMessage={onSelect}
+					canMessage={
+						!readOnly && state !== "unavailable" && state !== "unknown"
+					}
 				>
-					<span className="opacity-60">{avatar}</span>
-					<span className="flex min-w-0 flex-1 flex-col text-start">
-						<span className="truncate">{label}</span>
-						<span id={cueId} className="truncate text-meta-sm text-ink-dim">
-							{inertCue}
+					<button
+						type="button"
+						aria-disabled="true"
+						aria-describedby={cueId}
+						/*
+						 * THE REASON IS ON THE ROW, NOT BEHIND IT (design round 1, D1).
+						 * A sighted reader got only a tooltip, and the dimmed name alone
+						 * read as "broken" rather than "not yet". The cue is a second
+						 * line at `ink-dim` (the muted step that still clears contrast),
+						 * the name keeps `ink-muted`, and `aria-describedby` points at the
+						 * same visible text so both readers get one sentence.
+						 */
+						className={cn(
+							ROW,
+							"h-auto min-h-[30px] cursor-default py-1 text-ink-muted",
+						)}
+					>
+						<span className="opacity-60">{avatar}</span>
+						<span className="flex min-w-0 flex-1 flex-col text-start">
+							<span className="truncate">{label}</span>
+							<span id={cueId} className="truncate text-meta-sm text-ink-dim">
+								{inertCue}
+							</span>
 						</span>
-					</span>
-				</button>
+					</button>
+				</TeamBridgeProfileCard>
 			</li>
 		);
 	}
@@ -387,41 +408,51 @@ export const PersonRailRow: FC<{
 	const canStartGroup = !readOnly && state !== "unavailable";
 	return (
 		<li className="group/row relative flex items-center">
-			<button
-				type="button"
-				onClick={onSelect}
-				aria-current={selected ? "page" : undefined}
-				data-team-bridge-person={member.account_id}
-				aria-label={t("ui.teamBridge.people.message", { name: label })}
-				className={cn(
-					ROW,
-					selected
-						? rowCurrent
-						: unread > 0
-							? "font-medium text-ink hover:bg-row-hover"
-							: "text-ink-muted hover:bg-row-hover hover:text-ink",
-				)}
+			<TeamBridgeProfileCard
+				member={member}
+				label={label}
+				onMessage={onSelect}
+				canMessage={
+					(Boolean(dm) || !readOnly) &&
+					state !== "unavailable" &&
+					state !== "unknown"
+				}
 			>
-				{avatar}
-				<span className="min-w-0 flex-1 truncate">{label}</span>
-				{state === "paused" && (
-					<span className="shrink-0 text-meta-sm text-ink-dim">
-						{t("ui.teamBridge.people.paused")}
-					</span>
-				)}
-				{hasDraft && (
-					<span
-						title={t("ui.teamBridge.drafts.indicator")}
-						className="shrink-0 text-ink-dim"
-					>
-						<Pencil size={12} aria-hidden="true" />
-						<span className="sr-only">
-							{t("ui.teamBridge.drafts.indicator")}
+				<button
+					type="button"
+					aria-current={selected ? "page" : undefined}
+					data-team-bridge-person={member.account_id}
+					aria-label={t("ui.teamBridge.people.message", { name: label })}
+					className={cn(
+						ROW,
+						selected
+							? rowCurrent
+							: unread > 0
+								? "font-medium text-ink hover:bg-row-hover"
+								: "text-ink-muted hover:bg-row-hover hover:text-ink",
+					)}
+				>
+					{avatar}
+					<span className="min-w-0 flex-1 truncate">{label}</span>
+					{state === "paused" && (
+						<span className="shrink-0 text-meta-sm text-ink-dim">
+							{t("ui.teamBridge.people.paused")}
 						</span>
-					</span>
-				)}
-				<Unread count={unread} yieldsToMenu />
-			</button>
+					)}
+					{hasDraft && (
+						<span
+							title={t("ui.teamBridge.drafts.indicator")}
+							className="shrink-0 text-ink-dim"
+						>
+							<Pencil size={12} aria-hidden="true" />
+							<span className="sr-only">
+								{t("ui.teamBridge.drafts.indicator")}
+							</span>
+						</span>
+					)}
+					<Unread count={unread} yieldsToMenu />
+				</button>
+			</TeamBridgeProfileCard>
 			{canStartGroup && (
 				<RowMenu
 					label={label}
@@ -458,46 +489,55 @@ export const ChiefRailRow: FC<{
 	const unread = dm?.unread_count ?? 0;
 	return (
 		<li className="group/row relative flex items-center">
-			<button
-				type="button"
-				onClick={onSelect}
-				aria-current={selected ? "page" : undefined}
-				data-team-bridge-chief={chief.person.account_id}
-				aria-label={t("ui.teamBridge.people.message", { name: label })}
-				className={cn(
-					ROW,
-					selected
-						? rowCurrent
-						: unread > 0
-							? "font-medium text-ink hover:bg-row-hover"
-							: "text-ink-muted hover:bg-row-hover hover:text-ink",
-				)}
+			<TeamBridgeProfileCard
+				member={chief.person}
+				label={label}
+				agentName={label}
+				onMessage={onSelect}
+				canMessage={Boolean(dm) || !readOnly}
 			>
-				<span
-					aria-hidden="true"
-					className="flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-accent-wash text-accent"
+				<button
+					type="button"
+					aria-current={selected ? "page" : undefined}
+					data-team-bridge-chief={chief.person.account_id}
+					aria-label={t("ui.teamBridge.people.message", { name: label })}
+					className={cn(
+						ROW,
+						selected
+							? rowCurrent
+							: unread > 0
+								? "font-medium text-ink hover:bg-row-hover"
+								: "text-ink-muted hover:bg-row-hover hover:text-ink",
+					)}
 				>
-					<Bot size={12} />
-				</span>
-				<span className="min-w-0 flex-1 truncate">{label}</span>
-				{chief.paused && (
-					<span className="shrink-0 text-meta-sm text-ink-dim">
-						{t("ui.teamBridge.people.paused")}
-					</span>
-				)}
-				{hasDraft && (
-					<span
-						title={t("ui.teamBridge.drafts.indicator")}
-						className="shrink-0 text-ink-dim"
-					>
-						<Pencil size={12} aria-hidden="true" />
-						<span className="sr-only">
-							{t("ui.teamBridge.drafts.indicator")}
+					<TeamBridgeAvatar
+						member={chief.person}
+						label={label}
+						size={20}
+						selected={selected}
+						className="rounded-[5px] text-accent"
+						fallback={<Bot size={12} />}
+					/>
+					<span className="min-w-0 flex-1 truncate">{label}</span>
+					{chief.paused && (
+						<span className="shrink-0 text-meta-sm text-ink-dim">
+							{t("ui.teamBridge.people.paused")}
 						</span>
-					</span>
-				)}
-				<Unread count={unread} yieldsToMenu />
-			</button>
+					)}
+					{hasDraft && (
+						<span
+							title={t("ui.teamBridge.drafts.indicator")}
+							className="shrink-0 text-ink-dim"
+						>
+							<Pencil size={12} aria-hidden="true" />
+							<span className="sr-only">
+								{t("ui.teamBridge.drafts.indicator")}
+							</span>
+						</span>
+					)}
+					<Unread count={unread} yieldsToMenu />
+				</button>
+			</TeamBridgeProfileCard>
 			{!readOnly && (
 				<RowMenu
 					label={label}

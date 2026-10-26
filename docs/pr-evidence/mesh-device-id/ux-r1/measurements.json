@@ -1,0 +1,1400 @@
+{
+ "localeRecallCaptionWidthsCssPx": {
+  "en": 252.48,
+  "es": 256.97,
+  "fr": 272.6,
+  "hi": 202.45,
+  "ru": 255,
+  "ur": 230.89,
+  "vi": 171.77,
+  "zh-CN": 172.73
+ },
+ "frames": [
+  {
+   "frame": "before-recall-dark-en-1380.webp",
+   "side": "before",
+   "state": "recall",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 744.58,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "42277a06727dc1e24c93f5d2ab1ada8134b96e921e68188c3a0972eb2f23c42f"
+  },
+  {
+   "frame": "before-recall-dark-en-800.webp",
+   "side": "before",
+   "state": "recall",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 454.58,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "44a2ceba49cb0cd1af7025ac20071e92fd7292bb9828fbe0d07ed815b4a7cd4f"
+  },
+  {
+   "frame": "before-recall-light-en-1380.webp",
+   "side": "before",
+   "state": "recall",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 744.58,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "0b094c2461fd9480b797e20977604fc1ac18a00c2be8ca269f337774bdbd4251"
+  },
+  {
+   "frame": "before-recall-light-en-800.webp",
+   "side": "before",
+   "state": "recall",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 454.58,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "0fe725ea305b0dcec849431be54de1de5b528ed5e7b53b12e401ef2bf09e2f71"
+  },
+  {
+   "frame": "before-absent-dark-en-1380.webp",
+   "side": "before",
+   "state": "absent",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 744.58,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "42277a06727dc1e24c93f5d2ab1ada8134b96e921e68188c3a0972eb2f23c42f"
+  },
+  {
+   "frame": "before-absent-dark-en-800.webp",
+   "side": "before",
+   "state": "absent",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 454.58,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "44a2ceba49cb0cd1af7025ac20071e92fd7292bb9828fbe0d07ed815b4a7cd4f"
+  },
+  {
+   "frame": "before-absent-light-en-1380.webp",
+   "side": "before",
+   "state": "absent",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 744.58,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "0b094c2461fd9480b797e20977604fc1ac18a00c2be8ca269f337774bdbd4251"
+  },
+  {
+   "frame": "before-absent-light-en-800.webp",
+   "side": "before",
+   "state": "absent",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 454.58,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "0fe725ea305b0dcec849431be54de1de5b528ed5e7b53b12e401ef2bf09e2f71"
+  },
+  {
+   "frame": "before-outbound-dark-en-1380.webp",
+   "side": "before",
+   "state": "outbound",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 744.58,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "58316a2b05ce415ae1c2fb457ac08cbdd3a3578b7ad1585e9d008b4c60b80f20"
+  },
+  {
+   "frame": "before-outbound-dark-en-800.webp",
+   "side": "before",
+   "state": "outbound",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 454.58,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "99a9a10f6ffaf4556e4e353004cb155101f0dd33311c6acb01249be650ebd468"
+  },
+  {
+   "frame": "before-outbound-light-en-1380.webp",
+   "side": "before",
+   "state": "outbound",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 744.58,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "3f447dd1dab01a3ce6a0a65e9cf25d13a6b3dfcea797b42916dae9647a4ffbe9"
+  },
+  {
+   "frame": "before-outbound-light-en-800.webp",
+   "side": "before",
+   "state": "outbound",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 454.58,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "90ba64288bcb995f17f54ce583ec0b3d50aa0ae73d0542123ad6a442ec0807d5"
+  },
+  {
+   "frame": "before-copy-dark-en-1380.webp",
+   "side": "before",
+   "state": "copy",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the original stays where it is",
+   "textWidth": 157.34,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 682.34,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "cb8238fe60b0709d51866a7f51c5e12a1ee3619a89cec10eb6a1c9c20e0efdcd"
+  },
+  {
+   "frame": "before-copy-dark-en-800.webp",
+   "side": "before",
+   "state": "copy",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the original stays where it is",
+   "textWidth": 157.34,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 392.34,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "6d774a8f27a8cc92f5a52f5df5f893c8a0e81420d342756932adc5d19dc36993"
+  },
+  {
+   "frame": "before-copy-light-en-1380.webp",
+   "side": "before",
+   "state": "copy",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the original stays where it is",
+   "textWidth": 157.34,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 682.34,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "83048ea5f57af36da062cd89bf98dcaff3392f049fe05792be317e54764c9d14"
+  },
+  {
+   "frame": "before-copy-light-en-800.webp",
+   "side": "before",
+   "state": "copy",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the original stays where it is",
+   "textWidth": 157.34,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 392.34,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "804effdf8fe6a9b3ff9e03c18a416c3a800ff78c853428fed55fe6d35ebf0324"
+  },
+  {
+   "frame": "after-recall-dark-en-1380.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy there is deleted once it arrives here",
+   "textWidth": 252.48,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 777.48,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "9a683e8944094462d3cfe7454e40d31f2c9023c46dc4b59a837158c62bb6bb3d"
+  },
+  {
+   "frame": "after-recall-dark-en-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy there is deleted once it arrives here",
+   "textWidth": 252.48,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 487.48,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "b366ce625dfdf333030ce66a66c89ab47a091519bbd6b10d1602d3ec3d11f1a4"
+  },
+  {
+   "frame": "after-recall-light-en-1380.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy there is deleted once it arrives here",
+   "textWidth": 252.48,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 777.48,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "81e8c9d0f38197fa1241bede13611d7d684e4f248f64ef2774d0f7d328c68aba"
+  },
+  {
+   "frame": "after-recall-light-en-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy there is deleted once it arrives here",
+   "textWidth": 252.48,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 487.48,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "c1a99e82718b08978922ff0a42fc6198f822bd563dbbd9e9be71fb3a8dea5628"
+  },
+  {
+   "frame": "after-absent-dark-en-1380.webp",
+   "side": "after",
+   "state": "absent",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy there is deleted once it arrives here",
+   "textWidth": 252.48,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 777.48,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "5a71ca2d1e3135df8c217c5c53aecdada3ded1e42e2f038e8a04c95f50525f33"
+  },
+  {
+   "frame": "after-absent-dark-en-800.webp",
+   "side": "after",
+   "state": "absent",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy there is deleted once it arrives here",
+   "textWidth": 252.48,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 487.48,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "9046e670be7194acb76753b770ce3331aaaf547fe4ed682e336764719ef7a1de"
+  },
+  {
+   "frame": "after-absent-light-en-1380.webp",
+   "side": "after",
+   "state": "absent",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy there is deleted once it arrives here",
+   "textWidth": 252.48,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 777.48,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "789a1c2894e6cfcf421e2cf3b88f8ced08d6307ecb2e149d8940d2f828af6387"
+  },
+  {
+   "frame": "after-absent-light-en-800.webp",
+   "side": "after",
+   "state": "absent",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy there is deleted once it arrives here",
+   "textWidth": 252.48,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 487.48,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "42e97b547d595b5f0ab65da1821443ba825e126eca1b83fd44e80d7e65af2e51"
+  },
+  {
+   "frame": "after-outbound-dark-en-1380.webp",
+   "side": "after",
+   "state": "outbound",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 744.58,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "ff0a449e18d16c35e442d9dfe1dadf822de0a0fc10e18fb934c02af9a2b08d89"
+  },
+  {
+   "frame": "after-outbound-dark-en-800.webp",
+   "side": "after",
+   "state": "outbound",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 454.58,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "fe4a4443df5f9ce226a84ae3b9322f751f9554fa9db2d2a9fc02d74adffea44d"
+  },
+  {
+   "frame": "after-outbound-light-en-1380.webp",
+   "side": "after",
+   "state": "outbound",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 744.58,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "81e90a698f64126132fdf3835bcc53a22eaed40f338ae81e6d3a63a7afca7167"
+  },
+  {
+   "frame": "after-outbound-light-en-800.webp",
+   "side": "after",
+   "state": "outbound",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the copy here is deleted once it arrives",
+   "textWidth": 219.58,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 454.58,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "0a488997acad1a599bbcd70a698508dc2d92b51d1ae841044c22e4c0e2715b67"
+  },
+  {
+   "frame": "after-copy-dark-en-1380.webp",
+   "side": "after",
+   "state": "copy",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the original stays where it is",
+   "textWidth": 157.34,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 682.34,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "34568b686aeb9f6fa4d632b3bc244e00179e68df80e2174b29f6d691f8b98260"
+  },
+  {
+   "frame": "after-copy-dark-en-800.webp",
+   "side": "after",
+   "state": "copy",
+   "theme": "localOperatorDark",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "the original stays where it is",
+   "textWidth": 157.34,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 392.34,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "381088d6e115223f7e3c31bc5371dc0e97baf3ae03f26e7571285d54f820b622"
+  },
+  {
+   "frame": "after-copy-light-en-1380.webp",
+   "side": "after",
+   "state": "copy",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    1380,
+    900
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 0.8,
+   "pixels": [
+    2208,
+    1440
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the original stays where it is",
+   "textWidth": 157.34,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 682.34,
+   "captionBoxRight": 876,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "871106e65251f0fc1c0d24309dbd5de33f8e5a56b20b09967a42fe9c1df19783"
+  },
+  {
+   "frame": "after-copy-light-en-800.webp",
+   "side": "after",
+   "state": "copy",
+   "theme": "localOperatorLight",
+   "locale": "en",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "the original stays where it is",
+   "textWidth": 157.34,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 392.34,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "96ce40d9754143cbfc95bb75585c74a7dff027ad4d4d2ae615b3f36520f69117"
+  },
+  {
+   "frame": "after-recall-dark-fr-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorDark",
+   "locale": "fr",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "la copie là-bas est supprimée dès son arrivée ici",
+   "textWidth": 272.6,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 507.6,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "1b31644d22fd134c52e09b6e5d63d77b04b76699205dcfdc75d62d00785c7cc7"
+  },
+  {
+   "frame": "after-recall-light-fr-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorLight",
+   "locale": "fr",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "la copie là-bas est supprimée dès son arrivée ici",
+   "textWidth": 272.6,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 507.6,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "c2c5d29876d514091c0fb12d09367fcd7227b00283b310f23169efc7f279635e"
+  },
+  {
+   "frame": "after-recall-dark-es-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorDark",
+   "locale": "es",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "la copia de allí se elimina en cuanto llega aquí",
+   "textWidth": 256.97,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 491.97,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "c6d17654bb807588738c18c4a711e9686c913c94d62457d156938f48f09a62b5"
+  },
+  {
+   "frame": "after-recall-light-es-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorLight",
+   "locale": "es",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "la copia de allí se elimina en cuanto llega aquí",
+   "textWidth": 256.97,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 491.97,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "2bb468aa9b1f34b50183141190c326d36e1cbeee557714d20eb8dcb9faf92a18"
+  },
+  {
+   "frame": "after-recall-dark-ru-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorDark",
+   "locale": "ru",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "копия там удаляется после прибытия сюда",
+   "textWidth": 255,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 490,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "cbfa445d29f519863eb32abb3cdadbc6c5ad4f6d6c9338ffcb5e556edbf54b36"
+  },
+  {
+   "frame": "after-recall-light-ru-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorLight",
+   "locale": "ru",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "копия там удаляется после прибытия сюда",
+   "textWidth": 255,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 490,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "ebd8a402f36b6866c3f25a5830c8683510e5569f6e5b626cfdad12e02c7d5b16"
+  },
+  {
+   "frame": "after-recall-dark-hi-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorDark",
+   "locale": "hi",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "यहाँ पहुँचने के बाद वहाँ की कॉपी हट जाती है",
+   "textWidth": 202.45,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 437.45,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "b277dbc01f08f21ae82cdffc6d7d88312e12421ad261c325755355814f1d6eda"
+  },
+  {
+   "frame": "after-recall-light-hi-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorLight",
+   "locale": "hi",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "यहाँ पहुँचने के बाद वहाँ की कॉपी हट जाती है",
+   "textWidth": 202.45,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 437.45,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "f33d53c401fe05c5edada20b0c2f407e8e5512103d8d2cdaad1a6ba114d7e1a4"
+  },
+  {
+   "frame": "after-recall-dark-ur-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorDark",
+   "locale": "ur",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(50, 45, 34)",
+   "scrimBg": "rgba(0, 0, 0, 0.6)",
+   "dialogWidth": 448,
+   "caption": "یہاں پہنچنے کے بعد وہاں کی نقل حذف ہو جاتی ہے",
+   "textWidth": 230.89,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 465.89,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "718ce6d15e700c117ac049ded715001d7668fe23bf62b5de3d7537a136228cb8"
+  },
+  {
+   "frame": "after-recall-light-ur-800.webp",
+   "side": "after",
+   "state": "recall",
+   "theme": "localOperatorLight",
+   "locale": "ur",
+   "layoutCss": [
+    800,
+    600
+   ],
+   "tabViewportCss": [
+    1280,
+    720
+   ],
+   "displayScale": 1,
+   "pixels": [
+    1600,
+    1200
+   ],
+   "rightEdgePureBlack": 0.0,
+   "dialogBg": "rgb(254, 253, 250)",
+   "scrimBg": "rgba(20, 17, 12, 0.35)",
+   "dialogWidth": 448,
+   "caption": "یہاں پہنچنے کے بعد وہاں کی نقل حذف ہو جاتی ہے",
+   "textWidth": 230.89,
+   "captionBoxWidth": 351,
+   "containerWidth": 398,
+   "textRight": 465.89,
+   "captionBoxRight": 586,
+   "textLineBoxes": 1,
+   "scrollOverflowX": 0,
+   "sha256": "19ff8ad5a14e4b6a49fea8728ab756ff3e99581f35aee0ea8700ccf9de10214c"
+  }
+ ]
+}

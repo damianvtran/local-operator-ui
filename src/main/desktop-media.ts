@@ -176,6 +176,21 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * The Radient account avatar route is authenticated and member-gated. Main
+	 * does NOT own the hub bearer: core's AuthStore does. This operation uses
+	 * only core's closed binary relay, with the commissioning viewer receipt. The two sizes are the server's complete derivative
+	 * set, not a client-chosen resize parameter.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.avatar"),
+			expectedAccountId: id,
+			accountId: id,
+			hash: z.string().regex(/^[0-9a-f]{16}$/),
+			size: z.union([z.literal(64), z.literal(256)]),
+		})
+		.strict(),
+	/*
 	 * The Library's content and thumbnail bytes. The asset id is shape-checked
 	 * here as well as by the backend route: this relay's premise is that
 	 * renderer code cannot pick a URL, and an unvalidated id would become a path
@@ -295,6 +310,11 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
 				method: "GET",
 			};
+		case "team_bridge.avatar":
+			return {
+				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
+			};
 	}
 }
 
@@ -385,7 +405,8 @@ export async function requestDesktopMediaOutcome(
 		request.op === "library.content" ||
 		request.op === "library.thumbnail" ||
 		request.op === "library.waveform" ||
-		request.op === "team_bridge.attachment"
+		request.op === "team_bridge.attachment" ||
+		request.op === "team_bridge.avatar"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
@@ -439,11 +460,73 @@ export async function requestDesktopMediaOutcome(
 				Authorization: `Bearer ${token}`,
 			},
 			body,
+			// Private avatars are cached only as authority-scoped renderer blobs.
+			// Neither Electron nor an intermediary may persist them across login.
+			...(request.op === "team_bridge.avatar"
+				? { cache: "no-store" as const }
+				: {}),
 			redirect: "error",
 			signal: AbortSignal.timeout(120000),
 		});
 		answered = true;
 		const responseType = response.headers.get("content-type") ?? "";
+		if (request.op === "team_bridge.avatar") {
+			const mime = responseType.split(";")[0].trim().toLowerCase();
+			const refuse = (status: number): DesktopMediaOutcome => ({
+				response: {
+					kind: "error",
+					status,
+					detail: "The avatar could not be read.",
+				},
+				answered: true,
+			});
+			// Refusals (including an older runtime's 404) need no body. In
+			// particular, never buffer an unbounded JSON/HTML error as an image.
+			if (
+				!response.ok ||
+				!TEAM_BRIDGE_ATTACHMENT_TYPES.has(mime) ||
+				!response.body
+			) {
+				await response.body?.cancel();
+				return refuse(response.ok ? 502 : response.status);
+			}
+			const limit = 1024 * 1024;
+			const reader = response.body.getReader();
+			const chunks: Uint8Array[] = [];
+			let length = 0;
+			// Content-Length alone cannot bound a chunked (or dishonest) peer.
+			// Stop reading at the cap rather than allocate then inspect arrayBuffer.
+			try {
+				for (;;) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					length += value.byteLength;
+					if (length > limit) {
+						await reader.cancel();
+						return refuse(502);
+					}
+					chunks.push(value);
+				}
+			} finally {
+				reader.releaseLock();
+			}
+			if (!length) return refuse(502);
+			const data = new Uint8Array(length);
+			let offset = 0;
+			for (const chunk of chunks) {
+				data.set(chunk, offset);
+				offset += chunk.byteLength;
+			}
+			return {
+				response: {
+					kind: "bytes",
+					status: response.status,
+					mimeType: mime,
+					data,
+				},
+				answered: true,
+			};
+		}
 		if (!response.ok) {
 			// Error bodies from the backend already suppress reflected secrets;
 			// still, only a short detail string is forwarded.

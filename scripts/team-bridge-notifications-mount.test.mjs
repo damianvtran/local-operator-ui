@@ -27,6 +27,11 @@ import React, { act } from "react";
 const scratch = mkdtempSync(join(tmpdir(), "team-bridge-notify-mount-"));
 const apiFixturePath = join(scratch, "team-bridge-api-fixture.mjs");
 const membershipsFixturePath = join(scratch, "memberships-fixture.mjs");
+const toastFixturePath = join(scratch, "toast-fixture.mjs");
+writeFileSync(
+	toastFixturePath,
+	"export const toasts = []; export const showInfoToast = (message) => { toasts.push(message); }; export const showErrorToast = () => {}; export const showSuccessToast = () => {};",
+);
 const mountPath = new URL(
 	`./_team-bridge-notifications-mount-${process.pid}.mjs`,
 	import.meta.url,
@@ -108,7 +113,10 @@ const bundled = await build({
 	stdin: {
 		contents: `
 			export { useTeamBridgeNotifications } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
-			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { toasts } from "@shared/utils/toast-manager";
+			export { useTeamBridgeNotificationOpen } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
+			export { beginRadientAuthoritySignOut, beginRadientAuthorityTransition, settleRadientAuthority } from "./src/renderer/src/shared/hooks/radient-account-authority";
+			export { teamBridgeKeys, notifyMutationOptions } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { fixture, TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 		`,
 		resolveDir: process.cwd(),
@@ -119,6 +127,7 @@ const bundled = await build({
 	packages: "external",
 	write: false,
 	alias: {
+		"@shared/utils/toast-manager": toastFixturePath,
 		"@shared/api/local-operator/team-bridge-api": apiFixturePath,
 		"@features/agent-hub/hooks/use-memberships-query": membershipsFixturePath,
 		"@features": `${process.cwd()}/src/renderer/src/features`,
@@ -183,16 +192,35 @@ const mount = async () => {
 	globalThis.window = dom.window;
 	globalThis.document = dom.window.document;
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	api.toasts.length = 0;
 	const notifications = [];
+	const authorities = [];
+	const routes = [];
+	let pendingOpen = null;
+	let openListener;
+	let routeEnabled = true;
+	const navigate = (path) => routes.push(path);
 	dom.window.api = {
 		desktop: {
 			teamBridge: {
+				setAuthority: async (authority) => {
+					authorities.push(authority);
+				},
 				notify: async (request) => {
 					notifications.push(request);
 					return { shown: true };
 				},
-				onOpen: () => () => undefined,
-				pendingOpen: async () => null,
+				onOpen: (listener) => {
+					openListener = listener;
+					return () => {
+						openListener = undefined;
+					};
+				},
+				pendingOpen: async () => {
+					const result = pendingOpen;
+					pendingOpen = null;
+					return result;
+				},
 			},
 		},
 	};
@@ -221,6 +249,7 @@ const mount = async () => {
 	let enabled = true;
 	const Probe = () => {
 		api.useTeamBridgeNotifications(enabled);
+		api.useTeamBridgeNotificationOpen(routeEnabled, navigate);
 		return null;
 	};
 	const root = createRoot(dom.window.document.getElementById("root"));
@@ -236,6 +265,24 @@ const mount = async () => {
 	return {
 		client,
 		notifications,
+		authorities,
+		routes,
+		emitOpen: (target) => {
+			pendingOpen = target;
+			openListener?.();
+		},
+		setRouteEnabled: async (value) => {
+			routeEnabled = value;
+			await act(async () =>
+				root.render(
+					React.createElement(
+						QueryClientProvider,
+						{ client },
+						React.createElement(Probe),
+					),
+				),
+			);
+		},
 		setEnabled: async (value) => {
 			enabled = value;
 			await act(async () =>
@@ -562,7 +609,7 @@ test("a zero-total org's first message before the conversation list resolves sti
  * the held reply path has its own test after it.
  */
 for (const pending of ["history", "directory"]) {
-	for (const disable of ["setting", "capability", "none"]) {
+	for (const disable of ["setting", "capability", "mute", "none"]) {
 		test(`history: a ${disable} change while ${pending} is pending is rechecked before IPC`, async () => {
 			resetFixture();
 			const org = {
@@ -643,6 +690,25 @@ for (const pending of ["history", "directory"]) {
 					await settle();
 				} else if (disable === "capability") {
 					await mounted.setEnabled(false);
+				} else if (disable === "mute") {
+					// Exercise the production mutation/cache write while enrichment is
+					// gated, not a duplicate notification-policy decision in this test.
+					api.TeamBridgeApi.setNotify = async () => ({ notify: "mute" });
+					fixture.conversations.conversations[0] = {
+						...fixture.conversations.conversations[0],
+						notify: "mute",
+						muted: true,
+					};
+					await act(async () => {
+						const mutation = mounted.client
+							.getMutationCache()
+							.build(mounted.client, api.notifyMutationOptions(mounted.client));
+						await mutation.execute({
+							conversationId: "bcv_race",
+							tenantId: "tnt_race",
+							notify: "mute",
+						});
+					});
 				}
 				await act(async () => release());
 				await settle();
@@ -787,6 +853,523 @@ test("a reply candidate reads the timeline, never the thread, and opens the conv
 			api.teamBridgeOpenPath(banner),
 			"/team-bridge?tenant=tnt_reply&conversation=bcv_reply",
 		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+const clickTarget = (owner = { accountId: "acct_alice", epoch: 0 }) => ({
+	owner,
+	conversationId: "bcv_click",
+	tenantId: "tnt_click",
+});
+
+const switchAccount = async (mounted, accountId) => {
+	await act(async () => {
+		api.beginRadientAuthorityTransition(mounted.client);
+		const pending = mounted.authorities.at(-1);
+		assert.equal(
+			pending.accountId,
+			undefined,
+			"native authority revoked synchronously before React commits",
+		);
+		api.settleRadientAuthority(mounted.client, pending.epoch, accountId);
+		mounted.client.setQueryData(
+			["radient-user", "user"],
+			accountId ? { account: { id: accountId } } : null,
+		);
+	});
+};
+
+for (const account of ["acct_bob", undefined]) {
+	test(`a native click pulled under A is dropped after ${account ?? "logout"}`, async () => {
+		resetFixture();
+		const mounted = await mount();
+		try {
+			let release;
+			const pending = new Promise((resolve) => {
+				release = resolve;
+			});
+			mounted.emitOpen(pending);
+			await switchAccount(mounted, account);
+			await act(async () => release(clickTarget()));
+			await settle();
+			assert.deepEqual(mounted.routes, []);
+		} finally {
+			await mounted.teardown();
+		}
+	});
+}
+
+test("capability-delayed click is discarded on owner change, while matching owner routes once", async () => {
+	resetFixture();
+	const mounted = await mount();
+	try {
+		await act(async () => mounted.emitOpen(clickTarget()));
+		await settle();
+		assert.deepEqual(mounted.routes, [
+			"/team-bridge?tenant=tnt_click&conversation=bcv_click",
+		]);
+		await mounted.setRouteEnabled(false);
+		await act(async () => mounted.emitOpen(clickTarget()));
+		await switchAccount(mounted, "acct_bob");
+		await mounted.setRouteEnabled(true);
+		await settle();
+		assert.equal(mounted.routes.length, 1);
+		await act(async () =>
+			mounted.emitOpen({ conversationId: "bcv_legacy", tenantId: "tnt_click" }),
+		);
+		await settle();
+		assert.equal(mounted.routes.length, 1, "legacy missing owner never routes");
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+for (const outcome of ["failed", "successful", "none"]) {
+	test(`R1 ${outcome} optimistic mute settles after enrichment`, async () => {
+		resetFixture();
+		const org = {
+			tenant_id: "tnt_race",
+			tenant_name: "Race Org",
+			unread: 0,
+			eligible: true,
+		};
+		fixture.account = { total: 0, organizations: [org] };
+		fixture.conversations = {
+			conversations: [conversation("bcv_race", "tnt_race")],
+		};
+		fixture.messages = {
+			messages: [
+				{
+					id: "bcmsg_root",
+					seq: 1,
+					sender: {
+						account_id: "acct_bob",
+						kind: "human",
+						display_label: "Bob",
+					},
+					body: "message",
+					conversation_id: "bcv_race",
+				},
+			],
+		};
+		let release;
+		fixture.historyGate = new Promise((resolve) => {
+			release = resolve;
+		});
+		const mounted = await mount();
+		try {
+			await until(
+				() =>
+					fixture.calls.conversations > 0 &&
+					fixture.calls.unread.includes("account"),
+				"seed",
+			);
+			await settle();
+			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+			fixture.tenants.tnt_race = {
+				total: 1,
+				conversations: [notifyRow("bcv_race", 1)],
+			};
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await until(() => fixture.calls.history.length === 1, "history pending");
+			let finishMute;
+			let mutationResult;
+			if (outcome !== "none") {
+				api.TeamBridgeApi.setNotify = () =>
+					new Promise((resolve, reject) => {
+						finishMute = () =>
+							outcome === "failed"
+								? reject(new Error("mute refused"))
+								: resolve({ notify: "mute" });
+					});
+				await act(async () => {
+					const mutation = mounted.client
+						.getMutationCache()
+						.build(mounted.client, api.notifyMutationOptions(mounted.client));
+					mutationResult = mutation
+						.execute({
+							conversationId: "bcv_race",
+							tenantId: "tnt_race",
+							notify: "mute",
+						})
+						.catch((e) => e);
+				});
+				await until(() => Boolean(finishMute), "mute pending");
+			}
+			await act(async () => release());
+			await settle();
+			if (outcome !== "none")
+				assert.equal(
+					mounted.notifications.length,
+					0,
+					"pending policy must not emit before settlement",
+				);
+			if (outcome !== "none") {
+				if (outcome === "successful")
+					fixture.conversations.conversations[0] = {
+						...fixture.conversations.conversations[0],
+						notify: "mute",
+						muted: true,
+					};
+				await act(async () => {
+					finishMute();
+					await mutationResult;
+				});
+				await settle();
+			}
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await settle();
+			const policies = mounted.client
+				.getQueriesData({ queryKey: api.teamBridgeKeys.conversationsPrefix })
+				.flatMap(([key, data]) =>
+					(data?.conversations ?? [])
+						.filter((row) => row.id === "bcv_race")
+						.map((row) => ({ key, notify: row.notify, muted: row.muted })),
+				);
+
+			assert.ok(
+				policies.length > 0,
+				"observe actual owner-qualified conversation policy",
+			);
+			assert.ok(
+				policies.every(
+					(row) => row.notify === (outcome === "successful" ? "mute" : "all"),
+				),
+				"failed mute rolled back to successful all policy",
+			);
+
+			assert.equal(
+				mounted.notifications.length,
+				outcome === "successful" ? 0 : 1,
+				"failed optimistic mute must not permanently consume candidate",
+			);
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await settle();
+			assert.equal(
+				mounted.notifications.length,
+				outcome === "successful" ? 0 : 1,
+				"reconciliation must neither replay muted seqs nor duplicate a delivered seq",
+			);
+		} finally {
+			await mounted.teardown();
+		}
+	});
+}
+
+for (const { outcome, disable, firstSeed = false } of [
+	{ outcome: "failed", disable: null },
+	{ outcome: "successful", disable: null },
+	{ outcome: "failed", disable: "setting" },
+	{ outcome: "successful", disable: "setting" },
+	{ outcome: "none", disable: "setting" },
+	{ outcome: "failed", disable: "capability" },
+	{ outcome: "successful", disable: "capability" },
+	{ outcome: "none", disable: "capability" },
+	{ outcome: "failed", disable: "setting", firstSeed: true },
+	{ outcome: "none", disable: "setting", firstSeed: true },
+]) {
+	test(`${disable ? "R3" : "R1"} ${outcome} mute begins before new unread is discovered${disable ? `; ${disable} off-on${firstSeed ? "; first seed" : ""}` : ""}`, async () => {
+		resetFixture();
+		const org = {
+			tenant_id: "tnt_race",
+			tenant_name: "Race Org",
+			unread: 0,
+			eligible: true,
+		};
+		fixture.account = { total: 0, organizations: firstSeed ? [] : [org] };
+		fixture.conversations = {
+			conversations: [conversation("bcv_race", "tnt_race")],
+		};
+		fixture.messages = {
+			messages: [
+				{
+					id: "bcmsg_root",
+					seq: 1,
+					sender: {
+						account_id: "acct_bob",
+						kind: "human",
+						display_label: "Bob",
+					},
+					body: "message",
+					conversation_id: "bcv_race",
+				},
+			],
+		};
+		let release;
+		fixture.historyGate = new Promise((resolve) => {
+			release = resolve;
+		});
+		const mounted = await mount();
+		try {
+			await until(
+				() =>
+					fixture.calls.conversations > 0 &&
+					fixture.calls.unread.includes("account"),
+				"seed",
+			);
+			await settle();
+			let finishMute;
+			let mutationResult;
+			if (outcome !== "none") {
+				api.TeamBridgeApi.setNotify = () =>
+					new Promise((resolve, reject) => {
+						finishMute = () =>
+							outcome === "failed"
+								? reject(new Error("mute refused"))
+								: resolve({ notify: "mute" });
+					});
+				await act(async () => {
+					const mutation = mounted.client
+						.getMutationCache()
+						.build(mounted.client, api.notifyMutationOptions(mounted.client));
+					mutationResult = mutation
+						.execute({
+							conversationId: "bcv_race",
+							tenantId: "tnt_race",
+							notify: "mute",
+						})
+						.catch((e) => e);
+				});
+				await until(() => Boolean(finishMute), "mute pending");
+			}
+			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+			fixture.tenants.tnt_race = {
+				total: 1,
+				conversations: [notifyRow("bcv_race", 1)],
+			};
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await settle();
+			if (outcome !== "none" || firstSeed) {
+				assert.equal(
+					fixture.calls.history.length,
+					0,
+					"pending policy or first observation must not start enrichment",
+				);
+			} else {
+				await until(
+					() => fixture.calls.history.length === 1,
+					"no-mute control is already planned",
+				);
+			}
+			if (disable) {
+				// Neither unread nor conversation data changes here. Both edges
+				// must reach the planner despite its same-answer admission key.
+				if (disable === "setting") {
+					await act(async () =>
+						mounted.client.setQueryData(["desktop", "settings"], {
+							settings: [{ key: "display.notifications", value: false }],
+						}),
+					);
+				} else await mounted.setEnabled(false);
+				await settle();
+				assert.equal(
+					mounted.notifications.length,
+					0,
+					"disable consumes silently",
+				);
+				if (disable === "setting") {
+					await act(async () =>
+						mounted.client.setQueryData(["desktop", "settings"], {
+							settings: [{ key: "display.notifications", value: true }],
+						}),
+					);
+				} else await mounted.setEnabled(true);
+				await settle();
+			}
+			await act(async () => release());
+			await settle();
+			if (outcome !== "none")
+				assert.equal(
+					mounted.notifications.length,
+					0,
+					"pending policy must not emit before settlement",
+				);
+			if (outcome !== "none") {
+				if (outcome === "successful")
+					fixture.conversations.conversations[0] = {
+						...fixture.conversations.conversations[0],
+						notify: "mute",
+						muted: true,
+					};
+				await act(async () => {
+					finishMute();
+					await mutationResult;
+				});
+				await settle();
+			}
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await settle();
+			const policies = mounted.client
+				.getQueriesData({ queryKey: api.teamBridgeKeys.conversationsPrefix })
+				.flatMap(([key, data]) =>
+					(data?.conversations ?? [])
+						.filter((row) => row.id === "bcv_race")
+						.map((row) => ({ key, notify: row.notify, muted: row.muted })),
+				);
+
+			assert.ok(
+				policies.length > 0,
+				"observe actual owner-qualified conversation policy",
+			);
+			assert.ok(
+				policies.every(
+					(row) => row.notify === (outcome === "successful" ? "mute" : "all"),
+				),
+				"failed mute rolled back to successful all policy",
+			);
+
+			assert.equal(
+				mounted.notifications.length,
+				disable || firstSeed || outcome === "successful" ? 0 : 1,
+				"disabled/first-observation rows stay consumed; otherwise failed mute resumes once",
+			);
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await settle();
+			assert.equal(
+				mounted.notifications.length,
+				disable || firstSeed || outcome === "successful" ? 0 : 1,
+				"reconciliation must neither replay muted seqs nor duplicate a delivered seq",
+			);
+		} finally {
+			await mounted.teardown();
+		}
+	});
+}
+
+for (const next of ["acct_alice", "acct_bob", undefined]) {
+	test(`D2 D3 click waits through credential refresh and answers ${next ?? "sign-out"}`, async () => {
+		resetFixture();
+		const mounted = await mount();
+		try {
+			await act(async () =>
+				api.beginRadientAuthorityTransition(mounted.client),
+			);
+			const epoch = mounted.authorities.at(-1).epoch;
+			await act(async () => mounted.emitOpen(clickTarget()));
+			await settle();
+			assert.deepEqual(mounted.routes, []);
+			assert.deepEqual(
+				api.toasts,
+				[],
+				"settling is not stale and must remain quiet",
+			);
+			await act(async () => {
+				api.settleRadientAuthority(mounted.client, epoch, next);
+				mounted.client.setQueryData(
+					["radient-user", "user"],
+					next ? { account: { id: next } } : null,
+				);
+			});
+			await settle();
+			assert.equal(mounted.routes.length, next === "acct_alice" ? 1 : 0);
+			assert.deepEqual(
+				api.toasts,
+				next === "acct_alice"
+					? []
+					: ["That notification is no longer available on this account."],
+			);
+		} finally {
+			await mounted.teardown();
+		}
+	});
+}
+
+test("D1 replacement document routes same-account click despite former epoch", async () => {
+	resetFixture();
+	const mounted = await mount();
+	try {
+		await act(async () =>
+			mounted.emitOpen(clickTarget({ accountId: "acct_alice", epoch: 47 })),
+		);
+		await settle();
+		assert.equal(mounted.routes.length, 1);
+		assert.deepEqual(api.toasts, []);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("D3 stale result shows neutral toast without routing private IDs", async () => {
+	resetFixture();
+	const mounted = await mount();
+	try {
+		await act(async () => mounted.emitOpen({ unavailable: true }));
+		await settle();
+		assert.deepEqual(mounted.routes, []);
+		assert.deepEqual(api.toasts, [
+			"That notification is no longer available on this account.",
+		]);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("D2 authority settlement before query commit remains held, not signed out", async () => {
+	resetFixture();
+	const mounted = await mount();
+	try {
+		await act(async () => {
+			api.beginRadientAuthorityTransition(mounted.client);
+			const epoch = mounted.authorities.at(-1).epoch;
+			mounted.client.removeQueries({
+				queryKey: ["radient-user", "user"],
+				exact: true,
+			});
+			api.settleRadientAuthority(mounted.client, epoch, "acct_alice");
+			assert.equal(
+				mounted.authorities.at(-1).settling,
+				true,
+				"account result has not reached QueryClient yet",
+			);
+			mounted.client.setQueryData(["radient-user", "user"], {
+				account: { id: "acct_alice" },
+			});
+			assert.equal(mounted.authorities.at(-1).settling, false);
+		});
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+/*
+ * Code review round 2 m2. A DELIBERATE sign-out must withdraw on the press, not
+ * wait for a follow-up account read that may fail: the press is a known absence,
+ * not an unresolved refresh. This is the publish the notifier sees.
+ */
+test("m2 a deliberate sign-out publishes settled absence, not a refresh hold", async () => {
+	resetFixture();
+	const mounted = await mount();
+	try {
+		await act(async () => api.beginRadientAuthoritySignOut(mounted.client));
+		const published = mounted.authorities.at(-1);
+		assert.equal(published.settling, false, "no hold to wait out");
+		assert.equal(published.accountId, undefined);
 	} finally {
 		await mounted.teardown();
 	}

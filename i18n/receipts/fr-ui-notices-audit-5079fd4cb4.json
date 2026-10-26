@@ -1,0 +1,343 @@
+{
+	"schema": 1,
+	"status": "passed",
+	"result": "clean-with-findings",
+	"auditor": "translation-auditor",
+	"model": "radient/auto",
+	"model_identity": {
+		"provider": "radient",
+		"model_id": "auto",
+		"selector": "radient/auto",
+		"effort": "auto",
+		"boot": "radient/auto",
+		"session_record": "Session transcript custom event selected_model: {version: 2, selector: 'radient/auto', effort: 'auto', boot: 'radient/auto'}; custom session_spend.v1 last_identity: {provider: 'radient', model_id: 'auto'}. This is the exact served identity recorded for this run.",
+		"fallback": "none recorded for this run in the session transcript"
+	},
+	"instance": "d0d4e801737e",
+	"independence": "The three audited values were produced by the remediation workflow this audit reviews; this run wrote no catalogue, context, generated or ledger value. It read the head bytes, the English source and context sidecar, and the shipped callers, and composed the strings through intl-messageformat. This receipt is a new file; the prior changes_requested receipt was not rewritten.",
+	"locale": "fr",
+	"namespace": "ui.notices",
+	"branch": "feat/i18n-toasts (PR #1413 worktree .worktrees/i18n-toasts)",
+	"head": "5079fd4cb4af89eee6ddd3d1a7617ff5bc9a0e6b",
+	"head_short": "5079fd4cb4",
+	"previous_head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+	"previous_receipt": "i18n/receipts/fr-ui-notices-audit-a32f7349e3.json",
+	"previous_receipt_status": "changes_requested (round 2: 1 major, 2 minor, 1 nit)",
+	"date": "2026-10-25",
+	"round": 3,
+	"audit_kind": "three-value remediation delta against the round-2 changes_requested receipt, with whole-namespace current-byte integrity checks",
+	"scope": "Delta only: a32f7349e3..5079fd4cb4 for fr/ui.notices — the exactly three changed values, the sentences those values compose through their actual callers, and a mechanical whole-namespace re-check (key set/order, ICU arguments, plural categories, renders, typography). The 91 unchanged values are retained on the prior audit's unchanged-key verdict and were not re-litigated; they were re-checked mechanically for placeholder, plural and register regressions. The prior overflow-only finding is retained as the one visual-QA item.",
+	"keys_read": 94,
+	"keys_audited": 3,
+	"whole_namespace_mechanically_checked": 94,
+	"changed_keys_reviewed": [
+		"ui.notices.chat.mark_all_read_nothing",
+		"ui.notices.chat.unread_not_cleared",
+		"ui.notices.files.highlights_update_failed"
+	],
+	"unchanged_values": 91,
+	"sha256": {
+		"en": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+		"en_context": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859",
+		"fr": "64bae2c5d918afa59ed0f2835937d7e5a6f17a06da7a094df96c73adef55ef5b",
+		"fr_base": "eb12c58e4b1dc067dd1c2e8c291013581e4a5d0a7a2702853034b4b5efbde1ab"
+	},
+	"git_blob_sha1": {
+		"en": "277cbf872c4a56c40fef0d4b4fe494dfdfbfbeec",
+		"en_context": "9c0cc37e8b3d014b3d61b62b8e2de1fc7c3d9fde",
+		"fr": "5aa60ea866d6beaa90ee7127814cd1f969105a87"
+	},
+	"merge_parent_check": {
+		"first_parent": "77d1fb82b242833c5b9366c459811da9166bb3b0",
+		"second_parent": "1b2c4afbea3cbd0237b188355f580b56d5df7a2a",
+		"head": "5079fd4cb4af89eee6ddd3d1a7617ff5bc9a0e6b",
+		"paths_checked": [
+			"src/i18n/catalogues/en/ui.notices.json",
+			"src/i18n/catalogues/en/ui.notices.context.json",
+			"src/i18n/catalogues/fr/ui.notices.json",
+			"src/i18n/catalogues/es/ui.notices.json",
+			"src/i18n/catalogues/hi/ui.notices.json",
+			"src/i18n/catalogues/ru/ui.notices.json",
+			"src/i18n/catalogues/ur/ui.notices.json",
+			"src/i18n/catalogues/vi/ui.notices.json",
+			"src/i18n/catalogues/zh-CN/ui.notices.json"
+		],
+		"blob_sha1_identical_across_merge": true,
+		"detail": "Every ui.notices path (English, English context and all seven locales) has the same blob SHA-1 at the first parent 77d1fb82b2 and the frozen head 5079fd4cb4; the origin/main merge did not touch this namespace.",
+		"blob_sha1": {
+			"src/i18n/catalogues/en/ui.notices.json": "277cbf872c4a56c40fef0d4b4fe494dfdfbfbeec",
+			"src/i18n/catalogues/en/ui.notices.context.json": "9c0cc37e8b3d014b3d61b62b8e2de1fc7c3d9fde",
+			"src/i18n/catalogues/fr/ui.notices.json": "5aa60ea866d6beaa90ee7127814cd1f969105a87",
+			"src/i18n/catalogues/es/ui.notices.json": "29456816506aba1ac1e79f0fa261e9e3e39a1c74",
+			"src/i18n/catalogues/hi/ui.notices.json": "333fc9df69da8a09e232a43207f57b0a6ecc8acf",
+			"src/i18n/catalogues/ru/ui.notices.json": "c54e11b3e6a125d34978e24c495e6cbdb42aaaa1",
+			"src/i18n/catalogues/ur/ui.notices.json": "331f0e12d95db21a5b3198c2ca96270f77501e92",
+			"src/i18n/catalogues/vi/ui.notices.json": "7b26d06f87c775df44e9c8333ccaf49a4812b26e",
+			"src/i18n/catalogues/zh-CN/ui.notices.json": "60c008105ec6f7fe5b7b7b731d0b3b861b484eb7"
+		}
+	},
+	"delta": {
+		"previous_keys": 94,
+		"head_keys": 94,
+		"changed": 3,
+		"new": 0,
+		"removed": 0,
+		"changed_keys": [
+			"ui.notices.chat.mark_all_read_nothing",
+			"ui.notices.chat.unread_not_cleared",
+			"ui.notices.files.highlights_update_failed"
+		],
+		"before": {
+			"ui.notices.chat.mark_all_read_nothing": "Rien à effacer.",
+			"ui.notices.chat.unread_not_cleared": "{reason} Les marques de lecture n’ont pas été retirées.",
+			"ui.notices.files.highlights_update_failed": "Impossible de mettre à jour la section À la une."
+		},
+		"after": {
+			"ui.notices.chat.mark_all_read_nothing": "Rien à marquer comme lu dans cette demande.",
+			"ui.notices.chat.unread_not_cleared": "{reason} Les conversations concernées restent non lues.",
+			"ui.notices.files.highlights_update_failed": "Impossible de mettre à jour les éléments à la une."
+		},
+		"whole_file_proof": "Key sets equal at 94/94 and in identical order; exactly three values differ. Reverting those three values in the head text reproduces the base text exactly; git diff a32f7349e3..5079fd4cb4 -- src/i18n/catalogues/fr/ui.notices.json contains exactly three -/+ value line pairs and no other hunk (9697 -> 9727 characters, +30).",
+		"untouched": {
+			"en": "byte-identical to the round-2 receipt hash f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+			"en_context": "byte-identical to the round-2 receipt hash 2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859"
+		}
+	},
+	"caller_evidence": [
+		{
+			"key": "ui.notices.files.highlights_update_failed",
+			"call_site": "src/renderer/src/features/chat/canonical/supplement-row.tsx:448",
+			"surface": "transcript supplement block under a final answer (files/components/sounds); sendOp catch for supplements.cancel | supplements.restart | supplements.steer",
+			"detail": "The only implementation call site is sendOp's catch: cancel() sends supplements.cancel, retry() sends supplements.restart, steer() sends supplements.steer; on failure it calls showErrorToast(backendLoadErrorMessage(t(\"ui.notices.files.highlights_update_failed\"), error)). The block's own docblock says it carries NO HEADER, LABEL OR TITLE — on purpose; its frozen state line is 'Preparing highlights…' / 'Highlights cancelled' / 'Couldn't prepare highlights' (supplement-model.ts:365-367). The Canvas Files labels ui.canvas.files.highlights and ui.canvas.finder_layout.highlights (fr 'À la une') are used by finder-files-view.tsx:79 and finder-layout.ts:166, not by this key.",
+			"consequence": "The French must name the highlight elements of the block, not a Canvas Files section. The head value does."
+		},
+		{
+			"key": "ui.notices.chat.unread_not_cleared",
+			"call_site": "src/renderer/src/features/chat/components/chat-sidebar.tsx:2051",
+			"surface": "chat sidebar bulk mark-all-read, non-deferral refusal arm",
+			"detail": "clearUnread() calls markAllRead(); on a failure that is not isRemoteReceiptDeferral it raises showWarningToast(t(\"ui.notices.chat.unread_not_cleared\", { reason: userFacingMessage(failure, t(\"ui.notices.chat.unread_backend_silent\")) })). The caller's comment states that markAllRead writes local state only from the answer's read bucket, so a refused request leaves every mark exactly where it was; the deferral arm is separate and raises the store slot instead.",
+			"consequence": "The second clause must say the unread state was retained. The head value does, with the locale's own 'non lues' noun."
+		},
+		{
+			"key": "ui.notices.chat.mark_all_read_nothing",
+			"call_site": "src/renderer/src/features/chat/mark-all-read.ts:189 (markAllReadReceipt) / src/renderer/src/shared/store/canonical-sessions-store.ts:7304 (markAllRead)",
+			"surface": "success toast body for a bulk mark-all-read invocation that enumerated no items",
+			"detail": "markAllReadReceipt returns ui.notices.chat.mark_all_read_nothing when receipt.attempted === 0. markAllRead returns attempted: 0 only when items.length === 0, after enumerating unreadAckableRows from the store: the comment says 'Nothing unread is not an empty request: items has a 1-item floor on the wire, and a batch of zero would clear nothing while still costing a round trip and a store write.' No request is sent in that branch.",
+			"consequence": "attempted===0 is a fact about this invocation, not a claim that no unread marks exist on screen. The head value's 'dans cette demande' encodes exactly that scope."
+		}
+	],
+	"remediation": [
+		{
+			"id": "FR-NOT-01",
+			"key": "ui.notices.files.highlights_update_failed",
+			"original_severity": "major",
+			"status": "fixed",
+			"evidence": "The head value is 'Impossible de mettre à jour les éléments à la une.' It no longer says 'la section À la une', which named the Canvas Files pane the user is not looking at. The only caller is the supplement block's cancel/restart/steer catch (supplement-row.tsx:448); that block has no header, label or title, and its elements are the highlight content. 'à la une' is the shipped French label for the 'Highlights' concept (ui.canvas.files.highlights and ui.canvas.finder_layout.highlights are both 'À la une'), so the term is consistent without re-asserting a section. The toast is raised in response to the user's action on that block, so the elements are the ones in front of them."
+		},
+		{
+			"id": "FR-NOT-02",
+			"key": "ui.notices.chat.unread_not_cleared",
+			"original_severity": "minor",
+			"status": "fixed",
+			"evidence": "The head value is '{reason} Les conversations concernées restent non lues.' The calque 'marques de lecture' (marks of having read) is gone; the sentence now names the retained state from the unread side, matching ui.teamBridge's 'non lus' and the sibling ui.notices.chat.mark_all_read_unknown ('elles restent non lues'). It agrees feminine plural with 'conversations', preserves {reason} exactly once, and composes with both the authored reason and unread_backend_silent."
+		},
+		{
+			"id": "FR-NOT-03",
+			"key": "ui.notices.chat.mark_all_read_deferred",
+			"original_severity": "minor",
+			"status": "retained (unchanged; visual QA)",
+			"evidence": "This value is byte-identical across a32f7349e3..5079fd4cb4 (part of the 91 unchanged values). It is carried forward as the one open finding, not re-audited: the worst composed mark-all-read card remains 281 characters / 49 words, and the shorter collocation below is available if a rendered check shows clipping."
+		},
+		{
+			"id": "FR-NOT-04",
+			"key": "ui.notices.chat.mark_all_read_nothing",
+			"original_severity": "nit",
+			"status": "fixed",
+			"evidence": "The head value is 'Rien à marquer comme lu dans cette demande.' It uses the same act as the sibling empty-result arm ('Rien n’a été marqué comme lu.') instead of 'effacer', and adds the request-level scope the sidecar requires ('A request-level fact, not a claim that no unread marks exist on screen'). The branch is reached only from markAllReadReceipt's attempted===0 arm, which the store produces when this invocation enumerated no items; it is not a statement about all screen state."
+		}
+	],
+	"findings": [
+		{
+			"id": "FR-NOT-03",
+			"severity": "minor",
+			"status": "retained (unchanged; visual QA)",
+			"key": "ui.notices.chat.mark_all_read_deferred",
+			"current": "{count, plural, one {1 conversation se trouve sur un autre appareil et sera marquée comme lue quand celui-ci se mettra à jour.} many {{count} de conversations se trouvent sur d’autres appareils et seront marquées comme lues quand ceux-ci se mettront à jour.} other {{count} conversations se trouvent sur d’autres appareils et seront marquées comme lues quand ceux-ci se mettront à jour.}}",
+			"proposed": "Flag for a rendered check of the toast card. If it overflows, a shorter collocation saves 12-13 characters per arm: many/other “… et seront marquées comme lues dès leur mise à jour.” (60 -> 48 chars for the clause), one “… et sera marquée comme lue dès sa mise à jour.” (55 -> 42).",
+			"reason": "The deferred sentence is the longest in the namespace (1.69-1.90x its English source at the rendered counts 1 / 1,000,000 / 2) and the worst composed card is 281 characters at single-digit sample counts — the widest string this control can paint into one toast. This is a width/rendering risk, not a translation-accuracy defect; no wording change is required unless a rendered frame clips.",
+			"evidence": "Measured at 5079fd4cb4 by rendering the three deferred arms through intl-messageformat: one 105 chars at count 1, other 114 chars at count 2, many 123 chars at count 1,000,000; English 62 / 60 / 66. The composed worst case rendered through the fr catalogue is \"6 conversations marquées comme lues. 1 conversation a un résultat plus récent et reste non lue. 2 conversations n’ont pas pu être marquées comme lues ; elles restent non lues. 1 conversation se trouve sur un autre appareil et sera marquée comme lue quand celui-ci se mettra à jour.\" = 281 chars, 49 words. The three changed values are 43/55/50 chars and do not extend this worst case."
+		}
+	],
+	"checks": [
+		{
+			"check": "delta identity",
+			"mode": "re-run on current bytes",
+			"result": "PASS",
+			"detail": "94 keys on both revisions, identical order, 0 added, 0 removed; exactly three values changed (the three listed in delta.changed_keys). Reverting those three values in the head text reproduces the base text exactly; git diff shows exactly three -/+ value line pairs and no other hunk."
+		},
+		{
+			"check": "English source and context unchanged",
+			"mode": "re-run on current bytes",
+			"result": "PASS",
+			"detail": "git diff a32f7349e3..5079fd4cb4 is empty for both paths; sha256 en f806e02def133617... and en context 2980f9d4a5d99d7b... equal the round-2 receipt's recorded hashes."
+		},
+		{
+			"check": "merge-parent opacity for ui.notices",
+			"mode": "re-run on current bytes",
+			"result": "PASS",
+			"detail": "All nine ui.notices paths (English, English context and seven locales) have the same blob SHA-1 at 77d1fb82b2 and 5079fd4cb4; the origin/main merge did not touch this namespace. The fr blob is 5aa60ea866d6beaa90ee7127814cd1f969105a87 at both."
+		},
+		{
+			"check": "key-set parity both directions",
+			"mode": "re-run on current bytes",
+			"result": "PASS",
+			"detail": "94 English keys, 94 French keys, 94 context entries; no missing, no extra, identical order."
+		},
+		{
+			"check": "ICU argument integrity",
+			"mode": "re-run on current bytes",
+			"result": "PASS",
+			"detail": "Parsed all 94 French values with @formatjs/icu-messageformat-parser 3.5.21: 0 parse failures; argument-name sets equal to English for 94/94; plural variables/categories match with fr's legal extra many arm; no tag/markup token drift. The one parameterized changed key keeps {reason} exactly once."
+		},
+		{
+			"check": "plural categories are the locale's CLDR set",
+			"mode": "re-run on current bytes",
+			"result": "PASS",
+			"detail": "10 French plural messages, each with one/many/other; Intl.PluralRules('fr').resolvedOptions().pluralCategories = ['one','many','other']; no few or two arm. The three changed values contain no plural syntax."
+		},
+		{
+			"check": "render integrity (whole namespace)",
+			"mode": "re-run on current bytes",
+			"result": "PASS",
+			"detail": "Rendered all 94 French messages with intl-messageformat 12.1.3 at representative parameters: 0 format failures. The one changed parameterized value rendered with both an authored reason and unread_backend_silent."
+		},
+		{
+			"check": "caller ground truth — highlights_update_failed",
+			"mode": "re-run on current bytes and caller read",
+			"result": "PASS",
+			"detail": "Sole implementation call site is supplement-row.tsx:448 (plus the generated key map); the sendOp catch covers supplements.cancel/restart/steer. The block has no header, label or title; the Canvas Files 'À la une' labels are separate keys and call sites. The new French names the block's elements and no section."
+		},
+		{
+			"check": "caller ground truth — unread_not_cleared",
+			"mode": "re-run on current bytes and caller read",
+			"result": "PASS",
+			"detail": "Sole implementation call site is chat-sidebar.tsx:2051, the non-deferral catch; markAllRead applies local state only from the answer's read bucket, so a refusal leaves every mark in place. The new second clause states the retained unread state and composes after {reason}."
+		},
+		{
+			"check": "caller ground truth — mark_all_read_nothing",
+			"mode": "re-run on current bytes and caller read",
+			"result": "PASS",
+			"detail": "Sole implementation call site is mark-all-read.ts:189; attempted===0 is produced by canonical-sessions-store.ts:7304 only when this invocation's items.length is 0 (no request sent). 'dans cette demande' is a request-scoped fact, not a claim about all screen state."
+		},
+		{
+			"check": "composed values",
+			"mode": "re-run on current bytes",
+			"result": "PASS",
+			"detail": "The exact caller compositions render as recorded in render.composed: mark_all_read_nothing alone; unread_not_cleared with the silent reason and with an authored reason; highlights_update_failed with the shared diagnosis/remedy (offline, deadline, unauthorized, 404/outdated; unknown adds nothing)."
+		},
+		{
+			"check": "accuracy, idiom, register and glossary (changed values)",
+			"mode": "re-audited now",
+			"result": "PASS",
+			"detail": "Each value says what its English source says and what the caller does: the highlights lead names elements not a section; the unread clause names the retained unread state; the empty-result sentence names the act and its request scope. Register is the namespace's impersonal/vous style with no address form. 'marquer comme lu' matches the sibling keys; 'non lues' matches the locale's unread noun; 'à la une' is the shipped rendering of the 'Highlights' concept."
+		},
+		{
+			"check": "untranslated bytes and typography (changed values)",
+			"mode": "re-run on current bytes",
+			"result": "PASS",
+			"detail": "No English sentence survives in any changed value; the only 4+ letter token shared with the English corpus is the required placeholder name {reason}. No U+0027 straight apostrophe, U+0022 straight quote, U+00AB/U+00BB guillemet, U+00A0 or U+202F was introduced; none of the three values needs an apostrophe or spaced punctuation. RTL not applicable to fr."
+		},
+		{
+			"check": "width and overflow",
+			"mode": "re-run on current bytes",
+			"result": "RETAINED MINOR",
+			"detail": "The unchanged deferred sentence remains the widest string (281-char worst card, 49 words); the three changed values are 43/55/50 chars and do not extend it. The flag is carried for visual QA, not treated as a translation defect."
+		}
+	],
+	"render": {
+		"tool": "Node v24.22.1, ICU 78.3; intl-messageformat 12.1.3 and @formatjs/icu-messageformat-parser 3.5.21 as installed in the worktree (the libraries src/i18n/messages.ts wraps); fr catalogue values formatted with the fr tag.",
+		"changed_values": {
+			"ui.notices.chat.mark_all_read_nothing": {
+				"en": "Nothing to clear.",
+				"fr": "Rien à marquer comme lu dans cette demande.",
+				"chars": 43
+			},
+			"ui.notices.chat.unread_not_cleared": {
+				"en": "{reason} The unread marks were not cleared.",
+				"fr": "{reason} Les conversations concernées restent non lues.",
+				"chars": 55,
+				"placeholder": "{reason} preserved exactly once"
+			},
+			"ui.notices.files.highlights_update_failed": {
+				"en": "Highlights could not be updated.",
+				"fr": "Impossible de mettre à jour les éléments à la une.",
+				"chars": 50
+			}
+		},
+		"composed": {
+			"mark_all_read_nothing": "Rien à marquer comme lu dans cette demande.",
+			"unread_not_cleared_silent": "Le backend n’a pas répondu. Les conversations concernées restent non lues.",
+			"unread_not_cleared_authored": "La fenêtre est passée en arrière-plan et le magasin est occupé. Les conversations concernées restent non lues.",
+			"highlights_outdated": "Impossible de mettre à jour les éléments à la une. Le serveur Local Operator est antérieur à la version attendue par l’application. Mettez le serveur à jour, puis réessayez.",
+			"highlights_deadline": "Impossible de mettre à jour les éléments à la une. Le serveur Local Operator n’a pas répondu à temps.",
+			"highlights_unauthorized": "Impossible de mettre à jour les éléments à la une. Authentification impossible auprès du serveur Local Operator en cours d’exécution.",
+			"worst_case_mark_all_read": "6 conversations marquées comme lues. 1 conversation a un résultat plus récent et reste non lue. 2 conversations n’ont pas pu être marquées comme lues ; elles restent non lues. 1 conversation se trouve sur un autre appareil et sera marquée comme lue quand celui-ci se mettra à jour.",
+			"highlights_offline": "Impossible de mettre à jour les éléments à la une. Le serveur Local Operator ne répond pas."
+		},
+		"en_reference": {
+			"mark_all_read_nothing": "Nothing to clear.",
+			"unread_not_cleared": "{reason} The unread marks were not cleared.",
+			"highlights_update_failed": "Highlights could not be updated."
+		},
+		"width_measurements": {
+			"changed_chars": {
+				"mark_all_read_nothing": 43,
+				"unread_not_cleared": 55,
+				"highlights_update_failed": 50
+			},
+			"en_chars": {
+				"mark_all_read_nothing": 17,
+				"unread_not_cleared": 43,
+				"highlights_update_failed": 32
+			},
+			"worst_case_chars": 281,
+			"worst_case_words": 49
+		},
+		"note": "The authored-reason sample is synthetic (the call site accepts any backend sentence); the silent sample is the shipped ui.notices.chat.unread_backend_silent value."
+	},
+	"observations": [
+		"OBS-01: The changed value ui.notices.chat.mark_all_read_nothing uses 'demande' (request), which is also this namespace's noun for an agent ask ('Demande refusée', 'Demande ignorée'). In the toast's immediate context — raised right after the mark-all-read control — the referent is unambiguous, and the sidecar explicitly asks for a request-level fact. No action.",
+		"OBS-02: 'à la une' is the shipped French label for the Canvas Files 'Highlights' concept (ui.canvas.files.highlights and ui.canvas.finder_layout.highlights); the changed sentence keeps that term but no longer asserts a section, and the action context identifies the transcript supplement block. The existing ui.library status rendering 'Mis en évidence' is a different English lemma ('Highlighted'), not a drift introduced here. No action.",
+		"OBS-03: The English context sidecar calls mark_all_read_nothing an 'info toast body' while the caller uses showSuccessToast; that is an English-side metadata mismatch, unchanged by this delta and not a translation defect.",
+		"OBS-04: The 10 plural messages and their one/many/other categories were re-checked mechanically but not re-litigated; the prior zero-count observation (Intl.PluralRules('fr').select(0) = 'one') still has no reachable arm, because cleared==0 returns the none-cleared branch and superseded/unknown/deferred are each guarded by > 0.",
+		"OBS-05: This is a source-and-formatter audit; no rendered frame was captured for the changed values. The retained overflow finding is the visual-QA item and is not a claim that a specific window clips.",
+		"OBS-06: The worktree contained an untracked peer es receipt and the frozen head was not moved by this audit; only this fr receipt file was written. No catalogue, context, generated, ledger or code file was edited."
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 0
+	},
+	"summary": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 0,
+		"note": "0 blocker, 0 major; the three round-2 defects are fixed and verified against the actual callers. The only recorded finding is the unchanged deferred-sentence overflow flag retained for visual QA (minor, not a translation defect)."
+	},
+	"verdict": {
+		"namespace": "clean-with-findings",
+		"clean": true,
+		"reason": "At 5079fd4cb4 the fr/ui.notices namespace has 0 blocker and 0 major. The prior major (highlights_update_failed) is fixed: the sole caller is the transcript supplement block's cancel/restart/steer catch, and the new value names its elements without a Canvas Files section. The prior minor (unread_not_cleared) is fixed: the non-deferral refusal leaves the marks in place, and the new clause states the retained unread state. The prior nit (mark_all_read_nothing) is fixed with the request-level scope that attempted===0 actually carries. The prior overflow minor is retained unchanged for visual QA. 94/94 keys read; {reason} preserved; no English bytes; no new placeholder, plural or register regression."
+	},
+	"evidence_provenance": "Executed in /Users/damian/local-operator-ui/.worktrees/i18n-toasts at 5079fd4cb4af89eee6ddd3d1a7617ff5bc9a0e6b on 2026-10-25. The fr catalogue, English source and context sidecar were read from the committed git objects at the frozen head (`git show 5079fd4cb4:<path>`); the worktree was verified byte-identical to those blobs for the three audited paths. The base fr file was extracted with `git show a32f7349e3:src/i18n/catalogues/fr/ui.notices.json`. No dirty worktree bytes are bound by this receipt. Analysis scripts live in the session scratchpad outside the repo (fr-notices-delta/). Commands executed: git rev-parse/rev-list, git diff --quiet and git rev-parse <rev>:<path> for the delta and merge-parent checks; sha256sum for the recorded hashes; node with @formatjs/icu-messageformat-parser 3.5.21 and intl-messageformat 12.1.3 for the 94-key parse/render matrix and the caller compositions. No full-suite duplication: pnpm check-i18n and the Desktop Tests suite were not re-run; the existing ledger half is known to be red on this head for the missing ui.notices rows, and this one-locale delta does not change that. No catalogue, context, generated or ledger file was edited; this receipt is the only repository file written by this audit.",
+	"namespace_verdict": "ui.notices at 5079fd4cb4: clean-with-findings — 0 blocker, 0 major, 1 retained minor (deferred overflow, visual QA); 3/3 changed values verified against their callers; 94/94 keys read.",
+	"overall_verdict": "clean-with-findings — no blocker or major at head; the one recorded minor is the unchanged overflow flag retained for visual QA, not a translation defect.",
+	"pinned_to": {
+		"revision": "5079fd4cb4af89eee6ddd3d1a7617ff5bc9a0e6b",
+		"inputs_source": "Committed git objects at the pinned revision, read with `git show 5079fd4cb4:<path>`; their sha256 values equal the receipt's en/fr/en_context hashes.",
+		"worktree_state": "The three input paths were also byte-identical to the pinned revision in the worktree when this audit ran; the receipt binds the committed blob bytes, never a dirty working tree.",
+		"future_changes": "Code R1 (main locale, missing failure/watchdog English keys; coder f5b0bba239bd) postdates this head. Any source change after 5079fd4cb4 requires a delta audit at the new revision; this receipt is not re-bound or rewritten."
+	}
+}

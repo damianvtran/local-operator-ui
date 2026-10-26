@@ -1,0 +1,237 @@
+{
+	"ui.agents.detail.action.ask_change": {
+		"note": "Opens the configuration composer scoped to this agent. Sits beside Edit in the header's action row.",
+		"role": "button label",
+		"tone": "plain, action"
+	},
+	"ui.agents.detail.action.discard_changes": {
+		"note": "Confirms discarding the edits on the pane. Same verb as the question beside it; no object because the question already named it.",
+		"role": "button label (danger action)",
+		"tone": "plain, decisive"
+	},
+	"ui.agents.detail.action.discard_question": {
+		"note": "Asked before edits are thrown away when the pane has no caller-supplied hint. Sentence case with a question mark, one line; wraps in the footer.",
+		"role": "inline question in the sticky edit footer",
+		"tone": "plain, direct question"
+	},
+	"ui.agents.detail.action.duplicate": {
+		"note": "Creates a copy the operator can edit. Named for the result, not the mechanism.",
+		"role": "menu item label",
+		"tone": "plain, names the outcome"
+	},
+	"ui.agents.detail.action.edit": {
+		"note": "Switches the pane from reading to editing. One word where the language allows.",
+		"role": "button label",
+		"tone": "plain"
+	},
+	"ui.agents.detail.action.keep_editing": {
+		"note": "Dismisses the discard question and returns focus to the field being edited. Mirrors discard_changes in length so the pair does not jump.",
+		"role": "button label",
+		"tone": "plain"
+	},
+	"ui.agents.detail.action.more_actions": {
+		"note": "The overflow menu holding Duplicate. No visible label, so this is the button's only name.",
+		"role": "accessible name for an icon-only menu button",
+		"tone": "plain"
+	},
+	"ui.agents.detail.action.new_chat": {
+		"note": "Starts a chat with this agent as the scoped target.",
+		"role": "button label",
+		"tone": "plain"
+	},
+	"ui.agents.detail.action.save_changes": {
+		"note": "Default for EditFooter's primary action when the caller passes no label; the agent and team panes both use it. Sentence case.",
+		"role": "primary button label",
+		"tone": "plain"
+	},
+	"ui.agents.detail.action.saving": {
+		"note": "Replaces save_changes while the request runs; the button is disabled and aria-busy beside it. U+2026, not three dots.",
+		"role": "primary button label while the write is in flight",
+		"tone": "plain, progress"
+	},
+	"ui.agents.detail.action.unsaved_changes": {
+		"note": "Says the pane holds edits that are not saved yet. Small meta weight; no colour of its own.",
+		"role": "quiet status marker at the end of the pane footer",
+		"tone": "neutral, no alarm"
+	},
+	"ui.agents.detail.alert.builtin_body": {
+		"note": "A packaged agent has no editable registry row. Names both remedies: install a copy, or duplicate. Two sentences; wraps in the alert.",
+		"role": "alert body",
+		"tone": "plain, explains the limit and the way out"
+	},
+	"ui.agents.detail.alert.builtin_title": {
+		"note": "The record is one of the app's packaged agents, which is why Edit is absent.",
+		"role": "alert title",
+		"tone": "calm, factual"
+	},
+	"ui.agents.detail.alert.conflict_body": {
+		"note": "Another writer touched the record after this edit opened. Says the operator's edits survive and that saving writes only changed fields.",
+		"role": "alert body",
+		"tone": "plain, precise about what is kept"
+	},
+	"ui.agents.detail.alert.conflict_reload": {
+		"note": "Discards the local draft and shows the stored version. Sits under the sentence it remedies.",
+		"role": "button label inside the conflict alert",
+		"tone": "plain, action"
+	},
+	"ui.agents.detail.alert.conflict_title": {
+		"note": "The record changed under an open editor. States the situation without implying the operator caused it.",
+		"role": "alert title",
+		"tone": "calm, no blame"
+	},
+	"ui.agents.detail.alert.save_failed_title": {
+		"note": "The save request failed. Shared by the detail and create panes, which both report through this alert slot.",
+		"role": "alert title",
+		"tone": "plain, names what did not happen"
+	},
+	"ui.agents.detail.alert.unconfirmed_body": {
+		"note": "The backend did not answer, so the write's outcome is unknown; tells the reader to check the record before editing again.",
+		"role": "alert body",
+		"tone": "plain, honest about uncertainty"
+	},
+	"ui.agents.detail.alert.unconfirmed_title": {
+		"note": "The write may or may not have landed. Does not claim failure.",
+		"role": "alert title",
+		"tone": "calm, precise"
+	},
+	"ui.agents.detail.badge.modified": {
+		"note": "This copy diverges from the packaged original in some fields. Warning tone; sits beside the fact list.",
+		"role": "badge on the summary line",
+		"tone": "quiet, one word"
+	},
+	"ui.agents.detail.class.error_title": {
+		"note": "The messaging-class switch's write failed. The body under it carries the backend's own sentence.",
+		"role": "alert title",
+		"tone": "plain, names what did not happen"
+	},
+	"ui.agents.detail.class.label": {
+		"note": "The control that lets this agent message the operator unprompted. Written as the agent speaking about itself.",
+		"role": "switch label",
+		"tone": "plain, first person from the agent"
+	},
+	"ui.agents.detail.delegate.aria": {
+		"note": "Same words as the visible label beside it; the switch has no visible label of its own.",
+		"role": "accessible name for the delegate switch",
+		"tone": "plain"
+	},
+	"ui.agents.detail.delegate.label": {
+		"note": "The visible label beside the delegate switch. Says the agent may hand work to subagents.",
+		"role": "switch label",
+		"tone": "plain"
+	},
+	"ui.agents.detail.empty.used_by": {
+		"note": "No team names this agent as a manager or member. Sits where the team links would be.",
+		"role": "empty-state sentence",
+		"tone": "plain, factual"
+	},
+	"ui.agents.detail.field.effort_placeholder": {
+		"note": "Placeholder in the effort-tier picker before a choice is made. Short: the control is narrow.",
+		"role": "select placeholder",
+		"tone": "plain"
+	},
+	"ui.agents.detail.field.name": {
+		"note": "Names the definition's name field in the editor. The value is the agent's or team's own name; this is only its label.",
+		"role": "field label",
+		"tone": "plain, one word"
+	},
+	"ui.agents.detail.kind.role": {
+		"note": "The wire value `role`, said in the operator's terms: they can start a chat with it. Pairs with kind.specialist.",
+		"role": "select option label",
+		"tone": "plain, explains the effect"
+	},
+	"ui.agents.detail.kind.specialist": {
+		"note": "The wire value `specialist`: other agents may reach for it rather than the operator opening a chat.",
+		"role": "select option label",
+		"tone": "plain, explains the effect"
+	},
+	"ui.agents.detail.no_description": {
+		"note": "Shared by the agents roster row, and any detail surface that has no description to show. Sits in the same line box as a real description so a row's height does not move; truncates in the roster, wraps in a detail pane.",
+		"role": "inline fallback where a description would be",
+		"tone": "plain, factual, not an error"
+	},
+	"ui.agents.detail.origin.changed": {
+		"note": "Lists the fields that differ from the packaged original, with the field names as data beside it.",
+		"role": "definition-list term",
+		"tone": "plain, factual"
+	},
+	"ui.agents.detail.origin.source": {
+		"note": "The packaged seed a copy came from; the value beside it is a data token and stays as stored.",
+		"role": "definition-list term",
+		"tone": "plain, one word"
+	},
+	"ui.agents.detail.read.effort_label": {
+		"note": "Introduces the effort tier in the read view. The colon and the space before the value are part of the message; the value itself is data.",
+		"role": "inline label before the value",
+		"tone": "plain, factual"
+	},
+	"ui.agents.detail.section.delegation": {
+		"note": "Covers delegation and effort tier together, because both answer 'how much work does it do'.",
+		"role": "section heading",
+		"tone": "plain, noun phrase"
+	},
+	"ui.agents.detail.section.instructions": {
+		"note": "The agent's instruction text. Also the field label for the same content in edit mode.",
+		"role": "section heading",
+		"tone": "plain, noun"
+	},
+	"ui.agents.detail.section.messaging": {
+		"note": "Names the proactive/reactive switch block. The description under it explains both classes.",
+		"role": "section heading",
+		"tone": "plain, noun"
+	},
+	"ui.agents.detail.section.name_role": {
+		"note": "Covers the create form's name and kind fields.",
+		"role": "form section heading",
+		"tone": "plain, noun phrase"
+	},
+	"ui.agents.detail.section.origin": {
+		"note": "Where the definition came from: packaged, installed from a starter, or created here.",
+		"role": "section heading",
+		"tone": "plain, noun phrase"
+	},
+	"ui.agents.detail.section.tools": {
+		"note": "The tool surface block; also the label above the tools editor in the create form.",
+		"role": "section heading",
+		"tone": "plain, noun"
+	},
+	"ui.agents.detail.section.used_by": {
+		"note": "Teams that reference this agent. Reads with the description under it.",
+		"role": "section heading",
+		"tone": "plain, noun phrase"
+	},
+	"ui.agents.detail.section.when_to_use": {
+		"note": "The one-sentence description a model reads when choosing an agent.",
+		"role": "section heading",
+		"tone": "plain, noun phrase"
+	},
+	"ui.agents.detail.tools.add": {
+		"note": "Appends the typed tool name to the list. Sits at the end of the tool input row.",
+		"role": "button label",
+		"tone": "plain, one word"
+	},
+	"ui.agents.detail.tools.all_label": {
+		"note": "Shown beside the 'every tool' switch and as a badge in the read view when the list is open-ended. One term for both.",
+		"role": "label and badge text",
+		"tone": "plain"
+	},
+	"ui.agents.detail.tools.empty": {
+		"note": "No tools listed yet. Names both ways forward: add one, or switch all tools on. One sentence; wraps.",
+		"role": "empty-state sentence",
+		"tone": "plain, instructive"
+	},
+	"ui.agents.detail.tools.every_tool_aria": {
+		"note": "The switch that clears the explicit list so the agent may use whatever the session offers.",
+		"role": "accessible name for the all-tools switch",
+		"tone": "plain"
+	},
+	"ui.agents.detail.tools.may_use_any": {
+		"note": "Explains the open-ended state under the switch. Contrasts with an explicit list.",
+		"role": "explanatory sentence",
+		"tone": "plain, factual"
+	},
+	"ui.agents.detail.tools.placeholder": {
+		"note": "Placeholder in the tool-name input. One or two words: the field is narrow.",
+		"role": "input placeholder",
+		"tone": "plain"
+	}
+}

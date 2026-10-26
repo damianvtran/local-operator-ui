@@ -1,0 +1,117 @@
+{
+	"ui.agents.teams.action.add_member": [
+		"button label",
+		"plain, action",
+		"Appends a roster slot to the draft team. Sits at the end of the members section."
+	],
+	"ui.agents.teams.action.collaboration_aria": [
+		"accessible name for the collaboration-instructions field",
+		"plain",
+		"The visible section title is separate; this names the editable control for assistive tech. Same words as the section on purpose."
+	],
+	"ui.agents.teams.action.new_chat": [
+		"button label",
+		"plain",
+		"Starts a chat with this team as the target, manager-led."
+	],
+	"ui.agents.teams.action.project_brief_aria": [
+		"accessible name for the project-brief field",
+		"plain",
+		"Names the editable project brief; matches the section title beside it."
+	],
+	"ui.agents.teams.action.remove": [
+		"button label",
+		"plain, one word",
+		"Drops this roster slot from the draft. Row-scoped, so it needs no object."
+	],
+	"ui.agents.teams.col.count": [
+		"table column header",
+		"plain, one word",
+		"How many of this slot the team declares. Narrow numeric column."
+	],
+	"ui.agents.teams.col.member": [
+		"table column header",
+		"plain, one word",
+		"Names the column of roster roles. Distinct from the section heading 'Members'."
+	],
+	"ui.agents.teams.col.type": [
+		"table column header",
+		"plain, one word",
+		"Whether the slot names an agent or a team; values come from kind.agent/kind.team."
+	],
+	"ui.agents.teams.empty.not_found": [
+		"badge text, no name available",
+		"plain, warning register",
+		"A roster reference the resolver could not find and whose name the row did not carry. Short: it sits in a warning chip."
+	],
+	"ui.agents.teams.empty.not_found_name": [
+		"badge text naming the missing reference",
+		"plain, warning register",
+		"{name} is the stored role or manager name (data, escaped, never translated). The colon and space are part of the message; the chip truncates if the name is long."
+	],
+	"ui.agents.teams.field.manager_aria": [
+		"accessible name for the manager picker",
+		"plain, explains the role",
+		"Says what a manager is: the agent that leads the team's chat. The visible field label is shorter."
+	],
+	"ui.agents.teams.field.manager_placeholder": [
+		"select placeholder",
+		"plain",
+		"Placeholder in the manager picker before a choice is made."
+	],
+	"ui.agents.teams.field.member_placeholder": [
+		"select placeholder",
+		"plain",
+		"Placeholder in the add-member picker, which accepts either an agent or a team."
+	],
+	"ui.agents.teams.kind.agent": [
+		"select option and column value",
+		"plain, one word",
+		"The `agent` value of a roster slot or picker. Also the Type column's value, so keep it identical in both places."
+	],
+	"ui.agents.teams.kind.team": [
+		"select option and column value",
+		"plain, one word",
+		"The `team` value; pairs with kind.agent and shares its column width."
+	],
+	"ui.agents.teams.member_count": [
+		"count phrase used in prose and table summaries",
+		"plain, counted",
+		"{count} is the declared member total for a team. ICU plural; the whole phrase is the message so the noun and its number agree in the target language."
+	],
+	"ui.agents.teams.section.collaboration": [
+		"section heading",
+		"plain, noun phrase",
+		"The instructions the manager and members share. Also the field title in the editor."
+	],
+	"ui.agents.teams.section.description": [
+		"section heading",
+		"plain, noun",
+		"The team's one-line purpose; the field below is labelled 'What this team is for'."
+	],
+	"ui.agents.teams.section.manager": [
+		"section heading",
+		"plain, noun",
+		"The single agent that leads the team's chat. Also the field title for the same value."
+	],
+	"ui.agents.teams.section.members": [
+		"section heading",
+		"plain, noun",
+		"The roster of slots below the manager."
+	],
+	"ui.agents.teams.section.members_aria": [
+		"accessible name for the members table",
+		"plain",
+		"Names the roster table for assistive tech; same word as the section heading."
+	],
+	"ui.agents.teams.section.project_brief": [
+		"section heading",
+		"plain, noun phrase",
+		"The project context the team is briefed with. Also the field title when editing."
+	],
+	"ui.agents.teams.section.what_for": [
+		"field title",
+		"plain, question-shaped",
+		"Label above the description field in the editor; not the same string as the read-view heading 'Description'."
+	]
+}

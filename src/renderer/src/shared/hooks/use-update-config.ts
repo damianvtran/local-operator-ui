@@ -1,4 +1,3 @@
-import { t } from "../../../../i18n/messages";
 /**
  * Hook for updating configuration
  */
@@ -9,6 +8,7 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { configQueryKey } from "./use-config";
@@ -69,7 +69,7 @@ export const useUpdateConfig = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			showSuccessToast(t("ui.common.actions.configuration_updated"));
+			showSuccessToast(t("ui.notices.settings.configuration_updated"));
 		},
 		onError: (error) => {
 			console.error("Error updating configuration:", error);

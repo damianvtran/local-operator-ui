@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -127,7 +128,7 @@ const bundle = await build({
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { openFrameFacts } from "./src/renderer/src/features/chat/canonical/open-frame";
-			export { paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { paintPendingSend, resyncCanonicalSession } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { __resetPendingSends, __resetLabelGapBookkeeping } from "./src/renderer/src/shared/hooks/use-canonical-session";
 		`,
@@ -171,9 +172,36 @@ const bundle = await build({
 		},
 	],
 });
-const hook = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+/*
+ * Imported from a file, never a `data:` URI. A module's URL is what V8 prints
+ * as the location of every stack frame inside it, so a ~7.6 MB bundle imported
+ * as base64 turns each logged stack (the hook's `console.warn` of a refused
+ * repair read, for one) into a 10 MB line: one case wrote about 80 MB and
+ * failed
+ * CI's `ci-log-guard` payload-line step (PR #1428 QA round 2, Q-1). This is a
+ * fixture property, not product behaviour; a file URL keeps frames short. The
+ * warning itself is left alone: this transport does not answer `sessions.get`,
+ * and an answer would have to invent journal placement for every row, which is
+ * order evidence the journal-order case never asserts on.
+ *
+ * The name matches `.gitignore`'s `scripts/_*.bundle.mjs`, so a killed run
+ * cannot leave a committable bundle behind; the pid keeps two concurrent runs
+ * from one checkout off each other's file. Unlinked as soon as the import
+ * resolves: V8 holds the compiled module, so the file is not needed after.
+ */
+const bundlePath = new URL(
+	`./_reconnect-page-gap-${process.pid}.bundle.mjs`,
+	import.meta.url,
 );
+let hook;
+try {
+	await writeFile(bundlePath, bundle.outputFiles[0].text);
+	hook = await import(bundlePath.href);
+} finally {
+	// Also cover a partial write: no failed import or failed write may leave a
+	// generated bundle behind for a later run to mistake for its own.
+	await unlink(bundlePath).catch(() => {});
+}
 const {
 	useCanonicalSessionStream,
 	admitChatDraft,
@@ -187,6 +215,7 @@ const {
 	applyHistoryPage,
 	sealDisjointBlock,
 	paintPendingSend,
+	resyncCanonicalSession,
 	openFrameFacts,
 } = hook;
 
@@ -980,6 +1009,38 @@ const liveFrame = (type, id, extra = {}) => ({
 const historyReads = () =>
 	requests.filter((request) => request.op === "sessions.history").length;
 
+/**
+ * A mount whose subscription DECLARED the journal-order family.
+ *
+ * `journal_order_ready` is only applied by a pane that negotiated it (the
+ * capability is the pane's question, so the hook takes it as an option), which is
+ * exactly the population the correction-under-the-watermark defect affects.
+ */
+async function mountWithJournalOrder(sessionIdOf = () => SESSION_A) {
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(
+			sessionIdOf(),
+			true,
+			true,
+			sessionIdOf(),
+			{
+				journalOrder: true,
+			},
+		);
+		return handle;
+	};
+	runtime.rerender();
+	return {
+		handle: () => handle,
+		row: (id) => handle.transcript.records.find((record) => record.id === id),
+		ids: () => ids(handle.transcript),
+		status: () => handle.status,
+		readings: () => handle.frontend ?? handle.heldFrontend,
+	};
+}
+
 async function mount(sessionIdOf = () => SESSION_A) {
 	const runtime = makeRuntime();
 	let handle;
@@ -1017,6 +1078,498 @@ async function mount(sessionIdOf = () => SESSION_A) {
 		rerender: () => runtime.rerender(),
 	};
 }
+
+/*
+ * RECEIPT-ORDER REGRESSIONS (operator report, 2026-10-26).
+ *
+ * The bridge emits replay frames before the snapshot, all on one monotonic
+ * `(epoch, seq)` cursor. A renderer may therefore see an older frame after a
+ * newer one only when delivery/reconnect work has made the older answer late;
+ * accepting it as a new commit is never a legitimate way to reconcile paint.
+ * These cases drive the REAL hook, not a reducer-only approximation, and record
+ * the row ids after every committed flush so a backwards transition is visible.
+ */
+test("a late reset replay cannot remove a newer live transcript tail", async () => {
+	const oldRows = Array.from({ length: 24 }, (_, index) =>
+		userRow(`old-${index}`, 1_700_000_000 + index, `old-${index}`),
+	);
+	const transcript = makeTranscript(oldRows);
+	reset({ transcript });
+	const panel = await mount();
+	const commits = [];
+	const capture = (source) => commits.push({ source, ids: panel.ids() });
+
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: oldRows.at(-1).id,
+			entries: oldRows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	capture("snapshot-old");
+
+	deliver(
+		eventFrame(3, {
+			type: "message_start",
+			message: { id: "live-new", role: "user", content: [{ text: "live" }] },
+		}),
+	);
+	await pump();
+	capture("live-new");
+
+	// This is the stale replay's shape: a full-history reset, not a small delta.
+	deliver(
+		eventFrame(2, {
+			type: "history_delta",
+			reset: true,
+			messages: oldRows.map((entry) => ({
+				id: entry.id,
+				role: "user",
+				content: [{ text: entry.payload.content[0].text }],
+			})),
+		}),
+	);
+	await pump();
+	capture("late-reset");
+	console.log("stale reset commits", JSON.stringify(commits));
+	assert.equal(panel.ids().at(-1), "live-new");
+	assert.equal(panel.ids().length, oldRows.length + 1);
+});
+
+test("a stale reset in the same flush cannot remove a live row", async () => {
+	const oldRows = Array.from({ length: 24 }, (_, index) =>
+		userRow(`old-${index}`, 1_700_000_000 + index, `old-${index}`),
+	);
+	reset({ transcript: makeTranscript(oldRows) });
+	const panel = await mount();
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: oldRows.at(-1).id,
+			entries: oldRows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	deliver(
+		eventFrame(3, {
+			type: "message_start",
+			message: { id: "live-new", role: "user", content: [{ text: "live" }] },
+		}),
+	);
+	// No pump between these deliveries: the guard must order frames within the
+	// flush too, not merely compare the last React-rendered state.
+	deliver(
+		eventFrame(2, {
+			type: "history_delta",
+			reset: true,
+			messages: oldRows.map((entry) => ({
+				id: entry.id,
+				role: "user",
+				content: [{ text: entry.payload.content[0].text }],
+			})),
+		}),
+	);
+	await pump();
+	assert.equal(panel.ids().at(-1), "live-new");
+});
+
+test("a superseded subscription's queued frames commit nothing", async () => {
+	/*
+	 * The connection-identity half of the same invariant. A resync, a reopen or a
+	 * peer rebind opens a new subscription INSIDE one session visit, so the
+	 * visit's `generation` still matches for a callback the old subscription had
+	 * already handed to the transport. Without a connection witness such a frame
+	 * is ordinary state - and after a `gap` frame it is exactly the shape that
+	 * repaints an older projection, because replay is open again and a snapshot
+	 * applies its page AND its readings wholesale.
+	 *
+	 * The stale payload deliberately disagrees with the row rather than stating a
+	 * prefix of it: a prefix is refused by the merge's own older-projection rule,
+	 * so it would not isolate THIS guard.
+	 */
+	const rows = Array.from({ length: 12 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+	reset({ transcript: makeTranscript(rows) });
+	const panel = await mount();
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	const NEW_TEXT = "The assembled answer, as the live stream ended it.";
+	deliver(
+		eventFrame(3, {
+			type: "message_end",
+			message: {
+				id: "a-live",
+				role: "assistant",
+				content: [{ type: "text", text: NEW_TEXT }],
+				stop_reason: "stop",
+			},
+		}),
+	);
+	await pump();
+	const liveRow = () => panel.row("a-live");
+	assert.equal(liveRow()?.text, NEW_TEXT, "the live end is the control");
+	const readingsBefore = panel.readings()?.sequence;
+
+	const superseded = subscriptions.filter((entry) => !entry.disposed).at(-1);
+	assert.ok(superseded, "the first subscription is still the live one");
+	resyncCanonicalSession(SESSION_A);
+	await pump();
+	assert.ok(superseded.disposed, "the resync disposed it");
+
+	// The queued frames of the dead connection, in their original order: a gap
+	// (which opens replay again) and then an older snapshot that carries a
+	// different, older answer for the same row and a different reading.
+	superseded.onEvent({
+		kind: "data",
+		data: JSON.stringify({ session_id: SESSION_A, type: "gap" }),
+	});
+	const stale = snapshotFrame(9, {
+		cursor: rows.at(-1).id,
+		entries: [...rows, userRow("a-live", 1_700_000_900, "x")],
+		liveEvents: [],
+		streaming: false,
+		hasMore: false,
+	});
+	stale.payload.frontend.snapshot.sequence = 99;
+	superseded.onEvent({
+		kind: "data",
+		data: JSON.stringify(stale),
+	});
+	await pump();
+	assert.equal(
+		liveRow()?.text,
+		NEW_TEXT,
+		"a superseded connection cannot rewrite a newer answer",
+	);
+	assert.equal(
+		panel.ids().filter((id) => id.startsWith("r-")).length,
+		rows.length,
+		"and its page cannot append the dead connection's rows",
+	);
+	assert.equal(
+		panel.readings()?.sequence,
+		readingsBefore,
+		"nor replace the readings the live connection published",
+	);
+	/*
+	 * THE SUCCESSOR IS SETTLED BEFORE THE CASE ENDS. This is the one case in the
+	 * file that leaves a SECOND subscription open (the resync's), and a pane whose
+	 * new connection never receives its snapshot is a pane holding work the rig
+	 * cannot see. Handing it the open+snapshot it is waiting for ends the case in
+	 * the state a real one reaches, instead of leaving a live connection and its
+	 * pending work behind for the rest of the shard's process.
+	 */
+	deliver(openFrame(10, false));
+	deliver(
+		snapshotFrame(11, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	assert.equal(panel.status(), "live", "the successor connection settles");
+});
+
+test("the bridge's own open/replay/snapshot shapes apply: open carries the cutoff, not a floor", async () => {
+	/*
+	 * THE SHAPE A REAL BRIDGE SENDS (`docs/DESKTOP_API.md`, "the read envelope";
+	 * `server/utils/desktop_sessions.py::events`): the `open` frame's `seq` is the
+	 * CUTOFF the replay was built from, the retained frames are replayed at
+	 * `after_seq < seq <= cutoff`, and the snapshot carries the sequence read
+	 * while it was built - so a replay can end ON the watermark and the snapshot
+	 * then carries the same number.
+	 *
+	 * A high-water mark seeded from the open's own seq refuses that whole
+	 * handshake; one that accepts only strictly-newer frames still refuses the
+	 * snapshot at the watermark. Both failures leave a real conversation stuck at
+	 * "connecting", which no fixture built as `open(1)` + `snapshot(2)` can see.
+	 */
+	const rows = Array.from({ length: 8 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+
+	// 1. An idle reconnect: nothing retained, so `open` and `snapshot` share a seq.
+	reset({ transcript: makeTranscript(rows) });
+	let panel = await mount();
+	deliver(openFrame(7, false));
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	assert.equal(
+		panel.status(),
+		"live",
+		"an open and its snapshot sharing the cutoff still applies",
+	);
+	assert.equal(panel.ids().length, rows.length, "and the page is painted");
+
+	// 2. A gap-free reopen: replay ends ON the cutoff, then the snapshot does too.
+	reset({ transcript: makeTranscript(rows) });
+	panel = await mount();
+	deliver(openFrame(7, false));
+	deliver(
+		eventFrame(6, {
+			type: "message_start",
+			message: {
+				id: "replayed",
+				role: "user",
+				content: [{ text: "replayed" }],
+			},
+		}),
+	);
+	deliver(
+		eventFrame(7, {
+			type: "message_start",
+			message: {
+				id: "replayed-2",
+				role: "user",
+				content: [{ text: "second" }],
+			},
+		}),
+	);
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	assert.equal(panel.status(), "live", "the snapshot at the watermark applies");
+	assert.ok(
+		panel.ids().includes("replayed") && panel.ids().includes("replayed-2"),
+		"and the replay below the cutoff is not discarded",
+	);
+});
+
+test("a page dispatched before a live write cannot rewrite that row", async () => {
+	/*
+	 * THE WIRING HALF of `pageRowIsOlderThanLiveRow` (agent review round 2, m2):
+	 * the reducer's rule is worth nothing if the hook does not hand the page the
+	 * receipt it was dispatched at. A walk read that goes out and is answered
+	 * while a live frame settles the SAME row must keep the live text - the
+	 * owner's prepared window can carry the shorter projection it had when the
+	 * read started.
+	 */
+	const base = Array.from({ length: 10 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+	const PARTIAL = "Four invoices were late: 1042";
+	const FULL =
+		"Four invoices were late: 1042, 1088, 1103 and 1177. I have started chasing them.";
+	const transcript = makeTranscript(base);
+	reset({ transcript });
+
+	// The walk's answer, held until the live write has landed.
+	let release;
+	const held = new Promise((resolve) => {
+		release = resolve;
+	});
+	const realTail = globalThis.__gapTail;
+	globalThis.__gapTail = () => held;
+	try {
+		const panel = await mount();
+		deliver(openFrame(1, false));
+		// A page that stops SHORT of the journal tail is what owes the walk.
+		deliver(
+			snapshotFrame(2, {
+				cursor: base[4].id,
+				entries: base.slice(0, 5),
+				liveEvents: [],
+				streaming: true,
+				hasMore: true,
+			}),
+		);
+		await pump();
+		assert.ok(
+			globalThis.__gapHistoryReads > 0,
+			"the short page owes a reconcile read, which is the read under test",
+		);
+
+		// The live answer settles while that read is in flight.
+		deliver(
+			eventFrame(4, {
+				type: "message_end",
+				message: {
+					id: "a-live",
+					role: "assistant",
+					content: [{ type: "text", text: FULL }],
+					stop_reason: "stop",
+				},
+			}),
+		);
+		await pump();
+		assert.equal(
+			panel.row("a-live")?.text,
+			FULL,
+			"the live end is the control",
+		);
+
+		// The page the read was answered with: the same row, shorter, plus the
+		// rows behind it. Its dispatch was at receipt 2, so it loses.
+		release({
+			entries: [
+				...base,
+				row("a-live", 1_700_000_900, {
+					kind: "message",
+					role: "assistant",
+					content: [{ type: "text", text: PARTIAL }],
+					stop_reason: "stop",
+				}),
+			],
+			has_more: false,
+			cursor_missing: false,
+		});
+		await pump();
+		assert.equal(
+			panel.row("a-live")?.text,
+			FULL,
+			"a page read before the live write does not rewrite the row",
+		);
+	} finally {
+		/*
+		 * THE GATE IS RELEASED EVEN WHEN AN ASSERTION THREW - defensive cleanup,
+		 * on the repository's own rule that a file hanging on an unsettled promise
+		 * must release it in its own cleanup. The exact mechanism by which this
+		 * file wedged CI's shard 0 is NOT proven (the bisect proved only that the
+		 * file, and not the production change, was responsible: 55 minutes
+		 * against a 45-minute ceiling with `# fail 0`, and green once the file was
+		 * reverted). Releasing is idempotent; a second resolve is a no-op.
+		 */
+		release({ entries: [], has_more: false, cursor_missing: false });
+		globalThis.__gapTail = realTail;
+	}
+});
+
+test("a journal-order correction below the snapshot watermark is still applied", async () => {
+	/*
+	 * ROUND 3's M1, and the reason the receipt gate cannot be the whole story.
+	 *
+	 * The bridge keeps `journal_order_ready` frames through the open handshake
+	 * even when their receipt is at or BELOW the snapshot's watermark, and sends
+	 * them AFTER the snapshot: metadata source facts are not folded into
+	 * `frontend`, a bounded page need not carry the IDs they name, and a snapshot
+	 * "cannot supersede an off-page correction" (`docs/DESKTOP_API.md`;
+	 * `desktop_sessions.py::events`' `order_fact and not already_replayed`).
+	 * Refusing them by seq is #994's mis-ordering returning: rows keep the wrong
+	 * placement until an unrelated later correction happens to arrive.
+	 *
+	 * The two deliveries below differ ONLY in the correction's seq: 6 is behind
+	 * the snapshot's 7 and must apply anyway; 8 is ahead and is the control that
+	 * proves the gate is what would have dropped the first.
+	 */
+	const rows = Array.from({ length: 6 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+	const correction = (seq) =>
+		eventFrame(seq, {
+			type: "journal_order_ready",
+			journal_generation: "domain-after",
+			rows: [{ id: rows[1].id, journal_seq: 0 }],
+		});
+
+	reset({ transcript: makeTranscript(rows) });
+	let panel = await mountWithJournalOrder();
+	deliver(openFrame(5, false));
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	deliver(correction(6));
+	await pump();
+	assert.equal(
+		panel.handle().transcript.orderWantedGeneration,
+		"domain-after",
+		"a correction behind the watermark is applied, not dropped",
+	);
+	/*
+	 * AND IT DOES NOT BECOME THE MARK (agent review round 4). If a correction at 6
+	 * were allowed to lower the watermark, the frames it "proves" are behind us
+	 * would be admitted: the reset replay at 7 below must still be refused, and
+	 * the published reconnect receipt must still say 7, or a reconnect asks for a
+	 * tail it has already read.
+	 */
+	assert.equal(
+		panel.handle().receipt?.seq,
+		7,
+		"the correction does not lower the reconnect receipt",
+	);
+	deliver(
+		eventFrame(7, {
+			type: "history_delta",
+			history_generation: "g",
+			reset: true,
+			messages: [
+				{
+					id: rows[0].id,
+					role: "user",
+					content: [{ type: "text", text: "stale replacement" }],
+				},
+			],
+		}),
+	);
+	await pump();
+	assert.equal(
+		panel.row(rows[0].id)?.text,
+		"r-0",
+		"a stale reset at the watermark is still refused after the correction",
+	);
+
+	reset({ transcript: makeTranscript(rows) });
+	panel = await mountWithJournalOrder();
+	deliver(openFrame(5, false));
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	deliver(correction(8));
+	await pump();
+	assert.equal(
+		panel.handle().transcript.orderWantedGeneration,
+		"domain-after",
+		"the ahead-of-watermark control applies too",
+	);
+});
 
 test("a receipt gap keeps the answer being written, and a mid-turn join agrees with the end", async () => {
 	const plan = conversation({ withSteer: false, awayRows: 0 });

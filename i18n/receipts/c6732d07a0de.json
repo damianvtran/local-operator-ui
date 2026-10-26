@@ -1,0 +1,458 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "locale": "es",
+  "locale_name": "Spanish",
+  "batch": "agents-surfaces",
+  "round": 2,
+  "branch": "i18n-agents-pages",
+  "head": "91231e66c9",
+  "head_note": "Worktree ~/local-operator-ui/.worktrees/i18n-agents-pages at HEAD 91231e66c955197e86cec5b1bf7c6f488eff48de. The eight es catalogues are uncommitted untracked candidates; this receipt binds their sha256 below, recomputed from disk.",
+  "date": "2026-10-26",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "c6732d07a0de",
+    "instance": "c6732d07a0de",
+    "model": "radient/auto",
+    "actual_model_source": "Harness session route advertised as 'Model: radient/auto' (system prompt). No provider fallback was signalled or used in this run; no concrete provider model is claimed.",
+    "fallback": null,
+    "independence": "Independent auditor: different agent and session from the translator, wrote and edited no catalogue value, and did not read translator notes before judging the bytes. The round-1 receipt (859f1e33bbd3, different session) was read only after the current bytes were assessed, to check dispositions.",
+    "independent_from_translator_session": true
+  },
+  "model": "radient/auto",
+  "instance": "c6732d07a0de",
+  "reference": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    }
+  },
+  "method": {
+    "placeholders": "Parsed all 321 en and 321 target values of the eight namespaces with @formatjs/icu-messageformat-parser (requiresOtherClause). Argument names, node kinds and plural/select option sets compared for every key: 0 divergences beyond es legitimately adding `many`. All 6 plural messages carry one/many/other; Intl.PluralRules('es') = one,many,other (0 -> other, 1 -> one, 1000000 -> many, 1500000 -> other); no `few` arm.",
+    "keys": "8/8 namespaces: en and es key sets identical (22,47,35,47,23,23,28,96 = 321); valid JSON; all values NFC; 0 manual bidi controls; 0 ASCII three-dot ellipses; backtick, trailing-space and trailing-colon parity on every key. The 102 new English keys (pages 6, config 3, hub.teams 21, publication 72) are present and translated in their namespaces; every one of the eight es files is key-identical to its English source.",
+    "gates": "Ran from the repo root: node --test --test-name-pattern='\\[es\\]' scripts/i18n/locale-parity.test.mjs -> 6 tests, 6 pass, 0 fail; node scripts/i18n/context-parity.mjs -> ok (131 allowed shrink-only gaps in 4 namespaces); node scripts/i18n/check-duplicates.mjs -> ok, 835 files, 0 duplicate keys; node scripts/i18n/generate.mjs --check -> keys.gen.ts byte-identical to a fresh generation; node scripts/i18n/check-strings.mjs -> ok, 1368 files, 191 literals at or below baseline.",
+    "review": "Every key read against its English value and context sidecar; the new keys also checked against their consumers (agents-page.tsx, config-composer.tsx, publication-failure.ts, public-teams-library.tsx, org-teams-list.tsx, upload-agent-dialog.tsx) for whole-sentence composition, aria label-in-name and layout. Terminology cross-checked against the core glossary, the es style guide and shipped es catalogues (ui.shell.sidebar_navigation.agent_hub, ui.common.errors.teams_unsupported, ui.projects.project_start_session.team_manager_manager).",
+    "limits": "Source-and-context audit, not a rendered build or frame: no build/install was run (task forbids builds), no native human review, and no browser session. Fit was judged by measuring actual string widths with macOS SF Pro 12px against the computed inner width of the w-72 column; that is arithmetic, not a screenshot. Raw-English {kind} in ui.agents.config.about and server-English {rule} in ui.agents.publication.invalid.field.*_with_rule are English source gaps, not translation defects. The distinct-instance check is against round-1 session 859f1e33bbd3."
+  },
+  "totals": {
+    "keys_audited": 321,
+    "namespaces": 8,
+    "blocker": 0,
+    "major": 2,
+    "minor": 2,
+    "nit": 2,
+    "namespaces_passed": 5,
+    "namespaces_changes_requested": 3
+  },
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "unresolved_blocker_major_count": 2,
+    "finding_ids": [
+      "ES-R2-P1",
+      "ES-R2-H1",
+      "ES-R2-H2",
+      "ES-R2-U1",
+      "ES-R2-B1",
+      "ES-R2-B2",
+      "ES-R2-B3"
+    ]
+  },
+  "round1_dispositions": [
+    {
+      "finding": "MAJOR ui.hub.pages.status.scope.shared_with",
+      "disposition": "applied — 'en el hub de {org}'; verified it composes after every count arm and after 'Agentes'/'Equipos'."
+    },
+    {
+      "finding": "MAJOR ui.hub.teams.public.intro",
+      "disposition": "NOT applied — re-filed as ES-R2-H1."
+    },
+    {
+      "finding": "MAJOR ui.hub.teams.public.sign_in_hint",
+      "disposition": "not applied — re-filed as ES-R2-H1."
+    },
+    {
+      "finding": "MINOR ui.agents.detail.alert.conflict_body",
+      "disposition": "applied — 'Algo más — …'."
+    },
+    {
+      "finding": "MINOR ui.agents.detail.tools.placeholder",
+      "disposition": "applied — 'Nombre de herramienta'."
+    },
+    {
+      "finding": "MINOR ui.hub.pages.scope_label",
+      "disposition": "unchanged — accepted: an infinitive filter caption ('Mostrar') is idiomatic Spanish UI; the control is aria-hidden and the legend names the group."
+    },
+    {
+      "finding": "MINOR ui.hub.teams.manager_label",
+      "disposition": "unchanged — re-filed as ES-R2-H2 (cross-surface decision still missing)."
+    },
+    {
+      "finding": "MINOR ui.agents.config.result.configured",
+      "disposition": "applied — 'Configuración de'; accepted as a count-agnostic noun lead before the plural count."
+    },
+    {
+      "finding": "MINOR ui.agents.config.summary.you_asked",
+      "disposition": "applied — 'Pediste: {topic}'."
+    },
+    {
+      "finding": "MINOR ui.agents.upload.list.surface",
+      "disposition": "applied — 'Sus herramientas, nivel de esfuerzo y delegación, cuando los tenga'."
+    },
+    {
+      "finding": "MINOR ui.agents.upload.sign_in.needed",
+      "disposition": "unchanged — accepted: 'Hub de agentes' is the shipped navigation term (ui.shell.sidebar_navigation.agent_hub); the sidecar's 'Agent hub stays English' conflicts with the shipped product vocabulary."
+    },
+    {
+      "finding": "NIT ui.hub.pages.sort.most_favourited",
+      "disposition": "unchanged — re-filed as ES-R2-U1."
+    },
+    {
+      "finding": "NIT ui.hub.teams.public.trying",
+      "disposition": "applied — 'Reintentando…'."
+    },
+    {
+      "finding": "NIT ui.agents.config.status.attached",
+      "disposition": "applied — 'se unió' + 'no se envió' (tense mix removed)."
+    },
+    {
+      "finding": "NIT ui.agents.publication.category.unclear_dual_use",
+      "disposition": "applied — 'No pudimos determinar…'."
+    },
+    {
+      "finding": "NIT ui.agents.publication.category.harassment_or_hate",
+      "disposition": "unchanged — re-filed as ES-R2-B3."
+    }
+  ],
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "keys_audited": 22,
+      "file_keys": {
+        "en": 22,
+        "es": 22
+      },
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "verdict": "changes_requested",
+      "sha256": {
+        "en": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+        "es": "77f986e5dcbf629b89cf05fa7b2e0624158eee10e9eb4c61b34a05d85c7c3539",
+        "context": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.pages.json",
+        "target": "src/i18n/catalogues/es/ui.agents.pages.json",
+        "context": "src/i18n/catalogues/en/ui.agents.pages.context.json"
+      },
+      "findings": [
+        {
+          "id": "ES-R2-P1",
+          "severity": "major",
+          "category": "fit",
+          "keys": [
+            "ui.agents.pages.scope.all",
+            "ui.agents.pages.scope.custom",
+            "ui.agents.pages.scope.installed",
+            "ui.agents.pages.scope.builtin"
+          ],
+          "current": "Todos / Personalizados / Instalados / Integrados",
+          "problem": "These four labels share one 288 px roster column (w-72, px-4 => 256px; the well's p-0.5 + 3 gaps leave 246px, 61.5px per equal segment; each Button is size=sm text-meta 0.75rem with px-2 padding and whitespace-nowrap). Measured with macOS SF Pro at 12px, the four strings need 34.3 + 85.6 + 57.8 + 60.6 = 238.3px of text, +64px padding = 302.3px, i.e. ~56px more than the row. English (All/Built-in/Custom/Installed) needs 210px and fits. The flex row cannot wrap and the labels cannot shrink (whitespace-nowrap/shrink-0), so the segments overflow the well or spill over each other.",
+          "proposed": "Shorten the set, e.g. Todos / Integrados / Propios / Del hub (measured 245.0px, 1px slack) or give this control more width / a 2x2 layout. If 'Propios' is adopted, align ui.agents.pages.empty.custom to 'No hay agentes propios.'; if 'Del hub' is adopted, keep the scope wording distinct from the hub tab and align empty.installed."
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "keys_audited": 47,
+      "file_keys": {
+        "en": 47,
+        "es": 47
+      },
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean",
+      "sha256": {
+        "en": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+        "es": "9dd48975937c3f08e7183a89a4ccfdec8909b28b13b159fd2e31128586bfc61f",
+        "context": "f1b0bbf296d01189d64cbdc9bb1bc77d3e7971d8f891c693b94af5741de58cd9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.detail.json",
+        "target": "src/i18n/catalogues/es/ui.agents.detail.json",
+        "context": "src/i18n/catalogues/en/ui.agents.detail.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.hub.pages": {
+      "namespace": "ui.hub.pages",
+      "keys_audited": 35,
+      "file_keys": {
+        "en": 35,
+        "es": 35
+      },
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean-with-findings",
+      "sha256": {
+        "en": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+        "es": "ccbcf384a7270728c37ef2ca94b924a9be49b16a52d7077f0d207ca36c235a2b",
+        "context": "baa1605388a3892267e503c2e9a2504a7c6ace8d92bbb380a2c72ccb33be4dcc"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+        "target": "src/i18n/catalogues/es/ui.hub.pages.json",
+        "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+      },
+      "findings": [
+        {
+          "id": "ES-R2-U1",
+          "severity": "nit",
+          "category": "idiom",
+          "keys": [
+            "ui.hub.pages.sort.most_favourited"
+          ],
+          "current": "Más favoritos",
+          "problem": "Round-1 nit, unchanged: understood but clipped as a sort option; the star action is 'Favoritos' elsewhere. 'Más veces en favoritos' is precise and still fits the w-48 trigger (~110px at 12px + padding < 192px).",
+          "proposed": "Más veces en favoritos"
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      }
+    },
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "keys_audited": 47,
+      "file_keys": {
+        "en": 47,
+        "es": 47
+      },
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "verdict": "changes_requested",
+      "sha256": {
+        "en": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+        "es": "bc06decff00e70bb568f5b56a107293eb3d109af181ebbf7e0a6367ab031c298",
+        "context": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.teams.json",
+        "target": "src/i18n/catalogues/es/ui.hub.teams.json",
+        "context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+      },
+      "findings": [
+        {
+          "id": "ES-R2-H1",
+          "severity": "major",
+          "category": "terminology",
+          "keys": [
+            "ui.hub.teams.pull",
+            "ui.hub.teams.pulling",
+            "ui.hub.teams.pull_target",
+            "ui.hub.teams.pull_failed",
+            "ui.hub.teams.public.intro",
+            "ui.hub.teams.public.sign_in_hint",
+            "ui.hub.teams.public.pull_failed",
+            "ui.hub.teams.public.pull_no_signin"
+          ],
+          "current": "Descargar · Descargando… · Descargar el equipo {name} · No se pudo descargar “{name}”. · … Al descargar uno, se copia … · … para descargar un equipo en esta máquina. · No se pudo descargar el equipo. · … y vuelve a descargarlo.",
+          "problem": "The glossary's wave-2 kept-English set and the es style guide both keep `pull` for hub operations ('commit, push, pull, merge, rebase ... inflect around them; never translate inside them'), and the shipped catalogue already words the same operation as 'hacer pull de los equipos' (ui.common.errors.teams_unsupported). These keys translate it as descargar, so the hub surface contradicts the term decision and the shipped copy. Round-1 majors on public.intro and public.sign_in_hint were not applied; the new keys extend the same choice. No exception is recorded in the es style guide.",
+          "proposed": "Keep the verb `pull`: 'Pull' / 'Haciendo pull…' / 'Hacer pull del equipo {name}' / 'No se pudo hacer pull de “{name}”.' / 'Al hacer pull de uno, se copia …' / '… para hacer pull de un equipo en esta máquina.' / 'No se pudo hacer pull del equipo.' / '… y vuelve a hacer pull.' The aria name must keep the visible label ('pull') for label-in-name. If the product genuinely wants 'descargar', land that as a glossary/style-guide change first (a genuine contradiction goes back to the glossary), not as a catalogue-only divergence."
+        },
+        {
+          "id": "ES-R2-H2",
+          "severity": "minor",
+          "category": "terminology",
+          "keys": [
+            "ui.hub.teams.manager",
+            "ui.hub.teams.manager_label"
+          ],
+          "current": "Responsable / Responsable:",
+          "problem": "Round-1 minor left open: 'Responsable' is good Spanish and consistent inside this batch (hub.teams, agents.teams, agents.config), but the shipped projects surface prints the English 'manager:' (ui.projects.project_start_session.team_manager_manager = 'Equipo · manager: {manager}'). No es-guide row records which term wins across surfaces.",
+          "proposed": "Record `manager -> responsable` in the es style guide and align the shipped projects string, or keep 'manager' here for cross-surface consistency. Not gating; the wording itself is acceptable."
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "ui.agents.teams": {
+      "namespace": "ui.agents.teams",
+      "keys_audited": 23,
+      "file_keys": {
+        "en": 23,
+        "es": 23
+      },
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean",
+      "sha256": {
+        "en": "139eca3cd41f62cfea0a97d6a9b40cff8aa446ea761b1f94d42334d1d576fdef",
+        "es": "06277afed06e40d7204b9377de2a634572fd562273f1f26064040a99552a31cd",
+        "context": "0b3f7f59a37c671813d9a5c9d32b242e04d0fa0b3c5605421c3129cab937bfc1"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.teams.json",
+        "target": "src/i18n/catalogues/es/ui.agents.teams.json",
+        "context": "src/i18n/catalogues/en/ui.agents.teams.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "keys_audited": 23,
+      "file_keys": {
+        "en": 23,
+        "es": 23
+      },
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean",
+      "sha256": {
+        "en": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+        "es": "123f5308aacb363585f7aeabbbd1c6bb891edbf1cd1ce83177f6c7377d4b66f1",
+        "context": "9c8ccc682885383f7aee9f77a1dbbb8c94a5d709e2de4ee9d76b40c7248a277a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "target": "src/i18n/catalogues/es/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "keys_audited": 28,
+      "file_keys": {
+        "en": 28,
+        "es": 28
+      },
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean",
+      "sha256": {
+        "en": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+        "es": "f50a99883456c26fac53ae4f4db52453f14282d8389e943149e18c9711d55e47",
+        "context": "5dd8f962ad021b0dc4004ea2531257b3fd70904e834f77b5f9b7b2d7266a48db"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.config.json",
+        "target": "src/i18n/catalogues/es/ui.agents.config.json",
+        "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.agents.publication": {
+      "namespace": "ui.agents.publication",
+      "keys_audited": 96,
+      "file_keys": {
+        "en": 96,
+        "es": 96
+      },
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "verdict": "changes_requested",
+      "sha256": {
+        "en": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+        "es": "34fd48e734fb15c0eac3db8b7fde7f1c700e37d578f262a60275d0de0e996af7",
+        "context": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.publication.json",
+        "target": "src/i18n/catalogues/es/ui.agents.publication.json",
+        "context": "src/i18n/catalogues/en/ui.agents.publication.context.json"
+      },
+      "findings": [
+        {
+          "id": "ES-R2-B1",
+          "severity": "major",
+          "category": "terminology",
+          "keys": [
+            "ui.agents.publication.hub_unauthorized.body_pull",
+            "ui.agents.publication.hub_unavailable.body_pull",
+            "ui.agents.publication.hub_unavailable.headline_pull",
+            "ui.agents.publication.insufficient_role.body_pull",
+            "ui.agents.publication.insufficient_role.body_with_role_pull",
+            "ui.agents.publication.local_failure.headline_pull",
+            "ui.agents.publication.not_a_member.body_pull",
+            "ui.agents.publication.team_plan_required.body_pull"
+          ],
+          "current": "No se descargó nada … vuelve a descargar. · La descarga no se completó · El equipo no se pudo descargar desde esta máquina · … y vuelve a descargar.",
+          "problem": "Same `pull` decision as ES-R2-H1: the English source says pulled/pull in these keys (it says 'downloaded/download' only in the pull.* refusal bodies, where 'descargar' is correct), and the glossary/style guide keep `pull`. The pull-surface bodies therefore use 'descargar' for the action the guides name 'pull'. Not applied from round 1's family finding.",
+          "proposed": "Use 'pull' for pulled/pull here: 'No se hizo pull de nada … vuelve a hacer pull.', 'El pull no se completó', 'No se pudo hacer pull del equipo desde esta máquina'. Leave the pull.* keys that say downloaded/download as 'descargar/descarga'."
+        },
+        {
+          "id": "ES-R2-B2",
+          "severity": "minor",
+          "category": "idiom",
+          "keys": [
+            "ui.agents.publication.hub_unavailable.body",
+            "ui.agents.publication.hub_unavailable.body_pull"
+          ],
+          "current": "… o actualiza el backend si el hub se ha movido.",
+          "problem": "'the hub has moved' is a calque: 'el hub se ha movido' reads as a physical move, not an endpoint/API change. Meaning is recoverable but not native product copy.",
+          "proposed": "… o actualiza el backend si el hub ha cambiado. (or 'si el hub ya no es el mismo')"
+        },
+        {
+          "id": "ES-R2-B3",
+          "severity": "nit",
+          "category": "accuracy",
+          "keys": [
+            "ui.agents.publication.category.harassment_or_hate"
+          ],
+          "current": "No se pueden publicar instrucciones para acosar, amenazar o atacar a personas.",
+          "problem": "Round-1 nit, unchanged: 'target' (single out) is rendered 'atacar' (physically attack); the category is harassment/hate, and the refusal is not softened either way.",
+          "proposed": "No se pueden publicar instrucciones para acosar, amenazar o dirigirse contra personas."
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 1,
+        "nit": 1
+      }
+    }
+  }
+}

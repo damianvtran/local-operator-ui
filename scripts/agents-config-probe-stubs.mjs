@@ -6,8 +6,9 @@
  * the transcript source (the delta schedule IS the test's input), the capability
  * read (a fixed answer), the query client (one stable object — a fresh one per
  * render would move `settleRun`'s identity and re-arm the probe for a reason
- * that is not the code under test), and the watch lease / toast / interrupt
- * (side surfaces with no part in the probe's cadence).
+ * that is not the code under test — together with the `desktopKeys` table its
+ * callers invalidate through), and the watch lease / toast / interrupt (side
+ * surfaces with no part in the probe's cadence).
  */
 import { useEffect, useState } from "react";
 
@@ -82,3 +83,14 @@ const queryClient = {
 export function useQueryClient() {
 	return queryClient;
 }
+
+/*
+ * The query-key table the client above is addressed through. Only `capabilities`
+ * is mirrored: the reached import graph is `use-config-run` -> `@shared/i18n` ->
+ * `shared/i18n/language-writes.ts`, whose `renegotiateLanguage` invalidates that
+ * one key. A wholesale copy would be a second home for the real table
+ * (`shared/api/local-operator/desktop-hooks.ts`) with nothing reading it.
+ */
+export const desktopKeys = {
+	capabilities: ["desktop", "capabilities"],
+};

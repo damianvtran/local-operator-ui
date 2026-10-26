@@ -343,6 +343,59 @@ export type TeamBridgeDirectoryAgent = z.infer<
 	typeof teamBridgeDirectoryAgentSchema
 >;
 
+/*
+ * A person's public presentation, carried on the directory row so message and
+ * member hover cards need no second read. The server has already normalized
+ * and bounded these values; absent profile data stays absent, rather than
+ * turning into empty UI. `avatar_url` is relative and hash-pinned, never a
+ * provider URL: the renderer hands its path to main's authenticated relay.
+ */
+export const teamBridgeProfileSchema = z
+	.object({
+		display_name: z
+			.string()
+			.refine((value) => Array.from(value).length <= 64)
+			.catch(""),
+		title: z
+			.string()
+			.refine((value) => Array.from(value).length <= 80)
+			.catch(""),
+		description: z
+			.string()
+			.refine((value) => Array.from(value).length <= 500)
+			.catch(""),
+		pronouns: z
+			.string()
+			.refine((value) => Array.from(value).length <= 32)
+			.catch(""),
+		timezone: z
+			.string()
+			.refine((value) => Array.from(value).length <= 64)
+			.catch(""),
+		avatar: z
+			.object({
+				source: z.enum(["uploaded", "google", "microsoft", "none"]),
+				hash: z.string().regex(/^[0-9a-f]{16}$/),
+				updated_at: z.string(),
+			})
+			.passthrough()
+			.optional()
+			.catch(undefined),
+	})
+	.passthrough();
+export type TeamBridgeProfile = z.infer<typeof teamBridgeProfileSchema>;
+
+// The hub uses UUIDs; legacy accounts use acc_. Keep the transport-safe
+// subset rather than accepting arbitrary escaped path segments from old rows.
+export const teamBridgeAvatarUrlSchema = z
+	.string()
+	.max(512)
+	.regex(
+		/^\/v1\/accounts\/(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|acc_[a-zA-Z0-9_-]{1,64})\/avatar\?v=[0-9a-f]{16}$/,
+	)
+	.optional()
+	.catch(undefined);
+
 export const teamBridgeDirectoryMemberSchema = z
 	.object({
 		account_id: id,
@@ -367,6 +420,8 @@ export const teamBridgeDirectoryMemberSchema = z
 		 * colleague; only the agent shortcut is withheld.
 		 */
 		agent: teamBridgeDirectoryAgentSchema.optional().catch(undefined),
+		profile: teamBridgeProfileSchema.optional().catch(undefined),
+		avatar_url: teamBridgeAvatarUrlSchema,
 	})
 	.passthrough();
 export type TeamBridgeDirectoryMember = z.infer<
@@ -405,6 +460,13 @@ function salvageDirectoryMember(
 		bridge_enabled: bridgeEnabled,
 		bridge_state: state.success ? state.data : "none",
 		...(agent.success ? { agent: agent.data } : {}),
+		profile: teamBridgeProfileSchema.safeParse(candidate.profile).success
+			? teamBridgeProfileSchema.parse(candidate.profile)
+			: undefined,
+		avatar_url: teamBridgeAvatarUrlSchema.safeParse(candidate.avatar_url)
+			.success
+			? teamBridgeAvatarUrlSchema.parse(candidate.avatar_url)
+			: undefined,
 	};
 }
 
