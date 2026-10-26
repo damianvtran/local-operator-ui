@@ -17,7 +17,8 @@
  * while a turn streams, and a stamp that woke every second would put a render
  * behind each of them for a value that changes once a day. The store below
  * therefore arms a single `setTimeout` to the next local midnight on the first
- * subscriber and clears it when the last one leaves, so a mounted transcript
+ * subscriber, keeps it while later subscribers agree on the deadline (see
+ * `arm`), and clears it when the last one leaves, so a mounted transcript
  * costs one timer and one render per day, and an unmounted one costs neither.
  *
  * LOCAL MIDNIGHT, NOT A 24-HOUR DELAY: `nextLocalDayStart` builds the next
@@ -54,19 +55,69 @@ export const msUntilNextLocalDay = (ms: number): number => {
 
 let snapshot = localDayStart(Date.now());
 let timer: ReturnType<typeof setTimeout> | null = null;
+/*
+ * What the pending timer was aimed at, and the two clocks' readings when it was
+ * armed. Together they answer "is the pending timer still the right one?"
+ * without touching it - see `arm`.
+ */
+let pendingDeadline = 0;
+let armedWall = 0;
+let armedMono = 0;
 const listeners = new Set<() => void>();
+
+/*
+ * How far the wall clock may move against the monotonic one before the pending
+ * timer is presumed stale. A second is far above the jitter of reading two
+ * clocks back to back, and far below any suspend or clock step worth noticing.
+ */
+const CLOCK_DRIFT_TOLERANCE_MS = 1000;
+
+/*
+ * The monotonic clock a `setTimeout` delay is measured on. Absent in no runtime
+ * this module ships to; the fallback only keeps a bare test runner from throwing,
+ * and it makes every drift read 0 (so the deadline comparison alone decides).
+ */
+const monoNow = (): number =>
+	typeof performance === "undefined" ? Date.now() : performance.now();
 
 const arm = (): void => {
 	/*
-	 * RE-ARMED ON EVERY SUBSCRIBE rather than only when no timer is pending, and
-	 * the difference is not tidiness: the deadline is a function of the clock, so
-	 * a timer armed before a suspend/resume, a `TZ` change, or a test's mocked
-	 * clock would keep the OLD deadline and the day would never turn for the new
-	 * subscriber. Clearing first keeps the one-timer property (a transcript
-	 * mounting six stamps re-arms six times and still holds one timer) while
-	 * making the pending deadline always the current clock's.
+	 * THE DEADLINE IS RECOMPUTED ON EVERY SUBSCRIBE, AND THE TIMER IS REPLACED
+	 * ONLY WHEN IT WOULD BE WRONG. The deadline is a function of the clock, so a
+	 * timer armed before a suspend/resume, a `TZ` change, or a test's mocked clock
+	 * can carry the OLD deadline and the day would never turn for the new
+	 * subscriber - which is why every subscribe re-derives it. But re-arming
+	 * unconditionally (what this did until the conversation-first-paint work)
+	 * cost a `clearTimeout` + `setTimeout` pair per stamped row: a transcript
+	 * mounting 61 rows did 61 scheduler round trips inside its one mount task to
+	 * leave exactly the timer it started with (renderer profile §4 L2-d).
+	 *
+	 * The pending timer is kept when BOTH hold:
+	 *   - the freshly computed deadline equals the one it was armed for (same
+	 *     local day, same zone: a `TZ` change or a day turned while asleep moves
+	 *     the next local midnight, so it fails this);
+	 *   - the wall clock has not moved against the monotonic clock since it was
+	 *     armed. A `setTimeout` delay runs on monotonic time, which does not
+	 *     advance while the machine sleeps; a suspend that ends on the SAME day
+	 *     keeps the deadline equal but leaves the timer due late by the length
+	 *     of the sleep. That is the case the deadline alone cannot see, and the
+	 *     drift check is what keeps the documented suspend property.
+	 * Otherwise it is cleared first, so the one-timer property still holds.
 	 */
+	const now = Date.now();
+	const deadline = now + msUntilNextLocalDay(now);
+	const mono = monoNow();
+	if (
+		timer !== null &&
+		deadline === pendingDeadline &&
+		Math.abs(now - armedWall - (mono - armedMono)) <= CLOCK_DRIFT_TOLERANCE_MS
+	) {
+		return;
+	}
 	if (timer !== null) clearTimeout(timer);
+	pendingDeadline = deadline;
+	armedWall = now;
+	armedMono = mono;
 	timer = setTimeout(() => {
 		timer = null;
 		snapshot = localDayStart(Date.now());
@@ -75,7 +126,7 @@ const arm = (): void => {
 		// (they are what keeps the timer alive), so the store stays armed until
 		// the last of them unsubscribes.
 		arm();
-	}, msUntilNextLocalDay(Date.now()));
+	}, deadline - now);
 	// A pending midnight must not hold the process or the app open on its own.
 	timer.unref?.();
 };

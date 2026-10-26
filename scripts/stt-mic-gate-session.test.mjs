@@ -56,6 +56,7 @@ const bundle = await build({
 			import { radientUserKeys, useRadientUserQuery } from "./src/renderer/src/shared/hooks/use-radient-user-query";
 			import { MessageControls } from "./src/renderer/src/features/chat/components/message-item/message-controls";
 			import { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
+			import { SpeechGateScope } from "./src/renderer/src/shared/components/common/speak-control";
 			import { radientSpeechBlock, speechUnavailableReason } from "./src/renderer/src/shared/lib/speech-gate";
 			import { serverHealthQueryKey } from "./src/renderer/src/shared/hooks/use-connectivity-status";
 
@@ -140,6 +141,33 @@ const bundle = await build({
 							agentId: "a-speech-gate",
 							speechId: "m-answer-actions",
 						}),
+					),
+				);
+				return root;
+			};
+
+			/*
+			 * N answer rows, either inside ONE \`SpeechGateScope\` (how the transcript
+			 * pane mounts them) or bare (each row runs its own probe - the shape
+			 * before the hoist, kept as the counter's negative control). No probe
+			 * publisher rides beside them: it would add its own observers to the
+			 * count this mount exists to take.
+			 */
+			export const mountRows = (container, client, count, scoped) => {
+				const root = createRoot(container);
+				const rows = Array.from({ length: count }, (_, at) =>
+					createElement(AnswerActionRow, {
+						key: at,
+						bodyText: "The answer row " + at + ".",
+						agentId: "a-speech-gate",
+						speechId: "m-scoped-" + at,
+					}),
+				);
+				root.render(
+					createElement(
+						QueryClientProvider,
+						{ client },
+						scoped ? createElement(SpeechGateScope, null, rows) : rows,
 					),
 				);
 				return root;
@@ -535,6 +563,7 @@ const {
 	mountActionsRow,
 	mountControls,
 	mountProbe,
+	mountRows,
 	radientUserKeys,
 	radientSpeechBlock,
 	speechUnavailableReason,
@@ -1225,6 +1254,141 @@ test("the row's offline sentence follows the server, not a sentence of its own (
 		answerRowSpeakButton(container).parentElement,
 		"Speaking aloud is unavailable while Local Operator is offline",
 	);
+});
+
+/*
+ * ONE CREDENTIAL OBSERVER SET PER SCOPE, NOT PER ROW (renderer profile §4 L2-b).
+ *
+ * Every answer row carries a Speak control, and the control used to run the
+ * credential probe itself: four shared reads, each a TanStack \`QueryObserver\`
+ * per caller, so a 61-row transcript mounted 61 observer sets in its mount task.
+ * The pane now wraps its rows in \`SpeechGateScope\`, which runs the probe once.
+ *
+ * WHAT IS COUNTED is the query cache's own observer tally
+ * (\`query.getObserversCount()\` summed over every query on the client) after the
+ * reads settle - the number react-query itself keeps, not a spy of ours. The
+ * claim is "independent of N", so the scoped count is taken at N = 1 and N = 24
+ * and must be EQUAL; the bare mount at N = 24 is the negative control, proving
+ * the counter sees per-row observers when they exist (a counter that read 0
+ * everywhere would pass the equality alone).
+ */
+const observerCount = (client) =>
+	client
+		.getQueryCache()
+		.getAll()
+		.reduce((sum, query) => sum + query.getObserversCount(), 0);
+
+async function mountRowsRig(state, count, scoped) {
+	bridge.account = state.account;
+	bridge.keys = state.keys ?? [];
+	bridge.credentialsFail = false;
+	bridge.credentialsCalls = 0;
+	bridge.radientCalls = 0;
+	bridge.holdAccount = false;
+	bridge.holdCapabilities = false;
+	bridge.capabilitiesFail = false;
+	bridge.backendRadient = true;
+	healthFails = false;
+	const client = clientForRig();
+	const container = containerForRig();
+	let root;
+	await act(async () => {
+		root = mountRows(container, client, count, scoped);
+	});
+	roots.push(root);
+	return { client, container };
+}
+
+const rowSpeakButtons = (container) => [
+	...container.querySelectorAll(
+		'[data-lo-answer-actions] button[aria-label="Speak aloud"]',
+	),
+];
+
+test("N answer rows under one scope mount ONE credential observer set, independent of N", async (t) => {
+	const settle = async (container, count) => {
+		await until(
+			() =>
+				rowSpeakButtons(container).length === count &&
+				rowSpeakButtons(container).every((b) => !b.hasAttribute("disabled")),
+			`${count} enabled speak controls`,
+		);
+	};
+	const one = await mountRowsRig({ account: "signed-in" }, 1, true);
+	await settle(one.container, 1);
+	const scopedOne = observerCount(one.client);
+
+	const many = await mountRowsRig({ account: "signed-in" }, 24, true);
+	await settle(many.container, 24);
+	const scopedMany = observerCount(many.client);
+
+	const bare = await mountRowsRig({ account: "signed-in" }, 24, false);
+	await settle(bare.container, 24);
+	const bareMany = observerCount(bare.client);
+
+	t.diagnostic(
+		`query observers: scoped N=1 -> ${scopedOne}, scoped N=24 -> ${scopedMany}, unscoped N=24 -> ${bareMany}`,
+	);
+	assert.ok(
+		scopedOne > 0,
+		`the scope's probe observes its reads (${scopedOne})`,
+	);
+	assert.equal(
+		scopedMany,
+		scopedOne,
+		`24 scoped rows hold exactly the observers 1 scoped row holds (${scopedMany} vs ${scopedOne})`,
+	);
+	assert.ok(
+		bareMany >= 24 * scopedOne,
+		`negative control: 24 unscoped rows hold one set EACH (${bareMany} >= 24 x ${scopedOne})`,
+	);
+});
+
+test("a credential change still reaches every scoped row, gate and reason", async () => {
+	const { client, container } = await mountRowsRig(
+		{ account: "signed-out" },
+		6,
+		true,
+	);
+	await until(
+		() =>
+			rowSpeakButtons(container).length === 6 &&
+			rowSpeakButtons(container).every((b) => b.hasAttribute("disabled")),
+		"six disabled controls while signed out",
+	);
+	/*
+	 * The REASON is the gate's, read through the scope: the last row's tooltip
+	 * carries the sign-in sentence, the one the per-row probe used to give it.
+	 */
+	await openTooltip(
+		rowSpeakButtons(container)[5].parentElement,
+		"Sign in to Radient in Settings to enable speaking aloud",
+	);
+
+	// The sign-in funnel's own event (see the flip case above): the account read is invalidated.
+	bridge.account = "signed-in";
+	await act(async () => {
+		await client.invalidateQueries({ queryKey: radientUserKeys.all });
+	});
+	await until(
+		() => rowSpeakButtons(container).every((b) => !b.hasAttribute("disabled")),
+		"every scoped row's control to enable on the one probe's re-read",
+	);
+
+	// And back: the server going away re-states every row's reason as the offline one.
+	healthFails = true;
+	await act(async () => {
+		await client.invalidateQueries({ queryKey: serverHealthQueryKey });
+	});
+	await until(
+		() => rowSpeakButtons(container).every((b) => b.hasAttribute("disabled")),
+		"every scoped row's control to disable when the server goes offline",
+	);
+	await openTooltip(
+		rowSpeakButtons(container)[0].parentElement,
+		"Speaking aloud is unavailable while Local Operator is offline",
+	);
+	healthFails = false;
 });
 
 test("a recovered Radient read re-asks and the control recovers (UX round 1, U1)", async () => {
