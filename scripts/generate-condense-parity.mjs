@@ -67,19 +67,29 @@ const SHAPE_SOURCES = [
 ];
 
 /**
- * THE SHAPES EACH DECLARED SUITE DRIVES, in the token grammar.
+ * A HAND-BUILT TIER CORPUS, grouped by the SUITE whose decision each case targets.
  *
- * WHY A CATALOGUE AND NOT ONLY A HARVEST. `turn-segments.test.mjs` builds its
- * fixtures as shape strings, so they are read straight out of the file. The other
- * two suites build them from local helpers (`row("a")`, `tool("t1", …)`,
- * `custom("j1", "job_result")`), which no regex can turn into a sequence — and a
- * generator that silently harvested ZERO shapes from two of its three declared
- * sources is how the first corpus ended up pinning one tool kind and no
- * failures. So each suite's shapes are stated here, one entry per suite, and the
- * test asserts every declared source contributes and that the harvested literals
- * are all present. A suite that gains a shape the catalogue cannot express is a
- * review-visible edit to this table, which is the honest cost of a corpus that a
- * reader can audit.
+ * WHAT THIS IS, precisely (agent review round 2, C0-n2 - the round-1 header
+ * overclaimed). It is NOT a harvest of what those suites drive: only
+ * `turn-segments.test.mjs` writes its fixtures as shape strings, and the other two
+ * build them from local helpers (`row("a")`, `tool("t1", …)`, `custom("j1", …)`),
+ * which no regex can turn into a sequence. So these shapes were written by hand,
+ * grouped under the suite whose ARM each one exercises:
+ * - the partition suite: turn boundaries and cycle opens;
+ * - the plan suite: settled turns, head-cut runs, live cycles, quiet groups and the
+ *   failure tally;
+ * - the fold suite: the run thresholds, the class/kind/name count line, the receipt
+ *   families and the tail.
+ *
+ * THE COST OF HAND-KEEPING IS VISIBLE ON PURPOSE. A suite that gains a shape this
+ * table cannot express is a review-visible edit here, and the generator THROWS on a
+ * catalogue entry the grammar cannot build rather than filtering it out - the first
+ * version used letters that were never tokens and they vanished silently.
+ *
+ * The literal harvest still runs beside this table and covers the one suite that
+ * writes shapes as strings; its widened regex also picks up English test titles from
+ * the other two, which the token filter then drops. Nothing is lost by that, and it
+ * is why the contribution test asserts the table, not the harvest.
  */
 const SUITE_SHAPES = {
 	/*
@@ -178,7 +188,19 @@ const PERMUTATIONS = [
 ];
 
 /** The bundle the suites build, narrowed to what the fixture reads. */
-async function loadModel() {
+/**
+ * THE BUNDLE, and the exact list of repository files it reads.
+ *
+ * WHY THE LIST COMES FROM ESBUILD AND NOT FROM THIS FILE. The pin's whole claim is
+ * "the fixture was generated from these sources", and round 1 listed seven files by
+ * hand while the bundle actually pulls in twenty - so a decision-changing edit to
+ * any of the other thirteen moved the fixture's bytes with the SOURCE pin standing
+ * still. `metafile.inputs` is esbuild's own answer to "what did this build read",
+ * so it cannot drift from the build it describes. Three inputs are not repository
+ * files and are dropped: the synthetic stdin entry, and any `node_modules` path
+ * (a dependency bump is not a model change, and the lockfile already pins it).
+ */
+async function bundleModel() {
 	const bundle = await build({
 		stdin: {
 			contents: [
@@ -199,8 +221,23 @@ async function loadModel() {
 		format: "esm",
 		platform: "node",
 		write: false,
+		metafile: true,
 	});
-	const url = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
+	return {
+		code: bundle.outputFiles[0].text,
+		inputs: Object.keys(bundle.metafile.inputs)
+			.filter(
+				(input) => !input.includes("node_modules") && !input.startsWith("<"),
+			)
+			.map((input) => input.replace(/^\.\//, ""))
+			.sort(),
+	};
+}
+
+/** The loaded model, for the generator's own use. */
+async function loadModel() {
+	const { code } = await bundleModel();
+	const url = `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
 	return import(url);
 }
 
@@ -390,8 +427,8 @@ function mulberry32(seed) {
  * from the whole grammar spends most of its cases on shapes the PHONE cannot
  * replay - the first corpus's 120 seeded cases were 110 of that kind. One case in
  * eight still draws from the full grammar, so an interleaving that mixes a quiet
- * call into a real turn is covered; the rest draw from the expressible pool, so
- * eleven of every twelve seeded cases are a shared decision both surfaces owe.
+ * call into a real turn is covered; the other SEVEN IN EIGHT draw from the
+ * expressible pool, so most seeded cases are a shared decision both surfaces owe.
  */
 const QUIET_TOKENS = new Set(["Z", "R"]);
 const EXPRESSIBLE_TOKENS = TOKENS.filter((token) => !QUIET_TOKENS.has(token));
@@ -456,33 +493,31 @@ function latchFrames(model, tokens) {
  *
  * WHY A SOURCE HASH AND NOT `git rev-parse HEAD`. A commit cannot contain its own
  * SHA, so a fixture that embeds HEAD is stale the moment it is committed: the
- * freshness check then fails on every commit — the gate nobody can pass. The
- * source files ARE what the decisions came from, they are committed beside the
- * fixture, and their hash can be recomputed from the working tree at any commit.
- * So the pin is stable and, unlike a commit id, self-verifying: it fails if a
- * bundled model file changes without a regeneration, which is the drift this file
- * exists to catch.
+ * freshness check then fails on every commit - the gate nobody can pass. The source
+ * files ARE what the decisions came from, they are committed beside the fixture, and
+ * their hash can be recomputed at any commit. So the pin is stable and, unlike a
+ * commit id, self-verifying: it fails if a bundled model file changes without a
+ * regeneration, which is the drift this file exists to catch.
+ *
+ * WHAT IT COVERS: every repository file the bundle reads, taken from esbuild's own
+ * metafile (`bundleModel().inputs`). Round 1 hand-listed seven of the twenty, so a
+ * change to one of the other thirteen moved the fixture while this pin stood still.
  */
-export const MODEL_SOURCES = [
-	"src/renderer/src/features/chat/canonical/trace-fold-model.ts",
-	"src/renderer/src/features/chat/canonical/transcript-rows.ts",
-	"src/renderer/src/features/chat/canonical/turn-collapse-model.ts",
-	"src/renderer/src/features/chat/canonical/turn-segments.ts",
-	"src/renderer/src/features/chat/transcript-display-mode.ts",
-	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
-	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
-];
-
-/** The hash of those sources' paths and bytes, in a fixed order. */
-export function modelSourceHash() {
+export async function modelSourceHash() {
+	const { inputs } = await bundleModel();
 	const digest = createHash("sha256");
-	for (const file of MODEL_SOURCES) {
+	for (const file of inputs) {
 		digest.update(file);
 		digest.update("\u0000");
 		digest.update(readFileSync(join(ROOT, file)));
 		digest.update("\u0000");
 	}
 	return digest.digest("hex");
+}
+
+/** The repository files the bundle reads, sorted: what the source pin covers. */
+export async function bundledSources() {
+	return (await bundleModel()).inputs;
 }
 
 /** The shapes each declared suite drives, for the corpus-coverage test. */
@@ -539,8 +574,8 @@ export async function generate() {
 			"see the generator's header for why. A client with its own record type maps the " +
 			"fixture's row vocabulary onto its own shape; the DERIVATION is the shared thing.",
 		desktop: {
-			sourceHash: modelSourceHash(),
-			modelSources: MODEL_SOURCES,
+			sourceHash: await modelSourceHash(),
+			modelSources: await bundledSources(),
 			sources: SHAPE_SOURCES,
 			seed: SEED,
 			propertyCases: PROPERTY_CASES,

@@ -34,13 +34,14 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
-	MODEL_SOURCES,
 	SHAPES_BY_SOURCE,
+	bundledSources,
 	generate,
 	harvestShapes,
 	modelSourceHash,
@@ -79,7 +80,7 @@ test("the fixture's bytes are the ones the manifest's sha256 names", () => {
 	assert.equal(MANIFEST.file, "fixtures/condense.parity.json");
 });
 
-test("the fixture pins the model source it came from, and the pin verifies", () => {
+test("the fixture pins the model source it came from, and the pin verifies", async () => {
 	/*
 	 * THE PIN IS THE SOURCE HASH, NOT THE COMMIT (C0-B1). A commit cannot contain
 	 * its own SHA, so a fixture that embedded `git rev-parse HEAD` was stale at the
@@ -89,16 +90,39 @@ test("the fixture pins the model source it came from, and the pin verifies", () 
 	 * pass, because it fails exactly when a bundled model file moves without a
 	 * regeneration.
 	 */
-	const live = modelSourceHash();
+	const live = await modelSourceHash();
 	assert.equal(
 		FIXTURE.desktop.sourceHash,
 		live,
 		"a bundled model source changed without regenerating the fixture",
 	);
 	assert.equal(MANIFEST.sourceHash, FIXTURE.desktop.sourceHash);
-	assert.deepEqual(FIXTURE.desktop.modelSources, MODEL_SOURCES);
+	/*
+	 * AND THE LIST IS DERIVED, NOT DECLARED: it is compared with esbuild's own
+	 * metafile answer for the bundle this tree would produce, so a source the
+	 * generator starts reading has to appear in the pin (round 2, C0-m3 - round 1
+	 * hashed seven of the twenty and called it "the model source").
+	 */
+	const derived = await bundledSources();
+	assert.deepEqual(FIXTURE.desktop.modelSources, derived);
+	assert.ok(
+		derived.length >= 20,
+		`the bundle reads ${derived.length} repository files`,
+	);
+	assert.ok(
+		derived.every((file) => file.startsWith("src/")),
+		"every pinned source is a repository source file",
+	);
+	for (const core of [
+		"src/renderer/src/features/chat/canonical/transcript-reducer.ts",
+		"src/renderer/src/features/chat/canonical/turn-segments.ts",
+	])
+		assert.ok(
+			derived.includes(core),
+			`${core} is read by the bundle and must be pinned`,
+		);
 	/* Every pinned source exists in the tree this test is running against. */
-	for (const file of MODEL_SOURCES) readFileSync(join(HERE, "..", file));
+	for (const file of derived) readFileSync(join(HERE, "..", file));
 });
 
 test("every declared source suite contributes shapes to the corpus", () => {
@@ -293,14 +317,6 @@ test("generation is deterministic", async () => {
 	);
 });
 
-test("the fixture's shape count is what the suites drive, not a snapshot of one", () => {
-	/* `harvestShapes` is `[...new Set(...)].sort()`, so a duplicate cannot survive it;
-	 * this asserts the SORTED union, which is the property the corpus iterates. */
-	const shapes = harvestShapes();
-	assert.deepEqual(shapes, [...shapes].sort());
-	assert.equal(new Set(shapes).size, shapes.length);
-});
-
 test("the generator's entry point is resolved, not guessed", () => {
 	/*
 	 * THE SILENT NO-OP THIS PINS (C0-M1). `process.argv[1] === import.meta.url`
@@ -323,15 +339,31 @@ test("the generator's entry point is resolved, not guessed", () => {
 		/process\.argv\[1\]\s*===/,
 		"a raw argv[1] comparison is the symlink no-op scripts/entry-point.mjs exists to remove",
 	);
-	/* And the helper itself agrees that a symlinked spelling runs the file. */
-	const out = execFileSync(
-		"node",
-		[
-			"-e",
-			"process.stdout.write(require('node:url').pathToFileURL(process.argv[1]).href)",
-			join(HERE, "generate-condense-parity.mjs"),
-		],
-		{ encoding: "utf8" },
-	);
-	assert.ok(out.startsWith("file://"));
+	/*
+	 * AND THE SYMLINKED SPELLING IS EXERCISED FOR REAL. The assertion this replaces
+	 * only checked that `pathToFileURL(x).href` starts with `file://`, which holds
+	 * for any path and never called the helper - a test that could not fail (round 2,
+	 * C0-m4). A symlinked DIRECTORY is the case the helper exists for (`/tmp` on
+	 * macOS is the ordinary one), so the generator is run through one and its output
+	 * is read: `current` here, and STALE in the probe the remediation records.
+	 */
+	const linkRoot = mkdtempSync(join(tmpdir(), "condense-parity-link-"));
+	const link = join(linkRoot, "tree");
+	symlinkSync(join(HERE, ".."), link, "dir");
+	try {
+		const output = execFileSync(
+			"node",
+			[join(link, "scripts/generate-condense-parity.mjs"), "--check"],
+			{
+				encoding: "utf8",
+			},
+		);
+		assert.match(
+			output,
+			/condense parity fixture is current/,
+			"a symlinked invocation must actually run",
+		);
+	} finally {
+		rmSync(linkRoot, { recursive: true, force: true });
+	}
 });
