@@ -1134,11 +1134,21 @@ test("the plan remedy names the Team plan and the console", () => {
 	for (const source of [page, roster, failure]) {
 		assert.doesNotMatch(source, /active team plan/);
 	}
-	// C5: plan activation happens in the console, and the sentence says so.
+	// C5: plan activation happens in the console, and the sentence says so. The
+	// roster's and the table's wording is catalogue copy, so the source pins follow
+	// the KEYS and the catalogue pins check the wording itself.
 	assert.match(page, /can activate it in the Radient console/);
-	assert.match(roster, /can activate it in the Radient console/);
+	assert.match(roster, /t\("ui\.hub\.teams\.org\.plan_body"/);
+	assert.match(
+		read("src/i18n/catalogues/en/ui.hub.teams.json"),
+		/can activate it in the Radient console/,
+	);
 	assert.match(
 		failure,
+		/t\("ui\.agents\.publication\.team_plan_required\.body"/,
+	);
+	assert.match(
+		read("src/i18n/catalogues/en/ui.agents.publication.json"),
 		/activate it in the Radient console, then publish again/,
 	);
 	// C4: the plural branch reads as a plural. It lives in the DIALOG, beside the

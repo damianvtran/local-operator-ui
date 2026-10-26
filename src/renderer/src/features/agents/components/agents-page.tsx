@@ -145,6 +145,27 @@ const SCOPE_LABEL = {
 } as const satisfies Record<Scope, MessageKey>;
 
 /**
+ * The EMPTY-ROSTER sentence per scope, each a whole sentence rather than a label
+ * glued into one.
+ *
+ * WHY NOT "No {label} agents.". The old copy interpolated the segment label and
+ * lowercased it in code (`SCOPE_LABEL[scope].toLowerCase()`) — and `SCOPE_LABEL`
+ * holds KEY IDS, so what rendered was a lowercased id (`no ui.agents.pages.scope.
+ * custom agents.`) in every locale. Translating the label first would not have
+ * been enough either: the lowercasing exists only because English drops the
+ * capital of an adjective sitting mid-sentence, which is a property of English
+ * sentence casing rather than of the label — it mangles caseless scripts and
+ * fights languages that capitalise differently. So each scope owns its sentence
+ * and its translator owns its casing.
+ */
+const EMPTY_BY_SCOPE = {
+	all: "ui.agents.pages.empty.agents",
+	custom: "ui.agents.pages.empty.custom",
+	installed: "ui.agents.pages.empty.installed",
+	builtin: "ui.agents.pages.empty.builtin",
+} as const satisfies Record<Scope, MessageKey>;
+
+/**
  * WHERE "KEEP EDITING" MAY PUT FOCUS BACK, which is never on a control whose focus
  * DOES something (UX review round 3 U3; QA round 3 Q1).
  *
@@ -767,12 +788,10 @@ export function AgentsPage() {
 					) : rows.length === 0 ? (
 						<p className="px-1 py-2 text-body-sm text-ink-muted">
 							{search
-								? `Nothing matches “${search}”.`
+								? t("ui.agents.pages.empty.search", { query: search })
 								: teamMode
-									? "No teams yet. Ask for one below, or add one by hand."
-									: scope === "all"
-										? "No agents yet. Ask for one below, or add one by hand."
-										: `No ${SCOPE_LABEL[scope].toLowerCase()} agents.`}
+									? t("ui.agents.pages.empty.teams")
+									: t(EMPTY_BY_SCOPE[scope])}
 						</p>
 					) : (
 						<Roster

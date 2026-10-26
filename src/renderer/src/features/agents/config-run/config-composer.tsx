@@ -807,8 +807,13 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 				{run.results.map((result) => (
 					<li key={`${result.target.kind}:${result.target.name}`}>
 						<span className="text-ink">
-							{result.created ? "Created " : "Updated "}
-							{result.target.name}
+							{result.created
+								? t("ui.agents.config.summary.created", {
+										name: result.target.name,
+									})
+								: t("ui.agents.config.summary.updated", {
+										name: result.target.name,
+									})}
 						</span>
 						<span className="text-ink-muted"> ({result.target.kind})</span>
 						{result.changes.length > 0 ? (
@@ -818,9 +823,8 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 							</span>
 						) : result.created ? null : (
 							<span className="text-ink-muted">
-								{
-									": its settings changed. The list does not show instructions, so open it to see what was written."
-								}
+								{": "}
+								{t("ui.agents.config.summary.hidden_changes")}
 							</span>
 						)}
 					</li>

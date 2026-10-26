@@ -109,6 +109,16 @@
 		"plain, factual",
 		"The empty-result counterpart of stopped.kept; says nothing had been changed yet, rather than showing a kept-changes list with no rows."
 	],
+	"ui.agents.config.summary.created": {
+		"note": "One line of the finished run's summary: the run created this definition. {name} is the agent or team name as the registry stores it, never translated. A colon and the changed-field list follow the name, so do not end the line with punctuation.",
+		"role": "summary line lead in a completed configuration run",
+		"tone": "plain past tense"
+	},
+	"ui.agents.config.summary.hidden_changes": {
+		"note": "Continues an 'Updated {name}' line after a colon, when the run changed settings the summary cannot list (the instructions, which the list does not print). Starts lowercase because it follows the colon; a locale may need different punctuation or casing there.",
+		"role": "second clause of a summary line in a completed configuration run",
+		"tone": "plain, explains a gap"
+	},
 	"ui.agents.config.summary.no_changes": [
 		"settled sentence when the run changed nothing",
 		"plain, factual",
@@ -119,6 +129,11 @@
 		"plain, factual",
 		"Says the listed changes are the whole change set, so a reader does not go looking for more. One line."
 	],
+	"ui.agents.config.summary.updated": {
+		"note": "One line of the finished run's summary: the run changed an existing definition. {name} is the agent or team name as the registry stores it, never translated. A colon and the changed-field list follow the name, so do not end the line with punctuation.",
+		"role": "summary line lead in a completed configuration run",
+		"tone": "plain past tense"
+	},
 	"ui.agents.config.summary.you_asked": [
 		"quoted request under the answer",
 		"plain, factual",

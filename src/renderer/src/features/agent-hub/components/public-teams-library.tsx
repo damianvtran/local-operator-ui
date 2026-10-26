@@ -198,8 +198,8 @@ export const PublicTeamsLibrary: FC<{
 				 * because a reader of this window can act on the settings page and not on a
 				 * CLI.
 				 */
-				"The team could not be pulled: this machine has no Radient sign-in for the hub. Sign in on the settings page, then pull again."
-			: "The team could not be pulled.");
+				t("ui.hub.teams.public.pull_no_signin")
+			: t("ui.hub.teams.public.pull_failed"));
 
 	const [reauthenticating, setReauthenticating] = useState(false);
 	const runTreatmentAction = (action: PublicationAction, team: HubTeamRow) => {
@@ -385,7 +385,9 @@ export const PublicTeamsLibrary: FC<{
 							className="max-w-2xl text-body-sm text-ink-muted"
 							data-testid="agent-hub-public-teams-search-miss"
 						>
-							{`No team on this page matches "${searchText.trim()}".`}
+							{t("ui.hub.teams.public.search_miss", {
+								query: searchText.trim(),
+							})}
 						</p>
 					) : (
 						<ul className="flex max-w-4xl flex-col gap-3">
@@ -570,9 +572,11 @@ const PublicTeamCard: FC<{
 						size="sm"
 						onClick={() => onPull(team)}
 						disabled={pullPending}
-						aria-label={`Pull team ${displayName}`}
+						aria-label={t("ui.hub.teams.pull_target", {
+							name: displayName,
+						})}
 					>
-						{pulling ? "Pulling…" : "Pull"}
+						{pulling ? t("ui.hub.teams.pulling") : t("ui.hub.teams.pull")}
 					</Button>
 					{failed && (
 						<div
@@ -597,7 +601,7 @@ const PublicTeamCard: FC<{
 							{reauthenticating && (
 								<div data-testid="agent-hub-public-team-pull-reauth">
 									<RadientAuthButtons
-										titleText="Sign in again"
+										titleText={PUBLICATION_ACTION_LABEL["sign-in"]}
 										descriptionText=""
 										onSignInSuccess={onReauthenticated}
 									/>
@@ -614,12 +618,14 @@ const PublicTeamCard: FC<{
 				 * the word the reader is choosing; the accessible name says which team's.
 				 */}
 				<Disclosure
-					summary="Brief"
+					summary={t("ui.hub.teams.brief.trigger")}
 					open={open}
 					onOpenChange={setOpen}
 					className="w-full"
 					triggerClassName="w-full"
-					triggerLabel={`View the brief for ${displayName}`}
+					triggerLabel={t("ui.hub.teams.brief.trigger_aria", {
+						name: displayName,
+					})}
 					chevronClassName="text-ink-dim"
 				>
 					<TeamBrief detail={detail} />
@@ -654,7 +660,7 @@ const TeamBrief: FC<{
 			<div className="flex flex-col items-start gap-1">
 				<output className="text-meta text-danger">
 					{publicHubFailureMessage(
-						"This team's brief could not be read.",
+						t("ui.hub.teams.brief.unreadable"),
 						detail.error,
 					)}
 				</output>
@@ -665,7 +671,9 @@ const TeamBrief: FC<{
 					disabled={detail.isFetching}
 					aria-busy={detail.isFetching}
 				>
-					{detail.isFetching ? "Trying…" : "Try again"}
+					{detail.isFetching
+						? t("ui.hub.teams.public.trying")
+						: PUBLICATION_ACTION_LABEL.retry}
 				</Button>
 			</div>
 		);

@@ -19,6 +19,36 @@
 		"role": "question in an alertdialog bar above the pane",
 		"tone": "plain, direct question"
 	},
+	"ui.agents.pages.empty.agents": {
+		"note": "The roster is empty because this machine holds no agent definitions at all. Names the two ways out: the ask box below the list, or the manual add. Sentence case, two short sentences.",
+		"role": "empty-state sentence in the roster",
+		"tone": "plain, helpful"
+	},
+	"ui.agents.pages.empty.builtin": {
+		"note": "The roster is empty because the BUILT-IN filter is on and every built-in definition was filtered out by the search. Short by design: it sits in a narrow list column. Keeps the hyphen English puts in 'built-in'; don't assume it in the target language.",
+		"role": "empty-state sentence in the roster, built-in scope",
+		"tone": "plain"
+	},
+	"ui.agents.pages.empty.custom": {
+		"note": "The roster is empty because the CUSTOM filter is on: definitions created or edited on this machine. Short, same slot as the other scope variants.",
+		"role": "empty-state sentence in the filtered agents roster",
+		"tone": "plain"
+	},
+	"ui.agents.pages.empty.installed": {
+		"note": "The roster is empty because the INSTALLED filter is on: definitions fetched from the hub. Keep 'installed' distinct from 'custom' and 'built-in', which the sibling sentences use.",
+		"role": "empty-state sentence in the filtered agents roster",
+		"tone": "plain"
+	},
+	"ui.agents.pages.empty.search": {
+		"note": "The roster is empty because the search matched nothing. {query} is the text the reader typed, quoted with curly quotes U+201C and U+201D; a locale may swap them for its own pair (for example French guillemets), so re-quote rather than keep the English marks.",
+		"role": "empty-state sentence in the roster, search matched nothing",
+		"tone": "plain"
+	},
+	"ui.agents.pages.empty.teams": {
+		"note": "The teams half of the roster is empty. Sibling of empty.agents; keep the two parallel so they differ only in their noun.",
+		"role": "empty-state sentence in the teams roster",
+		"tone": "plain, helpful"
+	},
 	"ui.agents.pages.heading": {
 		"note": "Names both halves of the surface, because the page lists agents and teams. Sentence case; a narrow sidebar column (288 px) bounds it.",
 		"role": "page heading (the page's only h1)",

@@ -232,7 +232,9 @@ export const OrgTeamsList: React.FC<{
 			 * notice's 42rem, because a row carries a summary line as well as a name.
 			 */
 			className="mb-6 max-w-4xl rounded-md bg-surface"
-			aria-label={`Teams shared with ${orgName ?? "this organization"}`}
+			aria-label={t("ui.hub.teams.org.aria", {
+				org: orgName ?? t("ui.hub.pages.scope.org_unnamed"),
+			})}
 			data-testid="org-teams"
 		>
 			{/*
@@ -309,18 +311,22 @@ export const OrgTeamsList: React.FC<{
 				>
 					<AlertTitle>
 						{refusal === "plan"
-							? "That organization needs an active Team plan"
+							? t("ui.hub.teams.org.plan_headline")
 							: refusal === "no_access"
-								? "You do not have access to that organization"
-								: "Teams could not be loaded"}
+								? t("ui.hub.teams.org.no_access_headline")
+								: t("ui.hub.teams.org.load_headline")}
 					</AlertTitle>
 					<AlertDescription>
 						{refusal === "plan"
-							? `Reading an organization's teams is part of the Team plan. An owner of ${orgName ?? "this organization"} can activate it in the Radient console, and then its teams will be listed here.`
+							? t("ui.hub.teams.org.plan_body", {
+									org: orgName ?? t("ui.hub.pages.scope.org_unnamed"),
+								})
 							: refusal === "no_access"
-								? `You are not a member of ${orgName ?? "that organization"}, so its teams are not listed here. An owner can invite you again.`
+								? t("ui.hub.teams.org.no_access_body", {
+										org: orgName ?? t("ui.hub.teams.org.that_organization"),
+									})
 								: backendLoadErrorMessage(
-										"The teams shared with this organization could not be read.",
+										t("ui.hub.teams.org.unreadable"),
 										error,
 									)}
 					</AlertDescription>
@@ -333,7 +339,9 @@ export const OrgTeamsList: React.FC<{
 								disabled={isFetching}
 								aria-busy={isFetching}
 							>
-								{isFetching ? "Trying…" : "Try again"}
+								{isFetching
+									? t("ui.hub.teams.public.trying")
+									: PUBLICATION_ACTION_LABEL.retry}
 							</Button>
 						</div>
 					)}
@@ -345,7 +353,9 @@ export const OrgTeamsList: React.FC<{
 					className="p-4 text-body-sm text-ink-muted"
 					data-testid="org-teams-empty"
 				>
-					{`Teams shared into ${orgName ?? "this organization"} appear here for its members.`}
+					{t("ui.hub.teams.org.empty", {
+						org: orgName ?? t("ui.hub.pages.scope.org_unnamed"),
+					})}
 				</p>
 			)}
 
@@ -431,9 +441,13 @@ export const OrgTeamsList: React.FC<{
 											 * it paints the derived form like every other one (agent review round 1,
 											 * m4); the node's IDENTITY stays the hub's id.
 											 */
-											aria-label={`Pull team ${hubDisplayName(team.name)}`}
+											aria-label={t("ui.hub.teams.pull_target", {
+												name: hubDisplayName(team.name),
+											})}
 										>
-											{pullingTeamId === team.id ? "Pulling…" : "Pull"}
+											{pullingTeamId === team.id
+												? t("ui.hub.teams.pulling")
+												: t("ui.hub.teams.pull")}
 										</Button>
 									</div>
 								}
@@ -454,7 +468,9 @@ export const OrgTeamsList: React.FC<{
 									<output className="text-meta text-danger">
 										{pullTreatment?.body ??
 											pull.error?.message ??
-											`"${hubDisplayName(team.name)}" could not be pulled.`}
+											t("ui.hub.teams.pull_failed", {
+												name: hubDisplayName(team.name),
+											})}
 									</output>
 									{pullTreatment?.actions
 										.filter((action) => ROSTER_ACTIONS.includes(action))
@@ -477,7 +493,7 @@ export const OrgTeamsList: React.FC<{
 										 */
 										<div className="mt-1" data-testid="org-team-pull-reauth">
 											<RadientAuthButtons
-												titleText="Sign in again"
+												titleText={PUBLICATION_ACTION_LABEL["sign-in"]}
 												descriptionText=""
 												onSignInSuccess={() => {
 													setReauthenticating(false);
@@ -736,8 +752,12 @@ const TeamDetails = ({ team }: { team: HubTeam }) => {
 	const manager = team.manager?.trim();
 	const dates = teamDates(team);
 	const dateParts = [
-		dates.created ? `Created ${dates.created}` : null,
-		dates.updated ? `Updated ${dates.updated}` : null,
+		dates.created
+			? t("ui.hub.teams.detail.created", { date: dates.created })
+			: null,
+		dates.updated
+			? t("ui.hub.teams.detail.updated", { date: dates.updated })
+			: null,
 	].filter((part) => part !== null);
 	const hasRoster = Boolean(manager) || team.members.length > 0;
 	return (

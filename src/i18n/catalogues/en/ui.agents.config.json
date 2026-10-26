@@ -21,7 +21,10 @@
 	"ui.agents.config.status.attached": "Another configuration run was already going, so this page attached to it. Your request was not sent — it is still in the box.",
 	"ui.agents.config.stopped.kept": "Stopped. Changes it had already made were kept.",
 	"ui.agents.config.stopped.nothing": "Stopped. Nothing had been changed yet.",
+	"ui.agents.config.summary.created": "Created {name}",
+	"ui.agents.config.summary.hidden_changes": "its settings changed. The list does not show instructions, so open it to see what was written.",
 	"ui.agents.config.summary.no_changes": "The run answered without changing any agent or team.",
 	"ui.agents.config.summary.nothing_else": "Nothing else was changed by this run.",
+	"ui.agents.config.summary.updated": "Updated {name}",
 	"ui.agents.config.summary.you_asked": "You asked: {topic}"
 }
