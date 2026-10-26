@@ -719,11 +719,12 @@ const IDENTICAL_OK = new Map([
 	// The browse page's own title, same product name as the sidebar entry above.
 	// The ur agents-surfaces audit ruled MAJOR that it must read Latin 'Agent Hub'
 	// so the page title matches the sidebar that opens it (receipt
-	// i18n/receipts/ur-agents-surfaces-audit-8441bccd5f30.json, finding H1); the
-	// value is therefore correctly identical to English, not a skipped string.
+	// i18n/receipts/74bd1d94a511.json, finding H1). Scoped to ur: only Urdu uses
+	// the Latin product name here — the other six locales carry their own
+	// rendering of the hub's title and must keep being checked for it.
 	[
-		"ui.hub.pages.header.title",
-		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
+		"ur:ui.hub.pages.header.title",
+		"Product name (Agent Hub); Urdu keeps the Latin name so the page title matches the sidebar that opens it.",
 	],
 	// --- Audit-classified identical values: canvas and surfaces batches --------
 	// Seven independent auditors classified every value below as legitimately
