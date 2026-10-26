@@ -59,14 +59,21 @@ reset) is refused too, so the guard is not a comparison of the last rendered sta
   (`actual: 'x'`). Head: refused. This is also the readings path — the same frame
   carried a different `frontend`, so the context readout moved with it.
 - **A page read before a live write** (`a page read before a live write cannot
-  rewrite the row, and a later read can`). An owner's prepared window carries its
-  `_live_history` row for a message still being written, so a read dispatched before
-  the answer settled can state a shorter projection of it. Base: the page replaced
-  the finished text. Head: the row carries the live frame that wrote it, the read
-  carries the receipt it was dispatched at, and an older read cannot rewrite a newer
-  row. A read dispatched AFTER the write still wins — including a correction that
-  SHORTENS the answer, which is the case a content test cannot tell apart from a
-  stale projection, and round 1 of the review caught exactly that.
+  rewrite the row, and a later read can`, plus the hook-level `a page dispatched
+  before a live write cannot rewrite that row`). An owner's prepared window carries
+  its `_live_history` row for a message still being written, so a read dispatched
+  before the answer settled can state a shorter projection of it. Base: the page
+  replaced the finished text. Head: the row carries the live frame that wrote it,
+  the read carries the receipt it was dispatched at, and an older read cannot
+  rewrite a newer row. A read dispatched AFTER the write still wins — including a
+  correction that SHORTENS the answer, which is the case a content test cannot tell
+  apart from a stale projection, and round 1 of the review caught exactly that.
+- **The bridge's own handshake** (`the bridge's own open/replay/snapshot shapes
+  apply`). Not a flicker, a regression this PR introduced and round 2 caught: the
+  `open` frame's `seq` is the replay CUTOFF, so seeding the high-water mark from it
+  rejected the replay and the snapshot on every real open (pane stuck at
+  "connecting"). The mark is cleared at the open instead, and the snapshot may sit
+  at the watermark. On the round-2-before head this case reads `actual: 'connecting'`.
 - **The same defect at the viewport level** is the first case above.
 
 ## Reproduce
