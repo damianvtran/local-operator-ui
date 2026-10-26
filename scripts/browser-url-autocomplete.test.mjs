@@ -182,6 +182,12 @@ const SEARCH_ROW_HELLO = /Search DuckDuckGo for "hello world"/;
 const BLOCKED_HINT = /Only web addresses can open here/;
 const NO_BROWSING_HISTORY = /No browsing history/;
 
+/* The row copy substitutes the user's text as an ISOLATED run (FSI/PDI, U+2068 and
+ * U+2069) so an RTL sentence cannot reorder an LTR address. Those two controls
+ * are display-only and invisible; assertions about what the row SAYS read it
+ * without them, and the isolation itself is pinned in its own test. */
+const visibleText = (node) => node.textContent.replace(/[\u2068\u2069]/g, "");
+
 const flush = async () => {
 	await act(async () => {
 		await Promise.resolve();
@@ -526,7 +532,7 @@ test("a search-intent Enter searches DuckDuckGo and the search row is the defaul
 		1,
 		"no suggestion matches, so only the search row exists",
 	);
-	assert.match(rows[0].textContent, SEARCH_ROW_HELLO);
+	assert.match(visibleText(rows[0]), SEARCH_ROW_HELLO);
 	assert.equal(
 		bundle.input.getAttribute("aria-activedescendant"),
 		rows[0].id,
@@ -1203,7 +1209,7 @@ test("focus with an empty history opens nothing, and a typed query still explain
 	await type(bundle, "https://nothing.example/");
 	assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
 	assert.match(
-		options(bundle)[0].textContent,
+		visibleText(options(bundle)[0]),
 		/Open "https:\/\/nothing\.example\/"/,
 	);
 	await type(bundle, "file:///tmp/a.txt");
@@ -1625,8 +1631,8 @@ test("a new tab with no history still lists the typed address and a search", asy
 	);
 	const rows = options(bundle);
 	assert.equal(rows.length, 2, "the typed address and the search entry");
-	assert.match(rows[0].textContent, OPEN_TYPED_ROW);
-	assert.match(rows[1].textContent, SEARCH_TYPED_ROW);
+	assert.match(visibleText(rows[0]), OPEN_TYPED_ROW);
+	assert.match(visibleText(rows[1]), SEARCH_TYPED_ROW);
 	assert.equal(
 		bundle.input.getAttribute("aria-activedescendant"),
 		rows[0].id,
@@ -1649,7 +1655,7 @@ test("own-state: search intent keeps the search row first and highlighted", asyn
 	await type(bundle, "what is a vpn");
 	const rows = options(bundle);
 	assert.equal(rows.length, 1, "a search is not also a typed address");
-	assert.match(rows[0].textContent, /Search DuckDuckGo for "what is a vpn"/);
+	assert.match(visibleText(rows[0]), /Search DuckDuckGo for "what is a vpn"/);
 	assert.equal(bundle.input.getAttribute("aria-activedescendant"), rows[0].id);
 	await bundle.cleanup();
 });
@@ -1791,4 +1797,34 @@ test("the standing hint names its cause and is never said for a plain new tab", 
 	);
 	assert.equal(options(ownState).length, 2);
 	await ownState.cleanup();
+});
+
+test("typed and search rows isolate the user's text for RTL sentences, display only", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, "github.com/");
+	const rows = options(bundle);
+	assert.equal(
+		rows[0].textContent,
+		'Open "\u2068github.com/\u2069"',
+		"the typed value is wrapped in FSI/PDI inside the sentence, quotes outside",
+	);
+	assert.equal(
+		rows[1].textContent,
+		'Search DuckDuckGo for "\u2068github.com/\u2069"',
+	);
+	assert.equal(
+		rows[0].getAttribute("data-address-suggestion-url"),
+		null,
+		"a typed row carries no URL attribute: the isolates never reach a target",
+	);
+	// Enter commits the RAW text; the isolates are never part of a destination.
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [
+		{ url: "github.com/", expectedTabId: 1 },
+	]);
+	await bundle.cleanup();
 });

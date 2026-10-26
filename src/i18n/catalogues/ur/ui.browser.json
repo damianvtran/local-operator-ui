@@ -182,7 +182,7 @@
 	"ui.browser.browser_url_bar.address_suggestions_label": "آپ کی سرگزشت سے",
 	"ui.browser.browser_url_bar.address_suggestions_label_mixed": "تجاویز",
 	"ui.browser.browser_url_bar.address_suggestions_no_match": "آپ کی سرگزشت میں کوئی مماثل صفحہ نہیں۔",
-	"ui.browser.browser_url_bar.address_suggestions_unavailable": "آپ کی براؤزنگ ہسٹری پڑھی نہیں جا سکی۔ لکھے ہوئے پتے اب بھی کام کرتے ہیں۔",
+	"ui.browser.browser_url_bar.address_suggestions_unavailable": "آپ کی براؤزنگ سرگزشت پڑھی نہیں جا سکی۔ لکھے ہوئے پتے اب بھی کام کرتے ہیں۔",
 	"ui.browser.browser_url_bar.address_suggestions_unavailable_narrow": "تجاویز دکھانے کے لیے یہ پینل بہت تنگ ہے۔ جو آپ نے لکھا ہے اسے کھولنے کے لیے Enter دبائیں۔",
 	"ui.browser.browser_url_bar.address_suggestions_unavailable_platform": "اس سسٹم پر تجاویز نہیں دکھائی جاتیں۔ جو آپ نے لکھا ہے اسے کھولنے کے لیے Enter دبائیں۔",
 	"ui.browser.browser_url_bar.address_suggestions_unavailable_restart": "تجاویز کی فہرست کام کرنا بند ہو گئی ہے۔ جو آپ نے لکھا ہے اسے کھولنے کے لیے Enter دبائیں، یا Local Operator دوبارہ شروع کریں۔",

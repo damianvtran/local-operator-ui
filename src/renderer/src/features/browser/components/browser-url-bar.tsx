@@ -47,6 +47,7 @@ import {
 	addressIntent,
 	canInlineComplete,
 	isGeneratedSuffixSelected,
+	isolateBidi,
 	moveActive,
 	rowTarget,
 	searchUrl,
@@ -567,11 +568,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const rowText = (row: AddressRow): string =>
 		row.kind === "search"
 			? t("ui.browser.browser_url_bar.address_search_row", {
-					query: row.query,
+					query: isolateBidi(row.query),
 				})
 			: row.kind === "typed"
 				? t("ui.browser.browser_url_bar.address_open_row", {
-						address: row.address,
+						address: isolateBidi(row.address),
 					})
 				: row.candidate.displayText;
 	const rowSubtitle = (row: AddressRow): string => {

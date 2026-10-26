@@ -35,6 +35,29 @@ export type AddressIntent = "empty" | "url" | "search" | "blocked";
  * invent a second spelling. */
 export const ADDRESS_SEARCH_URL_PREFIX = "https://duckduckgo.com/?q=";
 
+/**
+ * A typed value as an ISOLATED RUN inside a catalogue sentence.
+ *
+ * WHY: the row copy ("Open \"{address}\"", "Search ... \"{query}\"") is a
+ * sentence in the UI's language with the user's text substituted in. In an RTL
+ * locale (ur) the surrounding paragraph is RTL, so an LTR address such as
+ * `github.com/` takes the neighbouring punctuation into its own bidi run and its
+ * trailing slash is painted at the front. FSI/PDI (U+2068/U+2069) is the inline
+ * `<bdi>`: a catalogue message cannot carry an element, and the isolate wraps the
+ * VALUE, never the copy, so a translation keeps its own quotes. The same
+ * technique `browser-tab-strip.tsx` uses for tab titles (`isolatedTabLabel`,
+ * which is tab-specific - it truncates - so it is not reusable here).
+ *
+ * DISPLAY ONLY: the row's commit target is always the raw text. Main's list
+ * sanitizer strips U+2066-2069 from rows by design (a bidi control is how a row
+ * can be made to look like another), so the native child receives the same
+ * string and shows it without the isolates; its rows are `dir="auto"`, which
+ * resolves the paragraph from the first strong character of the Latin value.
+ */
+export function isolateBidi(value: string): string {
+	return `\u2068${value}\u2069`;
+}
+
 export function searchUrl(query: string): string {
 	return `${ADDRESS_SEARCH_URL_PREFIX}${encodeURIComponent(query.trim())}`;
 }
