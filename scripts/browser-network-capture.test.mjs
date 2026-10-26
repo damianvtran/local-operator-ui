@@ -577,3 +577,30 @@ test("unrecognised network events cannot defeat the metadata byte bound", async 
 		"entries exceeding 1 MiB of metadata must not all be retained",
 	);
 });
+
+test("stop detaches the subscription without waiting on Network.disable", async () => {
+	const { ctx, emit, start } = fixture();
+	const started = await start();
+	assert.equal(started.active, true);
+	const stopped = await mod.networkStop(
+		ctx,
+		{ tab: "tab", requester: "session:a" },
+		"request",
+	);
+	assert.equal(stopped.active, false);
+	// Events after stop reach no capture, and a second start works on the same
+	// tab: the review-round-2 QA found a host wedged here because stop awaited a
+	// `Network.disable` reply that never came.
+	emit("Network.requestWillBeSent", {
+		requestId: "after-stop",
+		request: { url: "https://e.test/after", method: "GET" },
+	});
+	const restarted = await start();
+	assert.equal(restarted.active, true);
+	const read = mod.networkRead(
+		ctx,
+		{ tab: "tab", requester: "session:a", limit: 50 },
+		"request",
+	);
+	assert.equal(read.count, 0, "a restart begins from an empty ring");
+});

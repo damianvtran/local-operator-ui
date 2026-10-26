@@ -475,10 +475,18 @@ export async function networkStop(
 	requestId: string,
 ): Promise<Record<string, unknown>> {
 	const capture = captureFor(ctx, params, requestId);
-	const tab = ctx.registry.requireSurface(String(params.tab ?? ""));
 	capture.active = false;
 	capture.unsubscribe();
-	await ctx.cdp.send(tab.view.webContents, "Network.disable");
+	// NO `Network.disable` HERE, and it is a measured decision rather than an
+	// omission. Real-path QA (2026-10-26) drove start/stop/start on one tab and
+	// found the command channel wedged after the first stop: `Network.disable`
+	// never replied inside its bound, and because Electron's `Debugger`
+	// serialises commands on one attachment, every later `Network.enable`,
+	// `DOM.getDocument` and navigation queued behind it until the whole loopback
+	// host stopped answering. Dropping the subscription is what stops collection;
+	// the domain itself stays enabled for the attachment's life, exactly as
+	// `Runtime` and `Log` already do from `attach`, with no reply to wait for and
+	// no way to wedge the tab.
 	return summary(capture);
 }
 
