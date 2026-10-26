@@ -1,6 +1,7 @@
 import {
 	Avatar,
 	AvatarFallback,
+	AvatarImage,
 	BrowserSafeTooltip,
 	DropdownMenu,
 	DropdownMenuContent,
@@ -8,6 +9,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
+import { useOwnAccountAvatar } from "@shared/hooks/use-account-avatar";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
@@ -139,6 +141,17 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				.substring(0, 2);
 		}, [user?.name]);
 
+		/*
+		 * The person's own Radient photo, through the ONE private-avatar path
+		 * (`use-account-avatar.ts`): bytes come from core over the desktop-media
+		 * transport, fenced to the signed-in account, cached per auth epoch and
+		 * revoked on sign-out. The version (account + content hash) comes from
+		 * this same account read (`/me`'s `profile.avatar`). Undefined means
+		 * initials: no photo, signed out, a failed read, or a core older than
+		 * 0.90.13, whose avatar relay 404s.
+		 */
+		const avatarUrl = useOwnAccountAvatar(user?.radientUser.account, 64);
+
 		const row = (
 			<button
 				type="button"
@@ -203,6 +216,14 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				 * reader cannot see a palette.
 				 */}
 				<Avatar className="size-7 shrink-0">
+					{/*
+					 * No border on the photo (borderless chrome): a photo is its own
+					 * edge, unlike the flat plate below, so the `border-control` the
+					 * plate needs against `rowHover` has nothing to do here. Radix
+					 * shows the fallback until the image has loaded, so a slow or
+					 * failed decode never flashes an empty disc.
+					 */}
+					{avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
 					<AvatarFallback className="border border-control bg-elevated text-ink">
 						{userInitials ?? <User size={14} aria-hidden="true" />}
 					</AvatarFallback>

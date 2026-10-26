@@ -14,6 +14,11 @@
  *    to fix an account that may be fine;
  *  - `account-ready`: the account resolved, so the row shows the account and
  *    presses through to plain settings, which is what it always did;
+ *  - `account-photo` / `account-photo-collapsed`: the account carries a Radient
+ *    profile photo (`/me`'s `profile.avatar`), so the plate shows it, read
+ *    through the private avatar relay (`desktop.media` `team_bridge.avatar`) in
+ *    place of the initials, in both rail states. `account-ready` stays the
+ *    no-photo frame: initials on the bordered plate;
  *  - `account-reconnect-menu`: the same failed read with the row's `useAuth`
  *    branch - a press opens the account menu, whose "Reconnect Radient" item
  *    is the same way back. No rail call site passes `useAuth` today, so this
@@ -31,12 +36,17 @@ import { UserProfileSidebar } from "@shared/components/navigation/user-profile-s
 import type { Meta, StoryObj } from "@storybook/react";
 import type { FC, ReactNode } from "react";
 import { useLayoutEffect } from "react";
+import profileImage from "../../../assets/radient-icon-1024x1024.png";
 import "../../../styles/index.css";
 
 type BridgeRequest = { op?: string; control?: { operation?: string } };
 type DesktopResponse = { status: number; body: unknown };
 
-type RowState = "account" | "refused" | "checking";
+type RowState = "account" | "photo" | "refused" | "checking";
+type MediaRequest = { op?: string };
+type MediaResponse =
+	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
+	| { status: number; kind: "error"; detail: string };
 
 let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 	null;
@@ -78,7 +88,7 @@ const installBridge = (state: RowState) => {
 							msg: "ok",
 							result: {
 								account: {
-									id: "acct_storybook_row",
+									id: "acc_storybook_row",
 									tenant_id: "ten_storybook_row",
 									email: "account@example.test",
 									name: "Radient Account",
@@ -86,6 +96,18 @@ const installBridge = (state: RowState) => {
 									status: "active",
 									created_at: "2026-01-02T03:04:05Z",
 									updated_at: "2026-01-02T03:04:05Z",
+									// Only the photo state carries one: `account-ready`
+									// is the frame for an account without a photo.
+									...(state === "photo"
+										? {
+												profile: {
+													avatar: {
+														source: "uploaded",
+														hash: "0123456789abcdef",
+													},
+												},
+											}
+										: {}),
 								},
 								identity: {
 									email: "account@example.test",
@@ -110,7 +132,10 @@ const installBridge = (state: RowState) => {
 if (typeof window !== "undefined") {
 	const page = window as unknown as {
 		api?: {
-			desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> };
+			desktop?: {
+				request: (r: BridgeRequest) => Promise<DesktopResponse>;
+				media?: (r: MediaRequest) => Promise<MediaResponse>;
+			};
 		};
 	};
 	const api = page.api ?? {};
@@ -119,6 +144,18 @@ if (typeof window !== "undefined") {
 		request: (request: BridgeRequest) => {
 			if (!bridge) throw new Error("no bridge installed for this story");
 			return bridge(request);
+		},
+		// The private avatar relay: the bytes the photo state's plate shows.
+		media: async (request: MediaRequest): Promise<MediaResponse> => {
+			if (request?.op !== "team_bridge.avatar")
+				return { status: 404, kind: "error", detail: "not in this story" };
+			const bytes = await (await fetch(profileImage)).arrayBuffer();
+			return {
+				status: 200,
+				kind: "bytes",
+				mimeType: "image/png",
+				data: new Uint8Array(bytes),
+			};
 		},
 	};
 }
@@ -138,14 +175,17 @@ const Foot: FC<{ children: ReactNode }> = ({ children }) => (
 	</div>
 );
 
-const Row: FC<{ state: RowState }> = ({ state }) => {
+const Row: FC<{ state: RowState; expanded?: boolean }> = ({
+	state,
+	expanded = true,
+}) => {
 	// Installed as the story RENDERS, not from an effect: the row's read can
 	// fire before a parent layout effect runs, and a delegate that throws "no
 	// bridge installed" would turn that race into a transport error.
 	installBridge(state);
 	return (
 		<Foot>
-			<UserProfileSidebar expanded />
+			<UserProfileSidebar expanded={expanded} />
 		</Foot>
 	);
 };
@@ -229,6 +269,18 @@ export const AccountChecking: Story = {
 export const AccountReady: Story = {
 	args: { state: "account" },
 	render: (args) => <Row state={args.state} />,
+};
+
+/** The account's own Radient photo on the plate, in place of its initials. */
+export const AccountPhoto: Story = {
+	args: { state: "photo" },
+	render: (args) => <Row state={args.state} />,
+};
+
+/** The collapsed rail: the photo alone. */
+export const AccountPhotoCollapsed: Story = {
+	args: { state: "photo" },
+	render: (args) => <Row state={args.state} expanded={false} />,
 };
 
 /** The `useAuth` branch: the account menu, open, with its reconnect item. */

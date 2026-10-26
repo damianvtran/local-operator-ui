@@ -11,6 +11,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 
 /*
+ * MOVED FROM features/team-bridge (2026-10-26) when the sidebar's own account
+ * row started showing the signed-in person's photo: one private-avatar path for
+ * every surface, so there is one cache, one revocation rule and one fetch.
+ * Behaviour is unchanged; `useTeamBridgeAvatar` is now a thin adapter over
+ * `useAccountAvatar`, which takes the version (account + content hash) directly.
+ *
  * Private avatar bytes cannot be loaded with <img src>: the bearer lives in
  * main, not the renderer. This cache holds the resulting object URLs only for
  * the current signed-in account. Its key includes the credential epoch as well
@@ -84,13 +90,97 @@ export function teamBridgeAvatarVersion(
 	return { accountId: match[1], hash: match[2] };
 }
 
+/** One hash-pinned avatar: whose, and which content version. */
+export type AccountAvatarVersion = { accountId: string; hash: string };
+
+/** The Radient account read's own avatar fields (`GET /me`, forwarded verbatim). */
+export type RadientAccountAvatarFields = {
+	id?: string;
+	avatar_url?: string;
+	profile?: { avatar?: { source?: string; hash?: string } | null } | null;
+};
+
+const ACCOUNT_ID_PATTERN =
+	/^(?:acc_[A-Za-z0-9_-]{1,64}|[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12})$/;
+const AVATAR_HASH_PATTERN = /^[0-9a-f]{16}$/;
+
+/**
+ * The signed-in person's avatar version, from their own account read.
+ *
+ * WHY THIS SOURCE. The hub's `/me` returns the account model, whose
+ * `profile.avatar` carries `{source, hash}` (agent-server #216). `/me` does not
+ * derive `avatar_url` (only the account GET is decorated), so the hash is the
+ * authoritative half. Core forwards `/me` verbatim through the Radient proxy, the
+ * same read that settles this renderer's account authority, so the version and
+ * the `expectedAccountId` fence come from one answer. An older hub (no profile)
+ * yields null and the row keeps its initials. When `avatar_url` IS present it
+ * must agree with the hash, the same refusal `teamBridgeAvatarVersion` applies to
+ * a directory row.
+ */
+export function radientAccountAvatarVersion(
+	account: RadientAccountAvatarFields | undefined | null,
+): AccountAvatarVersion | null {
+	const id = account?.id;
+	const avatar = account?.profile?.avatar;
+	if (!id || !ACCOUNT_ID_PATTERN.test(id) || !avatar) return null;
+	if (!avatar.hash || !AVATAR_HASH_PATTERN.test(avatar.hash)) return null;
+	if (avatar.source === "none") return null;
+	if (account.avatar_url) {
+		const match = AVATAR_PATTERN.exec(account.avatar_url);
+		if (!match || match[1] !== id || match[2] !== avatar.hash) return null;
+	}
+	return { accountId: id, hash: avatar.hash };
+}
+
 export function useTeamBridgeAvatar(
 	member: TeamBridgeDirectoryMember | undefined,
 	size: 64 | 256,
 ): string | undefined {
+	const version = useMemo(() => teamBridgeAvatarVersion(member), [member]);
+	return useAccountAvatar(version, size);
+}
+
+/**
+ * The signed-in person's own photo, or undefined (initials) when there is none,
+ * the read failed, the core is too old to relay it (404 -> failed entry), or the
+ * account the version names is not the account the renderer is currently signed
+ * in as. The last check is what keeps A's photo off B's row across a switch: the
+ * cache revokes on the authority change, and a version that still names A while
+ * the authority already names B is refused rather than commissioned.
+ */
+export function useOwnAccountAvatar(
+	account: RadientAccountAvatarFields | undefined | null,
+	size: 64 | 256,
+): string | undefined {
+	const authority = useObservedRadientAuthority();
+	// Keyed on the primitives, not the object: a refetch returns a new account
+	// object every time, and the version must stay referentially stable for the
+	// fetch effect (it is one of its dependencies).
+	const id = account?.id;
+	const hash = account?.profile?.avatar?.hash;
+	const source = account?.profile?.avatar?.source;
+	const url = account?.avatar_url;
+	const version = useMemo(
+		() =>
+			radientAccountAvatarVersion({
+				id,
+				avatar_url: url,
+				profile: { avatar: { hash, source } },
+			}),
+		[id, hash, source, url],
+	);
+	return useAccountAvatar(
+		version && version.accountId === authority.accountId ? version : null,
+		size,
+	);
+}
+
+export function useAccountAvatar(
+	version: AccountAvatarVersion | null,
+	size: 64 | 256,
+): string | undefined {
 	const queryClient = useQueryClient();
 	const authority = useObservedRadientAuthority();
-	const version = useMemo(() => teamBridgeAvatarVersion(member), [member]);
 	const key = version
 		? `${authority.epoch}:${authority.accountId ?? "none"}:${version.accountId}:${version.hash}:${size}`
 		: null;
