@@ -58,8 +58,8 @@ import type { TranscriptDisplayMode } from "../transcript-display-mode";
 import { isImageGenTool } from "./image-gen-card-model";
 import { freezeRecordDeep } from "./record-immutability";
 import {
-	type FoldableAction,
 	type FoldCountSegment,
+	type FoldableAction,
 	foldCountSegments,
 	foldSummary,
 	workedSeconds,
@@ -798,7 +798,9 @@ export function quietGroupClauseFacts(
 	group: QuietGroup,
 	options: { partial?: boolean } = {},
 ): string[] {
-	const facts = [`count:${options.partial ? `${group.count}+` : `${group.count}`}`];
+	const facts = [
+		`count:${options.partial ? `${group.count}+` : `${group.count}`}`,
+	];
 	/*
 	 * NONZERO, NOT A THRESHOLD: a group with ANY work states it, and a workless
 	 * group states no actions clause at all (never `0 actions`).
