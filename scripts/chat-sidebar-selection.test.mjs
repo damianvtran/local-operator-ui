@@ -2041,7 +2041,23 @@ const ROW_STATE_TOKENS = [
 	"hover:bg-row-hover",
 	"hover:bg-row-selected",
 ];
-const GROUND_ROLES = ["bg-elevated", "bg-sunken", "bg-surface", "bg-canvas"];
+const GROUND_ROLES = [
+	"bg-elevated",
+	"bg-sunken",
+	"bg-surface",
+	"bg-canvas",
+	/*
+	 * `bg-media-surface` is the borderless-tile FILL ROLE rather than a rung of the
+	 * ladder (see `docs/branding.md`), and Team Bridge's initial plates wear it
+	 * with no edge on purpose. It is listed here so those plates stay VISIBLE to
+	 * this sweep: a plate that stopped carrying a rung would otherwise drop out of
+	 * the inventory silently, which is the failure this table exists to prevent.
+	 * Its separation from a row state is measured, not assumed - the
+	 * `team bridge borderless person and agent plates` row in
+	 * `scripts/contrast-contract.mjs`.
+	 */
+	"bg-media-surface",
+];
 
 /*
  * The class tokens a `className` expression names, read the way a browser would
@@ -2347,27 +2363,66 @@ const PLATES_INSIDE_ROW_STATES = [
 	},
 	{
 		/*
-		 * The Team Bridge thread's sender avatar. A message row takes `rowHover`
-		 * under the pointer, and `sunken` can sit on that rung, so the square
-		 * plate wears `border-control` to stay a shape on every palette. (The
-		 * merged list's organization chip this entry used to name is gone: the
-		 * Slack-style rail states the organization as a plain second line with
-		 * no plate of its own.)
+		 * THE TEAM BRIDGE INITIAL PLATES ARE BORDERLESS BY REQUEST (the operator,
+		 * 2026-10-25), and their FILL is what replaced the edge they used to wear.
+		 * They carried `sunken` + `border-control` because `sunken` lands on the
+		 * row-hover rung on some palettes; they now carry `media-surface`, and the
+		 * pair is measured rather than argued: it clears `canvas` deltaE00 >= 4.00,
+		 * `surface` >= 5.96 and `row-hover` >= 3.70 across all 59 palettes, where
+		 * the baseline `sunken` bottoms out at 1.86 against `row-hover`. That row
+		 * lives in `scripts/contrast-contract.mjs` as `team bridge borderless person
+		 * and agent plates`.
+		 *
+		 * THE PIN THAT KEEPS THIS ENTRY HONEST IS THE FILL ITSELF. This table's key
+		 * carries the ground, so moving the plate back onto a rung does not quietly
+		 * pass: the sweep stops finding this entry and the stale-entry assertion
+		 * fires. The same plate is drawn on the rail, in the compose suggestions and
+		 * in the thread-intro header; the sweep sees the three call sites that sit
+		 * inside a row state; `teamBridgePlateSites` below covers all five.
 		 */
 		what: "the Team Bridge thread's sender avatar",
 		file: TEAM_BRIDGE_MESSAGES,
 		element: "span",
-		ground: "bg-sunken",
-		edge: true,
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
 	},
 	{
-		/* The To: suggestion list's person initial; same reason, the option takes
-		   `rowHover` when it is the active descendant. */
+		/* The To: suggestion list's person initial, the same plate: the active option
+		   takes `rowHover`, and the fill is what keeps the initial visible there. */
 		what: "the Team Bridge compose suggestion's initial",
 		file: TEAM_BRIDGE_COMPOSE,
 		element: "span",
-		ground: "bg-sunken",
-		edge: true,
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
+	},
+	{
+		/* The rail's person initial: the same plate again, on a row whose hover and
+		   selection states it must survive. */
+		what: "the Team Bridge rail person initial",
+		file: TEAM_BRIDGE_RAIL,
+		element: "span",
+		/* TWO GROUNDS, the shape this table already allows: the plate takes
+		   `media-surface` on a plain row and `surface` on the SELECTED row, because
+		   `rowSelected` is where the quiet fill bottoms out (design round 1, D1). */
+		ground: "bg-surface,bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
+	},
+	{
+		/* NOT PART OF THE PLATE WORK, recorded because the sweep now watches the
+		   borderless fill role. The canvas finder's media thumbnail is a tile whose
+		   fill IS its extent (the `media-surface` contract) and it clips its own
+		   picture, so it needs no control edge; this entry states that rather than
+		   leaving an unlisted object now that `bg-media-surface` is a watched
+		   ground. */
+		what: "the canvas finder's media thumbnail",
+		file: FINDER_FILES_VIEW,
+		element: "span",
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "overflow-hidden",
 	},
 	{
 		/*
@@ -2399,6 +2454,82 @@ const PLATES_INSIDE_ROW_STATES = [
 		fact: "border-ink-muted",
 	},
 ];
+
+/*
+ * THE FIVE PLATE CALL SITES, AND THE EDGE THAT MUST NOT COME BACK.
+ *
+ * The row-state sweep above records that a plate NEEDS no edge (`edge: false`),
+ * but nothing there rejects one: re-adding `border border-control` to a plate
+ * would keep it green. This is the other half of the operator's ask (2026-10-26,
+ * "remove the avatar borders") - a source assertion over every Team Bridge
+ * initial plate, because a guard that only states why an edge is unnecessary
+ * cannot notice one arriving.
+ *
+ * Each entry names the file and the class expression that draws the plate; the
+ * assertion is that the expression carries the borderless fill and none of the
+ * shapes that would put a line back: a `border` utility, a `ring`, a `divide`,
+ * or a `shadow`.
+ */
+const TEAM_BRIDGE_PLATE_SITES = [
+	{
+		what: "the message row's sender plate",
+		file: "src/renderer/src/features/team-bridge/team-bridge-message-list.tsx",
+		anchor: '? "bg-media-surface text-accent"',
+	},
+	{
+		what: "the rail's person plate",
+		file: "src/renderer/src/features/team-bridge/team-bridge-rail.tsx",
+		anchor:
+			'"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] font-medium text-[10px]"',
+	},
+	{
+		what: "the rail's chief plate",
+		file: "src/renderer/src/features/team-bridge/team-bridge-rail.tsx",
+		anchor:
+			'"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] text-accent"',
+	},
+	{
+		what: "the compose suggestion's initial",
+		file: "src/renderer/src/features/team-bridge/team-bridge-compose-bar.tsx",
+		anchor: '? "bg-media-surface text-accent"',
+	},
+	{
+		what: "the thread intro's header plate",
+		file: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+		anchor: '? "bg-media-surface text-accent"',
+	},
+];
+
+const EDGE_LIKE =
+	/(^|[\s"'`])(border(-[a-z]+)?|ring(-[a-z0-9]+)?|divide(-[a-z]+)?|shadow(-[a-z0-9]+)?)([\s"'`]|$)/;
+
+test("no Team Bridge initial plate regrows a border, ring, divider or shadow", () => {
+	for (const site of TEAM_BRIDGE_PLATE_SITES) {
+		/*
+		 * THE CODE AROUND THE PLATE, NEVER THE PROSE BESIDE IT: these sites carry
+		 * comments that quote `border-control` to explain why the ring is gone, so the
+		 * comments are stripped from the WHOLE file first and the window is taken from
+		 * what remains. Stripping only the window fails when it opens inside a comment
+		 * (the opening delimiter is not in the slice), which is exactly what happened
+		 * the first time this guard ran.
+		 */
+		const code = read(site.file)
+			.replace(/\/\*[\s\S]*?\*\//g, (comment) => " ".repeat(comment.length))
+			.replace(/\/\/[^\n]*/g, (comment) => " ".repeat(comment.length));
+		assert.ok(
+			code.includes(site.anchor),
+			`${site.what}: the plate's fill expression moved (${site.file}). Re-read the site before trusting this guard - it is anchored on the two fills that make the plate borderless.`,
+		);
+		const at = code.indexOf(site.anchor);
+		const nearby = code.slice(Math.max(0, at - 700), at + 200);
+		const found = nearby.match(EDGE_LIKE);
+		assert.equal(
+			found,
+			null,
+			`${site.what} drew an edge back: ${JSON.stringify(found?.[0])} in ${site.file}. The plates are borderless by the operator's ask; separate them by fill value (scripts/contrast-contract.mjs) rather than by a line.`,
+		);
+	}
+});
 
 test("every object a row state can paint over keeps an edge, or records why it need not", async () => {
 	/*
