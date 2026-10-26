@@ -366,6 +366,20 @@ test(
 		/* The write is in flight when the reader closes: the pick still lands. */
 		editDelayMs = 150;
 		await pick("fr");
+		/*
+		 * Asserted BEFORE the close. This case's job is to tell commit-on-pick
+		 * from commit-on-close, and an assertion made after the close cannot: a
+		 * write deferred to `open === false` would satisfy it (R1-3, where the
+		 * message promised a distinction the ordering did not make).
+		 */
+		await settle(
+			() => edits().length === 1,
+			"the pick must reach settings.edit at selection, with no Save pressed",
+		);
+		assert.deepEqual(
+			{ op: edits()[0].op, key: edits()[0].key, value: edits()[0].value },
+			{ op: "settings.edit", key: "language", value: "fr" },
+		);
 		await act(async () => {
 			useLanguageDialogStore.getState().closeLanguage();
 		});
@@ -375,16 +389,13 @@ test(
 			"the dialog must be closed before the write settles",
 		);
 		await settle(
-			() => edits().length === 1,
-			"the pick must reach settings.edit at selection, with no Save pressed",
-		);
-		assert.deepEqual(
-			{ op: edits()[0].op, key: edits()[0].key, value: edits()[0].value },
-			{ op: "settings.edit", key: "language", value: "fr" },
-		);
-		await settle(
 			() => currentLocale() === "fr",
 			"the capabilities answer must move the interface to fr",
+		);
+		assert.equal(
+			edits().length,
+			1,
+			"closing mid-write must neither drop nor re-issue the pick",
 		);
 		assert.equal(errorCalls.length, 0, "a successful write stays quiet");
 		/*
@@ -431,6 +442,25 @@ test(
 			document.querySelector("[data-test-language-picker]").disabled,
 			false,
 			"the picker must be usable again after the refusal",
+		);
+		/*
+		 * A rejected write must not leave the UI CLAIMING the new language. Both
+		 * surfaces the stub suite can see must stay on committed truth: the
+		 * picker's rendered value, and the app locale `useI18nLocaleSync` drives
+		 * (R1-2 — the claim held by construction and nothing pinned it, so an
+		 * optimistic local value kept on failure passed every case). The
+		 * picker's effective-note caption is NOT assertable here: this suite
+		 * replaces `SettingControl` wholesale, and the note is that control's.
+		 */
+		assert.equal(
+			document.querySelector("[data-test-language-picker]").value,
+			"en",
+			"a rejected write must leave the picker on the committed locale",
+		);
+		assert.equal(
+			currentLocale(),
+			"en",
+			"the interface must stay on the committed locale after a refusal",
 		);
 	},
 );

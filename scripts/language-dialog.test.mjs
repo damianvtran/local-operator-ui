@@ -522,7 +522,7 @@ test(
 			"a pick is the write: the dialog carries no second Save step",
 		);
 		assert.equal(
-			document.querySelector("[data-language-save]"),
+			document.querySelector("[data-language-status]"),
 			null,
 			"the write's status line renders only while or after a pick",
 		);

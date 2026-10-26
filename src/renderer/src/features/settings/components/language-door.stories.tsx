@@ -190,7 +190,7 @@ const DrivenSave: FC = () => {
 				 * confirmation.
 				 */
 				await waitForDom(() => {
-					const status = document.querySelector("[data-language-save]");
+					const status = document.querySelector("[data-language-status]");
 					return status?.textContent?.includes("Saved") ? status : null;
 				});
 				await new Promise((resolve) => setTimeout(resolve, 150));

@@ -424,12 +424,13 @@ export const LanguageDialog: FC = () => {
 			setReadbackUnknown(outcome === "readback-unknown");
 			setSaved(outcome === "confirmed");
 		} catch (cause) {
-			const message =
-				cause instanceof Error
-					? cause.message
-					: t(
-							"ui.settings.configuration.language_dialog.the_language_could_not_be_saved",
-						);
+			/*
+			 * No sentence for the non-`Error` arm. `write_error` already opens with
+			 * "The language was not saved", so passing a translated "could not be
+			 * saved" as its `{message}` rendered the same claim twice (R1-5); the
+			 * General row this dialog mirrors passes "" for the same arm.
+			 */
+			const message = cause instanceof Error ? cause.message : "";
 			setRejected({ value: next, message });
 			/*
 			 * The reader may already have closed the dialog - the pick committed
@@ -678,7 +679,7 @@ export const LanguageDialog: FC = () => {
 								 * body ink and is announced.
 								 */
 								<output
-									data-language-save=""
+									data-language-status=""
 									aria-live="polite"
 									className="inline-flex items-center gap-1.5 text-body-sm text-ink"
 								>
