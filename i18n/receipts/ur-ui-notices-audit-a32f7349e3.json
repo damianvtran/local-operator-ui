@@ -1,0 +1,256 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-receipt",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "team": "lopdev",
+ "harness": "Local Operator",
+ "model": "deepseek/deepseek-flash",
+ "model_provenance": "Session model as configured for this run: deepseek/deepseek-flash. No fallback was observed in this session.",
+ "session": "405ca74e9479",
+ "instance": "405ca74e9479",
+ "date": "2026-10-25",
+ "locale": "ur",
+ "locale_name": "Urdu",
+ "namespace": "ui.notices",
+ "branch": "feat/i18n-toasts",
+ "head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+ "base": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+ "round": 2,
+ "audit_kind": "delta re-audit of the remediation round against the first independent ur audit at ec4518da56; unchanged keys were not re-litigated",
+ "scope": "Delta ec4518da56..a32f7349e3 for ur: the 10 remediated keys, the 1 new key (ui.notices.chat.archive_offered_title) and the composed sentences those values take part in (archive head+tail, bulk-read lead+remainders, drafts head+tail, goal notice prefixes, credential receipt, file/link failure bodies). Whole-catalogue structural re-check (94/94 keys vs English) to confirm the remediation broke nothing that passed: argument names, styles, plural categories, punctuation, quote balance, register and bidi. No rendered frame, native-speaker or activation claim.",
+ "keys_read": 94,
+ "keys_audited": 94,
+ "keys_in_delta": 11,
+ "new_keys_audited": 1,
+ "delta_changed_keys": [
+  "ui.notices.chat.archive_offered_title",
+  "ui.notices.chat.goal_clear_failed",
+  "ui.notices.chat.goal_cleared",
+  "ui.notices.chat.goal_dismiss_failed",
+  "ui.notices.chat.mark_all_read_cleared",
+  "ui.notices.chat.mark_all_read_deferred",
+  "ui.notices.chat.unread_not_cleared",
+  "ui.notices.credentials.stored",
+  "ui.notices.files.open_failed",
+  "ui.notices.links.open_failed",
+  "ui.notices.links.open_local_blocked"
+ ],
+ "sha256": {
+  "en": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+  "ur": "43117c87852529f607dcb864e860650ef27837589053b99952c33896d0d5d514",
+  "context": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859",
+  "languages_manifest": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "languages_manifest": {
+   "path": "i18n/languages.json",
+   "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+  }
+ },
+ "structural": {
+  "key_set": "94/94 present at head (93 at the audited base + 1 new); zero missing, zero extra; key order identical to en; no duplicate keys",
+  "icu": "94/94 parse under ur; argument names, number/date styles and plural/select category sets identical to en across every key (0 structural diffs)",
+  "placeholders": "the new key carries {title}; every remediated value keeps its own argument exactly — {goal} and {count} in the goal/bulk-read keys, {reason}, {keys}, {name}; no placeholder dropped, renamed or reordered anywhere in the namespace",
+  "plural_categories": "ur one/other unchanged; the remediated bulk-read ladders still use exactly the en category set (one/other) and split on the same {count}",
+  "encoding": "NFC throughout; zero manual bidi controls (RLM/LRM/FSI/PDI/LRE/RLE/PDF/ALM) in the whole namespace; 11 keys carry “ ” and every one balances 1/1",
+  "punctuation": "prose literals contain no ASCII . , ; ? ! (the only ASCII commas in the file are ICU option syntax); Urdu ۔ ، ؛ used throughout; no Hindi danda",
+  "register": "آپ address throughout; no تم/تو, no exclamation marks, no padding honorific added by the remediation"
+ },
+ "delta_structural": {
+  "changed_value_count": 10,
+  "new_value_count": 1,
+  "removed_keys": 0,
+  "unintended_changes": "none — the ur delta is exactly those 11 keys; no other namespace file for ur was touched at a32f7349e3"
+ },
+ "major_confirmation": {
+  "key": "ui.notices.chat.mark_all_read_cleared",
+  "one_arm": "1 گفتگو کو پڑھا ہوا نشان زد کر دیا گیا۔",
+  "other_arm": "{count} گفتگوئیں پڑھا ہوا نشان زد کر دی گئیں۔",
+  "verdict": "correct in both arms",
+  "reasoning": "`پڑھا ہوا` is not an attributive adjective here: in `پڑھا ہوا نشان زد کرنا` it is the fixed state complement of the collocation 'to mark as read', so it does not inflect for the object and correctly stays masculine-singular over the feminine `گفتگو`/`گفتگوئیں`. The two things that DO agree are the passive verbs, and they do: impersonal masc-singular `کر دیا گیا` in the one arm, feminine-plural `کر دی گئیں` with `گفتگوئیں` in the other. Corroboration: the hi sibling renders the same English as the same invariant participle (`पढ़ा हुआ चिह्नित`), and this catalogue distinguishes the two roles itself — agreeing attributively (`آخری پڑھا ہوا ورژن`) but invariant as a state (`نہ پڑھی گئی` agreeing with `گفتگو`). No `بطور/کے طور پر` is needed or wanted in a toast."
+ },
+ "composed_renders": {
+  "archive_offer": "گفتگو آرکائیو ہو گئی۔ | “Q4 planning” آرکائیو ہو گئی۔",
+  "archive_offer_note": "the new title key supplies the locale's own “ ” around user data and the verb stays feminine because its subject is the elided گفتگو, not the title — the same agreement `archive_failed` already uses",
+  "bulk_read_lead": {
+   "1": "1 گفتگو کو پڑھا ہوا نشان زد کر دیا گیا۔",
+   "2": "2 گفتگوئیں پڑھا ہوا نشان زد کر دی گئیں۔",
+   "5": "5 گفتگوئیں پڑھا ہوا نشان زد کر دی گئیں۔",
+   "21": "21 گفتگوئیں پڑھا ہوا نشان زد کر دی گئیں۔"
+  },
+  "bulk_read_remainder": {
+   "1": "1 دوسری ڈیوائس پر ہے اور وہ ڈیوائس اپ ڈیٹ ہونے پر صاف ہو جائے گی۔",
+   "2": "2 دوسری ڈیوائسز پر ہیں اور وہ ڈیوائسز اپ ڈیٹ ہونے پر صاف ہو جائیں گی۔",
+   "5": "5 دوسری ڈیوائسز پر ہیں اور وہ ڈیوائسز اپ ڈیٹ ہونے پر صاف ہو جائیں گی۔",
+   "21": "21 دوسری ڈیوائسز پر ہیں اور وہ ڈیوائسز اپ ڈیٹ ہونے پر صاف ہو جائیں گی۔"
+  },
+  "bulk_read_full": {
+   "1": "1 گفتگو کو پڑھا ہوا نشان زد کر دیا گیا۔ 1 دوسری ڈیوائس پر ہے اور وہ ڈیوائس اپ ڈیٹ ہونے پر صاف ہو جائے گی۔",
+   "2": "2 گفتگوئیں پڑھا ہوا نشان زد کر دی گئیں۔ 2 دوسری ڈیوائسز پر ہیں اور وہ ڈیوائسز اپ ڈیٹ ہونے پر صاف ہو جائیں گی۔"
+  },
+  "unread_reason_chain": "بیک اینڈ نے جواب نہیں دیا۔ نہ پڑھے گئے نشانات صاف نہیں ہوئے۔",
+  "credentials_stored": "OPENAI_API_KEY محفوظ کر دیا گیا۔ ہر bash کمانڈ میں ماحول کے متغیر کے طور پر داخل کیا جاتا ہے؛ ایجنٹ قدر نہیں پڑھ سکتا۔",
+  "files_open_failed": "report.pdf کھولا نہیں جا سکا۔ ممکن ہے فائل منتقل ہو گئی ہو، اس کا نام تبدیل ہو گیا ہو، یا وہ حذف ہو گئی ہو۔",
+  "goal_notices": "ہدف صاف کر دیا گیا · {goal} | ہدف صاف نہیں کیا جا سکا | ہدف ہٹایا نہیں جا سکا"
+ },
+ "previous_findings": [
+  {
+   "id": "UR-N1",
+   "severity": "major",
+   "key": "ui.notices.chat.mark_all_read_cleared",
+   "status": "fixed",
+   "verified_value": "{count, plural, one {1 گفتگو کو پڑھا ہوا نشان زد کر دیا گیا۔} other {{count} گفتگوئیں پڑھا ہوا نشان زد کر دی گئیں۔}}",
+   "note": "both arms carry the perfect participle `پڑھا ہوا`; the passive verbs agree per arm (`کر دیا گیا` / `کر دی گئیں`); see major_confirmation"
+  },
+  {
+   "id": "UR-N2",
+   "severity": "minor",
+   "key": "ui.notices.chat.mark_all_read_deferred",
+   "status": "fixed",
+   "verified_value": "{count, plural, one {1 دوسری ڈیوائس پر ہے اور وہ ڈیوائس اپ ڈیٹ ہونے پر صاف ہو جائے گی۔} other {{count} دوسری ڈیوائسز پر ہیں اور وہ ڈیوائسز اپ ڈیٹ ہونے پر صاف ہو جائیں گی۔}}",
+   "note": "both arms now use the feminine `دوسری`, agreeing with the feminine `ڈیوائس` this catalogue uses elsewhere (`ui.chat.device`, `ui.mesh`); `دوسری ڈیوائسز` keeps the same agreement across the coordinated noun"
+  },
+  {
+   "id": "UR-N3",
+   "severity": "minor",
+   "key": "ui.notices.files.open_failed",
+   "status": "fixed",
+   "verified_value": "{name} کھولا نہیں جا سکا۔ ممکن ہے فائل منتقل ہو گئی ہو، اس کا نام تبدیل ہو گیا ہو، یا وہ حذف ہو گئی ہو۔",
+   "note": "the predicates are now split and each agrees with its own subject — فائل → ہو گئی، نام → ہو گیا، وہ (= فائل) → ہو گئی"
+  },
+  {
+   "id": "UR-N4",
+   "severity": "minor",
+   "key": "ui.notices.links.open_failed | ui.notices.links.open_local_blocked",
+   "status": "fixed",
+   "verified_value": "وہ لنک کھولا نہیں جا سکا۔ | وہ لنک کھولا نہیں جا سکا۔ ایپ آپ کی اپنی مشین یا مقامی نیٹ ورک کے لنک نہیں کھولتی۔",
+   "note": "both keys now use `لنک`, the catalogue's hyperlink term (19 occurrences in 7 shipped ur files: ui.browser, ui.canvas, ui.providers…); `ربط/روابط` remains reserved for hub/library/project connections, a different sense"
+  },
+  {
+   "id": "UR-N5",
+   "severity": "minor",
+   "key": "ui.notices.chat.goal_cleared | ui.notices.chat.goal_clear_failed",
+   "status": "fixed",
+   "verified_value": "ہدف صاف کر دیا گیا · {goal} | ہدف صاف نہیں کیا جا سکا",
+   "note": "`صاف` now matches the catalogue's own control `ui.chat.pickers.goal.clear` = `ہدف صاف کریں`; the middot separator with spaces is preserved"
+  },
+  {
+   "id": "UR-N6",
+   "severity": "minor",
+   "key": "ui.notices.chat.goal_dismiss_failed",
+   "status": "fixed",
+   "verified_value": "ہدف ہٹایا نہیں جا سکا",
+   "note": "`ہٹانا` now matches the settled-chip instruction `چپ صاف کرنے کے لیے اسے ہٹائیں` and `ask_dismissed`; `نظر انداز` is gone"
+  },
+  {
+   "id": "UR-N7",
+   "severity": "minor",
+   "key": "ui.notices.credentials.stored",
+   "status": "fixed",
+   "verified_value": "{keys} محفوظ کر دیا گیا۔ ہر bash کمانڈ میں ماحول کے متغیر کے طور پر داخل کیا جاتا ہے؛ ایجنٹ قدر نہیں پڑھ سکتا۔",
+   "note": "impersonal singular `کر دیا گیا` / `داخل کیا جاتا ہے` is number-neutral and grammatical for one key or several; `bash` stays untranslated"
+  },
+  {
+   "id": "UR-N8",
+   "severity": "nit",
+   "key": "ui.notices.chat.unread_not_cleared",
+   "status": "fixed",
+   "verified_value": "{reason} نہ پڑھے گئے نشانات صاف نہیں ہوئے۔",
+   "note": "countable plural `نشانات` as proposed; joins cleanly after either reason sentence"
+  }
+ ],
+ "new_key_audit": [
+  {
+   "key": "ui.notices.chat.archive_offered_title",
+   "value": "“{title}”",
+   "status": "pass",
+   "note": "matches the sidecar role exactly: the locale's own quotation marks around untranslated user data, no verb. ur's pair is “ ” per the style guide, so the value is legitimately identical to English (the parity guard's key-level allowance covers it) and it composes with `archive_offered_verb` into `“Q4 planning” آرکائیو ہو گئی۔`. It replaces a hardcoded English pair in `archiveOfferedName()`, so the no-name arm still prints the unquoted noun `گفتگو` as its sidecar requires."
+  }
+ ],
+ "findings": [],
+ "findings_summary": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "result": "clean",
+ "status": "clean",
+ "verdicts": {
+  "ui.notices": {
+   "status": "clean",
+   "result": "clean",
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0,
+   "note": "Delta clean: all 8 prior findings (1 major, 6 minor, 1 nit) land byte-exactly as proposed, the new title key is correct and composes correctly, and the remediation introduced no regression — 94/94 keys still match English structurally and the rewritten values keep their arguments, categories, register and RTL shape."
+  }
+ },
+ "overall_verdict": "clean — zero blocker and zero major. The one major from round 1 (پڑھا ہوا نشان زد) is fixed in both arms and is the correct Urdu rendering; every minor and the nit are fixed; no new finding at any severity.",
+ "dimensions": {
+  "accuracy": "PASS. Each remediated value still says what the English says: 'marked 1 chat as read' / 'marked {count} chats as read', 'could not clear/dismiss the goal', 'stored {keys} … injected into every bash command as an environment variable', 'the file may have been moved, renamed, or deleted', 'the app does not open links to your own machine or local network'. The new key is pure locale typography around user data, and the no-name arm stays quote-free.",
+  "idiom": "PASS. The remediation removed the three unidiomatic spots (the passive-as-complement `پڑھی گئی نشان زد`, the coordinated `منتقل، نام تبدیل یا حذف ہو گئی`, the masculine `دوسرے ڈیوائس`) and replaced them with constructions a native writer uses; `پڑھا ہوا نشان زد کرنا` is the standard 'mark as read' collocation, not a calque.",
+  "register": "PASS. آپ throughout the changed values; no imperative, no exclamation, no honorific padding added; the notice voice matches the untouched keys around them.",
+  "glossary": "PASS. One term per concept across the delta and against the shipped catalogue: clear → صاف (`goal.clear` = ہدف صاف کریں), dismiss → ہٹانا (`اسے ہٹائیں`), hyperlink → لنک (ui.browser/ui.canvas/ui.providers), hub connection → ربط (ui.hub/ui.library/ui.projects — different sense), read state → پڑھا ہوا, mark → نشان/نشانات, credential → اسناد, goal → ہدف. No drift left in the changed keys.",
+  "icu_integrity": "PASS. 94/94 parse and format; zero structural diffs against en (argument names, styles, category sets); the new key's {title} present; no placeholder renamed or dropped.",
+  "plurals": "PASS. ur one/other, unchanged; rendered at 1/2/5/21 — one arm prints the literal 1 (as English does), other interpolates {count}; verb agreement correct in each arm.",
+  "overflow": "PASS with a rendered-check note, as round 1: the longest changed string is the bulk-read lead (116 cells, unchanged in length), then the deferred remainder (172, +0), then files.open_failed (103 vs 73 en, +30 from the split clauses — still shorter than the bulk-read lead already accepted, and toasts wrap). The changed goal strings shrank (dismiss 29→21). No rendered-frame claim is made here.",
+  "rtl": "PASS. Zero manual bidi controls in the namespace; storage stays logical order; the new `“{title}”` uses the locale's own “ ” pair, opening at the start of the title in either direction, so a Latin title and an Urdu title both bound correctly; Urdu ۔ ، ؛ only, no ASCII sentence punctuation in prose; balanced quotes on all 11 quoted keys; the Latin islands (`bash`, placeholders, user data) stay byte-identical and unpunctuated by Urdu marks. The app sets documentElement dir from the locale manifest (`use-document-direction.ts`), so the composed head+tail reads right-to-left with the verb after the name.",
+  "composed_sentences": "PASS. Archive head+tail correct with and without a title (verb stays feminine for the elided گفتگو); bulk-read lead+remainder grammatical at 1/2/5/21 with consistent device gender; the reason chain joins two complete sentences; the credential and file-failure bodies read as whole notices."
+ },
+ "checks_run": [
+  {
+   "command": "node --test scripts/i18n/locale-parity.test.mjs",
+   "result": "44/44 pass, 0 fail — key coverage, placeholder integrity and English-stub guard over every shipped locale, including the new key's allowance"
+  },
+  {
+   "command": "node scripts/i18n/context-parity.mjs",
+   "result": "ok — every English key covered apart from 131 allowed gaps in 4 namespaces (shrink-only)"
+  },
+  {
+   "command": "node scripts/i18n/generate.mjs --check",
+   "result": "src/i18n/keys.gen.ts is byte-identical to a fresh generation"
+  },
+  {
+   "command": "independent ICU pass (intl-messageformat 12.1.3 + @formatjs/icu-messageformat-parser 3.5.21 from the repo's tree, run from the auditor's scratchpad)",
+   "result": "94/94 parse; 0 structural diffs vs en; changed keys rendered at 1/2/5/21; composed sentences rendered"
+  },
+  {
+   "command": "punctuation/bidi and quote-balance scan over the committed ur blob",
+   "result": "0 bidi controls; 0 ASCII sentence punctuation in prose literals; 11 quoted keys, all balanced; NFC throughout"
+  }
+ ],
+ "method": {
+  "english_source": "src/i18n/catalogues/en/ui.notices.json (94 keys) + en/ui.notices.context.json (read for the changed keys and the new one)",
+  "target": "src/i18n/catalogues/ur/ui.notices.json (94 keys at a32f7349e3; 93 at ec4518da56)",
+  "delta": "git diff ec4518da56..a32f7349e3 -- src/i18n/catalogues/ur/ui.notices.json: 10 changed values, 1 added, 0 removed",
+  "join_points": "src/renderer/src/features/chat/archive-undo.ts (archiveOfferedName now reads the new key), components/undo-toasts.tsx (flex head + fixed verb tail, truncation on the head), drafts-undo.ts, mark-all-read.ts (lead + remainder join(' ')), src/main/update-install.ts ({relaunch} insertion)",
+  "terminology_sources": "shipped ur catalogues (ui.chat.pickers.json, ui.browser.json, ui.canvas.json, ui.providers.json, ui.hub.json, ui.library.json, ui.projects.json), the programme glossary and the ur style guide at the hashes above"
+ },
+ "independence": "Different agent and session from the translator/remediation work; this session edited no catalogue value, no ledger row and no generated file. Every string quoted in this receipt was read from the committed blobs at a32f7349e3 (git show) and confirmed byte-identical to the working tree when the receipt was written (ur sha256 43117c87…, en f806e02d…, context 2980f9d4…). The only file this session wrote in the repository is this receipt; audit helper scripts live in the session scratchpad.",
+ "limits": [
+  "No native-speaker sign-off; judgements come from grammar, the style guide, the glossary and in-catalogue terminology.",
+  "No rendered frames: no browser or desktop capture was taken, so overflow and the Latin-title bidi case are reasoned statically. A designer's rendered pass remains the authority for pixel fit.",
+  "Only ui.notices was audited; other namespaces were consulted for terminology, not graded.",
+  "The receipt is not wired into i18n/ledger.json (out of audit scope; the ledger was not edited).",
+  "The archive confirmation MODAL still composes its quotation marks in code (archive-conversation-dialog.tsx) rather than from a catalogue key; that is outside ui.notices and is not graded here — it produces the same “ ” pair in ur, so there is no visible divergence in this locale."
+ ],
+ "worktree_state": {
+  "audited_bytes": "Committed blobs at a32f7349e3; working tree was clean at HEAD a32f7349e3 when this audit started, and the ur/en/context blobs were byte-identical to the files on disk.",
+  "after_write": "The only working-tree change this session makes is the untracked receipt i18n/receipts/ur-ui-notices-audit-a32f7349e3.json. Nothing else was modified, staged or reverted."
+ }
+}

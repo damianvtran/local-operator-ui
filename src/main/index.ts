@@ -18,6 +18,7 @@ import {
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
+import { LANGUAGE_SETTING_KEY } from "../i18n/locale";
 import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
@@ -121,6 +122,7 @@ import {
 	readQuickSendValue,
 	watchQuickSend,
 } from "./local-config";
+import { createMainLocale } from "./main-locale";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import { paletteDoorChannel } from "./palette-door";
 import {
@@ -2323,6 +2325,29 @@ app
 		}
 
 		/*
+		 * THE MAIN PROCESS'S OWN LOCALE SOURCE (agent review round 1, R1-1).
+		 *
+		 * The banners this process raises are keyed copy now, so the process has to
+		 * know the language - and the only authoritative source is the backend
+		 * `language` setting, which is read through the SAME configured transport the
+		 * renderer's capabilities query uses. Priming the DEVICE reading here is the
+		 * RFC's pre-connection rule: a notification raised before the first
+		 * capabilities answer speaks the OS's language, not English. Refreshes are
+		 * wired below (backend ready, the feed's config frame, and an accepted
+		 * settings write), and each one re-reads instead of trusting a pushed value.
+		 *
+		 * Placed after the launch hold deliberately: that path has already applied
+		 * its own marker/device reading and is about to exit, so it pays for
+		 * nothing here.
+		 */
+		const mainLocale = createMainLocale({
+			app,
+			request: (request) => backendService.requestDesktop(request),
+			log: (message) => logger.info(message, LogFileType.BACKEND),
+		});
+		mainLocale.applyDevice();
+
+		/*
 		 * The app's own menu, installed BEFORE THIS HANDLER AWAITS ANYTHING.
 		 *
 		 * Why the position is load-bearing rather than tidy (code review round 1,
@@ -2593,6 +2618,13 @@ app
 		// defers the legacy toast until the read settles, so nothing can slip
 		// through the window in between.
 		backendService.onBackendReady(() => {
+			/*
+			 * And the main process's locale, for the same reason and on the same
+			 * transitions: a restarted or newly discovered backend can carry a
+			 * different `language` answer, and every later banner reads the store at
+			 * draw time.
+			 */
+			void mainLocale.refresh();
 			void desktopNotifier.refreshNotificationContract();
 			// The feed's own gate: it reads `features.desktop_feed` and opens
 			// nothing without it, so an older backend keeps the per-session path and
@@ -2660,6 +2692,24 @@ app
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;
+				}
+				/*
+				 * A config frame naming the language key is an INVALIDATION, not the
+				 * value: the payload's `language` is a convenience for clients that
+				 * mirror config, while the authoritative answer is the capabilities
+				 * read this triggers. Re-reading keeps one source of truth and means a
+				 * frame written by a foreign process cannot pin a tag of its choosing.
+				 *
+				 * BEFORE the window check on purpose: the frame matters with no window
+				 * at all (the app alive in the dock), and the locale store is main's,
+				 * not the renderer's. The frame is still forwarded below when a window
+				 * exists.
+				 */
+				if (
+					frame.type === "config" &&
+					frame.payload.changed_keys.includes(LANGUAGE_SETTING_KEY)
+				) {
+					void mainLocale.refresh();
 				}
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
@@ -3049,6 +3099,15 @@ app
 			 */
 			supplementMounts,
 			teamBridgeNotifier,
+			/*
+			 * The language setting's write-through tap: an accepted `settings.edit` /
+			 * `settings.reset` of the language key re-reads the backend's resolved
+			 * tag instead of trusting the value the renderer sent. The setting is the
+			 * one owner; main only mirrors what the backend answers.
+			 */
+			() => {
+				void mainLocale.refresh();
+			},
 		);
 
 		/*

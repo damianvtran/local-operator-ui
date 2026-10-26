@@ -273,9 +273,6 @@ import { SubagentStateIcon } from "./run-details/run-detail-row-parts";
  * record refuses. Its wording is deliberately quiet — `Hide` would be a second
  * vocabulary for `/goal --dismiss`.
  */
-const GOAL_DONE_FAILURE = "Could not mark the goal done";
-const GOAL_DISMISS_FAILURE = "Could not dismiss the goal";
-const GOAL_DONE_TOAST_TEXT = "Goal done";
 /*
  * The goal's settled word, printed on the chip's tag and used to build the
  * accessible names. It is the wire's own `goal_status` value verbatim, on the loop
@@ -411,24 +408,6 @@ export const goalStalledNote = (reason: string | undefined): string => {
  * colon is still the owner's own sentence (`use-picker-backend.ts`), so the row
  * paraphrases nothing it is reporting.
  */
-const GOAL_CLEAR_FAILURE = "Could not clear the goal";
-const LOOP_STOP_FAILURE = "Could not stop the loop";
-const LOOP_CLEAR_FAILURE = "Could not clear the loop";
-const GOAL_UNDO_FAILURE = "Could not restore the goal";
-
-/**
- * The confirmation a cleared goal speaks, and the one press that takes it back.
- *
- * Clearing the goal is IRREVERSIBLE from this row (UX round 1, U1): the dismissed
- * text is the user's own prose, no other surface carries it once the wire is empty,
- * and the operator asked for a subtle hover affordance rather than for a press that
- * loses work. The chips hold the answer in the channel they already speak — the
- * app's toast channel — with an `Undo` that restores the cleared text through the
- * same command channel, `goal <text>` being a spelling every released backend
- * honours.
- */
-const GOAL_CLEARED_TEXT = "Goal cleared";
-const GOAL_UNDO_TEXT = "Undo";
 
 /**
  * How much of the cleared goal the confirmation prints, in characters.
@@ -457,7 +436,7 @@ const GOAL_CLEARED_PREVIEW_CHARS = 28;
  */
 export const goalClearedText = (cleared: string): string => {
 	const leading = goalWordClip(cleared);
-	return `${GOAL_CLEARED_TEXT} · ${leading}`;
+	return t("ui.notices.chat.goal_cleared", { goal: leading });
 };
 
 /**
@@ -491,7 +470,7 @@ export const goalClearedText = (cleared: string): string => {
  * are one shape.
  */
 export const goalDoneToastText = (goal: string): string =>
-	`${GOAL_DONE_TOAST_TEXT} · ${goalWordClip(goal)} — it stays in the goal history; /goal <text> sets it again`;
+	t("ui.notices.chat.goal_done", { goal: goalWordClip(goal) });
 
 /**
  * One line, leading WORDS, ellipsis — the clip both goal confirmations print.
@@ -1161,12 +1140,12 @@ export const loopAffordance = (
 		? {
 				text: t("ui.chat.composer.status.loop_stop"),
 				args: LOOP_STOP_ARGS,
-				failure: LOOP_STOP_FAILURE,
+				failure: t("ui.notices.chat.loop_stop_failed"),
 			}
 		: {
 				text: t("ui.chat.composer.status.loop_clear"),
 				args: null,
-				failure: LOOP_CLEAR_FAILURE,
+				failure: t("ui.notices.chat.loop_clear_failed"),
 			};
 
 /**
@@ -2148,7 +2127,11 @@ export const ComposerStatusRow = ({
 			pendingUndo.current = [];
 			return;
 		}
-		const result = await goalCommand.run(GOAL_COMMAND, text, GOAL_UNDO_FAILURE);
+		const result = await goalCommand.run(
+			GOAL_COMMAND,
+			text,
+			t("ui.notices.chat.goal_restore_failed"),
+		);
 		if (result.result.tone === "error") showErrorToast(result.result.text);
 	};
 
@@ -2248,7 +2231,7 @@ export const ComposerStatusRow = ({
 		pendingUndo.current.push(
 			showInfoToast(goalClearedText(settled), {
 				action: {
-					label: GOAL_UNDO_TEXT,
+					label: t("ui.notices.chat.undo"),
 					onClick: () => void restoreGoal(settled),
 				},
 			}),
@@ -2498,7 +2481,7 @@ export const ComposerStatusRow = ({
 													goalDoneCommand,
 													GOAL_COMMAND,
 													GOAL_DONE_ARGS,
-													GOAL_DONE_FAILURE,
+													t("ui.notices.chat.goal_done_failed"),
 													"done",
 												)
 											}
@@ -2545,7 +2528,7 @@ export const ComposerStatusRow = ({
 													goalDismissCommand,
 													GOAL_COMMAND,
 													GOAL_DISMISS_ARGS,
-													GOAL_DISMISS_FAILURE,
+													t("ui.notices.chat.goal_dismiss_failed"),
 													"dismissed",
 												)
 											}
@@ -2567,7 +2550,7 @@ export const ComposerStatusRow = ({
 													goalCommand,
 													GOAL_COMMAND,
 													GOAL_CLEAR_ARGS,
-													GOAL_CLEAR_FAILURE,
+													t("ui.notices.chat.goal_clear_failed"),
 												)
 											}
 										/>

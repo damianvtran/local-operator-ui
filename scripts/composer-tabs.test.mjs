@@ -4134,17 +4134,27 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	 */
 	assert.match(row, /if \(result\.result\.tone === "error"\)/);
 	assert.match(row, /showErrorToast\(result\.result\.text\);/);
-	for (const prefix of [
-		"Could not clear the goal",
-		"Could not stop the loop",
-		"Could not clear the loop",
-		"Could not restore the goal",
+	/*
+	 * The prefixes are catalogue entries now (agent review round 1, R1-2/R1-3):
+	 * the pin asserts each KEY is what the row passes, and asserts the English
+	 * catalogue still carries the sentence the pin was written for - so a reword
+	 * has to be made in the catalogue rather than smuggled through the source.
+	 */
+	const notices = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.notices.json", "utf8"),
+	);
+	for (const [key, prefix] of [
+		["ui.notices.chat.goal_clear_failed", "Could not clear the goal"],
+		["ui.notices.chat.loop_stop_failed", "Could not stop the loop"],
+		["ui.notices.chat.loop_clear_failed", "Could not clear the loop"],
+		["ui.notices.chat.goal_restore_failed", "Could not restore the goal"],
 	]) {
 		assert.match(
 			row,
-			new RegExp(`"${prefix}"`),
-			`${prefix} is the failure prefix`,
+			new RegExp(`t\\("${key.replaceAll(".", "\\.")}"\\)`),
+			`${key} is the failure prefix`,
 		);
+		assert.equal(notices[key], prefix, `${key} changed its English wording`);
 	}
 	/*
 	 * AND THE GOAL'S CLEAR IS THE ONE SUCCESS THAT ALSO SPEAKS (agent review round 1,
@@ -4162,11 +4172,13 @@ test("the two outcomes that speak do so in the person's own words", () => {
 		/showInfoToast\(goalClearedText\(settled\), \{/,
 		"the confirmation names what it cleared (UX round 2, U7)",
 	);
-	assert.match(row, /label: GOAL_UNDO_TEXT,/);
+	// The undo's label and the restore's failure prefix are catalogue entries:
+	// one entry per sentence, shared with the other Undo surfaces (R1-2/R1-3).
+	assert.match(row, /label: t\("ui\.notices\.chat\.undo"\)/);
 	assert.match(row, /onClick: \(\) => void restoreGoal\(settled\)/);
 	assert.match(
 		row,
-		/goalCommand\.run\(GOAL_COMMAND, text, GOAL_UNDO_FAILURE\)/,
+		/goalCommand\.run\(\s*GOAL_COMMAND,\s*text,\s*t\("ui\.notices\.chat\.goal_restore_failed"\)/,
 	);
 	/*
 	 * EACH CONTROL OWNS ITS OWN CHANNEL (agent review round 2, MINOR 2): one hook meant
@@ -4194,7 +4206,7 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	// The pair the two controls dispatch, and neither of them is a label.
 	assert.match(
 		row,
-		/runDismiss\(\s*goalCommand,\s*GOAL_COMMAND,\s*GOAL_CLEAR_ARGS,\s*GOAL_CLEAR_FAILURE,\s*\)/,
+		/runDismiss\(\s*goalCommand,\s*GOAL_COMMAND,\s*GOAL_CLEAR_ARGS,\s*t\("ui\.notices\.chat\.goal_clear_failed"\),\s*\)/,
 	);
 	assert.match(
 		row,
