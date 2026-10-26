@@ -12,6 +12,7 @@ import type {
 	DesktopNotificationItem,
 	DesktopNotificationPriority,
 	DesktopNotificationsCount,
+	DesktopNotificationsList,
 } from "../../../../shared/desktop-control-contract";
 
 export type NotificationKindFilter = "all" | "asks" | "updates";
@@ -387,12 +388,51 @@ export const scopeCountBoundary = (
  * this conversation's own rows: their ids and revisions, which move only when one
  * of them is read, dismissed or updated.
  */
+/**
+ * Layer page one's facts over the scroll window (code round 6, R6-2).
+ *
+ * The facts query is the only thing a frame or the 30 s interval refreshes, so its
+ * rows are the newest ones known; the window holds what the operator scrolled into.
+ * Facts win on identity (they are fresher), their `waiting`, counts and high-water
+ * are the reel's, and `genuinelyNewer` counts facts rows the window does not hold at
+ * all - the number a "N new" pill may add without counting rows that were already
+ * there.
+ */
+export function mergeWindowForReel(
+	facts: DesktopNotificationsList | undefined,
+	windowAnswer: DesktopNotificationsList | undefined,
+): (DesktopNotificationsList & { genuinelyNewer: number }) | undefined {
+	if (!windowAnswer) return facts ? { ...facts, genuinelyNewer: 0 } : undefined;
+	if (!facts) return { ...windowAnswer, genuinelyNewer: 0 };
+	const known = new Set(windowAnswer.items.map((item) => item.id));
+	const genuinelyNewer = facts.items.filter(
+		(item) => !known.has(item.id),
+	).length;
+	const items = new Map<string, DesktopNotificationItem>();
+	for (const item of windowAnswer.items) items.set(item.id, item);
+	for (const item of facts.items) {
+		const previous = items.get(item.id);
+		if (!previous || item.revision >= previous.revision)
+			items.set(item.id, item);
+	}
+	return {
+		...facts,
+		items: [...items.values()],
+		next_cursor: windowAnswer.next_cursor,
+		genuinelyNewer,
+	};
+}
+
 export const scopeCountSignature = (
 	items: readonly DesktopNotificationItem[],
 	sessionId: string,
 ): string =>
 	items
-		.filter((item) => item.session.id === sessionId)
+		/* An empty scope means every visible conversation: the conversation-grouped
+		   header prints one number over all of them, so any of them changing re-walks. */
+		.filter((item) => !sessionId || item.session.id === sessionId)
+		/* Rows kept on screen after a read are drawn rows too: their state moved even
+		   though the server's list no longer returns them. */
 		.map(
 			(item) =>
 				`${item.id}@${item.revision}:${item.read ? 1 : 0}${item.dismissed ? "d" : ""}`,

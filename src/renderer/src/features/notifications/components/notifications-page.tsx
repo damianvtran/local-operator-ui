@@ -119,6 +119,7 @@ import {
 	rangeSelect,
 	rowOrder,
 	scopeCountBoundary,
+	scopeCountSignature,
 	sessionScopeCountsEnabled,
 } from "../notifications-model";
 import { NotificationDetail } from "./notification-detail";
@@ -416,24 +417,23 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * header, or an open detail - hence `openItem`/`notificationId` here rather than
 	 * the grouping alone.
 	 */
+	/*
+	 * THE PRINTED NUMBER FOLLOWS ITS SCOPE'S OWN ROWS (code round 6, R6-1). Keying it
+	 * on the open row's identity meant the number never moved when the item's ROWS
+	 * did - QA measured the button one behind from the detail's own read (137 against
+	 * 139) and the conversation header one behind with no detail open (9 against 10).
+	 * The signature is the scope's rows as this window draws them: the open item's
+	 * conversation, or every visible conversation for the header. A row read, a
+	 * dismissal or a late arrival changes it; a frame about something else does not.
+	 */
 	const scopeCount = useSessionScopeCounts(
 		loaded?.high_water,
 		Boolean(loaded) &&
 			sessionScopeCountsEnabled(grouping, Boolean(notificationId)),
-		/*
-		 * The detail's own row identity: its id, revision and read state, plus its
-		 * pending asks. Whatever a frame elsewhere in the store says, this string only
-		 * moves when a row of THIS conversation does.
-		 */
-		[
-			detail.data?.item.id ?? "",
-			detail.data?.item.revision ?? 0,
-			detail.data?.item.read ? "r" : "u",
-			detail.data?.item.dismissed ? "d" : "",
-			detail.data?.asks.length ?? 0,
-			notificationId ?? "",
-			grouping,
-		].join("|"),
+		scopeCountSignature(
+			loaded?.items ?? [],
+			detail.data?.item.session.id ?? "",
+		),
 	);
 	const scopeCounts = scopeCount.counts;
 	const writesPaused = refreshFailed || operationBusy;
@@ -831,7 +831,20 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			(result) => {
 				const drawn = new Set(order.map((item) => item.id));
 				const leaving = coveredByWrite(drawn, result.changed);
-				if (leaving.size > 0) beginExit(leaving);
+				if (leaving.size > 0) {
+					beginExit(leaving);
+					/*
+					 * AND OUT OF THE READ-KEPT SET (QA round 4, Q12). Those rows were kept
+					 * on screen as already-read; the exit animation ran, but the set still
+					 * held them, so they were drawn again at full opacity - 138 rows left
+					 * standing after the server had dismissed all 138.
+					 */
+					setStickyRead((current) => {
+						const next = new Map(current);
+						for (const id of leaving) next.delete(id);
+						return next;
+					});
+				}
 				return t("ui.notifications.toast.dismissed", {
 					count: result.changed.length,
 				});

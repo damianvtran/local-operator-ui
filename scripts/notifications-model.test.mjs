@@ -1043,6 +1043,119 @@ test("R5-1c: back to top drops the scroll pages and restores the newest row", ()
 	);
 });
 
+test("R6-2: a background refresh replaces facts, never the scroll window", () => {
+	/*
+	 * `useInfiniteQuery` refetches every loaded page forward from page one, so the 30 s
+	 * interval and every feed frame put a deep scroll back at the top (measured: the
+	 * pill grew 2,348 -> 2,748 with nothing new). The facts query is what refreshes;
+	 * this pins the merge - the window survives, and only rows the window never held
+	 * count as new.
+	 */
+	const row = (id, revision = 1, session = "aaaaaaaaaaa1") => ({
+		id,
+		revision,
+		read: false,
+		dismissed: false,
+		session: { id },
+	});
+	const windowAnswer = {
+		items: [row("n_a"), row("n_b"), row("n_c")],
+		waiting: [{ id: "ask:aaaaaaaaaaa1:affff1" }],
+		high_water: 100,
+		unread_count: 3,
+		next_cursor: "c9",
+	};
+	/* A refresh: same rows plus one genuinely new one, and a moved boundary. */
+	const facts = {
+		items: [row("n_new"), row("n_a", 2), row("n_b")],
+		waiting: [
+			{ id: "ask:aaaaaaaaaaa1:affff1" },
+			{ id: "ask:aaaaaaaaaaa1:affff2" },
+		],
+		high_water: 101,
+		unread_count: 4,
+		next_cursor: null,
+	};
+	const merged = model.mergeWindowForReel(facts, windowAnswer);
+	assert.equal(
+		merged.genuinelyNewer,
+		1,
+		"only the row the window never held is new",
+	);
+	assert.equal(merged.high_water, 101, "the boundary moves with the facts");
+	assert.equal(
+		merged.waiting.length,
+		2,
+		"the waiting roll-up is the facts' one",
+	);
+	assert.equal(merged.unread_count, 4, "the count is the facts' one");
+	assert.deepEqual(
+		merged.items.map((item) => item.id).sort(),
+		["n_a", "n_b", "n_c", "n_new"],
+		"the scrolled rows are still there, so the window was not replaced",
+	);
+	assert.equal(
+		merged.items.find((item) => item.id === "n_a").revision,
+		2,
+		"facts win on identity",
+	);
+	assert.equal(
+		merged.next_cursor,
+		"c9",
+		"paging continues from the window's own cursor",
+	);
+	/* And with no facts yet the window is untouched rather than emptied. */
+	assert.deepEqual(
+		model
+			.mergeWindowForReel(undefined, windowAnswer)
+			.items.map((item) => item.id),
+		["n_a", "n_b", "n_c"],
+	);
+});
+
+test("R6-1: an empty scope signature covers every visible conversation", () => {
+	const item = (id, session, revision) => ({
+		id,
+		revision,
+		read: false,
+		dismissed: false,
+		session: { id: session },
+	});
+	const rows = [
+		item("n_one", "aaaaaaaaaaa1", 1),
+		item("n_two", "bbbbbbbbbbb2", 1),
+	];
+	assert.notEqual(
+		model.scopeCountSignature(rows, ""),
+		model.scopeCountSignature([rows[0], { ...rows[1], revision: 2 }], ""),
+		"the conversation header re-walks when any visible conversation changes",
+	);
+	assert.notEqual(
+		model.scopeCountSignature(rows, "aaaaaaaaaaa1"),
+		model.scopeCountSignature(
+			[{ ...rows[0], read: true }, rows[1]],
+			"aaaaaaaaaaa1",
+		),
+		"the detail's button re-walks when one of its rows is read",
+	);
+});
+
+test("Q12: the covered ids leave the read-kept set as well as the exit", () => {
+	const drawn = new Set(["n_a", "n_b"]);
+	const leaving = model.coveredByWrite(drawn, ["n_a", "n_b", "n_z"]);
+	const stickyRead = new Map([
+		["n_a", { id: "n_a" }],
+		["n_b", { id: "n_b" }],
+		["n_other", { id: "n_other" }],
+	]);
+	const kept = new Map([...stickyRead].filter(([id]) => !leaving.has(id)));
+	assert.deepEqual(
+		[...kept.keys()],
+		["n_other"],
+		"no covered row is drawn again",
+	);
+});
+
 test("R5-1d: the drawer keeps its own 10-page window, not the reel's 5", () => {
 	const pages = Array.from({ length: 11 }, (_, index) => ({
 		page: index + 1,

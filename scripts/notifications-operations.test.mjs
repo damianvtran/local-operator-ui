@@ -437,20 +437,22 @@ test("R4-1 / R5-3: the printed count, the confirm and the covered set agree at e
 		assert.equal(step.printed, 131, "the arrival is counted, not just re-read");
 	}
 
-	// STEP 3 - its own fixture, every row already dismissed: the button offers nothing.
+	// STEP 3 - its own fixture after mark-all-read. A read row is still dismissable, so
+	// the button must keep showing the same 130 its confirm enumerates (R6-3: seeding
+	// these as dismissed tested "nothing left", not "after mark-all-read").
 	{
-		const rows = seed(130).map((row) => ({
-			...row,
-			read: true,
-			dismissed: true,
-		}));
+		const rows = seed(130).map((row) => ({ ...row, read: true }));
 		const fixture = ops.createNotificationFixture(rows, []);
 		const step = await measure(
 			fixture,
 			fixture.counts().high_water,
-			"with nothing left to dismiss",
+			"after mark-all-read",
 		);
-		assert.equal(step.printed, 0, "no number is offered when nothing is left");
+		assert.equal(
+			step.printed,
+			130,
+			"reading a row does not remove it from the dismiss scope",
+		);
 	}
 });
 

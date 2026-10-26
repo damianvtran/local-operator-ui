@@ -291,7 +291,34 @@ export const DrawerUpdates: FC<{
 	const ordered = [...unread, ...read];
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
+			{/*
+			 * THE DRAWER GETS THE SAME BACK-TO-TOP AS THE REEL (QA round 4, R6-2). Its list
+			 * pages under the same sliding window, so a deep scroll drops the rows above
+			 * the viewport here too; without this the only way back to the newest update
+			 * was closing the drawer. Same control, same copy key as the page.
+			 */}
+			{list.hiddenNewer > 0 && (
+				<div className="flex shrink-0 justify-center py-1">
+					<Button
+						size="sm"
+						variant="secondary"
+						data-drawer-back-to-top=""
+						onClick={() => {
+							const box = document.querySelector<HTMLElement>(
+								"[data-drawer-updates]",
+							);
+							box?.scrollTo({ top: 0, behavior: "smooth" });
+							list.resetToTop();
+						}}
+					>
+						{t("ui.notifications.new_pill", {
+							count: formatNumber(list.hiddenNewer),
+						})}
+					</Button>
+				</div>
+			)}
 			<div
+				data-drawer-updates=""
 				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
 				onScroll={(event) => {
 					/*

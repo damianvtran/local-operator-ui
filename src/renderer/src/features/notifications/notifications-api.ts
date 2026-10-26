@@ -54,6 +54,7 @@ import type {
 import {
 	DRAWER_PAGE_WINDOW,
 	NOTIFICATIONS_PAGE_WINDOW,
+	mergeWindowForReel,
 	pinFirstPage,
 	slideNotificationWindow,
 } from "./notifications-model";
@@ -66,8 +67,19 @@ export const notificationKeys = {
 		["desktop", "notifications", "session", sessionId] as const,
 	detail: (id: string) => ["desktop", "notifications", "detail", id] as const,
 	count: ["desktop", "notifications", "count"] as const,
+	facts: (state: "unread" | "all") =>
+		["desktop", "notifications", "facts", state] as const,
 	/** The reel's list reads, without the per-id detail reads. */
 	listRoot: ["desktop", "notifications", "list"] as const,
+	/**
+	 * Page one's FACTS, apart from the scroll window (code round 6, R6-2).
+	 * `useInfiniteQuery` refetches every loaded page forward from page one, so the
+	 * interval and every feed frame replaced a deep scroll with the newest page - the
+	 * operator was thrown back to the top and the pill grew with rows that were not
+	 * new. Facts refetch on the frame and on the interval; the window only moves when
+	 * the operator asks it to (back to top, explicit refresh, scroll to top).
+	 */
+	factsRoot: ["desktop", "notifications", "facts"] as const,
 	/** The per-conversation reads (the drawer, the flag lines). */
 	sessionsRoot: ["desktop", "notifications", "session"] as const,
 };
@@ -144,6 +156,35 @@ function useReelWindow(
 }
 
 /**
+ * Page one's facts: the counts, the `waiting` roll-up and the high-water mark, plus
+ * the newest rows (R5-1/R6-1 need them to tell "new" from "already here").
+ *
+ * This is the query that refreshes on the feed frame and on the 30 s backstop. It is
+ * deliberately separate from the scroll window: refreshing it must never move what
+ * the operator is reading.
+ */
+export function useNotificationsFacts(
+	state: "unread" | "all",
+	enabled: boolean,
+) {
+	useNotificationsFeedInvalidation();
+	return useQuery({
+		queryKey: notificationKeys.facts(state),
+		enabled,
+		queryFn: () =>
+			desktopResult<DesktopNotificationsList>({
+				op: "notifications.list",
+				state,
+				limit: 100,
+			}),
+		retry: retryDesktopQuery,
+		staleTime: 5_000,
+		refetchInterval: 30_000,
+		refetchIntervalInBackground: false,
+	});
+}
+
+/**
  * The reel's list read. The page loads up to the route's 100-row page and the
  * `waiting` group; the client applies kind/priority/from/grouping over that set
  * (design § 2: filters are client-side over the loaded set).
@@ -159,6 +200,7 @@ export function useNotificationsList(
 ) {
 	useNotificationsFeedInvalidation();
 	const { client } = useOptionalQueryClient();
+	const facts = useNotificationsFacts(state, enabled);
 	const answer = useInfiniteQuery({
 		queryKey: notificationKeys.list(state),
 		enabled,
@@ -195,7 +237,10 @@ export function useNotificationsList(
 		},
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
-		refetchInterval: 30_000,
+		/* NO INTERVAL, NO FRAME REFETCH (code round 6, R6-2): `useNotificationsFacts`
+		   owns the refresh. Refetching this query walks every loaded page forward from
+		   page one, which is what snapped a deep scroll back to the top. */
+		refetchInterval: false,
 		refetchIntervalInBackground: false,
 		/*
 		 * NO LIBRARY CAP: THE WINDOW IS BOUNDED FROM THE TAIL (code round 4, R4-4).
@@ -210,10 +255,32 @@ export function useNotificationsList(
 		notificationKeys.list(state),
 		answer.dataUpdatedAt,
 	);
+	/* Page one's facts are the head of the reel: the window below them is whatever the
+	   operator scrolled into, and `hiddenNewer` counts what the facts know about that
+	   the window no longer holds - genuinely new rows first, then the ones the window
+	   dropped above the viewport. */
+	const merged = mergeWindowForReel(
+		facts.data,
+		answer.data as DesktopNotificationsList | undefined,
+	);
 	return {
 		...answer,
-		hiddenNewer: reel.hiddenNewer,
+		data: merged,
+		dataUpdatedAt: Math.max(
+			answer.dataUpdatedAt,
+			facts.dataUpdatedAt as number,
+		),
+		hiddenNewer: reel.hiddenNewer + (merged?.genuinelyNewer ?? 0),
 		resetToTop: reel.resetToTop,
+		refetchAll: () => {
+			void client?.invalidateQueries({
+				queryKey: notificationKeys.list(state),
+			});
+			void client?.invalidateQueries({
+				queryKey: notificationKeys.facts(state),
+			});
+			return facts.refetch();
+		},
 	};
 }
 
@@ -402,7 +469,7 @@ function invalidateSoon(
 	if (previous) clearTimeout(previous);
 	const timer = setTimeout(() => {
 		pendingInvalidation.delete(client);
-		void client.invalidateQueries({ queryKey: notificationKeys.listRoot });
+		void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
 		void client.invalidateQueries({ queryKey: notificationKeys.sessionsRoot });
 	}, INVALIDATE_COALESCE_MS);
 	pendingInvalidation.set(client, timer);
