@@ -1210,6 +1210,175 @@ test("a superseded subscription's queued frames commit nothing", async () => {
 	);
 });
 
+test("the bridge's own open/replay/snapshot shapes apply: open carries the cutoff, not a floor", async () => {
+	/*
+	 * THE SHAPE A REAL BRIDGE SENDS (`docs/DESKTOP_API.md`, "the read envelope";
+	 * `server/utils/desktop_sessions.py::events`): the `open` frame's `seq` is the
+	 * CUTOFF the replay was built from, the retained frames are replayed at
+	 * `after_seq < seq <= cutoff`, and the snapshot carries the sequence read
+	 * while it was built - so a replay can end ON the watermark and the snapshot
+	 * then carries the same number.
+	 *
+	 * A high-water mark seeded from the open's own seq refuses that whole
+	 * handshake; one that accepts only strictly-newer frames still refuses the
+	 * snapshot at the watermark. Both failures leave a real conversation stuck at
+	 * "connecting", which no fixture built as `open(1)` + `snapshot(2)` can see.
+	 */
+	const rows = Array.from({ length: 8 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+
+	// 1. An idle reconnect: nothing retained, so `open` and `snapshot` share a seq.
+	reset({ transcript: makeTranscript(rows) });
+	let panel = await mount();
+	deliver(openFrame(7, false));
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	assert.equal(
+		panel.status(),
+		"live",
+		"an open and its snapshot sharing the cutoff still applies",
+	);
+	assert.equal(panel.ids().length, rows.length, "and the page is painted");
+
+	// 2. A gap-free reopen: replay ends ON the cutoff, then the snapshot does too.
+	reset({ transcript: makeTranscript(rows) });
+	panel = await mount();
+	deliver(openFrame(7, false));
+	deliver(
+		eventFrame(6, {
+			type: "message_start",
+			message: {
+				id: "replayed",
+				role: "user",
+				content: [{ text: "replayed" }],
+			},
+		}),
+	);
+	deliver(
+		eventFrame(7, {
+			type: "message_start",
+			message: {
+				id: "replayed-2",
+				role: "user",
+				content: [{ text: "second" }],
+			},
+		}),
+	);
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	assert.equal(panel.status(), "live", "the snapshot at the watermark applies");
+	assert.ok(
+		panel.ids().includes("replayed") && panel.ids().includes("replayed-2"),
+		"and the replay below the cutoff is not discarded",
+	);
+});
+
+test("a page dispatched before a live write cannot rewrite that row", async () => {
+	/*
+	 * THE WIRING HALF of `pageRowIsOlderThanLiveRow` (agent review round 2, m2):
+	 * the reducer's rule is worth nothing if the hook does not hand the page the
+	 * receipt it was dispatched at. A walk read that goes out and is answered
+	 * while a live frame settles the SAME row must keep the live text - the
+	 * owner's prepared window can carry the shorter projection it had when the
+	 * read started.
+	 */
+	const base = Array.from({ length: 10 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+	const PARTIAL = "Four invoices were late: 1042";
+	const FULL =
+		"Four invoices were late: 1042, 1088, 1103 and 1177. I have started chasing them.";
+	const transcript = makeTranscript(base);
+	reset({ transcript });
+
+	// The walk's answer, held until the live write has landed.
+	let release;
+	const held = new Promise((resolve) => {
+		release = resolve;
+	});
+	const realTail = globalThis.__gapTail;
+	globalThis.__gapTail = () => held;
+	try {
+		const panel = await mount();
+		deliver(openFrame(1, false));
+		// A page that stops SHORT of the journal tail is what owes the walk.
+		deliver(
+			snapshotFrame(2, {
+				cursor: base[4].id,
+				entries: base.slice(0, 5),
+				liveEvents: [],
+				streaming: true,
+				hasMore: true,
+			}),
+		);
+		await pump();
+		assert.ok(
+			globalThis.__gapHistoryReads > 0,
+			"the short page owes a reconcile read, which is the read under test",
+		);
+
+		// The live answer settles while that read is in flight.
+		deliver(
+			eventFrame(4, {
+				type: "message_end",
+				message: {
+					id: "a-live",
+					role: "assistant",
+					content: [{ type: "text", text: FULL }],
+					stop_reason: "stop",
+				},
+			}),
+		);
+		await pump();
+		assert.equal(
+			panel.row("a-live")?.text,
+			FULL,
+			"the live end is the control",
+		);
+
+		// The page the read was answered with: the same row, shorter, plus the
+		// rows behind it. Its dispatch was at receipt 2, so it loses.
+		release({
+			entries: [
+				...base,
+				row("a-live", 1_700_000_900, {
+					kind: "message",
+					role: "assistant",
+					content: [{ type: "text", text: PARTIAL }],
+					stop_reason: "stop",
+				}),
+			],
+			has_more: false,
+			cursor_missing: false,
+		});
+		await pump();
+		assert.equal(
+			panel.row("a-live")?.text,
+			FULL,
+			"a page read before the live write does not rewrite the row",
+		);
+	} finally {
+		globalThis.__gapTail = realTail;
+	}
+});
+
 test("a receipt gap keeps the answer being written, and a mid-turn join agrees with the end", async () => {
 	const plan = conversation({ withSteer: false, awayRows: 0 });
 	const transcript = makeTranscript(plan.rows);

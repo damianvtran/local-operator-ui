@@ -375,12 +375,13 @@ type TranscriptPayloadRecord =
 			 * cursor; the epoch rotates only with a facade rebuild
 			 * (`server/utils/desktop_sessions.py`, the local-operator repo).
 			 *
-			 * A STREAMING-ROW FACT, not a universal one: this field is stamped by a
-			 * live turn's frames only - `message_end` and `applyHistoryPage` build
-			 * their records without it - which is safe today because a settled row
-			 * refuses later deltas (see `message_update`'s settled-row gate). Any
-			 * path that ever re-arms a settled row must restamp or re-earn this
-			 * cursor, or it silently loses the protection.
+			 * STAMPED BY EVERY LIVE FRAME THAT WRITES A ROW, including the settled
+			 * `message_end` one - a settled row is exactly what an older history
+			 * page competes with, so the stamp is what lets
+			 * `pageRowIsOlderThanLiveRow` refuse that page. `applyHistoryPage` does
+			 * NOT stamp (a durable row's position is the journal's, not the wire's),
+			 * so a row that only ever arrived from a page carries no cursor and
+			 * keeps durable-wins-by-id.
 			 *
 			 * Per-EPOCH, because a replaced owner restarts the numbering: the
 			 * comparison is only meaningful within one epoch, and a frame from a
@@ -4568,11 +4569,12 @@ export function applyHistoryPage(
 			record = stripPeerAdmission(record);
 		}
 		/*
-		 * DURABLE-WINS-BY-ID HAS ONE EXCEPTION, and it is the reported flicker:
-		 * a page row that is a shorter projection of a row this view has already
-		 * finished keeps the row on screen. See `pageIsOlderProjection` for why a
-		 * prefix is the proof and why every other disagreement still lets the page
-		 * win (a correction must land).
+		 * DURABLE-WINS-BY-ID HAS ONE EXCEPTION, and it is the reported flicker: a
+		 * page whose READ predates a live write to the same row cannot rewrite it.
+		 * See `pageRowIsOlderThanLiveRow` for the witness, and for why content and
+		 * timestamps can never answer this (a correction also disagrees, and one
+		 * that SHORTENS an answer is indistinguishable from a stale projection). A
+		 * read dispatched after the write still wins, so corrections land.
 		 */
 		if (
 			record &&

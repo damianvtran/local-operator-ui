@@ -4608,13 +4608,20 @@ export function useCanonicalSessionStream(
 					}
 					// From here the frame is a receipt with an epoch/seq cursor.
 					//
-					// A new `open` is the only sequence reset. Within that domain,
-					// accept strictly newer frames BEFORE applying any payload. This
-					// guard covers replay events and snapshots alike; the old code
-					// advanced the cursor on stale frames too, allowing a delayed
-					// reset or page to overwrite a newer live/snapshot commit.
+					/*
+					 * THE OPEN FRAME'S `seq` IS A CUTOFF, NOT A STATE POSITION, so it
+					 * cannot seed the high-water mark: the bridge sets it to
+					 * `bridge.sequence` and then replays every retained frame with
+					 * `after_seq < seq <= cutoff` before the snapshot
+					 * (`docs/DESKTOP_API.md`). Seeding from it rejects the whole replay
+					 * AND the snapshot on every real open - the pane stuck at
+					 * "connecting". The mark is therefore CLEARED at the open, and what
+					 * makes that safe is the connection witness above: a superseded
+					 * subscription's frames can no longer arrive here, so a fresh
+					 * connection is free to restate the world from its own replay.
+					 */
 					if (frame.type === "open") {
-						acceptedReceipt = { epoch: frame.epoch, seq: frame.seq };
+						acceptedReceipt = null;
 					} else if ("seq" in frame) {
 						// `"seq" in frame` is what narrows away the two cursor-less
 						// members (`gap`/`heartbeat`, both handled above); every remaining
@@ -4623,7 +4630,14 @@ export function useCanonicalSessionStream(
 							epoch: frame.epoch,
 							seq: frame.seq,
 						};
-						if (!isNewerDesktopFrame(acceptedReceipt, cursor)) continue;
+						if (
+							!isNewerDesktopFrame(acceptedReceipt, cursor, {
+								// The snapshot is the state AT the watermark, so it may sit on
+								// it (see the option's own note); nothing else may.
+								allowEqual: frame.type === "snapshot",
+							})
+						)
+							continue;
 						acceptedReceipt = cursor;
 					}
 					// The cursor as it stood BEFORE this frame is read first and kept

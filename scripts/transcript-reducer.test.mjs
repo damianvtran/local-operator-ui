@@ -4957,6 +4957,21 @@ test("a page read before a live write cannot rewrite the row, and a later read c
 		corrected,
 		"an unwitnessed page keeps durable-wins-by-id",
 	);
+
+	/*
+	 * AND THE BOUNDARY IS STRICT (agent review round 2, m1). A read dispatched AT
+	 * the very receipt that wrote the row has seen that write - the bridge answers
+	 * the state as of the position it was asked at - so it may correct the row.
+	 * Changing `>` to `>=` here would silently forbid every same-position
+	 * correction, and nothing else in this suite would notice.
+	 */
+	assert.equal(
+		applyHistoryPage(live, laterPage, {
+			readWitness: { epoch: "e", seq: 5 },
+		}).records.at(-1).text,
+		corrected,
+		"a read at the row's own receipt has seen it and may correct it",
+	);
 });
 
 test("a history_delta that states reset replaces the viewport it cannot extend", () => {

@@ -2335,9 +2335,31 @@ export type DesktopStreamCursor = { epoch: string; seq: number };
 export function isNewerDesktopFrame(
 	prior: DesktopStreamCursor | null | undefined,
 	frame: DesktopStreamCursor,
+	options: {
+		/**
+		 * Accept a frame at the SAME receipt position. Only an authoritative frame
+		 * may ask for this, and the snapshot is the one that does.
+		 *
+		 * WHY IT IS NEEDED RATHER THAN TIDY. The bridge builds `open` from
+		 * `cutoff = bridge.sequence` and then replays every retained frame with
+		 * `after_seq < seq <= cutoff`, followed by the snapshot whose own `seq` is
+		 * the sequence read while it was built — so a replay can END on `cutoff`
+		 * and the snapshot then carries the very same number (`docs/DESKTOP_API.md`,
+		 * "the snapshot's `seq` is the watermark"). Under a strict `>` the snapshot
+		 * would be refused exactly when the replay had already reached the
+		 * watermark, and the pane would sit on the replay's rows with no
+		 * authoritative state - the "stuck at connecting" failure. Equal is not
+		 * older: the snapshot IS the state at that position.
+		 */
+		allowEqual?: boolean;
+	} = {},
 ): boolean {
 	if (!prior) return true;
-	return prior.epoch !== frame.epoch || frame.seq > prior.seq;
+	if (prior.epoch !== frame.epoch) return true;
+	return (
+		frame.seq > prior.seq ||
+		(options.allowEqual === true && frame.seq === prior.seq)
+	);
 }
 
 /**
