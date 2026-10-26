@@ -1,5 +1,6 @@
 import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { useState } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type { TeamBridgeTarget } from "./team-bridge-model";
@@ -154,3 +155,41 @@ type Story = StoryObj<typeof meta>;
 export const People: Story = {};
 /** Identity still loading: every row is inert, yet each card is a dwell away. */
 export const IdentityLoading: Story = { args: { identityKnown: false } };
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const cardOpen = () => document.querySelector("[data-profile-card]") !== null;
+
+/**
+ * The pointer rests on Bea's NAME. `userEvent.hover` dispatches the
+ * pointerover/mouseover/mouseenter the row listens on. Asserted on both sides of
+ * the dwell, so the frame shows a card that waited, not one that was already
+ * open: nothing at 900 ms, the card after 1.2 s.
+ */
+export const LongHoverOpensCard: Story = {
+	play: async () => {
+		const row = await screen.findByRole("button", {
+			name: "Message Bea Okafor",
+		});
+		const name = [...row.querySelectorAll("span")].find(
+			(span) => span.textContent === "Bea Okafor",
+		);
+		await userEvent.hover(name ?? row);
+		await sleep(900);
+		await expect(cardOpen()).toBe(false);
+		await waitFor(() => expect(cardOpen()).toBe(true), { timeout: 1_000 });
+	},
+};
+
+/** The pointer rests on Bea's AVATAR: the card at the usual 400 ms. */
+export const AvatarHoverOpensCard: Story = {
+	play: async () => {
+		const row = await screen.findByRole("button", {
+			name: "Message Bea Okafor",
+		});
+		const avatar = row.querySelector("[data-team-bridge-avatar]");
+		await userEvent.hover(avatar ?? row);
+		await sleep(250);
+		await expect(cardOpen()).toBe(false);
+		await waitFor(() => expect(cardOpen()).toBe(true), { timeout: 500 });
+	},
+};
