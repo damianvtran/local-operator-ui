@@ -1912,3 +1912,36 @@ test("mirror rows carry the value's isolate range and no bidi controls", async (
 		dom.window.api = undefined;
 	}
 });
+
+/*
+ * `enabled` follows own-state <-> presented page, so `request` changes identity
+ * on every such flip. The window-wide `onStateChanged` listener must not follow
+ * it: CI on this PR caught the start-page harness (whose fake bridge tracks ONE
+ * listener) losing the surface's own subscription, so a landed page never showed.
+ */
+test("flipping own-state does not churn the state-change subscription", async () => {
+	let subscribed = 0;
+	let unsubscribed = 0;
+	// `suspend` is where `enabled` really flips with own-state: the DOM list
+	// enables the read, a presented page without the native child does not.
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		overlayMode: "suspend",
+		overlayReason: "platform",
+		onStateChanged: () => {
+			subscribed += 1;
+			return () => {
+				unsubscribed += 1;
+			};
+		},
+	});
+	assert.equal(subscribed, 1);
+	await bundle.rerender({ ownState: false });
+	await bundle.rerender({ ownState: true });
+	await bundle.rerender({ ownState: false });
+	assert.equal(subscribed, 1, "one listener for the life of the bar");
+	assert.equal(unsubscribed, 0);
+	await bundle.cleanup();
+	assert.equal(unsubscribed, 1);
+});
