@@ -69,6 +69,27 @@
 		"plain, imperative",
 		"Third hero example; fills the box when clicked. 'shipping' is an example team name, kept as written."
 	],
+	"ui.agents.config.placeholder.about": {
+		"role": "Placeholder in the composer when the request names an agent or team",
+		"tone": "Invitation, second person, imperative.",
+		"length_hint": "One short line; the name is data and may be long, so keep the surrounding words short.",
+		"placeholders": {
+			"name": "The agent or team the request is about, as stored: user-authored data, never translate it. It can be a few dozen characters, so keep the surrounding words short enough that the sentence still reads as one line at the docked width."
+		},
+		"note": "Ends with U+2026. This is the box's invitation once a row is selected, and the target's name is the only thing that changes between agents and teams."
+	},
+	"ui.agents.config.placeholder.docked": {
+		"role": "Placeholder in the docked config composer at the bottom of the detail pane",
+		"tone": "Invitation, second person; names the job (a change) without naming one object.",
+		"length_hint": "About 45 characters in English. The narrowest docked pane is 392 px at native 1000 px (sidebar 288 + roster 288 + detail 392). The box's content area is 304 px wide there, and the English string measured 301.1709 px unwrapped: it wraps readably with no clipping and no vertical overflow (scrollHeight == clientHeight == 55). Do not lengthen it without re-running the native pane-width boundary check.",
+		"note": "The docked box has a fixed height and does not auto-grow, so a longer translation wraps rather than clipping; readable wrapping is accepted, clipping and vertical overflow are not. It must not name only one object (the box serves both tabs) and must not read as messaging the open agent."
+	},
+	"ui.agents.config.placeholder.hero": {
+		"role": "Placeholder in the empty configuration composer on the Agents page hero",
+		"tone": "Invitation, second person, sentence case.",
+		"length_hint": "About 25 characters in English. This is the native placeholder of a growing box, not a label; a longer string wraps to a second line in the empty state.",
+		"note": "Names no object on purpose: the same box serves the Agents and Teams tabs, so naming one would contradict the other pane. Ends with U+2026, not three periods."
+	},
 	"ui.agents.config.result.changed": [
 		"prefix in the list of changed rows",
 		"plain",

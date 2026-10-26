@@ -1113,11 +1113,11 @@ export function ConfigComposer({
 	 * Do not lengthen it without re-running the native pane-width boundary check.
 	 */
 	const placeholder = about
-		? `Change ${about.name}…`
+		? t("ui.agents.config.placeholder.about", { name: about.name })
 		: run.enabled
 			? hero
-				? "Describe what you want…"
-				: "Ask for a change, or describe something new…"
+				? t("ui.agents.config.placeholder.hero")
+				: t("ui.agents.config.placeholder.docked")
 			: DISABLED_GATE_LINE;
 
 	/*
