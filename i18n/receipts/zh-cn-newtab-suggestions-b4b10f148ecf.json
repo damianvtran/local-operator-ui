@@ -1,0 +1,106 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "fresh-namespace-delta",
+ "locale": "zh-CN",
+ "namespace": "ui.browser",
+ "pr": null,
+ "branch": "fix/newtab-address-suggestions",
+ "instance": "zh-cn-newtab-suggestions-b4b10f148ecf",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value for this branch and edited no repo file",
+  "instance": "zh-cn-newtab-suggestions-b4b10f148ecf",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "FALLBACK OBSERVED: the session started on deepseek/deepseek-flash and the harness switched to anthropic/claude-sonnet-5-5 mid-run (provider failure: quota HTTP 402). The diff derivation and catalogue reads were first issued on deepseek-flash; every judgement, the ICU parse, the bidi rendering and this receipt were produced on anthropic/claude-sonnet-5-5.",
+  "independence": "Read-only on the repo (worktree newtab-suggestions at 80a1c3224e). Wrote no catalogue value, edited no catalogue, English source, context sidecar, ledger or allowance, ran no ledger tool. Wrote only this receipt under the session scratchpad."
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "Accurate, idiomatic, 你 register consistent, by far the shortest in the visible pill. Two nits on term/spacing consistency only.",
+ "findings": [
+  {
+   "severity": "NIT",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable",
+   "current": "无法读取你的浏览历史。你输入的地址仍可使用。",
+   "problem": "'浏览历史' where the namespace says '历史记录' / '浏览历史记录' (address_suggestions_empty '还没有浏览历史记录。', _label '来自你的历史记录', _no_match '你的历史记录中没有…'). Both forms are valid Chinese; the point is one term per concept.",
+   "proposed": "无法读取你的浏览历史记录。你输入的地址仍可使用。",
+   "reason": "Same term as the three neighbours."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable_narrow",
+   "current": "此窗格太窄，无法显示建议。按 Enter 即可打开你输入的内容。",
+   "problem": "'按 Enter' has a space; the neighbouring browser_find_row string is '按Enter重新查找。' (no space). Same on _restart. Style drift inside one namespace, not an error.",
+   "proposed": "此窗格太窄，无法显示建议。按Enter即可打开你输入的内容。",
+   "reason": "Matches the existing neighbour. Apply the same to _platform and _restart if adopted.",
+   "also_keys": [
+    "ui.browser.browser_url_bar.address_suggestions_unavailable_platform",
+    "ui.browser.browser_url_bar.address_suggestions_unavailable_restart"
+   ]
+  }
+ ],
+ "finding_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 2
+ },
+ "checks": {
+  "keys_audited": 5,
+  "key_set_equals_english": true,
+  "namespace_keys": 241,
+  "placeholders": "@formatjs/icu-messageformat-parser parse of all 5 values: address_open_row carries exactly one argument {address}, byte-intact; the other four carry no argument and no ICU/markup construct, same as English.",
+  "first_sentence_chars_vs_en": {
+   "address_suggestions_unavailable": [
+    36,
+    11
+   ],
+   "address_suggestions_unavailable_narrow": [
+    40,
+    13
+   ],
+   "address_suggestions_unavailable_platform": [
+    40,
+    11
+   ],
+   "address_suggestions_unavailable_restart": [
+    37,
+    10
+   ]
+  },
+  "full_chars_vs_en": {
+   "address_open_row": [
+    16,
+    13
+   ],
+   "address_suggestions_unavailable": [
+    64,
+    22
+   ],
+   "address_suggestions_unavailable_platform": [
+    76,
+    30
+   ],
+   "address_suggestions_unavailable_restart": [
+    100,
+    48
+   ],
+   "address_suggestions_unavailable_narrow": [
+    76,
+    32
+   ]
+  }
+ },
+ "overflow_context": "Rendering context (renderer/src/features/browser/components/browser-url-bar.tsx ~1597-1612): the three standing sentences paint in a single-line `truncate` pill, max-w-[45%] of the address field, text-meta (12px), shown from a 342px field up. The full text is the aria-describedby description. Only the FIRST sentence can realistically be seen, so first-sentence length is the budget that matters.",
+ "sha256": {
+  "zh-CN": "d56c00aea21212eca67067d125bdd79bff524eefebde1ef7f65baa4017f0ac97",
+  "en": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81"
+ },
+ "context_sha256": "aa83f0ec3e7d31793e54915a97955c49d2e788f7b926e26746ed46cc5f5a6e9b",
+ "scope": "ui.browser, the 5 keys this commit added or changed (address_open_row new; address_suggestions_unavailable changed; address_suggestions_unavailable_platform / _restart / _narrow new) read against src/i18n/catalogues/en/ui.browser.json and en/ui.browser.context.json, plus the surrounding browser_url_bar / browser_pane / browser_find_row / browser_tab_strip keys as register and glossary precedent. Diff derived from `git diff 2d4ba7c434..80a1c3224e -- src/i18n/catalogues`. 5 audited keys per locale; key set of the namespace equals English (241/241).",
+ "date": "2026-10-26",
+ "head": "80a1c3224e",
+ "head_full": "80a1c3224e2dbb2cafd154acda1ab3ef836c17b3",
+ "base": "2d4ba7c434"
+}
