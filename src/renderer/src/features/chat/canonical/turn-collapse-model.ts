@@ -52,12 +52,15 @@ import {
 	type PeerSender,
 	peerIdentity,
 } from "../components/trace/receipt-row-model";
+import type { HubReceipt } from "../components/trace/receipt-row-model";
 import { isPartialDelivery } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
 import { isImageGenTool } from "./image-gen-card-model";
 import { freezeRecordDeep } from "./record-immutability";
 import {
+	type FoldCountSegment,
 	type FoldableAction,
+	foldCountSegments,
 	foldSummary,
 	workedSeconds,
 	workedSecondsOf,
@@ -77,6 +80,7 @@ import {
 } from "./transcript-rows";
 import {
 	type QuietGroupFamily,
+	type SegmentLabelKind,
 	type SegmentSpan,
 	type TriggerKind,
 	type TurnCycle,
@@ -84,10 +88,11 @@ import {
 	isQuietTurnCall,
 	isQuietTurnClose,
 	isTerminalMarker,
-	labelOfSegment,
+	labelWordOf,
 	partitionRun,
 	reportsCompletedThought,
 	segmentIsCompleted,
+	segmentLabelKind,
 	triggerOf,
 } from "./turn-segments";
 
@@ -291,6 +296,19 @@ export type QuietGroup = {
 	failed: number;
 	/** It is the tail and no later visible row exists (the group may still grow). */
 	open: boolean;
+	/**
+	 * Hub receipts in this group that ASK for a reply, and how many: state it only
+	 * when non-zero, and as a count because the bar states the number.
+	 *
+	 * WHY IT LIVES ON THE GROUP AT ALL. It is the phone's clause too: both surfaces
+	 * derive their bars from one definition (`quietGroupClauseFacts`), and a fact
+	 * only one of them can compute is a parity gap the shared fixture cannot see.
+	 * Read from the record's own durable hub shape (`receipt`), never re-derived
+	 * from the wire.
+	 */
+	replyRequested?: number;
+	/** Hub receipts in this group delivered as a STEER (same shape as above). */
+	steered?: number;
 	/** Every row of the group, in order. */
 	rowIds: string[];
 };
@@ -728,6 +746,21 @@ export function quietGroupOfSegment(
 	}
 	const rowIds: string[] = [];
 	for (let i = span.from; i <= span.to; i += 1) rowIds.push(records[i].id);
+	/*
+	 * THE RECEIPT FAMILIES' TWO DECIDED FACTS, from the trigger rows' own durable
+	 * hub shape. SPARSE, like the wire: a group with none carries no field, so a
+	 * surface that has none states no clause and the two cannot drift by presence.
+	 */
+	const receipts = triggers.filter(
+		(trigger): trigger is TranscriptRecord & { receipt?: HubReceipt } =>
+			"receipt" in trigger && trigger.receipt !== undefined,
+	);
+	const replyRequested = receipts.filter(
+		(trigger) => trigger.receipt?.expectsReply === true,
+	).length;
+	const steered = receipts.filter(
+		(trigger) => trigger.receipt?.steer === true,
+	).length;
 	return {
 		key: `qg:${records[span.from].id}`,
 		family: familyFinal,
@@ -739,7 +772,44 @@ export function quietGroupOfSegment(
 		failed,
 		open: options.open ?? span.to === records.length - 1,
 		rowIds,
+		...(replyRequested > 0 ? { replyRequested } : {}),
+		...(steered > 0 ? { steered } : {}),
 	};
+}
+
+/**
+ * THE SUMMARY CLAUSE FACTS a bar states, in order, as the shared contract.
+ *
+ * WHY THIS IS A SHARED DERIVATION, AND WHY IT LIVES HERE NOW. The clause set is the
+ * only part of a group a reader actually reads, and it is derived (never sent).
+ * While each surface decided its own conditions, the SAME group read
+ * `messages · 2 · 3 actions` on one client and bare `messages · 2` on another, and
+ * nothing caught it: the parity fixture pinned counts but no clause. The relay and
+ * the TUI ported this rule on 2026-10-16 while this app kept its own - so the
+ * fixture copies drifted apart and both suites stayed green for nine days. This is
+ * the definition the fixture now pins on both sides.
+ *
+ * The facts are clause IDENTIFIERS with their counts, not rendered text: a surface
+ * still owns its words and formatting, exactly as it owns the family word
+ * (`quietGroupLabel`). Count semantics match the group fields: `count` is TRIGGER
+ * rows, `actions` is non-quiet work rows.
+ */
+export function quietGroupClauseFacts(
+	group: QuietGroup,
+	options: { partial?: boolean } = {},
+): string[] {
+	const facts = [
+		`count:${options.partial ? `${group.count}+` : `${group.count}`}`,
+	];
+	/*
+	 * NONZERO, NOT A THRESHOLD: a group with ANY work states it, and a workless
+	 * group states no actions clause at all (never `0 actions`).
+	 */
+	if (group.actions) facts.push(`actions:${group.actions}`);
+	if (group.replyRequested)
+		facts.push(`reply_requested:${group.replyRequested}`);
+	if (group.steered) facts.push(`steered:${group.steered}`);
+	return facts;
 }
 
 /**
@@ -802,6 +872,12 @@ export type TurnSummaryFacts = {
 	firstFailedId: string | null;
 	/** The fold-style class sentence (`foldSummary`), or null with no actions. */
 	title: string | null;
+	/**
+	 * The same summary as STRUCTURED count segments (`FoldCountSegment`), beside
+	 * the words - the cross-surface fact a parity fixture compares (see
+	 * `FoldSummarySpec.countUnits` for why English cannot be the contract).
+	 */
+	countUnits: FoldCountSegment[];
 	/**
 	 * The quiet group this span IS, when it is one (design §5, rev 2): the bar over
 	 * a run of delivery receipts states the family's plural word, the count and the
@@ -1012,6 +1088,14 @@ export type SegmentPlan = {
 	afterAnswer: boolean;
 	/** The word ahead of the clauses (`Wake`, `Peer message`, `Steered`, ...), or null. */
 	label: string | null;
+	/**
+	 * The label's DECISION, before this surface's word for it. Shared with the
+	 * other clients' parity fixture, which must not compare English
+	 * (`SegmentLabelKind`): the phone says `Wake` in its own catalogue, and a span
+	 * one client labels and the other does not is a partition disagreement that no
+	 * string comparison can see.
+	 */
+	labelKind: SegmentLabelKind | null;
 	/** A settled follow-up: the bar carries the completion mark. */
 	completed: boolean;
 	/** Receipt-origin presentation facts; separate from shared QuietGroup >=2. */
@@ -2424,6 +2508,7 @@ function factsOf(
 		failed,
 		firstFailedId,
 		title: actions.length > 0 ? foldSummary(actions) : null,
+		countUnits: actions.length > 0 ? foldCountSegments(actions) : [],
 		group: options.group ?? null,
 	};
 }
@@ -3064,11 +3149,18 @@ function planRun(
 							: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record.id
 					}`;
 
-			const label =
-				labelOfSegment(records, partition.cycles, span, group) ??
+			/*
+			 * THE LABEL'S DECISION, THEN ITS WORD (`SegmentLabelKind`). A span the
+			 * model leaves nameless but which is a receipt episode opening on a notice
+			 * still reads `Job result` - the arm is the episode's own origin, so it
+			 * belongs beside the other kinds rather than in the renderer.
+			 */
+			const labelKind: SegmentLabelKind | null =
+				segmentLabelKind(records, partition.cycles, span, group) ??
 				(internal !== null && records[span.from].kind === "notice"
-					? "Job result"
+					? { kind: "job" }
 					: null);
+			const label = labelWordOf(labelKind);
 			/*
 			 * Only positive receipt-origin spans may compact while live. Settlement
 			 * is a lifecycle fact, not permission to show private work loosely.
@@ -3122,6 +3214,7 @@ function planRun(
 				gap: segmentGap(segRows[0], span.from > from),
 				afterAnswer,
 				label,
+				labelKind,
 				internal,
 				completed: internal?.live
 					? false
