@@ -114,9 +114,10 @@ import {
 	filtersActive,
 	groupItems,
 	isLiveAsk,
+	mergeConfirmedReads,
 	rangeSelect,
 	rowOrder,
-	sessionDismissCount,
+	scopeCountBoundary,
 	sessionScopeCountsEnabled,
 } from "../notifications-model";
 import { NotificationDetail } from "./notification-detail";
@@ -167,33 +168,40 @@ const settleOperationProgress = (
 const useSessionScopeCounts = (
 	throughId: number | undefined,
 	enabled: boolean,
-): Record<string, number> | undefined => {
+): {
+	counts: Record<string, number> | undefined;
+	/** `true` until an answer for THIS boundary exists; `false` once one does. */
+	pending: boolean;
+} => {
 	/*
-	 * A snapshot at the LAST USED boundary rather than the newest one. Every
-	 * mutation advances `high_water`, including the read/dismiss this count is
-	 * describing; keying the query on it meant the count was thrown away and the
-	 * whole store re-walked after every write. A newer boundary only changes the
-	 * number for rows that arrived after the last read - which the reel does not
-	 * draw either - so this deliberately follows the data's boundary and the
-	 * grouping's need, not the frame counter.
+	 * COUNT UNDER THE BOUNDARY THE CONFIRM WILL USE (code round 4, R4-1).
+	 *
+	 * The confirm enumerates under the CURRENT `high_water`, and core bumps a
+	 * row's `seq` on every read or dismiss - including the read that opening this
+	 * detail performs. An earlier version recorded one boundary at first use and
+	 * never moved it, so the button drifted from the dialog it opens: 129 against
+	 * 130 after the detail's own read, 129 against 131 after a late arrival, and a
+	 * vanished button while the confirm still showed 131 after mark-all-read.
+	 *
+	 * The cost that motivated freezing (one whole-store walk per frame) is instead
+	 * paid only where the number is printed - an open detail or the conversation
+	 * header - and `staleTime` keeps a repeat within the same boundary from
+	 * re-walking. Correctness of a number the operator agrees to beats a walk that
+	 * only happens while that number is on screen.
 	 */
-	const boundary = useRef<number | undefined>(undefined);
-	if (enabled && throughId !== undefined && boundary.current === undefined)
-		boundary.current = throughId;
 	const query = useQuery({
-		queryKey: [
-			"desktop",
-			"notifications",
-			"session-scope-counts",
-			boundary.current,
-		],
-		enabled: enabled && boundary.current !== undefined,
-		queryFn: () => readSessionDismissCounts(boundary.current as number),
+		queryKey: ["desktop", "notifications", "session-scope-counts", throughId],
+		enabled: enabled && throughId !== undefined,
+		queryFn: () =>
+			readSessionDismissCounts(scopeCountBoundary(throughId) as number),
 		retry: retryDesktopQuery,
-		staleTime: 30_000,
+		staleTime: 5_000,
 		refetchOnWindowFocus: false,
 	});
-	return query.data;
+	return {
+		counts: query.data,
+		pending: throughId === undefined || query.data === undefined,
+	};
 };
 
 const operationText = (progress: OperationProgress) =>
@@ -316,14 +324,11 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	}, [loaded]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: confirmedReadVersion is the invalidation signal for the ref-held token map; its identity never changes
 	const items = useMemo(() => {
-		const base = (loaded?.items ?? []).map((item) => {
-			/* A confirmed read for a row the list has not refreshed yet still wins
-			   over the older row: the receipt is newer evidence than the list. */
-			const tokenRevision = confirmedReadTokens.current.get(item.id);
-			return tokenRevision !== undefined && tokenRevision >= item.revision
-				? { ...item, read: true, read_via: "explicit" as const }
-				: item;
-		});
+		/* The receipt is newer evidence than the list (DC7): one rule, in the model. */
+		const base = mergeConfirmedReads(
+			loaded?.items ?? [],
+			confirmedReadTokens.current,
+		);
 		if (readState !== "unread" || stickyRead.size === 0) return base;
 		const present = new Set(base.map((item) => item.id));
 		return [
@@ -397,11 +402,12 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * header, or an open detail - hence `openItem`/`notificationId` here rather than
 	 * the grouping alone.
 	 */
-	const scopeCounts = useSessionScopeCounts(
+	const scopeCount = useSessionScopeCounts(
 		loaded?.high_water,
 		Boolean(loaded) &&
 			sessionScopeCountsEnabled(grouping, Boolean(notificationId)),
 	);
+	const scopeCounts = scopeCount.counts;
 	const writesPaused = refreshFailed || operationBusy;
 	const [exitingIds, setExitingIds] = useState<Set<string>>(() => new Set());
 	/*
@@ -1214,9 +1220,15 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 										onAnswer={answer}
 										onFocusRow={(item) => setFocusId(item.id)}
 										onDismissSession={requestDismissSession}
+										/*
+										 * Unknown renders NOTHING (code round 4, R4-1): the loaded
+										 * page's number is the lie QA measured, and 0 would claim
+										 * the conversation is already clear. While the walk for the
+										 * current boundary is in flight or has failed, the header
+										 * omits the number and its Dismiss-all control.
+										 */
 										sessionCount={(sessionId) =>
-											scopeCounts?.[sessionId] ??
-											sessionDismissCount([...waiting, ...items], sessionId)
+											scopeCounts?.[sessionId] ?? null
 										}
 									/>
 								))}
@@ -1241,13 +1253,8 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								nowMs={nowMs}
 								narrow={narrow}
 								writesPaused={writesPaused}
-								sessionDismissCount={
-									scopeCounts?.[openItem.session.id] ??
-									sessionDismissCount(
-										[...waiting, ...items],
-										openItem.session.id,
-									)
-								}
+								/* Unknown — pending or failed — renders no number at all. */
+								sessionDismissCount={scopeCounts?.[openItem.session.id] ?? null}
 								onClose={closeDetail}
 								onOpenConversation={openSource}
 								onToggleRead={(item) => toggleRead([item])}
@@ -1329,7 +1336,7 @@ const GroupBlock: FC<{
 	onAnswer: (item: DesktopNotificationItem) => void;
 	onFocusRow: (item: DesktopNotificationItem) => void;
 	onDismissSession: (sessionId: string, title: string) => void;
-	sessionCount: (sessionId: string) => number;
+	sessionCount: (sessionId: string) => number | null;
 }> = ({ group, onDismissSession, sessionCount, ...row }) => {
 	/*
 	 * THE OLDER GROUP STARTS COLLAPSED (design § 5 "very high volume"): the
@@ -1390,7 +1397,7 @@ const GroupBlock: FC<{
 						</>
 					)}
 				</span>
-				{group.kind === "conversation" && count > 0 && (
+				{group.kind === "conversation" && count !== null && count > 0 && (
 					<>
 						<span aria-hidden="true" className="h-px flex-1 bg-hairline" />
 						<Button

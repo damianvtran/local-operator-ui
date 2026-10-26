@@ -229,6 +229,65 @@ export function dismissPlan(selected: readonly DesktopNotificationItem[]): {
  * The enumeration is a bounded walk, so it is bought only when something actually
  * prints its result: the conversation-grouped header, or an open detail.
  */
+/**
+ * The boundary a printed per-conversation count must be counted under.
+ *
+ * THE LIVE ONE, ALWAYS (round-3 review R1, kept by round 4). The confirm walks the
+ * session with `observeNotificationScope` bounded by the high-water mark it reads
+ * AT THE CLICK, and the store re-stamps a row's seq on every read or dismiss - so a
+ * count taken at any earlier mark describes a different set of rows than the dialog
+ * it opens. It is stated here, as a function the reader must call, so the rule has a
+ * name and a test rather than being an inline argument somebody can quietly freeze.
+ */
+/**
+ * How many pages of the reel the client keeps in memory, and WHICH ones.
+ *
+ * PAGE ONE IS NEVER THE ONE TO GO (code round 4, R4-4). The reel pages in cursor
+ * order - page one is the newest rows, and it is the only page carrying `waiting`,
+ * the counts and the high-water mark. `useInfiniteQuery`'s own `maxPages` evicts
+ * from the FRONT, so with a cap of five a deep scroll silently dropped page one:
+ * the waiting asks vanished, a late arrival stayed hidden (the store at 701 while
+ * the reel still showed 600), and Mark all read could not see unread asks. So the
+ * library cap is gone and this policy bounds the window from the TAIL instead -
+ * the oldest pages go, and the head is always kept.
+ */
+/**
+ * Apply this window's CONFIRMED reads to rows the list is only now supplying.
+ *
+ * WHY THIS IS IN THE MODEL (code audit DC7, and the test round 4 asked for). The
+ * reel keeps a map of read tokens it has a receipt for, because a mark-all or an
+ * Undo can confirm ids that were not on the loaded page; a synthetic row cannot be
+ * drawn from a token (no title, time or conversation), so the token waits and is
+ * merged when the real row arrives. The rule is small and load-bearing - a confirmed
+ * read must not flip back to unread, and a NEWER revision the operator never saw must
+ * not be forced read - so it is a pure function with its own test rather than a line
+ * buried in a component.
+ */
+export const mergeConfirmedReads = (
+	items: readonly DesktopNotificationItem[],
+	confirmed: ReadonlyMap<string, number>,
+): DesktopNotificationItem[] =>
+	items.map((item) => {
+		const revision = confirmed.get(item.id);
+		return revision !== undefined && revision >= item.revision
+			? { ...item, read: true, read_via: "explicit" as const }
+			: item;
+	});
+
+export const NOTIFICATIONS_PAGE_WINDOW = 5;
+
+export const trimNotificationPages = <Page, Param>(
+	pages: Page[],
+	pageParams: Param[],
+) => ({
+	pages: pages.slice(0, NOTIFICATIONS_PAGE_WINDOW),
+	pageParams: pageParams.slice(0, NOTIFICATIONS_PAGE_WINDOW),
+});
+
+export const scopeCountBoundary = (
+	highWaterMark: number | undefined,
+): number | undefined => highWaterMark;
+
 export const sessionScopeCountsEnabled = (
 	grouping: NotificationGrouping,
 	detailOpen: boolean,

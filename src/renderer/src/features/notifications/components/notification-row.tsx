@@ -163,6 +163,13 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 			aria-label={label}
 			tabIndex={focused ? 0 : -1}
 			data-notification-row={item.id}
+			/*
+			 * The RENDERED revision, exposed for the native scene's negatives: a
+			 * press that the store refuses because the row it drew is stale proves
+			 * nothing about focus, so the scene has to compare what it is about to
+			 * press against the store before pressing (review round 4, R4-2).
+			 */
+			data-notification-revision={item.revision}
 			data-notification-unread={unread ? "" : undefined}
 			data-notification-open={open ? "" : undefined}
 			onClick={(event) => {

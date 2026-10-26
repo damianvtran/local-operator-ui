@@ -45,6 +45,10 @@ import type {
 	DesktopNotificationsList,
 	DesktopNotificationsWriteResult,
 } from "../../../../shared/desktop-control-contract";
+import {
+	NOTIFICATIONS_PAGE_WINDOW,
+	trimNotificationPages,
+} from "./notifications-model";
 
 export const notificationKeys = {
 	all: ["desktop", "notifications"] as const,
@@ -54,12 +58,41 @@ export const notificationKeys = {
 		["desktop", "notifications", "session", sessionId] as const,
 	detail: (id: string) => ["desktop", "notifications", "detail", id] as const,
 	count: ["desktop", "notifications", "count"] as const,
+	/** The reel's list reads, without the per-id detail reads. */
+	listRoot: ["desktop", "notifications", "list"] as const,
+	/** The per-conversation reads (the drawer, the flag lines). */
+	sessionsRoot: ["desktop", "notifications", "session"] as const,
 };
 
 /** Whether this backend serves the reel. One spelling for every surface. */
 export function useNotificationsEnabled(): boolean {
 	const capabilities = useDesktopCapabilities();
 	return desktopFeatureEnabled(capabilities.data, "notifications", 1);
+}
+
+/**
+ * Trim a loaded infinite window from the TAIL, keeping page one (code round 4,
+ * R4-4). Runs after each successful fetch, so a deep scroll is bounded without the
+ * library ever evicting the head: page one carries `waiting`, the counts and the
+ * high-water mark, and losing it is what made late arrivals invisible.
+ */
+function useTailTrim(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	key: readonly unknown[],
+	trigger: number | undefined,
+) {
+	useEffect(() => {
+		if (!client || trigger === undefined) return;
+		const current = client.getQueryData<{
+			pages: unknown[];
+			pageParams: unknown[];
+		}>([...key]);
+		if (!current || current.pages.length <= NOTIFICATIONS_PAGE_WINDOW) return;
+		client.setQueryData(
+			[...key],
+			trimNotificationPages(current.pages, current.pageParams),
+		);
+	}, [client, key, trigger]);
 }
 
 /**
@@ -77,7 +110,8 @@ export function useNotificationsList(
 	enabled: boolean,
 ) {
 	useNotificationsFeedInvalidation();
-	return useInfiniteQuery({
+	const { client } = useOptionalQueryClient();
+	const answer = useInfiniteQuery({
 		queryKey: notificationKeys.list(state),
 		enabled,
 		initialPageParam: undefined as
@@ -116,15 +150,15 @@ export function useNotificationsList(
 		refetchInterval: 30_000,
 		refetchIntervalInBackground: false,
 		/*
-		 * A BOUNDED WINDOW OF PAGES (code audit DC5). `useInfiniteQuery` refetches
-		 * EVERY loaded page on invalidate, and the feed invalidates on every frame -
-		 * so after scrolling a thousand rows, each frame cost ten sequential reads
-		 * and a full re-render of the merged map. Five pages (500 rows) is the
-		 * window this list reconciles; older rows come back when the operator scrolls
-		 * there again, which is when they are read anyway.
+		 * NO LIBRARY CAP: THE WINDOW IS BOUNDED FROM THE TAIL (code round 4, R4-4).
+		 * `maxPages` evicts the OLDEST page, and here that is page one - the newest
+		 * rows, the only page carrying `waiting`, the counts and the boundary. A deep
+		 * scroll therefore lost the waiting asks, hid late arrivals and left Mark all
+		 * read blind to unread asks. `trimNotificationPages` keeps the head instead.
 		 */
-		maxPages: 5,
 	});
+	useTailTrim(client, notificationKeys.list(state), answer.dataUpdatedAt);
+	return answer;
 }
 
 /**
@@ -143,7 +177,8 @@ export function useSessionNotifications(
 	enabled: boolean,
 ) {
 	useNotificationsFeedInvalidation();
-	return useInfiniteQuery({
+	const { client } = useOptionalQueryClient();
+	const answer = useInfiniteQuery({
 		queryKey: notificationKeys.session(sessionId ?? ""),
 		enabled: enabled && Boolean(sessionId),
 		initialPageParam: undefined as
@@ -179,10 +214,55 @@ export function useSessionNotifications(
 		},
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
-		/* Same bounded window as the reel (DC5), so an invalidate does not fan
-		   out into an unbounded sequential refetch of a session's whole history. */
-		maxPages: 10,
+		/* Same policy as the reel (code round 4, R4-4): bound from the tail, never
+		   evict the head, so the door's badge and the flag lines keep page one. */
 	});
+	useTailTrim(
+		client,
+		notificationKeys.session(sessionId ?? ""),
+		answer.dataUpdatedAt,
+	);
+	return answer;
+}
+
+/**
+ * How many updates in this conversation are unread, from the server, not the page.
+ *
+ * WHY A WALK AND NOT `items.filter(...)` (code round 4, R4-6). The drawer reads its
+ * conversation through a paged query, so counting the LOADED rows made the door's
+ * badge say 100 while the conversation held 450 unread. The read is bounded and
+ * stops as soon as a page reports no cursor; it asks for unread rows only, so the
+ * cost is proportional to the unread count rather than to the conversation.
+ */
+export async function readSessionUnreadCount(
+	sessionId: string,
+	readPage: (
+		request: SessionCountPageRequest,
+	) => Promise<DesktopNotificationsList> = (request) =>
+		desktopResult<DesktopNotificationsList>({
+			op: "notifications.list",
+			...request,
+		}),
+): Promise<number> {
+	let cursor: string | undefined;
+	let unread = 0;
+	const seen = new Set<string>();
+	for (;;) {
+		const answer = await readPage({
+			state: "unread",
+			source: "notify",
+			sessionId,
+			limit: 100,
+			...(cursor ? { cursor } : {}),
+		});
+		unread += answer.items.filter(
+			(item) => !item.read && !item.dismissed,
+		).length;
+		const next = answer.next_cursor ?? undefined;
+		if (!next || seen.has(next)) return unread;
+		seen.add(next);
+		cursor = next;
+	}
 }
 
 export function useNotificationDetail(id: string | null, enabled: boolean) {
@@ -239,6 +319,35 @@ export function useNotificationsCount(enabled: boolean) {
  */
 const appliedNotificationsFrame = new WeakMap<QueryClient, string>();
 
+/**
+ * One trailing list invalidation per frame burst (code round 4, R4-5).
+ *
+ * Frames arrive on the store's own churn; a burst of three is three chances to
+ * refetch the same five pages. The timer collapses them into one read pass, and it
+ * deliberately does NOT touch `notificationKeys.detail`: a count frame changes no
+ * item body, and refetching every open detail was part of the same waste.
+ */
+const pendingInvalidation = new WeakMap<
+	object,
+	ReturnType<typeof setTimeout>
+>();
+const INVALIDATE_COALESCE_MS = 750;
+
+function invalidateSoon(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+) {
+	if (!client) return Promise.resolve();
+	const previous = pendingInvalidation.get(client);
+	if (previous) clearTimeout(previous);
+	const timer = setTimeout(() => {
+		pendingInvalidation.delete(client);
+		void client.invalidateQueries({ queryKey: notificationKeys.listRoot });
+		void client.invalidateQueries({ queryKey: notificationKeys.sessionsRoot });
+	}, INVALIDATE_COALESCE_MS);
+	pendingInvalidation.set(client, timer);
+	return Promise.resolve();
+}
+
 export function useNotificationsFeedInvalidation() {
 	const frame = useSyncExternalStore(
 		notificationsFrameRecord.subscribe,
@@ -250,13 +359,22 @@ export function useNotificationsFeedInvalidation() {
 		if (!provided || !frame) return;
 		if (appliedNotificationsFrame.get(client) === frame.key) return;
 		appliedNotificationsFrame.set(client, frame.key);
+		/*
+		 * THE COUNT IS WRITTEN, NOT REFETCHED, and the lists are coalesced
+		 * (code round 4, R4-5). A wake loop can deliver a frame every few seconds, and
+		 * every one of them invalidated EVERY notification query - the reel's five
+		 * pages plus each session's pages plus the detail - so three frames cost twenty
+		 * sequential reads. The count comes from the frame itself (no read at all), the
+		 * detail is not refreshed by a count frame, and the list/session reads are
+		 * collapsed into one trailing invalidation per frame burst.
+		 */
 		client.setQueryData<DesktopNotificationsCount>(notificationKeys.count, {
 			unread_count: frame.unreadCount,
 			waiting_count: frame.waitingCount,
 			waiting_unread_count: frame.waitingUnreadCount,
 			high_water: frame.revision,
 		});
-		void client.invalidateQueries({ queryKey: notificationKeys.all });
+		void invalidateSoon(client);
 	}, [frame, client, provided]);
 }
 
@@ -349,12 +467,17 @@ export function postNotificationsSeen(input: {
 	});
 }
 
-/** The one page shape this counter asks for: notify rows under a fixed boundary. */
+/**
+ * The one page shape these counters ask for: notify rows, optionally unread only,
+ * under a fixed boundary (`throughSeq` is optional for the unread walk, which is
+ * already bounded by the state the server applies).
+ */
 export type SessionCountPageRequest = {
-	state: "all";
+	state: "all" | "unread";
 	source: "notify";
 	limit: number;
-	throughSeq: number;
+	sessionId?: string;
+	throughSeq?: number;
 	cursor?: string;
 };
 

@@ -27,7 +27,8 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/notifications/notification-operations";',
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
-			'export { readSessionDismissCounts } from "./src/renderer/src/features/notifications/notifications-api";',
+			'export * from "./src/renderer/src/features/notifications/notifications-model";',
+			'export { readSessionDismissCounts, readSessionUnreadCount } from "./src/renderer/src/features/notifications/notifications-api";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -308,71 +309,152 @@ test("the Dismiss-all header number is the scope the dialog applies, not the pag
 	);
 });
 
-test("the detail's number is the confirm's number, under Time grouping too", async () => {
+test("the detail's number follows the boundary the confirm uses, through the store's churn", async () => {
 	/*
-	 * QA ROUND 3, THE LYING LABEL. The detail's "Dismiss all N" advertised the
-	 * LOADED page under Time grouping (93 then 92) while its own confirm dialog
-	 * enumerated the whole conversation (130 then 131). The write was correct in
-	 * both cases; only the number the operator agrees to was wrong.
+	 * CODE ROUND 4, R4-1. The detail advertised a number counted at ONE boundary
+	 * captured when the walk first ran, while the confirm counts under the CURRENT
+	 * high-water mark - and the store re-stamps a row's seq on every read or
+	 * dismiss, including the read that opening the detail performs. Measured on
+	 * this fixture: 129 against 130 after that read, 129 against 131 after a late
+	 * arrival, and a vanished button against 131 after mark-all-read.
 	 *
-	 * What this pins: one conversation holding more rows than a page, where the
-	 * number the detail prints (the session-scope walk) is
-	 *   == the number the confirm enumerates (the observed token set), and
-	 *   == what the write actually covers (changed + skipped).
-	 * The first-page count is asserted to be strictly smaller, which is the defect.
+	 * This drives the SHIPPED walk, confirm and write through exactly that churn.
+	 * At every step it asserts the detail's number equals the confirm's equals the
+	 * write's covered set, and it states the drift explicitly: counting under the
+	 * boundary the page first saw is strictly smaller, so a frozen boundary cannot
+	 * pass this test.
 	 */
 	const session = "aaaaaaaaaaa1";
-	const rows = Array.from({ length: 130 }, (_, index) =>
-		item(
-			`n_${"e".repeat(12)}${String.fromCharCode(97 + Math.floor(index / 26))}${String.fromCharCode(97 + (index % 26))}`,
+	const rows = Array.from({ length: 130 }, (_, index) => {
+		const row = item(
+			`n_${"f".repeat(12)}${String.fromCharCode(97 + Math.floor(index / 26))}${String.fromCharCode(97 + (index % 26))}`,
 			{
 				seq: index + 1,
 				session: { id: session, title: "one long conversation" },
 			},
-		),
-	);
+		);
+		row.read = false;
+		return row;
+	});
 	const fixture = ops.createNotificationFixture(rows, []);
-	const throughSeq = fixture.counts().high_water;
-
-	const printed = await ops.readSessionDismissCounts(throughSeq, (request) =>
-		fixture.list(request),
-	);
-	const snapshot = await ops.observeNotificationScope(
-		async (request) => fixture.list(request),
-		{
-			scope: { sessionId: session },
-			throughSeq,
-			waiting: [],
-			verb: "dismiss",
-		},
-	);
-	const covered = await ops.applyNotificationOperation(
-		(verb, target) => fixture.send(verb, target),
-		"dismiss",
-		snapshot.tokens,
-		{ scope: { sessionId: session }, throughSeq, tokens: snapshot.tokens },
-	);
-
-	assert.equal(printed[session], 130, "the detail prints the whole scope");
-	assert.equal(
-		snapshot.tokens.length,
-		printed[session],
-		"the confirm enumerates exactly what the detail prints",
-	);
-	assert.equal(
-		covered.changed.length + covered.skipped.length,
-		printed[session],
-		"the write covers exactly what the detail printed",
-	);
+	const token = (row) => ({ id: row.id, revision: row.revision });
 
 	/*
-	 * NEGATIVE CONTROL: the number the page could produce on its own. It has to be
-	 * smaller, because that is the lie - if a loaded page ever equalled the scope,
-	 * this fixture would not be able to reproduce the defect at all.
+	 * THE BOUNDARY COMES FROM THE SHIPPED RULE, not from the test (code round 4,
+	 * R4-1). This is what makes the test discriminate: on the pre-fix sources the
+	 * rule a frozen boundary would have replaced does not exist, so the read fails
+	 * here rather than quietly counting a set the dialog will not agree with.
 	 */
-	const firstPage = fixture.list({ state: "all", limit: 100 });
+	const measure = async (highWater, label) => {
+		const boundary = ops.scopeCountBoundary(highWater);
+		const printed = await ops.readSessionDismissCounts(highWater, (request) =>
+			fixture.list(request),
+		);
+		const snapshot = await ops.observeNotificationScope(
+			async (request) => fixture.list(request),
+			{
+				scope: { sessionId: session },
+				throughSeq: boundary,
+				waiting: [],
+				verb: "dismiss",
+			},
+		);
+		const covered = await ops.applyNotificationOperation(
+			(verb, target) => fixture.send(verb, target),
+			"dismiss",
+			snapshot.tokens,
+			{
+				scope: { sessionId: session },
+				throughSeq: boundary,
+				tokens: snapshot.tokens,
+			},
+		);
+		const numbers = {
+			printed: printed[session] ?? 0,
+			confirm: snapshot.tokens.length,
+			covered: covered.changed.length + covered.skipped.length,
+		};
+		assert.equal(
+			numbers.printed,
+			numbers.confirm,
+			`${label}: confirm == printed`,
+		);
+		assert.equal(
+			numbers.covered,
+			numbers.printed,
+			`${label}: covered == printed`,
+		);
+		return numbers;
+	};
+
+	// 1. Opening the detail reads a row, which re-stamps its seq and moves the mark.
+	const firstBoundary = fixture.counts().high_water;
+	await fixture.patch("read", { items: [token(rows[0])] });
+	const afterRead = fixture.counts().high_water;
 	assert.ok(
-		100 < printed[session],
-		`a page under-promises (${firstPage.items.length} of ${printed[session]}), which is the defect this fixes`,
+		afterRead > firstBoundary,
+		"the detail's own read advanced the mark",
+	);
+	const stale = await ops.readSessionDismissCounts(
+		ops.scopeCountBoundary(firstBoundary),
+		(request) => fixture.list(request),
+	);
+	assert.ok(
+		(stale[session] ?? 0) < 130,
+		"counting at the boundary the page first saw is smaller - the drift this fixes",
+	);
+	const step1 = await measure(afterRead, "after the detail's own read");
+	assert.equal(
+		step1.printed,
+		130,
+		"130 rows remain dismissable at the live mark",
+	);
+
+	// 2. A late arrival on the same conversation moves both numbers together.
+	await fixture.patch("read", { items: [token(rows[1])] });
+	const afterArrival = fixture.counts().high_water;
+	await measure(afterArrival, "after a late arrival");
+
+	// 3. Mark-all-read: nothing left to dismiss, and the confirm agrees.
+	await fixture.patch("read", { items: rows.map((row) => token(row)) });
+	const afterMarkAll = fixture.counts().high_water;
+	const final = await measure(afterMarkAll, "after mark-all-read");
+	assert.equal(final.printed, 0, "no number is offered when nothing is left");
+});
+
+test("R4-6: the unread count comes from the server's walk, not the loaded page", async () => {
+	/*
+	 * The drawer pages on scroll, so counting loaded rows capped the door's badge at
+	 * one page: 100 shown against 450 unread. The walk stops at the last cursor and
+	 * asks for unread rows only.
+	 */
+	const pages = [
+		{ items: 100, next: "c1" },
+		{ items: 100, next: "c2" },
+		{ items: 50, next: undefined },
+	];
+	let calls = 0;
+	const total = await ops.readSessionUnreadCount("aaaaaaaaaaa1", async () => {
+		const page = pages[calls];
+		calls += 1;
+		return {
+			items: Array.from({ length: page.items }, (_, index) => ({
+				id: `n_page${calls}_${index}`,
+				revision: 1,
+				read: false,
+				dismissed: false,
+			})),
+			waiting: [],
+			next_cursor: page.next,
+			unread_count: 0,
+			waiting_count: 0,
+			waiting_unread_count: 0,
+			high_water: 700,
+		};
+	});
+	assert.equal(total, 250, "every unread row across the pages is counted");
+	assert.ok(
+		100 < total,
+		"one page would have said 100, which is the badge this replaces",
 	);
 });

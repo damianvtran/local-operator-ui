@@ -902,6 +902,24 @@ async function main() {
 		await pause(500);
 		const hidden = await mainFacts(nodeCdp);
 		receipt.windowBlurred = hidden;
+		/*
+		 * THE ROW MUST BE AT THE STORE'S OWN REVISION BEFORE THIS PRESS MEANS
+		 * ANYTHING (review round 4, R4-2). A stale rendered revision is refused by
+		 * the server as `stale_revision`, so a negative that pressed a stale row
+		 * would "pass" whatever the window's focus was. The rendered revision is
+		 * compared to the store's here, and a mismatch fails the arm by name.
+		 */
+		const renderedRevision = await cdp.evaluate(
+			`(() => { const row = document.querySelector('[data-notification-row="${RACED}"]'); return row ? Number(row.dataset.notificationRevision) : null; })()`,
+		);
+		const storeRevision = Number(readRow(config, RACED).revision);
+		receipt.blurredRenderedRevision = renderedRevision;
+		receipt.blurredStoreRevision = storeRevision;
+		assert.equal(
+			renderedRevision,
+			storeRevision,
+			`the blurred negative's row is not at the store's revision: rendered ${renderedRevision}, store ${storeRevision}`,
+		);
 		const blurredBox = await hoverReadControl(cdp, RACED);
 		receipt.blurredReadControl = blurredBox;
 		for (const type of ["mousePressed", "mouseReleased"])

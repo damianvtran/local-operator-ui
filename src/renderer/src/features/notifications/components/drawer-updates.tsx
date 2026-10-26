@@ -1,3 +1,4 @@
+import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 /**
  * The asks drawer's Updates tab and its tab strip (decisions D9, design.md
  * § 18, contract § 6.5).
@@ -20,11 +21,13 @@ import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
+import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUp, Circle, ExternalLink, X } from "lucide-react";
 import { type FC, type KeyboardEvent, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
 import {
+	readSessionUnreadCount,
 	tokensOf,
 	useNotificationsWrite,
 	useSessionNotifications,
@@ -157,18 +160,34 @@ export const DrawerTabs: FC<{
 	);
 };
 
-/** This conversation's unread update count, for the tab and the rail door. */
+/**
+ * This conversation's unread count, for the tab and the rail door - FROM THE SERVER
+ * (code round 4, R4-6). It counted the rows the drawer had loaded, and the drawer
+ * pages on scroll, so a conversation with 450 unread showed 100: the badge stopped
+ * at one page. The walk is bounded by the unread set itself and stops at the last
+ * cursor, so its cost follows the unread count rather than the conversation.
+ */
 export function useSessionUnreadUpdates(
 	sessionId: string | null,
 	enabled: boolean,
 ): number {
 	const list = useSessionNotifications(sessionId, enabled);
-	return useMemo(
-		() =>
-			(list.data?.items ?? []).filter((item) => !item.read && !item.dismissed)
-				.length,
-		[list.data],
-	);
+	const boundary = list.data?.high_water;
+	const count = useQuery({
+		queryKey: [
+			"desktop",
+			"notifications",
+			"session-unread",
+			sessionId,
+			boundary,
+		],
+		enabled: enabled && Boolean(sessionId) && boundary !== undefined,
+		queryFn: () => readSessionUnreadCount(sessionId as string),
+		retry: retryDesktopQuery,
+		staleTime: 5_000,
+	});
+	/* Unknown while the walk settles: the page's own rows would under-count. */
+	return count.data ?? 0;
 }
 
 export const DrawerUpdates: FC<{

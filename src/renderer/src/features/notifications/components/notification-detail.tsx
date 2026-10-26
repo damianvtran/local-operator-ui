@@ -74,7 +74,12 @@ export type NotificationDetailProps = {
 	narrow: boolean;
 	writesPaused: boolean;
 	/** How many items "Dismiss all from this conversation" would name. */
-	sessionDismissCount: number;
+	/*
+	 * `null` while the scope walk for the current boundary is pending or failed
+	 * (code round 4, R4-1). An unknown count renders NO number: the loaded page's
+	 * count was the lie QA measured, and 0 would say the conversation is clear.
+	 */
+	sessionDismissCount: number | null;
 	onClose: () => void;
 	onOpenConversation: (sessionId: string) => void;
 	onToggleRead: (item: DesktopNotificationItem) => void;
@@ -286,7 +291,12 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
 						<DropdownMenuItem
-							disabled={actionsDisabled || sessionDismissCount === 0}
+							disabled={
+								actionsDisabled ||
+								(sessionDismissCount === null
+									? false
+									: sessionDismissCount === 0)
+							}
 							onSelect={() => onDismissSession(item.session.id, source)}
 						>
 							{t("ui.notifications.detail.more.dismiss_session", { source })}
@@ -376,7 +386,7 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 					>
 						{detail?.session.title || source}
 					</button>
-					{sessionDismissCount > 0 && (
+					{sessionDismissCount !== null && sessionDismissCount > 0 && (
 						<Button
 							variant="ghost"
 							size="sm"

@@ -848,27 +848,106 @@ test("the scope walk is bought when a detail is open, whatever the grouping", ()
 	);
 });
 
-test("the reel asks the shared predicate, not the grouping alone", () => {
+test("a printed count is taken at the live high-water mark, never a frozen one", () => {
 	/*
-	 * SOURCE-ANCHORED, AND DELIBERATELY SO. The defect QA found was WIRING, not
-	 * arithmetic: the walk existed and was correct, and the page bought it only for
-	 * conversation grouping. A pure-model test cannot see that, and mounting the
-	 * page in this suite would replace the shipped component with a harness - so the
-	 * assertion reads the shipped file and pins the call the fix introduced. It
-	 * fails the moment somebody writes the grouping comparison back at this site.
+	 * CODE ROUND 4, R4-1. Two rules, both named exports the reader has to call:
+	 * WHEN to buy the per-conversation walk (`sessionScopeCountsEnabled`) and UNDER
+	 * WHAT BOUNDARY to take it (`scopeCountBoundary`). The reproduced drift was a
+	 * frozen boundary - 129 against a confirm of 130 after the detail's own read,
+	 * 129 against 131 after a late arrival, and a vanished button against 131 after
+	 * mark-all-read - so this asserts the value the reader must use, not source text.
 	 */
-	const source = readFileSync(
-		"src/renderer/src/features/notifications/components/notifications-page.tsx",
-		"utf8",
+	assert.equal(
+		model.sessionScopeCountsEnabled("time", true),
+		true,
+		"an open detail buys the walk under Time grouping too",
 	);
-	assert.match(
-		source,
-		/sessionScopeCountsEnabled\(\s*grouping,\s*Boolean\(notificationId\)\s*\)/,
-		"the scope walk must be enabled by the shared predicate, including for an open detail",
+	assert.equal(
+		model.sessionScopeCountsEnabled("conversation", false),
+		true,
+		"the conversation header prints it, so it buys the walk",
 	);
-	assert.doesNotMatch(
-		source,
-		/Boolean\(loaded\)\s*&&\s*grouping === "conversation"/,
-		"the old page-only condition must not come back",
+	assert.equal(
+		model.sessionScopeCountsEnabled("time", false),
+		false,
+		"nothing prints it, so the bounded walk is not paid for",
+	);
+	for (const mark of [1, 130, 131, 4_096])
+		assert.equal(
+			model.scopeCountBoundary(mark),
+			mark,
+			"the count is taken at the live mark the confirm will use",
+		);
+	assert.equal(model.scopeCountBoundary(undefined), undefined);
+});
+
+test("R4-4: a bounded window keeps page one, which is where the waiting asks live", () => {
+	/*
+	 * The reel pages newest-first, so page one carries `waiting`, the counts and the
+	 * high-water mark. `useInfiniteQuery`'s own `maxPages` evicts from the FRONT: with
+	 * a cap of five, a deep scroll dropped page one and with it the waiting asks, so a
+	 * late arrival stayed hidden and Mark all read could not see unread asks.
+	 */
+	const pages = [
+		{ page: 1, waiting: [{ id: "ask:aaaaaaaaaaa1:affff1" }], newest: 700 },
+		...Array.from({ length: 6 }, (_, index) => ({
+			page: index + 2,
+			waiting: [],
+			newest: 600 - index * 100,
+		})),
+	];
+	const kept = model.trimNotificationPages(
+		pages,
+		pages.map((_, index) => index),
+	);
+	assert.equal(kept.pages.length, model.NOTIFICATIONS_PAGE_WINDOW);
+	assert.equal(
+		kept.pages[0].page,
+		1,
+		"page one survives a deep scroll, with its waiting asks",
+	);
+	assert.equal(kept.pages[0].waiting.length, 1);
+	assert.equal(
+		kept.pages.at(-1).page,
+		5,
+		"the window is bounded from the TAIL, so the oldest pages are the ones dropped",
+	);
+	/* The library's own policy, stated so the difference is explicit: it drops the head. */
+	const libraryPolicy = pages.slice(-model.NOTIFICATIONS_PAGE_WINDOW);
+	assert.equal(
+		libraryPolicy[0].page,
+		1 + 2,
+		"`maxPages` would have dropped page one - the defect this policy replaces",
+	);
+});
+
+test("R4-7 / DC7: a confirmed read survives for a row the list only now supplies", () => {
+	/*
+	 * A mark-all or an Undo can confirm ids that were not on the loaded page. The
+	 * token waits and is merged when the real row arrives: the confirmed read must not
+	 * flip back to unread, and a NEWER revision the operator never saw must not be
+	 * forced read.
+	 */
+	const confirmed = new Map([["n_known", 3]]);
+	const rows = [
+		{ id: "n_known", revision: 3, read: false, read_via: null },
+		{ id: "n_newer", revision: 9, read: false, read_via: null },
+	];
+	const merged = model.mergeConfirmedReads(rows, confirmed);
+	assert.equal(merged[0].read, true, "the confirmed revision is read");
+	assert.equal(merged[0].read_via, "explicit");
+	assert.equal(
+		merged[1].read,
+		false,
+		"a row without a receipt is untouched, whatever else was confirmed",
+	);
+	const stale = model.mergeConfirmedReads(
+		[{ id: "n_known", revision: 4, read: false, read_via: null }],
+		confirmed,
+	);
+	assert.equal(
+		stale[0].read,
+		false,
+		"a newer revision the operator never saw is not forced read",
 	);
 });
