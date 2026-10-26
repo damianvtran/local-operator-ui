@@ -413,10 +413,13 @@ test("the discard offer is its own toast: one id, one slot, an Undo that restore
 	 * base a locale redraw counts down from (agent review round 1, R1-5): the
 	 * option is the computed remainder, so the pin names the computation rather
 	 * than a literal option that would re-arm the timer on every language switch.
+	 * The predicate was spelled `redraw` when the pin was written; the source
+	 * names it `sameMessage` since R2's no-op rule landed (R2 N2-1) - the same
+	 * fact, and the same remainder of the original raise.
 	 */
 	assert.match(
 		branch,
-		/const duration = redraw \? raised\.raisedAt \+ ARCHIVE_UNDO_TOAST_MS - Date\.now\(\) : ARCHIVE_UNDO_TOAST_MS;/,
+		/const duration = sameMessage \? raised\.raisedAt \+ ARCHIVE_UNDO_TOAST_MS - Date\.now\(\) : ARCHIVE_UNDO_TOAST_MS;/,
 	);
 	assert.equal(branch.includes("POSITIVE_INFINITY"), false);
 	assert.equal(branch.includes("position:"), false);

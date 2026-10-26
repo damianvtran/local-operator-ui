@@ -446,7 +446,26 @@ test("the dispatcher's aida branch: capability fail-closed, and the send before 
 	assert.match(branch, /isRefusedBeforeAdmission\(error\)/);
 	assert.match(branch, /returnAidaText\(key, target, message\)/);
 	assert.match(branch, /if \(admitted === null\)/);
-	assert.match(branch, /SEND_FAILURE_COPY\.sendLock/);
+	/*
+	 * THE BUSY STATEMENT IS THE SAME FACT, UNDER THE SLICE'S OWN KEY. This used to
+	 * pin `SEND_FAILURE_COPY.sendLock`, whose entry read
+	 * `ui.chat.canonical.send_failure.send_lock` - "Your last message is still
+	 * sending." at `f8ecc7ddef^` - and the i18n slice replaced that read with
+	 * `t("ui.notices.chat.send_in_flight")` (the notice table the door's other
+	 * statements live in). So the pin names the KEY the component renders, and the
+	 * ENGLISH beside it in the shape the composer pins use, because either one
+	 * alone stops catching the failure it was written for: a reworded catalogue
+	 * entry leaves a key-only pin green, and an English-only pin survives the
+	 * component dropping the read.
+	 */
+	assert.match(branch, /t\("ui\.notices\.chat\.send_in_flight"\)/);
+	assert.equal(
+		JSON.parse(source("src/i18n/catalogues/en/ui.notices.json"))[
+			"ui.notices.chat.send_in_flight"
+		],
+		"Your last message is still sending.",
+		"the sentence the send-lock constant carried, now owned by this key",
+	);
 	/*
 	 * And the read the branch resolves through is gated on the capability: `UI
 	 * must not call the route below` (design § 3.4) is true of the READ too.
