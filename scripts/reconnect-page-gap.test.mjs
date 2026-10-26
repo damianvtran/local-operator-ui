@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -171,9 +172,33 @@ const bundle = await build({
 		},
 	],
 });
-const hook = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+/*
+ * Imported from a file, never a `data:` URI. A module's URL is what V8 prints
+ * as the location of every stack frame inside it, so a ~7.6 MB bundle imported
+ * as base64 turns each logged stack (the hook's `console.warn` of a refused
+ * repair read, for one) into a 10 MB line: one case wrote 79 MB and failed
+ * CI's `ci-log-guard` payload-line step (PR #1428 QA round 2, Q-1). This is a
+ * fixture property, not product behaviour; a file URL keeps frames short. The
+ * warning itself is left alone: this transport does not answer `sessions.get`,
+ * and an answer would have to invent journal placement for every row, which is
+ * order evidence the journal-order case never asserts on.
+ *
+ * The name matches `.gitignore`'s `scripts/_*.bundle.mjs`, so a killed run
+ * cannot leave a committable bundle behind; the pid keeps two concurrent runs
+ * from one checkout off each other's file. Unlinked as soon as the import
+ * resolves: V8 holds the compiled module, so the file is not needed after.
+ */
+const bundlePath = new URL(
+	`./_reconnect-page-gap-${process.pid}.bundle.mjs`,
+	import.meta.url,
 );
+await writeFile(bundlePath, bundle.outputFiles[0].text);
+let hook;
+try {
+	hook = await import(bundlePath.href);
+} finally {
+	await unlink(bundlePath);
+}
 const {
 	useCanonicalSessionStream,
 	admitChatDraft,
