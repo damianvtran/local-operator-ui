@@ -176,7 +176,8 @@ const bundle = await build({
  * Imported from a file, never a `data:` URI. A module's URL is what V8 prints
  * as the location of every stack frame inside it, so a ~7.6 MB bundle imported
  * as base64 turns each logged stack (the hook's `console.warn` of a refused
- * repair read, for one) into a 10 MB line: one case wrote 79 MB and failed
+ * repair read, for one) into a 10 MB line: one case wrote about 80 MB and
+ * failed
  * CI's `ci-log-guard` payload-line step (PR #1428 QA round 2, Q-1). This is a
  * fixture property, not product behaviour; a file URL keeps frames short. The
  * warning itself is left alone: this transport does not answer `sessions.get`,
@@ -192,12 +193,14 @@ const bundlePath = new URL(
 	`./_reconnect-page-gap-${process.pid}.bundle.mjs`,
 	import.meta.url,
 );
-await writeFile(bundlePath, bundle.outputFiles[0].text);
 let hook;
 try {
+	await writeFile(bundlePath, bundle.outputFiles[0].text);
 	hook = await import(bundlePath.href);
 } finally {
-	await unlink(bundlePath);
+	// Also cover a partial write: no failed import or failed write may leave a
+	// generated bundle behind for a later run to mistake for its own.
+	await unlink(bundlePath).catch(() => {});
 }
 const {
 	useCanonicalSessionStream,
