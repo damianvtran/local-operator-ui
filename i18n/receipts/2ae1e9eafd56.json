@@ -1,0 +1,475 @@
+{
+  "schema": 1,
+  "kind": "independent-translation-audit",
+  "batch": "agents-surfaces",
+  "round": 3,
+  "round_kind": "focused remediation re-audit (not a new full pass)",
+  "locale": "ur",
+  "locale_name": "Urdu (RTL)",
+  "date": "2026-10-26",
+  "branch": "i18n-agents-pages",
+  "head": "91231e66c955197e86cec5b1bf7c6f488eff48de",
+  "candidate_state": "Working tree. Each audited target file was recomputed from disk and matched the manager-supplied agents-r3-hashes.txt before reading; the round-2 bytes were recovered byte-exactly from commit 0ae75afa0c, which reproduces every round-2 recorded target hash, so the delta below is a real diff and not a re-reading of remembered text.",
+  "auditor": "i18n-auditor (lopdev team)",
+  "agent": "i18n-auditor",
+  "session": "2ae1e9eafd56",
+  "instance": "2ae1e9eafd56",
+  "model": "radient/auto",
+  "model_route": {
+    "requested": "radient/auto",
+    "actual": "radient/auto",
+    "fallback": false,
+    "disclosure": "No provider error, quota descent or mid-run model switch was observed in this run; the value is the route the harness header reports. No stronger model is claimed and no fallback is hidden."
+  },
+  "actual_model_source": "harness session header (Model: radient/auto); upstream provider resolution is not visible to the agent and is not inferred",
+  "independence": "Did not translate, remediate or edit any catalogue in this round; the only repository write is this receipt. The round-2 receipt was authored by this audit role in a different session (74bd1d94a511); the current bytes were judged before it was read, and both the resolved findings and my own earlier suggestions are reported against the new bytes rather than restated.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "round2_receipt": {
+      "path": "i18n/receipts/ur-agents-surfaces-audit-r2-74bd1d94a511.json",
+      "sha256": "fb36dbd7c46376b42467909f6b8428d58fb43dff756e7beb275073403fe6802c"
+    },
+    "binding_hash_manifest": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents-r3-hashes.txt",
+      "sha256": "4be38fd57d76894a9a8f7f19db9d74b13eba54a0bda085f6eaad25776e9af156"
+    }
+  },
+  "scope": {
+    "reaudited": [
+      "ui.agents.upload",
+      "ui.hub.teams",
+      "ui.agents.publication",
+      "ui.agents.config",
+      "ui.agents.detail"
+    ],
+    "not_reaudited": {
+      "ui.agents.pages": "passed unchanged in round 2; bytes identical to the round-2 hash (14573b2594e6c54add646218f038a2fd3e430f9d0a714b128ae8b4892f0d662d).",
+      "ui.hub.pages": "passed unchanged in round 2; bytes identical to the round-2 hash (8c9bcd5bfc64b7de15a2bbab828110b7afc5d0a90e005711fd6655e0b8c1efd2).",
+      "ui.agents.teams": "passed unchanged in round 2; bytes identical to the round-2 hash (35d060377f836bcac6dd22a4a9abddc3b234dab70e7d4162fc46fc11f5346526)."
+    },
+    "statement": "This receipt speaks only to the five groups listed in `reaudited`, and within config/detail only to the round-2 minor keys. It does not re-certify the three groups round 2 passed, whose bytes are unchanged."
+  },
+  "method": "Read the ur style guide and programme glossary first (both unchanged since round 2, hashes above), then the English source with each key's context sidecar and the two call sites (upload-agent-dialog.tsx destination Select; org-teams-list.tsx / public-teams-library.tsx Pull button and its aria), then the new ur bytes. Judged by native-fluent reading against en, with no translation/MT service and no back-translation. Mechanical facts were derived here: an independent @formatjs/icu-messageformat-parser pass over every message in the three primary groups (argument multiset + type parity, plural cube arm sets), a codepoint/NFC/tab/newline scan, and a render of match_line through the app's own bundled formatter. The delta was proven by diffing the working tree against commit 0ae75afa0c (which reproduces the round-2 receipt hashes exactly).",
+  "commands": [
+    {
+      "command": "node --test --test-name-pattern='ur' scripts/i18n/locale-parity.test.mjs",
+      "exit": 0,
+      "observed": "tests 25, pass 25, fail 0. The substring pattern also selects the ru/vi/zh-CN subtests (their test names contain 'ur'); all six [ur] subtests are included and green. Narrowed run `--test-name-pattern='\\[ur\\]'` gave tests 6, pass 6, fail 0."
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "exit": 0,
+      "observed": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+    },
+    {
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "exit": 0,
+      "observed": "check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s)."
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "exit": 0,
+      "observed": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    {
+      "command": "node <scratch>/ur-r3-icu.mjs  (independent ICU pass, @formatjs/icu-messageformat-parser 3.5.21 from the repo)",
+      "exit": 0,
+      "observed": "ui.agents.upload: 23 messages parsed both sides; argument multiset parity OK; arm sets {one,other} OK; order differs only on: none. ui.hub.teams: 47 messages; OK; order differs only on ui.hub.teams.public.match_line. ui.agents.publication: 96 messages; OK; order differs only on: none. RESULT: no ICU argument/arm problems."
+    },
+    {
+      "command": "node <scratch>/ur-r3-render.mjs  (esbuild bundle of src/i18n/messages.ts, same shape as scripts/i18n/runtime.test.mjs)",
+      "exit": 0,
+      "observed": "0/1 -> 'اس صفحے پر “docker” کے نتائج: 0 از 1 ٹیم'; 1/1 -> '… 1 از 1 ٹیم'; 3/1 -> '… 3 از 1 ٹیم'; 0/5 -> '… 0 از 5 ٹیمیں'; 1/5 -> '… 1 از 5 ٹیمیں'; 3/5 -> '… 3 از 5 ٹیمیں'. No manual bidi control in any rendered string."
+    },
+    {
+      "command": "git show 0ae75afa0c:src/i18n/catalogues/ur/<group>.json | shasum -a 256",
+      "exit": 0,
+      "observed": "Reproduced every round-2 recorded target hash for all five groups, so the delta diff is against exactly the bytes round 2 audited."
+    }
+  ],
+  "checks": {
+    "key_sets_and_order_vs_en": "Identical for all five groups (upload 23/23, hub.teams 47/47, publication 96/96, config 28/28, detail 47/47; same order).",
+    "icu_argument_parity": "Names and types identical as multisets in every message of the three primary groups. Only ui.hub.teams.public.match_line differs in ORDER ({query} first), which is the locale's word order; all three arguments appear once.",
+    "plural_arms": "ur uses one/other only. The three primary groups hold exactly two plural messages (ui.hub.teams.member_count, ui.hub.teams.public.match_line); both carry exactly one+other at offset 0, verified through the real parser. ui.agents.config holds one plural message (ui.agents.config.definitions), unchanged from round 2 and also one+other. No zero/two/few/many arm present or needed.",
+    "encoding": "All values NFC; JSON parses; tab indentation; exactly one trailing newline; no CRLF; no U+200E/U+200F/U+202A-U+202E/U+2066-U+2069/U+061C anywhere in the five files (RTL pass: logical order only, as the ur guide requires).",
+    "ellipsis": "ui.hub.teams.pulling uses U+2026 once, matching the en source's ellipsis; no three-dot spelling on the surface.",
+    "label_in_name": "pull_target's accessible name contains the visible label byte-for-byte ('pull کریں' inside 'ٹیم {name} کو pull کریں').",
+    "width": "Measured in codepoints, delta against the round-2 bytes: the two visible button labels go 9->9 (pull) and 19->15 (pulling, shorter); pull_target is an accessible name and goes 20->23; target.label goes 14->16 above a full-width Select. The failure sentences grow by up to 7 codepoints but are body sentences that wrap; headline_pull grows by 3 in a headline. No pinned budget (PERSIST_HINT 42/43, tip pool 59) is touched by any of these keys."
+  },
+  "delta_proof": {
+    "ui.agents.upload": {
+      "path": "src/i18n/catalogues/ur/ui.agents.upload.json",
+      "round2_sha256": "399ad8de4ec4be3d60d1fc39dafe7ca6d942eda2799e432f2dc2610e61491495",
+      "current_sha256": "67e1310ca35e233b632ee27e359beb5a9b5f0701b2abffc995955aff52231da0",
+      "base_commit": "0ae75afa0c",
+      "base_commit_reproduces_round2_bytes": true,
+      "keys_changed": [
+        "ui.agents.upload.target.label"
+      ],
+      "keys_unchanged": 22
+    },
+    "ui.hub.teams": {
+      "path": "src/i18n/catalogues/ur/ui.hub.teams.json",
+      "round2_sha256": "8a6f49b2b7b9d4dba5a282c723c3875d6d9b7330651a87fc69d949c7bb1c0ed4",
+      "current_sha256": "7c548a02ccd34bef24865ba9459e47ddf1910e1ce6d85b4420b8bb4acbb26b5f",
+      "base_commit": "0ae75afa0c",
+      "base_commit_reproduces_round2_bytes": true,
+      "keys_changed": [
+        "ui.hub.teams.public.intro",
+        "ui.hub.teams.public.match_line",
+        "ui.hub.teams.public.pull_failed",
+        "ui.hub.teams.public.pull_no_signin",
+        "ui.hub.teams.public.sign_in_hint",
+        "ui.hub.teams.pull",
+        "ui.hub.teams.pull_failed",
+        "ui.hub.teams.pull_target",
+        "ui.hub.teams.pulling"
+      ],
+      "keys_unchanged": 38
+    },
+    "ui.agents.publication": {
+      "path": "src/i18n/catalogues/ur/ui.agents.publication.json",
+      "round2_sha256": "7e8f984d23e43432aec57b6b27e783f28bbd9c104baa9a7442c74b043fe14848",
+      "current_sha256": "863278716c78a770e0be2860d18e31e378a92a4aeeaf7668a05d756666461b7e",
+      "base_commit": "0ae75afa0c",
+      "base_commit_reproduces_round2_bytes": true,
+      "keys_changed": [
+        "ui.agents.publication.hub_unauthorized.body_pull",
+        "ui.agents.publication.hub_unavailable.body_pull",
+        "ui.agents.publication.hub_unavailable.headline_pull",
+        "ui.agents.publication.insufficient_role.body_pull",
+        "ui.agents.publication.insufficient_role.body_with_role_pull",
+        "ui.agents.publication.local_failure.headline_pull",
+        "ui.agents.publication.not_a_member.body_pull",
+        "ui.agents.publication.team_plan_required.body_pull"
+      ],
+      "keys_unchanged": 88
+    },
+    "ui.agents.config": {
+      "path": "src/i18n/catalogues/ur/ui.agents.config.json",
+      "round2_sha256": "28307c5459022ead0023bd9dc3f308dae0a5f981e674420b54015f4a5d1bb33a",
+      "current_sha256": "3a3e725dd03ae22e255666779bf6e40612b33be62f6117896d2a0186e980d53b",
+      "base_commit": "0ae75afa0c",
+      "base_commit_reproduces_round2_bytes": true,
+      "keys_changed": [
+        "ui.agents.config.status.attached",
+        "ui.agents.config.summary.you_asked"
+      ],
+      "keys_unchanged": 26
+    },
+    "ui.agents.detail": {
+      "path": "src/i18n/catalogues/ur/ui.agents.detail.json",
+      "round2_sha256": "5f4bf5a941c6ee4e4f2e76750a58421b9f73d456d75aa7122988d3d73426245c",
+      "current_sha256": "74afcf443bf821481079cc823d2d0c06eb5280a9173b451491dce7089b1a67c8",
+      "base_commit": "0ae75afa0c",
+      "base_commit_reproduces_round2_bytes": true,
+      "keys_changed": [
+        "ui.agents.detail.alert.conflict_body"
+      ],
+      "keys_unchanged": 46
+    }
+  },
+  "namespaces": {
+    "ui.agents.upload": {
+      "status": "passed",
+      "result": "passed",
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "keys_in_group": 23,
+      "keys_reaudited_this_round": [
+        "ui.agents.upload.target.label"
+      ],
+      "scope": "Delta re-audit of round-2 major UR-R2-U1: the destination label re-read against en, its sidecar and the <Label>/<Select> call site (upload-agent-dialog.tsx:938-1027). Whole group mechanically verified.",
+      "sha256": {
+        "en": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+        "ur": "67e1310ca35e233b632ee27e359beb5a9b5f0701b2abffc995955aff52231da0",
+        "context": "9c8ccc682885383f7aee9f77a1dbbb8c94a5d709e2de4ee9d76b40c7248a277a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "previous_round": {
+        "receipt": "i18n/receipts/ur-agents-surfaces-audit-r2-74bd1d94a511.json",
+        "ur_sha256": "399ad8de4ec4be3d60d1fc39dafe7ca6d942eda2799e432f2dc2610e61491495",
+        "base_commit": "0ae75afa0c",
+        "base_reproduces_round2_hash": true
+      },
+      "findings": [],
+      "note": "No unresolved finding on the current bytes; the round-2 findings in this group are recorded as resolved under round2_findings_resolved."
+    },
+    "ui.hub.teams": {
+      "status": "passed",
+      "result": "passed",
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "keys_in_group": 47,
+      "keys_reaudited_this_round": [
+        "ui.hub.teams.public.intro",
+        "ui.hub.teams.public.match_line",
+        "ui.hub.teams.public.pull_failed",
+        "ui.hub.teams.public.pull_no_signin",
+        "ui.hub.teams.public.sign_in_hint",
+        "ui.hub.teams.pull",
+        "ui.hub.teams.pull_failed",
+        "ui.hub.teams.pull_target",
+        "ui.hub.teams.pulling"
+      ],
+      "scope": "Delta re-audit of UR-R2-H1 (the six pull keys plus the two neighbours intro/sign_in_hint) and minor UR-R2-H2 (match_line), the latter rendered through the bundled formatter at visible 0/1/3 x total 1/1/5. Whole group mechanically verified.",
+      "sha256": {
+        "en": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+        "ur": "7c548a02ccd34bef24865ba9459e47ddf1910e1ce6d85b4420b8bb4acbb26b5f",
+        "context": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.teams.json",
+        "target": "src/i18n/catalogues/ur/ui.hub.teams.json",
+        "context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+      },
+      "previous_round": {
+        "receipt": "i18n/receipts/ur-agents-surfaces-audit-r2-74bd1d94a511.json",
+        "ur_sha256": "8a6f49b2b7b9d4dba5a282c723c3875d6d9b7330651a87fc69d949c7bb1c0ed4",
+        "base_commit": "0ae75afa0c",
+        "base_reproduces_round2_hash": true
+      },
+      "findings": [],
+      "note": "No unresolved finding on the current bytes; the round-2 findings in this group are recorded as resolved under round2_findings_resolved."
+    },
+    "ui.agents.publication": {
+      "status": "passed",
+      "result": "passed",
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "keys_in_group": 96,
+      "keys_reaudited_this_round": [
+        "ui.agents.publication.hub_unauthorized.body_pull",
+        "ui.agents.publication.hub_unavailable.body_pull",
+        "ui.agents.publication.hub_unavailable.headline_pull",
+        "ui.agents.publication.insufficient_role.body_pull",
+        "ui.agents.publication.insufficient_role.body_with_role_pull",
+        "ui.agents.publication.local_failure.headline_pull",
+        "ui.agents.publication.not_a_member.body_pull",
+        "ui.agents.publication.team_plan_required.body_pull"
+      ],
+      "scope": "Delta re-audit of the eight *_pull keys named in UR-R2-H1 (publication part). The publish twins and the pull_* body set are untouched and were not re-opened.",
+      "sha256": {
+        "en": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+        "ur": "863278716c78a770e0be2860d18e31e378a92a4aeeaf7668a05d756666461b7e",
+        "context": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.publication.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.publication.json",
+        "context": "src/i18n/catalogues/en/ui.agents.publication.context.json"
+      },
+      "previous_round": {
+        "receipt": "i18n/receipts/ur-agents-surfaces-audit-r2-74bd1d94a511.json",
+        "ur_sha256": "7e8f984d23e43432aec57b6b27e783f28bbd9c104baa9a7442c74b043fe14848",
+        "base_commit": "0ae75afa0c",
+        "base_reproduces_round2_hash": true
+      },
+      "findings": [],
+      "note": "No unresolved finding on the current bytes; the round-2 findings in this group are recorded as resolved under round2_findings_resolved."
+    },
+    "ui.agents.config": {
+      "status": "passed",
+      "result": "passed",
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "keys_in_group": 28,
+      "keys_reaudited_this_round": [
+        "ui.agents.config.status.attached",
+        "ui.agents.config.summary.you_asked"
+      ],
+      "scope": "Round-2 minor keys only (UR-R2-C1, UR-R2-C2). The namespace passed in round 2 and no other key in it changed.",
+      "sha256": {
+        "en": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+        "ur": "3a3e725dd03ae22e255666779bf6e40612b33be62f6117896d2a0186e980d53b",
+        "context": "5dd8f962ad021b0dc4004ea2531257b3fd70904e834f77b5f9b7b2d7266a48db"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.config.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.config.json",
+        "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+      },
+      "previous_round": {
+        "receipt": "i18n/receipts/ur-agents-surfaces-audit-r2-74bd1d94a511.json",
+        "ur_sha256": "28307c5459022ead0023bd9dc3f308dae0a5f981e674420b54015f4a5d1bb33a",
+        "base_commit": "0ae75afa0c",
+        "base_reproduces_round2_hash": true
+      },
+      "findings": [],
+      "note": "No unresolved finding on the current bytes; the round-2 findings in this group are recorded as resolved under round2_findings_resolved."
+    },
+    "ui.agents.detail": {
+      "status": "passed",
+      "result": "passed",
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "keys_in_group": 47,
+      "keys_reaudited_this_round": [
+        "ui.agents.detail.alert.conflict_body"
+      ],
+      "scope": "Round-2 minor key only (UR-R2-D1). The namespace passed in round 2 and no other key in it changed.",
+      "sha256": {
+        "en": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+        "ur": "74afcf443bf821481079cc823d2d0c06eb5280a9173b451491dce7089b1a67c8",
+        "context": "f1b0bbf296d01189d64cbdc9bb1bc77d3e7971d8f891c693b94af5741de58cd9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.detail.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.detail.json",
+        "context": "src/i18n/catalogues/en/ui.agents.detail.context.json"
+      },
+      "previous_round": {
+        "receipt": "i18n/receipts/ur-agents-surfaces-audit-r2-74bd1d94a511.json",
+        "ur_sha256": "5f4bf5a941c6ee4e4f2e76750a58421b9f73d456d75aa7122988d3d73426245c",
+        "base_commit": "0ae75afa0c",
+        "base_reproduces_round2_hash": true
+      },
+      "findings": [],
+      "note": "No unresolved finding on the current bytes; the round-2 findings in this group are recorded as resolved under round2_findings_resolved."
+    }
+  },
+  "round2_findings_resolved": [
+    {
+      "id": "UR-R2-U1",
+      "severity": "major",
+      "namespace": "ui.agents.upload",
+      "key": "ui.agents.upload.target.label",
+      "was": "یہاں شائع کریں",
+      "now": "کس جگہ شائع کریں",
+      "resolved": true,
+      "why": "«کس جگہ» is the oblique interrogative ('at which place'), so the label now asks the reader to choose a destination instead of naming the current place; the <Select> it labels offers «Public hub» (ui.hub.pages.scope.public) and organization names, which is what the label introduces. Grammar: کس agrees with the feminine singular جگہ; the respectful imperative شائع کریں matches the ur guide's command form. It also matches the received hi pattern 'कहाँ प्रकाशित करें' and the fr 'Publier vers' / ru 'Куда опубликовать' family.",
+      "verification": "Call site read at src/renderer/src/features/agents/components/upload-agent-dialog.tsx:938-952 (Label htmlFor -> SelectTrigger -> SelectContent items). Sidecar: 'field label for the destination group ... Introduces the public hub and organization targets below it.' Placementholder-free key."
+    },
+    {
+      "id": "UR-R2-H1",
+      "severity": "major",
+      "namespace": "ui.hub.teams",
+      "key": "ui.hub.teams.pull; ui.hub.teams.pulling; ui.hub.teams.pull_target; ui.hub.teams.pull_failed; ui.hub.teams.public.pull_failed; ui.hub.teams.public.pull_no_signin; ui.hub.teams.public.intro; ui.hub.teams.public.sign_in_hint",
+      "was": "حاصل کریں · حاصل کیا جا رہا ہے… · ٹیم {name} حاصل کریں · … حاصل نہیں ہو سکی",
+      "now": "pull کریں · pull ہو رہا ہے… · ٹیم {name} کو pull کریں · “{name}” کو pull نہیں کیا جا سکا۔ · ٹیم کو pull نہیں کیا جا سکا۔ · … پھر دوبارہ pull کریں۔ · کسی ٹیم کو pull کرنے پر … · کسی ٹیم کو pull کرنے کے لیے",
+      "resolved": true,
+      "why": "pull now stays Latin throughout the surface, as the glossary's wave-2 kept-English set requires for git/hub operations ('Inflect around them; never translate inside them'), and as shipped ur already renders the same operation (ui.hub.subscriptions.pull 'اب pull کریں', subscribe_description 'دستی pull دستیاب رہتا ہے'). The Urdu grammar around the kept token is correct in each frame: imperative pull کریں; in-flight masculine pull ہو رہا ہے; object-marked ٹیم {name} کو pull کریں and کسی ٹیم کو pull کرنے پر/کے لیے; passive-ability کو pull نہیں کیا جا سکا; feminine agreement on the team as subject (ٹیم … pull نہیں ہو سکی) in the publication headline twin. The label is lower-case 'pull', which is also what makes label-in-name hold: the visible label 'pull کریں' is a substring of the accessible name 'ٹیم {name} کو pull کریں'; my round-2 suggested capitalisation would have broken that match, so the choice here is better than what I proposed.",
+      "verification": "Read at the two call sites (org-teams-list.tsx:444-450, public-teams-library.tsx:575-579: visible label = pull/pulling, aria-label = pull_target) and against each en string plus its sidecar. Six keys from the finding, two neighbours, all changed."
+    },
+    {
+      "id": "UR-R2-H2",
+      "severity": "minor",
+      "namespace": "ui.hub.teams",
+      "key": "ui.hub.teams.public.match_line",
+      "was": "{visible} از {total, plural, one {# ٹیم} other {# ٹیمیں}} اس صفحے پر “{query}” سے مطابقت رکھتی ہیں",
+      "now": "اس صفحے پر “{query}” کے نتائج: {visible} از {total, plural, one {# ٹیم} other {# ٹیمیں}}",
+      "resolved": true,
+      "why": "The sentence was recast as a label, so no trailing verb has to agree with the plural arm: total=1 renders '…: 0 از 1 ٹیم' with the singular arm intact and no broken feminine-plural verb. «از» for 'of' in counts already has shipped ur precedent (ui.*.teamBridge.position/teamBridge.open 'تصویر {index} از {count}', projects.show_asset_name, plus seven more). Argument parity with en is exact ({visible}, {total} plural, {query}); only the order follows ur word order.",
+      "verification": "Rendered through the app's own formatter (esbuild bundle of src/i18n/messages.ts, as scripts/i18n/runtime.test.mjs does) at visible 0/1/3 x total 1/1/5: every point produced a complete, agreeing line; no manual bidi control in any render."
+    },
+    {
+      "id": "UR-R2-P1",
+      "severity": "major",
+      "namespace": "ui.agents.publication",
+      "key": "the eight *_pull keys",
+      "was": "کچھ بھی حاصل نہیں ہوا … حصول مکمل نہیں ہو سکا … اس مشین سے حاصل نہیں ہو سکی",
+      "now": "کچھ بھی pull نہیں ہوا۔ … یہ pull مکمل نہیں ہو سکا … اس مشین سے pull نہیں ہو سکی … پھر دوبارہ pull کریں۔",
+      "resolved": true,
+      "why": "Same glossary ruling as UR-R2-H1, applied to the pull-surface twins of the publish refusals. Each sentence keeps its polarity and remedy ('nothing was pulled', then sign in / retry / ask an owner / activate the Team plan, then pull again) and now keeps pull Latin while the publish twin keeps شائع, which is the distinction the en sidecars demand ('Keep the two verbs (publish/pull) distinct'). Agreement is grammatical in every frame, and the headline 'یہ pull مکمل نہیں ہو سکا' still names the outcome without asserting a cause. The pull_* body set (downloaded/download) was left in ڈاؤن لوڈ, as instructed by the round-2 finding.",
+      "verification": "All eight current values compared with their en strings and sidecars; the publish twins and the pull_* bodies were confirmed byte-unchanged by the base-commit diff."
+    },
+    {
+      "id": "UR-R2-D1",
+      "severity": "minor",
+      "namespace": "ui.agents.detail",
+      "key": "ui.agents.detail.alert.conflict_body",
+      "was": "کوئی ترتیب کا رن",
+      "now": "کوئی کنفیگریشن رن",
+      "resolved": true,
+      "why": "configuration is now the shipped ur term کنفیگریشن, as in ui.common.errors.configuration_fetch / configuration_update and ui.common.actions.configuration_updated, and the alert no longer reads as 'a run of order/arrangement'.",
+      "verification": "Current bytes compared with the shipped ui.common.* configuration strings; only this key changed in the namespace."
+    },
+    {
+      "id": "UR-R2-C2",
+      "severity": "minor",
+      "namespace": "ui.agents.config",
+      "key": "ui.agents.config.summary.you_asked",
+      "was": "آپ نے پوچھا: {topic}",
+      "now": "آپ کی درخواست: {topic}",
+      "resolved": true,
+      "why": "پوچھنا reads as asking a question, which misdescribed the operator's change request; «آپ کی درخواست» names it as a request and keeps the quoted text at {topic}. The sidecar asks for a quoted request under the answer, and {topic} stays untouched and untranslated.",
+      "verification": "Compared with the en source and sidecar ('{topic} is the operator's own typed text ... never translated or reworded'); placeholder {topic} preserved."
+    },
+    {
+      "id": "UR-R2-C2",
+      "key": "ui.agents.config.summary.updated  # placeholder",
+      "resolved": false
+    }
+  ],
+  "considered_not_raised": [
+    "ui.agents.upload.target.label: an alternative noun phrase «شائع کرنے کی جگہ» would also be correct and slightly more label-like; «کس جگہ شائع کریں» is idiomatic Urdu, names the destination, and matches the received hi pattern, so it is accepted rather than finding-raised.",
+    "ui.hub.teams.pull ('pull کریں') starts the string with a lower-case Latin token. It is not a defect: it matches hi's shipped 'pull करें' and shipped ur 'اب pull کریں', and it is what keeps the label a substring of the aria name. My round-2 suggestion of a capitalised 'Pull' would have been worse.",
+    "ui.agents.publication.hub_unauthorized.body_pull omits the second دوبارہ ('again') before pull that its three sibling refusals carry, while its English source says 'then pull again'. Read as a deliberate non-repetition, not an omission: the same sentence already says دوبارہ سائن ان کریں, and پھر carries the retry. Meaning intact, so not raised.",
+    "ui.hub.teams.public.match_line now says نتائج while the mutually-exclusive miss state says مطابقت نہیں رکھتی; the two never render together, and fr/ru/zh-CN took the same label recast, so no consistency intervention is needed."
+  ],
+  "observations": [
+    "GATE CHANGE IN THE TREE (not a ur finding): scripts/i18n/locale-parity.test.mjs carries an uncommitted +51-line IDENTICAL_OK block of eleven `fr:`-scoped rows. I read allowsIdenticalValue: a `fr:`-prefixed row only exempts fr (table.has(key) || table.has(`${locale}:${key}`)), so ur's identical-value guard is unaffected and the ur run above is a real pass. It is nevertheless a gate edit made during an audit window and belongs to the fr auditor and the manager to accept, not to me.",
+    "CONCURRENT WRITER IN THE SAME WORKTREE (not a ur finding): between my first status read and the end of this audit, three unrelated paths appeared changed in this worktree (scripts/org-teams-summary.test.mjs and org-team-summary.ts modified, scripts/org-team-date-locale.test.mjs added). They are not mine and do not touch the catalogues audited here: all five bound target hashes still equal the manifest, so the audit result stands. Flagged because it is a live shared tree and the manager will converge and QA the same worktree.",
+    "MY OWN ROUND-2 ARTIFACT (corrected here): the round-2 receipt's totals.minor says 3 while its namespace blocks sum to 4 (detail 1, config 2, hub.teams 1). The four findings UR-R2-H2/D1/C1/C2 are the ones verified here; the totals field undercounted by one."
+  ],
+  "acknowledged_source_gaps": [
+    "upload-agent-dialog.tsx still hard-codes English copy beside the keyed label (the publish-target hint paragraph and the `org.tenant_name || \"Organization\"` fallbacks); a source-side gap, outside this catalogue audit and not counted against ur.",
+    "ui.agents.config.about inserts raw English {kind} values and ui.agents.detail.tools.every_tool_aria composes an English name into the accessible name; both unchanged by this round and previously recorded as source gaps, not ur defects."
+  ],
+  "limitations": [
+    "No rendered frame or pixel measurement: width judgements are codepoint/prose judgements plus the ur guide's measured ≈1 cell per Arabic-script character rule. The match_line renders are text renders from the real formatter, not screenshots.",
+    "Idiom, register and agreement judgements are the auditor's own native-fluent reading; no MT service or back-translation was used.",
+    "This is a focused round-3 delta audit. It does not re-certify the groups round 2 passed (their bytes are unchanged), and within config/detail it certifies only the round-2 minor keys."
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "unresolved_minor_nit_count": 0,
+    "finding_ids": [],
+    "round2_finding_ids_resolved": [
+      "UR-R2-U1",
+      "UR-R2-H1",
+      "UR-R2-H2",
+      "UR-R2-P1",
+      "UR-R2-D1",
+      "UR-R2-C1",
+      "UR-R2-C2"
+    ]
+  }
+}
