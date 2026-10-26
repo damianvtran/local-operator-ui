@@ -395,12 +395,68 @@ async function waitForElement(cdp, ms, selector) {
 				const skip = [...document.querySelectorAll(${JSON.stringify(selector)})]
 					.find((element) => /skip for now/i.test(element.textContent || ""));
 				if (!skip) return { found: false };
+				/*
+				 * BRING IT INTO ITS OWN SCROLL PORT, THEN MEASURE (native CI run
+				 * 40272919964). The onboarding card is a scrollable panel; on the GitHub
+				 * runner's window the control's rect sat inside the viewport while its centre
+				 * hit whatever was painted there - the panel's clip, not the button - so a
+				 * press aimed at that point pressed the wrong thing. Scrolling the control
+				 * to the centre of its scroller first makes rect and paint agree, and the hit
+				 * test then reports what a person would actually hit.
+				 */
+				skip.scrollIntoView({ block: "center", inline: "nearest" });
 				const rect = skip.getBoundingClientRect();
-				const x = Math.round(rect.x + rect.width / 2);
-				const y = Math.round(rect.y + rect.height / 2);
+				/*
+				 * PRESS WHERE THE CONTROL IS PAINTED. The centre of the rect is not always
+				 * hittable even when the rect is inside the viewport (a clipped scroller, a
+				 * sticky band, a rounded card's corner mask). So the aim point is the first
+				 * grid point of the element's own rect whose hit test answers the control -
+				 * which is a point a person's pointer would also reach, still dispatched as
+				 * real input.
+				 */
+				const step = 4;
+				const points = [];
+				for (let i = 1; i < step; i += 1)
+					for (let j = 1; j < step; j += 1)
+						points.push([
+							Math.round(rect.x + (rect.width * i) / step),
+							Math.round(rect.y + (rect.height * j) / step),
+						]);
+				points.push([
+					Math.round(rect.x + rect.width / 2),
+					Math.round(rect.y + rect.height / 2),
+				]);
+				let x = points[0][0];
+				let y = points[0][1];
+				let top = null;
+				for (const [px, py] of points) {
+					if (px < 0 || py < 0 || px > innerWidth || py > innerHeight) continue;
+					const candidate = document.elementFromPoint(px, py);
+					if (candidate && (candidate === skip || skip.contains(candidate))) {
+						x = px;
+						y = py;
+						top = candidate;
+						break;
+					}
+				}
 				const inside = rect.width > 0 && rect.height > 0 && x >= 0 && y >= 0 && x <= innerWidth && y <= innerHeight;
-				const top = inside ? document.elementFromPoint(x, y) : null;
-				return { found: true, x, y, inside, uncovered: Boolean(top && (top === skip || skip.contains(top))) };
+				return {
+					found: true,
+					x,
+					y,
+					inside,
+					uncovered: Boolean(top && (top === skip || skip.contains(top))),
+					/* What the point really hit, so a failure names the cover instead of
+					   only stating that the target was not pressable. */
+					hit: top
+						? {
+							tag: top.tagName,
+							id: top.id || null,
+							className: typeof top.className === "string" ? top.className : null,
+							text: (top.textContent || "").trim().slice(0, 80),
+						}
+						: null,
+				};
 			})()`,
 		);
 		if (found?.found) return found;
