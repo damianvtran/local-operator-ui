@@ -716,6 +716,15 @@ const IDENTICAL_OK = new Map([
 		"ui.shell.sidebar_navigation.agent_hub",
 		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
 	],
+	// The browse page's own title, same product name as the sidebar entry above.
+	// The ur agents-surfaces audit ruled MAJOR that it must read Latin 'Agent Hub'
+	// so the page title matches the sidebar that opens it (receipt
+	// i18n/receipts/ur-agents-surfaces-audit-8441bccd5f30.json, finding H1); the
+	// value is therefore correctly identical to English, not a skipped string.
+	[
+		"ui.hub.pages.header.title",
+		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
+	],
 	// --- Audit-classified identical values: canvas and surfaces batches --------
 	// Seven independent auditors classified every value below as legitimately
 	// identical to English at canvas head 936e3a48 / surfaces head 7a1fdf20; the
