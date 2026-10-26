@@ -134,6 +134,21 @@ body {
 	color: var(--lo-ink);
 }
 
+/*
+ * A row that embeds the typed value (Open / Search): the sentence is UI type and
+ * only the value, which the child wraps in <bdi>, is the machine face. Same split
+ * as the page's own-state list (design D4); text-body-sm / text-mono-sm sizes.
+ */
+.lo-row-text.is-sentence {
+	font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+	font-size: 13px;
+}
+
+.lo-row-text.is-sentence bdi {
+	font-family: ui-monospace, Menlo, monospace;
+	font-size: 12px;
+}
+
 .lo-row-title {
 	/* A FLOOR, not zero: the title carries the open-tab source marker, and a
 	 * long URL could otherwise take the whole row and starve the marker to 0px,

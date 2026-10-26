@@ -149,6 +149,13 @@ export function apply(model: Model): ReturnType<typeof measure> {
 			// Forcing LTR reversed the sentence in an RTL chrome.
 			text.dir = "auto";
 			const { isolate } = row;
+			// A row that embeds the user's value is a sentence in the UI's language:
+			// its direction is the UI's, not the first strong character's. `dir=auto`
+			// skips the isolate and reads the first strong letter OUTSIDE it, which in
+			// an Urdu sentence opening with Latin text ("DuckDuckGo ...") is LTR - the
+			// sentence painted left-to-right and left-aligned beside an RTL Open row
+			// (design D1). Plain candidate rows (a bare URL or a title) keep `auto`.
+			if (isolate) text.dir = model.dir === "rtl" ? "rtl" : "ltr";
 			if (
 				isolate &&
 				Number.isInteger(isolate.start) &&
@@ -164,6 +171,10 @@ export function apply(model: Model): ReturnType<typeof measure> {
 				// so the concatenation is exactly the unsplit text. main already
 				// bounds-checked the range; the guard above only keeps a corrupt
 				// model from throwing inside the child.
+				// The sentence is UI type and only the value is the machine face
+				// (design D4): `is-sentence` turns the row text sans, `list.css` keeps
+				// the value in mono.
+				text.classList.add("is-sentence");
 				const bdi = document.createElement("bdi");
 				bdi.dir = "ltr";
 				bdi.textContent = row.text.slice(isolate.start, isolate.end);

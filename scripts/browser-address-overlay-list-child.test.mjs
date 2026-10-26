@@ -84,7 +84,11 @@ test("a row with an isolate range wraps exactly the value in <bdi dir=ltr>", () 
 		"the visible text is the unsplit text, byte for byte",
 	);
 	assert.equal(BIDI_CONTROLS.test(span.textContent), false);
-	assert.equal(span.getAttribute("dir"), "auto");
+	// CONTRACT CHANGED (design D1): a row that embeds a value is a sentence in the
+	// UI's language and takes the model's direction (rtl here); `auto` skipped the
+	// isolate and resolved from a leading Latin word. Plain rows keep `auto`, pinned
+	// in the D1 case below.
+	assert.equal(span.getAttribute("dir"), "rtl");
 	assert.equal(span.innerHTML.includes("<script"), false);
 });
 
@@ -111,4 +115,42 @@ test("a range that does not fit the text paints plain text, never throws", () =>
 	const [span] = rowEls();
 	assert.equal(span.textContent, "abc");
 	assert.equal(span.querySelectorAll("bdi").length, 0);
+});
+
+test("D1: a row that embeds a value takes the UI direction; plain rows keep auto", () => {
+	// `dir=auto` skips isolates and reads the first strong character, which in an
+	// Urdu sentence that opens with Latin text ("DuckDuckGo ...") is LTR - the
+	// sentence painted left-to-right and left-aligned beside an RTL Open row.
+	const sentence =
+		'DuckDuckGo \u067E\u0631 "192.168.1.1/" \u062A\u0644\u0627\u0634';
+	const start = sentence.indexOf("192");
+	apply(
+		model([
+			{ text: sentence, title: "", isolate: { start, end: start + 12 } },
+			{ text: "host.example.com/path", title: "" },
+		]),
+	);
+	const [embedded, plain] = rowEls();
+	assert.equal(embedded.getAttribute("dir"), "rtl");
+	assert.equal(embedded.querySelector("bdi").getAttribute("dir"), "ltr");
+	assert.equal(embedded.querySelector("bdi").textContent, "192.168.1.1/");
+	assert.equal(plain.getAttribute("dir"), "auto");
+	apply(
+		model(
+			[{ text: sentence, title: "", isolate: { start, end: start + 12 } }],
+			"ltr",
+		),
+	);
+	assert.equal(rowEls()[0].getAttribute("dir"), "ltr");
+});
+
+test("D4: only the embedded value is monospace; the sentence is UI type", () => {
+	apply(
+		model([
+			{ text: 'Open "a.example"', title: "", isolate: { start: 6, end: 15 } },
+		]),
+	);
+	const [span] = rowEls();
+	assert.ok(span.classList.contains("is-sentence"));
+	assert.equal(span.querySelector("bdi").textContent, "a.example");
 });

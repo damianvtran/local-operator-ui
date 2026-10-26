@@ -43,9 +43,13 @@ import { useAddressAutocomplete } from "../hooks/use-address-autocomplete";
 import type { LoadFailureView } from "../hooks/use-browser-chrome";
 import {
 	type AddressRow,
+	type AddressSearchRow,
+	type AddressTypedRow,
 	type InlineCompletion,
 	addressIntent,
 	canInlineComplete,
+	defaultActiveIndex,
+	displayValue,
 	embedValue,
 	isGeneratedSuffixSelected,
 	isolateBidi,
@@ -566,27 +570,21 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * overlay's row protocol is uniform height and S4b owns it, so a heading row
 	 * would be a selectable row the child cannot paint in its own model.
 	 */
-	const rowText = (row: AddressRow): string =>
-		row.kind === "search"
-			? t("ui.browser.browser_url_bar.address_search_row", {
-					query: isolateBidi(row.query),
-				})
-			: row.kind === "typed"
-				? t("ui.browser.browser_url_bar.address_open_row", {
-						address: isolateBidi(row.address),
-					})
-				: row.candidate.displayText;
 	/**
-	 * The native child's copy of a row's text: PLAIN (no FSI/PDI, which main
-	 * strips) plus the span of the user's own value, for the two rows that embed
-	 * one. The page DOM rows above keep the FSI/PDI isolates; the child gets the
-	 * same sentence with the isolation expressed as a range.
+	 * A row that embeds the user's own value (the typed-address and search rows),
+	 * formatted with the value either wrapped in FSI/PDI (`isolated`: the page DOM
+	 * copy, where the isolate is a control in the text) or plain (the native child,
+	 * which main strips controls from and which is told the span instead). The value
+	 * is `displayValue`d first: display only, the commit target stays raw.
 	 */
-	const mirrorRowText = (
-		row: AddressRow,
-	): { text: string; isolate?: { start: number; end: number } } => {
-		if (row.kind === "candidate") return { text: row.candidate.displayText };
-		const embedded = embedValue(
+	const embeddedRow = (
+		row: AddressSearchRow | AddressTypedRow,
+		isolated: boolean,
+	): ReturnType<typeof embedValue> => {
+		const typedValue = displayValue(
+			row.kind === "search" ? row.query : row.address,
+		);
+		return embedValue(
 			(value) =>
 				row.kind === "search"
 					? t("ui.browser.browser_url_bar.address_search_row", {
@@ -595,11 +593,45 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					: t("ui.browser.browser_url_bar.address_open_row", {
 							address: value,
 						}),
-			row.kind === "search" ? row.query : row.address,
+			isolated ? isolateBidi(typedValue) : typedValue,
 		);
+	};
+	const rowText = (row: AddressRow): string =>
+		row.kind === "candidate"
+			? row.candidate.displayText
+			: embeddedRow(row, true).text;
+	/**
+	 * The native child's copy of a row's text: PLAIN (no FSI/PDI, which main
+	 * strips) plus the span of the user's own value, for the two rows that embed
+	 * one. The page DOM rows keep the FSI/PDI isolates; the child gets the same
+	 * sentence with the isolation expressed as a range.
+	 */
+	const mirrorRowText = (
+		row: AddressRow,
+	): { text: string; isolate?: { start: number; end: number } } => {
+		if (row.kind === "candidate") return { text: row.candidate.displayText };
+		const embedded = embeddedRow(row, false);
 		return embedded.isolate
 			? { text: embedded.text, isolate: embedded.isolate }
 			: { text: embedded.text };
+	};
+	/**
+	 * The page DOM row's three runs, so ONLY the typed address is monospace (design
+	 * D4: "monospace is machine voice only") while the sentence around it is UI
+	 * type. The FSI/PDI stay in the text nodes either side of the value, so
+	 * `textContent` is exactly `rowText` and the isolation does not depend on the
+	 * element.
+	 */
+	const rowRuns = (
+		row: AddressSearchRow | AddressTypedRow,
+	): { head: string; value: string; tail: string } | null => {
+		const { text, isolate } = embeddedRow(row, true);
+		if (!isolate) return null;
+		return {
+			head: text.slice(0, isolate.start + 1),
+			value: text.slice(isolate.start + 1, isolate.end - 1),
+			tail: text.slice(isolate.end - 1),
+		};
 	};
 	const rowSubtitle = (row: AddressRow): string => {
 		if (row.kind === "search" || row.kind === "typed") return "";
@@ -670,6 +702,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			: query.length === 0
 				? t("ui.browser.browser_url_bar.address_suggestions_empty")
 				: t("ui.browser.browser_url_bar.address_suggestions_no_match");
+	/** The standing/unavailable sentence as the field's own tooltip: the pill is
+	 * capped at 45% of the field and cuts the action off the end of a long
+	 * sentence, and it is `pointer-events-none` so it cannot be hovered itself. */
+	const standingTitle = hintShown ? (standingText ?? undefined) : undefined;
 
 	/**
 	 * THE LIST IS INSET TO THE FIELD, NOT THE PANE.
@@ -950,7 +986,19 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		});
 		const ranked = suggestAddresses(autocomplete.entries, next);
 		setCompletion(eligible ? ranked.inline : null);
-		setActiveIndex(-1);
+		// The default highlight for what THIS keystroke produced, not -1: the
+		// key-based effect below only re-runs when the row set changes, and a
+		// keystroke that leaves it unchanged (the next letter of a completion already
+		// on screen) would otherwise lose the highlight the previous one set
+		// (measured in the built app, UX U1).
+		setActiveIndex(
+			defaultActiveIndex(
+				suggestAddresses(autocomplete.entries, next, {
+					inlineShown: eligible && ranked.inline !== null,
+					offerTyped: true,
+				}),
+			),
+		);
 	};
 
 	/** A cursor move that is not the generated suffix cancels the completion
@@ -1245,7 +1293,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	// the active row and the viewport's offset together: an active descendant
 	// naming a vanished row and a scroll offset belonging to the previous set are
 	// the same stale state, and the URL KEY catches swaps the count cannot.
-	const candidateKey = suggestions.rows.map(rowKey).join("\n");
+	// `inlineRow` is part of the key: the promoted completion row has the SAME key
+	// whether or not the completion is on screen yet, so without it the highlight
+	// would not follow the completion appearing after the history answer.
+	const candidateKey = `${suggestions.inlineRow ? "inline" : "list"}|${suggestions.rows.map(rowKey).join("\n")}`;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `candidateKey` is the trigger, not a value the body reads - the URL SET changing is what must reset the selection and the scroll, and a same-length swap changes no count.
 	useEffect(() => {
 		// AN EXPLICIT SELECTION SURVIVES A LATE ANSWER for the same query (UX U4):
@@ -1269,12 +1320,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		// URL-shaped input that matched nothing (it is the destination Enter has
 		// always navigated); no explicit selection otherwise.
 		explicitSelection.current = null;
-		setActiveIndex(
-			suggestions.rows[0]?.kind === "search" ||
-				suggestions.rows[0]?.kind === "typed"
-				? 0
-				: -1,
-		);
+		setActiveIndex(defaultActiveIndex(suggestions));
 	}, [candidateKey]);
 
 	// The completion is REAL SELECTED TEXT, set here rather than overlaid: the
@@ -1396,8 +1442,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					className={
 						domList
 							? cn(
-									"relative flex h-[35.5px] items-center gap-3 overflow-hidden px-3 hover:bg-row-hover",
-									index === activeIndex && "bg-accent-wash",
+									"relative flex h-[35.5px] items-center gap-3 overflow-hidden px-3",
+									// The active wash outranks hover (D8), as `.lo-row.is-active`
+									// outranks `:hover` in the native child.
+									index === activeIndex
+										? "bg-accent-wash"
+										: "hover:bg-row-hover",
 								)
 							: undefined
 					}
@@ -1421,11 +1471,34 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 									className="absolute inset-y-0 start-0 w-0.5 bg-accent"
 								/>
 							)}
-							<span className="min-w-0 shrink truncate font-mono text-mono-sm text-ink">
-								{rowText(row)}
-							</span>
+							{row.kind === "candidate" ? (
+								<span className="min-w-0 shrink truncate font-mono text-mono-sm text-ink">
+									{rowText(row)}
+								</span>
+							) : (
+								<span className="min-w-0 shrink truncate text-body-sm text-ink">
+									{(() => {
+										// Sentence in UI type, ONLY the address in the machine face.
+										const runs = rowRuns(row);
+										return runs ? (
+											<>
+												{runs.head}
+												<span className="font-mono text-mono-sm">
+													{runs.value}
+												</span>
+												{runs.tail}
+											</>
+										) : (
+											rowText(row)
+										);
+									})()}
+								</span>
+							)}
 							{rowSubtitle(row).length > 0 && (
-								<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
+								// The 8em floor the native child's title column has (design
+								// D3): without it a long URL starves the "Already open"
+								// marker to a few pixels.
+								<span className="min-w-[8em] flex-1 truncate text-body-sm text-ink-muted">
 									{rowSubtitle(row)}
 								</span>
 							)}
@@ -1588,6 +1661,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					spellCheck={false}
 					autoComplete="off"
 					aria-label={t("ui.browser.browser_url_bar.address")}
+					title={standingTitle}
 					placeholder={
 						loading && !live ? (pendingUrl ?? undefined) : placeholder
 					}
@@ -1650,14 +1724,25 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					   rule. It registers no native-view suppression: nothing here touches
 					   the page view. */
 					<div
-						className="absolute start-0 end-0 top-[calc(100%+5px)] z-20 overflow-hidden rounded-md border border-hairline bg-elevated shadow-overlay"
+						// `border-control`, the role the contrast contract registers for
+						// "browser address suggestions" (design D7); the hairline measured
+						// 1.23:1 on this ground. The press handler is on the CONTAINER so
+						// the header, the padding and the border keep the field's focus
+						// too: a press there used to blur the field and discard the draft
+						// (QA Q2).
+						className="absolute start-0 end-0 top-[calc(100%+5px)] z-20 overflow-hidden rounded-md border border-control bg-elevated shadow-overlay"
 						data-tour-tag="browser-address-suggestions"
 						data-address-list-placement="dom"
+						onMouseDown={(event) => event.preventDefault()}
 					>
 						{suggestions.rows.length > 0 ? (
 							<>
 								<div
 									id={listLabelId}
+									// The full sentence as a title: a failed-read header is two
+									// sentences and the reassuring half is what ellipsis cuts
+									// (design D5).
+									title={listLabel}
 									className="flex h-7 items-center truncate border-hairline border-b px-3 text-meta text-ink-muted"
 								>
 									{listLabel}
