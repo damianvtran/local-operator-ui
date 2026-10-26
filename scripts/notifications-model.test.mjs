@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -819,5 +820,55 @@ test("the Unread chip, the rail badge and the visible rows agree on one fixture"
 		badgeCountOf({ ...counts, waiting_unread_count: 0 }),
 		2,
 		"the badge follows the unread half, which is what it counts",
+	);
+});
+
+test("the scope walk is bought when a detail is open, whatever the grouping", () => {
+	/*
+	 * QA ROUND 3: the detail printed the loaded page's count under Time grouping
+	 * while its confirm enumerated the whole conversation. The page bought the
+	 * enumeration only for conversation grouping, so this predicate is the wiring
+	 * the fix turns on: an OPEN DETAIL must ask for it under Time grouping too,
+	 * and nothing else may start that walk for free.
+	 */
+	assert.equal(
+		model.sessionScopeCountsEnabled("time", true),
+		true,
+		"an open detail under Time grouping must enumerate the scope",
+	);
+	assert.equal(
+		model.sessionScopeCountsEnabled("conversation", false),
+		true,
+		"the conversation header prints it, so it must enumerate",
+	);
+	assert.equal(
+		model.sessionScopeCountsEnabled("time", false),
+		false,
+		"nothing prints it, so the bounded walk is not paid for",
+	);
+});
+
+test("the reel asks the shared predicate, not the grouping alone", () => {
+	/*
+	 * SOURCE-ANCHORED, AND DELIBERATELY SO. The defect QA found was WIRING, not
+	 * arithmetic: the walk existed and was correct, and the page bought it only for
+	 * conversation grouping. A pure-model test cannot see that, and mounting the
+	 * page in this suite would replace the shipped component with a harness - so the
+	 * assertion reads the shipped file and pins the call the fix introduced. It
+	 * fails the moment somebody writes the grouping comparison back at this site.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/notifications/components/notifications-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/sessionScopeCountsEnabled\(\s*grouping,\s*Boolean\(notificationId\)\s*\)/,
+		"the scope walk must be enabled by the shared predicate, including for an open detail",
+	);
+	assert.doesNotMatch(
+		source,
+		/Boolean\(loaded\)\s*&&\s*grouping === "conversation"/,
+		"the old page-only condition must not come back",
 	);
 });

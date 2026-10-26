@@ -117,6 +117,7 @@ import {
 	rangeSelect,
 	rowOrder,
 	sessionDismissCount,
+	sessionScopeCountsEnabled,
 } from "../notifications-model";
 import { NotificationDetail } from "./notification-detail";
 import { NotificationRow } from "./notification-row";
@@ -383,9 +384,23 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * render nobody can vouch for.
 	 */
 	const refreshFailed = list.isError && Boolean(loaded);
+	/*
+	 * THE DETAIL'S NUMBER COMES FROM THE SAME ENUMERATION THE CONFIRM USES (QA round
+	 * 3). It was bought only while the reel was grouped by CONVERSATION, so under
+	 * Time grouping the detail counted the LOADED page: QA reproduced the button
+	 * saying 93 then 92 while its own confirm enumerated 130 then 131, on the same
+	 * click. The write is right in both cases (frozen `through_seq` over the whole
+	 * conversation, complete observed set, exact Undo); only the advertised number
+	 * was wrong, and that is the number the operator agrees to.
+	 *
+	 * So the walk is bought whenever anything PRINTS it: the conversation-grouped
+	 * header, or an open detail - hence `openItem`/`notificationId` here rather than
+	 * the grouping alone.
+	 */
 	const scopeCounts = useSessionScopeCounts(
 		loaded?.high_water,
-		Boolean(loaded) && grouping === "conversation",
+		Boolean(loaded) &&
+			sessionScopeCountsEnabled(grouping, Boolean(notificationId)),
 	);
 	const writesPaused = refreshFailed || operationBusy;
 	const [exitingIds, setExitingIds] = useState<Set<string>>(() => new Set());

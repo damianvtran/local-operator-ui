@@ -307,3 +307,72 @@ test("the Dismiss-all header number is the scope the dialog applies, not the pag
 		"the page count under-promises, which is the defect this replaced",
 	);
 });
+
+test("the detail's number is the confirm's number, under Time grouping too", async () => {
+	/*
+	 * QA ROUND 3, THE LYING LABEL. The detail's "Dismiss all N" advertised the
+	 * LOADED page under Time grouping (93 then 92) while its own confirm dialog
+	 * enumerated the whole conversation (130 then 131). The write was correct in
+	 * both cases; only the number the operator agrees to was wrong.
+	 *
+	 * What this pins: one conversation holding more rows than a page, where the
+	 * number the detail prints (the session-scope walk) is
+	 *   == the number the confirm enumerates (the observed token set), and
+	 *   == what the write actually covers (changed + skipped).
+	 * The first-page count is asserted to be strictly smaller, which is the defect.
+	 */
+	const session = "aaaaaaaaaaa1";
+	const rows = Array.from({ length: 130 }, (_, index) =>
+		item(
+			`n_${"e".repeat(12)}${String.fromCharCode(97 + Math.floor(index / 26))}${String.fromCharCode(97 + (index % 26))}`,
+			{
+				seq: index + 1,
+				session: { id: session, title: "one long conversation" },
+			},
+		),
+	);
+	const fixture = ops.createNotificationFixture(rows, []);
+	const throughSeq = fixture.counts().high_water;
+
+	const printed = await ops.readSessionDismissCounts(throughSeq, (request) =>
+		fixture.list(request),
+	);
+	const snapshot = await ops.observeNotificationScope(
+		async (request) => fixture.list(request),
+		{
+			scope: { sessionId: session },
+			throughSeq,
+			waiting: [],
+			verb: "dismiss",
+		},
+	);
+	const covered = await ops.applyNotificationOperation(
+		(verb, target) => fixture.send(verb, target),
+		"dismiss",
+		snapshot.tokens,
+		{ scope: { sessionId: session }, throughSeq, tokens: snapshot.tokens },
+	);
+
+	assert.equal(printed[session], 130, "the detail prints the whole scope");
+	assert.equal(
+		snapshot.tokens.length,
+		printed[session],
+		"the confirm enumerates exactly what the detail prints",
+	);
+	assert.equal(
+		covered.changed.length + covered.skipped.length,
+		printed[session],
+		"the write covers exactly what the detail printed",
+	);
+
+	/*
+	 * NEGATIVE CONTROL: the number the page could produce on its own. It has to be
+	 * smaller, because that is the lie - if a loaded page ever equalled the scope,
+	 * this fixture would not be able to reproduce the defect at all.
+	 */
+	const firstPage = fixture.list({ state: "all", limit: 100 });
+	assert.ok(
+		100 < printed[session],
+		`a page under-promises (${firstPage.items.length} of ${printed[session]}), which is the defect this fixes`,
+	);
+});

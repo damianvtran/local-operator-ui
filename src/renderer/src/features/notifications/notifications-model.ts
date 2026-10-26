@@ -213,6 +213,27 @@ export function dismissPlan(selected: readonly DesktopNotificationItem[]): {
  * `sessionId` + `throughSeq` (the server is the authority on what is in it);
  * this count is only what the confirmation promises.
  */
+/**
+ * Whether the reel should pay for a COMPLETE per-conversation enumeration.
+ *
+ * WHY THIS EXISTS (QA round 3, Q-lie): the detail's "Dismiss all N" and the
+ * confirm dialog behind it must name the same number as the write will cover, and
+ * that write is bounded by `through_seq` over the whole conversation, not by the
+ * page on screen. The count was only enabled while the reel was grouped by
+ * conversation, so under Time grouping - the default - the detail fell back to
+ * counting the LOADED page: QA measured the button saying 93 then 92 while its own
+ * confirm enumerated 130 then 131. The write was right; only the advertised number
+ * was wrong, which is the worse half to get wrong because it is the number the
+ * operator agrees to.
+ *
+ * The enumeration is a bounded walk, so it is bought only when something actually
+ * prints its result: the conversation-grouped header, or an open detail.
+ */
+export const sessionScopeCountsEnabled = (
+	grouping: NotificationGrouping,
+	detailOpen: boolean,
+): boolean => detailOpen || grouping === "conversation";
+
 export const sessionDismissCount = (
 	items: readonly DesktopNotificationItem[],
 	sessionId: string,
