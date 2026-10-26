@@ -2355,6 +2355,23 @@ function markPageBorn(
 	for (const entry of entries) pageBorn.add(entryRecordKey(entry));
 }
 
+/**
+ * Whether a frame is a JOURNAL-ORDER CORRECTION rather than frontend state.
+ *
+ * The bridge publishes `journal_order_ready` as an `event` frame whose payload
+ * names rows the journal has since placed, and it deliberately keeps those
+ * frames through the open handshake even when their receipt is at or below the
+ * snapshot's watermark - "a snapshot's sequence watermark cannot supersede an
+ * off-page correction" (`docs/DESKTOP_API.md`; the backend's own condition is
+ * `desktop_sessions.py::events`' `order_fact and not already_replayed`), because
+ * a bounded snapshot page need not contain the IDs the correction refers to.
+ *
+ * So the receipt high-water mark must not decide whether one is applied: its
+ * ordering is the JOURNAL's, not the stream's.
+ */
+const isJournalOrderCorrection = (frame: DesktopSessionFrame): boolean =>
+	frame.type === "event" && frame.payload?.type === "journal_order_ready";
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -4630,7 +4647,26 @@ export function useCanonicalSessionStream(
 							epoch: frame.epoch,
 							seq: frame.seq,
 						};
-						if (
+						/*
+						 * A JOURNAL-ORDER CORRECTION IS ORDERED BY THE JOURNAL, NOT BY THIS
+						 * RECEIPT, and the bridge sends those AFTER the snapshot at or below
+						 * its watermark on purpose (`desktop_sessions.py::events`:
+						 * `frame["seq"] > snapshot["seq"] or (order_fact and not
+						 * already_replayed)`; `docs/DESKTOP_API.md`: "a snapshot's sequence
+						 * watermark cannot supersede an off-page correction" - the frame is
+						 * metadata-only and its IDs need not be in a bounded page, so the
+						 * snapshot cannot stand in for it). Refusing it because its seq is
+						 * low is exactly the #994 mis-ordering returning: rows keep the wrong
+						 * placement until an unrelated later correction arrives.
+						 *
+						 * So it is EXEMPT from the ordering gate, and it does NOT move the
+						 * mark - a correction states where existing rows belong, never that
+						 * the stream has advanced, so moving the mark down would let genuinely
+						 * stale frames through afterwards.
+						 */
+						if (isJournalOrderCorrection(frame)) {
+							// Deliberately no `acceptedReceipt` assignment.
+						} else if (
 							!isNewerDesktopFrame(acceptedReceipt, cursor, {
 								// The snapshot is the state AT the watermark, so it may sit on
 								// it (see the option's own note); nothing else may.

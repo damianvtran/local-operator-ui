@@ -981,6 +981,38 @@ const liveFrame = (type, id, extra = {}) => ({
 const historyReads = () =>
 	requests.filter((request) => request.op === "sessions.history").length;
 
+/**
+ * A mount whose subscription DECLARED the journal-order family.
+ *
+ * `journal_order_ready` is only applied by a pane that negotiated it (the
+ * capability is the pane's question, so the hook takes it as an option), which is
+ * exactly the population the correction-under-the-watermark defect affects.
+ */
+async function mountWithJournalOrder(sessionIdOf = () => SESSION_A) {
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(
+			sessionIdOf(),
+			true,
+			true,
+			sessionIdOf(),
+			{
+				journalOrder: true,
+			},
+		);
+		return handle;
+	};
+	runtime.rerender();
+	return {
+		handle: () => handle,
+		row: (id) => handle.transcript.records.find((record) => record.id === id),
+		ids: () => ids(handle.transcript),
+		status: () => handle.status,
+		readings: () => handle.frontend ?? handle.heldFrontend,
+	};
+}
+
 async function mount(sessionIdOf = () => SESSION_A) {
 	const runtime = makeRuntime();
 	let handle;
@@ -1377,6 +1409,76 @@ test("a page dispatched before a live write cannot rewrite that row", async () =
 	} finally {
 		globalThis.__gapTail = realTail;
 	}
+});
+
+test("a journal-order correction below the snapshot watermark is still applied", async () => {
+	/*
+	 * ROUND 3's M1, and the reason the receipt gate cannot be the whole story.
+	 *
+	 * The bridge keeps `journal_order_ready` frames through the open handshake
+	 * even when their receipt is at or BELOW the snapshot's watermark, and sends
+	 * them AFTER the snapshot: metadata source facts are not folded into
+	 * `frontend`, a bounded page need not carry the IDs they name, and a snapshot
+	 * "cannot supersede an off-page correction" (`docs/DESKTOP_API.md`;
+	 * `desktop_sessions.py::events`' `order_fact and not already_replayed`).
+	 * Refusing them by seq is #994's mis-ordering returning: rows keep the wrong
+	 * placement until an unrelated later correction happens to arrive.
+	 *
+	 * The two deliveries below differ ONLY in the correction's seq: 6 is behind
+	 * the snapshot's 7 and must apply anyway; 8 is ahead and is the control that
+	 * proves the gate is what would have dropped the first.
+	 */
+	const rows = Array.from({ length: 6 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+	const correction = (seq) =>
+		eventFrame(seq, {
+			type: "journal_order_ready",
+			journal_generation: "domain-after",
+			rows: [{ id: rows[1].id, journal_seq: 0 }],
+		});
+
+	reset({ transcript: makeTranscript(rows) });
+	let panel = await mountWithJournalOrder();
+	deliver(openFrame(5, false));
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	deliver(correction(6));
+	await pump();
+	assert.equal(
+		panel.handle().transcript.orderWantedGeneration,
+		"domain-after",
+		"a correction behind the watermark is applied, not dropped",
+	);
+
+	reset({ transcript: makeTranscript(rows) });
+	panel = await mountWithJournalOrder();
+	deliver(openFrame(5, false));
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	deliver(correction(8));
+	await pump();
+	assert.equal(
+		panel.handle().transcript.orderWantedGeneration,
+		"domain-after",
+		"the ahead-of-watermark control applies too",
+	);
 });
 
 test("a receipt gap keeps the answer being written, and a mid-turn join agrees with the end", async () => {
