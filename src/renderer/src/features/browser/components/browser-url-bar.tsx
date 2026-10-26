@@ -46,6 +46,7 @@ import {
 	type InlineCompletion,
 	addressIntent,
 	canInlineComplete,
+	embedValue,
 	isGeneratedSuffixSelected,
 	isolateBidi,
 	moveActive,
@@ -575,6 +576,31 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						address: isolateBidi(row.address),
 					})
 				: row.candidate.displayText;
+	/**
+	 * The native child's copy of a row's text: PLAIN (no FSI/PDI, which main
+	 * strips) plus the span of the user's own value, for the two rows that embed
+	 * one. The page DOM rows above keep the FSI/PDI isolates; the child gets the
+	 * same sentence with the isolation expressed as a range.
+	 */
+	const mirrorRowText = (
+		row: AddressRow,
+	): { text: string; isolate?: { start: number; end: number } } => {
+		if (row.kind === "candidate") return { text: row.candidate.displayText };
+		const embedded = embedValue(
+			(value) =>
+				row.kind === "search"
+					? t("ui.browser.browser_url_bar.address_search_row", {
+							query: value,
+						})
+					: t("ui.browser.browser_url_bar.address_open_row", {
+							address: value,
+						}),
+			row.kind === "search" ? row.query : row.address,
+		);
+		return embedded.isolate
+			? { text: embedded.text, isolate: embedded.isolate }
+			: { text: embedded.text };
+	};
 	const rowSubtitle = (row: AddressRow): string => {
 		if (row.kind === "search" || row.kind === "typed") return "";
 		if (row.candidate.source !== "tab") return row.candidate.title;
@@ -834,7 +860,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		visible: listVisible,
 		active: activeIndex,
 		rows: suggestions.rows.map((row) => ({
-			text: rowText(row),
+			...mirrorRowText(row),
 			title: rowSubtitle(row),
 			key: rowKey(row),
 		})),

@@ -25,7 +25,15 @@ interface Model {
 	active: number;
 	height: number;
 	view:
-		| { kind: "rows"; rows: Array<{ text: string; title: string }> }
+		| {
+				kind: "rows";
+				rows: Array<{
+					text: string;
+					title: string;
+					/** Main-validated display span; see `AddressListIsolate`. */
+					isolate?: { start: number; end: number };
+				}>;
+		  }
 		| {
 				kind: "notice";
 				notice: "error" | "empty" | "no_match";
@@ -140,7 +148,33 @@ export function apply(model: Model): ReturnType<typeof measure> {
 			// while a search sentence in Urdu must read right-to-left (design D5).
 			// Forcing LTR reversed the sentence in an RTL chrome.
 			text.dir = "auto";
-			text.textContent = row.text;
+			const { isolate } = row;
+			if (
+				isolate &&
+				Number.isInteger(isolate.start) &&
+				Number.isInteger(isolate.end) &&
+				isolate.start >= 0 &&
+				isolate.start < isolate.end &&
+				isolate.end <= row.text.length
+			) {
+				// THE TYPED VALUE IS AN LTR RUN INSIDE A SENTENCE IN THE UI'S
+				// LANGUAGE. With no strong Latin character (an IP literal) the
+				// paragraph would otherwise be RTL and reorder it. `<bdi dir="ltr">`
+				// is the isolate; the text stays text (`textContent` on each part),
+				// so the concatenation is exactly the unsplit text. main already
+				// bounds-checked the range; the guard above only keeps a corrupt
+				// model from throwing inside the child.
+				const bdi = document.createElement("bdi");
+				bdi.dir = "ltr";
+				bdi.textContent = row.text.slice(isolate.start, isolate.end);
+				text.append(
+					document.createTextNode(row.text.slice(0, isolate.start)),
+					bdi,
+					document.createTextNode(row.text.slice(isolate.end)),
+				);
+			} else {
+				text.textContent = row.text;
+			}
 			rowEl.append(text);
 			if (row.title) {
 				const title = document.createElement("span");

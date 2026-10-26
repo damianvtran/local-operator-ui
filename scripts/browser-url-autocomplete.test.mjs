@@ -70,7 +70,8 @@ const result = await build({
 		contents: `
 import React from 'react';
 import { BrowserUrlBar } from './src/renderer/src/features/browser/components/browser-url-bar';
-export { BrowserUrlBar };`,
+import { useBrowserChrome } from './src/renderer/src/features/browser/hooks/use-browser-chrome';
+export { BrowserUrlBar, useBrowserChrome };`,
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -96,7 +97,9 @@ export { BrowserUrlBar };`,
 });
 const bundlePath = join(scratch, "component.mjs");
 await writeFile(bundlePath, result.outputFiles[0].text);
-const { BrowserUrlBar } = await import(pathToFileURL(bundlePath).href);
+const { BrowserUrlBar, useBrowserChrome } = await import(
+	pathToFileURL(bundlePath).href
+);
 
 const ENTRIES = [
 	{
@@ -1827,4 +1830,85 @@ test("typed and search rows isolate the user's text for RTL sentences, display o
 		{ url: "github.com/", expectedTabId: 1 },
 	]);
 	await bundle.cleanup();
+});
+
+/**
+ * The native child's rows for the two embedded-value rows. The projection loop
+ * needs a delivered content rect (main refuses a projection without the page
+ * rect it echoes), so a tiny host mounts the real `useBrowserChrome` hook and
+ * sends one through the stubbed bridge - the same call the surface makes.
+ */
+test("mirror rows carry the value's isolate range and no bidi controls", async () => {
+	const projections = [];
+	const bridge = new Proxy(
+		{
+			addressOverlay: {
+				project: async (payload) => {
+					projections.push(payload);
+					return { accepted: true };
+				},
+				onEvent: () => () => {},
+			},
+			state: async () => null,
+			onStateChanged: () => () => {},
+			setContentRect: async () => undefined,
+		},
+		{
+			// Subscriptions (`on*`) return their unsubscribe; every other call is a
+			// resolved no-op, which is all the rect hook needs from the bridge.
+			get: (target, name) =>
+				target[name] ??
+				(String(name).startsWith("on")
+					? () => () => {}
+					: async () => undefined),
+		},
+	);
+	dom.window.api = { browser: bridge };
+	let bundle = null;
+	let hostRoot = null;
+	let host = null;
+	try {
+		host = document.createElement("div");
+		document.body.appendChild(host);
+		hostRoot = createRoot(host);
+		let sendRect = () => {};
+		const Rect = () => {
+			sendRect = useBrowserChrome().setContentRect;
+			return null;
+		};
+		await act(async () => {
+			hostRoot.render(React.createElement(Rect));
+		});
+		await act(async () => {
+			sendRect({ x: 0, y: 100, width: 800, height: 600 });
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		});
+		bundle = await renderBar({ addressHistory: emptyHistory });
+		await type(bundle, "192.168.1.1/");
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 120));
+		});
+		const sent = projections
+			.filter((payload) => payload.visible && payload.view?.kind === "rows")
+			.at(-1);
+		assert.ok(sent, "the native child was sent a rows projection");
+		const [open, search] = sent.view.rows;
+		assert.equal(open.text, 'Open "192.168.1.1/"');
+		assert.equal(search.text, 'Search DuckDuckGo for "192.168.1.1/"');
+		for (const row of [open, search]) {
+			assert.equal(/[\u2066-\u2069]/.test(row.text), false, "no bidi controls");
+			assert.equal(
+				row.text.slice(row.isolate.start, row.isolate.end),
+				"192.168.1.1/",
+				"the range names exactly the value",
+			);
+		}
+	} finally {
+		// Cleanup must survive a failed assertion: a left-over projection loop keeps
+		// the process alive and turns a failure into a hang.
+		await bundle?.cleanup();
+		if (hostRoot) await act(async () => hostRoot.unmount());
+		host?.remove();
+		dom.window.api = undefined;
+	}
 });

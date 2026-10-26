@@ -58,6 +58,37 @@ export function isolateBidi(value: string): string {
 	return `\u2068${value}\u2069`;
 }
 
+/**
+ * Format a sentence that embeds `value` and report WHERE the value landed.
+ *
+ * The native child cannot receive FSI/PDI (main strips them), so it is told the
+ * value's span instead. The position comes from the message's own argument, not
+ * from searching the output for the user's text - the text can repeat a word of
+ * the copy or contain its quotes. A private-use sentinel stands in for the value
+ * in a first pass; it is not user input, so its index is the argument position,
+ * and the real pass is the sentence the user reads. A message that does not
+ * carry the argument (a failed lookup renders the key) yields no range.
+ */
+export function embedValue(
+	format: (value: string) => string,
+	value: string,
+): { text: string; isolate: { start: number; end: number } | null } {
+	const SENTINEL = "\uE000";
+	const text = format(value);
+	const probe = format(SENTINEL);
+	const start = probe.indexOf(SENTINEL);
+	if (
+		start < 0 ||
+		value.length === 0 ||
+		probe.length - 1 + value.length !== text.length ||
+		text.slice(start, start + value.length) !== value ||
+		text.slice(0, start) !== probe.slice(0, start)
+	) {
+		return { text, isolate: null };
+	}
+	return { text, isolate: { start, end: start + value.length } };
+}
+
 export function searchUrl(query: string): string {
 	return `${ADDRESS_SEARCH_URL_PREFIX}${encodeURIComponent(query.trim())}`;
 }
