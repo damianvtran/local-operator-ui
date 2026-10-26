@@ -24,6 +24,30 @@
 	}
 }
 
+/* Team Bridge uses the same arrival grammar as the transcript: a message that
+ * appears while its stream is open enters quietly, while history and remounts
+ * stay still. The final layout box exists from the first frame; only opacity
+ * and transform change, so the stick-to-bottom measurements never move. */
+@keyframes lo-team-bridge-arrival {
+	from {
+		opacity: 0;
+		transform: translateY(5px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.lo-team-bridge-arrival {
+	animation: lo-team-bridge-arrival var(--duration-slow) var(--ease-out-quart)
+		both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-arrival {
+		animation: none;
+	}
+}
+
 /*
  * ONE HIGHLIGHT, ONE STRIP (design round 2, D1; closed properly 2026-10-19).
  * The quote and link toolbars own a highlight that begins in their turn; the

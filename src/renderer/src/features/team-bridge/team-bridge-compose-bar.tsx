@@ -185,10 +185,13 @@ export const TeamBridgeComposeBar: FC<{
 							<span
 								aria-hidden="true"
 								className={cn(
-									"flex size-5 shrink-0 items-center justify-center rounded-[5px] text-[10px] font-medium",
+									"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] text-[10px] font-medium",
+									/* Borderless, as every Team Bridge plate: the active
+									   option paints `row-hover`, and `media-surface` stays
+									   apart from it by value (see the message list's plate). */
 									option.kind === "agent"
-										? "bg-accent-wash text-accent"
-										: "border border-control bg-sunken text-ink-muted",
+										? "bg-media-surface text-accent"
+										: "bg-media-surface text-ink-muted",
 								)}
 							>
 								{option.kind === "agent" ? (

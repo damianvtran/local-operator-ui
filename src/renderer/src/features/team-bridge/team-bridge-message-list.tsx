@@ -2,8 +2,16 @@ import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, UserRound } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
+import {
+	teamBridgeArrivalStreamKey,
+	teamBridgeArrivalTokens,
+	teamBridgeLiveArrivals,
+	teamBridgeObserveArrivals,
+	teamBridgeSuspendArrivals,
+} from "./team-bridge-arrival-model";
 import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
@@ -50,6 +58,57 @@ import { threadSummary } from "./team-bridge-threads-model";
  * italic with a neutral glyph. An initial avatar under a plausible word is what
  * made "Member" read as somebody's name (operator report, 2026-10-22).
  */
+/**
+ * The rows that must animate, held until each animation ENDS rather than
+ * re-derived every render.
+ *
+ * Deriving the class per render meant any unrelated update during the 240ms
+ * window (a label resolving, a reaction, a parent re-render) dropped it and the
+ * row snapped to its final state mid-motion. The tokens persist until the row
+ * reports `animationend`, and they are identical to the journal's identity
+ * aliases, so a row whose id is swapped for its server id keeps its one
+ * animation instead of starting a second.
+ */
+function useArrivingRows(
+	key: string,
+	messages: readonly TeamBridgeMessage[],
+	enabled: boolean,
+): { has: (message: TeamBridgeMessage) => boolean; end: () => void } {
+	const [tokens, setTokens] = useState<ReadonlySet<string>>(() => new Set());
+	useLayoutEffect(() => {
+		const fresh = enabled
+			? teamBridgeLiveArrivals(key, messages, { commit: false })
+			: new Set<string>();
+		// Observe AFTER reading, and before the browser paints: React may run this
+		// tree twice, so the journal must be written by an effect, not a render.
+		teamBridgeObserveArrivals(key, messages);
+		if (fresh.size > 0) {
+			setTokens((current) => {
+				const next = new Set(current);
+				for (const message of messages)
+					if (fresh.has(message.id))
+						for (const token of teamBridgeArrivalTokens(message))
+							next.add(token);
+				return next;
+			});
+		}
+	}, [key, enabled, messages]);
+	// Suspend on UNMOUNT only. A dependency-change cleanup would suspend the
+	// stream on every unrelated re-render and turn the next live message into a
+	// "restore" that never animates.
+	useEffect(() => () => teamBridgeSuspendArrivals(key), [key]);
+	const has = useCallback(
+		(message: TeamBridgeMessage) =>
+			teamBridgeArrivalTokens(message).some((token) => tokens.has(token)),
+		[tokens],
+	);
+	const end = useCallback(() => {
+		// One animation per stream read; the next render's journal decides again.
+		setTokens((current) => (current.size === 0 ? current : new Set()));
+	}, []);
+	return { has, end };
+}
+
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
@@ -73,6 +132,10 @@ export const TeamBridgeMessageList: FC<{
 	accountId?: string;
 	/* `compact`: the thread pane's narrow column (see `boxFor`). */
 	density?: "regular" | "compact";
+	/** Stable stream identity; a conversation/thread switch is a new stream. */
+	arrivalKey?: string;
+	/** A paged read restores history; it never introduces a live arrival. */
+	arrivalsEnabled?: boolean;
 }> = ({
 	messages,
 	labelFor,
@@ -82,8 +145,14 @@ export const TeamBridgeMessageList: FC<{
 	tenantId,
 	density,
 	accountId,
+	arrivalKey = teamBridgeArrivalStreamKey(
+		tenantId,
+		messages[0]?.conversation_id,
+	),
+	arrivalsEnabled = true,
 }) => {
 	const locale = useI18nLocale();
+	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
 	const items = threadItems(messages, new Date());
 	return (
 		<ol className="mt-auto flex flex-col pt-4 pb-2">
@@ -103,6 +172,8 @@ export const TeamBridgeMessageList: FC<{
 						tenantId={tenantId}
 						accountId={accountId}
 						density={density}
+						arriving={arriving.has(item.message)}
+						onArrivalEnd={arriving.end}
 					/>
 				),
 			)}
@@ -162,6 +233,8 @@ const MessageRow: FC<{
 	tenantId?: string;
 	accountId?: string;
 	density?: "regular" | "compact";
+	arriving?: boolean;
+	onArrivalEnd?: () => void;
 }> = ({ reactionContext, ...props }) =>
 	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
@@ -196,6 +269,8 @@ type MessageRowProps = {
 	tenantId?: string;
 	accountId?: string;
 	density?: "regular" | "compact";
+	arriving?: boolean;
+	onArrivalEnd?: () => void;
 };
 
 const MessageRowView: FC<MessageRowProps> = ({
@@ -209,6 +284,8 @@ const MessageRowView: FC<MessageRowProps> = ({
 	tenantId,
 	accountId,
 	density,
+	arriving = false,
+	onArrivalEnd,
 }) => {
 	const summary = threadSummary(message);
 	/* One-level threads: only a timeline root can open a thread - and none can
@@ -236,8 +313,12 @@ const MessageRowView: FC<MessageRowProps> = ({
 	return (
 		<li
 			data-message-id={message.id}
+			onAnimationEnd={arriving ? onArrivalEnd : undefined}
 			className={cn(
 				"group/message relative flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				// Transform/opacity only: the row reserves its final layout box
+				// immediately, so arrival cannot move the scroll geometry.
+				arriving && "lo-team-bridge-arrival",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
 			)}
 		>
@@ -264,13 +345,24 @@ const MessageRowView: FC<MessageRowProps> = ({
 							// A rounded SQUARE, as the operator's reference draws it:
 							// Slack's people are squares, and a circle here would read as
 							// the app's own account avatar.
-							"mt-0.5 flex size-9 items-center justify-center rounded-md font-medium text-[14px]",
-							/* `border-control` because the row's hover is a row state:
-							   `sunken` sits on the hover's own rung on some palettes, and
-							   the plate would vanish into the row (selection guard). */
+							// Fixed box, clipped: an account picture can replace the
+							// initial later without moving a pixel of the row.
+							"mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-[14px]",
+							/* BORDERLESS, SEPARATED BY VALUE (operator ask, 2026-10-26).
+							   The plate used to need a `border-control` ring because
+							   `sunken` lands on the row-hover rung on some palettes
+							   (ΔE00 1.86 on iceberg) and vanished into a hovered row.
+							   `media-surface` is the app's borderless-tile fill: it
+							   deepens AWAY from the ground, so it clears `canvas`
+							   (ΔE00 >= 4.0, its contract floor), `surface` (>= 5.96)
+							   AND `row-hover` (>= 3.70) on all 59 palettes. Agents use
+							   the SAME fill with an accent Bot glyph: `accent-wash` is
+							   not a safe substitute, since it sits within ΔE00 1.38 of
+							   row-hover on obsidian and 1.56 on oneLight. The fill and
+							   glyph pair is registered in `scripts/contrast-contract.mjs`. */
 							agent
-								? "border border-control bg-accent-wash text-accent"
-								: "border border-control bg-sunken text-ink-muted",
+								? "bg-media-surface text-accent"
+								: "bg-media-surface text-ink-muted",
 						)}
 					>
 						{agent ? (

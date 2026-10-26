@@ -14,7 +14,14 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUp, Bot, Clock, Hash, Pencil, Plus, Users } from "lucide-react";
 import type { FC, ReactNode } from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeAttachmentCapability,
@@ -23,6 +30,10 @@ import type {
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
+import {
+	teamBridgeArrivalStreamKey,
+	teamBridgeOpenEmptyArrivals,
+} from "./team-bridge-arrival-model";
 import {
 	TeamBridgeAttachButton,
 	TeamBridgeAttachmentStrip,
@@ -807,6 +818,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * hook's scroll/load/ResizeObserver listeners stay bound to the dead
 	 * viewport and the timeline reopens at scrollTop 0 (review round 6, F1).
 	 */
+	const timelineArrivalKey = teamBridgeArrivalStreamKey(
+		shown?.tenant_id,
+		shown?.id,
+	);
+	useLayoutEffect(() => {
+		if (messageState === "ready" && shown && messages.length === 0)
+			teamBridgeOpenEmptyArrivals(timelineArrivalKey);
+	}, [messageState, shown, messages.length, timelineArrivalKey]);
 	const timeline = useStickToBottom({
 		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}:${quickView ?? ""}`,
 		contentKey: `${messages.length}:${messages.at(-1)?.id ?? ""}`,
@@ -1578,10 +1597,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												<span
 													aria-hidden="true"
 													className={cn(
-														"flex size-14 items-center justify-center rounded-xl font-semibold text-[22px]",
+														"flex size-14 items-center justify-center overflow-hidden rounded-xl font-semibold text-[22px]",
+														// The same borderless fill pair as the message
+														// rows' plates, so one person reads alike everywhere.
 														target.type === "chief"
-															? "bg-accent-wash text-accent"
-															: "bg-sunken text-ink-muted",
+															? "bg-media-surface text-accent"
+															: "bg-media-surface text-ink-muted",
 													)}
 												>
 													{target.type === "chief" ? (
@@ -1624,6 +1645,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : (
 									<TeamBridgeMessageList
 										messages={messages}
+										arrivalKey={timelineArrivalKey}
 										tenantId={shown?.tenant_id}
 										accountId={selfAccountId}
 										labelFor={(sender) =>

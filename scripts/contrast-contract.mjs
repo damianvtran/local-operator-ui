@@ -534,6 +534,22 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * TEAM BRIDGE'S BORDERLESS INITIAL PLATES (operator ask, 2026-10-26).
+		 * The message row, rail, compose suggestions and intro header use the
+		 * same fill. `mediaSurface` is the app's borderless-tile role rather than
+		 * `sunken`, whose ground step can disappear under a hovered row. The
+		 * plate has no control boundary: its initial is the readable mark and its
+		 * extent is a ground step, asserted on all four hosts below.
+		 */
+		name: "team bridge person initial plate",
+		on: ["canvas", "surface", "rowHover", "rowSelected"],
+		fill: "mediaSurface",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		/*
 		 * THE IMAGE ACTIONS TRIGGER (design round 1, D1). It floats over
 		 * ARBITRARY PICTURE PIXELS — which this file cannot measure (its own
 		 * header: text over an image is out of scope) — so the fix gave it a
@@ -1951,6 +1967,16 @@ const ADJACENT = [
 const GRAPHICS = [
 	{
 		/*
+		 * Team Bridge's agent plate draws a Bot GLYPH, not a text initial, so
+		 * this is the 3:1 icon-on-fill pair rather than a control-label row.
+		 * Its fill's separation from the hovered row is asserted below.
+		 */
+		name: "team bridge agent plate glyph",
+		on: ["mediaSurface"],
+		fg: "accent",
+	},
+	{
+		/*
 		 * The completion mark on a follow-up turn bar (`turn-summary.tsx`'s
 		 * `CircleCheck`): `success` ink drawn straight on the transcript's canvas,
 		 * the pair the checkpoint rail already paints for `complete`.
@@ -2326,6 +2352,20 @@ const GRAPHICS = [
  * same element at different times.
  */
 const PERCEPTIBLE = [
+	{
+		/*
+		 * The no-border replacement for the message avatar's ring: this is the
+		 * assertion the old `border-control` was standing in for. In particular,
+		 * `rowHover` is a STATE ground, not a rung of the elevation ladder. The
+		 * media role's canvas floor alone would not prove that a hovered message
+		 * still shows its avatar. Measured before this row: 3.70 at worst on
+		 * `rowHover`, 5.96 on `surface`, and 4.00 on `canvas` across 59 palettes.
+		 */
+		name: "team bridge borderless person and agent plates",
+		role: "mediaSurface",
+		on: ["canvas", "surface", "rowHover", "rowSelected"],
+		minDeltaE: 1.5,
+	},
 	{
 		/*
 		 * An option ROW inside the docked question card (§F1), under the pointer or

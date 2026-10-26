@@ -10,11 +10,19 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { ArrowUp, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { teamBridgeArrivalStreamKey } from "./team-bridge-arrival-model";
 import {
 	TeamBridgeAttachButton,
 	TeamBridgeAttachmentStrip,
@@ -107,6 +115,14 @@ function TeamBridgeThreadPaneBody({
 	attachmentCapability = null,
 }: ThreadPaneProps) {
 	useI18nLocale();
+	// The next page restores already-existing replies. Hold the decision until
+	// the fetched page has rendered, so it cannot be mistaken for live traffic.
+	const paging = useRef(false);
+	const previousReplyCount = useRef(replies.length);
+	useLayoutEffect(() => {
+		if (replies.length !== previousReplyCount.current) paging.current = false;
+		previousReplyCount.current = replies.length;
+	}, [replies.length]);
 	const pane = useRef<HTMLElement>(null);
 	const close = useRef(onClose);
 	close.current = onClose;
@@ -207,6 +223,7 @@ function TeamBridgeThreadPaneBody({
 				{root && (
 					<TeamBridgeMessageList
 						messages={[root]}
+						arrivalsEnabled={false}
 						labelFor={labelFor}
 						tenantId={tenantId}
 						accountId={accountId}
@@ -241,6 +258,12 @@ function TeamBridgeThreadPaneBody({
 				) : (
 					<TeamBridgeMessageList
 						messages={replies}
+						arrivalKey={teamBridgeArrivalStreamKey(
+							tenantId,
+							conversationId,
+							root?.id,
+						)}
+						arrivalsEnabled={!paging.current}
 						accountId={accountId}
 						labelFor={labelFor}
 						tenantId={tenantId}
@@ -256,6 +279,7 @@ function TeamBridgeThreadPaneBody({
 						disabled={loadingMore}
 						onClick={() => {
 							// Read the loaded page from here, not from its end (r8 m2).
+							paging.current = true;
 							scroll.hold();
 							onMore?.();
 						}}

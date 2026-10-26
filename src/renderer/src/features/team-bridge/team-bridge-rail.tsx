@@ -319,7 +319,10 @@ export const PersonRailRow: FC<{
 		<span
 			aria-hidden="true"
 			className={cn(
-				"flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-sunken font-medium text-[10px]",
+				/* `media-surface`, not `sunken`: the plate must stay apart from the
+				   row's hover and selection fills by value, with no ring (see the
+				   message list's plate for the measured floors). */
+				"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-media-surface font-medium text-[10px]",
 				state === "unavailable" ? "text-ink-disabled" : "text-ink-muted",
 			)}
 		>
@@ -475,7 +478,7 @@ export const ChiefRailRow: FC<{
 			>
 				<span
 					aria-hidden="true"
-					className="flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-accent-wash text-accent"
+					className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-media-surface text-accent"
 				>
 					<Bot size={12} />
 				</span>

@@ -2041,7 +2041,23 @@ const ROW_STATE_TOKENS = [
 	"hover:bg-row-hover",
 	"hover:bg-row-selected",
 ];
-const GROUND_ROLES = ["bg-elevated", "bg-sunken", "bg-surface", "bg-canvas"];
+const GROUND_ROLES = [
+	"bg-elevated",
+	"bg-sunken",
+	"bg-surface",
+	"bg-canvas",
+	/*
+	 * `bg-media-surface` is the borderless-tile FILL ROLE rather than a rung of the
+	 * ladder (see `docs/branding.md`), and Team Bridge's initial plates wear it
+	 * with no edge on purpose. It is listed here so those plates stay VISIBLE to
+	 * this sweep: a plate that stopped carrying a rung would otherwise drop out of
+	 * the inventory silently, which is the failure this table exists to prevent.
+	 * Its separation from a row state is measured, not assumed - the
+	 * `team bridge borderless person and agent plates` row in
+	 * `scripts/contrast-contract.mjs`.
+	 */
+	"bg-media-surface",
+];
 
 /*
  * The class tokens a `className` expression names, read the way a browser would
@@ -2347,27 +2363,63 @@ const PLATES_INSIDE_ROW_STATES = [
 	},
 	{
 		/*
-		 * The Team Bridge thread's sender avatar. A message row takes `rowHover`
-		 * under the pointer, and `sunken` can sit on that rung, so the square
-		 * plate wears `border-control` to stay a shape on every palette. (The
-		 * merged list's organization chip this entry used to name is gone: the
-		 * Slack-style rail states the organization as a plain second line with
-		 * no plate of its own.)
+		 * THE TEAM BRIDGE INITIAL PLATES ARE BORDERLESS BY REQUEST (the operator,
+		 * 2026-10-25), and their FILL is what replaced the edge they used to wear.
+		 * They carried `sunken` + `border-control` because `sunken` lands on the
+		 * row-hover rung on some palettes; they now carry `media-surface`, and the
+		 * pair is measured rather than argued: it clears `canvas` deltaE00 >= 4.00,
+		 * `surface` >= 5.96 and `row-hover` >= 3.70 across all 59 palettes, where
+		 * the baseline `sunken` bottoms out at 1.86 against `row-hover`. That row
+		 * lives in `scripts/contrast-contract.mjs` as `team bridge borderless person
+		 * and agent plates`.
+		 *
+		 * THE PIN THAT KEEPS THIS ENTRY HONEST IS THE FILL ITSELF. This table's key
+		 * carries the ground, so moving the plate back onto a rung does not quietly
+		 * pass: the sweep stops finding this entry and the stale-entry assertion
+		 * fires. The same plate is drawn on the rail, in the compose suggestions and
+		 * in the thread-intro header; only the two call sites inside a row state are
+		 * visible to this sweep, and the contrast row covers all of them.
 		 */
 		what: "the Team Bridge thread's sender avatar",
 		file: TEAM_BRIDGE_MESSAGES,
 		element: "span",
-		ground: "bg-sunken",
-		edge: true,
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
 	},
 	{
-		/* The To: suggestion list's person initial; same reason, the option takes
-		   `rowHover` when it is the active descendant. */
+		/* The To: suggestion list's person initial, the same plate: the active option
+		   takes `rowHover`, and the fill is what keeps the initial visible there. */
 		what: "the Team Bridge compose suggestion's initial",
 		file: TEAM_BRIDGE_COMPOSE,
 		element: "span",
-		ground: "bg-sunken",
-		edge: true,
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
+	},
+	{
+		/* The rail's person initial: the same plate again, on a row whose hover and
+		   selection states it must survive. */
+		what: "the Team Bridge rail person initial",
+		file: TEAM_BRIDGE_RAIL,
+		element: "span",
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
+	},
+	{
+		/* NOT PART OF THE PLATE WORK, recorded because the sweep now watches the
+		   borderless fill role. The canvas finder's media thumbnail is a tile whose
+		   fill IS its extent (the `media-surface` contract) and it clips its own
+		   picture, so it needs no control edge; this entry states that rather than
+		   leaving an unlisted object now that `bg-media-surface` is a watched
+		   ground. */
+		what: "the canvas finder's media thumbnail",
+		file: FINDER_FILES_VIEW,
+		element: "span",
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "overflow-hidden",
 	},
 	{
 		/*

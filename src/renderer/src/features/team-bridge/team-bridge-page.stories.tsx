@@ -407,6 +407,112 @@ type Story = StoryObj<typeof meta>;
 
 export const PopulatedDirectMessage: Story = {};
 
+/**
+ * The row's real hover FILL, beside the borderless human and agent plates.
+ * Synthetic mouse events cannot set the browser's trusted :hover state, so this
+ * capture-only rule mirrors the exact production hover declaration; the frame
+ * and geometry read the resulting computed background, not just a class.
+ */
+export const HoveredMessageRow: Story = {
+	decorators: [
+		(Story) => (
+			<>
+				<style>
+					{"[data-capture-hover] { background-color: var(--color-row-hover); }"}
+				</style>
+				<Story />
+			</>
+		),
+	],
+	play: async ({ canvasElement }) => {
+		const row = canvasElement.querySelector("[data-message-id]");
+		if (!(row instanceof HTMLElement)) throw new Error("message row missing");
+		row.dataset.captureHover = "true";
+	},
+};
+
+/** A manual trigger holds the live arrival open for start/mid/settled captures. */
+const LiveArrivalStory = () => {
+	const [live, setLive] = useState(false);
+	const [frame, setFrame] = useState<"start" | "mid" | "running" | "reduced">(
+		"start",
+	);
+	return (
+		<div className="relative h-full" data-motion-frame={frame}>
+			{/* Capture holds only: the production 240ms keyframes and timing function
+			    are unchanged. The browser round-trip is slower than the motion, so
+			    pausing at 0/100ms is the only way to photograph those actual phases. */}
+			<style>{`
+				[data-motion-frame="start"] .lo-team-bridge-arrival { animation-play-state: paused; }
+				[data-motion-frame="mid"] .lo-team-bridge-arrival { animation-delay: -100ms; animation-play-state: paused; }
+				[data-motion-frame="reduced"] .lo-team-bridge-arrival { animation: none; }
+			`}</style>
+			<TeamBridgePageView
+				{...meta.args}
+				messages={
+					live
+						? [
+								...messages,
+								{
+									...messages[0],
+									id: "bcmsg_live_arrival",
+									seq: 99,
+									sender: {
+										account_id: "acct_live_agent",
+										kind: "agent",
+										display_label: "Live agent",
+									},
+									body: "A live arrival enters without moving the row's layout box.",
+									created_at: new Date().toISOString(),
+								},
+							]
+						: messages
+				}
+			/>
+			<div className="absolute right-3 bottom-3 z-10 flex gap-2">
+				{!live ? (
+					<button
+						type="button"
+						data-live-arrival-trigger
+						className="rounded-md bg-elevated px-3 py-2 text-ink shadow-lg"
+						onClick={() => setLive(true)}
+					>
+						Trigger live arrival
+					</button>
+				) : (
+					<>
+						<button
+							type="button"
+							data-motion-mid
+							className="rounded-md bg-elevated px-3 py-2 text-ink shadow-lg"
+							onClick={() => setFrame("mid")}
+						>
+							Mid frame
+						</button>
+						<button
+							type="button"
+							data-motion-settle
+							className="rounded-md bg-elevated px-3 py-2 text-ink shadow-lg"
+							onClick={() => setFrame("running")}
+						>
+							Settle
+						</button>
+						<button
+							type="button"
+							data-motion-reduced
+							className="rounded-md bg-elevated px-3 py-2 text-ink shadow-lg"
+							onClick={() => setFrame("reduced")}
+						>
+							Reduced motion
+						</button>
+					</>
+				)}
+			</div>
+		</div>
+	);
+};
+export const LiveArrival: Story = { render: () => <LiveArrivalStory /> };
+
 export const ChannelSelected: Story = {
 	args: {
 		target: { type: "conversation", id: channel.id },
