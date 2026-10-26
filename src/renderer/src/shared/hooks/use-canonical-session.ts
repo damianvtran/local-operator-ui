@@ -5536,12 +5536,19 @@ export function useCanonicalSessionStream(
 			 */
 			const connection = ++connectionRef.current;
 			/*
-			 * And the previous connection's undelivered frames are moot: the new
-			 * subscription's snapshot restates the whole projection, and anything the
-			 * old connection had not flushed has not advanced `receiptRef`, so a
-			 * reconnect with a cursor replays it instead of losing it.
+			 * AND THE OLD CONNECTION'S QUEUED FRAMES ARE LEFT TO FLUSH. An earlier
+			 * draft of this guard flushed `pending` here and that was wrong twice:
+			 * the newest frames of the connection being replaced are exactly the
+			 * ones a re-render-triggered resync arrives on top of, so dropping them
+			 * discarded the snapshot of a stream that had just opened and left the
+			 * pane waiting for a first snapshot that had already been delivered.
+			 * That missing-frame path is reproduced by the review's timing probe;
+			 * CI also stopped mid-file behind an `act(...)` warning wall, but that
+			 * symptom is not proof of the mechanism or of a render loop. The frames
+			 * cannot be stale: `open` clears the receipt mark, and the callback
+			 * guard above refuses anything a superseded connection sends from here
+			 * on.
 			 */
-			pending.current = [];
 			clearSnapshotTimer();
 			snapshotTimer = window.setTimeout(() => {
 				snapshotTimer = 0;
