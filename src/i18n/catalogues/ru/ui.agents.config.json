@@ -21,7 +21,10 @@
 	"ui.agents.config.status.attached": "Уже выполнялся другой запуск конфигурации, поэтому эта страница подключилась к нему. Ваш запрос не отправлен — он остался в поле ввода.",
 	"ui.agents.config.stopped.kept": "Остановлено. Уже внесённые изменения сохранены.",
 	"ui.agents.config.stopped.nothing": "Остановлено. Изменений пока не было.",
+	"ui.agents.config.summary.created": "Создано {name}",
+	"ui.agents.config.summary.hidden_changes": "изменены свойства. Список не показывает инструкции, поэтому откройте агента, чтобы увидеть, что записано.",
 	"ui.agents.config.summary.no_changes": "Запуск ответил, не изменив ни одного агента или команды.",
 	"ui.agents.config.summary.nothing_else": "Больше этот запуск ничего не изменил.",
+	"ui.agents.config.summary.updated": "Обновлено {name}",
 	"ui.agents.config.summary.you_asked": "Ваш запрос: {topic}"
 }
