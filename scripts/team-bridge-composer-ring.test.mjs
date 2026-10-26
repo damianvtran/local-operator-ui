@@ -23,16 +23,27 @@ import { test } from "node:test";
 const RING =
 	"has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid";
 
-// Tailwind's spacing scale is 4px per unit; the ring needs width + offset.
+// Tailwind's spacing scale is 4px per unit.
+// The ring's full extent is its outline width plus its offset.
 const RING_EXTENT_PX = 2 + 2;
-const TOP_PADDING = /(?:^|\s)(?:pt|py|p)-(\d+(?:\.5)?)(?=\s|$)/;
+const TOP_PADDING = /(?:^|\s)(?:pt|py|p)-(\d+(?:\.5)?)(?=\s|$)/g;
 const OVERFLOW_Y_AUTO = /\boverflow-y-auto\b/;
 const PX_4 = /\bpx-4\b/;
 const PB_4 = /\bpb-4\b/;
 const ANY_OVERFLOW = /\boverflow-/;
+const CONFLICTING_TOP_PADDING = /conflicting top padding utilities/;
+const LITERAL_DIV_CLASS = /<div\s+className="([^"]*)"/g;
 const topPaddingPx = (className) => {
-	const match = className.match(TOP_PADDING);
-	return match ? Number(match[1]) * 4 : 0;
+	const values = [...className.matchAll(TOP_PADDING)].map(
+		(match) => Number(match[1]) * 4,
+	);
+	// Later Tailwind utilities can override earlier ones. Reading only the
+	// first would let `pt-1 ... pt-0` pass while the ring is still clipped.
+	assert.ok(
+		new Set(values).size <= 1,
+		`conflicting top padding utilities in (${className})`,
+	);
+	return values[0] ?? 0;
 };
 
 /** The className of the closest `overflow-*` element opened before `index`. */
@@ -61,7 +72,14 @@ test("the page composer's scroller pads its top edge for the ring", () => {
 	assert.match(scroller, PB_4);
 });
 
-test("the thread pane's composer is not inside a clipping container", () => {
+test("conflicting top-padding utilities fail the ring-room check", () => {
+	assert.throws(
+		() => topPaddingPx("overflow-y-auto px-4 pt-1 pb-4 pt-0"),
+		CONFLICTING_TOP_PADDING,
+	);
+});
+
+test("the thread pane composer's nearest literal div wrapper has ring room if it clips", () => {
 	const pane = readFileSync(
 		"src/renderer/src/features/team-bridge/team-bridge-thread-pane.tsx",
 		"utf8",
@@ -70,9 +88,9 @@ test("the thread pane's composer is not inside a clipping container", () => {
 	assert.notEqual(ring, -1, "the pane composer still draws the promoted ring");
 	// The wrapper is the `shrink-0 px-4 pb-4` div right above it; if it ever
 	// gains an overflow, it needs the same top room the page's scroller has.
-	const wrapper = [
-		...pane.slice(0, ring).matchAll(/<div\s+className="([^"]*)"/g),
-	].at(-1)?.[1];
+	const wrapper = [...pane.slice(0, ring).matchAll(LITERAL_DIV_CLASS)].at(
+		-1,
+	)?.[1];
 	assert.ok(wrapper, "the pane composer has a wrapper");
 	if (ANY_OVERFLOW.test(wrapper))
 		assert.ok(
