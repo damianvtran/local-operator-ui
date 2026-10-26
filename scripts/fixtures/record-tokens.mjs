@@ -173,7 +173,57 @@ export const RECORDS = {
 	}),
 	O: (id, i) => ({ kind: "notice", id, ts: TS + i, text: "n", level: "info" }),
 	C: (id, i) => ({ kind: "compaction", id, ts: TS + i, text: "Context" }),
+	/*
+	 * THE TOOL VARIETY TOKENS. One `bash` cannot pin the thing the fold is FOR:
+	 * the count line's class/kind/name ordering, the failure tally and `Took`. Each
+	 * of these names a tool whose `actionClass` (or KIND noun, or display name)
+	 * lands in a different arm of `foldCountSegments`, and their ids say which arm
+	 * a failing case is about.
+	 */
+	/** A file READ: `class:files`. */
+	Rd: (id, i) => foldTool(id, i, "read"),
+	/** A file WRITE: `class:edits`. */
+	Wr: (id, i) => foldTool(id, i, "write"),
+	/** A page FETCH: `class:searches` (the class table files `grep` under files). */
+	Sr: (id, i) => foldTool(id, i, "web_fetch"),
+	/** A WEB search: `class:web`. */
+	Wb: (id, i) => foldTool(id, i, "web_search"),
+	/**
+	 * An MCP call: `name:<display name>`. The display name is where the core's
+	 * `mcp__<server>_<tool>` minting is read, so this token is what pins
+	 * `displayName`'s one-underscore split - a defect the real-journal run found
+	 * while the corpus could not see it.
+	 */
+	Mc: (id, i) => foldTool(id, i, "mcp__datadog_search_datadog_metrics"),
+	/** A delegated TASK: `class:delegated`. */
+	Ag: (id, i) => foldTool(id, i, "task"),
+	/** PYTHON: the `kind:python` runtime noun (`kill|shell · python`). */
+	Py: (id, i) => foldTool(id, i, "eval"),
+	/** An AGENT profile read: `kind:agent`, the meta-kind noun arm. */
+	Ak: (id, i) => foldTool(id, i, "agent"),
+	/** A TODO write: the `kind:todo` ID arm. */
+	Td: (id, i) => foldTool(id, i, "todo"),
+	/** A FAILED call: the group's `failedCount` and the bar's failure tally. */
+	Fa: (id, i) => ({ ...foldTool(id, i, "bash"), isError: true }),
+	/** A call that reported a DURATION: `workedSeconds`, and a bar's `Took`. */
+	Du: (id, i) => ({ ...foldTool(id, i, "bash"), durationS: 7 }),
 };
+
+/** A settled tool record carrying only what the fold reads. */
+function foldTool(id, i, toolName) {
+	return {
+		kind: "tool",
+		id,
+		ts: TS + i,
+		toolName,
+		phase: "done",
+		isError: false,
+		stopped: false,
+		neverSent: false,
+		notRunReason: null,
+		durationS: null,
+	};
+}
 
 function custom(id, i, customType, level = "info") {
 	return { kind: "custom", id, ts: TS + i, customType, level, text: "t" };

@@ -51,6 +51,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { isEntryPoint } from "./entry-point.mjs";
 import { RECORDS } from "./fixtures/record-tokens.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +65,91 @@ const SHAPE_SOURCES = [
 	"scripts/turn-collapse-model.test.mjs",
 	"scripts/trace-fold-model.test.mjs",
 ];
+
+/**
+ * THE SHAPES EACH DECLARED SUITE DRIVES, in the token grammar.
+ *
+ * WHY A CATALOGUE AND NOT ONLY A HARVEST. `turn-segments.test.mjs` builds its
+ * fixtures as shape strings, so they are read straight out of the file. The other
+ * two suites build them from local helpers (`row("a")`, `tool("t1", …)`,
+ * `custom("j1", "job_result")`), which no regex can turn into a sequence — and a
+ * generator that silently harvested ZERO shapes from two of its three declared
+ * sources is how the first corpus ended up pinning one tool kind and no
+ * failures. So each suite's shapes are stated here, one entry per suite, and the
+ * test asserts every declared source contributes and that the harvested literals
+ * are all present. A suite that gains a shape the catalogue cannot express is a
+ * review-visible edit to this table, which is the honest cost of a corpus that a
+ * reader can audit.
+ */
+const SUITE_SHAPES = {
+	/*
+	 * The partition and cycle suite: its assertions are about which row is the
+	 * answer and which rows hide, so its shapes are turn boundaries and cycle
+	 * opens (a lead-in `L`, a handover `A`, a terminal `M`, a steer inside a run).
+	 */
+	"scripts/turn-segments.test.mjs": [
+		"U T T T A",
+		"U T A T A",
+		"U T L T A",
+		"U T F",
+		"U T T T M",
+		"U A T T A",
+		"U T T J A",
+		"U T T H A",
+		"U T T X A",
+		"U W T T A",
+		"U P T T A",
+		"U I T A",
+	],
+	/*
+	 * The plan suite: settled turns, head-cut runs, live cycles, quiet groups and
+	 * the failure tally. Its own fixtures name `opening`/`tool`/`custom` helpers,
+	 * so these mirror them.
+	 */
+	"scripts/turn-collapse-model.test.mjs": [
+		"U T T T A T A",
+		"U A T T T A",
+		"U T T T T T A",
+		"U P J A",
+		"U T J J T A",
+		"U W W A",
+		"U X X A",
+		"U Fa Fa Fa A",
+		"U Du Du Du A",
+		"U T Fa Du A",
+		"U T T C A",
+		"U T T T A T T",
+	],
+	/*
+	 * The fold suite: the run thresholds, the class/kind/name count line, the
+	 * receipt families and the tail. These are the shapes that pin the ARITHMETIC.
+	 */
+	"scripts/trace-fold-model.test.mjs": [
+		"T T T",
+		"T T",
+		"T T T T T",
+		"T J J",
+		"T P W",
+		"T T T J X",
+		"Rd Wr Sr Wb",
+		"Rd Rd Rd",
+		"Py Py Py",
+		"Ak Ak",
+		"Py Ak Td",
+		"Sr Wb Rd",
+		"Mc Mc",
+		"Mc Rd Sr",
+		"Ag Ag Ag",
+		"Td Td",
+		"Td Rd Rd",
+		"Fa Fa Fa",
+		"Fa T T",
+		"Du T Du",
+		"Du Du Rd",
+		"U Rd Wr Sr Wb Mc Ag Td Py Ak A",
+		"U Fa Fa Fa Du Du Du A",
+	],
+};
 
 /** Fixed seed: the property cases are part of the committed fixture, so they must
  * be reproducible on any machine. */
@@ -243,11 +329,32 @@ const seq = (spec) =>
  */
 export function harvestShapes() {
 	const shapes = new Set();
+	for (const [suite, shapesOfSuite] of Object.entries(SUITE_SHAPES))
+		for (const shape of shapesOfSuite) {
+			/*
+			 * A CATALOGUE ENTRY THE GRAMMAR CANNOT BUILD IS A BUG, NOT A SKIP. The
+			 * first version of this file filtered unbuildable shapes out with the
+			 * harvested ones, so a catalogue full of letters the grammar never
+			 * defined (B/D/G/V) contributed nothing and said nothing - exactly the
+			 * silent-gap class the fixture exists to close.
+			 */
+			const trimmed = shape.trim();
+			for (const token of trimmed.split(TOKEN_GAP))
+				if (!(token in RECORDS))
+					throw new Error(
+						`${suite}: shape "${trimmed}" uses token "${token}", which the grammar does not define`,
+					);
+			shapes.add(trimmed);
+		}
 	for (const file of SHAPE_SOURCES) {
 		const text = readFileSync(join(ROOT, file), "utf8");
-		for (const match of text.matchAll(/(?:seq|partition)\("([A-Z ]+)"\)/g))
+		for (const match of text.matchAll(
+			/(?:seq|partition)\("([A-Za-z0-9 ]+)"\)/g,
+		))
 			shapes.add(match[1].trim());
-		for (const match of text.matchAll(/^\s*"([A-Z](?: [A-Z])*)",?$/gm))
+		for (const match of text.matchAll(
+			/^\s*"([A-Za-z0-9](?: [A-Za-z0-9]+)+)",?$/gm,
+		))
 			shapes.add(match[1].trim());
 	}
 	return [...shapes]
@@ -275,14 +382,30 @@ function mulberry32(seed) {
 
 /** Seeded sequences of 3-80 tokens, weighted to open on a user row (the shape a
  * real turn has) but not always, so a head-cut leading run is covered too. */
+/**
+ * The tokens a seeded case may draw from.
+ *
+ * TWO POOLS, and the split is the point. `Z`/`R` are the quiet `no_reply` call,
+ * which the relay wire cannot carry at all, so a property run drawn uniformly
+ * from the whole grammar spends most of its cases on shapes the PHONE cannot
+ * replay - the first corpus's 120 seeded cases were 110 of that kind. One case in
+ * eight still draws from the full grammar, so an interleaving that mixes a quiet
+ * call into a real turn is covered; the rest draw from the expressible pool, so
+ * eleven of every twelve seeded cases are a shared decision both surfaces owe.
+ */
+const QUIET_TOKENS = new Set(["Z", "R"]);
+const EXPRESSIBLE_TOKENS = TOKENS.filter((token) => !QUIET_TOKENS.has(token));
+const FULL_POOL_SHARE = 1 / 8;
+
 function propertyShapes() {
 	const random = mulberry32(SEED);
 	const shapes = [];
 	for (let i = 0; i < PROPERTY_CASES; i += 1) {
 		const length = 3 + Math.floor(random() * 78);
+		const pool = random() < FULL_POOL_SHARE ? TOKENS : EXPRESSIBLE_TOKENS;
 		const tokens = [];
 		for (let at = 0; at < length; at += 1)
-			tokens.push(TOKENS[Math.floor(random() * TOKENS.length)]);
+			tokens.push(pool[Math.floor(random() * pool.length)]);
 		shapes.push(tokens.join(" "));
 	}
 	return shapes;
@@ -328,19 +451,42 @@ function latchFrames(model, tokens) {
 	return { tokens, passes };
 }
 
-/** The commit the decisions were generated from: the manifest pins it, so a relay
- * copy names the desktop tree it replays and a reviewer can diff the six sources
- * over that range. */
-function desktopCommit() {
-	try {
-		return execFileSync("git", ["rev-parse", "HEAD"], {
-			cwd: ROOT,
-			encoding: "utf8",
-		}).trim();
-	} catch {
-		return "unknown";
+/**
+ * THE MODEL SOURCE THE FIXTURE WAS GENERATED FROM, as one hash.
+ *
+ * WHY A SOURCE HASH AND NOT `git rev-parse HEAD`. A commit cannot contain its own
+ * SHA, so a fixture that embeds HEAD is stale the moment it is committed: the
+ * freshness check then fails on every commit — the gate nobody can pass. The
+ * source files ARE what the decisions came from, they are committed beside the
+ * fixture, and their hash can be recomputed from the working tree at any commit.
+ * So the pin is stable and, unlike a commit id, self-verifying: it fails if a
+ * bundled model file changes without a regeneration, which is the drift this file
+ * exists to catch.
+ */
+export const MODEL_SOURCES = [
+	"src/renderer/src/features/chat/canonical/trace-fold-model.ts",
+	"src/renderer/src/features/chat/canonical/transcript-rows.ts",
+	"src/renderer/src/features/chat/canonical/turn-collapse-model.ts",
+	"src/renderer/src/features/chat/canonical/turn-segments.ts",
+	"src/renderer/src/features/chat/transcript-display-mode.ts",
+	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
+	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
+];
+
+/** The hash of those sources' paths and bytes, in a fixed order. */
+export function modelSourceHash() {
+	const digest = createHash("sha256");
+	for (const file of MODEL_SOURCES) {
+		digest.update(file);
+		digest.update("\u0000");
+		digest.update(readFileSync(join(ROOT, file)));
+		digest.update("\u0000");
 	}
+	return digest.digest("hex");
 }
+
+/** The shapes each declared suite drives, for the corpus-coverage test. */
+export const SHAPES_BY_SOURCE = SUITE_SHAPES;
 
 const optionToken = (options) =>
 	[
@@ -393,7 +539,8 @@ export async function generate() {
 			"see the generator's header for why. A client with its own record type maps the " +
 			"fixture's row vocabulary onto its own shape; the DERIVATION is the shared thing.",
 		desktop: {
-			commit: desktopCommit(),
+			sourceHash: modelSourceHash(),
+			modelSources: MODEL_SOURCES,
 			sources: SHAPE_SOURCES,
 			seed: SEED,
 			propertyCases: PROPERTY_CASES,
@@ -434,7 +581,7 @@ async function main() {
 				"fixtures diverge for nine days.",
 			file: "fixtures/condense.parity.json",
 			sha256: digest,
-			commit: fixture.desktop.commit,
+			sourceHash: fixture.desktop.sourceHash,
 		},
 		null,
 		"\t",
@@ -459,8 +606,17 @@ async function main() {
 	writeFileSync(FIXTURE, body);
 	writeFileSync(MANIFEST, manifest);
 	console.log(
-		`wrote ${fixture.cases.length} cases, sha256 ${digest.slice(0, 12)}…, commit ${fixture.desktop.commit.slice(0, 10)}`,
+		`wrote ${fixture.cases.length} cases, sha256 ${digest.slice(0, 12)}…, sources ${fixture.desktop.sourceHash.slice(0, 12)}…`,
 	);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await main();
+/*
+ * THE ENTRY POINT IS RESOLVED, NOT COMPARED AS A STRING. `process.argv[1]` is
+ * whatever the caller typed while `import.meta.url` is physical, so through a
+ * symlinked directory (macOS `/tmp` -> `private/tmp`, the ordinary case) they
+ * disagree - and silently: the module loads, `main()` never runs, nothing prints,
+ * exit 0. A `--check` that exits 0 having checked nothing is the exact failure
+ * this generator exists to prevent, so it goes through `scripts/entry-point.mjs`
+ * like every other script here.
+ */
+if (isEntryPoint(import.meta.url)) await main();
