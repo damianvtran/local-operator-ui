@@ -445,7 +445,7 @@ function ComposerStatus({
 							 */}
 							{run.status === "done" && run.touched.length > 0 ? (
 								<span className="sr-only">
-									{`. `}
+									{". "}
 									{t("ui.agents.config.result.configured")}{" "}
 									{definitionsPhrase(run.touched.length)}
 								</span>

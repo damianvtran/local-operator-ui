@@ -12,7 +12,7 @@
 	"ui.agents.detail.action.unsaved_changes": "غیر محفوظ تبدیلیاں",
 	"ui.agents.detail.alert.builtin_body": "یہ ایپ کے ساتھ آتا ہے اور اسی جگہ ترمیم نہیں ہو سکتا۔ قابل ترمیم نقل حاصل کرنے کے لیے اسے انسٹال کریں، یا اسے نئے ایجنٹ کے طور پر نقل کریں۔",
 	"ui.agents.detail.alert.builtin_title": "بلٹ ان ایجنٹ",
-	"ui.agents.detail.alert.conflict_body": "آپ کے کھولنے کے بعد کسی اور چیز نے — کوئی ترتیب کا رن یا کوئی دوسری ونڈو — اس ایجنٹ میں لکھا۔ آپ کی ترامیم برقرار ہیں؛ محفوظ کرنے پر صرف وہی خانے لکھے جائیں گے جو آپ نے بدلے۔",
+	"ui.agents.detail.alert.conflict_body": "آپ کے کھولنے کے بعد کسی اور چیز نے — کوئی کنفیگریشن رن یا کوئی دوسری ونڈو — اس ایجنٹ میں لکھا۔ آپ کی ترامیم برقرار ہیں؛ محفوظ کرنے پر صرف وہی خانے لکھے جائیں گے جو آپ نے بدلے۔",
 	"ui.agents.detail.alert.conflict_reload": "محفوظ شدہ ورژن دوبارہ لوڈ کریں",
 	"ui.agents.detail.alert.conflict_title": "آپ کی ترمیم کے دوران یہ بدل گیا",
 	"ui.agents.detail.alert.save_failed_title": "یہ محفوظ نہیں ہوا",

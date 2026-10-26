@@ -245,15 +245,24 @@ export function SourceChip({
  * It has three readers - the roster's right edge, the chip, and the detail
  * header's meta line - and three spellings of "Built-in" would be the kind of
  * drift the shared roster / detail vocabulary exists to prevent.
+ *
+ * READ THROUGH `t()` AT CALL TIME, against the roster's existing scope keys.
+ * These literals were English on a fully translated page ("Built-in" beside a
+ * French roster), and the page already names this exact set for its scope
+ * filter - `ui.agents.pages.scope.builtin|installed|custom` - so the chip and
+ * the filter that selects it read as one word instead of two spellings that
+ * could drift apart per language. Every caller re-renders on a language switch
+ * (`useI18nLocale()` in `agents-page.tsx`, which mounts the roster and the
+ * detail pane), which is what makes the follow-at-call-time visible.
  */
 export function sourceLabel(
 	source: "builtin" | "installed" | "custom",
 ): string {
 	return source === "builtin"
-		? "Built-in"
+		? t("ui.agents.pages.scope.builtin")
 		: source === "installed"
-			? "Installed"
-			: "Custom";
+			? t("ui.agents.pages.scope.installed")
+			: t("ui.agents.pages.scope.custom");
 }
 
 /**

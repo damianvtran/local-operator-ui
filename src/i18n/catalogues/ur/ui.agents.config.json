@@ -18,7 +18,7 @@
 	"ui.agents.config.result.created": "بنایا گیا",
 	"ui.agents.config.state.sending": "بھیجا جا رہا ہے…",
 	"ui.agents.config.state.stopping": "روکا جا رہا ہے…",
-	"ui.agents.config.status.attached": "ایک اور ترتیب کا رن پہلے سے جاری تھا، اس لیے یہ صفحہ اسی سے منسلک ہو گیا۔ آپ کی درخواست نہیں بھیجی گئی — وہ ابھی خانے میں ہے۔",
+	"ui.agents.config.status.attached": "ایک اور کنفیگریشن رن پہلے سے جاری تھا، اس لیے یہ صفحہ اسی سے منسلک ہو گیا۔ آپ کی درخواست نہیں بھیجی گئی — وہ ابھی خانے میں ہے۔",
 	"ui.agents.config.stopped.kept": "روک دیا گیا۔ اس کی پہلے کی گئی تبدیلیاں برقرار رکھی گئیں۔",
 	"ui.agents.config.stopped.nothing": "روک دیا گیا۔ ابھی کچھ نہیں بدلا گیا تھا۔",
 	"ui.agents.config.summary.created": "بنایا گیا {name}",
@@ -26,5 +26,5 @@
 	"ui.agents.config.summary.no_changes": "رن نے کسی ایجنٹ یا ٹیم کو بدلے بغیر جواب دیا۔",
 	"ui.agents.config.summary.nothing_else": "اس رن نے اور کچھ نہیں بدلا۔",
 	"ui.agents.config.summary.updated": "اپ ڈیٹ کیا گیا {name}",
-	"ui.agents.config.summary.you_asked": "آپ نے پوچھا: {topic}"
+	"ui.agents.config.summary.you_asked": "آپ کی درخواست: {topic}"
 }

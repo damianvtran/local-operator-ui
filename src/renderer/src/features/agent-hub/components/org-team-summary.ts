@@ -1,6 +1,6 @@
 import type { HubTeam, HubTeamMember } from "@shared/api/radient/types";
-import { t } from "@shared/i18n";
-import { format, formatDistanceStrict } from "date-fns";
+import { formatDate, t } from "@shared/i18n";
+import { commentAge } from "../comment-age";
 
 /**
  * The facts the Teams roster prints about a team, derived from one `HubTeam`.
@@ -124,9 +124,32 @@ export const announcedDescription = (
 	return `${head.trimEnd()}…`;
 };
 
-/** A date the way the expanded body and the tooltip both print it. */
+/**
+ * A date the way the expanded body and the tooltip both print it: the day, the
+ * year, and the month SPELLED IN THE READER'S LANGUAGE.
+ *
+ * The i18n formatter layer, not date-fns' `format(date, "d MMM yyyy")`. That
+ * pattern carries no locale, so date-fns fell back to its own `en-US` data and
+ * a French reader saw `10 Oct 2026` beside a catalogue that renders
+ * `10 oct. 2026` — an English leak on a localized surface, and the same defect
+ * `formatCalendarDate` (`shared/utils/date-utils.ts`) records for
+ * `"d MMMM yyyy"`. The layer resolves the active locale itself (the backend's
+ * resolved language once it answers, the device tag before that) and caches one
+ * formatter per locale, so nothing has to thread a tag through here; both
+ * roster cells that print a date already re-render on a language switch through
+ * `useI18nLocale()` in `org-teams-list.tsx`, which is what makes the new
+ * language visible without a reload.
+ *
+ * The COMPONENTS are the contract this call site owns — numeric day,
+ * abbreviated month, numeric year — so the row keeps its measure in every
+ * language. The ORDER is the locale's own (`Intl`'s), not a forced day-first:
+ * `en` prints `Oct 10, 2026`, `fr` `10 oct. 2026`, `ru` `10 окт. 2026 г.`.
+ * Forcing English's order onto every language is exactly what the old
+ * locale-less pattern did, in reverse, and the repository's settled answer to
+ * it is the layer (`formatCalendarDate` above), not a per-language table here.
+ */
 export const formatTeamDate = (date: Date): string =>
-	format(date, "d MMM yyyy");
+	formatDate(date, { day: "numeric", month: "short", year: "numeric" });
 
 const parseDate = (raw: string | undefined): Date | null => {
 	if (!raw) return null;
@@ -138,7 +161,10 @@ const parseDate = (raw: string | undefined): Date | null => {
 export type TeamRecency = {
 	/** `updated`, or `created` when only the creation date is usable. */
 	label: "updated" | "created";
-	/** `3 days ago`, `just now`, or the absolute date for a timestamp in the future. */
+	/**
+	 * `3 days ago`, `just now`, or the absolute date for a timestamp in the future
+	 * — already in the reader's language (see `recencyOf`), never English.
+	 */
 	when: string;
 	/** The ISO value for `<time dateTime>`, so assistive tech and a copy get the machine form. */
 	iso: string;
@@ -157,20 +183,34 @@ const recencyOf = (
 		// Clock skew: "X ago" over a timestamp that has not happened yet would be a lie.
 		when = formatTeamDate(date);
 	} else if (age < 60_000) {
-		// A seconds counter is noise on a list that does not tick.
-		when = "just now";
+		// A seconds counter is noise on a list that does not tick. The phrase is the
+		// hub surface's own "just now" (shared with the updates check), not a second
+		// spelling of it, so it is already translated in every shipped locale.
+		when = t("ui.hub.updates.ago.now");
 	} else {
 		/*
-		 * `formatDistanceStrict(date, new Date(now))`, NOT
-		 * `formatDistanceToNowStrict(date)`: the latter reads the REAL clock, so the
-		 * `now` parameter governed only the branch and the label while the distance
-		 * itself was measured against wall time. The suite's fixture is a synthetic
-		 * `now`, so the assertion `3 days ago` held only until wall time crossed the
-		 * half-day rounding boundary (measured: 13/13 at 20:47Z, 12/13 at 20:53Z on
-		 * 2026-09-30) - a test that fails by the calendar rather than by a change.
-		 * With `now` defaulting to `Date.now()` production behaviour is unchanged.
+		 * `commentAge(date, now)`, NOT a bare `formatDistanceStrict` with an " ago"
+		 * suffix: this line printed English on a translated roster ("3 days ago" on
+		 * the French org page), because date-fns renders its own `en-US` wording and
+		 * the suffix was a literal. `comment-age.ts` is the repository's settled
+		 * answer to exactly this shape - it keeps date-fns' strict rounding and DST
+		 * behaviour and resolves a locale whose `formatDistance` reads the
+		 * `ui.hub.comments.age.*` ICU messages, so each language owns the whole phrase
+		 * (its plural categories, its word order, its "ago") instead of receiving an
+		 * English distance with a translated tail bolted on. That key family covers
+		 * seconds through years and already ships in all eight locales, so nothing new
+		 * had to be keyed here.
+		 *
+		 * The `now` ARGUMENT is load-bearing and must stay explicit:
+		 * `formatDistanceToNowStrict(date)` reads the REAL clock, so `now` governed
+		 * only the branch and the label while the distance itself was measured against
+		 * wall time. The suite's fixture is a synthetic `now`, so the assertion
+		 * `3 days ago` held only until wall time crossed the half-day rounding boundary
+		 * (measured: 13/13 at 20:47Z, 12/13 at 20:53Z on 2026-09-30) - a test that fails
+		 * by the calendar rather than by a change. With `now` defaulting to
+		 * `Date.now()` production behaviour is unchanged by this call.
 		 */
-		when = `${formatDistanceStrict(date, new Date(now))} ago`;
+		when = commentAge(date, now);
 	}
 	return {
 		label,

@@ -17,7 +17,7 @@
 	"ui.hub.teams.members": "Участники",
 	"ui.hub.teams.no_description": "Без описания",
 	"ui.hub.teams.no_members": "Участников нет",
-	"ui.hub.teams.org.aria": "Команды {org}",
+	"ui.hub.teams.org.aria": "Команды, открытые для {org}",
 	"ui.hub.teams.org.empty": "Команды, открытые для участников {org}, появятся здесь.",
 	"ui.hub.teams.org.load_headline": "Не удалось загрузить команды",
 	"ui.hub.teams.org.no_access_body": "Вы не участник {org}, поэтому команды организации здесь не показаны. Владелец может пригласить вас снова.",

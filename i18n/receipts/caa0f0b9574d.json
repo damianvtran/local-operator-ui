@@ -1,0 +1,392 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-translation-audit",
+  "round": 2,
+  "locale": "fr",
+  "locale_name": "French",
+  "batch": "agents-surfaces",
+  "branch": "i18n-agents-pages",
+  "head": "91231e66c9",
+  "head_note": "Worktree ~/local-operator-ui/.worktrees/i18n-agents-pages at HEAD 91231e66c9. The eight fr catalogues are untracked candidates in this worktree and are bound by the sha256 values below, recomputed from disk at audit time. English source is tracked at HEAD.",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "caa0f0b9574d",
+    "instance": "caa0f0b9574d",
+    "model": "radient/auto",
+    "model_provenance": "Harness session header reported Model: radient/auto for the whole audit; no provider error, quota or mid-run model switch was surfaced to this session, so no fallback model is claimed. The upstream provider/model id is resolved outside the agent's view and is not inferred.",
+    "independence": "Independent round-2 auditor: did not translate or remediate these catalogues, read no translator report, used no translation/MT service, and edited no catalogue, ledger, script or git state. Only this receipt is written in the repo."
+  },
+  "agent": "i18n-auditor",
+  "session": "caa0f0b9574d",
+  "instance": "caa0f0b9574d",
+  "model": "radient/auto",
+  "model_fallback": "none observed: this run stayed on the radient/auto route for the whole audit; the harness surfaced no provider error and no mid-run switch. The resolved upstream provider/model id is not exposed to the agent, so none is claimed.",
+  "actual_model_source": "harness session header (Model: radient/auto); upstream resolution not visible to the agent and not inferred.",
+  "independence": "Independent round-2 auditor: did not translate or remediate these catalogues, read no translator report, used no translation/MT service, and edited no catalogue, ledger, script or git state. Only this receipt is written in the repo.",
+  "scope": {
+    "worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+    "branch": "i18n-agents-pages",
+    "head": "91231e66c9",
+    "note": "Round 2 over the current working-tree bytes of 8 namespaces (321 keys = 219 round-1 + 102 new), bound by sha256. Round-1 receipt read only to check finding resolution: i18n/receipts/fr-agents-surfaces-audit-e45967f6d600.json."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    }
+  },
+  "namespace_count": 8,
+  "keys_read": 321,
+  "key_count": 321,
+  "mechanical": "All 8 namespaces carry the same key set and order as en (321 keys; no added/dropped key; valid JSON; every key has a context entry). Every value parsed with @formatjs/icu-messageformat-parser (requiresOtherClause): 0 errors; argument names and types identical to en for every key; the 6 plural messages carry exactly one/many/other, matching Intl.PluralRules('fr') categories [one, many, other] (0/1/1.5 -> one, 2/5/1500000 -> other, 1000000/2000000 -> many) and every many arm is de/d’ + noun. NFC-clean; no bidi controls; no ASCII apostrophe, straight quote or three-dot ellipsis; U+2026 throughout; «…» with U+202F inside on every pair; 41 of 42 : ; ! ? marks use U+202F (the one U+0020 is T-r2-1). No markup/Rich tags, backticks, commands, flags or identifiers in these namespaces. No maxCells/maxChars hints in the eight sidecars; widths judged from the sidecar prose (the w-72 scope row totals 31 fr cells vs 26 en, within the round-1 target). Label-in-name checked: pull_target contains 'Télécharger', brief.trigger_aria contains 'brief', delegate.aria equals its visible label, every_tool_aria and manager_aria contain their visible labels.",
+  "commands": [
+    {
+      "command": "node --test --test-name-pattern='fr' scripts/i18n/locale-parity.test.mjs",
+      "exit": 1,
+      "observed": "TAP: 12 tests ran under the name filter (the six fr subtests plus the per-locale placeholder subtests the filter also matches), 11 pass, 1 fail. The only failure is '[fr] is not an English stub (no value identical to the source)', listing 11 keys (see gate_findings G1). The other five fr subtests pass: ships a message; each key in one namespace; every en key carried; only en keys named; every ICU placeholder preserved."
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "exit": 0,
+      "observed": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+    },
+    {
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "exit": 0,
+      "observed": "check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s)"
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "exit": 0,
+      "observed": "/Users/damian/local-operator-ui/.worktrees/i18n-agents-pages/src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    {
+      "command": "node scripts/i18n/check-strings.mjs",
+      "exit": 0,
+      "observed": "check-strings.mjs: ok — 1368 file(s) scanned, 191 literal(s) at or below the baseline. The first invocation was killed by the harness's 100 MB process-group budget before any output; rerun with a 2 GB budget and it reported ok. Gate itself did not fail."
+    }
+  ],
+  "gate_checks": {
+    "locale_parity_test": {
+      "command": "node --test --test-name-pattern='fr' scripts/i18n/locale-parity.test.mjs",
+      "result": "FAIL",
+      "detail": "only the identical-value stub test; see gate_findings G1"
+    }
+  },
+  "gate_findings": [
+    {
+      "id": "G1",
+      "severity": "blocker",
+      "category": "parity-gate",
+      "finding": "`node --test --test-name-pattern='fr' scripts/i18n/locale-parity.test.mjs` exits 1 on this head: 11 French values are byte-identical to their English source (all legitimate French spellings) and have no IDENTICAL_OK row in scripts/i18n/locale-parity.test.mjs, so '[fr] is not an English stub' is the only failing subtest (12 run under the name filter, 11 pass). This is a shared-table gap, not a copy defect: do not change the French values.",
+      "values_correct": true,
+      "keys": [
+        "ui.agents.detail.origin.source",
+        "ui.agents.detail.section.instructions",
+        "ui.agents.pages.tab.agents",
+        "ui.agents.publication.invalid.field.description",
+        "ui.agents.teams.col.type",
+        "ui.agents.teams.kind.agent",
+        "ui.agents.teams.section.description",
+        "ui.hub.pages.search_field.description",
+        "ui.hub.pages.status.agents_scope",
+        "ui.hub.pages.tab.agents",
+        "ui.hub.teams.brief.trigger"
+      ],
+      "reasons": {
+        "ui.agents.detail.origin.source": "French common noun 'source' has the same spelling; it names the packaged seed beside a data token.",
+        "ui.agents.detail.section.instructions": "French 'instructions' has the same spelling; matches the shipped heading.",
+        "ui.agents.pages.tab.agents": "French plural of 'agent' is 'agents'; only the word plus the count slot.",
+        "ui.agents.publication.invalid.field.description": "French noun 'description' has the same spelling; bare field label with a period.",
+        "ui.agents.teams.col.type": "French noun 'type' has the same spelling; table column header.",
+        "ui.agents.teams.kind.agent": "French noun 'agent' has the same spelling; also the wire value shown as data.",
+        "ui.agents.teams.section.description": "French noun 'description' has the same spelling; section heading.",
+        "ui.hub.pages.search_field.description": "French noun 'description' has the same spelling; option label in the field-scope select.",
+        "ui.hub.pages.status.agents_scope": "Only the French plural 'agents' plus the {scope} placeholder; nothing else to translate.",
+        "ui.hub.pages.tab.agents": "French plural of 'agent' is 'agents'; only the word plus the count slot.",
+        "ui.hub.teams.brief.trigger": "French noun 'brief' has the same spelling; the same namespace already ships 'Brief de projet'."
+      },
+      "remediation": "Add one `fr:<key>` row per key to IDENTICAL_OK in scripts/i18n/locale-parity.test.mjs with the reasons recorded in `reasons`; no catalogue edit. Rerun the command; expect 12/12 pass.",
+      "evidence": "TAP run: tests 12, pass 11, fail 1; failing subtest lists exactly these 11 keys."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "translation_status": "clean-with-findings",
+  "gate_status": "changes_requested",
+  "merge_readiness": "blocked",
+  "status": "changes_requested",
+  "verdict": "French copy passes: 0 blocker, 0 major, 1 minor, 0 nit over 321 keys. All round-1 blockers/majors are resolved and all 102 new keys are accurate against en, the context sidecars and the call sites. Merge is blocked only on the mechanical parity gate: 11 legitimate French cognates are byte-identical to English and lack IDENTICAL_OK rows, so the fr stub test fails on this head; the fix is the shared test table, not the copy, and this receipt stays valid because the catalogue bytes do not change.",
+  "round1_resolution": {
+    "ui.agents.pages.P1": "fixed — scope.custom is now 'Créées' as proposed.",
+    "ui.agents.detail.D1": "fixed — conflict_body now says 'depuis que vous l’avez ouvert'.",
+    "ui.agents.detail.D2": "fixed — conflict_title uses the clause form 'pendant que vous le modifiiez'.",
+    "ui.agents.detail.D3": "fixed — tools.placeholder is 'Nom d’outil'.",
+    "ui.hub.pages.H1": "fixed — status.scope.shared_with is 'dans le hub partagé avec {org}'.",
+    "ui.hub.pages.H2": "fixed — 'Plus téléchargés', 'Plus mis en favoris', 'Plus aimés'.",
+    "ui.hub.pages.H3": "fixed — updating is 'Actualisation…'.",
+    "ui.hub.teams.T1": "fixed — match_line is 'Résultats pour « {query} » : … de cette page'.",
+    "ui.hub.teams.T2": "fixed — public.intro says 'par tout le monde'.",
+    "ui.hub.teams.T3": "fixed — brief.roster is 'Composition'.",
+    "ui.agents.config.C1": "reasonably declined — 'Suivre' kept; the shipped catalogue's 'Surveiller' is the monitor tool, while this control follows a run.",
+    "ui.agents.config.C-o1": "remains — about.kind still passes the raw wire token; recorded as C-r2-i1, source-side.",
+    "ui.agents.config.C-o2": "fixed at source — config-composer.tsx:810 now calls summary.created/updated instead of hardcoded English.",
+    "ui.agents.upload.U1": "fixed — 'Je confirme avoir lu et accepté les'.",
+    "ui.agents.upload.U2": "fixed — 'sur le hub des agents'.",
+    "ui.agents.upload.U3": "fixed — 'Tout le monde peut le lire et l’installer.'",
+    "ui.agents.publication.PB1": "fixed — category.prompt_injection now says 'au réviseur'."
+  },
+  "observations": [
+    "No translator report was read; the resolution column above was checked against the bytes and the components, not against a claim.",
+    "Second independent pass done on the high-visibility error surfaces: every ui.agents.publication headline/body and every ui.agents.config error/status string was re-read against en and its call site after the first pass; no additional finding.",
+    "Source-side gaps recorded as info findings, not copy defects: C-r2-i1 (raw kind token in config.summary.* and config.about) and T-r2-i2 (detail.created/updated date formatted with date-fns default en-US in org-team-summary.ts, so fr renders English month abbreviations). Both need a code change, not a catalogue change.",
+    "Adjacent pre-existing hardcoded English on the same hub cards: the like/favourite aria labels in agent-card.tsx are raw English, so the translated viewer_unknown sentence sits beside English control names. Outside these 8 namespaces; recorded, not gating.",
+    "Round-1 minor D2's proposed wording was applied verbatim; the applied conflict_body uses 'a modifié cet agent' for 'wrote to this agent' — a narrow, acceptable reading in context.",
+    "Audit limits: source-and-context audit with call-site reads; no rendered frame. Widths are codepoint counts against sidecar prose, not pixels; the sidecars in these 8 namespaces carry no maxCells/maxChars. The check-strings gate needed a 2 GB process-group budget (default 100 MB killed it before output); the gate itself reported ok.",
+    "The 11 identical values were each read as French before the gate finding was filed: every one is a genuine French spelling (Source, Instructions, Agents, Description, Type, Agent, Brief), not an untranslated stub."
+  ],
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 22,
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 22 keys",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.pages.json",
+        "target": "src/i18n/catalogues/fr/ui.agents.pages.json",
+        "context": "src/i18n/catalogues/en/ui.agents.pages.context.json"
+      },
+      "en_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+      "fr_sha256": "33b4134fec995c556c89b730e4e28d07d84054caa7be559fc307de803ca5dab8",
+      "context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+      "parity_gate": "blocked: no IDENTICAL_OK row for ui.agents.pages.tab.agents",
+      "note": "Round-1 P1 (scope.custom) is fixed as proposed: 'Créées'. The six new empty.* states are accurate and read natively."
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 47,
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 47 keys",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.detail.json",
+        "target": "src/i18n/catalogues/fr/ui.agents.detail.json",
+        "context": "src/i18n/catalogues/en/ui.agents.detail.context.json"
+      },
+      "en_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+      "fr_sha256": "a03ae0619ff46600550d4214e8c2c1aabf3f83043ce7823b4ffe98c656ff5d6c",
+      "context_sha256": "f1b0bbf296d01189d64cbdc9bb1bc77d3e7971d8f891c693b94af5741de58cd9",
+      "parity_gate": "blocked: no IDENTICAL_OK row for ui.agents.detail.origin.source, ui.agents.detail.section.instructions",
+      "note": "Round-1 D1/D2/D3 fixed: conflict_body now reads 'depuis que vous l’avez ouvert', conflict_title uses the clause form, tools.placeholder is 'Nom d’outil'."
+    },
+    "ui.hub.pages": {
+      "namespace": "ui.hub.pages",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 35,
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 35 keys",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+        "target": "src/i18n/catalogues/fr/ui.hub.pages.json",
+        "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+      },
+      "en_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+      "fr_sha256": "21fab8c093c0df4c899c7b4ac924369796510410ecfefc449de7e02ff3881ba7",
+      "context_sha256": "baa1605388a3892267e503c2e9a2504a7c6ace8d92bbb380a2c72ccb33be4dcc",
+      "parity_gate": "blocked: no IDENTICAL_OK row for ui.hub.pages.search_field.description, ui.hub.pages.status.agents_scope, ui.hub.pages.tab.agents",
+      "note": "Round-1 H1/H2/H3 fixed: 'dans le hub partagé avec {org}', 'Plus téléchargés / Plus mis en favoris / Plus aimés', 'Actualisation…'. Count lines compose correctly with the scope fragments for 0/1/2/1 000 000."
+    },
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_audited": 47,
+      "verdict": "passed: 0 blocker, 0 major, 1 minor, 0 nit over 47 keys",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "T-r2-1",
+          "severity": "minor",
+          "category": "typography",
+          "key": "ui.hub.teams.org.plan_body",
+          "source": "Reading an organization's teams is part of the Team plan. An owner of {org} can activate it in the Radient console, and then its teams will be listed here.",
+          "current": "La lecture des équipes d’une organisation fait partie de l’offre Team. Un propriétaire de {org} peut l’activer dans la console Radient ; ses équipes seront alors listées ici.",
+          "problem": "A plain U+0020 space precedes the semicolon; the fr style guide requires the espace fine insécable U+202F before : ; ! ? in prose. Every other such mark in these 8 namespaces uses U+202F (41 occurrences); this is the only U+0020.",
+          "proposed": "Same wording with U+202F before the semicolon: '…dans la console Radient <U+202F>; ses équipes seront alors listées ici.' (the character, not the literal tag).",
+          "fix": "Replace that one U+0020 with U+202F; no wording change.",
+          "reason": "Restores the required French fine space; prevents a line break before the semicolon and matches the rest of the batch."
+        },
+        {
+          "id": "T-r2-i2",
+          "severity": "info",
+          "category": "source-gap",
+          "keys": [
+            "ui.hub.teams.detail.created",
+            "ui.hub.teams.detail.updated"
+          ],
+          "problem": "Call-site gap, not a copy defect. The sidecar says {date} arrives formatted for the reader's locale, but org-team-summary.ts formatTeamDate() calls date-fns `format(date, \"d MMM yyyy\")` with no locale, so fr rows render English month abbreviations ('10 Oct 2026' rather than '10 oct. 2026'). The values 'Créée le {date}' / 'Modifiée le {date}' are correct.",
+          "suggested_source_fix": "Format with Intl.DateTimeFormat(locale, {day:'numeric', month:'short', year:'numeric'}) or date-fns with the active locale; the fr copy needs no change.",
+          "impact": "English month abbreviation inside a French date line."
+        }
+      ],
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.teams.json",
+        "target": "src/i18n/catalogues/fr/ui.hub.teams.json",
+        "context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+      },
+      "en_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+      "fr_sha256": "3626c1639c9fdff0b447a81e7c5a5717718498f018a7776f287dd50537b4ad6c",
+      "context_sha256": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651",
+      "parity_gate": "blocked: no IDENTICAL_OK row for ui.hub.teams.brief.trigger",
+      "note": "Round-1 T1/T2/T3 fixed: 'Résultats pour « {query} » : …', 'par tout le monde', 'Composition'. All 21 new keys accurate against en and the call sites; pull_target/brief.trigger_aria keep the visible label in the accessible name."
+    },
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 28,
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 28 keys",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "C-r2-i1",
+          "severity": "info",
+          "category": "source-gap",
+          "keys": [
+            "ui.agents.config.summary.created",
+            "ui.agents.config.summary.updated",
+            "ui.agents.config.about"
+          ],
+          "problem": "Call-site gap, not a copy defect. config-composer.tsx renders the new summary as `t(summary.created|updated) + \" (\" + result.target.kind + \")\"`, and `about.kind` is the wire token `agent`|`team` (RunTarget). The fr messages are correct, but a team row reads 'Création de foo (team)' and the composer chip reads 'À propos : team foo'.",
+          "suggested_source_fix": "Map the kind through a keyed label (agent/équipe) before interpolation; the fr copy needs no change.",
+          "impact": "English wire token visible inside otherwise French copy."
+        }
+      ],
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.config.json",
+        "target": "src/i18n/catalogues/fr/ui.agents.config.json",
+        "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+      },
+      "en_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+      "fr_sha256": "0ac764e2ba0562e3d786a07a68b8007b1f62effaef765d302f32c81de2801287",
+      "context_sha256": "5dd8f962ad021b0dc4004ea2531257b3fd70904e834f77b5f9b7b2d7266a48db",
+      "note": "Round-1 C1 'Suivre' reasonably declined (matches the shipped 'Surveiller'/'Suivre' distinction); C-o2 is fixed at source (config-composer.tsx now calls the summary.created/updated keys). The three new summary keys are correct; the raw (kind) token is a call-site gap recorded as C-r2-i1."
+    },
+    "ui.agents.teams": {
+      "namespace": "ui.agents.teams",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 23,
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 23 keys",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.teams.json",
+        "target": "src/i18n/catalogues/fr/ui.agents.teams.json",
+        "context": "src/i18n/catalogues/en/ui.agents.teams.context.json"
+      },
+      "en_sha256": "139eca3cd41f62cfea0a97d6a9b40cff8aa446ea761b1f94d42334d1d576fdef",
+      "fr_sha256": "8ba09c4210458dc1539818b9bf7b453b661c3b482813c136c452879de3e5a7a7",
+      "context_sha256": "0b3f7f59a37c671813d9a5c9d32b242e04d0fa0b3c5605421c3129cab937bfc1",
+      "parity_gate": "blocked: no IDENTICAL_OK row for ui.agents.teams.col.type, ui.agents.teams.kind.agent, ui.agents.teams.section.description",
+      "note": "Unchanged from round 1 and still clean; the three identical values are legitimate French nouns (Type, Agent, Description)."
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 23,
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 23 keys",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "target": "src/i18n/catalogues/fr/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "en_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+      "fr_sha256": "6e24e5aee1f8b4b312f801b5e2430c084751deca759b6ad6eedd8d0895625109",
+      "context_sha256": "9c8ccc682885383f7aee9f77a1dbbb8c94a5d709e2de4ee9d76b40c7248a277a",
+      "note": "Round-1 U1/U2/U3 fixed: 'avoir lu et accepté', 'sur le hub des agents', 'Tout le monde'. Consent sentence composes across lead/link/tail."
+    },
+    "ui.agents.publication": {
+      "namespace": "ui.agents.publication",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 96,
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 96 keys",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.publication.json",
+        "target": "src/i18n/catalogues/fr/ui.agents.publication.json",
+        "context": "src/i18n/catalogues/en/ui.agents.publication.context.json"
+      },
+      "en_sha256": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+      "fr_sha256": "98a7ab94bd9b3f35d02689f365b15480d6ea61fcfd81268857eb69d509ce4fb9",
+      "context_sha256": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90",
+      "parity_gate": "blocked: no IDENTICAL_OK row for ui.agents.publication.invalid.field.description",
+      "note": "Round-1 PB1 fixed ('réviseur'). All 72 new keys audited against en and the refusal tables: publish/pull twins stay distinct, bodies compose as whole sentences with subject.name/subject.unknown, invalid.field.* stand alone, and *_with_rule use a colon before the hub's English rule text."
+    }
+  }
+}
