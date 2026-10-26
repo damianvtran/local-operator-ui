@@ -5,6 +5,7 @@
 	"ui.common.actions.copy_failed": "Không sao chép được. Hãy chọn và sao chép thủ công.",
 	"ui.common.actions.retry": "Thử lại",
 	"ui.common.actions.retry_again": "Thử lại",
+	"ui.common.actions.retrying": "Đang thử lại…",
 	"ui.common.actions.confirmation_modal.cancel": "Hủy",
 	"ui.common.actions.confirmation_modal.confirm": "Xác nhận",
 	"ui.common.actions.date_time_picker.choose_date": "Chọn ngày {label}",

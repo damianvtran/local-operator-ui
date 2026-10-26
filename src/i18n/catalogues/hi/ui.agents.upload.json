@@ -21,5 +21,11 @@
 	"ui.agents.upload.target.upgrade": "(अपग्रेड ज़रूरी)",
 	"ui.agents.upload.terms.lead": "मैं पुष्टि करता हूँ कि मैंने",
 	"ui.agents.upload.terms.link": "नियम और शर्तें",
-	"ui.agents.upload.terms.tail": "पढ़ी हैं और उनसे सहमत हूँ, और यह भी कि इस एजेंट में दुर्भावनापूर्ण सामग्री नहीं है और यह उपयोग नीतियों का उल्लंघन नहीं करता।"
+	"ui.agents.upload.terms.tail": "पढ़ी हैं और उनसे सहमत हूँ, और यह भी कि इस एजेंट में दुर्भावनापूर्ण सामग्री नहीं है और यह उपयोग नीतियों का उल्लंघन नहीं करता।",
+	"ui.agents.upload.title.publish_org": "“{name}” को {destination} पर प्रकाशित करें?",
+	"ui.agents.upload.title.publish_public": "“{name}” को एजेंट हब पर प्रकाशित करें?",
+	"ui.agents.upload.title.published_org": "“{name}” को {destination} पर प्रकाशित किया गया",
+	"ui.agents.upload.title.published_public": "“{name}” को एजेंट हब पर प्रकाशित किया गया",
+	"ui.agents.upload.title.republished": "“{name}” की एजेंट हब लिस्टिंग अपडेट की गई",
+	"ui.agents.upload.title.update_listing": "“{name}” की एजेंट हब लिस्टिंग अपडेट करें?"
 }

@@ -1,4 +1,12 @@
 {
+	"ui.agents.pages.add_manual.agent": "خود ایجنٹ شامل کریں",
+	"ui.agents.pages.add_manual.team": "خود ٹیم شامل کریں",
+	"ui.agents.pages.ask.body_agent": "ایجنٹ ہدایات کا ایک دوبارہ استعمال کے قابل مجموعہ ہے جس سے آپ چیٹ شروع کر سکتے ہیں، یا جسے دوسرے ایجنٹوں کو بلانے دے سکتے ہیں۔ جو آپ چاہتے ہیں بیان کریں، اور ایک کنفیگریشن رن اسے ترتیب دے دیتا ہے۔",
+	"ui.agents.pages.ask.body_team": "ٹیم میں ایک ایجنٹ ہوتا ہے جو گفتگو کی قیادت کرتا ہے، اور ایسے ارکان ہوتے ہیں جنہیں یہ کام سونپ سکتا ہے۔ جو آپ چاہتے ہیں بیان کریں، اور ایک کنفیگریشن رن اسے ترتیب دے دیتا ہے۔",
+	"ui.agents.pages.ask.heading_agent": "ایجنٹ مانگیں",
+	"ui.agents.pages.ask.heading_team": "ٹیم مانگیں",
+	"ui.agents.pages.ask.manual_agent": "یا خود ایجنٹ شامل کریں",
+	"ui.agents.pages.ask.manual_team": "یا خود ٹیم شامل کریں",
 	"ui.agents.pages.back_to_list": "فہرست پر واپس",
 	"ui.agents.pages.browse_aria": "قسم کے لحاظ سے تعریفیں دیکھیں",
 	"ui.agents.pages.discard_bar.agent": "اس ایجنٹ میں آپ کی غیر محفوظ تبدیلیاں رد کریں؟",
