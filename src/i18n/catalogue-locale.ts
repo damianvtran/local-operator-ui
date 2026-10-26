@@ -24,18 +24,25 @@
  * key and this rule picks it up.
  *
  * CHINESE IS THE ONE BRANCH THAT CANNOT BE PRIMARY-SUBTAG ONLY. `zh` is a
- * macrolanguage whose script decides the copy: `zh-CN`, `zh-Hans` and `zh-SG`
- * are Simplified and map to the `zh-CN` bundle; `zh-TW`, `zh-Hant`, `zh-HK` and
- * `zh-MO` are Traditional, and this client ships no Traditional catalogue, so
- * they resolve to ENGLISH rather than to Simplified. Showing Simplified copy as
- * if it were Traditional is worse than showing the source locale — the same
- * judgement `./direction` makes about `lang` ("rewriting `zh-TW` to `zh-CN`
- * would claim a script the user did not choose"). `zh-HK`/`zh-MO` are the one
- * deliberate difference from the core: `normalise_locale` maps them through its
- * literal `zh` rule to Simplified and notes the question is open ("the wave
- * review revisits them"). Until it does, this bootstrap prefers English for a
- * script it cannot serve. Once the backend answers, its resolved `language`
- * wins outright (`./locale`), so this rule never overrides a negotiated answer.
+ * macrolanguage whose script decides the copy, and an EXPLICIT script subtag
+ * outranks the region: `zh-Hans` (and `zh`, `zh-CN`, `zh-SG` — no script subtag
+ * and no Traditional region) maps to the `zh-CN` bundle, including inside a
+ * Traditional region (`zh-Hans-HK`, `zh-Hans-TW`), because those tags ask for
+ * Simplified copy. `zh-Hant` and the regions that write it (`zh-TW`, `zh-HK`,
+ * `zh-MO`) resolve to ENGLISH: this client ships no Traditional catalogue, and
+ * showing Simplified copy as if it were Traditional is worse than showing the
+ * source locale — the same judgement `./direction` makes about `lang`
+ * ("rewriting `zh-TW` to `zh-CN` would claim a script the user did not choose").
+ * Any OTHER script subtag (`zh-Latn`, `zh-Bopo`) is Chinese in writing this
+ * client carries no catalogue for, and a non-Mandarin extlang (`zh-yue`,
+ * Cantonese) is not the same language as the Mandarin copy in `zh-CN`; both
+ * resolve to English rather than being shown Simplified Han. `zh-HK`/`zh-MO`
+ * are the one deliberate difference from the core: `normalise_locale` maps them
+ * through its literal `zh` rule to Simplified and notes the question is open
+ * ("the wave review revisits them"). Until it does, this bootstrap prefers
+ * English for a script it cannot serve. Once the backend answers, its resolved
+ * `language` wins outright (`./locale`), so this rule never overrides a
+ * negotiated answer.
  *
  * WHAT THIS IS NOT. It does not decide eligibility (the backend's shipped set
  * does) and it does not rewrite the ACTIVE tag: `document.documentElement.lang`
@@ -66,20 +73,54 @@ const CHINESE_PRIMARY = "zh";
 /** The Simplified catalogue the Chinese branch maps to unless script says otherwise. */
 const CHINESE_SIMPLIFIED = "zh-CN";
 
+/** The script subtag naming Simplified Han — the writing the `zh-CN` bundle carries. */
+const SIMPLIFIED_SCRIPT = "hans";
+
 /**
- * Subtags that mark Traditional script: the script itself and the three regions
- * that write it (`zh-TW`, `zh-HK`, `zh-MO`). See the docstring for why these
- * resolve to English rather than to the Simplified catalogue.
+ * The Mandarin extlang. It is the one Chinese variety whose copy the Simplified
+ * catalogue serves; any other extlang after `zh` (`zh-yue`, Cantonese) names a
+ * language this client does not carry.
  */
-const TRADITIONAL_SUBTAGS = new Set(["hant", "tw", "hk", "mo"]);
+const MANDARIN_EXTLANG = "cmn";
+
+/** BCP-47 script subtag: four ASCII letters (`hans`, `hant`, `latn`). */
+const SCRIPT_SUBTAG = /^[a-z]{4}$/;
+
+/** BCP-47 extlang subtag: three ASCII letters directly after the primary (`yue`). */
+const EXTLANG_SUBTAG = /^[a-z]{3}$/;
+
+/**
+ * Regions that write Traditional by default (`zh-TW`, `zh-HK`, `zh-MO`). See the
+ * docstring for why these resolve to English rather than to the Simplified
+ * catalogue.
+ */
+const TRADITIONAL_REGIONS = new Set(["tw", "hk", "mo"]);
+
+/**
+ * The Simplified catalogue, read through the map rather than as a bare literal:
+ * this function's contract is a tag `bundledCatalogues` carries, so a tree
+ * without the Simplified directory degrades to the source locale instead of
+ * naming a catalogue that is gone.
+ */
+function simplifiedCatalogue(): string {
+	return byLoweredTag.get(CHINESE_SIMPLIFIED.toLowerCase()) ?? DEFAULT_LOCALE;
+}
 
 /**
  * The catalogue locale for `tag`, or `en` when this client carries none.
  *
- * Pure and total: it never throws and always names a tag present in
- * `bundledCatalogues`, which is what lets the render path use it inline.
+ * Pure and total over strings: it never throws and always names a tag present in
+ * `bundledCatalogues`, which is what lets the render path use it inline. A
+ * non-string from an untyped `.mjs` harness resolves to the source locale
+ * instead of throwing at `trim()`.
  */
 export function resolveCatalogueLocale(tag: string): string {
+	/*
+	 * Untyped `.mjs` harnesses import this module directly, so a non-string is a
+	 * runtime possibility even though typed callers cannot pass one.
+	 */
+	if (typeof tag !== "string") return DEFAULT_LOCALE;
+
 	/*
 	 * The same cleanup the backend's normaliser performs: `en_US.UTF-8` and
 	 * `fr_CA@euro` are POSIX spellings of tags this function also receives from
@@ -112,23 +153,61 @@ export function resolveCatalogueLocale(tag: string): string {
 	if (exact !== undefined) return exact;
 
 	if (primary === CHINESE_PRIMARY) {
-		const modifiers = new Set(parts.slice(1).map((part) => part.toLowerCase()));
-		for (const subtag of TRADITIONAL_SUBTAGS) {
-			if (modifiers.has(subtag)) return DEFAULT_LOCALE;
+		const subtags = parts.slice(1).map((part) => part.toLowerCase());
+		/*
+		 * An EXTLANG (three alphabetic letters directly after the primary) names a
+		 * language variety, not a script: `zh-yue` is Cantonese, and Mandarin copy
+		 * is the wrong language for it. `zh-cmn` is Mandarin, the same copy as `zh`,
+		 * so it falls through to the script and region rules below.
+		 */
+		const extlang = subtags[0];
+		if (
+			extlang !== undefined &&
+			EXTLANG_SUBTAG.test(extlang) &&
+			extlang !== MANDARIN_EXTLANG
+		) {
+			return DEFAULT_LOCALE;
 		}
-		// Through the map, not as a bare literal: this function's contract is a tag
-		// `bundledCatalogues` carries, so a tree without the Simplified directory
-		// degrades to the source locale instead of naming a catalogue that is gone.
-		return byLoweredTag.get(CHINESE_SIMPLIFIED.toLowerCase()) ?? DEFAULT_LOCALE;
+		/*
+		 * An explicit script outranks the region: `zh-Hans-HK` and `zh-Hans-TW` ask
+		 * for Simplified copy inside a Traditional region. Any script other than
+		 * `hans` — `hant` included — is writing this client carries no catalogue
+		 * for, so it resolves to the source locale, never to Simplified Han.
+		 */
+		const script = subtags.find((subtag) => SCRIPT_SUBTAG.test(subtag));
+		if (script !== undefined) {
+			return script === SIMPLIFIED_SCRIPT
+				? simplifiedCatalogue()
+				: DEFAULT_LOCALE;
+		}
+		/*
+		 * No script subtag: a Traditional-writing region still must not be shown
+		 * Simplified copy, so it takes the source locale.
+		 */
+		for (const region of TRADITIONAL_REGIONS) {
+			if (subtags.includes(region)) return DEFAULT_LOCALE;
+		}
+		return simplifiedCatalogue();
 	}
 
 	/*
 	 * Primary-subtag match, the same shape `setting-control.tsx`'s
 	 * `languageIdentifierFor` uses to name a served tag: `fr-CA` reads French
 	 * copy. It is not a region preference — the catalogues are per language.
+	 *
+	 * The rule is stated, not inherited from directory order: the bare primary tag
+	 * wins when the catalogue set carries one, otherwise the lexicographically
+	 * first regional tag. `byLoweredTag` is in generator order, and no language
+	 * carries two catalogues today; the day one does, the answer above must be a
+	 * decision rather than whichever directory was walked first.
 	 */
+	const bare = byLoweredTag.get(primary);
+	if (bare !== undefined) return bare;
+	let regional: string | undefined;
 	for (const [lowered, catalogueTag] of byLoweredTag) {
-		if (lowered.split("-")[0] === primary) return catalogueTag;
+		if (lowered.split("-")[0] !== primary) continue;
+		if (regional === undefined || catalogueTag < regional)
+			regional = catalogueTag;
 	}
-	return DEFAULT_LOCALE;
+	return regional ?? DEFAULT_LOCALE;
 }

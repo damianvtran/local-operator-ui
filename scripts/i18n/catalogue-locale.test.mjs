@@ -23,9 +23,12 @@ import { build } from "esbuild";
  * Chinese is the branch that cannot be primary-subtag only: Simplified tags map
  * to the `zh-CN` bundle, and a Traditional tag (`zh-TW`, `zh-Hant`, `zh-HK`,
  * `zh-MO`) resolves to English rather than to Simplified copy — showing the
- * wrong script is worse than showing the source locale. See the module's
- * docstring for the difference from the core's literal `zh` rule and why the
- * backend's answer still wins once negotiation happens.
+ * wrong script is worse than showing the source locale. An explicit script
+ * outranks the region in both directions (`zh-Hans-HK` is Simplified), and any
+ * other script (`zh-Latn`) or non-Mandarin extlang (`zh-yue`) also resolves to
+ * English instead of borrowing Han copy. See the module's docstring for the
+ * difference from the core's literal `zh` rule and why the backend's answer
+ * still wins once negotiation happens.
  */
 
 const bundle = await build({
@@ -78,7 +81,7 @@ test("a catalogue's own spelling wins, case-insensitively and through POSIX form
 	assert.equal(catalogue.resolveCatalogueLocale("  fr-CA  "), "fr");
 });
 
-test("Chinese resolves by script: Simplified maps to zh-CN, Traditional to the source", () => {
+test("Chinese resolves by script, and an explicit script outranks the region", () => {
 	for (const tag of [
 		"zh",
 		"zh-CN",
@@ -86,10 +89,26 @@ test("Chinese resolves by script: Simplified maps to zh-CN, Traditional to the s
 		"zh-Hans",
 		"zh-Hans-CN",
 		"zh-SG",
+		// An explicit `hans` wins inside a Traditional-writing region.
+		"zh-Hans-HK",
+		"zh-Hans-TW",
+		// `cmn` is Mandarin, the same language as the Simplified catalogue.
+		"zh-cmn",
 	]) {
 		assert.equal(catalogue.resolveCatalogueLocale(tag), "zh-CN", tag);
 	}
-	for (const tag of ["zh-TW", "zh-Hant", "zh-Hant-TW", "zh-HK", "zh-MO"]) {
+	for (const tag of [
+		"zh-TW",
+		"zh-Hant",
+		"zh-Hant-TW",
+		"zh-HK",
+		"zh-MO",
+		// Chinese written in a script this client carries no catalogue for must not
+		// borrow Han copy: Latin, Bopomofo, and a non-Mandarin variety (Cantonese).
+		"zh-Latn",
+		"zh-Bopo",
+		"zh-yue",
+	]) {
 		assert.equal(catalogue.resolveCatalogueLocale(tag), "en", tag);
 	}
 });
@@ -112,6 +131,28 @@ test("a language this client carries no catalogue for falls back to the source",
 	for (const tag of ["fr-x-source-fallback", "ur-x-latn", "en-u-ca-buddhist"]) {
 		assert.equal(catalogue.resolveCatalogueLocale(tag), "en", tag);
 	}
+	/*
+	 * The module is imported by untyped `.mjs` harnesses, so "never throws" is a
+	 * contract over runtime values too: a non-string is not a tag.
+	 */
+	for (const value of [undefined, null, 42, {}]) {
+		assert.equal(catalogue.resolveCatalogueLocale(value), "en", String(value));
+	}
+});
+
+test("an English fallback formats with English plural rules, not the device's", () => {
+	/*
+	 * `translate()` picks its formatting tag from the catalogue that ANSWERED
+	 * (`sourceTagFor`), not from the device. `pt-BR` has no catalogue, so the
+	 * English source string answers; English `one` is only 1, while Portuguese
+	 * `one` also covers 0, so formatting that English string as `pt-BR` renders
+	 * `0 definition` — the mixed-language bug the source tag exists to prevent.
+	 */
+	const key = "ui.agents.config.definitions";
+	assert.equal(messages.translate(key, { count: 0 }, "en"), "0 definitions");
+	assert.equal(messages.translate(key, { count: 1 }, "en"), "1 definition");
+	assert.equal(messages.translate(key, { count: 0 }, "pt-BR"), "0 definitions");
+	assert.equal(messages.translate(key, { count: 1 }, "pt-BR"), "1 definition");
 });
 
 test("translate() uses the canonical catalogue, and never the raw region tag", () => {
