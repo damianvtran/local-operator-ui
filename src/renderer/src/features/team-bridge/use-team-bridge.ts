@@ -493,7 +493,7 @@ export function notifyMutationOptions(
 	TeamBridgeNotifyMutationVariables,
 	TeamBridgeNotifyMutationContext
 > {
-	const accountId = observedRadientAuthority(client).accountId;
+	const { accountId, epoch } = observedRadientAuthority(client);
 	const current = () =>
 		bridgeOwnerCurrent(client, accountId) && (isCurrent?.() ?? true);
 	const check = () => {
@@ -506,6 +506,7 @@ export function notifyMutationOptions(
 			query.queryKey.at(-2) === "account",
 	};
 	return {
+		mutationKey: teamBridgeKeys.notifyMutation(accountId, epoch),
 		mutationFn: ({ conversationId, notify, tenantId }) => {
 			check();
 			return TeamBridgeApi.setNotify(

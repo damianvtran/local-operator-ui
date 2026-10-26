@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "这条通知已无法在当前账号下打开。",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "还没有对话",
 	"ui.teamBridge.list.empty.body": "发起私信、群组或频道。",

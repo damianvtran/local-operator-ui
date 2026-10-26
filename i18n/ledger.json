@@ -4833,14 +4833,19 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
-			"target_sha256": "8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605",
+			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+			"target_sha256": "a6cbec42e47929f5655ba65b5bc2b4602758295ce70bd87c0232d12e90c9c952",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "87a8efad496d",
-				"job": "cc64f5dc3c0c"
+				"job": "cc64f5dc3c0c",
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}
 			},
 			"auditors": [
 				{
@@ -4848,17 +4853,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "3d4473001f4b",
+					"instance": "51e7fd6748ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 2
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3d4473001f4b.json",
-					"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
-					"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
-					"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+					"receipt": "i18n/receipts/51e7fd6748ed.json",
+					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 				}
 			],
 			"status": "audited",
@@ -5451,6 +5455,54 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-es.json",
 							"receipt_sha256": "bc8f961592deac220244f758f10edd4e137f212722abfe2a4b55da8ea4fed1ee",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+					"target_sha256": "0397e7e85fad33cf327c6ac2519d62a32397229053dde6f74cbeaa5b06dda1fe",
+					"auditors": [
+						{
+							"agent": "independent-translation-reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "72781433def7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/72781433def7.json",
+							"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+							"scope": "one-key additive audit; inherited unchanged namespace provenance",
+							"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+					"target_sha256": "8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d4473001f4b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3d4473001f4b.json",
+							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
+							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
+							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
 						}
 					],
 					"status": "audited"
@@ -10682,15 +10734,20 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
-			"target_sha256": "59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b",
+			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+			"target_sha256": "6b1d333ec0301f509457ea95db8dd2bc51d1c85c3620e0ef027f30b32ab9c30a",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "7f91449c7aa6",
 				"job": "a7380f37ab56",
-				"remediation_job": "b4390a98f09f"
+				"remediation_job": "b4390a98f09f",
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}
 			},
 			"auditors": [
 				{
@@ -10698,17 +10755,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "3d4473001f4b",
+					"instance": "51e7fd6748ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 2
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3d4473001f4b.json",
-					"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
-					"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
-					"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+					"receipt": "i18n/receipts/51e7fd6748ed.json",
+					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 				}
 			],
 			"status": "audited",
@@ -11325,6 +11381,54 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-fr.json",
 							"receipt_sha256": "8c8159d44028a20869cfe736fd6ea488eeb3774679507a4890312d51d3d2bf86",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+					"target_sha256": "2353fdd4ff5081955c43c02fe2c3de319cfc8029d9f00344bd3de9ffb636e499",
+					"auditors": [
+						{
+							"agent": "independent-translation-reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "72781433def7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/72781433def7.json",
+							"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+							"scope": "one-key additive audit; inherited unchanged namespace provenance",
+							"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+					"target_sha256": "59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d4473001f4b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3d4473001f4b.json",
+							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
+							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
+							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
 						}
 					],
 					"status": "audited"
@@ -16464,14 +16568,19 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
-			"target_sha256": "8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc",
+			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+			"target_sha256": "cf0dfe8b38a1078b498ad262d57a8106424043f85a2221218392b699bccd145a",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "632a8fd68227",
-				"job": "4ca9e8a81d54"
+				"job": "4ca9e8a81d54",
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}
 			},
 			"auditors": [
 				{
@@ -16479,17 +16588,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "3d4473001f4b",
+					"instance": "51e7fd6748ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 2
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3d4473001f4b.json",
-					"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
-					"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
-					"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+					"receipt": "i18n/receipts/51e7fd6748ed.json",
+					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 				}
 			],
 			"status": "audited",
@@ -17029,6 +17137,54 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-hi.json",
 							"receipt_sha256": "23c3745502c1d2b48c531ace8e193c9c2a9a9d4015a32f263453d9fef59ef28d",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+					"target_sha256": "c96c5ab6bb27c6633aebff16f12408ca6ef82b595b894f3dc4fb19e5a9cb3596",
+					"auditors": [
+						{
+							"agent": "independent-translation-reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "72781433def7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/72781433def7.json",
+							"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+							"scope": "one-key additive audit; inherited unchanged namespace provenance",
+							"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+					"target_sha256": "8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d4473001f4b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3d4473001f4b.json",
+							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
+							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
+							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
 						}
 					],
 					"status": "audited"
@@ -21942,15 +22098,20 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
-			"target_sha256": "355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc",
+			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+			"target_sha256": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "485b723247d7",
 				"job": "764e8ee192fe",
-				"remediation_job": "78daa414c10d"
+				"remediation_job": "78daa414c10d",
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}
 			},
 			"auditors": [
 				{
@@ -21958,17 +22119,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "3d4473001f4b",
+					"instance": "51e7fd6748ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 2
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3d4473001f4b.json",
-					"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
-					"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
-					"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+					"receipt": "i18n/receipts/51e7fd6748ed.json",
+					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 				}
 			],
 			"status": "audited",
@@ -22539,6 +22699,54 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-ru.json",
 							"receipt_sha256": "2c14caaaf3d817f6e605763e75164999b1fd52726b0766601abc66728bd9af9b",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+					"target_sha256": "341930f1c0b6429e05e29567586ec0e20eac00fab0d0e8c6bc92793bb8610f04",
+					"auditors": [
+						{
+							"agent": "independent-translation-reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "72781433def7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/72781433def7.json",
+							"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+							"scope": "one-key additive audit; inherited unchanged namespace provenance",
+							"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+					"target_sha256": "355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d4473001f4b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3d4473001f4b.json",
+							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
+							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
+							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
 						}
 					],
 					"status": "audited"
@@ -27535,14 +27743,19 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
-			"target_sha256": "3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f",
+			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+			"target_sha256": "a769a7be043183de9ba33aec506ec7eb307214c4a31e3329c1d2d7b077d15153",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "8e5edb2e9750",
-				"job": "39c1864c0110"
+				"job": "39c1864c0110",
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}
 			},
 			"auditors": [
 				{
@@ -27550,17 +27763,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "3d4473001f4b",
+					"instance": "51e7fd6748ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 2
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3d4473001f4b.json",
-					"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
-					"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
-					"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+					"receipt": "i18n/receipts/51e7fd6748ed.json",
+					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 				}
 			],
 			"status": "audited",
@@ -28100,6 +28312,54 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-ur.json",
 							"receipt_sha256": "5a7570715b94041233d37cb0ca87150e96f867dc84e393708c62ad20b2a17b1b",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+					"target_sha256": "47638fd708e1720f668809246e92fba50af859ed890c2e3928cb26f04cd7e1c0",
+					"auditors": [
+						{
+							"agent": "independent-translation-reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "72781433def7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/72781433def7.json",
+							"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+							"scope": "one-key additive audit; inherited unchanged namespace provenance",
+							"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+					"target_sha256": "3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d4473001f4b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3d4473001f4b.json",
+							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
+							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
+							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
 						}
 					],
 					"status": "audited"
@@ -33292,14 +33552,19 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
-			"target_sha256": "ae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400",
+			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+			"target_sha256": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "8c0c0af95212",
-				"job": "e5d5efa8017f"
+				"job": "e5d5efa8017f",
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}
 			},
 			"auditors": [
 				{
@@ -33307,17 +33572,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "3d4473001f4b",
+					"instance": "51e7fd6748ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 2
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3d4473001f4b.json",
-					"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
-					"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
-					"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+					"receipt": "i18n/receipts/51e7fd6748ed.json",
+					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 				}
 			],
 			"status": "audited",
@@ -33888,6 +34152,54 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-vi.json",
 							"receipt_sha256": "f15e563bb45ed37ede38734551c4d774a505b69da30c54c48e8cf21362e9d2a8",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+					"target_sha256": "0aae7643133ed86074f0961481b18dd8361ef0374874767a1f5cdd05a074fe7f",
+					"auditors": [
+						{
+							"agent": "independent-translation-reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "72781433def7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/72781433def7.json",
+							"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+							"scope": "one-key additive audit; inherited unchanged namespace provenance",
+							"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+					"target_sha256": "ae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d4473001f4b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3d4473001f4b.json",
+							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
+							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
+							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
 						}
 					],
 					"status": "audited"
@@ -39675,14 +39987,19 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
-			"target_sha256": "322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79",
+			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+			"target_sha256": "8d7ef1f10f59a92087648c944d46df8d6b6adad1088854ba6b379169eb50631f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "d04f0e3ee24c",
-				"job": "bba1cb60d6a5"
+				"job": "bba1cb60d6a5",
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}
 			},
 			"auditors": [
 				{
@@ -39690,17 +40007,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "3d4473001f4b",
+					"instance": "51e7fd6748ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 2
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3d4473001f4b.json",
-					"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
-					"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
-					"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+					"receipt": "i18n/receipts/51e7fd6748ed.json",
+					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 				}
 			],
 			"status": "audited",
@@ -40293,6 +40609,54 @@
 							"receipt": "i18n/receipts/d1-account-changed-20261025-zhcn.json",
 							"receipt_sha256": "d086a407d7fdf135acee93109b6083ddaf34cba4c47f922368ee0709f3877b60",
 							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+					"target_sha256": "e4d7fe1f9e91e0f2d15f394f7c8a2fef6efed0ce457f9766df20a40eba955c22",
+					"auditors": [
+						{
+							"agent": "independent-translation-reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "72781433def7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/72781433def7.json",
+							"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+							"scope": "one-key additive audit; inherited unchanged namespace provenance",
+							"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+					"target_sha256": "322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d4473001f4b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/3d4473001f4b.json",
+							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
+							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
+							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
 						}
 					],
 					"status": "audited"

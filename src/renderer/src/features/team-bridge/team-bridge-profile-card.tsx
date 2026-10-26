@@ -235,11 +235,6 @@ export function TeamBridgeProfileCard({
 						<h2 id={headingId} className="text-body font-semibold text-ink">
 							{displayName}
 						</h2>
-						{member.profile?.pronouns && (
-							<p className="text-body-sm text-ink-muted">
-								{member.profile.pronouns}
-							</p>
-						)}
 						{member.profile?.title && (
 							<p className="text-body-sm text-ink">{member.profile.title}</p>
 						)}

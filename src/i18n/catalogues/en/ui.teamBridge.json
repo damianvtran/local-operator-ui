@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "That notification is no longer available on this account.",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "No conversations yet",
 	"ui.teamBridge.list.empty.body": "Start a direct message, a group or a channel.",
