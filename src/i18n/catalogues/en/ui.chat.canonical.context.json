@@ -316,5 +316,18 @@
 		"tone": "Concise, factual and actionable where the state has a next step.",
 		"length": "One compact status line, placeholder, button, or spoken suffix.",
 		"note": "English source: this chat"
-	}
+	},
+	"ui.chat.canonical.older_history.transport.short": "Narrow-column spelling of the row that says earlier messages are not loaded because the transport is down.",
+	"ui.chat.canonical.older_history.transport.long": "Full spelling of the transport-down row; also the screen-reader announcement.",
+	"ui.chat.canonical.older_history.failed.short": "Narrow-column spelling of the row for a failed load of earlier messages.",
+	"ui.chat.canonical.older_history.failed.long": "Full spelling of the failed-load row and its title attribute.",
+	"ui.chat.canonical.older_history.try_again": "Button that retries loading earlier messages.",
+	"ui.chat.canonical.older_history.loading": "Button label while earlier messages are loading; also the announcement.",
+	"ui.chat.canonical.older_history.load": "Button that loads the earlier messages when the transcript is idle.",
+	"ui.chat.canonical.older_history.windowed.title": "Row stating more history exists above and must be reached by scrolling.",
+	"ui.chat.canonical.older_history.windowed.title_gesture": "Full sentence for the windowed row, also used as its title attribute.",
+	"ui.chat.canonical.older_history.windowed.short_gesture": "Narrow-column spelling naming the scroll gesture.",
+	"ui.chat.canonical.older_history.unproven.short": "Narrow-column spelling of the row that says earlier history was never proven loaded.",
+	"ui.chat.canonical.older_history.unproven.long": "Full spelling of the unproven row and its title attribute.",
+	"ui.chat.canonical.older_history.conversation_start": "Row marking the oldest message, where nothing earlier exists."
 }

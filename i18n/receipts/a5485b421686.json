@@ -1,0 +1,263 @@
+{
+	"schema": 1,
+	"kind": "i18n-audit-receipt",
+	"locale": "fr",
+	"date": "2026-10-26",
+	"round": 2,
+	"instance": "a5485b421686",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"team": "lopdev",
+		"session": "a5485b421686",
+		"instance": "a5485b421686",
+		"model": "radient/auto",
+		"date": "2026-10-26",
+		"independent_from_translator_session": true,
+		"actual_model_source": "Session model header `radient/auto`; no [model switch] card appeared in this run and no model was self-pinned, so there is no fallback descent to disclose. Every command, render probe and judgement recorded here was produced on that route."
+	},
+	"status": "passed",
+	"scope": "Independent round-2 audit of the current bytes of four fr chat-surface namespaces in worktree ~/local-operator-ui/.worktrees/i18n-chat-surfaces (branch i18n-chat-surfaces, HEAD e1ca500e5abc). The fr catalogues are committed at 25870ed488 while other locales sit uncommitted, so the binding is by sha256, never by commit. All 283 keys were read in both languages against the en context sidecars, every plural was rendered by execution, and each round-1 finding was re-checked on the current bytes. No translator report was read before the byte pass, and no catalogue byte was edited.",
+	"translation_provenance": "The translations were authored and remediated by another session; this auditor did not write, translate or edit them and made exactly one repository write: this receipt.",
+	"binding": {
+		"manifest": "chat-r2-hashes.txt (manager scratchpad, session 3ef6295a5545)",
+		"verified": "All four fr lines and all four en lines were recomputed from disk before reading: exact matches, and the en hashes equal the ones named in the round-2 task. ui.chat.asks.json is byte-identical to its round-1 hash, so the asks remediation changed no byte; the three namespaces that changed are ui.chat, ui.chat.canonical and ui.chat.run_details.",
+		"hashes": {
+			"ui.chat": {
+				"en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+				"fr": "a21edf2bdb3a3903f917072ac0eb3c32c2625289fa05dad7de5e53a830c23faa",
+				"context": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+			},
+			"ui.chat.canonical": {
+				"en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+				"fr": "68101aba7ce7c7073321ec95478af53c680361eef6db7a1031ce41a125160b8f",
+				"context": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+			},
+			"ui.chat.run_details": {
+				"en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+				"fr": "278cc8c477c9cc2ecf28fe9cdab69377ccb2f1713e799c11bd83ed952628a4aa",
+				"context": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+			},
+			"ui.chat.asks": {
+				"en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+				"fr": "150ff013b254ca51fcb771eed21d8f3a44141ebfd1d341b5ba1374f75e8850da",
+				"context": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+			}
+		}
+	},
+	"required_sources": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+		}
+	},
+	"checks": {
+		"repo_validators_run": "Each command run in the worktree root, verbatim, exit 0: `node scripts/i18n/check-strings.mjs` -> 'check-strings.mjs: ok — 1368 file(s) scanned, 262 literal(s) at or below the baseline'; `node scripts/i18n/check-duplicates.mjs` -> 'check-duplicates: ok — 763 file(s) scanned, 0 duplicate key(s)'; `node scripts/i18n/context-parity.mjs` -> 'context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).'",
+		"key_parity": "Every file is valid JSON and the sorted key sets are equal: 115/115 (ui.chat), 60/60 (ui.chat.canonical), 82/82 (ui.chat.run_details, which gained todos.hidden_summary in en), 26/26 (ui.chat.asks). No key added or dropped.",
+		"icu": "Every value parsed with @formatjs/icu-messageformat-parser 3.5.21 (requiresOtherClause: true) from the shared checkout: no syntax error anywhere. In every key the argument name/type set, the select-arm sets and the plural argument names equal the English. Every fr plural carries one/many/other; Intl.PluralRules('fr').resolvedOptions().pluralCategories executed in Node 24.22.1 returned one,many,other, and no fr plural uses few.",
+		"plural_renders_run": "Rendered through IntlMessageFormat('fr'): loop_progress_turns 0 '0 tour', 1 '1 tour', 2 '2 tours', 5 '5 tours', 1000 '1 000 tours'; chip.todos_open and chip.subagents_failed the same shape; chip.attention 1 '1 nécessite votre attention', 5 '5 nécessitent votre attention'; chip.mcp_attention 1 '1 serveur MCP nécessite votre attention', 2 '2 serveurs MCP nécessitent votre attention'; asks.context.messages_since 0 '0 message de votre part depuis cette demande (dernier message à 15:30)' and 1000 '1 000 messages …'. todos.hidden_summary verbatim: 0 '0 tâche masquée', 1 '1 tâche masquée', 2 '2 tâches masquées', 5 '5 tâches masquées', 1000 '1000 tâches masquées', 1000000 '1000000 de tâches masquées', 1500000 '1500000 tâches masquées' — the many arm fires only at exact multiples of 10^6, and ::group-off holds because the en sidecar documents a plain integer count.",
+		"typography": "All 283 fr values are NFC; no ASCII apostrophe or straight quote; no ASCII '...'; no bidi control characters (none expected in fr, scanned anyway); U+202F before the colon in prose everywhere except ui.chat.asks.dismiss.refused (flagged); « … » carries U+202F inside; backticked code, flags and paths byte-identical to en in every key that has them.",
+		"code_words_and_labels": "Approval words checked against the code that prints them: src/renderer/src/features/chat/approval-words.ts:49-50 sets the option labels to the literals 'Approve' and 'Deny', so keeping Approve/Deny/yes/no English in the fr hints is required, not a leftover. The cross-reference in ui.chat.highlights.file_resolution_failed ('Copier le chemin du fichier') matches ui.common.file_actions.copy_file_path exactly, so label-in-name holds. Joined fragment families re-read end to end: error_block.provider/model/rate_limit/invalid_key/unavailable/schema halves plus their link keys render one grammatical sentence each, and invalid_key.after opens with a bare comma, as French requires.",
+		"widths": "None of the four en sidecars in this group carries a maxCells/maxChars budget. The one truncating row in play, canonical.older_history.windowed.title_gesture, is now 32 codepoints against the English 41, so it fits wherever the English does. No other fr value exceeds 1.4x its English length except full-sentence notes in roomy blocks. No pixel or rendered-fit claim is made: no browser was driven on this task.",
+		"adjacent_regression_scan": "Nothing adjacent broke: the remediation touched the 2 majors + 6 minors/nits plus the new key, and left the neighbouring bytes of each family unchanged; the todos.title/jobs.colon collision is now resolved in the direction the composer already speaks (plan_action 'le plan', jobs_action 'les tâches'), and the older_history short rows stay mutually distinct ('Chargement échoué' / 'Non chargé' / 'Historique non chargé')."
+	},
+	"round1_resolution": [
+		{
+			"round": 1,
+			"severity": "major",
+			"namespace": "ui.chat.canonical",
+			"key": "ui.chat.canonical.older_history.windowed.title_gesture",
+			"resolution": "resolved",
+			"evidence": "Now 'Plus haut : défiler pour charger' — 32 codepoints against the English 41 (was 70), U+202F before the colon verified in the bytes. Statement and gesture both survive."
+		},
+		{
+			"round": 1,
+			"severity": "major",
+			"namespace": "ui.chat.run_details",
+			"key": "ui.chat.run_details.todos.title",
+			"resolution": "resolved",
+			"evidence": "Now 'Plan'; jobs stays 'Tâches' (glossary job = tâche) and the composer chips read 'Ouvrir le plan…' vs 'Ouvrir les tâches…', so the pane's two collections are named differently at every site that labels them."
+		},
+		{
+			"round": 1,
+			"severity": "minor",
+			"namespace": "ui.chat",
+			"key": "ui.chat.error_block.rate_limit.before",
+			"resolution": "resolved",
+			"evidence": "'… ou de souscrire à Radient Pass dans la' + link 'page des paramètres' + 'pour accéder à des modèles d’IA sans limite de débit, à bas prix.' — one grammatical sentence, 'souscrire à' is the settled verb for taking a plan."
+		},
+		{
+			"round": 1,
+			"severity": "minor",
+			"namespace": "ui.chat.canonical",
+			"key": "ui.chat.canonical.older_history.failed.short",
+			"resolution": "resolved",
+			"evidence": "'Chargement échoué' — 17 codepoints (was 21), same failure meaning, still distinct from the transport arm's 'Non chargé' and the unproven arm's 'Historique non chargé'."
+		},
+		{
+			"round": 1,
+			"severity": "minor",
+			"namespace": "ui.chat.run_details",
+			"key": "ui.chat.run_details.reader.delegated_with",
+			"resolution": "resolved",
+			"evidence": "Now 'Consigne déléguée'. Checked the render site rather than the sidecar: the key is used once, at run-child-reader.tsx:386 inside BriefBlock, whose own documentation calls it 'the child's authored instruction'. The en context note ('tools/capabilities a subagent was delegated with') describes something that component does not render, so the note is stale, not the translation."
+		},
+		{
+			"round": 1,
+			"severity": "minor",
+			"namespace": "ui.chat.run_details",
+			"key": "ui.chat.run_details.reader.error_shortened",
+			"resolution": "resolved",
+			"evidence": "'Tronqué à la transmission. Le runtime n’enregistre que les 2 000 premiers caractères d’une erreur.' — 'au transport' gone, the 2 000 grouping kept."
+		},
+		{
+			"round": 1,
+			"severity": "minor",
+			"namespace": "ui.chat.run_details",
+			"key": "ui.chat.run_details.wake.cancel_wake_due",
+			"resolution": "resolved",
+			"evidence": "'Annuler le réveil prévu {due}' — preposition-free, so it holds both the clock-only and the date-bearing shape formatWakeDue emits off-day."
+		},
+		{
+			"round": 1,
+			"severity": "nit",
+			"namespace": "ui.chat",
+			"key": "ui.chat.question_dock.hint.secret_held",
+			"resolution": "resolved",
+			"evidence": "'{prefix}Envoi suspendu tant que le sort de cette réponse est inconnu — elle a peut-être été transmise, donc plus rien ne peut être envoyé · Échap dans la carte la masque' — the held thing is named, and 'la' agrees with 'cette réponse'. All three claims (held, maybe delivered, Escape in the card) survive."
+		},
+		{
+			"round": 1,
+			"severity": "nit",
+			"namespace": "ui.chat.asks",
+			"key": "ui.chat.asks.urgent",
+			"resolution": "declined and the decline is sound",
+			"evidence": "Kept 'Prioritaire.'. scripts/i18n/locale-parity.test.mjs:1390 asserts no value is byte-identical to its English source ('is not an English stub'), so the suggested 'Urgent.' would need an exemption-list entry for a screen-reader-only prefix. 'Prioritaire.' still conveys urgency; unchanged bytes since round 1."
+		}
+	],
+	"namespaces": {
+		"ui.chat": {
+			"namespace": "ui.chat",
+			"status": "passed",
+			"keys_audited": 115,
+			"keys_new": 71,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			},
+			"sha256": {
+				"en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+				"fr": "a21edf2bdb3a3903f917072ac0eb3c32c2625289fa05dad7de5e53a830c23faa",
+				"context": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+			},
+			"findings": [
+				{
+					"severity": "nit",
+					"key": "ui.chat.composer.status.goal_dismiss",
+					"current": "Ignorer",
+					"issue": "This file renders the English 'Dismiss' as 'Masquer' three times (hub_update.dismiss, quota_notice.dismiss, status_strip.dismiss) and reserves 'Ignorer' for dismissing an ask (asks.dismiss.trigger). The new goal-strip dismissal is the only 'Dismiss' rendered 'Ignorer' here, and goal_dismiss_keep promises 'il reste dans l’historique des objectifs' — the goal is put out of sight, which is what 'Masquer' says.",
+					"suggested": "Masquer",
+					"reason": "Term consistency inside one file, on a key authored in this wave; both verbs are idiomatic and nothing unsafe is claimed, so it does not gate."
+				}
+			]
+		},
+		"ui.chat.canonical": {
+			"namespace": "ui.chat.canonical",
+			"status": "passed",
+			"keys_audited": 60,
+			"keys_new": 13,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 2
+			},
+			"sha256": {
+				"en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+				"fr": "68101aba7ce7c7073321ec95478af53c680361eef6db7a1031ce41a125160b8f",
+				"context": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+			},
+			"findings": [
+				{
+					"severity": "nit",
+					"key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+					"current": "Ouvrir dans Canvas",
+					"issue": "Shipped fr calls this surface 'le canvas' in four places (ui.shell.rail.canvas.tooltip, ui.shell.rail.canvas.tooltip_count, ui.settings.shortcuts.action.open_canvas, ui.command_palette.use_palette_sources.open_canvas) and capitalises 'Canvas' only as a section label (ui.canvas.shell.canvas, ui.mesh.mesh_page.canvas). 'Ouvrir dans Canvas' is a third form and reads as a word-for-word rendering of 'Open in canvas'.",
+					"suggested": "Ouvrir dans le canvas",
+					"reason": "Pre-existing value, already in origin/main and untouched by this wave; reported because the file group is under audit. Meaning is not in doubt."
+				},
+				{
+					"severity": "nit",
+					"key": "ui.chat.canonical.supplement.file_actions.reveal_in_finder",
+					"current": "Afficher dans Finder",
+					"issue": "macOS French titles this command 'Afficher dans le Finder', and the shipped fr already uses that form in ui.library.json; this value drops the article, so one menu item is spelled two ways in the product.",
+					"suggested": "Afficher dans le Finder",
+					"reason": "Pre-existing value, untouched by this wave; platform convention plus an in-product inconsistency, no meaning error."
+				}
+			]
+		},
+		"ui.chat.run_details": {
+			"namespace": "ui.chat.run_details",
+			"status": "passed",
+			"keys_audited": 82,
+			"keys_new": 79,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+				"fr": "278cc8c477c9cc2ecf28fe9cdab69377ccb2f1713e799c11bd83ed952628a4aa",
+				"context": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+			},
+			"findings": [],
+			"notes": [
+				{
+					"severity": "info",
+					"key": "ui.chat.run_details.todos.hidden_summary",
+					"observation": "The new key carries one/many/other and renders 0 '0 tâche masquée', 1 '1 tâche masquée', 2 '2 tâches masquées', 5 '5 tâches masquées', 1000 '1000 tâches masquées', 1000000 '1000000 de tâches masquées'. ::group-off is kept in all three arms, as the en sidecar requires, so 1000 does not become '1 000' with a folded-row count. Naming the unit ('tâche') where English elides it is an addition of clarity, not of fact: the sidecar defines the count as hidden to-do items."
+				},
+				{
+					"severity": "info",
+					"key": "ui.chat.run_details.reader.delegated_with",
+					"observation": "The en context sidecar still describes this label as naming the tools/capabilities a subagent was delegated with, while its only consumer (run-child-reader.tsx:386, BriefBlock) renders the authored brief. Worth a sidecar correction in a later pass; the fr value matches what is displayed."
+				}
+			]
+		},
+		"ui.chat.asks": {
+			"namespace": "ui.chat.asks",
+			"status": "passed",
+			"keys_audited": 26,
+			"keys_new": 14,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+				"fr": "150ff013b254ca51fcb771eed21d8f3a44141ebfd1d341b5ba1374f75e8850da",
+				"context": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+			},
+			"findings": [
+				{
+					"severity": "minor",
+					"key": "ui.chat.asks.dismiss.refused",
+					"current": "Impossible d’ignorer cette demande : rien n’a été envoyé.",
+					"issue": "Plain U+0020 before the colon. The fr style guide requires the espace fine insécable U+202F before : ; ! ? in prose, and the shipped fr catalogues run 339 U+202F prose colons to 3 plain ones (one of the three is this key; the other two are in ui.chat.composer.json, outside this file group). These bytes are identical to round 1, so the round-1 typography line overstated its coverage.",
+					"suggested": "Impossible d’ignorer cette demande : rien n’a été envoyé.",
+					"reason": "Typography only; the refusal still says the right thing safely. Does not gate a passed verdict."
+				}
+			]
+		}
+	},
+	"ledger_note": "r2 fr chat surfaces; record i18n/receipts/fr-chat-surfaces-audit-r2-a5485b421686.json; r1 2 majors+6 minors/nits fixed, 1 nit declined (en-stub gate); hidden_summary plural verified 0/1/2/5/1000; new 1 minor (U+202F)+3 nits; 4/4 passed."
+}

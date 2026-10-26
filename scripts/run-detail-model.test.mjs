@@ -37,6 +37,12 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	// esbuild cannot read tsconfig paths, so the renderer's alias is declared by
+	// hand — the same shape `composer-tabs.test.mjs` uses. The model gained an
+	// `@shared/i18n` import when its chip clauses became catalogue copy.
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+	},
 	write: false,
 });
 const {
@@ -3089,11 +3095,14 @@ test("the MCP tally pluralises, and agrees with the trigger's own clause", () =>
 		mcpProblems: 1,
 	});
 	assert.match(label, /1 MCP server needs attention/);
-	// The cold payload has no status to tally at all.
+	// The cold payload has no status to tally at all. `MCP_COLD_LINE` is now the
+	// catalogue KEY; `mcpTally` resolves it, so the assertion pins the English the
+	// key carries (ui.chat.run_details.mcp.cold_label).
 	assert.equal(
 		mcpTally(deriveMcpServers([{ name: "files", status: "cold" }])),
-		MCP_COLD_LINE,
+		"No session is running — server status cannot be checked.",
 	);
+	assert.equal(MCP_COLD_LINE, "ui.chat.run_details.mcp.cold_label");
 });
 
 test("an MCP row's diagnosis is the canonical projection's, and only where it applies", () => {
