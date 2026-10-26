@@ -15,7 +15,8 @@
 			"src/renderer/src/styles/themes.generated.css",
 			"src/main/browser/vendor/**",
 			"src/main/browser/actions/geometry-sources.gen.ts",
-			"scripts/fixtures/condense.parity.json"
+			"scripts/fixtures/condense.parity.json",
+			"scripts/fixtures/quiet-groups.parity.json"
 		]
 	},
 	"formatter": {
