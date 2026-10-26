@@ -6,29 +6,31 @@
  * slice, a refetch and a virtual remount draw rows without motion. The journal
  * is keyed by stream identity and by message identity, not by a row component.
  *
- * The read and the journal write are separate on purpose. React may render a
- * tree twice before committing it; a render-time write would consume the
- * arrival on the first pass and make the second pass forget to animate. The
- * list reads with `{ commit: false }` and observes in a layout effect instead.
+ * THE READ AND THE WRITE ARE SEPARATE ON PURPOSE. React may render a tree twice
+ * before committing it; a render-time write would consume the arrival on the
+ * first pass and make the second pass forget to animate. Callers read with
+ * `{ commit: false }` and observe in a layout effect instead.
  *
- * IDENTITY ALIASES COVER OPTIMISTIC -> CONFIRMED. The server's id can replace a
- * client ref without replacing the row's message: `seq` and `client_ref` (or
- * `clientRef`) are aliases for the same identity, so that transition cannot
- * play the motion twice. A locally-built row without either alias cannot be
- * matched to a different server id; callers should provide its next seq.
+ * IDENTITY IS THE MESSAGE ID, AND NOTHING ELSE (review round 1, A1/M5). An
+ * earlier revision also treated `seq` and a client ref as aliases for the same
+ * message, to protect an optimistic row that is replaced by its server row.
+ * Team Bridge has no such row today: a send invalidates the thread query and the
+ * message first appears as the canonical server row (`use-team-bridge.ts`,
+ * `refreshAfterSend`). Worse, `seq` is numbered PER CONVERSATION, so as an
+ * identity token it collided across streams - a live `seq:2` in one conversation
+ * lit up seq 2 of the next one. The sequence number is still read, but only as a
+ * WATERMARK within one stream: a message whose seq is not above everything this
+ * stream has already shown is history being restored (an older page, or a
+ * forward page the thread pane asked for), never a live arrival.
  */
 
-export type TeamBridgeArrivalIdentity = {
-	id: string;
-	seq?: number;
-	client_ref?: string;
-	clientRef?: string;
-};
+export type TeamBridgeArrivalIdentity = { id: string; seq?: number };
 
 type ArrivalStream = {
 	seen: Set<string>;
+	/** Highest seq this stream has ever shown; history below it never animates. */
 	highestSeq: number;
-	/** True until the first non-empty read has been observed. */
+	/** True while the next non-empty read is a restore rather than live traffic. */
 	loading: boolean;
 };
 
@@ -50,21 +52,6 @@ function streamFor(key: string): ArrivalStream {
 	return stream;
 }
 
-function aliases(message: TeamBridgeArrivalIdentity): string[] {
-	const result = [`id:${message.id}`];
-	if (message.seq !== undefined) result.push(`seq:${message.seq}`);
-	const ref = message.client_ref ?? message.clientRef;
-	if (ref) result.push(`ref:${ref}`);
-	return result;
-}
-
-/** Every token a row answers to: its id, and its seq/ref aliases. */
-export function teamBridgeArrivalTokens(
-	message: TeamBridgeArrivalIdentity,
-): string[] {
-	return aliases(message);
-}
-
 /** Record the rendered page without deciding that any of it is live. */
 export function teamBridgeObserveArrivals(
 	key: string,
@@ -72,14 +59,13 @@ export function teamBridgeObserveArrivals(
 ): void {
 	const stream = streamFor(key);
 	if (messages.length === 0) {
-		// The list is mounted only once its read is ready. An OPEN empty stream
-		// is therefore live: its first message must arrive with motion too. The
-		// page's pending branch does not mount the list or call this observer.
+		// The list mounts only once its read is ready, so an open empty stream is
+		// live: its first message must arrive with motion.
 		stream.loading = false;
 		return;
 	}
 	for (const message of messages) {
-		for (const alias of aliases(message)) stream.seen.add(alias);
+		stream.seen.add(message.id);
 		if (message.seq !== undefined)
 			stream.highestSeq = Math.max(stream.highestSeq, message.seq);
 	}
@@ -87,12 +73,9 @@ export function teamBridgeObserveArrivals(
 }
 
 /**
- * Return ids that are new, newer than the stream's observed history, and not
- * aliases of an already-rendered row. Older pages therefore stay still even
- * when a caller has not supplied its pagination hold yet.
- *
- * The default commits the observation for small non-React callers and tests;
- * the rendered list passes `commit: false` and commits in its layout effect.
+ * The ids that are new AND above the stream's own watermark. The default
+ * commits the observation for small non-React callers and tests; the rendered
+ * list passes `commit: false` and observes in its layout effect.
  */
 export function teamBridgeLiveArrivals(
 	key: string,
@@ -103,19 +86,13 @@ export function teamBridgeLiveArrivals(
 	const arrived = new Set<string>();
 	if (!stream.loading) {
 		for (const message of messages) {
-			const known = aliases(message).some((alias) => stream.seen.has(alias));
 			const newer =
 				message.seq === undefined || message.seq > stream.highestSeq;
-			if (!known && newer) arrived.add(message.id);
+			if (!stream.seen.has(message.id) && newer) arrived.add(message.id);
 		}
 	}
 	if (commit) teamBridgeObserveArrivals(key, messages);
 	return arrived;
-}
-
-/** The seq a locally-built optimistic row should claim for alias matching. */
-export function teamBridgeNextSeq(key: string): number {
-	return streamFor(key).highestSeq + 1;
 }
 
 /** Mark an empty conversation whose read is ready while its view is open. */

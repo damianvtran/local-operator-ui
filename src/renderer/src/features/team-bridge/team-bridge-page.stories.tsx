@@ -442,10 +442,30 @@ const LiveArrivalStory = () => {
 			{/* Capture holds only: the production 240ms keyframes and timing function
 			    are unchanged. The browser round-trip is slower than the motion, so
 			    pausing at 0/100ms is the only way to photograph those actual phases. */}
+			{/*
+			 * Capture-only mirror of the shipped arrival class, for the same reason the
+			 * hovered-row frames mirror `hover:bg-row-hover`: the browser round-trip is
+			 * slower than the motion, AND the list now releases the class on a bounded
+			 * timer as well as `animationend` (review round 1, A1) - so a PAUSED
+			 * animation would lose its class after 600ms and photograph a settled row.
+			 * The keyframes, duration and easing below are the shipped ones
+			 * (`lo-team-bridge-arrival`, `--duration-slow`, `--ease-out-quart`); only
+			 * who attaches the class differs, and no product code reads this.
+			 */}
 			<style>{`
 				[data-motion-frame="start"] .lo-team-bridge-arrival { animation-play-state: paused; }
 				[data-motion-frame="mid"] .lo-team-bridge-arrival { animation-delay: -100ms; animation-play-state: paused; }
 				[data-motion-frame="reduced"] .lo-team-bridge-arrival { animation: none; }
+				[data-motion-frame="start"] [data-message-id="bcmsg_live_arrival"] {
+					animation: lo-team-bridge-arrival var(--duration-slow) var(--ease-out-quart) both;
+					animation-play-state: paused;
+				}
+				[data-motion-frame="mid"] [data-message-id="bcmsg_live_arrival"] {
+					animation: lo-team-bridge-arrival var(--duration-slow) var(--ease-out-quart) both;
+					animation-delay: -100ms;
+					animation-play-state: paused;
+				}
+				[data-motion-frame="reduced"] [data-message-id="bcmsg_live_arrival"] { animation: none; }
 			`}</style>
 			<TeamBridgePageView
 				{...meta.args}
@@ -474,7 +494,7 @@ const LiveArrivalStory = () => {
 					<button
 						type="button"
 						data-live-arrival-trigger
-						className="rounded-md bg-elevated px-3 py-2 text-ink shadow-lg"
+						className="rounded-md bg-elevated px-3 py-2 text-ink"
 						onClick={() => setLive(true)}
 					>
 						Trigger live arrival
@@ -484,7 +504,7 @@ const LiveArrivalStory = () => {
 						<button
 							type="button"
 							data-motion-mid
-							className="rounded-md bg-elevated px-3 py-2 text-ink shadow-lg"
+							className="rounded-md bg-elevated px-3 py-2 text-ink"
 							onClick={() => setFrame("mid")}
 						>
 							Mid frame
@@ -492,7 +512,7 @@ const LiveArrivalStory = () => {
 						<button
 							type="button"
 							data-motion-settle
-							className="rounded-md bg-elevated px-3 py-2 text-ink shadow-lg"
+							className="rounded-md bg-elevated px-3 py-2 text-ink"
 							onClick={() => setFrame("running")}
 						>
 							Settle
@@ -500,7 +520,7 @@ const LiveArrivalStory = () => {
 						<button
 							type="button"
 							data-motion-reduced
-							className="rounded-md bg-elevated px-3 py-2 text-ink shadow-lg"
+							className="rounded-md bg-elevated px-3 py-2 text-ink"
 							onClick={() => setFrame("reduced")}
 						>
 							Reduced motion

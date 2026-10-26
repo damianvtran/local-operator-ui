@@ -7,7 +7,6 @@ import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import {
 	teamBridgeArrivalStreamKey,
-	teamBridgeArrivalTokens,
 	teamBridgeLiveArrivals,
 	teamBridgeObserveArrivals,
 	teamBridgeSuspendArrivals,
@@ -59,22 +58,37 @@ import { threadSummary } from "./team-bridge-threads-model";
  * made "Member" read as somebody's name (operator report, 2026-10-22).
  */
 /**
- * The rows that must animate, held until each animation ENDS rather than
- * re-derived every render.
+ * The rows that must animate, held for the length of the motion.
  *
  * Deriving the class per render meant any unrelated update during the 240ms
  * window (a label resolving, a reaction, a parent re-render) dropped it and the
- * row snapped to its final state mid-motion. The tokens persist until the row
- * reports `animationend`, and they are identical to the journal's identity
- * aliases, so a row whose id is swapped for its server id keeps its one
- * animation instead of starting a second.
+ * row snapped to its final state mid-motion. The ids persist instead, and they
+ * are cleared DETERMINISTICALLY - review round 1, A1: `animationend` alone is
+ * not enough, because it never fires when the row unmounts mid-motion (the
+ * reader switches conversation inside 240ms) and never fires at all under
+ * `prefers-reduced-motion`, so a leftover id went on to light up a row in the
+ * next conversation.
+ *
+ * Three locks, in order of certainty:
+ *   1. the ids are scoped to the stream - a state whose key does not match the
+ *      current one reads as EMPTY, so a conversation switch cannot carry them;
+ *   2. `animationend` clears them the moment the motion finishes;
+ *   3. a timer bounded above the animation token clears them whatever happens.
+ *
+ * The list always OBSERVES the page (the journal must learn which ids exist,
+ * including a page this list is not allowed to animate), but only the enabled
+ * read may tokenise them.
  */
+const ARRIVAL_CLEAR_MS = 600;
+
 function useArrivingRows(
 	key: string,
 	messages: readonly TeamBridgeMessage[],
 	enabled: boolean,
 ): { has: (message: TeamBridgeMessage) => boolean; end: () => void } {
-	const [tokens, setTokens] = useState<ReadonlySet<string>>(() => new Set());
+	const [held, setHeld] = useState<{ key: string; ids: ReadonlySet<string> }>(
+		() => ({ key, ids: new Set() }),
+	);
 	useLayoutEffect(() => {
 		const fresh = enabled
 			? teamBridgeLiveArrivals(key, messages, { commit: false })
@@ -82,32 +96,38 @@ function useArrivingRows(
 		// Observe AFTER reading, and before the browser paints: React may run this
 		// tree twice, so the journal must be written by an effect, not a render.
 		teamBridgeObserveArrivals(key, messages);
-		if (fresh.size > 0) {
-			setTokens((current) => {
-				const next = new Set(current);
-				for (const message of messages)
-					if (fresh.has(message.id))
-						for (const token of teamBridgeArrivalTokens(message))
-							next.add(token);
-				return next;
-			});
-		}
+		if (fresh.size > 0)
+			setHeld((current) => ({
+				key,
+				ids: new Set([...(current.key === key ? current.ids : []), ...fresh]),
+			}));
 	}, [key, enabled, messages]);
 	// Suspend on UNMOUNT only. A dependency-change cleanup would suspend the
 	// stream on every unrelated re-render and turn the next live message into a
 	// "restore" that never animates.
 	useEffect(() => () => teamBridgeSuspendArrivals(key), [key]);
+	const ids = held.key === key ? held.ids : EMPTY_IDS;
+	useEffect(() => {
+		if (ids.size === 0) return;
+		const timer = setTimeout(
+			() => setHeld({ key, ids: new Set() }),
+			ARRIVAL_CLEAR_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [key, ids]);
 	const has = useCallback(
-		(message: TeamBridgeMessage) =>
-			teamBridgeArrivalTokens(message).some((token) => tokens.has(token)),
-		[tokens],
+		(message: TeamBridgeMessage) => ids.has(message.id),
+		[ids],
 	);
 	const end = useCallback(() => {
-		// One animation per stream read; the next render's journal decides again.
-		setTokens((current) => (current.size === 0 ? current : new Set()));
+		setHeld((current) =>
+			current.ids.size === 0 ? current : { key: current.key, ids: new Set() },
+		);
 	}, []);
 	return { has, end };
 }
+
+const EMPTY_IDS: ReadonlySet<string> = new Set();
 
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];

@@ -33,6 +33,7 @@ import type {
 import {
 	teamBridgeArrivalStreamKey,
 	teamBridgeOpenEmptyArrivals,
+	teamBridgeSuspendArrivals,
 } from "./team-bridge-arrival-model";
 import {
 	TeamBridgeAttachButton,
@@ -822,10 +823,25 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		shown?.tenant_id,
 		shown?.id,
 	);
+	/*
+	 * AN EMPTY CONVERSATION IS OPEN WHILE IT IS ON SCREEN, AND ONLY THEN
+	 * (review round 1, A3). This branch renders the empty paragraph instead of
+	 * the list, so no list unmount ever suspends the stream: without the cleanup
+	 * below, a conversation visited once stayed "open" in the journal forever and
+	 * its whole history animated on the next visit - the "someone replied to the
+	 * DM I opened earlier" path. The second effect suspends on a KEY CHANGE or
+	 * unmount rather than on this one, because the first message to arrive in an
+	 * open empty conversation must still animate, and that render is exactly when
+	 * `messages.length` leaves 0.
+	 */
 	useLayoutEffect(() => {
 		if (messageState === "ready" && shown && messages.length === 0)
 			teamBridgeOpenEmptyArrivals(timelineArrivalKey);
 	}, [messageState, shown, messages.length, timelineArrivalKey]);
+	useLayoutEffect(
+		() => () => teamBridgeSuspendArrivals(timelineArrivalKey),
+		[timelineArrivalKey],
+	);
 	const timeline = useStickToBottom({
 		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}:${quickView ?? ""}`,
 		contentKey: `${messages.length}:${messages.at(-1)?.id ?? ""}`,

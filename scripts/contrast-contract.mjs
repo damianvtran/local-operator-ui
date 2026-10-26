@@ -542,8 +542,34 @@ const CONTROLS = [
 		 * extent is a ground step, asserted on all four hosts below.
 		 */
 		name: "team bridge person initial plate",
-		on: ["canvas", "surface", "rowHover", "rowSelected"],
+		/*
+		 * THE FOUR HOSTS THE PLATE IS DRAWN ON, and `elevated` joined them in review
+		 * round 1 (M3): the compose suggestion's plate sits in the To: popover, which
+		 * is `elevated`, not a page ground. The selected rail row is deliberately NOT
+		 * listed: that ground takes `surface` (sibling row below), because this fill
+		 * bottoms out at 1.83 there - the design round's D1.
+		 */
+		on: ["canvas", "surface", "elevated", "rowHover"],
 		fill: "mediaSurface",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		/*
+		 * THE PLATE ON A SELECTED RAIL ROW (design round 1, D1). `mediaSurface` is
+		 * the quiet step everywhere else, but a selected row's ground is
+		 * `rowSelected`, where it bottoms out at ΔE00 1.83 on the brand light palette
+		 * and falls under 3.0 on eight - the plate the design round saw fading into
+		 * the selection. `surface` is the role authored against that ground (ΔE00 >=
+		 * 3.18 on all 59 palettes) and holds `inkMuted` well clear of the floor, so
+		 * the selected row is the one state that steps the other way. No edge: the
+		 * operator asked for borderless plates, and this row is what replaces the
+		 * ring on the one host where a fill alone was not enough.
+		 */
+		name: "team bridge plate on a selected rail row",
+		on: ["rowSelected"],
+		fill: "surface",
 		border: null,
 		ink: "inkMuted",
 		edge: false,
@@ -2358,13 +2384,26 @@ const PERCEPTIBLE = [
 		 * assertion the old `border-control` was standing in for. In particular,
 		 * `rowHover` is a STATE ground, not a rung of the elevation ladder. The
 		 * media role's canvas floor alone would not prove that a hovered message
-		 * still shows its avatar. Measured before this row: 3.70 at worst on
-		 * `rowHover`, 5.96 on `surface`, and 4.00 on `canvas` across 59 palettes.
+		 * still shows its avatar.
+		 *
+		 * THE FLOOR IS THE FILE'S PERCEPTUAL ONE (review round 1, M3: this row shipped
+		 * at 1.5, weaker than every sibling). The measured minima across 59 palettes
+		 * are `canvas` 4.00 (oneDark), `surface` 5.96 (iceberg), `elevated` 7.89
+		 * (rosewood) and `rowHover` 3.70 (iceberg). The row used to quote 3.70 as THE
+		 * worst case; 3.70 is the worst of the hosts a plate actually rests on, and the
+		 * true worst pairing the role reaches is 1.83 against `rowSelected` on the
+		 * brand light palette - which is why a selected rail row takes `surface`
+		 * instead, asserted by the row above.
 		 */
 		name: "team bridge borderless person and agent plates",
 		role: "mediaSurface",
-		on: ["canvas", "surface", "rowHover", "rowSelected"],
-		minDeltaE: 1.5,
+		/* NOT `rowSelected`: that host is where this fill bottoms out (1.83), and the
+		   component does not paint a plate there - the selected rail row takes
+		   `surface`, asserted by the sibling row above. Listing it here would be a
+		   claim about a pairing the app never renders, and it would fail on the eight
+		   palettes where the wash and the selection share a rung. */
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		minDeltaE: 3.0,
 	},
 	{
 		/*
