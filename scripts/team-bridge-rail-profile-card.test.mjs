@@ -46,8 +46,15 @@ for (const key of [
 	});
 }
 globalThis.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
-globalThis.requestAnimationFrame = (fn) => setTimeout(fn, 0);
-globalThis.cancelAnimationFrame = clearTimeout;
+/*
+ * Frames ride the REAL event loop (setImmediate is never mocked below), not the
+ * mocked setTimeout: node's `mock.timers.tick` drains a self-rescheduling
+ * zero-delay chain without bound inside one tick, so any frame-polling loop in
+ * Radix/floating-ui would spin and allocate until the memory guard killed the
+ * run (measured 2026-10-26: 46 GB and 91 GB against main's card code).
+ */
+globalThis.requestAnimationFrame = (fn) => setImmediate(() => fn(Date.now()));
+globalThis.cancelAnimationFrame = clearImmediate;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
 const { act } = await import("react");
@@ -60,6 +67,9 @@ const rowCurrentLiteral = readFileSync(
 ).match(/export const rowCurrent =\s*("[^"]+")/)?.[1];
 if (!rowCurrentLiteral) throw new Error("rowCurrent literal not found");
 
+const CHAT_SIDEBAR_SEAM = /chat\/components\/chat-sidebar$/;
+const AVATAR_SEAM = /^\.\/use-team-bridge-avatar$/;
+const ANY_SEAM = /.*/;
 const bundle = await build({
 	stdin: {
 		contents: [
@@ -85,16 +95,16 @@ const bundle = await build({
 		{
 			name: "seams",
 			setup(b) {
-				b.onResolve({ filter: /chat\/components\/chat-sidebar$/ }, () => ({
+				b.onResolve({ filter: CHAT_SIDEBAR_SEAM }, () => ({
 					path: "chat-sidebar",
 					namespace: "seam",
 				}));
 				// Avatars are not under test; no bytes are fetched.
-				b.onResolve({ filter: /^\.\/use-team-bridge-avatar$/ }, () => ({
+				b.onResolve({ filter: AVATAR_SEAM }, () => ({
 					path: "avatar",
 					namespace: "seam",
 				}));
-				b.onLoad({ filter: /.*/, namespace: "seam" }, (args) => ({
+				b.onLoad({ filter: ANY_SEAM, namespace: "seam" }, (args) => ({
 					contents:
 						args.path === "avatar"
 							? "export const useTeamBridgeAvatar = () => undefined;"
@@ -136,7 +146,9 @@ const chief = {
 
 beforeEach(() => {
 	mock.timers.reset();
-	mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+	// setInterval too: the open card's 60 s clock would otherwise be a real
+	// interval that keeps the process alive after a failing assertion.
+	mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"], now: 0 });
 });
 
 async function mount(element) {
@@ -156,7 +168,19 @@ async function mount(element) {
 	};
 }
 const card = () => document.querySelector("[data-profile-card]");
-const tick = async (ms) => act(async () => mock.timers.tick(ms));
+/*
+ * Assert on a BOOLEAN, never on the element: a failing `assert.equal(node, null)`
+ * makes node's assert `util.inspect` a live jsdom node for its diff, which walks
+ * the whole window graph - that, not the component, is what grew the failing
+ * run to tens of GB before the memory guard killed it (2026-10-26).
+ */
+const isOpen = () => card() !== null;
+const tick = async (ms) =>
+	act(async () => {
+		mock.timers.tick(ms);
+		// Let frames scheduled by what the tick ran (focus into the card) land.
+		await new Promise((resolve) => setImmediate(resolve));
+	});
 // React listens for mouseenter/leave via mouseover/mouseout at the root.
 const enter = async (node, from = document.body) =>
 	act(async () => {
@@ -207,10 +231,10 @@ test("a click on a person row selects it at once and opens no card", async () =>
 		await enter(row);
 		await press(row);
 		assert.equal(selected, 1, "the click opened the conversation");
-		assert.equal(card(), null, "no card on click or focus");
+		assert.equal(isOpen(), false, "no card on click or focus");
 		// The dwell the pointer started before the click is cancelled by it.
 		await tick(5_000);
-		assert.equal(card(), null, "a pending dwell does not outlive the click");
+		assert.equal(isOpen(), false, "a pending dwell does not outlive the click");
 		// The row keeps its own name: it is the conversation, not "Open profile".
 		assert.equal(row.getAttribute("aria-label"), "Message Bea");
 		assert.equal(row.getAttribute("aria-haspopup"), null);
@@ -236,7 +260,7 @@ test("a chief-of-staff row selects on click too", async () => {
 		const row = m.host.querySelector("[data-team-bridge-chief]");
 		await press(row);
 		assert.equal(selected, 1);
-		assert.equal(card(), null);
+		assert.equal(isOpen(), false);
 	} finally {
 		await m.close();
 	}
@@ -248,19 +272,18 @@ test("a short hover opens nothing; a long dwell opens the card", async () => {
 		const row = rowOf(m.host);
 		await enter(row);
 		await tick(1_100);
-		assert.equal(card(), null, "1.1 s is a pass across the rail");
+		assert.equal(isOpen(), false, "1.1 s is a pass across the rail");
 		await leave(row);
 		await tick(2_000);
-		assert.equal(card(), null, "leaving cancels the dwell");
+		assert.equal(isOpen(), false, "leaving cancels the dwell");
 
 		await enter(row);
 		await tick(1_199);
-		assert.equal(card(), null);
+		assert.equal(isOpen(), false);
 		await tick(1);
-		assert.ok(card(), "a 1.2 s dwell opens the card");
-		assert.equal(
-			document.activeElement,
-			document.body,
+		assert.ok(isOpen(), "a 1.2 s dwell opens the card");
+		assert.ok(
+			document.activeElement === document.body,
 			"hover never steals focus",
 		);
 	} finally {
@@ -276,9 +299,9 @@ test("hovering the avatar opens the card at the normal delay", async () => {
 		assert.ok(avatar, "the row's avatar carries the fast-path marker");
 		await enter(avatar);
 		await tick(399);
-		assert.equal(card(), null);
+		assert.equal(isOpen(), false);
 		await tick(1);
-		assert.ok(card(), "400 ms on the avatar opens the card");
+		assert.ok(isOpen(), "400 ms on the avatar opens the card");
 	} finally {
 		await m.close();
 	}
@@ -300,9 +323,9 @@ test("leaving the avatar for the row resumes the long dwell, not a fresh one", a
 			);
 		});
 		await tick(899);
-		assert.equal(card(), null);
+		assert.equal(isOpen(), false);
 		await tick(1);
-		assert.ok(card(), "1.2 s from entering the row, not 1.2 s from the name");
+		assert.ok(isOpen(), "1.2 s from entering the row, not 1.2 s from the name");
 	} finally {
 		await m.close();
 	}
@@ -315,18 +338,18 @@ test("moving into the open card keeps it; a row click then selects and closes it
 		const row = rowOf(m.host);
 		await enter(row);
 		await tick(1_200);
-		assert.ok(card());
+		assert.ok(isOpen());
 		// Row -> the 6 px gap (body) -> card, the path a real pointer takes.
 		await leave(row);
 		await tick(100);
 		await enter(card());
 		await tick(1_000);
-		assert.ok(card(), "the pointer in the card holds it open");
+		assert.ok(isOpen(), "the pointer in the card holds it open");
 		await enter(row, card());
 		await press(row);
 		await tick(0);
 		assert.equal(selected, 1);
-		assert.equal(card(), null, "the click closed the card");
+		assert.equal(isOpen(), false, "the click closed the card");
 	} finally {
 		await m.close();
 	}
@@ -338,7 +361,7 @@ test("focus does not open the card; Shift+F10 opens it and moves focus in", asyn
 		const row = rowOf(m.host);
 		await act(async () => row.focus());
 		await tick(2_000);
-		assert.equal(card(), null, "Tab onto a row is not a request for a card");
+		assert.equal(isOpen(), false, "Tab onto a row is not a request for a card");
 		assert.equal(row.getAttribute("aria-keyshortcuts"), "Shift+F10");
 		await act(async () => {
 			row.dispatchEvent(
@@ -351,7 +374,7 @@ test("focus does not open the card; Shift+F10 opens it and moves focus in", asyn
 			);
 		});
 		await tick(16);
-		assert.ok(card(), "the keyboard reaches the card");
+		assert.ok(isOpen(), "the keyboard reaches the card");
 		assert.ok(
 			card().contains(document.activeElement),
 			"focus lands in the card so its actions are one key away",
@@ -366,8 +389,8 @@ test("focus does not open the card; Shift+F10 opens it and moves focus in", asyn
 			);
 		});
 		await tick(16);
-		assert.equal(card(), null);
-		assert.equal(document.activeElement, row, "Escape returns to the row");
+		assert.equal(isOpen(), false);
+		assert.ok(document.activeElement === row, "Escape returns to the row");
 		await act(async () => {
 			row.dispatchEvent(
 				new KeyboardEvent("keydown", {
@@ -378,7 +401,7 @@ test("focus does not open the card; Shift+F10 opens it and moves focus in", asyn
 			);
 		});
 		await tick(16);
-		assert.ok(card(), "the context-menu key is the same route");
+		assert.ok(isOpen(), "the context-menu key is the same route");
 	} finally {
 		await m.close();
 	}
@@ -395,11 +418,11 @@ test("an inert row selects nothing but still reaches its card on a long dwell", 
 		try {
 			const row = rowOf(m.host) ?? m.host.querySelector("button");
 			await press(row);
-			assert.equal(card(), null);
+			assert.equal(isOpen(), false);
 			await leave(row);
 			await enter(row);
 			await tick(1_200);
-			assert.ok(card(), `card reachable: ${JSON.stringify(patch)}`);
+			assert.ok(isOpen(), `card reachable: ${JSON.stringify(patch)}`);
 		} finally {
 			await m.close();
 		}
@@ -423,16 +446,16 @@ test("message-list triggers keep the default card: 400 ms hover, focus and click
 		assert.equal(button.getAttribute("aria-haspopup"), "dialog");
 		await enter(button);
 		await tick(399);
-		assert.equal(card(), null);
+		assert.equal(isOpen(), false);
 		await tick(1);
-		assert.ok(card(), "400 ms hover");
+		assert.ok(isOpen(), "400 ms hover");
 	} finally {
 		await m.close();
 	}
 	m = await mount(sender());
 	try {
 		await act(async () => m.host.querySelector("[data-sender]").focus());
-		assert.ok(card(), "focus opens it at once");
+		assert.ok(isOpen(), "focus opens it at once");
 	} finally {
 		await m.close();
 	}
@@ -442,7 +465,7 @@ test("message-list triggers keep the default card: 400 ms hover, focus and click
 		await act(async () =>
 			button.dispatchEvent(new MouseEvent("click", { bubbles: true })),
 		);
-		assert.ok(card(), "click toggles it open (Radix trigger)");
+		assert.ok(isOpen(), "click toggles it open (Radix trigger)");
 	} finally {
 		await m.close();
 	}
