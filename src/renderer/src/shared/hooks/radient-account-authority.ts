@@ -9,7 +9,13 @@ export const radientUserKeys = {
 	all: ["radient-user"] as const,
 	user: () => ["radient-user", "user"] as const,
 };
-type Authority = { epoch: number; pending: boolean; accountId?: string };
+type Authority = {
+	epoch: number;
+	pending: boolean;
+	accountId?: string;
+	/** A deliberate sign-out is a KNOWN absence, not an unresolved read. */
+	signedOut?: boolean;
+};
 const authorities = new WeakMap<QueryClient, Authority>();
 const subscribers = new WeakMap<QueryClient, Set<() => void>>();
 
@@ -19,6 +25,10 @@ export function radientAuthorityPending(client: QueryClient): boolean {
 	const authority = authorities.get(client);
 	if (!authority)
 		return client.getQueryState(radientUserKeys.user())?.status !== "success";
+	// A deliberate sign-out is settled absence: the account is gone on purpose,
+	// so a cached result from the departing account must not read as "resolving"
+	// and must not hold that account's banners on screen.
+	if (authority.signedOut) return false;
 	const committedAccount = client.getQueryData<UserInfoResult | null>(
 		radientUserKeys.user(),
 	)?.account?.id;
@@ -44,6 +54,23 @@ export function beginRadientAuthorityTransition(client: QueryClient): void {
 	announce(client);
 }
 
+/** A DELIBERATE sign-out, announced as already settled.
+ *
+ * A credential refresh must hold banners and clicks (the person is usually the
+ * same account), which is why `beginRadientAuthorityTransition` publishes
+ * pending. A press of Sign out is the opposite: identity is KNOWN gone, so
+ * holding the departing account's previews until a follow-up read answers - and
+ * longer still if that read fails - is retention nobody asked for. Main sees a
+ * settled absence and withdraws immediately. */
+export function beginRadientAuthoritySignOut(client: QueryClient): void {
+	authorities.set(client, {
+		epoch: radientAuthorityEpoch(client) + 1,
+		pending: false,
+		signedOut: true,
+	});
+	announce(client);
+}
+
 /** Only the real account query may finish a commissioned credential transition.
  * A cancelled old query cannot restore its former owner after a newer write. */
 export function settleRadientAuthority(
@@ -52,7 +79,15 @@ export function settleRadientAuthority(
 	accountId?: string,
 ): void {
 	if (epoch !== radientAuthorityEpoch(client)) return;
-	authorities.set(client, { epoch, pending: false, accountId });
+	authorities.set(client, {
+		epoch,
+		pending: false,
+		accountId,
+		// Settling to "no account" after a sign-out stays a known absence; a
+		// restored account ends it.
+		signedOut:
+			accountId === undefined ? authorities.get(client)?.signedOut : false,
+	});
 	announce(client);
 }
 
@@ -69,7 +104,9 @@ export function observedRadientAuthority(client: QueryClient): {
 		// Settlement precedes QueryClient's result commit. Never use A's retained
 		// query value during that gap, nor invent an account from a Team Bridge read.
 		accountId:
-			authority?.pending || (authority && authority.accountId !== accountId)
+			authority?.signedOut ||
+			authority?.pending ||
+			(authority && authority.accountId !== accountId)
 				? undefined
 				: accountId,
 	};

@@ -115,7 +115,7 @@ const bundled = await build({
 			export { useTeamBridgeNotifications } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
 			export { toasts } from "@shared/utils/toast-manager";
 			export { useTeamBridgeNotificationOpen } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
-			export { beginRadientAuthorityTransition, settleRadientAuthority } from "./src/renderer/src/shared/hooks/radient-account-authority";
+			export { beginRadientAuthoritySignOut, beginRadientAuthorityTransition, settleRadientAuthority } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { teamBridgeKeys, notifyMutationOptions } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { fixture, TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 		`,
@@ -1352,6 +1352,24 @@ test("D2 authority settlement before query commit remains held, not signed out",
 			});
 			assert.equal(mounted.authorities.at(-1).settling, false);
 		});
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+/*
+ * Code review round 2 m2. A DELIBERATE sign-out must withdraw on the press, not
+ * wait for a follow-up account read that may fail: the press is a known absence,
+ * not an unresolved refresh. This is the publish the notifier sees.
+ */
+test("m2 a deliberate sign-out publishes settled absence, not a refresh hold", async () => {
+	resetFixture();
+	const mounted = await mount();
+	try {
+		await act(async () => api.beginRadientAuthoritySignOut(mounted.client));
+		const published = mounted.authorities.at(-1);
+		assert.equal(published.settling, false, "no hold to wait out");
+		assert.equal(published.accountId, undefined);
 	} finally {
 		await mounted.teardown();
 	}

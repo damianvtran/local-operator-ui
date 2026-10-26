@@ -4760,7 +4760,12 @@
 				"date": "2026-10-21",
 				"session": "87a8efad496d",
 				"job": "cc64f5dc3c0c"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
 					"agent": "independent-translation-reviewer",
@@ -4777,7 +4782,7 @@
 					"receipt": "i18n/receipts/72781433def7.json",
 					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
 					"scope": "one-key additive audit; inherited unchanged namespace provenance",
-					"note": "Added key translated by job8d4e6d78c133; independent text audit72781433def7. Existing200entries byte-identical and inherited. No rendered RTL validation."
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -10529,7 +10534,12 @@
 				"session": "7f91449c7aa6",
 				"job": "a7380f37ab56",
 				"remediation_job": "b4390a98f09f"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
 					"agent": "independent-translation-reviewer",
@@ -10546,7 +10556,7 @@
 					"receipt": "i18n/receipts/72781433def7.json",
 					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
 					"scope": "one-key additive audit; inherited unchanged namespace provenance",
-					"note": "Added key translated by job8d4e6d78c133; independent text audit72781433def7. Existing200entries byte-identical and inherited. No rendered RTL validation."
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -16229,7 +16239,12 @@
 				"date": "2026-10-21",
 				"session": "632a8fd68227",
 				"job": "4ca9e8a81d54"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
 					"agent": "independent-translation-reviewer",
@@ -16246,7 +16261,7 @@
 					"receipt": "i18n/receipts/72781433def7.json",
 					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
 					"scope": "one-key additive audit; inherited unchanged namespace provenance",
-					"note": "Added key translated by job8d4e6d78c133; independent text audit72781433def7. Existing200entries byte-identical and inherited. No rendered RTL validation."
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -21627,7 +21642,12 @@
 				"session": "485b723247d7",
 				"job": "764e8ee192fe",
 				"remediation_job": "78daa414c10d"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
 					"agent": "independent-translation-reviewer",
@@ -21644,7 +21664,7 @@
 					"receipt": "i18n/receipts/72781433def7.json",
 					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
 					"scope": "one-key additive audit; inherited unchanged namespace provenance",
-					"note": "Added key translated by job8d4e6d78c133; independent text audit72781433def7. Existing200entries byte-identical and inherited. No rendered RTL validation."
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -27138,7 +27158,12 @@
 				"date": "2026-10-21",
 				"session": "8e5edb2e9750",
 				"job": "39c1864c0110"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
 					"agent": "independent-translation-reviewer",
@@ -27155,7 +27180,7 @@
 					"receipt": "i18n/receipts/72781433def7.json",
 					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
 					"scope": "one-key additive audit; inherited unchanged namespace provenance",
-					"note": "Added key translated by job8d4e6d78c133; independent text audit72781433def7. Existing200entries byte-identical and inherited. No rendered RTL validation."
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -32814,7 +32839,12 @@
 				"date": "2026-10-21",
 				"session": "8c0c0af95212",
 				"job": "e5d5efa8017f"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
 					"agent": "independent-translation-reviewer",
@@ -32831,7 +32861,7 @@
 					"receipt": "i18n/receipts/72781433def7.json",
 					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
 					"scope": "one-key additive audit; inherited unchanged namespace provenance",
-					"note": "Added key translated by job8d4e6d78c133; independent text audit72781433def7. Existing200entries byte-identical and inherited. No rendered RTL validation."
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -39116,7 +39146,12 @@
 				"date": "2026-10-21",
 				"session": "d04f0e3ee24c",
 				"job": "bba1cb60d6a5"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
 					"agent": "independent-translation-reviewer",
@@ -39133,7 +39168,7 @@
 					"receipt": "i18n/receipts/72781433def7.json",
 					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
 					"scope": "one-key additive audit; inherited unchanged namespace provenance",
-					"note": "Added key translated by job8d4e6d78c133; independent text audit72781433def7. Existing200entries byte-identical and inherited. No rendered RTL validation."
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",

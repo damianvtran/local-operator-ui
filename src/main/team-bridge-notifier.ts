@@ -115,6 +115,10 @@ export type TeamBridgeNotifierOptions = {
 	platform?: NodeJS.Platform;
 	/** Test seam for the coalescing clock. */
 	now?: () => number;
+	/** Test seams for the bounded credential-refresh wait. Production uses the
+	 * platform timer; a test clock keeps that window deterministic. */
+	setSettleTimer?: (callback: () => void, delay: number) => unknown;
+	clearSettleTimer?: (timer: unknown) => void;
 };
 
 export type TeamBridgeNotifyResult = { shown: boolean };
@@ -128,6 +132,21 @@ export type TeamBridgeNotifyResult = { shown: boolean };
  * for a slow history read, and short enough that a reply minutes later sounds.
  */
 export const TEAM_BRIDGE_COALESCE_MS = 10_000;
+
+/**
+ * How long a credential refresh may stay unresolved before its banners are
+ * withdrawn.
+ *
+ * WHILE SETTLING THE BANNERS ARE KEPT, because the person is usually still the
+ * same account. But a refresh that never settles - an account read that fails, a
+ * callout the user abandons - never says so, and their message previews would
+ * then sit in Notification Center indefinitely on a machine that may be handed
+ * to someone else. Ten minutes covers an interactive re-authentication (typing a
+ * password, an SSO round trip) without outliving the session. The deadline
+ * withdraws the banners and leaves their clicks answering with the neutral
+ * stale sentence instead of routing.
+ */
+export const TEAM_BRIDGE_SETTLE_TIMEOUT_MS = 10 * 60_000;
 
 /**
  * The OS identifier for an account's conversation banner.
@@ -219,6 +238,10 @@ export class TeamBridgeNotifier {
 	// Unknown revokes delivery, not the epoch's established identity. Otherwise
 	// A -> unknown -> B could silently replace A without a credential write.
 	private epochOwner: string | undefined;
+	/** Armed only while a credential refresh is unresolved; see the timeout doc. */
+	private settleTimer: unknown;
+	/** Banners withdrawn on purpose: their clicks answer as stale, not as a route. */
+	private readonly revokedBanners = new WeakSet<TeamBridgeBanner>();
 	private readonly createBanner: (
 		options: TeamBridgeBannerOptions,
 	) => TeamBridgeBanner;
@@ -240,15 +263,36 @@ export class TeamBridgeNotifier {
 		const next = parseTeamBridgeNotifyAuthority(input);
 		if (!next) throw new Error("Invalid Team Bridge notification authority.");
 		const current = this.authority;
+		if (current && next.epoch < current.epoch) return;
+		/*
+		 * A SETTLED OWNER THAT CHANGED WITHOUT AN EPOCH BUMP IS A SWITCH THAT
+		 * BYPASSED THIS JOURNAL - a credential replaced outside the app (a CLI
+		 * sign-in), followed by the window-focus re-read. The old fence simply
+		 * returned, which left the previous pass's `settling` in place: the
+		 * departing account's previews stayed delivered, their clicks were held
+		 * forever, and the new account was admitted nothing.
+		 *
+		 * So treat it as what it is - a completed sign-out for delivery - without
+		 * admitting the new owner through an epoch that never advanced: withdraw,
+		 * remember who is settled, answer any parked click, and stay closed until a
+		 * real credential write establishes the next owner.
+		 */
 		if (
 			current &&
-			(next.epoch < current.epoch ||
-				(next.epoch === current.epoch &&
-					this.epochOwner &&
-					next.accountId &&
-					next.accountId !== this.epochOwner))
-		)
+			next.epoch === current.epoch &&
+			this.epochOwner &&
+			next.accountId &&
+			next.accountId !== this.epochOwner
+		) {
+			if (!next.settling) {
+				this.clearSettleDeadline();
+				this.settledOwner = next.accountId;
+				this.authority = { epoch: next.epoch, settling: false };
+				this.revoke();
+				if (this.pendingOpen) this.options.host.signalOpen();
+			}
 			return;
+		}
 		if (
 			current?.epoch === next.epoch &&
 			current.accountId === next.accountId &&
@@ -257,8 +301,14 @@ export class TeamBridgeNotifier {
 			return;
 		// A refresh temporarily has no account. Hold existing banners/clicks,
 		// but do not admit new delivery until the account actually settles.
+		// NOTE the tradeoff: a hold whose account read never answers is bounded by
+		// `TEAM_BRIDGE_SETTLE_TIMEOUT_MS` rather than by this branch, and a DELIBERATE
+		// sign-out does not come through here at all - the renderer publishes it as
+		// already-settled, so its banners are withdrawn on the press itself.
 		if (!next.settling && this.settledOwner !== next.accountId) this.revoke();
 		if (!next.settling) this.settledOwner = next.accountId;
+		if (next.settling) this.armSettleDeadline();
+		else this.clearSettleDeadline();
 		if (!current || next.epoch > current.epoch) this.epochOwner = undefined;
 		this.epochOwner ??= next.accountId;
 		this.authority = next;
@@ -269,6 +319,7 @@ export class TeamBridgeNotifier {
 	/** Document epochs restart on reload. Only main's document lifecycle can
 	 * reset that counter; an IPC payload cannot lower it. */
 	resetAuthority(): void {
+		this.clearSettleDeadline();
 		// A new document has a new epoch journal, not a new signed-in person.
 		// Keep the last settled owner and banners; suspend admission until its
 		// replacement reports the actual account. No-window clicks remain live.
@@ -277,10 +328,58 @@ export class TeamBridgeNotifier {
 		this.awaitingDocument = true;
 	}
 
+	/**
+	 * Withdraw banners when a settling period never resolves.
+	 *
+	 * The timer is deliberately owned here rather than in the renderer: main is
+	 * where the delivered banner and its preview live, so main is where they must
+	 * be given up even if the renderer is gone.
+	 */
+	private armSettleDeadline(): void {
+		this.clearSettleDeadline();
+		const setTimer =
+			this.options.setSettleTimer ??
+			((callback: () => void, delay: number) => {
+				const timer = setTimeout(callback, delay);
+				// A queued deadline must not hold this process open by itself.
+				timer.unref?.();
+				return timer;
+			});
+		this.settleTimer = setTimer(() => {
+			// Nothing settled, so this is a sign-out for privacy purposes: waiting
+			// longer cannot make a preview that is already delivered safer. The
+			// authority is marked SETTLED with no account so a click on a withdrawn
+			// banner answers immediately instead of being held forever, and a late
+			// successful refresh can still establish an owner again.
+			this.settleTimer = undefined;
+			this.settledOwner = undefined;
+			this.authority = this.authority
+				? { epoch: this.authority.epoch, settling: false }
+				: null;
+			this.revoke();
+		}, TEAM_BRIDGE_SETTLE_TIMEOUT_MS);
+	}
+
+	private clearSettleDeadline(): void {
+		if (this.settleTimer === undefined) return;
+		const clearTimer =
+			this.options.clearSettleTimer ??
+			((timer: unknown) =>
+				clearTimeout(timer as ReturnType<typeof setTimeout>));
+		clearTimer(this.settleTimer);
+		this.settleTimer = undefined;
+	}
+
 	private revoke(): void {
 		// Preserve only neutral stale feedback after a settled account change.
 		if (this.pendingOpen) this.pendingUnavailable = true;
-		for (const notification of this.banners.values()) notification.close?.();
+		for (const notification of this.banners.values()) {
+			// Membership is what makes a later click answer as stale instead of
+			// routing: a banner replaced by a newer one, or dismissed by the OS,
+			// was never withdrawn by this module and keeps its route.
+			this.revokedBanners.add(notification);
+			notification.close?.();
+		}
 		this.banners.clear();
 		this.raisedAt.clear();
 		// Some adapters do not emit close. Drop this owner's retention registry
@@ -418,9 +517,10 @@ export class TeamBridgeNotifier {
 		this.lifetime.retain(notification, () => {
 			const live = this.banners.get(conversationId) === notification;
 			if (live) this.banners.delete(conversationId);
-			// A click racing native withdrawal still deserves visible feedback,
-			// but A -> B -> A must not revive a banner that was already revoked.
-			this.open(target, !live);
+			// A banner REPLACED by a newer one, or dismissed by the OS, belongs to the
+			// account that is still signed in: that click routes to the conversation.
+			// Only a banner this process withdrew answers with the stale sentence.
+			this.open(target, this.revokedBanners.has(notification));
 		});
 		notification.once("close", () => {
 			if (this.banners.get(conversationId) === notification) {

@@ -558,6 +558,7 @@ function harness({
 	window = fakeWindow(),
 	show = "focus",
 	supported = true,
+	timers,
 } = {}) {
 	const banners = [];
 	const signals = [];
@@ -579,6 +580,12 @@ function harness({
 			return banner;
 		},
 		present: (targetWindow) => presented.push(targetWindow),
+		...(timers
+			? {
+					setSettleTimer: timers.setSettleTimer,
+					clearSettleTimer: timers.clearSettleTimer,
+				}
+			: {}),
 	});
 	notifier.setAuthority?.({ accountId: "acct_a", epoch: 1 });
 	return { notifier, banners, signals, reopens, presented, store, window };
@@ -1303,3 +1310,198 @@ for (const nextAccount of ["acct_a", "acct_b"]) {
 		}
 	});
 }
+
+/**
+ * A credential refresh that never settles (a failed account read, an abandoned
+ * callout) must not leave message previews in Notification Center forever.
+ */
+const fakeSettleClock = () => {
+	const queue = new Map();
+	let next = 0;
+	return {
+		pending: () => queue.size,
+		scheduledDelays: () => [...queue.values()].map((entry) => entry.delay),
+		setSettleTimer: (callback, delay) => {
+			next += 1;
+			queue.set(next, { callback, delay });
+			return next;
+		},
+		clearSettleTimer: (timer) => {
+			queue.delete(timer);
+		},
+		fire: () => {
+			const due = [...queue.values()];
+			queue.clear();
+			for (const entry of due) entry.callback();
+			return due.length;
+		},
+	};
+};
+
+test("M1 an unresolved credential refresh withdraws banners at the deadline", () => {
+	const { dir, file } = tempFile();
+	try {
+		const clock = fakeSettleClock();
+		const h = harness({ file, timers: clock });
+		assert.deepEqual(h.notifier.notify(request()), { shown: true });
+		h.notifier.setAuthority({ epoch: 2, settling: true });
+		assert.equal(h.banners[0].closed, false, "settling keeps the banner");
+		assert.deepEqual(clock.scheduledDelays(), [
+			notifierModule.TEAM_BRIDGE_SETTLE_TIMEOUT_MS,
+		]);
+		assert.equal(clock.fire(), 1);
+		assert.equal(
+			h.banners[0].closed,
+			true,
+			"an unresolved refresh gives the preview up",
+		);
+		assert.equal(clock.pending(), 0);
+		h.banners[0].emit("click");
+		assert.deepEqual(
+			h.notifier.takePendingOpen(),
+			{ unavailable: true },
+			"a clicked withdrawn banner still answers, without routing",
+		);
+		assert.deepEqual(
+			h.notifier.notify(request({ owner: { accountId: "acct_a", epoch: 2 } })),
+			{ shown: false },
+			"an unresolved identity still admits nothing new",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+for (const nextAccount of ["acct_a", "acct_b"]) {
+	test(`M1 a refresh settling to ${nextAccount} clears the deadline`, () => {
+		const { dir, file } = tempFile();
+		try {
+			const clock = fakeSettleClock();
+			const h = harness({ file, timers: clock });
+			h.notifier.notify(request());
+			h.notifier.setAuthority({ epoch: 2, settling: true });
+			assert.equal(clock.pending(), 1);
+			h.notifier.setAuthority({
+				accountId: nextAccount,
+				epoch: 2,
+				settling: false,
+			});
+			assert.equal(clock.pending(), 0, "a settled refresh has no deadline");
+			assert.equal(
+				h.banners[0].closed,
+				nextAccount !== "acct_a",
+				"same account keeps the banner; a different one withdraws it",
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+}
+
+test("M1 document replacement cancels a pending deadline instead of expiring it", () => {
+	const { dir, file } = tempFile();
+	try {
+		const clock = fakeSettleClock();
+		const h = harness({ file, timers: clock });
+		h.notifier.notify(request());
+		h.notifier.setAuthority({ epoch: 2, settling: true });
+		h.notifier.resetAuthority();
+		assert.equal(clock.pending(), 0);
+		assert.equal(
+			h.banners[0].closed,
+			false,
+			"a new document is not a sign-out",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/*
+ * Code review round 2. M1 is the switch that BYPASSES this journal: a credential
+ * replaced outside the app (a CLI sign-in) never advances the epoch, so the
+ * focus re-read publishes "settling" and then a settled owner the same-epoch
+ * fence used to reject outright - leaving the hold stuck with the departing
+ * account's previews still delivered.
+ */
+test("M1 an out-of-band account switch at the same epoch withdraws and answers", () => {
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		assert.deepEqual(h.notifier.notify(request()), { shown: true });
+		// The commit-gap publish the renderer makes once the journal says B but
+		// QueryClient still holds A.
+		h.notifier.setAuthority({ epoch: 1, settling: true });
+		assert.equal(h.banners[0].closed, false, "a refresh holds the banner");
+		// The settled publish. Same epoch; the fence must not admit B...
+		h.notifier.setAuthority({
+			accountId: "acct_b",
+			epoch: 1,
+			settling: false,
+		});
+		// ...but it must not leave the hold stuck either.
+		assert.equal(h.banners[0].closed, true, "the departing previews are gone");
+		h.banners[0].emit("click");
+		assert.deepEqual(h.notifier.takePendingOpen(), { unavailable: true });
+		assert.deepEqual(
+			h.notifier.notify(request({ owner: { accountId: "acct_b", epoch: 1 } })),
+			{ shown: false },
+			"B is not admitted through an epoch that never advanced",
+		);
+		assert.deepEqual(
+			h.notifier.notify(request({ owner: { accountId: "acct_a", epoch: 1 } })),
+			{ shown: false },
+			"A is not re-admitted either",
+		);
+		// A real credential write establishes the next owner again.
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 2 });
+		assert.deepEqual(
+			h.notifier.notify(request({ owner: { accountId: "acct_b", epoch: 2 } })),
+			{ shown: true },
+			"the fix must not permanently disable delivery for the new owner",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/*
+ * Code review round 2 m1. A banner replaced by a newer one, or dismissed by the
+ * OS, belongs to the account still signed in; only a banner this process
+ * withdrew may answer with the stale sentence.
+ */
+for (const how of ["replaced by a newer message", "dismissed by the OS"]) {
+	test(`m1 a banner ${how} still routes under the same account`, () => {
+		const { dir, file } = tempFile();
+		try {
+			const h = harness({ file });
+			h.notifier.notify(request());
+			const clicked = h.banners[0];
+			if (how === "replaced by a newer message") {
+				h.notifier.notify(request({ seq: 5 }));
+			} else {
+				clicked.emit("close");
+			}
+			clicked.emit("click");
+			const target = h.notifier.takePendingOpen();
+			assert.ok(target && !("unavailable" in target), "no stale toast");
+			assert.equal(target.conversationId, "bcv_abc123");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+}
+
+test("m1 a banner withdrawn by a sign-out still answers as stale", () => {
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		h.notifier.notify(request());
+		const withdrawn = h.banners[0];
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 2 });
+		withdrawn.emit("click");
+		assert.deepEqual(h.notifier.takePendingOpen(), { unavailable: true });
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});

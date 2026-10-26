@@ -218,10 +218,10 @@ export type TeamBridgeNotifyRequest = {
 	viewing?: boolean;
 };
 
-/** What a click names: the organization and the conversation to open. */
 /** Stale-click feedback carries no departing account or conversation IDs. */
 export type TeamBridgeOpenResult = TeamBridgeOpenTarget | { unavailable: true };
 
+/** What a click names: the organization and the conversation to open. */
 export type TeamBridgeOpenTarget = {
 	owner: TeamBridgeNotifyOwner;
 	conversationId: string;
