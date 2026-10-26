@@ -166,10 +166,23 @@ const seed = (configDir) =>
 			`target = put("daily", "Chargeback spike on 3 merchants", "Disputes up 4.1x.", "high")`,
 			`unrelated = put("nightly", "Nightly build finished", "Two flaky tests.")`,
 			`raced = put("watch", "Watching merchant m_4821", "Baseline recomputed.")`,
+			/*
+			 * FILLER ROWS, AND WHY THE LIST HAS TO BE LONG ENOUGH TO SCROLL. The
+			 * off-screen negative control is only meaningful if a row CAN be put out
+			 * of the reel's port; with three items the list is shorter than its
+			 * viewport, nothing scrolls, and the control's own precondition is
+			 * unsatisfiable - CI 40303878299 failed exactly there, with the "off
+			 * screen" row still at y=316 of a 900px window. These are written AFTER
+			 * the three named rows, so the named rows are the OLDEST and scrolling to
+			 * the bottom of the list really does carry them out of the port.
+			 */
+			`for index in range(${FILLER_ROWS}):`,
+			`    put(f"filler-{index}", f"Background note {index + 1}", "Routine tick, nothing to act on.")`,
 			"print(json.dumps({",
 			`    "target": {"id": target.item_id, "revision": target.revision},`,
 			`    "unrelated": {"id": unrelated.item_id, "revision": unrelated.revision},`,
 			`    "raced": {"id": raced.item_id, "revision": raced.revision},`,
+			`    "fillers": ${FILLER_ROWS},`,
 			"}))",
 		].join("\n"),
 	);
@@ -301,48 +314,94 @@ async function hoverReadControl(cdp, id) {
 }
 
 /**
- * The same measurement for a row deliberately left off screen: this asserts the
- * aim MISSES (the point resolves to nothing the row owns) rather than skipping
- * the control it is aiming at, so the negative arm cannot pass by doing nothing.
+ * The same measurement for a row deliberately left off screen.
+ *
+ * AGAINST THE SCROLL PORT, NOT THE VIEWPORT (this is the fix for CI
+ * 40303878299). The reel is an inner scroller, so "on screen" has to mean "inside
+ * the port the list actually scrolls in": the previous version scrolled to the
+ * bottom and then compared the row's rect to the WINDOW, and when the list was
+ * shorter than its port nothing scrolled - the row stayed at y=316, well inside a
+ * 900px window, and the control failed on its own precondition rather than
+ * measuring anything. Now the row must be in the document, must be OUTSIDE the
+ * port's rect, and the aim point must resolve to something the row does not own
+ * (`elementFromPoint`), so the negative cannot pass by aiming at empty space or
+ * at the row itself.
  */
 async function aimOffScreen(cdp, id) {
-	await cdp.evaluate(
+	const scroll = await cdp.evaluate(
 		`(() => {
 			/* The nearest ancestor that actually scrolls: the reel is an inner
 			   scroller, so setting the document's scrollTop moves nothing. */
 			let node = document.querySelector('[data-notification-row="${id}"]');
+			const row = node;
 			while (node && node !== document.body) {
 				const overflow = getComputedStyle(node).overflowY;
 				if ((overflow === "auto" || overflow === "scroll") && node.scrollHeight > node.clientHeight) {
-					node.scrollTop = node.scrollHeight;
-					return { scrolled: node.scrollTop > 0 };
+					const offset = row.getBoundingClientRect().top - node.getBoundingClientRect().top;
+					node.scrollTop = Math.max(0, node.scrollTop + offset - 8);
+					return { scrolled: true, port: true };
 				}
 				node = node.parentElement;
 			}
 			document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight;
-			return { scrolled: document.scrollingElement.scrollTop > 0 };
+			return { scrolled: document.scrollingElement.scrollTop > 0, port: false };
 		})()`,
 	);
 	await pause(400);
 	const aim = await cdp.evaluate(
 		`(() => {
 			const row = document.querySelector('[data-notification-row="${id}"]');
-			if (!row) return { found: false };
-			const rect = row.getBoundingClientRect();
-			const inside = rect.bottom > 0 && rect.top < innerHeight && rect.width > 0;
-			// Aim where the row would be if it were scrolled to: the point is inside
-			// the window, so the input is really delivered, and it lands on whatever
-			// is actually there.
-			const x = Math.round(Math.min(innerWidth - 1, Math.max(1, rect.x + rect.width / 2)));
-			const y = Math.round(Math.min(innerHeight - 40, Math.max(40, rect.y + rect.height / 2)));
-			return { found: true, inside, x, y, rowTop: Math.round(rect.top), rowBottom: Math.round(rect.bottom) };
+			if (!row) return { found: false, scrolled: ${scroll.scrolled} };
+			/* The port is the row's own scroll container, measured from the same walk. */
+			let port = null;
+			let node = row.parentElement;
+			while (node && node !== document.body) {
+				const overflow = getComputedStyle(node).overflowY;
+				if (overflow === "auto" || overflow === "scroll") { port = node; break; }
+				node = node.parentElement;
+			}
+			const rowRect = row.getBoundingClientRect();
+			const portRect = port
+				? port.getBoundingClientRect()
+				: { top: 0, bottom: innerHeight, left: 0, right: innerWidth };
+			/* Visible IN THE PORT: the row's paint intersects the scroller's own rect,
+			   not merely the window's. */
+			const inPort =
+				rowRect.bottom > portRect.top &&
+				rowRect.top < portRect.bottom &&
+				rowRect.right > portRect.left &&
+				rowRect.left < portRect.right;
+			/* Aim at a real coordinate inside the window so the input is delivered,
+			   clamped away from the extreme edges. */
+			const x = Math.round(Math.min(innerWidth - 1, Math.max(1, rowRect.x + rowRect.width / 2)));
+			const y = Math.round(Math.min(innerHeight - 2, Math.max(1, rowRect.y + rowRect.height / 2)));
+			const top = document.elementFromPoint(x, y);
+			return {
+				found: true,
+				scrolled: ${scroll.scrolled},
+				inPort,
+				aimsAtRow: Boolean(top && (top === row || row.contains(top))),
+				x,
+				y,
+				row: { top: Math.round(rowRect.top), bottom: Math.round(rowRect.bottom) },
+				port: { top: Math.round(portRect.top), bottom: Math.round(portRect.bottom) },
+			};
 		})()`,
 	);
-	assert.ok(aim?.found, "the off-screen row is not in the document");
+	assert.ok(aim?.found, "the off-screen row left the document");
+	assert.ok(
+		aim.scrolled,
+		`the reel never scrolled, so no row can be off screen: ${JSON.stringify(aim)}`,
+	);
 	assert.equal(
-		aim.inside,
+		aim.inPort,
 		false,
-		`the row aimed at as off-screen is still on screen: ${JSON.stringify(aim)}`,
+		`the row aimed at as off-screen is still inside the list's port: ${JSON.stringify(aim)}`,
+	);
+	assert.equal(
+		aim.aimsAtRow,
+		false,
+		`the aim point still resolves to the row itself: ${JSON.stringify(aim)}`,
 	);
 	for (const [type, button] of [
 		["mouseMoved", "none"],
@@ -362,6 +421,16 @@ async function aimOffScreen(cdp, id) {
 
 /** The control the onboarding door offers, already on the page. */
 const ONBOARDING_SKIP = "button[data-onboarding-skip], button";
+
+/**
+ * How many filler rows the seeded session carries beyond the three named ones.
+ *
+ * Sized so the reel is taller than its port at every window size this scene can
+ * see (each row is 56px, so 40 rows is ~2,240px against a 900px window): the
+ * off-screen negative needs a row that can actually leave the port, and a
+ * three-row list cannot provide one.
+ */
+const FILLER_ROWS = 40;
 
 /** What the shell looks like right now, from the renderer's own answers. */
 const pageState = (cdp) =>
@@ -737,13 +806,49 @@ async function main() {
 			"an item that was never on screen was marked read",
 		);
 
-		// NEGATIVE: the same gesture on a window main can see is not foreground.
+		/*
+		 * NEGATIVE: THE SAME TRUSTED GESTURE ON A BLURRED WINDOW.
+		 *
+		 * The pointer route is the one a person actually takes, so the negative has
+		 * to use it: the reel is scrolled back to the top, a row that is genuinely on
+		 * screen and still unread is hovered, and its own Mark read control is
+		 * pressed - while MAIN reports the window unfocused. Nothing may be read.
+		 * The bridge refusal below is recorded too, but it is the second half of the
+		 * evidence rather than the whole of it: a guard that only refuses a direct
+		 * `desktop.request` would still let the visible gesture through.
+		 */
+		await cdp.evaluate(
+			`(() => { const list = document.querySelector('[data-notifications-list]'); if (list) list.scrollTop = 0; return true; })()`,
+		);
+		await pause(400);
 		await nodeCdp.evaluate(
 			'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); const window = electron.BrowserWindow.getAllWindows()[0]; window.blur(); return window.isFocused(); })()',
 		);
 		await pause(500);
 		const hidden = await mainFacts(nodeCdp);
 		receipt.windowBlurred = hidden;
+		const blurredBox = await hoverReadControl(cdp, RACED);
+		receipt.blurredReadControl = blurredBox;
+		for (const type of ["mousePressed", "mouseReleased"])
+			await cdp.send("Input.dispatchMouseEvent", {
+				type,
+				button: "left",
+				clickCount: 1,
+				x: blurredBox.x,
+				y: blurredBox.y,
+			});
+		await pause(5_000);
+		const racedAfterGesture = readRow(config, RACED);
+		receipt.racedAfterBlurredGesture = racedAfterGesture;
+		assert.equal(
+			hidden?.focused,
+			false,
+			`the window was still focused, so the blurred negative proves nothing: ${JSON.stringify(hidden)}`,
+		);
+		assert.ok(
+			!isRead(racedAfterGesture),
+			"a blurred window read a row from its own visible control",
+		);
 		const negative = await cdp.evaluate(
 			`(async () => { try { return { answer: await window.api.desktop.request({ op: "notifications.read", verb: "read", target: { items: [{ id: ${JSON.stringify(RACED)}, revision: ${seeded.raced.revision + 1} }] } }) }; } catch (error) { return { refused: true, message: String(error.message).slice(0, 200) }; } })()`,
 		);
