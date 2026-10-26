@@ -39,6 +39,7 @@ import { t } from "../../../../i18n/messages";
 import { DRAG_THRESHOLD_PX } from "./mesh-drag";
 import type { DeviceState, MeshDevice, MeshNetwork } from "./mesh-graph";
 import { conversationUnit, deviceStatLine } from "./mesh-graph";
+import { MeshDeviceIdentity } from "./mesh-identity";
 import {
 	DEVICE_HEIGHT,
 	NETWORK_HEIGHT,
@@ -56,6 +57,7 @@ import {
 } from "./mesh-reach";
 import { sessionStripeKey } from "./mesh-sessions";
 import type { ChipStripeKey, DeviceSessions } from "./mesh-sessions";
+import { deviceDisplayName, deviceIdentityText } from "./mesh-types";
 import type { MeshSessionRow } from "./mesh-types";
 
 /**
@@ -179,7 +181,12 @@ export function deviceNodeName(
 	nowSeconds: number,
 	activity: string | null,
 ): string {
-	return [device.label, deviceStatLine(device, nowSeconds), activity]
+	return [
+		deviceDisplayName(device),
+		device.id,
+		deviceStatLine(device, nowSeconds),
+		activity,
+	]
 		.filter(Boolean)
 		.join(", ");
 }
@@ -335,6 +342,8 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 
 type DeviceNodeProps = {
 	device: MeshDevice;
+	/** Every id on this canvas, so equal names cannot hide a compact-id collision. */
+	deviceIds: readonly string[];
 	x: number;
 	y: number;
 	nowSeconds: number;
@@ -362,6 +371,7 @@ type DeviceNodeProps = {
 };
 export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 	device,
+	deviceIds,
 	x,
 	y,
 	nowSeconds,
@@ -509,9 +519,13 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 						aria-hidden="true"
 						className="size-4 shrink-0 text-ink-muted"
 					/>
-					<span className="min-w-0 flex-1 truncate text-body-sm text-ink">
-						{device.label}
-					</span>
+					<MeshDeviceIdentity
+						className="min-w-0 flex-1 text-body-sm text-ink"
+						deviceId={device.id}
+						deviceIds={deviceIds}
+						name={device.name}
+						compact
+					/>
 					{device.suspect && (
 						<ShieldAlert
 							aria-hidden="true"
@@ -590,7 +604,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			 */}
 			<ul
 				aria-label={t("ui.mesh.mesh_node.conversations_on", {
-					device: device.label,
+					device: deviceIdentityText(device, deviceIds, true),
 				})}
 				className={cn(
 					/*
@@ -623,7 +637,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					<SessionChip
 						key={session.id}
 						session={session}
-						ownerLabel={device.label}
+						ownerLabel={deviceIdentityText(device, deviceIds, true)}
 						ownerReach={reach}
 						ownerReachable={device.reachable}
 						moving={movingSessionId === session.id}

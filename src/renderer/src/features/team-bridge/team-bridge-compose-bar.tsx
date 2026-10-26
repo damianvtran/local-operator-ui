@@ -4,7 +4,12 @@ import { cn } from "@shared/lib/utils";
 import { Bot, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import { type TeamBridgeRecipient, recipientKey } from "./team-bridge-model";
+import {
+	TeamBridgeAvatar,
+	TeamBridgeProfileCard,
+} from "./team-bridge-profile-card";
 
 /**
  * The "To:" bar at the top of a new-message draft, Slack's new-message header.
@@ -28,7 +33,10 @@ export const TeamBridgeComposeBar: FC<{
 	onChange: (next: TeamBridgeRecipient[]) => void;
 	/** Focus the field on mount (a fresh draft starts in the To: field). */
 	autoFocus?: boolean;
-}> = ({ recipients, candidates, onChange, autoFocus = true }) => {
+	profileFor?: (
+		recipient: TeamBridgeRecipient,
+	) => TeamBridgeDirectoryMember | undefined;
+}> = ({ recipients, candidates, onChange, profileFor, autoFocus = true }) => {
 	useI18nLocale();
 	const listId = useId();
 	const field = useRef<HTMLInputElement>(null);
@@ -71,33 +79,69 @@ export const TeamBridgeComposeBar: FC<{
 				<span className="pe-1 text-[13px] text-ink-dim">
 					{t("ui.teamBridge.compose.to")}
 				</span>
-				{recipients.map((recipient) => (
-					<span
-						key={recipientKey(recipient)}
-						className="flex h-6 items-center gap-1 rounded-md bg-accent-wash pe-0.5 ps-1.5 text-[13px] text-ink"
-					>
-						{recipient.kind === "agent" && (
-							<Bot size={12} aria-hidden="true" className="text-accent" />
-						)}
-						{recipient.label}
-						<button
-							type="button"
-							aria-label={t("ui.teamBridge.compose.remove", {
-								name: recipient.label,
-							})}
-							onClick={() =>
-								onChange(
-									recipients.filter(
-										(other) => recipientKey(other) !== recipientKey(recipient),
-									),
-								)
-							}
-							className="flex size-5 items-center justify-center rounded-sm text-ink-dim hover:bg-row-hover hover:text-ink"
+				{recipients.map((recipient) => {
+					const member = profileFor?.(recipient);
+					return (
+						<span
+							key={recipientKey(recipient)}
+							className="flex h-6 items-center gap-1 rounded-md bg-accent-wash pe-0.5 ps-1.5 text-[13px] text-ink"
 						>
-							<X size={12} />
-						</button>
-					</span>
-				))}
+							{member ? (
+								<TeamBridgeProfileCard
+									member={member}
+									label={recipient.label}
+									agentName={
+										recipient.kind === "agent" ? recipient.label : undefined
+									}
+									onMessage={() => {}}
+									canMessage={false}
+								>
+									<button
+										type="button"
+										className="flex min-w-0 items-center gap-1 rounded-sm"
+									>
+										<TeamBridgeAvatar
+											member={member}
+											label={recipient.label}
+											size={20}
+											className="rounded-[5px] text-[10px]"
+											fallback={
+												recipient.kind === "agent" ? (
+													<Bot size={12} />
+												) : undefined
+											}
+										/>
+										{recipient.label}
+									</button>
+								</TeamBridgeProfileCard>
+							) : (
+								<>
+									{recipient.kind === "agent" && (
+										<Bot size={12} aria-hidden="true" className="text-accent" />
+									)}
+									{recipient.label}
+								</>
+							)}
+							<button
+								type="button"
+								aria-label={t("ui.teamBridge.compose.remove", {
+									name: recipient.label,
+								})}
+								onClick={() =>
+									onChange(
+										recipients.filter(
+											(other) =>
+												recipientKey(other) !== recipientKey(recipient),
+										),
+									)
+								}
+								className="flex size-5 items-center justify-center rounded-sm text-ink-dim hover:bg-row-hover hover:text-ink"
+							>
+								<X size={12} />
+							</button>
+						</span>
+					);
+				})}
 				<input
 					ref={field}
 					// biome-ignore lint/a11y/noAutofocus: a fresh draft starts in its To: field, as Slack's new message does; the reader opened it on purpose.
@@ -163,43 +207,61 @@ export const TeamBridgeComposeBar: FC<{
 					aria-label={t("ui.teamBridge.compose.label")}
 					className="absolute top-full right-5 left-5 z-20 mt-1 max-h-64 overflow-y-auto rounded-lg bg-elevated p-1 shadow-lg"
 				>
-					{options.map((option, index) => (
-						<button
-							key={recipientKey(option)}
-							id={`${listId}-${index}`}
-							type="button"
-							tabIndex={-1}
-							// biome-ignore lint/a11y/useSemanticElements: the option of the combobox popup above; `<option>` cannot carry the glyph and label row.
-							role="option"
-							aria-selected={index === active}
-							// mousedown default prevented: the field keeps focus (so its
-							// blur does not close the list before the click lands).
-							onMouseDown={(event) => event.preventDefault()}
-							onClick={() => add(option)}
-							onMouseEnter={() => setActive(index)}
-							className={cn(
-								"flex h-[30px] w-full cursor-default items-center gap-2 rounded-md px-2 text-start text-[13px]",
-								index === active ? "bg-row-hover text-ink" : "text-ink-muted",
-							)}
-						>
-							<span
-								aria-hidden="true"
+					{options.map((option, index) => {
+						const member = profileFor?.(option);
+						return (
+							<button
+								key={recipientKey(option)}
+								id={`${listId}-${index}`}
+								type="button"
+								tabIndex={-1}
+								// biome-ignore lint/a11y/useSemanticElements: the option of the combobox popup above; `<option>` cannot carry the glyph and label row.
+								role="option"
+								aria-selected={index === active}
+								// mousedown default prevented: the field keeps focus (so its
+								// blur does not close the list before the click lands).
+								onMouseDown={(event) => event.preventDefault()}
+								onClick={() => add(option)}
+								onMouseEnter={() => setActive(index)}
 								className={cn(
-									"flex size-5 shrink-0 items-center justify-center rounded-[5px] text-[10px] font-medium",
-									option.kind === "agent"
-										? "bg-accent-wash text-accent"
-										: "border border-control bg-sunken text-ink-muted",
+									"flex h-[30px] w-full cursor-default items-center gap-2 rounded-md px-2 text-start text-[13px]",
+									index === active ? "bg-row-hover text-ink" : "text-ink-muted",
 								)}
 							>
-								{option.kind === "agent" ? (
-									<Bot size={12} />
+								{member ? (
+									<TeamBridgeAvatar
+										member={member}
+										label={option.label}
+										size={20}
+										className="rounded-[5px] text-[10px]"
+										fallback={
+											option.kind === "agent" ? <Bot size={12} /> : undefined
+										}
+									/>
 								) : (
-									option.label.trim().charAt(0).toUpperCase() || "?"
+									<span
+										aria-hidden="true"
+										className={cn(
+											"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] text-[10px] font-medium",
+											/* Borderless, as every Team Bridge plate: the active
+									   option paints `row-hover`, and `media-surface` stays
+									   apart from it by value (see the message list's plate). */
+											option.kind === "agent"
+												? "bg-media-surface text-accent"
+												: "bg-media-surface text-ink-muted",
+										)}
+									>
+										{option.kind === "agent" ? (
+											<Bot size={12} />
+										) : (
+											option.label.trim().charAt(0).toUpperCase() || "?"
+										)}
+									</span>
 								)}
-							</span>
-							<span className="min-w-0 flex-1 truncate">{option.label}</span>
-						</button>
-					))}
+								<span className="min-w-0 flex-1 truncate">{option.label}</span>
+							</button>
+						);
+					})}
 				</div>
 			)}
 		</div>

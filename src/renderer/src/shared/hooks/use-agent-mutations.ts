@@ -1,4 +1,3 @@
-import { t } from "../../../../i18n/messages";
 /**
  * Hooks for agent mutations (create, delete, import, export)
  */
@@ -6,6 +5,7 @@ import { t } from "../../../../i18n/messages";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentCreate } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { QueryKey } from "@tanstack/react-query";
@@ -45,7 +45,7 @@ export const useCreateAgent = () => {
 		onSuccess: () => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast(t("ui.common.actions.agent_created"));
+			showSuccessToast(t("ui.notices.agents.created"));
 		},
 		onError: (error) => {
 			console.error("Error creating agent:", error);
@@ -92,7 +92,7 @@ export const useDeleteAgent = () => {
 			});
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast(t("ui.common.actions.agent_deleted"));
+			showSuccessToast(t("ui.notices.agents.deleted"));
 		},
 		onError: (error) => {
 			console.error("Error deleting agent:", error);
@@ -134,7 +134,7 @@ export const useImportAgent = () => {
 		onSuccess: (data) => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast(t("ui.common.actions.agent_imported"));
+			showSuccessToast(t("ui.notices.agents.imported"));
 			return data;
 		},
 		onError: (error) => {
@@ -166,7 +166,7 @@ export const useExportAgent = () => {
 			}
 		},
 		onSuccess: () => {
-			showSuccessToast(t("ui.common.actions.agent_exported"));
+			showSuccessToast(t("ui.notices.agents.exported"));
 		},
 		onError: (error) => {
 			console.error("Error exporting agent:", error);

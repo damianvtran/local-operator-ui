@@ -10,11 +10,19 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { ArrowUp, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { teamBridgeArrivalStreamKey } from "./team-bridge-arrival-model";
 import {
 	TeamBridgeAttachButton,
 	TeamBridgeAttachmentStrip,
@@ -40,6 +48,13 @@ export type ThreadPaneProps = {
 	/* Null = nobody names this sender (directory loading/failed, a member who
 	   left, the legacy "Member" label); the list renders it as unknown. */
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
+	profileFor?: React.ComponentProps<typeof TeamBridgeMessageList>["profileFor"];
+	canMessagePerson?: React.ComponentProps<
+		typeof TeamBridgeMessageList
+	>["canMessagePerson"];
+	onMessagePerson?: React.ComponentProps<
+		typeof TeamBridgeMessageList
+	>["onMessagePerson"];
 	onClose: () => void;
 	onRetry: () => void;
 	onSend: (
@@ -73,6 +88,29 @@ export type ThreadPaneProps = {
 };
 
 /**
+ * May the forward-pagination hold lift?
+ *
+ * A forward page is history the reader asked for, so the replies list must not
+ * animate it - but the hold may only last as long as the read does. It lifts as
+ * soon as the read's own in-flight state has come back (`sawInFlight`), or when
+ * the page arrived without one (`grew`), which is what a cached or instantly
+ * resolved page looks like. What it must NOT do is wait for a page that never
+ * comes: a failed or empty read clears it exactly like a full one.
+ */
+export function pagingSettled({
+	loadingMore,
+	sawInFlight,
+	grew,
+}: {
+	loadingMore: boolean;
+	sawInFlight: boolean;
+	grew: boolean;
+}): boolean {
+	if (loadingMore) return false;
+	return sawInFlight || grew;
+}
+
+/**
  * THE HOLD, AT THE VIEW'S FRONT DOOR (a hook-safe wrapper: no hook runs on the
  * closed path, so no story or rig can mount the unsafe body by importing this
  * component directly). The full rationale is in `team-bridge-thread-gate.ts`.
@@ -91,6 +129,9 @@ function TeamBridgeThreadPaneBody({
 	replies,
 	state,
 	labelFor,
+	profileFor,
+	canMessagePerson,
+	onMessagePerson,
 	onClose,
 	onRetry,
 	onSend,
@@ -107,6 +148,39 @@ function TeamBridgeThreadPaneBody({
 	attachmentCapability = null,
 }: ThreadPaneProps) {
 	useI18nLocale();
+	/*
+	 * A FORWARD PAGE IS RESTORED HISTORY, NOT LIVE TRAFFIC, and the hold that
+	 * says so must release on EVERY outcome (review round 1, M2). It used to
+	 * clear only when `replies.length` changed, so a failed or empty next page
+	 * left it stuck on and every later live reply in that thread stayed still -
+	 * silently. The rule is `pagingSettled`, which releases when the read's own
+	 * in-flight state has come back, or when the page arrived without one; it is
+	 * safe to lift because the list OBSERVES a page even while it may not animate
+	 * it, so those ids are already known by then and cannot animate after all.
+	 */
+	const [paging, setPaging] = useState(false);
+	const sawInFlight = useRef(false);
+	const pageStart = useRef(replies.length);
+	if (loadingMore) sawInFlight.current = true;
+	useLayoutEffect(() => {
+		if (!paging) return;
+		if (
+			!pagingSettled({
+				loadingMore,
+				sawInFlight: sawInFlight.current,
+				grew: replies.length !== pageStart.current,
+			})
+		)
+			return;
+		sawInFlight.current = false;
+		setPaging(false);
+	}, [paging, loadingMore, replies.length]);
+	// Backstop: a request whose read never reports at all must not hold forever.
+	useEffect(() => {
+		if (!paging) return;
+		const timer = setTimeout(() => setPaging(false), 10_000);
+		return () => clearTimeout(timer);
+	}, [paging]);
 	const pane = useRef<HTMLElement>(null);
 	const close = useRef(onClose);
 	close.current = onClose;
@@ -207,7 +281,17 @@ function TeamBridgeThreadPaneBody({
 				{root && (
 					<TeamBridgeMessageList
 						messages={[root]}
+						/* ITS OWN STREAM (review round 1, A2). Without a key this list
+						   defaulted to the TIMELINE's, and because the pane is keyed per
+						   root, closing a thread unmounted the list and suspended the
+						   open timeline's journal - the next live timeline message then
+						   never animated. The root is a single row and never animates. */
+						arrivalKey={`${teamBridgeArrivalStreamKey(tenantId, root.conversation_id)}/root`}
+						arrivalsEnabled={false}
 						labelFor={labelFor}
+						profileFor={profileFor}
+						canMessagePerson={canMessagePerson}
+						onMessagePerson={onMessagePerson}
 						tenantId={tenantId}
 						accountId={accountId}
 						density="compact"
@@ -241,8 +325,17 @@ function TeamBridgeThreadPaneBody({
 				) : (
 					<TeamBridgeMessageList
 						messages={replies}
+						arrivalKey={teamBridgeArrivalStreamKey(
+							tenantId,
+							conversationId,
+							root?.id,
+						)}
+						arrivalsEnabled={!paging}
 						accountId={accountId}
 						labelFor={labelFor}
+						profileFor={profileFor}
+						canMessagePerson={canMessagePerson}
+						onMessagePerson={onMessagePerson}
 						tenantId={tenantId}
 						density="compact"
 						reactionContext={reactionContext}
@@ -256,6 +349,8 @@ function TeamBridgeThreadPaneBody({
 						disabled={loadingMore}
 						onClick={() => {
 							// Read the loaded page from here, not from its end (r8 m2).
+							setPaging(true);
+							pageStart.current = replies.length;
 							scroll.hold();
 							onMore?.();
 						}}
@@ -350,6 +445,9 @@ export type ThreadPaneMountProps = {
 	initialRoot?: TeamBridgeMessage;
 	readOnly: boolean;
 	labelFor: ThreadPaneProps["labelFor"];
+	profileFor?: ThreadPaneProps["profileFor"];
+	canMessagePerson?: ThreadPaneProps["canMessagePerson"];
+	onMessagePerson?: ThreadPaneProps["onMessagePerson"];
 	onClose: () => void;
 	reactionContext?: ThreadPaneProps["reactionContext"];
 	/* The attachment lane's two additions ride the mount props, so the shipped-
@@ -368,6 +466,9 @@ function TeamBridgeThreadPaneMount({
 	initialRoot,
 	readOnly,
 	labelFor,
+	profileFor,
+	canMessagePerson,
+	onMessagePerson,
 	onClose,
 	reactionContext,
 	accountId,
@@ -446,6 +547,9 @@ function TeamBridgeThreadPaneMount({
 			replies={replies}
 			state={query.isPending ? "loading" : query.isError ? "error" : "ready"}
 			labelFor={labelFor}
+			profileFor={profileFor}
+			canMessagePerson={canMessagePerson}
+			onMessagePerson={onMessagePerson}
 			onClose={onClose}
 			onRead={acknowledge}
 			onRetry={() => void query.refetch()}

@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "Это уведомление больше нельзя открыть в текущем аккаунте.",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "Разговоров пока нет",
 	"ui.teamBridge.list.empty.body": "Напишите личное сообщение, создайте группу или канал.",
@@ -198,5 +199,12 @@
 	"ui.teamBridge.reactions.category8": "Флаги",
 	"ui.teamBridge.reactions.choose": "Выберите эмодзи",
 	"ui.teamBridge.reactions.noResults": "Эмодзи не найдены",
-	"ui.teamBridge.actions.label": "Действия с сообщением"
+	"ui.teamBridge.actions.label": "Действия с сообщением",
+	"ui.teamBridge.profile.message": "Написать",
+	"ui.teamBridge.profile.human_badge": "Человек",
+	"ui.teamBridge.profile.agent_badge": "Агент",
+	"ui.teamBridge.profile.owned_by": "Агент пользователя {name}",
+	"ui.teamBridge.profile.local_time": "Местное время: {time}",
+	"ui.teamBridge.profile.close_profile": "Закрыть профиль",
+	"ui.teamBridge.profile.open_profile": "Открыть профиль: {name}"
 }

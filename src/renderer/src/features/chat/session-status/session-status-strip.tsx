@@ -1032,21 +1032,25 @@ const DRAFT_CONTEXT_LABEL =
  */
 const DRAFT_EFFORT_LINE = "Set once the conversation starts.";
 
-export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
-	frontend,
-	onCommand,
-	effortEntities,
-	pendingModel = null,
-	draft = false,
-	held = false,
-	contextHeld = false,
-	onOpenDraftPicker,
-	draftResolution,
-	readingsDropped = false,
-	controlsThirdBox = false,
-	costChannels = false,
-	className,
-}) => {
+/**
+ * Snapshot presence is a component boundary, not a branch around hooks.
+ * A conversation opens with no frontend reading, receives one from the stream,
+ * and may lose it on reconnect. Returning before the duration/measurement hooks
+ * in the SAME fiber made that normal absent → present transition throw React
+ * #310 and replace the composer with its error boundary. Mount the readings
+ * child only while this surface has something to render: it always executes
+ * the same hooks, and losing the reading unmounts its active-time interval and
+ * ResizeObserver rather than leaving a clock running for an absent snapshot.
+ * The boundary adds no DOM and changes none of the duration inputs/readings.
+ */
+export const SessionStatusStrip: FC<SessionStatusStripProps> = (props) => {
+	const {
+		frontend,
+		draft = false,
+		draftResolution,
+		readingsDropped = false,
+		className,
+	} = props;
 	useI18nLocale();
 	/*
 	 * A draft with no snapshot is a pane whose resolution has not answered yet,
@@ -1082,6 +1086,25 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		}
 		return null;
 	}
+
+	return <SessionStatusReadings {...props} />;
+};
+
+const SessionStatusReadings: FC<SessionStatusStripProps> = ({
+	frontend,
+	onCommand,
+	effortEntities,
+	pendingModel = null,
+	draft = false,
+	held = false,
+	contextHeld = false,
+	onOpenDraftPicker,
+	draftResolution,
+	controlsThirdBox = false,
+	costChannels = false,
+	className,
+}) => {
+	useI18nLocale();
 
 	/*
 	 * The dispatcher a reading may use, or `undefined` when nothing here opens.

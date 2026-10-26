@@ -864,7 +864,34 @@ export function quietGroupLabel(family: QuietGroupFamily): string {
 	}
 }
 
-export function labelOfSegment(
+/**
+ * WHAT A BAR IS, structurally, before any surface words it.
+ *
+ * WHY THE DECISION IS SEPARATE FROM THE WORD. The word (`Wake`, `Peer message`,
+ * `Steered`, `Job result`, `Ask`, the quiet group's family plural) is copy: this
+ * app's own choice, and another client says the same thing in its own catalogue
+ * and its own locale. What must not drift between clients is WHICH label a span
+ * earns - a span the desktop calls `Wake` and the phone calls `Peer message` is a
+ * partition disagreement dressed as a translation, and no fixture can catch it
+ * while the only exported answer is an English string. `labelOfSegment` is the
+ * one place that turns `SegmentLabelKind` into words, and the parity fixture
+ * (`scripts/generate-condense-parity.mjs`) compares the kind alone.
+ */
+export type SegmentLabelKind =
+	/** The span holds a `user` row: the reader steered mid-run. */
+	| { kind: "steered" }
+	/** The span opens a wake or a monitor prompt. */
+	| { kind: "wake" }
+	/** The span opens a peer row or a hub message. */
+	| { kind: "peer" }
+	/** The span opens a job result. */
+	| { kind: "job" }
+	/** Otherwise nameless, and holds the agent's own questions/answers. */
+	| { kind: "ask" }
+	/** The span IS a quiet group: the family is the bar's word. */
+	| { kind: "group"; family: QuietGroupFamily };
+
+export function segmentLabelKind(
 	records: readonly TranscriptRecord[],
 	cycles: readonly TurnCycle[],
 	span: SegmentSpan,
@@ -875,16 +902,16 @@ export function labelOfSegment(
 	 * simply does not fire, and the cycle opener's own label is used.
 	 */
 	group?: { family: QuietGroupFamily } | null,
-): string | null {
+): SegmentLabelKind | null {
 	for (let i = span.from; i <= span.to; i += 1) {
-		if (records[i].kind === "user") return "Steered";
+		if (records[i].kind === "user") return { kind: "steered" };
 	}
 	/* The group's word wins over any cycle opener: the span IS the group. */
 	if (group !== undefined && group !== null) {
-		return quietGroupLabel(group.family);
+		return { kind: "group", family: group.family };
 	}
 	const cycle = cycles.find(
-		(candidate) =>
+		(candidate: TurnCycle) =>
 			candidate.start <= span.to && span.to <= candidate.closeIndex,
 	);
 	/*
@@ -896,7 +923,7 @@ export function labelOfSegment(
 	let opener: TriggerKind | null = cycle?.initiators.at(-1) ?? null;
 	if (cycle === undefined) {
 		const previous = cycles.filter(
-			(candidate) => candidate.closeIndex < span.from,
+			(candidate: TurnCycle) => candidate.closeIndex < span.from,
 		);
 		for (
 			let i = (previous.at(-1)?.closeIndex ?? -1) + 1;
@@ -909,12 +936,12 @@ export function labelOfSegment(
 	switch (opener) {
 		case "wake":
 		case "monitor_prompt":
-			return "Wake";
+			return { kind: "wake" };
 		case "peer":
 		case "hub_message":
-			return "Peer message";
+			return { kind: "peer" };
 		case "job_result":
-			return "Job result";
+			return { kind: "job" };
 		default:
 			/*
 			 * THE ASK RECEIPTS GET A NAME OF THEIR OWN.
@@ -933,10 +960,42 @@ export function labelOfSegment(
 			 */
 			for (let i = span.from; i <= span.to; i += 1) {
 				const kind = records[i].kind;
-				if (kind === "ask_response" || kind === "ask_timeout") return "Ask";
+				if (kind === "ask_response" || kind === "ask_timeout")
+					return { kind: "ask" };
 			}
 			return null;
 	}
+}
+
+/** The bar's word for a label kind: this surface's own copy (see
+ * `SegmentLabelKind` for why the decision is not spelled here). */
+export function labelWordOf(kind: SegmentLabelKind | null): string | null {
+	switch (kind?.kind) {
+		case "steered":
+			return "Steered";
+		case "wake":
+			return "Wake";
+		case "peer":
+			return "Peer message";
+		case "job":
+			return "Job result";
+		case "ask":
+			return "Ask";
+		case "group":
+			return quietGroupLabel(kind.family);
+		default:
+			return null;
+	}
+}
+
+/** The decided label's word, in one call: the shape every renderer wants. */
+export function labelOfSegment(
+	records: readonly TranscriptRecord[],
+	cycles: readonly TurnCycle[],
+	span: SegmentSpan,
+	group?: { family: QuietGroupFamily } | null,
+): string | null {
+	return labelWordOf(segmentLabelKind(records, cycles, span, group));
 }
 
 /**

@@ -1,4 +1,3 @@
-import { t } from "../../../../i18n/messages";
 /**
  * @file use-radient-user-query.ts
  * @description
@@ -22,6 +21,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { radientProxy } from "@shared/api/radient/proxy";
 import type { UserInfoResult } from "@shared/api/radient/types";
+import { t } from "@shared/i18n";
 import { useUserStore } from "@shared/store/user-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
@@ -33,6 +33,7 @@ import {
 import { useSyncExternalStore } from "react";
 
 import {
+	beginRadientAuthoritySignOut,
 	beginRadientAuthorityTransition,
 	radientAuthorityEpoch,
 	radientUserKeys,
@@ -510,7 +511,9 @@ export const useRadientUserQuery = ({
 
 	const signOutMutation = useMutation({
 		onMutate: () => {
-			beginRadientAuthorityTransition(queryClient);
+			// Deliberate: identity is known gone, so this publishes settled absence
+			// and main withdraws the departing account's banners on the press.
+			beginRadientAuthoritySignOut(queryClient);
 			setIsSigningOut(true);
 		},
 		mutationFn: async () => {
@@ -538,14 +541,14 @@ export const useRadientUserQuery = ({
 			 */
 			forgetAccountReadFailure();
 			queryClient.invalidateQueries({ queryKey: desktopKeys.accounts });
-			showSuccessToast(t("ui.common.account.signed_out"));
+			showSuccessToast(t("ui.notices.sessions.signed_out"));
 			setIsSigningOut(false);
 		},
 		onError: (error) => {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
 			showErrorToast(
-				t("ui.common.account.sign_out_failed", { error: errorMessage }),
+				t("ui.notices.sessions.sign_out_failed", { detail: errorMessage }),
 			);
 			setIsSigningOut(false);
 			// A partial account removal cannot restore old private authority by

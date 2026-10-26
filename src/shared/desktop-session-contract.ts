@@ -2317,6 +2317,52 @@ export type DesktopFeedFrame =
 export type DesktopStreamCursor = { epoch: string; seq: number };
 
 /**
+ * Whether a frame is newer than the receipt high-water mark already accepted
+ * for this session view.
+ *
+ * The bridge assigns `seq` on ONE monotonically increasing receipt clock and
+ * puts replay BEFORE the authoritative snapshot. A late frame at or behind the
+ * mark is therefore already represented by the state the viewer accepted (or is
+ * an out-of-order delivery); it must not become a second, older paint commit.
+ * This is deliberately a RECEIPT check, not an owner `frontend.sequence` check:
+ * the two clocks are independent, and comparing them would reject valid paint.
+ *
+ * `open` is the boundary exception: a new subscription may use a new epoch and
+ * restart the sequence. The caller resets its high-water mark at that boundary;
+ * no comparison is meaningful across epochs. Same-epoch frames, including a
+ * replayed `history_delta(reset: true)`, are strict-greater-only.
+ */
+export function isNewerDesktopFrame(
+	prior: DesktopStreamCursor | null | undefined,
+	frame: DesktopStreamCursor,
+	options: {
+		/**
+		 * Accept a frame at the SAME receipt position. Only an authoritative frame
+		 * may ask for this, and the snapshot is the one that does.
+		 *
+		 * WHY IT IS NEEDED RATHER THAN TIDY. The bridge builds `open` from
+		 * `cutoff = bridge.sequence` and then replays every retained frame with
+		 * `after_seq < seq <= cutoff`, followed by the snapshot whose own `seq` is
+		 * the sequence read while it was built — so a replay can END on `cutoff`
+		 * and the snapshot then carries the very same number (`docs/DESKTOP_API.md`,
+		 * "the snapshot's `seq` is the watermark"). Under a strict `>` the snapshot
+		 * would be refused exactly when the replay had already reached the
+		 * watermark, and the pane would sit on the replay's rows with no
+		 * authoritative state - the "stuck at connecting" failure. Equal is not
+		 * older: the snapshot IS the state at that position.
+		 */
+		allowEqual?: boolean;
+	} = {},
+): boolean {
+	if (!prior) return true;
+	if (prior.epoch !== frame.epoch) return true;
+	return (
+		frame.seq > prior.seq ||
+		(options.allowEqual === true && frame.seq === prior.seq)
+	);
+}
+
+/**
  * Whether a live `frontend.replace` may be applied over the painted projection.
  *
  * Four questions, and every one of them is a way a replacement must NOT land.

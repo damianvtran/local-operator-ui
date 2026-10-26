@@ -1,0 +1,10 @@
+{
+  "team-bridge-profile-card.tsx": "a6644e695a4c0e3a58ee8b68b9409ee7cda525b7e3e1a084ac17e20a0191018e",
+  "team-bridge-rail.tsx": "79ad1d028164515803626b6123504173c5503557eab4bffad89f0a26ecdb48a5",
+  "team-bridge-message-list.tsx": "e2001fb273f0b555c053badc5fac146045e6563092bc34cc953988a34d2c994b",
+  "team-bridge-page.tsx": "4a76d4274ef51f184710ff6978e45b22c7ecdfb92378c1b6bb0f2f73991b5512",
+  "team-bridge-page.stories.tsx": "510fd4e8383d767f3c21372b4eaed054228e122dd02c8755793cb78aeda81793",
+  "team-bridge-thread-pane.tsx": "dc55f596d582b718c864806d183473abd77b3a14730768abb707442cb9812df1",
+  "team-bridge-compose-bar.tsx": "5662d41119d7dbb15ed6587a21321423a8b766a065db528d8d2a9022ec4e7ef2",
+  "use-team-bridge-avatar.ts": "7d06df73550aa0c44a271a2d89367726af783fe9d7d276c76a303846cac95f7b"
+}

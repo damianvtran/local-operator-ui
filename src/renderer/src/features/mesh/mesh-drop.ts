@@ -60,7 +60,11 @@
 import { t } from "../../../../i18n/messages";
 import type { MeshDevice, MeshNetwork } from "./mesh-graph";
 import { deviceReach, reachWords } from "./mesh-reach";
-import { type MeshSessionRow, sessionIsBusy } from "./mesh-types";
+import {
+	type MeshSessionRow,
+	deviceIdentityText,
+	sessionIsBusy,
+} from "./mesh-types";
 
 /** What the pointer is over. */
 export type DropTarget =
@@ -73,6 +77,11 @@ export type DragPayload = {
 	session: MeshSessionRow;
 	/** The device that holds it NOW, resolved (a local row's owner is this device). */
 	ownerDeviceId: string;
+	/**
+	 * The caller's display text for the owner. {@link resolveDrop} never builds its
+	 * own sentences from it: this text may be a raw wire name or an already formatted
+	 * identity, and neither is proof of WHICH device it names (agent review round 3).
+	 */
 	ownerLabel: string;
 };
 
@@ -192,6 +201,25 @@ export function planConfirm(
 	};
 }
 
+/**
+ * The one-line consequence under each option in the move confirmation.
+ *
+ * DIRECTION DECIDES WHICH COPY IS "HERE" (UX review round 1, U1). An outbound move
+ * deletes the copy on this device; a recall (`to === "local"`) deletes the copy on
+ * the OWNER, and this device is the one gaining the conversation. A direction-blind
+ * caption told a recall's reader that the local copy goes, directly under a body
+ * that names the remote owner's copy as the one deleted - two opposite claims about
+ * a destructive action, on the option preselected for them to press. A copy deletes
+ * nothing in either direction.
+ */
+export function moveOptionCaption(option: MovePlan): string {
+	if (option.keep)
+		return t("ui.mesh.mesh_actions.the_original_stays_where_it_is");
+	return option.to === "local"
+		? t("ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it")
+		: t("ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it");
+}
+
 /** The sentence a destructive move reads out before it is sent. */
 /**
  * What a move costs, in one sentence, naming BOTH ends.
@@ -231,9 +259,15 @@ function runtimeSentence(session: MeshSessionRow, where: string): string {
 	});
 }
 
-/** Where a device's label is shown; the id's tail when it never told us a name. */
-function peerLabel(device: MeshDevice | undefined, deviceId: string): string {
-	return device?.label || deviceId.slice(-6);
+/** The destination's shared name+id identity; an unknown target keeps its full id. */
+function peerLabel(
+	device: MeshDevice | undefined,
+	deviceId: string,
+	displayedDeviceIds: readonly string[],
+): string {
+	return device
+		? deviceIdentityText(device, displayedDeviceIds, true)
+		: deviceId;
 }
 
 /**
@@ -250,13 +284,14 @@ function peerLabel(device: MeshDevice | undefined, deviceId: string): string {
 function deviceRefusal(
 	device: MeshDevice,
 	deviceId: string,
+	displayedDeviceIds: readonly string[],
 ): Extract<DropVerdict, { kind: "refused" }> | null {
 	if (device.suspect) {
 		return {
 			kind: "refused",
 			code: "suspect_device",
 			sentence: t("ui.mesh.mesh_drop.duplicate_key", {
-				device: device.label,
+				device: deviceIdentityText(device, displayedDeviceIds, true),
 				reason: device.reason ? ` (${device.reason})` : "",
 			}),
 			remedy: {
@@ -279,7 +314,7 @@ function deviceRefusal(
 			kind: "refused",
 			code: "unreachable",
 			sentence: t("ui.mesh.mesh_drop.reach_refusal", {
-				device: device.label,
+				device: deviceIdentityText(device, displayedDeviceIds, true),
 				reach,
 				reason: device.reason ? ` (${device.reason})` : "",
 			}),
@@ -303,8 +338,27 @@ export function resolveDrop(
 	target: DropTarget,
 	context: DropContext,
 ): DropVerdict {
-	const { session, ownerDeviceId, ownerLabel } = payload;
+	const { session, ownerDeviceId } = payload;
 	const { selfDeviceId, devices, networks } = context;
+	const displayedDeviceIds = [...devices.keys()];
+	const owner = devices.get(ownerDeviceId);
+	/*
+	 * DESTRUCTIVE COPY NAMES THE OWNER BY ID, never by the caller's text (agent review
+	 * round 2 F1, round 3 F1 / QA Q-1). Two devices may share a name, so a sentence
+	 * that says which copy is deleted must carry the id that tells them apart.
+	 *
+	 * A graph-resident owner gets the compact id, which is unique within the drawn
+	 * graph. An owner ABSENT from the graph (a stale row, or an owner the join could
+	 * not place - `mesh-sessions.ts`) has no graph to prove a short prefix unique, so
+	 * it gets the FULL id; its name half is the session's own wire name, quoted, and
+	 * an empty name reads as the unnamed-device word rather than as a name.
+	 */
+	const ownerLabel = owner
+		? deviceIdentityText(owner, displayedDeviceIds, true)
+		: deviceIdentityText({
+				id: ownerDeviceId,
+				name: session.owner_device_name,
+			});
 
 	if (target.kind === "ground") return { kind: "none" };
 
@@ -366,6 +420,7 @@ export function resolveDrop(
 								device: peerLabel(
 									devices.get(target.deviceId),
 									target.deviceId,
+									displayedDeviceIds,
 								),
 							}),
 				waitS: 0,
@@ -386,7 +441,7 @@ export function resolveDrop(
 
 	const destination = devices.get(target.deviceId);
 	const refused = destination
-		? deviceRefusal(destination, target.deviceId)
+		? deviceRefusal(destination, target.deviceId, displayedDeviceIds)
 		: {
 				code: "unknown_device",
 				sentence: t("ui.mesh.mesh_drop.that_device_is_no_longer_in_any"),
@@ -394,7 +449,11 @@ export function resolveDrop(
 			};
 	if (refused) return { kind: "refused", ...refused };
 
-	const destinationLabel = peerLabel(destination, target.deviceId);
+	const destinationLabel = peerLabel(
+		destination,
+		target.deviceId,
+		displayedDeviceIds,
+	);
 	const sourceIsLocal = session.locality === "local";
 
 	/*
@@ -405,7 +464,6 @@ export function resolveDrop(
 	 * answering, so nothing changed.
 	 */
 	if (!sourceIsLocal) {
-		const owner = devices.get(ownerDeviceId);
 		if (owner && !owner.reachable) {
 			/* The owner is in hand, so the refusal carries the owner's own reach word. */
 			const reach = reachWords(deviceReach(owner));

@@ -37,6 +37,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -86,6 +87,7 @@ for (const name of [
 const RE_CREDENTIALS = /@shared\/hooks\/use-credentials/;
 const RE_TOAST = /@shared\/utils\/toast-manager/;
 const RE_ANY = /.*/;
+const RE_COPY_MODULE = /[\\/]transcript-copy\.ts$/;
 
 const bundle = await build({
 	stdin: {
@@ -126,6 +128,24 @@ const bundle = await build({
 		{
 			name: "copy-affordance-fixtures",
 			setup(builder) {
+				/* Count the actual pure derivations, not getter calls: a getter may
+				 * be read repeatedly while open without re-parsing its cached record.
+				 * Fail closed if the source signatures change under this probe. */
+				builder.onLoad({ filter: RE_COPY_MODULE }, async ({ path }) => {
+					let contents = await readFile(path, "utf8");
+					for (const name of ["copyTextForRecord", "copyMarkdownForRecord"]) {
+						const signature = `export function ${name}(record: TranscriptRecord): string {`;
+						assert.ok(
+							contents.includes(signature),
+							`${name} probe signature exists`,
+						);
+						contents = contents.replace(
+							signature,
+							`${signature}\n globalThis.__copyPayloadReads?.push({ id: record.id, format: ${JSON.stringify(name)} });`,
+						);
+					}
+					return { contents, loader: "ts" };
+				});
 				builder.onResolve({ filter: RE_CREDENTIALS }, () => ({
 					path: "probe",
 					namespace: "fixture",
@@ -408,7 +428,12 @@ const mountTranscript = async (transcript, options = {}) => {
 	});
 	const { createRoot } = await import("react-dom/client");
 	const root = createRoot(dom.window.document.getElementById("root"));
-	await act(async () => {
+	/*
+	 * `render` is the rig's one mount call, also handed back as `rerender` so a
+	 * test can replace a record under a mounted row (the lazy copy payload's
+	 * replaced-record case) through the same props every other case uses.
+	 */
+	const render = (transcript) =>
 		root.render(
 			React.createElement(
 				QueryClientProvider,
@@ -431,7 +456,14 @@ const mountTranscript = async (transcript, options = {}) => {
 				}),
 			),
 		);
+	await act(async () => {
+		render(transcript);
 	});
+	const rerender = async (next) => {
+		await act(async () => {
+			render(next);
+		});
+	};
 
 	const click = async (element) => {
 		assert.ok(element, "missing click target");
@@ -517,6 +549,7 @@ const mountTranscript = async (transcript, options = {}) => {
 		dom,
 		written,
 		click,
+		rerender,
 		openMenu,
 		menuItem,
 		key,
@@ -1757,6 +1790,300 @@ test("the shared strip never mounts beside an owning strip without an observer",
  * "No answer given" for each of them — the harness refuses the same shape in
  * `asks/render.py::response_text`. The sentence is the whole receipt.
  */
+/* ------------------------------------------ the lazy copy payload (L2-a) */
+
+/*
+ * THE PAYLOAD MOVED FROM MOUNT TO OPEN, AND THESE CASES PROVE NOTHING ELSE MOVED.
+ * The row used to derive both strings in a `useMemo` at mount; it now hands the
+ * menu a getter that derives them when the menu opens (renderer profile §4
+ * L2-a: one markdown parse per mounted row inside the mount task). Two things
+ * could go wrong with that and each has a case:
+ *   1. the menu could write different bytes than the record's own payload - so
+ *      every mounted row, of every kind the fixtures paint, is opened and both
+ *      items compared byte-for-byte against `copyTextForRecord` /
+ *      `copyMarkdownForRecord` on the record that row was handed;
+ *   2. the getter could serve a payload cached from an EARLIER record - so a
+ *      row's record is replaced under the mounted row, after a first open has
+ *      filled the cache, and the next open must copy the replacement.
+ */
+const closeMenu = async (rig) => {
+	const doc = rig.dom.window.document;
+	const menu = doc.querySelector("[data-lo-copy-menu]");
+	if (menu === null) return;
+	await act(async () => {
+		menu.dispatchEvent(
+			new rig.dom.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 15));
+	});
+	for (let attempt = 0; attempt < 100; attempt += 1) {
+		if (doc.querySelector("[data-lo-copy-menu]") === null) return;
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+	}
+	assert.fail("the context menu closed");
+};
+
+/*
+ * ONE CLIPBOARD PRESS ON AN ALREADY-MOUNTED ROW, through that row's own menu.
+ *
+ * THE COST OF AN OPEN IS WHY THIS FILE'S ADDED MATRIX IS SMALL. Measured in CI
+ * shard 2/3 on 2026-10-25: one Radix context-menu open costs 44-72 s on the
+ * loaded runner - the four per-kind menu tests ABOVE, unchanged from
+ * merge-base, took 44.0, 54.3, 63.3 and 72.2 s there - and this lane has a
+ * 25-minute bound. A sweep that pressed BOTH items on EVERY row of two
+ * fixtures added ~25 opens (its first test alone ran 877.6 s), and the lane was
+ * killed at 1508 s with its remaining cases never run: a false failure that
+ * also hid them. So per-KIND byte parity stays the business of the four tests
+ * above, and these added cases spend their opens on the two facts those cannot
+ * cover - a row passes its OWN record's payload, and an open menu follows a
+ * record REPLACED under it (R1).
+ */
+const rowSelector = (id) => `[data-record-kind][data-record-id="${id}"]`;
+
+const copyOne = async (rig, id, label) => {
+	rig.written.length = 0;
+	const menu = await rig.openMenu(() =>
+		rig.dom.window.document.querySelector(rowSelector(id)),
+	);
+	const item = rig.menuItem(menu, label);
+	const disabled = item.getAttribute("aria-disabled") === "true";
+	if (!disabled) await rig.click(item);
+	await closeMenu(rig);
+	return { disabled, copied: rig.written.join("") };
+};
+
+test("a user row and a prose row each copy their own record's text", async () => {
+	const rig = await mountTranscript(MULTI_TURN);
+	try {
+		const rows = [
+			...rig.dom.window.document.querySelectorAll(
+				"[data-record-kind][data-record-id]",
+			),
+		];
+		for (const kind of ["user", "assistant"]) {
+			const row = rows.find((node) => node.dataset.recordKind === kind);
+			assert.ok(row, `a ${kind} row is mounted`);
+			const id = row.getAttribute("data-record-id");
+			const record = MULTI_TURN.records.find((entry) => entry.id === id);
+			assert.ok(record, `the ${kind} row addresses a fixture record`);
+			const pressed = await copyOne(rig, id, "Copy text");
+			assert.equal(pressed.disabled, false, `${id}: the item can act`);
+			assert.equal(
+				pressed.copied,
+				mod.copyTextForRecord(record),
+				`${id}: the row copies its own record's text`,
+			);
+		}
+	} finally {
+		await rig.unmount();
+	}
+});
+
+test("a record replaced under a closed menu copies the record the row holds now", async () => {
+	const rig = await mountTranscript(MULTI_TURN);
+	const before = MULTI_TURN.records.find((row) => row.id === "a2");
+	try {
+		// The first open fills the per-record cache with the ORIGINAL record.
+		const first = await copyOne(rig, "a2", "Copy text");
+		assert.equal(first.copied, mod.copyTextForRecord(before));
+
+		const replacement = {
+			...before,
+			text: "It finished: **two** invoices remain, and `inv-41` is the oldest.",
+		};
+		await rig.rerender({
+			...MULTI_TURN,
+			records: MULTI_TURN.records.map((row) =>
+				row.id === "a2" ? replacement : row,
+			),
+		});
+
+		const second = await copyOne(rig, "a2", "Copy text");
+		assert.equal(
+			second.copied,
+			mod.copyTextForRecord(replacement),
+			"Copy text reflects the record the row holds NOW",
+		);
+		assert.notEqual(
+			second.copied,
+			first.copied,
+			"and it is not the cached payload",
+		);
+	} finally {
+		await rig.unmount();
+	}
+});
+
+/*
+ * R1, IN ITS OWN SHAPE: the SAME menu stays open while the row it belongs to
+ * receives a new record. A refresh on open cannot help this interval - the
+ * defect was freezing the opening payload - so the item is pressed WITHOUT
+ * reopening the menu. The two arms are the two forms, and between them they
+ * also cover the disabled-state refresh: a payload that was empty (an item
+ * that cannot act) becoming a nonempty one.
+ */
+test("R1 still-open Copy text follows a streaming replacement", async () => {
+	const original = MULTI_TURN.records.find((row) => row.id === "a2");
+	const rig = await mountTranscript({
+		...MULTI_TURN,
+		records: MULTI_TURN.records.map((row) =>
+			row.id === "a2"
+				? {
+						...original,
+						text: "Streaming **draft** with `old` words.",
+						streaming: true,
+						complete: false,
+						stopReason: null,
+					}
+				: row,
+		),
+	});
+	try {
+		const menu = await rig.openMenu(() =>
+			rig.dom.window.document.querySelector(rowSelector("a2")),
+		);
+		const settled = {
+			...original,
+			text: "Streaming finished: **two** invoices remain, including `inv-41`.",
+		};
+		await rig.rerender({
+			...MULTI_TURN,
+			records: MULTI_TURN.records.map((row) =>
+				row.id === "a2" ? settled : row,
+			),
+		});
+		assert.equal(
+			rig.dom.window.document.querySelector("[data-lo-copy-menu]"),
+			menu,
+			"the SAME menu stayed open: no reopen can refresh it for this test",
+		);
+		const item = rig.menuItem(menu, "Copy text");
+		await rig.click(item);
+		assert.deepEqual(
+			rig.written,
+			[mod.copyTextForRecord(settled)],
+			"the already-open item writes the CURRENT record's text",
+		);
+	} finally {
+		await rig.unmount();
+	}
+});
+
+test("R1 still-open Copy as Markdown follows a replacement that arrives over an empty payload", async () => {
+	const original = MULTI_TURN.records.find((row) => row.id === "a2");
+	const rig = await mountTranscript({
+		...MULTI_TURN,
+		records: MULTI_TURN.records.map((row) =>
+			row.id === "a2"
+				? {
+						...original,
+						text: "---",
+						streaming: true,
+						complete: false,
+						stopReason: null,
+					}
+				: row,
+		),
+	});
+	try {
+		const menu = await rig.openMenu(() =>
+			rig.dom.window.document.querySelector(rowSelector("a2")),
+		);
+		assert.equal(
+			rig.menuItem(menu, "Copy as Markdown").getAttribute("aria-disabled"),
+			"true",
+			"a payload with no words offers no press",
+		);
+		const settled = {
+			...original,
+			text: "Streaming finished: **two** invoices remain, including `inv-41`.",
+		};
+		await rig.rerender({
+			...MULTI_TURN,
+			records: MULTI_TURN.records.map((row) =>
+				row.id === "a2" ? settled : row,
+			),
+		});
+		assert.equal(
+			rig.dom.window.document.querySelector("[data-lo-copy-menu]"),
+			menu,
+			"the SAME menu stayed open",
+		);
+		const item = rig.menuItem(menu, "Copy as Markdown");
+		assert.notEqual(
+			item.getAttribute("aria-disabled"),
+			"true",
+			"a nonempty replacement enables the already-open item",
+		);
+		await rig.click(item);
+		assert.deepEqual(
+			rig.written,
+			[mod.copyMarkdownForRecord(settled)],
+			"and the item writes the CURRENT record's source",
+		);
+	} finally {
+		await rig.unmount();
+	}
+});
+
+test("lazy row payloads derive once on demand and reuse that record's cache", async () => {
+	const reads = [];
+	globalThis.__copyPayloadReads = reads;
+	const rig = await mountTranscript(MULTI_TURN);
+	const original = MULTI_TURN.records.find((row) => row.id === "a2");
+	try {
+		assert.equal(
+			reads.length,
+			0,
+			"mounting closed rows derives no copy payloads",
+		);
+		const pressed = await copyOne(rig, "a2", "Copy text");
+		assert.deepEqual(
+			reads.map((read) => [read.id, read.format]),
+			[
+				["a2", "copyTextForRecord"],
+				["a2", "copyMarkdownForRecord"],
+			],
+			"first demand derives that record's two forms, once each, and the press adds none",
+		);
+		assert.equal(
+			pressed.copied,
+			mod.copyTextForRecord(original),
+			"and the press copies from them",
+		);
+
+		/*
+		 * CLEARED BEFORE THE NEXT PHASE: the assertion above states its expectation
+		 * by calling the pure derivation itself, and that call lands in this same
+		 * probe - which is how a first cut of this test read the probe's own
+		 * bookkeeping as an app derivation. The claim below is about the APP, so it
+		 * starts from an empty log.
+		 */
+		reads.length = 0;
+		const replacement = { ...original, text: "Replacement **while closed**." };
+		await rig.rerender({
+			...MULTI_TURN,
+			records: MULTI_TURN.records.map((row) =>
+				row.id === "a2" ? replacement : row,
+			),
+		});
+		assert.equal(
+			reads.length,
+			0,
+			"a record replaced while CLOSED stays lazy: nothing derives until demand",
+		);
+	} finally {
+		await rig.unmount();
+		globalThis.__copyPayloadReads = undefined;
+	}
+});
+
 test("a dismissed ask copies one sentence, not a question with no answer", () => {
 	const record = {
 		kind: "ask_response",

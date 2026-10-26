@@ -79,6 +79,7 @@ const {
 	applyEvent,
 	EMPTY_TRANSCRIPT,
 	visibleRecords,
+	quietGroupClauseFacts,
 	quietGroupsOf,
 	quietGroupOfSegment,
 	openFrameFacts,
@@ -3252,6 +3253,13 @@ const fixtureRecord = (row) => {
 				customType: row.customType,
 				text: row.text ?? "",
 				level: row.level ?? "info",
+				/*
+				 * A CUSTOM ROW'S durable hub shape: a fixture case that means a
+				 * reply-requesting or steered delivery states it the way the reducer
+				 * holds it (`receipt: {expectsReply, steer}`), which is the fact
+				 * `quietGroupClauseFacts` reads.
+				 */
+				...(row.receipt ? { receipt: row.receipt } : {}),
 			};
 		case "tool":
 			return {
@@ -3310,7 +3318,50 @@ test("the quiet-group derivation matches the shared parity fixture, case by case
 					},
 				)
 			: quietGroupsOf(records);
-		assert.deepEqual(actual, entry.expected, entry.name);
+		/*
+		 * THE CLAUSE FACTS ARE COMPARED SEPARATELY, and the group comparison
+		 * projects them out. `expected` embeds `clauseFacts` because the fixture is
+		 * one file for every client, while the derivation returns a group; comparing
+		 * the two objects whole would mean the derivation minting a field no
+		 * renderer reads. Pinning the facts on their own is what catches the drift
+		 * that started this file: the counts matched while one client stated the
+		 * work clause and the other did not.
+		 */
+		const withoutClauses = (value) => {
+			if (Array.isArray(value)) return value.map(withoutClauses);
+			if (typeof value !== "object" || value === null) return value;
+			const { clauseFacts: _clauseFacts, ...rest } = value;
+			return rest;
+		};
+		assert.deepEqual(
+			withoutClauses(actual),
+			withoutClauses(entry.expected),
+			entry.name,
+		);
+		const groups = Array.isArray(actual)
+			? actual
+			: actual === null
+				? []
+				: [actual];
+		const wants = Array.isArray(entry.expected)
+			? entry.expected.map((group) => group.clauseFacts)
+			: entry.expected === null
+				? []
+				: [entry.expected.clauseFacts];
+		/*
+		 * `partial` is the head-cut read, which the fixture states with
+		 * `spanHeadLoaded: false` - the same clause the bar's count label makes
+		 * (`N+`) - so the facts pin the minimum marker too.
+		 */
+		assert.deepEqual(
+			groups.map((group) =>
+				quietGroupClauseFacts(group, {
+					partial: entry.spanHeadLoaded === false,
+				}),
+			),
+			wants,
+			`${entry.name} (clause facts)`,
+		);
 	}
 });
 

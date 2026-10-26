@@ -1,0 +1,532 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit round 2 (second independent pass over the same frozen bytes)",
+	"round": 2,
+	"audit_id": "teambridge-profile-audit-r2-3d4473001f4b",
+	"date": "2026-10-26",
+	"instance": "3d4473001f4b",
+	"instance_note": "This session's own id. Distinct from the round-1 receipt's instance 7fe70d68b963, so the two records are separate immutable runs over the same bytes.",
+	"prior_receipt": {
+		"path": "i18n/receipts/teambridge-profile-audit-7fe70d68b963.json",
+		"sha256": "093ac171a83b7873b51bf8324da03087d1d57e5153acb2ff9605bc792bf6b87d",
+		"result": "changes_requested",
+		"unresolved_blocker_major_count": 1
+	},
+	"auditor": "i18n-auditor (independent translation auditor; did not translate or edit the audited copy)",
+	"agent": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "The harness session header reports 'Model: radient/auto', an auto-routed alias: this session is given no concrete provider/model id and no LOP_* model variable is set (checked by name only), so no specific upstream model is claimed. The delegating team may pin a role model for this subagent, and such a pin would not be visible here; that is disclosed as unknown rather than guessed. No fallback was announced or observed during this run; if the harness routed to a fallback upstream, it is invisible from inside the session and is not asserted.",
+	"independence": "Independent auditor and a second pass over the same frozen target bytes. This run produced none of the audited strings: the seven English values and their seven translations were read from the worktree and never written. Only i18n/receipts/teambridge-profile-audit-r2-3d4473001f4b.json was created; every other file, including the catalogue the fr exemption now covers, is untouched.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"locales": [
+		"en",
+		"fr",
+		"es",
+		"zh-CN",
+		"ru",
+		"vi",
+		"ur",
+		"hi"
+	],
+	"scope": {
+		"worktree": "~/local-operator-ui/.worktrees/account-profile",
+		"head": "acc6a5bc9c20ae9c92cfa3cf322271610b72c0b6",
+		"integration_state": "uncommitted (git status: account-profile integration files modified; no PR exists yet on feat/team-bridge-account-profiles, so the findings' PR-thread record is still pending and the round-1 receipt is the record of origin)",
+		"namespace": "ui.teamBridge",
+		"delta_kind": "round-2 re-audit of the round-1 seven-key delta; no catalogue byte changed between rounds",
+		"keys": [
+			"ui.teamBridge.profile.message",
+			"ui.teamBridge.profile.human_badge",
+			"ui.teamBridge.profile.agent_badge",
+			"ui.teamBridge.profile.owned_by",
+			"ui.teamBridge.profile.local_time",
+			"ui.teamBridge.profile.close_profile",
+			"ui.teamBridge.profile.open_profile"
+		],
+		"keys_checked_per_catalogue": 7,
+		"byte_freeze": "All eight src/i18n/catalogues/<locale>/ui.teamBridge.json sha256 values were recomputed before any judgement and are byte-identical to both the values pinned in the round-2 brief and the values the round-1 receipt recorded; the English context sidecar hash is also unchanged (10d47bb5c886…). Glossary, all seven style guides and docs/I18N.md were re-hashed and also match round 1, so this pass reasons from the same reference bytes.",
+		"not_covered": "The other 200 ui.teamBridge keys were not re-audited; this receipt speaks only to the seven-key delta and to the round-2 exemption. No rendered-frame, activation or release claim, and no ledger rebind."
+	},
+	"round_2_scope": {
+		"(a) byte freeze": "PASS - the eight recomputed hashes equal the brief's pins and round 1's record exactly; the context sidecar is unchanged too. See execution entry 1.",
+		"(b) exemption review": "PASS - the new row is \"fr:ui.teamBridge.profile.agent_badge\", the locale-scoped form, not a bare key; a grep for the bare \"ui.teamBridge.profile.agent_badge\" string finds no production-table row. allowsIdenticalValue() resolves table.has(key) || table.has(`${locale}:${key}`), so the row can exempt fr only, and the suite's own guard test ('a locale-scoped identical-value exemption does not exempt another locale') proves that property on its own table and passes. Empirically the other six locales' values are not identical to English, so no stub was masked. The rationale matches the tracked glossary, whose agent row gives « agent » for fr.",
+		"(c) named commands": "PASS - node --test scripts/i18n/locale-parity.test.mjs 44/44; the name-pattern run 44/44 (pattern is unanchored, so it selects most rows; the anchored control selects exactly the 42 locale rows and passes); context-parity ok; check-duplicates ok (0 duplicates, 763 files); generate --check byte-identical. ledger-check still fails on the pre-existing stale rows and is reported, not repaired here.",
+		"(d) carried findings": "CONFIRMED OPEN BY DESIGN - P2-P5 (minor) and P6-P7 (nit) are still the values on disk, byte for byte, and the catalogue hashes are unchanged, so none was silently fixed. They are restated in this receipt as carried findings for the PR thread. No PR exists on this branch yet, so 'recorded in the PR thread' is pending: the round-1 receipt is the current record of origin, and this receipt names it."
+	},
+	"inputs": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+		},
+		"targets": {
+			"fr": {
+				"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+				"sha256": "59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b"
+			},
+			"es": {
+				"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+				"sha256": "8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605"
+			},
+			"zh-CN": {
+				"path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+				"sha256": "322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79"
+			},
+			"ru": {
+				"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+				"sha256": "355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc"
+			},
+			"vi": {
+				"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+				"sha256": "ae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400"
+			},
+			"ur": {
+				"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+				"sha256": "3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f"
+			},
+			"hi": {
+				"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+				"sha256": "8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc"
+			}
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guides": {
+			"fr": {
+				"path": "~/local-operator/i18n/style-guides/fr.md",
+				"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+			},
+			"es": {
+				"path": "~/local-operator/i18n/style-guides/es.md",
+				"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+			},
+			"zh-CN": {
+				"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+				"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+			},
+			"ru": {
+				"path": "~/local-operator/i18n/style-guides/ru.md",
+				"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+			},
+			"vi": {
+				"path": "~/local-operator/i18n/style-guides/vi.md",
+				"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+			},
+			"ur": {
+				"path": "~/local-operator/i18n/style-guides/ur.md",
+				"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+			},
+			"hi": {
+				"path": "~/local-operator/i18n/style-guides/hi.md",
+				"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+			}
+		},
+		"contract": {
+			"path": "docs/I18N.md",
+			"sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+		}
+	},
+	"high_visibility": {
+		"group": "profile hover card (user-visible card, reachable from the rail; not one of the named high-visibility groups onboarding, errors, settings)",
+		"second_independent_pass": "This IS a second pass over the same frozen bytes, requested by the manager after round 1's single gating item. It is independent of the translator and was performed in a different session instance (3d4473001f4b) from round 1 (7fe70d68b963), but by the same auditor role; it is not a third-party second opinion, and that limit is stated rather than glossed."
+	},
+	"namespaces": {
+		"ui.teamBridge": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 7,
+			"delta_keys": [
+				"ui.teamBridge.profile.message",
+				"ui.teamBridge.profile.human_badge",
+				"ui.teamBridge.profile.agent_badge",
+				"ui.teamBridge.profile.owned_by",
+				"ui.teamBridge.profile.local_time",
+				"ui.teamBridge.profile.close_profile",
+				"ui.teamBridge.profile.open_profile"
+			],
+			"locales": [
+				"en",
+				"fr",
+				"es",
+				"zh-CN",
+				"ru",
+				"vi",
+				"ur",
+				"hi"
+			],
+			"keys_checked_per_catalogue": 7,
+			"context_keys_verified": 7,
+			"sha256": {
+				"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+				"fr": "59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b",
+				"es": "8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605",
+				"zh-CN": "322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79",
+				"ru": "355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc",
+				"vi": "ae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400",
+				"ur": "3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f",
+				"hi": "8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc"
+			},
+			"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb",
+			"counts_note": "blocker 0, major 0: no unresolved gating finding remains. The four minors and two nits are the round-1 P2-P7, unchanged in frozen bytes, recorded here and carried to the PR thread. They are listed in this namespace-level 'findings' array because that is the shape scripts/i18n/ledger-rules.mjs derives counts from, so a ledger row built from this receipt records them as clean-with-findings rather than as a silent clean. The aggregate is namespace-wide: per_locale holds the locale-specific counts (fr 0/0/0/0; zh-CN 0/0/1/1; ru 0/0/0/1; vi 0/0/1/0; ur 0/0/1/0; hi 0/0/1/0).",
+			"resolved": [
+				{
+					"id": "P1",
+					"severity": "major",
+					"gating": true,
+					"resolved": true,
+					"locale": "fr",
+					"key": "ui.teamBridge.profile.agent_badge",
+					"current": "Agent",
+					"problem": "Byte-identical to the English source, so the repo guard fails: `node --test scripts/i18n/locale-parity.test.mjs` -> `[fr] is not an English stub (no value identical to the source)` at locale-parity.test.mjs:1390 (assertion :1402) lists `ui.teamBridge.json: ui.teamBridge.profile.agent_badge`. The word is CORRECT - « agent » is the glossary rendering for the term and matches the rest of the fr namespace (thread.withheld, plan.body, sender.unknown_agent). The defect is the missing scoped exemption for a legitimate French cognate, not the copy.",
+					"resolution": "The implementer added the fr-scoped row [\"fr:ui.teamBridge.profile.agent_badge\", \"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it\"] to IDENTICAL_OK in scripts/i18n/locale-parity.test.mjs (quoted verbatim from the file). No catalogue byte changed: the fr target hash is still 59a3ae6e554a and the value is still « Agent », so the exemption now carries a copy the auditor already judged correct rather than hiding a stub.",
+					"evidence": [
+						"git diff scripts/i18n/locale-parity.test.mjs: 1 file changed, 4 insertions(+), 1 hunk",
+						"node --test scripts/i18n/locale-parity.test.mjs: 44/44 pass, including [fr] is not an English stub (no value identical to the source)",
+						"scripts/i18n/ledger-rules.mjs allowsIdenticalValue(locale,key) resolves a row as table.has(key) || table.has(`${locale}:${key}`); the added row is the locale-scoped form, and the suite's own guard test proves a scoped row exempts exactly one locale"
+					]
+				}
+			],
+			"findings": [
+				{
+					"id": "P2",
+					"severity": "minor",
+					"gating": false,
+					"carried": true,
+					"locale": "zh-CN",
+					"key": "ui.teamBridge.profile.human_badge",
+					"current": "个人",
+					"problem": "「个人」 is the adjective/account-type sense ('personal, individual') - the prefix of 个人资料 - not the noun for a person. This namespace already uses 人员 for people in prose (compose.label 添加人员或智能体; create.channel_description). Under a name and title the badge can be parsed as an account type rather than an identity marker. Still understandable, so non-gating.",
+					"fix": "「真人」 - the established Chinese contrast to 智能体/机器人 on AI surfaces (真人客服), and it reads as an identity badge, not as 个人资料's prefix.",
+					"status": "open by design - recorded in the round-1 receipt and carried to the PR thread; the frozen catalogue bytes are unchanged, so this was not silently fixed in the copy",
+					"origin": "i18n/receipts/teambridge-profile-audit-7fe70d68b963.json"
+				},
+				{
+					"id": "P3",
+					"severity": "minor",
+					"gating": false,
+					"carried": true,
+					"locale": "vi",
+					"key": "ui.teamBridge.profile.human_badge",
+					"current": "Con người",
+					"problem": "'Con người' is the collective/abstract noun for humankind; a one-word identity badge in Vietnamese product copy reads more naturally with a concrete noun. Meaning survives, so non-gating.",
+					"fix": "「Người thật」 (real person - the settled human-vs-bot contrast) or 「Người dùng」 if the user framing is preferred. Keep 「Tác nhân」 unchanged.",
+					"status": "open by design - recorded in the round-1 receipt and carried to the PR thread; the frozen catalogue bytes are unchanged, so this was not silently fixed in the copy",
+					"origin": "i18n/receipts/teambridge-profile-audit-7fe70d68b963.json"
+				},
+				{
+					"id": "P4",
+					"severity": "minor",
+					"gating": false,
+					"carried": true,
+					"locale": "ur",
+					"key": "ui.teamBridge.profile.local_time",
+					"current": "مقامی وقت {time}",
+					"problem": "Label and clock time run together with no separator. The four other locales that mark the value use a colon (fr « Heure locale : », es « Hora local: », ru « Местное время: », vi « Giờ địa phương: »), and the card renders icon + label + time, so the missing colon reads as a run-on. RTL order itself is correct: logical order, no manual bidi controls.",
+					"fix": "「مقامی وقت: {time}」",
+					"status": "open by design - recorded in the round-1 receipt and carried to the PR thread; the frozen catalogue bytes are unchanged, so this was not silently fixed in the copy",
+					"origin": "i18n/receipts/teambridge-profile-audit-7fe70d68b963.json"
+				},
+				{
+					"id": "P5",
+					"severity": "minor",
+					"gating": false,
+					"carried": true,
+					"locale": "hi",
+					"key": "ui.teamBridge.profile.local_time",
+					"current": "स्थानीय समय {time}",
+					"problem": "Same run-on label/value with no separator. Hindi UI convention puts a colon here, and every other locale that marks the value does; the label and the formatted time should not read as one phrase.",
+					"fix": "「स्थानीय समय: {time}」",
+					"status": "open by design - recorded in the round-1 receipt and carried to the PR thread; the frozen catalogue bytes are unchanged, so this was not silently fixed in the copy",
+					"origin": "i18n/receipts/teambridge-profile-audit-7fe70d68b963.json"
+				},
+				{
+					"id": "P6",
+					"severity": "nit",
+					"gating": false,
+					"carried": true,
+					"locale": "zh-CN",
+					"key": "ui.teamBridge.profile.close_profile",
+					"current": "关闭个人资料",
+					"problem": "This control closes the hover card, not the profile record; 「个人资料」 names the data. Understandable as an aria-label, but it says 'close the personal profile' where 「关闭资料卡」 says what disappears.",
+					"fix": "「关闭资料卡」; for symmetry either keep 「打开{name}的个人资料」 (acceptable) or use 资料卡 in both.",
+					"status": "open by design - recorded in the round-1 receipt and carried to the PR thread; the frozen catalogue bytes are unchanged, so this was not silently fixed in the copy",
+					"origin": "i18n/receipts/teambridge-profile-audit-7fe70d68b963.json"
+				},
+				{
+					"id": "P7",
+					"severity": "nit",
+					"gating": false,
+					"carried": true,
+					"locale": "ru",
+					"key": "ui.teamBridge.profile.open_profile",
+					"current": "Открыть профиль: {name}",
+					"problem": "The context sidecar asks for the account name inside the phrase rather than as a separate fragment; the colon makes it a label:value pair. Grammar justifies the workaround (an undeclinable display name cannot take the genitive after профиль), so this is a nit, not a major.",
+					"fix": "「Открыть профиль пользователя {name}」 if a native reviewer prefers the apposition; otherwise keep the current wording.",
+					"status": "open by design - recorded in the round-1 receipt and carried to the PR thread; the frozen catalogue bytes are unchanged, so this was not silently fixed in the copy",
+					"origin": "i18n/receipts/teambridge-profile-audit-7fe70d68b963.json"
+				}
+			],
+			"observations": [
+				{
+					"id": "O1",
+					"status": "info",
+					"locale": "all",
+					"key": "ui.teamBridge.profile.open_profile",
+					"note": "Observation, not a defect: all eight locales repeat the visible row label ({name}) inside the open_profile aria-label, so label-in-name holds. Verified against the rail trigger (team-bridge-rail.tsx), whose visible content is the person's name; team-bridge-profile-card.tsx:143 applies the aria-label. Re-verified in round 2 only from the unchanged bytes and call sites; no re-render was captured."
+				},
+				{
+					"id": "O2",
+					"status": "info",
+					"locale": "ur",
+					"key": "ui.teamBridge.profile.local_time",
+					"note": "Observation: the ur values contain no U+200E/U+200F/U+2066-U+2069 control characters (code-point scan), per the ur guide's 'no manual bidi controls' rule. '{name} کا پروفائل کھولیں' is correct logical order for RTL with an embedded Latin name. Still true of the unchanged ur file (no bidi controls introduced by this round, which touched no catalogue)."
+				},
+				{
+					"id": "O3",
+					"status": "info",
+					"locale": "all",
+					"key": "ui.teamBridge.profile.message",
+					"note": "Observation: English 'Message' is both noun and verb; the context note resolves it as an action, and all seven translations chose the action label, matching each locale's shipped ui.teamBridge.people.message (Envoyer un message / Enviar un mensaje / 发消息 / Написать / Nhắn tin / پیغام بھیجیں / संदेश भेजें)."
+				}
+			],
+			"per_locale": {
+				"en": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"note": "Round 2: target bytes unchanged from round 1 (hash below equals the round-1 hash); the round-1 finding recorded for this locale remains open by design and is carried to the PR thread, not silently fixed. Round-1 note was: Source reviewed against all seven context sidecar entries and the call sites in team-bridge-profile-card.tsx: one 320px (w-80) hover card, one full-width Message button, two aria-labels. No source change requested.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"fr": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"note": "Round 2 verdict: PASSED. The round-1 copy judgement is unchanged - « Agent » is the glossary term for the term 'agent' and matches the rest of the fr namespace - and the only gating item was the missing fr-scoped IDENTICAL_OK exemption. That row now exists in scripts/i18n/locale-parity.test.mjs, so the stub gate passes with the fr target hash still 59a3ae6e554a: no fr byte was edited to satisfy the gate. Round-1 note was: Copy is correct as written (« Agent » is the glossary term); the single gating item is the missing fr-scoped IDENTICAL_OK exemption in locale-parity.test.mjs, which the implementer adds without touching the catalogue.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"fr": "59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"es": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"note": "Round 2: target bytes unchanged from round 1 (hash below equals the round-1 hash); the round-1 finding recorded for this locale remains open by design and is carried to the PR thread, not silently fixed. Round-1 note was: No findings. Action labels are infinitives per the es guide; 'Hora local: ' has no space before the colon, per the es guide; glossary 'agente' used consistently.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"es": "8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"zh-CN": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"note": "Round 2: target bytes unchanged from round 1 (hash below equals the round-1 hash); the round-1 finding recorded for this locale remains open by design and is carried to the PR thread, not silently fixed. Round-1 note was: Two non-gating wording findings (human_badge 个人, close_profile 个人资料). No spaces inserted between Chinese and the {time}/{name} runs, per the zh-CN guide; 智能体 matches the glossary and the rest of the namespace.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"zh-CN": "322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"ru": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"note": "Round 2: target bytes unchanged from round 1 (hash below equals the round-1 hash); the round-1 finding recorded for this locale remains open by design and is carried to the PR thread, not silently fixed. Round-1 note was: One nit on the colon form of open_profile. 'Агент' and 'Местное время' match the glossary and the ru guide; no space before the colon, per the ru guide.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"ru": "355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"vi": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"note": "Round 2: target bytes unchanged from round 1 (hash below equals the round-1 hash); the round-1 finding recorded for this locale remains open by design and is carried to the PR thread, not silently fixed. Round-1 note was: One non-gating finding on human_badge. 'Tác nhân' is the glossary term and matches sender.unknown_agent; 'Giờ địa phương' follows the guide's rule that địa phương is reserved for timezone-local; all values NFC.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"vi": "ae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"ur": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"note": "Round 2: target bytes unchanged from round 1 (hash below equals the round-1 hash); the round-1 finding recorded for this locale remains open by design and is carried to the PR thread, not silently fixed. Round-1 note was: One non-gating finding on local_time's missing separator. RTL order correct, no manual bidi controls, Latin digits per the guide, آپ imperative درست; 'شخص' matches sender.unknown_person.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"ur": "3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"hi": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"note": "Round 2: target bytes unchanged from round 1 (hash below equals the round-1 hash); the round-1 finding recorded for this locale remains open by design and is carried to the PR thread, not silently fixed. Round-1 note was: One non-gating finding on local_time's missing separator. Polite imperative ओ forms, nukta kept in प्रोफ़ाइल, 'व्यक्ति' matches sender.unknown_person, 'एजेंट' matches the glossary.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"hi": "8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				}
+			},
+			"note": "Round 2 changes no linguistic judgement: every non-fr finding stands as written in round 1, and the fr copy stands too. What changed is the test-side exemption, which removes the only gating item without editing a translated byte."
+		}
+	},
+	"mechanical": {
+		"re_verification": "Byte identity to round 1 makes round 1's mechanical result still the mechanical result: identical ICU argument sets (profile.owned_by {name}, profile.local_time {time}, profile.open_profile {name}; no others), no plural/select message in the delta so no CLDR arm applies, no markup or identifiers to disturb, no key added or dropped. Round 2 re-proved the machine-checkable half from the actual bytes: the full parity suite (placeholder preservation, complete key sets, no-key-extra, no English stub, all 7 locales), context-parity, check-duplicates and generate --check all pass.",
+		"json": "All eight files parse; check-duplicates reports 0 duplicate keys across 763 files.",
+		"encoding": "Unchanged from round 1: no U+200E/200F/2066-2069 controls in any target value, all values NFC, no edge whitespace.",
+		"width": "Unchanged from round 1: widest value 26 cells (fr open_profile) inside a fixed 320px card; no maxCells metadata exists for UI catalogues."
+	},
+	"execution": [
+		{
+			"command": "for l in en fr es zh-CN ru vi ur hi; do shasum -a 256 src/i18n/catalogues/$l/ui.teamBridge.json; done; shasum -a 256 src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"output": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799  src/i18n/catalogues/en/ui.teamBridge.json\n59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b  src/i18n/catalogues/fr/ui.teamBridge.json\n8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605  src/i18n/catalogues/es/ui.teamBridge.json\n322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79  src/i18n/catalogues/zh-CN/ui.teamBridge.json\n355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc  src/i18n/catalogues/ru/ui.teamBridge.json\nae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400  src/i18n/catalogues/vi/ui.teamBridge.json\n3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f  src/i18n/catalogues/ur/ui.teamBridge.json\n8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc  src/i18n/catalogues/hi/ui.teamBridge.json\n10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb  src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"compare": "every one of the eight equals the hash pinned in the round-2 brief and the hash recorded in the round-1 receipt",
+			"exit": 0
+		},
+		{
+			"command": "git diff --stat scripts/i18n/locale-parity.test.mjs",
+			"output": "scripts/i18n/locale-parity.test.mjs | 4 ++++\n 1 file changed, 4 insertions(+)",
+			"exit": 0
+		},
+		{
+			"command": "git diff scripts/i18n/locale-parity.test.mjs",
+			"output": "diff --git a/scripts/i18n/locale-parity.test.mjs b/scripts/i18n/locale-parity.test.mjs\nindex 469c053cbf..e42f99e0bc 100644\n--- a/scripts/i18n/locale-parity.test.mjs\n+++ b/scripts/i18n/locale-parity.test.mjs\n@@ -41,6 +41,10 @@ const SOURCE_LOCALE = \"en\";\n  * a UI token. An entry here is a claim that gets reviewed, not a silencer.\n  */\n const IDENTICAL_OK = new Map([\n+\t[\n+\t\t\"fr:ui.teamBridge.profile.agent_badge\",\n+\t\t\"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it\",\n+\t],\n \t[\n \t\t\"ui.console.pane.label\",\n \t\t// A shared UI term, not a copy of untranslated English: French uses",
+			"note": "verbatim; the single hunk the implementer added, inserted as the first entry of IDENTICAL_OK. It is tab-indented like its neighbours.",
+			"exit": 0
+		},
+		{
+			"command": "node --test scripts/i18n/locale-parity.test.mjs",
+			"output": "✔ [fr] is not an English stub (no value identical to the source) (5.003125ms)\n... (43 other passing rows elided) ...\nℹ tests 44\nℹ suites 0\nℹ pass 44\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 513.42825",
+			"verbatim": "marked extract from the full 52-line run: the [fr] stub row and the last eight summary lines; no line was reworded",
+			"exit": 0
+		},
+		{
+			"command": "node --test --test-name-pattern='(fr|es|ru|vi|ur|hi|zh-CN)' scripts/i18n/locale-parity.test.mjs",
+			"output": "✔ the English source is non-empty (the guard would pass vacuously otherwise) (1.047834ms)\n✔ [es] ships at least one message (not an empty claim) (4.812583ms)\n... (41 passing locale rows elided) ...\n✔ a locale-scoped identical-value exemption does not exempt another locale (0.123167ms)\nℹ tests 44\nℹ suites 0\nℹ pass 44\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 650.628625",
+			"verbatim": "marked extract from the full 52-line run",
+			"note": "The pattern is unanchored, so the substrings 'es' (names, preserves, defines) and 'hi' (ships) select most rows; the run still reports 44/44. The anchored control below isolates the locale rows.",
+			"exit": 0
+		},
+		{
+			"command": "node --test --test-name-pattern='^\\[(fr|es|ru|vi|ur|hi|zh-CN)\\]' scripts/i18n/locale-parity.test.mjs",
+			"output": "✔ [es] ships at least one message (not an empty claim) (17.278292ms)\n✔ [es] defines each key in at most one namespace file (4.815208ms)\n✔ [es] carries EVERY key of each namespace file it ships (9.618709ms)\n✔ [es] names only keys the English source defines (4.03ms)\n✔ [es] preserves every ICU placeholder from the English source (22.654416ms)\n✔ [es] is not an English stub (no value identical to the source) (5.230917ms)\n✔ [fr] ships at least one message (not an empty claim) (14.319ms)\n✔ [fr] defines each key in at most one namespace file (4.502625ms)\n✔ [fr] carries EVERY key of each namespace file it ships (9.833167ms)\n✔ [fr] names only keys the English source defines (4.276917ms)\n✔ [fr] preserves every ICU placeholder from the English source (16.028417ms)\n✔ [fr] is not an English stub (no value identical to the source) (5.164833ms)\n✔ [hi] ships at least one message (not an empty claim) (16.289334ms)\n✔ [hi] defines each key in at most one namespace file (6.46575ms)\n✔ [hi] carries EVERY key of each namespace file it ships (11.398333ms)\n✔ [hi] names only keys the English source defines (6.271417ms)\n✔ [hi] preserves every ICU placeholder from the English source (15.749458ms)\n✔ [hi] is not an English stub (no value identical to the source) (19.844416ms)\n✔ [ru] ships at least one message (not an empty claim) (21.062833ms)\n✔ [ru] defines each key in at most one namespace file (20.431167ms)\n✔ [ru] carries EVERY key of each namespace file it ships (35.696959ms)\n✔ [ru] names only keys the English source defines (13.105958ms)\n✔ [ru] preserves every ICU placeholder from the English source (24.640416ms)\n✔ [ru] is not an English stub (no value identical to the source) (24.575333ms)\n✔ [ur] ships at least one message (not an empty claim) (22.307ms)\n✔ [ur] defines each key in at most one namespace file (29.895167ms)\n✔ [ur] carries EVERY key of each namespace file it ships (27.212375ms)\n✔ [ur] names only keys the English source defines (13.980875ms)\n✔ [ur] preserves every ICU placeholder from the English source (24.423792ms)\n✔ [ur] is not an English stub (no value identical to the source) (17.613875ms)\n✔ [vi] ships at least one message (not an empty claim) (23.681958ms)\n✔ [vi] defines each key in at most one namespace file (23.656ms)\n✔ [vi] carries EVERY key of each namespace file it ships (33.429875ms)\n✔ [vi] names only keys the English source defines (12.981917ms)\n✔ [vi] preserves every ICU placeholder from the English source (21.34525ms)\n✔ [vi] is not an English stub (no value identical to the source) (19.434458ms)\n✔ [zh-CN] ships at least one message (not an empty claim) (28.45475ms)\n✔ [zh-CN] defines each key in at most one namespace file (19.500083ms)\n✔ [zh-CN] carries EVERY key of each namespace file it ships (29.704833ms)\n✔ [zh-CN] names only keys the English source defines (10.598959ms)\n✔ [zh-CN] preserves every ICU placeholder from the English source (14.41075ms)\n✔ [zh-CN] is not an English stub (no value identical to the source) (5.347709ms)\nℹ tests 42\nℹ suites 0\nℹ pass 42\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1037.479917",
+			"verbatim": "full output",
+			"note": "supplementary control, not one of the commands the task named: an anchored pattern selects exactly 7 locales x 6 rows = 42, all passing. It also shows the [fr] stub row green.",
+			"exit": 0
+		},
+		{
+			"command": "node scripts/i18n/context-parity.mjs",
+			"output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).",
+			"exit": 0
+		},
+		{
+			"command": "node scripts/i18n/check-duplicates.mjs",
+			"output": "check-duplicates: ok — 763 file(s) scanned, 0 duplicate key(s)",
+			"exit": 0
+		},
+		{
+			"command": "node scripts/i18n/generate.mjs --check",
+			"output": "/Users/damian/local-operator-ui/.worktrees/account-profile/src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+			"exit": 0
+		},
+		{
+			"command": "node scripts/i18n/ledger-check.mjs",
+			"output": "ledger-check: es/ui.teamBridge: stale source_sha256 (ledger cb265d27c44b…, file 610582fa07d1…) — the English source moved since translation\nledger-check: es/ui.teamBridge: stale target_sha256 (ledger af79c6c9021c…, file 8d5009ca3de0…) — the translated file changed since it was audited\nledger-check: es/ui.teamBridge: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: fr/ui.teamBridge: stale source_sha256 (ledger cb265d27c44b…, file 610582fa07d1…) — the English source moved since translation\nledger-check: fr/ui.teamBridge: stale target_sha256 (ledger f681b60f5d96…, file 59a3ae6e554a…) — the translated file changed since it was audited\nledger-check: fr/ui.teamBridge: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: hi/ui.teamBridge: stale source_sha256 (ledger cb265d27c44b…, file 610582fa07d1…) — the English source moved since translation\nledger-check: hi/ui.teamBridge: stale target_sha256 (ledger 9e99a05e6126…, file 8af4ea5640ca…) — the translated file changed since it was audited\nledger-check: hi/ui.teamBridge: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: ru/ui.teamBridge: stale source_sha256 (ledger cb265d27c44b…, file 610582fa07d1…) — the English source moved since translation\nledger-check: ru/ui.teamBridge: stale target_sha256 (ledger b5496424a9a0…, file 355e3cc62340…) — the translated file changed since it was audited\nledger-check: ru/ui.teamBridge: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: ur/ui.teamBridge: stale source_sha256 (ledger cb265d27c44b…, file 610582fa07d1…) — the English source moved since translation\nledger-check: ur/ui.teamBridge: stale target_sha256 (ledger f4c3632ed372…, file 3d1438219a6a…) — the translated file changed since it was audited\nledger-check: ur/ui.teamBridge: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: vi/ui.teamBridge: stale source_sha256 (ledger cb265d27c44b…, file 610582fa07d1…) — the English source moved since translation\nledger-check: vi/ui.teamBridge: stale target_sha256 (ledger 36081d7fd2d8…, file ae998f699ac5…) — the translated file changed since it was audited\nledger-check: vi/ui.teamBridge: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: zh-CN/ui.teamBridge: stale source_sha256 (ledger cb265d27c44b…, file 610582fa07d1…) — the English source moved since translation\nledger-check: zh-CN/ui.teamBridge: stale target_sha256 (ledger e11b6e6c3732…, file 322f03f50c43…) — the translated file changed since it was audited\nledger-check: zh-CN/ui.teamBridge: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: FAILED — 21 finding(s) across 595 ledger entr(ies)",
+			"note": "Run for completeness and reported as it returned. Its 21 findings are the pre-existing ledger state round 1 also recorded: the ui.teamBridge ledger rows still carry the English source hash from before this namespace's seven-key delta, so every shipped-locale row is stale on source and target and points at an older receipt. That is the i18n lane's assemble step to rebind, not this audit's; no ledger or catalogue byte was touched here.",
+			"exit": 1
+		},
+		{
+			"command": "python3 - (per-locale value of ui.teamBridge.profile.agent_badge versus en)",
+			"output": "en: 'Agent'\nfr     identical=True  'Agent'\nes     identical=False 'Agente'\nzh-CN  identical=False '智能体'\nru     identical=False 'Агент'\nvi     identical=False 'Tác nhân'\nur     identical=False 'ایجنٹ'\nhi     identical=False 'एजेंट'",
+			"note": "Shows the exemption's blast radius in fact as well as in structure: only fr is byte-identical to English, so even a global row could not have hidden a stub elsewhere today - and the row is not global.",
+			"exit": 0
+		},
+		{
+			"command": "python3 - (compare each carried finding's recorded value with the value on disk)",
+			"output": "P2 zh-CN ui.teamBridge.profile.human_badge: recorded='个人' current='个人' unchanged=True\nP3 vi ui.teamBridge.profile.human_badge: recorded='Con người' current='Con người' unchanged=True\nP4 ur ui.teamBridge.profile.local_time: recorded='مقامی وقت {time}' current='مقامی وقت {time}' unchanged=True\nP5 hi ui.teamBridge.profile.local_time: recorded='स्थानीय समय {time}' current='स्थानीय समय {time}' unchanged=True\nP6 zh-CN ui.teamBridge.profile.close_profile: recorded='关闭个人资料' current='关闭个人资料' unchanged=True\nP7 ru ui.teamBridge.profile.open_profile: recorded='Открыть профиль: {name}' current='Открыть профиль: {name}' unchanged=True",
+			"exit": 0
+		}
+	],
+	"audit_notes_not_execution_log": [
+		"The linguistic judgements and the round-2 scope statements are notes, not command output. Only the 'execution' entries are command output captured in this session on 2026-10-26; each entry says whether it is full output or a marked extract.",
+		"No translation or MT service was used and no back-translation was performed; the reads are the auditor's own against the English, the sidecar and the call sites.",
+		"The round-2 words of the exemption rationale were read from the diff, not restated from the brief; the wording in the receipt quotes the file."
+	],
+	"limitations": [
+		"Covers the seven-key delta and the round-2 exemption only; the other 200 keys of ui.teamBridge are not re-opened.",
+		"No rendered frame was captured: the copy bytes did not change, so fit rests on round 1's cell-count argument and the unchanged geometry, not on new pixels.",
+		"The carried minors/nits are recorded, not adjudicated again: with the bytes frozen, re-litigating them would be a different request, and changing them now would be a translation change requiring a fresh audit.",
+		"ledger-check's 21 stale-row findings are pre-existing and outside this audit's write scope; they are reported as returned, not repaired."
+	],
+	"artifacts": [
+		{
+			"path": "i18n/receipts/teambridge-profile-audit-r2-3d4473001f4b.json",
+			"note": "this receipt (the audit's artifact of record); its sha256 is published with the auditor's report and belongs on the ledger row's receipt_sha256"
+		},
+		{
+			"path": "i18n/receipts/teambridge-profile-audit-7fe70d68b963.json",
+			"sha256": "093ac171a83b7873b51bf8324da03087d1d57e5153acb2ff9605bc792bf6b87d",
+			"note": "round-1 receipt, cited as the origin of every carried finding; not modified"
+		}
+	],
+	"evidence_root_note": "No separate bundle was written under i18n/audits/evidence/: the task bounds this audit's writes to the single receipt, and docs/I18N.md keeps mandatory receipt paths under i18n/receipts/ (no tracked manifest maps receipts to the evidence root in this repo). Every retention field the practice names (locale set, namespace, date, auditor agent/session/model/independence, en/context/target paths and SHA-256, findings/status, execution output) is carried in this file."
+}

@@ -1,0 +1,482 @@
+{
+	"ui.agents.publication.action.edit_agent": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.edit_instructions": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.focus_name": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.install_builtin": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.publish_as_new": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.refresh_hub": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.retry": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.sign_in": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.action.update_listing": {
+		"note": "One verb phrase per remedy the refusal can offer. The action set is ordered by the treatment table; keep the labels short enough for a dialog footer and distinct from one another.",
+		"role": "button label for a refusal remedy",
+		"tone": "plain, imperative"
+	},
+	"ui.agents.publication.agent_not_found.body": {
+		"note": "One short sentence hedging that the listing was probably delisted; the author may not have removed it themselves.",
+		"role": "body of the delisted-listing refusal",
+		"tone": "plain, hedged"
+	},
+	"ui.agents.publication.agent_not_found.headline": {
+		"note": "The listing this app meant to update has been delisted from the hub. Short headline; the body says the delisting is likely and the offered action refreshes the hub.",
+		"role": "headline of the delisted-listing refusal",
+		"tone": "plain, no blame"
+	},
+	"ui.agents.publication.category.credential_theft": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.drugs_or_controlled_substances": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.evasion_or_abuse_tooling": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.fraud_or_deception": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.harassment_or_hate": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.malware_or_exploitation": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.mass_surveillance_or_privacy_abuse": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.other_harmful": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.prompt_injection": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.self_harm": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.sexual_content": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.sexual_content_minors": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.unclear_dual_use": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.category.violence_or_weapons": {
+		"note": "One mapped sentence per closed review category; the wire value is the identifier, this is what the publisher reads. Full sentence, wraps in the alert body. Never soften the claim that the content cannot be published.",
+		"role": "reviewer category sentence shown under a publication refusal",
+		"tone": "plain, factual; names the rule that was broken without moralising"
+	},
+	"ui.agents.publication.fallback.headline": {
+		"note": "The catch-all headline for a refusal this build cannot type: an older backend's prose, or a code this version does not know. Deliberately says only that it did not happen.",
+		"role": "headline of the untyped refusal",
+		"tone": "plain, says nothing it cannot know"
+	},
+	"ui.agents.publication.hub_unauthorized.body": {
+		"note": "PUBLISH surface. Two sentences: nothing landed, then the remedy and the next step. The pull twin says the same about a pull, so keep the pair parallel and do not merge them.",
+		"role": "body of the hub-unauthorized refusal",
+		"tone": "plain, directs the remedy"
+	},
+	"ui.agents.publication.hub_unauthorized.body_pull": {
+		"note": "PULL surface twin of the publish sentence: nothing was pulled, sign in again, then pull again. Keep the two verbs ('publish' / 'pull') distinct - a pull does not publish anything.",
+		"role": "body of the hub-unauthorized refusal, pull surface",
+		"tone": "plain, directs the remedy"
+	},
+	"ui.agents.publication.hub_unauthorized.headline": {
+		"note": "The hub answered that this machine's credential is not acceptable. The remedy is running the Radient sign-in again, offered as a button.",
+		"role": "headline of the hub-unauthorized refusal",
+		"tone": "plain, firm"
+	},
+	"ui.agents.publication.hub_unavailable.body": {
+		"note": "Fallback used when the hub sent no sentence worth showing. Names the outcome and offers a retry, plus updating an out-of-date backend. Publish surface; keep parallel with the pull twin.",
+		"role": "body of the hub-unavailable refusal, publish surface",
+		"tone": "plain, offers a retry"
+	},
+	"ui.agents.publication.hub_unavailable.body_pull": {
+		"note": "PULL surface twin: nothing was pulled, retry later, update the backend if needed.",
+		"role": "body of the hub-unavailable refusal, pull surface",
+		"tone": "plain, offers a retry"
+	},
+	"ui.agents.publication.hub_unavailable.headline": {
+		"note": "The hub did not complete the publication, for either of two causes (no answer, or an answer the transport routes here), so the headline must not claim a reach failure.",
+		"role": "headline of the hub-unavailable refusal",
+		"tone": "warning, does not assert a cause"
+	},
+	"ui.agents.publication.hub_unavailable.headline_pull": {
+		"note": "PULL surface twin of the publish headline. Same rule: names the outcome, never the cause.",
+		"role": "headline of the hub-unavailable refusal, pull surface",
+		"tone": "warning, does not assert a cause"
+	},
+	"ui.agents.publication.insufficient_role.body": {
+		"note": "PUBLISH surface without the hub naming a rank: says 'a higher role than yours' instead. Keep parallel with the with-role twin.",
+		"role": "body of the role refusal, no rank named",
+		"tone": "plain, points at an owner"
+	},
+	"ui.agents.publication.insufficient_role.body_pull": {
+		"note": "PULL surface twin without a named rank.",
+		"role": "body of the role refusal, no rank named, pull surface",
+		"tone": "plain, points at an owner"
+	},
+	"ui.agents.publication.insufficient_role.body_with_role": {
+		"note": "PUBLISH surface, and the hub named the rank it needs: {required} is that rank as the hub spells it (a data token such as 'admin' - do not translate the value). Two sentences: what is needed, then who can change the role.",
+		"role": "body of the role refusal, with the hub's required role",
+		"tone": "plain, points at an owner"
+	},
+	"ui.agents.publication.insufficient_role.body_with_role_pull": {
+		"note": "PULL surface twin with the hub's required rank at {required} (data token; do not translate the value).",
+		"role": "body of the role refusal with rank, pull surface",
+		"tone": "plain, points at an owner"
+	},
+	"ui.agents.publication.insufficient_role.headline": {
+		"note": "The reader is a member of the organization but their role is too low for this action.",
+		"role": "headline of the role refusal",
+		"tone": "plain, firm"
+	},
+	"ui.agents.publication.invalid.field.categories": {
+		"note": "The categories field was refused and the hub sent no rule text. Field label only.",
+		"role": "body sentence naming the refused field, no rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.categories_with_rule": {
+		"note": "Categories field label plus the hub's own rule text at {rule}.",
+		"role": "body sentence naming the refused field and the hub rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.description": {
+		"note": "The description field was refused and the hub sent no rule text, so only the label is left - a bare label plus a period, which is what English shows. Not a place to invent a rule.",
+		"role": "body sentence naming the refused field, no rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.description_with_rule": {
+		"note": "Description field label plus the hub's own rule text at {rule}. Keep the label first in English.",
+		"role": "body sentence naming the refused field and the hub rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.instructions": {
+		"note": "The instruction field was refused and no rule text came back, so the sentence states the known bound itself. {max} is a character count, passed as a plain digit string (never add thousands separators in English).",
+		"role": "body sentence naming the refused field and its bound",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.instructions_with_rule": {
+		"note": "The instruction field was refused and the hub sent its own rule text, inserted verbatim at {rule}. Keep the field label first in English.",
+		"role": "body sentence naming the refused field and the hub rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.name": {
+		"note": "The validator refused the NAME field and sent no rule text, so the sentence stands alone. Field label first, as English does; a locale may need another order and should write its own sentence rather than transpose word by word.",
+		"role": "body sentence naming the refused field",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.name_with_rule": {
+		"note": "Field label plus the hub's own rule text (server English, inserted verbatim): {rule} reads like 'must be 3-64 characters'. Keep the label first in English; another locale may reorder with its own phrasing. Ends with a period.",
+		"role": "body sentence naming the refused field and the rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.tags": {
+		"note": "The tags field was refused and the hub sent no rule text. Field label only.",
+		"role": "body sentence naming the refused field, no rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.tags_with_rule": {
+		"note": "Tags field label plus the hub's own rule text at {rule}.",
+		"role": "body sentence naming the refused field and the hub rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.tools": {
+		"note": "The tools field was refused and the hub sent no rule text, so only the label is left. Not a place to invent a rule.",
+		"role": "body sentence naming the refused field, no rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.tools_with_rule": {
+		"note": "Tools field label plus the hub's own rule text at {rule}. Keep the label first in English.",
+		"role": "body sentence naming the refused field and the hub rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.when_to_use": {
+		"note": "'When to use' is the name of a field in the agent document, not a question to the reader. Refused with no rule text.",
+		"role": "body sentence naming the refused field, no rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.field.when_to_use_with_rule": {
+		"note": "'When to use' is a field name; {rule} is the hub's own rule text. Keep the field name recognisable as the same label the form uses.",
+		"role": "body sentence naming the refused field and the hub rule",
+		"tone": "plain"
+	},
+	"ui.agents.publication.invalid.headline": {
+		"note": "The hub's validator refused the document on a field. Headline only; the body names the field and the rule.",
+		"role": "headline of the invalid-document refusal",
+		"tone": "plain, firm"
+	},
+	"ui.agents.publication.local_failure.headline": {
+		"note": "The failure happened on this machine, before the hub was asked anything, so no listing can exist. Publish surface.",
+		"role": "headline of the local failure",
+		"tone": "warning, names the machine as the failing side"
+	},
+	"ui.agents.publication.local_failure.headline_pull": {
+		"note": "PULL surface twin of the local-failure headline: the team could not be pulled from this machine.",
+		"role": "headline of the local failure, pull surface",
+		"tone": "warning, names the machine as the failing side"
+	},
+	"ui.agents.publication.moderation_rejected.headline": {
+		"note": "A reviewer read the instructions and refused them. Headline only - the body below it is the reviewer's own sentence, which is server text and is never translated.",
+		"role": "headline of the moderation refusal",
+		"tone": "plain, firm"
+	},
+	"ui.agents.publication.moderation_unavailable.body": {
+		"note": "Three short sentences: the review did not run, nothing landed, a retry in a minute is right. Must not imply the agent was rejected.",
+		"role": "body of the review-unavailable refusal",
+		"tone": "plain, directs a retry"
+	},
+	"ui.agents.publication.moderation_unavailable.headline": {
+		"note": "The review service did not run, so nothing was published and nothing about the agent was judged. Warning register, never danger: the author's work is not at fault.",
+		"role": "headline of the review-unavailable refusal",
+		"tone": "warning, no blame"
+	},
+	"ui.agents.publication.name_claim_in_flight.body": {
+		"note": "Says nothing is claimed yet and a retry is usually enough. {name} is the submitted name in straight double quotes; a locale may use its own pair.",
+		"role": "body sentence of the in-flight name claim refusal",
+		"tone": "reassuring, invites a retry"
+	},
+	"ui.agents.publication.name_claim_in_flight.headline": {
+		"note": "A different fact from 'taken': another publication holds this name's short-lived reservation and is probably about to finish. Warning register, because the name is usually free moments later.",
+		"role": "headline of the in-flight name claim refusal",
+		"tone": "warning, not an error"
+	},
+	"ui.agents.publication.name_reserved_builtin.body": {
+		"note": "Two DIFFERENT names: {name} is what the author submitted, {builtin} is the built-in definition that reserves it. Keep the two quotes around each; a locale may pick its own pair. The second sentence is the rule.",
+		"role": "body sentence of the reserved-name refusal, names differ",
+		"tone": "plain, explains the rule"
+	},
+	"ui.agents.publication.name_reserved_builtin.body_same_name": {
+		"note": "The common case: the submitted name IS the built-in's name, so one name is stated once. {builtin} carries whichever spelling the hub canonically uses.",
+		"role": "body sentence of the reserved-name refusal, one name",
+		"tone": "plain, explains the rule"
+	},
+	"ui.agents.publication.name_reserved_builtin.headline": {
+		"note": "The submitted name belongs to a definition that ships with the app, which the hub reserves. Short headline; the body carries the two names.",
+		"role": "headline of the reserved-name refusal",
+		"tone": "plain"
+	},
+	"ui.agents.publication.name_taken.body": {
+		"note": "Explains why the name cannot be used: hub agent names are globally unique. {name} is the submitted name, quoted by the sentence itself with straight double quotes; a locale may switch to its own quotation pair.",
+		"role": "body sentence of the name-taken refusal",
+		"tone": "plain, explains the rule"
+	},
+	"ui.agents.publication.name_taken.headline": {
+		"note": "The headline of a refusal: another account already published an agent under this name. The remedy is the name field, so the body names that. Sentence case, no final period (headline).",
+		"role": "headline of a refusal panel in the publish dialog",
+		"tone": "plain, states the fact"
+	},
+	"ui.agents.publication.name_taken.owned_body": {
+		"note": "Says the author owns the listing already and points at updating it. {name} is the submitted name, in straight double quotes that a locale may replace.",
+		"role": "body sentence of the name-taken refusal, own listing",
+		"tone": "plain, directs to the remedy"
+	},
+	"ui.agents.publication.name_taken.owned_headline": {
+		"note": "The sibling headline for the case where the SAME account already owns that name, so nothing is wrong - the author just needs to update the existing listing rather than create a second one. Must read as a next step, not an error.",
+		"role": "headline of the name-taken refusal, own listing",
+		"tone": "matter of fact, no blame"
+	},
+	"ui.agents.publication.not_a_member.body": {
+		"note": "PUBLISH surface. Nothing landed, and the only way forward is an owner inviting the reader - so the sentence points there rather than offering a retry that would loop.",
+		"role": "body of the membership refusal, publish surface",
+		"tone": "plain, points at an owner"
+	},
+	"ui.agents.publication.not_a_member.body_pull": {
+		"note": "PULL surface twin: nothing was pulled, and an organization owner can invite the reader.",
+		"role": "body of the membership refusal, pull surface",
+		"tone": "plain, points at an owner"
+	},
+	"ui.agents.publication.not_a_member.headline": {
+		"note": "The signed-in account is not in the organization it tried to act in.",
+		"role": "headline of the membership refusal",
+		"tone": "plain, firm"
+	},
+	"ui.agents.publication.not_owner.body": {
+		"note": "One sentence naming whose the listing is. Says nothing about the agent's content, which is not at fault.",
+		"role": "body of the not-owner refusal",
+		"tone": "plain"
+	},
+	"ui.agents.publication.not_owner.headline": {
+		"note": "This app remembered a hub listing that belongs to a different account, so updating it is refused. The remedy offered is publishing as a new listing.",
+		"role": "headline of the not-owner refusal",
+		"tone": "plain, firm"
+	},
+	"ui.agents.publication.other_action_lead": {
+		"note": "Prefixes the reason for an action that failed without a coded treatment. Followed by the local server's own sentence, so this must end with a full stop.",
+		"role": "lead sentence of a failure explanation",
+		"tone": "plain, factual, no blame"
+	},
+	"ui.agents.publication.payload_too_large.body": {
+		"note": "The same refusal without the hub's limit: names the outcome and the remedy only. Second sentence is the remedy.",
+		"role": "body of the payload-too-large refusal, no limit",
+		"tone": "plain, directs the remedy"
+	},
+	"ui.agents.publication.payload_too_large.body_with_limit": {
+		"note": "{size} is a kibibyte count the hub sent, passed as a plain digit string beside the unit 'KiB', which stays as it is in every locale. Second sentence is the remedy.",
+		"role": "body of the payload-too-large refusal, with the hub's limit",
+		"tone": "plain, directs the remedy"
+	},
+	"ui.agents.publication.payload_too_large.headline": {
+		"note": "The document exceeded the hub's size ceiling. The remedy is shortening the instructions, which the body names.",
+		"role": "headline of the payload-too-large refusal",
+		"tone": "plain, firm"
+	},
+	"ui.agents.publication.pull.busy": {
+		"note": "The hub answered 429: busy, and a retry later is right. {subject} is the quoted name.",
+		"role": "pull-refusal sentence, hub busy",
+		"tone": "plain, reassures a retry helps"
+	},
+	"ui.agents.publication.pull.hub_unavailable": {
+		"note": "The hub did not complete the download for either of two causes (no answer, or an answer the transport routes here), so the sentence names the outcome rather than a reach failure.",
+		"role": "pull-refusal sentence, hub did not complete",
+		"tone": "plain, does not assert a cause"
+	},
+	"ui.agents.publication.pull.incomplete": {
+		"note": "The hub answered 5xx: it started the work and failed its own side. A retry later is right.",
+		"role": "pull-refusal sentence, hub error",
+		"tone": "plain, offers a retry"
+	},
+	"ui.agents.publication.pull.no_reason": {
+		"note": "The refusal carried no usable reason at all. Shortest sentence in the family: says only that the download did not happen.",
+		"role": "pull-refusal sentence, no reason",
+		"tone": "plain, says as little as it can"
+	},
+	"ui.agents.publication.pull.not_found": {
+		"note": "The hub no longer holds the document, so nothing was downloaded. {subject} is the quoted name (or the stand-in). Delete nothing: the second clause is the 'nothing landed' fact.",
+		"role": "pull-refusal sentence, delisted document",
+		"tone": "plain, factual"
+	},
+	"ui.agents.publication.pull.prose": {
+		"note": "An authored sentence the hub or backend wrote, shown after the colon with the quoted name first. {reason} is server text, never translated.",
+		"role": "pull-refusal sentence carrying the server's own words",
+		"tone": "plain"
+	},
+	"ui.agents.publication.pull.reach_failure": {
+		"note": "The prose arm's reach-failure sentence: no answer at all arrived. Distinct from hub_unavailable, which covers a hub that answered.",
+		"role": "pull-refusal sentence, transport failure, prose arm",
+		"tone": "plain, names the cause"
+	},
+	"ui.agents.publication.pull.refused": {
+		"note": "Generic pull refusal in the typed arm: the hub or backend wrote {reason}, shown verbatim after the colon. {subject} is the quoted name. Keep the colon structure.",
+		"role": "pull-refusal sentence with the server's reason",
+		"tone": "plain"
+	},
+	"ui.agents.publication.pull.refused_download": {
+		"note": "The hub answered 4xx: it refused the request outright, so the document is not here. No retry is implied.",
+		"role": "pull-refusal sentence, request refused",
+		"tone": "plain, factual"
+	},
+	"ui.agents.publication.pull.sign_in_refused": {
+		"note": "The hub answered 401 or 403: this machine's credential was refused. The pull surface offers no sign-in control of its own, so the sentence states the fact only.",
+		"role": "pull-refusal sentence, credential refused",
+		"tone": "plain, factual"
+	},
+	"ui.agents.publication.pull.unreachable": {
+		"note": "A transport failure after the route's own wrappers were stripped: the hub really was not reached.",
+		"role": "pull-refusal sentence, transport failure",
+		"tone": "plain, names the cause"
+	},
+	"ui.agents.publication.subject.agent": {
+		"note": "Stands in for an agent's name when the refusal carried none, inside a longer sentence ('Nothing was published. Ask an owner ...'). Lowercase, because it continues a sentence; keep it short.",
+		"role": "stand-in subject in a refusal sentence",
+		"tone": "plain, anonymous"
+	},
+	"ui.agents.publication.subject.name": {
+		"note": "The requested name, wrapped in quotation marks, used as the subject of a pull-refusal sentence. The marks themselves are copy: a locale may use its own pair (guillemets, corner brackets) but must quote {name}; {name} itself is never translated.",
+		"role": "quoted subject in a pull-refusal sentence",
+		"tone": "plain, names the document"
+	},
+	"ui.agents.publication.subject.team": {
+		"note": "Team twin of subject.agent: stands in for a team's name the refusal did not carry. Lowercase, mid-sentence.",
+		"role": "stand-in subject in a refusal sentence",
+		"tone": "plain, anonymous"
+	},
+	"ui.agents.publication.subject.unknown": {
+		"note": "Stands in for the quoted name when the pull did not carry one. Starts with a capital because it opens the sentence here.",
+		"role": "stand-in subject in a pull-refusal sentence",
+		"tone": "plain, anonymous"
+	},
+	"ui.agents.publication.team_not_found.body": {
+		"note": "One sentence hedging the delisting and locating it in time ('since this page was loaded'), so the reader knows a reload may be what changed.",
+		"role": "body of the delisted-team refusal",
+		"tone": "plain, hedged"
+	},
+	"ui.agents.publication.team_not_found.headline": {
+		"note": "A team document was delisted between the list and the press. The offered action refreshes the hub rather than retrying a read that would answer the same.",
+		"role": "headline of the delisted-team refusal",
+		"tone": "plain, no blame"
+	},
+	"ui.agents.publication.team_plan_required.body": {
+		"note": "PUBLISH surface. Explains that sharing agents inside an organization needs the Team plan, and that only an organization owner can activate it. Keep 'Team' as the plan's product name.",
+		"role": "body of the plan refusal, publish surface",
+		"tone": "plain, points at the person who can act"
+	},
+	"ui.agents.publication.team_plan_required.body_pull": {
+		"note": "PULL surface twin: reading an organization's teams needs the Team plan. Keep 'Team' as the plan's product name.",
+		"role": "body of the plan refusal, pull surface",
+		"tone": "plain, points at the person who can act"
+	},
+	"ui.agents.publication.team_plan_required.headline": {
+		"note": "The organization's plan does not include the team feature. Warning register, because nothing about the agent is wrong.",
+		"role": "headline of the plan refusal",
+		"tone": "warning, factual"
+	}
+}

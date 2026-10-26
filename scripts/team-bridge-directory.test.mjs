@@ -88,8 +88,8 @@ const model = await import(
 const componentBundle = await build({
 	stdin: {
 		contents: `
-			export { TeamBridgePageView, TeamBridgeEligibilityPanel } from "./src/renderer/src/features/team-bridge/team-bridge-page";
-			export { setLocale } from "./src/i18n";
+			export { TeamBridgePageView, TeamBridgeEligibilityPanel, profileMessageTarget } from "./src/renderer/src/features/team-bridge/team-bridge-page";
+			export { setLocale, t } from "./src/i18n";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-directory.mjs",
@@ -121,7 +121,15 @@ process.on("exit", () => {
 });
 
 const { createElement } = await import("react");
-const { renderToStaticMarkup } = await import("react-dom/server");
+const { renderToStaticMarkup: renderMarkup } = await import("react-dom/server");
+const { QueryClient, QueryClientProvider } = await import(
+	"@tanstack/react-query"
+);
+// Directory avatars use the signed-in authority cache, just as in the app shell.
+const renderToStaticMarkup = (element) =>
+	renderMarkup(
+		createElement(QueryClientProvider, { client: new QueryClient() }, element),
+	);
 const ui = await import(modulePath.href);
 // Relative-time formatting follows the active locale. Pin it so the suite
 // asserts the English source under a non-English host locale too.
@@ -523,12 +531,22 @@ test("people render with self, paused and inert states at the rail's rhythm", ()
 		),
 	);
 	assert.match(html, /People/);
-	// The reader's own row names them and is not a control.
+	// The reader's own row names them and opens a profile, not a DM.
 	assert.match(html, /Damian \(you\)/);
 	assert.doesNotMatch(html, /Message Damian/);
 	// A reachable person's row is their DM; a paused one says so on the row.
-	assert.match(html, /aria-label="Message Bea"/);
-	assert.match(html, /aria-label="Message Cy"/);
+	assert.match(
+		html,
+		new RegExp(
+			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+		),
+	);
+	assert.match(
+		html,
+		new RegExp(
+			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Cy" })}"`,
+		),
+	);
 	assert.match(html, />Paused</);
 	// A bridge-off person is listed, inert, and explains why.
 	assert.match(html, /Hasn’t turned on Team Bridge yet/);
@@ -551,7 +569,12 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 			viewProps({ people: [bea], conversations: [dm], listState: "ready" }),
 		),
 	);
-	assert.match(ready, /aria-label="Message Bea"/);
+	assert.match(
+		ready,
+		new RegExp(
+			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+		),
+	);
 	assert.doesNotMatch(ready, new RegExp(`data-conversation-id="${dm.id}"`));
 	assert.match(ready, /aria-label="2 unread"/);
 	for (const listState of ["loading", "error"]) {
@@ -563,7 +586,9 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 		);
 		assert.match(
 			html,
-			/aria-label="Message Bea"/,
+			new RegExp(
+				`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+			),
 			`${listState} list keeps the row`,
 		);
 	}
@@ -627,7 +652,12 @@ test("surface F withholds writes but still opens an existing DM", () => {
 		/This organization is read-only right now, so messages can’t be sent\./,
 	);
 	assert.doesNotMatch(withDm, /<textarea/);
-	assert.match(withDm, /aria-label="Message Bea"/);
+	assert.match(
+		withDm,
+		new RegExp(
+			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+		),
+	);
 });
 
 test("surface F withholds Join and the conversation menu", () => {
@@ -1291,5 +1321,174 @@ test("server rendering does not depend on ambient browser storage", () => {
 		if (descriptor)
 			Object.defineProperty(globalThis, "localStorage", descriptor);
 		else Reflect.deleteProperty(globalThis, "localStorage");
+	}
+});
+
+test("optional profiles preserve rune-limited names and reject unsafe avatars without losing people", () => {
+	const profile = {
+		display_name: "\u{20000}".repeat(64),
+		title: "\u{20000}".repeat(80),
+		description: "\u{20000}".repeat(500),
+		pronouns: "\u{20000}".repeat(32),
+		timezone: "UTC",
+	};
+	const parsed = model.teamBridgeDirectorySchema.parse({
+		members: [
+			{
+				...selfMember,
+				profile,
+				avatar_url:
+					"/v1/accounts/01234567-89AB-CDEF-0123-456789ABCDEF/avatar?v=0123456789abcdef",
+			},
+		],
+	});
+	assert.equal(parsed.members[0].profile.display_name, profile.display_name);
+	assert.equal(
+		parsed.members[0].avatar_url,
+		"/v1/accounts/01234567-89AB-CDEF-0123-456789ABCDEF/avatar?v=0123456789abcdef",
+	);
+	const malformed = model.teamBridgeDirectorySchema.parse({
+		members: [
+			{
+				...selfMember,
+				profile: { title: 4 },
+				avatar_url: "https://evil.example/avatar",
+			},
+		],
+	});
+	assert.equal(malformed.members.length, 1);
+	assert.equal(malformed.members[0].avatar_url, undefined);
+	assert.equal(malformed.members[0].profile.title, "");
+});
+
+test("profile Message scopes existing DMs and allows read-only history but not drafts", () => {
+	const sender = { account_id: "bea", kind: "human", display_label: "Bea" };
+	const dm = conversation({
+		id: "dm-profile",
+		tenant_id: "tenant-profile",
+		members: [
+			selfMember,
+			{ ...person({ account_id: "bea" }), kind: "human", state: "active" },
+		],
+	});
+	assert.deepEqual(
+		ui.profileMessageTarget(
+			sender,
+			"tenant-profile",
+			[dm],
+			selfMember.account_id,
+			true,
+		),
+		{ type: "conversation", id: dm.id },
+	);
+	assert.equal(
+		ui.profileMessageTarget(
+			sender,
+			"other-tenant",
+			[dm],
+			selfMember.account_id,
+			true,
+		),
+		null,
+	);
+	assert.deepEqual(
+		ui.profileMessageTarget(
+			sender,
+			"other-tenant",
+			[dm],
+			selfMember.account_id,
+			false,
+		),
+		{ type: "person", accountId: "bea" },
+	);
+});
+
+test("avatar URL accepts legacy account ids and refuses path or escaped account ids", () => {
+	const parse = (account) =>
+		model.teamBridgeDirectorySchema.parse({
+			members: [
+				{
+					...selfMember,
+					avatar_url: `/v1/accounts/${account}/avatar?v=0123456789abcdef`,
+				},
+			],
+		}).members[0].avatar_url;
+	assert.equal(
+		parse("acc_bea"),
+		"/v1/accounts/acc_bea/avatar?v=0123456789abcdef",
+	);
+	for (const account of [
+		"user%40example",
+		"../acc_bea",
+		"acc_bea/other",
+		"acc_bea?x=1",
+		"https://evil.example",
+		"unknown-id",
+	])
+		assert.equal(parse(account), undefined);
+});
+
+test("profile Message selects the person/chief rail in one tenant and the exact DM in merged scope", () => {
+	for (const kind of ["human", "agent"]) {
+		const member = person({
+			agent: { name: "Aida", endpoint_id: "ep_bea", state: "active" },
+		});
+		const sender = {
+			account_id: member.account_id,
+			kind,
+			display_label: "Bea",
+		};
+		const dm = conversation({
+			id: `dm-${kind}`,
+			members: [selfMember, { ...sender, role: "member", state: "active" }],
+		});
+		const foreign = {
+			...dm,
+			id: `foreign-${kind}`,
+			tenant_id: "tnt_other",
+			last_message_at: "2099-01-01T00:00:00Z",
+		};
+		const target = ui.profileMessageTarget(
+			sender,
+			dm.tenant_id,
+			[foreign, dm],
+			selfMember.account_id,
+			true,
+			false,
+		);
+		assert.deepEqual(target, {
+			type: kind === "agent" ? "chief" : "person",
+			accountId: member.account_id,
+		});
+		assert.equal(
+			model.targetConversation(target, [dm], selfMember.account_id)?.id,
+			dm.id,
+		);
+		const html = renderToStaticMarkup(
+			createElement(
+				ui.TeamBridgePageView,
+				viewProps({ target, conversations: [dm], people: [member] }),
+			),
+		);
+		assert.match(
+			html,
+			new RegExp(
+				`<button[^>]*aria-current="page"[^>]*data-team-bridge-${kind === "agent" ? "chief" : "person"}="${member.account_id}"`,
+			),
+		);
+		const merged = ui.profileMessageTarget(
+			sender,
+			dm.tenant_id,
+			[foreign, dm],
+			selfMember.account_id,
+			true,
+			true,
+		);
+		assert.deepEqual(merged, { type: "conversation", id: dm.id });
+		assert.equal(
+			model.targetConversation(merged, [foreign, dm], selfMember.account_id)
+				?.tenant_id,
+			dm.tenant_id,
+		);
 	}
 });

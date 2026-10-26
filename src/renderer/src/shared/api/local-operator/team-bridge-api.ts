@@ -345,6 +345,29 @@ export const TeamBridgeApi = {
 		return { data: answer.data, mimeType: answer.mimeType };
 	},
 
+	/**
+	 * Typed seam for private avatar derivatives through core's binary hub relay;
+	 * never use the local desktop bearer on the directory's hub URL. The receipt
+	 * captures the commissioning viewer. Old-runtime 404s remain safe fallbacks.
+	 */
+	async avatarBytes(input: {
+		expectedAccountId: string;
+		accountId: string;
+		hash: string;
+		size: 64 | 256;
+	}): Promise<{ data: Uint8Array; mimeType: string }> {
+		const answer = await desktopMedia(
+			{ op: "team_bridge.avatar", ...input },
+			null,
+		);
+		if (answer.kind !== "bytes")
+			throw new TeamBridgeAttachmentError(
+				answer.kind === "error" ? answer.status : null,
+				answer.kind === "error" ? answer.code : undefined,
+			);
+		return { data: answer.data, mimeType: answer.mimeType };
+	},
+
 	async markRead(
 		conversationId: string,
 		input: {
