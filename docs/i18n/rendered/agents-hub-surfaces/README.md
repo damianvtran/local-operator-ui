@@ -29,15 +29,27 @@ the agent hub and the org-team rows in the seven shipped non-English locales.
 
 ### 1. The scope control overflowed in two locales (and was fixed)
 
-The roster's four equal segments must fit a 246 px well
-(`w-72` column, `px-4`, `Button size=sm`, `px-2`, `text-meta`, `font-medium`).
+The roster's four equal segments must fit one well (`w-72` column, `px-4`,
+`Button size=sm`, `px-2`, `text-meta`, `font-medium`). Two different bases appear
+below and are kept apart on purpose:
+
+- **Overflow** is the measured right edge of the last segment against the well's
+  right edge (`532` in the rig's coordinates; the first segment starts at `284`,
+  so the available run is 248 px). `+5.21 px` is `537.21 - 532`, read straight
+  from `measurements.json` (`overflowPx`).
+- **Slack** is the sum of the segments' natural widths (text plus four `px-2`
+  pads) against the 246 px the four equal segments are laid out in; a segment
+  box sum of `245.99` means the buttons were stretched to fill it.
+
+Mixing them (`253.21 - 246`) gives a different number; the first is what the
+user sees clipped.
 
 | locale | before | after | slack |
 | --- | --- | --- | --- |
 | en (control) | 214.54 px natural, fits | unchanged | 31.46 px |
 | es | 246.00 px box, **exact fit** | unchanged | 0 px |
-| fr | `Toutes / Créées / Installées / Intégrées` 253.21 px, **+5.21 px**, well scrolls | `Tout / Créé / Installé / Intégré` **199.59 px** | 46.41 px |
-| ru | `Все / Свои / Установленные / Встроенные` 283.90 px, **+35.91 px**, last chip cut 19.9 px past the sidebar | `Все / Свои / С хаба / Встроенные` **230.24 px** | 15.76 px |
+| fr | `Toutes / Créées / Installées / Intégrées` 253.21 px box sum, last edge 537.21 vs 532: **+5.21 px**, well scrolls | `Tout / Créé / Installé / Intégré` **199.59 px** | 46.41 px |
+| ru | `Все / Свои / Установленные / Встроенные` 283.90 px box sum, last edge 567.91 vs 532: **+35.91 px**, last chip cut 19.9 px past the sidebar | `Все / Свои / С хаба / Встроенные` **230.24 px** | 15.76 px |
 | ur | fits, -2 px inline-start slack | unchanged | n/a |
 | zh-CN, vi, hi | 246.00 px, fit | unchanged | n/a |
 
