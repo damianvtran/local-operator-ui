@@ -1,0 +1,274 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-namespace-audit-chat-surfaces-r3",
+	"date": "2026-10-26",
+	"audit_date": "2026-10-26",
+	"locale": "ru",
+	"batch": "chat-surfaces",
+	"round": 3,
+	"branch": "i18n-chat-surfaces",
+	"audited_head": "e1ca500e5abcce535f8eabeb899197014dd7b787",
+	"candidate_state": "WORKING TREE, UNCOMMITTED. HEAD (e1ca500e) still carries the round-2 bytes (sha256 fe16c390…); the six remediated values exist only as an uncommitted modification of src/i18n/catalogues/ru/ui.chat.run_details.json. Every verdict here is bound to the sha256 of the bytes on disk, recomputed in this session. The remediation commit must land before any ledger row can cite these hashes.",
+	"instance": "r3-d94b940967c1",
+	"audit_id": "ru-chat-surfaces-r3-d94b940967c1",
+	"namespace": "ui.chat.run_details",
+	"locale_scope": "ui.chat.run_details ONLY (82 values). ui.chat, ui.chat.canonical and ui.chat.asks are byte-identical to the round-2 audited bytes and were not re-audited, per the round-3 mandate; no claim is made about them here.",
+	"status": "passed",
+	"verdict": "passed",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "r3-d94b940967c1",
+		"instance": "r3-d94b940967c1",
+		"model": "radient/auto",
+		"actual_model_source": "Harness session route radient/auto as dispatched for this round; no mid-audit model switch was observed in this session. Declared plainly because radient/auto is an alias, not a vendor model id, and the round-1 audit on the same route was descended cross-vendor to anthropic/claude-sonnet-5-5 mid-run by a provider quota failure (i18n/receipts/ru-chat-surfaces-audit-9ad847e63dc6.json); this record cannot see the resolved vendor model behind the alias.",
+		"fallback": {
+			"used": false,
+			"reason": "no fallback event observed during this audit",
+			"scope": "whole round"
+		},
+		"independent_from_translators": true,
+		"independence_basis": "Separate session from the translator and from the author of the six-value remediation; read the round-2 receipt only AFTER reading the bytes, to check whether each earlier finding was resolved. Made no catalogue, code, generated-file or ledger edit; the only write is this receipt. No translation/MT service was used to compare or back-translate."
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"round_2_receipt": {
+			"path": "i18n/receipts/ru-chat-surfaces-audit-r2-r2-44322c0b8b28.json",
+			"sha256": "9269b212100eb87dde8471aaf8c8c80211682ac6fb4178ec93c0d2ce959fc379",
+			"used_for": "resolution check of its three ui.chat.run_details findings and of the bytes it audited; never as a source of wording"
+		},
+		"round_2_target_bytes": {
+			"binding": "git show HEAD:src/i18n/catalogues/ru/ui.chat.run_details.json hashes to fe16c390d923aeba701a2c2770e71a2d2f265e8782039cc4999a4d8eee5329d0, which is the round-2 receipt's target sha256 - so `git diff HEAD` against the working tree IS the exact round-2 -> round-3 delta, not a guess at it."
+		}
+	},
+	"scope": "The six values changed since round 2 in ui.chat.run_details, each judged against its English source, its .context.json entry and its render site; all 82 values re-read once independently (the manager asked for a second pass, so the first pass is not assumed right); plus the mechanical gates over the whole catalogue set. Catalogue audit only: no browser, no screenshots, no native-speaker sign-off; fit is judged from the render sites' own budgets, not painted pixels.",
+	"method": [
+		"Recomputed the en (288ba883…), context (0f036573…) and target (7f60bcb4…) sha256 from disk; the target matches the hash the manager named, and the HEAD blob matches the round-2 target (fe16c390…).",
+		"Compared HEAD bytes against the working tree by parsed value, not by diff hunk shape: exactly 6 values differ, key order and the 82-key set are identical on both sides, and `git status --porcelain` lists no other ru catalogue file.",
+		"Parsed all 82 en/ru pairs with @formatjs/icu-messageformat-parser: argument names and types, Rich/tag names, `#` and backtick code spans identical - 82 keys, 0 problems. The 5 plural messages keep one/few/many/other in ru (all four locale categories present) and their arm text is unchanged from HEAD.",
+		"Rendered the remediated key through the repository's own intl-messageformat at locale 'ru' with both {due} shapes formatWakeDue (run-detail-model.ts:1611) emits: same-day '10:30 GMT+3' and dated '14 окт. 21:30 GMT+3'.",
+		"Byte checks: UTF-8, exactly one trailing newline, no CRLF, no BOM, every key line tab-indented, 0 non-NFC code points, no LRM/RLM/embedding/isolate/ZWSP characters, no straight double quotes in values, guillemets only in monitor_cancel.message, NBSP present in «2 000», no '...' (ellipsis character only), no backtick-span drift, value-edge whitespace parity with English.",
+		"Ran the five mechanical gates; command, verbatim output and exit code are recorded in mechanical_gates.",
+		"Re-read all 82 values as an independent second pass, each against its context entry and its render site (subagents_of is label+ownerLabel in run-child-subagents.tsx:229-233, so ru's added colon is the 'of' relation; delegated_with labels a folded brief; cancel_wake_due is the cancel control's accessible name from wakeCancelControlLabel). No new defect found."
+	],
+	"limitations": [
+		"No browser or rendered-fit evidence was produced: this round is catalogue-only by mandate. Fit is judged from the render sites and from the length deltas recorded in length_deltas: every remediated value grew by exactly one character except delegated_with, which is 7 shorter; none of the five changed visible strings has a maxCells/maxChars hint in the sidecar (the sidecar carries none for this namespace), and cancel_wake_due is an aria-label, not a painted label.",
+		"No ledger-check run and no ledger row edit (out of scope for this auditor; the manager owns the ledger).",
+		"No tracked evidence bundle under i18n/audits/evidence was written: the task confined this round to one receipt, whose per-namespace input hashes make it self-verifying."
+	],
+	"length_deltas": [
+		{
+			"key": "ui.chat.run_details.mcp_auth.title",
+			"round_2_chars": 18,
+			"round_3_chars": 19,
+			"delta": 1
+		},
+		{
+			"key": "ui.chat.run_details.mcp_auth.title_for_server",
+			"round_2_chars": 16,
+			"round_3_chars": 17,
+			"delta": 1
+		},
+		{
+			"key": "ui.chat.run_details.mcp_auth.no_session",
+			"round_2_chars": 45,
+			"round_3_chars": 46,
+			"delta": 1
+		},
+		{
+			"key": "ui.chat.run_details.mcp_auth.checking",
+			"round_2_chars": 37,
+			"round_3_chars": 38,
+			"delta": 1
+		},
+		{
+			"key": "ui.chat.run_details.reader.delegated_with",
+			"round_2_chars": 16,
+			"round_3_chars": 9,
+			"delta": -7
+		},
+		{
+			"key": "ui.chat.run_details.wake.cancel_wake_due",
+			"round_2_chars": 45,
+			"round_3_chars": 46,
+			"delta": 1
+		}
+	],
+	"change_ledger": [
+		{
+			"key": "ui.chat.run_details.wake.cancel_wake_due",
+			"round_2": "Отменить пробуждение, которое сработает {due}",
+			"round_3": "Отменить пробуждение, запланированное на {due}",
+			"resolves": "RU-RD-R2-1"
+		},
+		{
+			"key": "ui.chat.run_details.reader.delegated_with",
+			"round_2": "Что делегировано",
+			"round_3": "Поручение",
+			"resolves": "RU-RD-R2-2"
+		},
+		{
+			"key": "ui.chat.run_details.mcp_auth.title",
+			"round_2": "Войти в MCP-сервер",
+			"round_3": "Войти на MCP-сервер",
+			"resolves": "RU-CHAT-R2-1"
+		},
+		{
+			"key": "ui.chat.run_details.mcp_auth.title_for_server",
+			"round_2": "Войти в {server}",
+			"round_3": "Войти на {server}",
+			"resolves": "RU-CHAT-R2-1"
+		},
+		{
+			"key": "ui.chat.run_details.mcp_auth.no_session",
+			"round_2": "Откройте разговор, чтобы войти в этот сервер.",
+			"round_3": "Откройте разговор, чтобы войти на этот сервер.",
+			"resolves": "RU-CHAT-R2-1"
+		},
+		{
+			"key": "ui.chat.run_details.mcp_auth.checking",
+			"round_2": "Проверка способа входа в этот сервер…",
+			"round_3": "Проверка способа входа на этот сервер…",
+			"resolves": "RU-CHAT-R2-1"
+		}
+	],
+	"render_evidence": {
+		"key": "ui.chat.run_details.wake.cancel_wake_due",
+		"locale": "ru",
+		"formatter": "intl-messageformat IntlMessageFormat(value, 'ru') - the same library and call shape as src/i18n/messages.ts",
+		"same_day_due": "10:30 GMT+3",
+		"same_day_rendered": "Отменить пробуждение, запланированное на 10:30 GMT+3",
+		"dated_due": "14 окт. 21:30 GMT+3",
+		"dated_rendered": "Отменить пробуждение, запланированное на 14 окт. 21:30 GMT+3",
+		"grammar_note": "«запланированное на» governs both shapes: a bare clock («на 10:30») and a date+clock («на 14 окт. 21:30»). The round-2 wording «которое сработает 10:30» was ungrammatical for the common same-day shape because it omitted the preposition; adding «в» would have fixed only that shape and broken the dated one. Neuter agreement with «пробуждение» is correct in both."
+	},
+	"round_2_resolution": [
+		{
+			"id": "RU-RD-R2-1",
+			"finding": "major",
+			"key": "ui.chat.run_details.wake.cancel_wake_due",
+			"status": "resolved",
+			"evidence": "Rendered through the repository's formatter in both shapes; both are grammatical and carry the 'scheduled for' relation the English states. Verified as an accessible name only (wakeCancelControlLabel), so no cell budget applies."
+		},
+		{
+			"id": "RU-RD-R2-2",
+			"finding": "nit",
+			"key": "ui.chat.run_details.reader.delegated_with",
+			"status": "resolved",
+			"evidence": "«Поручение» names the brief block it labels (BriefBlock renders row.brief, the child's authored launch prompt, run-detail-model.ts:1400); one word, fits the text-meta label beside the fold control, and does not read as a question."
+		},
+		{
+			"id": "RU-CHAT-R2-1",
+			"finding": "nit",
+			"keys": [
+				"ui.chat.run_details.mcp_auth.title",
+				"ui.chat.run_details.mcp_auth.title_for_server",
+				"ui.chat.run_details.mcp_auth.no_session",
+				"ui.chat.run_details.mcp_auth.checking"
+			],
+			"status": "resolved",
+			"evidence": "All four now take «на» for the server, which is the Russian preposition for a server (вход на сервер) and matches «MCP-серверы» elsewhere in the namespace; «в» is kept for systems and accounts, none of which appear in these four."
+		}
+	],
+	"namespaces": {
+		"ui.chat.run_details": {
+			"namespace": "ui.chat.run_details",
+			"keys": 82,
+			"status": "passed",
+			"verdict": "passed",
+			"sha256": {
+				"en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+				"ru": "7f60bcb4400b22d2134a8fa86488887ef4c8dcb429b3bae863f0735d34161fe7"
+			},
+			"context_sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919",
+			"input_hashes": {
+				"en": {
+					"path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+					"sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51"
+				},
+				"context": {
+					"path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+					"sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+				},
+				"target": {
+					"path": "src/i18n/catalogues/ru/ui.chat.run_details.json",
+					"sha256": "7f60bcb4400b22d2134a8fa86488887ef4c8dcb429b3bae863f0735d34161fe7"
+				}
+			},
+			"findings": [],
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"current_report_verdict": {
+				"status": "passed",
+				"unresolved_blocker_major_count": 0,
+				"finding_ids": []
+			},
+			"checks": {
+				"key_set_and_order": "identical to en (82 keys, same order)",
+				"icu_arguments_and_tags": "identical for all 82 keys (0 problems)",
+				"plural_categories": "5 plural messages; ru arms one/few/many/other all present and unchanged from HEAD",
+				"code_spans_and_placeholders": "byte-identical",
+				"nfc": "clean (0 non-NFC code points)",
+				"bidi_controls": "none",
+				"indent_and_newline": "tab-indented; exactly one trailing newline; no CRLF, no BOM",
+				"quotes": "guillemets only in monitor_cancel.message; no straight double quotes",
+				"number_grouping": "NBSP in «2 000»",
+				"edge_whitespace": "parity with English"
+			}
+		}
+	},
+	"mechanical_gates": [
+		{
+			"command": "node --test --test-name-pattern=ru scripts/i18n/locale-parity.test.mjs",
+			"exit_code": 0,
+			"output": "✔ [ru] ships at least one message (not an empty claim)\n✔ [ru] defines each key in at most one namespace file\n✔ [ru] carries EVERY key of each namespace file it ships\n✔ [ru] names only keys the English source defines\n✔ [ru] preserves every ICU placeholder from the English source\n✔ [ru] is not an English stub (no value identical to the source)\nℹ tests 6\nℹ pass 6\nℹ fail 0"
+		},
+		{
+			"command": "node scripts/i18n/context-parity.mjs",
+			"exit_code": 0,
+			"output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+		},
+		{
+			"command": "node scripts/i18n/check-duplicates.mjs",
+			"exit_code": 0,
+			"output": "check-duplicates: ok — 763 file(s) scanned, 0 duplicate key(s)"
+		},
+		{
+			"command": "node scripts/i18n/generate.mjs --check",
+			"exit_code": 0,
+			"output": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+		},
+		{
+			"command": "node scripts/i18n/check-strings.mjs",
+			"exit_code": 0,
+			"output": "check-strings.mjs: ok — 1368 file(s) scanned, 262 literal(s) at or below the baseline"
+		}
+	],
+	"audit_ledger_command": {
+		"command": "node scripts/i18n/ledger-assemble.mjs --locale ru --file src/i18n/catalogues/ru/ui.chat.run_details.json --auditor-agent i18n-auditor --auditor-instance r3-d94b940967c1 --auditor-model radient/auto --result clean --receipt i18n/receipts/ru-chat-surfaces-audit-r3-d94b940967c1.json --note <280-char note>",
+		"run": false,
+		"reason": "no ledger edits in this round's mandate; the command is recorded so the manager can assemble the row from this receipt's bytes once the remediation commit lands"
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/ru-chat-surfaces-audit-r3-d94b940967c1.json",
+			"role": "this receipt (the served record of the round); its own sha256 is derived by deriveReceiptAudit from these final bytes and printed in the audit report"
+		}
+	],
+	"audit_notes_not_execution_log": "The method list records what was done and what was seen; the gates' verbatim output and exit codes are in mechanical_gates, and the derivation over these bytes was printed by the auditor rather than stored here (a receipt cannot contain its own sha256). Temporary working files lived in the session scratchpad, not the repo.",
+	"overall_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	}
+}
