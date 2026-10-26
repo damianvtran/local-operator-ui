@@ -163,18 +163,19 @@ const seed = (configDir) =>
 			`store = NotificationStore(${JSON.stringify(configDir)})`,
 			`def put(key, title, body, priority="normal", session=${JSON.stringify(SESSION)}):`,
 			"    return store.notify(session, key=key, title=title, body_md=body, priority=priority)",
-			`target = put("daily", "Chargeback spike on 3 merchants", "Disputes up 4.1x.", "high")`,
-			`unrelated = put("nightly", "Nightly build finished", "Two flaky tests.")`,
-			`raced = put("watch", "Watching merchant m_4821", "Baseline recomputed.")`,
 			/*
 			 * FILLER ROWS, AND WHY THE LIST HAS TO BE LONG ENOUGH TO SCROLL. The
 			 * off-screen negative control is only meaningful if a row CAN be put out
 			 * of the reel's port; with three items the list is shorter than its
 			 * viewport, nothing scrolls, and the control's own precondition is
 			 * unsatisfiable - CI 40303878299 failed exactly there, with the "off
-			 * screen" row still at y=316 of a 900px window. These are written AFTER
-			 * the three named rows, so the named rows are the OLDEST and scrolling to
-			 * the bottom of the list really does carry them out of the port.
+			 * screen" row still at y=316 of a 900px window.
+			 *
+			 * THEY ARE WRITTEN FIRST, so the three named rows are the NEWEST and sit at
+			 * the top of the newest-first reel: the positive read starts on a row that
+			 * is already on screen (CI 40319094361 failed the other way round - the
+			 * target was at y=3088, below 48 newer fillers), and scrolling the port to
+			 * its bottom later carries them out of it for the negative.
 			 */
 			/*
 			 * SPREAD ACROSS SESSIONS BECAUSE THE STORE HAS ITS OWN CAP. The core refuses
@@ -188,6 +189,9 @@ const seed = (configDir) =>
 			`for conv in range(${FILLER_CONVERSATIONS}):`,
 			`    for index in range(${FILLER_PER_CONVERSATION}):`,
 			`        put(f"filler-{conv}-{index}", f"Background note {conv + 1}.{index + 1}", "Routine tick, nothing to act on.", session=f"aaaaaaaaaaa{conv + 2}")`,
+			`target = put("daily", "Chargeback spike on 3 merchants", "Disputes up 4.1x.", "high")`,
+			`unrelated = put("nightly", "Nightly build finished", "Two flaky tests.")`,
+			`raced = put("watch", "Watching merchant m_4821", "Baseline recomputed.")`,
 			"print(json.dumps({",
 			`    "target": {"id": target.item_id, "revision": target.revision},`,
 			`    "unrelated": {"id": unrelated.item_id, "revision": unrelated.revision},`,
@@ -287,17 +291,59 @@ const inViewAndUncovered = (selector) =>
 	})()`;
 
 /**
+ * Scroll the reel so `id` sits inside the list's own scroll port.
+ *
+ * Measured, not assumed: this answers whether the list scrolled and where the row
+ * ended up, so a caller that then fails on "off viewport" is quoting a real
+ * geometry rather than a guess. It deliberately scrolls the nearest scrolling
+ * ancestor (the reel is an inner scroller; the document does not move).
+ */
+const scrollListToItem = (cdp, id) =>
+	cdp.evaluate(
+		`(() => {
+			const row = document.querySelector('[data-notification-row="${id}"]');
+			if (!row) return { found: false };
+			let port = row.parentElement;
+			while (port && port !== document.body) {
+				const overflow = getComputedStyle(port).overflowY;
+				if ((overflow === "auto" || overflow === "scroll") && port.scrollHeight > port.clientHeight) break;
+				port = port.parentElement;
+			}
+			const before = Math.round(row.getBoundingClientRect().top);
+			row.scrollIntoView({ block: "center", inline: "nearest" });
+			return {
+				found: true,
+				scrolledPort: Boolean(port && port !== document.body),
+				before,
+				after: Math.round(row.getBoundingClientRect().top),
+				scrollTop: port && port !== document.body ? Math.round(port.scrollTop) : null,
+			};
+		})()`,
+	);
+
+/**
  * Hover the row (which reveals its actions) and return the centre of its own
  * Mark read control, asserting the control is on screen and uncovered.
  */
 async function hoverReadControl(cdp, id) {
+	/*
+	 * BRING THE ROW INTO ITS PORT FIRST (CI 40319094361). With a genuinely long
+	 * reel the row under test does not always start on screen - the first run with
+	 * 48 seeded rows found its target at y=3088, below the fold. Scrolling the row's
+	 * own container to it is what an operator does before pressing it, so the
+	 * gesture stays a user gesture; every assertion after this point still requires
+	 * the row and its own control to be inside the viewport and unobstructed.
+	 */
+	const scrolled = await scrollListToItem(cdp, id);
+	assert.ok(scrolled?.found, "the seeded row is not in the document");
+	await pause(300);
 	const row = await cdp.evaluate(
 		inViewAndUncovered(`[data-notification-row="${id}"]`),
 	);
 	assert.ok(row?.found, "the seeded row is not in the document");
 	assert.ok(
 		row.inside,
-		`the seeded row is off-viewport: ${JSON.stringify(row)}`,
+		`the seeded row stayed off-viewport after scrolling to it: ${JSON.stringify({ ...row, scrolled })}`,
 	);
 	await cdp.send("Input.dispatchMouseEvent", {
 		type: "mouseMoved",
