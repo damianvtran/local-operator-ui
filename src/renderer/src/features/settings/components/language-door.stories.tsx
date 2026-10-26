@@ -5,7 +5,7 @@
  * WHAT THESE FRAMES ARE FOR. The door is a palette action opening a compact
  * dialog that carries the SAME enum control and `In effect:` note as the
  * settings row. Three states need to be photographable: the dialog freshly
- * opened; the same dialog after a real save (the button reads `Saved`, the
+ * opened; the same dialog after a real pick (the footer reads `Saved`, the
  * note has moved with the capabilities answer); and the announcement a
  * language changed ELSEWHERE produces - one quiet toast, the rendering of the
  * copy `locale-sync.ts` shows when the feed says another surface moved the
@@ -167,7 +167,7 @@ const pointerClick = (el: Element) => {
 	);
 };
 
-/** Drive a real save, hold the shutter until `Saved` is on the button. */
+/** Drive a real pick, hold the shutter until `Saved` is in the footer. */
 const DrivenSave: FC = () => {
 	useLayoutEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
@@ -184,16 +184,14 @@ const DrivenSave: FC = () => {
 					),
 				);
 				pointerClick(option);
-				const save = await waitForDom(() => {
-					const button = document.querySelector<HTMLButtonElement>(
-						"[data-language-save]",
-					);
-					return button && !button.disabled ? button : null;
-				});
-				pointerClick(save);
+				/*
+				 * Commit on pick: there is no Save to click. The picker's own
+				 * report is the write, and the footer's `Saved` is its
+				 * confirmation.
+				 */
 				await waitForDom(() => {
-					const button = document.querySelector("[data-language-save]");
-					return button?.textContent?.includes("Saved") ? button : null;
+					const status = document.querySelector("[data-language-save]");
+					return status?.textContent?.includes("Saved") ? status : null;
 				});
 				await new Promise((resolve) => setTimeout(resolve, 150));
 			} finally {
