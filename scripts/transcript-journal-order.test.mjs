@@ -1349,3 +1349,104 @@ test("a continuation page with no coordinates ranks above the tail, in both lane
 		assert.equal(ids(state).at(-1), "live", lane);
 	}
 });
+
+test("a rotation after a building continuation heals once the new domain's coordinates land, in both lanes", () => {
+	// The review round 1 shape (R1-M1 / QA Q2): a `before_id` page read while
+	// the owner's index is building, then a domain rotation (`compact_file`
+	// rewrites the journal, the index re-scans under a fresh generation) whose
+	// tail page covers only the newest rows, then the new domain's coordinates
+	// for every row. The old tail rows lose their placement at the rotation;
+	// they must not be re-anchored into a loop with the continuation rows, or
+	// the settled order is wrong for good (nothing asks again: every row then
+	// carries a current coordinate, so the lookup set is empty).
+	const building = (entries) => ({
+		entries: entries.map(({ journal_seq: _seq, ...entry }) => entry),
+		has_more: true,
+		cursor_missing: false,
+		journal_order_state: "building",
+	});
+	const settled = ["y0", "y1", "y2", "y3", "t4", "t5", "t6", "t7", "t8"];
+	// Both lanes are read before any assertion, so a failure shows each lane.
+	const actual = {};
+	for (const peerSource of [false, true]) {
+		const lane = peerSource ? "peer" : "local";
+		const series = {};
+		actual[lane] = series;
+		let state = R.applyHistoryPage(
+			R.EMPTY_TRANSCRIPT,
+			page([row("t4", 4), row("t5", 5)]),
+			{ authoritative: true, peerSource },
+		);
+		state = R.applyHistoryPage(
+			state,
+			building([row("y0", 0), row("y1", 1), row("y2", 2), row("y3", 3)]),
+			{ pagedBefore: "t4", peerSource },
+		);
+		series.continuation = ids(state).join(" ");
+		// The rotated domain's tail: only the newest rows.
+		state = R.applyHistoryPage(
+			state,
+			page([row("t6", 6), row("t7", 7), row("t8", 8)], "scope-B"),
+			{ authoritative: true, peerSource },
+		);
+		// Every row placed in the new domain (the owner's correction / repair).
+		state = R.applyEvent(state, {
+			type: "journal_order_ready",
+			journal_generation: "scope-B",
+			rows: settled.map((id, seq) => ({ id, journal_seq: seq })),
+		});
+		series.settled = ids(state).join(" ");
+		// Live rows still join at the end and keep it.
+		state = R.applyEvent(
+			state,
+			{ type: "message_end", message: msg("live", "assistant") },
+			900000,
+		);
+		series.live = ids(state).join(" ");
+	}
+	const expected = {
+		continuation: settled.slice(0, 6).join(" "),
+		settled: settled.join(" "),
+		live: [...settled, "live"].join(" "),
+	};
+	assert.deepEqual(actual, { local: expected, peer: expected });
+});
+
+test("a continuation onto an open page that was itself building still ranks above it, in both lanes", () => {
+	// Review round 1 R1-m1 / QA Q3: the open's page answered `building` too, so
+	// the row a continuation is loaded in front of has no coordinate either. The
+	// older page must still paint above it, and a live row still joins below.
+	const building = (entries) => ({
+		entries: entries.map(({ journal_seq: _seq, ...entry }) => entry),
+		has_more: true,
+		cursor_missing: false,
+		journal_order_state: "building",
+	});
+	const actual = {};
+	for (const peerSource of [false, true]) {
+		const lane = peerSource ? "peer" : "local";
+		let state = R.applyHistoryPage(
+			R.EMPTY_TRANSCRIPT,
+			building([row("t4", 4), row("t5", 5), row("t6", 6)]),
+			{ authoritative: true, peerSource },
+		);
+		state = R.applyHistoryPage(
+			state,
+			building([row("y0", 0), row("y1", 1), row("y2", 2)]),
+			{ pagedBefore: "t4", peerSource },
+		);
+		const series = { continuation: ids(state).join(" ") };
+		actual[lane] = series;
+		state = R.applyEvent(
+			state,
+			{ type: "message_end", message: msg("live", "assistant") },
+			900000,
+		);
+		series.live = ids(state).join(" ");
+	}
+	const expected = {
+		continuation: "y0 y1 y2 t4 t5 t6",
+		live: "y0 y1 y2 t4 t5 t6 live",
+	};
+	assert.deepEqual(actual, { local: expected, peer: expected });
+});

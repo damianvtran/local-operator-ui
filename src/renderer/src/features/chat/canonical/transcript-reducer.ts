@@ -4524,7 +4524,20 @@ export function applyHistoryPage(
 	 * unchanged.
 	 */
 	const clearedView = options.keepPaging === true && state.viewEpoch > 0;
-	const continuationTop = state.records[0]?.id;
+	/*
+	 * The row a continuation's new rows are stamped as loaded IN FRONT OF
+	 * (`JournalPosition.sourcePrecedes`): the cursor row the page was read
+	 * before, when it is a record, else the row at the top of the transcript.
+	 * The cursor can be a journal entry that is no record (a silent custom, a
+	 * `tool:<callId>` result - see the cursor rules below). Every row of the
+	 * page is older than either one. When the chain reaches no coordinate, the
+	 * rankers fall back to the oldest placed row, or to the anchor's slot in the
+	 * unplaced suffix (review round 1, R1-m1).
+	 */
+	const continuationTop =
+		options.pagedBefore !== undefined && state.index.has(options.pagedBefore)
+			? options.pagedBefore
+			: state.records[0]?.id;
 	const incoming: TranscriptRecord[] = [];
 	for (const entry of page.entries) {
 		if (clearedView && !isCompactionOutcome(entry, state.clearedAt)) continue;
