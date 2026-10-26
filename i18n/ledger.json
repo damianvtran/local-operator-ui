@@ -4833,31 +4833,37 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
-			"target_sha256": "af79c6c9021ce398e9665520bfe9fb70ea6b5fa78c91103637529e360794cc09",
+			"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+			"target_sha256": "0397e7e85fad33cf327c6ac2519d62a32397229053dde6f74cbeaa5b06dda1fe",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "87a8efad496d",
 				"job": "cc64f5dc3c0c"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "unreported-by-delegating-agent",
+					"agent": "independent-translation-reviewer",
+					"model": "openai/gpt-6-astra",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "d1-account-changed-20261025-es",
+					"instance": "72781433def7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d1-account-changed-20261025-es.json",
-					"receipt_sha256": "bc8f961592deac220244f758f10edd4e137f212722abfe2a4b55da8ea4fed1ee",
-					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+					"receipt": "i18n/receipts/72781433def7.json",
+					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+					"scope": "one-key additive audit; inherited unchanged namespace provenance",
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -5427,6 +5433,29 @@
 							"receipt": "i18n/receipts/f39d0c2ada5e-landed-1314-es.json",
 							"receipt_sha256": "08ea58e6eb547cdca48e555b4e55918722fbb2250b10fef93f70930ba4ed8934",
 							"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+					"target_sha256": "af79c6c9021ce398e9665520bfe9fb70ea6b5fa78c91103637529e360794cc09",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "unreported-by-delegating-agent",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "d1-account-changed-20261025-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d1-account-changed-20261025-es.json",
+							"receipt_sha256": "bc8f961592deac220244f758f10edd4e137f212722abfe2a4b55da8ea4fed1ee",
+							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 						}
 					],
 					"status": "audited"
@@ -10658,8 +10687,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
-			"target_sha256": "f681b60f5d966e6b62163f92f115fc4a8f5a7cfb1a48d8f980de66b435b56f9f",
+			"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+			"target_sha256": "2353fdd4ff5081955c43c02fe2c3de319cfc8029d9f00344bd3de9ffb636e499",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -10667,23 +10696,29 @@
 				"session": "7f91449c7aa6",
 				"job": "a7380f37ab56",
 				"remediation_job": "b4390a98f09f"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "unreported-by-delegating-agent",
+					"agent": "independent-translation-reviewer",
+					"model": "openai/gpt-6-astra",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "d1-account-changed-20261025-fr",
+					"instance": "72781433def7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d1-account-changed-20261025-fr.json",
-					"receipt_sha256": "8c8159d44028a20869cfe736fd6ea488eeb3774679507a4890312d51d3d2bf86",
-					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+					"receipt": "i18n/receipts/72781433def7.json",
+					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+					"scope": "one-key additive audit; inherited unchanged namespace provenance",
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -11277,6 +11312,29 @@
 							"receipt": "i18n/receipts/f39d0c2ada5e-landed-1314-fr.json",
 							"receipt_sha256": "86f7e36f71f4457b768902c0db90b6f8d3cf060d22e45656fa5719713052c939",
 							"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+					"target_sha256": "f681b60f5d966e6b62163f92f115fc4a8f5a7cfb1a48d8f980de66b435b56f9f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "unreported-by-delegating-agent",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "d1-account-changed-20261025-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d1-account-changed-20261025-fr.json",
+							"receipt_sha256": "8c8159d44028a20869cfe736fd6ea488eeb3774679507a4890312d51d3d2bf86",
+							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 						}
 					],
 					"status": "audited"
@@ -16416,31 +16474,37 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
-			"target_sha256": "9e99a05e61266bb001e19d448f7a2c72b48b04f392a1bb90b6691aeeb978d94d",
+			"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+			"target_sha256": "c96c5ab6bb27c6633aebff16f12408ca6ef82b595b894f3dc4fb19e5a9cb3596",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "632a8fd68227",
 				"job": "4ca9e8a81d54"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "unreported-by-delegating-agent",
+					"agent": "independent-translation-reviewer",
+					"model": "openai/gpt-6-astra",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "d1-account-changed-20261025-hi",
+					"instance": "72781433def7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d1-account-changed-20261025-hi.json",
-					"receipt_sha256": "23c3745502c1d2b48c531ace8e193c9c2a9a9d4015a32f263453d9fef59ef28d",
-					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+					"receipt": "i18n/receipts/72781433def7.json",
+					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+					"scope": "one-key additive audit; inherited unchanged namespace provenance",
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -16957,6 +17021,29 @@
 							"receipt": "i18n/receipts/ec3e15580372-landed-1314-hi.json",
 							"receipt_sha256": "13c529a329c628e17ceff3d45147c928ea4b087acd84274f6e1f2af9ca91e80e",
 							"scope": "Landing union only, PR #1314 at b2ad9e3265261299d7059866b5df134204d69cb1; 21 newly joined keys substantively audited with unchanged namespace context (199 keys read); not a new full-surface/native-fit approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+					"target_sha256": "9e99a05e61266bb001e19d448f7a2c72b48b04f392a1bb90b6691aeeb978d94d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "unreported-by-delegating-agent",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "d1-account-changed-20261025-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d1-account-changed-20261025-hi.json",
+							"receipt_sha256": "23c3745502c1d2b48c531ace8e193c9c2a9a9d4015a32f263453d9fef59ef28d",
+							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 						}
 					],
 					"status": "audited"
@@ -21870,8 +21957,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
-			"target_sha256": "b5496424a9a00ef9514cb00da561147d5bcba202c137b54c4cef54bc3854cef5",
+			"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+			"target_sha256": "341930f1c0b6429e05e29567586ec0e20eac00fab0d0e8c6bc92793bb8610f04",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -21879,23 +21966,29 @@
 				"session": "485b723247d7",
 				"job": "764e8ee192fe",
 				"remediation_job": "78daa414c10d"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "unreported-by-delegating-agent",
+					"agent": "independent-translation-reviewer",
+					"model": "openai/gpt-6-astra",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "d1-account-changed-20261025-ru",
+					"instance": "72781433def7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d1-account-changed-20261025-ru.json",
-					"receipt_sha256": "2c14caaaf3d817f6e605763e75164999b1fd52726b0766601abc66728bd9af9b",
-					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+					"receipt": "i18n/receipts/72781433def7.json",
+					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+					"scope": "one-key additive audit; inherited unchanged namespace provenance",
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -22443,6 +22536,29 @@
 							"receipt": "i18n/receipts/055fbd3ce084-landed-1314-ru.json",
 							"receipt_sha256": "07f8abfd87773d94afdb362ee049bccb35fa11d492b9df9dbeecf69ecab2eee8",
 							"scope": "Landing union only, PR #1314 at b2ad9e3265261299d7059866b5df134204d69cb1: 199 English/target keys read side by side; 21 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+					"target_sha256": "b5496424a9a00ef9514cb00da561147d5bcba202c137b54c4cef54bc3854cef5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "unreported-by-delegating-agent",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "d1-account-changed-20261025-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d1-account-changed-20261025-ru.json",
+							"receipt_sha256": "2c14caaaf3d817f6e605763e75164999b1fd52726b0766601abc66728bd9af9b",
+							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 						}
 					],
 					"status": "audited"
@@ -27439,31 +27555,37 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
-			"target_sha256": "f4c3632ed372e50656a80ff5eb6c28648de6c389d4aae293a8176108c98866a0",
+			"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+			"target_sha256": "47638fd708e1720f668809246e92fba50af859ed890c2e3928cb26f04cd7e1c0",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "8e5edb2e9750",
 				"job": "39c1864c0110"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "unreported-by-delegating-agent",
+					"agent": "independent-translation-reviewer",
+					"model": "openai/gpt-6-astra",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "d1-account-changed-20261025-ur",
+					"instance": "72781433def7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d1-account-changed-20261025-ur.json",
-					"receipt_sha256": "5a7570715b94041233d37cb0ca87150e96f867dc84e393708c62ad20b2a17b1b",
-					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+					"receipt": "i18n/receipts/72781433def7.json",
+					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+					"scope": "one-key additive audit; inherited unchanged namespace provenance",
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -27980,6 +28102,29 @@
 							"receipt": "i18n/receipts/ec3e15580372-landed-1314-ur.json",
 							"receipt_sha256": "67690880718cd5124ab4515a793375ff3a7e16f467d5f24a58fd3e481740c2a8",
 							"scope": "Landing union only, PR #1314 at b2ad9e3265261299d7059866b5df134204d69cb1; 21 newly joined keys substantively audited with unchanged namespace context (199 keys read); not a new full-surface/native-fit approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+					"target_sha256": "f4c3632ed372e50656a80ff5eb6c28648de6c389d4aae293a8176108c98866a0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "unreported-by-delegating-agent",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "d1-account-changed-20261025-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d1-account-changed-20261025-ur.json",
+							"receipt_sha256": "5a7570715b94041233d37cb0ca87150e96f867dc84e393708c62ad20b2a17b1b",
+							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 						}
 					],
 					"status": "audited"
@@ -33172,31 +33317,37 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
-			"target_sha256": "36081d7fd2d8d17b463f1d139839478e543cd23db689382ecb3ac758256e0d78",
+			"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+			"target_sha256": "0aae7643133ed86074f0961481b18dd8361ef0374874767a1f5cdd05a074fe7f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "8c0c0af95212",
 				"job": "e5d5efa8017f"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "unreported-by-delegating-agent",
+					"agent": "independent-translation-reviewer",
+					"model": "openai/gpt-6-astra",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "d1-account-changed-20261025-vi",
+					"instance": "72781433def7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d1-account-changed-20261025-vi.json",
-					"receipt_sha256": "f15e563bb45ed37ede38734551c4d774a505b69da30c54c48e8cf21362e9d2a8",
-					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+					"receipt": "i18n/receipts/72781433def7.json",
+					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+					"scope": "one-key additive audit; inherited unchanged namespace provenance",
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -33744,6 +33895,29 @@
 							"receipt": "i18n/receipts/f39d0c2ada5e-landed-1314-vi.json",
 							"receipt_sha256": "b3f03f68bd0890f63ba00fd9a8d32cc00c080ebbf6738fc7563be8d2a28ac8d8",
 							"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+					"target_sha256": "36081d7fd2d8d17b463f1d139839478e543cd23db689382ecb3ac758256e0d78",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "unreported-by-delegating-agent",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "d1-account-changed-20261025-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d1-account-changed-20261025-vi.json",
+							"receipt_sha256": "f15e563bb45ed37ede38734551c4d774a505b69da30c54c48e8cf21362e9d2a8",
+							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 						}
 					],
 					"status": "audited"
@@ -39531,31 +39705,37 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
-			"target_sha256": "e11b6e6c3732d4fddf424af58a8d9ab24eb6501c62a112f40719916162eccec5",
+			"source_sha256": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+			"target_sha256": "e4d7fe1f9e91e0f2d15f394f7c8a2fef6efed0ce457f9766df20a40eba955c22",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-10-21",
 				"session": "d04f0e3ee24c",
 				"job": "bba1cb60d6a5"
-			},
+			,
+				"added_key_source": {
+					"key": "ui.teamBridge.notify.unavailable",
+					"job": "job8d4e6d78c133",
+					"model": "not supplied"
+				}},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "unreported-by-delegating-agent",
+					"agent": "independent-translation-reviewer",
+					"model": "openai/gpt-6-astra",
 					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "d1-account-changed-20261025-zhcn",
+					"instance": "72781433def7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d1-account-changed-20261025-zhcn.json",
-					"receipt_sha256": "d086a407d7fdf135acee93109b6083ddaf34cba4c47f922368ee0709f3877b60",
-					"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
+					"receipt": "i18n/receipts/72781433def7.json",
+					"receipt_sha256": "3d510e48768302b99ca190f2a4609b58f370716a63bb1d48058243a531f7d3f8",
+					"scope": "one-key additive audit; inherited unchanged namespace provenance",
+					"note": "Added key translated by job8d4e6d78c133; independent text audit 72781433def7. Existing 200 entries byte-identical and inherited. No rendered RTL validation."
 				}
 			],
 			"status": "audited",
@@ -40125,6 +40305,29 @@
 							"receipt": "i18n/receipts/055fbd3ce084-landed-1314-zh-cn.json",
 							"receipt_sha256": "dfe9604dd3620116d789c5a381cc4eef3c09f03682482db3555d41345b4e48c9",
 							"scope": "Landing union only, PR #1314 at b2ad9e3265261299d7059866b5df134204d69cb1: 199 English/target keys read side by side; 21 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed",
+					"target_sha256": "e11b6e6c3732d4fddf424af58a8d9ab24eb6501c62a112f40719916162eccec5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "unreported-by-delegating-agent",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "d1-account-changed-20261025-zhcn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d1-account-changed-20261025-zhcn.json",
+							"receipt_sha256": "d086a407d7fdf135acee93109b6083ddaf34cba4c47f922368ee0709f3877b60",
+							"scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed (attachment chip, captured-owner refusal)."
 						}
 					],
 					"status": "audited"

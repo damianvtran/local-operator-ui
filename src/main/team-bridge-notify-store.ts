@@ -2,7 +2,8 @@
  * The Team Bridge notification cursor, persisted in main.
  *
  * WHAT IS STORED: one integer per conversation - the newest sequence number a
- * banner was raised for. Nothing else. No conversation name, no organization,
+ * banner was raised for, keyed by the captured account and conversation IDs.
+ * Nothing else. No conversation name, no organization,
  * no sender label and no message body, because a banner is a transient display
  * and this file outlives it. The ids are already in the hub's own store; this
  * file adds only the fact "the user was told about seq N".
@@ -25,14 +26,19 @@ import { dirname } from "node:path";
 
 /** The file's shape, versioned so a later field can be added without guessing. */
 type TeamBridgeNotifyFile = {
-	version: 1;
+	version: 2;
 	cursors: Record<string, number>;
 };
 
 /** How many conversations one file may remember before the oldest is dropped. */
 export const TEAM_BRIDGE_NOTIFY_CURSOR_BOUND = 2048;
 
-const VERSION = 1;
+// Legacy cursors have no owner. Never assign them to whoever signs in next.
+const VERSION = 2;
+
+function cursorKey(accountId: string, conversationId: string): string {
+	return JSON.stringify([accountId, conversationId]);
+}
 
 function isCursor(value: unknown): value is number {
 	return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -58,8 +64,8 @@ export class TeamBridgeNotifyStore {
 	}
 
 	/** The newest seq a banner was raised for, or `undefined`. */
-	notifiedSeq(conversationId: string): number | undefined {
-		return this.cursors.get(conversationId);
+	notifiedSeq(accountId: string, conversationId: string): number | undefined {
+		return this.cursors.get(cursorKey(accountId, conversationId));
 	}
 
 	/**
@@ -70,12 +76,13 @@ export class TeamBridgeNotifyStore {
 	 * Touching an existing key moves it to the newest position so the bound
 	 * evicts by usefulness rather than alphabetically.
 	 */
-	record(conversationId: string, seq: number): void {
+	record(accountId: string, conversationId: string, seq: number): void {
 		if (!isCursor(seq)) return;
-		const previous = this.cursors.get(conversationId);
+		const key = cursorKey(accountId, conversationId);
+		const previous = this.cursors.get(key);
 		if (previous !== undefined && seq <= previous) return;
-		this.cursors.delete(conversationId);
-		this.cursors.set(conversationId, seq);
+		this.cursors.delete(key);
+		this.cursors.set(key, seq);
 		this.trim();
 		this.persist();
 	}

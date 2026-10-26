@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "इस खाते से अब यह सूचना नहीं खोली जा सकती।",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "अभी कोई बातचीत नहीं",
 	"ui.teamBridge.list.empty.body": "सीधा संदेश, समूह या चैनल शुरू करें।",

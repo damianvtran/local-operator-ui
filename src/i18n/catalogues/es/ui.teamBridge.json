@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "Esta notificación ya no se puede abrir con esta cuenta.",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "Aún no hay conversaciones",
 	"ui.teamBridge.list.empty.body": "Inicia un mensaje directo, un grupo o un canal.",

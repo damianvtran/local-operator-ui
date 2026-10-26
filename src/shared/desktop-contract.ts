@@ -23,8 +23,9 @@ import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
 import type {
+	TeamBridgeNotifyAuthority,
 	TeamBridgeNotifyRequest,
-	TeamBridgeOpenTarget,
+	TeamBridgeOpenResult,
 } from "./team-bridge-notify";
 
 const id = z
@@ -6733,9 +6734,10 @@ export type DesktopAPI = {
 	 * loading or reloading renderer is not lost.
 	 */
 	teamBridge?: {
+		setAuthority: (authority: TeamBridgeNotifyAuthority) => Promise<void>;
 		notify: (input: TeamBridgeNotifyRequest) => Promise<{ shown: boolean }>;
 		onOpen: (callback: () => void) => () => void;
-		pendingOpen: () => Promise<TeamBridgeOpenTarget | null>;
+		pendingOpen: () => Promise<TeamBridgeOpenResult | null>;
 	};
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**
