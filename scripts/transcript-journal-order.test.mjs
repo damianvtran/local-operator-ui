@@ -1450,3 +1450,155 @@ test("a continuation onto an open page that was itself building still ranks abov
 	};
 	assert.deepEqual(actual, { local: expected, peer: expected });
 });
+
+test("a partly placed older page keeps its unplaced rows beside their own page neighbours, in both lanes", () => {
+	// Review round 2 R2-m1: a continuation read while the index was building,
+	// then a correction that places only SOME of its rows. An unplaced row must
+	// stay beside the placed rows of its own page, not drop to the boundary of
+	// the row the page was loaded in front of (`y0 y2 y3 y1 t4 t5`).
+	const building = (entries) => ({
+		entries: entries.map(({ journal_seq: _seq, ...entry }) => entry),
+		has_more: true,
+		cursor_missing: false,
+		journal_order_state: "building",
+	});
+	const actual = {};
+	for (const peerSource of [false, true]) {
+		const lane = peerSource ? "peer" : "local";
+		const series = {};
+		actual[lane] = series;
+		for (const unanswered of ["y1", "y0"]) {
+			let state = R.applyHistoryPage(
+				R.EMPTY_TRANSCRIPT,
+				page([row("t4", 4), row("t5", 5)]),
+				{ authoritative: true, peerSource },
+			);
+			state = R.applyHistoryPage(
+				state,
+				building([row("y0", 0), row("y1", 1), row("y2", 2), row("y3", 3)]),
+				{ pagedBefore: "t4", peerSource },
+			);
+			state = R.applyEvent(state, {
+				type: "journal_order_ready",
+				journal_generation: "scope-A",
+				rows: ["y0", "y1", "y2", "y3"]
+					.map((id, seq) => ({ id, journal_seq: seq }))
+					.filter(({ id }) => id !== unanswered),
+			});
+			const first = ids(state).join(" ");
+			// Deterministic: an unrelated live commit keeps the same order above it.
+			state = R.applyEvent(
+				state,
+				{ type: "message_end", message: msg("live", "assistant") },
+				900000,
+			);
+			series[`${unanswered} unanswered`] = [first, ids(state).join(" ")];
+		}
+	}
+	const expected = {
+		"y1 unanswered": ["y0 y1 y2 y3 t4 t5", "y0 y1 y2 y3 t4 t5 live"],
+		"y0 unanswered": ["y0 y1 y2 y3 t4 t5", "y0 y1 y2 y3 t4 t5 live"],
+	};
+	assert.deepEqual(actual, { local: expected, peer: expected });
+});
+
+test("two stacked building pages corrected users-first keep page order after each batch, in both lanes", () => {
+	// Review round 2 R2-m1, the realistic route: the owner's correction sends
+	// user rows first (`journal_order_correction_batches`, 128 per event), so
+	// after the first event every assistant row of both pages is unplaced while
+	// its user is placed. The assistants must stay behind their own users.
+	const building = (entries) => ({
+		entries: entries.map(({ journal_seq: _seq, ...entry }) => entry),
+		has_more: true,
+		cursor_missing: false,
+		journal_order_state: "building",
+	});
+	const turn = (prefix, from) => [
+		row(`${prefix}u${from}`, from, 100 - from, msg(`${prefix}u${from}`)),
+		row(
+			`${prefix}a${from + 1}`,
+			from + 1,
+			99 - from,
+			msg(`${prefix}a${from + 1}`, "assistant"),
+		),
+	];
+	const xPage = [...turn("x", 0), ...turn("x", 2)];
+	const yPage = [...turn("y", 4), ...turn("y", 6)];
+	const settled = [...xPage, ...yPage].map((entry) => entry.id);
+	const actual = {};
+	for (const peerSource of [false, true]) {
+		const lane = peerSource ? "peer" : "local";
+		let state = R.applyHistoryPage(
+			R.EMPTY_TRANSCRIPT,
+			page([row("t8", 8), row("t9", 9)]),
+			{ authoritative: true, peerSource },
+		);
+		state = R.applyHistoryPage(state, building(yPage), {
+			pagedBefore: "t8",
+			peerSource,
+		});
+		state = R.applyHistoryPage(state, building(xPage), {
+			pagedBefore: "yu4",
+			peerSource,
+		});
+		const series = { pages: ids(state).join(" ") };
+		actual[lane] = series;
+		const coordinates = settled.map((id, seq) => ({ id, journal_seq: seq }));
+		state = R.applyEvent(state, {
+			type: "journal_order_ready",
+			journal_generation: "scope-A",
+			rows: coordinates.filter(({ id }) => id.includes("u")),
+		});
+		series.users = ids(state).join(" ");
+		state = R.applyEvent(state, {
+			type: "journal_order_ready",
+			journal_generation: "scope-A",
+			rows: coordinates.filter(({ id }) => id.includes("a")),
+		});
+		series.all = ids(state).join(" ");
+	}
+	const order = [...settled, "t8", "t9"].join(" ");
+	const expected = { pages: order, users: order, all: order };
+	assert.deepEqual(actual, { local: expected, peer: expected });
+});
+
+test("with no older page loaded the rankers build no loaded-row context, in both lanes", () => {
+	// Review round 2 R2-m2: the continuation rules (`precedesFloor`, the page
+	// positions) cost an O(N) pass and an N-entry map on every commit. A cold
+	// open with live rows carries no `sourcePrecedes`, so it must build none of
+	// it; the counter is the work metric (no wall clock in the suite).
+	const building = (entries) => ({
+		entries: entries.map(({ journal_seq: _seq, ...entry }) => entry),
+		has_more: true,
+		cursor_missing: false,
+		journal_order_state: "building",
+	});
+	const actual = {};
+	for (const peerSource of [false, true]) {
+		const lane = peerSource ? "peer" : "local";
+		const before = R.__loadedOrderPasses();
+		let state = R.applyHistoryPage(
+			R.EMPTY_TRANSCRIPT,
+			page([row("t4", 4), row("t5", 5)]),
+			{ authoritative: true, peerSource },
+		);
+		for (let i = 0; i < 5; i++)
+			state = R.applyEvent(
+				state,
+				{ type: "message_end", message: msg(`live${i}`, "assistant") },
+				900000 + i,
+			);
+		const cold = R.__loadedOrderPasses() - before;
+		state = R.applyHistoryPage(state, building([row("y0", 0)]), {
+			pagedBefore: "t4",
+			peerSource,
+		});
+		actual[lane] = {
+			cold,
+			loaded: R.__loadedOrderPasses() - before > cold,
+			order: ids(state).slice(0, 2).join(" "),
+		};
+	}
+	const expected = { cold: 0, loaded: true, order: "y0 t4" };
+	assert.deepEqual(actual, { local: expected, peer: expected });
+});
