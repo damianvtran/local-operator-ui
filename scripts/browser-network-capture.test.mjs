@@ -24,12 +24,22 @@ const mod = await import(
 function fixture() {
 	const events = new Set();
 	const commands = [];
+	const enableParams = [];
+	let pulledBody = "";
 	const views = new Map([[1, { id: 1 }]]);
 	const ctx = {
 		registry: { requireSurface: () => ({ view: { webContents: { id: 1 } } }) },
 		cdp: {
-			send: async (_contents, method) => {
+			send: async (_contents, method, params) => {
 				commands.push(method);
+				if (method === "Network.getRequestPostData") {
+					return { postData: pulledBody };
+				}
+				if (method === "Network.enable") {
+					enableParams.push(params ?? {});
+					return {};
+				}
+				return {};
 			},
 			subscribe: (_id, listener) => {
 				events.add(listener);
@@ -46,7 +56,17 @@ function fixture() {
 			{ tab: "tab", requester: "session:a", ...params },
 			"request",
 		);
-	return { ctx, commands, emit, start, views };
+	return {
+		ctx,
+		commands,
+		enableParams,
+		setPulledBody: (value) => {
+			pulledBody = value;
+		},
+		emit,
+		start,
+		views,
+	};
 }
 
 test("safe URLs retain only query keys and bodies need exact approved scope", async () => {
@@ -457,4 +477,57 @@ test("protocol exposes desktop methods and budgets", () => {
 		assert.equal(mod.isMethod(method), true);
 		assert.equal(mod.COMMAND_TIMEOUTS_S[method], 20);
 	}
+});
+
+test("a body Chromium did not inline is pulled with Network.getRequestPostData", async () => {
+	const { emit, start, commands, enableParams, setPulledBody } = fixture();
+	// The acceptance case: a form POST whose body is larger than the inline limit
+	// arrives as hasPostData with no postData, exactly as a SAML assertion does.
+	setPulledBody("SAMLResponse=c3ludGhldGljLWZpeHR1cmU%3D");
+	await start({
+		include_request_body: true,
+		url: "https://sso.test/auth/saml/acs",
+		approved: true,
+	});
+	// The enable names the inline cap only when a body capture asked for it.
+	assert.equal(enableParams[0].maxPostDataSize, 64 * 1024);
+	emit("Network.requestWillBeSent", {
+		requestId: "acs",
+		request: {
+			url: "https://sso.test/auth/saml/acs",
+			method: "POST",
+			hasPostData: true,
+		},
+	});
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.ok(commands.includes("Network.getRequestPostData"));
+	const result = mod.networkRead(
+		{
+			registry: {
+				requireSurface: () => ({ view: { webContents: { id: 1 } } }),
+			},
+			cdp: { send: async () => ({}), subscribe: () => () => {} },
+		},
+		{
+			tab: "tab",
+			requester: "session:a",
+			include_request_body: true,
+			url: "https://sso.test/auth/saml/acs",
+			approved: true,
+		},
+		"request",
+	);
+	assert.equal(result.body_count, 1);
+	assert.equal(
+		Buffer.from(result.entries[0].request_body_base64, "base64").toString(
+			"utf8",
+		),
+		"SAMLResponse=c3ludGhldGljLWZpeHR1cmU%3D",
+	);
+});
+
+test("a metadata-only capture never asks Chromium to inline bodies", async () => {
+	const { enableParams, start } = fixture();
+	await start();
+	assert.deepEqual(enableParams[0], {});
 });

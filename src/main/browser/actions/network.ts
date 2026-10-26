@@ -1,3 +1,4 @@
+import type { CdpContents } from "../cdp";
 import { BrowserHostError } from "../errors";
 import type { BrowserActionContext } from "./context";
 import { requesterOf, stringParam } from "./context";
@@ -62,6 +63,13 @@ interface Capture {
 	owner: string;
 	active: boolean;
 	unsubscribe: () => void;
+	/** The webContents this capture belongs to. Kept because Chromium does not
+	 * always inline the request body: `requestWillBeSent` may carry only
+	 * `hasPostData: true` (a large form body, which a SAML assertion routinely
+	 * is), and the bytes then live behind `Network.getRequestPostData`. */
+	contents: CdpContents;
+	/** The pool that owns the subscription, kept for the body pull. */
+	cdp: BrowserActionContext["cdp"];
 	bodyOriginPath: string;
 	entries: NetworkEntry[];
 	bytes: number;
@@ -233,6 +241,40 @@ function findEntry(
 	return capture.entries.findLast((entry) => entry.request_id === requestId);
 }
 
+/** Keep one inlined body, bounded per request, and account for it. */
+function retainBody(capture: Capture, entry: NetworkEntry, data: string): void {
+	if (!capture.active || !capture.entries.includes(entry)) return;
+	const body = Buffer.from(data, "utf8");
+	if (body.length > MAX_BODY_PER_REQUEST) {
+		capture.droppedBodies++;
+		return;
+	}
+	if (entry.request_body_base64 !== undefined) {
+		capture.bodyBytes -= entry.request_body_size ?? 0;
+	}
+	entry.request_body_base64 = body.toString("base64");
+	entry.request_body_size = body.length;
+	capture.bodyBytes += body.length;
+	trim(capture);
+}
+
+/** Ask the `Network` domain for a body the event did not inline. Bounded by the
+ * pool's own CDP deadline, resolved as `""` when the request is gone. */
+function pullPostData(capture: Capture, requestId: string): Promise<string> {
+	if (!requestId || !capture.active) return Promise.resolve("");
+	return capture.cdp
+		.send<{ postData?: unknown }>(
+			capture.contents,
+			"Network.getRequestPostData",
+			{
+				requestId,
+			},
+		)
+		.then((answer) =>
+			typeof answer?.postData === "string" ? answer.postData : "",
+		);
+}
+
 function onEvent(
 	capture: Capture,
 	method: string,
@@ -291,22 +333,31 @@ function onEvent(
 				entry.redirect_from_id = previous.id;
 			}
 		}
-		if (
-			capture.bodyOriginPath &&
-			originPath === capture.bodyOriginPath &&
-			typeof request.postData === "string"
-		) {
-			const body = Buffer.from(request.postData, "utf8");
-			if (body.length <= MAX_BODY_PER_REQUEST) {
-				entry.request_body_base64 = body.toString("base64");
-				entry.request_body_size = body.length;
-				capture.bodyBytes += body.length;
-			} else {
-				capture.droppedBodies++;
-			}
-		}
 		capture.entries.push(entry);
 		capture.bytes += metadataBytes(entry);
+		// The body is attached AFTER the entry is in the ring: `retainBody` refuses
+		// an entry the buffer no longer holds, which is what keeps a late pull from
+		// resurrecting traffic `trim` already evicted.
+		if (capture.bodyOriginPath && originPath === capture.bodyOriginPath) {
+			if (typeof request.postData === "string") {
+				retainBody(capture, entry, request.postData);
+			} else if (request.hasPostData === true) {
+				// A MEASURED RISK rather than symmetry with the branch above:
+				// Chromium omits `postData` when the body is longer than the size it
+				// was told to inline, and a SAML assertion is routinely several
+				// kilobytes. This pull is the only reliable way to get those bytes,
+				// so a body the event did not carry is fetched instead of silently
+				// missing from the entry the caller came for.
+				void pullPostData(capture, String(params.requestId ?? "")).then(
+					(data) => {
+						if (typeof data === "string") retainBody(capture, entry, data);
+					},
+					() => {
+						capture.droppedBodies++;
+					},
+				);
+			}
+		}
 		trim(capture);
 		return;
 	}
@@ -372,6 +423,8 @@ export async function networkStart(
 		owner,
 		active: false,
 		unsubscribe: () => undefined,
+		contents: tab.view.webContents,
+		cdp: ctx.cdp,
 		bodyOriginPath,
 		entries: [],
 		bytes: 0,
@@ -385,7 +438,15 @@ export async function networkStart(
 	);
 	captures.set(id, capture);
 	try {
-		await ctx.cdp.send(tab.view.webContents, "Network.enable");
+		await ctx.cdp.send(
+			tab.view.webContents,
+			"Network.enable",
+			// Only a body capture asks Chromium to inline request bodies at all:
+			// an ordinary metadata capture must not pay for copying bodies into
+			// every `requestWillBeSent` event, and the size it is told to inline
+			// is capped at the per-request limit this host is willing to retain.
+			bodyOriginPath ? { maxPostDataSize: MAX_BODY_PER_REQUEST } : {},
+		);
 		capture.active = true;
 		return summary(capture);
 	} catch (error) {
