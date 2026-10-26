@@ -10,5 +10,19 @@
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Đã bỏ qua — đã giải quyết trong cuộc trò chuyện",
 	"ui.chat.asks.dismiss.receipt.moot": "Đã bỏ qua — không còn cần nữa",
 	"ui.chat.asks.dismiss.refused": "Không thể bỏ qua câu hỏi này — không có gì được gửi đi.",
-	"ui.chat.asks.dismiss.trigger": "Bỏ qua…"
+	"ui.chat.asks.dismiss.trigger": "Bỏ qua…",
+	"ui.chat.asks.other_label": "Khác",
+	"ui.chat.asks.urgent": "Khẩn cấp.",
+	"ui.chat.asks.no_answer": "Chưa trả lời",
+	"ui.chat.asks.changed_handoff": "Đã thay đổi — chưa chuyển cho tác nhân.",
+	"ui.chat.asks.send_answer": "Gửi câu trả lời",
+	"ui.chat.asks.decline": "Từ chối",
+	"ui.chat.asks.update_answer": "Cập nhật câu trả lời",
+	"ui.chat.asks.cancel": "Hủy",
+	"ui.chat.asks.change_answer": "Đổi câu trả lời",
+	"ui.chat.asks.filter_label": "Lọc câu hỏi",
+	"ui.chat.asks.settled_heading": "Đã xử lý",
+	"ui.chat.asks.close_asks": "Đóng bảng câu hỏi",
+	"ui.chat.asks.all_asks": "Tất cả câu hỏi",
+	"ui.chat.asks.conversation_asks": "Câu hỏi của cuộc trò chuyện này"
 }
