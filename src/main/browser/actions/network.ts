@@ -364,6 +364,17 @@ function onEvent(
 		trim(capture);
 		return;
 	}
+	// An event this module does not consume must return BEFORE the entry is
+	// found and its bytes are removed: `Network.dataReceived`-style events (a
+	// page's ordinary response traffic) arrive constantly, and subtracting
+	// without restoring drove `capture.bytes` toward zero on every one of them,
+	// which silently disabled the 1 MiB ceiling (agent review round 1, R1-1).
+	if (
+		method !== "Network.responseReceived" &&
+		method !== "Network.loadingFinished" &&
+		method !== "Network.loadingFailed"
+	)
+		return;
 	const entry = findEntry(capture, params.requestId);
 	if (!entry) return;
 	// Accounting is subtract-then-mutate-then-add: `metadataBytes` reads the
@@ -393,7 +404,7 @@ function onEvent(
 				: "request failed";
 		entry.canceled = params.canceled === true;
 		entry.finished = true;
-	} else return;
+	}
 	if (
 		entry.finished &&
 		typeof params.timestamp === "number" &&

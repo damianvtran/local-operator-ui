@@ -542,3 +542,38 @@ test("a metadata-only capture never asks Chromium to inline bodies", async () =>
 	await start();
 	assert.deepEqual(enableParams[0], {});
 });
+
+test("unrecognised network events cannot defeat the metadata byte bound", async () => {
+	const { emit, start } = fixture();
+	await start();
+	// `dataReceived` is the common event this module does not consume. It used
+	// to subtract an entry's bytes and return before restoring them, so a page
+	// with ordinary traffic disabled the 1 MiB ceiling; the review reproduced
+	// 1.067 MiB retained. Interleave it here and assert the bound still binds.
+	for (let i = 0; i < 120; i++) {
+		emit("Network.requestWillBeSent", {
+			requestId: `r${i}`,
+			request: { url: `https://e.test/${"p".repeat(9000)}${i}`, method: "GET" },
+		});
+		emit("Network.dataReceived", {
+			requestId: `r${i}`,
+			dataLength: 8,
+			encodedDataLength: 8,
+		});
+	}
+	const result = mod.networkRead(
+		{
+			registry: {
+				requireSurface: () => ({ view: { webContents: { id: 1 } } }),
+			},
+			cdp: { send: async () => ({}), subscribe: () => () => {} },
+		},
+		{ tab: "tab", requester: "session:a", limit: 200 },
+		"request",
+	);
+	assert.ok(result.dropped > 0, "the byte ceiling must evict entries");
+	assert.ok(
+		result.entries.length < 120,
+		"entries exceeding 1 MiB of metadata must not all be retained",
+	);
+});
