@@ -322,7 +322,10 @@ test("delete is NOT optimistic and removes the row only after the server confirm
 		["bcv_2"],
 		"still listed until success",
 	);
-	live.onSuccess({ deleted: true }, { conversationId: "bcv_2", tenantId: "tnt_1" });
+	live.onSuccess(
+		{ deleted: true },
+		{ conversationId: "bcv_2", tenantId: "tnt_1" },
+	);
 	assert.deepEqual(client.getQueryData(keys.archived).conversations, []);
 	client.clear();
 });
