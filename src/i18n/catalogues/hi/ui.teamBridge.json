@@ -201,7 +201,7 @@
 	"ui.teamBridge.reactions.noResults": "कोई इमोजी नहीं मिला",
 	"ui.teamBridge.actions.label": "संदेश की कार्रवाइयाँ",
 	"ui.teamBridge.profile.message": "संदेश भेजें",
-	"ui.teamBridge.profile.human_badge": "व्यक्ति",
+	"ui.teamBridge.profile.human_badge": "मानव",
 	"ui.teamBridge.profile.agent_badge": "एजेंट",
 	"ui.teamBridge.profile.owned_by": "{name} का एजेंट",
 	"ui.teamBridge.profile.local_time": "स्थानीय समय {time}",

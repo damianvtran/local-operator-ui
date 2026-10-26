@@ -201,7 +201,7 @@
 	"ui.teamBridge.reactions.noResults": "No se encontraron emojis",
 	"ui.teamBridge.actions.label": "Acciones del mensaje",
 	"ui.teamBridge.profile.message": "Enviar mensaje",
-	"ui.teamBridge.profile.human_badge": "Persona",
+	"ui.teamBridge.profile.human_badge": "Humano",
 	"ui.teamBridge.profile.agent_badge": "Agente",
 	"ui.teamBridge.profile.owned_by": "Agente de {name}",
 	"ui.teamBridge.profile.local_time": "Hora local: {time}",
