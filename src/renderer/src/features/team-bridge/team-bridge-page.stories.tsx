@@ -1,14 +1,21 @@
+import {
+	beginRadientAuthorityTransition,
+	radientUserKeys,
+} from "@shared/hooks/radient-account-authority";
 import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
-import { fireEvent, userEvent, within } from "@storybook/test";
+import { expect, fireEvent, userEvent, waitFor, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	type CSSProperties,
+	type ComponentProps,
 	useEffect,
 	useLayoutEffect,
 	useState,
 } from "react";
 import type {
+	DesktopMediaRequest,
+	DesktopMediaResponse,
 	DesktopRequest,
 	DesktopResponse,
 } from "../../../../shared/desktop-contract";
@@ -16,6 +23,7 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
 import { draftStorageKey } from "./team-bridge-drafts";
 import {
@@ -1599,5 +1607,401 @@ export const LegacyMemberLabelsAllOrganizations: Story = {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		people: [],
 		directories: { [minervaOrganization.tenantId]: rosterWithChiefs.slice(1) },
+	},
+};
+
+/** Public directory fixtures, not a profile endpoint: one roster feeds the rail,
+ * timeline and card. The media seam alone varies to exercise stable fallbacks. */
+function ProfileDirectoryStory({
+	avatarState,
+	longFields = false,
+	...args
+}: ComponentProps<typeof TeamBridgePageView> & {
+	avatarState: "ready" | "loading" | "error" | "decode-error" | "empty";
+	longFields?: boolean;
+}) {
+	const [client] = useState(() => {
+		const value = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		value.setQueryData(radientUserKeys.user(), { account: { id: self } });
+		return value;
+	});
+	const [target, setTarget] = useState(args.target);
+	const [scope, setScope] = useState(args.scope);
+	useLayoutEffect(() => {
+		const previous = window.api;
+		const media = async (
+			input: DesktopMediaRequest,
+		): Promise<DesktopMediaResponse> => {
+			if (input.op !== "team_bridge.avatar")
+				return {
+					status: 404,
+					kind: "error",
+					detail: "Fixture media not found",
+				};
+			if (avatarState === "loading") return new Promise(() => {});
+			if (avatarState === "error")
+				return {
+					status: 404,
+					kind: "error",
+					detail: "Fixture avatar unavailable",
+				};
+			if (avatarState === "decode-error")
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "image/png",
+					data: new Uint8Array([1, 2, 3]),
+				};
+			const bytes = await (await fetch(profileImage)).arrayBuffer();
+			return {
+				status: 200,
+				kind: "bytes",
+				mimeType: "image/png",
+				data: new Uint8Array(bytes),
+			};
+		};
+		window.api = {
+			...previous,
+			desktop: { ...previous?.desktop, media },
+		} as typeof window.api;
+		return () => {
+			window.api = previous;
+			beginRadientAuthorityTransition(client);
+			client.clear();
+		};
+	}, [avatarState, client]);
+	const people = directoryPeople.map((member) =>
+		member.account_id !== "acct_bea" || avatarState === "empty"
+			? {
+					...member,
+					account_id:
+						member.account_id === "acct_bea" ? "acc_bea" : member.account_id,
+				}
+			: {
+					...member,
+					account_id: "acc_bea",
+					agent: {
+						name: "Aida",
+						endpoint_id: "ep_bea",
+						state: "active" as const,
+					},
+					profile: {
+						display_name: "Bea",
+						title: "Product designer",
+						description: longFields
+							? "Designing useful, accessible tools for the team across organizations and time zones. ".repeat(
+									5,
+								)
+							: "Designing useful, accessible tools for the team.",
+						pronouns: "she/her",
+						timezone: "Europe/Paris",
+						avatar: {
+							source: "uploaded" as const,
+							hash: "0123456789abcdef",
+							updated_at: "2026-10-26T10:00:00Z",
+						},
+					},
+					avatar_url: "/v1/accounts/acc_bea/avatar?v=0123456789abcdef",
+				},
+	);
+	return (
+		<QueryClientProvider client={client}>
+			<div
+				className="h-full"
+				data-profile-target={JSON.stringify(target)}
+				data-profile-scope={scope}
+				data-profile-tenant={
+					target?.type === "conversation"
+						? args.conversations.find((row) => row.id === target.id)?.tenant_id
+						: scope
+				}
+			>
+				<TeamBridgePageView
+					{...args}
+					people={people}
+					directories={
+						args.directories ?? {
+							[minervaOrganization.tenantId]: people,
+							[northwindOrganization.tenantId]: people.map((member) =>
+								member.account_id === "acc_bea"
+									? {
+											...member,
+											display_label: "Bea Northwind",
+											profile: {
+												...("profile" in member ? member.profile : {}),
+												display_name: "Bea Northwind",
+												title: "Northwind designer",
+												description: "Northwind directory profile",
+												pronouns: "she/her",
+												timezone: "Europe/Paris",
+											},
+										}
+									: member,
+							),
+						}
+					}
+					target={target}
+					scope={scope}
+					onTarget={setTarget}
+					onScopeChange={setScope}
+				/>
+			</div>
+		</QueryClientProvider>
+	);
+}
+const profileArgs = {
+	conversations: [
+		{
+			...beaDm,
+			members: beaDm.members.map((member) =>
+				member.account_id === "acct_bea"
+					? { ...member, account_id: "acc_bea" }
+					: member,
+			),
+		},
+		channel,
+	],
+	target: { type: "conversation" as const, id: beaDm.id },
+	messages: [
+		{
+			...messages[0],
+			id: "profile-message",
+			conversation_id: beaDm.id,
+			sender: {
+				account_id: "acc_bea",
+				kind: "human" as const,
+				display_label: "Old stored name",
+			},
+			body: "Here is the latest design review.",
+		},
+	],
+};
+export const ProfileFull: Story = {
+	args: { ...profileArgs, target: { type: "conversation", id: channel.id } },
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	// Storybook drives DOM events here; these are not trusted native keyboard or
+	// pointer inputs. Browser review still inspects the real rendered result.
+	play: async ({ canvasElement }) => {
+		const trigger = canvasElement.querySelector<HTMLButtonElement>(
+			'[data-team-bridge-person="acc_bea"]',
+		);
+		if (!trigger) throw new Error("Profile fixture trigger missing");
+		trigger.focus();
+		const body = within(canvasElement.ownerDocument.body);
+		await body.findByRole("dialog");
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
+		);
+		trigger.blur();
+		await userEvent.hover(trigger);
+		const card = await body.findByRole("dialog");
+		await userEvent.click(
+			within(card).getByRole("button", {
+				name: t("ui.teamBridge.profile.message"),
+			}),
+		);
+		await waitFor(() =>
+			expect(
+				canvasElement.querySelector("[data-profile-target]"),
+			).toHaveAttribute(
+				"data-profile-target",
+				JSON.stringify({ type: "person", accountId: "acc_bea" }),
+			),
+		);
+		await expect(trigger).toHaveAttribute("aria-current", "page");
+		await expect(
+			canvasElement.querySelector("[data-profile-tenant]"),
+		).toHaveAttribute("data-profile-tenant", minervaOrganization.tenantId);
+		await expect(
+			canvasElement.querySelector("[data-profile-scope]"),
+		).toHaveAttribute("data-profile-scope", minervaOrganization.tenantId);
+		trigger.blur();
+		trigger.focus();
+		await body.findByRole("dialog");
+	},
+};
+export const ProfileEmpty: Story = {
+	args: profileArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="empty" />,
+};
+export const ProfileAvatarLoading: Story = {
+	args: profileArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="loading" />,
+};
+export const ProfileAvatarError: Story = {
+	args: profileArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="error" />,
+};
+export const ProfileReadOnlyHistory: Story = {
+	args: { ...profileArgs, readOnly: true },
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="empty" />,
+};
+
+const openProfile =
+	(name: string, noMessage = false) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const trigger = within(canvasElement).getAllByRole("button", {
+			name: t("ui.teamBridge.profile.open_profile", { name }),
+		})[0];
+		trigger.focus();
+		const dialog = await within(canvasElement.ownerDocument.body).findByRole(
+			"dialog",
+		);
+		if (noMessage)
+			await expect(
+				within(dialog).queryByRole("button", {
+					name: t("ui.teamBridge.profile.message"),
+				}),
+			).not.toBeInTheDocument();
+	};
+export const ProfileSelf: Story = {
+	args: profileArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="empty" />,
+	play: openProfile("Damian", true),
+};
+export const ProfileUnavailable: Story = {
+	args: profileArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="empty" />,
+	play: openProfile("Cy", true),
+};
+export const ProfileChief: Story = {
+	args: profileArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const trigger = canvasElement.querySelector<HTMLButtonElement>(
+			'[data-team-bridge-chief="acc_bea"]',
+		);
+		if (!trigger) throw new Error("Chief fixture trigger missing");
+		trigger.focus();
+		await within(canvasElement.ownerDocument.body).findByRole("dialog");
+	},
+};
+export const ProfileLongNarrow: Story = {
+	args: profileArgs,
+	parameters: { viewport: { defaultViewport: "mobile1" } },
+	render: (args) => (
+		<ProfileDirectoryStory {...args} avatarState="ready" longFields />
+	),
+	play: openProfile("Bea"),
+};
+
+/** Scroll the production card, rather than a surrogate, so the final frame
+ * proves its action remains reachable below a long profile on a narrow viewport. */
+export const ProfileLongNarrowScrolled: Story = {
+	...ProfileLongNarrow,
+	play: async ({ canvasElement }) => {
+		await openProfile("Bea")({ canvasElement });
+		const card = await within(canvasElement.ownerDocument.body).findByRole(
+			"dialog",
+		);
+		const viewport = canvasElement.ownerDocument.defaultView;
+		const scroll = card.querySelector<HTMLElement>("[data-profile-scroll]");
+		if (!viewport || !scroll)
+			throw new Error("Profile scroll viewport missing");
+		await waitFor(() => {
+			const rect = card.getBoundingClientRect();
+			expect(rect.width).toBeGreaterThan(0);
+			expect(rect.height).toBeGreaterThan(0);
+			expect(rect.top).toBeGreaterThanOrEqual(0);
+			expect(rect.left).toBeGreaterThanOrEqual(0);
+			expect(rect.bottom).toBeLessThanOrEqual(viewport.innerHeight);
+			expect(rect.right).toBeLessThanOrEqual(viewport.innerWidth);
+		});
+		// A no-overflow fixture cannot prove that the bottom action is reachable.
+		await expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight);
+		scroll.scrollTop = scroll.scrollHeight;
+		await new Promise<void>((resolve) =>
+			viewport.requestAnimationFrame(() => resolve()),
+		);
+		const message = within(card).getByRole("button", {
+			name: t("ui.teamBridge.profile.message"),
+		});
+		await waitFor(() => {
+			const action = message.getBoundingClientRect();
+			const bounds = card.getBoundingClientRect();
+			const visible = scroll.getBoundingClientRect();
+			expect(scroll.scrollTop).toBeGreaterThan(0);
+			expect(action.height).toBeGreaterThan(0);
+			expect(action.top).toBeGreaterThanOrEqual(
+				Math.max(bounds.top, visible.top),
+			);
+			expect(action.bottom).toBeLessThanOrEqual(
+				Math.min(bounds.bottom, visible.bottom),
+			);
+			expect(action.left).toBeGreaterThanOrEqual(
+				Math.max(bounds.left, visible.left),
+			);
+			expect(action.right).toBeLessThanOrEqual(
+				Math.min(bounds.right, visible.right),
+			);
+		});
+	},
+};
+
+export const ProfileAvatarDecodeError: Story = {
+	args: profileArgs,
+	render: (args) => (
+		<ProfileDirectoryStory {...args} avatarState="decode-error" />
+	),
+	play: openProfile("Bea"),
+};
+
+const northwindProfileDm: TeamBridgeConversation = {
+	...profileArgs.conversations[0],
+	id: "bcv_profile_northwind",
+	tenant_id: northwindOrganization.tenantId,
+	last_message_at: "2026-10-25T10:00:00Z",
+};
+export const ProfileMergedTenantMessage: Story = {
+	args: {
+		...profileArgs,
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [
+			...profileArgs.conversations,
+			northwindChannel,
+			northwindProfileDm,
+		],
+		target: { type: "conversation", id: northwindChannel.id },
+		messages: profileArgs.messages.map((message) => ({
+			...message,
+			conversation_id: northwindChannel.id,
+		})),
+	},
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const state = canvasElement.querySelector("[data-profile-target]");
+		await expect(state).toHaveAttribute(
+			"data-profile-target",
+			JSON.stringify({ type: "conversation", id: northwindChannel.id }),
+		);
+		const trigger = within(canvasElement).getAllByRole("button", {
+			name: t("ui.teamBridge.profile.open_profile", { name: "Bea Northwind" }),
+		})[0];
+		trigger.focus();
+		const card = await within(canvasElement.ownerDocument.body).findByRole(
+			"dialog",
+		);
+		await userEvent.click(
+			within(card).getByRole("button", {
+				name: t("ui.teamBridge.profile.message"),
+			}),
+		);
+		await waitFor(() =>
+			expect(state).toHaveAttribute(
+				"data-profile-target",
+				JSON.stringify({ type: "conversation", id: northwindProfileDm.id }),
+			),
+		);
+		await expect(state).toHaveAttribute(
+			"data-profile-tenant",
+			northwindOrganization.tenantId,
+		);
+		await expect(state).toHaveAttribute(
+			"data-profile-scope",
+			TEAM_BRIDGE_ALL_SCOPE,
+		);
 	},
 };

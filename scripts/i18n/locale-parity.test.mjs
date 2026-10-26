@@ -42,6 +42,10 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"fr:ui.teamBridge.profile.agent_badge",
+		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
+	],
+	[
 		"ui.console.pane.label",
 		// A shared UI term, not a copy of untranslated English: French uses
 		// « Console » for this surface verbatim, and the English string IS that same

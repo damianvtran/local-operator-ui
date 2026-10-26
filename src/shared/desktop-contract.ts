@@ -6635,6 +6635,20 @@ export type DesktopMediaRequest =
 			expectedAccountId: string;
 	  }
 	/*
+	 * Account avatars are private, content-addressed images. The renderer sends
+	 * typed ids/hash/size, never a URL. Main calls the closed core binary relay:
+	 * only core owns the hub credential. expectedAccountId is the commissioning
+	 * viewer, not the target; core verifies its authority before dispatch and
+	 * after receiving bytes. Older runtimes refuse with 404, leaving initials.
+	 */
+	| {
+			op: "team_bridge.avatar";
+			expectedAccountId: string;
+			accountId: string;
+			hash: string;
+			size: 64 | 256;
+	  }
+	/*
 	 * A Library audio asset's PRE-RENDER peaks, as the same `{version, bars,
 	 * peaks}` JSON a generated sound's attachment waveform route serves. Audio
 	 * assets that came from a session carry the sidecar the producer wrote; a

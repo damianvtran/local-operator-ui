@@ -199,5 +199,12 @@
 	"ui.teamBridge.reactions.category8": "Drapeaux",
 	"ui.teamBridge.reactions.choose": "Choisir un émoji",
 	"ui.teamBridge.reactions.noResults": "Aucun émoji trouvé",
-	"ui.teamBridge.actions.label": "Actions sur le message"
+	"ui.teamBridge.actions.label": "Actions sur le message",
+	"ui.teamBridge.profile.message": "Envoyer un message",
+	"ui.teamBridge.profile.human_badge": "Personne",
+	"ui.teamBridge.profile.agent_badge": "Agent",
+	"ui.teamBridge.profile.owned_by": "Agent de {name}",
+	"ui.teamBridge.profile.local_time": "Heure locale : {time}",
+	"ui.teamBridge.profile.close_profile": "Fermer le profil",
+	"ui.teamBridge.profile.open_profile": "Ouvrir le profil de {name}"
 }
