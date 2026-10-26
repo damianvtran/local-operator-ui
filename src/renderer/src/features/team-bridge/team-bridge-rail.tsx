@@ -319,7 +319,19 @@ export const PersonRailRow: FC<{
 		<span
 			aria-hidden="true"
 			className={cn(
-				"flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-sunken font-medium text-[10px]",
+				/* THE FILL IS CHOSEN AGAINST THE GROUND THIS ROW PAINTS, because both of
+				   its states are row states whose fills are tuned against the panel, not
+				   against a plate. `media-surface` clears `row-hover` everywhere (ΔE00
+				   >= 3.70), but on a SELECTED row - whose ground is `row-selected` - it
+				   bottoms out at 1.83 on the brand light palette and falls below 3.0 on
+				   eight, which the design round saw as the plate fading into the
+				   selection. `surface` is the role authored against `row-selected`
+				   (ΔE00 >= 3.18 on all 59 palettes) and holds the initials' own floor
+				   there, so the selected row is the one state that steps the other way.
+				   Both pairs are measured in `scripts/contrast-contract.mjs`; neither
+				   wears an edge (operator ask, 2026-10-26). */
+				"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] font-medium text-[10px]",
+				selected ? "bg-surface" : "bg-media-surface",
 				state === "unavailable" ? "text-ink-disabled" : "text-ink-muted",
 			)}
 		>
@@ -475,7 +487,13 @@ export const ChiefRailRow: FC<{
 			>
 				<span
 					aria-hidden="true"
-					className="flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-accent-wash text-accent"
+					/* The person plate's rule, one row up: `surface` on the selected
+					   row, `media-surface` otherwise, so the chief's mark keeps its
+					   separation from whichever fill the row paints. */
+					className={cn(
+						"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] text-accent",
+						selected ? "bg-surface" : "bg-media-surface",
+					)}
 				>
 					<Bot size={12} />
 				</span>
