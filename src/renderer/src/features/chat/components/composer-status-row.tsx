@@ -200,77 +200,61 @@ import {
 } from "./run-details";
 import { SubagentStateIcon } from "./run-details/run-detail-row-parts";
 
-/**
- * The goal's visible label: the picker's own field label
- * (`destination-pickers.tsx`'s `Goal:`), not its title (`Session goal`) and not
- * its prose heading (`The standing goal`). A 24px chip carries a label; the
- * disambiguating word is what the accessible name is for.
- */
-const GOAL_LABEL = "Goal:";
-
-/** How the goal is NAMED, where there is room for the word a chip cannot carry. */
-const GOAL_NAME = "the session goal";
-
-/** The plan chip's action, leading its tooltip and its accessible name. */
-const PLAN_ACTION = "Open the plan in run details";
-
-/**
- * The subagents chip's action, and the jobs chip's.
+/*
+ * THIS ROW'S COPY IS CATALOGUE ENTRIES (`ui.chat.composer.status.*`), read through
+ * `t()` every time a label is BUILT rather than frozen into module constants.
  *
- * The plural is the SECTION's own heading in the pane (`Subagents`, `Jobs`), so
- * the chip names the destination in the same word the destination is labelled
- * with — `Open the plan in run details`' rule, one section over. `Open` rather
- * than `Show` for the same reason as the plan chip's.
- */
-const SUBAGENT_ACTION = "Open the subagents in run details";
-const JOB_ACTION = "Open the jobs in run details";
-
-/**
- * The wake chip's action, on the same rule as the three above it.
+ * The distinction is the reason the builders below are functions and not `const`s:
+ * a module-level `t()` runs once at import and bakes whichever locale was active
+ * then into every later frame — the English-freeze the row's `useI18nLocale()`
+ * subscription exists to prevent (it re-renders the row on a locale change, which
+ * only helps if the strings are read during render). `@shared/i18n`'s formatters
+ * keep the same contract: they read the store at call time for exactly this reason.
  *
- * The plural is the SECTION's own heading in the pane (`Wakes`), so the chip names
- * the destination in the word the destination is labelled with. `Open` rather than
- * `Show` for the plan chip's own reason: this moves the reader to a region rather
- * than disclosing something in place.
- */
-const WAKE_ACTION = "Open the wakes in run details";
-
-/**
- * The monitor chip's action, the wake chip's rule one count over.
+ * The names the chips carry are deliberate and are argued where a translator sees
+ * them: the entries live in `src/i18n/catalogues/en/ui.chat.json` under
+ * `ui.chat.composer.status.*` (where this row's `session_goal` entry already sat),
+ * and each one's role, tone and length constraint is recorded beside it in
+ * `ui.chat.context.json`. The goal's visible label is the picker's own `Goal:` (not
+ * its title `Session goal`, which is the accessible name's disambiguating word);
+ * each chip's action names the SECTION it opens (`Open the plan in run details`),
+ * because `Open` moves the reader to a region rather than disclosing something in
+ * place the way `Show` would.
  *
- * The plural is the SECTION's own heading in the pane (`Monitors`), so the chip
- * names the destination in the word the destination is labelled with — and
- * `Open` rather than `Show` for the plan chip's own reason: this moves the
- * reader to a region rather than disclosing something in place.
+ * TWO VOCABULARIES IN THIS FILE ARE NOT COPY AND CARRY NO KEY: the goal's state
+ * word (`goalStateWord`: `done`/`stalled`/`working`) and the loop's status word
+ * (`loopStatusWord`: the wire's own `running`/`judging`/`achieved`/…). Both are
+ * matched elsewhere as protocol and reused as dispatch arguments, so a translated
+ * one would break a comparison rather than localize a readout.
  */
-const MONITOR_ACTION = "Open the monitors in run details";
 
 /**
- * The LOOP chip's visible label, on the goal chip's own rule: the row's chips that
- * state a fact lead with the fact's name and a colon, and the disambiguating word
- * (`the session's loop`) is what the accessible names below carry.
+ * The row's loop feature label (`ui.chat.composer.status.loop_label`, `Loop:`) on
+ * the goal chip's own rule: the row's chips that state a fact lead with the fact's
+ * name and a colon, and the disambiguating word (`the session's loop`) is what the
+ * accessible names below carry.
  */
-const LOOP_LABEL = "Loop:";
 
-/**
- * The four words the row's two DISMISS controls print, and the one thing on this
+/*
+ * The four words the row's DISMISS controls print (`Clear goal`, `Done`,
+ * `Dismiss`, and the loop's `Stop loop`/`Clear loop`), and the one thing on this
  * row that takes a value away rather than showing one.
  *
- * They are the controls' own visible text and the head of their accessible names,
- * so the word a person reads and the word a screen reader announces are the same
- * word — the `Clear goal` label is short enough for a 24px row and is what the
- * operator asked for; `Clear the session goal` is the disambiguating phrase the
- * goal chip's own name already spends, and the dismiss spends its name on the
- * VALUE instead (see `goalClearLabel`).
+ * Each is the control's own visible text AND the head of its accessible name, so
+ * the word a person reads and the word a screen reader announces are the same
+ * word. `Clear goal` is not a new entry: the row renders the session-goal picker's
+ * OWN key (`ui.chat.pickers.goal.clear`), because it is the same action on the
+ * same value and two keys for it is how a dialog and the chip above it come to
+ * spell one press two ways. The shorter word is what a 24px row holds; `Clear the
+ * session goal` is the disambiguating phrase the goal chip's own name already
+ * spends, and each dismiss spends its name on the VALUE instead (see
+ * `goalClearLabel`).
  *
  * `Stop` and `Clear` are the two verbs the loop's own states earn (a moving loop is
  * STOPPED, a settled one is CLEARED) and the picker's own word for the running case
  * (`Cancel loop` there, on a 320px dialog's primary-size button — a chip is not
  * that control and does not borrow its wording).
  */
-const GOAL_CLEAR_TEXT = "Clear goal";
-const LOOP_STOP_TEXT = "Stop loop";
-const LOOP_CLEAR_TEXT = "Clear loop";
 
 /*
  * The goal's MARK-DONE and DISMISS controls, and the rule that separates them from
@@ -289,8 +273,6 @@ const LOOP_CLEAR_TEXT = "Clear loop";
  * record refuses. Its wording is deliberately quiet — `Hide` would be a second
  * vocabulary for `/goal --dismiss`.
  */
-const GOAL_DONE_TEXT = "Done";
-const GOAL_DISMISS_TEXT = "Dismiss";
 /*
  * The goal's settled word, printed on the chip's tag and used to build the
  * accessible names. It is the wire's own `goal_status` value verbatim, on the loop
@@ -919,10 +901,12 @@ export const goalDisclosureLabel = (
 	 * unread mark.
 	 */
 	stateWord = "",
-): string =>
-	`${expanded ? "Collapse" : "Expand"} ${GOAL_NAME}${LABEL_SEAM}${
-		stateWord ? `${stateWord}, ` : ""
-	}${goal}`;
+): string => {
+	const action = expanded
+		? t("ui.chat.composer.status.goal_collapse")
+		: t("ui.chat.composer.status.goal_expand");
+	return `${action}${LABEL_SEAM}${stateWord ? `${stateWord}, ` : ""}${goal}`;
+};
 
 /**
  * The plan chip's tooltip and accessible name.
@@ -940,7 +924,8 @@ export const goalDisclosureLabel = (
  */
 export const planChipLabel = (
 	details: Pick<RunDetails, "openTodos" | "droppedTodos">,
-): string => `${PLAN_ACTION}${LABEL_SEAM}${todoClause(details)}`;
+): string =>
+	`${t("ui.chat.composer.status.plan_action")}${LABEL_SEAM}${todoClause(details)}`;
 
 /**
  * The two activity chips' tooltip and accessible name, one derived string each
@@ -954,10 +939,10 @@ export const planChipLabel = (
  * neither can state a state the glyph denies (design round 1, D1).
  */
 export const subagentChipLabel = (tally: ActivityTally): string =>
-	`${SUBAGENT_ACTION}${LABEL_SEAM}${childClause(tally)}${busiestClause(tally)}`;
+	`${t("ui.chat.composer.status.subagents_action")}${LABEL_SEAM}${childClause(tally)}${busiestClause(tally)}`;
 
 export const jobChipLabel = (tally: ActivityTally): string =>
-	`${JOB_ACTION}${LABEL_SEAM}${jobClause(tally)}${busiestClause(tally)}`;
+	`${t("ui.chat.composer.status.jobs_action")}${LABEL_SEAM}${jobClause(tally)}${busiestClause(tally)}`;
 
 /**
  * Whether the row owes the composer its focus back.
@@ -995,7 +980,7 @@ export const shouldRestoreComposerFocus = (
  * gets wrong.
  */
 export const wakeChipLabel = (armed: number): string =>
-	`${WAKE_ACTION}${LABEL_SEAM}${wakeClause(armed)}`;
+	`${t("ui.chat.composer.status.wakes_action")}${LABEL_SEAM}${wakeClause(armed)}`;
 
 /**
  * The monitor chip's tooltip and accessible name: ONE derived string, for
@@ -1007,7 +992,7 @@ export const wakeChipLabel = (armed: number): string =>
  * hand-written plural gets wrong.
  */
 export const monitorsChipLabel = (armed: number): string =>
-	`${MONITOR_ACTION}${LABEL_SEAM}${monitorClause(armed)}`;
+	`${t("ui.chat.composer.status.monitors_action")}${LABEL_SEAM}${monitorClause(armed)}`;
 
 /**
  * The goal dismiss's tooltip and accessible name: ONE derived string for both, on
@@ -1025,7 +1010,7 @@ export const monitorsChipLabel = (armed: number): string =>
  * home for one value is how two controls come to describe one goal differently.
  */
 export const goalClearLabel = (goal: string): string =>
-	`${GOAL_CLEAR_TEXT}${LABEL_SEAM}${goal}`;
+	`${t("ui.chat.pickers.goal.clear")}${LABEL_SEAM}${goal}`;
 
 /**
  * The mark-done control's tooltip and accessible name, on the same one-derived-string
@@ -1036,7 +1021,7 @@ export const goalClearLabel = (goal: string): string =>
  * `Done` alone beside two other controls would not say what it is done TO.
  */
 export const goalDoneLabel = (goal: string): string =>
-	`Mark the goal done${LABEL_SEAM}${goal}`;
+	`${t("ui.chat.composer.status.goal_done_name")}${LABEL_SEAM}${goal}`;
 
 /**
  * The done chip's dismiss control: tooltip and accessible name.
@@ -1047,8 +1032,11 @@ export const goalDoneLabel = (goal: string): string =>
  * the record. A name that said only `Dismiss the finished goal` would leave the user
  * guessing whether the press destroys the goal.
  */
-export const goalDismissLabel = (goal: string): string =>
-	`Dismiss the finished goal${LABEL_SEAM}it stays in the goal history${LABEL_SEAM}${goal}`;
+export const goalDismissLabel = (goal: string): string => {
+	const name = t("ui.chat.composer.status.goal_dismiss_name");
+	const kept = t("ui.chat.composer.status.goal_dismiss_keep");
+	return `${name}${LABEL_SEAM}${kept}${LABEL_SEAM}${goal}`;
+};
 
 /**
  * Whether the wire's loop is MOVING, which is the whole of the loop's affordance
@@ -1120,9 +1108,12 @@ export const loopStatusWord = (loop: DesktopLoopState): string => loop.status;
 export const loopProgress = (loop: DesktopLoopState): string => {
 	if (loop.status !== "running") return "";
 	if (loop.iterations) {
-		return `, ${loop.completed} of ${loop.iterations} turns`;
+		return `, ${t("ui.chat.composer.status.loop_progress_of_turns", {
+			completed: loop.completed,
+			total: loop.iterations,
+		})}`;
 	}
-	return `, ${loop.completed} ${loop.completed === 1 ? "turn" : "turns"}`;
+	return `, ${t("ui.chat.composer.status.loop_progress_turns", { count: loop.completed })}`;
 };
 
 /**
@@ -1147,12 +1138,12 @@ export const loopAffordance = (
 ): { text: string; args: string | null; failure: string } =>
 	loopIsRunning(loop.status)
 		? {
-				text: LOOP_STOP_TEXT,
+				text: t("ui.chat.composer.status.loop_stop"),
 				args: LOOP_STOP_ARGS,
 				failure: t("ui.notices.chat.loop_stop_failed"),
 			}
 		: {
-				text: LOOP_CLEAR_TEXT,
+				text: t("ui.chat.composer.status.loop_clear"),
 				args: null,
 				failure: t("ui.notices.chat.loop_clear_failed"),
 			};
@@ -2471,7 +2462,7 @@ export const ComposerStatusRow = ({
 										<GoalControl
 											kind="done"
 											label={goalDoneName}
-											word={GOAL_DONE_TEXT}
+											word={t("ui.chat.composer.status.goal_done")}
 											icon={
 												<Check
 													aria-hidden={true}
@@ -2500,12 +2491,12 @@ export const ComposerStatusRow = ({
 										<GoalControl
 											kind="dismiss"
 											label={goalDismissName}
-											word={GOAL_DISMISS_TEXT}
+											word={t("ui.chat.composer.status.goal_dismiss")}
 											icon={
 												/*
 												 * A DISTINGUISHABLE MARK AT THE COLUMN FLOOR (design review round 1, D6).
 												 *
-												 * `GOAL_DISMISS_TEXT` and `Clear goal` share `DISMISS_WORD`, so below the
+												 * `ui.chat.composer.status.goal_dismiss` and `Clear goal` share `DISMISS_WORD`, so below the
 												 * stacked band both controls are one glyph with the word dropped — and the
 												 * two this pair can be are DIFFERENT consequences: the erase removes the
 												 * standing goal, the dismiss only puts the settled chip away, leaving the
@@ -2546,7 +2537,7 @@ export const ComposerStatusRow = ({
 										<GoalControl
 											kind="clear"
 											label={goalClear}
-											word={GOAL_CLEAR_TEXT}
+											word={t("ui.chat.pickers.goal.clear")}
 											icon={
 												<X
 													aria-hidden={true}
@@ -2589,7 +2580,7 @@ export const ComposerStatusRow = ({
 									 * first, and the count is `shrink-0` so it is never cut mid-figure.
 									 */}
 									<span className={cn("shrink-0", goalStalled && "text-ink")}>
-										{GOAL_LABEL}
+										{t("ui.chat.composer.status.goal_label")}
 									</span>
 									{/*
 									 * CSS truncation, never a computed cell count: the browser
@@ -2763,7 +2754,7 @@ export const ComposerStatusRow = ({
 							 * marks the arrangement, the measurement marks the box.
 							 */}
 							<span>
-								{`${LOOP_LABEL} ${loopStatusWord(loop)}`}
+								{`${t("ui.chat.composer.status.loop_label")} ${loopStatusWord(loop)}`}
 								{itemFits && (
 									<span className={cn(NARROW_HIDDEN)}>
 										{loopProgress(loop)}

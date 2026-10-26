@@ -69,7 +69,7 @@ import {
 import { openingLevels, prefixGroups, scopeStacks } from "./mesh-scope";
 import { MeshScopeLayer } from "./mesh-scope-layer";
 import type { DeviceSessions } from "./mesh-sessions";
-import type { MeshSessionRow } from "./mesh-types";
+import { type MeshSessionRow, deviceIdentityText } from "./mesh-types";
 
 /** How far one arrow key or one keyboard zoom step moves the view. */
 const KEY_PAN_PX = 48;
@@ -334,7 +334,9 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 			const payload: DragPayload = {
 				session,
 				ownerDeviceId,
-				ownerLabel: owner?.label ?? session.owner_device_name,
+				ownerLabel: owner
+					? deviceIdentityText(owner, [...dropContext.devices.keys()], true)
+					: session.owner_device_name,
 			};
 			/*
 			 * CAPTURE IS BEST-EFFORT, and the guard is not defensive padding: a
@@ -921,6 +923,7 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 							<MeshDeviceNode
 								key={device.id}
 								device={device}
+								deviceIds={graph.devices.map((entry) => entry.id)}
 								x={box.x}
 								y={box.y}
 								nowSeconds={nowSeconds}

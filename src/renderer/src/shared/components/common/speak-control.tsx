@@ -56,12 +56,21 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { clipForSpeech } from "@shared/lib/speech-clip";
-import { speechUnavailableReason } from "@shared/lib/speech-gate";
+import {
+	type RadientSpeechBlock,
+	speechUnavailableReason,
+} from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import { useSpeechStore } from "@shared/store/speech-store";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import { Square, Volume2 } from "lucide-react";
-import { useEffect, useId } from "react";
+import {
+	type ReactNode,
+	createContext,
+	useContext,
+	useEffect,
+	useId,
+} from "react";
 
 /** What a press hands its surface: the text as it will be sent. */
 export type SpeakRequest = {
@@ -116,6 +125,72 @@ export type SpeakControl = {
 	press: () => void;
 };
 
+/** The two facts a Speak control reads from the credential probe. */
+export type SpeechGate = {
+	canUseRadientSpeech: boolean;
+	speechBlock: RadientSpeechBlock;
+};
+
+/*
+ * ONE CREDENTIAL PROBE PER SCOPE, NOT PER CONTROL.
+ *
+ * `useRadientCredentialProbe` is four shared reads (the credentials file, the
+ * Radient account, the connectivity gate, the capabilities negotiation), and
+ * each read mounts its own TanStack `QueryObserver` per caller. Every answer row
+ * in the transcript carries a Speak control, so a pane that mounted 61 rows
+ * mounted 61 copies of that observer set inside its one mount task - 18-34% of
+ * the task's CPU when the shared queries were stale (renderer profile §4 L2-b).
+ * The answer is the same for all of them: it is a fact about the account and
+ * the local server, not about a row.
+ *
+ * So a surface that owns many controls (the transcript pane) wraps them in
+ * `SpeechGateScope`, which runs the probe ONCE and hands the two values down;
+ * every `useSpeakControl` under it reads them from here and subscribes to no
+ * query. When credentials change, the scope's probe re-renders, the memoised
+ * value moves, and every consumer re-renders with the new gate and reason - the
+ * same propagation the per-row subscriptions gave, from one subscription.
+ *
+ * `null` means "no scope above this control": a lone control (the legacy
+ * message strip, a canvas editor's selection toolbar, a story) keeps running
+ * its own probe, so nothing outside a scope changes behaviour.
+ */
+const SpeechGateContext = createContext<SpeechGate | null>(null);
+
+/**
+ * Runs the credential probe once for every Speak control rendered beneath it.
+ *
+ * The provided value is NEVER `null` - that is the invariant `useSpeechGate`
+ * relies on (see there). The probe already returns one object per answer
+ * (`use-credentials.ts`, C1), so the value is stable across renders that do
+ * not change the answer and a memoised row is not re-rendered by it.
+ */
+export const SpeechGateScope = ({ children }: { children: ReactNode }) => {
+	const probe = useRadientCredentialProbe();
+	return (
+		<SpeechGateContext.Provider value={probe}>
+			{children}
+		</SpeechGateContext.Provider>
+	);
+};
+
+/**
+ * The gate for one control: the enclosing scope's answer, or this control's
+ * own probe when there is no scope.
+ *
+ * THE CONDITIONAL HOOK CALL IS STABLE PER COMPONENT INSTANCE, which is the
+ * property the rules of hooks protect. Whether a `SpeechGateScope` sits above a
+ * fiber is a fact about the tree's shape: adding or removing a provider changes
+ * the element type at that position, which unmounts and remounts everything
+ * beneath it, so a mounted control never sees the context go from a value to
+ * `null` or back. And the scope never provides `null`. A given instance
+ * therefore either always calls the probe or never does - the same hook order
+ * on every render.
+ */
+function useSpeechGate(): SpeechGate {
+	const scoped = useContext(SpeechGateContext);
+	return scoped ?? useRadientCredentialProbe();
+}
+
 export function useSpeakControl({
 	key,
 	getText,
@@ -124,7 +199,7 @@ export function useSpeakControl({
 }: SpeakControlOptions): SpeakControl {
 	const { dismiss, stopSpeech, loadingKey, playingKey, audioCache, heardKeys } =
 		useSpeechStore();
-	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
+	const { canUseRadientSpeech, speechBlock } = useSpeechGate();
 
 	const isPlaying = key !== null && playingKey === key;
 	const isLoading = key !== null && loadingKey === key;

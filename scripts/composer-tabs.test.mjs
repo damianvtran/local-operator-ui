@@ -2055,7 +2055,11 @@ test("the row's own layout: each flexible chip owns a line, and the alignment de
 	 * but a second label span would.
 	 */
 	assert.doesNotMatch(source, /chatcol:sr-only/);
-	tokens('"shrink-0"', 'goalStalled && "text-ink"', "{GOAL_LABEL}");
+	tokens(
+		'"shrink-0"',
+		'goalStalled && "text-ink"',
+		'{t("ui.chat.composer.status.goal_label")}',
+	);
 
 	/*
 	 * The row owns the first-chip rule (design review round 1, D5): one constant,
@@ -6165,5 +6169,151 @@ test("the chip PAINTS the model's clause, so the JSX cannot compose a second one
 		);
 	} finally {
 		cleanup();
+	}
+});
+
+/*
+ * THE ROW'S OWN STRINGS, AS THE CATALOGUES HOLD THEM.
+ *
+ * The row's copy lives in `ui.chat.json` under `ui.chat.composer.status` — the
+ * namespace its `session_goal` entry already used — plus the one entry it SHARES
+ * with the session-goal picker (`ui.chat.pickers.goal.clear`): clearing the goal
+ * is one act on one value, and a second key for it is how the picker and the chip
+ * above it come to print one action two ways.
+ */
+const CHAT_CATALOGUE = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.json", "utf8"),
+);
+const PICKERS_CATALOGUE = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.pickers.json", "utf8"),
+);
+const ES_PICKERS_CATALOGUE = JSON.parse(
+	readFileSync("src/i18n/catalogues/es/ui.chat.pickers.json", "utf8"),
+);
+
+/*
+ * WHY THIS PINS THE KEY AND THE ENGLISH TOGETHER. The row used to hold its labels
+ * in module constants (`const LOOP_CLEAR_TEXT = "Clear loop"`), which is not a
+ * style preference: a value captured at import is fixed to whichever locale was
+ * active then, so no later locale change can reach it, and `check-strings` cannot
+ * see it either (a module constant is not a JSX text node). The extraction moved
+ * those words into the catalogue and left the builders as functions, so `t()` runs
+ * each time a label is BUILT — the contract `@shared/i18n`'s formatters keep, and
+ * the reason the row subscribes with `useI18nLocale()`.
+ *
+ * The pair (the key the source asks for, the English the catalogue holds) is the
+ * shape the notices extraction uses: a reword that moves the catalogue without the
+ * call site moving, or a call site that silently drops back to a literal, both fail
+ * here.
+ */
+test("the row's labels are catalogue keys, and the English still says what they said", () => {
+	const source = code(ROW);
+	const entries = [
+		["ui.chat.composer.status.goal_label", "Goal:"],
+		["ui.chat.composer.status.loop_label", "Loop:"],
+		["ui.chat.composer.status.goal_expand", "Expand the session goal"],
+		["ui.chat.composer.status.goal_collapse", "Collapse the session goal"],
+		["ui.chat.composer.status.plan_action", "Open the plan in run details"],
+		[
+			"ui.chat.composer.status.subagents_action",
+			"Open the subagents in run details",
+		],
+		["ui.chat.composer.status.jobs_action", "Open the jobs in run details"],
+		["ui.chat.composer.status.wakes_action", "Open the wakes in run details"],
+		[
+			"ui.chat.composer.status.monitors_action",
+			"Open the monitors in run details",
+		],
+		["ui.chat.composer.status.loop_stop", "Stop loop"],
+		["ui.chat.composer.status.loop_clear", "Clear loop"],
+		["ui.chat.composer.status.goal_done", "Done"],
+		["ui.chat.composer.status.goal_dismiss", "Dismiss"],
+		["ui.chat.composer.status.goal_done_name", "Mark the goal done"],
+		["ui.chat.composer.status.goal_dismiss_name", "Dismiss the finished goal"],
+		[
+			"ui.chat.composer.status.goal_dismiss_keep",
+			"it stays in the goal history",
+		],
+		[
+			"ui.chat.composer.status.loop_progress_of_turns",
+			"{completed, number, ::group-off} of {total, number, ::group-off} turns",
+		],
+		[
+			"ui.chat.composer.status.loop_progress_turns",
+			"{count, plural, one {# turn} other {# turns}}",
+		],
+	];
+	for (const [key, english] of entries) {
+		assert.ok(
+			source.includes(`t("${key}"`),
+			`the row does not ask the catalogue for ${key}`,
+		);
+		assert.equal(
+			CHAT_CATALOGUE[key],
+			english,
+			`${key} changed its English wording`,
+		);
+	}
+	/*
+	 * THE SHARED ENTRY IS SHARED, not duplicated: the row reads the picker's key,
+	 * and no `ui.chat.composer.status.goal_clear` exists beside it.
+	 */
+	assert.ok(source.includes('t("ui.chat.pickers.goal.clear")'));
+	assert.equal(PICKERS_CATALOGUE["ui.chat.pickers.goal.clear"], "Clear goal");
+	assert.equal(
+		CHAT_CATALOGUE["ui.chat.composer.status.goal_clear"],
+		undefined,
+		"one act, one key: a second copy of Clear goal is how the two surfaces drift",
+	);
+	/*
+	 * AND NO LITERAL SURVIVES IN THE SOURCE. This is the half the literal ratchet
+	 * never covered: none of these strings was ever a JSX text node, so the row
+	 * looked extracted while every locale still rendered English.
+	 */
+	for (const literal of [
+		"Clear goal",
+		"Stop loop",
+		"Clear loop",
+		"Goal:",
+		"Loop:",
+		"Mark the goal done",
+		"Dismiss the finished goal",
+		"Open the plan in run details",
+	]) {
+		assert.ok(
+			!source.includes(`"${literal}"`),
+			`${literal} is still a source literal, not a catalogue entry`,
+		);
+	}
+});
+
+test("the row's labels follow the active locale, read when the label is built", () => {
+	/*
+	 * A REAL CATALOGUE RATHER THAN A FIXTURE. The row shares `Clear goal` with the
+	 * goal picker, and that entry is translated in every shipped locale — so this
+	 * proves the render path reads the store at call time instead of a value frozen
+	 * at import, with copy no one wrote for the test. The entries added alongside it
+	 * are untranslated for now and fall back to English per key, which is the
+	 * behaviour the coverage ledger records.
+	 */
+	const translated = ES_PICKERS_CATALOGUE["ui.chat.pickers.goal.clear"];
+	assert.ok(
+		translated && translated !== "Clear goal",
+		"the es catalogue does not translate the shared entry",
+	);
+	const previous = currentLocale();
+	try {
+		setLocale("es");
+		assert.equal(goalClearLabel("Ship it"), `${translated} — Ship it`);
+		const markup = renderRow({
+			frontend: frontendWith({ goal: "Ship it", goal_status: "active" }),
+			runDetails: null,
+		});
+		assert.ok(
+			markup.includes(translated),
+			"the rendered row does not carry the locale's own word",
+		);
+	} finally {
+		setLocale(previous);
 	}
 });

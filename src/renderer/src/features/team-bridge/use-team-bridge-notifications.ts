@@ -64,15 +64,21 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
-import { radientAuthoritySnapshot } from "@shared/hooks/radient-account-authority";
+import {
+	observedRadientAuthority,
+	radientAuthorityPending,
+	radientAuthoritySnapshot,
+	subscribeRadientAuthority,
+} from "@shared/hooks/radient-account-authority";
 import { t } from "@shared/i18n";
 import {
 	type QueryClient,
+	useMutationState,
 	useQueries,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import {
 	type TeamBridgeBannerCopy,
@@ -91,9 +97,18 @@ import {
 	type TeamBridgeNotifyCandidate,
 	type TeamBridgeNotifyUnreadRow,
 	planTeamBridgeNotifications,
+	shouldNotifyTeamBridge,
 	teamBridgeNotifyOrganizations,
 } from "./team-bridge-notify-model";
-import { readForBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
+import {
+	teamBridgeNotifyPolicyPending,
+	waitForTeamBridgeNotifyPolicy,
+} from "./team-bridge-notify-policy";
+import {
+	bridgeOwnerCurrent,
+	readForBridgeOwner,
+	useTeamBridgeAccount,
+} from "./team-bridge-owner";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { assertThreadPage } from "./team-bridge-thread-read";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
@@ -172,6 +187,7 @@ async function deliverTeamBridgeBanner(
 	candidate: TeamBridgeNotifyCandidate,
 	selfAccountId: string,
 	stillCurrent: () => boolean,
+	signal: AbortSignal,
 ): Promise<void> {
 	if (!stillCurrent()) return;
 	let senderLabel = candidate.senderLabel;
@@ -184,6 +200,9 @@ async function deliverTeamBridgeBanner(
 	 * banner degrades to its metadata (or is skipped) rather than touching the
 	 * thread cache, and the click target carries no thread root either.
 	 */
+	const authority = observedRadientAuthority(client);
+	if (authority.accountId !== selfAccountId) return;
+	const owner = { accountId: selfAccountId, epoch: authority.epoch };
 	const threadId = TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
 		? candidate.threadId
 		: undefined;
@@ -250,9 +269,43 @@ async function deliverTeamBridgeBanner(
 	// Reads above may span a settings change, sign-out or capability disable.
 	// Read the LIVE policy at the last synchronous boundary before IPC, not the
 	// snapshot that started the request. Cursors advance independently.
-	if (!stillCurrent()) return;
+	// Planning already consumed the seq. An optimistic mute may still fail:
+	// defer this one delivery until rollback/success has reconciled the cache,
+	// rather than permanently dropping it or replaying the planner's backlog.
+	// Recheck synchronously after each wake in case another write began before
+	// this continuation ran. The final policy/notify boundary has no await gap.
+	while (
+		teamBridgeNotifyPolicyPending(
+			client,
+			owner,
+			candidate.conversationId,
+			candidate.tenantId,
+		)
+	) {
+		await waitForTeamBridgeNotifyPolicy(
+			client,
+			owner,
+			candidate.conversationId,
+			candidate.tenantId,
+			signal,
+		);
+		if (signal.aborted || !stillCurrent()) return;
+	}
+	if (signal.aborted || !stillCurrent()) return;
+	const conversation = client
+		.getQueryData<Awaited<ReturnType<typeof TeamBridgeApi.listConversations>>>(
+			teamBridgeKeys.conversations(TEAM_BRIDGE_ALL_SCOPE, selfAccountId),
+		)
+		?.conversations.find(
+			(row) =>
+				row.id === candidate.conversationId &&
+				row.tenant_id === candidate.tenantId,
+		);
+	if (!conversation || !shouldNotifyTeamBridge(conversation, selfAccountId))
+		return;
 	await bridge
 		.notify({
+			owner: { accountId: selfAccountId, epoch: owner.epoch },
 			conversationId: candidate.conversationId,
 			// A reply banner names its thread root so the click opens the thread
 			// pane; omitted for a top-level message, and omitted entirely while the
@@ -297,6 +350,37 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		status.data.local.enabled &&
 		!status.data.read_only;
 	const client = useQueryClient();
+	// Pending IDs wake planning when a write settles even if its invalidations
+	// returned byte-identical data. A count alone misses swaps between writes.
+	const pendingPolicyIds = useMutationState({
+		filters: {
+			mutationKey: teamBridgeKeys.notifyMutation(
+				selfAccountId,
+				accountAuthority.epoch,
+			),
+			exact: true,
+			status: "pending",
+		},
+		select: (mutation) => mutation.mutationId,
+	});
+	useLayoutEffect(() => {
+		const bridge = window.api?.desktop?.teamBridge;
+		if (!bridge?.setAuthority) return;
+		// Subscribe directly to the credential journal, not a rendered account
+		// ref: beginTransition publishes revocation without waiting for React.
+		// This is a separate authority channel; a late notify cannot update it.
+		const publish = () => {
+			void bridge
+				.setAuthority({
+					...observedRadientAuthority(client),
+					settling: radientAuthorityPending(client),
+				})
+				.catch(() => undefined);
+		};
+		const unsubscribe = subscribeRadientAuthority(client, publish);
+		publish();
+		return unsubscribe;
+	}, [client]);
 	const memberships = useMembershipsQuery({ enabled: active });
 	/*
 	 * The app's notification switch, through the one shared registry read
@@ -323,6 +407,18 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	accountRef.current = selfAccountId;
 	const activeRef = useRef(active);
 	activeRef.current = active;
+	const deliveryAbort = useRef(new AbortController());
+	useEffect(() => {
+		const controller = new AbortController();
+		deliveryAbort.current = controller;
+		if (
+			!active ||
+			notificationsOff ||
+			accountAuthority.token !== radientAuthoritySnapshot(client)
+		)
+			controller.abort();
+		return () => controller.abort();
+	}, [active, notificationsOff, accountAuthority.token, client]);
 	useEffect(() => {
 		activeRef.current = active;
 		return () => {
@@ -413,6 +509,12 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	const lastPlanKey = useRef<string | null>(null);
 
 	const planKey = [
+		// Disable is a consuming policy transition, not only a delivery abort.
+		// Re-plan deferred rows even when no unread/cache timestamp changed;
+		// otherwise off -> on could replay them after a failed mute settles.
+		active,
+		notificationsOff,
+		pendingPolicyIds.join(","),
 		tenantVersion,
 		accountUnread.dataUpdatedAt,
 		conversations.dataUpdatedAt,
@@ -493,13 +595,35 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 					latest_seq: row.latest_seq,
 				}),
 			);
+			const seeded = seededOrganizations.current.has(organization.tenant_id);
+			const owner = observedRadientAuthority(client);
+			// A message discovered during an optimistic mute has no delivery to
+			// resume yet. Leave its cursor untouched until mutation settlement
+			// wakes this planner. First observation still seeds silently; a global
+			// disable still consumes rows, so neither case acquires a backlog.
+			const settledRows = rows.filter((row) => {
+				if (
+					!seeded ||
+					!activeRef.current ||
+					notificationsOffRef.current ||
+					!owner.accountId ||
+					owner.accountId !== selfAccountId
+				)
+					return true;
+				return !teamBridgeNotifyPolicyPending(
+					client,
+					{ accountId: owner.accountId, epoch: owner.epoch },
+					row.conversation_id,
+					row.tenant_id,
+				);
+			});
 			const plan = planTeamBridgeNotifications({
 				conversations: conversations.data.conversations,
-				rows,
+				rows: settledRows,
 				organizations,
 				selfAccountId,
 				cursors: plannedCursors,
-				seeded: seededOrganizations.current.has(organization.tenant_id),
+				seeded,
 				/*
 				 * MAIN IS THE ONLY QUIET AUTHORITY. A renderer cannot tell a focused
 				 * window from an occluded one on macOS, and Electron reports both as
@@ -509,7 +633,9 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 				 * way, so leaving the app does not replay a seq the badge already
 				 * showed.
 				 */
-				quiet: false,
+				// Shell policy consumes disabled intervals without candidates;
+				// this is not a renderer-side guess about native window focus.
+				quiet: !active || notificationsOff,
 			});
 			plannedCursors = plan.cursors;
 			if (plan.seeded) {
@@ -518,7 +644,7 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 			// The switch is checked AFTER planning on purpose: the cursors still
 			// advance while it is off, so turning it back on does not replay a
 			// backlog of messages the badge already showed.
-			if (notificationsOffRef.current || !selfAccountId) continue;
+			if (!active || notificationsOff || !selfAccountId) continue;
 			const account = selfAccountId;
 			const authToken = radientAuthoritySnapshot(client);
 			const bridgeStatus = client.getQueryData(
@@ -535,7 +661,9 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 						client.getQueryData(teamBridgeKeys.statusFor(account)) ===
 							bridgeStatus &&
 						activeRef.current &&
-						!notificationsOffRef.current,
+						!notificationsOffRef.current &&
+						bridgeOwnerCurrent(client, account),
+					deliveryAbort.current.signal,
 				);
 			}
 		}
@@ -543,6 +671,8 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		cursors.current = plannedCursors;
 	}, [
 		planKey,
+		active,
+		notificationsOff,
 		accountUnread.data,
 		conversations.data,
 		membershipsData,

@@ -45,5 +45,18 @@
 	"ui.chat.canonical.send_failure.late_delivery_draft": "Votre message précédent a été remis. Le texte actuel n’a pas été envoyé.",
 	"ui.chat.canonical.send_failure.late_delivery_overlap": "Votre message précédent a été remis. Son texte figure encore dans le champ ; le renvoyer le dupliquerait.",
 	"ui.chat.canonical.untitled": "Conversation sans titre",
-	"ui.chat.canonical.this_chat": "cette conversation"
+	"ui.chat.canonical.this_chat": "cette conversation",
+	"ui.chat.canonical.older_history.transport.short": "Non chargé",
+	"ui.chat.canonical.older_history.transport.long": "Les messages précédents n’ont pas été chargés",
+	"ui.chat.canonical.older_history.failed.short": "Chargement échoué",
+	"ui.chat.canonical.older_history.failed.long": "Impossible de charger les messages précédents",
+	"ui.chat.canonical.older_history.try_again": "Réessayer",
+	"ui.chat.canonical.older_history.loading": "Chargement des messages précédents",
+	"ui.chat.canonical.older_history.load": "Charger les messages précédents",
+	"ui.chat.canonical.older_history.windowed.title": "Plus haut dans l’historique",
+	"ui.chat.canonical.older_history.windowed.title_gesture": "Plus haut : défiler pour charger",
+	"ui.chat.canonical.older_history.windowed.short_gesture": "Défiler vers le haut",
+	"ui.chat.canonical.older_history.unproven.short": "Historique non chargé",
+	"ui.chat.canonical.older_history.unproven.long": "Historique antérieur non chargé",
+	"ui.chat.canonical.older_history.conversation_start": "Début de la conversation"
 }

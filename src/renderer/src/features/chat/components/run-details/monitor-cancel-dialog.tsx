@@ -18,6 +18,8 @@
  * belongs to the shared modal - see `confirmation-modal.tsx`.
  */
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { MonitorCancelDialogProps } from "./use-monitor-cancel";
 
 export const MonitorCancelDialog = ({
@@ -28,40 +30,43 @@ export const MonitorCancelDialog = ({
 	busy,
 	onConfirm,
 	onCancel,
-}: MonitorCancelDialogProps) => (
-	<ConfirmationModal
-		open={open}
-		title="Cancel this monitor?"
-		message={
-			<>
-				<p>
-					{name === null
-						? ""
-						: `“${name}” will not check again. The conversation stays.`}
-				</p>
-				{refusal !== null && <p className="pt-2 text-danger">{refusal}</p>}
-			</>
-		}
-		confirmText="Stop monitor"
-		busyText="Stopping…"
-		busy={busy}
-		cancelText="Keep"
-		isDangerous
-		/*
-		 * D4: the panel's width is PINNED so the refusal cannot resize the card -
-		 * between the first press and the retry it grew ~332 -> ~357 CSS px and
-		 * re-centred, moving the buttons under the pointer. 26rem is the card's own
-		 * confirm-state width at the capture viewport; the viewport cap keeps a
-		 * narrow window from overflowing it.
-		 */
-		panelClassName="w-[26rem] max-w-[calc(100vw-4rem)]"
-		/*
-		 * The refusal is the only thing this dialog can be told that makes the
-		 * SAFE action the one the keyboard should hold: the cancel did not
-		 * happen, and the next Enter must not repeat it.
-		 */
-		focusCancelSignal={refusalSeq}
-		onConfirm={onConfirm}
-		onCancel={onCancel}
-	/>
-);
+}: MonitorCancelDialogProps) => {
+	useI18nLocale();
+	return (
+		<ConfirmationModal
+			open={open}
+			title={t("ui.chat.run_details.monitor_cancel.title")}
+			message={
+				<>
+					<p>
+						{name === null
+							? ""
+							: t("ui.chat.run_details.monitor_cancel.message", { name })}
+					</p>
+					{refusal !== null && <p className="pt-2 text-danger">{refusal}</p>}
+				</>
+			}
+			confirmText={t("ui.chat.run_details.monitor_cancel.confirm")}
+			busyText={t("ui.chat.run_details.monitor_cancel.stopping")}
+			busy={busy}
+			cancelText={t("ui.chat.run_details.monitor_cancel.keep")}
+			isDangerous
+			/*
+			 * D4: the panel's width is PINNED so the refusal cannot resize the card -
+			 * between the first press and the retry it grew ~332 -> ~357 CSS px and
+			 * re-centred, moving the buttons under the pointer. 26rem is the card's own
+			 * confirm-state width at the capture viewport; the viewport cap keeps a
+			 * narrow window from overflowing it.
+			 */
+			panelClassName="w-[26rem] max-w-[calc(100vw-4rem)]"
+			/*
+			 * The refusal is the only thing this dialog can be told that makes the
+			 * SAFE action the one the keyboard should hold: the cancel did not
+			 * happen, and the next Enter must not repeat it.
+			 */
+			focusCancelSignal={refusalSeq}
+			onConfirm={onConfirm}
+			onCancel={onCancel}
+		/>
+	);
+};

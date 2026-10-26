@@ -441,12 +441,41 @@ export function registerDesktopIPC(
 	 * target for the next renderer, which asks for it exactly once.
 	 */
 	if (teamBridgeNotifier) {
+		const watched = new WeakSet<IpcMainInvokeEvent["sender"]>();
+		const authorizeNotifications = (event: IpcMainInvokeEvent) => {
+			// Only the shell owns the auth journal, not an admitted auxiliary pane.
+			if (!isAdmittedSender(event, [{ window: window(), url: expectedUrl }])) {
+				throw new Error("This document cannot use Team Bridge notifications.");
+			}
+		};
+		ipcMain.handle("team-bridge:authority", (event, input: unknown) => {
+			authorizeNotifications(event);
+			if (!watched.has(event.sender)) {
+				watched.add(event.sender);
+				const contents = event.sender;
+				// Electron 44 emits did-start-navigation BEFORE the guard can cancel
+				// will-frame-navigate; cancellation has no commit event. Reset only
+				// on a committed document replacement, never on an attempted link.
+				// Frame/URL admission above still rejects departing/foreign frames.
+				contents.on(
+					"did-frame-navigate",
+					(_event, _url, _code, _text, mainFrame) => {
+						if (mainFrame) teamBridgeNotifier.resetAuthority();
+					},
+				);
+				contents.on("render-process-gone", () =>
+					teamBridgeNotifier.resetAuthority(),
+				);
+				contents.once("destroyed", () => teamBridgeNotifier.resetAuthority());
+			}
+			teamBridgeNotifier.setAuthority(input);
+		});
 		ipcMain.handle("team-bridge:notify", (event, input: unknown) => {
-			authorize(event);
+			authorizeNotifications(event);
 			return teamBridgeNotifier.notify(input);
 		});
 		ipcMain.handle("team-bridge:pending-open", (event) => {
-			authorize(event);
+			authorizeNotifications(event);
 			return teamBridgeNotifier.takePendingOpen();
 		});
 	}

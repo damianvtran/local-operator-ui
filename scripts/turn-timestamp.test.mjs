@@ -1779,3 +1779,87 @@ test("the day store arms one timer to the next midnight, not a tick", async (t) 
 		t.mock.timers.reset();
 	}
 });
+
+test("many stamps mounting together arm ONE timer per deadline, and a clock jump re-arms", async (t) => {
+	/*
+	 * THE STORE USED TO CLEAR AND RE-ARM ON EVERY SUBSCRIBE: one
+	 * `clearTimeout` + `setTimeout` pair per stamped row, so a 61-row transcript
+	 * paid 61 scheduler round trips inside its one mount task to end up with the
+	 * timer it started with (renderer profile §4 L2-d). It now re-arms only when
+	 * the freshly computed deadline differs from the pending one, or when the
+	 * wall clock has moved against the monotonic clock since arming - the second
+	 * is the suspend/resume case the deadline alone cannot see.
+	 *
+	 * Counted with spies over the mocked timers: every timer aimed at the next
+	 * midnight (>= a minute out; React's own scheduler timers are shorter) and
+	 * every `clearTimeout`. Forty stamps mounted in one commit must arm exactly
+	 * one and clear none. Then the mocked wall clock jumps half an hour while the
+	 * monotonic clock (`performance.now`, which these mocks do not move) stands
+	 * still - the signature a resumed machine presents - and the next subscriber
+	 * must replace the timer with one aimed from the new clock.
+	 */
+	const nineAm = new Date(2026, 3, 15, 9, 0, 0, 0).getTime();
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: nineAm });
+	// Both clocks start fixed: a loaded runner taking >1s to mount is not a
+	// simulated suspend. Only the explicit wall-clock jump below creates drift.
+	t.mock.method(performance, "now", () => 0);
+	const armed = [];
+	let cleared = 0;
+	const mockedSetTimeout = globalThis.setTimeout;
+	const mockedClearTimeout = globalThis.clearTimeout;
+	globalThis.setTimeout = (fn, ms, ...rest) => {
+		const id = mockedSetTimeout(fn, ms, ...rest);
+		if ((ms ?? 0) >= 60_000) armed.push(ms);
+		return id;
+	};
+	globalThis.clearTimeout = (id) => {
+		cleared += 1;
+		return mockedClearTimeout(id);
+	};
+	try {
+		const Probe = () => {
+			useStampNow();
+			return null;
+		};
+		const container = document.createElement("div");
+		const root = createRoot(container);
+		act(() => {
+			root.render(
+				h(
+					"div",
+					null,
+					Array.from({ length: 40 }, (_, at) => h(Probe, { key: at })),
+				),
+			);
+		});
+		t.diagnostic(
+			`40 stamps: ${armed.length} midnight timer(s) armed, ${cleared} clearTimeout call(s)`,
+		);
+		assert.deepEqual(
+			armed,
+			[msUntilNextLocalDay(nineAm)],
+			"forty subscribers share one timer aimed at the next local midnight",
+		);
+		assert.equal(cleared, 0, "and no subscriber cleared it to arm it again");
+
+		// The resumed machine: wall time moved 30 minutes, monotonic time did not.
+		t.mock.timers.setTime(nineAm + 30 * 60_000);
+		const late = document.createElement("div");
+		const lateRoot = createRoot(late);
+		act(() => {
+			lateRoot.render(h(Probe));
+		});
+		assert.equal(cleared, 1, "the stale timer is cleared");
+		assert.deepEqual(
+			armed.slice(1),
+			[msUntilNextLocalDay(nineAm + 30 * 60_000)],
+			"and replaced by one aimed from the resumed clock",
+		);
+		act(() => lateRoot.unmount());
+		act(() => root.unmount());
+	} finally {
+		globalThis.setTimeout = mockedSetTimeout;
+		globalThis.clearTimeout = mockedClearTimeout;
+		t.mock.timers.reset();
+	}
+});

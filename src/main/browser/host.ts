@@ -13,6 +13,7 @@ import * as downloadActions from "./actions/download";
 import { withOriginGate } from "./actions/gate";
 import * as geometryActions from "./actions/geometry";
 import * as inputActions from "./actions/input";
+import * as networkActions from "./actions/network";
 import * as pageActions from "./actions/page";
 import * as queryActions from "./actions/query";
 import * as tabActions from "./actions/tabs";
@@ -190,6 +191,16 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	// which call.
 	"download",
 	"upload",
+	// Network capture is TAB-scoped and deliberately NOT `DOCUMENT_SCOPED`, for the
+	// same reason `logs` is not: its answer describes the tab's TRAFFIC (which
+	// spans documents, redirects and third-party subresources), not the document
+	// currently loaded. Authorizing it against the current page would refuse a read
+	// of traffic the session already watched once the tab navigated elsewhere, and
+	// would add no confidentiality — the same metadata is what `logs` exposes.
+	"network_start",
+	"network_stop",
+	"network_read",
+	"network_clear",
 ]);
 
 /**
@@ -700,6 +711,14 @@ export class BrowserHost implements BrowserActionContext {
 				return downloadActions.download(this, params);
 			case "upload":
 				return uploadActions.upload(this, params);
+			case "network_start":
+				return networkActions.networkStart(this, params, requestId);
+			case "network_stop":
+				return networkActions.networkStop(this, params, requestId);
+			case "network_read":
+				return networkActions.networkRead(this, params, requestId);
+			case "network_clear":
+				return networkActions.networkClear(this, params, requestId);
 			case "request_access":
 				return this.approvals.requestAccess(
 					params.url,

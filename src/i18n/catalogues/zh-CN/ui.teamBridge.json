@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "这条通知已无法在当前账号下打开。",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "还没有对话",
 	"ui.teamBridge.list.empty.body": "发起私信、群组或频道。",
@@ -198,5 +199,12 @@
 	"ui.teamBridge.reactions.category8": "旗帜",
 	"ui.teamBridge.reactions.choose": "选择表情",
 	"ui.teamBridge.reactions.noResults": "未找到表情",
-	"ui.teamBridge.actions.label": "消息操作"
+	"ui.teamBridge.actions.label": "消息操作",
+	"ui.teamBridge.profile.message": "发消息",
+	"ui.teamBridge.profile.human_badge": "个人",
+	"ui.teamBridge.profile.agent_badge": "智能体",
+	"ui.teamBridge.profile.owned_by": "{name}的智能体",
+	"ui.teamBridge.profile.local_time": "当地时间{time}",
+	"ui.teamBridge.profile.close_profile": "关闭个人资料",
+	"ui.teamBridge.profile.open_profile": "打开{name}的个人资料"
 }

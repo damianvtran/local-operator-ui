@@ -13,6 +13,8 @@ import {
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import { Alert } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -88,6 +90,9 @@ export function McpAuthDialog({
 }) {
 	// The dialog is keyed by session/name. Polling must not reset a masked form.
 	const [row] = useState(initialRow);
+	// Locale subscription: `t()` below resolves at render time, and this keeps the
+	// open dialog in the new language when the setting changes under it.
+	useI18nLocale();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
 	const secure = desktopFeatureEnabled(capabilities.data, "mcp_auth");
@@ -209,11 +214,15 @@ export function McpAuthDialog({
 				open
 				onClose={onClose}
 				maxWidth="sm"
-				title="Sign in to an MCP server"
-				actions={<SecondaryButton onClick={onClose}>Close</SecondaryButton>}
+				title={t("ui.chat.run_details.mcp_auth.title")}
+				actions={
+					<SecondaryButton onClick={onClose}>
+						{t("ui.chat.run_details.mcp_auth.close")}
+					</SecondaryButton>
+				}
 			>
 				<p className="p-1.5 text-body text-ink-muted" role="alert">
-					Open a conversation to sign in to this server.
+					{t("ui.chat.run_details.mcp_auth.no_session")}
 				</p>
 			</BaseDialog>
 		);
@@ -315,10 +324,14 @@ export function McpAuthDialog({
 			open
 			onClose={onClose}
 			maxWidth="sm"
-			title={`Sign in to ${row.name}`}
+			title={t("ui.chat.run_details.mcp_auth.title_for_server", {
+				server: row.name,
+			})}
 			actions={
 				<>
-					<SecondaryButton onClick={onClose}>Close</SecondaryButton>
+					<SecondaryButton onClick={onClose}>
+						{t("ui.chat.run_details.mcp_auth.close")}
+					</SecondaryButton>
 					{state.kind === "grant" ? (
 						<PrimaryButton
 							onClick={() => {
@@ -327,8 +340,8 @@ export function McpAuthDialog({
 							}}
 						>
 							{action === "reauth"
-								? "Replace grant and sign in"
-								: "Continue in browser"}
+								? t("ui.chat.run_details.mcp_auth.replace_grant")
+								: t("ui.chat.run_details.mcp_auth.continue_in_browser")}
 						</PrimaryButton>
 					) : null}
 					{state.kind === "notice" ||
@@ -360,12 +373,12 @@ export function McpAuthDialog({
 						 * `notice` and a recorded press failure.
 						 */
 						<SecondaryButton onClick={() => setAttempt((value) => value + 1)}>
-							Try again
+							{t("ui.chat.run_details.mcp_auth.try_again")}
 						</SecondaryButton>
 					) : null}
 					{operation?.status === "running" ? (
 						<SecondaryButton onClick={() => remedy.cancel(operation.id)}>
-							Cancel sign-in
+							{t("ui.chat.run_details.mcp_auth.cancel_sign_in")}
 						</SecondaryButton>
 					) : null}
 				</>
@@ -373,7 +386,7 @@ export function McpAuthDialog({
 		>
 			<div className="flex flex-col gap-3 p-1.5 text-body text-ink-muted">
 				{state.kind === "probing" ? (
-					<p>Checking this server's sign-in method…</p>
+					<p>{t("ui.chat.run_details.mcp_auth.checking")}</p>
 				) : null}
 				{/*
 				 * The recorded press failure IS the state while it is on screen (see
@@ -448,9 +461,9 @@ export function McpAuthDialog({
 				) : null}
 				{state.kind === "grant" ? (
 					<p>
-						Your browser opens to approve access.
+						{t("ui.chat.run_details.mcp_auth.grant_body")}
 						{action === "reauth"
-							? " This replaces the existing grant for this server."
+							? ` ${t("ui.chat.run_details.mcp_auth.replaces_grant")}`
 							: ""}
 					</p>
 				) : null}
