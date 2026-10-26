@@ -19,8 +19,8 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { showErrorToast } from "@shared/utils/toast-manager";
-import { ChevronsUp, ExternalLink } from "lucide-react";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
+import { Check, ChevronsUp, Circle, ExternalLink, X } from "lucide-react";
 import { type FC, type KeyboardEvent, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
@@ -29,9 +29,8 @@ import {
 	useNotificationsWrite,
 	useSessionNotifications,
 } from "../notifications-api";
-import { seenMarkOf } from "../notifications-model";
-import { rowTimeOf } from "../notifications-model";
-import { rowTimeText } from "./notification-row";
+import { UNDO_WINDOW_MS, rowTimeOf, seenMarkOf } from "../notifications-model";
+import { RowAction, rowTimeText } from "./notification-row";
 import { PriorityBars } from "./priority-bars";
 
 export type DrawerTab = "asks" | "updates" | "all";
@@ -222,11 +221,74 @@ export const DrawerUpdates: FC<{
 				</Button>
 			</div>
 		);
+	/*
+	 * ONE WRITE PATH FOR THE TAB, WITH ITS RECEIPT (design audit OD3).
+	 *
+	 * Every row action - `R`/`U`/`E` and the new pointer controls - goes through
+	 * here. Before this, the keyboard wrote straight through `write.mutate` with
+	 * only an `onError`: a dismiss from this tab was silent on success and could
+	 * not be undone, which contradicted design § 0.8 ("every destructive action
+	 * can be undone for 6 s") and made the tab the one surface where a mis-key
+	 * lost a row without a word. The inverse is the same operation in the other
+	 * direction, so Undo is one more write rather than a special case.
+	 */
+	const applyWrite = (
+		item: DesktopNotificationItem,
+		verb: "read" | "unread" | "dismiss",
+	) => {
+		const inverse =
+			verb === "dismiss" ? "undismiss" : verb === "read" ? "unread" : "read";
+		write.mutate(
+			{ verb, target: { items: tokensOf([item]) } },
+			{
+				onSuccess: () => {
+					showInfoToast(
+						verb === "dismiss"
+							? t("ui.notifications.toast.dismissed", { count: 1 })
+							: verb === "read"
+								? t("ui.notifications.toast.marked_read", {
+										count: formatNumber(1),
+									})
+								: t("ui.notifications.toast.marked_unread", {
+										count: formatNumber(1),
+									}),
+						{
+							duration: UNDO_WINDOW_MS,
+							action: {
+								label: t("ui.notifications.toast.undo"),
+								onClick: () =>
+									write.mutate({
+										verb: inverse as "read" | "unread" | "undismiss",
+										target: { items: tokensOf([item]) },
+									}),
+							},
+						},
+					);
+				},
+				onError: () => showErrorToast(t("ui.notifications.error.mark")),
+			},
+		);
+	};
 	const ordered = [...unread, ...read];
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
 			<div
 				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
+				onScroll={(event) => {
+					/*
+					 * PAGED, NOT FIRST-100-ONLY (code audit DC6): older rows in a loud
+					 * session become reachable by scrolling, exactly as the reel's list
+					 * already does. The query keys the pages on the first boundary, so
+					 * this cannot skip or duplicate rows as the session keeps writing.
+					 */
+					const box = event.currentTarget;
+					if (
+						list.hasNextPage &&
+						!list.isFetchingNextPage &&
+						box.scrollHeight - box.scrollTop - box.clientHeight < 160
+					)
+						void list.fetchNextPage();
+				}}
 				onKeyDown={(event) => {
 					const target = event.target as HTMLElement;
 					const row = target.closest<HTMLElement>("[data-drawer-update]");
@@ -258,19 +320,13 @@ export const DrawerUpdates: FC<{
 						!list.isError
 					) {
 						event.preventDefault();
-						write.mutate(
-							{
-								verb:
-									event.key.toLowerCase() === "e"
-										? "dismiss"
-										: event.key.toLowerCase() === "u"
-											? "unread"
-											: "read",
-								target: { items: tokensOf([item]) },
-							},
-							{
-								onError: () => showErrorToast(t("ui.notifications.error.mark")),
-							},
+						applyWrite(
+							item,
+							event.key.toLowerCase() === "e"
+								? "dismiss"
+								: event.key.toLowerCase() === "u"
+									? "unread"
+									: "read",
 						);
 					}
 				}}
@@ -306,6 +362,11 @@ export const DrawerUpdates: FC<{
 										item={item}
 										nowMs={nowMs}
 										onShow={showInConversation}
+										onToggleRead={() =>
+											applyWrite(item, item.read ? "unread" : "read")
+										}
+										onDismiss={() => applyWrite(item, "dismiss")}
+										paused={list.isError}
 									/>
 								))}
 							</DrawerGroup>
@@ -318,6 +379,11 @@ export const DrawerUpdates: FC<{
 										item={item}
 										nowMs={nowMs}
 										onShow={showInConversation}
+										onToggleRead={() =>
+											applyWrite(item, item.read ? "unread" : "read")
+										}
+										onDismiss={() => applyWrite(item, "dismiss")}
+										paused={list.isError}
 									/>
 								))}
 							</DrawerGroup>
@@ -365,11 +431,14 @@ const DrawerRow: FC<{
 	item: DesktopNotificationItem;
 	nowMs: number;
 	onShow: (item: DesktopNotificationItem) => void;
-}> = ({ item, nowMs, onShow }) => {
+	onToggleRead: () => void;
+	onDismiss: () => void;
+	paused: boolean;
+}> = ({ item, nowMs, onShow, onToggleRead, onDismiss, paused }) => {
 	const seen = seenMarkOf(item);
 	return (
 		<li
-			className="flex h-12 items-center gap-2 rounded-sm px-2 hover:bg-row-hover"
+			className="group/drawer-row flex h-12 items-center gap-2 rounded-sm px-2 hover:bg-row-hover"
 			data-drawer-update={item.id}
 		>
 			<span
@@ -397,6 +466,34 @@ const DrawerRow: FC<{
 							: rowTimeText(rowTimeOf(item.updated_at, nowMs))}
 				</span>
 			</div>
+			{/*
+			 * POINTER PARITY WITH THE REEL (design audit OD3): the row's own
+			 * mark-read and dismiss controls, revealed on hover/focus exactly as the
+			 * reel's are, so triaging one loud conversation does not require knowing
+			 * the letter keys. `E` and the buttons run the same `applyWrite`.
+			 */}
+			<span className="flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within/drawer-row:opacity-100 group-hover/drawer-row:opacity-100">
+				<RowAction
+					label={
+						item.read
+							? t("ui.notifications.row.mark_unread")
+							: t("ui.notifications.row.mark_read")
+					}
+					disabled={paused}
+					onPress={onToggleRead}
+					data-row-action="read"
+				>
+					{item.read ? <Circle size={14} /> : <Check size={14} />}
+				</RowAction>
+				<RowAction
+					label={t("ui.notifications.row.dismiss")}
+					disabled={paused}
+					onPress={onDismiss}
+					data-row-action="dismiss"
+				>
+					<X size={14} />
+				</RowAction>
+			</span>
 			<Tooltip content={t("ui.notifications.drawer.show_in_conversation")}>
 				<Button
 					variant="ghost"

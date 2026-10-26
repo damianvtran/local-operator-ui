@@ -120,10 +120,18 @@ import {
 } from "../notifications-model";
 import { NotificationDetail } from "./notification-detail";
 import { NotificationRow } from "./notification-row";
+import { NotificationRowExit } from "./notification-row-exit";
 import { OperationProgressLine } from "./operation-progress-line";
 
 /** The design's Undo window (§ 0.8): 6 s, after which the toast leaves. */
-export const UNDO_WINDOW_MS = 6_000;
+/*
+ * From the model, where it lives so the reel and the transcript drawer's Updates
+ * tab share one window (design audit OD3); re-exported for the suites that read
+ * it from this module.
+ */
+import { UNDO_WINDOW_MS } from "../notifications-model";
+
+export { UNDO_WINDOW_MS };
 /*
  * THE INLINE STATUS LINE IS NOT A PERMANENT RECORD (code round 2, minor 1).
  * It reports work in flight and rows still without a conclusive answer; once
@@ -141,16 +149,48 @@ const settleOperationProgress = (
 	setProgress(null);
 };
 
+/*
+ * The conversation-header counts, and WHEN they are worth asking for (code audit
+ * DC4). This ran on every mount and re-ran on every `high_water` change, which
+ * every notify/read/dismiss bumps: a wake loop posting every few minutes turned
+ * one screen into a steady N/100-page walk of the whole store, one walk per frame.
+ *
+ * Two structural answers instead of a cache tweak:
+ *  - it is only read in CONVERSATION grouping, the one view that draws the
+ *    header the number belongs to;
+ *  - the boundary is fixed when the walk STARTS and is re-derived when that
+ *    scope actually moves, rather than on every frame.
+ * The walk itself stays complete: the number is a promise the confirm dialog
+ * has to keep, and a cap would under-promise the largest conversations.
+ */
 const useSessionScopeCounts = (
 	throughId: number | undefined,
 	enabled: boolean,
 ): Record<string, number> | undefined => {
+	/*
+	 * A snapshot at the LAST USED boundary rather than the newest one. Every
+	 * mutation advances `high_water`, including the read/dismiss this count is
+	 * describing; keying the query on it meant the count was thrown away and the
+	 * whole store re-walked after every write. A newer boundary only changes the
+	 * number for rows that arrived after the last read - which the reel does not
+	 * draw either - so this deliberately follows the data's boundary and the
+	 * grouping's need, not the frame counter.
+	 */
+	const boundary = useRef<number | undefined>(undefined);
+	if (enabled && throughId !== undefined && boundary.current === undefined)
+		boundary.current = throughId;
 	const query = useQuery({
-		queryKey: ["desktop", "notifications", "session-scope-counts", throughId],
-		enabled: enabled && throughId !== undefined,
-		queryFn: () => readSessionDismissCounts(throughId as number),
+		queryKey: [
+			"desktop",
+			"notifications",
+			"session-scope-counts",
+			boundary.current,
+		],
+		enabled: enabled && boundary.current !== undefined,
+		queryFn: () => readSessionDismissCounts(boundary.current as number),
 		retry: retryDesktopQuery,
-		staleTime: 5_000,
+		staleTime: 30_000,
+		refetchOnWindowFocus: false,
 	});
 	return query.data;
 };
@@ -236,6 +276,14 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const [stickyRead, setStickyRead] = useState<
 		Map<string, DesktopNotificationItem>
 	>(() => new Map());
+	/*
+	 * Confirmed read tokens whose row is not currently loaded (code audit DC7).
+	 * They carry no title/time/session, so they are never drawn as synthetic rows;
+	 * they merge into the real row the moment the list supplies it, and Undo
+	 * removes them. `confirmedReadVersion` is their invalidation signal.
+	 */
+	const confirmedReadTokens = useRef(new Map<string, number>());
+	const [confirmedReadVersion, setConfirmedReadVersion] = useState(0);
 	const [lastGoodAt, setLastGoodAt] = useState<number | null>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
@@ -265,21 +313,45 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		if (arrivals.length)
 			setNewIds((current) => new Set([...current, ...arrivals]));
 	}, [loaded]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: confirmedReadVersion is the invalidation signal for the ref-held token map; its identity never changes
 	const items = useMemo(() => {
-		const base = loaded?.items ?? [];
+		const base = (loaded?.items ?? []).map((item) => {
+			/* A confirmed read for a row the list has not refreshed yet still wins
+			   over the older row: the receipt is newer evidence than the list. */
+			const tokenRevision = confirmedReadTokens.current.get(item.id);
+			return tokenRevision !== undefined && tokenRevision >= item.revision
+				? { ...item, read: true, read_via: "explicit" as const }
+				: item;
+		});
 		if (readState !== "unread" || stickyRead.size === 0) return base;
 		const present = new Set(base.map((item) => item.id));
 		return [
 			...base,
 			...[...stickyRead.values()].filter((item) => !present.has(item.id)),
 		];
-	}, [loaded, readState, stickyRead]);
+	}, [loaded, readState, stickyRead, confirmedReadVersion]);
 	const waiting = loaded?.waiting ?? [];
 	const filtered = useMemo(() => filterItems(items, filters), [items, filters]);
 	const filteredWaiting = useMemo(
 		() => filterItems(waiting, filters),
 		[waiting, filters],
 	);
+	/*
+	 * THE UNREAD CHIP COUNTS WHAT THE UNREAD FILTER SHOWS (decisions D16, design
+	 * audit OD2). It printed `loaded.unread_count`, which excludes the waiting asks
+	 * the reel draws: the rail read 4 while the chip beside it read 3, one click
+	 * apart, over one list. So it counts the UNREAD rows the filter would draw -
+	 * the notify rows it holds plus the pending asks that are themselves unread -
+	 * which is the same number the rail's `unread_count + waiting_unread_count`
+	 * resolves to when the store and the list agree.
+	 *
+	 * IT IS NOT `filtered.length`: with the All filter selected, every row is on
+	 * screen and a chip reading "Unread 7" over four read rows would be a new
+	 * version of the same defect pointing the other way.
+	 */
+	const visibleUnread =
+		filtered.filter((item) => !item.read).length +
+		filteredWaiting.filter((item) => !item.read).length;
 	const groups = useMemo(
 		() => groupItems(filtered, filteredWaiting, grouping, nowMs),
 		[filtered, filteredWaiting, grouping, nowMs],
@@ -313,9 +385,34 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const refreshFailed = list.isError && Boolean(loaded);
 	const scopeCounts = useSessionScopeCounts(
 		loaded?.high_water,
-		Boolean(loaded),
+		Boolean(loaded) && grouping === "conversation",
 	);
 	const writesPaused = refreshFailed || operationBusy;
+	const [exitingIds, setExitingIds] = useState<Set<string>>(() => new Set());
+	/*
+	 * DISMISS EXIT MOTION (design §7.3, design audit OD8). Ids stay in the reel
+	 * for a bounded 120ms fade/slide + 180ms height collapse; the write and its
+	 * Undo path do not wait. A failed write clears the exit immediately, so a
+	 * refused dismiss never makes a row disappear. Reduced motion skips it.
+	 */
+	const beginExit = useCallback((ids: ReadonlySet<string>) => {
+		setExitingIds((current) => new Set([...current, ...ids]));
+	}, []);
+	const clearExit = useCallback((ids: ReadonlySet<string>) => {
+		setExitingIds((current) => {
+			const next = new Set(current);
+			for (const id of ids) next.delete(id);
+			return next;
+		});
+	}, []);
+	const finishExit = useCallback((id: string) => {
+		setExitingIds((current) => {
+			const next = new Set(current);
+			next.delete(id);
+			return next;
+		});
+	}, []);
+
 	const openItem = notificationId
 		? (byId.get(notificationId) ?? detail.data?.item ?? null)
 		: null;
@@ -438,24 +535,39 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				);
 				const progress = receiptProgress(receipt);
 				if (verb === "read") {
-					const changed = new Set(receipt.changed.map((token) => token.id));
 					setStickyRead((current) => {
 						const next = new Map(current);
-						for (const item of byId.values())
-							if (changed.has(item.id))
+						/*
+						 * CARRY THE CONFIRMED TOKEN, not only rows already loaded (code audit
+						 * DC7). A mark-all/Undo can confirm ids outside `byId`; a synthetic row
+						 * from the receipt alone is NOT enough to draw (it has no title, time or
+						 * session), so it is kept as a read TOKEN and merged into the real row
+						 * when the list next supplies it. That way a confirmed read never flips
+						 * back to unread just because the row was off-page.
+						 */
+						for (const token of receipt.changed) {
+							const item = byId.get(token.id);
+							if (item)
 								next.set(item.id, {
 									...item,
 									read: true,
 									read_via: "explicit",
 								});
+							else confirmedReadTokens.current.set(token.id, token.revision);
+						}
 						return next;
 					});
+					setConfirmedReadVersion((version) => version + 1);
 				} else if (verb === "unread") {
 					setStickyRead((current) => {
 						const next = new Map(current);
-						for (const token of receipt.changed) next.delete(token.id);
+						for (const token of receipt.changed) {
+							next.delete(token.id);
+							confirmedReadTokens.current.delete(token.id);
+						}
 						return next;
 					});
+					setConfirmedReadVersion((version) => version + 1);
 				}
 				const undo = receipt.changed.length
 					? {
@@ -469,8 +581,19 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					changed: receipt.changed.map((token) => token.id),
 					skipped: receipt.skipped,
 				});
+				/*
+				 * THE TALLY IS FOR PARTIAL RESULTS ONLY (design audit OD4). Every
+				 * routine receipt read "Dismissed 1 update. 1 changed · 0 skipped · 0 not
+				 * confirmed" - an engineering count in the way of a one-row action. It
+				 * now appears only when the write did not go entirely as asked (a skip,
+				 * or a count that never resolved), which is what the
+				 * `OperationProgressLine` stories photograph.
+				 */
+				const partial = progress.pending > 0 || progress.skipped > 0;
 				showInfoToast(
-					[summary, operationText(progress)].filter(Boolean).join(". "),
+					[summary, partial ? operationText(progress) : null]
+						.filter(Boolean)
+						.join(". "),
 					{
 						duration: UNDO_WINDOW_MS,
 						action: undo
@@ -491,11 +614,17 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			} finally {
 				operationLock.current = false;
 				setOperationBusy(false);
+				/*
+				 * A refused/failed write restores its row's exit state (OD8): the
+				 * gesture started the fade, but nothing was confirmed, so the row must
+				 * come back rather than stay half-gone or disappear with no receipt.
+				 */
+				if (settled?.error) clearExit(new Set(sent.map((token) => token.id)));
 				settleOperationProgress(settled, setOperationProgress);
 				void client.invalidateQueries({ queryKey: notificationKeys.all });
 			}
 		},
-		[client, byId, writeUndo],
+		[client, byId, clearExit, writeUndo],
 	);
 
 	const toggleRead = useCallback(
@@ -534,8 +663,15 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				return;
 			}
 			const tokens = tokensOf(dismissable);
-			/* Focus walks to the next row so `E E E` works down the list (§ 7.3). */
 			const ids = new Set(dismissable.map((item) => item.id));
+			/*
+			 * The exit starts with the GESTURE, not with the server response: the
+			 * row fades/slides and its height collapses while the write is in flight,
+			 * so the list does not jump when the response arrives. A refused write
+			 * clears the exit and restores the row (see `runWrite`'s error path).
+			 */
+			beginExit(ids);
+			/* Focus walks to the next row so `E E E` works down the list (§ 7.3). */
 			const position = order.findIndex((item) => ids.has(item.id));
 			const next =
 				order.slice(position + 1).find((item) => !ids.has(item.id)) ??
@@ -558,7 +694,15 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					: message;
 			});
 		},
-		[clearSelection, navigate, notificationId, order, runWrite, writesPaused],
+		[
+			beginExit,
+			clearSelection,
+			navigate,
+			notificationId,
+			order,
+			runWrite,
+			writesPaused,
+		],
 	);
 
 	/*
@@ -607,6 +751,19 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		if (!confirmSession) return;
 		const { snapshot } = confirmSession;
 		setConfirmSession(null);
+		/*
+		 * THE OPEN DETAIL LEAVES WHEN THIS WINDOW REMOVED ITS ROW (design audit
+		 * OD1). `dismiss()` already navigates away for the single-row case; this
+		 * bulk path did not, so the pane stayed open on a row that had just been
+		 * removed HERE and rendered "This was dismissed on another device" - the
+		 * truth for a remote dismissal and a lie for a local one - under a toast
+		 * saying it had just been dismissed here.
+		 */
+		if (
+			notificationId &&
+			snapshot.tokens.some((token) => token.id === notificationId)
+		)
+			navigate("/notifications");
 		void runWrite(
 			"dismiss",
 			{
@@ -618,7 +775,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			(result) =>
 				t("ui.notifications.toast.dismissed", { count: result.changed.length }),
 		);
-	}, [confirmSession, runWrite]);
+	}, [confirmSession, navigate, notificationId, runWrite]);
 
 	/* Mark ALL is global, independent of the From/Kind/Priority display filters.
 	 * Read every notify page under the first rendered boundary, retain the first
@@ -913,6 +1070,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					markAllRead={markAllRead}
 					selection={selection}
 					visibleCount={order.length}
+					visibleUnread={visibleUnread}
 					onSelectAll={() =>
 						setSelected(
 							selection.length === order.length
@@ -1032,6 +1190,8 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 										selected={selected}
 										focusedId={focusedId}
 										writesPaused={writesPaused}
+										exitingIds={exitingIds}
+										onExitFinished={finishExit}
 										onOpen={openDetail}
 										onToggleSelect={toggleSelect}
 										onToggleRead={(item) => toggleRead([item])}
@@ -1145,6 +1305,8 @@ const GroupBlock: FC<{
 	selected: ReadonlySet<string>;
 	focusedId: string | null;
 	writesPaused: boolean;
+	exitingIds: ReadonlySet<string>;
+	onExitFinished: (id: string) => void;
 	onOpen: (item: DesktopNotificationItem) => void;
 	onToggleSelect: (item: DesktopNotificationItem, shift: boolean) => void;
 	onToggleRead: (item: DesktopNotificationItem) => void;
@@ -1188,7 +1350,13 @@ const GroupBlock: FC<{
 					{group.kind === "time" && group.key === "older" ? (
 						<button
 							type="button"
-							className="inline-flex items-center gap-1 hover:text-ink"
+							/*
+							 * A 24px MINIMUM TARGET (design audit OD7; WCAG 2.5.8). The
+							 * disclosure measured 59x17 - the only failing target on the page.
+							 * The height sits on the button so the 32px header band keeps its
+							 * rhythm.
+							 */
+							className="inline-flex min-h-6 items-center gap-1 hover:text-ink"
 							aria-expanded={!collapsed}
 							onClick={() => setCollapsed((value) => !value)}
 						>
@@ -1224,22 +1392,27 @@ const GroupBlock: FC<{
 			</div>
 			{!collapsed &&
 				group.items.map((item) => (
-					<NotificationRow
+					<NotificationRowExit
 						key={item.id}
-						item={item}
-						nowMs={row.nowMs}
-						open={row.openId === item.id}
-						picked={row.selected.has(item.id)}
-						selecting={row.selected.size > 0}
-						focused={row.focusedId === item.id}
-						writesPaused={row.writesPaused}
-						onOpen={row.onOpen}
-						onToggleSelect={row.onToggleSelect}
-						onToggleRead={row.onToggleRead}
-						onDismiss={row.onDismiss}
-						onAnswer={row.onAnswer}
-						onFocusRow={row.onFocusRow}
-					/>
+						exiting={row.exitingIds.has(item.id)}
+						onExited={() => row.onExitFinished(item.id)}
+					>
+						<NotificationRow
+							item={item}
+							nowMs={row.nowMs}
+							open={row.openId === item.id}
+							picked={row.selected.has(item.id)}
+							selecting={row.selected.size > 0}
+							focused={row.focusedId === item.id}
+							writesPaused={row.writesPaused}
+							onOpen={row.onOpen}
+							onToggleSelect={row.onToggleSelect}
+							onToggleRead={row.onToggleRead}
+							onDismiss={row.onDismiss}
+							onAnswer={row.onAnswer}
+							onFocusRow={row.onFocusRow}
+						/>
+					</NotificationRowExit>
 				))}
 		</div>
 	);
@@ -1338,6 +1511,8 @@ type ToolbarProps = {
 	markAllRead: () => void;
 	selection: DesktopNotificationItem[];
 	visibleCount: number;
+	/** Rows the Unread filter draws, so its chip cannot disagree with the rail. */
+	visibleUnread: number;
 	onSelectAll: () => void;
 	onClearSelection: () => void;
 	onBulkRead: (verb: "read" | "unread") => void;
@@ -1361,6 +1536,7 @@ const Toolbar: FC<ToolbarProps> = ({
 	markAllRead,
 	selection,
 	visibleCount,
+	visibleUnread,
 	onSelectAll,
 	onClearSelection,
 	onBulkRead,
@@ -1469,9 +1645,9 @@ const Toolbar: FC<ToolbarProps> = ({
 								{value === "unread"
 									? t("ui.notifications.filter.unread")
 									: t("ui.notifications.filter.all")}
-								{value === "unread" && (loaded?.unread_count ?? 0) > 0 && (
+								{value === "unread" && visibleUnread > 0 && (
 									<Badge variant="neutral" size="count">
-										{countLabel(loaded?.unread_count ?? 0, 99)}
+										{countLabel(visibleUnread, 99)}
 									</Badge>
 								)}
 							</button>

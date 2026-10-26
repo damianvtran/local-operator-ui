@@ -472,6 +472,9 @@ export const LoadError: Story = {
 
 /** The mock's populated state on the All filter: waiting group, ×6 repeat, provenance. */
 export const Populated: Story = {
+	/* The local-dismiss receipt must be capturable without racing its 6 s Undo
+	   window; this is the stateful fixture a reviewer drives, not a second toast. */
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () =>
 		page(
 			{ items: POPULATED, waiting: WAITING },
@@ -787,6 +790,9 @@ const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
 
 /** The asks drawer's Updates tab for one conversation (design § 18). */
 export const DrawerUpdatesTab: Story = {
+	/* Hold the receipt so a reviewer can photograph the toast and its Undo,
+	   rather than racing the 6 s window the product deliberately uses. */
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () => {
 		install({ items: DRAWER_ITEMS, waiting: [] });
 		return (

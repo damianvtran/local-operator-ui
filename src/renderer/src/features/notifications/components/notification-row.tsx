@@ -361,12 +361,21 @@ export const NotificationRow: FC<NotificationRowProps> = ({
  * paused control keeps its place in the arrow-key walk and its tooltip says
  * why (design § 5 "writes are paused").
  */
-const RowAction: FC<{
+/**
+ * One hover/focus action on a row.
+ *
+ * EXPORTED because the transcript drawer's Updates tab needs the same control
+ * (design audit OD3): the drawer had keyboard-only writes and no pointer
+ * affordance at all, and a second hand-written button beside this one would be
+ * a second disabled/tooltip/tab-stop contract to keep in step.
+ */
+export const RowAction: FC<{
 	label: string;
 	disabled?: boolean;
 	onPress: () => void;
 	children: React.ReactNode;
 	"data-row-action": string;
+	"data-row-visible"?: string;
 }> = ({ label, disabled = false, onPress, children, ...rest }) => (
 	<Tooltip content={label}>
 		<button
@@ -375,6 +384,7 @@ const RowAction: FC<{
 			aria-label={label}
 			aria-disabled={disabled || undefined}
 			data-row-action={rest["data-row-action"]}
+			data-row-visible={rest["data-row-visible"]}
 			onClick={(event) => {
 				event.stopPropagation();
 				if (disabled) return;

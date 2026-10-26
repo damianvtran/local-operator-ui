@@ -187,6 +187,19 @@ const revise = (configDir, itemId) =>
 		].join("\n"),
 	);
 
+/**
+ * Whether the store says this row is read.
+ *
+ * `NotificationStore.get` answers a JSON boolean (`true`/`false`), not the
+ * SQLite integer the very first version of this scene assumed: the assertion
+ * compared `String(row.read)` to `"1"`, so a run whose read had actually
+ * succeeded (CI 40260898410: `read:true, read_rev:1, read_via:"explicit"`)
+ * still failed. The scene's own receipt is what a positive result has to mean,
+ * so the flag is normalised in ONE place rather than at six comparison sites.
+ */
+const isRead = (row) =>
+	row?.read === true || String(row?.read).toLowerCase() === "1";
+
 const readRow = (configDir, itemId) =>
 	JSON.parse(
 		coreStore(
@@ -605,15 +618,14 @@ async function main() {
 		const settleBy = Date.now() + 30_000;
 		do {
 			target = readRow(config, TARGET);
-			if (target && String(target.read).toLowerCase() === "1") break;
+			if (isRead(target)) break;
 			await pause(250);
 		} while (Date.now() < settleBy);
 		const unrelated = readRow(config, UNRELATED);
 		const raced = readRow(config, RACED);
 		receipt.database = { target, unrelated, raced };
-		assert.equal(
-			String(target.read).toLowerCase(),
-			"1",
+		assert.ok(
+			isRead(target),
 			"the trusted press did not mark the rendered revision read",
 		);
 		assert.equal(target.read_via, "explicit");
@@ -622,21 +634,13 @@ async function main() {
 			seeded.target.revision,
 			"a different revision was marked read than the one tested",
 		);
-		assert.equal(
-			String(unrelated.read).toLowerCase(),
-			"0",
-			"unrelated row read",
-		);
+		assert.ok(!isRead(unrelated), "unrelated row read");
 		assert.equal(
 			Number(raced.revision),
 			seeded.raced.revision + 1,
 			"the raced revision did not land",
 		);
-		assert.equal(
-			String(raced.read).toLowerCase(),
-			"0",
-			"the raced revision was read",
-		);
+		assert.ok(!isRead(raced), "the raced revision was read");
 		await screenshot(cdp, "notifications-native-after");
 
 		/*
@@ -654,9 +658,8 @@ async function main() {
 		await pause(5_000);
 		const unrelatedAfter = readRow(config, UNRELATED);
 		receipt.unrelatedAfterOffScreenAim = unrelatedAfter;
-		assert.equal(
-			String(unrelatedAfter.read).toLowerCase(),
-			"0",
+		assert.ok(
+			!isRead(unrelatedAfter),
 			"an item that was never on screen was marked read",
 		);
 
@@ -673,9 +676,8 @@ async function main() {
 		receipt.foregroundNegative = negative;
 		const racedAfter = readRow(config, RACED);
 		receipt.racedAfterNegative = racedAfter;
-		assert.equal(
-			String(racedAfter.read).toLowerCase(),
-			"0",
+		assert.ok(
+			!isRead(racedAfter),
 			"an unfocused window was allowed to mark a revision read",
 		);
 

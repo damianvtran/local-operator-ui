@@ -629,8 +629,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * routes, and the layout save strips the id there (`stripUnadvertisedIds`).
 	 *
 	 * ITS BADGE IS THE LOUDER `emphasis` PILL (operator, 2026-10-25, decisions
-	 * D5): unread updates plus waiting asks, `unread_count + waiting_count`
-	 * (contract § 8.1). Every other row keeps the quiet register.
+	 * D5): unread updates plus UNREAD waiting asks, `unread_count +
+	 * waiting_unread_count` (decisions D16; the core field changed when asks grew
+	 * their own read state). Every other row keeps the quiet register.
 	 */
 	if (notificationsEnabled) {
 		destinationItems.set("notifications", {

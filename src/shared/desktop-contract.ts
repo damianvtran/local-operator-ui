@@ -1296,11 +1296,15 @@ const notificationsTarget = z.union([
 ]);
 
 /* The seen route's `input_kind` for each renderer input kind (see the endpoint). */
+/*
+ * The renderer's short kind -> the route's DOM event name. `focus` is gone
+ * (decisions D12): a window focus-gain is not an input the operator performed in
+ * the pane, and core no longer accepts it.
+ */
 const SEEN_INPUT_KIND = {
 	pointer: "pointerdown",
 	key: "keydown",
 	wheel: "wheel",
-	focus: "focus",
 } as const;
 
 const desktopRequestUnion = z.discriminatedUnion("op", [
@@ -4447,6 +4451,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 							id: notificationId,
 							revision: z.number().int().min(1),
 							anchorId: z.string().min(1).max(256),
+							/*
+							 * PER ITEM (decisions D13): the moment THIS anchor became
+							 * ≥ 50 % visible. The server checks it against the row's own
+							 * `updated_at`, so one long-visible line cannot carry a
+							 * neighbour that arrived a second ago.
+							 */
+							visibleSinceMs: z.number().int().min(0),
 						})
 						.strict(),
 				)
@@ -4455,7 +4466,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			evidence: z
 				.object({
 					sessionId,
-					inputKind: z.enum(["pointer", "key", "wheel", "focus"]),
+					inputKind: z.enum(["pointer", "key", "wheel"]),
 					inputAtMs: z.number().int().min(0),
 					visibleSinceMs: z.number().int().min(0),
 				})
@@ -9862,6 +9873,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 						id: item.id,
 						revision: item.revision,
 						anchor_id: item.anchorId,
+						visible_since_ms: item.visibleSinceMs,
 					})),
 					evidence: {
 						surface: "desktop",

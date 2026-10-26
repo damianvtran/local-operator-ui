@@ -65,6 +65,16 @@ export function filterItems(
 	});
 }
 
+/**
+ * How long an Undo offer stands (design § 0.8 / § 12.4: 6 s).
+ *
+ * In the model rather than in the page because the reel AND the transcript
+ * drawer both take destructive actions and both must offer the same window
+ * (design audit OD3); a constant copied into the drawer would be the second
+ * spelling of one product rule.
+ */
+export const UNDO_WINDOW_MS = 6_000;
+
 export type TimeBucket = "today" | "yesterday" | "week" | "older";
 
 /** Local midnight of the day `ms` falls in. */

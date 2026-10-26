@@ -115,28 +115,73 @@ export function useNotificationsList(
 		staleTime: 5_000,
 		refetchInterval: 30_000,
 		refetchIntervalInBackground: false,
+		/*
+		 * A BOUNDED WINDOW OF PAGES (code audit DC5). `useInfiniteQuery` refetches
+		 * EVERY loaded page on invalidate, and the feed invalidates on every frame -
+		 * so after scrolling a thousand rows, each frame cost ten sequential reads
+		 * and a full re-render of the merged map. Five pages (500 rows) is the
+		 * window this list reconciles; older rows come back when the operator scrolls
+		 * there again, which is when they are read anyway.
+		 */
+		maxPages: 5,
 	});
 }
 
-/** One conversation's items, read and unread (contract § 6.5: the drawer tab). */
+/**
+ * One conversation's items, read and unread (contract § 6.5: the drawer tab).
+ *
+ * PAGED, NOT FIRST-100-ONLY (code audit DC6). This one read feeds three things:
+ * the drawer tab, the door's unread badge, and the flag lines for older anchors.
+ * At `limit:100` with no cursor a wake-driven session silently lost everything
+ * past the first page - the badge under-counted, old rows were unreachable, and
+ * a flag line for an older anchor fell back to a plain tool row. The list is
+ * enumerated under the FIRST page's boundary (`throughSeq`), so the set is
+ * consistent even if the session keeps writing while we page.
+ */
 export function useSessionNotifications(
 	sessionId: string | null,
 	enabled: boolean,
 ) {
 	useNotificationsFeedInvalidation();
-	return useQuery({
+	return useInfiniteQuery({
 		queryKey: notificationKeys.session(sessionId ?? ""),
 		enabled: enabled && Boolean(sessionId),
-		queryFn: () =>
+		initialPageParam: undefined as
+			| { cursor: string; throughSeq: number }
+			| undefined,
+		queryFn: ({ pageParam }) =>
 			desktopResult<DesktopNotificationsList>({
 				op: "notifications.list",
 				state: "all",
 				sessionId: sessionId ?? "",
 				source: "notify",
 				limit: 100,
+				...(pageParam ?? {}),
 			}),
+		getNextPageParam: (last) =>
+			last.next_cursor
+				? { cursor: last.next_cursor, throughSeq: last.high_water }
+				: undefined,
+		select: (answer): DesktopNotificationsList => {
+			const first = answer.pages[0];
+			const items = new Map<string, DesktopNotificationItem>();
+			for (const page of answer.pages)
+				for (const item of page.items) {
+					const previous = items.get(item.id);
+					if (!previous || item.revision > previous.revision)
+						items.set(item.id, item);
+				}
+			return {
+				...first,
+				items: [...items.values()],
+				next_cursor: answer.pages.at(-1)?.next_cursor,
+			};
+		},
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
+		/* Same bounded window as the reel (DC5), so an invalidate does not fan
+		   out into an unbounded sequential refetch of a session's whole history. */
+		maxPages: 10,
 	});
 }
 
@@ -283,10 +328,17 @@ export function useNotificationsWrite() {
 
 /** The per-item in-view evidence write (contract § 6.4). */
 export function postNotificationsSeen(input: {
-	items: { id: string; revision: number; anchorId: string }[];
+	items: {
+		id: string;
+		revision: number;
+		anchorId: string;
+		/** When THIS anchor became visible; the server checks it per row (D13). */
+		visibleSinceMs: number;
+	}[];
 	evidence: {
 		sessionId: string;
-		inputKind: "pointer" | "key" | "wheel" | "focus";
+		/** No `"focus"`: a window focus-gain is never an input edge (D12). */
+		inputKind: "pointer" | "key" | "wheel";
 		inputAtMs: number;
 		visibleSinceMs: number;
 	};
@@ -341,6 +393,14 @@ export async function readSessionDismissCounts(
 	const counts: Record<string, number> = {};
 	let cursor: string | undefined;
 	const seen = new Set<string>();
+	/*
+	 * THE WALK STAYS COMPLETE, because the number is a promise: the header and
+	 * the confirm dialog must name the same scope (round 2, minor 2), and a
+	 * capped walk would silently under-promise the one case that matters most -
+	 * a conversation with more rows than the cap. The load problem this used to
+	 * cause (DC4) is answered WHERE it is called from: only in conversation
+	 * grouping, behind a 30 s staleness window, not on every frame.
+	 */
 	for (;;) {
 		const answer = await readPage({
 			state: "all",

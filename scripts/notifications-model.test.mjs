@@ -312,7 +312,19 @@ test("the wire: list, detail, read, dismiss and seen reach the contract's routes
 	);
 	const seen = desktopEndpoint({
 		op: "notifications.seen",
-		items: [{ id: "n_abcdefghijklmnop", revision: 2, anchorId: "toolu_1" }],
+		items: [
+			/*
+			 * Per item (D13): the anchor's own visible-since travels with it, so the
+			 * route can check it against that row's `updated_at` rather than letting
+			 * a long-visible neighbour carry it.
+			 */
+			{
+				id: "n_abcdefghijklmnop",
+				revision: 2,
+				anchorId: "toolu_1",
+				visibleSinceMs: 5,
+			},
+		],
 		evidence: {
 			sessionId: "abc123",
 			inputKind: "key",
@@ -322,7 +334,14 @@ test("the wire: list, detail, read, dismiss and seen reach the contract's routes
 	});
 	assert.equal(seen.path, "/v1/desktop/notifications/seen");
 	assert.deepEqual(seen.body, {
-		items: [{ id: "n_abcdefghijklmnop", revision: 2, anchor_id: "toolu_1" }],
+		items: [
+			{
+				id: "n_abcdefghijklmnop",
+				revision: 2,
+				anchor_id: "toolu_1",
+				visible_since_ms: 5,
+			},
+		],
 		evidence: {
 			surface: "desktop",
 			session_id: "abc123",
@@ -576,4 +595,229 @@ test("in-view coordinator refuses covered input, missing anchors, synthetic inpu
 			else globalThis[key] = value;
 		}
 	}
+});
+
+/*
+ * DECISIONS D12 / CODE AUDIT DC1 — A FOCUS GAIN IS NEVER AN INPUT EDGE.
+ *
+ * The app raises its own window (a notification click, a hotkey, a second
+ * launch) and an alt-tab glances past it; both produce a trusted `focus` event
+ * with the composer or the transcript still `document.activeElement`. Accepting
+ * that as the edge marked every visible unread line read after one second of
+ * dwell - a long-idle return acknowledging things nobody engaged with. The four
+ * arms below are the negatives the presence correction names, driven through the
+ * shipped coordinator: two focus shapes, an input outside the owning pane, and a
+ * second item scrolled far above the viewport.
+ */
+test("a focus gain marks nothing, and only the visible pane's line is read", () => {
+	const originals = Object.fromEntries(
+		[
+			"window",
+			"document",
+			"IntersectionObserver",
+			"setTimeout",
+			"clearTimeout",
+		].map((key) => [key, globalThis[key]]),
+	);
+	let clock = 10_000;
+	let observer;
+	let hit = null;
+	const listeners = new Map();
+	const timers = new Map();
+	let timerId = 0;
+	const registerEvent = (name, callback) => listeners.set(name, callback);
+	globalThis.window = {
+		addEventListener: registerEvent,
+		removeEventListener: (name) => listeners.delete(name),
+	};
+	globalThis.document = {
+		visibilityState: "visible",
+		hasFocus: () => true,
+		elementFromPoint: () => hit,
+		activeElement: null,
+		addEventListener: registerEvent,
+		removeEventListener: (name) => listeners.delete(name),
+	};
+	globalThis.IntersectionObserver = class {
+		constructor(callback) {
+			observer = callback;
+		}
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	};
+	globalThis.setTimeout = (callback) => {
+		const id = ++timerId;
+		timers.set(id, callback);
+		return id;
+	};
+	globalThis.clearTimeout = (id) => timers.delete(id);
+	const posts = [];
+	const reader = createInViewReader(
+		(batch) => posts.push(batch),
+		() => clock,
+	);
+	const owner = { id: "owner-a" };
+	const inside = (pane) => ({
+		closest: (selector) =>
+			selector === "[data-notification-owner]" ? pane : null,
+	});
+	const line = (top) => ({
+		getBoundingClientRect: () => ({ left: 0, top, width: 100, height: 20 }),
+		contains: () => false,
+		closest: (selector) =>
+			selector === "[data-notification-owner]" ? owner : null,
+	});
+	const visible = line(0);
+	const scrolledAway = line(-4_000);
+	const composer = inside(owner);
+	const sidebar = inside(null);
+	const fire = (name, trusted = true, target = visible) =>
+		listeners.get(name)?.({ isTrusted: trusted, target });
+	const dwell = () => {
+		clock += 1_000;
+		const callbacks = [...timers.values()];
+		timers.clear();
+		for (const callback of callbacks) callback();
+	};
+	try {
+		/*
+		 * The listener itself is gone, which is the property: no amount of focus
+		 * shapes can reach `onEdge` if nothing is listening for them.
+		 */
+		assert.equal(
+			listeners.has("focus"),
+			false,
+			"the coordinator must not listen for window focus at all",
+		);
+		reader.register({
+			id: "n_abcdefghijklmnop",
+			revision: 1,
+			anchorId: "call-1",
+			updatedAtMs: 1,
+			unread: true,
+			element: visible,
+			owner,
+		});
+		reader.register({
+			id: "n_bcdefghijklmnopq",
+			revision: 1,
+			anchorId: "call-2",
+			updatedAtMs: 1,
+			unread: true,
+			element: scrolledAway,
+			owner,
+		});
+		observer([
+			{ target: visible, intersectionRatio: 1 },
+			{ target: scrolledAway, intersectionRatio: 0 },
+		]);
+		hit = visible;
+		// Arm 1: the operator returns after two idle hours; the window gains focus.
+		clock += 2 * 3_600_000;
+		globalThis.document.activeElement = composer;
+		fire("focus", true, composer);
+		dwell();
+		assert.deepEqual(posts, [], "a focus gain after 2 h idle reads nothing");
+		/*
+		 * Arm 2: main raises the window itself (`window-raise.ts`). That is the
+		 * same trusted event with the same active element, and it must also read
+		 * nothing - the coordinator cannot tell the two apart, so neither counts.
+		 */
+		globalThis.window.focus?.();
+		fire("focus", true, composer);
+		dwell();
+		assert.deepEqual(posts, [], "a programmatic window raise reads nothing");
+		/*
+		 * Arm 3: a pointer press in the SIDEBAR while the line is on screen. The
+		 * gesture is real, the line is visible and uncovered, and it still reads
+		 * nothing: the input did not land in the pane that owns the line (D12).
+		 */
+		fire("pointerdown", true, sidebar);
+		dwell();
+		assert.deepEqual(posts, [], "input outside the owning pane reads nothing");
+		/*
+		 * Arm 4: a real key inside the transcript. Only the VISIBLE line is read;
+		 * the one scrolled four thousand pixels above is not, and the post carries
+		 * that item's own `visibleSinceMs` (D13) rather than a batch-wide value.
+		 */
+		fire("keydown", true, visible);
+		dwell();
+		assert.equal(posts.length, 1, "a real key in the pane qualifies the line");
+		assert.deepEqual(
+			posts[0].items.map((entry) => entry.id),
+			["n_abcdefghijklmnop"],
+			"only the line that was on screen is posted",
+		);
+		assert.equal(
+			posts[0].items[0].visibleSinceMs,
+			10_000,
+			"the post carries the item's own visible-since",
+		);
+		assert.equal(posts[0].inputKind, "key");
+	} finally {
+		reader.dispose();
+		for (const [key, value] of Object.entries(originals)) {
+			if (value === undefined) delete globalThis[key];
+			else globalThis[key] = value;
+		}
+	}
+});
+
+/*
+ * DECISIONS D16 / DESIGN AUDIT OD2 — ONE COUNT FORMULA.
+ *
+ * The rail badge is core's `unread_count + waiting_unread_count`; the Unread
+ * chip is the number of rows the filter actually draws. For a queue where every
+ * row is unread these are the SAME number, and the rendered pair that disagreed
+ * (rail 4, chip 3, with one unread open ask) is exactly the fixture below. The
+ * chip is derived from the arrays the rows come from, so it cannot drift from
+ * what is on screen; this test pins the three readings together.
+ */
+test("the Unread chip, the rail badge and the visible rows agree on one fixture", () => {
+	const updates = [item({ source: "notify" }), item({ source: "notify" })];
+	const askRow = item({
+		source: "ask",
+		priority: "high",
+		ask: { ask_id: "a-1", question: "Ship it?", status: "pending" },
+	});
+	const counts = {
+		unread_count: updates.length,
+		waiting_count: 1,
+		waiting_unread_count: 1,
+		high_water: 9,
+	};
+	// The reel draws the unread updates and the pending ask in the same view.
+	const visibleRows = [
+		...filterItems(updates, DEFAULT_FILTERS),
+		...filterItems([askRow], DEFAULT_FILTERS),
+	];
+	assert.equal(visibleRows.length, 3, "three rows are on screen");
+	assert.equal(
+		badgeCountOf(counts),
+		visibleRows.length,
+		"the rail badge counts the same three rows the filter shows",
+	);
+	assert.equal(
+		counts.waiting_unread_count + counts.unread_count,
+		visibleRows.length,
+		"one formula, spelled the way D16 states it",
+	);
+	// A read ask stays pending and stays in the waiting group; core's
+	// `waiting_unread_count` drops it, so the badge follows the unread half only.
+	const readAsk = { ...askRow, read: true };
+	const afterRead = [
+		...filterItems(updates, DEFAULT_FILTERS),
+		...filterItems([readAsk], DEFAULT_FILTERS),
+	];
+	assert.equal(
+		afterRead.length,
+		visibleRows.length,
+		"a read ask is still shown",
+	);
+	assert.equal(
+		badgeCountOf({ ...counts, waiting_unread_count: 0 }),
+		2,
+		"the badge follows the unread half, which is what it counts",
+	);
 });

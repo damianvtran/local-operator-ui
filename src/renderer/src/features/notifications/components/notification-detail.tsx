@@ -221,6 +221,13 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 					variant="secondary"
 					size="sm"
 					aria-disabled={actionsDisabled || undefined}
+					/*
+					 * AN INERT CONTROL MUST LOOK INERT (design audit OD6). `aria-disabled`
+					 * told assistive tech the button was unavailable while the button kept
+					 * its full contrast and hover, so on a row dismissed a moment ago it read
+					 * as live and answered a click with nothing happening.
+					 */
+					className={actionsDisabled ? "text-ink-disabled" : undefined}
 					title={
 						writesPaused ? t("ui.notifications.writes_paused_tip") : undefined
 					}
@@ -244,6 +251,8 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 						variant="secondary"
 						size="sm"
 						aria-disabled={actionsDisabled || undefined}
+						/* See the sibling above: inert has to look inert (OD6). */
+						className={actionsDisabled ? "text-ink-disabled" : undefined}
 						title={
 							writesPaused ? t("ui.notifications.writes_paused_tip") : undefined
 						}
@@ -254,11 +263,14 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 						data-notification-dismiss=""
 					>
 						<X aria-hidden="true" />
-						{repeat > 0
-							? t("ui.notifications.detail.dismiss_repeat", {
-									count: formatNumber(repeat),
-								})
-							: t("ui.notifications.detail.dismiss")}
+						{/*
+						 * ONE ROW, ONE DISMISSAL (design audit OD5). This said "Dismiss 6" for
+						 * an item updated six times - a count of REVISIONS over a button that
+						 * removes ONE row, contradicting the From card beside it ("Dismiss all
+						 * 1") about the same object in the same flow. The repeat count stays
+						 * where it is history: the header chip and the change log.
+						 */}
+						{t("ui.notifications.detail.dismiss")}
 					</Button>
 				)}
 				<DropdownMenu>

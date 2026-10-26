@@ -15,8 +15,11 @@
  *      scrolling ancestor, so the transcript scroller's rect is honoured);
  *  (b) it is uncovered: `elementFromPoint` at its centre is the line or a
  *      descendant (a modal, an overlaying drawer, a child-agent page fails);
- *  (c) a user input edge (pointerdown, keydown, wheel, window focus-gain)
- *      happened while it was visible;
+ *  (c) a user input edge happened while it was visible, AND the edge landed
+ *      inside the pane that owns the anchor (decisions D12: a trusted
+ *      pointerdown/keydown/wheel in this conversation's transcript or its
+ *      composer - never a window focus-gain, never the sidebar, the rail, a
+ *      drawer or another conversation's pane);
  *  (d) it stayed visible ≥ 1 s after that edge, which rules out a scroll-past;
  *  (e) the edge is later than the item's `updated_at` (a keyed update that
  *      lands after the reader looked is not something they saw).
@@ -32,7 +35,18 @@ export const IN_VIEW_DWELL_MS = 1_000;
 /** The fraction of the line that must be inside the viewport (§ 6.4 a). */
 export const IN_VIEW_RATIO = 0.5;
 
-export type InputKind = "pointer" | "key" | "wheel" | "focus";
+/*
+ * A WINDOW FOCUS-GAIN IS NOT AN INPUT EDGE (decisions D12, code audit DC1).
+ *
+ * The app raises its own window (`window-raise.ts` on a notification click, a
+ * hotkey and a second launch) and an alt-tab glances past it, so a `focus` event
+ * is `isTrusted: true` without anybody having engaged with anything on screen.
+ * Accepting it let a long-idle return mark every visible unread line read after
+ * one second - the exact "return after inactivity" case the presence correction
+ * rules out. The remaining three are gestures the operator performed in the
+ * pane; core no longer accepts `"focus"` in the evidence at all.
+ */
+export type InputKind = "pointer" | "key" | "wheel";
 
 /** One anchor's observed state at the moment the dwell timer fires. */
 export type AnchorObservation = {
@@ -110,7 +124,18 @@ const foreground = (): boolean =>
 	document.visibilityState === "visible" && document.hasFocus();
 
 export type InViewPost = (batch: {
-	items: { id: string; revision: number; anchorId: string }[];
+	/*
+	 * PER ITEM, NOT PER BATCH (decisions D13). The batch-level `visibleSinceMs`
+	 * below stays as the fallback the core route still accepts, but it is the
+	 * LATEST of these: sending only it let item B, visible for a second, ride
+	 * item A's ten-minute visibility through the server's check.
+	 */
+	items: {
+		id: string;
+		revision: number;
+		anchorId: string;
+		visibleSinceMs: number;
+	}[];
 	inputKind: InputKind;
 	inputAtMs: number;
 	visibleSinceMs: number;
@@ -174,7 +199,12 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 			timers.delete(timer);
 			if (!foreground()) return;
 			const firedAt = now();
-			const batch: { id: string; revision: number; anchorId: string }[] = [];
+			const batch: {
+				id: string;
+				revision: number;
+				anchorId: string;
+				visibleSinceMs: number;
+			}[] = [];
 			let latestVisible = 0;
 			for (const [element, anchor] of anchors) {
 				const token = `${anchor.id}@${anchor.revision}`;
@@ -203,6 +233,7 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 					id: anchor.id,
 					revision: anchor.revision,
 					anchorId: anchor.anchorId,
+					visibleSinceMs: since,
 				});
 			}
 			if (batch.length > 0)
@@ -224,9 +255,10 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 	const onWheel = (event: WheelEvent) => {
 		if (event.isTrusted) onEdge("wheel", event.target);
 	};
-	const onFocus = (event: FocusEvent) => {
-		if (event.isTrusted) onEdge("focus", document.activeElement);
-	};
+	/* One spelling for add and remove (code audit DC9): the removal used `true`
+	   where this adds an options object, which happens to match on the capture
+	   flag today and would silently stop matching the day a third flag changes. */
+	const WHEEL_OPTIONS = { capture: true, passive: true } as const;
 	const cancelDwell = () => {
 		for (const timer of timers) clearTimeout(timer);
 		timers.clear();
@@ -237,8 +269,7 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 	document.addEventListener("visibilitychange", cancelDwell);
 	window.addEventListener("pointerdown", onPointer, true);
 	window.addEventListener("keydown", onKey, true);
-	window.addEventListener("wheel", onWheel, { capture: true, passive: true });
-	window.addEventListener("focus", onFocus);
+	window.addEventListener("wheel", onWheel, WHEEL_OPTIONS);
 
 	return {
 		/** A failed/refused post needs a NEW input edge, not a permanent latch. */
@@ -260,8 +291,7 @@ export function createInViewReader(post: InViewPost, now = () => Date.now()) {
 			timers.clear();
 			window.removeEventListener("pointerdown", onPointer, true);
 			window.removeEventListener("keydown", onKey, true);
-			window.removeEventListener("wheel", onWheel, true);
-			window.removeEventListener("focus", onFocus);
+			window.removeEventListener("wheel", onWheel, WHEEL_OPTIONS);
 			window.removeEventListener("blur", cancelDwell);
 			document.removeEventListener("visibilitychange", cancelDwell);
 		},
