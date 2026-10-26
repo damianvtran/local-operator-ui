@@ -12,6 +12,23 @@ export type JournalPosition = {
 	 * first placed row - not a fabricated own entry coordinate, not a timestamp.
 	 */
 	sourceAdmissionAnchor?: string;
+	/**
+	 * The row this one was LOADED IN FRONT OF: set by a continuation page
+	 * (`applyHistoryPage`'s `pagedBefore`) on the rows it adds, naming the row that
+	 * was at the top of the transcript when the page merged.
+	 *
+	 * WHY A SECOND ANCHOR. `sourceAdmissionAnchor` can only say "after": it is the
+	 * live arrival fact, and a live row does arrive after what is on screen. A
+	 * `before_id` page is the opposite fact - every row in it is older than every
+	 * row the reader holds, because `before_id` is exclusive and is the reader's own
+	 * cursor - and when the owner's index is still building (a long journal that
+	 * keeps growing, `desktop_sessions.py::_journal_page`) that page carries no
+	 * `journal_seq`. Stamped as an arrival, it ranked BEHIND the newest placed row
+	 * and painted yesterday below this afternoon until the correction landed (the
+	 * 2026-10-26 report, `scripts/reconnect-page-gap.test.mjs`). An own coordinate
+	 * always wins over this; it only places a row that has none yet.
+	 */
+	sourcePrecedes?: string;
 };
 export type SourceCoordinate = { entryId: string; seq: number };
 /** A dispatch witness, not another source revision or an ordering of domains. */
@@ -337,6 +354,32 @@ function arrivalPlacement(
 }
 
 /**
+ * Where a continuation-page row ranks: IN FRONT OF the `journal_seq` its
+ * `sourcePrecedes` chain reaches first (a page loaded in front of an earlier
+ * continuation's rows points at them), and `depth` hops away from it - a page
+ * loaded further back has the longer chain and sorts first. Undefined when the
+ * chain ends unplaced, leaves the list or loops: the row then falls back to the
+ * arrival rules, which is the behaviour before this field existed.
+ */
+function precedesPlacement(
+	record: TranscriptRecord,
+	byId: ReadonlyMap<string, TranscriptRecord>,
+	seqOf: (record: TranscriptRecord | undefined) => number | undefined,
+): { seq: number; depth: number } | undefined {
+	const seen = new Set<string>();
+	let depth = 1;
+	let at = record.sourcePrecedes ? byId.get(record.sourcePrecedes) : undefined;
+	while (at !== undefined && !seen.has(at.id)) {
+		seen.add(at.id);
+		const seq = seqOf(at);
+		if (seq !== undefined) return { seq, depth };
+		depth += 1;
+		at = at.sourcePrecedes ? byId.get(at.sourcePrecedes) : undefined;
+	}
+	return undefined;
+}
+
+/**
  * Delay USING a coordinate when an earlier live arrival still has none.
  *
  * Owner commit wakes follow append order, but that is not a transport contract:
@@ -533,17 +576,31 @@ export function journalOrderedRecords(
 					: undefined;
 		const owner =
 			typeof anchor === "string" ? seqOf(byId.get(anchor)) : undefined;
+		// A negative class (-depth) sorts the row in front of the row it was loaded
+		// before (class 0 at the same seq) and of that row's calls/arrivals (1, 2),
+		// and an earlier page in front of a later one; within one page, page order
+		// holds by `index`, because the merge adds a page's new rows in page order.
+		const precedes =
+			owner === undefined && own === undefined
+				? precedesPlacement(record, byId, seqOf)
+				: undefined;
 		const admitted =
-			own === undefined
+			own === undefined && precedes === undefined
 				? arrivalPlacement(record, byId, rankPlaced, seqOf, chain)
 				: undefined;
-		const placement = owner ?? own ?? admitted;
+		const placement = owner ?? own ?? precedes?.seq ?? admitted;
 		return placement === undefined
 			? [1, 0, 0, 0, index]
 			: [
 					0,
 					placement,
-					owner !== undefined ? 1 : own !== undefined ? 0 : 2,
+					owner !== undefined
+						? 1
+						: own !== undefined
+							? 0
+							: precedes !== undefined
+								? -precedes.depth
+								: 2,
 					own ?? Number.MAX_SAFE_INTEGER,
 					index,
 				];
@@ -681,17 +738,28 @@ function journalOrderedPeerRecords(
 					: undefined;
 		const owner =
 			typeof anchor === "string" ? seqOf(byId.get(anchor)) : undefined;
+		// The same continuation rule as the local ranker (`precedesPlacement`).
+		const precedes =
+			owner === undefined && own === undefined
+				? precedesPlacement(record, byId, seqOf)
+				: undefined;
 		const admitted =
-			own === undefined
+			own === undefined && precedes === undefined
 				? arrivalPlacement(record, byId, hasCoordinate, seqOf, chain)
 				: undefined;
-		const placementSeq = owner ?? own ?? admitted;
+		const placementSeq = owner ?? own ?? precedes?.seq ?? admitted;
 		return placementSeq === undefined
 			? [1, 0, 0, 0, index]
 			: [
 					0,
 					placementSeq,
-					owner !== undefined ? 1 : own !== undefined ? 0 : 2,
+					owner !== undefined
+						? 1
+						: own !== undefined
+							? 0
+							: precedes !== undefined
+								? -precedes.depth
+								: 2,
 					own ?? Number.MAX_SAFE_INTEGER,
 					index,
 				];

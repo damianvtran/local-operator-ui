@@ -4692,3 +4692,191 @@ test("the pane asks for the open frame exactly when the capability says so (F6)"
 		);
 	}
 });
+
+/*
+ * AN OLDER PAGE READ WHILE THE OWNER'S INDEX IS BUILDING (operator report,
+ * 2026-10-26, session `7c8130c573dd`, on 0.44.0): yesterday's rows painted
+ * BELOW this afternoon's at the trailing end of a long, compacted manager
+ * session, and the order corrected itself on reload.
+ *
+ * The journal was in order. The shape that produces it: the open's page is
+ * READY (every row carries `journal_seq` under the current domain), then the
+ * reader scrolls up while the journal keeps growing - a 113 MB journal that is
+ * appended to every few seconds is the common case - so the owner's resident
+ * index is stale and the `before_id` page answers `building`: the right rows,
+ * no coordinates (`desktop_sessions.py::_journal_page`). Those rows reached the
+ * ranker with no placement of their own and were stamped as having ARRIVED
+ * behind the newest placed row, so they ranked after it; a live row then
+ * anchored behind them, and the late `journal_order_ready` correction moved
+ * both again. A continuation is older than every row the reader holds by
+ * construction (`before_id` is exclusive and is the reader's own cursor), so
+ * its rows belong above them until coordinates say exactly where.
+ *
+ * Recorded after EVERY commit: no commit may move a row already shown into a
+ * different position relative to another row already shown.
+ */
+test("an older page read while the owner's index is building lands above the tail and stays there", async (t) => {
+	const DAY = 86_400;
+	const yesterday = 1_792_960_000;
+	const today = yesterday + DAY;
+	const older = [
+		userRow("y-user", yesterday, "Yesterday's question."),
+		assistantRow("y-answer", yesterday + 1, "Yesterday's answer."),
+		toolRow("y-tool", yesterday + 2, "call-y", "bash", "ok"),
+		assistantRow("y-close", yesterday + 3, "Yesterday's close-out."),
+	];
+	const tail = [
+		{
+			id: "compaction-today",
+			ts: today,
+			type: "compaction",
+			payload: { summary: "s", tokens_before: 900000 },
+		},
+		row("peer-today", today + 1, {
+			kind: "custom",
+			custom_type: "peer_message",
+			details: { text: "A peer reported in an hour ago." },
+		}),
+		assistantRow("t-answer", today + 2, "This afternoon's answer."),
+		toolRow("t-tool", today + 3, "call-t", "bash", "ok"),
+		assistantRow("t-close", today + 4, "This afternoon's close-out."),
+	];
+	const journal = [...older, ...tail];
+	const seqOf = new Map(journal.map((entry, index) => [entry.id, index]));
+	const ready = (entries) =>
+		entries.map((entry) => ({ ...entry, journal_seq: seqOf.get(entry.id) }));
+	const transcript = makeTranscript(journal);
+	reset({ transcript });
+	/*
+	 * Until the reader scrolls, the owner's index is current: a tail-type read
+	 * (the open's reconcile walk) answers the same READY tail the snapshot
+	 * carried, so the only uncoordinated page in this case is the one under test.
+	 */
+	globalThis.__gapTail = () => ({
+		entries: ready(tail),
+		has_more: true,
+		cursor_missing: false,
+		journal_generation: "domain-today",
+		journal_order_state: "ready",
+	});
+	const panel = await mountWithJournalOrder();
+	const commits = [];
+	const capture = (source) => commits.push({ source, ids: panel.ids() });
+
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: tail.at(-1).id,
+			entries: ready(tail),
+			liveEvents: [],
+			streaming: false,
+			hasMore: true,
+			openFrame: {
+				journal_generation: "domain-today",
+				journal_order_state: "ready",
+			},
+		}),
+	);
+	await pump();
+	capture("open (ready page)");
+	assert.ok(panel.ids().includes("t-close"), "the open painted its page");
+
+	// The reader scrolls up; the index is stale, so the page carries no seqs.
+	globalThis.__gapTail = (request) => ({
+		...transcript.pageBefore(request.beforeId, request.limit),
+		journal_order_state: "building",
+	});
+	await panel.handle().loadOlder();
+	await pump();
+	capture("load older (building)");
+
+	// Live rows while the coordinates are still owed: a peer message and a tool.
+	deliver(
+		eventFrame(3, {
+			type: "history_delta",
+			messages: [
+				{
+					id: "peer-live",
+					kind: "custom",
+					custom_type: "peer_message",
+					details: { text: "A peer reports in now." },
+				},
+			],
+		}),
+	);
+	await pump();
+	capture("live peer row");
+	deliver(
+		eventFrame(4, {
+			type: "message_end",
+			message: {
+				id: "live-answer",
+				role: "assistant",
+				content: [{ type: "text", text: "Live answer." }],
+				tool_calls: [],
+			},
+		}),
+	);
+	await pump();
+	capture("live assistant row");
+
+	// The owner's late correction for the older rows, then for the live ones.
+	deliver(
+		eventFrame(5, {
+			type: "journal_order_ready",
+			journal_generation: "domain-today",
+			rows: older.map((entry) => ({
+				id: entry.id,
+				journal_seq: seqOf.get(entry.id),
+			})),
+		}),
+	);
+	await pump();
+	capture("correction: older rows");
+	deliver(
+		eventFrame(6, {
+			type: "journal_order_ready",
+			journal_generation: "domain-today",
+			rows: [
+				{ id: "peer-live", journal_seq: journal.length },
+				{ id: "live-answer", journal_seq: journal.length + 1 },
+			],
+		}),
+	);
+	await pump();
+	capture("correction: live rows");
+
+	const series = commits
+		.map(({ source, ids: order }) => `  ${source}: ${order.join(" ")}`)
+		.join("\n");
+	// The commit series is the evidence, so a passing run prints it too.
+	t.diagnostic(`committed orders:\n${series}`);
+	const olderIds = older.map(recordIdOf);
+	const tailIds = tail.map(recordIdOf).filter((id) => panel.ids().includes(id));
+	const afterLoad = commits[1].ids;
+	assert.ok(
+		olderIds.every((id) => afterLoad.includes(id)),
+		`the older page painted\n${series}`,
+	);
+	assert.ok(
+		Math.max(...olderIds.map((id) => afterLoad.indexOf(id))) <
+			Math.min(...tailIds.map((id) => afterLoad.indexOf(id))),
+		`every row of the older page sits above every row of the tail\n${series}`,
+	);
+	// No commit reorders rows an earlier commit already showed.
+	for (let at = 1; at < commits.length; at++) {
+		const before = commits[at - 1].ids;
+		const after = commits[at].ids;
+		const shared = before.filter((id) => after.includes(id));
+		assert.deepEqual(
+			after.filter((id) => shared.includes(id)),
+			shared,
+			`"${commits[at].source}" reordered rows already shown\n${series}`,
+		);
+	}
+	assert.deepEqual(
+		panel.ids(),
+		[...olderIds, ...tailIds, "peer-live", "live-answer"],
+		`the settled order is the journal's\n${series}`,
+	);
+});

@@ -1307,3 +1307,45 @@ test("peer sweeps take the facts-only lookup; an owed reconcile takes one author
 		1,
 	);
 });
+
+test("a continuation page with no coordinates ranks above the tail, in both lanes", () => {
+	// A `before_id` page answered while the owner's index is still building:
+	// right rows, no `journal_seq` (see `JournalPosition.sourcePrecedes`).
+	const building = (entries) => ({
+		entries: entries.map(({ journal_seq: _seq, ...entry }) => entry),
+		has_more: true,
+		cursor_missing: false,
+		journal_order_state: "building",
+	});
+	for (const peerSource of [false, true]) {
+		const lane = peerSource ? "peer" : "local";
+		let state = R.applyHistoryPage(
+			R.EMPTY_TRANSCRIPT,
+			page([row("t4", 4), row("t5", 5), row("t6", 6)]),
+			{ authoritative: true, peerSource },
+		);
+		state = R.applyHistoryPage(
+			state,
+			building([row("y0", 0), row("y1", 1), row("y2", 2)]),
+			{ pagedBefore: "t4", peerSource },
+		);
+		assert.deepEqual(ids(state), ["y0", "y1", "y2", "t4", "t5", "t6"], lane);
+		// A second building continuation goes above the first.
+		state = R.applyHistoryPage(state, building([row("x0", 0)]), {
+			pagedBefore: "y0",
+			peerSource,
+		});
+		assert.deepEqual(
+			ids(state),
+			["x0", "y0", "y1", "y2", "t4", "t5", "t6"],
+			lane,
+		);
+		// A live row still joins at the end, and keeps its place.
+		state = R.applyEvent(
+			state,
+			{ type: "message_end", message: msg("live", "assistant") },
+			900000,
+		);
+		assert.equal(ids(state).at(-1), "live", lane);
+	}
+});
