@@ -179,11 +179,19 @@ export const questionDockHint = (
 		 * scopes are the point, so the clause is the dock's own.
 		 */
 		return held
-			? "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn."
-			: "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.";
+			? t("ui.chat.question_dock.hint.approval_held")
+			: t("ui.chat.question_dock.hint.approval");
+	/*
+	 * The prefix is its own message so the numbering follows the locale’s
+	 * own `1 of N` idiom instead of being assembled here; every sentence below
+	 * takes it as `{prefix}` and receives "" when there is one question.
+	 */
 	const prefix =
 		gate.question_total > 1
-			? `Question ${gate.question_index + 1} of ${gate.question_total}. `
+			? t("ui.chat.question_dock.hint.prefix", {
+					index: String(gate.question_index + 1),
+					total: String(gate.question_total),
+				})
 			: "";
 	/*
 	 * THE SECRET SENTENCE, and what it may name: the field the card draws (type
@@ -210,12 +218,13 @@ export const questionDockHint = (
 	 */
 	if (gate.kind === "ask" && gateIsSecret(gate))
 		return held
-			? `${prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it`
-			: `${prefix}Type or paste the secret above · Enter sends · Esc hides`;
-	if (gate.options.length === 0) return `${prefix}Type your answer below.`;
+			? t("ui.chat.question_dock.hint.secret_held", { prefix })
+			: t("ui.chat.question_dock.hint.secret", { prefix });
+	if (gate.options.length === 0)
+		return t("ui.chat.question_dock.hint.type", { prefix });
 	const digits =
 		gate.options.length === 1 ? "1" : `1-${Math.min(gate.options.length, 9)}`;
-	return `${prefix}Up/Down choose · Enter or ${digits} answers · Esc hides · or type your own answer below`;
+	return t("ui.chat.question_dock.hint.options", { prefix, digits });
 };
 
 /**

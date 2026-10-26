@@ -54,6 +54,7 @@ import {
 	useCanonicalSessionStream,
 } from "@shared/hooks/use-canonical-session";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
+import { t } from "@shared/i18n";
 import type { ChatFile } from "@shared/store/canonical-sessions-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
@@ -412,8 +413,12 @@ export function useConfigRun(): ConfigRunHandle {
 				const created = results.filter((result) => result.created).length;
 				showSuccessToast(
 					created > 0
-						? `Configuration run finished: ${results.length} definition${results.length === 1 ? "" : "s"} changed.`
-						: `Configuration run finished: ${results.length} definition${results.length === 1 ? "" : "s"} updated.`,
+						? t("ui.notices.agents.config_run_changed", {
+								count: results.length,
+							})
+						: t("ui.notices.agents.config_run_updated", {
+								count: results.length,
+							}),
 				);
 			}
 			/*

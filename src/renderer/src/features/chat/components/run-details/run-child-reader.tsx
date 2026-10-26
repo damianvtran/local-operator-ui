@@ -98,6 +98,8 @@
 
 import { Button } from "@shared/components/ui";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -306,8 +308,7 @@ const FailureText = ({ text }: { text: string }) => (
 		</pre>
 		{clippedByWire(text) && (
 			<p className={cn("mt-1 text-meta text-ink-muted")}>
-				Shortened at the wire. The runtime records at most the first 2,000
-				characters of an error.
+				{t("ui.chat.run_details.reader.error_shortened")}
 			</p>
 		)}
 	</>
@@ -381,7 +382,9 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
 				 * has no titles (§ 5.2 keeps the reader's title in the breadcrumb), and
 				 * this names a block inside the body rather than the surface.
 				 */}
-				<span className={cn("text-meta text-ink-muted")}>Delegated with</span>
+				<span className={cn("text-meta text-ink-muted")}>
+					{t("ui.chat.run_details.reader.delegated_with")}
+				</span>
 				{folded.hidden > 0 && (
 					<Button
 						variant="ghost"
@@ -454,7 +457,7 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
 const ReadOnlyFooter = () => (
 	<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
 		<p className={cn("text-meta text-ink-muted")}>
-			Read-only — this is the subagent's page, not a way to steer it.
+			{t("ui.chat.run_details.reader.read_only_footer")}
 		</p>
 	</div>
 );
@@ -480,6 +483,10 @@ export const RunChildReader = ({
 	onUnopenable,
 	paneWidth,
 }: RunChildReaderProps) => {
+	// One subscription for the reader and its children: every `t()` call in this
+	// subtree (`ReadOnlyFooter`, `QuietLine` bodies, the fold labels) is re-evaluated
+	// when the language setting changes, because the parent re-renders.
+	useI18nLocale();
 	const containerRef = useRef<HTMLDivElement>(null);
 	/**
 	 * The reader's own root, which holds focus for the states that have no
@@ -927,10 +934,7 @@ export const RunChildReader = ({
 					 * was in flight; for one that was never issued it was a spinner
 					 * forever.
 					 */
-					<QuietLine>
-						This subagent's row carries no session id, so there is no
-						conversation to open from here.
-					</QuietLine>
+					<QuietLine>{t("ui.chat.run_details.reader.no_session_id")}</QuietLine>
 				) : state === "pending" ? (
 					/*
 					 * § 10.1's first absence: the child's directory exists and
@@ -943,7 +947,7 @@ export const RunChildReader = ({
 					 * appended (round 1, Q10). It is re-probed on the next pulse rather than
 					 * being final.
 					 */
-					<QuietLine>This subagent has no transcript on disk yet.</QuietLine>
+					<QuietLine>{t("ui.chat.run_details.reader.no_transcript")}</QuietLine>
 				) : state === "gone" ? (
 					/*
 					 * § 10.1's second absence: the child's SESSION DIRECTORY is missing —
@@ -952,10 +956,12 @@ export const RunChildReader = ({
 					 * `pending` case one line above.
 					 */
 					<QuietLine>
-						This subagent's session directory is no longer on disk.
+						{t("ui.chat.run_details.reader.directory_gone")}
 					</QuietLine>
 				) : state === "loading" ? (
-					<QuietLine>Loading this subagent's conversation…</QuietLine>
+					<QuietLine>
+						{t("ui.chat.run_details.reader.loading_conversation")}
+					</QuietLine>
 				) : bodyPaintsConversation ? (
 					/*
 					 * ONE CLIP, AT THE SCROLLER'S OWN BOX (design round 2, D6).
@@ -1082,7 +1088,7 @@ export const RunChildReader = ({
 					 * (round 2, C8).
 					 */
 					<QuietLine>
-						This subagent has no conversation on record yet.
+						{t("ui.chat.run_details.reader.no_conversation")}
 					</QuietLine>
 				)}
 				{/*
@@ -1092,7 +1098,9 @@ export const RunChildReader = ({
 				 */}
 				{row.errorText && (
 					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
-						<span className={cn("text-meta text-ink-muted")}>Failed</span>
+						<span className={cn("text-meta text-ink-muted")}>
+							{t("ui.chat.run_details.reader.failed")}
+						</span>
 						<FailureText text={row.errorText} />
 					</div>
 				)}

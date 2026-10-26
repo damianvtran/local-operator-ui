@@ -1,0 +1,473 @@
+{
+	"schema": 1,
+	"audit_id": "teambridge-profile-audit-7fe70d68b963",
+	"date": "2026-10-26",
+	"instance": "7fe70d68b963",
+	"auditor": "i18n-auditor (independent translation auditor; did not translate or edit the audited copy)",
+	"agent": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Harness session header reports 'Model: radient/auto', an auto-routed alias: no concrete provider/model id is exposed to this session and no LOP_* model variable is set, so no specific upstream model is claimed. No fallback was announced or observed during this run; if the harness routed to a fallback upstream, that is invisible here and is not asserted.",
+	"status": "changes_requested",
+	"result": "changes_requested",
+	"locales": [
+		"en",
+		"fr",
+		"es",
+		"zh-CN",
+		"ru",
+		"vi",
+		"ur",
+		"hi"
+	],
+	"scope": {
+		"worktree": "~/local-operator-ui/.worktrees/account-profile",
+		"head": "acc6a5bc9c20ae9c92cfa3cf322271610b72c0b6",
+		"integration_state": "uncommitted (git status: account-profile integration files modified, catalogues among them)",
+		"namespace": "ui.teamBridge",
+		"delta_kind": "seven new keys, en source plus seven translations",
+		"keys": [
+			"ui.teamBridge.profile.message",
+			"ui.teamBridge.profile.human_badge",
+			"ui.teamBridge.profile.agent_badge",
+			"ui.teamBridge.profile.owned_by",
+			"ui.teamBridge.profile.local_time",
+			"ui.teamBridge.profile.close_profile",
+			"ui.teamBridge.profile.open_profile"
+		],
+		"byte_freeze": "All eight src/i18n/catalogues/<locale>/ui.teamBridge.json sha256 values were recomputed and matched the pinned values supplied with the task before any judgement was formed; the English context sidecar hash was recorded but not pinned in the brief.",
+		"not_covered": "The other 200 ui.teamBridge keys were not re-audited; this receipt speaks only to the seven-key delta. No rendered-frame, activation or release claim."
+	},
+	"independence": "Independent auditor. Produced none of the copied strings: the seven English values and their seven translations were read from the worktree, never written. The only file this audit created is this receipt. Catalogue parsing, ICU/placeholder comparison, hash binding and verbatim gate runs were done here; the worktree's other files were untouched.",
+	"inputs": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+		},
+		"targets": {
+			"fr": {
+				"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+				"sha256": "59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b"
+			},
+			"es": {
+				"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+				"sha256": "8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605"
+			},
+			"zh-CN": {
+				"path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+				"sha256": "322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79"
+			},
+			"ru": {
+				"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+				"sha256": "355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc"
+			},
+			"vi": {
+				"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+				"sha256": "ae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400"
+			},
+			"ur": {
+				"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+				"sha256": "3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f"
+			},
+			"hi": {
+				"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+				"sha256": "8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc"
+			}
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guides": {
+			"fr": {
+				"path": "~/local-operator/i18n/style-guides/fr.md",
+				"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+			},
+			"es": {
+				"path": "~/local-operator/i18n/style-guides/es.md",
+				"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+			},
+			"zh-CN": {
+				"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+				"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+			},
+			"ru": {
+				"path": "~/local-operator/i18n/style-guides/ru.md",
+				"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+			},
+			"vi": {
+				"path": "~/local-operator/i18n/style-guides/vi.md",
+				"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+			},
+			"ur": {
+				"path": "~/local-operator/i18n/style-guides/ur.md",
+				"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+			},
+			"hi": {
+				"path": "~/local-operator/i18n/style-guides/hi.md",
+				"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+			}
+		},
+		"contract": {
+			"path": "docs/I18N.md",
+			"sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+		}
+	},
+	"high_visibility": {
+		"group": "profile hover card (user-visible card, reachable from the rail)",
+		"named_high_visibility_groups": [
+			"onboarding",
+			"errors",
+			"settings"
+		],
+		"second_independent_pass": "not performed for this receipt; it is round 1. The group is not one of the named high-visibility groups, so a second independent audit was not requested in the task. Manager may request one before merge."
+	},
+	"namespaces": {
+		"ui.teamBridge": {
+			"status": "changes_requested",
+			"result": "changes_requested",
+			"keys_audited": 7,
+			"delta_keys": [
+				"ui.teamBridge.profile.message",
+				"ui.teamBridge.profile.human_badge",
+				"ui.teamBridge.profile.agent_badge",
+				"ui.teamBridge.profile.owned_by",
+				"ui.teamBridge.profile.local_time",
+				"ui.teamBridge.profile.close_profile",
+				"ui.teamBridge.profile.open_profile"
+			],
+			"locales": [
+				"en",
+				"fr",
+				"es",
+				"zh-CN",
+				"ru",
+				"vi",
+				"ur",
+				"hi"
+			],
+			"keys_checked_per_catalogue": 7,
+			"context_keys_verified": 7,
+			"sha256": {
+				"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+				"fr": "59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b",
+				"es": "8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605",
+				"zh-CN": "322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79",
+				"ru": "355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc",
+				"vi": "ae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400",
+				"ur": "3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f",
+				"hi": "8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc"
+			},
+			"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb",
+			"findings": [
+				{
+					"id": "P1",
+					"severity": "major",
+					"gating": true,
+					"locale": "fr",
+					"key": "ui.teamBridge.profile.agent_badge",
+					"current": "Agent",
+					"problem": "Byte-identical to the English source, so the repo guard fails: `node --test scripts/i18n/locale-parity.test.mjs` -> `[fr] is not an English stub (no value identical to the source)` at locale-parity.test.mjs:1390 (assertion :1402) lists `ui.teamBridge.json: ui.teamBridge.profile.agent_badge`. The word is CORRECT - « agent » is the glossary rendering for the term and matches the rest of the fr namespace (thread.withheld, plan.body, sender.unknown_agent). The defect is the missing scoped exemption for a legitimate French cognate, not the copy.",
+					"fix": "Do not change the fr value. Add one row to IDENTICAL_OK in scripts/i18n/locale-parity.test.mjs, beside the existing fr cognate rows: [\"fr:ui.teamBridge.profile.agent_badge\", \"French glossary term for agent is « agent » — the same spelling as English; scoped to fr so the other locales still translate it\"]. Then re-run the parity suite."
+				},
+				{
+					"id": "P2",
+					"severity": "minor",
+					"gating": false,
+					"locale": "zh-CN",
+					"key": "ui.teamBridge.profile.human_badge",
+					"current": "个人",
+					"problem": "「个人」 is the adjective/account-type sense ('personal, individual') - the prefix of 个人资料 - not the noun for a person. This namespace already uses 人员 for people in prose (compose.label 添加人员或智能体; create.channel_description). Under a name and title the badge can be parsed as an account type rather than an identity marker. Still understandable, so non-gating.",
+					"fix": "「真人」 - the established Chinese contrast to 智能体/机器人 on AI surfaces (真人客服), and it reads as an identity badge, not as 个人资料's prefix."
+				},
+				{
+					"id": "P3",
+					"severity": "minor",
+					"gating": false,
+					"locale": "vi",
+					"key": "ui.teamBridge.profile.human_badge",
+					"current": "Con người",
+					"problem": "'Con người' is the collective/abstract noun for humankind; a one-word identity badge in Vietnamese product copy reads more naturally with a concrete noun. Meaning survives, so non-gating.",
+					"fix": "「Người thật」 (real person - the settled human-vs-bot contrast) or 「Người dùng」 if the user framing is preferred. Keep 「Tác nhân」 unchanged."
+				},
+				{
+					"id": "P4",
+					"severity": "minor",
+					"gating": false,
+					"locale": "ur",
+					"key": "ui.teamBridge.profile.local_time",
+					"current": "مقامی وقت {time}",
+					"problem": "Label and clock time run together with no separator. The four other locales that mark the value use a colon (fr « Heure locale : », es « Hora local: », ru « Местное время: », vi « Giờ địa phương: »), and the card renders icon + label + time, so the missing colon reads as a run-on. RTL order itself is correct: logical order, no manual bidi controls.",
+					"fix": "「مقامی وقت: {time}」"
+				},
+				{
+					"id": "P5",
+					"severity": "minor",
+					"gating": false,
+					"locale": "hi",
+					"key": "ui.teamBridge.profile.local_time",
+					"current": "स्थानीय समय {time}",
+					"problem": "Same run-on label/value with no separator. Hindi UI convention puts a colon here, and every other locale that marks the value does; the label and the formatted time should not read as one phrase.",
+					"fix": "「स्थानीय समय: {time}」"
+				},
+				{
+					"id": "P6",
+					"severity": "nit",
+					"gating": false,
+					"locale": "zh-CN",
+					"key": "ui.teamBridge.profile.close_profile",
+					"current": "关闭个人资料",
+					"problem": "This control closes the hover card, not the profile record; 「个人资料」 names the data. Understandable as an aria-label, but it says 'close the personal profile' where 「关闭资料卡」 says what disappears.",
+					"fix": "「关闭资料卡」; for symmetry either keep 「打开{name}的个人资料」 (acceptable) or use 资料卡 in both."
+				},
+				{
+					"id": "P7",
+					"severity": "nit",
+					"gating": false,
+					"locale": "ru",
+					"key": "ui.teamBridge.profile.open_profile",
+					"current": "Открыть профиль: {name}",
+					"problem": "The context sidecar asks for the account name inside the phrase rather than as a separate fragment; the colon makes it a label:value pair. Grammar justifies the workaround (an undeclinable display name cannot take the genitive after профиль), so this is a nit, not a major.",
+					"fix": "「Открыть профиль пользователя {name}」 if a native reviewer prefers the apposition; otherwise keep the current wording."
+				},
+				{
+					"id": "O1",
+					"severity": "info",
+					"locale": "all",
+					"key": "ui.teamBridge.profile.open_profile",
+					"note": "Observation, not a defect: all eight locales repeat the visible row label ({name}) inside the open_profile aria-label, so label-in-name holds. Verified against the rail trigger (team-bridge-rail.tsx), whose visible content is the person's name; team-bridge-profile-card.tsx:143 applies the aria-label."
+				},
+				{
+					"id": "O2",
+					"severity": "info",
+					"locale": "ur",
+					"key": "ui.teamBridge.profile.* (all seven delta values)",
+					"note": "Observation: the ur values contain no U+200E/U+200F/U+2066-U+2069 control characters (code-point scan), per the ur guide's 'no manual bidi controls' rule. '{name} کا پروفائل کھولیں' is correct logical order for RTL with an embedded Latin name."
+				},
+				{
+					"id": "O3",
+					"severity": "info",
+					"locale": "all",
+					"key": "ui.teamBridge.profile.message",
+					"note": "Observation: English 'Message' is both noun and verb; the context note resolves it as an action, and all seven translations chose the action label, matching each locale's shipped ui.teamBridge.people.message (Envoyer un message / Enviar un mensaje / 发消息 / Написать / Nhắn tin / پیغام بھیجیں / संदेश भेजें)."
+				}
+			],
+			"per_locale": {
+				"en": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"note": "Source reviewed against all seven context sidecar entries and the call sites in team-bridge-profile-card.tsx: one 320px (w-80) hover card, one full-width Message button, two aria-labels. No source change requested.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"fr": {
+					"status": "changes_requested",
+					"result": "changes_requested",
+					"counts": {
+						"blocker": 0,
+						"major": 1,
+						"minor": 0,
+						"nit": 0
+					},
+					"note": "Copy is correct as written (« Agent » is the glossary term); the single gating item is the missing fr-scoped IDENTICAL_OK exemption in locale-parity.test.mjs, which the implementer adds without touching the catalogue.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"fr": "59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"es": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"note": "No findings. Action labels are infinitives per the es guide; 'Hora local: ' has no space before the colon, per the es guide; glossary 'agente' used consistently.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"es": "8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"zh-CN": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"note": "Two non-gating wording findings (human_badge 个人, close_profile 个人资料). No spaces inserted between Chinese and the {time}/{name} runs, per the zh-CN guide; 智能体 matches the glossary and the rest of the namespace.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"zh-CN": "322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"ru": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"note": "One nit on the colon form of open_profile. 'Агент' and 'Местное время' match the glossary and the ru guide; no space before the colon, per the ru guide.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"ru": "355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"vi": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"note": "One non-gating finding on human_badge. 'Tác nhân' is the glossary term and matches sender.unknown_agent; 'Giờ địa phương' follows the guide's rule that địa phương is reserved for timezone-local; all values NFC.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"vi": "ae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"ur": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"note": "One non-gating finding on local_time's missing separator. RTL order correct, no manual bidi controls, Latin digits per the guide, آپ imperative درست; 'شخص' matches sender.unknown_person.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"ur": "3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				},
+				"hi": {
+					"status": "passed",
+					"result": "passed",
+					"counts": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"note": "One non-gating finding on local_time's missing separator. Polite imperative ओ forms, nukta kept in प्रोफ़ाइल, 'व्यक्ति' matches sender.unknown_person, 'एजेंट' matches the glossary.",
+					"sha256": {
+						"en": "610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799",
+						"hi": "8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc"
+					},
+					"context_sha256": "10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb"
+				}
+			},
+			"note": "One shared block, keyed by namespace, because scripts/i18n/ledger-rules.mjs deriveReceiptAudit looks up receipt.namespaces[namespace] and refuses locale-keyed roots (Object.hasOwn check). Per-locale verdicts, counts and hash pairs are therefore carried in per_locale, following the precedent of i18n/receipts/099bfdb46faf.json and 53c8b35e20a6.json. Consequence: deriveReceiptAudit returns changes_requested for every locale in this round, because the shared block carries the one MAJOR (fr). That is the round's true state - the delta cannot merge until P1 is fixed - and a round-2 receipt after remediation should carry zero blocker/major."
+		}
+	},
+	"current_report_verdict": {
+		"status": "changes_requested",
+		"unresolved_blocker_major_count": 1,
+		"finding_ids": [
+			"P1",
+			"P2",
+			"P3",
+			"P4",
+			"P5",
+			"P6",
+			"P7"
+		]
+	},
+	"mechanical": {
+		"placeholders": "All seven keys: identical ICU argument sets to English (profile.owned_by {name}, profile.local_time {time}, profile.open_profile {name}; the rest none). No plural/select messages in this delta, so no CLDR arm is expected or dropped; repo ICU parse passes in every locale.",
+		"markup": "No Rich/markup tags, backtick code, commands, flags or identifiers occur in the seven English values, so nothing of that kind could be altered.",
+		"keys": "No key added or dropped: each locale carries the same seven and the namespace passes the complete-key-set test (207/207).",
+		"json": "All eight files parse; check-duplicates reports 0 duplicates.",
+		"encoding": "No U+200E/200F/2066-2069 controls in any target value; all values NFC; no leading/trailing or double spaces.",
+		"width": "Widest value is 26 cells (fr open_profile) in a 320px card; the Message button label is at most 18 cells (fr). No overflow risk; no maxCells metadata exists for UI catalogues."
+	},
+	"execution": [
+		{
+			"command": "for l in en fr es zh-CN ru vi ur hi; do printf '%-6s ' \"$l\"; shasum -a 256 \"src/i18n/catalogues/$l/ui.teamBridge.json\" | cut -d' ' -f1; done; echo \"--- context ---\"; shasum -a 256 src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"output": "en     610582fa07d1144201eafcd5559eaa1731bc0adb5742a7c28f4a790cd7a84799\nfr     59a3ae6e554a53f5487e1eca0d4c81ec5e436eacfb0c918bd6732d46ad62515b\nes     8d5009ca3de0548c46aef581dda170b817c3dcd060b17383e47a47761ca3b605\nzh-CN  322f03f50c435f23095576d0bcde22fb71383ba1075134ad6a090daa7b20ae79\nru     355e3cc62340c59566979f16483d5dcdd939bc00850f1bcc501a839539c9b5bc\nvi     ae998f699ac5f4c30d9576b60463d82c08f286caa86cfce88025094bfabf7400\nur     3d1438219a6a151984ff3dc6e9904dc7b94f6411ff98e564795756193d541b4f\nhi     8af4ea5640ca9aed34521f42a43befdbb1948d45d42551621d6624f4c88d51cc\n--- context ---\n10d47bb5c88606ffa2554d4d32176c8294b2e116ac5480b0349dae0eb12358bb  src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"verbatim": "full output; all eight target hashes equal the pinned values supplied with the task, so the audit proceeded on frozen bytes"
+		},
+		{
+			"command": "node --test --test-name-pattern='(fr|es|ru|vi|ur|hi|zh-CN)' scripts/i18n/locale-parity.test.mjs",
+			"output": "✔ [zh-CN] is not an English stub (no value identical to the source) (6.201333ms)\n✔ a locale-scoped identical-value exemption does not exempt another locale (0.108083ms)\nℹ tests 44\nℹ suites 0\nℹ pass 43\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 465.70725\n\n✖ failing tests:\n\ntest at scripts/i18n/locale-parity.test.mjs:1390:2\n✖ [fr] is not an English stub (no value identical to the source) (5.651125ms)\n  AssertionError [ERR_ASSERTION]: values identical to English in fr\n  + actual - expected\n  \n  + [\n  +   'ui.teamBridge.json: ui.teamBridge.profile.agent_badge'\n  + ]\n  - []",
+			"verbatim": "extract: the last five success lines and the whole tail (summary + failing test) of the captured run; no line was reworded"
+		},
+		{
+			"command": "node --test scripts/i18n/locale-parity.test.mjs 2>&1 | grep -E '^ℹ (tests|pass|fail|cancelled|skipped)'",
+			"output": "ℹ tests 44\nℹ pass 43\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0",
+			"verbatim": "full output of the filtered full-file run; the same single fr failure is the only one in the file"
+		},
+		{
+			"command": "node scripts/i18n/context-parity.mjs",
+			"output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).",
+			"verbatim": "full output"
+		},
+		{
+			"command": "node scripts/i18n/check-duplicates.mjs",
+			"output": "check-duplicates: ok — 763 file(s) scanned, 0 duplicate key(s)",
+			"verbatim": "full output"
+		},
+		{
+			"command": "node scripts/i18n/generate.mjs --check",
+			"output": "/Users/damian/local-operator-ui/.worktrees/account-profile/src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+			"verbatim": "full output"
+		},
+		{
+			"command": "node scripts/i18n/check-strings.mjs",
+			"output": "check-strings.mjs: ok — 1373 file(s) scanned, 373 literal(s) at or below the baseline",
+			"verbatim": "full output (exit 0)"
+		},
+		{
+			"command": "node scripts/i18n/ledger-check.mjs",
+			"output": "ledger-check: es/ui.teamBridge: stale source_sha256 (ledger cb265d27c44b…, file 610582fa07d1…) — the English source moved since translation\nledger-check: es/ui.teamBridge: stale target_sha256 (ledger af79c6c9021c…, file 8d5009ca3de0…) — the translated file changed since it was audited\nledger-check: es/ui.teamBridge: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\n[… the same three lines repeat for fr, hi, ru, ur, vi, zh-CN …]\nledger-check: FAILED — 21 finding(s) across 595 ledger entr(ies)",
+			"verbatim": "first locale's three lines and the final line are verbatim; the elision is marked and the pattern repeats for the other six locales (7 x 3 = 21)"
+		}
+	],
+	"audit_notes_not_execution_log": [
+		"The linguistic judgements above are notes, not command output. Only the 'execution' entries are command output captured in this session on 2026-10-26; each entry states whether it is full output or a marked extract.",
+		"A mechanical scan (placeholder argument sets, control characters, NFC, edge whitespace, cell width) was run with a small Python script; its per-row results are summarised in 'mechanical', not pasted.",
+		"check-strings and ledger-check were run for completeness; they are outside the four commands the task named, and both are reported as they returned, including the ledger FAIL.",
+		"The parity suite's timing numbers in the extract are from the first captured run; a later full-file run produced the same four summary figures and the same single fr failure."
+	],
+	"limitations": [
+		"No translation or MT service was used, and no back-translation was performed; judgement is the auditor's own reading against the English, the sidecar and the call sites.",
+		"No rendered screenshot was captured: the task scoped this audit to catalogue/CSS-free catalogue review, and this worktree's Storybook/app was not started. Fit is argued from cell counts and the card's fixed 320px width, not from pixels.",
+		"This receipt covers the delta only; it does not re-open the 200 previously shipped keys in the namespace."
+	],
+	"artifacts": [
+		{
+			"path": "i18n/receipts/teambridge-profile-audit-7fe70d68b963.json",
+			"note": "this receipt (the audit's artifact of record); its sha256 is published with the auditor's report and belongs on the ledger row's receipt_sha256"
+		}
+	],
+	"evidence_root_note": "No separate bundle was written under i18n/audits/evidence/: the task bounds this audit's writes to the single receipt, and docs/I18N.md keeps mandatory receipt paths under i18n/receipts/ (no tracked manifest maps receipts to the evidence root in this repo). All retention fields the practice names (locale set, namespace, date, auditor agent/session/model/independence, en/context/target paths and SHA-256, findings/status, execution output) are carried in this file."
+}

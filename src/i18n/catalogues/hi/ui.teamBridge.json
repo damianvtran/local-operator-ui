@@ -1,4 +1,5 @@
 {
+	"ui.teamBridge.notify.unavailable": "इस खाते से अब यह सूचना नहीं खोली जा सकती।",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "अभी कोई बातचीत नहीं",
 	"ui.teamBridge.list.empty.body": "सीधा संदेश, समूह या चैनल शुरू करें।",
@@ -198,5 +199,12 @@
 	"ui.teamBridge.reactions.category8": "झंडे",
 	"ui.teamBridge.reactions.choose": "इमोजी चुनें",
 	"ui.teamBridge.reactions.noResults": "कोई इमोजी नहीं मिला",
-	"ui.teamBridge.actions.label": "संदेश की कार्रवाइयाँ"
+	"ui.teamBridge.actions.label": "संदेश की कार्रवाइयाँ",
+	"ui.teamBridge.profile.message": "संदेश भेजें",
+	"ui.teamBridge.profile.human_badge": "व्यक्ति",
+	"ui.teamBridge.profile.agent_badge": "एजेंट",
+	"ui.teamBridge.profile.owned_by": "{name} का एजेंट",
+	"ui.teamBridge.profile.local_time": "स्थानीय समय {time}",
+	"ui.teamBridge.profile.close_profile": "प्रोफ़ाइल बंद करें",
+	"ui.teamBridge.profile.open_profile": "{name} की प्रोफ़ाइल खोलें"
 }

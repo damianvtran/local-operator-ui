@@ -1493,16 +1493,35 @@ test("the parked card names both exits", () => {
 	 *
 	 * A SOURCE assertion rather than a rendered one, for the card's own reason: the
 	 * dock's render needs the canonical store and the question's state, and the
-	 * string is the artefact either way. `window-mode.test.mjs` pins call sites the
+	 * sentence is the artefact either way. `window-mode.test.mjs` pins call sites the
 	 * same way.
+	 *
+	 * AND THE SENTENCE IS PINNED AS THE PAIR THE COPY TESTS PIN, because the i18n
+	 * extraction moved it out of the component and into the catalogue under
+	 * `ui.chat.question_dock.hint.approval`: the key the dock ASKS FOR at its render
+	 * site, and the English that key holds. A literal in the source can only match
+	 * while the words live in the source, so the old assertion would have gone red on
+	 * the extraction rather than on a defect; the pair fails for the two things this
+	 * test exists to catch - a dock that stops rendering the hint (the call is gone
+	 * from its code) and an English value that stops naming the exits. Comments are
+	 * stripped first, so a key named in prose cannot stand in for a rendered one.
 	 */
-	const source = readFileSync(
+	const dock = readFileSync(
 		"src/renderer/src/features/chat/components/trace/question-dock.tsx",
 		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	const key = "ui.chat.question_dock.hint.approval";
+	assert.ok(
+		dock.includes(`t("${key}")`),
+		"the dock must render the approval hint from the catalogue",
 	);
-	assert.match(
-		source,
-		/"Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn\."/,
+	const copy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.json", "utf8"),
+	);
+	assert.equal(
+		copy[key],
+		"Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+		"the English hint must still name all three exits: the buttons, the typed answers and Escape",
 	);
 });
 

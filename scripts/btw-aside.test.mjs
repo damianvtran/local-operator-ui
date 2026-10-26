@@ -519,7 +519,7 @@ const RE_PAGE_RAISES_THE_BUSY_CODE =
 const RE_PAGE_RETIRES_THE_BUSY_LINE =
 	/if \(sendErrorCode !== ASIDE_STILL_ANSWERING_CODE\) return;\s*if \(asideBusy\) return;\s*clearError\(\);/;
 const RE_PANEL_REGION_FOCUSABLE =
-	/tabIndex=\{0\}\s+aria-label="The aside exchange"/;
+	/tabIndex=\{0\}\s+aria-label=\{t\("ui\.chat\.aside\.exchange_label"\)\}/;
 /*
  * F11's effect trigger, pinned by F12: `retireRequest` is bumped by
  * `retireAcceptedPayload` and read by the effect's dependency list, and only those
@@ -3546,13 +3546,18 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 	const panel = read(
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);
-	// The assistive half stays: `Question: ` is the label a reader hears.
-	assert.match(panel, /<span className="sr-only">Question: <\/span>/);
+	// The assistive half stays: `Question: ` is the label a reader hears. The
+	// words now come from the catalogue, so this pins the key that supplies them
+	// rather than the literal (i18n extraction: it was never keyed).
+	assert.match(
+		panel,
+		/<span className="sr-only">\{t\("ui\.chat\.aside\.question_label"\)\} <\/span>/,
+	);
 	// The sighted half: a visible speaker marker, `aria-hidden` so the two
 	// labels do not both reach a screen reader.
 	assert.match(
 		panel,
-		/aria-hidden=\{true\} className="me-1 text-meta text-ink-dim">\s*You:\s*<\/span>/,
+		/aria-hidden=\{true\} className="me-1 text-meta text-ink-dim">\s*\{t\("ui\.chat\.aside\.you_label"\)\}\{" "\}\s*<\/span>/,
 	);
 	/*
 	 * And it stays box-neutral: no block, no ground, no padding, no vertical
@@ -3564,7 +3569,7 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 	 * spellings proved safe on this line box are the only ones admitted.
 	 */
 	const marker = panel.match(
-		/<span aria-hidden=\{true\} className="([^"]*)">\s*You:/,
+		/<span aria-hidden=\{true\} className="([^"]*)">\s*\{t\("ui\.chat\.aside\.you_label"\)\}/,
 	);
 	assert.ok(marker, "the visible marker is one span with its own classes");
 	for (const token of marker[1].split(/\s+/)) {

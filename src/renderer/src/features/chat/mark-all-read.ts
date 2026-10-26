@@ -4,6 +4,7 @@ import {
 	unreadAckableRows,
 	unreadMarkKind,
 } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n";
 
 /*
  * The decisions behind the sidebar's bulk read receipt, kept out of the
@@ -155,9 +156,7 @@ export type MarkAllReadReceipt = {
  * paths cannot say two different things about one fact.
  */
 export const markAllReadDeferredSentence = (count: number): string =>
-	count === 1
-		? "1 lives on another device and clears when that device updates."
-		: `${count} live on other devices and clear when those devices update.`;
+	t("ui.notices.chat.mark_all_read_deferred", { count });
 
 /**
  * The receipt sentence for a bulk acknowledgement.
@@ -185,7 +184,10 @@ export const markAllReadReceipt = (
 	 * still showing marks (design N3).
 	 */
 	if (receipt.attempted === 0)
-		return { tone: "success", message: "Nothing to clear." };
+		return {
+			tone: "success",
+			message: t("ui.notices.chat.mark_all_read_nothing"),
+		};
 	/*
 	 * `unknown` MINUS `deferred`: the two sentences below would otherwise report
 	 * one item twice and, worse, report a deferral as a failure (see the type's
@@ -194,30 +196,27 @@ export const markAllReadReceipt = (
 	const unknown = receipt.unknown - receipt.deferred;
 	const remainder = [
 		receipt.superseded > 0
-			? `${receipt.superseded} ${
-					receipt.superseded === 1
-						? "has a newer result and stays"
-						: "have newer results and stay"
-				} unread.`
+			? t("ui.notices.chat.mark_all_read_superseded", {
+					count: receipt.superseded,
+				})
 			: null,
 		unknown > 0
-			? `${unknown} could not be cleared and ${
-					unknown === 1 ? "stays" : "stay"
-				} unread.`
+			? t("ui.notices.chat.mark_all_read_unknown", { count: unknown })
 			: null,
 		receipt.deferred > 0 ? markAllReadDeferredSentence(receipt.deferred) : null,
 	].filter((sentence): sentence is string => sentence !== null);
 	if (receipt.cleared === 0)
 		return {
 			tone: "warning",
-			message: ["Nothing was cleared.", ...remainder].join(" "),
+			message: [
+				t("ui.notices.chat.mark_all_read_none_cleared"),
+				...remainder,
+			].join(" "),
 		};
 	return {
 		tone: "success",
 		message: [
-			`Marked ${receipt.cleared} ${
-				receipt.cleared === 1 ? "chat" : "chats"
-			} as read.`,
+			t("ui.notices.chat.mark_all_read_cleared", { count: receipt.cleared }),
 			...remainder,
 		].join(" "),
 	};

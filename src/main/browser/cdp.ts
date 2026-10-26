@@ -1,3 +1,4 @@
+import { stopNetworkCapture } from "./actions/network";
 import { BrowserHostError } from "./errors";
 import {
 	hasLogCapture,
@@ -311,6 +312,7 @@ export class CdpPool {
 			attachment.detachedReason = reason || "detached";
 			// Child sessions die with the page's (measured: "No target available").
 			this.frames.delete(contents.id);
+			stopNetworkCapture(contents.id);
 			this.options.log?.(
 				`[browser] debugger detached from view ${contents.id}: ${reason}`,
 			);
@@ -568,6 +570,7 @@ export class CdpPool {
 		this.subscribers.delete(webContentsId);
 		this.frames.delete(webContentsId);
 		stopLogCapture(webContentsId);
+		stopNetworkCapture(webContentsId);
 	}
 
 	/** Detach cleanly: release the debugger session and the log buffer. */
@@ -578,6 +581,7 @@ export class CdpPool {
 		this.subscribers.delete(webContentsId);
 		this.frames.delete(webContentsId);
 		stopLogCapture(webContentsId);
+		stopNetworkCapture(webContentsId);
 		if (!attachment) return;
 		try {
 			if (attachment.contents.debugger.isAttached()) {

@@ -1,0 +1,13 @@
+stale reset commits [{"source":"snapshot-old","ids":["old-0","old-1","old-2","old-3","old-4","old-5","old-6","old-7","old-8","old-9","old-10","old-11","old-12","old-13","old-14","old-15","old-16","old-17","old-18","old-19","old-20","old-21","old-22","old-23"]},{"source":"live-new","ids":["old-0","old-1","old-2","old-3","old-4","old-5","old-6","old-7","old-8","old-9","old-10","old-11","old-12","old-13","old-14","old-15","old-16","old-17","old-18","old-19","old-20","old-21","old-22","old-23","live-new"]},{"source":"late-reset","ids":["old-0","old-1","old-2","old-3","old-4","old-5","old-6","old-7","old-8","old-9","old-10","old-11","old-12","old-13","old-14","old-15","old-16","old-17","old-18","old-19","old-20","old-21","old-22","old-23","live-new"]}]
+✔ a late reset replay cannot remove a newer live transcript tail (15.265125ms)
+✔ a stale reset in the same flush cannot remove a live row (5.690458ms)
+✔ a superseded subscription's queued frames commit nothing (4.771125ms)
+✔ a page read before a live write cannot rewrite the row, and a later read can (5.359333ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1302.6545

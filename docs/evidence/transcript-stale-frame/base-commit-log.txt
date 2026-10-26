@@ -1,0 +1,97 @@
+stale reset commits [{"source":"snapshot-old","ids":["old-0","old-1","old-2","old-3","old-4","old-5","old-6","old-7","old-8","old-9","old-10","old-11","old-12","old-13","old-14","old-15","old-16","old-17","old-18","old-19","old-20","old-21","old-22","old-23"]},{"source":"live-new","ids":["old-0","old-1","old-2","old-3","old-4","old-5","old-6","old-7","old-8","old-9","old-10","old-11","old-12","old-13","old-14","old-15","old-16","old-17","old-18","old-19","old-20","old-21","old-22","old-23","live-new"]},{"source":"late-reset","ids":["old-0","old-1","old-2","old-3","old-4","old-5","old-6","old-7","old-8","old-9","old-10","old-11","old-12","old-13","old-14","old-15","old-16","old-17","old-18","old-19","old-20","old-21","old-22","old-23"]}]
+✖ a late reset replay cannot remove a newer live transcript tail (14.480166ms)
+✖ a stale reset in the same flush cannot remove a live row (5.694583ms)
+✖ a superseded subscription's queued frames commit nothing (5.172041ms)
+✖ a page read before a live write cannot rewrite the row, and a later read can (3.131625ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 0
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 803.730792
+
+✖ failing tests:
+
+test at scripts/reconnect-page-gap.test.mjs:1032:1
+✖ a late reset replay cannot remove a newer live transcript tail (14.480166ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'old-23'
+  - 'live-new'
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/flicker/scripts/reconnect-page-gap.test.mjs:1079:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'old-23',
+    expected: 'live-new',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/reconnect-page-gap.test.mjs:1083:1
+✖ a stale reset in the same flush cannot remove a live row (5.694583ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'old-23'
+  - 'live-new'
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/flicker/scripts/reconnect-page-gap.test.mjs:1120:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'old-23',
+    expected: 'live-new',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/reconnect-page-gap.test.mjs:1123:1
+✖ a superseded subscription's queued frames commit nothing (5.172041ms)
+  AssertionError [ERR_ASSERTION]: a superseded connection cannot rewrite a newer answer
+  + actual - expected
+  
+  + 'x'
+  - 'The assembled answer, as the live stream ended it.'
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/flicker/scripts/reconnect-page-gap.test.mjs:1196:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'x',
+    expected: 'The assembled answer, as the live stream ended it.',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-reducer.test.mjs:4879:1
+✖ a page read before a live write cannot rewrite the row, and a later read can (3.131625ms)
+  AssertionError [ERR_ASSERTION]: the settled row keeps the frame that wrote it
+  + actual - expected
+  
+  + null
+  - {
+  -   epoch: 'e',
+  -   seq: 5
+  - }
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/flicker/scripts/transcript-reducer.test.mjs:4907:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: { epoch: 'e', seq: 5 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

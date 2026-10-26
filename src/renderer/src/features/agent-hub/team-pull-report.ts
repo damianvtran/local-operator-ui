@@ -1,3 +1,5 @@
+import { t } from "../../../../i18n";
+
 /**
  * What one team pull reports, from the WIRE's own fields.
  *
@@ -52,14 +54,23 @@ export const describePulledTeam = (
 	if (spellingWasAdjusted && publishedName) {
 		return {
 			level: "warning",
-			message: `Pulled "${storedName}". The published name "${publishedName}" is not usable locally, so the team was stored as "${storedName}".`,
+			message: t("ui.notices.hub.team_pulled_renamed", {
+				stored: storedName,
+				published: publishedName,
+			}),
 		};
 	}
 	if (publishedName) {
 		return {
 			level: "success",
-			message: `Pulled "${storedName}" (you already have a team called "${publishedName}").`,
+			message: t("ui.notices.hub.team_pulled_collision", {
+				stored: storedName,
+				published: publishedName,
+			}),
 		};
 	}
-	return { level: "success", message: `Pulled team "${storedName}".` };
+	return {
+		level: "success",
+		message: t("ui.notices.hub.team_pulled", { name: storedName }),
+	};
 };

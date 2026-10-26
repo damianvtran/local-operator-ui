@@ -1,4 +1,3 @@
-import { t } from "../../../../i18n/messages";
 /**
  * Hook for fetching and updating agent system prompt
  */
@@ -6,6 +5,7 @@ import { t } from "../../../../i18n/messages";
 import { systemPromptBudgetRefusal } from "@features/chat/utils/message-budget";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useConnectivityGate } from "./use-connectivity-gate";
@@ -117,7 +117,7 @@ export const useUpdateAgentSystemPrompt = (agentId: string) => {
 				queryKey: agentSystemPromptQueryKey(agentId),
 			});
 
-			showSuccessToast(t("ui.common.actions.agent_system_prompt_updated"));
+			showSuccessToast(t("ui.notices.agents.system_prompt_updated"));
 		},
 		onError: (error) => {
 			console.error("Error updating agent system prompt:", error);

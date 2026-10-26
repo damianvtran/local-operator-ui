@@ -10,5 +10,19 @@
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Убрано — решено в чате",
 	"ui.chat.asks.dismiss.receipt.moot": "Убрано — больше не нужно",
 	"ui.chat.asks.dismiss.refused": "Не удалось убрать этот запрос — ничего не отправлено.",
-	"ui.chat.asks.dismiss.trigger": "Убрать…"
+	"ui.chat.asks.dismiss.trigger": "Убрать…",
+	"ui.chat.asks.other_label": "Другое",
+	"ui.chat.asks.urgent": "Срочно.",
+	"ui.chat.asks.no_answer": "Ответ не дан",
+	"ui.chat.asks.changed_handoff": "Изменено — агенту ещё не передано.",
+	"ui.chat.asks.send_answer": "Отправить ответ",
+	"ui.chat.asks.decline": "Отклонить",
+	"ui.chat.asks.update_answer": "Обновить ответ",
+	"ui.chat.asks.cancel": "Отмена",
+	"ui.chat.asks.change_answer": "Изменить ответ",
+	"ui.chat.asks.filter_label": "Фильтр запросов",
+	"ui.chat.asks.settled_heading": "Решённые",
+	"ui.chat.asks.close_asks": "Закрыть панель запросов",
+	"ui.chat.asks.all_asks": "Все запросы",
+	"ui.chat.asks.conversation_asks": "Запросы этого разговора"
 }
