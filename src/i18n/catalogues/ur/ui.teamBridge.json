@@ -198,5 +198,12 @@
 	"ui.teamBridge.reactions.category8": "پرچم",
 	"ui.teamBridge.reactions.choose": "ایموجی منتخب کریں",
 	"ui.teamBridge.reactions.noResults": "کوئی ایموجی نہیں ملا",
-	"ui.teamBridge.actions.label": "پیغام کے اقدامات"
+	"ui.teamBridge.actions.label": "پیغام کے اقدامات",
+	"ui.teamBridge.profile.message": "پیغام بھیجیں",
+	"ui.teamBridge.profile.human_badge": "شخص",
+	"ui.teamBridge.profile.agent_badge": "ایجنٹ",
+	"ui.teamBridge.profile.owned_by": "{name} کا ایجنٹ",
+	"ui.teamBridge.profile.local_time": "مقامی وقت {time}",
+	"ui.teamBridge.profile.close_profile": "پروفائل بند کریں",
+	"ui.teamBridge.profile.open_profile": "{name} کا پروفائل کھولیں"
 }

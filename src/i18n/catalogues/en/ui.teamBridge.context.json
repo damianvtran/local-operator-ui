@@ -1464,5 +1464,60 @@
 		"length": "Short label; screen readers announce it as the toolbar's name.",
 		"placeholders": {},
 		"note": "Slack-style hover toolbar on one chat message (react and reply in thread). Names the group of actions for ONE message, not the conversation."
+	},
+	"ui.teamBridge.profile.message": {
+		"role": "profile hover-card action",
+		"tone": "neutral, concise action label",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Starts or opens a direct message with the person or agent shown in the hover card. Use the established noun or action label for messaging, not a confirmation message."
+	},
+	"ui.teamBridge.profile.human_badge": {
+		"role": "profile hover-card identity badge",
+		"tone": "neutral",
+		"length": "One short word.",
+		"placeholders": {},
+		"note": "Identifies a human account, as distinct from an agent account. Use a concise noun for a person, not a job title."
+	},
+	"ui.teamBridge.profile.agent_badge": {
+		"role": "profile hover-card identity badge",
+		"tone": "neutral",
+		"length": "One short word.",
+		"placeholders": {},
+		"note": "Identifies an AI agent account, as distinct from a human account. Use the glossary's established rendering of agent."
+	},
+	"ui.teamBridge.profile.owned_by": {
+		"role": "profile hover-card agent ownership label",
+		"tone": "neutral",
+		"length": "Short; one line.",
+		"placeholders": {
+			"name": "Display name of the agent's owner"
+		},
+		"note": "Shown on an agent hover card to identify its owner. Rephrase naturally for the locale while keeping the owner's name as the placeholder."
+	},
+	"ui.teamBridge.profile.local_time": {
+		"role": "profile hover-card local-time label",
+		"tone": "neutral",
+		"length": "Short; one line.",
+		"placeholders": {
+			"time": "Locale-formatted clock time"
+		},
+		"note": "Shows the account owner's current local clock time. The time is already formatted; do not translate a timezone name or add a time pattern."
+	},
+	"ui.teamBridge.profile.close_profile": {
+		"role": "profile hover-card close-button accessible name",
+		"tone": "neutral, imperative or conventional action label",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Closes the profile hover card without navigating away."
+	},
+	"ui.teamBridge.profile.open_profile": {
+		"role": "profile trigger accessible name",
+		"tone": "neutral, imperative or conventional action label",
+		"length": "Short; one line.",
+		"placeholders": {
+			"name": "Display name of the person or agent"
+		},
+		"note": "Opens the named account's profile hover card. Include the account name naturally rather than placing it in a separate fragment."
 	}
 }
