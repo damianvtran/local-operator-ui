@@ -16,10 +16,11 @@
  * established again.
  */
 import assert from "node:assert/strict";
-import { mkdtempSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -81,13 +82,17 @@ const bundled = await build({
 	},
 });
 
-// Written beside the script rather than handed to `import()` as a data URL: the
-// bundle keeps bare package imports (`intl-messageformat` reaches the hook
-// through the message catalogue), and a data: module cannot resolve those.
-const bundlePath = new URL(
-	`./_radient-signout-authority-${process.pid}.mjs`,
-	import.meta.url,
+// Written under `node_modules/.cache/`, not beside this script: the bundle keeps
+// bare package imports (`intl-messageformat` reaches the hook through the message
+// catalogue) which a data: module cannot resolve, but a file under `scripts/` is
+// a file the harness scan walks - and reading one while it is being removed is
+// the ENOENT that reddened shard 0. Same convention as `chat-sidebar-pins`.
+const bundleDir = join(
+	process.cwd(),
+	"node_modules/.cache/radient-signout-authority",
 );
+mkdirSync(bundleDir, { recursive: true });
+const bundlePath = join(bundleDir, `signout-authority-${process.pid}.mjs`);
 writeFileSync(bundlePath, bundled.outputFiles[0].text);
 
 /** A jsdom page whose only preload capability is the accounts bridge. */
@@ -119,7 +124,7 @@ const mountIn = async (request) => {
 
 	// One instance for both cases: the authority journal is keyed by QueryClient,
 	// so a shared module is the shipped arrangement, not a shortcut.
-	const module = await import(bundlePath.href);
+	const module = await import(pathToFileURL(bundlePath).href);
 	const client = new QueryClient({
 		defaultOptions: {
 			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
