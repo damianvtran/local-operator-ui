@@ -4922,8 +4922,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
-			"target_sha256": "a6cbec42e47929f5655ba65b5bc2b4602758295ce70bd87c0232d12e90c9c952",
+			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+			"target_sha256": "c67f520c7a8bd63adc9c345a066fd48f5a4f053b15008e15cda3c31ef660a0ae",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -4939,19 +4939,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "51e7fd6748ed",
+					"result": "clean",
+					"instance": "e2cc7b3bceb8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/51e7fd6748ed.json",
-					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
-					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 				}
 			],
 			"status": "audited",
@@ -5592,6 +5593,29 @@
 							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
 							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
 							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+					"target_sha256": "a6cbec42e47929f5655ba65b5bc2b4602758295ce70bd87c0232d12e90c9c952",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "51e7fd6748ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/51e7fd6748ed.json",
+							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 						}
 					],
 					"status": "audited"
@@ -10912,8 +10936,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
-			"target_sha256": "6b1d333ec0301f509457ea95db8dd2bc51d1c85c3620e0ef027f30b32ab9c30a",
+			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+			"target_sha256": "3344e2c95a1e680faea87b80f5e300993e8e09886c3957527215f7adbb9bb31e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -10930,19 +10954,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "51e7fd6748ed",
+					"result": "clean",
+					"instance": "e2cc7b3bceb8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/51e7fd6748ed.json",
-					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
-					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 				}
 			],
 			"status": "audited",
@@ -11607,6 +11632,29 @@
 							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
 							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
 							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+					"target_sha256": "6b1d333ec0301f509457ea95db8dd2bc51d1c85c3620e0ef027f30b32ab9c30a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "51e7fd6748ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/51e7fd6748ed.json",
+							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 						}
 					],
 					"status": "audited"
@@ -16835,8 +16883,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
-			"target_sha256": "cf0dfe8b38a1078b498ad262d57a8106424043f85a2221218392b699bccd145a",
+			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+			"target_sha256": "b1bf7041eb38fbae9f387483a14c48a05162183cc014bceec249d3875d7893d9",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -16852,19 +16900,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "51e7fd6748ed",
+					"result": "clean",
+					"instance": "e2cc7b3bceb8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/51e7fd6748ed.json",
-					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
-					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 				}
 			],
 			"status": "audited",
@@ -17452,6 +17501,29 @@
 							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
 							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
 							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+					"target_sha256": "cf0dfe8b38a1078b498ad262d57a8106424043f85a2221218392b699bccd145a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "51e7fd6748ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/51e7fd6748ed.json",
+							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 						}
 					],
 					"status": "audited"
@@ -22454,7 +22526,7 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
 			"target_sha256": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
 			"translator": {
 				"agent": "translator",
@@ -22472,19 +22544,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "51e7fd6748ed",
+					"result": "clean",
+					"instance": "e2cc7b3bceb8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/51e7fd6748ed.json",
-					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
-					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 				}
 			],
 			"status": "audited",
@@ -23103,6 +23176,29 @@
 							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
 							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
 							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+					"target_sha256": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "51e7fd6748ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/51e7fd6748ed.json",
+							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 						}
 					],
 					"status": "audited"
@@ -28188,8 +28284,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
-			"target_sha256": "a769a7be043183de9ba33aec506ec7eb307214c4a31e3329c1d2d7b077d15153",
+			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+			"target_sha256": "660c884b54d3a9b8e6b61679e594c3a6b8bae4285de86ef921b31526f0392db9",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -28205,19 +28301,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "51e7fd6748ed",
+					"result": "clean",
+					"instance": "e2cc7b3bceb8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/51e7fd6748ed.json",
-					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
-					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 				}
 			],
 			"status": "audited",
@@ -28805,6 +28902,29 @@
 							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
 							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
 							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+					"target_sha256": "a769a7be043183de9ba33aec506ec7eb307214c4a31e3329c1d2d7b077d15153",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "51e7fd6748ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/51e7fd6748ed.json",
+							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 						}
 					],
 					"status": "audited"
@@ -34086,7 +34206,7 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
 			"target_sha256": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
 			"translator": {
 				"agent": "translator",
@@ -34103,19 +34223,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "51e7fd6748ed",
+					"result": "clean",
+					"instance": "e2cc7b3bceb8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/51e7fd6748ed.json",
-					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
-					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 				}
 			],
 			"status": "audited",
@@ -34734,6 +34855,29 @@
 							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
 							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
 							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+					"target_sha256": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "51e7fd6748ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/51e7fd6748ed.json",
+							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 						}
 					],
 					"status": "audited"
@@ -40610,8 +40754,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
-			"target_sha256": "8d7ef1f10f59a92087648c944d46df8d6b6adad1088854ba6b379169eb50631f",
+			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+			"target_sha256": "716bc20303a644f41f8560505768c80216a17db4c9cdad69fd09dc866f9051c5",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -40627,19 +40771,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "51e7fd6748ed",
+					"result": "clean",
+					"instance": "e2cc7b3bceb8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/51e7fd6748ed.json",
-					"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
-					"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 				}
 			],
 			"status": "audited",
@@ -41280,6 +41425,29 @@
 							"receipt_sha256": "82b4fc515e144c061df298af6dff104c2b8cd8f77cc2210a494d82c8441576ed",
 							"scope": "Seven profile keys; prior namespace audit retained for unchanged keys",
 							"note": "R2: zero blocker/major; six minor/nit findings remain in immutable receipts and will be enumerated in the forthcoming PR body. No catalogue bytes changed between rounds."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "716f9d8210be3b42ea1e8e690caf372ef8a65bb51df73eb75b8e573690366ea1",
+					"target_sha256": "8d7ef1f10f59a92087648c944d46df8d6b6adad1088854ba6b379169eb50631f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "51e7fd6748ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/51e7fd6748ed.json",
+							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
+							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
 						}
 					],
 					"status": "audited"
