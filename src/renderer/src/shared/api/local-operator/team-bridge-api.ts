@@ -157,14 +157,30 @@ export const TeamBridgeApi = {
 	 */
 	async listConversations(
 		scope: TeamBridgeReadScope,
+		status?: "archived",
 	): Promise<TeamBridgeConversationList> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.list",
 			...(scope === "account"
 				? { scope: "account" }
 				: { tenant_id: scope.tenantId }),
+			// Sent only when asked: the live list's request stays byte-identical.
+			...(status ? { status } : {}),
 		});
-		return teamBridgeConversationListSchema.parse(answer);
+		const page = teamBridgeConversationListSchema.parse(answer);
+		/*
+		 * A server older than the `status` parameter ignores it and answers the LIVE
+		 * list. Filter here so such a server shows an empty archive instead of every
+		 * open channel under the "Archived channels" heading.
+		 */
+		return status
+			? {
+					...page,
+					conversations: page.conversations.filter(
+						(row) => row.status === status,
+					),
+				}
+			: page;
 	},
 
 	async getConversation(
@@ -465,6 +481,26 @@ export const TeamBridgeApi = {
 			op: "team_bridge.conversations.lifecycle",
 			conversation_id: conversationId,
 			action: archive ? "archive" : "unarchive",
+			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
+		});
+	},
+
+	/**
+	 * PERMANENTLY delete an ARCHIVED conversation. Irreversible.
+	 *
+	 * Carries the captured-owner receipt like every conversation write, so the call
+	 * is refused before dispatch if the signed-in account changed since the person
+	 * confirmed. The server decides who may delete and refuses an open or built-in
+	 * conversation; a repeat after completion answers `conversation_not_found`.
+	 */
+	async deleteConversation(
+		conversationId: string,
+		tenantId?: string,
+		expectedAccountId?: string,
+	): Promise<unknown> {
+		return desktopResult<unknown>({
+			op: "team_bridge.conversations.delete",
+			conversation_id: conversationId,
 			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
 		});
 	},

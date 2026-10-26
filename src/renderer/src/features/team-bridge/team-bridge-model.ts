@@ -193,6 +193,92 @@ export function withNotificationPreference(
 	};
 }
 
+/*
+ * ARCHIVE / PERMANENT DELETE (agent-server radient-ml/agent-server#219).
+ *
+ * WHY THESE ARE GATED ON THE SERVER'S `can_administer` AND NOT ON A ROLE. The
+ * rule for who may archive is the server's (conversation owner, or an
+ * organization owner/admin on a channel) and it is enforced again on every
+ * request. Re-deriving it here from `created_by` or a membership role would be a
+ * second copy that drifts, and a button the server then refuses. A server that
+ * predates the field sends none, and the menus then offer nothing.
+ *
+ * ONLY CHANNELS. The server lets a DM or group owner archive their own, but the
+ * product surface is channels ("Archive channel"); a DM has no sidebar section
+ * to leave and no name to type, so the UI does not offer it. Built-ins can never
+ * be archived or deleted (the server refuses both), so the button is not drawn.
+ */
+export function canArchiveConversation(
+	conversation: Pick<
+		TeamBridgeConversation,
+		"kind" | "status" | "builtin" | "can_administer"
+	>,
+): boolean {
+	return (
+		conversation.kind === "channel" &&
+		conversation.status === "open" &&
+		!conversation.builtin &&
+		conversation.can_administer === true
+	);
+}
+
+/** Unarchive and permanent delete: the archived-side counterpart of the above. */
+export function canManageArchivedConversation(
+	conversation: Pick<
+		TeamBridgeConversation,
+		"kind" | "status" | "builtin" | "can_administer"
+	>,
+): boolean {
+	return (
+		conversation.kind === "channel" &&
+		conversation.status === "archived" &&
+		!conversation.builtin &&
+		conversation.can_administer === true
+	);
+}
+
+const sameRow = (
+	row: TeamBridgeConversation,
+	conversationId: string,
+	tenantId?: string,
+) => row.id === conversationId && (!tenantId || row.tenant_id === tenantId);
+
+/**
+ * The page without one conversation: the optimistic half of an archive.
+ *
+ * The row leaves the sidebar the moment the person confirms; a refusal restores
+ * the exact snapshot the mutation took, so this never has to know how to put a
+ * row back. Paging fields are preserved for the same reason
+ * `withNotificationPreference` preserves them.
+ */
+export function withoutConversation(
+	page: TeamBridgeConversationList,
+	conversationId: string,
+	tenantId?: string,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.filter(
+			(row) => !sameRow(row, conversationId, tenantId),
+		),
+	};
+}
+
+/** The page with one conversation's lifecycle flipped (an unarchive keeps the row on screen). */
+export function withConversationStatus(
+	page: TeamBridgeConversationList,
+	conversationId: string,
+	status: TeamBridgeConversation["status"],
+	tenantId?: string,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			sameRow(row, conversationId, tenantId) ? { ...row, status } : row,
+		),
+	};
+}
+
 /**
  * Whether a refused notification write belongs to the visible conversation.
  *

@@ -1,0 +1,186 @@
+{
+	"ui.teamBridge.archive.menu.archive": {
+		"role": "menu item",
+		"tone": "plain, action",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Archives a channel. Sentence case; the noun \"channel\" names a Slack-style group chat."
+	},
+	"ui.teamBridge.archive.section.menu": {
+		"role": "accessible name of an icon-only menu button",
+		"tone": "plain",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Names the \"...\" button on the Channels section header; screen-reader only."
+	},
+	"ui.teamBridge.archive.section.archived": {
+		"role": "menu item and page heading",
+		"tone": "plain, noun phrase",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Opens the list of archived channels. Also the heading of that list."
+	},
+	"ui.teamBridge.archive.confirm.title": {
+		"role": "dialog title",
+		"tone": "plain, question",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {
+			"name": "name"
+		},
+		"note": "{name} is a channel name WITHOUT the leading #. The # before it is part of this message and must stay."
+	},
+	"ui.teamBridge.archive.confirm.body": {
+		"role": "dialog body, two short sentences",
+		"tone": "calm, factual, reassuring",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "States consequences of archiving: read access stays, posting stops, reversible."
+	},
+	"ui.teamBridge.archive.confirm.confirm": {
+		"role": "primary button label",
+		"tone": "plain, action",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Confirms archiving. Same words as the menu item."
+	},
+	"ui.teamBridge.archive.confirm.error": {
+		"role": "inline error under the dialog",
+		"tone": "neutral, non-blaming",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Archive request failed. One short sentence plus a retry hint."
+	},
+	"ui.teamBridge.archive.banner.by_on": {
+		"role": "read-only banner sentence",
+		"tone": "factual",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {
+			"name": "name",
+			"date": "date"
+		},
+		"note": "{name} is the display name of the person who archived it; {date} is a localized date and time. Word order may change."
+	},
+	"ui.teamBridge.archive.banner.on": {
+		"role": "read-only banner sentence",
+		"tone": "factual",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {
+			"date": "date"
+		},
+		"note": "Used when the archiver is unknown. {date} is a localized date and time."
+	},
+	"ui.teamBridge.archive.banner.plain": {
+		"role": "read-only banner sentence",
+		"tone": "factual",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Used when neither archiver nor date is known."
+	},
+	"ui.teamBridge.archive.banner.unarchive": {
+		"role": "button label",
+		"tone": "plain, action",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Restores the channel to the sidebar so people can post again."
+	},
+	"ui.teamBridge.archive.banner.delete": {
+		"role": "destructive button label",
+		"tone": "plain, action, serious",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Opens the permanent-deletion confirmation. Must read as irreversible."
+	},
+	"ui.teamBridge.archive.banner.unarchive_error": {
+		"role": "inline error",
+		"tone": "neutral, non-blaming",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Unarchive failed."
+	},
+	"ui.teamBridge.archive.composer.note": {
+		"role": "quiet note replacing the message box",
+		"tone": "factual",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Shown where the composer would be on an archived channel."
+	},
+	"ui.teamBridge.archive.delete.title": {
+		"role": "dialog title, destructive",
+		"tone": "serious, question",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {
+			"name": "name"
+		},
+		"note": "{name} is the channel name WITHOUT the leading #. The # is part of this message."
+	},
+	"ui.teamBridge.archive.delete.body": {
+		"role": "dialog body, destructive",
+		"tone": "serious, plain, complete",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Must state that messages, threads, reactions AND attachments are erased and that this cannot be undone or recovered. Do not soften."
+	},
+	"ui.teamBridge.archive.delete.confirm_label": {
+		"role": "label of a text field",
+		"tone": "plain, instruction",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {
+			"name": "name"
+		},
+		"note": "{name} is the exact channel name the person must type to enable deletion. Keep {name} verbatim."
+	},
+	"ui.teamBridge.archive.delete.confirm": {
+		"role": "destructive primary button label",
+		"tone": "plain, action, serious",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Performs the permanent deletion. Same words as the banner button."
+	},
+	"ui.teamBridge.archive.delete.error": {
+		"role": "inline error",
+		"tone": "neutral, non-blaming",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Delete request failed."
+	},
+	"ui.teamBridge.archive.list.empty": {
+		"role": "empty state sentence",
+		"tone": "quiet, factual",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "No archived channels exist for this reader."
+	},
+	"ui.teamBridge.archive.list.loading": {
+		"role": "accessible loading label",
+		"tone": "plain",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "Screen-reader label for a spinner."
+	},
+	"ui.teamBridge.archive.list.error": {
+		"role": "error state sentence",
+		"tone": "neutral, non-blaming",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {},
+		"note": "The archived list could not be read. A Try again button follows."
+	},
+	"ui.teamBridge.archive.list.meta_by_on": {
+		"role": "row second line",
+		"tone": "factual, compact",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {
+			"name": "name",
+			"date": "date"
+		},
+		"note": "{name} archiver display name, {date} localized date."
+	},
+	"ui.teamBridge.archive.list.meta_on": {
+		"role": "row second line",
+		"tone": "factual, compact",
+		"length": "Short; fit the dialog or one rail line.",
+		"placeholders": {
+			"date": "date"
+		},
+		"note": "Used when the archiver is unknown."
+	}
+}

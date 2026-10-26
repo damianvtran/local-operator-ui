@@ -3464,6 +3464,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* The account page's opaque cursor; the tenant page uses `before`. */
 			cursor: z.string().min(1).max(64).optional(),
 			before: z.string().min(1).max(64).optional(),
+			/*
+			 * The lifecycle half (agent-server `status`). Omitted is the live list and
+			 * adds nothing to the route, so an older server sees the request it always
+			 * saw. `archived` is the Archived channels surface; what an organization
+			 * administrator may see there is the server's rule, not this client's.
+			 */
+			status: z.enum(["open", "archived"]).optional(),
 		})
 		.strict(),
 	z
@@ -3562,6 +3569,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id.optional(),
 			conversation_id: id,
 			account_id: id,
+		})
+		.strict(),
+	/*
+	 * PERMANENT deletion of an ARCHIVED conversation (agent-server DELETE
+	 * /messaging/conversations/{id}). Irreversible, so it carries the same
+	 * captured-owner receipt as every other conversation write: the call is refused
+	 * before dispatch if the signed-in account is no longer the one that captured
+	 * the screen the person confirmed on. The server alone decides who may delete.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.delete"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
+			conversation_id: id,
 		})
 		.strict(),
 	z
@@ -8956,6 +8978,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 				query.set("limit", String(request.limit));
 			if (request.cursor) query.set("cursor", request.cursor);
 			if (request.before) query.set("before", request.before);
+			if (request.status) query.set("status", request.status);
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
 				path: `/v1/desktop/team-bridge/conversations${suffix}`,
@@ -9046,6 +9069,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 				body: request.members,
 			};
 		}
+		case "team_bridge.conversations.delete":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}${conversationOwnerQuery(request)}`,
+				method: "DELETE",
+			};
 		case "team_bridge.conversations.members.remove":
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members/${encodeURIComponent(request.account_id)}${conversationOwnerQuery(request)}`,

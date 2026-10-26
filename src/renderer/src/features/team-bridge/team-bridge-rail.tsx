@@ -10,6 +10,7 @@ import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
+	Archive,
 	AtSign,
 	BellOff,
 	Bot,
@@ -111,7 +112,21 @@ export const RailSection: FC<{
 	 * Revealed on hover/focus of the header so a resting rail stays quiet.
 	 */
 	add?: { label: string; onAdd: () => void };
-}> = ({ id, title, children, empty, add }) => {
+	/**
+	 * The section header's "…" (Slack's channel-section menu). It holds the
+	 * section's secondary destinations, today "Archived channels". Revealed like
+	 * the "+" so a resting rail stays quiet, and it stays visible while open.
+	 */
+	menu?: {
+		label: string;
+		items: ReadonlyArray<{
+			key: string;
+			label: string;
+			icon?: ReactNode;
+			onSelect: () => void;
+		}>;
+	};
+}> = ({ id, title, children, empty, add, menu }) => {
 	useI18nLocale();
 	return (
 		<section aria-labelledby={id} className="px-1 pb-1">
@@ -122,6 +137,33 @@ export const RailSection: FC<{
 				>
 					{title}
 				</h2>
+				{menu && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								aria-label={menu.label}
+								title={menu.label}
+								className="flex size-5 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/section:opacity-100 data-[state=open]:opacity-100"
+							>
+								<MoreHorizontal size={13} aria-hidden="true" />
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							align="start"
+							side="right"
+							/* Borderless chrome, as the row menu: the menu rises on its shadow. */
+							className="border-transparent shadow-lg"
+						>
+							{menu.items.map((item) => (
+								<DropdownMenuItem key={item.key} onSelect={item.onSelect}>
+									{item.icon}
+									{item.label}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
 				{add && (
 					<button
 						type="button"
@@ -168,6 +210,12 @@ export const ConversationRailRow: FC<{
 	 */
 	organizationName?: string;
 	onSelect: () => void;
+	/**
+	 * Offered only when the caller may archive this channel (the page decides from
+	 * the server's `can_administer`). Opens the confirm dialog; the row itself
+	 * never archives.
+	 */
+	onArchive?: () => void;
 }> = ({
 	hasDraft = false,
 	conversation,
@@ -176,6 +224,7 @@ export const ConversationRailRow: FC<{
 	title,
 	organizationName,
 	onSelect,
+	onArchive,
 }) => {
 	const locale = useI18nLocale();
 	const Icon =
@@ -192,7 +241,7 @@ export const ConversationRailRow: FC<{
 	const unread = conversation.unread_count;
 	const lastActive = lastActiveTooltip(conversation.last_message_at, locale);
 	return (
-		<li>
+		<li className="group/row relative">
 			<button
 				type="button"
 				onClick={onSelect}
@@ -246,11 +295,45 @@ export const ConversationRailRow: FC<{
 						</span>
 					</span>
 				)}
-				<Unread count={unread} />
+				<Unread count={unread} yieldsToMenu={Boolean(onArchive)} />
 			</button>
+			{onArchive && <ChannelRowMenu name={name} onArchive={onArchive} />}
 		</li>
 	);
 };
+
+/**
+ * The "…" on a channel row you may archive. Same slot, reveal and chrome as the
+ * person row's menu, so the rail has one hover affordance. A right-click is not
+ * bound (the desktop shell owns the native context menu), which is why the
+ * request for "right-click/hover" is met by the hover/focus form only.
+ */
+const ChannelRowMenu: FC<{ name: string; onArchive: () => void }> = ({
+	name,
+	onArchive,
+}) => (
+	<DropdownMenu>
+		<DropdownMenuTrigger asChild>
+			<button
+				type="button"
+				aria-label={t("ui.teamBridge.row.menu", { name })}
+				className="absolute end-1.5 top-[3px] flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
+			>
+				<MoreHorizontal size={14} aria-hidden="true" />
+			</button>
+		</DropdownMenuTrigger>
+		<DropdownMenuContent
+			align="start"
+			side="right"
+			className="border-transparent shadow-lg"
+		>
+			<DropdownMenuItem onSelect={onArchive}>
+				<Archive size={14} aria-hidden="true" />
+				{t("ui.teamBridge.archive.menu.archive")}
+			</DropdownMenuItem>
+		</DropdownMenuContent>
+	</DropdownMenu>
+);
 
 /**
  * The "…" on a reachable row. It sits in the row's trailing slot, revealed by
