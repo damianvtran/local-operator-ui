@@ -2048,14 +2048,15 @@ export const FourMembersThreeInvited: Story = {
 	},
 };
 
-/** The reader's own chief of staff in the picker and the Chiefs of staff
- * section. The server's DisplayAgentName falls back to the person's name when
- * the endpoint has no agent_name, so this one reads "Damian Tran’s chief of
- * staff"; `OwnChiefNamed` is the published-name case, "Aida (Damian Tran)".
+/**
+ * The reader HAS an enrolled agent ("Aida"), and neither the picker nor the
+ * Chiefs of staff section offers it (review R1-2 on #1441): a bridge DM with
+ * your own agent stays `invited` and muted on the hub, so its messages would
+ * post and never be delivered. See `chiefsOfStaff`.
  */
-export const OwnChiefServerFallback: Story = {
-	// Keep the real picker controlled so browser QA can select/remove an agent
-	// and verify that its human owner is never implicitly added to the draft.
+export const OwnChiefWithheld: Story = {
+	// The real picker, controlled, so browser QA can open it and confirm the
+	// reader's own agent is not among the options.
 	render: function OwnChiefPicker(args) {
 		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
 		return (
@@ -2064,21 +2065,8 @@ export const OwnChiefServerFallback: Story = {
 	},
 	args: {
 		...PersonDraft.args,
-		people: rosterWithChiefs.map((person) =>
-			person.account_id === self && person.agent
-				? { ...person, agent: { ...person.agent, name: person.display_label } }
-				: person,
-		),
-		target: { type: "compose", recipients: [] },
-	},
-};
-
-/** The same real picker with the endpoint's own agent name published. */
-export const OwnChiefNamed: Story = {
-	render: OwnChiefServerFallback.render,
-	args: {
-		...OwnChiefServerFallback.args,
 		people: rosterWithChiefs,
+		target: { type: "compose", recipients: [] },
 	},
 };
 
@@ -2151,19 +2139,39 @@ export const ChiefLabelNamedAgent: Story = {
 };
 
 /**
- * A first send to the reader's own chief, through the real create serializer
+ * A first send to a teammate's chief, through the real create serializer
  * (`draftCreateInput`), read back by the real view. The payload is printed so
- * a reviewer can see the stored `display_label` is a bare name ("Aida", or the
- * owner's name when unnamed), never the composed label. In-memory fixture: it
- * claims nothing about the container glue or a live backend.
+ * a reviewer can see the sent `display_label` is a bare name ("Aida", or the
+ * owner's name when unnamed), never the composed label.
+ *
+ * The fixture stores what the HUB stores, not what was sent (review R1-1 on
+ * #1441): agent-server rewrites a label equal to the owner's name to
+ * "{person}'s chief of staff" (`agentMemberLabel`), and the read path must
+ * still render that once, not "Ben Tran's chief of staff (Ben Tran)".
+ * In-memory fixture: it claims nothing about the container glue or a live
+ * backend.
  */
-export const OwnChiefCreateReadRoundTrip: Story = {
-	args: OwnChiefServerFallback.args,
-	render: function OwnChiefRoundTrip(args) {
+export const ChiefCreateReadRoundTrip: Story = {
+	args: {
+		...PersonDraft.args,
+		people: echoedRoster,
+		target: { type: "compose", recipients: [] },
+	},
+	render: function ChiefRoundTrip(args) {
 		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
 		const [created, setCreated] = useState<TeamBridgeConversation | null>(null);
 		const [confirmed, setConfirmed] = useState<TeamBridgeMessage[]>([]);
 		const [wire, setWire] = useState<ReturnType<typeof draftCreateInput>>(null);
+		// The hub's write-path rewrite (agent-server `agentMemberLabel`, ASCII
+		// apostrophe): a label equal to the owner's own name is degenerate.
+		const hubStored = (accountId: string, label: string) => {
+			const owner = (args.people ?? []).find(
+				(row) => row.account_id === accountId,
+			)?.display_label;
+			return owner && label.trim() === owner
+				? `${owner}'s chief of staff`
+				: label;
+		};
 		return (
 			<div className="flex h-full flex-col">
 				<output
@@ -2186,11 +2194,16 @@ export const OwnChiefCreateReadRoundTrip: Story = {
 						setWire(input);
 						const conversation: TeamBridgeConversation = {
 							...dm,
-							id: "bcv_self_roundtrip",
+							id: "bcv_chief_roundtrip",
 							tenant_id: "tnt_1",
 							kind: input.kind,
 							name: "",
 							agent_capable: input.agentCapable,
+							// The reader just started this thread: nothing is unread
+							// (design review D3 on #1441).
+							unread_count: 0,
+							last_read_seq: 1,
+							latest_seq: 1,
 							members: [
 								{
 									account_id: self,
@@ -2202,7 +2215,10 @@ export const OwnChiefCreateReadRoundTrip: Story = {
 								...input.members.map((member) => ({
 									account_id: member.account_id,
 									kind: member.kind,
-									display_label: member.display_label ?? "",
+									display_label:
+										member.kind === "agent"
+											? hubStored(member.account_id, member.display_label ?? "")
+											: (member.display_label ?? ""),
 									role: "member" as const,
 									state: "invited" as const,
 								})),
@@ -2211,7 +2227,7 @@ export const OwnChiefCreateReadRoundTrip: Story = {
 						setCreated(conversation);
 						setConfirmed([
 							{
-								id: "bcmsg_self_roundtrip",
+								id: "bcmsg_chief_roundtrip",
 								conversation_id: conversation.id,
 								seq: 1,
 								sender: {
@@ -2232,7 +2248,8 @@ export const OwnChiefCreateReadRoundTrip: Story = {
 	},
 };
 
-export const OwnChiefNamedCreateReadRoundTrip: Story = {
-	render: OwnChiefCreateReadRoundTrip.render,
-	args: { ...OwnChiefNamed.args },
+/** The same, with the teammate's agent name published: "Aida (Ben Tran)". */
+export const ChiefNamedCreateReadRoundTrip: Story = {
+	render: ChiefCreateReadRoundTrip.render,
+	args: { ...ChiefCreateReadRoundTrip.args, people: rosterWithChiefs },
 };

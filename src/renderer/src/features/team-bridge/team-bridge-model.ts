@@ -708,10 +708,24 @@ export function personInitial(displayLabel: string): string {
  * caller through the `chief.label` catalogue key ("{agent} ({person})"), so a
  * locale may reorder or re-punctuate it.
  *
- * WHO IS LISTED. Every person whose agent is enrolled and not disabled,
- * including the reader. Human and agent are distinct Bridge entities even
- * when they share an account id; the human row's "you" marker must not hide
- * its agent. Endpoint presence/state remains the gate, never a display name.
+ * WHO IS LISTED. Every OTHER person whose agent is enrolled and not disabled.
+ * Endpoint presence/state is the gate, never a display name.
+ *
+ * WHY THE READER'S OWN AGENT IS WITHHELD (review R1-2 on #1441). A bridge DM
+ * with your own chief of staff never reaches it today:
+ * - the hub's create-time admission skips a creator's own agent
+ *   (`admitDirectAgent`: `agent.AccountID == creatorID`), so it stays
+ *   `invited`;
+ * - the owner's consent route would activate it, but leaves the agent's
+ *   default `notify: mute`, and the hub's delivery rule
+ *   (`BridgeConversationFeedRecipients`) wakes a muted agent only on a
+ *   structured mention, which this composer never sends;
+ * - lifting the mute is the endpoint-addressed notify route, which the runtime
+ *   does not proxy, and auto-unmuting would break the default-mute rule.
+ * Offering the row would therefore create a conversation whose messages post
+ * and are silently never delivered. Restore it only once the hub admits the
+ * creator's own agent active with `notify: all` (or the UI can consent AND opt
+ * it in through a supported route).
  */
 export type TeamBridgeChiefOfStaff = {
 	person: TeamBridgeDirectoryMember;
@@ -722,10 +736,11 @@ export type TeamBridgeChiefOfStaff = {
 
 export function chiefsOfStaff(
 	people: readonly TeamBridgeDirectoryMember[],
-	_selfAccountId?: string,
+	selfAccountId?: string,
 ): TeamBridgeChiefOfStaff[] {
 	const chiefs: TeamBridgeChiefOfStaff[] = [];
 	for (const person of people) {
+		if (selfAccountId && person.account_id === selfAccountId) continue;
 		const agent = person.agent;
 		if (!agent || agent.state === "disabled") continue;
 		chiefs.push({
@@ -1090,6 +1105,13 @@ export type ChiefLabels = {
  */
 const COMPOSED_LABEL = /^(.+?)\s*\((.+)\)$/;
 
+/**
+ * The stored tails of an unnamed agent's label: the hub's own
+ * (`chiefOfStaffSuffix`, ASCII apostrophe) and the English catalogue's
+ * (typographic). Wire shapes, never rendered; see `storedAgentName`.
+ */
+const CHIEF_OF_STAFF_SUFFIXES = ["'s chief of staff", "’s chief of staff"];
+
 /** Case-, space- and accent-insensitive form for "is this the same name". */
 function nameKey(name: string): string {
 	return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
@@ -1127,6 +1149,19 @@ export function composeChiefLabel(
  * Rows written before the composition fix hold "X (X)", the person's own name,
  * or an already composed "Aida (Ben Tran)". The first two are no name; the
  * third is stripped back to "Aida" so it is not composed a second time.
+ *
+ * "X's chief of staff" is ALSO no name (review R1-1 on #1441). The hub
+ * rewrites a degenerate agent label (empty, the owner's bare name, "X (X)")
+ * to exactly that English string on write (`agentMemberLabel`) and returns
+ * it as stored, so a client that stores the owner's bare name reads back
+ * this form. Taking it as an agent name composed "Ben Tran's chief of staff
+ * (Ben Tran)", and left non-English readers with the hub's English. The
+ * typographic apostrophe is accepted too: it is the English catalogue's shape,
+ * which older clients stored verbatim.
+ * `personName` must match by `nameKey`, mirroring the hub's
+ * `agentLabelDegenerate`; an unlisted owner keeps the stored string.
+ * The hub's suffix and the catalogue's English copy are matched literally
+ * because they are the wire shapes, not display copy.
  * `personName` is null when the directory does not list the owner; a label of
  * the form "X (X)" is still recognised then.
  */
@@ -1137,6 +1172,14 @@ export function storedAgentName(
 	const stored = storedLabel(label);
 	if (stored === null) return null;
 	if (personName !== null && nameKey(stored) === nameKey(personName)) {
+		return null;
+	}
+	if (
+		personName !== null &&
+		CHIEF_OF_STAFF_SUFFIXES.some(
+			(suffix) => nameKey(stored) === nameKey(`${personName}${suffix}`),
+		)
+	) {
 		return null;
 	}
 	const composed = COMPOSED_LABEL.exec(stored);

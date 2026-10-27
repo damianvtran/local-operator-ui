@@ -1115,8 +1115,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		const label =
 			people.find((row) => row.account_id === draftTarget.accountId)
 				?.display_label ?? t("ui.teamBridge.list.untitled");
+		// A chief draft carries the agent's own name when the directory has one,
+		// so the Drafts view agrees with the rail ("Aida (Ben)", review R1-4).
 		return draftTarget.type === "chief"
-			? composeChiefLabel("", label, chiefLabelCopy())
+			? composeChiefLabel(
+					chiefs.find(
+						(chief) => chief.person.account_id === draftTarget.accountId,
+					)?.agentName ?? "",
+					label,
+					chiefLabelCopy(),
+				)
 			: label;
 	};
 
@@ -1602,10 +1610,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										    a preview has no rows, so `invited` is 0 there. */}
 										{membershipCounts.invited > 0 ? (
 											<>
-												{t("ui.teamBridge.member.active_count", {
-													count: membershipCounts.active,
-												})}
+												{/* The headline takes the stronger ink and the invited line
+												    the subordinate one: the invited count qualifies the
+												    headline and must not outrank it (design review D1 on
+												    #1441). The single-line count below keeps its ink. */}
 												<span className="text-ink-muted">
+													{t("ui.teamBridge.member.active_count", {
+														count: membershipCounts.active,
+													})}
+												</span>
+												<span className="text-ink-dim">
 													{t("ui.teamBridge.member.invited_count", {
 														count: membershipCounts.invited,
 													})}

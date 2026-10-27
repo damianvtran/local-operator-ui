@@ -586,7 +586,7 @@ test("person and agent DMs with the same owner never resolve to each other", () 
 	assert.equal(model.dmWithAgent([humanDm], "acct_ben"), null);
 });
 
-test("chiefs of staff include the reader’s distinct agent and exclude disabled agents", () => {
+test("chiefs of staff exclude the reader and disabled agents", () => {
 	const row = (id, agent) => ({
 		account_id: id,
 		display_label: id,
@@ -612,7 +612,6 @@ test("chiefs of staff include the reader’s distinct agent and exclude disabled
 			chief.paused,
 		]),
 		[
-			["acct_self", "Aida", false],
 			["acct_ben", "Aida", false],
 			["acct_sana", "Juno", true],
 		],
@@ -885,7 +884,7 @@ test("railSections: built-ins lead in fixed order; groups and DMs keep the calle
 	);
 });
 
-test("recipientCandidates offers the reader’s chief, not their human or bridge-off people", () => {
+test("recipientCandidates offers reachable people and chiefs, never the reader or bridge-off people", () => {
 	const people = [
 		person("acct_self", { endpoint_id: "e0", name: "Aida", state: "active" }),
 		person("acct_ben", { endpoint_id: "e1", name: "Aida", state: "active" }),
@@ -894,63 +893,25 @@ test("recipientCandidates offers the reader’s chief, not their human or bridge
 	const out = model.recipientCandidates(people, "acct_self", chiefCopy);
 	assert.deepEqual(
 		out.map((row) => `${row.kind}:${row.accountId}:${row.label}`),
-		[
-			"human:acct_ben:acct_ben",
-			"agent:acct_self:Aida (acct_self)",
-			"agent:acct_ben:Aida (acct_ben)",
-		],
+		["human:acct_ben:acct_ben", "agent:acct_ben:Aida (acct_ben)"],
 	);
-	assert.equal(out[1].endpointId, "e0");
-	assert.equal(out[2].endpointId, "e1");
+	assert.equal(out[1].endpointId, "e1");
 });
 
-// ---------------------------------------------------------------------------
-// R1-2 / R1-8: the first send's two writes, and what a retry does.
-// ---------------------------------------------------------------------------
-
-test("self chief remains offerable with named, empty, or server owner-fallback names", () => {
+// R1-2 on #1441: the hub leaves a creator's own agent invited and muted, so a
+// self-agent DM would never deliver. The reader's agent is withheld whatever
+// its directory name, and the reader's human row stays the inert "self".
+test("the reader's own agent is never offered, named, unnamed, or owner-fallback", () => {
 	for (const name of ["Aida", "", "Damian"]) {
 		const self = {
 			...person("acct_self", { endpoint_id: "ep_self", name, state: "active" }),
 			display_label: "Damian",
 		};
-		const candidates = model.recipientCandidates(
-			[self],
-			"acct_self",
-			chiefCopy,
-		);
-		assert.equal(model.personRowState(self, "acct_self"), "self");
-		assert.equal(candidates.length, 1);
-		assert.equal(candidates[0].kind, "agent");
-		assert.equal(candidates[0].endpointId, "ep_self");
-		// Integrated #1334 uses one shared composition rule: absent/owner-name
-		// fallback describes a chief of staff rather than repeating the human.
+		assert.equal(model.personRowState(self, "acct_self") === "self", true);
+		assert.equal(model.chiefsOfStaff([self], "acct_self").length === 0, true);
 		assert.equal(
-			candidates[0].label,
-			name === "Aida" ? "Aida (Damian)" : "Damian's chief of staff",
-		);
-		const human = { kind: "human", accountId: "acct_self", label: "Damian" };
-		assert.notEqual(
-			model.recipientKey(candidates[0]),
-			model.recipientKey(human),
-		);
-		assert.equal(model.recipientKey(candidates[0]), "agent:acct_self");
-		assert.deepEqual(model.recipientMemberInput(candidates[0]), {
-			account_id: "acct_self",
-			kind: "agent",
-			endpoint_id: "ep_self",
-			// Store a name, never the localized composed picker label (#1334).
-			display_label: name === "Aida" ? "Aida" : "Damian",
-		});
-		// Adding the agent does not add a human recipient; the server owns creator membership.
-		const input = model.draftCreateInput(candidates);
-		assert.equal(input.members.length, 1);
-		assert.equal(input.members[0].kind, "agent");
-		assert.equal(input.agentCapable, true);
-		assert.equal(input.kind, "dm");
-		assert.deepEqual(
-			model.draftCreateInput([human, candidates[0]]).members.map((m) => m.kind),
-			["human", "agent"],
+			model.recipientCandidates([self], "acct_self", chiefCopy).length === 0,
+			true,
 		);
 	}
 });
@@ -1056,6 +1017,29 @@ test("participantLabel reads existing bad rows: 'X (X)' and the person's own nam
 	assert.equal(
 		model.participantLabel(agent("Aida (Ben Tran)"), [ben()], chiefCopy),
 		"Aida (Ben Tran)",
+	);
+	// The hub's own rewrite of a degenerate label (agent-server
+	// `agentMemberLabel`, ASCII apostrophe) and the English catalogue's shape
+	// are no agent name: never "Ben Tran's chief of staff (Ben Tran)" (R1-1 on #1441).
+	for (const stored of [
+		"Ben Tran's chief of staff",
+		"Ben Tran’s chief of staff",
+		"ben  tran's Chief of Staff",
+	]) {
+		for (const people of [[ben()], echoed]) {
+			assert.equal(
+				model.participantLabel(agent(stored), people, chiefCopy) ===
+					"Ben Tran's chief of staff",
+				true,
+			);
+		}
+		assert.equal(model.storedAgentName(stored, "Ben Tran") === null, true);
+	}
+	// Someone else's chief-of-staff form is not this owner's: it stays a name.
+	assert.equal(
+		model.storedAgentName("Ada's chief of staff", "Ben Tran") ===
+			"Ada's chief of staff",
+		true,
 	);
 	// Person not in the directory: the stored agent name stands; a doubled one is absent.
 	assert.equal(model.participantLabel(agent("Aida"), [], chiefCopy), "Aida");
