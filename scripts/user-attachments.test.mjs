@@ -312,3 +312,55 @@ test("the two ops encode to the backend routes and refuse a malformed digest", (
 		false,
 	);
 });
+
+test("a picture whose bytes are still inline keeps the localized attachment name", () => {
+	/*
+	 * Design D3: before the stored digest lands, a just-sent picture took its name
+	 * from `getFileName(data:…)`, which is a hard-coded English "Pasted image" - so
+	 * one tile was English in every locale and renamed itself to the localized
+	 * attachment label once stored. Both arms must answer the same label.
+	 */
+	const inline = attachmentFinderItems(
+		[
+			{
+				id: "m9",
+				ts: 1_700_000_000_000,
+				kind: "image",
+				digest: null,
+				data: "iVBORw0KGgo=",
+				mimeType: "image/png",
+				sizeBytes: 8,
+				path: null,
+				storedPath: null,
+				exists: null,
+				status: "ready",
+			},
+		],
+		"5a4000000004",
+	)[0];
+	const stored = attachmentFinderItems(
+		[
+			{
+				id: "5a4000000004:6894c4b6b992d58650d6d32ae85470d8",
+				messageId: "5a4000000004",
+				ts: 1_700_000_000_000,
+				kind: "image",
+				digest: "6894c4b6b992d58650d6d32ae85470d8",
+				data: null,
+				filename: null,
+				mimeType: "image/png",
+				bytes: 8,
+				path: null,
+				storedPath: null,
+				availability: "present",
+			},
+		],
+		"5a4000000004",
+	)[0];
+	assert.equal(inline.row.document.title, "Attached image");
+	assert.equal(stored.row.document.title, inline.row.document.title);
+	assert.ok(
+		!inline.row.document.title.startsWith("Pasted"),
+		"no hard-coded English label on the inline arm",
+	);
+});
