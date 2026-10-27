@@ -113,5 +113,75 @@
 			"rule": "Machine rule identifier from the backend validation error. Keep verbatim; do not expand into prose."
 		},
 		"note": "Rendered only beneath the human guidance sentence (validation_failure), never instead of it. Design review round 1 required the plain sentence to lead and this pair to remain secondary."
+	},
+	"ui.agentMessages.banner.title": {
+		"role": "default-on banner heading",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line; the banner's first line.",
+		"placeholders": {},
+		"note": "The product name 'Team Bridge' stays in English in every language (a proper noun, like Radient). States the current fact: it is already on. It must not read as a question or an offer."
+	},
+	"ui.agentMessages.banner.body": {
+		"role": "default-on banner explanation",
+		"tone": "plain, second person, no marketing claims",
+		"length": "One or two sentences under the heading.",
+		"placeholders": {},
+		"note": "Says what the feature does and that nothing was sent when it turned on. 'Agent' follows the glossary. Never imply the reader still has to enable anything."
+	},
+	"ui.agentMessages.banner.turn_off": {
+		"role": "banner button",
+		"tone": "imperative, sentence case",
+		"length": "One or two words; sits in a small button.",
+		"placeholders": {},
+		"note": "Turns the feature off in one click. Same verb as the Settings Turn off action."
+	},
+	"ui.agentMessages.banner.turning_off": {
+		"role": "banner button busy label",
+		"tone": "present progressive, sentence case",
+		"length": "One word plus an ellipsis.",
+		"placeholders": {},
+		"note": "Replaces the Turn off label while the request is in flight."
+	},
+	"ui.agentMessages.banner.read": {
+		"role": "banner button that expands the consent text",
+		"tone": "sentence case",
+		"length": "Short phrase; a ghost button label.",
+		"placeholders": {},
+		"note": "Reveals the full consent text served by the hub. Phrase it as a path to understanding what the feature means, not as a legal acknowledgement."
+	},
+	"ui.agentMessages.banner.hide": {
+		"role": "banner button that collapses the consent text",
+		"tone": "imperative, sentence case",
+		"length": "Short phrase.",
+		"placeholders": {},
+		"note": "Appears in place of the read label once the text is open."
+	},
+	"ui.agentMessages.banner.dismiss": {
+		"role": "icon button accessible name",
+		"tone": "imperative, sentence case",
+		"length": "One or two words; never visible as text.",
+		"placeholders": {},
+		"note": "Screen-reader name of the X that dismisses the banner for good. 'Dismiss' not 'Close': the banner does not come back."
+	},
+	"ui.agentMessages.banner.consent_unavailable": {
+		"role": "banner fallback line",
+		"tone": "plain, calm",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown inside the expanded area only when the hub served no consent text. Not an error: nothing was lost."
+	},
+	"ui.agentMessages.banner.turn_off_failed": {
+		"role": "banner inline error",
+		"tone": "plain, calm, second person",
+		"length": "One or two short sentences.",
+		"placeholders": {},
+		"note": "Says the turn-off failed and that nothing was changed, then invites a retry. Do not say 'error' or blame the reader."
+	},
+	"ui.agentMessages.banner.dismiss_failed": {
+		"role": "banner inline error",
+		"tone": "plain, calm, second person",
+		"length": "One short sentence plus a retry cue.",
+		"placeholders": {},
+		"note": "The notice stays visible after this failure."
 	}
 }

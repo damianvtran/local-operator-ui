@@ -396,7 +396,7 @@ test("one status payload maps onto the plan and sign-in gates", () => {
 });
 
 test("a ready surface, an unasked boundary or no answer yet is eligible", () => {
-	for (const surface_state of ["B", "C", "D", "E", "F", "G", null]) {
+	for (const surface_state of ["B", "C", "D", "F", "G", null]) {
 		assert.equal(
 			model.teamBridgeEligibility(status({ surface_state })),
 			null,
@@ -405,6 +405,80 @@ test("a ready surface, an unasked boundary or no answer yet is eligible", () => 
 	}
 	assert.equal(model.teamBridgeEligibility(null), null);
 	assert.equal(model.teamBridgeEligibility(undefined), null);
+});
+
+test("explicit endpoint/local off gates the page without reinterpreting runtime readonly", () => {
+	for (const in_force of [false, true]) {
+		const base = {
+			default_on: { in_force, notice_pending: true },
+			read_only: false,
+		};
+		for (const surface_state of ["C", "D"]) {
+			assert.equal(
+				model.teamBridgeEligibility(
+					status({ ...base, surface_state, local: { enabled: true } }),
+				),
+				null,
+				`active/paused, default-on=${in_force}`,
+			);
+			assert.equal(
+				model.teamBridgeEligibility(
+					status({ ...base, surface_state, local: { enabled: false } }),
+				),
+				"off",
+				`local opt-out, default-on=${in_force}`,
+			);
+		}
+		assert.equal(
+			model.teamBridgeEligibility(
+				status({ ...base, surface_state: "E", local: { enabled: false } }),
+			),
+			"off",
+			"E is off even though runtime read_only is false",
+		);
+		assert.equal(
+			model.teamBridgeEligibility(
+				status({ ...base, surface_state: "E", local: { enabled: true } }),
+			),
+			"off",
+			"disabled endpoint outranks stale local on",
+		);
+	}
+	assert.equal(
+		model.teamBridgeEligibility(
+			status({
+				surface_state: "F",
+				read_only: true,
+				local: { enabled: false },
+			}),
+		),
+		null,
+		"organization readonly keeps retained history",
+	);
+	assert.equal(
+		model.teamBridgeEligibility(
+			status({ surface_state: "B", local: { enabled: false } }),
+		),
+		null,
+		"legacy opt-in on-ramp is unchanged",
+	);
+});
+
+test("off page replaces composer and write controls with existing translated off state", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			ui.TeamBridgePageView,
+			viewProps({
+				eligibility: "off",
+				selectedConversation: conversation(),
+				readOnly: false,
+			}),
+		),
+	);
+	assert.match(html, /Turned off/);
+	assert.match(html, /Agent messages are off for this account/);
+	assert.doesNotMatch(html, /<textarea|<button|role="(?:dialog|alertdialog)"/);
+	assert.doesNotMatch(html, /Team Bridge requires|Enable/);
 });
 
 // ---------------------------------------------------------------------------

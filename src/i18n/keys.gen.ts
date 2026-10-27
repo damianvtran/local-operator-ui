@@ -1553,6 +1553,16 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.agentMessages.banner.body": undefined;
+	"ui.agentMessages.banner.consent_unavailable": undefined;
+	"ui.agentMessages.banner.dismiss": undefined;
+	"ui.agentMessages.banner.dismiss_failed": undefined;
+	"ui.agentMessages.banner.hide": undefined;
+	"ui.agentMessages.banner.read": undefined;
+	"ui.agentMessages.banner.title": undefined;
+	"ui.agentMessages.banner.turn_off": undefined;
+	"ui.agentMessages.banner.turn_off_failed": undefined;
+	"ui.agentMessages.banner.turning_off": undefined;
 	"ui.agentMessages.dialog.account_guard_unavailable": undefined;
 	"ui.agentMessages.dialog.activities": undefined;
 	"ui.agentMessages.dialog.close": undefined;
@@ -1574,6 +1584,7 @@ export type MessageParams = {
 	"ui.agentMessages.settings.action.pause": undefined;
 	"ui.agentMessages.settings.action.resume": undefined;
 	"ui.agentMessages.settings.action.turn_off": undefined;
+	"ui.agentMessages.settings.action.turn_on_again": undefined;
 	"ui.agentMessages.settings.allowlist.add": undefined;
 	"ui.agentMessages.settings.allowlist.add_allowed": undefined;
 	"ui.agentMessages.settings.allowlist.add_blocked": undefined;
@@ -1615,11 +1626,15 @@ export type MessageParams = {
 	"ui.agentMessages.settings.consent.unavailable": undefined;
 	"ui.agentMessages.settings.consent.version": undefined;
 	"ui.agentMessages.settings.consent.via": undefined;
+	"ui.agentMessages.settings.consent.via_default_on": undefined;
 	"ui.agentMessages.settings.consent.via_dialog": undefined;
 	"ui.agentMessages.settings.consent.via_settings": undefined;
 	"ui.agentMessages.settings.dark.body": undefined;
 	"ui.agentMessages.settings.dark.nothing_enabled": undefined;
 	"ui.agentMessages.settings.dark.title": undefined;
+	"ui.agentMessages.settings.default_on.b_body": undefined;
+	"ui.agentMessages.settings.default_on.b_title": undefined;
+	"ui.agentMessages.settings.default_on.e_body": undefined;
 	"ui.agentMessages.settings.description": undefined;
 	"ui.agentMessages.settings.error.no_changes": undefined;
 	"ui.agentMessages.settings.error.retry": undefined;

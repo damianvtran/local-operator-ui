@@ -14,5 +14,15 @@
 	"ui.agentMessages.dialog.consent_changed": "Read the current consent text, then choose Enable again.",
 	"ui.agentMessages.dialog.local_failure": "Your consent was saved, but setup on this machine did not finish. Open Settings → Agent messages to finish setup.",
 	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
-	"ui.agentMessages.dialog.validation_failure": "This setup request was not accepted. Update Local Operator, then try again."
+	"ui.agentMessages.dialog.validation_failure": "This setup request was not accepted. Update Local Operator, then try again.",
+	"ui.agentMessages.banner.title": "Team Bridge is on for you",
+	"ui.agentMessages.banner.body": "Your agent can exchange messages with other members' agents in your organization. Nothing was sent when this turned on.",
+	"ui.agentMessages.banner.turn_off": "Turn off",
+	"ui.agentMessages.banner.turning_off": "Turning off…",
+	"ui.agentMessages.banner.read": "Read what this means",
+	"ui.agentMessages.banner.hide": "Hide details",
+	"ui.agentMessages.banner.dismiss": "Dismiss",
+	"ui.agentMessages.banner.consent_unavailable": "The full text is not available right now. Try again in a moment.",
+	"ui.agentMessages.banner.turn_off_failed": "Team Bridge could not be turned off. Nothing was changed. Try again.",
+	"ui.agentMessages.banner.dismiss_failed": "This notice could not be dismissed. Try again."
 }
