@@ -1,0 +1,298 @@
+/*
+ * REVIEW-ONLY scratch stories for design review round 1 of PR #1446. Not part
+ * of the PR; lives only in the reviewer's worktree.
+ *
+ * - RailNoInvites / RailWithInvites: the real TeamBridgePageView with the Page
+ *   stories' own fixture, plus an invited agent row owned by the reader.
+ * - Declined: the single declined outcome (the PR's Outcomes story has none).
+ * - LiveAccept: the real TeamBridgePage container behind a desktop stub, so the
+ *   optimistic patch, the rail badge and the settle re-read run for real. The
+ *   consent op is HELD until "Release" is pressed, and a rAF recorder samples
+ *   every card's rect plus the rail entry's on every frame, so jitter is a
+ *   number, not an impression.
+ */
+import { queryClient } from "@shared/api/query-client";
+import type { Meta, StoryObj } from "@storybook/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { TeamBridgeInvitationsView } from "./team-bridge-invitations";
+import type { TeamBridgeInvitation } from "./team-bridge-invitations-model";
+import { TeamBridgePage, TeamBridgePageView } from "./team-bridge-page";
+import pageMeta from "./team-bridge-page.stories";
+
+const SELF = "acct_self";
+const invitedAgent = {
+	account_id: SELF,
+	kind: "agent" as const,
+	display_label: "Damian's agent",
+	role: "member" as const,
+	state: "invited" as const,
+};
+// biome-ignore lint/suspicious/noExplicitAny: review scratch
+const baseArgs = pageMeta.args as any;
+// biome-ignore lint/suspicious/noExplicitAny: review scratch
+const withInvites = baseArgs.conversations.map((c: any) =>
+	c.kind === "dm"
+		? c
+		: {
+				...c,
+				created_by: c.kind === "group" ? "acct_bea" : c.created_by,
+				members: [...c.members, invitedAgent],
+			},
+);
+
+export default {
+	title: "Review/PR1446 Invitations",
+	parameters: { layout: "fullscreen" },
+} satisfies Meta;
+
+export const RailNoInvites: StoryObj = {
+	render: (args) => (
+		<div className="h-dvh">
+			<TeamBridgePageView {...baseArgs} {...args} />
+		</div>
+	),
+};
+export const RailWithInvites: StoryObj = {
+	render: (args) => (
+		<div className="h-dvh">
+			<TeamBridgePageView
+				{...baseArgs}
+				{...args}
+				conversations={withInvites}
+			/>
+		</div>
+	),
+};
+
+const launch: TeamBridgeInvitation = {
+	key: "tnt_story|bcv_launch",
+	conversationId: "bcv_launch",
+	tenantId: "tnt_story",
+	conversationKind: "channel",
+	conversationName: "launch-room",
+	agentName: "Robo Damian",
+	inviter: { role: "added", name: "Ada Lovelace", self: false },
+};
+const design: TeamBridgeInvitation = {
+	...launch,
+	key: "tnt_story|bcv_design",
+	conversationId: "bcv_design",
+	conversationKind: "group",
+	conversationName: "Ada, Grace, Robo Damian",
+	inviter: { role: "created", name: "Grace Hopper", self: false },
+};
+export const Declined: StoryObj = {
+	render: () => (
+		<div className="flex h-[640px] bg-surface text-ink">
+			<TeamBridgeInvitationsView
+				listState="ready"
+				invitations={[launch, design]}
+				rowStates={{ [launch.key]: { phase: "done", decision: "decline" } }}
+				onAnswer={() => {}}
+			/>
+		</div>
+	),
+};
+/* Long names at a narrow content width: the overflowing case. */
+export const LongNamesNarrow: StoryObj = {
+	render: () => (
+		<div className="flex h-[640px] w-[420px] bg-surface text-ink">
+			<TeamBridgeInvitationsView
+				listState="ready"
+				invitations={[
+					{
+						...launch,
+						conversationName:
+							"customer-escalations-north-america-enterprise-tier-one",
+						agentName: "Damian Tran's research and scheduling agent",
+					},
+					design,
+				]}
+				organizationNames={{ tnt_story: "Northwind Traders International" }}
+				onAnswer={() => {}}
+			/>
+		</div>
+	),
+};
+
+/* ---------------------------------------------------------------- live */
+
+type Fixture = {
+	hold: boolean;
+	fail: boolean;
+	waiters: Set<() => void>;
+	agentState: Record<string, "invited" | "active" | "removed">;
+	log: string[];
+};
+
+const conv = (id: string, name: string, kind: "channel" | "group", fx: Fixture) => ({
+	id,
+	tenant_id: "org_minerva",
+	kind,
+	name,
+	visibility: kind === "channel" ? "tenant" : "private",
+	agent_capable: true,
+	status: "open",
+	created_by: "acct_ada",
+	latest_seq: 1,
+	last_message_at: "2026-10-27T12:00:00Z",
+	members: [
+		{ account_id: SELF, kind: "human", display_label: "Damian", role: "member", state: "active" },
+		{ account_id: "acct_ada", kind: "human", display_label: "Ada", role: "owner", state: "active" },
+		{ ...invitedAgent, state: fx.agentState[id] },
+	],
+	last_read_seq: 0,
+	unread_count: 0,
+	muted: false,
+});
+
+function LiveAccept() {
+	const navigate = useNavigate();
+	const [ready, setReady] = useState(false);
+	const [, bump] = useState(0);
+	const [fx] = useState<Fixture>(() => ({
+		hold: true,
+		fail: false,
+		waiters: new Set(),
+		agentState: { bcv_launch: "invited", bcv_ops: "invited", bcv_design: "invited" },
+		log: [],
+	}));
+	useLayoutEffect(() => {
+		const prior = window.api.desktop;
+		queryClient.clear();
+		const reply = (result: unknown) => ({ status: 200, body: { result } });
+		const list = () =>
+			[
+				conv("bcv_launch", "launch-room", "channel", fx),
+				conv("bcv_ops", "ops-incidents", "channel", fx),
+				conv("bcv_design", "Design crit", "group", fx),
+			];
+		window.api.desktop = {
+			...prior,
+			// biome-ignore lint/suspicious/noExplicitAny: review scratch
+			request: (async (request: any) => {
+				if (request.op === "capabilities")
+					return reply({
+						desktop_available: true,
+						features: {
+							radient: 1,
+							team_bridge_conversations: 1,
+							team_bridge_conversation_owner_guard: 1,
+							team_bridge_threads: 1,
+							team_bridge_reactions: 1,
+						},
+					});
+				if (request.op === "radient.request")
+					return reply({
+						data: {
+							result:
+								request.control?.operation === "account"
+									? { account: { id: SELF, name: "Damian", email: "d@fixture.invalid" }, identity: {} }
+									: { memberships: [] },
+						},
+					});
+				if (request.op === "team_bridge.status")
+					return reply({
+						capability: 1,
+						state: "ready",
+						account_id: SELF,
+						tenant_id: "org_minerva",
+						surface_state: "D",
+						visibility: { settings: true, inbox: true, account_door: true, onboarding: false },
+						update_required: false,
+						local: { enabled: true, onboarding: "done", session: "present" },
+						status: { tenants: [{ tenant_id: "org_minerva", tenant_name: "Minerva", eligible: true, endpoint: null }] },
+						consent: null,
+						error: null,
+					});
+				if (request.op === "team_bridge.conversations.list")
+					return reply({ conversations: list() });
+				if (request.op === "team_bridge.conversations.consent") {
+					fx.log.push(`consent ${request.conversation_id} ${request.decision} notify=${"notify" in request}`);
+					if (fx.hold) await new Promise<void>((r) => fx.waiters.add(r));
+					if (fx.fail)
+						return { status: 409, body: { detail: { code: "agent_not_permitted", message: "agent paused" } } };
+					fx.agentState[request.conversation_id] =
+						request.decision === "accept" ? "active" : "removed";
+					return reply(list().find((c) => c.id === request.conversation_id));
+				}
+				if (request.op === "team_bridge.directory") return reply({ members: [] });
+				if (request.op === "team_bridge.unread")
+					return reply({ total: 0, organizations: [], conversations: [] });
+				if (request.op === "team_bridge.messages.list")
+					return reply({ messages: [], has_more: false });
+				return reply({});
+			}) as typeof prior.request,
+		};
+		navigate("/team-bridge?tenant=org_minerva", { replace: true });
+		setReady(true);
+		return () => {
+			for (const r of fx.waiters) r();
+			window.api.desktop = prior;
+			queryClient.clear();
+		};
+	}, [fx, navigate]);
+
+	/* Per-frame geometry recorder: every card and the rail entry, deduped. */
+	const rec = useRef<{ on: boolean; frames: number; seen: Map<string, Set<string>> }>({
+		on: false,
+		frames: 0,
+		seen: new Map(),
+	});
+	const [report, setReport] = useState("");
+	useEffect(() => {
+		let id = 0;
+		const tick = () => {
+			if (rec.current.on) {
+				rec.current.frames++;
+				const cards = document.querySelectorAll("section[aria-label='Invitations'] li");
+				cards.forEach((el, i) => {
+					const r = el.getBoundingClientRect();
+					const k = `card${i}`;
+					if (!rec.current.seen.has(k)) rec.current.seen.set(k, new Set());
+					rec.current.seen.get(k)?.add(`${r.x},${r.y},${r.width}x${r.height}`);
+				});
+				const rail = [...document.querySelectorAll("nav button")].find((b) =>
+					b.textContent?.includes("Invitations"),
+				);
+				if (rail) {
+					const r = rail.getBoundingClientRect();
+					const label = rail.querySelector("span")?.getBoundingClientRect();
+					if (!rec.current.seen.has("rail")) rec.current.seen.set("rail", new Set());
+					rec.current.seen.get("rail")?.add(`${r.x},${r.y},${r.width}x${r.height} label.w=${label?.width}`);
+				} else {
+					if (!rec.current.seen.has("rail")) rec.current.seen.set("rail", new Set());
+					rec.current.seen.get("rail")?.add("ABSENT");
+				}
+			}
+			id = requestAnimationFrame(tick);
+		};
+		id = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(id);
+	}, []);
+	const dump = () =>
+		setReport(
+			`frames=${rec.current.frames}\n${[...rec.current.seen]
+				.map(([k, v]) => `${k}: ${v.size} distinct -> ${[...v].join(" | ")}`)
+				.join("\n")}\nlog: ${fx.log.join("; ")}`,
+		);
+
+	return (
+		<QueryClientProvider client={queryClient}>
+			<div className="flex h-screen flex-col bg-surface text-ink">
+				<div className="flex flex-wrap items-center gap-2 bg-elevated p-2 text-meta" data-review-bar>
+					<button type="button" data-rec-start onClick={() => { rec.current = { on: true, frames: 0, seen: new Map() }; }}>Rec start</button>
+					<button type="button" data-release onClick={() => { for (const r of fx.waiters) r(); fx.waiters.clear(); bump((v) => v + 1); }}>Release</button>
+					<button type="button" data-hold onClick={() => { fx.hold = !fx.hold; bump((v) => v + 1); }}>hold={String(fx.hold)}</button>
+					<button type="button" data-fail onClick={() => { fx.fail = !fx.fail; bump((v) => v + 1); }}>fail={String(fx.fail)}</button>
+					<button type="button" data-dump onClick={dump}>Dump</button>
+					<pre data-report className="whitespace-pre-wrap">{report}</pre>
+				</div>
+				<div className="min-h-0 flex-1">{ready && <TeamBridgePage />}</div>
+			</div>
+		</QueryClientProvider>
+	);
+}
+export const LiveAcceptStory: StoryObj = { name: "LiveAccept", render: () => <LiveAccept /> };
