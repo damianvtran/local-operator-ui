@@ -1,5 +1,6 @@
 {
 	"ui.teamBridge.notify.unavailable": "इस खाते से अब यह सूचना नहीं खोली जा सकती।",
+	"ui.teamBridge.chief.unnamed": "{person} का चीफ़ ऑफ़ स्टाफ़",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "अभी कोई बातचीत नहीं",
 	"ui.teamBridge.list.empty.body": "सीधा संदेश, समूह या चैनल शुरू करें।",
@@ -25,6 +26,8 @@
 	"ui.teamBridge.create.confirm": "बनाएँ",
 	"ui.teamBridge.unread.count": "{count, plural, one {{count} अपठित} other {{count} अपठित}}",
 	"ui.teamBridge.member.count": "{count, plural, one {{count} सदस्य} other {{count} सदस्य}}",
+	"ui.teamBridge.member.active_count": "{count, plural, one {{count} सक्रिय सदस्य} other {{count} सक्रिय सदस्य}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, one {{count} आमंत्रित} other {{count} आमंत्रित}}",
 	"ui.teamBridge.group.more": "और",
 	"ui.teamBridge.thread.withheld": "एजेंट के इस संदेश को स्वीकार करने का इंतज़ार है।",
 	"ui.teamBridge.composer.error": "आपका संदेश नहीं भेजा गया। फिर कोशिश करें।",

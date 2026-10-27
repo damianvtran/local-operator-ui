@@ -1,5 +1,6 @@
 {
 	"ui.teamBridge.notify.unavailable": "Esta notificación ya no se puede abrir con esta cuenta.",
+	"ui.teamBridge.chief.unnamed": "Jefe de gabinete de {person}",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "Aún no hay conversaciones",
 	"ui.teamBridge.list.empty.body": "Inicia un mensaje directo, un grupo o un canal.",
@@ -25,6 +26,8 @@
 	"ui.teamBridge.create.confirm": "Crear",
 	"ui.teamBridge.unread.count": "{count, plural, one {{count} sin leer} many {{count} sin leer} other {{count} sin leer}}",
 	"ui.teamBridge.member.count": "{count, plural, one {{count} miembro} many {{count} de miembros} other {{count} miembros}}",
+	"ui.teamBridge.member.active_count": "{count, plural, one {{count} miembro activo} many {{count} de miembros activos} other {{count} miembros activos}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, one {{count} invitado} many {{count} de invitados} other {{count} invitados}}",
 	"ui.teamBridge.group.more": "Más",
 	"ui.teamBridge.thread.withheld": "Esperando a que el agente acepte este mensaje.",
 	"ui.teamBridge.composer.error": "No se envió tu mensaje. Inténtalo de nuevo.",

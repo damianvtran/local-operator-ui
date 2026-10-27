@@ -1,5 +1,6 @@
 {
 	"ui.teamBridge.notify.unavailable": "That notification is no longer available on this account.",
+	"ui.teamBridge.chief.unnamed": "{person}’s chief of staff",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "No conversations yet",
 	"ui.teamBridge.list.empty.body": "Start a direct message, a group or a channel.",
@@ -25,6 +26,8 @@
 	"ui.teamBridge.create.confirm": "Create",
 	"ui.teamBridge.unread.count": "{count, plural, one {{count} unread} other {{count} unread}}",
 	"ui.teamBridge.member.count": "{count, plural, one {{count} member} other {{count} members}}",
+	"ui.teamBridge.member.active_count": "{count, plural, one {{count} active member} other {{count} active members}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, one {{count} invited} other {{count} invited}}",
 	"ui.teamBridge.group.more": "More",
 	"ui.teamBridge.thread.withheld": "Waiting for the agent to admit this message.",
 	"ui.teamBridge.composer.error": "Your message was not sent. Try again.",

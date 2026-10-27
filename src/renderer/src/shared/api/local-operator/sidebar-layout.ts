@@ -2,6 +2,7 @@ import {
 	DEFAULT_SIDEBAR_LAYOUT,
 	type SidebarLayout,
 	sanitizeSidebarLayout,
+	stripUnadvertisedIds,
 } from "@shared/components/navigation/sidebar-destinations";
 import { t } from "@shared/i18n";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -53,7 +54,7 @@ async function readSidebarLayout(): Promise<SidebarLayout> {
 	 * Sanitised HERE, at the boundary, rather than in the component: the store
 	 * can be a file an older build wrote or one a newer build extended, and the
 	 * rest of the feature is written against the guarantee that a layout holds
-	 * all nine ids exactly once (`sidebar-destinations.ts`). A component that
+	 * all ten ids exactly once (`sidebar-destinations.ts`). A component that
 	 * had to re-sanitise would be a second copy of the merge rules.
 	 */
 	return sanitizeSidebarLayout(result.layout);
@@ -71,7 +72,17 @@ async function readSidebarLayout(): Promise<SidebarLayout> {
  * together with "the read worked" - the two conditions a row must not have to
  * know separately.
  */
-export function useSidebarLayout(canCustomise: boolean) {
+export function useSidebarLayout(
+	canCustomise: boolean,
+	/*
+	 * Whether the backend advertises a capability-gated id's feature. Every
+	 * request body passes through `stripUnadvertisedIds` with it: an older core
+	 * refuses an id it does not know (422), and the local cache keeps the id so
+	 * the row's stored slot survives. Defaults to "nothing advertised", the
+	 * fail-closed answer for a caller that has no capabilities read.
+	 */
+	advertised: (feature: string) => boolean = () => false,
+) {
 	const queryClient = useQueryClient();
 	const query = useQuery({
 		queryKey: sidebarLayoutKeys.layout,
@@ -106,7 +117,12 @@ export function useSidebarLayout(canCustomise: boolean) {
 		mutationFn: async (next: SidebarLayout) => {
 			const result = await desktopResult<DesktopSidebarLayoutResponse>({
 				op: "sidebar_layout.set",
-				layout: next,
+				/*
+				 * The BODY is stripped, never the cache: `onMutate` keeps the full
+				 * layout, and the answer is re-sanitised below, which re-inserts a
+				 * stripped id at its default slot (contract § 8.1 "new UI, old core").
+				 */
+				layout: stripUnadvertisedIds(next, advertised),
 			});
 			return sanitizeSidebarLayout(result.layout);
 		},

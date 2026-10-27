@@ -1,0 +1,36 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Session started on deepseek/deepseek-flash and switched to anthropic/claude-sonnet-5-5 after a provider quota error (HTTP 402) before any catalogue was read; every read, check and verdict in this receipt ran on anthropic/claude-sonnet-5-5.",
+ "fallback": "deepseek/deepseek-flash -> anthropic/claude-sonnet-5-5 (quota 402)",
+ "independence": "Separate agent role and session from the translator, which the operator reports ran on anthropic/claude-sonnet-5-5 after a fallback. Same served model (and same model as the previous audit), so NOT model-independent; no different model family was available to this session. The ledger rule is agent-independence.",
+ "instance": "aa44e837c157-zh-cn",
+ "session": "aa44e837c157",
+ "locale": "zh-CN",
+ "namespace": "ui.agents.skills",
+ "branch": "feat/agents-skills-tab",
+ "head": "dabd636f468fc7dc65bb0fa2f8fc6e804dad7621",
+ "pr": "damianvtran/local-operator-ui#1443",
+ "date": "2026-10-27",
+ "status": "passed",
+ "result": "clean",
+ "verdict": "pass",
+ "keys_read": 54,
+ "scope": "re-audit after ui.agents.skills.hub.update_failed was added: 53 keys proven byte-identical to the head audited in f7245429b0 (git diff shows only that one added line; en diff shows only the new key); new key audited in full",
+ "sha256": {
+  "zh-CN": "588988fb0ffda6a24f751822cdb657518897daca7eb2f687f49483d5bc0b7124",
+  "en": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14"
+ },
+ "verified": [
+  "git diff f7245429b0..dabd636f46 on the locale catalogue is exactly one added line (the new key); on en exactly one added line plus the sidecar note; the receipts' recorded sha256 equal the f7245429b0 blobs, so the 53 other keys are byte-identical and the earlier minors/nits (listed in the 17d1ca9bf58a receipt) are unchanged, not worsened",
+  "new key '更新失败' is a status mark: no imperative, no 'open to retry' clause, no placeholders or plural syntax, no leading/trailing space",
+  "strict prefix: ui.hub.skills.update_failed in this locale starts with the new text followed by ' — ' (byte compare), so one state reads with one wording on the Agents and Hub pages",
+  "Hub 'Update available' / 'Update applied' marks in this locale use the same update noun as the new text",
+  "no Cf/Cc code points in the new string",
+  "node scripts/i18n/generate.mjs --check, check-strings, context-parity ok at head"
+ ],
+ "findings": [],
+ "fit": "4 chars; exact prefix of the Hub string."
+}

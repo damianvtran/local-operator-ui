@@ -85,5 +85,10 @@
 	"ui.agentMessages.settings.error.no_changes": "کوئی ترتیب تبدیل نہیں ہوئی۔ موجودہ حالت جانچنے کے لیے دوبارہ کوشش کریں۔",
 	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, one {{count} پیغام آپ کی چیف آف اسٹاف کا منتظر ہے۔ اسے وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔} other {{count} پیغامات آپ کی چیف آف اسٹاف کے منتظر ہیں۔ انہیں وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔}}",
 	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": "{count, plural, one {{count} پیغام آپ کی چیف آف اسٹاف کا منتظر ہے۔ اسے وصول کرنے کے لیے سائیڈ بار میں وہ گفتگو تلاش کریں اور اس میں ایک پیغام بھیجیں۔} other {{count} پیغامات آپ کی چیف آف اسٹاف کے منتظر ہیں۔ انہیں وصول کرنے کے لیے سائیڈ بار میں وہ گفتگو تلاش کریں اور اس میں ایک پیغام بھیجیں۔}}",
-	"ui.agentMessages.settings.hold.open": "چیف آف اسٹاف کو پیغام بھیجیں"
+	"ui.agentMessages.settings.hold.open": "چیف آف اسٹاف کو پیغام بھیجیں",
+	"ui.agentMessages.settings.default_on.b_title": "Team Bridge ابھی سیٹ اپ نہیں ہوا",
+	"ui.agentMessages.settings.default_on.b_body": "آپ کی تنظیم تیار ہوتے ہی Team Bridge آپ کے لیے خودکار طور پر فعال ہو جائے گا۔ فعال ہونے پر کچھ نہیں بھیجا جاتا۔",
+	"ui.agentMessages.settings.default_on.e_body": "اس اکاؤنٹ کے لیے Team Bridge بند ہے۔ نیچے رضامندی کا متن پڑھیں، پھر اگر آپ اسے واپس چاہتے ہیں تو دوبارہ فعال کریں۔",
+	"ui.agentMessages.settings.action.turn_on_again": "دوبارہ فعال کریں",
+	"ui.agentMessages.settings.consent.via_default_on": "ڈیفالٹ طور پر فعال"
 }
