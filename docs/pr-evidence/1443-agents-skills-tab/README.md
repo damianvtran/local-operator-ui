@@ -7,6 +7,12 @@ themes (`localOperatorLight` and `localOperatorDark`), as `docs/branding.md`
 loading, the two empty states, error, populated, details, and the three
 Retry-focus states the review rounds fixed (R5-1, the theft case).
 
+**Which head the frames are of.** They were captured at `53693426d6`. A later
+rebase onto a newer `main` moved only the branch's base: that commit is
+`4af76f3f2d` on the rebased branch, with the same diff against its base, so
+every frame is still a picture of the reviewed Skills-tab code. The frames were
+not re-captured after the rebase.
+
 Files are named `<state>-<theme>-<width>.png`. Frames are 2x device pixels
 (`2760x1800` is a 1380x900 CSS viewport, `1600x1800` is 800x900).
 
