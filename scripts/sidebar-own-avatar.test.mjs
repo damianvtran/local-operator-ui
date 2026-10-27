@@ -95,7 +95,8 @@ const SIGNED_OUT = {
 
 /** The account read's answer, per test. */
 let account = null;
-/** What the avatar relay answers: "bytes" | "error" | "not-found". */
+/** What the avatar relay answers: "bytes" | "error" | "not-found" |
+ *  "error-once" (a transient 502, then bytes: core restarting, hub blip). */
 let avatarMode = "bytes";
 const avatarRequests = [];
 
@@ -117,6 +118,8 @@ globalThis.window.api = {
 			if (request.op !== "team_bridge.avatar")
 				return { kind: "error", status: 503, detail: "not part of this test" };
 			avatarRequests.push({ ...request });
+			if (avatarMode === "error-once" && avatarRequests.length === 1)
+				return { kind: "error", status: 502, detail: "upstream restarting" };
 			if (avatarMode === "error")
 				return { kind: "error", status: 502, detail: "upstream failed" };
 			if (avatarMode === "not-found")
@@ -330,6 +333,47 @@ test("a failed byte read, or an older core without the relay, falls back to init
 		} finally {
 			await s.teardown();
 		}
+	}
+});
+
+/*
+ * AGENT REVIEW ROUND 1, M1: the account row never unmounts, so a failed read
+ * used to stick until the next sign-in or reload. The hook now retries ONCE after
+ * `FAILED_READ_RETRY_MS` (3 s) for the own-account row only. These run in real
+ * time (two bounded waits of ~3.5 s) rather than under mocked timers, because the
+ * row's account read, Radix's image load and the retry all have to interleave the
+ * way they do in the app.
+ */
+test("a transient failure on the always-mounted row recovers with exactly one retry", async () => {
+	reset(me(A, "Ada Lovelace", HASH_A), "error-once");
+	const s = await mount();
+	try {
+		await until(() => avatarRequests.length === 1, "the first, failing read");
+		await settle();
+		assert.equal(s.img(), null, "initials while the backoff runs");
+		assert.equal(avatarRequests.length, 1, "no immediate re-request");
+		await until(() => s.img() !== null, "the retried photo", 8_000);
+		assert.ok(s.img().startsWith("blob:test/"), `got ${s.img()}`);
+		assert.equal(avatarRequests.length, 2, "one retry, not a loop");
+	} finally {
+		await s.teardown();
+	}
+});
+
+test("a permanent failure costs exactly two reads and then stays on initials", async () => {
+	reset(me(A, "Ada Lovelace", HASH_A), "not-found");
+	const s = await mount();
+	try {
+		await until(() => avatarRequests.length === 2, "the retry", 8_000);
+		// Long enough for a third read to have fired if the retry looped.
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 3_600));
+		});
+		assert.equal(avatarRequests.length, 2, "bounded: no storm on a 404");
+		assert.equal(s.img(), null);
+		assert.ok(s.fallback()?.includes("AL"), "initials stay");
+	} finally {
+		await s.teardown();
 	}
 });
 

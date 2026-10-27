@@ -29,12 +29,32 @@ type Entry = {
 	failed: boolean;
 	listeners: Set<() => void>;
 	promise?: Promise<void>;
+	/*
+	 * The one automatic retry a `retryOnce` caller may spend on this entry
+	 * (agent review round 1, M1). `retried` flips when the retry is SCHEDULED,
+	 * not when it runs, so concurrent listeners cannot schedule two; `retryTimer`
+	 * is the pending backoff, cleared if its scheduler unmounts first.
+	 */
+	retried: boolean;
+	retryTimer?: ReturnType<typeof setTimeout>;
 };
 const caches = new WeakMap<QueryClient, Map<string, Entry>>();
 // Bound even mounted entries and outstanding reads: a crowded surface falls
 // back to initials rather than allocating unbounded private blobs (64 MiB max).
 const MAX_ENTRIES = 64;
 const MAX_AVATAR_BYTES = 1024 * 1024;
+/*
+ * WHY A FAILED READ IS RETRIED ONCE, AND ONLY FOR THE OWN-ACCOUNT ROW (agent
+ * review round 1, M1). A failed entry is cached for the authority epoch, which
+ * is what keeps a crowded Team Bridge list from re-requesting broken avatars on
+ * every scroll remount. But the sidebar's account row never unmounts, so one
+ * transient 502 (core restarting, hub blip) left that row on initials until the
+ * next sign-in or reload. The bound is deliberate: ONE retry per entry per epoch,
+ * after a backoff long enough for a restarting core to answer, so a permanent
+ * failure (an older core's 404) costs exactly two requests and never a loop.
+ * Team Bridge keeps its old behaviour: its rows remount and get evicted instead.
+ */
+const FAILED_READ_RETRY_MS = 3000;
 function avatarStore(client: QueryClient): Map<string, Entry> {
 	const existing = caches.get(client);
 	if (existing) return existing;
@@ -142,7 +162,8 @@ export function useTeamBridgeAvatar(
 
 /**
  * The signed-in person's own photo, or undefined (initials) when there is none,
- * the read failed, the core is too old to relay it (404 -> failed entry), or the
+ * the read failed (retried once after a backoff, since this row never remounts),
+ * the core is too old to relay it (404 -> failed entry), or the
  * account the version names is not the account the renderer is currently signed
  * in as. The last check is what keeps A's photo off B's row across a switch: the
  * cache revokes on the authority change, and a version that still names A while
@@ -172,13 +193,18 @@ export function useOwnAccountAvatar(
 	return useAccountAvatar(
 		version && version.accountId === authority.accountId ? version : null,
 		size,
+		// Always mounted, so it never recovers by remount the way a Team Bridge
+		// row does: see `FAILED_READ_RETRY_MS`.
+		{ retryOnce: true },
 	);
 }
 
 export function useAccountAvatar(
 	version: AccountAvatarVersion | null,
 	size: 64 | 256,
+	options: { retryOnce?: boolean } = {},
 ): string | undefined {
+	const retryOnce = options.retryOnce === true;
 	const queryClient = useQueryClient();
 	const authority = useObservedRadientAuthority();
 	const key = version
@@ -197,12 +223,15 @@ export function useAccountAvatar(
 		if (!key || !version || !authority.accountId) return;
 		const store = avatarStore(queryClient);
 		const cached = store.get(key);
-		const entry: Entry = cached ?? { failed: false, listeners: new Set() };
-		if (!cached) {
-			if (!makeRoom(store)) return;
-			store.set(key, entry);
-			const commissionedEpoch = authority.epoch;
-			const commissionedAccount = authority.accountId;
+		const entry: Entry = cached ?? {
+			failed: false,
+			listeners: new Set(),
+			retried: false,
+		};
+		const commissionedEpoch = authority.epoch;
+		const commissionedAccount = authority.accountId;
+		const commission = () => {
+			entry.failed = false;
 			entry.promise = TeamBridgeApi.avatarBytes({
 				expectedAccountId: commissionedAccount,
 				accountId: version.accountId,
@@ -241,20 +270,67 @@ export function useAccountAvatar(
 					if (store.get(key) !== entry) return;
 					for (const listener of entry.listeners) listener();
 				});
+		};
+		if (!cached) {
+			if (!makeRoom(store)) return;
+			store.set(key, entry);
+			commission();
 		}
+		/*
+		 * M1's single retry. Checked from the listener (a read settling as failed
+		 * notifies it) and once on mount (a cached entry that already failed).
+		 * The timer re-checks that the entry is still this key's and the authority
+		 * is still the commissioning one: a sign-out or switch clears the store,
+		 * so a retry can never fetch for an account that is no longer signed in.
+		 */
+		let scheduledRetry = false;
+		const maybeRetry = () => {
+			if (!retryOnce || !entry.failed || entry.promise || entry.retried) return;
+			entry.retried = true;
+			scheduledRetry = true;
+			entry.retryTimer = setTimeout(() => {
+				entry.retryTimer = undefined;
+				scheduledRetry = false;
+				if (store.get(key) !== entry || !entry.failed) return;
+				const current = observedRadientAuthority(queryClient);
+				if (
+					current.epoch !== commissionedEpoch ||
+					current.accountId !== commissionedAccount
+				)
+					return;
+				commission();
+			}, FAILED_READ_RETRY_MS);
+		};
 		// Refresh insertion order for least-recently-mounted idle eviction.
 		store.delete(key);
 		store.set(key, entry);
 		const listener = () => {
+			maybeRetry();
 			if (alive.current) render((value) => value + 1);
 		};
 		entry.listeners.add(listener);
+		maybeRetry();
 		return () => {
 			entry.listeners.delete(listener);
+			// A backoff this mount scheduled must not outlive it unobserved; hand
+			// the retry back so the next mount (same key) can schedule it again.
+			if (scheduledRetry && entry.retryTimer) {
+				clearTimeout(entry.retryTimer);
+				entry.retryTimer = undefined;
+				entry.retried = false;
+			}
 			// Scrolling remounts reuse this bounded, memory-only entry. The
 			// authority subscriber, not unmount, owns privacy revocation.
 		};
-	}, [authority.accountId, authority.epoch, key, queryClient, size, version]);
+	}, [
+		authority.accountId,
+		authority.epoch,
+		key,
+		queryClient,
+		retryOnce,
+		size,
+		version,
+	]);
 
 	if (!key || !authority.accountId) return undefined;
 	return caches.get(queryClient)?.get(key)?.url;

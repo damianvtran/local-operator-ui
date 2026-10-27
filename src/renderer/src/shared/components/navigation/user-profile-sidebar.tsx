@@ -190,41 +190,46 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				 * A neutral plate, not an accent fill. The rail already spends the
 				 * accent on the active destination; a solid accent disc at the foot
 				 * is a second, larger spend on the one row that is not a
-				 * destination. `elevated` is the plate's own step up off the rail's
-				 * `surface` ground — the arrangement the refinement round left, and
-				 * NOT a fix for the rail's ground: that ground is `surface` now, so
-				 * the fallback's default `sunken` would no longer vanish into it
-				 * (measured, `sunken` off `surface` is ΔE00 3.96 at its tightest).
+				 * destination.
 				 *
-				 * `border-control` is what makes the plate SURVIVE its row, and the
-				 * reason is a property of the row state rather than of this value:
-				 * the row above paints `hover:bg-row-hover`, and a row state is
-				 * authored as a step of the panel it sits on, so on some palette a
-				 * state lands on the plate's own rung. Measured on the shipped
-				 * values: `elevated` against `rowHover` is byte-identical on
-				 * `arcade` (ΔE00 0.00) and inside the field floor on `gruvbox`
-				 * (1.14), `obsidian` (1.21) and `everforest` (1.90) — hover the row
-				 * at any of them and the plate is a disc of the row's own hover
-				 * colour. No fill role escapes that (a state that is a step of the
-				 * panel will always land on a rung somewhere), so the edge is the
-				 * carrier: `border-control` is this system's role for an edge that
-				 * IS the boundary of a thing, and its 3:1 floor is asserted against
-				 * every ground. Both halves of that are guarded — the class here in
-				 * `scripts/chat-sidebar-selection.test.mjs`, and the colours per
-				 * palette in `scripts/contrast-contract.mjs` — because the palette
-				 * gate cannot see which class an element paints and this file's own
-				 * reader cannot see a palette.
+				 * ONE PERSON, ONE SHAPE (design review round 1, D1). Team Bridge draws
+				 * this same person's photo, through this same `use-account-avatar.ts`
+				 * cache, on `TeamBridgeAvatar`'s rounded-square plate (`rounded-md`,
+				 * `team-bridge-profile-card.tsx`), and the operator asked for
+				 * rounded-square images. So the root overrides the shared primitive's
+				 * `rounded-full` with that same token rather than a new radius, and
+				 * the photo, the initials and a transparent upload's backing all share
+				 * one box. `size-7` is unchanged, so the swap moves no geometry.
+				 *
+				 * BORDERLESS, ON THE FILL TEAM BRIDGE ALREADY MEASURED (D2, D4). The
+				 * plate used to be `elevated` with a `border-control` ring, because
+				 * `elevated` lands on `rowHover` on some palettes (ΔE00 0.00 on
+				 * `arcade`) and the row above paints `hover:bg-row-hover`. That ring
+				 * showed for every launch while the bytes were in flight and dropped
+				 * away the moment the photo landed. `media-surface` is the borderless
+				 * fill #1427 gave the Team Bridge initial plates, asserted in
+				 * `scripts/contrast-contract.mjs` against both grounds this row
+				 * paints - the rail's `surface` and `rowHover` (the `team bridge
+				 * borderless person and agent plates` row) - with `inkMuted` initials
+				 * on it (`team bridge person initial plate`). The fill sits on the
+				 * ROOT, not only the fallback, because Radix unmounts the fallback
+				 * once the image loads: a transparent PNG would otherwise float on the
+				 * row and change colour under the pointer. The class half is pinned in
+				 * `scripts/chat-sidebar-selection.test.mjs`.
 				 */}
-				<Avatar className="size-7 shrink-0">
+				<Avatar className="size-7 shrink-0 rounded-md bg-media-surface">
 					{/*
-					 * No border on the photo (borderless chrome): a photo is its own
-					 * edge, unlike the flat plate below, so the `border-control` the
-					 * plate needs against `rowHover` has nothing to do here. Radix
-					 * shows the fallback until the image has loaded, so a slow or
-					 * failed decode never flashes an empty disc.
+					 * Radix mounts the image only once it has LOADED, so the fallback
+					 * holds the plate until then and a slow or failed decode never
+					 * flashes an empty box. `lo-avatar-arrival` fades it in over
+					 * `--duration-fast` (D5): opacity only, in a box that already has
+					 * its final size, and switched off under reduced motion
+					 * (`styles/index.css`).
 					 */}
-					{avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
-					<AvatarFallback className="border border-control bg-elevated text-ink">
+					{avatarUrl && (
+						<AvatarImage src={avatarUrl} alt="" className="lo-avatar-arrival" />
+					)}
+					<AvatarFallback className="rounded-md bg-media-surface text-ink-muted">
 						{userInitials ?? <User size={14} aria-hidden="true" />}
 					</AvatarFallback>
 				</Avatar>
