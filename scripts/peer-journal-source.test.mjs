@@ -802,3 +802,64 @@ test("the user's press clears the source-unavailable flag, and unsupported never
 		"an unsupported source never sets the flag",
 	);
 });
+
+test("a peer older page read while the owner's index builds keeps an unanswered row with its page through the payload read", async () => {
+	/*
+	 * QA round 3 Q8, through the shipped hook: a `before_id` page answered while
+	 * the owner's index is `building` (no seqs), then the repair's facts lookup
+	 * and the typed payload subset place every page row except one the owner's
+	 * index lacks. The payload commit rebuilds each answered row; a rebuild that
+	 * dropped the continuation stamp (`JournalPosition.sourcePrecedes`) left the
+	 * unanswered row nothing of its own page to rank beside, and it painted at
+	 * the tail boundary (`y0 y2 y3 y1 t4 t5`) for good.
+	 */
+	const seq = { y0: 0, y1: 1, y2: 2, y3: 3, t4: 4, t5: 5 };
+	const entry = (id) => ({ ...messageRow(id, id), ts: 100 + seq[id] });
+	const ready = (id) => ({ ...entry(id), journal_seq: seq[id] });
+	const unanswered = "y1";
+	const h = await peerMount({
+		history: page([ready("t4"), ready("t5")], "peer-A", { has_more: true }),
+		historyHandler: async (request) => {
+			const asked = (request.orderIds ?? []).filter(
+				(id) => id !== unanswered && id in seq,
+			);
+			if (request.sourceRead === "metadata")
+				return page([], "peer-A", {
+					journal_ordinals: Object.fromEntries(
+						asked.map((id) => [id, seq[id]]),
+					),
+				});
+			if (request.sourceRead === "payload")
+				return page(asked.map(ready), "peer-A", {
+					source_present_ids: asked,
+				});
+			if (request.beforeId === "t4")
+				return {
+					entries: ["y0", "y1", "y2", "y3"].map(entry),
+					has_more: false,
+					cursor_missing: false,
+					journal_order_state: "building",
+				};
+			return { entries: [], has_more: false, cursor_missing: false };
+		},
+	});
+	const order = () =>
+		h
+			.get()
+			.transcript.records.map((r) => r.id)
+			.join(" ");
+	assert.equal(order(), "t4 t5", "the open painted its ready page");
+	await h.get().loadOlder();
+	await pump();
+	const payloads = requests.filter((r) => r.sourceRead === "payload");
+	assert.ok(payloads.length >= 1, "the repair admitted bodies by payload");
+	assert.deepEqual(
+		{
+			order: order(),
+			placed: ["y0", "y2", "y3"].map(
+				(id) => h.get().transcript.records.find((r) => r.id === id).journalSeq,
+			),
+		},
+		{ order: "y0 y1 y2 y3 t4 t5", placed: [0, 2, 3] },
+	);
+});
