@@ -639,8 +639,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.canvas",
-			"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
-			"target_sha256": "03d6cd5c75bcde11346f257d6827ebd2a3d12a09ff3ac2c1b44c22382e06f66c",
+			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+			"target_sha256": "e98e84496c0ab94d992405cc35684dc7fce89cc399efb461697483d7dd8c9d3f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -648,19 +648,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "3ac75cca27a3",
+					"instance": "i18n-audit-1452-20261027-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3ac75cca27a3.json",
-					"receipt_sha256": "2257b30cca565c081f02b5d321046ce96fb65d70edf10caafc2197caa4be8728"
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-es.json",
+					"receipt_sha256": "02f1f35b25c4f5d2a2c02d35640c0cd6c7a96701c0342cf1c3d60871076176b6",
+					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -684,6 +686,28 @@
 							"receipt": "i18n/receipts/ea3629c2a645.json",
 							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
 							"scope": "Full semantic read; exhaustive mechanical checks."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+					"target_sha256": "03d6cd5c75bcde11346f257d6827ebd2a3d12a09ff3ac2c1b44c22382e06f66c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "3ac75cca27a3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3ac75cca27a3.json",
+							"receipt_sha256": "2257b30cca565c081f02b5d321046ce96fb65d70edf10caafc2197caa4be8728"
 						}
 					],
 					"status": "audited"
@@ -999,8 +1023,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
-			"target_sha256": "6ca7ecf924c1f3a6c108851342ccdedecfd848f8a728d99d111df92163859070",
+			"source_sha256": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+			"target_sha256": "3c77713ff4760a8bbb2b77328cd7cbdf33434b00ac38f233c751e4e244baf991",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -1008,21 +1032,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-23",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "i18n-audit-attachments-20261023-es-r4",
+					"instance": "i18n-audit-1452-20261027-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-es-r4.json",
-					"receipt_sha256": "886b17e38060c8b985cf293c877af1e4a88c2684507d6872f05d5cfd2a112bd5",
-					"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
-					"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-es.json",
+					"receipt_sha256": "02f1f35b25c4f5d2a2c02d35640c0cd6c7a96701c0342cf1c3d60871076176b6",
+					"scope": "PR #1452 round 1: new ui.chat.attachments.file_and_copy_missing (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -1071,6 +1095,30 @@
 							"receipt_sha256": "3a9da01470bab4b5588ef70ce057ac745dc1d33880b52923bd26b3d4ba5ce1fe",
 							"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
 							"note": "Round-2 independent pass; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+					"target_sha256": "6ca7ecf924c1f3a6c108851342ccdedecfd848f8a728d99d111df92163859070",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "i18n-audit-attachments-20261023-es-r4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-es-r4.json",
+							"receipt_sha256": "886b17e38060c8b985cf293c877af1e4a88c2684507d6872f05d5cfd2a112bd5",
+							"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
+							"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
 						}
 					],
 					"status": "audited"
@@ -6772,8 +6820,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.canvas",
-			"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
-			"target_sha256": "65ae722bee3d81c60e1208205228065fcf4fb5c068ef036a77fc2f1958beb181",
+			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+			"target_sha256": "58825adf3af97853ee25335c0d851af511e704ee4a50dbd5c2ee69bb7de346a4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6782,19 +6830,21 @@
 			"status": "audited",
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "d94011de0dc0",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "i18n-audit-1452-20261027-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d94011de0dc0.json",
-					"receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-fr.json",
+					"receipt_sha256": "8809f8df5e3a4e5a874aabfde4d4e183eaa557620b4c9088c707059dc67129f1",
+					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"superseded": [
@@ -6817,6 +6867,28 @@
 								"minor": 0,
 								"nit": 0
 							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+					"target_sha256": "65ae722bee3d81c60e1208205228065fcf4fb5c068ef036a77fc2f1958beb181",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "d94011de0dc0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d94011de0dc0.json",
+							"receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
 						}
 					],
 					"status": "audited"
@@ -7132,8 +7204,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
-			"target_sha256": "3f5d1b8558dc78b8b30d206cf67838c324f199cd9dcddf3bb5447919f44a3ba1",
+			"source_sha256": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+			"target_sha256": "336c8da4c2b41faaf3daba16204933c941bef6fd185dbcefd3a4053bdec479a7",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -7141,21 +7213,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-23",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "i18n-audit-attachments-20261023-fr-r4",
+					"instance": "i18n-audit-1452-20261027-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-fr-r4.json",
-					"receipt_sha256": "9eb5899d0e489b5337a66d7a58f3736c05fa33c9e3a251bca7c0a449106ec41e",
-					"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
-					"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-fr.json",
+					"receipt_sha256": "8809f8df5e3a4e5a874aabfde4d4e183eaa557620b4c9088c707059dc67129f1",
+					"scope": "PR #1452 round 1: new ui.chat.attachments.file_and_copy_missing (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -7228,6 +7300,30 @@
 							"receipt_sha256": "9512a6e2595b25d5eef9ff46ad5f95c8375b292f69f6d0e0e1e10c6d2cfd9cb5",
 							"scope": "round-3 re-audit of the three corrected locales, all 11 keys, at the recorded source/target hashes",
 							"note": "Round-3 independent pass after the fr/hi/ur copy corrections; no findings; no BLOCKER/MAJOR."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+					"target_sha256": "3f5d1b8558dc78b8b30d206cf67838c324f199cd9dcddf3bb5447919f44a3ba1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "i18n-audit-attachments-20261023-fr-r4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-fr-r4.json",
+							"receipt_sha256": "9eb5899d0e489b5337a66d7a58f3736c05fa33c9e3a251bca7c0a449106ec41e",
+							"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
+							"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
 						}
 					],
 					"status": "audited"
@@ -13367,8 +13463,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.canvas",
-			"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
-			"target_sha256": "4061e935e0ce2645b2375602ef3245e3e9278db3c27077134ea91465a4dff2bf",
+			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+			"target_sha256": "9f46453337ba6d2b8f3d39102053db0b40afc929bde0979762ac6fe30f4dfba1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13376,19 +13472,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "dab47dfc690a",
+					"instance": "i18n-audit-1452-20261027-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/dab47dfc690a.json",
-					"receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871"
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-hi.json",
+					"receipt_sha256": "117df1d4681f849615cd07a626381806546068837084dca527fb56ae09dc72f0",
+					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -13413,6 +13511,28 @@
 							"receipt_sha256": "d0d2adb696d84959d52ff8b95d2e6d484d9d9dd5678a31049089009e14326ddd",
 							"scope": "hi ui.canvas vs en source — round 1 independent full pass, 57 keys",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+					"target_sha256": "4061e935e0ce2645b2375602ef3245e3e9278db3c27077134ea91465a4dff2bf",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "dab47dfc690a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/dab47dfc690a.json",
+							"receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871"
 						}
 					],
 					"status": "audited"
@@ -13729,8 +13849,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
-			"target_sha256": "d242868043b06f5c93ba5e999bd0eb693aaa262f966ab17c14b2c3e9d348f680",
+			"source_sha256": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+			"target_sha256": "abae41cac8100c2bc917ba8798e36cd0b7b9e0bedbdd87fb88f3af29f305ced3",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -13738,21 +13858,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-23",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "i18n-audit-attachments-20261023-hi-r4",
+					"instance": "i18n-audit-1452-20261027-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-hi-r4.json",
-					"receipt_sha256": "138a7ee594b877ef104c008a0762d98b8e474fc177292ef29945e448015e5974",
-					"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
-					"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-hi.json",
+					"receipt_sha256": "117df1d4681f849615cd07a626381806546068837084dca527fb56ae09dc72f0",
+					"scope": "PR #1452 round 1: new ui.chat.attachments.file_and_copy_missing (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -13825,6 +13945,30 @@
 							"receipt_sha256": "a55e7f0613af0089b3f4672b2aedf233fe37cf14dff231b5c45d09b70c06dec4",
 							"scope": "round-3 re-audit of the three corrected locales, all 11 keys, at the recorded source/target hashes",
 							"note": "Round-3 independent pass after the fr/hi/ur copy corrections; no findings; no BLOCKER/MAJOR."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+					"target_sha256": "d242868043b06f5c93ba5e999bd0eb693aaa262f966ab17c14b2c3e9d348f680",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "i18n-audit-attachments-20261023-hi-r4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-hi-r4.json",
+							"receipt_sha256": "138a7ee594b877ef104c008a0762d98b8e474fc177292ef29945e448015e5974",
+							"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
+							"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
 						}
 					],
 					"status": "audited"
@@ -19676,8 +19820,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.canvas",
-			"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
-			"target_sha256": "1c7f54bc494bd60913de78fe490f5eb20587d05c10084944cdabcecfda6e37c4",
+			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+			"target_sha256": "3b023007ea2b51a4e89f4cfc548f80aec2c7651e0756986c6a91e4b8c5d54dbe",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -19685,20 +19829,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "23463a773a32-canvas",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "i18n-audit-1452-20261027-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/23463a773a32-canvas.json",
-					"receipt_sha256": "d5e7cddbe80bae8dbee4ade1a2a8c28d75f5608c27e9270bd7a9800abd7b696a",
-					"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-ru.json",
+					"receipt_sha256": "cb7c753cecfaaf261685c9387ea0140e923b3303d1254b59362b2383ba90521c",
+					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -19722,6 +19867,29 @@
 								"minor": 0,
 								"nit": 0
 							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+					"target_sha256": "1c7f54bc494bd60913de78fe490f5eb20587d05c10084944cdabcecfda6e37c4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "23463a773a32-canvas",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23463a773a32-canvas.json",
+							"receipt_sha256": "d5e7cddbe80bae8dbee4ade1a2a8c28d75f5608c27e9270bd7a9800abd7b696a",
+							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
 						}
 					],
 					"status": "audited"
@@ -20039,8 +20207,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
-			"target_sha256": "de7860c182f948a6c128c078b983df389c83baa9055ed49bad02dcf5ca2b5d4f",
+			"source_sha256": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+			"target_sha256": "e85a8c8e102dcc303c5496ee4794ccc4f7c1abd1c674b319dbf1475a2f63a7b0",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -20048,21 +20216,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-23",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "i18n-audit-attachments-20261023-ru-r4",
+					"instance": "i18n-audit-1452-20261027-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-ru-r4.json",
-					"receipt_sha256": "48b20274d6ff4395aa8477ebdcfc2f46b23608108b5a627e037d50b439bb2c85",
-					"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
-					"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-ru.json",
+					"receipt_sha256": "cb7c753cecfaaf261685c9387ea0140e923b3303d1254b59362b2383ba90521c",
+					"scope": "PR #1452 round 1: new ui.chat.attachments.file_and_copy_missing (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -20111,6 +20279,30 @@
 							"receipt_sha256": "6bd2d097e1d2e84e190ef40ebd5b9bbfefbc5de98b961340fcc6f1647eb26ffd",
 							"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
 							"note": "Round-2 independent pass; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+					"target_sha256": "de7860c182f948a6c128c078b983df389c83baa9055ed49bad02dcf5ca2b5d4f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "i18n-audit-attachments-20261023-ru-r4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-ru-r4.json",
+							"receipt_sha256": "48b20274d6ff4395aa8477ebdcfc2f46b23608108b5a627e037d50b439bb2c85",
+							"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
+							"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
 						}
 					],
 					"status": "audited"
@@ -25900,8 +26092,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.canvas",
-			"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
-			"target_sha256": "0256fd05b8c204673036d928767b60c195b64e74e9435bddde97d40517f88eec",
+			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+			"target_sha256": "2d6093fafb08d8874414eb4f3f25ebe79d2dc4a1bda5b88642088370f553d35b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -25909,20 +26101,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "21fe6c635cf3",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-1452-20261027-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/21fe6c635cf3.json",
-					"receipt_sha256": "3719777f6a0ad81c384b6152f2a44dd20f9f645e6555ae08b7d3c959e39d64c0",
-					"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-ur.json",
+					"receipt_sha256": "4df15d056faee235a4bd93e4f526007bc22c7247a67b7145c718708403a29812",
+					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4). I-ur-1 MINOR: attachmentMeta placeholders need renderer-side bidi isolation; catalogue unchanged."
 				}
 			],
 			"status": "audited",
@@ -25947,6 +26140,29 @@
 							"receipt_sha256": "329c276e130179237d9a211a060c0ebcdbeccb09d80e70a4c335375e52610103",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+					"target_sha256": "0256fd05b8c204673036d928767b60c195b64e74e9435bddde97d40517f88eec",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "21fe6c635cf3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/21fe6c635cf3.json",
+							"receipt_sha256": "3719777f6a0ad81c384b6152f2a44dd20f9f645e6555ae08b7d3c959e39d64c0",
+							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
 						}
 					],
 					"status": "audited"
@@ -26262,8 +26478,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
-			"target_sha256": "233f015f846ca1f193599f243ef574f7427ac8079bb8c66d91377b880a6783e1",
+			"source_sha256": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+			"target_sha256": "94834d4c33aa796b11ea79abebaf81a2430f5af80f28d90dd207e9f00bb18241",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -26271,21 +26487,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-23",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "i18n-audit-attachments-20261023-ur-r4",
+					"instance": "i18n-audit-1452-20261027-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-ur-r4.json",
-					"receipt_sha256": "6e9591bc15e33c4c38c0a6b32a6f02a52800fc5cb54f79ad24b9f8cc8d067a41",
-					"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
-					"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-ur.json",
+					"receipt_sha256": "4df15d056faee235a4bd93e4f526007bc22c7247a67b7145c718708403a29812",
+					"scope": "PR #1452 round 1: new ui.chat.attachments.file_and_copy_missing (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -26358,6 +26574,30 @@
 							"receipt_sha256": "bfd6ea829c10a85e2b340d0327932e0da25f67cb184799f955265e5873cc8dbe",
 							"scope": "round-3 re-audit of the three corrected locales, all 11 keys, at the recorded source/target hashes",
 							"note": "Round-3 independent pass after the fr/hi/ur copy corrections; no findings; no BLOCKER/MAJOR."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+					"target_sha256": "233f015f846ca1f193599f243ef574f7427ac8079bb8c66d91377b880a6783e1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "i18n-audit-attachments-20261023-ur-r4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-ur-r4.json",
+							"receipt_sha256": "6e9591bc15e33c4c38c0a6b32a6f02a52800fc5cb54f79ad24b9f8cc8d067a41",
+							"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
+							"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
 						}
 					],
 					"status": "audited"
@@ -32107,8 +32347,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.canvas",
-			"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
-			"target_sha256": "099709dc5c2fd65dfc9350943818865e991d4e1fb22818f013771b427938e7f4",
+			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+			"target_sha256": "333456cde7491503384cca41fe11dc31841345d479ace3bb020409ffe234b181",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -32116,19 +32356,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "b928c7f0c96d",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "i18n-audit-1452-20261027-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 2
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/b928c7f0c96d.json",
-					"receipt_sha256": "fa09631a6ef82d9b05796a237dfc2542b700a7dcbe952ee1dfcd2638787c6bc2"
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-vi.json",
+					"receipt_sha256": "e466065591283a5668c5ebbe61634fa58630670a02c74e48ca9615057dd51e04",
+					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -32153,6 +32395,28 @@
 							"receipt_sha256": "b139afe03fd3feb9a31e87e3d9035cd329a70cdd36d58318372f064f9639d156",
 							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
 							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+					"target_sha256": "099709dc5c2fd65dfc9350943818865e991d4e1fb22818f013771b427938e7f4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "b928c7f0c96d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/b928c7f0c96d.json",
+							"receipt_sha256": "fa09631a6ef82d9b05796a237dfc2542b700a7dcbe952ee1dfcd2638787c6bc2"
 						}
 					],
 					"status": "audited"
@@ -32469,8 +32733,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
-			"target_sha256": "eb13e90d9d17bcac34d1a317c60474aaba254cf315d1b2a9b47d024e417a66c4",
+			"source_sha256": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+			"target_sha256": "01b9fa44056546c35e1cd60494cf4e56d7da0e8b1fd41705309fb6b63526d4df",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -32478,21 +32742,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-23",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "i18n-audit-attachments-20261023-vi-r4",
+					"instance": "i18n-audit-1452-20261027-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-vi-r4.json",
-					"receipt_sha256": "eea7c4d9abda27e81d585a01790e664e67fff09c11f93b1e297a2e35098bc4c1",
-					"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
-					"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-vi.json",
+					"receipt_sha256": "e466065591283a5668c5ebbe61634fa58630670a02c74e48ca9615057dd51e04",
+					"scope": "PR #1452 round 1: new ui.chat.attachments.file_and_copy_missing (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -32541,6 +32805,30 @@
 							"receipt_sha256": "fb046f62072d882313245f075129133c5c9f830e28d2ed6f5f3e3f4668732122",
 							"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
 							"note": "Round-2 independent pass; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+					"target_sha256": "eb13e90d9d17bcac34d1a317c60474aaba254cf315d1b2a9b47d024e417a66c4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "i18n-audit-attachments-20261023-vi-r4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-vi-r4.json",
+							"receipt_sha256": "eea7c4d9abda27e81d585a01790e664e67fff09c11f93b1e297a2e35098bc4c1",
+							"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
+							"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
 						}
 					],
 					"status": "audited"
@@ -38775,8 +39063,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.canvas",
-			"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
-			"target_sha256": "22f05638c559a2bca58dea34e51e34a918dcb960209d721189f6d08c647509bd",
+			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+			"target_sha256": "a4f54c81fedfc83a388e5cbf402b03085d23110c449a0465f1bbf7b0cf7229e6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -38784,19 +39072,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "93ed237d2e46",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "i18n-audit-1452-20261027-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/93ed237d2e46.json",
-					"receipt_sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0"
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-zh-cn.json",
+					"receipt_sha256": "7e1a0d8845863e41c8f68e9b6ff3ae1f76b02adbe768ef934d0192b561937d05",
+					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -38821,6 +39111,28 @@
 							"receipt_sha256": "a460f43b0f13504a0e99df5c63c4083a632af09b1c492ea6e5aa849ebe2df42e",
 							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
 							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+					"target_sha256": "22f05638c559a2bca58dea34e51e34a918dcb960209d721189f6d08c647509bd",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "93ed237d2e46",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/93ed237d2e46.json",
+							"receipt_sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0"
 						}
 					],
 					"status": "audited"
@@ -39136,8 +39448,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
-			"target_sha256": "0bfefc5bf853732d9972b5c9469a982c5855f93ab45edd5748b2100ea190bcc2",
+			"source_sha256": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+			"target_sha256": "a29d3b3c59a88cc85c74615ac6590228366968a0c82dca4b6ef0f6a60b11b46b",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -39145,21 +39457,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-23",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "i18n-audit-attachments-20261023-zh-cn-r4",
+					"instance": "i18n-audit-1452-20261027-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-zh-cn-r4.json",
-					"receipt_sha256": "8f4250e76de856fd12a64cc9834b443496b8b1cfc62aa197b6fc193833332f0d",
-					"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
-					"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-20261027-zh-cn.json",
+					"receipt_sha256": "7e1a0d8845863e41c8f68e9b6ff3ae1f76b02adbe768ef934d0192b561937d05",
+					"scope": "PR #1452 round 1: new ui.chat.attachments.file_and_copy_missing (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 				}
 			],
 			"status": "audited",
@@ -39208,6 +39520,30 @@
 							"receipt_sha256": "20592e20f81aeea77e9cf9ab58145de204eb66f52ad3aad6cf26c3f707819ead",
 							"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
 							"note": "Round-2 independent pass; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+					"target_sha256": "0bfefc5bf853732d9972b5c9469a982c5855f93ab45edd5748b2100ea190bcc2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "i18n-audit-attachments-20261023-zh-cn-r4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-zh-cn-r4.json",
+							"receipt_sha256": "8f4250e76de856fd12a64cc9834b443496b8b1cfc62aa197b6fc193833332f0d",
+							"scope": "round-4 full independent pass, all 12 keys, at the recorded source/target hashes",
+							"note": "Round-4 independent pass after the D2 remediation; no findings; no BLOCKER/MAJOR."
 						}
 					],
 					"status": "audited"
