@@ -53,6 +53,16 @@ export type TeamBridgeOrganization = {
  * header come to disagree about what a conversation is called.
  */
 
+/** A member's stored name; an agent's never repeats its owner ("X (X)"). */
+function memberStoredName(member: {
+	kind: "human" | "agent";
+	display_label: string;
+}): string | null {
+	return member.kind === "agent"
+		? storedAgentName(member.display_label, null)
+		: storedLabel(member.display_label);
+}
+
 /**
  * The name to render for a conversation.
  *
@@ -80,11 +90,11 @@ export function conversationTitle(
 	if (conversation.kind === "dm") {
 		const other =
 			others.find((member) => member.state === "active") ?? others[0];
-		return other ? storedLabel(other.display_label) : null;
+		return other ? memberStoredName(other) : null;
 	}
 	const labels = others
 		.filter((member) => member.state === "active")
-		.map((member) => storedLabel(member.display_label))
+		.map(memberStoredName)
 		.filter((label): label is string => label !== null);
 	if (labels.length === 0) return null;
 	if (labels.length <= 3) return labels.join(", ");
@@ -221,6 +231,10 @@ export function notifyFailureIsVisible(
  * no `members` rows at all — membership is the fact the preview withholds — so
  * `member_count` is the only metadata there, and its invited-inclusive total is
  * the honest number the preview can state.
+ *
+ * Invitees are still VISIBLE: `conversationMembershipCounts` states them
+ * separately for the header badge, so counting them here would state the same
+ * fact twice in two different totals.
  */
 export function conversationMemberCount(
 	conversation: Pick<TeamBridgeConversation, "member_count" | "members">,
@@ -230,6 +244,23 @@ export function conversationMemberCount(
 			.length;
 	}
 	return conversation.member_count ?? 0;
+}
+
+/**
+ * The known membership states, kept separate so the header never presents
+ * invited agents as active. A preview has no participant rows, so it cannot
+ * claim either breakdown from its aggregate count alone.
+ */
+export function conversationMembershipCounts(
+	conversation: Pick<TeamBridgeConversation, "members">,
+): { active: number; invited: number } {
+	let active = 0;
+	let invited = 0;
+	for (const member of conversation.members) {
+		if (member.state === "active") active += 1;
+		if (member.state === "invited") invited += 1;
+	}
+	return { active, invited };
 }
 
 /**
@@ -677,10 +708,10 @@ export function personInitial(displayLabel: string): string {
  * caller through the `chief.label` catalogue key ("{agent} ({person})"), so a
  * locale may reorder or re-punctuate it.
  *
- * WHO IS LISTED. Every OTHER person whose agent is enrolled and not disabled.
- * The reader's own chief of staff is excluded: talking to your own agent is
- * the chat surface's job, and a bridge DM with yourself would be a second,
- * screened path to the same session.
+ * WHO IS LISTED. Every person whose agent is enrolled and not disabled,
+ * including the reader. Human and agent are distinct Bridge entities even
+ * when they share an account id; the human row's "you" marker must not hide
+ * its agent. Endpoint presence/state remains the gate, never a display name.
  */
 export type TeamBridgeChiefOfStaff = {
 	person: TeamBridgeDirectoryMember;
@@ -691,11 +722,10 @@ export type TeamBridgeChiefOfStaff = {
 
 export function chiefsOfStaff(
 	people: readonly TeamBridgeDirectoryMember[],
-	selfAccountId?: string,
+	_selfAccountId?: string,
 ): TeamBridgeChiefOfStaff[] {
 	const chiefs: TeamBridgeChiefOfStaff[] = [];
 	for (const person of people) {
-		if (selfAccountId && person.account_id === selfAccountId) continue;
 		const agent = person.agent;
 		if (!agent || agent.state === "disabled") continue;
 		chiefs.push({
@@ -848,7 +878,20 @@ export type TeamBridgeTarget =
 /** One addressee of a draft: a person, or a person's chief of staff. */
 export type TeamBridgeRecipient =
 	| { kind: "human"; accountId: string; label: string }
-	| { kind: "agent"; accountId: string; endpointId: string; label: string };
+	| {
+			kind: "agent";
+			accountId: string;
+			endpointId: string;
+			/** What the picker and rail show (composed; never stored). */
+			label: string;
+			/**
+			 * The agent's own name (empty when it has none) and its owner's name,
+			 * so the create payload stores a NAME, not the composed display label
+			 * (`recipientMemberInput`). Absent on a hand-built recipient.
+			 */
+			agentName?: string;
+			ownerLabel?: string;
+	  };
 
 export function recipientKey(recipient: TeamBridgeRecipient): string {
 	return `${recipient.kind}:${recipient.accountId}`;
@@ -885,14 +928,37 @@ export function targetConversation(
 	}
 }
 
+/** "X (X)" collapses to "X"; any other label is returned unchanged. */
+function dedupedAgentLabel(label: string): string {
+	const twice = COMPOSED_LABEL.exec(label.trim());
+	return twice && nameKey(twice[1]) === nameKey(twice[2])
+		? twice[1].trim()
+		: label;
+}
+
 /**
- * The create request a draft's first send makes.
+ * What an agent member's `display_label` is stored as.
  *
- * One recipient is a DM (find-or-create on the server, so a retry or a race
- * with another window lands on the same row); two or more is a private group,
- * agent-capable exactly when a chief of staff is among them. Returns null for
- * an empty draft: there is no one to send to.
+ * THE SERVER STORES THIS VERBATIM and every client reads it back, so it must be
+ * a NAME, never the composed display label: storing "Ben Tran's chief of
+ * staff" made the read path compose it AGAIN ("Ben Tran's chief of staff (Ben
+ * Tran)", review R1-1 on #1334). So: the agent's own name when it has one;
+ * otherwise the OWNER's name, which every reader already treats as "no agent
+ * name" (`storedAgentName`) and resolves from the directory, in the reader's
+ * own language. A recipient without those fields (hand-built) falls back to
+ * its label with a doubled "X (X)" collapsed.
  */
+function storedAgentLabel(
+	recipient: Extract<TeamBridgeRecipient, { kind: "agent" }>,
+): string {
+	const owner = recipient.ownerLabel?.trim();
+	if (recipient.agentName !== undefined && owner) {
+		const agent = recipient.agentName.trim();
+		return agent !== "" && nameKey(agent) !== nameKey(owner) ? agent : owner;
+	}
+	return dedupedAgentLabel(recipient.label);
+}
+
 /**
  * One addressed recipient as the create op's STRICT member shape: exactly the
  * wire keys, never a UI field (the `rowId` that refused every dialog create is
@@ -907,7 +973,7 @@ export function recipientMemberInput(
 				account_id: recipient.accountId,
 				kind: "agent",
 				endpoint_id: recipient.endpointId,
-				display_label: recipient.label.slice(0, 64),
+				display_label: storedAgentLabel(recipient).slice(0, 64),
 			}
 		: {
 				account_id: recipient.accountId,
@@ -927,7 +993,7 @@ export function recipientMemberInput(
 export function recipientCandidates(
 	people: readonly TeamBridgeDirectoryMember[],
 	selfAccountId: string | undefined,
-	chiefLabel: (agent: string, person: string) => string,
+	chiefLabels: ChiefLabels,
 ): TeamBridgeRecipient[] {
 	const humans: TeamBridgeRecipient[] = people
 		.filter((member) => {
@@ -946,11 +1012,25 @@ export function recipientCandidates(
 		kind: "agent",
 		accountId: chief.person.account_id,
 		endpointId: chief.endpointId,
-		label: chiefLabel(chief.agentName, personDisplayLabel(chief.person)),
+		agentName: chief.agentName,
+		ownerLabel: personDisplayLabel(chief.person),
+		label: composeChiefLabel(
+			chief.agentName,
+			personDisplayLabel(chief.person),
+			chiefLabels,
+		),
 	}));
 	return [...humans, ...agents];
 }
 
+/**
+ * The create request a draft's first send makes.
+ *
+ * One recipient is a DM (find-or-create on the server, so a retry or a race
+ * with another window lands on the same row); two or more is a private group,
+ * agent-capable exactly when a chief of staff is among them. Returns null for
+ * an empty draft: there is no one to send to.
+ */
 export function draftCreateInput(recipients: readonly TeamBridgeRecipient[]): {
 	kind: "dm" | "group";
 	visibility: "private";
@@ -991,6 +1071,85 @@ export function storedLabel(label: string): string | null {
 		: trimmed;
 }
 
+/**
+ * The two catalogue strings a chief-of-staff label is composed from. Injected
+ * because both are translatable ("{agent} ({person})" and "{person}'s chief of
+ * staff" reorder and re-punctuate per locale).
+ */
+export type ChiefLabels = {
+	/** "Aida (Ben Tran)": the agent's own name, the person as context. */
+	named: (agent: string, person: string) => string;
+	/** "Ben Tran's chief of staff": used when the agent has no name of its own. */
+	unnamed: (person: string) => string;
+};
+
+/**
+ * "Agent (Owner)": the composed display form. Older clients stored it as the
+ * agent member's `display_label`, so the read path must recognise it (and "X
+ * (X)") in existing rows; this client now stores a bare name (`storedAgentLabel`).
+ */
+const COMPOSED_LABEL = /^(.+?)\s*\((.+)\)$/;
+
+/** Case-, space- and accent-insensitive form for "is this the same name". */
+function nameKey(name: string): string {
+	return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+/**
+ * THE ONE PLACE a chief-of-staff label is composed (operator report,
+ * 2026-10-22: "Ben Tran (Ben Tran)" on the rail, the thread header and the
+ * composer placeholder, and persisted by the server verbatim as the agent
+ * member's `display_label`).
+ *
+ * WHY IT HAPPENED. The directory's `agent.name` is the endpoint's agent name,
+ * else its label, and an endpoint enrolled without an agent name was labelled
+ * with its OWNER's name. Composing "{agent} ({person})" from that repeated the
+ * person. So an agent name that is empty, or the same as the person's
+ * (normalised), is no name at all: the label is then "{person}'s chief of
+ * staff", and the person's name never appears twice.
+ */
+export function composeChiefLabel(
+	agentName: string,
+	personName: string,
+	labels: ChiefLabels,
+): string {
+	const agent = agentName.trim();
+	const person = personName.trim();
+	return agent === "" || nameKey(agent) === nameKey(person)
+		? labels.unnamed(person)
+		: labels.named(agent, person);
+}
+
+/**
+ * The agent half of a STORED agent `display_label`, or null when the row holds
+ * no agent name.
+ *
+ * Rows written before the composition fix hold "X (X)", the person's own name,
+ * or an already composed "Aida (Ben Tran)". The first two are no name; the
+ * third is stripped back to "Aida" so it is not composed a second time.
+ * `personName` is null when the directory does not list the owner; a label of
+ * the form "X (X)" is still recognised then.
+ */
+export function storedAgentName(
+	label: string,
+	personName: string | null,
+): string | null {
+	const stored = storedLabel(label);
+	if (stored === null) return null;
+	if (personName !== null && nameKey(stored) === nameKey(personName)) {
+		return null;
+	}
+	const composed = COMPOSED_LABEL.exec(stored);
+	if (composed) {
+		const [, agent, owner] = composed;
+		if (nameKey(agent) === nameKey(owner)) return null;
+		if (personName !== null && nameKey(owner) === nameKey(personName)) {
+			return agent.trim();
+		}
+	}
+	return stored;
+}
+
 /** The signed-in reader, when the account read has answered with a name. */
 export type TeamBridgeSelf = { accountId: string; name: string };
 
@@ -1020,24 +1179,33 @@ export function participantLabel(
 		display_label: string;
 	},
 	people: readonly TeamBridgeDirectoryMember[],
-	chiefLabel: (agent: string, person: string) => string,
+	chiefLabels: ChiefLabels,
 	self?: TeamBridgeSelf | null,
 ): string | null {
 	const person = people.find(
 		(row) => row.account_id === participant.account_id,
 	);
 	const personName = person ? personDisplayLabel(person) : null;
-	const stored = storedLabel(participant.display_label);
 	if (participant.kind === "human") {
+		const stored = storedLabel(participant.display_label);
 		const selfName =
 			self && self.accountId === participant.account_id
 				? self.name.trim() || null
 				: null;
 		return personName ?? selfName ?? stored;
 	}
-	const agentName = person?.agent?.name.trim() || stored;
-	if (!agentName) return null;
-	return personName ? chiefLabel(agentName, personName) : agentName;
+	// An agent name equal to the owner's is the server defaulting the label to
+	// the person (see `composeChiefLabel`): it is no name, so fall through to
+	// the stored label and then to "{person}'s chief of staff".
+	const directoryName = person?.agent?.name.trim() ?? "";
+	const agentName =
+		directoryName !== "" &&
+		(personName === null || nameKey(directoryName) !== nameKey(personName))
+			? directoryName
+			: storedAgentName(participant.display_label, personName);
+	if (personName)
+		return composeChiefLabel(agentName ?? "", personName, chiefLabels);
+	return agentName;
 }
 
 export type ThreadItem =

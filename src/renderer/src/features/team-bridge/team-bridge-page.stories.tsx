@@ -29,7 +29,9 @@ import { draftStorageKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
+	type TeamBridgeTarget,
 	asTeamBridgeTenantId,
+	draftCreateInput,
 	organizationOptions,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
@@ -151,8 +153,8 @@ const channel: TeamBridgeConversation = {
 	unread_count: 3,
 	muted: false,
 	// What agent-server sends on every row: active + invited (Damian, Bea, Cy).
-	// The header must still read 2 active members, not 3, so this fixture is the
-	// insider branch of `conversationMemberCount` rather than a decorative field.
+	// The header must read 2 active members with 1 invited beneath, not 3
+	// members: populated rows are authoritative over this aggregate field.
 	member_count: 3,
 };
 
@@ -2004,4 +2006,233 @@ export const ProfileMergedTenantMessage: Story = {
 			TEAM_BRIDGE_ALL_SCOPE,
 		);
 	},
+};
+
+/** Production-shaped regression: one active human owner, three invited agents.
+ * The header reads "1 active member" over "3 invited", derived from the
+ * participant rows; no `member_count` is needed.
+ */
+export const FourMembersThreeInvited: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		scope: asTeamBridgeTenantId("tnt_1"),
+		conversations: [
+			{
+				...channel,
+				id: "bcv_qa_coordination",
+				name: "qa-coordination",
+				member_count: undefined,
+				members: [
+					{
+						account_id: self,
+						kind: "human",
+						display_label: "Damian Tran",
+						role: "owner",
+						state: "active",
+					},
+					...["Ben Tran", "Sana Ketabchi", "Sherman Tsui"].map(
+						(name, index) => ({
+							account_id: `acct_invited_${index}`,
+							kind: "agent" as const,
+							display_label: name,
+							role: "member" as const,
+							state: "invited" as const,
+						}),
+					),
+				],
+			},
+		],
+		target: { type: "conversation", id: "bcv_qa_coordination" },
+		people: rosterWithChiefs,
+		messages: [],
+	},
+};
+
+/** The reader's own chief of staff in the picker and the Chiefs of staff
+ * section. The server's DisplayAgentName falls back to the person's name when
+ * the endpoint has no agent_name, so this one reads "Damian Tran’s chief of
+ * staff"; `OwnChiefNamed` is the published-name case, "Aida (Damian Tran)".
+ */
+export const OwnChiefServerFallback: Story = {
+	// Keep the real picker controlled so browser QA can select/remove an agent
+	// and verify that its human owner is never implicitly added to the draft.
+	render: function OwnChiefPicker(args) {
+		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
+		return (
+			<TeamBridgePageView {...args} target={target} onTarget={setTarget} />
+		);
+	},
+	args: {
+		...PersonDraft.args,
+		people: rosterWithChiefs.map((person) =>
+			person.account_id === self && person.agent
+				? { ...person, agent: { ...person.agent, name: person.display_label } }
+				: person,
+		),
+		target: { type: "compose", recipients: [] },
+	},
+};
+
+/** The same real picker with the endpoint's own agent name published. */
+export const OwnChiefNamed: Story = {
+	render: OwnChiefServerFallback.render,
+	args: {
+		...OwnChiefServerFallback.args,
+		people: rosterWithChiefs,
+	},
+};
+
+/**
+ * Chiefs of staff: the directory defaults Ben's agent name to his own name.
+ * `composeChiefLabel` therefore renders "Ben Tran’s chief of staff" rather than
+ * "Ben Tran (Ben Tran)"; a named agent such as Aida renders "Aida (Ben Tran)".
+ * The legacy DM/message rows below deliberately store the doubled label. Read
+ * normalization suppresses it: no doubled label is a usable stored agent name.
+ */
+const echoedRoster = rosterWithChiefs.map((row) =>
+	row.account_id === "acct_ben"
+		? {
+				...row,
+				agent: { endpoint_id: "bep_ben", name: "Ben Tran", state: "active" },
+			}
+		: row,
+);
+const chiefDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_chief",
+	agent_capable: true,
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian Tran",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "agent",
+			display_label: "Ben Tran (Ben Tran)",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+export const ChiefLabelUnnamedAgent: Story = {
+	args: {
+		...slackRail,
+		people: echoedRoster,
+		conversations: [humansChannel, agentsChannel, chiefDm],
+		target: { type: "chief", accountId: "acct_ben" },
+		messages: [
+			{
+				id: "bcmsg_c1",
+				conversation_id: chiefDm.id,
+				seq: 1,
+				sender: {
+					account_id: "acct_ben",
+					kind: "agent",
+					display_label: "Ben Tran (Ben Tran)",
+				},
+				body: "Hi, this is Ben's chief of staff. How can I help?",
+				origin: "agent",
+				created_at: at(5),
+			},
+		],
+	},
+};
+
+/** The same, with the agent's own name published: "Aida (Ben Tran)". */
+export const ChiefLabelNamedAgent: Story = {
+	args: {
+		...ChiefLabelUnnamedAgent.args,
+		people: rosterWithChiefs,
+	},
+};
+
+/**
+ * A first send to the reader's own chief, through the real create serializer
+ * (`draftCreateInput`), read back by the real view. The payload is printed so
+ * a reviewer can see the stored `display_label` is a bare name ("Aida", or the
+ * owner's name when unnamed), never the composed label. In-memory fixture: it
+ * claims nothing about the container glue or a live backend.
+ */
+export const OwnChiefCreateReadRoundTrip: Story = {
+	args: OwnChiefServerFallback.args,
+	render: function OwnChiefRoundTrip(args) {
+		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
+		const [created, setCreated] = useState<TeamBridgeConversation | null>(null);
+		const [confirmed, setConfirmed] = useState<TeamBridgeMessage[]>([]);
+		const [wire, setWire] = useState<ReturnType<typeof draftCreateInput>>(null);
+		return (
+			<div className="flex h-full flex-col">
+				<output
+					className="shrink-0 px-3 py-1 text-meta-sm"
+					aria-label="Fixture create payload"
+				>
+					{wire ? JSON.stringify(wire) : "Fixture only: no create yet"}
+				</output>
+				<TeamBridgePageView
+					{...args}
+					target={target}
+					onTarget={setTarget}
+					conversations={created ? [created] : []}
+					messages={confirmed}
+					messageState={created ? "ready" : "idle"}
+					onSend={async (body) => {
+						if (target?.type !== "compose") return;
+						const input = draftCreateInput(target.recipients);
+						if (!input) return;
+						setWire(input);
+						const conversation: TeamBridgeConversation = {
+							...dm,
+							id: "bcv_self_roundtrip",
+							tenant_id: "tnt_1",
+							kind: input.kind,
+							name: "",
+							agent_capable: input.agentCapable,
+							members: [
+								{
+									account_id: self,
+									kind: "human",
+									display_label: "Damian Tran",
+									role: "owner",
+									state: "active",
+								},
+								...input.members.map((member) => ({
+									account_id: member.account_id,
+									kind: member.kind,
+									display_label: member.display_label ?? "",
+									role: "member" as const,
+									state: "invited" as const,
+								})),
+							],
+						};
+						setCreated(conversation);
+						setConfirmed([
+							{
+								id: "bcmsg_self_roundtrip",
+								conversation_id: conversation.id,
+								seq: 1,
+								sender: {
+									account_id: self,
+									kind: "human",
+									display_label: "Damian Tran",
+								},
+								origin: "human",
+								body,
+								created_at: new Date().toISOString(),
+							},
+						]);
+						setTarget({ type: "conversation", id: conversation.id });
+					}}
+				/>
+			</div>
+		);
+	},
+};
+
+export const OwnChiefNamedCreateReadRoundTrip: Story = {
+	render: OwnChiefCreateReadRoundTrip.render,
+	args: { ...OwnChiefNamed.args },
 };
