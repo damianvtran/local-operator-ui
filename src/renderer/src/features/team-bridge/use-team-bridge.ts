@@ -38,6 +38,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { useRef } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversationList,
@@ -51,7 +52,11 @@ import type {
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
+	isNotAMemberRefusal,
+	withAppendedPage,
+	withConversationStatus,
 	withNotificationPreference,
+	withoutConversation,
 } from "./team-bridge-model";
 
 /**
@@ -127,6 +132,75 @@ export function useTeamBridgeConversations(
 	});
 }
 
+/**
+ * The ARCHIVED half of the conversation list (the "Archived channels" surface).
+ *
+ * Off until the surface is first opened (`enabled`): archived channels are a
+ * rare admin destination, so the page never spends this read on a reader who
+ * does not look. The server decides what the caller sees here (their own
+ * archived conversations, plus an organization owner/admin's archived
+ * tenant-visible channels); the client only asks.
+ */
+export function useArchivedTeamBridgeConversations(
+	scope: TeamBridgeScope,
+	enabled = true,
+	accountId?: string,
+): UseQueryResult<TeamBridgeConversationList> {
+	const client = useQueryClient();
+	return useQuery({
+		queryKey: teamBridgeKeys.archivedConversations(
+			scope,
+			accountId ?? "unresolved-owner",
+		),
+		queryFn: () =>
+			readForBridgeOwner(client, accountId, () =>
+				TeamBridgeApi.listConversations(readScope(scope), "archived"),
+			),
+		enabled: enabled && Boolean(accountId),
+		staleTime: 15_000,
+		refetchOnWindowFocus: true,
+	});
+}
+
+/**
+ * "Load more" for the Archived channels view (review round 1, U4).
+ *
+ * WHY NOT `useInfiniteQuery`. The archive, unarchive and delete writes patch every
+ * owned conversation page with `withoutConversation` / `withConversationStatus`,
+ * which take the single-page shape. An infinite query's `{pages}` shape would make
+ * each of those crash or silently skip the archived list, so the first page stays an
+ * ordinary query and this appends the next page into the same cache entry.
+ *
+ * KNOWN, DELIBERATE LIMIT: any refetch of the archived key (every lifecycle write
+ * invalidates it) returns to the first page and "Load more" reappears. Re-walking
+ * every loaded page on each refetch would spend one request per page to preserve a
+ * scroll position nobody asked to keep; the first page is the server's newest.
+ */
+export function useLoadMoreArchivedTeamBridgeConversations(
+	scope: TeamBridgeScope,
+	accountId?: string,
+): UseMutationResult<TeamBridgeConversationList, Error, void> {
+	const client = useQueryClient();
+	const key = teamBridgeKeys.archivedConversations(
+		scope,
+		accountId ?? "unresolved-owner",
+	);
+	return useMutation({
+		mutationFn: async () => {
+			const current = client.getQueryData<TeamBridgeConversationList>(key);
+			const cursor = current?.next_cursor;
+			if (!current || !cursor) return current ?? { conversations: [] };
+			const next = await readForBridgeOwner(client, accountId, () =>
+				TeamBridgeApi.listConversations(readScope(scope), "archived", cursor),
+			);
+			return withAppendedPage(current, next);
+		},
+		onSuccess: (page) => {
+			client.setQueryData(key, page);
+		},
+	});
+}
+
 export function useTeamBridgeMessages(
 	conversationId: string | null,
 	tenantId?: string,
@@ -146,12 +220,17 @@ export function useTeamBridgeMessages(
 			),
 		enabled: enabled && Boolean(accountId) && Boolean(conversationId),
 		staleTime: 5_000,
+		/* `not_a_member` is a definite answer (an administrator opening an archived
+		   channel they never joined), not a blip: retrying it only delays the state
+		   that explains it, and polling it every eight seconds only repeats the refusal. */
+		retry: (failures, error) => !isNotAMemberRefusal(error) && failures < 3,
 		/* A conversation needs to feel live: without a poll an incoming message
 		   never appears until the reader clicks away. Eight seconds is Slack's
 		   order of immediacy for a background tab without an events stream;
 		   `refetchIntervalInBackground` stays false so a hidden window does not
 		   poll this. */
-		refetchInterval: 8_000,
+		refetchInterval: (query) =>
+			isNotAMemberRefusal(query.state.error) ? false : 8_000,
 		refetchOnWindowFocus: true,
 	});
 }
@@ -645,4 +724,286 @@ export function useCreateTeamBridgeConversation(
 		tenantId,
 		isCurrent: () => owner.isCurrent() && isCurrent(),
 	}));
+}
+
+/* ------------------------------------------------------------------ */
+/* Archive / unarchive / permanent delete                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What one lifecycle write names. The conversation is part of the VARIABLES, not
+ * only the closure, for the reason `TeamBridgeNotifyMutationVariables` states: a
+ * refusal can settle after the reader has opened another conversation, and the
+ * page must not show A's error under B.
+ */
+export type TeamBridgeLifecycleMutationVariables = {
+	conversationId: string;
+	tenantId?: string;
+};
+
+/** The rollback snapshot carried from `onMutate` to `onError`. */
+export type TeamBridgeLifecycleMutationContext = {
+	snapshots: Array<[QueryKey, TeamBridgeConversationList | undefined]>;
+};
+
+/**
+ * Every cached conversation page this account owns, live and archived alike.
+ * The account tail is what keeps a write from touching another account's cache
+ * (the same predicate the notify write uses).
+ */
+function ownedConversationPages(accountId?: string) {
+	return {
+		queryKey: teamBridgeKeys.conversationsPrefix,
+		predicate: (query: { queryKey: QueryKey }) =>
+			query.queryKey.at(-1) === accountId &&
+			query.queryKey.at(-2) === "account",
+	};
+}
+
+/**
+ * Archive, optimistically.
+ *
+ * WHY OPTIMISTIC. The person has already confirmed in a dialog that states the
+ * consequence; making the sidebar wait on a round trip afterwards would feel like
+ * the click was ignored. The row leaves every cached page at once and a refusal
+ * restores the exact snapshots taken first, so nothing here needs to know how to
+ * put a row back. `onSettled` re-reads the truth either way, which is also what
+ * fills the archived list.
+ */
+export function archiveMutationOptions(
+	client: QueryClient,
+	isCurrent?: () => boolean,
+): UseMutationOptions<
+	unknown,
+	Error,
+	TeamBridgeLifecycleMutationVariables,
+	TeamBridgeLifecycleMutationContext
+> {
+	const { accountId, epoch } = observedRadientAuthority(client);
+	const current = () =>
+		bridgeOwnerCurrent(client, accountId) && (isCurrent?.() ?? true);
+	const check = () => {
+		if (!current()) throw new Error("Team Bridge write authority changed");
+	};
+	const owned = ownedConversationPages(accountId);
+	return {
+		mutationKey: [...teamBridgeKeys.all, "archive", accountId, epoch],
+		mutationFn: ({ conversationId, tenantId }) => {
+			check();
+			return TeamBridgeApi.setArchived(
+				conversationId,
+				true,
+				tenantId,
+				accountId,
+			);
+		},
+		onMutate: async ({ conversationId, tenantId }) => {
+			check();
+			await client.cancelQueries(owned);
+			check();
+			const snapshots =
+				client.getQueriesData<TeamBridgeConversationList>(owned);
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withoutConversation(page, conversationId, tenantId),
+			);
+			return { snapshots };
+		},
+		onError: (_error, _variables, context) => {
+			if (!current()) return;
+			for (const [key, data] of context?.snapshots ?? []) {
+				client.setQueryData(key, data);
+			}
+		},
+		onSettled: async () => {
+			if (!current()) return;
+			await client.invalidateQueries(owned);
+			if (!current()) return;
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.unreadPrefix,
+			});
+		},
+	};
+}
+
+export function useArchiveTeamBridgeConversation(): UseMutationResult<
+	unknown,
+	Error,
+	TeamBridgeLifecycleMutationVariables,
+	TeamBridgeLifecycleMutationContext
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	return useMutation(archiveMutationOptions(client, owner.isCurrent));
+}
+
+/**
+ * Unarchive.
+ *
+ * The row is flipped to `open` in place rather than removed: the person is
+ * usually looking at that very channel (the banner's Unarchive), and removing it
+ * from the archived page before the live page has it would leave the pane with
+ * nothing to show for a beat. `onSettled` re-reads both pages, which moves the
+ * row to its real home.
+ */
+export function unarchiveMutationOptions(
+	client: QueryClient,
+	isCurrent?: () => boolean,
+): UseMutationOptions<
+	unknown,
+	Error,
+	TeamBridgeLifecycleMutationVariables,
+	TeamBridgeLifecycleMutationContext
+> {
+	const { accountId, epoch } = observedRadientAuthority(client);
+	const current = () =>
+		bridgeOwnerCurrent(client, accountId) && (isCurrent?.() ?? true);
+	const check = () => {
+		if (!current()) throw new Error("Team Bridge write authority changed");
+	};
+	const owned = ownedConversationPages(accountId);
+	return {
+		mutationKey: [...teamBridgeKeys.all, "unarchive", accountId, epoch],
+		mutationFn: ({ conversationId, tenantId }) => {
+			check();
+			return TeamBridgeApi.setArchived(
+				conversationId,
+				false,
+				tenantId,
+				accountId,
+			);
+		},
+		onMutate: async ({ conversationId, tenantId }) => {
+			check();
+			await client.cancelQueries(owned);
+			check();
+			const snapshots =
+				client.getQueriesData<TeamBridgeConversationList>(owned);
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withConversationStatus(page, conversationId, "open", tenantId),
+			);
+			return { snapshots };
+		},
+		onError: (_error, _variables, context) => {
+			if (!current()) return;
+			for (const [key, data] of context?.snapshots ?? []) {
+				client.setQueryData(key, data);
+			}
+		},
+		onSettled: async () => {
+			if (!current()) return;
+			await client.invalidateQueries(owned);
+			if (!current()) return;
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.unreadPrefix,
+			});
+		},
+	};
+}
+
+export function useUnarchiveTeamBridgeConversation(): UseMutationResult<
+	unknown,
+	Error,
+	TeamBridgeLifecycleMutationVariables,
+	TeamBridgeLifecycleMutationContext
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	return useMutation(unarchiveMutationOptions(client, owner.isCurrent));
+}
+
+/**
+ * PERMANENT delete. Deliberately NOT optimistic.
+ *
+ * An archive can be undone, so painting it early is safe; a delete cannot, and a
+ * rollback after a refused delete would resurrect a row the person believed was
+ * gone. The dialog stays open and pending until the server answers, and the row
+ * leaves the cache only on success.
+ *
+ * A `conversation_not_found` answer is NOT, by itself, success (review round 1, U2).
+ * The server answers the same opaque 404 to a caller who has lost authority (a
+ * demoted admin, a removed member, a channel that was never theirs) as to one who
+ * retries a delete that already finished, so treating every 404 as "deleted" told a
+ * person their data was wiped when it was not. It is success ONLY for a retry of a
+ * delete whose earlier attempt was inconclusive (a 503, which the server uses for a
+ * large channel it is still draining, or a transport failure): then the erasure
+ * carried on server-side and "gone" is the expected end. Any other 404 is surfaced
+ * as an error and the lists refetch (`onSettled`), so a channel that really is gone
+ * disappears from the Archived view and one that is not stays visible.
+ *
+ * `inconclusive` is owned by the hook (a ref), not this options object, because
+ * `useMutation` receives a freshly built options object each render.
+ */
+export function deleteMutationOptions(
+	client: QueryClient,
+	isCurrent?: () => boolean,
+	inconclusive: Set<string> = new Set(),
+): UseMutationOptions<unknown, Error, TeamBridgeLifecycleMutationVariables> {
+	const { accountId, epoch } = observedRadientAuthority(client);
+	const current = () =>
+		bridgeOwnerCurrent(client, accountId) && (isCurrent?.() ?? true);
+	const check = () => {
+		if (!current()) throw new Error("Team Bridge write authority changed");
+	};
+	const owned = ownedConversationPages(accountId);
+	return {
+		mutationKey: [...teamBridgeKeys.all, "delete", accountId, epoch],
+		mutationFn: async ({ conversationId, tenantId }) => {
+			check();
+			try {
+				return await TeamBridgeApi.deleteConversation(
+					conversationId,
+					tenantId,
+					accountId,
+				);
+			} catch (error) {
+				const failure = error as { code?: string; status?: number | null };
+				if (failure.code === "conversation_not_found") {
+					if (inconclusive.delete(conversationId)) return { deleted: true };
+					throw error;
+				}
+				// No status = the request never produced an answer; 5xx = the server
+				// is mid-drain. Either way the erasure may have carried on.
+				if (
+					failure.status === null ||
+					failure.status === undefined ||
+					failure.status >= 500
+				)
+					inconclusive.add(conversationId);
+				throw error;
+			}
+		},
+		onSuccess: (_data, { conversationId, tenantId }) => {
+			if (!current()) return;
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withoutConversation(page, conversationId, tenantId),
+			);
+		},
+		onSettled: async () => {
+			if (!current()) return;
+			await client.invalidateQueries(owned);
+			if (!current()) return;
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.unreadPrefix,
+			});
+		},
+	};
+}
+
+export function useDeleteTeamBridgeConversation(): UseMutationResult<
+	unknown,
+	Error,
+	TeamBridgeLifecycleMutationVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	const inconclusive = useRef(new Set<string>());
+	return useMutation(
+		deleteMutationOptions(client, owner.isCurrent, inconclusive.current),
+	);
 }
