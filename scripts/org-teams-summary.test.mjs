@@ -98,6 +98,21 @@ const layerDate = (iso) =>
 	}).format(new Date(iso));
 
 const DAY = 86_400_000;
+
+/*
+ * A fixture instant whose calendar day is the same in EVERY host timezone.
+ *
+ * `formatTeamDate` prints the viewer's LOCAL calendar day, which is the right
+ * product behaviour: a team updated at 10:00 UTC on Mar 14 was updated on
+ * Mar 15 for a reader in Kiritimati (UTC+14) and on Mar 13 in Pago Pago
+ * (UTC-11). No single UTC instant keeps one calendar day across UTC-12..UTC+14,
+ * so a fixed `...Z` string asserted as a literal date passes only where the
+ * suite happens to run. Building the instant from local components at local
+ * noon (12 hours from either midnight, wider than any DST shift) keeps the
+ * literal English assertions true on any machine. `month` is 1-based here.
+ */
+const localNoon = (year, month, day) =>
+	new Date(year, month - 1, day, 12).toISOString();
 const NOW = Date.parse("2026-09-30T12:00:00.000Z");
 /** The real clock, so a mount's frozen clock is handed back even if the mount throws. */
 const REAL_NOW = Date.now;
@@ -169,7 +184,8 @@ test("recency: updated_at only, honest fallbacks, no lies", () => {
 	);
 
 	const future = lib.teamRecency(
-		team({ updated_at: "2026-10-02T09:00:00.000Z" }),
+		/* Still after NOW in every zone: Oct 2 local noon is >= Oct 1 22:00Z. */
+		team({ updated_at: localNoon(2026, 10, 2) }),
 		NOW,
 	);
 	assert.equal(future.label, "updated");
@@ -319,8 +335,8 @@ test("the announcement is bounded at rest and whole once the row is open", () =>
 test("exact dates for the expanded body come from the stored fields", () => {
 	const dates = lib.teamDates(
 		team({
-			created_date: "2026-03-14T10:00:00.000Z",
-			updated_at: "2026-09-25T10:00:00.000Z",
+			created_date: localNoon(2026, 3, 14),
+			updated_at: localNoon(2026, 9, 25),
 		}),
 	);
 	/*

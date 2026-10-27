@@ -44517,6 +44517,825 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+			"target_sha256": "0b1665cb62e709e79b0521736a54e15505c09c48e7e038dfa7dca49e8df3105a",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "aa44e837c157-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/aa44e837c157-es.json",
+					"receipt_sha256": "b464fe2c50a578f05ecc5126cefd110681c8006ace33ad5b06eb13ede18e0a24",
+					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+					"target_sha256": "cea49e90c20854f4936f7ea0acf606d7423f1589fa03274dcf8f1781185ac809",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "17d1ca9bf58a-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/17d1ca9bf58a-es.json",
+							"receipt_sha256": "339081137e5a60a81fba6743c5b9987ba1dc92ebe941599f97d82c004427d7f5",
+							"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+			"target_sha256": "10da40e409f90f48a54d11bee7d276a3d5db45b5d5eb0266d6a8740b2a33dcba",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "aa44e837c157-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/aa44e837c157-fr.json",
+					"receipt_sha256": "e575c67f481ff37b6d9db56d01fccac4db0b57c928376dce6c8f9d18b2acdbb7",
+					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+					"target_sha256": "6b76b10baf7c36005232450f90d9bf929d377276547dd5be6febee9c27ad85d9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "17d1ca9bf58a-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/17d1ca9bf58a-fr.json",
+							"receipt_sha256": "f3ff5902108f20ce322d8745b05097646b8bf949606cffdee5bdaf10e6807909",
+							"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+			"target_sha256": "b7d5de0a257a77f179ee8263904ee98aebdfa0694116add294db06db810fdf22",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "aa44e837c157-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/aa44e837c157-hi.json",
+					"receipt_sha256": "28e05583352f83bda1ed1a604d4745e36d5272720469349ffdd4f94b5c821bda",
+					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+					"target_sha256": "898162c99ca65b1d8547a49c8b934990622151caa6acc1b7e719dd1e6fa54aee",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "17d1ca9bf58a-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/17d1ca9bf58a-hi.json",
+							"receipt_sha256": "87830a4b22200faa66716060b281c584407556140d44d1a4c20636071cb848ce",
+							"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+			"target_sha256": "035650b8de6e28f015025e6bafac1b26a216c994d40510aa4c8ef793fd440406",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "aa44e837c157-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/aa44e837c157-ru.json",
+					"receipt_sha256": "00f76c11005665a2cd025183e8a5eb6bc8108f492e6664f0483d6f029696390a",
+					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+					"target_sha256": "44b3de392f7f00baa2c9bf62e04fc352265f2253b3635afb746bc3fef674bba4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "17d1ca9bf58a-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/17d1ca9bf58a-ru.json",
+							"receipt_sha256": "e5e5d07e4240c62246c6599c0bcedb7c429466b81653e5b812ccc5f21d6b8231",
+							"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+			"target_sha256": "649a84deb6782ac4fb5a116be1aadab466164476b35f635b41b4169fdc888154",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "aa44e837c157-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/aa44e837c157-ur.json",
+					"receipt_sha256": "b5137825f1b3a85fc2520eca9486ccbcb1b218cd6fbce001742f50a1d18c1d61",
+					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+					"target_sha256": "0785e27a93957ca1644f8b02663982ba535c8a7b4b6b05163d098ba823dbf03c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "17d1ca9bf58a-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/17d1ca9bf58a-ur.json",
+							"receipt_sha256": "046781b7cf31a8da5fe95a18a5740da41691a96d9f4a316f2f290ff9d1f638fd",
+							"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+			"target_sha256": "ed0213689558d775e37e0c05483930c06f5011d15648d42ab09411f23c1d6116",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "aa44e837c157-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/aa44e837c157-vi.json",
+					"receipt_sha256": "d0225ebfe77a9ff17bce55bea69848fb306abf9089327865a4addd9d5ebbcce4",
+					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+					"target_sha256": "d84e7dd0eef13d39b2a6cae6bf0325779eb08994f09f4ebc4504e7450ff11c15",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "17d1ca9bf58a-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/17d1ca9bf58a-vi.json",
+							"receipt_sha256": "9dbbae0713f6ed7c8a595f8c2599b7f9e702f2b1d645922b33ccd0f7d886b6f4",
+							"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+			"target_sha256": "588988fb0ffda6a24f751822cdb657518897daca7eb2f687f49483d5bc0b7124",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "aa44e837c157-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/aa44e837c157-zh-cn.json",
+					"receipt_sha256": "94af4597def7393dbbf918a21f8322680a401dcdbd5334fb271e3e2d39a30638",
+					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+					"target_sha256": "b280862a3cdfc91392019f494d97a9f197b2edacee8955f7d3e896d81940edd8",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "17d1ca9bf58a-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/17d1ca9bf58a-zh-cn.json",
+							"receipt_sha256": "65fad9073cb4aca07817164f5a8b1f29784ac0b81d16c2fe5d7388efacd3dadd",
+							"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.notifications",
+			"source_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+			"target_sha256": "84f43b8293a39ba75d3f736375a3e11251abdcaad11d0cd8a5b4cd4e5b60a9ee",
+			"translator": {
+				"agent": "i18n-translator (tr-es)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "nt-es-37d9c9f0df44",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/nt-es-37d9c9f0df44.json",
+					"receipt_sha256": "7b6cc9bebe89a2c8b2f7488de9f0eac37247954ae21bc44af3221656fb1c1d03",
+					"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
+					"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.notifications",
+			"source_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+			"target_sha256": "c9176eb1f3a692cda0ce73c511862e729b039b38bf111277f8d56c6ebfc6e50c",
+			"translator": {
+				"agent": "i18n-translator (tr-fr)",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6-astra",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "766adb539e6a",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/766adb539e6a.json",
+					"receipt_sha256": "c278d215475629572b393b7e04caf5d81c603a964a0e1584e078547b469e3ff7",
+					"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
+					"note": "Translator fallback: anthropic/claude-opus-5-5 draft -> anthropic/claude-sonnet-5-5 announced -> openai/gpt-6.1-sol final. Auditor: openai/gpt-6-astra. Original audited bytes preserved; minor/fit findings remain open."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.notifications",
+			"source_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+			"target_sha256": "0ddb5960f6850a858352407c2f008320c712b7327b1f0b5aadc79be3cc847de4",
+			"translator": {
+				"agent": "i18n-translator (tr-hi)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "audit-hi-c9c5d8079e51",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 5,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-hi-c9c5d8079e51.json",
+					"receipt_sha256": "017c86c8a0047c33feea26a519658e465d740a0d6f31d4417f6b348fac1cc003",
+					"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
+					"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.notifications",
+			"source_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+			"target_sha256": "96cf5ec9f86de4dbdf053e17e3ce0862862f0235957849158aec891ac5f195d8",
+			"translator": {
+				"agent": "i18n-translator (tr-ru)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "ffd16b7ff158",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/ffd16b7ff158.json",
+					"receipt_sha256": "7ef1c4e1e07672c0a6ea01967ad127aa740aea0570115e84b64e7eebf8bb9938",
+					"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
+					"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.notifications",
+			"source_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+			"target_sha256": "d5c4a7e21e450d9a21a06b85198bd8a2ed78cd2d5c007e0ab10c930d60fdae4d",
+			"translator": {
+				"agent": "i18n-translator (tr-ur)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "89dbc1a173e9",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/89dbc1a173e9.json",
+					"receipt_sha256": "23625073d5898aed1db9674e37eb519a7e9eec33b255f479be419d39ae3bbbf0",
+					"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
+					"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.notifications",
+			"source_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+			"target_sha256": "1234696a29eb8c99c828a11b2d920f95358f700fb96a32e95d8e031391e86dd6",
+			"translator": {
+				"agent": "i18n-translator (tr-vi)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "cfdff5945838",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/cfdff5945838.json",
+					"receipt_sha256": "102ba974fd3cdc907caa6cf4ef48d54cb6023729d7cd271044b21387381f38d1",
+					"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
+					"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.notifications",
+			"source_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+			"target_sha256": "591282c0d9ff5418ad8b7937c2527a7cf9e8fd5712f9c3ebd3431574da7697f9",
+			"translator": {
+				"agent": "i18n-translator (tr-zh-CN)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "audit-zh-cn-6a81bd6cab5c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 6,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/audit-zh-cn-6a81bd6cab5c.json",
+					"receipt_sha256": "a53c4a76733e29938b8532beaf40963a99296ea37a05d9d031b7b2251523a2c1",
+					"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
+					"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.notifications.operation",
+			"source_sha256": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+			"target_sha256": "0404de4a010f73710593194a1ff2aed1afcf4106b8b89a566143367566c16f0f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6-astra",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "op25a1-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/op25a1-es.json",
+					"receipt_sha256": "473fe0026c3970c6f8b154e67e1f053303ee00d7cd394b45bc49ebc379923d06",
+					"scope": "ui.notifications.operation: one key, three numeric ICU args, all seven shipped locales",
+					"note": "One-key delta namespace (ui.notifications.operation); audit run op25a1-es, auditor session 766adb539e6a. Actual served model radient/auto (declared primary openai/gpt-6-astra; provider 429 fallbacks via anthropic/claude-sonnet-5-5 and openai/gpt-6.1-sol). Translator allocation openai/gpt-6-astra per manager dispatch; the receipt attests bytes, not the translator's runtime identity."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.notifications.operation",
+			"source_sha256": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+			"target_sha256": "f767dd8294f7b8d19bc36d63e38af7d4e26df4b613ea829aee68fc29d7c5cdf9",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6-astra",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "op25a1-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/op25a1-fr.json",
+					"receipt_sha256": "5d65efa793a5b45ad4852268429639f3be16a952781203044dd1b8c822247fe9",
+					"scope": "ui.notifications.operation: one key, three numeric ICU args, all seven shipped locales",
+					"note": "One-key delta namespace (ui.notifications.operation); audit run op25a1-fr, auditor session 766adb539e6a. Actual served model radient/auto (declared primary openai/gpt-6-astra; provider 429 fallbacks via anthropic/claude-sonnet-5-5 and openai/gpt-6.1-sol). Translator allocation openai/gpt-6-astra per manager dispatch; the receipt attests bytes, not the translator's runtime identity."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.notifications.operation",
+			"source_sha256": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+			"target_sha256": "820ac0c446be5615f4e6f0c6a04c1d84d724402bba5b74fa56a58150eebd6886",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6-astra",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "op25a1-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/op25a1-hi.json",
+					"receipt_sha256": "52940875f3bd231fa16d4f3416714eb1f13d156168bf9d61e40abf6f4230f83a",
+					"scope": "ui.notifications.operation: one key, three numeric ICU args, all seven shipped locales",
+					"note": "One-key delta namespace (ui.notifications.operation); audit run op25a1-hi, auditor session 766adb539e6a. Actual served model radient/auto (declared primary openai/gpt-6-astra; provider 429 fallbacks via anthropic/claude-sonnet-5-5 and openai/gpt-6.1-sol). Translator allocation openai/gpt-6-astra per manager dispatch; the receipt attests bytes, not the translator's runtime identity."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.notifications.operation",
+			"source_sha256": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+			"target_sha256": "d0846a31ef54f4606cc37c50a7d952dd00c07428bafef16697a0810a0b1326ae",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6-astra",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "op25a1-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/op25a1-ru.json",
+					"receipt_sha256": "fc4c8189f4afac0247630049a806527a203354666e5e71d8a6113f47694577b2",
+					"scope": "ui.notifications.operation: one key, three numeric ICU args, all seven shipped locales",
+					"note": "One-key delta namespace (ui.notifications.operation); audit run op25a1-ru, auditor session 766adb539e6a. Actual served model radient/auto (declared primary openai/gpt-6-astra; provider 429 fallbacks via anthropic/claude-sonnet-5-5 and openai/gpt-6.1-sol). Translator allocation openai/gpt-6-astra per manager dispatch; the receipt attests bytes, not the translator's runtime identity."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.notifications.operation",
+			"source_sha256": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+			"target_sha256": "d9e16ae4406452823392135fb0e577d1c47691f6a03ed18714be4e29f3be4ee0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6-astra",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "op25a1-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/op25a1-vi.json",
+					"receipt_sha256": "a3c3ffd0da762e033c023525dba9abde1568dda6cdfbaf16a9807fc28d21b1c0",
+					"scope": "ui.notifications.operation: one key, three numeric ICU args, all seven shipped locales",
+					"note": "One-key delta namespace (ui.notifications.operation); audit run op25a1-vi, auditor session 766adb539e6a. Actual served model radient/auto (declared primary openai/gpt-6-astra; provider 429 fallbacks via anthropic/claude-sonnet-5-5 and openai/gpt-6.1-sol). Translator allocation openai/gpt-6-astra per manager dispatch; the receipt attests bytes, not the translator's runtime identity."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.notifications.operation",
+			"source_sha256": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+			"target_sha256": "e0e9e3e332c5360fcc09dd57940ad570980f517db7402c2f4ef3c6a102a64975",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6-astra",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "op25a1-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/op25a1-zh-cn.json",
+					"receipt_sha256": "6c867cba6e2494d91116584851c0c576e0ca2c041c34fc42edf612e9f157f545",
+					"scope": "ui.notifications.operation: one key, three numeric ICU args, all seven shipped locales",
+					"note": "One-key delta namespace (ui.notifications.operation); audit run op25a1-zh-cn, auditor session 766adb539e6a. Actual served model radient/auto (declared primary openai/gpt-6-astra; provider 429 fallbacks via anthropic/claude-sonnet-5-5 and openai/gpt-6.1-sol). Translator allocation openai/gpt-6-astra per manager dispatch; the receipt attests bytes, not the translator's runtime identity."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.notifications.operation",
+			"source_sha256": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+			"target_sha256": "a50f4efbb99560fa4e82187668f0b4c2092dd17b835ef541605bb6b181dd9c14",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6-astra",
+				"date": "2026-10-25"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "op25a2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/op25a2-ur.json",
+					"receipt_sha256": "56a93a35664eca942f5d9f71eb84d8daf37a4c9bb99e7380e240cc1a62662527",
+					"scope": "ui.notifications.operation: one key, three numeric ICU args, all seven shipped locales",
+					"note": "One-key delta namespace (ui.notifications.operation); audit run op25a2-ur, auditor session 766adb539e6a. Actual served model radient/auto (declared primary openai/gpt-6-astra; provider 429 fallbacks via anthropic/claude-sonnet-5-5 and openai/gpt-6.1-sol). Translator allocation openai/gpt-6-astra per manager dispatch; the receipt attests bytes, not the translator's runtime identity. ur bytes are the auditor-proposed repair, verified by run op25a2-ur; the earlier op25a1-ur audit is a superseded pre-fix record and is not used."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

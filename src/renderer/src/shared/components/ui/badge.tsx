@@ -91,6 +91,28 @@ const badgeVariants = cva(
 				 */
 				attentionQuiet:
 					"border-0 bg-elevated font-normal text-ink-dim text-meta-sm",
+				/*
+				 * THE LOUDER COUNT, for the Notifications row only (operator, 2026-10-25,
+				 * notifications decisions D5): "No border, but ... make the badge
+				 * background brighter/more contrasted so that it stands out a bit more,
+				 * right now the style is just a bit too subtle." The quiet register above
+				 * stays on every other rail row; the operator named this badge alone.
+				 *
+				 * WHY `accent` / `on-accent` AND NOT A NEW ROLE. It is the primary
+				 * button's pair, so it is already a contrast-contracted triple on every
+				 * palette and spends no new hue. Measured with `contrast-contract.mjs`'s
+				 * ratio over the fifty-nine palettes and the four rail grounds (`canvas`,
+				 * `surface`, `row-selected`, `row-hover`): the FILL is the boundary
+				 * (no border, per the operator) at 4.24:1 worst (tokyoNight, row-selected)
+				 * against the 3:1 non-text floor, and the DIGIT on it reads at 4.97:1
+				 * worst (tokyoNightDay) against 4.5:1. Brand: dark 6.88:1 fill on
+				 * `surface`, 8.58:1 digit; light 5.14:1 and 5.33:1. Its row in
+				 * `scripts/contrast-contract.mjs` ("rail notifications badge
+				 * (emphasis)") asserts both, so a palette edit cannot quietly undo it.
+				 * Medium weight because a filled pill at 11px with regular weight thins
+				 * the numeral against the saturated ground.
+				 */
+				emphasis: "border-0 bg-accent font-medium text-on-accent text-meta-sm",
 			},
 			shape: {
 				rounded: "rounded-sm",

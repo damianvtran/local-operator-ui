@@ -67,6 +67,11 @@
  * layout (one scroller, no footer, design D1) has nowhere to put.
  */
 
+import {
+	DrawerTabs,
+	useSessionUnreadUpdates,
+} from "@features/notifications/components/drawer-updates";
+import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
@@ -75,6 +80,7 @@ import {
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 /** The four receipts this drawer raises on a settled fleet press. */
@@ -147,6 +153,12 @@ export const FleetAskDrawer = ({
 	onClose: (options?: AskDrawerCloseOptions) => void;
 }) => {
 	const { rows, frontend } = useFleetAsks();
+	const currentSessionId =
+		useCanonicalSessionsStore((state) => state.activeSessionId) ?? null;
+	const setAskDrawerOpen = useUiPreferencesStore(
+		(state) => state.setAskDrawerOpen,
+	);
+	const setTab = useNotificationDrawerTab((state) => state.setTab);
 	const { client } = useOptionalQueryClient();
 	/*
 	 * THE DISMISS DOOR'S GATE (harness PR #2833, SA-D5): a backend that does not
@@ -158,6 +170,15 @@ export const FleetAskDrawer = ({
 	const dismissEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		"ask_dismiss",
+	);
+	const notificationsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"notifications",
+		1,
+	);
+	const unreadUpdates = useSessionUnreadUpdates(
+		currentSessionId,
+		notificationsEnabled,
 	);
 	const lock = useRef(createSendLock()).current;
 	const [drafts, setDrafts] =
@@ -446,7 +467,36 @@ export const FleetAskDrawer = ({
 		<AskDrawer
 			frontend={frontend}
 			scope="fleet"
-			onClose={onClose}
+			tabs={
+				notificationsEnabled
+					? {
+							strip: (
+								<DrawerTabs
+									tab="all"
+									asks={
+										(rows ?? []).filter(
+											(ask) =>
+												ask.session_id === currentSessionId &&
+												ask.status === "open",
+										).length
+									}
+									unreadUpdates={unreadUpdates}
+									sessionless={!currentSessionId}
+									onTab={(tab) => {
+										if (tab === "all" || !currentSessionId) return;
+										setTab(tab);
+										setAskDrawerOpen(true, "session");
+									}}
+								/>
+							),
+							body: null,
+						}
+					: undefined
+			}
+			onClose={(options) => {
+				setTab(null);
+				onClose(options);
+			}}
 			onAnswer={onAnswer}
 			onDecline={onDecline}
 			onRevise={onRevise}

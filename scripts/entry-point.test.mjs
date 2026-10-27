@@ -279,6 +279,26 @@ function cases(root) {
 				/asks-app-regression: --case needs <scenario> from .+ --leg control\|candidate and ASKS_APP_ROOT, ASKS_OUTPUT, ASKS_RECORDS/,
 		},
 		{
+			/*
+			 * The notifications native scene (`ci.yml`'s ephemeral GitHub-hosted macOS
+			 * leg), driven on its REFUSAL rather than its run: with none of the
+			 * sanctioning environment it names every missing condition on stderr and
+			 * exits 1 before the driver is imported, any backend is spawned or any
+			 * window could be shown. That refusal is the scene's whole safety
+			 * property - it must never take a person's foreground - so it is the half
+			 * worth pinning through both spellings; the run itself needs a compiled
+			 * app, a pinned core and a hosted runner, and exists only in that leg.
+			 */
+			script: "notifications-app-scene.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr:
+				/^notifications native scene refused: this environment cannot honestly own a foreground desktop\. Missing LOCAL_OPERATOR_UI_NATIVE_SCENE=notifications, CI=true, GITHUB_ACTIONS=true, RUNNER_ENVIRONMENT=github-hosted, .*LOCAL_OPERATOR_CORE_BIN, LOCAL_OPERATOR_CORE_PYTHON, LOCAL_OPERATOR_CORE_REF\. No headless fallback is taken/,
+		},
+		{
 			// The group, asked for WITHOUT the profile that authorizes it: the door stays
 			// shut, and it shuts on an exit status rather than on a warning. This is the
 			// half-open state that produced the unlaunchable 0.29.6 bundle.

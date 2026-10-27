@@ -1364,6 +1364,8 @@ const AGENTS_SIDEBAR =
 	"src/renderer/src/features/agents/components/agents-sidebar.tsx";
 const AGENTS_PAGE =
 	"src/renderer/src/features/agents/components/agents-page.tsx";
+const SKILLS_LIBRARY =
+	"src/renderer/src/features/agents/components/skills-library.tsx";
 const CANVAS_SECTION =
 	"src/renderer/src/features/chat/components/canvas/index.tsx";
 const FILE_ROW =
@@ -1557,6 +1559,24 @@ const ROW_STATE_GROUNDS = [
 		expression: () =>
 			expressionBefore(AGENTS_PAGE, "row.name === name && rowCurrent"),
 		stubs: { row: { name: "agent" }, name: "agent", rowCurrent },
+		ground: () => literalClassAt(AGENTS_PAGE, "<aside ", "after"),
+		groundFile: AGENTS_PAGE,
+	},
+	{
+		/*
+		 * THE SKILLS TAB'S ROW (#1443). It is a sibling of the agents roster row
+		 * above: the same selected-row role, painted in the roster scroller that sits
+		 * inside the page's one `<aside>`, so the ground is the SAME element and the
+		 * contrast numbers the design review measured for the Agents roster hold here
+		 * too. The row lives in its own module and the ground in the page, hence two
+		 * files. `card.name === selected` is the row's own predicate (a skill's name is
+		 * its identity), stubbed true so the role is resolved as painted.
+		 */
+		what: "the agents page's Skills roster row",
+		rowFile: SKILLS_LIBRARY,
+		expression: () =>
+			expressionBefore(SKILLS_LIBRARY, "card.name === selected && rowCurrent"),
+		stubs: { card: { name: "skill" }, selected: "skill", rowCurrent },
 		ground: () => literalClassAt(AGENTS_PAGE, "<aside ", "after"),
 		groundFile: AGENTS_PAGE,
 	},

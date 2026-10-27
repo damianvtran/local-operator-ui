@@ -1,0 +1,3 @@
+{
+	"ui.notifications.operation.progress": "已更改{changed, number}项 · 已跳过{skipped, number}项 · 未确认{pending, number}项"
+}

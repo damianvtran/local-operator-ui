@@ -70,6 +70,11 @@ const supplementAnchor = z.string().min(1).max(128);
  * `invalid_cwd`) — the check belongs at the end that can actually resolve it.
  */
 const skillCwd = z.string().min(1).max(4096);
+const skillName = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[A-Za-z0-9_.-]+$/);
 /*
  * The MCP field shapes, named once because the session route and the
  * sessionless catalog route accept the same server names, secret references and
@@ -1232,6 +1237,75 @@ const sidebarLayoutSchema = z
 		more: z.array(sidebarDestinationId).max(SIDEBAR_DESTINATION_IDS.length),
 	})
 	.strict();
+
+/*
+ * A notifications reel id (contract § 2.2): a `notify` row is `n_` plus 16
+ * lowercase base32 characters, an open ask is `ask:<session_id>:<ask_id>`. The
+ * id goes into a URL PATH for the detail read, so the pattern refuses `/`, `.`
+ * sequences and `%` rather than trusting `encodeURIComponent` alone.
+ */
+const notificationId = z
+	.string()
+	.min(3)
+	.max(256)
+	.regex(/^(?:n_[a-z2-7]{4,32}|ask:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+)$/);
+
+/* The one-of-three target a read/dismiss write names (contract § 5.2). */
+const notificationsTarget = z.union([
+	z
+		.object({
+			items: z
+				.array(
+					z
+						.object({
+							id: notificationId,
+							revision: z.number().int().min(1),
+						})
+						.strict(),
+				)
+				.min(1)
+				.max(500),
+		})
+		.strict(),
+	z
+		.object({
+			sessionId,
+			throughSeq: z.number().int().min(0),
+			observed: z
+				.array(
+					z
+						.object({ id: notificationId, revision: z.number().int().min(1) })
+						.strict(),
+				)
+				.max(500),
+		})
+		.strict(),
+	z
+		.object({
+			all: z.literal(true),
+			throughSeq: z.number().int().min(0),
+			observed: z
+				.array(
+					z
+						.object({ id: notificationId, revision: z.number().int().min(1) })
+						.strict(),
+				)
+				.max(500),
+		})
+		.strict(),
+]);
+
+/* The seen route's `input_kind` for each renderer input kind (see the endpoint). */
+/*
+ * The renderer's short kind -> the route's DOM event name. `focus` is gone
+ * (decisions D12): a window focus-gain is not an input the operator performed in
+ * the pane, and core no longer accepts it.
+ */
+const SEEN_INPUT_KIND = {
+	pointer: "pointerdown",
+	key: "keydown",
+	wheel: "wheel",
+} as const;
 
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
@@ -2838,7 +2912,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			sessionId: sessionId.optional(),
 			cwd: skillCwd.optional(),
-			name: id.optional(),
+			/*
+			 * NOT `id`: core's route accepts `[A-Za-z0-9_.-]{1,128}` for a skill name
+			 * (`desktop_catalogues.skills`), and a discovered folder may carry a dot.
+			 * `id` would refuse that name here and the Skills tab's details read would
+			 * fail for a skill the list had just shown.
+			 */
+			name: skillName.optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("sessions.failovers"), sessionId }).strict(),
@@ -4302,6 +4382,97 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			layout: sidebarLayoutSchema,
 		})
 		.strict(),
+	/*
+	 * THE NOTIFICATIONS REEL (`/v1/desktop/notifications*`, notifications contract
+	 * § 5.2), APPENDED for the Projects reason: an older daemon has no routes, and
+	 * the client gates on `features.notifications` rather than on this schema.
+	 *
+	 * `notifications.list` carries the filters the ROUTE owns (state, source,
+	 * priority, session, cursor, limit); kind/priority/grouping chips the page
+	 * applies to the loaded set never reach the wire.
+	 */
+	z
+		.object({
+			op: z.literal("notifications.list"),
+			state: z.enum(["unread", "all", "dismissed"]).optional(),
+			source: z.enum(["notify", "ask"]).optional(),
+			priority: z.enum(["high", "normal", "low"]).optional(),
+			sessionId: sessionId.optional(),
+			throughSeq: z.number().int().min(0).optional(),
+			cursor: z.string().min(1).max(64).optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("notifications.get"), id: notificationId }).strict(),
+	z.object({ op: z.literal("notifications.count") }).strict(),
+	/*
+	 * READ / UNREAD / DISMISS / UNDISMISS, split into one op per VERB GROUP so the
+	 * foreground guard can name the read half alone (`FOREGROUND_RECEIPT_OPS`,
+	 * `src/main/desktop-ipc.ts`): `notifications.read` (read + unread) claims a
+	 * human saw something, `notifications.dismiss` (dismiss + undismiss) does not
+	 * and stays unguarded, exactly as `sessions.notified` is. Both reach the same
+	 * `PATCH` with the route's `op` field.
+	 *
+	 * EXACTLY ONE TARGET (contract § 5.2): `items` (each with the revision the
+	 * client RENDERED, so an update published after the render is skipped as
+	 * `stale_revision` rather than cleared), or `sessionId` + `throughSeq`, or
+	 * `all` + `throughSeq`. A sweep without a high-water mark could clear an item
+	 * that arrived after the click, which is the R10 hazard the token exists to
+	 * prevent.
+	 */
+	z
+		.object({
+			op: z.literal("notifications.read"),
+			verb: z.enum(["read", "unread"]),
+			target: notificationsTarget,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("notifications.dismiss"),
+			verb: z.enum(["dismiss", "undismiss"]),
+			target: notificationsTarget,
+		})
+		.strict(),
+	/*
+	 * PER-ITEM IN-VIEW EVIDENCE (contract § 6.4). Never a sweep: the items are the
+	 * ones whose anchor the renderer measured on screen, each with its token, and
+	 * the evidence names the input edge the server re-checks (`input_at_ms` is no
+	 * older than 120 s and no earlier than the item's `updated_at`). Guarded by
+	 * main's foreground check like every other read receipt.
+	 */
+	z
+		.object({
+			op: z.literal("notifications.seen"),
+			items: z
+				.array(
+					z
+						.object({
+							id: notificationId,
+							revision: z.number().int().min(1),
+							anchorId: z.string().min(1).max(256),
+							/*
+							 * PER ITEM (decisions D13): the moment THIS anchor became
+							 * ≥ 50 % visible. The server checks it against the row's own
+							 * `updated_at`, so one long-visible line cannot carry a
+							 * neighbour that arrived a second ago.
+							 */
+							visibleSinceMs: z.number().int().min(0),
+						})
+						.strict(),
+				)
+				.min(1)
+				.max(50),
+			evidence: z
+				.object({
+					sessionId,
+					inputKind: z.enum(["pointer", "key", "wheel"]),
+					inputAtMs: z.number().int().min(0),
+					visibleSinceMs: z.number().int().min(0),
+				})
+				.strict(),
+		})
+		.strict(),
 ]);
 
 /**
@@ -4922,6 +5093,87 @@ export const asideAdoptResultSchema = z
 	.passthrough();
 
 export type AsideAdoptResult = z.infer<typeof asideAdoptResultSchema>;
+
+/**
+ * `GET /v1/desktop/skills` -> `result.data`, as the Agents page's Skills tab
+ * reads it (core `skill_library:1`, local-operator #2998).
+ *
+ * EVERY FIELD BEYOND `name` IS OPTIONAL ON PURPOSE. A backend that predates
+ * `skill_library` answers `{name, description}` rows with no `skill_detail`, and
+ * the tab is only OFFERED when the capability is present, but the page must still
+ * parse (and degrade, not crash) if a row arrives short: a missing `source` reads
+ * as unknown, a missing `installed` reads as installed. `passthrough` because the
+ * vocabulary is core's to extend (a sixth `source` label must not throw).
+ *
+ * `source` is a plain string fallback for the same reason `asideAdoptResultSchema`
+ * accepts an unheard-of status: the renderer labels the five it knows and shows
+ * nothing alarming for one it does not.
+ */
+export const skillRowSchema = z
+	.object({
+		name: z.string(),
+		description: z.string().nullish(),
+		source: z.string().nullish(),
+		link_id: z.string().nullish(),
+		editable: z.boolean().nullish(),
+		installed: z.boolean().nullish(),
+		fingerprint: z.string().nullish(),
+		form: z.string().nullish(),
+	})
+	.passthrough();
+export type SkillRowWire = z.infer<typeof skillRowSchema>;
+
+/**
+ * One reference file in a skill's details read. `preview` is the first 2048
+ * bytes (utf-8) or null; `preview_truncated` says the file is longer than it.
+ */
+export const skillFileSchema = z
+	.object({
+		path: z.string(),
+		size: z.number().nullish(),
+		preview: z.string().nullish(),
+		preview_truncated: z.boolean().nullish(),
+	})
+	.passthrough();
+
+/**
+ * The `name` arm's `skill_detail`.
+ *
+ * `body` is null when `body_in_detail` is true: the body is then the prefix
+ * `detail.slice(0, body_length)` of the SAME response's `detail` text, and
+ * `body_length` counts UTF-16 code units, i.e. exactly JavaScript's
+ * `String.length`, which is why the slice is correct here for astral characters
+ * and a Python code-point count would not be (core `build_detail`).
+ */
+export const skillDetailSchema = skillRowSchema
+	.extend({
+		body: z.string().nullish(),
+		body_in_detail: z.boolean().nullish(),
+		body_length: z.number().nullish(),
+		body_bytes: z.number().nullish(),
+		body_truncated: z.boolean().nullish(),
+		files: z.array(skillFileSchema).nullish(),
+		files_total: z.number().nullish(),
+		files_truncated: z.boolean().nullish(),
+		publish_budget: z
+			.object({ limit: z.number(), total: z.number() })
+			.passthrough()
+			.nullish(),
+	})
+	.passthrough();
+export type SkillDetailWire = z.infer<typeof skillDetailSchema>;
+
+export const skillsListResultSchema = z
+	.object({
+		skills: z.array(skillRowSchema),
+		scope: z.string().nullish(),
+		detail: z.string().nullish(),
+		skill_detail: skillDetailSchema.nullish(),
+		warning_count: z.number().nullish(),
+		version: z.string().nullish(),
+	})
+	.passthrough();
+export type SkillsListResult = z.infer<typeof skillsListResultSchema>;
 
 /**
  * The owner's TYPED refusal of an adopt: `409 {"detail": {"code":
@@ -9573,7 +9825,97 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "PUT",
 				body: { layout: request.layout },
 			};
+		/*
+		 * The notifications reel (contract § 5.2). Bodies are snake_case like every
+		 * other desktop route; the two write ops share the PATCH and differ only in
+		 * the verb set the schema admits, which is what lets the foreground guard
+		 * name the read half alone.
+		 */
+		case "notifications.list": {
+			const query = new URLSearchParams();
+			if (request.state) query.set("state", request.state);
+			if (request.source) query.set("source", request.source);
+			if (request.priority) query.set("priority", request.priority);
+			if (request.sessionId) query.set("session_id", request.sessionId);
+			if (request.cursor) query.set("cursor", request.cursor);
+			if (request.throughSeq !== undefined)
+				query.set("through_seq", String(request.throughSeq));
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			return {
+				path: `/v1/desktop/notifications${query.size ? `?${query}` : ""}`,
+				method: "GET",
+			};
+		}
+		case "notifications.get":
+			return {
+				path: `/v1/desktop/notifications/${encodeURIComponent(request.id)}`,
+				method: "GET",
+			};
+		case "notifications.count":
+			return { path: "/v1/desktop/notifications/count", method: "GET" };
+		case "notifications.read":
+		case "notifications.dismiss":
+			return {
+				path: "/v1/desktop/notifications",
+				method: "PATCH",
+				body: {
+					op: request.verb,
+					...notificationsTargetBody(request.target),
+				},
+			};
+		case "notifications.seen":
+			return {
+				path: "/v1/desktop/notifications/seen",
+				method: "POST",
+				body: {
+					items: request.items.map((item) => ({
+						id: item.id,
+						revision: item.revision,
+						anchor_id: item.anchorId,
+						visible_since_ms: item.visibleSinceMs,
+					})),
+					evidence: {
+						surface: "desktop",
+						session_id: request.evidence.sessionId,
+						/*
+						 * The route's vocabulary is the DOM event names (contract § 6.4:
+						 * `pointerdown`, `keydown`, a user `wheel`, window `focus`); the
+						 * renderer's short kind is mapped here, at the one boundary.
+						 */
+						input_kind: SEEN_INPUT_KIND[request.evidence.inputKind],
+						input_at_ms: request.evidence.inputAtMs,
+						visible_since_ms: request.evidence.visibleSinceMs,
+					},
+				},
+			};
 	}
+}
+
+/** The PATCH body's target half, in the route's snake_case (contract § 5.2). */
+function notificationsTargetBody(
+	target: z.infer<typeof notificationsTarget>,
+): Record<string, unknown> {
+	if ("items" in target) {
+		return {
+			ids: target.items.map((item) => ({
+				id: item.id,
+				revision: item.revision,
+			})),
+		};
+	}
+	if ("sessionId" in target) {
+		return {
+			session_id: target.sessionId,
+			through_seq: target.throughSeq,
+			observed: target.observed,
+		};
+	}
+	return {
+		all: true,
+		through_seq: target.throughSeq,
+		observed: target.observed,
+	};
 }
 
 /**

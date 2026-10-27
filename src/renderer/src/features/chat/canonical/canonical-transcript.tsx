@@ -44,6 +44,11 @@
  */
 
 import {
+	FlagLine,
+	FlagLinesProvider,
+	useFlaggedItem,
+} from "@features/notifications/components/flag-line";
+import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
@@ -2125,6 +2130,21 @@ const ToolRow = memo(function ToolRow({
 	/** The pane's interrupt press, for the card's Cancel; absent = no control. */
 	onInterruptTurn?: () => void;
 }) {
+	/*
+	 * A `notify` CALL THE REEL KNOWS IS ITS FLAG LINE (notifications design
+	 * § 17.2): the item's title and read state, and the anchor the in-view
+	 * reader measures. Looked up by the call id, which is the item's
+	 * `anchor_id`; unknown to the reel (older core, items not loaded, another
+	 * tool) means the ordinary row below, exactly as before.
+	 */
+	const flagged = useFlaggedItem(record.toolCallId);
+	if (flagged !== null && record.toolName === "notify") {
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<FlagLine item={flagged} />
+			</MessageContainer>
+		);
+	}
 	/*
 	 * THE IMAGE-GEN CARD IS THE ROW for a call in the detection set. It owns
 	 * the whole lifecycle - the progress while unsettled, the artifact and its
@@ -6563,7 +6583,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		});
 	};
 
-	return (
+	const transcriptColumn = (
 		/*
 		 * The pane COLUMN, and the scroll box is one child of it.
 		 *
@@ -7376,5 +7396,17 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				/>
 			)}
 		</div>
+	);
+	/*
+	 * THE FLAG LINES' DATA AND IN-VIEW READER are provided around the whole
+	 * column (notifications contract § 6.4): one read of this conversation's
+	 * items and one input listener per transcript, not per row. Without
+	 * `features.notifications` the provider supplies nothing and every row
+	 * renders exactly as before.
+	 */
+	return (
+		<FlagLinesProvider sessionId={sessionId}>
+			{transcriptColumn}
+		</FlagLinesProvider>
 	);
 };
