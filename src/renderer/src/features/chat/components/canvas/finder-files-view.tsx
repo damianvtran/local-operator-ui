@@ -1361,7 +1361,9 @@ function FinderEntry({
 								) : tiled && doc.artifact && !item.attachment ? (
 									t("ui.canvas.files.inSession")
 								) : (
-									meta
+									/* One directional run: a row's note can be a sentence in an RTL
+									 * locale, and an unisolated run beside the name reorders it. */
+									<bdi>{meta}</bdi>
 								)}
 							</span>
 						}

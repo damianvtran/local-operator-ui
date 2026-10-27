@@ -87,10 +87,15 @@ function documentFor(item: UserAttachment, sessionId: string): CanvasDocument {
 		document.title = name;
 		if (item.kind === "document") document.type = getFileTypeFromPath(name);
 	} else {
-		// A live picture whose bytes are still inline: the data URI IS the file.
+		// A pasted picture keeps the person's own name, never a hash or an English default:
+		// this is the arm a just-sent screenshot takes before its bytes are stored (design D3).
 		document = canvasDocumentForPath(
 			`data:${item.mimeType};base64,${item.data}`,
-			{ ...base, type: "image" },
+			{
+				...base,
+				type: "image",
+				title: name,
+			},
 		);
 	}
 	// One row per attachment even when two share a path or a digest: the id is

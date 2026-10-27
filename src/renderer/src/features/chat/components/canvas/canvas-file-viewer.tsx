@@ -16,6 +16,7 @@ import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { useSessionFiles } from "../../canonical/use-session-files";
 import { materialiseUserAttachment } from "../../canonical/use-user-attachments";
 import type { UserAttachmentsState } from "../../canonical/use-user-attachments";
+import { attachmentDigests } from "../../canonical/user-attachments";
 import {
 	ATTACHMENT_ID_PREFIX,
 	attachmentFinderItems,
@@ -328,11 +329,11 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	 */
 	const ownedDigests = useMemo(
 		() =>
-			new Set(
-				(attachments?.items ?? [])
-					.map((item) => item.digest)
-					.filter((digest): digest is string => digest !== null),
-			),
+			attachmentDigests({
+				items: attachments?.items ?? [],
+				complete: true,
+				truncated: false,
+			}),
 		[attachments?.items],
 	);
 	const pairedItems: FinderItem[] = rows.map((row, position) => {
