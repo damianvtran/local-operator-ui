@@ -540,6 +540,10 @@ const CONTROLS = [
 		 * `sunken`, whose ground step can disappear under a hovered row. The
 		 * plate has no control boundary: its initial is the readable mark and its
 		 * extent is a ground step, asserted on all four hosts below.
+		 *
+		 * The rail's account row draws the same plate since its own-avatar
+		 * change (design review round 1, D2): `surface` is its ground and
+		 * `rowHover` its pointer state, both hosts here.
 		 */
 		name: "team bridge person initial plate",
 		/*
@@ -2394,6 +2398,10 @@ const PERCEPTIBLE = [
 		 * true worst pairing the role reaches is 1.83 against `rowSelected` on the
 		 * brand light palette - which is why a selected rail row takes `surface`
 		 * instead, asserted by the row above.
+		 *
+		 * The rail's account plate (`user-profile-sidebar.tsx`) is the same fill
+		 * on `surface` and `rowHover` since design review round 1 of the
+		 * own-avatar change, D2; it replaced that plate's `border-control` ring.
 		 */
 		name: "team bridge borderless person and agent plates",
 		role: "mediaSurface",
@@ -5458,51 +5466,23 @@ for (const { id, palette: p } of palettes) {
 	}
 
 	/*
-	 * THE PLATE INSIDE A ROW, and the half of its guard a class cannot carry.
-	 *
-	 * The rail's account row hovers on `rowHover` and contains an element with a
-	 * ground of its own: the avatar plate, `bg-elevated` with a `border-control`
-	 * edge (`shared/components/navigation/user-profile-sidebar.tsx`). The pair
-	 * under the pointer collapses on the shipped values - `elevated` against
-	 * `rowHover` is byte-identical on `arcade` (ΔE00 0.00) and inside the field
-	 * floor on `gruvbox` 1.14, `obsidian` 1.21 and `everforest` 1.90, so hovering
-	 * the row turns the plate into a disc of the row's own hover colour - and it is
-	 * not a value to re-solve, because a row state IS a step of the panel it sits
-	 * on and some palette's state will always land on some rung.
-	 *
-	 * So the plate is legal the way a control here is: ONE OF ITS TWO EDGES
-	 * PERCEIVABLE, fill or boundary. The arms are different instruments and are
-	 * measured as such - the fill as a FIELD at `FIELD_SEPARATION_FLOOR` (the same
-	 * floor every other "is this fill distinguishable" pair in this file uses) and
-	 * the 1px boundary as a LINE at the non-text floor, because ΔE00 credits
-	 * chroma that a one-pixel edge cannot spend (the argument beside
-	 * `HAIRLINE_RATIO_FLOOR`). Either arm clearing is enough, and on exactly the
-	 * four palettes the fill fails the boundary is what clears: `borderControl` on
-	 * `rowHover` measures 3.18 (`arcade`), 3.13 (`gruvbox`), 3.27 (`obsidian`) and
-	 * 3.10 (`everforest`).
-	 *
-	 * The class half of this - that the plate still wears `border-control` rather
-	 * than a fill alone - is asserted in `scripts/chat-sidebar-selection.test.mjs`,
-	 * because a palette gate cannot see which class an element paints. The pair is
-	 * `rowHover` and not `rowSelected`: the account row is not a destination, so it
-	 * never paints `rowCurrent` (that file asserts it), which is also why
-	 * `rowSelected` may stay inside 2.0 of `elevated` on 16 palettes here without
-	 * this block saying anything about them.
+	 * THE RAIL'S ACCOUNT PLATE LEFT THIS PAIR in design review round 1 of the
+	 * own-avatar change (D2). It was `elevated` with a `border-control` edge, and
+	 * this block asked one of those two arms to clear `rowHover`. The operator
+	 * asked for borderless avatars and the ring visibly dropped away when the
+	 * photo landed, so the plate now wears Team Bridge's `mediaSurface` with no
+	 * edge, and its pairs are asserted where that fill already is: the
+	 * `team bridge borderless person and agent plates` row in `PERCEPTIBLE`
+	 * (`surface` and `rowHover` are two of its hosts) and the `team bridge person
+	 * initial plate` row in `CONTROLS` (`inkMuted` initials on the fill). The
+	 * account row is not a destination, so `rowSelected`, where that fill bottoms
+	 * out, is never under it; `scripts/chat-sidebar-selection.test.mjs` asserts
+	 * both the class and that scope.
 	 */
-	if (isHex(p.elevated) && isHex(p.rowHover) && isHex(p.borderControl)) {
-		assertions++;
-		const plateField = deltaE(p.elevated, p.rowHover);
-		const plateEdge = ratio(p.borderControl, p.rowHover);
-		if (plateField < FIELD_SEPARATION_FLOOR && plateEdge < FLOOR.nonText) {
-			fail(
-				`${id}: the account row's plate has no perceivable edge under the pointer — \`elevated\` ${p.elevated} is ΔE00 ${r2(plateField)} from \`rowHover\` ${p.rowHover} (need ${FIELD_SEPARATION_FLOOR}) and its \`borderControl\` edge ${p.borderControl} is ${r2(plateEdge)}:1 against that same fill (need ${FLOOR.nonText}:1), so the plate the pointer reveals is a disc of the row's own hover colour. Give the plate an edge the row's fill cannot overrun, or a fill the row's own step cannot land on`,
-			);
-		}
-	}
 
 	/*
-	 * THE SECOND PLATE INSIDE A ROW, and the state the account row's pair does not
-	 * have to answer: the agents sidebar's own row IS a destination, so it paints
+	 * THE PLATE INSIDE A DESTINATION ROW, the state the rail's account plate never
+	 * had to answer: the agents sidebar's own row IS a destination, so it paints
 	 * `rowCurrent` under a selection as well as `hover:bg-row-hover` under the
 	 * pointer (`features/agents/components/agents-sidebar.tsx`; both are asserted
 	 * from that call site in `scripts/chat-sidebar-selection.test.mjs`). Its avatar

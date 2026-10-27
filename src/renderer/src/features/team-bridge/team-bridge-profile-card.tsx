@@ -7,6 +7,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@shared/components/ui/popover";
+import { useTeamBridgeAvatar } from "@shared/hooks/use-account-avatar";
 import { formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -26,7 +27,6 @@ import {
 } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import { personDisplayLabel, personInitial } from "./team-bridge-model";
-import { useTeamBridgeAvatar } from "./use-team-bridge-avatar";
 
 export function TeamBridgeAvatar({
 	member,
