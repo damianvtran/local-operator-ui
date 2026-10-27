@@ -118,8 +118,6 @@
 	"ui.chat.session_status.context_nothing_measured_tooltip": "Context: nothing measured yet. The window fills as the conversation runs.",
 	"ui.chat.session_status.conversation_starting": "Set once the conversation starts.",
 	"ui.chat.session_status.model_none_resolved_tooltip": "Model: none resolved yet. Choose the model this conversation will run on.",
-	"ui.chat.session_status.no_context_tooltip": "Context: nothing measured yet. The window fills as the conversation runs.",
-	"ui.chat.session_status.no_model_tooltip": "Model: none resolved yet. Choose the model this conversation will run on.",
 	"ui.chat.session_status.not_signed_in": "Not signed in to {label}",
 	"ui.chat.session_status.not_signed_in_description": "This session runs {label} without a working sign-in, so it cannot answer until you connect it.",
 	"ui.chat.session_status.nothing_measured_yet": "Nothing measured yet. The window fills as the conversation runs.",

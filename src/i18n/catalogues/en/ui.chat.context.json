@@ -437,20 +437,6 @@
 		"note": "Only the RESOLVED-no-model state says this: a resolution still in flight, or one that failed, are drawn by their own readings. The second sentence is the offer the control performs.",
 		"placeholders": {}
 	},
-	"ui.chat.session_status.no_context_tooltip": {
-		"role": "tooltip and accessible name of the context reading on a draft conversation",
-		"tone": "heading word plus one sentence, sentence case, trailing period",
-		"length": "Seventeen words.",
-		"note": "One utterance rather than a heading and a line, so it starts with the same 'Context' heading word the tooltip's own line leads with. 'Nothing measured yet' is deliberate: 'no reading yet' belongs to a resumed session, not a draft, and a draft fills in because the user sends the first message.",
-		"placeholders": {}
-	},
-	"ui.chat.session_status.no_model_tooltip": {
-		"role": "tooltip and accessible name of the model reading when the backend resolved a spec that names no model",
-		"tone": "heading word plus an offer, sentence case, trailing period",
-		"length": "Seventeen words.",
-		"note": "Only the RESOLVED-no-model state says this: a resolution still in flight or one that failed are drawn by their own readings. The second sentence is the offer the control performs.",
-		"placeholders": {}
-	},
 	"ui.chat.session_status.not_signed_in": {
 		"role": "title of the model-access band when this session runs a provider with no working sign-in",
 		"tone": "statement of fact, sentence case, no trailing punctuation",

@@ -3162,9 +3162,7 @@ export type MessageParams = {
 	"ui.chat.session_status.estimate": undefined;
 	"ui.chat.session_status.last_reading": undefined;
 	"ui.chat.session_status.model_none_resolved_tooltip": undefined;
-	"ui.chat.session_status.no_context_tooltip": undefined;
 	"ui.chat.session_status.no_model_resolved": undefined;
-	"ui.chat.session_status.no_model_tooltip": undefined;
 	"ui.chat.session_status.not_signed_in": { label: string };
 	"ui.chat.session_status.not_signed_in_description": { label: string };
 	"ui.chat.session_status.nothing_measured_yet": undefined;
