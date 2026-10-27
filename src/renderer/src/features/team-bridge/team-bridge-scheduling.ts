@@ -331,9 +331,13 @@ type ScheduledPatch = ReturnType<typeof scheduledEditPatch>;
  * `version` (a newer hub). The local core relays the PATCH through a STRICT
  * body model, and a core that predates the field refuses it as 422
  * `invalid_request` before anything reaches the hub - nothing was written - so
- * that one refusal is retried once without the pin, which is exactly the edit
- * an older stack accepted before. Any other refusal is the hub's answer and is
- * thrown unchanged; a version mismatch is a 409, never this 422.
+ * that refusal is retried once without the pin, which is exactly the edit an
+ * older stack accepted before. Core answers the SAME 422 for any of its own
+ * pre-hub validation refusals, so one of those is also retried once; it fails
+ * again identically (the retry body is a subset) with nothing written - one
+ * redundant request, never a loop (review R2-02; narrowing it needs core to tag
+ * the unknown-field refusal). The hub's own answers are never 422: a version
+ * mismatch is a 409 and is thrown unchanged.
  */
 export async function updateScheduledEdit(
 	update: (

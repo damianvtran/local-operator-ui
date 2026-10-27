@@ -140,6 +140,7 @@ export function TeamBridgeScheduleDialog({
 	 * `rebaseScheduledEdit`). A ref, not state: it is bookkeeping, never drawn.
 	 */
 	const base = useRef<ScheduledEditBase | null>(null);
+	const bodyField = useRef<HTMLTextAreaElement>(null);
 	/*
 	 * FOCUS RETURNS TO THE OPENER. This dialog is opened programmatically (the
 	 * clock, or a row's Reschedule), so Radix has no trigger to restore to and
@@ -276,9 +277,10 @@ export function TeamBridgeScheduleDialog({
 	]);
 	const conflict = notice?.kind === "conflict" ? notice.report : undefined;
 	/*
-	 * The user's own text lost to the other device. Recoverable until they take
-	 * it back or type something else, so a typed paragraph never vanishes
-	 * without a trace (D2).
+	 * The user's own text lost to the other device, so a typed paragraph never
+	 * vanishes without a trace (D2). Offered for as long as the field holds
+	 * anything else - including text typed after the conflict, which taking it
+	 * back would replace (review R2-03).
 	 */
 	const lostBody =
 		conflict?.lostBody !== undefined && body.trim() !== conflict.lostBody.trim()
@@ -304,13 +306,25 @@ export function TeamBridgeScheduleDialog({
 		>
 			<DialogContent
 				/*
-				 * TOP-ANCHORED, not centred: a centred dialog grows both ways when a
-				 * notice appears, so the top edge and the button the user just
-				 * pressed jumped (69 px measured for confirm -> conflict, design
-				 * review round 1, D5). Anchored, a notice only pushes content below
-				 * it down.
+				 * TOP-ANCHORED, FIXED HEIGHT, BODY SCROLLS. Three measured problems,
+				 * one layout:
+				 * - Centred, the dialog grew both ways when a notice appeared, so the
+				 *   button the user had just pressed jumped (D5, round 1).
+				 * - Top-anchored but content-sized, the notice and the confirm line
+				 *   still went in ABOVE that button and pushed it down: 92 px for a
+				 *   conflict, 61.5 px for a failure, 36 px for Review -> Confirm
+				 *   (D10, round 2).
+				 * - Uncapped, at the minimum window (800x600, a 572 px viewport) the
+				 *   only action - including the conflict's Close - sat below the
+				 *   viewport with no way to scroll to it (D9, round 2).
+				 * So the HEIGHT is fixed (84vh, at most 40rem: 12vh + 84vh still
+				 * clears the bottom of a 572 px viewport), the middle scrolls, and the
+				 * header and the action row stay outside it. The action row is then
+				 * at one position for the dialog's whole life, whatever appears above
+				 * it, and on screen at any window height. The cost is some empty room
+				 * in the shortest state (gone), which is cheaper than a moving target.
 				 */
-				className="top-[12vh] translate-y-0"
+				className="top-[12vh] h-[min(84vh,40rem)] translate-y-0"
 				// The gone state has one way out, its own Close; a second "Close" in
 				// the corner duplicated the name in the a11y tree (D6). Escape still
 				// closes it.
@@ -335,154 +349,168 @@ export function TeamBridgeScheduleDialog({
 						{t("ui.teamBridge.schedule.timezone", { timezone })}
 					</DialogDescription>
 				</DialogHeader>
-				{/*
-				 * THE NOTICE IS THE HEADLINE, so it sits above the fields it explains
-				 * rather than footnoting them (D4). Conflict and gone are status the
-				 * user acts on, not a mistake they made: `warning`. A refused write
-				 * stays `danger`.
-				 */}
-				{unavailable ? (
-					<Alert variant="warning" role="alert">
-						<p>{t("ui.teamBridge.schedule.edit_gone")}</p>
-					</Alert>
-				) : notice?.kind === "conflict" ? (
-					<Alert variant="warning" role="alert">
-						<AlertTitle>{t("ui.teamBridge.schedule.edit_conflict")}</AlertTitle>
-						{lostBody !== undefined && (
-							<p>{t("ui.teamBridge.schedule.conflict_body_replaced")}</p>
-						)}
-						{conflict?.bodyChanged && (
-							<p>{t("ui.teamBridge.schedule.conflict_body_changed")}</p>
-						)}
-						{conflict?.timeReplaced && (
-							<p>{t("ui.teamBridge.schedule.conflict_time_replaced")}</p>
-						)}
-						{conflict?.timeChanged && (
-							<p>{t("ui.teamBridge.schedule.conflict_time_changed")}</p>
-						)}
-						{(conflict?.imagesAdded ?? 0) > 0 && (
-							<p>
-								{t("ui.teamBridge.schedule.conflict_images_added", {
-									count: conflict?.imagesAdded ?? 0,
-								})}
-							</p>
-						)}
-						{(conflict?.imagesRemoved ?? 0) > 0 && (
-							<p>
-								{t("ui.teamBridge.schedule.conflict_images_removed", {
-									count: conflict?.imagesRemoved ?? 0,
-								})}
-							</p>
-						)}
-						<p>
-							{t(
-								nothingLeft
-									? "ui.teamBridge.schedule.conflict_nothing_left"
-									: "ui.teamBridge.schedule.conflict_review",
+				<div
+					data-schedule-body=""
+					// `-mx/px` keeps the focus rings of the fields inside the clip of
+					// the scrolling box rather than cut at its edge.
+					className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1"
+				>
+					{/*
+					 * THE NOTICE IS THE HEADLINE, so it sits above the fields it explains
+					 * rather than footnoting them (D4). Conflict and gone are status the
+					 * user acts on, not a mistake they made: `warning`. A refused write
+					 * stays `danger`.
+					 */}
+					{unavailable ? (
+						<Alert variant="warning" role="alert">
+							<p>{t("ui.teamBridge.schedule.edit_gone")}</p>
+						</Alert>
+					) : notice?.kind === "conflict" ? (
+						<Alert variant="warning" role="alert">
+							<AlertTitle>
+								{t("ui.teamBridge.schedule.edit_conflict")}
+							</AlertTitle>
+							{lostBody !== undefined && (
+								<p>{t("ui.teamBridge.schedule.conflict_body_replaced")}</p>
 							)}
-						</p>
-						{lostBody !== undefined && (
-							<div>
+							{conflict?.bodyChanged && (
+								<p>{t("ui.teamBridge.schedule.conflict_body_changed")}</p>
+							)}
+							{conflict?.timeReplaced && (
+								<p>{t("ui.teamBridge.schedule.conflict_time_replaced")}</p>
+							)}
+							{conflict?.timeChanged && (
+								<p>{t("ui.teamBridge.schedule.conflict_time_changed")}</p>
+							)}
+							{(conflict?.imagesAdded ?? 0) > 0 && (
+								<p>
+									{t("ui.teamBridge.schedule.conflict_images_added", {
+										count: conflict?.imagesAdded ?? 0,
+									})}
+								</p>
+							)}
+							{(conflict?.imagesRemoved ?? 0) > 0 && (
+								<p>
+									{t("ui.teamBridge.schedule.conflict_images_removed", {
+										count: conflict?.imagesRemoved ?? 0,
+									})}
+								</p>
+							)}
+							<p>
+								{t(
+									nothingLeft
+										? "ui.teamBridge.schedule.conflict_nothing_left"
+										: "ui.teamBridge.schedule.conflict_review",
+								)}
+							</p>
+							{lostBody !== undefined && (
+								<div>
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={busy}
+										onClick={() => {
+											setBody(lostBody);
+											setConfirming(null);
+											// This button unmounts once the text is back; focus the
+											// field it refilled rather than let the trap drop focus on
+											// the dialog container (D11, round 2).
+											bodyField.current?.focus();
+										}}
+									>
+										{t("ui.teamBridge.schedule.conflict_restore_body")}
+									</Button>
+								</div>
+							)}
+						</Alert>
+					) : (
+						notice?.kind === "failed" && (
+							<Alert variant="danger" role="alert">
+								<p>
+									{/* The create copy ("retry with the original text and time")
+								    is the wrong next step for an edit (QA r2, Q4). */}
+									{t(
+										initialSendAt === undefined
+											? "ui.teamBridge.schedule.failed"
+											: "ui.teamBridge.schedule.edit_failed",
+									)}
+								</p>
+							</Alert>
+						)
+					)}
+					{initialBody !== undefined && (
+						<label className="flex flex-col gap-1 text-sm text-ink">
+							{t("ui.teamBridge.schedule.edit_body")}
+							<textarea
+								ref={bodyField}
+								value={body}
+								onChange={(event) => {
+									setBody(event.target.value);
+									setConfirming(null);
+								}}
+								disabled={busy || unavailable}
+								className={`${FIELD} ${unavailable ? "resize-none" : ""}`}
+							/>
+						</label>
+					)}
+					{kept.length > 0 && (
+						<div className="flex flex-col gap-1">
+							<TeamBridgeScheduledAttachments
+								attachments={kept}
+								accountId={accountId}
+							/>
+							{/* Edit-only chrome is hidden once nothing can be edited (D5). */}
+							{!unavailable && (
 								<Button
-									variant="outline"
+									variant="ghost"
 									size="sm"
 									disabled={busy}
 									onClick={() => {
-										setBody(lostBody);
+										setKept([]);
 										setConfirming(null);
 									}}
 								>
-									{t("ui.teamBridge.schedule.conflict_restore_body")}
+									{t("ui.teamBridge.attachments.remove_all")}
 								</Button>
-							</div>
-						)}
-					</Alert>
-				) : (
-					notice?.kind === "failed" && (
-						<Alert variant="danger" role="alert">
-							<p>
-								{/* The create copy ("retry with the original text and time")
-								    is the wrong next step for an edit (QA r2, Q4). */}
-								{t(
-									initialSendAt === undefined
-										? "ui.teamBridge.schedule.failed"
-										: "ui.teamBridge.schedule.edit_failed",
-								)}
-							</p>
-						</Alert>
-					)
-				)}
-				{initialBody !== undefined && (
-					<label className="flex flex-col gap-1 text-sm text-ink">
-						{t("ui.teamBridge.schedule.edit_body")}
-						<textarea
-							value={body}
-							onChange={(event) => {
-								setBody(event.target.value);
-								setConfirming(null);
-							}}
-							disabled={busy || unavailable}
-							className={`${FIELD} ${unavailable ? "resize-none" : ""}`}
-						/>
+							)}
+						</div>
+					)}
+					<label htmlFor={id} className="text-sm text-ink">
+						{t("ui.teamBridge.schedule.when")}
 					</label>
-				)}
-				{kept.length > 0 && (
-					<div className="flex flex-col gap-1">
-						<TeamBridgeScheduledAttachments
-							attachments={kept}
-							accountId={accountId}
-						/>
-						{/* Edit-only chrome is hidden once nothing can be edited (D5). */}
-						{!unavailable && (
-							<Button
-								variant="ghost"
-								size="sm"
-								disabled={busy}
-								onClick={() => {
-									setKept([]);
-									setConfirming(null);
-								}}
-							>
-								{t("ui.teamBridge.attachments.remove_all")}
-							</Button>
-						)}
-					</div>
-				)}
-				<label htmlFor={id} className="text-sm text-ink">
-					{t("ui.teamBridge.schedule.when")}
-				</label>
-				<input
-					id={id}
-					type="datetime-local"
-					value={value}
-					disabled={busy || unavailable}
-					onChange={(event) => {
-						setValue(event.target.value);
-						setConfirming(null);
-					}}
-					aria-describedby={unavailable ? undefined : `${id}-help`}
-					className={FIELD}
-				/>
-				{!unavailable && (
-					<p id={`${id}-help`} className="text-sm text-ink-muted">
-						{t("ui.teamBridge.schedule.window")}
-					</p>
-				)}
-				{!unavailable && value && !at && (
-					<p role="alert" className="text-sm text-danger">
-						{t("ui.teamBridge.schedule.invalid")}
-					</p>
-				)}
-				{!unavailable && confirming && (
-					<p aria-live="polite" className="text-sm text-ink">
-						{t("ui.teamBridge.schedule.confirm", {
-							date: new Intl.DateTimeFormat(locale, {
-								dateStyle: "full",
-								timeStyle: "long",
-							}).format(new Date(confirming)),
-						})}
-					</p>
-				)}
+					<input
+						id={id}
+						type="datetime-local"
+						value={value}
+						disabled={busy || unavailable}
+						onChange={(event) => {
+							setValue(event.target.value);
+							setConfirming(null);
+						}}
+						aria-describedby={unavailable ? undefined : `${id}-help`}
+						className={FIELD}
+					/>
+					{!unavailable && (
+						<p id={`${id}-help`} className="text-sm text-ink-muted">
+							{t("ui.teamBridge.schedule.window")}
+						</p>
+					)}
+					{!unavailable && value && !at && (
+						<p role="alert" className="text-sm text-danger">
+							{t("ui.teamBridge.schedule.invalid")}
+						</p>
+					)}
+					{!unavailable && confirming && (
+						<p aria-live="polite" className="text-sm text-ink">
+							{t("ui.teamBridge.schedule.confirm", {
+								date: new Intl.DateTimeFormat(locale, {
+									dateStyle: "full",
+									timeStyle: "long",
+								}).format(new Date(confirming)),
+							})}
+						</p>
+					)}
+				</div>
 				{unavailable || nothingLeft ? (
 					<Button onClick={() => onOpenChange(false)}>
 						{t("ui.common.actions.close")}

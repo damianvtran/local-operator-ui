@@ -2515,10 +2515,14 @@ test("R1-03: a row that flips to sending while its dialog is open offers only Cl
 });
 
 test("D1/D2: a conflict that overrides the user's text says so, offers it back, and never dead-ends", async () => {
-	const row = editRow("bsch_d", { body: "old text" });
-	const ui = await mountScheduledEdit(row, (_request, server) => {
-		server.rows = [{ ...row, body: "their text" }];
-		return STALE_EDIT_409;
+	const row = editRow("bsch_d", { body: "old text", version: 1 });
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		if (request.expected_version === 1) {
+			server.rows = [{ ...row, body: "their text", version: 2 }];
+			return STALE_EDIT_409;
+		}
+		server.rows = [{ ...server.rows[0], body: request.body, version: 3 }];
+		return { status: 200, body: { result: server.rows[0] } };
 	});
 	try {
 		await ui.setBody("my text");
@@ -2533,12 +2537,67 @@ test("D1/D2: a conflict that overrides the user's text says so, offers it back, 
 		// disabled Review beside "try again".
 		assert.equal(ui.buttonText().includes("Review schedule"), false);
 		assert.equal(ui.buttonText().includes("Close"), true);
-		// D2: the lost text is recoverable.
+		// D2: the lost text is recoverable. Focus the button first, as a
+		// keyboard user does: jsdom's click() moves no focus, and Radix already
+		// focused the textarea on open, which would pass D11 without the fix.
+		await act(async () =>
+			[...document.querySelectorAll('[role="dialog"] button')]
+				.find((button) => button.textContent === "Use my text instead")
+				.focus(),
+		);
+		assert.equal(document.activeElement?.textContent, "Use my text instead");
 		await ui.click("Use my text instead");
 		assert.equal(ui.body(), "my text");
 		assert.equal(ui.buttonText().includes("Use my text instead"), false);
 		assert.equal(ui.buttonText().includes("Review schedule"), true);
 		assert.equal(ui.alertLines().at(-1), CONFLICT_REVIEW);
+		// D11 (round 2): the button unmounted; focus lands on the refilled field.
+		assert.equal(document.activeElement?.tagName, "TEXTAREA");
+		// R2-01: the restored text goes out as a body-only edit pinned to the
+		// version of the row it was rebased onto - not the stale seed.
+		await ui.confirm();
+		const sent = { ...ui.patches[1] };
+		assert.deepEqual(
+			{
+				body: sent.body,
+				expected_version: sent.expected_version,
+				send_at: sent.send_at,
+				attachment_ids: sent.attachment_ids,
+			},
+			{
+				body: "my text",
+				expected_version: 2,
+				send_at: undefined,
+				attachment_ids: undefined,
+			},
+		);
+		assert.equal(ui.dialogOpen(), false);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("R2-01: a refresh that moves only the version is adopted, so the next pin is current", async () => {
+	const row = editRow("bsch_adopt", { version: 7 });
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		// The hub accepts only the CURRENT version; a stale pin would 409.
+		if (request.expected_version !== server.rows[0].version)
+			return STALE_EDIT_409;
+		server.rows = [{ ...server.rows[0], body: request.body, version: 9 }];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.setBody("pinned edit");
+		// Same body, time and images; only the version moved (an edit that wrote
+		// identical values elsewhere, or this user's lost-response edit).
+		ui.server.rows = [{ ...row, version: 8 }];
+		await ui.pushList();
+		assert.equal(ui.alert(), "", "nothing visible moved, so no notice");
+		assert.equal(ui.body(), "pinned edit", "the draft is untouched");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 1);
+		assert.equal(ui.patches[0].expected_version, 8);
+		assert.equal(ui.dialogOpen(), false);
 	} finally {
 		await ui.close();
 	}
