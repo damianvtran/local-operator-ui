@@ -362,7 +362,11 @@ test("focus does not open the card; Shift+F10 opens it and moves focus in", asyn
 		await act(async () => row.focus());
 		await tick(2_000);
 		assert.equal(isOpen(), false, "Tab onto a row is not a request for a card");
-		assert.equal(row.getAttribute("aria-keyshortcuts"), "Shift+F10");
+		assert.equal(
+			row.getAttribute("aria-keyshortcuts"),
+			"Shift+F10 ContextMenu",
+		);
+		assert.equal(row.getAttribute("aria-expanded"), "false");
 		await act(async () => {
 			row.dispatchEvent(
 				new KeyboardEvent("keydown", {
@@ -375,6 +379,7 @@ test("focus does not open the card; Shift+F10 opens it and moves focus in", asyn
 		});
 		await tick(16);
 		assert.ok(isOpen(), "the keyboard reaches the card");
+		assert.equal(row.getAttribute("aria-expanded"), "true");
 		assert.ok(
 			card().contains(document.activeElement),
 			"focus lands in the card so its actions are one key away",
@@ -402,6 +407,62 @@ test("focus does not open the card; Shift+F10 opens it and moves focus in", asyn
 		});
 		await tick(16);
 		assert.ok(isOpen(), "the context-menu key is the same route");
+	} finally {
+		await m.close();
+	}
+});
+
+/*
+ * Review R1-2: a card closed by `leave()` (here, Tab out of a keyboard-opened
+ * card while the pointer still rests on the row) used to keep the row's entry
+ * time, so the next crossing onto the avatar computed a negative dwell and
+ * reopened the card at 0 ms. Every close now forgets it.
+ */
+test("a card closed by blurring out does not reopen at 0 ms on the next avatar crossing", async () => {
+	const m = await mount(personRow(() => {}));
+	try {
+		const row = rowOf(m.host);
+		const avatar = row.querySelector("[data-team-bridge-avatar]");
+		await enter(row);
+		await tick(100);
+		await act(async () => {
+			row.dispatchEvent(
+				new KeyboardEvent("keydown", {
+					key: "F10",
+					shiftKey: true,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		await tick(16);
+		assert.ok(isOpen());
+		assert.equal(card().contains(document.activeElement), true);
+		await act(async () => document.activeElement.blur());
+		await tick(200);
+		assert.equal(isOpen(), false, "blurring out of the card closes it");
+		// Long past the row's 1.2 s dwell from the original entry.
+		await tick(1_500);
+		await act(async () => {
+			avatar.dispatchEvent(
+				new MouseEvent("mouseover", { bubbles: true, relatedTarget: row }),
+			);
+		});
+		await tick(0);
+		assert.equal(isOpen(), false, "no 0 ms reopen from a stale entry time");
+		await tick(2_000);
+		assert.equal(
+			isOpen(),
+			false,
+			"closed until the pointer leaves and returns",
+		);
+
+		await leave(row);
+		await enter(avatar);
+		await tick(399);
+		assert.equal(isOpen(), false);
+		await tick(1);
+		assert.equal(isOpen(), true, "a fresh visit dwells normally again");
 	} finally {
 		await m.close();
 	}

@@ -154,6 +154,7 @@ export function TeamBridgeProfileCard({
 	const leave = () => {
 		clearTimer();
 		timer.current = setTimeout(() => {
+			timer.current = undefined;
 			// Do not remove the Message action while a keyboard user is using it.
 			if (!content.current?.contains(document.activeElement)) setOpen(false);
 		}, 200);
@@ -161,7 +162,13 @@ export function TeamBridgeProfileCard({
 
 	const arm = (delay: number) => {
 		clearTimer();
-		timer.current = setTimeout(() => setOpen(true), Math.max(0, delay));
+		timer.current = setTimeout(
+			() => {
+				timer.current = undefined;
+				setOpen(true);
+			},
+			Math.max(0, delay),
+		);
 	};
 	/*
 	 * Re-arm for wherever the pointer now is inside the anchor. Leaving the avatar
@@ -186,6 +193,20 @@ export function TeamBridgeProfileCard({
 	};
 
 	useEffect(() => () => clearTimeout(timer.current), []);
+	/*
+	 * Every close forgets the pointer's entry time, not just `changeOpen(false)`.
+	 * `leave()` closes through `setOpen` directly (a blur out of the card while the
+	 * pointer still rests on the row), and a surviving `hoveredSince` would make
+	 * the next avatar/name crossing compute a negative remaining dwell and reopen
+	 * the card at 0 ms. Like any dismissal, the card then stays closed until the
+	 * pointer leaves the row and comes back (review R1-2, PR #1435).
+	 */
+	useEffect(() => {
+		if (open) return;
+		clearTimeout(timer.current);
+		timer.current = undefined;
+		hoveredSince.current = undefined;
+	}, [open]);
 	useEffect(() => {
 		if (!open || !focusContentOnOpen.current) return;
 		focusContentOnOpen.current = false;
@@ -229,7 +250,13 @@ export function TeamBridgeProfileCard({
 						name: label,
 					}),
 				}
-			: { "aria-keyshortcuts": "Shift+F10" }),
+			: {
+					// An anchor is not a Radix trigger, so nothing else declares the
+					// card: name both keys the row answers to (on a Mac keyboard F10
+					// needs Fn) and expose the card's state (review R1-3, PR #1435).
+					"aria-keyshortcuts": "Shift+F10 ContextMenu",
+					"aria-expanded": open,
+				}),
 		onMouseEnter: (event: MouseEvent<HTMLElement>) => {
 			children.props.onMouseEnter?.(event);
 			if (event.defaultPrevented) return;
