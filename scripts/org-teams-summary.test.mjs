@@ -54,6 +54,7 @@ const bundle = await build({
 			export * from "./${FEATURE}/components/org-team-summary";
 			export { OrgTeamsList } from "./${FEATURE}/components/org-teams-list";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+			export * as localeStore from "./src/i18n/locale";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -81,6 +82,20 @@ after(async () => {
 	await unlink(mountPath).catch(() => {});
 });
 const lib = await import(mountPath.href);
+
+/*
+ * A date as the i18n formatter layer prints it, in the locale the app is
+ * currently in and with the options `formatTeamDate` passes. The mounted
+ * assertions below build their expectations from THIS rather than spelling an
+ * English shape, which is how the old locale-less `d MMM yyyy` stayed pinned in
+ * place; the per-locale proof is `scripts/org-team-date-locale.test.mjs`.
+ */
+const layerDate = (iso) =>
+	new Intl.DateTimeFormat(lib.localeStore.currentLocale(), {
+		day: "numeric",
+		month: "short",
+		year: "numeric",
+	}).format(new Date(iso));
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-09-30T12:00:00.000Z");
@@ -158,7 +173,7 @@ test("recency: updated_at only, honest fallbacks, no lies", () => {
 	assert.equal(future.label, "updated");
 	assert.equal(
 		future.when,
-		"2 Oct 2026",
+		"Oct 2, 2026",
 		"a future stamp is a date, not '-2 days ago'",
 	);
 	assert.doesNotMatch(future.when, /ago/);
@@ -306,8 +321,14 @@ test("exact dates for the expanded body come from the stored fields", () => {
 			updated_at: "2026-09-25T10:00:00.000Z",
 		}),
 	);
-	assert.equal(dates.created, "14 Mar 2026");
-	assert.equal(dates.updated, "25 Sep 2026");
+	/*
+	 * The English shapes below are the i18n formatter layer's (`Intl` with the
+	 * active locale), not date-fns' locale-less `d MMM yyyy`: a date the roster
+	 * prints is the same shapes every other surface prints, month-first in `en`,
+	 * and localized per locale (see `scripts/org-team-date-locale.test.mjs`).
+	 */
+	assert.equal(dates.created, "Mar 14, 2026");
+	assert.equal(dates.updated, "Sep 25, 2026");
 	assert.deepEqual(lib.teamDates(team({ created_date: "", updated_at: "x" })), {
 		created: null,
 		updated: null,
@@ -481,8 +502,15 @@ test("the roster's pull control paints the derived name", async () => {
 	}
 });
 
+/** The first row's team: the one the expanded-body assertions read. */
+const ALPHA = team({
+	id: "a",
+	name: "Alpha",
+	description: "Alpha does the first thing.",
+});
+
 const ROSTER = [
-	team({ id: "a", name: "Alpha", description: "Alpha does the first thing." }),
+	ALPHA,
 	team({
 		id: "b",
 		name: "Bravo",
@@ -618,9 +646,18 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 		assert.match(panel.textContent, /screener\s*Role\s*×3/);
 		assert.match(panel.textContent, /analyst\s*Specialist/);
 		assert.doesNotMatch(panel.textContent, /×1/, "a slot of one prints no ×1");
-		assert.match(
-			panel.textContent,
-			/Created \d+ \w+ \d{4} · Updated \d+ \w+ \d{4}/,
+		/*
+		 * The body's dates come from the i18n formatter layer (`Intl`, the active
+		 * locale), so the expectation is built from the SAME formatter rather than
+		 * spelling a shape: an English-only literal here pinned the old
+		 * locale-less `d MMM yyyy` back in place. The per-locale proof lives in
+		 * `scripts/org-team-date-locale.test.mjs`.
+		 */
+		assert.ok(
+			panel.textContent.includes(
+				`Created ${layerDate(ALPHA.created_date)} · Updated ${layerDate(ALPHA.updated_at)}`,
+			),
+			`the body dates its rows: ${JSON.stringify(panel.textContent)}`,
 		);
 		assert.ok(
 			first.compareDocumentPosition(panel) &
@@ -668,7 +705,7 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 			/No members/,
 			"L3 already says it; the body does not repeat it",
 		);
-		assert.match(thirdPanel.textContent, /Created \d+ \w+ \d{4}/);
+		assert.match(thirdPanel.textContent, /Created \S+ \S+ \d{4}/);
 
 		/*
 		 * D1: a member name is `ink-muted`, so it does not outshout the description
@@ -769,6 +806,58 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 });
 
 /* ------------------------------------------------------- skeleton parity */
+
+/*
+ * The dates follow a LIVE language switch, not just the language the app
+ * started in: the row formats at render time from the locale store, and both
+ * date call sites subscribe through `useI18nLocale()`, so the open body must
+ * repaint when the store changes - no reload, no remount. The per-locale
+ * strings themselves are `scripts/org-team-date-locale.test.mjs`'s subject;
+ * this test is only about the repaint.
+ */
+test("a language switch repaints the open body's dates", async () => {
+	const { dom, document, teardown } = await mountRoster(ROSTER);
+	const started = lib.localeStore.currentLocale();
+	try {
+		const trigger = document.querySelector(
+			'[data-testid="org-teams"] > ul > li button[aria-expanded]',
+		);
+		await click(dom, trigger);
+		const panel = document.getElementById(
+			trigger.getAttribute("aria-controls"),
+		);
+		const english = layerDate(ALPHA.created_date);
+		/* The label is catalogue copy and localizes with it; only the DATE half
+		   is this test's subject, so no `Created ` prefix is asserted. */
+		assert.ok(
+			panel.textContent.includes(english),
+			`the body starts in the active locale: ${JSON.stringify(panel.textContent)}`,
+		);
+
+		await act(async () => {
+			lib.localeStore.setLocale("fr");
+		});
+		const french = new Intl.DateTimeFormat("fr", {
+			day: "numeric",
+			month: "short",
+			year: "numeric",
+		}).format(new Date(ALPHA.created_date));
+		assert.ok(
+			panel.textContent.includes(french),
+			`the open body repaints in French: ${JSON.stringify(panel.textContent)}`,
+		);
+		assert.equal(
+			panel.textContent.includes(english),
+			false,
+			"and drops the English date it was showing",
+		);
+	} finally {
+		await act(async () => {
+			lib.localeStore.setLocale(started);
+		});
+		await teardown();
+	}
+});
 
 test("the skeleton is painted from the row's own box (change one, change both)", () => {
 	const list = read(`${FEATURE}/components/org-teams-list.tsx`);

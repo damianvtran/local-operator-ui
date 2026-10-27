@@ -23,13 +23,19 @@
 
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
+import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
+import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
+import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
+import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
+import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
+import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
@@ -75,7 +81,9 @@ import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
+import enUiHubPages from "./catalogues/en/ui.hub.pages.json";
 import enUiHubTaxonomy from "./catalogues/en/ui.hub.taxonomy.json";
+import enUiHubTeams from "./catalogues/en/ui.hub.teams.json";
 import enUiHubUpdates from "./catalogues/en/ui.hub.updates.json";
 import enUiInstaller from "./catalogues/en/ui.installer.json";
 import enUiLibraryErrors from "./catalogues/en/ui.library.errors.json";
@@ -109,13 +117,19 @@ import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
+import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
+import esUiAgentsDetail from "./catalogues/es/ui.agents.detail.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
 import esUiAgents from "./catalogues/es/ui.agents.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
+import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
+import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
 import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
+import esUiAgentsTeams from "./catalogues/es/ui.agents.teams.json";
+import esUiAgentsUpload from "./catalogues/es/ui.agents.upload.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
@@ -161,7 +175,9 @@ import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
+import esUiHubPages from "./catalogues/es/ui.hub.pages.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
+import esUiHubTeams from "./catalogues/es/ui.hub.teams.json";
 import esUiHubUpdates from "./catalogues/es/ui.hub.updates.json";
 import esUiInstaller from "./catalogues/es/ui.installer.json";
 import esUiLibraryErrors from "./catalogues/es/ui.library.errors.json";
@@ -195,13 +211,19 @@ import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
+import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
+import frUiAgentsDetail from "./catalogues/fr/ui.agents.detail.json";
 import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
 import frUiAgents from "./catalogues/fr/ui.agents.json";
 import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
+import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
+import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
 import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
+import frUiAgentsTeams from "./catalogues/fr/ui.agents.teams.json";
+import frUiAgentsUpload from "./catalogues/fr/ui.agents.upload.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
@@ -247,7 +269,9 @@ import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
+import frUiHubPages from "./catalogues/fr/ui.hub.pages.json";
 import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
+import frUiHubTeams from "./catalogues/fr/ui.hub.teams.json";
 import frUiHubUpdates from "./catalogues/fr/ui.hub.updates.json";
 import frUiInstaller from "./catalogues/fr/ui.installer.json";
 import frUiLibraryErrors from "./catalogues/fr/ui.library.errors.json";
@@ -281,13 +305,19 @@ import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
+import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
+import hiUiAgentsDetail from "./catalogues/hi/ui.agents.detail.json";
 import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
 import hiUiAgents from "./catalogues/hi/ui.agents.json";
 import hiUiAgentsModels from "./catalogues/hi/ui.agents.models.json";
 import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
+import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
+import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
 import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
+import hiUiAgentsTeams from "./catalogues/hi/ui.agents.teams.json";
+import hiUiAgentsUpload from "./catalogues/hi/ui.agents.upload.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
@@ -333,7 +363,9 @@ import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
 import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
 import hiUiHub from "./catalogues/hi/ui.hub.json";
+import hiUiHubPages from "./catalogues/hi/ui.hub.pages.json";
 import hiUiHubTaxonomy from "./catalogues/hi/ui.hub.taxonomy.json";
+import hiUiHubTeams from "./catalogues/hi/ui.hub.teams.json";
 import hiUiHubUpdates from "./catalogues/hi/ui.hub.updates.json";
 import hiUiInstaller from "./catalogues/hi/ui.installer.json";
 import hiUiLibraryErrors from "./catalogues/hi/ui.library.errors.json";
@@ -367,13 +399,19 @@ import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
+import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
+import ruUiAgentsDetail from "./catalogues/ru/ui.agents.detail.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
 import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
+import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
+import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
+import ruUiAgentsTeams from "./catalogues/ru/ui.agents.teams.json";
+import ruUiAgentsUpload from "./catalogues/ru/ui.agents.upload.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
@@ -419,7 +457,9 @@ import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
+import ruUiHubPages from "./catalogues/ru/ui.hub.pages.json";
 import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
+import ruUiHubTeams from "./catalogues/ru/ui.hub.teams.json";
 import ruUiHubUpdates from "./catalogues/ru/ui.hub.updates.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
 import ruUiLibraryErrors from "./catalogues/ru/ui.library.errors.json";
@@ -453,13 +493,19 @@ import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
+import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
+import urUiAgentsDetail from "./catalogues/ur/ui.agents.detail.json";
 import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
 import urUiAgents from "./catalogues/ur/ui.agents.json";
 import urUiAgentsModels from "./catalogues/ur/ui.agents.models.json";
 import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
+import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
+import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
 import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
 import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
+import urUiAgentsTeams from "./catalogues/ur/ui.agents.teams.json";
+import urUiAgentsUpload from "./catalogues/ur/ui.agents.upload.json";
 import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
 import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
 import urUiBrowser from "./catalogues/ur/ui.browser.json";
@@ -505,7 +551,9 @@ import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
 import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
 import urUiHub from "./catalogues/ur/ui.hub.json";
+import urUiHubPages from "./catalogues/ur/ui.hub.pages.json";
 import urUiHubTaxonomy from "./catalogues/ur/ui.hub.taxonomy.json";
+import urUiHubTeams from "./catalogues/ur/ui.hub.teams.json";
 import urUiHubUpdates from "./catalogues/ur/ui.hub.updates.json";
 import urUiInstaller from "./catalogues/ur/ui.installer.json";
 import urUiLibraryErrors from "./catalogues/ur/ui.library.errors.json";
@@ -539,13 +587,19 @@ import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
+import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
+import viUiAgentsDetail from "./catalogues/vi/ui.agents.detail.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
 import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
 import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
+import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
+import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
 import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
+import viUiAgentsTeams from "./catalogues/vi/ui.agents.teams.json";
+import viUiAgentsUpload from "./catalogues/vi/ui.agents.upload.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
@@ -591,7 +645,9 @@ import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
 import viUiHub from "./catalogues/vi/ui.hub.json";
+import viUiHubPages from "./catalogues/vi/ui.hub.pages.json";
 import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
+import viUiHubTeams from "./catalogues/vi/ui.hub.teams.json";
 import viUiHubUpdates from "./catalogues/vi/ui.hub.updates.json";
 import viUiInstaller from "./catalogues/vi/ui.installer.json";
 import viUiLibraryErrors from "./catalogues/vi/ui.library.errors.json";
@@ -625,13 +681,19 @@ import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
+import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
+import zhCNUiAgentsDetail from "./catalogues/zh-CN/ui.agents.detail.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
 import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
 import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
 import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json";
+import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
+import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
 import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
+import zhCNUiAgentsTeams from "./catalogues/zh-CN/ui.agents.teams.json";
+import zhCNUiAgentsUpload from "./catalogues/zh-CN/ui.agents.upload.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
@@ -677,7 +739,9 @@ import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
 import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
 import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
+import zhCNUiHubPages from "./catalogues/zh-CN/ui.hub.pages.json";
 import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
+import zhCNUiHubTeams from "./catalogues/zh-CN/ui.hub.teams.json";
 import zhCNUiHubUpdates from "./catalogues/zh-CN/ui.hub.updates.json";
 import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
 import zhCNUiLibraryErrors from "./catalogues/zh-CN/ui.library.errors.json";
@@ -714,13 +778,19 @@ import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
 	...enUiAgentMessagesSettings,
+	...enUiAgentsConfig,
+	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
 	...enUiAgents,
 	...enUiAgentsModels,
 	...enUiAgentsNavigation,
+	...enUiAgentsPages,
+	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
 	...enUiAgentsStarters,
+	...enUiAgentsTeams,
+	...enUiAgentsUpload,
 	...enUiBrowserChrome,
 	...enUiBrowserErrors,
 	...enUiBrowser,
@@ -766,7 +836,9 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiConsole,
 	...enUiHubComments,
 	...enUiHub,
+	...enUiHubPages,
 	...enUiHubTaxonomy,
+	...enUiHubTeams,
 	...enUiHubUpdates,
 	...enUiInstaller,
 	...enUiLibraryErrors,
@@ -808,13 +880,19 @@ export const bundledCatalogues: Readonly<
 	es: {
 		...esUiAgentMessages,
 		...esUiAgentMessagesSettings,
+		...esUiAgentsConfig,
+		...esUiAgentsDetail,
 		...esUiAgentsDialogs,
 		...esUiAgents,
 		...esUiAgentsModels,
 		...esUiAgentsNavigation,
+		...esUiAgentsPages,
+		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
 		...esUiAgentsSettings,
 		...esUiAgentsStarters,
+		...esUiAgentsTeams,
+		...esUiAgentsUpload,
 		...esUiBrowserChrome,
 		...esUiBrowserErrors,
 		...esUiBrowser,
@@ -860,7 +938,9 @@ export const bundledCatalogues: Readonly<
 		...esUiConsole,
 		...esUiHubComments,
 		...esUiHub,
+		...esUiHubPages,
 		...esUiHubTaxonomy,
+		...esUiHubTeams,
 		...esUiHubUpdates,
 		...esUiInstaller,
 		...esUiLibraryErrors,
@@ -896,13 +976,19 @@ export const bundledCatalogues: Readonly<
 	fr: {
 		...frUiAgentMessages,
 		...frUiAgentMessagesSettings,
+		...frUiAgentsConfig,
+		...frUiAgentsDetail,
 		...frUiAgentsDialogs,
 		...frUiAgents,
 		...frUiAgentsModels,
 		...frUiAgentsNavigation,
+		...frUiAgentsPages,
+		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
 		...frUiAgentsSettings,
 		...frUiAgentsStarters,
+		...frUiAgentsTeams,
+		...frUiAgentsUpload,
 		...frUiBrowserChrome,
 		...frUiBrowserErrors,
 		...frUiBrowser,
@@ -948,7 +1034,9 @@ export const bundledCatalogues: Readonly<
 		...frUiConsole,
 		...frUiHubComments,
 		...frUiHub,
+		...frUiHubPages,
 		...frUiHubTaxonomy,
+		...frUiHubTeams,
 		...frUiHubUpdates,
 		...frUiInstaller,
 		...frUiLibraryErrors,
@@ -984,13 +1072,19 @@ export const bundledCatalogues: Readonly<
 	hi: {
 		...hiUiAgentMessages,
 		...hiUiAgentMessagesSettings,
+		...hiUiAgentsConfig,
+		...hiUiAgentsDetail,
 		...hiUiAgentsDialogs,
 		...hiUiAgents,
 		...hiUiAgentsModels,
 		...hiUiAgentsNavigation,
+		...hiUiAgentsPages,
+		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
 		...hiUiAgentsSettings,
 		...hiUiAgentsStarters,
+		...hiUiAgentsTeams,
+		...hiUiAgentsUpload,
 		...hiUiBrowserChrome,
 		...hiUiBrowserErrors,
 		...hiUiBrowser,
@@ -1036,7 +1130,9 @@ export const bundledCatalogues: Readonly<
 		...hiUiConsole,
 		...hiUiHubComments,
 		...hiUiHub,
+		...hiUiHubPages,
 		...hiUiHubTaxonomy,
+		...hiUiHubTeams,
 		...hiUiHubUpdates,
 		...hiUiInstaller,
 		...hiUiLibraryErrors,
@@ -1072,13 +1168,19 @@ export const bundledCatalogues: Readonly<
 	ru: {
 		...ruUiAgentMessages,
 		...ruUiAgentMessagesSettings,
+		...ruUiAgentsConfig,
+		...ruUiAgentsDetail,
 		...ruUiAgentsDialogs,
 		...ruUiAgents,
 		...ruUiAgentsModels,
 		...ruUiAgentsNavigation,
+		...ruUiAgentsPages,
+		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
 		...ruUiAgentsSettings,
 		...ruUiAgentsStarters,
+		...ruUiAgentsTeams,
+		...ruUiAgentsUpload,
 		...ruUiBrowserChrome,
 		...ruUiBrowserErrors,
 		...ruUiBrowser,
@@ -1124,7 +1226,9 @@ export const bundledCatalogues: Readonly<
 		...ruUiConsole,
 		...ruUiHubComments,
 		...ruUiHub,
+		...ruUiHubPages,
 		...ruUiHubTaxonomy,
+		...ruUiHubTeams,
 		...ruUiHubUpdates,
 		...ruUiInstaller,
 		...ruUiLibraryErrors,
@@ -1160,13 +1264,19 @@ export const bundledCatalogues: Readonly<
 	ur: {
 		...urUiAgentMessages,
 		...urUiAgentMessagesSettings,
+		...urUiAgentsConfig,
+		...urUiAgentsDetail,
 		...urUiAgentsDialogs,
 		...urUiAgents,
 		...urUiAgentsModels,
 		...urUiAgentsNavigation,
+		...urUiAgentsPages,
+		...urUiAgentsPublication,
 		...urUiAgentsRefusals,
 		...urUiAgentsSettings,
 		...urUiAgentsStarters,
+		...urUiAgentsTeams,
+		...urUiAgentsUpload,
 		...urUiBrowserChrome,
 		...urUiBrowserErrors,
 		...urUiBrowser,
@@ -1212,7 +1322,9 @@ export const bundledCatalogues: Readonly<
 		...urUiConsole,
 		...urUiHubComments,
 		...urUiHub,
+		...urUiHubPages,
 		...urUiHubTaxonomy,
+		...urUiHubTeams,
 		...urUiHubUpdates,
 		...urUiInstaller,
 		...urUiLibraryErrors,
@@ -1248,13 +1360,19 @@ export const bundledCatalogues: Readonly<
 	vi: {
 		...viUiAgentMessages,
 		...viUiAgentMessagesSettings,
+		...viUiAgentsConfig,
+		...viUiAgentsDetail,
 		...viUiAgentsDialogs,
 		...viUiAgents,
 		...viUiAgentsModels,
 		...viUiAgentsNavigation,
+		...viUiAgentsPages,
+		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
 		...viUiAgentsSettings,
 		...viUiAgentsStarters,
+		...viUiAgentsTeams,
+		...viUiAgentsUpload,
 		...viUiBrowserChrome,
 		...viUiBrowserErrors,
 		...viUiBrowser,
@@ -1300,7 +1418,9 @@ export const bundledCatalogues: Readonly<
 		...viUiConsole,
 		...viUiHubComments,
 		...viUiHub,
+		...viUiHubPages,
 		...viUiHubTaxonomy,
+		...viUiHubTeams,
 		...viUiHubUpdates,
 		...viUiInstaller,
 		...viUiLibraryErrors,
@@ -1336,13 +1456,19 @@ export const bundledCatalogues: Readonly<
 	"zh-CN": {
 		...zhCNUiAgentMessages,
 		...zhCNUiAgentMessagesSettings,
+		...zhCNUiAgentsConfig,
+		...zhCNUiAgentsDetail,
 		...zhCNUiAgentsDialogs,
 		...zhCNUiAgents,
 		...zhCNUiAgentsModels,
 		...zhCNUiAgentsNavigation,
+		...zhCNUiAgentsPages,
+		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
 		...zhCNUiAgentsSettings,
 		...zhCNUiAgentsStarters,
+		...zhCNUiAgentsTeams,
+		...zhCNUiAgentsUpload,
 		...zhCNUiBrowserChrome,
 		...zhCNUiBrowserErrors,
 		...zhCNUiBrowser,
@@ -1388,7 +1514,9 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiConsole,
 		...zhCNUiHubComments,
 		...zhCNUiHub,
+		...zhCNUiHubPages,
 		...zhCNUiHubTaxonomy,
+		...zhCNUiHubTeams,
 		...zhCNUiHubUpdates,
 		...zhCNUiInstaller,
 		...zhCNUiLibraryErrors,
@@ -1528,6 +1656,81 @@ export type MessageParams = {
 	"ui.agentMessages.settings.state.read_only": undefined;
 	"ui.agentMessages.settings.state.turned_off_org": undefined;
 	"ui.agentMessages.settings.state.turned_off_title": undefined;
+	"ui.agents.config.about": { kind: string; name: string };
+	"ui.agents.config.action.clear": undefined;
+	"ui.agents.config.action.dismiss": undefined;
+	"ui.agents.config.action.retry": undefined;
+	"ui.agents.config.action.stop": undefined;
+	"ui.agents.config.action.watch": undefined;
+	"ui.agents.config.activity.empty": undefined;
+	"ui.agents.config.background_only": undefined;
+	"ui.agents.config.composer.label": undefined;
+	"ui.agents.config.definitions": { count: number };
+	"ui.agents.config.error.stop_refused": undefined;
+	"ui.agents.config.examples.add_twice": undefined;
+	"ui.agents.config.examples.reads_code": undefined;
+	"ui.agents.config.examples.team_shipping": undefined;
+	"ui.agents.config.result.changed": undefined;
+	"ui.agents.config.result.configured": undefined;
+	"ui.agents.config.result.created": undefined;
+	"ui.agents.config.state.sending": undefined;
+	"ui.agents.config.state.stopping": undefined;
+	"ui.agents.config.status.attached": undefined;
+	"ui.agents.config.stopped.kept": undefined;
+	"ui.agents.config.stopped.nothing": undefined;
+	"ui.agents.config.summary.created": { name: string };
+	"ui.agents.config.summary.hidden_changes": undefined;
+	"ui.agents.config.summary.no_changes": undefined;
+	"ui.agents.config.summary.nothing_else": undefined;
+	"ui.agents.config.summary.updated": { name: string };
+	"ui.agents.config.summary.you_asked": { topic: string };
+	"ui.agents.detail.action.ask_change": undefined;
+	"ui.agents.detail.action.discard_changes": undefined;
+	"ui.agents.detail.action.discard_question": undefined;
+	"ui.agents.detail.action.duplicate": undefined;
+	"ui.agents.detail.action.edit": undefined;
+	"ui.agents.detail.action.keep_editing": undefined;
+	"ui.agents.detail.action.more_actions": undefined;
+	"ui.agents.detail.action.new_chat": undefined;
+	"ui.agents.detail.action.save_changes": undefined;
+	"ui.agents.detail.action.saving": undefined;
+	"ui.agents.detail.action.unsaved_changes": undefined;
+	"ui.agents.detail.alert.builtin_body": undefined;
+	"ui.agents.detail.alert.builtin_title": undefined;
+	"ui.agents.detail.alert.conflict_body": undefined;
+	"ui.agents.detail.alert.conflict_reload": undefined;
+	"ui.agents.detail.alert.conflict_title": undefined;
+	"ui.agents.detail.alert.save_failed_title": undefined;
+	"ui.agents.detail.alert.unconfirmed_body": undefined;
+	"ui.agents.detail.alert.unconfirmed_title": undefined;
+	"ui.agents.detail.badge.modified": undefined;
+	"ui.agents.detail.class.error_title": undefined;
+	"ui.agents.detail.class.label": undefined;
+	"ui.agents.detail.delegate.aria": undefined;
+	"ui.agents.detail.delegate.label": undefined;
+	"ui.agents.detail.empty.used_by": undefined;
+	"ui.agents.detail.field.effort_placeholder": undefined;
+	"ui.agents.detail.field.name": undefined;
+	"ui.agents.detail.kind.role": undefined;
+	"ui.agents.detail.kind.specialist": undefined;
+	"ui.agents.detail.no_description": undefined;
+	"ui.agents.detail.origin.changed": undefined;
+	"ui.agents.detail.origin.source": undefined;
+	"ui.agents.detail.read.effort_label": undefined;
+	"ui.agents.detail.section.delegation": undefined;
+	"ui.agents.detail.section.instructions": undefined;
+	"ui.agents.detail.section.messaging": undefined;
+	"ui.agents.detail.section.name_role": undefined;
+	"ui.agents.detail.section.origin": undefined;
+	"ui.agents.detail.section.tools": undefined;
+	"ui.agents.detail.section.used_by": undefined;
+	"ui.agents.detail.section.when_to_use": undefined;
+	"ui.agents.detail.tools.add": undefined;
+	"ui.agents.detail.tools.all_label": undefined;
+	"ui.agents.detail.tools.empty": undefined;
+	"ui.agents.detail.tools.every_tool_aria": undefined;
+	"ui.agents.detail.tools.may_use_any": undefined;
+	"ui.agents.detail.tools.placeholder": undefined;
 	"ui.agents.dialogs.clear.cancel": undefined;
 	"ui.agents.dialogs.clear.confirm": undefined;
 	"ui.agents.dialogs.clear.title": undefined;
@@ -1640,6 +1843,135 @@ export type MessageParams = {
 	"ui.agents.navigation.updates.preview.local": undefined;
 	"ui.agents.navigation.updates.preview.nothing": undefined;
 	"ui.agents.navigation.updates.preview.remote": undefined;
+	"ui.agents.pages.back_to_list": undefined;
+	"ui.agents.pages.browse_aria": undefined;
+	"ui.agents.pages.discard_bar.agent": undefined;
+	"ui.agents.pages.discard_bar.team": undefined;
+	"ui.agents.pages.empty.agents": undefined;
+	"ui.agents.pages.empty.builtin": undefined;
+	"ui.agents.pages.empty.custom": undefined;
+	"ui.agents.pages.empty.installed": undefined;
+	"ui.agents.pages.empty.search": { query: string };
+	"ui.agents.pages.empty.teams": undefined;
+	"ui.agents.pages.heading": undefined;
+	"ui.agents.pages.loading_saved": undefined;
+	"ui.agents.pages.scope.all": undefined;
+	"ui.agents.pages.scope.builtin": undefined;
+	"ui.agents.pages.scope.custom": undefined;
+	"ui.agents.pages.scope.installed": undefined;
+	"ui.agents.pages.scope_legend": undefined;
+	"ui.agents.pages.search.agents": undefined;
+	"ui.agents.pages.search.teams": undefined;
+	"ui.agents.pages.search_aria": undefined;
+	"ui.agents.pages.tab.agents": undefined;
+	"ui.agents.pages.tab.teams": undefined;
+	"ui.agents.publication.action.edit_agent": undefined;
+	"ui.agents.publication.action.edit_instructions": undefined;
+	"ui.agents.publication.action.focus_name": undefined;
+	"ui.agents.publication.action.install_builtin": undefined;
+	"ui.agents.publication.action.publish_as_new": undefined;
+	"ui.agents.publication.action.refresh_hub": undefined;
+	"ui.agents.publication.action.retry": undefined;
+	"ui.agents.publication.action.sign_in": undefined;
+	"ui.agents.publication.action.update_listing": undefined;
+	"ui.agents.publication.agent_not_found.body": undefined;
+	"ui.agents.publication.agent_not_found.headline": undefined;
+	"ui.agents.publication.category.credential_theft": undefined;
+	"ui.agents.publication.category.drugs_or_controlled_substances": undefined;
+	"ui.agents.publication.category.evasion_or_abuse_tooling": undefined;
+	"ui.agents.publication.category.fraud_or_deception": undefined;
+	"ui.agents.publication.category.harassment_or_hate": undefined;
+	"ui.agents.publication.category.malware_or_exploitation": undefined;
+	"ui.agents.publication.category.mass_surveillance_or_privacy_abuse": undefined;
+	"ui.agents.publication.category.other_harmful": undefined;
+	"ui.agents.publication.category.prompt_injection": undefined;
+	"ui.agents.publication.category.self_harm": undefined;
+	"ui.agents.publication.category.sexual_content": undefined;
+	"ui.agents.publication.category.sexual_content_minors": undefined;
+	"ui.agents.publication.category.unclear_dual_use": undefined;
+	"ui.agents.publication.category.violence_or_weapons": undefined;
+	"ui.agents.publication.fallback.headline": undefined;
+	"ui.agents.publication.hub_unauthorized.body": undefined;
+	"ui.agents.publication.hub_unauthorized.body_pull": undefined;
+	"ui.agents.publication.hub_unauthorized.headline": undefined;
+	"ui.agents.publication.hub_unavailable.body": undefined;
+	"ui.agents.publication.hub_unavailable.body_pull": undefined;
+	"ui.agents.publication.hub_unavailable.headline": undefined;
+	"ui.agents.publication.hub_unavailable.headline_pull": undefined;
+	"ui.agents.publication.insufficient_role.body": undefined;
+	"ui.agents.publication.insufficient_role.body_pull": undefined;
+	"ui.agents.publication.insufficient_role.body_with_role": {
+		required: string;
+	};
+	"ui.agents.publication.insufficient_role.body_with_role_pull": {
+		required: string;
+	};
+	"ui.agents.publication.insufficient_role.headline": undefined;
+	"ui.agents.publication.invalid.field.categories": undefined;
+	"ui.agents.publication.invalid.field.categories_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.description": undefined;
+	"ui.agents.publication.invalid.field.description_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.instructions": { max: string };
+	"ui.agents.publication.invalid.field.instructions_with_rule": {
+		rule: string;
+	};
+	"ui.agents.publication.invalid.field.name": undefined;
+	"ui.agents.publication.invalid.field.name_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.tags": undefined;
+	"ui.agents.publication.invalid.field.tags_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.tools": undefined;
+	"ui.agents.publication.invalid.field.tools_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.when_to_use": undefined;
+	"ui.agents.publication.invalid.field.when_to_use_with_rule": { rule: string };
+	"ui.agents.publication.invalid.headline": undefined;
+	"ui.agents.publication.local_failure.headline": undefined;
+	"ui.agents.publication.local_failure.headline_pull": undefined;
+	"ui.agents.publication.moderation_rejected.headline": undefined;
+	"ui.agents.publication.moderation_unavailable.body": undefined;
+	"ui.agents.publication.moderation_unavailable.headline": undefined;
+	"ui.agents.publication.name_claim_in_flight.body": { name: string };
+	"ui.agents.publication.name_claim_in_flight.headline": undefined;
+	"ui.agents.publication.name_reserved_builtin.body": {
+		name: string;
+		builtin: string;
+	};
+	"ui.agents.publication.name_reserved_builtin.body_same_name": {
+		builtin: string;
+	};
+	"ui.agents.publication.name_reserved_builtin.headline": undefined;
+	"ui.agents.publication.name_taken.body": { name: string };
+	"ui.agents.publication.name_taken.headline": undefined;
+	"ui.agents.publication.name_taken.owned_body": { name: string };
+	"ui.agents.publication.name_taken.owned_headline": undefined;
+	"ui.agents.publication.not_a_member.body": undefined;
+	"ui.agents.publication.not_a_member.body_pull": undefined;
+	"ui.agents.publication.not_a_member.headline": undefined;
+	"ui.agents.publication.not_owner.body": undefined;
+	"ui.agents.publication.not_owner.headline": undefined;
+	"ui.agents.publication.other_action_lead": undefined;
+	"ui.agents.publication.payload_too_large.body": undefined;
+	"ui.agents.publication.payload_too_large.body_with_limit": { size: string };
+	"ui.agents.publication.payload_too_large.headline": undefined;
+	"ui.agents.publication.pull.busy": { subject: string };
+	"ui.agents.publication.pull.hub_unavailable": { subject: string };
+	"ui.agents.publication.pull.incomplete": { subject: string };
+	"ui.agents.publication.pull.no_reason": { subject: string };
+	"ui.agents.publication.pull.not_found": { subject: string };
+	"ui.agents.publication.pull.prose": { subject: string; reason: string };
+	"ui.agents.publication.pull.reach_failure": { subject: string };
+	"ui.agents.publication.pull.refused": { subject: string; reason: string };
+	"ui.agents.publication.pull.refused_download": { subject: string };
+	"ui.agents.publication.pull.sign_in_refused": { subject: string };
+	"ui.agents.publication.pull.unreachable": { subject: string };
+	"ui.agents.publication.subject.agent": undefined;
+	"ui.agents.publication.subject.name": { name: string };
+	"ui.agents.publication.subject.team": undefined;
+	"ui.agents.publication.subject.unknown": undefined;
+	"ui.agents.publication.team_not_found.body": undefined;
+	"ui.agents.publication.team_not_found.headline": undefined;
+	"ui.agents.publication.team_plan_required.body": undefined;
+	"ui.agents.publication.team_plan_required.body_pull": undefined;
+	"ui.agents.publication.team_plan_required.headline": undefined;
 	"ui.agents.refusals.class.effect.proactive": undefined;
 	"ui.agents.refusals.class.effect.reactive": undefined;
 	"ui.agents.refusals.class.error.install_landed": { reason: string };
@@ -1734,6 +2066,52 @@ export type MessageParams = {
 	"ui.agents.starters.summary.sentence": { parts: string };
 	"ui.agents.starters.summary.separator": undefined;
 	"ui.agents.starters.summary.skipped": { count: number };
+	"ui.agents.teams.action.add_member": undefined;
+	"ui.agents.teams.action.collaboration_aria": undefined;
+	"ui.agents.teams.action.new_chat": undefined;
+	"ui.agents.teams.action.project_brief_aria": undefined;
+	"ui.agents.teams.action.remove": undefined;
+	"ui.agents.teams.col.count": undefined;
+	"ui.agents.teams.col.member": undefined;
+	"ui.agents.teams.col.type": undefined;
+	"ui.agents.teams.empty.not_found": undefined;
+	"ui.agents.teams.empty.not_found_name": { name: string };
+	"ui.agents.teams.field.manager_aria": undefined;
+	"ui.agents.teams.field.manager_placeholder": undefined;
+	"ui.agents.teams.field.member_placeholder": undefined;
+	"ui.agents.teams.kind.agent": undefined;
+	"ui.agents.teams.kind.team": undefined;
+	"ui.agents.teams.member_count": { count: number };
+	"ui.agents.teams.section.collaboration": undefined;
+	"ui.agents.teams.section.description": undefined;
+	"ui.agents.teams.section.manager": undefined;
+	"ui.agents.teams.section.members": undefined;
+	"ui.agents.teams.section.members_aria": undefined;
+	"ui.agents.teams.section.project_brief": undefined;
+	"ui.agents.teams.section.what_for": undefined;
+	"ui.agents.upload.action.edit_agent": undefined;
+	"ui.agents.upload.action.open_listing": undefined;
+	"ui.agents.upload.availability.agent_label": undefined;
+	"ui.agents.upload.availability.checking": undefined;
+	"ui.agents.upload.availability.free": undefined;
+	"ui.agents.upload.availability.taken": undefined;
+	"ui.agents.upload.error.cannot_publish": undefined;
+	"ui.agents.upload.field.name_hint": undefined;
+	"ui.agents.upload.field.name_label": undefined;
+	"ui.agents.upload.list.instructions": undefined;
+	"ui.agents.upload.list.name": undefined;
+	"ui.agents.upload.list.surface": undefined;
+	"ui.agents.upload.published.listed": { name: string };
+	"ui.agents.upload.published.republished": { name: string };
+	"ui.agents.upload.sign_in.needed": undefined;
+	"ui.agents.upload.sign_in.nothing_left": undefined;
+	"ui.agents.upload.sign_in.reauthenticate": undefined;
+	"ui.agents.upload.target.label": undefined;
+	"ui.agents.upload.target.orgs_unread": undefined;
+	"ui.agents.upload.target.upgrade": undefined;
+	"ui.agents.upload.terms.lead": undefined;
+	"ui.agents.upload.terms.link": undefined;
+	"ui.agents.upload.terms.tail": undefined;
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;
@@ -5142,6 +5520,41 @@ export type MessageParams = {
 	"ui.hub.subscriptions.subscribe_description": { source: string };
 	"ui.hub.subscriptions.subscribe_description_blocked": { source: string };
 	"ui.hub.subscriptions.unsupported": undefined;
+	"ui.hub.pages.browse_aria": undefined;
+	"ui.hub.pages.header.subtitle": undefined;
+	"ui.hub.pages.header.title": undefined;
+	"ui.hub.pages.orgs_below_version": undefined;
+	"ui.hub.pages.orgs_unavailable": undefined;
+	"ui.hub.pages.publish": undefined;
+	"ui.hub.pages.scope.org_label": undefined;
+	"ui.hub.pages.scope.org_unnamed": undefined;
+	"ui.hub.pages.scope.public": undefined;
+	"ui.hub.pages.scope_label": undefined;
+	"ui.hub.pages.scope_legend": undefined;
+	"ui.hub.pages.search.aria": undefined;
+	"ui.hub.pages.search.placeholder": undefined;
+	"ui.hub.pages.search.scope_aria": undefined;
+	"ui.hub.pages.search_field.description": undefined;
+	"ui.hub.pages.search_field.name": undefined;
+	"ui.hub.pages.sort.aria": undefined;
+	"ui.hub.pages.sort.most_downloaded": undefined;
+	"ui.hub.pages.sort.most_favourited": undefined;
+	"ui.hub.pages.sort.most_liked": undefined;
+	"ui.hub.pages.sort.name_asc": undefined;
+	"ui.hub.pages.sort.newest": undefined;
+	"ui.hub.pages.sort.recently_updated": undefined;
+	"ui.hub.pages.status.agents_scope": { scope: string };
+	"ui.hub.pages.status.count.agents": { count: number; scope: string };
+	"ui.hub.pages.status.count.teams": { count: number; scope: string };
+	"ui.hub.pages.status.loading_agents": undefined;
+	"ui.hub.pages.status.loading_teams": undefined;
+	"ui.hub.pages.status.scope.public": undefined;
+	"ui.hub.pages.status.scope.shared_with": { org: string };
+	"ui.hub.pages.status.teams_scope": { scope: string };
+	"ui.hub.pages.tab.agents": undefined;
+	"ui.hub.pages.tab.teams": undefined;
+	"ui.hub.pages.updating": undefined;
+	"ui.hub.pages.viewer_unknown": undefined;
 	"ui.hub.taxonomy.all": undefined;
 	"ui.hub.taxonomy.category.accounting": undefined;
 	"ui.hub.taxonomy.category.analysis": undefined;
@@ -5163,6 +5576,57 @@ export type MessageParams = {
 	"ui.hub.taxonomy.origin.named": { name: string };
 	"ui.hub.taxonomy.origin.organization": undefined;
 	"ui.hub.taxonomy.origin.unnamed": undefined;
+	"ui.hub.teams.brief.collaboration": undefined;
+	"ui.hub.teams.brief.collaboration_empty": undefined;
+	"ui.hub.teams.brief.project": undefined;
+	"ui.hub.teams.brief.project_empty": undefined;
+	"ui.hub.teams.brief.roster": undefined;
+	"ui.hub.teams.brief.trigger": undefined;
+	"ui.hub.teams.brief.trigger_aria": { name: string };
+	"ui.hub.teams.brief.unreadable": undefined;
+	"ui.hub.teams.detail.created": { date: string };
+	"ui.hub.teams.detail.updated": { date: string };
+	"ui.hub.teams.kind.role": undefined;
+	"ui.hub.teams.kind.specialist": undefined;
+	"ui.hub.teams.manager": undefined;
+	"ui.hub.teams.manager_label": undefined;
+	"ui.hub.teams.member_count": { count: number };
+	"ui.hub.teams.members": undefined;
+	"ui.hub.teams.no_description": undefined;
+	"ui.hub.teams.no_members": undefined;
+	"ui.hub.teams.org.aria": { org: string };
+	"ui.hub.teams.org.empty": { org: string };
+	"ui.hub.teams.org.load_headline": undefined;
+	"ui.hub.teams.org.no_access_body": { org: string };
+	"ui.hub.teams.org.no_access_headline": undefined;
+	"ui.hub.teams.org.plan_body": { org: string };
+	"ui.hub.teams.org.plan_headline": undefined;
+	"ui.hub.teams.org.that_organization": undefined;
+	"ui.hub.teams.org.unreadable": undefined;
+	"ui.hub.teams.public.aria": undefined;
+	"ui.hub.teams.public.catalogue_unreadable": undefined;
+	"ui.hub.teams.public.empty": undefined;
+	"ui.hub.teams.public.intro": undefined;
+	"ui.hub.teams.public.load_failed": undefined;
+	"ui.hub.teams.public.match_line": {
+		visible: string;
+		total: number;
+		query: string;
+	};
+	"ui.hub.teams.public.open_settings": undefined;
+	"ui.hub.teams.public.published_by": undefined;
+	"ui.hub.teams.public.pull_failed": undefined;
+	"ui.hub.teams.public.pull_no_signin": undefined;
+	"ui.hub.teams.public.search_aria": undefined;
+	"ui.hub.teams.public.search_miss": { query: string };
+	"ui.hub.teams.public.search_placeholder": undefined;
+	"ui.hub.teams.public.search_scope": undefined;
+	"ui.hub.teams.public.sign_in_hint": undefined;
+	"ui.hub.teams.public.trying": undefined;
+	"ui.hub.teams.pull": undefined;
+	"ui.hub.teams.pull_failed": { name: string };
+	"ui.hub.teams.pull_target": { name: string };
+	"ui.hub.teams.pulling": undefined;
 	"ui.hub.updates.action.details": undefined;
 	"ui.hub.updates.action.retry": undefined;
 	"ui.hub.updates.action.review": undefined;

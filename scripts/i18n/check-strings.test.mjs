@@ -349,23 +349,47 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 	try {
 		const baselinePath = join(dir, "baseline.json");
 		/*
-		 * A REAL, baselined file rather than the excluded fixture: `--update`
-		 * scans the tree's own corpus (fixtures are outside it by design), and
-		 * 99 sits above this file's real count so the update has something to
-		 * lower; the raise-target entry sits BELOW its real count so the raise case
-		 * has something to refuse.
+		 * Every number here comes from the tree's own counts, never a pinned
+		 * literal. This harness once pinned the expected post-update count of one
+		 * migration file and broke the moment that file's copy was fully keyed —
+		 * `--update` then deletes the entry instead of lowering it — so both the
+		 * targets and the expected values are read from the counted set here.
+		 *
+		 * 99 sits above every real count, so the lower target has room to move down;
+		 * the raise target is recorded one below the tree's count, so the raise is
+		 * refused and its entry stays intact.
 		 */
-		const lowerTarget =
-			"src/renderer/src/features/agent-hub/agent-details-page.tsx";
+		const { counts } = runCheck();
+		const counted = Object.keys(counts).sort();
+		const lowerTarget = counted.find((rel) => counts[rel] < 99);
+		// Prefer a file carrying more than one literal: a zero ceiling is valid,
+		// but a count above one keeps the refusal about a real extraction gap.
 		const raiseTarget =
-			"src/renderer/src/features/agent-hub/agent-hub-page.tsx";
-		saveBaseline(baselinePath, { [lowerTarget]: 99, [raiseTarget]: 1 }, "note");
+			counted.find((rel) => rel !== lowerTarget && counts[rel] >= 2) ??
+			counted.find((rel) => rel !== lowerTarget);
+		assert.ok(
+			lowerTarget,
+			"no counted file sits below the planted ceiling of 99",
+		);
+		assert.ok(
+			raiseTarget,
+			"the tree has no second counted file for the raise case",
+		);
+		const loweredCeiling = counts[lowerTarget];
+		const raisedCeiling = counts[raiseTarget] - 1;
+		saveBaseline(
+			baselinePath,
+			{ [lowerTarget]: 99, [raiseTarget]: raisedCeiling },
+			"note",
+		);
 		const options = { baselinePath, allowlistPath: ALLOWLIST };
 		assert.equal(main(["--update", lowerTarget], options), 0);
-		assert.equal(loadBaseline(baselinePath).files[lowerTarget], 16);
-		// A file recorded at 1 while the tree carries 12: refused, entry intact.
+		// The update wrote exactly the tree's count, strictly below the planted 99.
+		assert.equal(loadBaseline(baselinePath).files[lowerTarget], loweredCeiling);
+		assert.ok(loweredCeiling < 99);
+		// A file recorded below its real count: refused, entry intact.
 		assert.equal(main(["--update", raiseTarget], options), 1);
-		assert.equal(loadBaseline(baselinePath).files[raiseTarget], 1);
+		assert.equal(loadBaseline(baselinePath).files[raiseTarget], raisedCeiling);
 		// The preceding refusal proves raiseTarget still has literals. Remove
 		// only its scratch-baseline entry to exercise the missing-entry case;
 		// a translated product file may legitimately have zero literals now.
