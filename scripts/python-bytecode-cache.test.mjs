@@ -2777,6 +2777,20 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		why: "the runtime's own `read_transcript_page`, driven against the isolated session copy; this is the site review R1 / QA Q0 caught inheriting the ambient environment, and it was run on the operator's machine to produce the fixture",
 	},
 	{
+		file: "scripts/notifications-app-scene.mjs",
+		name: "execFileSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\{/,
+		why: "seeds and reads the notifications store through the PINNED core's own interpreter (the native scene's ground truth for which revision a read committed); its config dir is the scene's isolated one, passed through `extra`",
+	},
+	{
+		file: "scripts/notifications-app-scene.mjs",
+		name: "spawn",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\{/,
+		why: "the pinned core's `local-operator serve` entry script, the native scene's backend; its HOME, config dir and desktop token are the scene's isolated ones, passed through `extra`",
+	},
+	{
 		file: "scripts/owned-serve-lifecycle.test.mjs",
 		name: "spawnSync",
 		index: 1,

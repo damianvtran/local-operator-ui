@@ -94,6 +94,8 @@ import enUiMeshErrors from "./catalogues/en/ui.mesh.errors.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiMiniView from "./catalogues/en/ui.miniView.json";
 import enUiNotices from "./catalogues/en/ui.notices.json";
+import enUiNotifications from "./catalogues/en/ui.notifications.json";
+import enUiNotificationsOperation from "./catalogues/en/ui.notifications.operation.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
@@ -190,6 +192,8 @@ import esUiMeshErrors from "./catalogues/es/ui.mesh.errors.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
 import esUiMiniView from "./catalogues/es/ui.miniView.json";
 import esUiNotices from "./catalogues/es/ui.notices.json";
+import esUiNotifications from "./catalogues/es/ui.notifications.json";
+import esUiNotificationsOperation from "./catalogues/es/ui.notifications.operation.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
@@ -286,6 +290,8 @@ import frUiMeshErrors from "./catalogues/fr/ui.mesh.errors.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiMiniView from "./catalogues/fr/ui.miniView.json";
 import frUiNotices from "./catalogues/fr/ui.notices.json";
+import frUiNotifications from "./catalogues/fr/ui.notifications.json";
+import frUiNotificationsOperation from "./catalogues/fr/ui.notifications.operation.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
@@ -382,6 +388,8 @@ import hiUiMeshErrors from "./catalogues/hi/ui.mesh.errors.json";
 import hiUiMesh from "./catalogues/hi/ui.mesh.json";
 import hiUiMiniView from "./catalogues/hi/ui.miniView.json";
 import hiUiNotices from "./catalogues/hi/ui.notices.json";
+import hiUiNotifications from "./catalogues/hi/ui.notifications.json";
+import hiUiNotificationsOperation from "./catalogues/hi/ui.notifications.operation.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
@@ -478,6 +486,8 @@ import ruUiMeshErrors from "./catalogues/ru/ui.mesh.errors.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiMiniView from "./catalogues/ru/ui.miniView.json";
 import ruUiNotices from "./catalogues/ru/ui.notices.json";
+import ruUiNotifications from "./catalogues/ru/ui.notifications.json";
+import ruUiNotificationsOperation from "./catalogues/ru/ui.notifications.operation.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
@@ -574,6 +584,8 @@ import urUiMeshErrors from "./catalogues/ur/ui.mesh.errors.json";
 import urUiMesh from "./catalogues/ur/ui.mesh.json";
 import urUiMiniView from "./catalogues/ur/ui.miniView.json";
 import urUiNotices from "./catalogues/ur/ui.notices.json";
+import urUiNotifications from "./catalogues/ur/ui.notifications.json";
+import urUiNotificationsOperation from "./catalogues/ur/ui.notifications.operation.json";
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
@@ -670,6 +682,8 @@ import viUiMeshErrors from "./catalogues/vi/ui.mesh.errors.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiMiniView from "./catalogues/vi/ui.miniView.json";
 import viUiNotices from "./catalogues/vi/ui.notices.json";
+import viUiNotifications from "./catalogues/vi/ui.notifications.json";
+import viUiNotificationsOperation from "./catalogues/vi/ui.notifications.operation.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
@@ -766,6 +780,8 @@ import zhCNUiMeshErrors from "./catalogues/zh-CN/ui.mesh.errors.json";
 import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
 import zhCNUiMiniView from "./catalogues/zh-CN/ui.miniView.json";
 import zhCNUiNotices from "./catalogues/zh-CN/ui.notices.json";
+import zhCNUiNotifications from "./catalogues/zh-CN/ui.notifications.json";
+import zhCNUiNotificationsOperation from "./catalogues/zh-CN/ui.notifications.operation.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
@@ -865,6 +881,8 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiMesh,
 	...enUiMiniView,
 	...enUiNotices,
+	...enUiNotifications,
+	...enUiNotificationsOperation,
 	...enUiOnboarding,
 	...enUiPresence,
 	...enUiProjects,
@@ -969,6 +987,8 @@ export const bundledCatalogues: Readonly<
 		...esUiMesh,
 		...esUiMiniView,
 		...esUiNotices,
+		...esUiNotifications,
+		...esUiNotificationsOperation,
 		...esUiOnboarding,
 		...esUiPresence,
 		...esUiProjects,
@@ -1067,6 +1087,8 @@ export const bundledCatalogues: Readonly<
 		...frUiMesh,
 		...frUiMiniView,
 		...frUiNotices,
+		...frUiNotifications,
+		...frUiNotificationsOperation,
 		...frUiOnboarding,
 		...frUiPresence,
 		...frUiProjects,
@@ -1165,6 +1187,8 @@ export const bundledCatalogues: Readonly<
 		...hiUiMesh,
 		...hiUiMiniView,
 		...hiUiNotices,
+		...hiUiNotifications,
+		...hiUiNotificationsOperation,
 		...hiUiOnboarding,
 		...hiUiPresence,
 		...hiUiProjects,
@@ -1263,6 +1287,8 @@ export const bundledCatalogues: Readonly<
 		...ruUiMesh,
 		...ruUiMiniView,
 		...ruUiNotices,
+		...ruUiNotifications,
+		...ruUiNotificationsOperation,
 		...ruUiOnboarding,
 		...ruUiPresence,
 		...ruUiProjects,
@@ -1361,6 +1387,8 @@ export const bundledCatalogues: Readonly<
 		...urUiMesh,
 		...urUiMiniView,
 		...urUiNotices,
+		...urUiNotifications,
+		...urUiNotificationsOperation,
 		...urUiOnboarding,
 		...urUiPresence,
 		...urUiProjects,
@@ -1459,6 +1487,8 @@ export const bundledCatalogues: Readonly<
 		...viUiMesh,
 		...viUiMiniView,
 		...viUiNotices,
+		...viUiNotifications,
+		...viUiNotificationsOperation,
 		...viUiOnboarding,
 		...viUiPresence,
 		...viUiProjects,
@@ -1557,6 +1587,8 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiMesh,
 		...zhCNUiMiniView,
 		...zhCNUiNotices,
+		...zhCNUiNotifications,
+		...zhCNUiNotificationsOperation,
 		...zhCNUiOnboarding,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
@@ -6439,6 +6471,155 @@ export type MessageParams = {
 	"ui.notices.variables.deleted": undefined;
 	"ui.notices.variables.update_failed": undefined;
 	"ui.notices.variables.updated": undefined;
+	"ui.notifications.action.mark_all_read": undefined;
+	"ui.notifications.ask.stays": undefined;
+	"ui.notifications.confirm.cancel": undefined;
+	"ui.notifications.confirm.dismiss_session": { count: number; source: string };
+	"ui.notifications.confirm.dismiss_session_ok": undefined;
+	"ui.notifications.detail.back": undefined;
+	"ui.notifications.detail.close": undefined;
+	"ui.notifications.detail.dismiss": undefined;
+	"ui.notifications.detail.dismiss_repeat": { count: string };
+	"ui.notifications.detail.empty": undefined;
+	"ui.notifications.detail.error": undefined;
+	"ui.notifications.detail.from.dismiss_all": { count: string };
+	"ui.notifications.detail.gone.dismissed": undefined;
+	"ui.notifications.detail.history.show_all": { count: string };
+	"ui.notifications.detail.kind.ask": undefined;
+	"ui.notifications.detail.kind.update": undefined;
+	"ui.notifications.detail.label": undefined;
+	"ui.notifications.detail.loading": undefined;
+	"ui.notifications.detail.meta.updates_since": { count: number; time: string };
+	"ui.notifications.detail.more.copy_link": undefined;
+	"ui.notifications.detail.more.dismiss_session": { source: string };
+	"ui.notifications.detail.open_conversation": undefined;
+	"ui.notifications.detail.section.context": undefined;
+	"ui.notifications.detail.section.from": undefined;
+	"ui.notifications.detail.section.history": undefined;
+	"ui.notifications.detail.section.links": undefined;
+	"ui.notifications.detail.section.projects": undefined;
+	"ui.notifications.detail.section.waiting": undefined;
+	"ui.notifications.drawer.empty": undefined;
+	"ui.notifications.drawer.footer": undefined;
+	"ui.notifications.drawer.group.read": undefined;
+	"ui.notifications.drawer.group.unread": undefined;
+	"ui.notifications.drawer.mark_read": undefined;
+	"ui.notifications.drawer.open_notifications": undefined;
+	"ui.notifications.drawer.show_in_conversation": undefined;
+	"ui.notifications.drawer.tab.all": undefined;
+	"ui.notifications.drawer.tab.asks": undefined;
+	"ui.notifications.drawer.tab.updates": undefined;
+	"ui.notifications.drawer.tabs_label": undefined;
+	"ui.notifications.drawer.unread_count": { count: string };
+	"ui.notifications.empty.caught_up.body": undefined;
+	"ui.notifications.empty.caught_up.show_all": undefined;
+	"ui.notifications.empty.caught_up.title": undefined;
+	"ui.notifications.empty.filtered.title": undefined;
+	"ui.notifications.empty.none.body": undefined;
+	"ui.notifications.empty.none.title": undefined;
+	"ui.notifications.error.dismiss": undefined;
+	"ui.notifications.error.load.title": undefined;
+	"ui.notifications.error.mark": undefined;
+	"ui.notifications.error.refresh.body": { time: string };
+	"ui.notifications.error.refresh.title": undefined;
+	"ui.notifications.error.retry": undefined;
+	"ui.notifications.filter.all": undefined;
+	"ui.notifications.filter.chip": { label: string; value: string };
+	"ui.notifications.filter.clear": undefined;
+	"ui.notifications.filter.from": undefined;
+	"ui.notifications.filter.from_all": undefined;
+	"ui.notifications.filter.group": undefined;
+	"ui.notifications.filter.group_conversation": undefined;
+	"ui.notifications.filter.group_time": undefined;
+	"ui.notifications.filter.kind": undefined;
+	"ui.notifications.filter.kind_all": undefined;
+	"ui.notifications.filter.kind_asks": undefined;
+	"ui.notifications.filter.kind_updates": undefined;
+	"ui.notifications.filter.priority": undefined;
+	"ui.notifications.filter.priority_any": undefined;
+	"ui.notifications.filter.priority_high": undefined;
+	"ui.notifications.filter.priority_normal_up": undefined;
+	"ui.notifications.filter.read_state": undefined;
+	"ui.notifications.filter.unread": undefined;
+	"ui.notifications.flag.label": undefined;
+	"ui.notifications.flag.open": undefined;
+	"ui.notifications.flag.seen": undefined;
+	"ui.notifications.flag.seen_hint": undefined;
+	"ui.notifications.flag.unread": undefined;
+	"ui.notifications.group.dismiss_session": { count: string };
+	"ui.notifications.group.older": undefined;
+	"ui.notifications.group.today": undefined;
+	"ui.notifications.group.untitled": undefined;
+	"ui.notifications.group.waiting": undefined;
+	"ui.notifications.group.week": undefined;
+	"ui.notifications.group.yesterday": undefined;
+	"ui.notifications.nav.label": undefined;
+	"ui.notifications.nav.unread": { count: number; countText: string };
+	"ui.notifications.new_pill": { count: string };
+	"ui.notifications.page.checking": undefined;
+	"ui.notifications.page.list_label": undefined;
+	"ui.notifications.page.loading": undefined;
+	"ui.notifications.page.refresh": undefined;
+	"ui.notifications.page.subtitle": undefined;
+	"ui.notifications.page.title": undefined;
+	"ui.notifications.page.unavailable": undefined;
+	"ui.notifications.rail.aria_with_updates": {
+		chord: string;
+		subject: string;
+		count: number;
+		countText: string;
+		updates: number;
+		updatesText: string;
+	};
+	"ui.notifications.read_via.explicit": undefined;
+	"ui.notifications.row.a11y": {
+		read: string;
+		priority: string;
+		title: string;
+		source: string;
+		age: string;
+		repeat: number;
+	};
+	"ui.notifications.row.answer": undefined;
+	"ui.notifications.row.ask_expires": { time: string };
+	"ui.notifications.row.ask_options": { options: number };
+	"ui.notifications.row.chip.high": undefined;
+	"ui.notifications.row.chip.repeat": { count: string };
+	"ui.notifications.row.dismiss": undefined;
+	"ui.notifications.row.mark_read": undefined;
+	"ui.notifications.row.mark_unread": undefined;
+	"ui.notifications.row.more": undefined;
+	"ui.notifications.row.priority.high": undefined;
+	"ui.notifications.row.priority.low": undefined;
+	"ui.notifications.row.priority.normal": undefined;
+	"ui.notifications.row.select": { title: string };
+	"ui.notifications.row.updated_ago": { age: string };
+	"ui.notifications.seen.in_view": undefined;
+	"ui.notifications.seen.in_view_hint": undefined;
+	"ui.notifications.seen.live": undefined;
+	"ui.notifications.seen.live_hint": undefined;
+	"ui.notifications.select.all": undefined;
+	"ui.notifications.select.asks_stay": { count: number };
+	"ui.notifications.select.clear": undefined;
+	"ui.notifications.select.count": { count: string };
+	"ui.notifications.select.dismiss": { count: string };
+	"ui.notifications.select.mark_read": undefined;
+	"ui.notifications.select.mark_unread": undefined;
+	"ui.notifications.time.hours": { count: string };
+	"ui.notifications.time.minutes": { count: string };
+	"ui.notifications.time.now": undefined;
+	"ui.notifications.toast.copied": undefined;
+	"ui.notifications.toast.dismissed": { count: number };
+	"ui.notifications.toast.marked_read": { count: string };
+	"ui.notifications.toast.marked_unread": { count: string };
+	"ui.notifications.toast.undo": undefined;
+	"ui.notifications.toast.undone": undefined;
+	"ui.notifications.writes_paused_tip": undefined;
+	"ui.notifications.operation.progress": {
+		changed: number;
+		skipped: number;
+		pending: number;
+	};
 	"ui.onboarding.connect.intro": undefined;
 	"ui.onboarding.default_model.block.loading_models": undefined;
 	"ui.onboarding.default_model.block.pick_a_model": undefined;

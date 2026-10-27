@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "locale": "hi",
+  "namespace": "ui.notifications",
+  "instance": "audit-hi-c9c5d8079e51",
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "audit-hi-c9c5d8079e51",
+    "session": "c9c5d8079e51",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Session model-switch notice: openai/gpt-6.1-sol fallback after provider quota; no delegated model used.",
+    "date": "2026-10-25",
+    "independence": "Independent audit-hi agent/context; authored none of the English or Hindi translations; not tr-hi or L1-core-notify coder."
+  },
+  "en_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+  "target_sha256": "0ddb5960f6850a858352407c2f008320c712b7327b1f0b5aadc79be3cc847de4",
+  "context_sha256": "3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e",
+  "date": "2026-10-25",
+  "key_count": {
+    "en": 130,
+    "target": 130
+  },
+  "findings": [
+    {
+      "key": "ui.notifications.row.mark_read",
+      "severity": "minor",
+      "current_text": "पढ़ा गया चिह्नित करें",
+      "proposed_text": "पढ़ा हुआ मानें",
+      "reason": "The literal read-status + mark construction is stilted Hindi and expands a compact action: measured Rich cell_len 18 vs English 13 (all), or 13 vs English 9 (individual); proposed everyday imperative measures 13 or 8 cells. Rendered fit remains for design/QA."
+    },
+    {
+      "key": "ui.notifications.select.mark_read",
+      "severity": "minor",
+      "current_text": "पढ़ा गया चिह्नित करें",
+      "proposed_text": "पढ़ा हुआ मानें",
+      "reason": "The literal read-status + mark construction is stilted Hindi and expands a compact action: measured Rich cell_len 18 vs English 13 (all), or 13 vs English 9 (individual); proposed everyday imperative measures 13 or 8 cells. Rendered fit remains for design/QA."
+    },
+    {
+      "key": "ui.notifications.drawer.mark_read",
+      "severity": "minor",
+      "current_text": "पढ़ा गया चिह्नित करें",
+      "proposed_text": "पढ़ा हुआ मानें",
+      "reason": "The literal read-status + mark construction is stilted Hindi and expands a compact action: measured Rich cell_len 18 vs English 13 (all), or 13 vs English 9 (individual); proposed everyday imperative measures 13 or 8 cells. Rendered fit remains for design/QA."
+    },
+    {
+      "key": "ui.notifications.action.mark_all_read",
+      "severity": "minor",
+      "current_text": "सभी को पढ़ा गया चिह्नित करें",
+      "proposed_text": "सभी को पढ़ा हुआ मानें",
+      "reason": "The literal read-status + mark construction is stilted Hindi and expands a compact action: measured Rich cell_len 18 vs English 13 (all), or 13 vs English 9 (individual); proposed everyday imperative measures 13 or 8 cells. Rendered fit remains for design/QA."
+    },
+    {
+      "key": "ui.notifications.group.week",
+      "severity": "minor",
+      "current_text": "इस हफ़्ते",
+      "proposed_text": "इस हफ़्ते पहले",
+      "reason": "The time bucket excludes Today and Yesterday; current wording only says this week and omits the source’s earlier distinction."
+    }
+  ],
+  "status": "passed",
+  "result": "clean-with-findings",
+  "limitations": [
+    "No rendered-fit claim; no native-speaker review claimed."
+  ],
+  "translator": {
+    "agent": "tr-hi (separate translator child)",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-25"
+  }
+}
