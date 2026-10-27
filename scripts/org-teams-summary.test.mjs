@@ -101,9 +101,11 @@ const DAY = 86_400_000;
 const NOW = Date.parse("2026-09-30T12:00:00.000Z");
 /*
  * The mounted roster calls teamRecency() without a clock, just as the product
- * does. Freeze the wall clock for this file so its fixed roster timestamps keep
- * the same relative age on every day and in every timezone; otherwise a fixture
- * written on 2026-09-30 eventually reads "1 month ago" instead of "3 days ago".
+ * does. Freeze the wall clock for this file so the roster's relative-age
+ * assertions ("updated 3 days ago") no longer depend on the day the suite runs;
+ * otherwise a fixture written on 2026-09-30 eventually reads "1 month ago".
+ * This pins relative age only: absolute-date assertions still format in the
+ * host timezone and are not made timezone-independent here.
  * Restore the real clock after the suite so this cannot affect other tests.
  */
 const realDateNow = Date.now;
@@ -579,7 +581,7 @@ test("each row is one disclosure, Pull is its sibling, and the name carries the 
 		);
 		assert.match(
 			name,
-			/Ana Perez\s*,\s*updated \d+ days ago/,
+			/Ana Perez\s*,\s*updated 3 days ago/,
 			"and so is the provenance join",
 		);
 		assert.match(name, /Alpha/);
@@ -591,10 +593,7 @@ test("each row is one disclosure, Pull is its sibling, and the name carries the 
 		);
 		assert.match(name, /Manager:\s*lead-screener/);
 		assert.match(name, /4 members:\s*screener ×3, analyst/);
-		assert.match(
-			name,
-			/Onboarding.*Ana Perez.*updated 3 days ago|updated \d+ days ago/s,
-		);
+		assert.match(name, /Onboarding.*Ana Perez.*updated 3 days ago/s);
 		assert.doesNotMatch(name, /ana@example\.com/, "never the email");
 		assert.equal(
 			rows[0].querySelector("button[aria-expanded]").hasAttribute("aria-label"),
