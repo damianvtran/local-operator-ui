@@ -1,0 +1,25 @@
+<script>
+/* REVIEW-ONLY geometry probe (PR #1446 design r2). Active only with &probe=1.
+   Writes rects + computed colours into <pre id="probe"> so a text read returns numbers. */
+(function(){
+  if (!/[?&]probe=1/.test(location.search)) return;
+  const f=(r)=>`${+r.x.toFixed(2)},${+r.y.toFixed(2)} ${+r.width.toFixed(2)}x${+r.height.toFixed(2)}`;
+  const css=(e,p)=>getComputedStyle(e).getPropertyValue(p);
+  function bg(e){ while(e){const c=css(e,'background-color'); if(c && c!=='rgba(0, 0, 0, 0)' && c!=='transparent') return c; e=e.parentElement;} return 'none'; }
+  function run(){
+    const L=[];
+    document.querySelectorAll('section li').forEach((li,i)=>{
+      L.push(`card${i} ${f(li.getBoundingClientRect())} bg=${bg(li)}`);
+      const slot=li.querySelector('div.min-h-8'); if(slot) L.push(`  slot ${f(slot.getBoundingClientRect())}`);
+      li.querySelectorAll('button').forEach((b,j)=>L.push(`  btn${j} ${f(b.getBoundingClientRect())} "${b.textContent}" fg=${css(b,'color')} bg=${bg(b)} disabled=${b.disabled} aria-disabled=${b.getAttribute('aria-disabled')} aria-busy=${b.getAttribute('aria-busy')} opacity=${css(b,'opacity')} cursor=${css(b,'cursor')}`));
+      li.querySelectorAll('p').forEach((p,j)=>L.push(`  p${j} ${f(p.getBoundingClientRect())} fg=${css(p,'color')} bg=${bg(p)} fs=${css(p,'font-size')} role=${p.getAttribute('role')} "${p.textContent.slice(0,60)}"`));
+    });
+    document.querySelectorAll('section > p, section > div > p').forEach((p,j)=>{ if(!p.closest('li')) L.push(`top-p${j} ${f(p.getBoundingClientRect())} fg=${css(p,'color')} bg=${bg(p)} fs=${css(p,'font-size')} "${p.textContent.slice(0,70)}"`)});
+    document.querySelectorAll('nav button').forEach((b,j)=>{ const sp=b.querySelectorAll('span'); L.push(`nav${j} ${f(b.getBoundingClientRect())} "${b.textContent}" cur=${b.getAttribute('aria-current')} bg=${css(b,'background-color')}`); sp.forEach((s,k)=>L.push(`  span${k} ${f(s.getBoundingClientRect())} cls=${(s.className||'').toString().slice(0,60)} fg=${css(s,'color')} bg=${css(s,'background-color')}`)); });
+    document.querySelectorAll('[aria-label*="unread" i], [aria-label*="invitation" i]').forEach((b,j)=>L.push(`badge${j} ${f(b.getBoundingClientRect())} "${b.getAttribute('aria-label')}" fg=${css(b,'color')} bg=${css(b,'background-color')}`));
+    let pre=document.getElementById('probe'); if(!pre){pre=document.createElement('pre');pre.id='probe';pre.style.cssText='position:fixed;left:0;bottom:0;max-height:1px;overflow:hidden;opacity:0;pointer-events:none';document.body.appendChild(pre);}
+    pre.textContent='PROBE\n'+L.join('\n')+'\nEND';
+  }
+  window.__probe=run; setInterval(run, 700);
+})();
+</script>

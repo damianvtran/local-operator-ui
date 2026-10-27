@@ -1,0 +1,30 @@
+<script>
+/* REVIEW-ONLY commit recorder (PR #1446 design r2), active with &mo=1. A MutationObserver
+   measures layout synchronously after EVERY DOM commit (getBoundingClientRect forces layout),
+   so it works in a background tab where rAF is throttled. Distinct values per key + commit count. */
+(function(){
+  if (!/[?&]mo=1/.test(location.search)) return;
+  const seen=new Map(); let commits=0; let inRail=false;
+  document.addEventListener('pointerover',e=>{inRail=!!(e.target.closest&&e.target.closest("[data-glass-region='page-sidebar']"));},true);
+  const add=(k,v)=>{ if(!seen.has(k)) seen.set(k,new Map()); const m=seen.get(k); m.set(v,(m.get(v)||0)+1); };
+  const f=(r)=>`${+r.x.toFixed(1)},${+r.y.toFixed(1)} ${+r.width.toFixed(1)}x${+r.height.toFixed(1)}`;
+  function sample(){
+    commits++;
+    document.querySelectorAll("section[aria-label='Invitations'] li").forEach((li,i)=>{
+      add('card'+i, f(li.getBoundingClientRect()));
+      const s=li.querySelector('div.min-h-8'); const b=li.querySelector('button');
+      add('slot'+i, (s?f(s.getBoundingClientRect()):'none')+' btn0='+(b?f(b.getBoundingClientRect()):'none'));
+    });
+    const side=document.querySelector("[data-glass-region='page-sidebar']");
+    if(side){
+      const row=side.querySelector('section button'); const entry=[...side.querySelectorAll('nav button')].find(b=>/Invitations/.test(b.textContent));
+      add('rail.pointer-'+(inRail?'in':'out'), `firstRow.y=${row?row.getBoundingClientRect().y.toFixed(1):'?'} entry=${entry?'shown':'absent'}`);
+    }
+  }
+  new MutationObserver(sample).observe(document.documentElement,{subtree:true,childList:true,attributes:true,characterData:true});
+  window.__moReset=()=>{seen.clear();commits=0;};
+  setInterval(()=>{ let pre=document.getElementById('mo'); if(!pre){pre=document.createElement('pre');pre.id='mo';pre.style.cssText='position:fixed;right:0;bottom:0;max-height:1px;overflow:hidden;opacity:0;pointer-events:none';document.body.appendChild(pre);}
+    const L=['MO commits='+commits]; for(const [k,m] of seen) L.push(`${k}: ${m.size} distinct -> `+[...m].map(([v,c])=>`${v} (x${c})`).join(' | ')); pre.textContent=L.join('\n')+'\nMOEND'; },500);
+  document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-mo-reset]')) window.__moReset(); },true);
+})();
+</script>
