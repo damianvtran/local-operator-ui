@@ -2,10 +2,12 @@ import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import {
 	Popover,
+	PopoverAnchor,
 	PopoverClose,
 	PopoverContent,
 	PopoverTrigger,
 } from "@shared/components/ui/popover";
+import { useTeamBridgeAvatar } from "@shared/hooks/use-account-avatar";
 import { formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -13,6 +15,8 @@ import { Bot, Clock, MessageSquare, X } from "lucide-react";
 import {
 	type CSSProperties,
 	type HTMLAttributes,
+	type KeyboardEvent,
+	type MouseEvent,
 	type ReactElement,
 	type ReactNode,
 	cloneElement,
@@ -23,7 +27,6 @@ import {
 } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import { personDisplayLabel, personInitial } from "./team-bridge-model";
-import { useTeamBridgeAvatar } from "./use-team-bridge-avatar";
 
 export function TeamBridgeAvatar({
 	member,
@@ -45,6 +48,9 @@ export function TeamBridgeAvatar({
 	return (
 		<span
 			aria-hidden="true"
+			/* The profile card's avatar fast path finds the avatar inside a wider
+			   anchor by this marker (see `fastOpenDelayMs`). */
+			data-team-bridge-avatar=""
 			style={{ "--profile-avatar-size": `${size}px` } as CSSProperties}
 			className={cn(
 				"inline-flex size-[var(--profile-avatar-size)] shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-body-sm text-ink-muted",
@@ -70,6 +76,25 @@ export function TeamBridgeAvatar({
  * One existing focusable element is the anchor: wrapping a rail button in another
  * button would break both keyboard activation and its conversation-selection action.
  * Hover must not steal focus; keyboard users can tab from the anchor into the card.
+ *
+ * TWO KINDS OF ANCHOR. By default the anchor IS the card's trigger: a message-list
+ * avatar or sender name exists to show the profile, so it is named "Open profile
+ * for …", opens on focus, and click toggles the card (Radix's trigger behaviour).
+ *
+ * A rail row is different: its click must open the conversation (operator report
+ * 2026-10-26 - the click focused the row, focus opened the card, and Radix's click
+ * toggle consumed the press, so selection never happened). Such a row passes
+ * `toggleOnClick={false}` and `openOnFocus={false}`. It then becomes a Radix
+ * `PopoverAnchor` rather than a `PopoverTrigger`, so the card is positioned on the
+ * row but Radix composes no click toggle into it. The row keeps its own accessible
+ * name and click action, and a click closes the card and cancels any pending dwell.
+ * The pointer reaches the card through a long `openDelayMs` dwell. With
+ * `fastOpenDelayMs`, the avatar inside the row opens it at the normal delay
+ * instead. The avatar gets a timer rather than its own trigger because a Radix
+ * trigger nested in the row button would be a control inside a control. Focus no
+ * longer opens the card, so the keyboard route is the platform's "what can I do
+ * with this" key: the context-menu key or Shift+F10 opens it and moves focus into
+ * it, the same pairing the transcript's link toolbar and message rows use.
  */
 export function TeamBridgeProfileCard({
 	member,
@@ -77,6 +102,10 @@ export function TeamBridgeProfileCard({
 	agentName,
 	onMessage,
 	canMessage = true,
+	openDelayMs = 400,
+	fastOpenDelayMs,
+	toggleOnClick = true,
+	openOnFocus = true,
 	children,
 }: {
 	member: TeamBridgeDirectoryMember;
@@ -84,6 +113,14 @@ export function TeamBridgeProfileCard({
 	agentName?: string;
 	onMessage: () => void;
 	canMessage?: boolean;
+	/** Pointer dwell on the anchor before the card opens. */
+	openDelayMs?: number;
+	/** Dwell when the pointer is over the anchor's avatar; unset = no fast path. */
+	fastOpenDelayMs?: number;
+	/** `false` makes the anchor a positioning anchor only: its click is its own. */
+	toggleOnClick?: boolean;
+	/** `false` = focus does not open the card; Shift+F10 / context-menu key does. */
+	openOnFocus?: boolean;
 	children: ReactElement<HTMLAttributes<HTMLElement>>;
 }) {
 	const locale = useI18nLocale();
@@ -94,6 +131,12 @@ export function TeamBridgeProfileCard({
 	const content = useRef<HTMLDivElement>(null);
 	const restoringFocus = useRef(false);
 	const contentOwnedFocus = useRef(false);
+	const anchorNode = useRef<HTMLElement | null>(null);
+	// Dwell bookkeeping for the avatar fast path: when the pointer entered the
+	// anchor, and whether the pending timer is the avatar's shorter one.
+	const hoveredSince = useRef<number | undefined>(undefined);
+	const fastArmed = useRef(false);
+	const focusContentOnOpen = useRef(false);
 	const isAgent = agentName !== undefined;
 	const displayName = isAgent ? label : member.profile?.display_name || label;
 
@@ -103,17 +146,78 @@ export function TeamBridgeProfileCard({
 	};
 	const changeOpen = (next: boolean) => {
 		clearTimer();
+		// A dismissed card (click, Escape, Message) stays closed until the pointer
+		// leaves and comes back: moving within the row must not re-arm the dwell.
+		if (!next) hoveredSince.current = undefined;
 		setOpen(next);
 	};
 	const leave = () => {
 		clearTimer();
 		timer.current = setTimeout(() => {
+			timer.current = undefined;
 			// Do not remove the Message action while a keyboard user is using it.
 			if (!content.current?.contains(document.activeElement)) setOpen(false);
 		}, 200);
 	};
 
+	const arm = (delay: number) => {
+		clearTimer();
+		timer.current = setTimeout(
+			() => {
+				timer.current = undefined;
+				setOpen(true);
+			},
+			Math.max(0, delay),
+		);
+	};
+	/*
+	 * Re-arm for wherever the pointer now is inside the anchor. Leaving the avatar
+	 * for the rest of the row resumes the LONG dwell from when the row was
+	 * entered rather than restarting it, so the avatar does not make the row slower.
+	 */
+	const trackPointer = (target: EventTarget, anchor: HTMLElement) => {
+		if (open || hoveredSince.current === undefined) return;
+		const onAvatar =
+			fastOpenDelayMs !== undefined &&
+			target instanceof Element &&
+			anchor.contains(target.closest("[data-team-bridge-avatar]"));
+		if (onAvatar === fastArmed.current && timer.current !== undefined) return;
+		fastArmed.current = onAvatar;
+		const elapsed = Date.now() - hoveredSince.current;
+		const remaining = openDelayMs - elapsed;
+		arm(
+			onAvatar && fastOpenDelayMs !== undefined
+				? Math.min(fastOpenDelayMs, remaining)
+				: remaining,
+		);
+	};
+
 	useEffect(() => () => clearTimeout(timer.current), []);
+	/*
+	 * Every close forgets the pointer's entry time, not just `changeOpen(false)`.
+	 * `leave()` closes through `setOpen` directly (a blur out of the card while the
+	 * pointer still rests on the row), and a surviving `hoveredSince` would make
+	 * the next avatar/name crossing compute a negative remaining dwell and reopen
+	 * the card at 0 ms. Like any dismissal, the card then stays closed until the
+	 * pointer leaves the row and comes back (review R1-2, PR #1435).
+	 */
+	useEffect(() => {
+		if (open) return;
+		clearTimeout(timer.current);
+		timer.current = undefined;
+		hoveredSince.current = undefined;
+	}, [open]);
+	useEffect(() => {
+		if (!open || !focusContentOnOpen.current) return;
+		focusContentOnOpen.current = false;
+		// The reader pressed a key to ACT on the card, so focus lands on its
+		// primary action (Message) or, without one, its Close button.
+		const id = requestAnimationFrame(() => {
+			const buttons = content.current?.querySelectorAll<HTMLElement>("button");
+			buttons?.[buttons.length - 1]?.focus();
+		});
+		return () => cancelAnimationFrame(id);
+	}, [open]);
 	useEffect(() => {
 		if (!open) return;
 		setNow(new Date());
@@ -140,20 +244,60 @@ export function TeamBridgeProfileCard({
 	}
 
 	const trigger = cloneElement(children, {
-		"aria-label": t("ui.teamBridge.profile.open_profile", { name: label }),
-		onMouseEnter: (event) => {
+		...(toggleOnClick
+			? {
+					"aria-label": t("ui.teamBridge.profile.open_profile", {
+						name: label,
+					}),
+				}
+			: {
+					// An anchor is not a Radix trigger, so nothing else declares the
+					// card: name both keys the row answers to (on a Mac keyboard F10
+					// needs Fn) and expose the card's state (review R1-3, PR #1435).
+					"aria-keyshortcuts": "Shift+F10 ContextMenu",
+					"aria-expanded": open,
+				}),
+		onMouseEnter: (event: MouseEvent<HTMLElement>) => {
 			children.props.onMouseEnter?.(event);
 			if (event.defaultPrevented) return;
-			clearTimer();
-			timer.current = setTimeout(() => setOpen(true), 400);
+			hoveredSince.current = Date.now();
+			fastArmed.current = false;
+			if (open) {
+				clearTimer();
+				return;
+			}
+			arm(openDelayMs);
+			trackPointer(event.target, event.currentTarget);
 		},
-		onMouseLeave: (event) => {
+		onMouseOver: (event: MouseEvent<HTMLElement>) => {
+			children.props.onMouseOver?.(event);
+			if (!event.defaultPrevented)
+				trackPointer(event.target, event.currentTarget);
+		},
+		onMouseLeave: (event: MouseEvent<HTMLElement>) => {
 			children.props.onMouseLeave?.(event);
+			hoveredSince.current = undefined;
 			if (!event.defaultPrevented) leave();
 		},
 		onFocus: (event) => {
 			children.props.onFocus?.(event);
+			if (!openOnFocus) return;
 			if (!event.defaultPrevented && !restoringFocus.current) changeOpen(true);
+		},
+		onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+			children.props.onKeyDown?.(event);
+			if (openOnFocus || event.defaultPrevented) return;
+			if (
+				event.key !== "ContextMenu" &&
+				!(event.shiftKey && event.key === "F10")
+			)
+				return;
+			// Chromium would otherwise also raise the native context menu.
+			event.preventDefault();
+			// Remembered so closing the card can hand focus back to this row.
+			anchorNode.current = event.currentTarget;
+			focusContentOnOpen.current = true;
+			changeOpen(true);
 		},
 		onBlur: (event) => {
 			children.props.onBlur?.(event);
@@ -163,13 +307,24 @@ export function TeamBridgeProfileCard({
 			)
 				leave();
 		},
-		// Radix composes this unchanged handler with its own click toggle.
-		onClick: children.props.onClick,
+		onClick: toggleOnClick
+			? // Radix composes this unchanged handler with its own click toggle.
+				children.props.onClick
+			: (event: MouseEvent<HTMLElement>) => {
+					// The anchor's own action wins: a click selects, and neither an
+					// open card nor a pending dwell outlives it.
+					children.props.onClick?.(event);
+					changeOpen(false);
+				},
 	});
 
 	return (
 		<Popover open={open} onOpenChange={changeOpen} modal={false}>
-			<PopoverTrigger asChild>{trigger}</PopoverTrigger>
+			{toggleOnClick ? (
+				<PopoverTrigger asChild>{trigger}</PopoverTrigger>
+			) : (
+				<PopoverAnchor asChild>{trigger}</PopoverAnchor>
+			)}
 			<PopoverContent
 				ref={content}
 				aria-labelledby={headingId}
@@ -200,6 +355,13 @@ export function TeamBridgeProfileCard({
 					// Escape restores the anchor's focus. That restoration is not a
 					// new request to open the card, unlike a later keyboard visit.
 					contentOwnedFocus.current = false;
+					if (!toggleOnClick) {
+						// An anchor is not a Radix trigger, so Radix has nothing to
+						// return focus to; hand it back to the row the key came from.
+						event.preventDefault();
+						anchorNode.current?.focus();
+						return;
+					}
 					restoringFocus.current = true;
 					queueMicrotask(() => {
 						restoringFocus.current = false;

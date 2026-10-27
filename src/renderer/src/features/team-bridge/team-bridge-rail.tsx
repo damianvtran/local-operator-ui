@@ -71,6 +71,23 @@ import {
 const ROW =
 	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-start text-[13px] transition-colors duration-fast ease-out-quart";
 
+/**
+ * How a rail row hosts its profile card (operator report 2026-10-26: clicking a
+ * person showed the card instead of opening the conversation). A row's click is
+ * its conversation, so the card never opens on click or focus. A pointer resting
+ * on the row for a deliberate ~1.2 s dwell opens it, which a pass across the rail
+ * on the way to a row never reaches. The avatar opens it at the message list's
+ * usual 400 ms, because pointing at a face is asking about the person.
+ * Keyboard readers use Shift+F10 or the context-menu key; see
+ * `TeamBridgeProfileCard`.
+ */
+const RAIL_CARD = {
+	openDelayMs: 1200,
+	fastOpenDelayMs: 400,
+	toggleOnClick: false,
+	openOnFocus: false,
+} as const;
+
 /** The unread pill every row shares, the sidebar's quiet attention badge. */
 const Unread: FC<{ count: number; yieldsToMenu?: boolean }> = ({
 	count,
@@ -369,7 +386,10 @@ const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
 
 /**
  * One person. Clicking selects the person (their DM, or an empty draft to
- * them); nothing is created until the first message is sent.
+ * them) at once; nothing is created until the first message is sent. The
+ * profile card is a long hover, an avatar hover or Shift+F10 away (`RAIL_CARD`).
+ * Inert rows (self, bridge off, identity loading) select nothing but keep the
+ * same card affordances, so who someone is stays reachable.
  *
  * A person whose bridge is off is still drawn, dimmed and `aria-disabled`,
  * with the reason as its description: the roster says who is potentially
@@ -420,6 +440,7 @@ export const PersonRailRow: FC<{
 					label={label}
 					onMessage={onSelect}
 					canMessage={false}
+					{...RAIL_CARD}
 				>
 					<button
 						type="button"
@@ -456,6 +477,7 @@ export const PersonRailRow: FC<{
 					canMessage={
 						!readOnly && state !== "unavailable" && state !== "unknown"
 					}
+					{...RAIL_CARD}
 				>
 					<button
 						type="button"
@@ -500,9 +522,11 @@ export const PersonRailRow: FC<{
 					state !== "unavailable" &&
 					state !== "unknown"
 				}
+				{...RAIL_CARD}
 			>
 				<button
 					type="button"
+					onClick={onSelect}
 					aria-current={selected ? "page" : undefined}
 					data-team-bridge-person={member.account_id}
 					aria-label={t("ui.teamBridge.people.message", { name: label })}
@@ -578,9 +602,11 @@ export const ChiefRailRow: FC<{
 				agentName={label}
 				onMessage={onSelect}
 				canMessage={Boolean(dm) || !readOnly}
+				{...RAIL_CARD}
 			>
 				<button
 					type="button"
+					onClick={onSelect}
 					aria-current={selected ? "page" : undefined}
 					data-team-bridge-chief={chief.person.account_id}
 					aria-label={t("ui.teamBridge.people.message", { name: label })}
