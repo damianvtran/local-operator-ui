@@ -136,6 +136,17 @@ export function projectRunToolRow(row: RunToolRow): {
 				target,
 				...write(true),
 			};
+		/*
+		 * The skill tool's exact old_text -> new_text edit (core #3055 review: a
+		 * config-run tool result is cut to 8 KiB, so a large SKILL.md is read
+		 * line-paged and changed by `edit` rather than resent whole). A write.
+		 */
+		case "edit":
+			return {
+				verb: name ? `Editing ${kind} ${name}` : `Editing a ${kind}`,
+				target,
+				...write(true),
+			};
 		case "install":
 			return {
 				verb: name ? `Installing ${name}` : "Installing an agent",

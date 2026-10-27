@@ -158,6 +158,15 @@ test("a definition the run only read never reaches the summary", () => {
 		}).target,
 		{ kind: "skill", name: "demo" },
 	);
+	// The skill tool's `edit` op (exact old_text -> new_text) is a write too.
+	const edited = projectRunToolRow({
+		toolName: "skill",
+		args: { op: "edit", name: "demo" },
+		phase: "done",
+		ts: 6,
+	});
+	assert.equal(edited.writes, true);
+	assert.equal(edited.verb, "Editing skill demo");
 });
 
 test("a write that failed, was skipped, or never ran is not a change", () => {
