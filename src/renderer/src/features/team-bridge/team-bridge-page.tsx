@@ -1,4 +1,5 @@
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import { TEAM_BRIDGE_ENABLED_SETTING_KEY } from "@features/settings/promoted-setting-sections";
 import {
 	type DesktopFeatureState,
 	desktopFeatureState,
@@ -22,7 +23,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeConversation,
@@ -48,6 +49,7 @@ import {
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
+import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { draftTargetKey } from "./team-bridge-drafts";
 import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
@@ -266,12 +268,38 @@ const chiefLabelCopy = (): ChiefLabels => ({
  * page could offer (create, scope, compose) would be refused. The surface
  * capability still mounts the page, so this is the honest answer for a build
  * that can render Team Bridge but no plan can serve it.
+ *
+ * THE ONE EXCEPTION IS `off` (design round 1, D1). The member turned Team
+ * Bridge off themselves, so there IS a way forward, and a gate that only says
+ * "turning it on again is possible" is a dead end. The panel names the product
+ * the member just pressed Turn off on (Team Bridge, never the older "Agent
+ * messages"), says what being off means, and links to the Settings control
+ * that turns it back on. The link is NAVIGATION, not an Enable: it lands on
+ * Settings -> Team Bridge with the way-back control focused, and that control
+ * keeps its own consent semantics (the served text above "Turn on again").
+ * It reuses the promoted `?setting=team_bridge.enabled` deep link, which
+ * already resolves to that section (`promoted-setting-sections.ts`).
+ *
+ * `off_local` (review R2-2) is the same gate for a member who turned off only
+ * "Enabled on this machine": the account stays enrolled and the way back is
+ * that switch, which collects no consent. Its copy says so; reusing the
+ * account-level "off for this account ... asks for your consent" text would
+ * misdescribe both the scope and the step.
  */
 export const TeamBridgeEligibilityPanel: FC<{
 	reason: TeamBridgeEligibility;
 }> = ({ reason }) => {
 	useI18nLocale();
 	const copy = {
+		// Member opt-out is a plain state, not an organization-plan upsell.
+		off: {
+			title: "ui.agentMessages.page_off.title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
+			reason: "ui.agentMessages.page_off.body",
+		},
+		off_local: {
+			title: "ui.agentMessages.page_off.local_title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
+			reason: "ui.agentMessages.page_off.local_body",
+		},
 		plan_required: {
 			title: "ui.teamBridge.plan.title",
 			reason: "ui.teamBridge.plan.reason",
@@ -309,12 +337,24 @@ export const TeamBridgeEligibilityPanel: FC<{
 					{t(copy[reason].title)}
 				</h1>
 				<div className="mt-2">
-					<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
-						{t("ui.teamBridge.plan.body")}
-					</p>
+					{reason !== "off" && reason !== "off_local" && (
+						<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
+							{t("ui.teamBridge.plan.body")}
+						</p>
+					)}
 					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
 						{t(copy[reason].reason)}
 					</p>
+					{(reason === "off" || reason === "off_local") && (
+						<Button asChild variant="secondary" size="sm" className="mt-4">
+							<Link
+								to={`/settings?setting=${TEAM_BRIDGE_ENABLED_SETTING_KEY}`}
+								data-team-bridge-off-action="settings"
+							>
+								{t("ui.agentMessages.page_off.action")}
+							</Link>
+						</Button>
+					)}
 				</div>
 			</div>
 		</div>
@@ -429,6 +469,12 @@ export type TeamBridgePageViewProps = {
 	eligibility?: TeamBridgeEligibility | null;
 	gatePending?: boolean;
 	readOnly?: boolean;
+	/**
+	 * A band above the thread pane (the default-on first-run notice). A slot
+	 * rather than a prop bag so the pure view stays ignorant of the notice's
+	 * reads and writes, which live in its container.
+	 */
+	notice?: ReactNode;
 	onTarget: (target: TeamBridgeTarget) => void;
 	/**
 	 * Send `body`. For a target with no conversation yet the container creates
@@ -512,6 +558,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	eligibility = null,
 	gatePending = false,
 	readOnly = false,
+	notice = null,
 	onTarget,
 	onSend,
 	onSchedule,
@@ -1466,6 +1513,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					threadIsOpen && "@max-[1024px]/bridge:invisible",
 				)}
 			>
+				{notice}
 				{quickView === "scheduled" && selfAccountId ? (
 					<TeamBridgeScheduledList
 						accountId={selfAccountId}
@@ -2732,6 +2780,7 @@ const TeamBridgeOwnedPage: FC<{
 				eligibility={eligibility}
 				gatePending={gatePending}
 				readOnly={readOnly}
+				notice={<TeamBridgeDefaultOnBanner status={status.data} />}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();

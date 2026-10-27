@@ -534,6 +534,10 @@ export function visibleConversationRows(
  * update before anything else is attempted; an unavailable service is named as
  * such; and a READY account whose surface state is A is the plan gate — the
  * caller is signed in and current, the organization simply has no Team Bridge.
+ * An explicitly disabled endpoint is the `off` gate; the per-machine switch
+ * turned off under an enrolled endpoint is `off_local`. They gate the same
+ * way but are told apart because their way back differs: E re-enrols with
+ * fresh consent, while the machine switch collects none (review R2-2).
  * Every other shape (including a null payload, which is "no answer yet") is
  * eligible: this function may only withhold the page when the server says so.
  */
@@ -541,11 +545,18 @@ export type TeamBridgeEligibility =
 	| "signed_out"
 	| "update_required"
 	| "unavailable"
-	| "plan_required";
+	| "plan_required"
+	| "off"
+	| "off_local";
 
 export function teamBridgeEligibility(
 	status:
-		| Pick<AgentMessagesStatus, "state" | "surface_state" | "update_required">
+		| (Pick<
+				AgentMessagesStatus,
+				"state" | "surface_state" | "update_required"
+		  > & {
+				local?: Pick<AgentMessagesStatus["local"], "enabled">;
+		  })
 		| null
 		| undefined,
 ): TeamBridgeEligibility | null {
@@ -556,6 +567,25 @@ export function teamBridgeEligibility(
 	}
 	if (status.state === "unavailable") return "unavailable";
 	if (status.surface_state === "A") return "plan_required";
+	/*
+	 * Opt-out is NOT the runtime's read_only flag: that flag describes F
+	 * (organization-disabled retained history), while a member's disabled
+	 * endpoint is E with read_only=false. D1's full-container reproduction
+	 * returned E/local.enabled=false after the real query invalidation yet
+	 * left a live composer. Gate the page on those explicit off facts instead
+	 * of inventing a different read_only response or waiting for navigation.
+	 *
+	 * F stays readable and D stays usable while the local switch is on. An
+	 * older partial status without `local` does not imply a local opt-out.
+	 */
+	if (status.state !== "ready") return null;
+	// E outranks a stale local switch: the endpoint itself is off.
+	if (status.surface_state === "E") return "off";
+	if (
+		(status.surface_state === "C" || status.surface_state === "D") &&
+		status.local?.enabled === false
+	)
+		return "off_local";
 	return null;
 }
 

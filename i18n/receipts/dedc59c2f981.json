@@ -1,7 +1,7 @@
 {
 	"schema": 1,
-	"receipt_kind": "locale-audit (new-key delta, PR #1441)",
-	"audit_id": "teambridge-pr1441-audit-dedc59c2f981",
+	"receipt_kind": "locale-audit (new-key delta, PR #1442)",
+	"audit_id": "teambridge-pr1442-audit-dedc59c2f981",
 	"date": "2026-10-27",
 	"instance": "dedc59c2f981",
 	"instance_note": "This auditor session's own id. Distinct from the translator (implementer session, per its record), the coordinating session 17cd3e74c66f, and every instance already on these rows.",
@@ -20,132 +20,306 @@
 		"agent": "translator",
 		"role_label": "Local Operator task subagent (translator record: 'same session as implementer')",
 		"model": "anthropic/claude-sonnet-5-5",
-		"record": "i18n-1441-translations.json (coordinating session 17cd3e74c66f scratchpad)",
+		"record": "i18n-1442-translations.json (coordinating session 17cd3e74c66f scratchpad)",
 		"commits": [
-			"ef8bcb5a03e09b41338152c22af0435924fb0e76",
-			"02eb623ac357c93eb762ab2eb37ca4ddcbaf8823"
+			"cf11ca73ff25c8f53edffd3678e0ea7be172e62a",
+			"09fc87ace32625db46c852c05ce8340aaf133fd3"
 		],
 		"fallback": "none recorded"
 	},
 	"integration": {
-		"pr": 1441,
-		"branch": "fix/tb-invited-count-own-agent",
+		"pr": 1442,
+		"branch": "feat/tb-default-on-banner-v2",
 		"base": "dbe1b9d46bafc1595fd7aacdcc1d3d29414f2508",
-		"english_change_commit": "6fcf6d31b94e3da2511b09376adfd9765143cf72",
-		"reviewed_head": "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823",
-		"rounds": "round 1 reviewed ef8bcb5a03 (A1 MAJOR, A2 MINOR, A3 MINOR); round 2 reviewed the remediation delta ef8bcb5a03..02eb623ac3",
-		"worktree": "~/local-operator-ui/.worktrees/audit-1441-dedc59 (removed after commit)"
+		"english_change_commit": "b85c2b87256660f7ed833f10279a72a92997d160",
+		"reviewed_head": "09fc87ace32625db46c852c05ce8340aaf133fd3",
+		"rounds": "round 1 reviewed cf11ca73ff (B1 MINOR, B2 NIT); round 2 reviewed the remediation delta cf11ca73ff..09fc87ace3",
+		"worktree": "~/local-operator-ui/.worktrees/audit-1442-dedc59 (removed after commit)"
 	},
 	"namespaces": {
-		"ui.teamBridge": {
-			"namespace": "ui.teamBridge",
+		"ui.agentMessages": {
+			"namespace": "ui.agentMessages",
 			"status": "passed",
 			"result": "clean",
-			"keys_audited": 3,
-			"keys_bound": 211,
+			"keys_audited": 10,
+			"keys_bound": 26,
 			"sha256": {
-				"en": "95dd73cc4f3daa03970a3e6c3962b52f9b99390bf3b6047d32a75ff6f70ba100",
-				"fr": "43cf83e4f89ac9a8c58231c2a7d6d0d8916a7f29e9637f0a4db66b574ccd576c",
-				"es": "5ff90823a41aa8666b9ad68cb61e96b76c04799ea5ad5cdbef62e5e19dcfad57",
-				"zh-CN": "0766c789cec02f8180c5b9e66509a341d0265c51f1be9d0bf3ab6b75b6a5ea17",
-				"ru": "6ee19cc7de38e3ab0ed6e7d0f147527ba0be347626bd4cadac197e0e8037704a",
-				"vi": "990c55ac32a9fb81efd20e2931117203677b81a28d2f4e0d046bedf2c433b6ed",
-				"ur": "28b52f0b874cb768beea50924400921d614c8ec3b723df06e314fa4a420ceb95",
-				"hi": "e29ffc9595c1260daa9094cfaea6792da5e3317f9482b7b1a3c9257b125a3811"
+				"en": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+				"fr": "7265fceb3aa7add484496eb7c9245e6161f2438d99da62f214c67ab0039e9a3f",
+				"es": "525a6f0babeecc3bb2c970499b75b5af5b142cdc6a0b1a8e0e07c59e4b9b48a5",
+				"zh-CN": "d5aa33fb203bee90eb397b8582c18288d621cfbdc60740fd995edd80a36c045b",
+				"ru": "4d8e3ca7e37dba43cd55237372e595edbb99b32bd292f1701559b85e0cf249ae",
+				"vi": "f0c2a55a11a81df1d08a7cba5914df1e812c5126f834aaca61b10b1cc711c460",
+				"ur": "d33a8360bcd3b99d4ac6924ceafc0ae95e08a2d7cf94539213c2b8a02b0ae56c",
+				"hi": "1017bf8eef9f69dad8dab90403542d7e6527e4063a55733e8c007b4279fa890d"
 			},
-			"context_sha256": "9ea81e66412a50e9fd071b53a78fb186f0895e028cdfa7a95fc6ac8d2667c844",
+			"context_sha256": "16cb7b83431bd14dc73059bdc07d6dde2c8ca19e4fa241232912ae982d6e0c89",
 			"base_sha256": {
-				"en": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
-				"fr": "3344e2c95a1e680faea87b80f5e300993e8e09886c3957527215f7adbb9bb31e",
-				"es": "c67f520c7a8bd63adc9c345a066fd48f5a4f053b15008e15cda3c31ef660a0ae",
-				"zh-CN": "716bc20303a644f41f8560505768c80216a17db4c9cdad69fd09dc866f9051c5",
-				"ru": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
-				"vi": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
-				"ur": "660c884b54d3a9b8e6b61679e594c3a6b8bae4285de86ef921b31526f0392db9",
-				"hi": "b1bf7041eb38fbae9f387483a14c48a05162183cc014bceec249d3875d7893d9"
+				"en": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+				"fr": "65dab69ba8726cd865d83237a848b7175f64fc6b2e3bd89e2f1ac91bc35aa37e",
+				"es": "7e5e750b59fab4433b09b444999d9918a963eae8175c6eb02140ed46e1b191c6",
+				"zh-CN": "57d8e4846f0727597674cc64676131b0c8231fef378f4b5ad9a34e519a3e8171",
+				"ru": "0eef4e751346c64024b42f67d9b8c334a1de7f301e335d8913a88d2425b92c23",
+				"vi": "d67fc9c4dd503ec1e14f4deed61ebb143ff32aa21da9e23d09eaa63c2f75df07",
+				"ur": "3fc28406c6f976c3ce3b6fc2f4db2c491446e18ee1f37ad453a677d113808a0a",
+				"hi": "85d66871d38261f8685edd081f504bce50b7984875f8fb4dc8476c8c4b84fcd4"
 			},
 			"findings": [],
 			"keys_audited_linguistically": [
-				"ui.teamBridge.chief.unnamed",
-				"ui.teamBridge.member.active_count",
-				"ui.teamBridge.member.invited_count"
+				"ui.agentMessages.banner.title",
+				"ui.agentMessages.banner.body",
+				"ui.agentMessages.banner.turn_off",
+				"ui.agentMessages.banner.turning_off",
+				"ui.agentMessages.banner.read",
+				"ui.agentMessages.banner.hide",
+				"ui.agentMessages.banner.dismiss",
+				"ui.agentMessages.banner.consent_unavailable",
+				"ui.agentMessages.banner.turn_off_failed",
+				"ui.agentMessages.banner.dismiss_failed"
 			],
-			"inherited": "The other 208 keys are inherited on byte identity: at base dbe1b9d46b every locale's ledger row binds exactly the base bytes above (verified), and the PR adds keys only; no existing value changed (verified per locale)."
+			"inherited": "The other 16 keys are inherited on byte identity: at base dbe1b9d46b every locale's ledger row binds exactly the base bytes above (verified), and the PR adds keys only; no existing value changed (verified per locale)."
+		},
+		"ui.agentMessages.settings": {
+			"namespace": "ui.agentMessages.settings",
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 5,
+			"keys_bound": 92,
+			"sha256": {
+				"en": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+				"fr": "7395acc7f9af1173ac3d42604cff0b26dbfd95ade5b92590590edc35a8d7ccb6",
+				"es": "1a51b15152e7f9c46121943ea928ac79466788e4ec2eba3857ec220f7d5b0b4e",
+				"zh-CN": "03c8522098663b9e6a4c96f769ca024ea216251fb09dc4e118210d2ade0a67e3",
+				"ru": "4c751bef08395cb9a976cb83aeb46a0673d5271b3f22ae104283e668f78a252d",
+				"vi": "7cd14f754fedc253d9eb8458e31eaed2f17fd844ac5bdb05dfba3a1847803ef0",
+				"ur": "7a567a0d98955ad324f91fff0a332e46127f3172c0f641bfbd06cdc8d4f96704",
+				"hi": "8151177633a6399c5adaa187cda4b7273aa7598a0ae1ab8ee0b34202d425853f"
+			},
+			"context_sha256": "a2ef251885d17fea571c6ff698557b449a01f9d9dba29da435b828920931e10a",
+			"base_sha256": {
+				"en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+				"fr": "306e842db2d36589a8b6fb764c3097b7c034cc923819af19b3e3c6fa486d5eb0",
+				"es": "b83a0b0f408f9d748257bb7c2307a9517282346ef169b04c6adfe54d4a549f62",
+				"zh-CN": "29dbb048958de8ecca72abf9a16c4c4fd4ab764e446e3405b28a89cd75fce2e3",
+				"ru": "7d8efca849197942b2a037f8f7ba52da011bbb568706875aa61a27a2c9037224",
+				"vi": "eeea2320f5b06e809c9ffce9c477782681bbba01e2c020c49186a8f228d2b151",
+				"ur": "f3196d2cfd19cc1943cac1c319e2e939c427fe98d2dae2d1af4b01bde39ba668",
+				"hi": "a7bbd901ced0ae96c5dc0040e9f8933a6f1c0c7745e48a2643a12d90f96b64c5"
+			},
+			"findings": [],
+			"keys_audited_linguistically": [
+				"ui.agentMessages.settings.default_on.b_title",
+				"ui.agentMessages.settings.default_on.b_body",
+				"ui.agentMessages.settings.default_on.e_body",
+				"ui.agentMessages.settings.action.turn_on_again",
+				"ui.agentMessages.settings.consent.via_default_on"
+			],
+			"inherited": "The other 87 keys are inherited on byte identity: at base dbe1b9d46b every locale's ledger row binds exactly the base bytes above (verified), and the PR adds keys only; no existing value changed (verified per locale)."
 		}
 	},
 	"resolved_findings": [
 		{
-			"id": "A1",
-			"severity": "major",
-			"locale": "vi",
-			"key": "ui.teamBridge.member.active_count",
-			"was": "{count, plural, other {{count} thành viên đang hoạt động}}",
-			"now": "{count, plural, other {{count} thành viên đã tham gia}}",
-			"issue": "'đang hoạt động' is the online-presence reading; the context says membership records, not presence.",
-			"fixed_in": "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823",
-			"status": "resolved",
-			"verification": "Re-read at reviewed_head; the value equals 'now', and the mechanical checks re-ran clean."
-		},
-		{
-			"id": "A2",
+			"id": "B1",
 			"severity": "minor",
 			"locale": "zh-CN",
-			"key": "ui.teamBridge.member.invited_count",
-			"was": "{count, plural, other {{count}名已邀请}}",
-			"now": "{count, plural, other {{count}名受邀成员}}",
-			"issue": "Classifier 名 followed by an active verb ('who invited').",
-			"fixed_in": "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823",
+			"key": "ui.agentMessages.banner.dismiss_failed",
+			"was": "无法关闭此通知。再试一次。",
+			"now": "无法忽略此通知。重试。",
+			"issue": "Used 关闭 (the banner's Turn-off verb) instead of the Dismiss verb 忽略.",
+			"fixed_in": "09fc87ace32625db46c852c05ce8340aaf133fd3",
 			"status": "resolved",
 			"verification": "Re-read at reviewed_head; the value equals 'now', and the mechanical checks re-ran clean."
 		},
 		{
-			"id": "A3",
-			"severity": "minor",
-			"locale": "vi",
-			"key": "ui.teamBridge.member.invited_count",
-			"was": "{count, plural, other {{count} người được mời}}",
-			"now": "{count, plural, other {{count} đã được mời}}",
-			"issue": "'người' is a person, but invitees may be agents.",
-			"fixed_in": "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823",
+			"id": "B2",
+			"severity": "nit",
+			"locale": "zh-CN",
+			"keys": [
+				"ui.agentMessages.banner.consent_unavailable",
+				"ui.agentMessages.banner.turn_off_failed",
+				"ui.agentMessages.banner.dismiss_failed"
+			],
+			"issue": "'再试一次' where the zh guide and catalogue use 重试.",
+			"fixed_in": "09fc87ace32625db46c852c05ce8340aaf133fd3",
 			"status": "resolved",
 			"verification": "Re-read at reviewed_head; the value equals 'now', and the mechanical checks re-ran clean."
 		}
 	],
 	"findings_note": "Every finding raised in round 1 was fixed by the translator and verified at reviewed_head, so the bound bytes carry zero open findings. Resolved findings keep their IDs and severities above as history and are not counted against the current bytes.",
-	"observations": [],
+	"observations": [
+		{
+			"id": "O1",
+			"severity": "INFO",
+			"locale": "fr,es,ru,vi,ur,hi",
+			"key": "ui.agentMessages.settings.action.turn_on_again",
+			"note": "Its bytes equal action.enable_again in these locales, because they already render Enable with the plain on-verb. The two keys never co-render (default-on vs opt-in branches), so there is no conflict. zh-CN distinguishes them (重新开启 vs 重新启用)."
+		}
+	],
 	"audited_strings": {
-		"ui.teamBridge.chief.unnamed": {
-			"en": "{person}’s chief of staff",
-			"fr": "Cheffe de cabinet ({person})",
-			"es": "Jefe de gabinete de {person}",
-			"zh-CN": "{person}的首席助理",
-			"ru": "Координатор ({person})",
-			"vi": "Chánh văn phòng của {person}",
-			"ur": "{person} کا چیف آف اسٹاف",
-			"hi": "{person} का चीफ़ ऑफ़ स्टाफ़",
-			"verdict": "PASS all locales. Each reuses the namespace's settled chief-of-staff term (ui.teamBridge.chief.fallback: Cheffe de cabinet / Jefe de gabinete / 首席助理 / Координатор / Chánh văn phòng / چیف آف اسٹاف / चीफ़ ऑफ़ स्टाफ़; vi also matches the vi guide). fr and ru use the parenthesised '{term} ({person})' shape of ui.teamBridge.chief.label, which avoids de/d’ elision (fr) and declining arbitrary names into the genitive (ru); it names the owner once, so it does not repeat the person. es/zh-CN/vi/ur/hi use the natural possessive. ur/hi use masculine कا/کا to agree with the loan noun. {person} kept once in every locale; no bidi controls in ur (the render layer isolates)."
+		"ui.agentMessages.banner.title": {
+			"en": "Team Bridge is on for you",
+			"fr": "Team Bridge est activé pour vous",
+			"es": "Team Bridge está activado para ti",
+			"zh-CN": "Team Bridge已为你开启",
+			"ru": "Team Bridge включён для вас",
+			"vi": "Team Bridge đã được bật cho bạn",
+			"ur": "Team Bridge آپ کے لیے فعال ہے",
+			"hi": "Team Bridge आपके लिए चालू है",
+			"verdict": "PASS all locales. 'Team Bridge' kept in Latin, as a statement of fact (est activé / está activado / 已为你开启 / включён / đã được bật / فعال ہے / चालू है), not a question or an offer. Registers: vous / tú / 你 / вы / bạn / آپ / आप, as in the namespace. zh-CN has no space between Latin and CJK, per guide."
 		},
-		"ui.teamBridge.member.active_count": {
-			"en": "{count, plural, one {{count} active member} other {{count} active members}}",
-			"fr": "{count, plural, one {{count} membre actif} many {{count} de membres actifs} other {{count} membres actifs}}",
-			"es": "{count, plural, one {{count} miembro activo} many {{count} de miembros activos} other {{count} miembros activos}}",
-			"zh-CN": "{count, plural, other {{count}名有效成员}}",
-			"ru": "{count, plural, one {{count} активный участник} few {{count} активных участника} many {{count} активных участников} other {{count} активного участника}}",
-			"vi": "{count, plural, other {{count} thành viên đã tham gia}}",
-			"ur": "{count, plural, one {{count} فعال رکن} other {{count} فعال ارکان}}",
-			"hi": "{count, plural, one {{count} सक्रिय सदस्य} other {{count} सक्रिय सदस्य}}",
-			"verdict": "PASS (vi after A1). fr/es extend member.count with the agreeing adjective (actif/activo) and keep the 'many' + 'de' branch. ru: one/few/many/other agree (активный участник / активных участника / активных участников / активного участника for fractions). zh-CN: other only, classifier 名; 有效成员 means members whose membership is in force, and avoids 活跃 (activity). ur فعال رکن/ارکان and hi सक्रिय सदस्य are the standard 'active member' (membership standing) phrases. vi was 'đang hoạt động' (online-presence sense, against the context's 'not online presence'); fixed at 02eb623ac3 to 'đã tham gia' (joined), which also pairs with the invited line."
+		"ui.agentMessages.banner.body": {
+			"en": "Your agent can exchange messages with other members' agents in your organization. Nothing was sent when this turned on.",
+			"fr": "Votre agent peut échanger des messages avec les agents des autres membres de votre organisation. Rien n’a été envoyé lors de l’activation.",
+			"es": "Tu agente puede intercambiar mensajes con los agentes de otros miembros de tu organización. No se envió nada al activarse.",
+			"zh-CN": "你的智能体可以与组织内其他成员的智能体互发消息。开启时未发送任何内容。",
+			"ru": "Ваш агент может обмениваться сообщениями с агентами других участников вашей организации. При включении ничего не отправлялось.",
+			"vi": "Tác nhân của bạn có thể trao đổi tin nhắn với tác nhân của các thành viên khác trong tổ chức. Không có gì được gửi khi tính năng này được bật.",
+			"ur": "آپ کا ایجنٹ آپ کی تنظیم کے دوسرے ارکان کے ایجنٹس کے ساتھ پیغامات کا تبادلہ کر سکتا ہے۔ فعال ہونے پر کچھ بھی نہیں بھیجا گیا۔",
+			"hi": "आपका एजेंट आपके संगठन के दूसरे सदस्यों के एजेंटों से संदेशों का आदान-प्रदान कर सकता है। चालू होते समय कुछ भी नहीं भेजा गया।",
+			"verdict": "PASS all locales. 'agent' per glossary row (agent · agente · 智能体 · агент · tác nhân · ایجنٹ · एजेंट); 'member' per catalogue (membres / miembros / 成员 / участников / thành viên / ارکان / सदस्यों); 'organization' matches ui.teamBridge.scope.label. Second sentence states that nothing was sent when it turned on. No marketing tone, and nothing implies an enable step."
 		},
-		"ui.teamBridge.member.invited_count": {
-			"en": "{count, plural, one {{count} invited} other {{count} invited}}",
-			"fr": "{count, plural, one {{count} invité} many {{count} d’invités} other {{count} invités}}",
-			"es": "{count, plural, one {{count} invitado} many {{count} de invitados} other {{count} invitados}}",
-			"zh-CN": "{count, plural, other {{count}名受邀成员}}",
-			"ru": "{count, plural, one {{count} приглашённый} few {{count} приглашённых} many {{count} приглашённых} other {{count} приглашённого}}",
-			"vi": "{count, plural, other {{count} đã được mời}}",
-			"ur": "{count, plural, one {{count} مدعو} other {{count} مدعو}}",
-			"hi": "{count, plural, one {{count} आमंत्रित} other {{count} आमंत्रित}}",
-			"verdict": "PASS (zh-CN, vi after A2/A3). fr invité / d’invités / invités and es invitado(s): compact substantive fragment, masculine generic, many branch with de. ru: substantivised participle, one приглашённый / few+many приглашённых / other приглашённого (correct for counted adjectival nouns). ur مدعو and hi आमंत्रित are invariant. zh-CN was '名已邀请' (classifier + active verb, 'who invited'); fixed to '名受邀成员'. vi was 'người được mời' ('person', but invitees may be agents); fixed to 'đã được mời'."
+		"ui.agentMessages.banner.turn_off": {
+			"en": "Turn off",
+			"fr": "Désactiver",
+			"es": "Desactivar",
+			"zh-CN": "关闭",
+			"ru": "Отключить",
+			"vi": "Tắt",
+			"ur": "بند کریں",
+			"hi": "बंद करें",
+			"verdict": "PASS. Byte-identical to ui.agentMessages.settings.action.turn_off in every locale, as the context requires (same verb as Settings)."
+		},
+		"ui.agentMessages.banner.turning_off": {
+			"en": "Turning off…",
+			"fr": "Désactivation…",
+			"es": "Desactivando…",
+			"zh-CN": "正在关闭……",
+			"ru": "Отключение…",
+			"vi": "Đang tắt…",
+			"ur": "بند کیا جا رہا ہے…",
+			"hi": "बंद किया जा रहा है…",
+			"verdict": "PASS. The progressive/nominal busy form of the same verb as turn_off; ellipsis is … (zh-CN …… per guide)."
+		},
+		"ui.agentMessages.banner.read": {
+			"en": "Read what this means",
+			"fr": "Lire ce que cela signifie",
+			"es": "Leer qué significa esto",
+			"zh-CN": "了解这意味着什么",
+			"ru": "Прочитать, что это значит",
+			"vi": "Đọc ý nghĩa của việc này",
+			"ur": "پڑھیں کہ اس کا کیا مطلب ہے",
+			"hi": "पढ़ें कि इसका क्या मतलब है",
+			"verdict": "PASS. Framed as understanding rather than legal acknowledgement (ce que cela signifie / qué significa esto / 这意味着什么 / что это значит / ý nghĩa / کیا مطلب ہے / क्या मतलब है)."
+		},
+		"ui.agentMessages.banner.hide": {
+			"en": "Hide details",
+			"fr": "Masquer les détails",
+			"es": "Ocultar detalles",
+			"zh-CN": "收起详情",
+			"ru": "Скрыть подробности",
+			"vi": "Ẩn chi tiết",
+			"ur": "تفصیلات چھپائیں",
+			"hi": "विवरण छिपाएँ",
+			"verdict": "PASS. Standard 'hide details' labels; zh-CN 收起详情 is the idiomatic collapse verb."
+		},
+		"ui.agentMessages.banner.dismiss": {
+			"en": "Dismiss",
+			"fr": "Ignorer",
+			"es": "Descartar",
+			"zh-CN": "忽略",
+			"ru": "Скрыть",
+			"vi": "Ẩn",
+			"ur": "ہٹائیں",
+			"hi": "हटाएँ",
+			"verdict": "PASS. 'Dismiss for good' rather than 'close': Ignorer / Descartar / 忽略 / Скрыть / Ẩn / ہٹائیں / हटाएँ, each matching an existing catalogue dismiss rendering (ui.chat.composer.status.goal_dismiss and peers)."
+		},
+		"ui.agentMessages.banner.consent_unavailable": {
+			"en": "The full text is not available right now. Try again in a moment.",
+			"fr": "Le texte complet n’est pas disponible pour le moment. Réessayez dans un instant.",
+			"es": "El texto completo no está disponible ahora. Vuelve a intentarlo en un momento.",
+			"zh-CN": "完整文本暂时不可用。稍后重试。",
+			"ru": "Полный текст сейчас недоступен. Повторите попытку чуть позже.",
+			"vi": "Hiện chưa có toàn văn. Hãy thử lại sau giây lát.",
+			"ur": "مکمل متن ابھی دستیاب نہیں۔ کچھ دیر بعد دوبارہ کوشش کریں۔",
+			"hi": "पूरा पाठ अभी उपलब्ध नहीं है। थोड़ी देर में फिर कोशिश करें।",
+			"verdict": "PASS (zh-CN after B2). Calm; not phrased as an error. zh-CN '再试一次' replaced with guide verb 重试 at 09fc87ace3."
+		},
+		"ui.agentMessages.banner.turn_off_failed": {
+			"en": "Team Bridge could not be turned off. Nothing was changed. Try again.",
+			"fr": "Impossible de désactiver Team Bridge. Rien n’a été modifié. Réessayez.",
+			"es": "No se pudo desactivar Team Bridge. No se cambió nada. Vuelve a intentarlo.",
+			"zh-CN": "无法关闭Team Bridge，未做任何更改。重试。",
+			"ru": "Не удалось отключить Team Bridge. Ничего не изменилось. Повторите попытку.",
+			"vi": "Không thể tắt Team Bridge. Chưa có gì thay đổi. Hãy thử lại.",
+			"ur": "Team Bridge بند نہیں کیا جا سکا۔ کچھ تبدیل نہیں ہوا۔ دوبارہ کوشش کریں۔",
+			"hi": "Team Bridge बंद नहीं किया जा सका। कुछ भी नहीं बदला। फिर कोशिश करें।",
+			"verdict": "PASS (zh-CN after B2). Says the turn-off failed, that nothing changed, and to retry; never says 'error' or blames the reader. 'Team Bridge' kept Latin; verbs match turn_off in each locale."
+		},
+		"ui.agentMessages.banner.dismiss_failed": {
+			"en": "This notice could not be dismissed. Try again.",
+			"fr": "Impossible d’ignorer cet avis. Réessayez.",
+			"es": "No se pudo descartar este aviso. Vuelve a intentarlo.",
+			"zh-CN": "无法忽略此通知。重试。",
+			"ru": "Не удалось скрыть это уведомление. Повторите попытку.",
+			"vi": "Không thể ẩn thông báo này. Hãy thử lại.",
+			"ur": "یہ اطلاع ہٹائی نہیں جا سکی۔ دوبارہ کوشش کریں۔",
+			"hi": "यह सूचना हटाई नहीं जा सकी। फिर कोशिश करें।",
+			"verdict": "PASS (zh-CN after B1/B2). zh-CN used 关闭 (this banner's turn-off verb) for dismiss; fixed to 忽略, matching banner.dismiss, and 重试. Other locales use their banner.dismiss verb (ignorer / descartar / скрыть / ẩn / ہٹائی / हटाई)."
+		},
+		"ui.agentMessages.settings.default_on.b_title": {
+			"en": "Team Bridge is not set up yet",
+			"fr": "Team Bridge n’est pas encore configuré",
+			"es": "Team Bridge aún no está configurado",
+			"zh-CN": "Team Bridge尚未设置",
+			"ru": "Team Bridge ещё не настроен",
+			"vi": "Team Bridge chưa được thiết lập",
+			"ur": "Team Bridge ابھی سیٹ اپ نہیں ہوا",
+			"hi": "Team Bridge का सेटअप अभी नहीं हुआ है",
+			"verdict": "PASS. 'Not set up yet', with no Enable offer. Setup terms follow catalogue/guide: configuré / configurado / 设置 / настроен / thiết lập (vi guide: setup → thiết lập) / سیٹ اپ / सेटअप."
+		},
+		"ui.agentMessages.settings.default_on.b_body": {
+			"en": "Team Bridge turns on for you automatically once your organization is ready. Nothing is sent when it does.",
+			"fr": "Team Bridge s’activera automatiquement pour vous dès que votre organisation sera prête. Rien n’est envoyé lors de l’activation.",
+			"es": "Team Bridge se activará automáticamente para ti cuando tu organización esté lista. No se envía nada al activarse.",
+			"zh-CN": "组织就绪后，Team Bridge会自动为你开启，开启时不会发送任何内容。",
+			"ru": "Team Bridge включится для вас автоматически, как только ваша организация будет готова. При включении ничего не отправляется.",
+			"vi": "Team Bridge sẽ tự động bật cho bạn khi tổ chức của bạn sẵn sàng. Không có gì được gửi khi bật.",
+			"ur": "آپ کی تنظیم تیار ہوتے ہی Team Bridge آپ کے لیے خودکار طور پر فعال ہو جائے گا۔ فعال ہونے پر کچھ نہیں بھیجا جاتا۔",
+			"hi": "आपका संगठन तैयार होते ही Team Bridge आपके लिए अपने-आप चालू हो जाएगा। चालू होने पर कुछ भी नहीं भेजा जाता।",
+			"verdict": "PASS. Says it turns on automatically when the organization is ready and that nothing is sent when it does; no call to action. Future tense used where natural (s’activera / se activará / включится / sẽ / ہو جائے گا / हो जाएगा)."
+		},
+		"ui.agentMessages.settings.default_on.e_body": {
+			"en": "Team Bridge is off for this account. Read the consent text below, then turn it on again if you want it back.",
+			"fr": "Team Bridge est désactivé pour ce compte. Lisez le texte de consentement ci-dessous, puis réactivez-le si vous le souhaitez.",
+			"es": "Team Bridge está desactivado para esta cuenta. Lee el texto de consentimiento de abajo y vuelve a activarlo si quieres recuperarlo.",
+			"zh-CN": "此账户已关闭Team Bridge。阅读下方同意声明，如需恢复，可重新开启。",
+			"ru": "Team Bridge отключён для этой учётной записи. Прочитайте текст согласия ниже и включите его снова, если он вам нужен.",
+			"vi": "Team Bridge đang tắt cho tài khoản này. Hãy đọc nội dung chấp thuận bên dưới, rồi bật lại nếu bạn muốn dùng lại.",
+			"ur": "اس اکاؤنٹ کے لیے Team Bridge بند ہے۔ نیچے رضامندی کا متن پڑھیں، پھر اگر آپ اسے واپس چاہتے ہیں تو دوبارہ فعال کریں۔",
+			"hi": "इस खाते के लिए Team Bridge बंद है। नीचे सहमति का पाठ पढ़ें, फिर इसे वापस चाहें तो दोबारा चालू करें।",
+			"verdict": "PASS. Points to the consent text below and to turning it on again, and avoids each locale's Enable word (ui.agentMessages.settings.action.enable). ur uses فعال, which is its Settings 'on' word throughout this namespace (state.c_title فعال) and stays distinct from the Enable button label 'فعال کریں' by sentence context; acceptable."
+		},
+		"ui.agentMessages.settings.action.turn_on_again": {
+			"en": "Turn on again",
+			"fr": "Activer à nouveau",
+			"es": "Volver a activar",
+			"zh-CN": "重新开启",
+			"ru": "Включить снова",
+			"vi": "Bật lần nữa",
+			"ur": "دوبارہ فعال کریں",
+			"hi": "फिर चालू करें",
+			"verdict": "PASS. Renders 'turn on again'. In fr/es/ru/vi/ur/hi its bytes equal action.enable_again (Activer à nouveau, Volver a activar, Включить снова, Bật lần nữa, دوبارہ فعال کریں, फिर चालू करें), because those locales already used their plain on-verb for Enable; no distinct non-'Enable' verb exists there. The two keys never render together (default-on vs opt-in branches in agent-messages-settings.tsx), so there is no collision. zh-CN distinguishes 重新开启 from 重新启用. Recorded as INFO O1, not a finding."
+		},
+		"ui.agentMessages.settings.consent.via_default_on": {
+			"en": "Turned on by default",
+			"fr": "Activé par défaut",
+			"es": "Activado de forma predeterminada",
+			"zh-CN": "默认开启",
+			"ru": "Включено по умолчанию",
+			"vi": "Bật theo mặc định",
+			"ur": "ڈیفالٹ طور پر فعال",
+			"hi": "डिफ़ॉल्ट रूप से चालू",
+			"verdict": "PASS. Short noun phrase for the 'Collected in' grid, symmetric with off_by_default in each locale (Activé par défaut / Activado de forma predeterminada / 默认开启 / Включено по умолчанию / Bật theo mặc định / ڈیفالٹ طور پر فعال / डिफ़ॉल्ट रूप से चालू)."
 		}
 	},
 	"mechanical": {

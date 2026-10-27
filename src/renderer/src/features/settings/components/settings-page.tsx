@@ -76,6 +76,7 @@ import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
 import type { AgentMessagesStatus } from "../../../../../shared/agent-messages-contract";
 import {
 	MODEL_EFFORT_SETTING_KEY,
+	TEAM_BRIDGE_ENABLED_SETTING_KEY,
 	sectionForSettingKey,
 } from "../promoted-setting-sections";
 import { AppUpdatesSection } from "./app-updates-section";
@@ -1654,6 +1655,7 @@ export const SettingsPage: FC = () => {
 										refusal={agentMessagesSnapshot.refusal}
 										onRefreshStatus={refreshAgentMessages}
 										sessions={canonicalSessions}
+										focus={settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY}
 										/* The chief-of-staff hold's button goes through the
 										   one shared switch rule, so the URL moves with the
 										   store commit like every other entrance; the chat
