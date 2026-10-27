@@ -33,6 +33,7 @@ import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
 import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
+import enUiAgentsSkills from "./catalogues/en/ui.agents.skills.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
 import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
@@ -127,6 +128,7 @@ import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
 import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
 import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
+import esUiAgentsSkills from "./catalogues/es/ui.agents.skills.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiAgentsTeams from "./catalogues/es/ui.agents.teams.json";
 import esUiAgentsUpload from "./catalogues/es/ui.agents.upload.json";
@@ -221,6 +223,7 @@ import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
 import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
 import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
+import frUiAgentsSkills from "./catalogues/fr/ui.agents.skills.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiAgentsTeams from "./catalogues/fr/ui.agents.teams.json";
 import frUiAgentsUpload from "./catalogues/fr/ui.agents.upload.json";
@@ -315,6 +318,7 @@ import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
 import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
 import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
+import hiUiAgentsSkills from "./catalogues/hi/ui.agents.skills.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
 import hiUiAgentsTeams from "./catalogues/hi/ui.agents.teams.json";
 import hiUiAgentsUpload from "./catalogues/hi/ui.agents.upload.json";
@@ -409,6 +413,7 @@ import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
 import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
+import ruUiAgentsSkills from "./catalogues/ru/ui.agents.skills.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
 import ruUiAgentsTeams from "./catalogues/ru/ui.agents.teams.json";
 import ruUiAgentsUpload from "./catalogues/ru/ui.agents.upload.json";
@@ -503,6 +508,7 @@ import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
 import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
 import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
 import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
+import urUiAgentsSkills from "./catalogues/ur/ui.agents.skills.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
 import urUiAgentsTeams from "./catalogues/ur/ui.agents.teams.json";
 import urUiAgentsUpload from "./catalogues/ur/ui.agents.upload.json";
@@ -597,6 +603,7 @@ import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
 import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
 import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
+import viUiAgentsSkills from "./catalogues/vi/ui.agents.skills.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
 import viUiAgentsTeams from "./catalogues/vi/ui.agents.teams.json";
 import viUiAgentsUpload from "./catalogues/vi/ui.agents.upload.json";
@@ -691,6 +698,7 @@ import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
 import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
 import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
+import zhCNUiAgentsSkills from "./catalogues/zh-CN/ui.agents.skills.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
 import zhCNUiAgentsTeams from "./catalogues/zh-CN/ui.agents.teams.json";
 import zhCNUiAgentsUpload from "./catalogues/zh-CN/ui.agents.upload.json";
@@ -788,6 +796,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
+	...enUiAgentsSkills,
 	...enUiAgentsStarters,
 	...enUiAgentsTeams,
 	...enUiAgentsUpload,
@@ -890,6 +899,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
 		...esUiAgentsSettings,
+		...esUiAgentsSkills,
 		...esUiAgentsStarters,
 		...esUiAgentsTeams,
 		...esUiAgentsUpload,
@@ -986,6 +996,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
 		...frUiAgentsSettings,
+		...frUiAgentsSkills,
 		...frUiAgentsStarters,
 		...frUiAgentsTeams,
 		...frUiAgentsUpload,
@@ -1082,6 +1093,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
 		...hiUiAgentsSettings,
+		...hiUiAgentsSkills,
 		...hiUiAgentsStarters,
 		...hiUiAgentsTeams,
 		...hiUiAgentsUpload,
@@ -1178,6 +1190,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
 		...ruUiAgentsSettings,
+		...ruUiAgentsSkills,
 		...ruUiAgentsStarters,
 		...ruUiAgentsTeams,
 		...ruUiAgentsUpload,
@@ -1274,6 +1287,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsPublication,
 		...urUiAgentsRefusals,
 		...urUiAgentsSettings,
+		...urUiAgentsSkills,
 		...urUiAgentsStarters,
 		...urUiAgentsTeams,
 		...urUiAgentsUpload,
@@ -1370,6 +1384,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
 		...viUiAgentsSettings,
+		...viUiAgentsSkills,
 		...viUiAgentsStarters,
 		...viUiAgentsTeams,
 		...viUiAgentsUpload,
@@ -1466,6 +1481,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
 		...zhCNUiAgentsSettings,
+		...zhCNUiAgentsSkills,
 		...zhCNUiAgentsStarters,
 		...zhCNUiAgentsTeams,
 		...zhCNUiAgentsUpload,
@@ -2067,6 +2083,63 @@ export type MessageParams = {
 	"ui.agents.settings.system_prompt.enter_instructions_for_the_agent": undefined;
 	"ui.agents.settings.system_prompt.loading_system_prompt": undefined;
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": undefined;
+	"ui.agents.skills.detail.body_not_installed": undefined;
+	"ui.agents.skills.detail.body_truncated": { size: string };
+	"ui.agents.skills.detail.body_unavailable": undefined;
+	"ui.agents.skills.detail.file_bytes": { count: number };
+	"ui.agents.skills.detail.files_count": { count: number };
+	"ui.agents.skills.detail.files_none": undefined;
+	"ui.agents.skills.detail.files_truncated_more": { shown: number };
+	"ui.agents.skills.detail.files_truncated_of": {
+		shown: number;
+		total: number;
+	};
+	"ui.agents.skills.detail.fingerprint": undefined;
+	"ui.agents.skills.detail.fingerprint_none": undefined;
+	"ui.agents.skills.detail.form.bundle": undefined;
+	"ui.agents.skills.detail.form.document": undefined;
+	"ui.agents.skills.detail.form.unknown": undefined;
+	"ui.agents.skills.detail.form_label": undefined;
+	"ui.agents.skills.detail.installed_not": undefined;
+	"ui.agents.skills.detail.preview_aria": { path: string };
+	"ui.agents.skills.detail.preview_none": undefined;
+	"ui.agents.skills.detail.preview_truncated": undefined;
+	"ui.agents.skills.detail.section.body": undefined;
+	"ui.agents.skills.detail.section.description": undefined;
+	"ui.agents.skills.detail.section.files": undefined;
+	"ui.agents.skills.detail.section.hub": undefined;
+	"ui.agents.skills.detail.section.identity": undefined;
+	"ui.agents.skills.detail.section.where": undefined;
+	"ui.agents.skills.detail.show_all": undefined;
+	"ui.agents.skills.detail.show_less": undefined;
+	"ui.agents.skills.empty.none": undefined;
+	"ui.agents.skills.empty.search": { query: string };
+	"ui.agents.skills.error.detail_meaning": undefined;
+	"ui.agents.skills.error.detail_title": { name: string };
+	"ui.agents.skills.error.meaning": undefined;
+	"ui.agents.skills.error.title": undefined;
+	"ui.agents.skills.error.what_fallback": undefined;
+	"ui.agents.skills.hub.unlinked": undefined;
+	"ui.agents.skills.hub.unlinked_help": undefined;
+	"ui.agents.skills.hub.update_failed": undefined;
+	"ui.agents.skills.list_aria": undefined;
+	"ui.agents.skills.retrying": undefined;
+	"ui.agents.skills.search": undefined;
+	"ui.agents.skills.search_aria": undefined;
+	"ui.agents.skills.select_prompt": undefined;
+	"ui.agents.skills.source.builtin": undefined;
+	"ui.agents.skills.source.external": undefined;
+	"ui.agents.skills.source.hub": undefined;
+	"ui.agents.skills.source.local": undefined;
+	"ui.agents.skills.source.project": undefined;
+	"ui.agents.skills.source.unknown": undefined;
+	"ui.agents.skills.tab": undefined;
+	"ui.agents.skills.where.builtin": undefined;
+	"ui.agents.skills.where.external": undefined;
+	"ui.agents.skills.where.hub": undefined;
+	"ui.agents.skills.where.local": undefined;
+	"ui.agents.skills.where.project": undefined;
+	"ui.agents.skills.where.unknown": undefined;
 	"ui.agents.starters.action.all_builtins": undefined;
 	"ui.agents.starters.action.all_count": { count: number };
 	"ui.agents.starters.action.done": undefined;

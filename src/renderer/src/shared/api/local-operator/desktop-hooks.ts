@@ -325,6 +325,14 @@ export type DesktopFeature =
 	 * not a substitute and its absence must not close the working Hub plane.
 	 */
 	| "hub_skills"
+	/**
+	 * The skill library's READ side (core `skill_library:1`): `skills.list` rows
+	 * carry `source`/`link_id`/`installed`/`fingerprint`/`form` and the `name` arm
+	 * adds `skill_detail`. ITS OWN KEY, not `hub_skills` or `skill_catalogue`, so a
+	 * backend without it keeps the plain name/description list and the Agents page
+	 * never offers a Skills tab whose cards it could only half draw.
+	 */
+	| "skill_library"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"

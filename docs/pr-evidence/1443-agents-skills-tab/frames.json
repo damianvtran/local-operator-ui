@@ -1,0 +1,608 @@
+{
+ "head": "53693426d656371720a1fbf3305aa184baae335a",
+ "core": "local-operator origin/main 0c36e7a84a3 (git archive)",
+ "runs": {
+  "dark": {
+   "theme": "localOperatorDark",
+   "lsBefore": "v4:localOperatorDark",
+   "lsWrite": "localOperatorDark",
+   "settleB": {
+    "state": "present-enabled",
+    "ms": 4484
+   },
+   "statusesAB": "500,500",
+   "settleC": {
+    "state": "present-enabled",
+    "ms": 4455
+   },
+   "statusesC": "500,500",
+   "rss": {
+    "peakMB": 903,
+    "leftover": []
+   },
+   "themeAfterReload": {
+    "theme": "localOperatorDark",
+    "darkClass": true,
+    "bodyBg": "rgb(34, 32, 28)"
+   },
+   "frames": {
+    "loading-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 6,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills"
+     }
+    },
+    "populated-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 25,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "Update failed\n ·",
+      "tab": "Skills 25"
+     }
+    },
+    "populated-localOperatorDark-800.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 800,
+      "h": 900,
+      "rows": 25,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "Update failed\n ·",
+      "tab": "Skills 25"
+     }
+    },
+    "empty-no-match-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "INPUT",
+      "aria": "Search skills by name or description",
+      "text": "",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": "no-match",
+      "emptyText": "No skill matches “qqqq zzzz”.",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "qqqq zzzz",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    },
+    "details-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "BUTTON",
+      "aria": "",
+      "text": "local-refs Local Local skill with refere",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 25,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": "local-refs",
+      "files": 4,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "Update failed\n ·",
+      "tab": "Skills 25"
+     }
+    },
+    "empty-none-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": "none",
+      "emptyText": "No skills found yet.",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 0"
+     }
+    },
+    "error-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "enabled:Retry",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills"
+     }
+    },
+    "retry-a-under-way-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "disabled:Retrying…",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    },
+    "retry-b-settled-failed-focus-retry-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "BUTTON",
+      "aria": "",
+      "text": "Retry",
+      "inAlert": true
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "enabled:Retry",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    },
+    "retry-c-search-during-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "INPUT",
+      "aria": "Search skills by name or description",
+      "text": "",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "disabled:Retrying…",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    },
+    "retry-c-search-after-settle-localOperatorDark-1380.png": {
+     "activeElement": {
+      "tag": "INPUT",
+      "aria": "Search skills by name or description",
+      "text": "",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorDark",
+      "darkClass": true,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "enabled:Retry",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    }
+   }
+  },
+  "light": {
+   "theme": "localOperatorLight",
+   "lsBefore": "v4:localOperatorDark",
+   "lsWrite": "localOperatorLight",
+   "settleB": {
+    "state": "present-enabled",
+    "ms": 4483
+   },
+   "statusesAB": "500,500",
+   "settleC": {
+    "state": "present-enabled",
+    "ms": 4470
+   },
+   "statusesC": "500,500",
+   "rss": {
+    "peakMB": 997,
+    "leftover": []
+   },
+   "themeAfterReload": {
+    "theme": "localOperatorLight",
+    "darkClass": false,
+    "bodyBg": "rgb(242, 237, 227)"
+   },
+   "frames": {
+    "loading-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 6,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills"
+     }
+    },
+    "populated-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 25,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "Update failed\n ·",
+      "tab": "Skills 25"
+     }
+    },
+    "populated-localOperatorLight-800.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 800,
+      "h": 900,
+      "rows": 25,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "Update failed\n ·",
+      "tab": "Skills 25"
+     }
+    },
+    "empty-no-match-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "INPUT",
+      "aria": "Search skills by name or description",
+      "text": "",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": "no-match",
+      "emptyText": "No skill matches “qqqq zzzz”.",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "qqqq zzzz",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    },
+    "details-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "BUTTON",
+      "aria": "",
+      "text": "local-refs Local Local skill with refere",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 25,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": "local-refs",
+      "files": 4,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "Update failed\n ·",
+      "tab": "Skills 25"
+     }
+    },
+    "empty-none-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": "none",
+      "emptyText": "No skills found yet.",
+      "detail": null,
+      "files": 0,
+      "retry": null,
+      "alerts": 0,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 0"
+     }
+    },
+    "error-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "enabled:Retry",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills"
+     }
+    },
+    "retry-a-under-way-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "BODY",
+      "aria": "",
+      "text": "Local Operator New chat ⌘ N Search ⌘ P A",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "disabled:Retrying…",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    },
+    "retry-b-settled-failed-focus-retry-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "BUTTON",
+      "aria": "",
+      "text": "Retry",
+      "inAlert": true
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "enabled:Retry",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    },
+    "retry-c-search-during-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "INPUT",
+      "aria": "Search skills by name or description",
+      "text": "",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "disabled:Retrying…",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    },
+    "retry-c-search-after-settle-localOperatorLight-1380.png": {
+     "activeElement": {
+      "tag": "INPUT",
+      "aria": "Search skills by name or description",
+      "text": "",
+      "inAlert": false
+     },
+     "dom": {
+      "theme": "localOperatorLight",
+      "darkClass": false,
+      "w": 1380,
+      "h": 900,
+      "rows": 0,
+      "skel": 0,
+      "empty": null,
+      "emptyText": "",
+      "detail": null,
+      "files": 0,
+      "retry": "enabled:Retry",
+      "alerts": 1,
+      "search": "",
+      "hubRowMark": "",
+      "tab": "Skills 25"
+     }
+    }
+   }
+  }
+ }
+}
