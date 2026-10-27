@@ -1539,5 +1539,39 @@
 		"role": "button label",
 		"tone": "Plain, concise product language; preserve raw identifiers.",
 		"note": "Shown while a canvas variable create/update is in flight."
+	},
+	"ui.canvas.files.attachments": {
+		"role": "section heading",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Canvas Files view: the section, pinned above the agent's files, listing every file and screenshot the user attached in this conversation."
+	},
+	"ui.canvas.files.attachmentsPartial": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Beside the Attachments heading when the list could only be built from the messages loaded so far (older backend or another device's conversation), so it may not be complete."
+	},
+	"ui.canvas.files.attachmentImage": {
+		"role": "label",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Name for a pasted screenshot/picture that has no file name."
+	},
+	"ui.canvas.files.attachmentRetained": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Row meta: the attached file is no longer at its original path, but the app kept its own saved copy, which the row's actions use."
+	},
+	"ui.canvas.files.attachmentGone": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Row meta: the attached file is gone from its original path AND the app's saved copy is gone too; nothing can be opened."
+	},
+	"ui.canvas.files.attachmentMeta": {
+		"role": "meta line",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Row meta: file size, then the short date it was attached.",
+		"placeholders": {
+			"size": "Formatted byte size, e.g. 286 KB",
+			"when": "Short localized date, e.g. Oct 27"
+		}
 	}
 }

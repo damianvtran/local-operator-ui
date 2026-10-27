@@ -14,6 +14,13 @@ import { t } from "../../../../../../i18n";
 import { indexedDocument } from "../../canonical/session-files";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { useSessionFiles } from "../../canonical/use-session-files";
+import { materialiseUserAttachment } from "../../canonical/use-user-attachments";
+import type { UserAttachmentsState } from "../../canonical/use-user-attachments";
+import {
+	ATTACHMENT_ID_PREFIX,
+	attachmentFinderItems,
+	withoutAttached,
+} from "./attachment-items";
 import { buildFileRows } from "./file-rows";
 import { FinderFilesView } from "./finder-files-view";
 import type { FinderItem } from "./finder-layout";
@@ -34,6 +41,8 @@ type CanvasFileViewerProps = {
 	 * nothing to say.
 	 */
 	scan?: MentionScanHandle | null;
+	/** The person's attachments (the pinned section); see `useUserAttachments`. */
+	attachments?: UserAttachmentsState | null;
 };
 
 const defaultFiles: CanvasDocument[] = [];
@@ -45,6 +54,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	index,
 	onSwitchToDocumentView,
 	scan = null,
+	attachments = null,
 }) => {
 	// Get files from the canvas store for this conversation
 	const fallbackFiles = useCanvasStore((state): CanvasDocument[] => {
@@ -304,7 +314,26 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		],
 	);
 
-	const finderItems: FinderItem[] = rows.map((row, position) => {
+	const attachmentItems = useMemo(
+		() => attachmentFinderItems(attachments?.items ?? [], sessionId ?? ""),
+		[attachments?.items, sessionId],
+	);
+	/*
+	 * Attachments OWN what the person attached: the ledger also admits a
+	 * kind-carrying pasted image as a "mentioned" file, so its agent-row copy is
+	 * dropped here by digest (filtered AFTER the row/index pairing below, which
+	 * is positional).
+	 */
+	const ownedDigests = useMemo(
+		() =>
+			new Set(
+				(attachments?.items ?? [])
+					.map((item) => item.digest)
+					.filter((digest): digest is string => digest !== null),
+			),
+		[attachments?.items],
+	);
+	const pairedItems: FinderItem[] = rows.map((row, position) => {
 		const entry = index.mode === "index" ? index.rows[position] : undefined;
 		return {
 			row,
@@ -319,7 +348,21 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			mentioned: entry?.first_ts ?? entry?.first_seq ?? position,
 		};
 	});
+	const finderItems = withoutAttached(
+		pairedItems,
+		(item) => item.row.artifact?.digest,
+		ownedDigests,
+	);
 	const materialise = async (document: CanvasDocument): Promise<string> => {
+		/*
+		 * A USER ATTACHMENT copies out through its own route: the file index does
+		 * not list the person's inputs, so its row id would 404. One routing point
+		 * here serves both the row's path actions and the canvas open below.
+		 */
+		if (document.id.startsWith(ATTACHMENT_ID_PREFIX) && document.artifact) {
+			if (!sessionId) throw new Error("No session for the attachment");
+			return materialiseUserAttachment(sessionId, document.artifact.digest);
+		}
 		if (!sessionId || index.mode !== "index")
 			throw new Error("No indexed artifact owner");
 		const response = await desktopRequest({
@@ -340,6 +383,10 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			legacyScan={scan}
 			cwd={index.state === "unsupported" ? undefined : cwd}
 			materialise={materialise}
+			attachments={{
+				items: attachmentItems,
+				complete: attachments ? attachments.complete : true,
+			}}
 			onOpen={(document) => {
 				if (
 					document.artifact &&

@@ -25,9 +25,9 @@
 	"ui.canvas.files.filter": "Filter",
 	"ui.canvas.files.reset": "Reset filter",
 	"ui.canvas.files.folder": "Open folder",
-	"ui.canvas.files.loading": "Loading session files\u2026",
+	"ui.canvas.files.loading": "Loading session files…",
 	"ui.canvas.files.progress": "{loaded} of {total} loaded",
-	"ui.canvas.files.building": "Building the file index\u2026",
+	"ui.canvas.files.building": "Building the file index…",
 	"ui.canvas.files.retry": "Retry",
 	"ui.canvas.files.continue": "Continue loading",
 	"ui.canvas.files.empty": "No files yet",
@@ -43,7 +43,7 @@
 	"ui.canvas.files.asc": "Ascending",
 	"ui.canvas.files.desc": "Descending",
 	"ui.canvas.files.region": "Session files",
-	"ui.canvas.files.readingStats": "Reading file details\u2026",
+	"ui.canvas.files.readingStats": "Reading file details…",
 	"ui.canvas.files.error": "Could not load session files",
 	"ui.canvas.files.remote": "Remote files are unavailable here",
 	"ui.canvas.files.inSession": "In session",
@@ -345,5 +345,11 @@
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- Remove",
 	"ui.canvas.wysiwyg_markdown_editor.add": "+ Add",
 	"ui.canvas.create_file_dialog.creating": "Creating...",
-	"ui.canvas.variable_form_dialog.saving": "Saving…"
+	"ui.canvas.variable_form_dialog.saving": "Saving…",
+	"ui.canvas.files.attachments": "Attachments",
+	"ui.canvas.files.attachmentsPartial": "From loaded messages",
+	"ui.canvas.files.attachmentImage": "Attached image",
+	"ui.canvas.files.attachmentRetained": "Moved · saved copy kept",
+	"ui.canvas.files.attachmentGone": "Moved or deleted · no saved copy",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}"
 }

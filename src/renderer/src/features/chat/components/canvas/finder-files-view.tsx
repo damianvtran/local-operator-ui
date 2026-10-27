@@ -55,6 +55,7 @@ import { ImageActionsMenu } from "../image-actions-menu";
 import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
 import {
+	ATTACHMENTS_SECTION,
 	FINDER_HEADER_BAND,
 	FOCUS_RING_GAP,
 	type FinderBand,
@@ -90,6 +91,7 @@ const sectionLabels: Record<string, () => string> = {
 	Spreadsheets: () => t("ui.canvas.files.spreadsheets"),
 	Other: () => t("ui.canvas.files.other"),
 	Files: () => t("ui.canvas.files.files"),
+	Attachments: () => t("ui.canvas.files.attachments"),
 };
 const kindLabel = (kind: string): string => {
 	switch (kind) {
@@ -113,6 +115,8 @@ const kindLabel = (kind: string): string => {
 			return t("ui.canvas.files.other");
 	}
 };
+/** A path has a separator; a bare attachment name does not. */
+const PATH_SEPARATOR = /[/\\]/;
 const REVEAL =
 	"pointer-events-none absolute top-1 end-1 flex gap-1 opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
 
@@ -126,7 +130,15 @@ type Props = {
 	cwd?: string;
 	onOpen: (document: CanvasDocument) => void;
 	materialise: (document: CanvasDocument) => Promise<string>;
+	/**
+	 * The person's attachments, already projected (`attachment-items.ts`) and
+	 * pinned above the agent's files. `complete: false` = only loaded rows were
+	 * available, which the section header says rather than hides.
+	 */
+	attachments?: { items: FinderItem[]; complete: boolean };
 };
+
+const NO_ATTACHMENTS = { items: [] as FinderItem[], complete: true };
 
 /** A button/list keyboard model; no grid/listbox claim without their selection semantics. */
 export function FinderFilesView({
@@ -137,6 +149,7 @@ export function FinderFilesView({
 	onOpen,
 	materialise,
 	legacyScan,
+	attachments = NO_ATTACHMENTS,
 }: Props) {
 	const locale = useI18nLocale();
 	const selectedId = useCanvasStore(
@@ -188,11 +201,34 @@ export function FinderFilesView({
 			prefs,
 		);
 	}, [displayItems, query, prefs]);
+	/*
+	 * Attachments are narrowed by the same search and kind filter as the agent's
+	 * files (one query box, one filter), but are NOT held by the hover freeze
+	 * above: a new send must appear the moment it lands, and an attachment is
+	 * never removed by a turn the way an agent file can be rewritten.
+	 */
+	const narrowedAttachments = useMemo(() => {
+		if (index.localReadAllowed === false && !attachments.items.length)
+			return [];
+		const ids = new Set(
+			filterAndSearchRows(
+				attachments.items.map((item) => item.row),
+				{ query, kinds: prefs.kinds },
+			).map((row) => row.document.id),
+		);
+		return attachments.items.filter((item) => ids.has(item.row.document.id));
+	}, [attachments.items, query, prefs.kinds, index.localReadAllowed]);
 	const sections = useMemo(() => {
 		// Section labels are translated inside finderSections, not in these inputs.
 		void locale;
-		return finderSections(narrowed, prefs, narrowing, closed);
-	}, [narrowed, prefs, narrowing, closed, locale]);
+		return finderSections(
+			narrowed,
+			prefs,
+			narrowing,
+			closed,
+			narrowedAttachments,
+		);
+	}, [narrowed, prefs, narrowing, closed, locale, narrowedAttachments]);
 	const layout = useMemo(
 		() => layoutFinder(sections, viewport.width, prefs.group),
 		[sections, viewport.width, prefs.group],
@@ -222,14 +258,15 @@ export function FinderFilesView({
 		() => new Set(finderWindow(layout, viewport.top, viewport.height, active)),
 		[layout, viewport.top, viewport.height, active],
 	);
+	// The gallery walks the pictures in on-screen order: attachments first.
 	const images = useMemo(
 		() =>
-			narrowed.filter(
+			[...narrowedAttachments, ...narrowed].filter(
 				(item) =>
 					item.row.media === "image" &&
 					layout.positions.has(item.row.document.id),
 			),
-		[narrowed, layout],
+		[narrowed, narrowedAttachments, layout],
 	);
 	const selectedImage = images.find(
 		(item) => item.row.document.id === lightbox,
@@ -577,11 +614,17 @@ export function FinderFilesView({
 							? ""
 							: narrowing
 								? t("ui.canvas.files.narrowCount", {
-										shown: formatNumber(narrowed.length),
-										total: formatNumber(items.length),
+										shown: formatNumber(
+											narrowed.length + narrowedAttachments.length,
+										),
+										total: formatNumber(
+											items.length + attachments.items.length,
+										),
 									})
 								: t("ui.canvas.files.count", {
-										count: index.mode === "index" ? index.total : items.length,
+										count:
+											(index.mode === "index" ? index.total : items.length) +
+											attachments.items.length,
 									})}
 						{index.mode === "index" &&
 						(index.state === "loading" || index.state === "building") &&
@@ -679,7 +722,7 @@ export function FinderFilesView({
 					}
 				}}
 			>
-				{!narrowed.length ? (
+				{!narrowed.length && !narrowedAttachments.length ? (
 					<div
 						className={cn(
 							"flex min-h-40 flex-col items-center justify-center gap-2 p-4 text-center",
@@ -876,6 +919,19 @@ export function FinderFilesView({
 														: 0),
 											)}
 										</span>
+										{section.id === ATTACHMENTS_SECTION &&
+											!attachments.complete && (
+												/*
+												 * The list came from the history loaded so far (an
+												 * older backend, a peer's conversation). Saying so is
+												 * the difference between "these are some" and "these
+												 * are all" - the claim this section must never make
+												 * falsely.
+												 */
+												<span className={cn("text-meta text-ink-dim")}>
+													{t("ui.canvas.files.attachmentsPartial")}
+												</span>
+											)}
 									</button>
 								</h3>
 								<ul
@@ -1041,17 +1097,19 @@ function FinderEntry({
 		timestamp === null
 			? ""
 			: formatDate(timestamp * 1000, { month: "short", day: "numeric" });
-	const meta = item.row.missing
-		? doc.artifact
-			? t("ui.canvas.files.gone")
-			: t("ui.canvas.files.missing")
-		: sort === "modified" || sort === "created"
-			? dateMetric
-			: sort === "size"
-				? (item.row.size ?? "")
-				: doc.artifact
-					? t("ui.canvas.files.sessionOnly")
-					: (item.row.size ?? "");
+	const meta = item.attachment
+		? item.attachment.note
+		: item.row.missing
+			? doc.artifact
+				? t("ui.canvas.files.gone")
+				: t("ui.canvas.files.missing")
+			: sort === "modified" || sort === "created"
+				? dateMetric
+				: sort === "size"
+					? (item.row.size ?? "")
+					: doc.artifact
+						? t("ui.canvas.files.sessionOnly")
+						: (item.row.size ?? "");
 
 	/*
 	 * THE SOUND BAND'S ROW, WHICH IS NOT A BUTTON (sound phase). Every other
@@ -1252,7 +1310,9 @@ function FinderEntry({
 								}
 								className={cn("shrink-0 text-meta text-ink-dim")}
 							>
-								{tiled && doc.artifact ? t("ui.canvas.files.inSession") : meta}
+								{tiled && doc.artifact && !item.attachment
+									? t("ui.canvas.files.inSession")
+									: meta}
 							</span>
 						}
 					</span>
@@ -1278,33 +1338,47 @@ function FinderEntry({
 						</Button>
 					</Tooltip>
 				)}
-				<ImageActionsMenu
-					file={doc.path}
-					tooltip={
-						item.row.media === "image"
-							? t("ui.canvas.finder_files_view.ui_canvas_files_imageactions")
-							: t("ui.canvas.finder_files_view.ui_canvas_files_fileactions")
-					}
-					label={doc.title}
-					open={menuOpen}
-					onOpenChange={setMenuOpen}
-					onCloseAutoFocus={(event) => {
-						event.preventDefault();
-						rowControl.current?.focus({ preventScroll: true });
-					}}
-					triggerTabIndex={-1}
-					mediaKind={item.row.media === "image" ? "image" : "video"}
-					onShowInCanvas={
-						viewerFor(doc.path, doc.type) === null ? undefined : onOpen
-					}
-					onExpand={item.row.media === "image" ? onExpand : undefined}
-					resolveBytes={() => finderOriginal(doc)}
-					saveName={doc.artifact ? artifactFileName(doc.artifact) : undefined}
-					resolvePath={
-						doc.artifact && !item.row.missing ? materialise : undefined
-					}
-					missing={item.row.missing && !doc.artifact}
-				/>
+				{!(
+					/*
+					 * A gone attachment with no origin path (a pasted picture whose
+					 * stored copy was pruned) has nothing any action could act on - not
+					 * even a path to copy - so it carries no menu rather than a menu of
+					 * dead entries. Its meta line already says it is gone.
+					 */
+					(
+						item.attachment &&
+						item.row.missing &&
+						!PATH_SEPARATOR.test(doc.path)
+					)
+				) && (
+					<ImageActionsMenu
+						file={doc.path}
+						tooltip={
+							item.row.media === "image"
+								? t("ui.canvas.finder_files_view.ui_canvas_files_imageactions")
+								: t("ui.canvas.finder_files_view.ui_canvas_files_fileactions")
+						}
+						label={doc.title}
+						open={menuOpen}
+						onOpenChange={setMenuOpen}
+						onCloseAutoFocus={(event) => {
+							event.preventDefault();
+							rowControl.current?.focus({ preventScroll: true });
+						}}
+						triggerTabIndex={-1}
+						mediaKind={item.row.media === "image" ? "image" : "video"}
+						onShowInCanvas={
+							viewerFor(doc.path, doc.type) === null ? undefined : onOpen
+						}
+						onExpand={item.row.media === "image" ? onExpand : undefined}
+						resolveBytes={() => finderOriginal(doc)}
+						saveName={doc.artifact ? artifactFileName(doc.artifact) : undefined}
+						resolvePath={
+							doc.artifact && !item.row.missing ? materialise : undefined
+						}
+						missing={item.row.missing && !doc.artifact}
+					/>
+				)}
 			</div>
 		</div>
 	);

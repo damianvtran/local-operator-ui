@@ -48,6 +48,7 @@ export function sanitizeFinderPreferences(value: unknown): FinderPreferences {
 					...new Set(
 						data.closedSections.filter((id) =>
 							[
+								ATTACHMENTS_SECTION,
 								"Highlights",
 								"Images",
 								"Videos",
@@ -73,7 +74,22 @@ export type FinderItem = {
 	created: number | null;
 	modified: number | null;
 	mentioned: number;
+	/**
+	 * Set on an item the PERSON attached (the Attachments section), never on an
+	 * agent file. Its meta line is `note` (size and when, or which copy is left)
+	 * rather than the agent rows' sort-driven metric, and its path actions act
+	 * on the retained copy through `materialise` when the origin is gone.
+	 */
+	attachment?: { key: string; digest: string | null; note: string };
 };
+
+/**
+ * The Attachments section's stable id (preferences, closedSections, bands).
+ * Pinned ABOVE every agent section: what the person handed over is the context
+ * the rest of the list was made from, and it must not move as the agent's
+ * files grow.
+ */
+export const ATTACHMENTS_SECTION = "Attachments";
 export type FinderSection = {
 	id: string;
 	label: string;
@@ -156,10 +172,19 @@ export function finderSections(
 	prefs: FinderPreferences,
 	narrowing: boolean,
 	closed: Set<string>,
+	attachments: FinderItem[] = [],
 ): FinderSection[] {
 	const highlights = items.filter((item) => item.highlighted);
 	const working = items.filter((item) => !item.highlighted);
 	const sections: FinderSection[] = [];
+	if (attachments.length)
+		sections.push({
+			id: ATTACHMENTS_SECTION,
+			label: t("ui.canvas.files.attachments"),
+			items: attachments,
+			open: narrowing || !closed.has(ATTACHMENTS_SECTION),
+			highlights: false,
+		});
 	if (highlights.length)
 		sections.push({
 			id: "Highlights",
@@ -282,7 +307,22 @@ export function layoutFinder(
 		if (section.highlights)
 			for (const item of section.items)
 				push(section, "highlight", item.why ? 68 : 44, [item]);
-		else if (grouped && section.id === "Images") {
+		else if (section.id === ATTACHMENTS_SECTION) {
+			/*
+			 * Files as rows, then pictures in the Images grid's own tile geometry,
+			 * grouped or not: a screenshot the person pasted is read by its pixels,
+			 * and the tile arithmetic is the Images section's (one grid, one size).
+			 */
+			const files = section.items.filter((item) => item.row.media !== "image");
+			const pictures = section.items.filter(
+				(item) => item.row.media === "image",
+			);
+			for (const item of files) push(section, "compact", 36, [item]);
+			const tileW = (w - 4 * (cols - 1)) / cols;
+			const height = Math.round(((tileW - 8) * 3) / 4) + 32;
+			for (let i = 0; i < pictures.length; i += cols)
+				push(section, "tiles", height, pictures.slice(i, i + cols), cols);
+		} else if (grouped && section.id === "Images") {
 			const tileW = (w - 4 * (cols - 1)) / cols;
 			const height = Math.round(((tileW - 8) * 3) / 4) + 32;
 			for (let i = 0; i < section.items.length; i += cols)

@@ -29,7 +29,10 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, Copy } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCanvasPane } from "../utils/canvas-pane";
+import { FileActionsMenu } from "./supplement-file-actions";
+import { materialiseUserAttachment } from "./use-user-attachments";
 
 /**
  * Shorten a path in the MIDDLE, keeping both ends readable.
@@ -140,8 +143,28 @@ export const SentFileCard: FC<{
 	 * would leak into every other story running in the same frame.
 	 */
 	existence?: boolean | null;
-}> = ({ document, remote = false, placementKnown = true, existence }) => {
+	/**
+	 * The story seam for the RETAINED copy's existence, same contract as
+	 * `existence`. Only asked once the origin is known missing: that is the one
+	 * state where "is a saved copy still there?" changes what the card says.
+	 */
+	storedExistence?: boolean | null;
+	/**
+	 * The conversation the row belongs to, for copying the retained bytes out
+	 * under the file's real name (`materialiseUserAttachment`) when the origin
+	 * is gone. Absent (a story, a remote row), actions use the store path as is.
+	 */
+	sessionId?: string | null;
+}> = ({
+	document,
+	remote = false,
+	placementKnown = true,
+	existence,
+	storedExistence,
+	sessionId = null,
+}) => {
 	useI18nLocale();
+	const pane = useCanvasPane();
 	const filename = document.filename || t("ui.chat.attachments.file_unnamed");
 	const probed = useFileExistence(
 		existence === undefined ? document.path : null,
@@ -149,6 +172,21 @@ export const SentFileCard: FC<{
 	);
 	const exists = existence === undefined ? probed : existence;
 	const missing = exists === false;
+	/*
+	 * THE THIRD STATE (operator requirement 3): the origin is gone AND the
+	 * store's retained copy is gone too - a pruned store, or a row from a
+	 * machine whose store was not carried over. Asked only once the origin is
+	 * known missing; until it answers the card keeps the "saved copy" line,
+	 * which is the state the store's own contract makes the normal one.
+	 */
+	const storedProbe = useFileExistence(
+		missing && storedExistence === undefined ? document.storedPath : null,
+		!remote && placementKnown,
+	);
+	const storedExists =
+		storedExistence === undefined ? storedProbe : storedExistence;
+	const storedGone =
+		missing && (!document.storedPath || storedExists === false);
 	const [copied, setCopied] = useState(false);
 	/*
 	 * WHICH PATH THE COPY CONTROL IS FOR. The origin path is the right value while
@@ -158,7 +196,11 @@ export const SentFileCard: FC<{
 	 * older row without a store path renders no copy control at all rather than a
 	 * control that copies nothing usable.
 	 */
-	const copyTarget = missing ? document.storedPath : document.path;
+	const copyTarget = missing
+		? storedExists === false
+			? null
+			: document.storedPath
+		: document.path;
 	const copyLabel = (done: boolean): string =>
 		missing
 			? t(
@@ -187,11 +229,49 @@ export const SentFileCard: FC<{
 			setCopied(false);
 		}
 	}, [copyTarget]);
+	/*
+	 * THE HOVER ACTIONS: the shared `FileActionsMenu`, never a fork. Which path
+	 * they act on follows the same truth the card paints: the origin while it is
+	 * there; the retained copy - copied out under the file's own name, because a
+	 * `<digest>.bin` opens in no app - once it is not; and once both are gone,
+	 * only "Copy file path" (the record of where it was). A remote row makes no
+	 * claim about this disk and offers nothing. Absolutely positioned inside a
+	 * reserved end padding, so revealing it moves no text.
+	 */
+	const actionPath =
+		missing && !storedGone ? document.storedPath : document.path;
+	const digest = document.attachment;
+	const resolveActionPath = useMemo(
+		() =>
+			missing && !storedGone && digest && sessionId
+				? () => materialiseUserAttachment(sessionId, digest)
+				: undefined,
+		[missing, storedGone, digest, sessionId],
+	);
+	const showActions = !remote && placementKnown && Boolean(actionPath);
 	return (
 		<div
-			className={cn("flex max-w-[32rem] items-start gap-2.5 py-1")}
+			className={cn(
+				"group relative flex max-w-[32rem] items-start gap-2.5 py-1",
+				showActions && "pe-7",
+			)}
 			data-document-id={document.id}
 		>
+			{showActions && actionPath && (
+				<div
+					className={cn(
+						"absolute top-0.5 end-0 has-[[aria-expanded=true]]:[&_button]:opacity-100",
+					)}
+				>
+					<FileActionsMenu
+						actionPath={actionPath}
+						label={filename}
+						pane={pane}
+						resolveActionPath={resolveActionPath}
+						missing={storedGone}
+					/>
+				</div>
+			)}
 			<AttachmentKindIcon
 				name={filename}
 				mimeType={document.mimeType}
@@ -247,17 +327,23 @@ export const SentFileCard: FC<{
 						<span className={cn("font-medium text-danger")}>
 							{t("ui.chat.attachments.file_missing")}
 						</span>
-						{!document.storedPath && (
+						{storedGone && (
 							/*
 							 * NO STORE PATH, NO PROMISE. Saying a saved copy exists when the row
 							 * cannot name or copy one is the dead end design round 2 retained D2
 							 * for; the truthful line stops at where the file is not.
 							 */
-							<span>{t("ui.chat.attachments.file_missing_recovery")}</span>
+							<span>
+								{t(
+									document.storedPath
+										? "ui.chat.attachments.file_and_copy_missing"
+										: "ui.chat.attachments.file_missing_recovery",
+								)}
+							</span>
 						)}
 					</span>
 				)}
-				{missing && document.storedPath && (
+				{missing && document.storedPath && !storedGone && (
 					/*
 					 * THE SAVED COPY'S OWN ROW. It is the action the missing state owes the
 					 * reader: a labelled line naming the retained copy and its full path, with

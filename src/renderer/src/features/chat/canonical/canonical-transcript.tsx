@@ -77,7 +77,7 @@ import {
 	writeWatchedRun,
 } from "@shared/store/turn-collapse-watched";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { showInfoToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import {
 	CircleAlert,
 	Info,
@@ -114,6 +114,7 @@ import {
 	type MarkdownStyleProps,
 	StreamingMarkdown,
 } from "../components/markdown-renderer";
+import type { ImagePathActions } from "../components/message-item/image-attachment";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
@@ -158,6 +159,7 @@ import {
 } from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { copyTarget } from "../utils/link-open";
+import { openPathInCanvas } from "../utils/open-in-canvas";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
@@ -295,6 +297,7 @@ import {
 	useTranscriptDomWindow,
 } from "./use-transcript-dom-window";
 import { useTurnAnswerRail } from "./use-turn-answer-rail";
+import { materialiseUserAttachment } from "./use-user-attachments";
 import {
 	type WorkingLineState,
 	deriveWorkingLine,
@@ -860,6 +863,41 @@ export type UndeliveredTurn = {
  * file has always labelled those tiles with, hoisted so the carousel's filmstrip
  * and title reuse the same sentence (see `fold-media.tsx`'s twin).
  */
+/**
+ * Open / reveal / copy-path for a picture the PERSON attached.
+ *
+ * A pasted screenshot has no path, only a retained digest; the backend copies
+ * it out under a real name (`materialiseUserAttachment`) at action time, and the
+ * canvas opens that copy - a real path, so the tab survives a restart. Only for
+ * a local conversation whose backend can do it (the route 404s otherwise, which
+ * the menu reports as a failure toast, never silently). Absent, the picture keeps
+ * the actions its blob/data source allows.
+ */
+function userImagePathActions(
+	image: TranscriptImage,
+	scope: AttachmentScope | null,
+	conversationId: string | undefined,
+	remote: boolean,
+): ImagePathActions | undefined {
+	const digest = image.attachment;
+	const sessionId = scope?.sessionId;
+	if (!digest || !sessionId || remote || scope?.childId) return undefined;
+	const resolvePath = () => materialiseUserAttachment(sessionId, digest);
+	return {
+		resolvePath,
+		onShowInCanvas: conversationId
+			? () => {
+					void resolvePath()
+						.then((path) => openPathInCanvas(conversationId, path))
+						.then((opened) => {
+							if (!opened) showErrorToast(t("ui.canvas.files.prepareError"));
+						})
+						.catch(() => showErrorToast(t("ui.canvas.files.prepareError")));
+				}
+			: undefined,
+	};
+}
+
 const userImageLabel = (
 	image: TranscriptImage,
 	index: number,
@@ -1359,6 +1397,7 @@ const UserRow = memo(function UserRow({
 											document={document}
 											remote={remote}
 											placementKnown={placementKnown}
+											sessionId={scope?.sessionId ?? null}
 										/>
 									))}
 								</div>
@@ -1393,6 +1432,12 @@ const UserRow = memo(function UserRow({
 												index,
 												labelFor: userImageLabel,
 											}}
+											pathActions={userImagePathActions(
+												image,
+												scope,
+												conversationId,
+												remote || !placementKnown,
+											)}
 										/>
 									))}
 								</div>
