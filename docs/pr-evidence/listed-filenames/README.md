@@ -60,6 +60,50 @@ It is taken once six consecutive reads 500 ms apart agree, so the disk probe has
 | `round1-sentence.png` / `after-sentence.png` | sentence items: linked as filenames before the fix, plain text after |
 | `before-missing.png`, `before-sentence.png` | `origin/main` control for the two negatives (plain, as expected) |
 
+## Round 2 (review R2-1): a cached "missing" must not suppress a link forever
+
+The round-1 fix sent every listed name through the probe cache, and a NEGATIVE
+was cached for the session's lifetime. So an agent that writes
+`I'll write the deliverables to <dir>/:` + names BEFORE its tool runs poisoned
+the final report that lists the same names after the files exist: both messages
+stayed plain forever, and plain text has no failed click to evict the entry.
+
+The fix is keyed on the DOCUMENT, not on a clock: the first pre-scan of a NEW
+message re-asks the spellings it names that are cached as missing
+(`claimFirstScan` in `link-actions.ts`, passed as `probeTargets`'s
+`recheckMissing`). A remount of the same message re-asks nothing, an "exists"
+answer is never re-asked, and the in-flight set still dedupes two documents
+painting in one frame. The landing answer re-renders the earlier row through
+`subscribeProbes`, so A and B link together.
+
+`round2-r2-1-before.png` is message A painted before the files exist: both
+names plain. The rig then writes `report.pdf` and `data.xlsx` and appends
+message B to the same session. `round2-r2-1-after.png` is the result: four
+anchors, both names in BOTH messages. `report-r2.json` is the rig's own DOM
+read (`before[].anchor` null, `after[].anchor` set), taken once six consecutive
+reads 500 ms apart agree.
+
+### Reproduce the round-2 frame
+
+Same isolated daemon as above (steps 1-2, with `pnpm build` run at THIS commit).
+Then, with `$EV` the scratch directory and `<tree>` the worktree:
+
+```bash
+# 3. Seed ONE session whose directory does not exist yet, and capture A -> write -> B.
+node docs/pr-evidence/listed-filenames/seed-r2.mjs "$EV/iso/config" "$EV/fx/final" 5eed1157aa04
+(cd <tree> && LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
+  node docs/pr-evidence/listed-filenames/capture-r2.mjs \
+    http://127.0.0.1:8080 "$EV/iso/config" "$EV/fx/final" 5eed1157aa04 "$EV/frames" r2)
+
+kill "$BPID"
+```
+
+`capture-r2.mjs` is one launch-capture-kill command: it photographs A, writes
+the two files, appends B, re-enters the route (the driver's `navigate` is a
+no-op on an unchanged hash, hence the detour through `/`), and photographs the
+pair. It writes `report-r2.json` to its output directory; the frames land in
+the driver's scratch `frames/` directory, named by the report.
+
 ## Reproduce
 
 These are the exact commands, run from a `local-operator-ui` worktree. `<tree>` is a

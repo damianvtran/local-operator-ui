@@ -1665,6 +1665,22 @@ test("annotated negatives: no extension, unknown extension, missing on disk, no 
 	assert.deepEqual(panelPaths(SCREENSHOT_1227), [LISTED[0]]);
 });
 
+test("R2-5: an entity-encoded listed name is asked about DECODED, as the mdast reads it", async () => {
+	/*
+	 * The pre-scan and the transcript must ask about the SAME string. The mdast
+	 * decodes `a&amp;b.pdf` to `a&b.pdf`; asking about the raw spelling left the
+	 * decoded one unknown, so the name stayed plain forever.
+	 */
+	const text = "Files in ~/out/:\n- a&amp;b.pdf\n- c&#46;pdf";
+	assert.deepEqual(listedSuspects(text), ["~/out/a&b.pdf", "~/out/c.pdf"]);
+	await diskFor(text, ["~/out/a&b.pdf", "~/out/c.pdf"]);
+	assert.deepEqual(nonDirectoryLinks(text, "~/out"), [
+		{ url: "~/out/a&b.pdf", text: "a&b.pdf" },
+		{ url: "~/out/c.pdf", text: "c.pdf" },
+	]);
+	assert.deepEqual(panelPaths(text), ["~/out/a&b.pdf", "~/out/c.pdf"]);
+});
+
 /*
  * ROUND 1 (review F1 / QA Q1): a WHOLE-item listed name took no evidence, so a
  * change summary, a note and a deliverable that was never written all linked.
@@ -1815,6 +1831,35 @@ const PARITY = [
 	["blockquote introducer", "> Files in ~/out/:\n- a.pdf", []],
 	["quoted listing", "> Files in ~/out/:\n> - a.pdf", []],
 	["ordered list not at 1", "Saved to /tmp/out:\n2. a.pdf\n3. b.pdf", []],
+	/*
+	 * ROUND 2 (review R2-2): the digit, not the number - `Number("01") === 1`
+	 * admitted this on the panel only, but micromark interrupts a paragraph
+	 * only on the literal `1.` / `1)`.
+	 */
+	["ordered list at 01", "Saved to /tmp/out:\n01. a.pdf", []],
+	["ordered list at 1)", "Saved to /tmp/out:\n1) a.pdf", ["/tmp/out/a.pdf"]],
+	[
+		"ordered list at 01 after a blank",
+		"Saved to /tmp/out:\n\n01. a.pdf",
+		["/tmp/out/a.pdf"],
+	],
+	/*
+	 * ROUND 2 (review R2-2): a LAZY blockquote continuation. The mdast folds
+	 * the bare `Files in ~/out/:` line into the quote, so its paragraph is not
+	 * a sibling of the list; the line walker now refuses it too.
+	 */
+	["lazy blockquote continuation", "> Intro\nFiles in ~/out/:\n- a.pdf", []],
+	[
+		"lazy blockquote continuation, longer",
+		"> Intro\nmore prose\nFiles in ~/out/:\n- a.pdf",
+		[],
+	],
+	/* An ordinary wrapped paragraph is NOT a quote: still admitted by both. */
+	[
+		"wrapped introducer paragraph",
+		"Both documents are ready.\nFiles in ~/out/:\n- a.pdf",
+		["~/out/a.pdf"],
+	],
 	[
 		"fence straight under the introducer",
 		"Saved to ~/out/:\n```\n- a.pdf\n```",

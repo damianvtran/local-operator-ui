@@ -1145,6 +1145,9 @@ export function listingDirectoryIn(line: string): string | null {
 	 * missing, and nothing links; `~/repo/v1.2.3:` and `~/x/Next.js:` are
 	 * refused here before any probe. The legacy panel has no oracle, so for it
 	 * `Makefile:` stays a root and only its known-extension rule applies.
+	 * `/etc/nginx/conf.d:` WITHOUT the trailing slash is the same rule: its
+	 * last segment has a dot, so it introduces nothing on either surface
+	 * (round 2, review R2-4) - write `/etc/nginx/conf.d/:` to introduce.
 	 */
 	const lastSegment = directory.slice(directory.lastIndexOf("/") + 1);
 	const isDirectory =
@@ -1274,9 +1277,9 @@ const firstSeparatorIn = (item: string): number => {
  *    they are on disk. With NO oracle (the legacy Files scan), `listedTargetFor`
  *    admits only a whitespace-free name with a known extension instead.
  *
- * Missing and unknown refuse alike, on both branches. A sentence item, and a
- * head with no known extension, stay unresolved. Only the HEAD is ever a link; the description is never part of
- * the span (`length`).
+ * Missing and unknown refuse alike, on both branches. A sentence item, and
+ * a head with no known extension, stay unresolved. Only the HEAD is ever a
+ * link; the description is never part of the span (`length`).
  */
 export function listedEntryFor(
 	directory: string,
@@ -1339,8 +1342,13 @@ const QUOTE_OR_HEADING = /^(?:>|#{1,6}(?:[ \t]|$))/;
 /** A fence line: up to any indent, three or more backticks or tildes, then info. */
 const FENCE_LINE = /^\s*(`{3,}|~{3,})(.*)$/;
 
-/** An ordered marker's number, for CommonMark's "only `1.` interrupts" rule. */
-const ORDERED_START = /^(\d+)/;
+/**
+ * CommonMark's "only an ordered list starting at `1` may interrupt a paragraph"
+ * rule, on the DIGIT rather than on the number: micromark's
+ * `canInterruptParagraph` check is `code === 49 && next is . or )`, so `01.`
+ * does NOT interrupt even though `Number("01") === 1` (round 2, review R2-2).
+ */
+const ORDERED_INTERRUPT = /^1[.)]/;
 
 /** Indent in columns, a tab advancing to the next multiple of four. */
 const indentColumns = (line: string): number => {
@@ -1415,8 +1423,78 @@ const codeLinesOf = (lines: readonly string[]): boolean[] => {
 	return code;
 };
 
+/** A named or numeric character reference, which the mdast decodes. */
+const CHARACTER_REFERENCE =
+	/&(?:#([0-9]{1,7})|#[xX]([0-9a-fA-F]{1,6})|([a-zA-Z][a-zA-Z0-9]{1,31}));/g;
+
+/** The named references the transcript can realistically hold in a filename. */
+const NAMED_REFERENCES: Readonly<Record<string, string>> = {
+	amp: "&",
+	lt: "<",
+	gt: ">",
+	quot: '"',
+	apos: "'",
+	nbsp: "\u00a0",
+};
+
+/**
+ * Decode the character references a listed name can carry, so the pre-scan asks
+ * about the SAME string the mdast hands the linkifier (round 2, review R2-5):
+ * `- a&amp;b.pdf` reads as `a&b.pdf` in the mdast, and asking about the raw
+ * `a&amp;b.pdf` left the real spelling unknown and plain forever. Numeric
+ * references decode by code point; the named table covers the ASCII ones a
+ * path can hold, and any other name is left AS WRITTEN (fail-safe: an
+ * undecoded name is asked about as-is and simply does not link).
+ */
+const decodeCharacterReferences = (text: string): string =>
+	text.replace(CHARACTER_REFERENCE, (whole, decimal, hex, named) => {
+		if (named !== undefined) return NAMED_REFERENCES[named] ?? whole;
+		const code = Number.parseInt(hex ?? decimal, hex ? 16 : 10);
+		if (code === 0 || code > 0x10ffff) return whole;
+		try {
+			return String.fromCodePoint(code);
+		} catch {
+			return whole;
+		}
+	});
+
 /** Markdown's backslash escapes, which the mdast decodes and a raw line keeps. */
 const MARKDOWN_ESCAPE = /\\([!-/:-@[-`{-~])/g;
+
+/**
+ * A line opener that starts a NEW block: a list marker, a quote, a heading, a
+ * fence or a thematic break. A non-blank line that does not open one of these
+ * is a paragraph continuation, not a new paragraph.
+ */
+const BLOCK_OPENER =
+	/^\s*(?:(?:[-*+]|\d{1,9}[.)])[ \t]|>|#{1,6}(?:[ \t]|$)|`{3}|~{3}|(?:(?:[-*_])[ \t]*){3,}$)/;
+
+/**
+ * True when `lines[at]` (a non-blank line) continues the paragraph above it,
+ * rather than opening a block of its own - the CommonMark LAZY-CONTINUATION
+ * case (round 2, review R2-2).
+ *
+ * WHY THE LINE WALKER NEEDS IT: `> Intro` / `Files in ~/out/:` / `- a.pdf` is
+ * one blockquote holding a paragraph and a list, so the transcript's mdast has
+ * no introducer paragraph SIBLING of a list and links nothing. The panel's
+ * line walker used to admit the bare `Files in ~/out/:` line as an introducer
+ * anyway, which produced a tile the transcript never linked. Walking back
+ * through consecutive continuation lines finds the paragraph's own first line:
+ * if that opens a quote, the whole run is quoted and the listing is refused on
+ * both surfaces. Non-quoted continuations stay admitted, so a paragraph that
+ * merely wraps before its introducer still resolves as it always did.
+ */
+const continuesParagraph = (lines: readonly string[], at: number): boolean => {
+	let cursor = at;
+	while (cursor >= 0) {
+		const line = (lines[cursor] ?? "").replace(CARRIAGE_RETURN, "");
+		if (line.trim() === "") return false;
+		if (QUOTE_OR_HEADING.test(line.trimStart())) return true;
+		if (BLOCK_OPENER.test(line)) return false;
+		cursor -= 1;
+	}
+	return false;
+};
 
 /** An item that OPENS with one code span, which an annotation may follow. */
 const LEADING_CODE_SPAN = /^`([^`]+)`(.*)$/;
@@ -1435,11 +1513,16 @@ const itemText = (content: string): { text: string; code: boolean } => {
 	const leading = LEADING_CODE_SPAN.exec(trimmed);
 	if (leading) {
 		return {
-			text: `${leading[1] ?? ""}${(leading[2] ?? "").replace(MARKDOWN_ESCAPE, "$1")}`,
+			text: decodeCharacterReferences(
+				`${leading[1] ?? ""}${(leading[2] ?? "").replace(MARKDOWN_ESCAPE, "$1")}`,
+			),
 			code: true,
 		};
 	}
-	return { text: trimmed.replace(MARKDOWN_ESCAPE, "$1"), code: false };
+	return {
+		text: decodeCharacterReferences(trimmed.replace(MARKDOWN_ESCAPE, "$1")),
+		code: false,
+	};
 };
 
 /**
@@ -1471,6 +1554,16 @@ const itemText = (content: string): { text: string; code: boolean } => {
  * resolves here only where the shape above matches, and the panel's oracle-free
  * policy admits only whitespace-free known-extension names, so the worst
  * disagreement is one tile the transcript would not link.
+ *
+ * LAZY BLOCKQUOTE CONTINUATION IS REFUSED IN BOTH WALKERS (round 2, review
+ * R2-2). CommonMark lets a quote's paragraph continue without its `>` marker
+ * (`> Intro` / `Files in ~/out/:` / `- a.pdf`), and the mdast folds those
+ * lines into the quote: its paragraph is not a sibling of the list, so the
+ * transcript walker never sees an introducer. The line walker matches that
+ * by refusing an introducer that continues a QUOTED paragraph
+ * (`continuesParagraph` walks the paragraph back to its first line). An
+ * ordinary paragraph that merely wraps before its introducer still resolves
+ * exactly as the mdast resolves it.
  */
 export function listedTargetsIn(
 	text: string,
@@ -1489,6 +1582,8 @@ export function listedTargetsIn(
 	for (let index = 0; index < lines.length; index += 1) {
 		if (code[index]) continue;
 		const introducer = lines[index] ?? "";
+		if (index > 0 && !code[index - 1] && continuesParagraph(lines, index - 1))
+			continue;
 		const directory = listingDirectoryIn(introducer);
 		if (!directory) continue;
 		const floor = CONTENT_INDENT.exec(introducer)?.[0].length ?? 0;
@@ -1535,11 +1630,16 @@ export function listedTargetsIn(
 			const kind = markerKind(item[2] ?? "");
 			if (base === null) {
 				if (indent < floor || indent > floor + 3) break;
-				// CommonMark: only an ordered list starting at 1 may interrupt a
-				// paragraph; `2.` straight under the introducer is that paragraph's
-				// continuation, so the mdast has no list there (round 1, F3).
-				const number = ORDERED_START.exec(item[2] ?? "")?.[1];
-				if (!afterBlank && number !== undefined && Number(number) !== 1) break;
+				// CommonMark: only an ordered list starting at the digit 1 may
+				// interrupt a paragraph; `2.` and `01.` straight under the
+				// introducer are that paragraph's continuation, so the mdast has
+				// no list there (round 1, F3; round 2, review R2-2).
+				if (
+					!afterBlank &&
+					ORDERED_MARKER.test(item[2] ?? "") &&
+					!ORDERED_INTERRUPT.test(item[2] ?? "")
+				)
+					break;
 				base = indent;
 				marker = kind;
 			}

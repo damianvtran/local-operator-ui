@@ -13,6 +13,7 @@ import {
 	LINK_TARGET_ATTR,
 	LINK_TARGET_PATH_ATTR,
 	type LinkKind,
+	claimFirstScan,
 	classifyHref,
 	clickDecision,
 	evidenceFor,
@@ -603,16 +604,25 @@ const useMathPipeline = (
  * nothing and are the shape that survives a future upgrade restoring an internal
  * memo - not because they gate this today.
  *
- * ONE ASK PER DISTINCT SPELLING, EVER. The pre-scan is deduped, `probeTargets`
- * dedupes again against the cache and against the asks already in flight (two
- * rows carrying `/tmp` paint in the same frame and would otherwise both ask), and
- * the answers land in the same cache the link toolbar reads. A streaming row
- * (`linkify` false) does no scanning and asks nothing at all - a per-delta stat
- * storm is the one shape this could go wrong in.
+ * ONE ASK PER DISTINCT SPELLING PER DOCUMENT. The pre-scan is deduped,
+ * `probeTargets` dedupes again against the cache and against the asks already in
+ * flight (two rows carrying `/tmp` paint in the same frame and would otherwise
+ * both ask), and the answers land in the same cache the link toolbar reads. A
+ * streaming row (`linkify` false) does no scanning and asks nothing at all - a
+ * per-delta stat storm is the one shape this could go wrong in.
  *
- * A FRESH PATH CREATED AFTER THE MESSAGE PAINTED STAYS PLAIN. The Files panel
- * owns a growth-triggered retry (`use-mentioned-files`); the linkifier owns none,
- * so an extensionless file that appears later is not re-scanned. That is the
+ * A NEW MESSAGE RE-ASKS THE MISSING ONES (round 2, review R2-1): an agent that
+ * lists its deliverables BEFORE the tool writes them caches a negative per name,
+ * and the report that lists them after would otherwise read that negative
+ * forever. `claimFirstScan` marks the first scan of each document, so the new
+ * report re-probes the spellings it names that are cached as missing, and the
+ * landing answer re-renders the earlier rows through `subscribeProbes` too. A
+ * remount of the SAME document is not a new message and re-asks nothing.
+ *
+ * A FRESH PATH CREATED AFTER THE MESSAGE PAINTED, AND NEVER NAMED AGAIN, STAYS
+ * PLAIN. The Files panel owns a growth-triggered retry (`use-mentioned-files`);
+ * the linkifier retries only on a new message, so an extensionless file that
+ * appears later with no later message naming it is not re-scanned. That is the
  * accepted false negative of plain-until-known, recorded on the pull request
  * rather than discovered by a reader.
  */
@@ -628,22 +638,22 @@ const useLinkEvidence = (content: string, linkify: boolean): void => {
 			if (live && landed.some((target) => armed.has(target)))
 				setTick((count) => count + 1);
 		});
-		void probeTargets(suspects, window.api?.probeFiles, MAX_PROBE_PATHS).then(
-			() => {
-				/*
-				 * An answer that landed before this effect subscribed - another row, or
-				 * the toolbar, asked first - is caught here rather than by the
-				 * subscription: the ask above returns immediately when every spelling is
-				 * already cached, and nothing would notify a listener that arrived after
-				 * the fact.
-				 */
-				if (
-					live &&
-					suspects.some((target) => evidenceFor(target) !== "unknown")
-				)
-					setTick((count) => count + 1);
-			},
-		);
+		void probeTargets(
+			suspects,
+			window.api?.probeFiles,
+			MAX_PROBE_PATHS,
+			claimFirstScan(content),
+		).then(() => {
+			/*
+			 * An answer that landed before this effect subscribed - another row, or
+			 * the toolbar, asked first - is caught here rather than by the
+			 * subscription: the ask above returns immediately when every spelling is
+			 * already cached, and nothing would notify a listener that arrived after
+			 * the fact.
+			 */
+			if (live && suspects.some((target) => evidenceFor(target) !== "unknown"))
+				setTick((count) => count + 1);
+		});
 		return () => {
 			live = false;
 			stop();

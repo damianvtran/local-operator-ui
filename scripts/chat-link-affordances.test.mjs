@@ -45,7 +45,14 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { after, afterEach, beforeEach, test } from "node:test";
 import { pathToFileURL } from "node:url";
@@ -792,6 +799,78 @@ test("a slash command is never an anchor, and a real directory becomes one when 
 		"/Users/someone/workspace",
 		"/Users/someone/downloads/",
 	]);
+});
+
+test("R2-1: message A lists files that do not exist yet; after they are written, message B links them AND A re-links", async () => {
+	/*
+	 * THE REVIEWER'S FLOW, driven through the real component rather than through
+	 * the cache alone. A is a pre-tool segment (`Writing to ...` + names) that
+	 * finalizes before the tool runs; B is the report. At round-1's head the
+	 * negative A cached was read by B for the rest of the session, so B stayed
+	 * plain even though the files were on disk - and plain text has no failed
+	 * click to evict the entry.
+	 *
+	 * The disk here is a real temp directory, not a lookup table: the flip from
+	 * "planned" to "written" is `writeFileSync`, which is the event the fix
+	 * exists for.
+	 */
+	const dir = mkdtempSync(join(tmpdir(), "r2-1-"));
+	const A = `I'll write the deliverables to \`${dir}/\`:\n- report.pdf\n- data.xlsx`;
+	const B = `Done. Files are in \`${dir}/\`:\n- report.pdf\n- data.xlsx`;
+	const asked = [];
+	frame.window.api = {
+		...frame.window.api,
+		probeFiles: async (paths) => {
+			asked.push([...paths]);
+			return paths.map((input) => {
+				const exists = existsSync(input);
+				return {
+					input,
+					resolved: input,
+					exists,
+					isFile: exists,
+					sizeBytes: null,
+					mtimeMs: null,
+				};
+			});
+		},
+	};
+	const Row = ({ text }) =>
+		React.createElement(MarkdownRenderer, { content: text });
+	const listed = (url) =>
+		anchorsWithTarget(frame.document, url).map((a) => a.textContent);
+
+	// A paints first: both names are missing, so both stay plain.
+	await frame.render(React.createElement(Row, { text: A }));
+	assert.deepEqual(listed(`${dir}/report.pdf`), []);
+	assert.deepEqual(listed(`${dir}/data.xlsx`), []);
+	const afterA = asked.length;
+
+	// A re-renders (a virtualized remount): no new stat.
+	await frame.render(React.createElement(Row, { text: A }));
+	assert.equal(
+		asked.length,
+		afterA,
+		"a remount of the same document asks nothing",
+	);
+
+	// The tool runs.
+	writeFileSync(join(dir, "report.pdf"), "%PDF-1.4\n");
+	writeFileSync(join(dir, "data.xlsx"), "PK");
+
+	// B paints, naming the same paths: it re-asks, and BOTH rows now link.
+	await frame.render(
+		React.createElement(
+			React.Fragment,
+			null,
+			React.createElement(Row, { key: "a", text: A }),
+			React.createElement(Row, { key: "b", text: B }),
+		),
+	);
+	assert.ok(asked.length > afterA, "the new document re-asked the negatives");
+	assert.deepEqual(listed(`${dir}/report.pdf`), ["report.pdf", "report.pdf"]);
+	assert.deepEqual(listed(`${dir}/data.xlsx`), ["data.xlsx", "data.xlsx"]);
+	rmSync(dir, { recursive: true, force: true });
 });
 
 test("with no probe bridge the ambiguous tokens stay prose and nothing throws", async () => {

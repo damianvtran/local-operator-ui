@@ -270,12 +270,53 @@ export type ProbeFunction = (paths: string[]) => Promise<
 /*
  * The session's answers. A negative is cached too (the file may be created
  * later, and `use-mentioned-files` covers that case for the Files panel with a
- * growth trigger); here the recovery is the click that failed, which forgets the
- * entry and re-probes rather than leaving the reader with a stale "No file".
+ * growth trigger); here there are two recoveries: the click that failed, which
+ * forgets the entry and re-probes rather than leaving the reader with a stale
+ * "No file", and a NEW message naming the spelling (`claimFirstScan` below).
  * A FAULT is not an answer and is never cached at all - see the `error` arm in
  * `probeTargets` below.
  */
 const probeCache = new Map<string, ProbedTarget>();
+
+/**
+ * Every document the transcript has pre-scanned this session, so a REMOUNT of a
+ * row is told apart from a NEW row (round 2, review R2-1).
+ *
+ * WHY. A listed name links only on the disk's "exists", so an agent that writes
+ * `Writing to ~/out/:` + names BEFORE its tool runs caches a negative for each
+ * name, and the final report listing the same names - mounted after the files
+ * were written - used to read that negative and stay plain for the rest of the
+ * session. A new message naming a spelling is the event that says the answer
+ * may have moved, so the first scan of a document re-asks the negatives among
+ * its suspects; the answer lands through `notifyProbes`, which re-renders the
+ * EARLIER row too.
+ *
+ * WHY NOT A TTL. A tool that writes in two seconds puts the report inside any
+ * TTL short enough to matter, and a TTL short enough to cover it re-asks on
+ * every virtualized remount - up to `probeFiles` 79 batches for one long
+ * listing on each scroll (review R2-3's measurement). Keyed on the document,
+ * a re-ask costs one stat per negative per NEW message, never per render or
+ * per scroll. An earlier row whose files appear with no later message naming
+ * them stays plain: the accepted false negative recorded in
+ * `markdown-renderer.tsx`'s `useLinkEvidence`.
+ *
+ * BOUNDED. Cleared when it reaches `SCANNED_LIMIT` documents: the cost of the
+ * clear is one extra ask round for negatives in the rows mounted after it,
+ * which `probeTargets`'s dedupe and batching already bound.
+ */
+const scannedDocuments = new Set<string>();
+const SCANNED_LIMIT = 4096;
+
+/**
+ * True exactly once per distinct document per session: the caller is the first
+ * scan of it, so its cached negatives are worth asking again.
+ */
+export const claimFirstScan = (document: string): boolean => {
+	if (scannedDocuments.has(document)) return false;
+	if (scannedDocuments.size >= SCANNED_LIMIT) scannedDocuments.clear();
+	scannedDocuments.add(document);
+	return true;
+};
 
 /** What is known about a target, or `undefined` when it has not been asked. */
 export const probeStateFor = (target: string): ProbedTarget | undefined =>
@@ -298,6 +339,7 @@ export const forgetProbe = (target: string): void => {
  */
 export const resetProbeCache = (): void => {
 	probeCache.clear();
+	scannedDocuments.clear();
 };
 
 /**
@@ -417,11 +459,16 @@ const inFlightProbes = new Set<string>();
  * A chunk that throws warns ONCE per call and is left uncached: a stat that
  * failed says nothing about whether the file exists, and a second warning for a
  * second bad chunk is noise about one broken bridge.
+ *
+ * `recheckMissing` asks again about spellings cached as MISSING (never about
+ * an "exists", which stays cached as before); the in-flight set still dedupes
+ * it. Only a document's first scan passes it (`claimFirstScan`).
  */
 export async function probeTargets(
 	targets: readonly string[],
 	ask: ProbeFunction | undefined,
 	maxBatch: number,
+	recheckMissing = false,
 ): Promise<void> {
 	/*
 	 * No bridge is not an error: Storybook and browser development have none, and
@@ -434,7 +481,9 @@ export async function probeTargets(
 	const seen = new Set<string>();
 	const wanted: string[] = [];
 	for (const target of targets) {
-		if (probeCache.has(target) || inFlightProbes.has(target)) continue;
+		if (inFlightProbes.has(target)) continue;
+		const known = probeCache.get(target);
+		if (known && (known.exists || !recheckMissing)) continue;
 		if (seen.has(target)) continue;
 		seen.add(target);
 		wanted.push(target);
