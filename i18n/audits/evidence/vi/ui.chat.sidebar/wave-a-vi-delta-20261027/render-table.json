@@ -1,0 +1,392 @@
+{
+ "namespace": "ui.chat.sidebar",
+ "head": "80ee119bbd1084ee873994a1f39db0c085c62083",
+ "parent_head": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "locale": "vi",
+ "tool": "delta-audit.mjs (repo-installed @formatjs/icu-messageformat-parser + intl-messageformat)",
+ "keys": [
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.collapse_chats",
+   "en": "Collapse {name} chats",
+   "vi": "Thu gọn cuộc trò chuyện của {name}",
+   "ctx_role": "accessible name of the disclosure control that collapses an agent's or team's chats in the sidebar",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "name:argument"
+   ],
+   "viArgs": [
+    "name:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 21,
+   "viCells": 34,
+   "deltaCells": 13,
+   "ratio": 1.62,
+   "rendered": {
+    "args": {
+     "name": "Mẫu"
+    },
+    "en": "Collapse Mẫu chats",
+    "vi": "Thu gọn cuộc trò chuyện của Mẫu",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.expand_chats",
+   "en": "Expand {name} chats",
+   "vi": "Mở rộng cuộc trò chuyện của {name}",
+   "ctx_role": "accessible name of the disclosure control that expands an agent's or team's chats in the sidebar",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "name:argument"
+   ],
+   "viArgs": [
+    "name:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 19,
+   "viCells": 34,
+   "deltaCells": 15,
+   "ratio": 1.79,
+   "rendered": {
+    "args": {
+     "name": "Mẫu"
+    },
+    "en": "Expand Mẫu chats",
+    "vi": "Mở rộng cuộc trò chuyện của Mẫu",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.manage",
+   "en": "Manage {name}",
+   "vi": "Quản lý {name}",
+   "ctx_role": "accessible name of the sidebar row control that opens the entity's management page",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "name:argument"
+   ],
+   "viArgs": [
+    "name:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 13,
+   "viCells": 14,
+   "deltaCells": 1,
+   "ratio": 1.08,
+   "rendered": {
+    "args": {
+     "name": "Mẫu"
+    },
+    "en": "Manage Mẫu",
+    "vi": "Quản lý Mẫu",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.pin",
+   "en": "Pin “{name}”",
+   "vi": "Ghim “{name}”",
+   "ctx_role": "accessible name of the sidebar control that lifts an agent to the top of its section",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "name:argument"
+   ],
+   "viArgs": [
+    "name:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 12,
+   "viCells": 13,
+   "deltaCells": 1,
+   "ratio": 1.08,
+   "rendered": {
+    "args": {
+     "name": "Mẫu"
+    },
+    "en": "Pin “Mẫu”",
+    "vi": "Ghim “Mẫu”",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.unpin",
+   "en": "Unpin “{name}”",
+   "vi": "Bỏ ghim “{name}”",
+   "ctx_role": "action tooltip on the pin control of an already-pinned sidebar agent",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "name:argument"
+   ],
+   "viArgs": [
+    "name:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 14,
+   "viCells": 16,
+   "deltaCells": 2,
+   "ratio": 1.14,
+   "rendered": {
+    "args": {
+     "name": "Mẫu"
+    },
+    "en": "Unpin “Mẫu”",
+    "vi": "Bỏ ghim “Mẫu”",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.pins.pin_label",
+   "en": "Pin “{title}”",
+   "vi": "Ghim “{title}”",
+   "ctx_role": "accessible name and tooltip of the pin control on a conversation row in the pinned section",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "title:argument"
+   ],
+   "viArgs": [
+    "title:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 13,
+   "viCells": 14,
+   "deltaCells": 1,
+   "ratio": 1.08,
+   "rendered": {
+    "args": {
+     "title": "Mẫu"
+    },
+    "en": "Pin “Mẫu”",
+    "vi": "Ghim “Mẫu”",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.pins.unpin_label",
+   "en": "Unpin “{title}”",
+   "vi": "Bỏ ghim “{title}”",
+   "ctx_role": "accessible name and tooltip of the pin control on an already-pinned conversation row",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "title:argument"
+   ],
+   "viArgs": [
+    "title:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 15,
+   "viCells": 17,
+   "deltaCells": 2,
+   "ratio": 1.13,
+   "rendered": {
+    "args": {
+     "title": "Mẫu"
+    },
+    "en": "Unpin “Mẫu”",
+    "vi": "Bỏ ghim “Mẫu”",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.row_menu.archive",
+   "en": "Archive conversation",
+   "vi": "Lưu trữ cuộc trò chuyện",
+   "ctx_role": "row context-menu item that archives the conversation",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 20,
+   "viCells": 23,
+   "deltaCells": 3,
+   "ratio": 1.15,
+   "rendered": {
+    "args": {},
+    "en": "Archive conversation",
+    "vi": "Lưu trữ cuộc trò chuyện",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.row_menu.pin",
+   "en": "Pin conversation",
+   "vi": "Ghim cuộc trò chuyện",
+   "ctx_role": "row context-menu item that pins the conversation",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 16,
+   "viCells": 20,
+   "deltaCells": 4,
+   "ratio": 1.25,
+   "rendered": {
+    "args": {},
+    "en": "Pin conversation",
+    "vi": "Ghim cuộc trò chuyện",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.row_menu.unarchive",
+   "en": "Unarchive conversation",
+   "vi": "Khôi phục cuộc trò chuyện",
+   "ctx_role": "row context-menu item that restores an archived conversation",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 22,
+   "viCells": 25,
+   "deltaCells": 3,
+   "ratio": 1.14,
+   "rendered": {
+    "args": {},
+    "en": "Unarchive conversation",
+    "vi": "Khôi phục cuộc trò chuyện",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.row_menu.unpin",
+   "en": "Unpin conversation",
+   "vi": "Bỏ ghim cuộc trò chuyện",
+   "ctx_role": "row context-menu item that unpins the conversation",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 18,
+   "viCells": 23,
+   "deltaCells": 5,
+   "ratio": 1.28,
+   "rendered": {
+    "args": {},
+    "en": "Unpin conversation",
+    "vi": "Bỏ ghim cuộc trò chuyện",
+    "viError": null
+   },
+   "maxCells": null
+  }
+ ]
+}
