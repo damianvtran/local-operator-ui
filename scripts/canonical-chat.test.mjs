@@ -69,6 +69,10 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	plugins: [
 		{
 			name: "canonical-transport-fixture",

@@ -121,7 +121,7 @@ const bundle = await build({
 			// The notice module is the ONE authority for the sentence the reader sees.
 			// Exported through the same bundle so this test compares the shipping mapping
 			// rather than a copy of it (design round 1, D1).
-			'export { streamFailureNotice, DESKTOP_STREAM_DETAIL, HISTORY_UNREADABLE } from "./src/shared/desktop-stream-notice.ts";',
+			'export { DESKTOP_STREAM_DETAIL } from "./src/shared/desktop-stream-notice.ts"; export { streamFailureNotice } from "./src/renderer/src/features/chat/canonical/session-failure-notice.ts";',
 			// Re-exported from the fixture so each fresh copy of the hook can be
 			// bound to its own runtime: a shared global would let a previous
 			// mount's pending render read THIS mount's hook slots.
@@ -134,6 +134,10 @@ const bundle = await build({
 	platform: "neutral",
 	mainFields: ["module", "main"],
 	conditions: ["import"],
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 	// The renderer's `@features` / `@shared` aliases are tsconfig paths rather
 	// than node resolutions, and the root tsconfig carries no `paths` of its own
@@ -305,7 +309,6 @@ async function loadHook(tag) {
 const {
 	streamFailureNotice,
 	DESKTOP_STREAM_DETAIL,
-	HISTORY_UNREADABLE,
 	STREAM_SNAPSHOT_DEADLINE_MS,
 	STREAM_SNAPSHOT_RECHECK_MS,
 } = await loadHook("notice");
