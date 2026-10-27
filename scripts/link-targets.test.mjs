@@ -1458,3 +1458,156 @@ test("the panel keeps its known-extension rule on a listed name", () => {
 	assert.deepEqual(panelPaths("Files in ~/out:\n- my build.xyz123"), []);
 	assert.deepEqual(linksIn("Files in ~/out:\n- my build.xyz123"), []);
 });
+
+/*
+ * THE ANNOTATED FORM: `<name><separator><description>`, the shape of the message
+ * the operator actually screenshotted (12:27). Only the HEAD resolves, only with
+ * a known extension, and only when the disk says it exists - so these tests
+ * answer the disk through the app's own probe cache, as the plugin reads it.
+ */
+const SCREENSHOT_1227 =
+	"Files are in `~/Documents/Radient/`:\n- Radient-IP-Scope-for-Counsel-2026-10-27.pdf\n- Radient-IP-Scope-for-Counsel-2026-10-27 (editable).docx — the same text without the Radient styling, so the lawyers can mark it up";
+/** The pre-scan's listed suspects: the introducing directory is one on its own (an existing rule). */
+const listedSuspects = (text) =>
+	ambiguousTargetsIn(text).filter(
+		(target) => !target.endsWith("/") && EXTENSIONED.test(target),
+	);
+const answerDisk = (present) =>
+	Promise.all(
+		ambiguousTargetsIn(SCREENSHOT_1227)
+			.concat(present.missing ?? [])
+			.concat(present.exists ?? [])
+			.map((target) =>
+				probeTarget(target, async (paths) =>
+					paths.map((path) => ({
+						exists: (present.exists ?? []).includes(path),
+						isFile: true,
+					})),
+				),
+			),
+	);
+
+test("an annotated item resolves its HEAD only, when the disk vouches for it (the 12:27 message)", async () => {
+	/* The pre-scan asks the disk about the annotated head - and only that. */
+	assert.deepEqual(listedSuspects(SCREENSHOT_1227), [LISTED[1]]);
+	/* Cold: the whole-item name links, the annotated head waits for the disk. */
+	assert.deepEqual(
+		linksIn(SCREENSHOT_1227).filter(
+			(link) => link.url !== "~/Documents/Radient/",
+		),
+		[{ url: LISTED[0], text: "Radient-IP-Scope-for-Counsel-2026-10-27.pdf" }],
+	);
+	await answerDisk({ exists: [LISTED[1]] });
+	assert.equal(evidenceFor(LISTED[1]), "exists");
+	assert.deepEqual(
+		linksIn(SCREENSHOT_1227).filter(
+			(link) => link.url !== "~/Documents/Radient/",
+		),
+		[
+			{ url: LISTED[0], text: "Radient-IP-Scope-for-Counsel-2026-10-27.pdf" },
+			{
+				url: LISTED[1],
+				text: "Radient-IP-Scope-for-Counsel-2026-10-27 (editable).docx",
+			},
+		],
+		"both rows of the screenshotted message link, and the description does not",
+	);
+	/* The description is still the item's own text, after the anchor. */
+	const tree = parseWith(SCREENSHOT_1227, true);
+	const items = [];
+	const visit = (node) => {
+		if (node.type === "listItem") items.push(node);
+		for (const child of node.children ?? []) visit(child);
+	};
+	visit(tree);
+	const second = items[1].children[0].children;
+	assert.equal(second[0].type, "link");
+	assert.equal(
+		second[1].value,
+		" — the same text without the Radient styling, so the lawyers can mark it up",
+	);
+});
+
+test("every annotation separator, and a code-wrapped head", async () => {
+	const cases = [
+		["Files in ~/out:\n- a.pdf — the summary", "~/out/a.pdf", "a.pdf"],
+		["Files in ~/out:\n- a.pdf – the summary", "~/out/a.pdf", "a.pdf"],
+		[
+			"Files in ~/out:\n- my-2026-10-27.pdf - the summary",
+			"~/out/my-2026-10-27.pdf",
+			"my-2026-10-27.pdf",
+		],
+		[
+			"Files in ~/out:\n- a b.docx: the editable copy",
+			"~/out/a b.docx",
+			"a b.docx",
+		],
+		[
+			"Files in ~/out:\n- `a b.docx` — the editable copy",
+			"~/out/a b.docx",
+			"a b.docx",
+		],
+	];
+	for (const [text, target, label] of cases) {
+		resetProbeCache();
+		assert.deepEqual(listedSuspects(text), [target], `pre-scan: ${text}`);
+		assert.deepEqual(
+			linksIn(text).filter((l) => l.url === target),
+			[],
+			`cold: ${text}`,
+		);
+		await probeTarget(target, async (paths) =>
+			paths.map(() => ({ exists: true, isFile: true })),
+		);
+		assert.deepEqual(
+			linksIn(text).filter((l) => l.url === target),
+			[{ url: target, text: label }],
+			`linked head only: ${text}`,
+		);
+	}
+});
+
+test("annotated negatives: no extension, unknown extension, missing on disk, no separator", async () => {
+	/* A sentence whose head has no extension is not a name - and is not even probed. */
+	for (const text of [
+		"Files in ~/out:\n- Run the tests - they pass",
+		"Files in ~/out:\n- build.xyz123 — the binary",
+		"Files in ~/out:\n- Open report.pdf for the summary",
+	]) {
+		assert.deepEqual(listedSuspects(text), [], `not probed: ${text}`);
+		assert.deepEqual(
+			linksIn(text).filter((l) => l.url !== "~/out"),
+			[],
+			`not linked: ${text}`,
+		);
+	}
+	/* A head the disk says is missing stays plain text. */
+	const text = "Files in ~/out:\n- gone.pdf — deleted since";
+	assert.deepEqual(listedSuspects(text), ["~/out/gone.pdf"]);
+	await probeTarget("~/out/gone.pdf", async (paths) =>
+		paths.map(() => ({ exists: false, isFile: false })),
+	);
+	assert.equal(evidenceFor("~/out/gone.pdf"), "missing");
+	assert.deepEqual(
+		linksIn(text).filter((l) => l.url !== "~/out"),
+		[],
+	);
+	/*
+	 * A sentence whose head happens to END in a known extension passes the SHAPE
+	 * test - the separator rule cannot tell `I wrote report.pdf` from a name with
+	 * spaces - and that is exactly why every annotated head takes the evidence
+	 * gate: the disk has no file by that name, so it stays plain.
+	 */
+	const sentence = "Files in ~/out:\n- I wrote report.pdf - it is final";
+	assert.deepEqual(listedSuspects(sentence), ["~/out/I wrote report.pdf"]);
+	await probeTarget("~/out/I wrote report.pdf", async (paths) =>
+		paths.map(() => ({ exists: false, isFile: false })),
+	);
+	assert.deepEqual(
+		linksIn(sentence).filter((l) => l.url !== "~/out"),
+		[],
+	);
+	/* The panel's legacy scan has no oracle, so it never admits an annotated head. */
+	assert.deepEqual(panelPaths(text), []);
+	assert.deepEqual(panelPaths(SCREENSHOT_1227), [LISTED[0]]);
+});

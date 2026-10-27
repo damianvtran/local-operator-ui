@@ -1003,16 +1003,41 @@ const DISCOVERY_POLICY: TargetPolicy = {
  */
 export function ambiguousTargetsIn(text: string): string[] {
 	const seen = new Set<string>();
-	const suspects: string[] = [];
+	const suspects: TargetSpan[] = [];
 	for (const span of targetsIn(text, DISCOVERY_POLICY)) {
 		if (span.kind !== "path") continue;
 		if (!isAmbiguousCandidate(span.target)) continue;
-		if (seen.has(span.target)) continue;
-		seen.add(span.target);
-		suspects.push(span.target);
+		suspects.push(span);
 	}
-	return suspects;
+	/*
+	 * The directory-anchored listing's ANNOTATED heads take the evidence gate too
+	 * (`listedEntryFor`), and the oracle can only answer what was asked - so they
+	 * are suspects as well. Defined by the same property as the rest of this
+	 * query: admitted with the question suspended, refused when the disk says no.
+	 */
+	const listed = listedTargetsIn(text, DISCOVERY_POLICY);
+	if (listed.length > 0) {
+		const refused = new Set(
+			listedTargetsIn(text, REFUSING_POLICY).map((span) => span.target),
+		);
+		for (const span of listed)
+			if (!refused.has(span.target)) suspects.push(span);
+	}
+	return suspects
+		.sort((a, b) => a.start - b.start)
+		.map((span) => span.target)
+		.filter((target) => {
+			if (seen.has(target)) return false;
+			seen.add(target);
+			return true;
+		});
 }
+
+/** The disk saying no to everything: the other half of the pre-scan's property. */
+const REFUSING_POLICY: TargetPolicy = {
+	...LINK_POLICY,
+	evidence: () => "missing",
+};
 
 /* ======================================================= directory-anchored listing */
 
@@ -1054,6 +1079,9 @@ export function ambiguousTargetsIn(text: string): string[] {
  *   surfaces, because whitespace is where a list of names and a list of phrases
  *   overlap and a known extension is the one positive signal left.
  * - A bare name WITHOUT an introducer stays unresolved, exactly as before.
+ * - An ANNOTATED item - `<name><separator><description>` - resolves its head only,
+ *   and only with the disk's word for it. See `LISTED_ANNOTATION_SEPARATORS` and
+ *   `listedEntryFor`, which carry the exact contract.
  *
  * ONE GRAMMAR, TWO WALKERS. The Files panel reads the raw markdown string and
  * the transcript reads the mdast, so each walks lines or nodes its own way, but
@@ -1064,11 +1092,13 @@ export function ambiguousTargetsIn(text: string): string[] {
  * transcript's is the `list` branch in `remark-linkify-targets.ts`.
  *
  * WHAT THE POLICIES DO HERE. `knownExtensionRequired` keeps its meaning (the
- * panel admits only a known extension). The evidence gate is never reached: a
- * listed name must carry an extension, so `isAmbiguousCandidate` is false for
- * every resolved target by construction, and `ambiguousTargetsIn`'s pre-scan
- * property is untouched - an extensionless list item (`Done`, `Makefile`) is
- * refused rather than probed, the fail-safe direction this module trades in.
+ * panel admits only a known extension). For a WHOLE-item name the evidence gate
+ * is never reached: it must carry an extension, so `isAmbiguousCandidate` is
+ * false for it by construction, and an extensionless list item (`Done`,
+ * `Makefile`) is refused rather than probed - the fail-safe direction this
+ * module trades in. For an ANNOTATED item's head the gate IS reached, always
+ * (see `listedEntryFor`), and `ambiguousTargetsIn` lists those heads so the
+ * renderer asks the disk about them before it can link one.
  */
 
 /** What may follow the introducer's directory: closing emphasis/code, then a colon. */
@@ -1136,6 +1166,118 @@ export function listedTargetFor(
 	return `${directory.replace(TRAILING_SLASHES, "")}/${name}`;
 }
 
+/**
+ * The separators that split an ANNOTATED list item into `<name>` and a
+ * description, EXACTLY these four, spaces included:
+ *
+ *   " — "  (space, U+2014 em dash, space)
+ *   " – "  (space, U+2013 en dash, space)
+ *   " - "  (space, U+002D hyphen-minus, space)
+ *   ": "   (U+003A colon, space)
+ *
+ * WHY: listing a deliverable with a note after it is the normal agent shape -
+ * the operator's own report (2026-10-27, 12:27) ended
+ * `- Radient-IP-Scope-for-Counsel-2026-10-27 (editable).docx — the same text
+ * without the Radient styling, so the lawyers can mark it up`. The spaces are
+ * part of every dash separator so that a hyphen INSIDE a filename
+ * (`2026-10-27`) never splits it, and the colon needs only the space after it
+ * because that is how a note is written (`report.pdf: the summary`) and a colon
+ * is not a character a listed name carries. MIRRORED 1:1 by the backend's
+ * session-files ledger (`local_operator/session_files/scan.py`): a change here is
+ * a change there.
+ */
+export const LISTED_ANNOTATION_SEPARATORS = [
+	" — ",
+	" – ",
+	" - ",
+	": ",
+] as const;
+
+/** One resolved list item: its target, and how much of the item's text is the name. */
+export type ListedEntry = {
+	/** `<directory>/<name>`. */
+	target: string;
+	/** Length of the name at the start of the (trimmed) item text: the span a link covers. */
+	length: number;
+	/** True when the item carried a description after a separator. */
+	annotated: boolean;
+};
+
+/**
+ * Where the first annotation separator starts in `item`, or -1.
+ *
+ * The FIRST one, by position, across all four: the head is everything before it.
+ */
+const firstSeparatorIn = (item: string): number => {
+	let at = -1;
+	for (const separator of LISTED_ANNOTATION_SEPARATORS) {
+		const index = item.indexOf(separator);
+		if (index > 0 && (at === -1 || index < at)) at = index;
+	}
+	return at;
+};
+
+/**
+ * THE LISTED-ITEM RULE: what one list item under an introducing directory
+ * resolves to, or null. Both surfaces call this - the transcript's `list` walker
+ * and the Files panel's `listedTargetsIn` - so the contract is here once:
+ *
+ * 1. ANNOTATED, tried first. The item contains one of
+ *    `LISTED_ANNOTATION_SEPARATORS`; the HEAD is the text before the FIRST
+ *    separator (by position). The head resolves only when ALL of:
+ *    - it is a complete name by `listedTargetFor`'s rules (no `/` or `\`, no
+ *      placeholder, no line break);
+ *    - its extension is in `KNOWN_EXTENSIONS` (the panel's `MENTION_POLICY`
+ *      list) on EITHER surface - a head is cut out of prose, and a known
+ *      extension is the one positive sign that it is a name and not a phrase
+ *      (`Run the tests - they pass` has none and stays plain);
+ *    - the disk says `<directory>/<head>` EXISTS: `policy.evidence` answers
+ *      "exists". Absent oracle, "missing" and "unknown" all refuse - the same
+ *      gate an ambiguous prose token takes in `targetsIn`, applied here to every
+ *      annotated head because a cut is a guess the shape alone cannot back.
+ *      Consequence, stated: `MENTION_POLICY` carries no oracle, so the renderer's
+ *      legacy Files scan never admits an annotated head (the backend's ledger,
+ *      which stats, is the panel's answer for that shape).
+ *    Once a head qualifies by SHAPE the decision is final: a head the disk
+ *    refuses is not retried as a whole-item name, because the whole item is
+ *    then a name plus prose, and linking it would be the wrong claim.
+ * 2. WHOLE ITEM, otherwise: the entire item text is one name, by
+ *    `listedTargetFor`, with no evidence asked (an extensioned name, exactly as
+ *    an extensioned `/abs` token is treated today).
+ *
+ * A sentence item with no separator, and a head with no known extension, stay
+ * unresolved. Only the HEAD is ever a link; the description is never part of
+ * the span (`length`).
+ */
+export function listedEntryFor(
+	directory: string,
+	item: string,
+	policy: TargetPolicy,
+): ListedEntry | null {
+	const text = item.trim();
+	const at = firstSeparatorIn(text);
+	if (at > 0) {
+		const head = text.slice(0, at);
+		const extension = extensionOf(head);
+		if (extension !== null && KNOWN_EXTENSIONS.has(extension)) {
+			const target = listedTargetFor(directory, head, policy);
+			// The trailing-punctuation trim must not have changed the head: the span
+			// covers what was written, and a target that differs from it is a guess.
+			if (target?.endsWith(`/${head}`)) {
+				if (policy.evidence?.(target) !== "exists") return null;
+				return { target, length: head.length, annotated: true };
+			}
+		}
+	}
+	const target = listedTargetFor(directory, text, policy);
+	if (!target) return null;
+	return {
+		target,
+		length: target.length - target.lastIndexOf("/") - 1,
+		annotated: false,
+	};
+}
+
 /** A markdown list item line: indent, marker, optional GFM task box, content. */
 const LIST_ITEM_LINE =
 	/^(\s*)([-*+]|\d{1,9}[.)])[ \t]+(?:\[[ xX]\][ \t]+)?(.*)$/;
@@ -1163,11 +1305,28 @@ const CONTENT_INDENT = /^\s*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)?/;
 /** Markdown's backslash escapes, which the mdast decodes and a raw line keeps. */
 const MARKDOWN_ESCAPE = /\\([!-/:-@[-`{-~])/g;
 
-/** One item's text as the mdast would hold it: escapes decoded, one code span unwrapped. */
-const itemText = (content: string): string => {
+/** An item that OPENS with one code span, which an annotation may follow. */
+const LEADING_CODE_SPAN = /^`([^`]+)`(.*)$/;
+
+/**
+ * One item's text as the mdast would hold it, plus how many raw characters the
+ * name's span is offset by: escapes decoded, and a whole or LEADING code span
+ * unwrapped (`` `X.docx` — note `` reads as `X.docx — note`, the head being the
+ * code span's own value - the shape the transcript walker sees as an
+ * `inlineCode` node followed by a `text` node).
+ */
+const itemText = (content: string): { text: string; code: boolean } => {
 	const trimmed = content.trim();
-	const code = WHOLE_CODE_SPAN.exec(trimmed);
-	return code ? (code[1] ?? "") : trimmed.replace(MARKDOWN_ESCAPE, "$1");
+	const whole = WHOLE_CODE_SPAN.exec(trimmed);
+	if (whole) return { text: whole[1] ?? "", code: true };
+	const leading = LEADING_CODE_SPAN.exec(trimmed);
+	if (leading) {
+		return {
+			text: `${leading[1] ?? ""}${(leading[2] ?? "").replace(MARKDOWN_ESCAPE, "$1")}`,
+			code: true,
+		};
+	}
+	return { text: trimmed.replace(MARKDOWN_ESCAPE, "$1"), code: false };
 };
 
 /**
@@ -1248,15 +1407,17 @@ export function listedTargetsIn(
 			if (pending) found.push(pending);
 			pending = null;
 			const content = item[3] ?? "";
-			const target = listedTargetFor(directory, itemText(content), policy);
-			if (!target) continue;
+			const read = itemText(content);
+			const entry = listedEntryFor(directory, read.text, policy);
+			if (!entry) continue;
 			const start = (offsets[cursor] ?? 0) + line.length - content.length;
 			pending = {
 				start,
-				end: start + content.trimEnd().length,
+				// A code-wrapped name's span keeps its two backticks.
+				end: start + entry.length + (read.code ? 2 : 0),
 				kind: "path",
-				target,
-				href: target,
+				target: entry.target,
+				href: entry.target,
 			};
 		}
 		if (pending) found.push(pending);

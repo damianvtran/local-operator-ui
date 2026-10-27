@@ -99,7 +99,7 @@ import {
 	type TargetSpan,
 	allowsProsePathAfter,
 	isAmbiguousCandidate,
-	listedTargetFor,
+	listedEntryFor,
 	listingDirectoryIn,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
@@ -410,17 +410,20 @@ function introducedDirectory(
  * Link each item of a list a paragraph introduced as `<directory>:`, in place.
  *
  * Only the list's OWN items, and only an item whose first block is a paragraph
- * holding exactly one `text` or one `inlineCode` node - the item IS the name -
- * with nothing after it but nested lists (which are a new context and are left
- * to the ordinary walk, where a bare name stays plain). A second paragraph under
- * an item makes it prose about a file rather than the file, and the item is
- * left alone; the Files panel's line walker (`listedTargetsIn`) draws the same
- * line, so the two surfaces resolve the same items.
+ * that is, inline, either the NAME alone (one `text` or one `inlineCode` node) or
+ * an ANNOTATED name (`<name><separator><description>`: one `text` node, or an
+ * `inlineCode` head followed by `text` that opens with the separator) - with
+ * nothing after the paragraph but nested lists (a new context, left to the
+ * ordinary walk, where a bare name stays plain). The contract for what resolves
+ * is `listedEntryFor` in `link-grammar.ts`, which the Files panel's line walker
+ * (`listedTargetsIn`) calls too, so the two surfaces resolve the same items.
  *
- * The anchor is the SAME atom the rest of this plugin builds, and the policy is
- * the same evidenced one: a listed name always carries an extension, so the
- * evidence gate is never what admits it, exactly as for an extensioned `/abs`
- * token today - a deleted deliverable links and its toolbar says so.
+ * The anchor is the SAME atom the rest of this plugin builds, under the same
+ * evidenced policy. A whole-item name always carries an extension, so the
+ * evidence gate never decides it - exactly as for an extensioned `/abs` token. An
+ * annotated HEAD is admitted only when the disk says it exists (the pre-scan in
+ * `ambiguousTargetsIn` asks), and only the head is linked - never the
+ * description.
  */
 function linkListedItems(list: MdastNode, directory: string): void {
 	for (const item of list.children ?? []) {
@@ -429,31 +432,47 @@ function linkListedItems(list: MdastNode, directory: string): void {
 		if (paragraph?.type !== "paragraph") continue;
 		if (rest.some((block) => block.type !== "list")) continue;
 		const inlines = paragraph.children ?? [];
-		const [only] = inlines;
-		if (!only || inlines.length !== 1 || typeof only.value !== "string")
-			continue;
-		if (only.type !== "text" && only.type !== "inlineCode") continue;
-		const target = listedTargetFor(
-			directory,
-			only.value,
-			LINK_POLICY_EVIDENCED,
-		);
-		if (!target) continue;
-		if (only.type === "inlineCode") {
-			paragraph.children = [codeLinkAtom(target, only)];
+		const [first, second] = inlines;
+		if (!first || typeof first.value !== "string") continue;
+		if (first.type !== "text" && first.type !== "inlineCode") continue;
+		/*
+		 * `[inlineCode, text]` is the code-wrapped annotated shape; anything else
+		 * with more than one inline (emphasis, a link, a second code span) is prose
+		 * and is left alone.
+		 */
+		const codeHead =
+			first.type === "inlineCode" &&
+			inlines.length === 2 &&
+			second?.type === "text" &&
+			typeof second.value === "string";
+		if (inlines.length !== 1 && !codeHead) continue;
+		const text = codeHead
+			? `${first.value}${second?.value ?? ""}`
+			: first.value;
+		const entry = listedEntryFor(directory, text, LINK_POLICY_EVIDENCED);
+		if (!entry) continue;
+		if (first.type === "inlineCode") {
+			// A code-wrapped name is the WHOLE code span, or the head of an
+			// annotated item: anything else (a separator inside the code) is not one.
+			if (entry.length !== first.value.trim().length) continue;
+			paragraph.children = [
+				codeLinkAtom(entry.target, first),
+				...inlines.slice(1),
+			];
 			continue;
 		}
 		/*
-		 * The anchor covers the NAME, not the sentence punctuation an item may end
-		 * with (`- a.pdf.`), the rule every other span in this plugin keeps.
+		 * The anchor covers the NAME: not the description after a separator, and
+		 * not the sentence punctuation an item may end with (`- a.pdf.`), the rule
+		 * every other span in this plugin keeps.
 		 */
-		const name = target.slice(target.lastIndexOf("/") + 1);
-		const at = only.value.indexOf(name);
-		if (at === -1) continue;
+		const at = first.value.length - first.value.trimStart().length;
+		const name = first.value.slice(at, at + entry.length);
+		if (!entry.target.endsWith(`/${name}`)) continue;
 		const atoms: MdastNode[] = [];
-		if (at > 0) atoms.push({ type: "text", value: only.value.slice(0, at) });
-		atoms.push(linkAtom(target, name));
-		const after = only.value.slice(at + name.length);
+		if (at > 0) atoms.push({ type: "text", value: first.value.slice(0, at) });
+		atoms.push(linkAtom(entry.target, name));
+		const after = first.value.slice(at + entry.length);
 		if (after) atoms.push({ type: "text", value: after });
 		paragraph.children = atoms;
 	}
