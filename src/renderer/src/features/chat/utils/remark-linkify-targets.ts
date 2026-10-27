@@ -99,6 +99,8 @@ import {
 	type TargetSpan,
 	allowsProsePathAfter,
 	isAmbiguousCandidate,
+	listedTargetFor,
+	listingDirectoryIn,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
 
@@ -171,7 +173,7 @@ type MdastNode = {
 	 * (`predecessorOf`). Only `start.offset` is used; nothing here is rendered, and
 	 * a tree without positions simply keeps the pre-existing behaviour.
 	 */
-	position?: { start?: { offset?: number } };
+	position?: { start?: { offset?: number }; end?: { offset?: number } };
 };
 
 /**
@@ -381,12 +383,100 @@ const continuation = (
  * inert: a linkified `inlineCode` is ONE node replacing ONE node, so a length
  * comparison reads "unchanged" and the rewrite is thrown away.
  */
+/**
+ * The directory a paragraph INTRODUCES a list with, read from its last SOURCE line.
+ *
+ * The directory-anchored listing rule (`link-grammar.ts`, "directory-anchored
+ * listing") is asked about the raw line rather than about the mdast's inline
+ * children, because the raw line is what the Files panel asks the same question
+ * of: one answer to "is this an introducer" for both surfaces, including the
+ * closing backtick of `` `~/x/`: `` that the mdast has already turned into a
+ * node boundary. No source (a harness that ran the plugin on a bare tree) or no
+ * offsets means no introducer - the fail-safe direction, a missed link.
+ */
+function introducedDirectory(
+	paragraph: MdastNode,
+	source: string | undefined,
+): string | null {
+	const start = paragraph.position?.start?.offset;
+	const end = paragraph.position?.end?.offset;
+	if (source === undefined || typeof start !== "number") return null;
+	if (typeof end !== "number") return null;
+	const text = source.slice(start, end);
+	return listingDirectoryIn(text.slice(text.lastIndexOf("\n") + 1));
+}
+
+/**
+ * Link each item of a list a paragraph introduced as `<directory>:`, in place.
+ *
+ * Only the list's OWN items, and only an item whose first block is a paragraph
+ * holding exactly one `text` or one `inlineCode` node - the item IS the name -
+ * with nothing after it but nested lists (which are a new context and are left
+ * to the ordinary walk, where a bare name stays plain). A second paragraph under
+ * an item makes it prose about a file rather than the file, and the item is
+ * left alone; the Files panel's line walker (`listedTargetsIn`) draws the same
+ * line, so the two surfaces resolve the same items.
+ *
+ * The anchor is the SAME atom the rest of this plugin builds, and the policy is
+ * the same evidenced one: a listed name always carries an extension, so the
+ * evidence gate is never what admits it, exactly as for an extensioned `/abs`
+ * token today - a deleted deliverable links and its toolbar says so.
+ */
+function linkListedItems(list: MdastNode, directory: string): void {
+	for (const item of list.children ?? []) {
+		if (item.type !== "listItem") continue;
+		const [paragraph, ...rest] = item.children ?? [];
+		if (paragraph?.type !== "paragraph") continue;
+		if (rest.some((block) => block.type !== "list")) continue;
+		const inlines = paragraph.children ?? [];
+		const [only] = inlines;
+		if (!only || inlines.length !== 1 || typeof only.value !== "string")
+			continue;
+		if (only.type !== "text" && only.type !== "inlineCode") continue;
+		const target = listedTargetFor(
+			directory,
+			only.value,
+			LINK_POLICY_EVIDENCED,
+		);
+		if (!target) continue;
+		if (only.type === "inlineCode") {
+			paragraph.children = [codeLinkAtom(target, only)];
+			continue;
+		}
+		/*
+		 * The anchor covers the NAME, not the sentence punctuation an item may end
+		 * with (`- a.pdf.`), the rule every other span in this plugin keeps.
+		 */
+		const name = target.slice(target.lastIndexOf("/") + 1);
+		const at = only.value.indexOf(name);
+		if (at === -1) continue;
+		const atoms: MdastNode[] = [];
+		if (at > 0) atoms.push({ type: "text", value: only.value.slice(0, at) });
+		atoms.push(linkAtom(target, name));
+		const after = only.value.slice(at + name.length);
+		if (after) atoms.push({ type: "text", value: after });
+		paragraph.children = atoms;
+	}
+}
+
 function walk(node: MdastNode, source: string | undefined): void {
 	const children = node.children;
 	if (!children) return;
 	const rewritten: MdastNode[] = [];
 	let changed = false;
 	for (const [index, child] of children.entries()) {
+		/*
+		 * A list straight after a paragraph that ends `<directory>:` is a
+		 * directory-anchored listing. Its items are linked BEFORE the ordinary walk
+		 * descends into it, so the walk then meets `link` nodes it never enters and
+		 * cannot double-process a name. `children[index - 1]` is the ORIGINAL
+		 * sibling, whose `position` survives its own rewrite.
+		 */
+		const previous = index > 0 ? children[index - 1] : undefined;
+		if (child.type === "list" && previous?.type === "paragraph") {
+			const directory = introducedDirectory(previous, source);
+			if (directory) linkListedItems(child, directory);
+		}
 		if (child.type === "text" && typeof child.value === "string") {
 			const atoms = atomsFor(
 				child.value,

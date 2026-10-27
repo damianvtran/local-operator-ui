@@ -1013,3 +1013,255 @@ export function ambiguousTargetsIn(text: string): string[] {
 	}
 	return suspects;
 }
+
+/* ======================================================= directory-anchored listing */
+
+/**
+ * THE AGENT IDIOM THIS SECTION EXISTS FOR (operator report, 2026-10-27).
+ *
+ * An agent naming its deliverables very often writes the directory ONCE and the
+ * files under it as bare names:
+ *
+ *   Files are in `~/Documents/Radient/`:
+ *   - Radient-IP-Scope-for-Counsel-2026-10-27.pdf
+ *   - Radient-IP-Scope-for-Counsel-2026-10-27 (editable).docx
+ *
+ * The rest of this grammar refuses a bare name on purpose - with no cwd,
+ * admitting `notes.md` means guessing a root - so both deliverables were dead
+ * text in the transcript and absent from the Files panel, while the directory
+ * above them linked. The listing supplies the root the bare name lacks: the
+ * ABSOLUTE directory that introduces the list. That is not a guess; the agent
+ * wrote it, one line up, as the thing the list is "in".
+ *
+ * WHY THE SHAPE IS SO NARROW. Each condition is the one that keeps the rule from
+ * becoming the relative-path guess the header refuses:
+ *
+ * - The introducer is the LAST target on its line and the line ENDS with `:`.
+ *   "I looked in ~/x/ and found these:" names a directory mid-sentence and says
+ *   nothing about where the following names live; only a line that ends on the
+ *   directory and a colon is a heading for what follows.
+ * - Only the IMMEDIATELY following list, and only its own items. A list after a
+ *   paragraph, a nested list, a later list: each is a new context the introducer
+ *   no longer speaks for.
+ * - An item is resolved only when its WHOLE text is one name - no `/` (a sub-path
+ *   or an absolute path is the existing rules' business), no line break, no
+ *   placeholder, and an extension that is a short alphanumeric token. Spaces and
+ *   parentheses are allowed because the whole item is the name
+ *   (`X (editable).docx` is a real deliverable), and that is why the extension
+ *   test is the backstop: `Open report.pdf for the summary` has the "extension"
+ *   `pdf for the summary` and is refused, a sentence with no dot has none at all.
+ *   A name containing whitespace additionally needs a KNOWN extension on BOTH
+ *   surfaces, because whitespace is where a list of names and a list of phrases
+ *   overlap and a known extension is the one positive signal left.
+ * - A bare name WITHOUT an introducer stays unresolved, exactly as before.
+ *
+ * ONE GRAMMAR, TWO WALKERS. The Files panel reads the raw markdown string and
+ * the transcript reads the mdast, so each walks lines or nodes its own way, but
+ * BOTH ask the two questions below - `listingDirectoryIn` (is this line an
+ * introducer, and of which directory) and `listedTargetFor` (is this item a name,
+ * and what does it resolve to under this policy) - so "where does a listed name
+ * end" has one answer. `listedTargetsIn` is the panel's line walker; the
+ * transcript's is the `list` branch in `remark-linkify-targets.ts`.
+ *
+ * WHAT THE POLICIES DO HERE. `knownExtensionRequired` keeps its meaning (the
+ * panel admits only a known extension). The evidence gate is never reached: a
+ * listed name must carry an extension, so `isAmbiguousCandidate` is false for
+ * every resolved target by construction, and `ambiguousTargetsIn`'s pre-scan
+ * property is untouched - an extensionless list item (`Done`, `Makefile`) is
+ * refused rather than probed, the fail-safe direction this module trades in.
+ */
+
+/** What may follow the introducer's directory: closing emphasis/code, then a colon. */
+const LISTING_INTRODUCER_TAIL = /^[`*_]*\s*:\s*$/;
+
+/** The cheap pre-test for an introducer: the line's last character is a colon. */
+const ENDS_WITH_COLON = /:\s*$/;
+
+/** A listed name's extension: a short alphanumeric token, never a phrase. */
+const LISTED_EXTENSION = /^[a-z0-9]{1,10}$/;
+
+/** Sentence punctuation a list item may end with that no name ends with. */
+const LISTED_TRAILING_PUNCTUATION = /[.,;:]+$/;
+
+/**
+ * The directory a line INTRODUCES as the root of a following list, or null.
+ *
+ * The directory token is found by the SAME scanner as every other target, with
+ * the evidence question suspended (`DISCOVERY_POLICY`): the directory is never
+ * emitted as a target by this rule, only used as a root, and the panel has no
+ * oracle to ask. What stands in for the disk is shape: the token must read as a
+ * directory (a trailing slash or no extension) and must not be a one-segment
+ * `/word`, which is as likely a slash command (`Run /new:`) as a folder - `~/x`,
+ * `/tmp/out` and any `file://` URL qualify, a bare `/tmp` does not. That refusal
+ * is a deliberate cost: a list under `/tmp:` stays unresolved.
+ */
+export function listingDirectoryIn(line: string): string | null {
+	// Most lines end in no colon at all, and they are refused before the scanner
+	// runs: the panel asks this of every line of every record it reads.
+	if (!ENDS_WITH_COLON.test(line)) return null;
+	const spans = targetsIn(line, DISCOVERY_POLICY);
+	const last = spans[spans.length - 1];
+	if (!last) return null;
+	if (!LISTING_INTRODUCER_TAIL.test(line.slice(last.end))) return null;
+	const directory = last.target;
+	const isDirectory =
+		directory.endsWith("/") || extensionOf(directory) === null;
+	if (!isDirectory) return null;
+	const rooted =
+		last.kind === "file-url" ||
+		directory.startsWith("~/") ||
+		directory.indexOf("/", 1) !== -1;
+	return rooted ? directory : null;
+}
+
+/**
+ * `<directory>/<name>` for one list item's WHOLE text, admitted under `policy`,
+ * or null. See the section header for every rejection and why.
+ */
+export function listedTargetFor(
+	directory: string,
+	item: string,
+	policy: TargetPolicy,
+): string | null {
+	const name = item.trim().replace(LISTED_TRAILING_PUNCTUATION, "");
+	if (!name || name.length > MAX_CANDIDATE_LENGTH) return null;
+	if (LINE_BREAK.test(name)) return null;
+	if (name.includes("/") || name.includes("\\")) return null;
+	if (PLACEHOLDER_MARKERS.test(name)) return null;
+	const extension = extensionOf(name);
+	if (!extension || !LISTED_EXTENSION.test(extension)) return null;
+	const known = KNOWN_EXTENSIONS.has(extension);
+	if (policy.knownExtensionRequired && !known) return null;
+	if (WHITESPACE.test(name) && !known) return null;
+	return `${directory.replace(TRAILING_SLASHES, "")}/${name}`;
+}
+
+/** A markdown list item line: indent, marker, optional GFM task box, content. */
+const LIST_ITEM_LINE =
+	/^(\s*)([-*+]|\d{1,9}[.)])[ \t]+(?:\[[ xX]\][ \t]+)?(.*)$/;
+
+/**
+ * What identifies ONE list to CommonMark: the bullet character, or an ordered
+ * list's delimiter. `- a` then `+ b` are two lists, and the second follows a
+ * list rather than its introducer, so it is not resolved on either surface.
+ */
+const markerKind = (marker: string): string =>
+	ORDERED_MARKER.test(marker) ? `ordered${marker.slice(-1)}` : marker;
+
+/** An ordered list marker (`1.`, `2)`), as opposed to a bullet. */
+const ORDERED_MARKER = /^\d/;
+
+/** An item that is exactly one code span, whose content is the name. */
+const WHOLE_CODE_SPAN = /^`([^`]+)`$/;
+
+/** A CRLF line's carriage return, which `split("\n")` leaves on the line. */
+const CARRIAGE_RETURN = /\r$/;
+
+/** Where an introducer's own CONTENT starts, past any list marker it sits in. */
+const CONTENT_INDENT = /^\s*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)?/;
+
+/** Markdown's backslash escapes, which the mdast decodes and a raw line keeps. */
+const MARKDOWN_ESCAPE = /\\([!-/:-@[-`{-~])/g;
+
+/** One item's text as the mdast would hold it: escapes decoded, one code span unwrapped. */
+const itemText = (content: string): string => {
+	const trimmed = content.trim();
+	const code = WHOLE_CODE_SPAN.exec(trimmed);
+	return code ? (code[1] ?? "") : trimmed.replace(MARKDOWN_ESCAPE, "$1");
+};
+
+/**
+ * Every listed target in a raw markdown string, as spans over the item's name,
+ * in document order - the Files panel's walker (see the section header).
+ *
+ * It follows CommonMark's list structure as far as the transcript's mdast would
+ * see it, so the two surfaces resolve the same items:
+ *
+ * - blank lines may separate the introducer from the list and items from each
+ *   other (a loose list is still the list);
+ * - the list's items sit at the indent of its first item, which must be inside
+ *   the introducer's own block (at or past its content indent, under four more);
+ *   a deeper marker is a NESTED list and is skipped, a shallower one ends it;
+ * - a non-marker line straight after an item is a continuation of that item, so
+ *   the item is no longer one name and is dropped; after a blank line, a
+ *   non-marker line that is not indented under the list ends the list.
+ *
+ * KNOWN GAP, stated rather than closed: a list inside a blockquote (`> - a.pdf`)
+ * is not walked here, where the transcript resolves it. That is the fail-safe
+ * direction - a missing tile, never a tile for a path no file has.
+ */
+export function listedTargetsIn(
+	text: string,
+	policy: TargetPolicy,
+): TargetSpan[] {
+	if (!text.includes(":")) return [];
+	const found: TargetSpan[] = [];
+	const lines = text.split("\n");
+	const offsets: number[] = [];
+	let offset = 0;
+	for (const line of lines) {
+		offsets.push(offset);
+		offset += line.length + 1;
+	}
+	for (let index = 0; index < lines.length; index += 1) {
+		const introducer = lines[index] ?? "";
+		const directory = listingDirectoryIn(introducer);
+		if (!directory) continue;
+		const floor = CONTENT_INDENT.exec(introducer)?.[0].length ?? 0;
+		let base: number | null = null;
+		let marker = "";
+		let pending: TargetSpan | null = null;
+		let blank = false;
+		let cursor = index + 1;
+		for (; cursor < lines.length; cursor += 1) {
+			const line = (lines[cursor] ?? "").replace(CARRIAGE_RETURN, "");
+			if (line.trim() === "") {
+				blank = true;
+				continue;
+			}
+			const item = LIST_ITEM_LINE.exec(line);
+			const indent = line.length - line.trimStart().length;
+			if (!item) {
+				// Before the first item nothing introduces anything any more; after
+				// it, a line straight under an item continues that item, and one
+				// after a blank line ends the list unless it is indented under it.
+				if (base === null) break;
+				if (!blank) {
+					pending = null;
+					continue;
+				}
+				if (indent > base) {
+					pending = null;
+					continue;
+				}
+				break;
+			}
+			blank = false;
+			const kind = markerKind(item[2] ?? "");
+			if (base === null) {
+				if (indent < floor || indent > floor + 3) break;
+				base = indent;
+				marker = kind;
+			}
+			if (indent > base) continue; // a nested list: a new context
+			if (indent < base || kind !== marker) break;
+			if (pending) found.push(pending);
+			pending = null;
+			const content = item[3] ?? "";
+			const target = listedTargetFor(directory, itemText(content), policy);
+			if (!target) continue;
+			const start = (offsets[cursor] ?? 0) + line.length - content.length;
+			pending = {
+				start,
+				end: start + content.trimEnd().length,
+				kind: "path",
+				target,
+				href: target,
+			};
+		}
+		if (pending) found.push(pending);
+		// The list's own lines cannot introduce another list at this level.
+		index = Math.max(index, cursor - 1);
+	}
+	return found;
+}

@@ -1325,3 +1325,136 @@ test("a wrapped path is one link per its own span, not the whole line", () => {
 	assert.equal(link.text, "~/w/report.xlsx");
 	assert.equal(link.url, "~/w/report.xlsx");
 });
+
+/* ------------------------------------------------- directory-anchored listing */
+
+/*
+ * THE REPORTED CASE (2026-10-27), byte for byte: an assistant turn named its two
+ * deliverables as bare filenames listed under the directory that holds them, and
+ * neither the transcript nor the Files panel resolved them, because a bare name
+ * has no root of its own. The listing rule (`link-grammar.ts`,
+ * `listedTargetsIn`) gives it one: the absolute directory that INTRODUCES the
+ * list. Asserted on both surfaces through their real entry points, so the test
+ * fails on a tree without the rule rather than on a missing export.
+ */
+const LISTING =
+	"Files are in `~/Documents/Radient/`:\n- Radient-IP-Scope-for-Counsel-2026-10-27.pdf\n- Radient-IP-Scope-for-Counsel-2026-10-27 (editable).docx";
+const LISTED = [
+	"~/Documents/Radient/Radient-IP-Scope-for-Counsel-2026-10-27.pdf",
+	"~/Documents/Radient/Radient-IP-Scope-for-Counsel-2026-10-27 (editable).docx",
+];
+const listingRecord = (text) => ({
+	kind: "assistant",
+	id: "listing",
+	ts: 0,
+	text,
+	streaming: false,
+	stopReason: null,
+	error: false,
+});
+const panelPaths = (text) =>
+	extractMentionedPaths([listingRecord(text)]).map((mention) => mention.path);
+
+test("a bare filename listed under an introducing directory resolves on both surfaces", () => {
+	assert.deepEqual(panelPaths(LISTING), LISTED, "the Files panel");
+	const links = linksIn(LISTING).map((link) => link.url);
+	for (const target of LISTED) assert.ok(links.includes(target), target);
+	/* The anchor covers the item's own text, the whole name and nothing else. */
+	assert.deepEqual(
+		linksIn(LISTING).filter((link) => LISTED.includes(link.url)),
+		[
+			{ url: LISTED[0], text: "Radient-IP-Scope-for-Counsel-2026-10-27.pdf" },
+			{
+				url: LISTED[1],
+				text: "Radient-IP-Scope-for-Counsel-2026-10-27 (editable).docx",
+			},
+		],
+	);
+});
+
+/** A link url that names a file by extension, rather than the introducing directory. */
+const EXTENSIONED = /\.[a-z]+$/;
+
+test("the listing rule's other introducer spellings and item markers", () => {
+	const cases = [
+		["Saved to ~/out/:\n* a.pdf\n* b.csv", ["~/out/a.pdf", "~/out/b.csv"]],
+		["Saved to ~/out/:\n+ a.pdf\n+ [x] b.csv", ["~/out/a.pdf", "~/out/b.csv"]],
+		/* A CHANGED bullet is a second list, which follows a list, not the introducer. */
+		["Saved to ~/out/:\n* a.pdf\n+ b.csv", ["~/out/a.pdf"]],
+		[
+			"Saved to /tmp/out:\n1. a.pdf\n2. `b c.md`",
+			["/tmp/out/a.pdf", "/tmp/out/b c.md"],
+		],
+		["Wrote file:///tmp/My%20Out/:\n- a.pdf", ["/tmp/My Out/a.pdf"]],
+		/* A loose list is still the same list. */
+		["Files in ~/out:\n\n- a.pdf\n\n- b.pdf", ["~/out/a.pdf", "~/out/b.pdf"]],
+	];
+	for (const [text, expected] of cases) {
+		/* The panel admits a `file://` directory on its own (an existing rule). */
+		assert.deepEqual(
+			panelPaths(text).filter((path) => !path.endsWith("/")),
+			expected,
+			`panel: ${text}`,
+		);
+		/* Exactly the listed names link: the introducer's own directory may too. */
+		const links = linksIn(text)
+			.map((link) => link.url)
+			.filter((url) => EXTENSIONED.test(url));
+		assert.deepEqual(links, expected, `link: ${text}`);
+	}
+});
+
+test("the listing rule's negative controls stay unresolved on both surfaces", () => {
+	const cases = [
+		/* No directory introduces the list: a bare name has no root. */
+		"Here they are:\n- report.pdf\n- notes.md",
+		"- report.pdf",
+		/* The line before the list does not end with a colon. */
+		"Files are in ~/Documents/Radient/\n- report.pdf",
+		"Files are in ~/Documents/Radient/.\n- report.pdf",
+		/* A list item that is a sentence, not a name. */
+		"Files are in ~/Documents/Radient/:\n- Open report.pdf for the summary\n- I updated the contract draft.",
+		/* The directory is only mentioned mid-sentence. */
+		"I looked in ~/Documents/Radient/ and found these:\n- report.pdf",
+		/* The introducer names a FILE, not a directory. */
+		"Read ~/x/report.pdf:\n- notes.md",
+		/* An item that is a nested sub-path is the existing rules' business. */
+		"Files in ~/out:\n- sub/report.pdf",
+		/* A placeholder is not a name. */
+		"Files in ~/out:\n- <name>.pdf\n- *.pdf",
+	];
+	for (const text of cases) {
+		assert.deepEqual(
+			panelPaths(text).filter((path) => !path.startsWith("~/x/")),
+			[],
+			`panel: ${text}`,
+		);
+		const links = linksIn(text).filter(
+			(link) =>
+				link.url.includes("/report.pdf") ||
+				link.url.includes("/notes.md") ||
+				link.url.includes(".pdf"),
+		);
+		assert.deepEqual(
+			links.filter((link) => link.url !== "~/x/report.pdf"),
+			[],
+			`link: ${text}`,
+		);
+	}
+});
+
+test("only the IMMEDIATE list is resolved, and nested items are not", () => {
+	const text =
+		"Files in ~/out:\n- a.pdf\n  - nested.pdf\n- b.pdf\n\nAnd later:\n- c.pdf";
+	assert.deepEqual(panelPaths(text), ["~/out/a.pdf", "~/out/b.pdf"]);
+	const urls = linksIn(text).map((link) => link.url);
+	assert.deepEqual(urls, ["~/out/a.pdf", "~/out/b.pdf"]);
+});
+
+test("the panel keeps its known-extension rule on a listed name", () => {
+	const text = "Files in ~/out:\n- build.xyz123\n- report.pdf";
+	assert.deepEqual(panelPaths(text), ["~/out/report.pdf"]);
+	/* A listed name with spaces needs a KNOWN extension on either surface. */
+	assert.deepEqual(panelPaths("Files in ~/out:\n- my build.xyz123"), []);
+	assert.deepEqual(linksIn("Files in ~/out:\n- my build.xyz123"), []);
+});
