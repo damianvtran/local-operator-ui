@@ -4994,8 +4994,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
-			"target_sha256": "dda0ec64c5114847e5cf41e3bf357c3718cc1041a87efe1dc33b02d987693694",
+			"source_sha256": "fce5422b03052668888a09169a60cabf1a3c963fa760f314f60f65843260c585",
+			"target_sha256": "fafac4e8eb9c693dddad7137ae6d99ee3beefe0dc795d8b49441e3ae36c78a1e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -5013,18 +5013,18 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean-with-findings",
-					"instance": "6d269032fdc7-es",
+					"result": "clean",
+					"instance": "6d269032fdc7-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-es.json",
-					"receipt_sha256": "2cb26b7f41bbaf974c935acb69b5c7a6f8c4b3dca23fde3e24d1d4fb643a4471",
-					"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
-					"note": "PR #1446 invitations audit (F2 MINOR). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/6d269032fdc7-r2-es.json",
+					"receipt_sha256": "ae7850fdfa4e7e8fdaf46fef73d074f119a0b061d9587e0694d062f434f5adaf",
+					"scope": "PR #1446 round 2: remediated invitations keys (agent_fallback, *_unnamed; ur accepted; fr accepting); rest byte-identical to round 1 / #1441 receipts.",
+					"note": "PR #1446 R2 (0 findings). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-r2-audit-6d269032fdc7/record.json"
 				}
 			],
 			"status": "audited",
@@ -5761,6 +5761,30 @@
 							"receipt_sha256": "4cf744881cde06483b6c13395303a8d3189555d89da57bcdd220ae66d09ad00e",
 							"scope": "New-key delta: ui.teamBridge.chief.unnamed, member.active_count, member.invited_count (PR #1441); other 208 keys inherited on byte identity.",
 							"note": "PR #1441 3-key delta (chief.unnamed, member.active_count, invited_count); re-bind off dedc59c2f981; 0 findings. Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1441-audit-fe54982cb1b7/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
+					"target_sha256": "dda0ec64c5114847e5cf41e3bf357c3718cc1041a87efe1dc33b02d987693694",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "6d269032fdc7-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-es.json",
+							"receipt_sha256": "2cb26b7f41bbaf974c935acb69b5c7a6f8c4b3dca23fde3e24d1d4fb643a4471",
+							"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+							"note": "PR #1446 invitations audit (F2 MINOR). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -11153,8 +11177,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
-			"target_sha256": "100725943396e796e5c0c313b22c90b833f443d28d7104ae2647269166147711",
+			"source_sha256": "fce5422b03052668888a09169a60cabf1a3c963fa760f314f60f65843260c585",
+			"target_sha256": "b75cfe24f3983e1047ee6dfeb82285c36a766fcdf4cebf05dcbf5871e2b1f986",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -11173,18 +11197,18 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean-with-findings",
-					"instance": "6d269032fdc7-fr",
+					"result": "clean",
+					"instance": "6d269032fdc7-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-fr.json",
-					"receipt_sha256": "d79c4cff2c8da2088b0c014b57f96a7c66b1dd763b9ff25b6b3f77339f1d4044",
-					"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
-					"note": "PR #1446 invitations audit (F2 MINOR,N1 NIT). Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/6d269032fdc7-r2-fr.json",
+					"receipt_sha256": "11ebf8516b9ffd7070116b799d5eb25f2c43d9a4d9dd84c62a95d8ebf22407d2",
+					"scope": "PR #1446 round 2: remediated invitations keys (agent_fallback, *_unnamed; ur accepted; fr accepting); rest byte-identical to round 1 / #1441 receipts.",
+					"note": "PR #1446 R2 (0 findings). Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1446-invitations-r2-audit-6d269032fdc7/record.json"
 				}
 			],
 			"status": "audited",
@@ -11945,6 +11969,30 @@
 							"receipt_sha256": "c3fdca06f759cd47257934008723ddaf8b3c799759ba20cdca54963058e5a0e8",
 							"scope": "New-key delta: ui.teamBridge.chief.unnamed, member.active_count, member.invited_count (PR #1441); other 208 keys inherited on byte identity.",
 							"note": "PR #1441 3-key delta (chief.unnamed, member.active_count, invited_count); re-bind off dedc59c2f981; 0 findings. Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1441-audit-fe54982cb1b7/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
+					"target_sha256": "100725943396e796e5c0c313b22c90b833f443d28d7104ae2647269166147711",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "6d269032fdc7-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-fr.json",
+							"receipt_sha256": "d79c4cff2c8da2088b0c014b57f96a7c66b1dd763b9ff25b6b3f77339f1d4044",
+							"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+							"note": "PR #1446 invitations audit (F2 MINOR,N1 NIT). Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -17245,8 +17293,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
-			"target_sha256": "0015c4e86cb51c48b25469c9afea1046f14ec75ffadbca25a31ef4bbf5fc1f81",
+			"source_sha256": "fce5422b03052668888a09169a60cabf1a3c963fa760f314f60f65843260c585",
+			"target_sha256": "6fc8d10b0ec69f1897b7594afc2b2d99558a474da62e111fe2464224b433ff73",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -17264,21 +17312,21 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "changes_requested",
-					"instance": "6d269032fdc7-hi",
+					"result": "clean",
+					"instance": "6d269032fdc7-r2-hi",
 					"findings": {
 						"blocker": 0,
-						"major": 1,
+						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-hi.json",
-					"receipt_sha256": "833c85bdb133a7df48564716c09fad58f7bf1452212c64fc4337245b4df16d1e",
-					"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
-					"note": "PR #1446 invitations audit (F1 MAJOR). Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/6d269032fdc7-r2-hi.json",
+					"receipt_sha256": "875e5d9ce237fd63aaba7b6ba0af7e2a148159b45839c6e3f92342833c2c118e",
+					"scope": "PR #1446 round 2: remediated invitations keys (agent_fallback, *_unnamed; ur accepted; fr accepting); rest byte-identical to round 1 / #1441 receipts.",
+					"note": "PR #1446 R2 (0 findings). Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-pr1446-invitations-r2-audit-6d269032fdc7/record.json"
 				}
 			],
-			"status": "changes_requested",
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -17962,6 +18010,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
+					"target_sha256": "0015c4e86cb51c48b25469c9afea1046f14ec75ffadbca25a31ef4bbf5fc1f81",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "changes_requested",
+							"instance": "6d269032fdc7-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 1,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-hi.json",
+							"receipt_sha256": "833c85bdb133a7df48564716c09fad58f7bf1452212c64fc4337245b4df16d1e",
+							"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+							"note": "PR #1446 invitations audit (F1 MAJOR). Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+						}
+					],
+					"status": "changes_requested"
 				}
 			]
 		},
@@ -23034,8 +23106,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
-			"target_sha256": "34a05660da9e8a7fb25c2f20205f25ccfdf08ea572bf2aff0db8f08603d0af19",
+			"source_sha256": "fce5422b03052668888a09169a60cabf1a3c963fa760f314f60f65843260c585",
+			"target_sha256": "13c4ae135e70247bfe6926bb8590273ab29636be1f3e5478aabb943e78432535",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -23055,17 +23127,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "6d269032fdc7-ru",
+					"instance": "6d269032fdc7-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-ru.json",
-					"receipt_sha256": "7c3641b28600dfdf4d11aee22cf908cd5e2b023fbc2354d4355c70365c0f6b62",
-					"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
-					"note": "PR #1446 invitations audit (none). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/6d269032fdc7-r2-ru.json",
+					"receipt_sha256": "1dd623d03567c913dfd325256671668e91c170dcd3a7134ede98e7716a8e544d",
+					"scope": "PR #1446 round 2: remediated invitations keys (agent_fallback, *_unnamed; ur accepted; fr accepting); rest byte-identical to round 1 / #1441 receipts.",
+					"note": "PR #1446 R2 (0 findings). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1446-invitations-r2-audit-6d269032fdc7/record.json"
 				}
 			],
 			"status": "audited",
@@ -23780,6 +23852,30 @@
 							"receipt_sha256": "f16749c2c19a5fb159687bd8803bccd9f95e851379fc0f28408d1c4d7029a2fc",
 							"scope": "New-key delta: ui.teamBridge.chief.unnamed, member.active_count, member.invited_count (PR #1441); other 208 keys inherited on byte identity.",
 							"note": "PR #1441 3-key delta (chief.unnamed, member.active_count, invited_count); re-bind off dedc59c2f981; 0 findings. Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1441-audit-fe54982cb1b7/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
+					"target_sha256": "34a05660da9e8a7fb25c2f20205f25ccfdf08ea572bf2aff0db8f08603d0af19",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-ru.json",
+							"receipt_sha256": "7c3641b28600dfdf4d11aee22cf908cd5e2b023fbc2354d4355c70365c0f6b62",
+							"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+							"note": "PR #1446 invitations audit (none). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -28937,8 +29033,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
-			"target_sha256": "feedf3101a471f420b99dbc362292ed9dad1470238adc32edcf01e40c1c5dc1d",
+			"source_sha256": "fce5422b03052668888a09169a60cabf1a3c963fa760f314f60f65843260c585",
+			"target_sha256": "c2e9318791713d1dae5f94443c353541f8a625834608e24bdf76d4f140b19599",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -28956,21 +29052,21 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "changes_requested",
-					"instance": "6d269032fdc7-ur",
+					"result": "clean",
+					"instance": "6d269032fdc7-r2-ur",
 					"findings": {
 						"blocker": 0,
-						"major": 1,
+						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-ur.json",
-					"receipt_sha256": "89f101231914fcedd250f02966faa4a676a6d7ef76f86fd782fd4688085df319",
-					"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
-					"note": "PR #1446 invitations audit (F1 MAJOR). Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/6d269032fdc7-r2-ur.json",
+					"receipt_sha256": "eb9804fa307751235b7e62452f614df9df80d8b34885e1af104e0c975bcc5eb7",
+					"scope": "PR #1446 round 2: remediated invitations keys (agent_fallback, *_unnamed; ur accepted; fr accepting); rest byte-identical to round 1 / #1441 receipts.",
+					"note": "PR #1446 R2 (0 findings). Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-pr1446-invitations-r2-audit-6d269032fdc7/record.json"
 				}
 			],
-			"status": "changes_requested",
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -29654,6 +29750,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
+					"target_sha256": "feedf3101a471f420b99dbc362292ed9dad1470238adc32edcf01e40c1c5dc1d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "changes_requested",
+							"instance": "6d269032fdc7-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 1,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-ur.json",
+							"receipt_sha256": "89f101231914fcedd250f02966faa4a676a6d7ef76f86fd782fd4688085df319",
+							"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+							"note": "PR #1446 invitations audit (F1 MAJOR). Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+						}
+					],
+					"status": "changes_requested"
 				}
 			]
 		},
@@ -35005,8 +35125,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
-			"target_sha256": "7ba403b706c24ab13760bf34663fb403a6a30f406e905e1462735bb7d7424330",
+			"source_sha256": "fce5422b03052668888a09169a60cabf1a3c963fa760f314f60f65843260c585",
+			"target_sha256": "62ee7b827c567a90d81a6e234942c15cd59011d8c1753ffd7cd857d7a72e8853",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -35025,17 +35145,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
 					"result": "clean-with-findings",
-					"instance": "6d269032fdc7-vi",
+					"instance": "6d269032fdc7-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-vi.json",
-					"receipt_sha256": "64a2542ac1e0b6338c78ceb4b560f50ded59e88da2b152e2741dde2805108be2",
-					"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
-					"note": "PR #1446 invitations audit (F2 MINOR). Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/6d269032fdc7-r2-vi.json",
+					"receipt_sha256": "0baf8bb8dc38c9716e71e49df85f75d7e152d5959062e83b8e139205967b1ce3",
+					"scope": "PR #1446 round 2: remediated invitations keys (agent_fallback, *_unnamed; ur accepted; fr accepting); rest byte-identical to round 1 / #1441 receipts.",
+					"note": "PR #1446 R2 (F3 MINOR). Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1446-invitations-r2-audit-6d269032fdc7/record.json"
 				}
 			],
 			"status": "audited",
@@ -35750,6 +35870,30 @@
 							"receipt_sha256": "e41c489f0123c321ed7323f519218c1adedc58dca61a890fb6fe52400e417191",
 							"scope": "New-key delta: ui.teamBridge.chief.unnamed, member.active_count, member.invited_count (PR #1441); other 208 keys inherited on byte identity.",
 							"note": "PR #1441 3-key delta (chief.unnamed, member.active_count, invited_count); re-bind off dedc59c2f981; 0 findings. Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1441-audit-fe54982cb1b7/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
+					"target_sha256": "7ba403b706c24ab13760bf34663fb403a6a30f406e905e1462735bb7d7424330",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "6d269032fdc7-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-vi.json",
+							"receipt_sha256": "64a2542ac1e0b6338c78ceb4b560f50ded59e88da2b152e2741dde2805108be2",
+							"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+							"note": "PR #1446 invitations audit (F2 MINOR). Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -41698,8 +41842,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
-			"target_sha256": "9029ee9559818df1c36bcd61bf8feb9b75089cb05d6c05cf07a1bfd6aefc6dc9",
+			"source_sha256": "fce5422b03052668888a09169a60cabf1a3c963fa760f314f60f65843260c585",
+			"target_sha256": "e614104042ec5b3ba8cb6a63073c063791c34b4f0237175dae214f783974386d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -41718,17 +41862,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "6d269032fdc7-zh-cn",
+					"instance": "6d269032fdc7-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-zh-cn.json",
-					"receipt_sha256": "07acd9b032e7d0cc5bdbe93e8972163af3cebff4bba4ff122be269c506881b16",
-					"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
-					"note": "PR #1446 invitations audit (none). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/6d269032fdc7-r2-zh-cn.json",
+					"receipt_sha256": "a85976f946eb351b6b96fae0ac44bb17332d2e49746c7304c8cf18e7357d4547",
+					"scope": "PR #1446 round 2: remediated invitations keys (agent_fallback, *_unnamed; ur accepted; fr accepting); rest byte-identical to round 1 / #1441 receipts.",
+					"note": "PR #1446 R2 (0 findings). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1446-invitations-r2-audit-6d269032fdc7/record.json"
 				}
 			],
 			"status": "audited",
@@ -42465,6 +42609,30 @@
 							"receipt_sha256": "79c04c4d82394cc508b2d3fd8651ca58dfbc00c14a03eda2c0a3f472a96e525b",
 							"scope": "New-key delta: ui.teamBridge.chief.unnamed, member.active_count, member.invited_count (PR #1441); other 208 keys inherited on byte identity.",
 							"note": "PR #1441 3-key delta (chief.unnamed, member.active_count, invited_count); re-bind off dedc59c2f981; 1 open NIT (N1: 有效成员 wording). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1441-audit-fe54982cb1b7/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
+					"target_sha256": "9029ee9559818df1c36bcd61bf8feb9b75089cb05d6c05cf07a1bfd6aefc6dc9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-zh-cn.json",
+							"receipt_sha256": "07acd9b032e7d0cc5bdbe93e8972163af3cebff4bba4ff122be269c506881b16",
+							"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+							"note": "PR #1446 invitations audit (none). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
