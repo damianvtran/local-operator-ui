@@ -111,11 +111,11 @@ test("the fixture pins the model source it came from, and the pin verifies", asy
 	);
 	assert.ok(
 		/*
-		 * Wave B keys the row labels, so the condense model now reads the catalogue
-		 * runtime: the pin covers every catalogue the bundle loads plus
-		 * `i18n/languages.json`, which lives outside `src/`. The rule is "a file in
-		 * this repository", not "a file under src/" - node_modules or an absolute
-		 * path would still fail it.
+		 * `i18n/languages.json` sits outside `src/` and is pinned because the
+		 * bundle reads it for the locale list. Catalogue copy itself is excluded
+		 * by the generator (it can change a word, never a decision); the rule here
+		 * is "a file in this repository", and node_modules or an absolute path
+		 * would still fail it.
 		 */
 		derived.every(
 			(file) =>

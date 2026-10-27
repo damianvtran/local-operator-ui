@@ -239,7 +239,18 @@ async function bundleModel() {
 		code: bundle.outputFiles[0].text,
 		inputs: Object.keys(bundle.metafile.inputs)
 			.filter(
-				(input) => !input.includes("node_modules") && !input.startsWith("<"),
+				(input) =>
+					!input.includes("node_modules") &&
+					!input.startsWith("<") &&
+					/*
+					 * CATALOGUE COPY IS NOT A DECISION. Wave B keys the row labels, so the
+					 * model bundle now loads the whole English catalogue set; pinning those
+					 * ~760 files would make every copy edit invalidate a fixture that records
+					 * only ids, segment keys, counts and label KINDS, and the i18n gates own
+					 * the values. The pin therefore covers the model's CODE and the locale
+					 * manifest, not the copy it renders.
+					 */
+					!input.startsWith("src/i18n/catalogues/"),
 			)
 			.map((input) => input.replace(/^\.\//, ""))
 			.sort(),

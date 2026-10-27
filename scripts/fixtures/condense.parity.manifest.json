@@ -1,6 +1,6 @@
 {
 	"_": "The GENERATED condense parity fixture's identity. `sha256` is over fixtures/condense.parity.json exactly as committed; a relay copy pins this entry, so a desktop model change the phone has not ported is a NAMED divergence instead of the silent drift that let the quiet-group clause fixtures diverge for nine days.",
 	"file": "fixtures/condense.parity.json",
-	"sha256": "a817baa19a8753d43eaa64f46edd5b93e2d5112edb896894b6fede326848c718",
-	"sourceHash": "ff3853b18adb53902c2d644cce053bd11e5387f0939d8df56302fd29ffb01151"
+	"sha256": "3e95d6128d091f247e7dc071b7c7781a3618e0eaaa1b1936a8efcf4487a17a74",
+	"sourceHash": "0ac3bab7f0cf67026a3f01a55e1be25971407cca31214b54f4506f65eb62ec82"
 }
