@@ -354,6 +354,33 @@ export function mergeWindowForReel(
 }
 
 /**
+ * Keep the rows the operator SAW at the top in the window (design round 5, D5 / Q15).
+ *
+ * At the top, `mergeWindowForReel` draws the facts' late arrivals at the head, but only
+ * in the merged answer: the cached window never learnt them. Scrolling away then
+ * switched to window rows, the seen arrival left the list, and the pill counted it as
+ * "1 new" - history relabelled as news. Writing the drawn arrivals into the window's
+ * first page while at the top makes "newer" mean "not yet presented". Returns `null`
+ * when there is nothing to add, so a caller can skip the cache write (and the
+ * re-render it would cause) on every frame that changes nothing.
+ */
+export function prependSeenToWindow<
+	Page extends { items: DesktopNotificationItem[] },
+>(
+	pages: readonly Page[],
+	factsItems: readonly DesktopNotificationItem[],
+): Page[] | null {
+	const [first, ...rest] = pages;
+	if (!first) return null;
+	const known = new Set(pages.flatMap((page) => page.items.map((i) => i.id)));
+	const unseen = factsItems.filter((item) => !known.has(item.id));
+	if (unseen.length === 0) return null;
+	/* Newest first, the window's own order, so the head stays the head. */
+	const head = [...unseen].sort((left, right) => right.seq - left.seq);
+	return [{ ...first, items: [...head, ...first.items] }, ...rest];
+}
+
+/**
  * Apply a CONFIRMED write to the cached window rows (round 7, R7-1).
  *
  * The window is no longer invalidated by a write: that refetched every loaded page and,

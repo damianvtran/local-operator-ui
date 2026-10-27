@@ -22,7 +22,14 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronsUp, Circle, ExternalLink, X } from "lucide-react";
+import {
+	Check,
+	ChevronUp,
+	ChevronsUp,
+	Circle,
+	ExternalLink,
+	X,
+} from "lucide-react";
 import { type FC, type KeyboardEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
@@ -291,33 +298,7 @@ export const DrawerUpdates: FC<{
 	};
 	const ordered = [...unread, ...read];
 	return (
-		<div className="flex min-h-0 flex-1 flex-col">
-			{/*
-			 * THE DRAWER GETS THE SAME BACK-TO-TOP AS THE REEL (QA round 4, R6-2). Its list
-			 * pages under the same sliding window, so a deep scroll drops the rows above
-			 * the viewport here too; without this the only way back to the newest update
-			 * was closing the drawer. Same control, same copy key as the page.
-			 */}
-			{list.newerCount > 0 && (
-				<div className="flex shrink-0 justify-center py-1">
-					<Button
-						size="sm"
-						variant="secondary"
-						data-drawer-back-to-top=""
-						onClick={() => {
-							const box = document.querySelector<HTMLElement>(
-								"[data-drawer-updates]",
-							);
-							box?.scrollTo({ top: 0, behavior: "smooth" });
-							list.resetToTop();
-						}}
-					>
-						{t("ui.notifications.new_pill", {
-							count: formatNumber(list.newerCount),
-						})}
-					</Button>
-				</div>
-			)}
+		<div className="relative flex min-h-0 flex-1 flex-col">
 			<div
 				data-drawer-updates=""
 				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
@@ -439,6 +420,40 @@ export const DrawerUpdates: FC<{
 					</>
 				)}
 			</div>
+			{/*
+			 * THE DRAWER GETS THE SAME BACK-TO-TOP AS THE REEL (QA round 4, R6-2). Its list
+			 * pages under the same sliding window, so a deep scroll drops the rows above
+			 * the viewport here too; without this the only way back to the newest update
+			 * was closing the drawer. Same control, same copy key as the page.
+			 *
+			 * FLOATING, NOT A BAND (design round 5, D2). As a band above the list it took
+			 * 72 px at 200 % text and left a 32 px slit of list in the narrow drawer. It
+			 * now floats over the top of the scroll port, as the reel's does: no layout
+			 * height, pointer events on the pill only. The drawer's group headers do not
+			 * stick, so nothing pins under it.
+			 */}
+			{list.newerCount > 0 && (
+				<div className="pointer-events-none absolute inset-x-0 top-2 z-[3] flex justify-center">
+					<Button
+						size="sm"
+						variant="secondary"
+						className="pointer-events-auto shadow-overlay"
+						data-drawer-back-to-top=""
+						onClick={() => {
+							const box = document.querySelector<HTMLElement>(
+								"[data-drawer-updates]",
+							);
+							box?.scrollTo({ top: 0, behavior: "smooth" });
+							list.resetToTop();
+						}}
+					>
+						<ChevronUp aria-hidden="true" />
+						{t("ui.notifications.new_pill", {
+							count: formatNumber(list.newerCount),
+						})}
+					</Button>
+				</div>
+			)}
 			<div className="flex shrink-0 items-center justify-between gap-2 border-hairline border-t px-3 py-2 text-meta">
 				{/* Wraps rather than truncates: at the drawer's 320-360px widths the
 				    note lost its last word, and the button beside it never shrinks. */}

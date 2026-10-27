@@ -48,6 +48,7 @@ import type {
 import {
 	applyConfirmedToWindow,
 	mergeWindowForReel,
+	prependSeenToWindow,
 } from "./notifications-model";
 
 export const notificationKeys = {
@@ -151,6 +152,36 @@ export function useSessionNotificationsFacts(
  * (contract § 6.3 "Feed down"). Not retried beyond the house rule: a failure
  * keeps the previous data, which is what the stale-list error state draws.
  */
+/**
+ * While the list is at its top, write the drawn late arrivals into the cached window
+ * (design round 5, D5 / Q15). See `prependSeenToWindow`: without this a row the
+ * operator saw at the head was dropped on the next scroll and then counted as "new".
+ * Deep in the list nothing is written - those arrivals are what the pill offers.
+ */
+function useKeepSeenInWindow(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	queryKey: readonly unknown[],
+	atTop: boolean,
+	factsItems: readonly DesktopNotificationItem[] | undefined,
+) {
+	const keyId = JSON.stringify(queryKey);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `keyId` is the key's identity; the array is rebuilt every render.
+	useEffect(() => {
+		if (!client || !atTop || !factsItems || factsItems.length === 0) return;
+		client.setQueryData(
+			queryKey,
+			(data?: { pages?: unknown[]; pageParams?: unknown[] }) => {
+				if (!data || !Array.isArray(data.pages)) return data;
+				const pages = prependSeenToWindow(
+					data.pages as { items: DesktopNotificationItem[] }[],
+					factsItems,
+				);
+				return pages ? { ...data, pages } : data;
+			},
+		);
+	}, [client, keyId, atTop, factsItems]);
+}
+
 export function useNotificationsList(
 	state: "unread" | "all",
 	enabled: boolean,
@@ -204,6 +235,12 @@ export function useNotificationsList(
 		refetchInterval: false,
 		refetchIntervalInBackground: false,
 	});
+	useKeepSeenInWindow(
+		client,
+		notificationKeys.list(state),
+		atTop,
+		facts.data?.items,
+	);
 	const merged = mergeWindowForReel(
 		facts.data,
 		answer.data as DesktopNotificationsList | undefined,
@@ -289,6 +326,12 @@ export function useSessionNotifications(
 		refetchInterval: false,
 		refetchIntervalInBackground: false,
 	});
+	useKeepSeenInWindow(
+		client,
+		notificationKeys.session(sessionId ?? ""),
+		atTop,
+		facts.data?.items,
+	);
 	const merged = mergeWindowForReel(
 		facts.data,
 		answer.data as DesktopNotificationsList | undefined,

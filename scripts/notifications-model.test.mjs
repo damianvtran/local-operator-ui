@@ -1070,6 +1070,41 @@ test("R7-3b: two late arrivals while deep give exactly 2 new; at the top they ar
 	assert.equal(top.items[0].id, "n_new1", "the newest row heads the list");
 });
 
+test("D5 / Q15: a late row seen at the top joins the window, and never counts as new", () => {
+	const windowItems = [factRow("n_a", 100), factRow("n_b", 99)];
+	const pages = [
+		{ items: windowItems, high_water: 100, next_cursor: "c2" },
+		{ items: [factRow("n_c", 98)], high_water: 100, next_cursor: undefined },
+	];
+	const factsItems = [factRow("n_late", 101), ...windowItems];
+	const kept = model.prependSeenToWindow(pages, factsItems);
+	assert.deepEqual(
+		kept[0].items.map((item) => item.id),
+		["n_late", "n_a", "n_b"],
+		"the seen arrival heads the window's first page",
+	);
+	assert.equal(kept[1], pages[1], "later pages are untouched");
+	assert.equal(
+		model.prependSeenToWindow(kept, factsItems),
+		null,
+		"nothing new to add returns null, so the cache is not rewritten",
+	);
+	const windowAnswer = {
+		items: kept.flatMap((page) => page.items),
+		waiting: [],
+		high_water: 101,
+		unread_count: 3,
+		next_cursor: undefined,
+	};
+	const facts = { ...windowAnswer, items: factsItems };
+	const deep = model.mergeWindowForReel(facts, windowAnswer, false);
+	assert.equal(deep.newerCount, 0, "scrolled away, the seen row is not 'new'");
+	assert.ok(
+		deep.items.some((item) => item.id === "n_late"),
+		"and it is still in the list",
+	);
+});
+
 test("R7-3c: a confirmed write edits the cached rows in place, and Undo reverses it", () => {
 	const pages = [
 		{

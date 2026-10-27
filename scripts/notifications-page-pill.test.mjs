@@ -31,6 +31,7 @@ const pageBundle = await build({
 			'export { NotificationsPage } from "./src/renderer/src/features/notifications/components/notifications-page";',
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
 			'export { notificationKeys } from "./src/renderer/src/features/notifications/notifications-api";',
+			'export { NotificationDetail } from "./src/renderer/src/features/notifications/components/notification-detail";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -312,6 +313,7 @@ async function mount() {
  * hang there must read as a failure of THAT test, not as a stalled suite.
  */
 const BOUNDED = { timeout: 30_000 };
+const ANY_DIGIT = /\d/;
 
 /** Scroll to the bottom `pages` times, waiting for each page to land. */
 async function scrollDeep(page, pages) {
@@ -428,6 +430,132 @@ test(
 			);
 		} finally {
 			await page.unmount();
+		}
+	},
+);
+
+test(
+	"D5 / Q15: a late row seen at the top stays in the list after scrolling, and the pill stays at 0",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		try {
+			await page.settle(() => page.rows().length === 100);
+			page.instrument();
+			const late = page.fixture.arrive(row(TOTAL + 1));
+			await act(async () => {
+				await page.client.invalidateQueries({
+					queryKey: PAGE.notificationKeys.factsRoot,
+				});
+			});
+			assert.ok(
+				await page.settle(() => page.rows()[0] === late.id),
+				"at the top the late row is drawn at the head",
+			);
+			assert.equal(page.pill(), null, "and there is no pill");
+			await scrollDeep(page, 2);
+			await page.settle(() => false, 200);
+			assert.equal(
+				page.pill(),
+				null,
+				"the row the operator saw is not counted as new",
+			);
+			assert.equal(
+				page.rows()[0],
+				late.id,
+				"and it is still the list's first row",
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+/*
+ * D3: THE DETAIL'S DISMISS-ALL IS MOUNTED WHILE THE COUNT IS PENDING (design round 5).
+ * jsdom has no layout, so the "same box" here is the same element, same classes and the
+ * same label shape across the transition; the pixel measurement is in the PR's design
+ * remediation (Storybook, harness browser).
+ */
+test(
+	"D3: Dismiss all stays mounted and unavailable while counting, then shows the number",
+	BOUNDED,
+	async () => {
+		const container = window.document.createElement("div");
+		window.document.body.append(container);
+		const root = createRoot(container);
+		const client = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		const calls = [];
+		const item = row(7);
+		const render = (count) =>
+			act(async () => {
+				root.render(
+					h(
+						MemoryRouter,
+						null,
+						h(
+							QueryClientProvider,
+							{ client },
+							h(PAGE.NotificationDetail, {
+								item,
+								detail: undefined,
+								loading: false,
+								error: false,
+								nowMs: NOW,
+								narrow: false,
+								writesPaused: false,
+								sessionDismissCount: count,
+								onClose() {},
+								onOpenConversation() {},
+								onToggleRead() {},
+								onDismiss() {},
+								onDismissSession: (...args) => calls.push(args),
+								onCopyLink() {},
+								onOpenProject() {},
+								onAsksSettled() {},
+							}),
+						),
+					),
+				);
+			});
+		const button = () => container.querySelector("[data-detail-dismiss-all]");
+		try {
+			await render(null);
+			const pending = button();
+			assert.ok(pending, "the button is mounted while counting");
+			assert.equal(pending.getAttribute("data-detail-dismiss-all"), "counting");
+			assert.equal(pending.getAttribute("aria-disabled"), "true");
+			assert.ok(
+				!ANY_DIGIT.test(pending.textContent),
+				`no number while counting, never 0 (read ${JSON.stringify(pending.textContent)})`,
+			);
+			const pendingClass = pending.className;
+			await act(async () => {
+				pending.dispatchEvent(
+					new window.MouseEvent("click", { bubbles: true }),
+				);
+			});
+			assert.equal(calls.length, 0, "a pending count cannot be pressed");
+
+			await render(42);
+			const ready = button();
+			assert.equal(ready, pending, "the same element: it was never unmounted");
+			assert.equal(ready.className, pendingClass, "with the same box classes");
+			assert.equal(ready.getAttribute("data-detail-dismiss-all"), "ready");
+			assert.equal(ready.getAttribute("aria-disabled"), null);
+			assert.equal(ready.textContent, "Dismiss all 42");
+			await act(async () => {
+				ready.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+			});
+			assert.equal(calls.length, 1, "a known count dismisses");
+
+			await render(0);
+			assert.equal(button(), null, "a known zero has nothing to dismiss");
+		} finally {
+			await act(async () => root.unmount());
+			container.remove();
 		}
 	},
 );

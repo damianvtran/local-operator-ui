@@ -1244,7 +1244,11 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 									)
 										void list.fetchNextPage();
 								}}
-								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [scrollbar-gutter:stable]"
+								className={cn(
+									"flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [scrollbar-gutter:stable]",
+									/* The pill's band height, read by every sticky group header (D1). */
+									list.newerCount > 0 && "[--notifications-pill-band:2.25rem]",
+								)}
 								data-notifications-list=""
 							>
 								{list.newerCount > 0 && (
@@ -1254,8 +1258,18 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 									 * rows just above the viewport leave memory. This pill says how
 									 * many, and pressing it is the way back - page one refetches, so
 									 * the counts and the waiting asks on it are fresh.
+									 *
+									 * A RESERVED BAND, AND THE HEADERS PIN BELOW IT (design round 5,
+									 * D1). The band and the group header were both `sticky top-0`, so
+									 * the opaque band sat over the header and, at 200 % text, over
+									 * 56 px of the first row. The band's height is now fixed in rem
+									 * (`h-9`, the 1.75rem pill plus 0.25rem above and below) and
+									 * published as `--notifications-pill-band` on the grid; each group
+									 * header sticks at that offset, so header and band never share a
+									 * pixel at any text size. A floating pill was measured too: it
+									 * cleared the header but still covered the first row's title.
 									 */
-									<div className="sticky top-0 z-[2] flex shrink-0 justify-center bg-canvas py-1">
+									<div className="sticky top-0 z-[2] flex h-9 shrink-0 items-center justify-center bg-canvas">
 										<Button
 											size="sm"
 											variant="secondary"
@@ -1273,6 +1287,8 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 												list.resetToTop();
 											}}
 										>
+											{/* Says "above, back to the top" without new copy (D4). */}
+											<ChevronUp aria-hidden="true" />
 											{t("ui.notifications.new_pill", {
 												count: formatNumber(list.newerCount),
 											})}
@@ -1457,7 +1473,7 @@ const GroupBlock: FC<{
 				// biome-ignore lint/a11y/useSemanticElements: a grid's group header row; a native <tr> cannot sit in this flex column
 				role="row"
 				tabIndex={-1}
-				className="sticky top-0 z-[1] flex h-8 items-center gap-2 bg-canvas px-3 text-ink-muted text-meta"
+				className="sticky top-[var(--notifications-pill-band,0px)] z-[1] flex h-8 items-center gap-2 bg-canvas px-3 text-ink-muted text-meta"
 			>
 				<span
 					// biome-ignore lint/a11y/useSemanticElements: the group's header cell inside the grid's header row

@@ -386,18 +386,38 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 					>
 						{detail?.session.title || source}
 					</button>
-					{sessionDismissCount !== null && sessionDismissCount > 0 && (
+					{/*
+					 * MOUNTED WHILE COUNTING (design round 5, D3). Hiding the button until the
+					 * walk answered made the From card grow 8.5 px when the number arrived,
+					 * pushing the rest of the detail down. It now holds its place: the number
+					 * slot shows an ellipsis (never a guessed number, never 0 - code round 4,
+					 * R4-1) and the action is unavailable until the count lands. A KNOWN zero
+					 * still removes it: there is nothing to dismiss. `min-w-[6.5rem]` holds
+					 * room for a three-digit English count (measured 96 px for "42" at 100 %),
+					 * so the right-aligned button's left edge does not move either.
+					 */}
+					{sessionDismissCount !== 0 && (
 						<Button
 							variant="ghost"
 							size="sm"
-							aria-disabled={actionsDisabled || undefined}
+							className="min-w-[6.5rem] shrink-0 tabular-nums"
+							data-detail-dismiss-all={
+								sessionDismissCount === null ? "counting" : "ready"
+							}
+							aria-busy={sessionDismissCount === null || undefined}
+							aria-disabled={
+								actionsDisabled || sessionDismissCount === null || undefined
+							}
 							onClick={() => {
-								if (actionsDisabled) return;
+								if (actionsDisabled || sessionDismissCount === null) return;
 								onDismissSession(item.session.id, source);
 							}}
 						>
 							{t("ui.notifications.detail.from.dismiss_all", {
-								count: formatNumber(sessionDismissCount),
+								count:
+									sessionDismissCount === null
+										? "…"
+										: formatNumber(sessionDismissCount),
 							})}
 						</Button>
 					)}
