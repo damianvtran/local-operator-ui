@@ -2911,15 +2911,26 @@ export function ChatSidebar({
 		 * round-1 comment described did not exist in practice. The disclosure carries
 		 * `Expand <name> chats` / `Collapse <name> chats`, the label the control's own
 		 * consumers already use, so this matches the same element the press does.
+		 *
+		 * THE TWO LABELS ARE RESOLVED HERE RATHER THAN SPELLED. They are catalogue
+		 * copy, so the selector has to ask the catalogue for the same sentence the
+		 * control renders - a literal would match in English only and lose the group
+		 * in every other language.
 		 */
 		const entityRoot = entityPanelRef.current;
+		const expandLabel = t("ui.chat.sidebar.entity.expand_chats", {
+			name: pending.name,
+		});
+		const collapseLabel = t("ui.chat.sidebar.entity.collapse_chats", {
+			name: pending.name,
+		});
 		const groupRow =
 			entityRoot === null
 				? null
 				: ([...entityRoot.querySelectorAll<HTMLElement>("[data-entity]")].find(
 						(group) =>
 							group.querySelector(
-								`[data-disclosure][aria-label="Expand ${pending.name} chats"], [data-disclosure][aria-label="Collapse ${pending.name} chats"]`,
+								`[data-disclosure][aria-label="${expandLabel}"], [data-disclosure][aria-label="${collapseLabel}"]`,
 							) !== null,
 					) ?? null);
 		/*
@@ -5590,11 +5601,19 @@ export function ChatSidebar({
 						aria-pressed={pinned}
 						/* The action, never the state: `Pin "X"` is what pressing does, and
 					   the pressed state is `aria-pressed`'s to report. */
-						aria-label={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						aria-label={
+							pinned
+								? t("ui.chat.sidebar.pins.unpin_label", { title: label })
+								: t("ui.chat.sidebar.pins.pin_label", { title: label })
+						}
 						/* The same string as the accessible name, matching the entity row's
-					   manage control: it is the affordance a pointer user gets, and it
-					   duplicates the name without being announced twice. */
-						title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						   manage control: it is the affordance a pointer user gets, and it
+						   duplicates the name without being announced twice. */
+						title={
+							pinned
+								? t("ui.chat.sidebar.pins.unpin_label", { title: label })
+								: t("ui.chat.sidebar.pins.pin_label", { title: label })
+						}
 						onClick={(event) => {
 							/*
 							 * THE GUARD RUNS FIRST (review round 3, MINOR 2). A dropped press must
@@ -6331,7 +6350,9 @@ export function ChatSidebar({
 								<Archive aria-hidden="true" />
 							)}
 							<span>
-								{archived ? "Unarchive conversation" : "Archive conversation"}
+								{archived
+									? t("ui.chat.sidebar.row_menu.unarchive")
+									: t("ui.chat.sidebar.row_menu.archive")}
 							</span>
 							<span className="ms-auto ps-6">
 								<KeyboardShortcut
@@ -6350,7 +6371,11 @@ export function ChatSidebar({
 							) : (
 								<Pin aria-hidden="true" />
 							)}
-							<span>{pinned ? "Unpin conversation" : "Pin conversation"}</span>
+							<span>
+								{pinned
+									? t("ui.chat.sidebar.row_menu.unpin")
+									: t("ui.chat.sidebar.row_menu.pin")}
+							</span>
 							<span className="ms-auto ps-6">
 								<KeyboardShortcut
 									shortcut={chatRowActCapJoined("pin", isMac)}
@@ -6924,7 +6949,15 @@ export function ChatSidebar({
 					<button
 						type="button"
 						data-disclosure
-						aria-label={`${open ? "Collapse" : "Expand"} ${displayName} chats`}
+						aria-label={
+							open
+								? t("ui.chat.sidebar.entity.collapse_chats", {
+										name: displayName,
+									})
+								: t("ui.chat.sidebar.entity.expand_chats", {
+										name: displayName,
+									})
+						}
 						aria-expanded={open}
 						className={cn(
 							"flex size-6 shrink-0 items-center justify-center rounded-md",
@@ -6984,8 +7017,10 @@ export function ChatSidebar({
 						// not using AT. It duplicates the accessible name for screen
 						// reader users, which is redundant but not announced twice —
 						// `aria-label` wins and `title` is ignored as a naming source.
-						aria-label={`New chat with ${displayName}`}
-						title={`New chat with ${displayName}`}
+						aria-label={t("ui.chat.header.new_chat_with", {
+							target: displayName,
+						})}
+						title={t("ui.chat.header.new_chat_with", { target: displayName })}
 					>
 						<Icon className="size-4 shrink-0" />
 						<span className="min-w-0 flex-1 truncate" title={nameTitle}>
@@ -7089,7 +7124,11 @@ export function ChatSidebar({
 					 */}
 					{kind === "agent" && (
 						<Tooltip
-							content={pinnedAgent ? `Unpin “${name}”` : `Pin “${name}”`}
+							content={
+								pinnedAgent
+									? t("ui.chat.sidebar.entity.unpin", { name })
+									: t("ui.chat.sidebar.entity.pin", { name })
+							}
 						>
 							<button
 								type="button"
@@ -7107,7 +7146,7 @@ export function ChatSidebar({
 									"group-focus-within:opacity-100 group-focus-within:duration-fast",
 								)}
 								aria-pressed={pinnedAgent}
-								aria-label={`Pin “${name}”`}
+								aria-label={t("ui.chat.sidebar.entity.pin", { name })}
 								onClick={() =>
 									setChatSidebarView(togglePinnedAgent(sidebarView, pinKey))
 								}
@@ -7171,7 +7210,9 @@ export function ChatSidebar({
 							"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:text-ink-muted",
 							!staged && "hover:bg-row-hover",
 						)}
-						aria-label={`Manage ${displayName}`}
+						aria-label={t("ui.chat.sidebar.entity.manage", {
+							name: displayName,
+						})}
 						onClick={() =>
 							navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`)
 						}

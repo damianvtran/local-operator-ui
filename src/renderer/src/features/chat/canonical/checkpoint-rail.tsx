@@ -21,10 +21,10 @@ import type {
 	CheckpointOutcome,
 } from "../../../../../shared/desktop-contract";
 import {
-	CHECKPOINT_GENERATING_NAME,
 	CHECKPOINT_MARK_CLASS,
 	CHECKPOINT_OUTCOME_LABELS,
 	checkpointAriaLabel,
+	checkpointGeneratingName,
 	checkpointLeadLabel,
 	checkpointMarkState,
 	checkpointNamingPending,
@@ -298,7 +298,7 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 			</p>
 			{checkpointNamingPending(checkpoint) && (
 				<p className={cn("text-ink-dim text-meta")}>
-					{CHECKPOINT_GENERATING_NAME}
+					{checkpointGeneratingName()}
 				</p>
 			)}
 			{summary && (

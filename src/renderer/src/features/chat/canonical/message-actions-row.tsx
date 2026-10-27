@@ -105,14 +105,14 @@ import {
 } from "react";
 import { copyTarget } from "../utils/link-open";
 import {
-	ANSWER_ACTIONS_LABEL,
 	type ActionRowRole,
 	type AnswerActionId,
 	COPY_FEEDBACK_MS,
-	USER_ACTIONS_LABEL,
 	actionRowVisibility,
 	answerActionsFor,
+	answerActionsLabel,
 	forkExcerpt,
+	userActionsLabel,
 } from "./message-actions";
 
 export type AnswerActionRowProps = {
@@ -446,11 +446,22 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 * The design delta verifies it against frames and reverts if the
 			 * stamp band reads worse.
 			 */
-			<Tooltip content={copied ? "Copied" : "Copy"} side="bottom">
+			<Tooltip
+				content={
+					copied
+						? t("ui.chat.response_actions.copied")
+						: t("ui.chat.response_actions.copy")
+				}
+				side="bottom"
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label={copied ? "Copied" : "Copy"}
+					aria-label={
+						copied
+							? t("ui.chat.response_actions.copied")
+							: t("ui.chat.response_actions.copy")
+					}
 					className={cn(
 						/*
 						 * NO HOVER GROUND. `ghost`'s shipped default paints `bg-accent-wash`
@@ -483,11 +494,18 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 * DIRECTION the sidebar's cannot (the cut is at this message, not at
 			 * the end), so the label carries the rest.
 			 */
-			<Tooltip content="Fork from this message" side="bottom">
+			<Tooltip
+				content={t(
+					"ui.chat.pickers.destination_pickers.fork_from_this_message",
+				)}
+				side="bottom"
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Fork from this message"
+					aria-label={t(
+						"ui.chat.pickers.destination_pickers.fork_from_this_message",
+					)}
 					ref={forkButtonRef}
 					className={cn("text-ink-dim hover:bg-transparent hover:text-ink")}
 					onClick={handleFork}
@@ -509,12 +527,12 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 */
 			aria-label={
 				kind === "user"
-					? USER_ACTIONS_LABEL
+					? userActionsLabel()
 					: kind === "commentary"
 						? t("ui.chat.commentary_actions.label")
 						: kind === "response"
 							? t("ui.chat.response_actions.label")
-							: ANSWER_ACTIONS_LABEL
+							: answerActionsLabel()
 			}
 			ref={revealRef}
 			onAnimationEnd={(event) => {

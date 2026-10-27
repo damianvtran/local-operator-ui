@@ -18,7 +18,7 @@ const COLLAPSE_FILTER_RE =
 const BADGE_SR_ONLY_RE =
 	/\{badge > 0 && \(\s*<span className="sr-only">\{groupBadgeLabel\(badge\)\}<\/span>/;
 const DISCLOSURE_LABEL_RE =
-	/DISCLOSURE_LABELS|aria-label="Expand \$\{pending\.name\} chats"/;
+	/DISCLOSURE_LABELS|ui\.chat\.sidebar\.entity\.expand_chats/;
 
 /*
  * THE PAGED CATALOGUE, driven through the shipped store and the shipped
