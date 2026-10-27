@@ -42,7 +42,12 @@ const SUPPORT =
  */
 const BLOCK_WRAPPER = "[&_[data-radix-scroll-area-viewport]>div]:block!";
 const LIST_WIDTH = /<ol className="[^"]*\bw-full\b[^"]*\bmin-w-0\b/;
-const ROW_WIDTH = /"group\/message relative flex w-full min-w-0 gap-3/;
+/* The row's own class string, matched for its two constraints INDEPENDENTLY:
+   the exact order `relative flex w-full min-w-0 gap-3` would fail on a class
+   sort while the constraint is still there (agent review round 2, R2-n1). */
+const ROW_CLASS = /"group\/message[^"]*"/;
+const ROW_WIDTH_FULL = /\bw-full\b/;
+const ROW_WIDTH_MIN = /\bmin-w-0\b/;
 const SELF_START = /\bself-start\b/;
 const WARM_UP_GATE =
 	/if \(!TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD\) return;/;
@@ -98,11 +103,10 @@ test("message rows and their list take the viewport's width, not their content's
 		LIST_WIDTH,
 		"the timeline list must be the viewport's width (w-full min-w-0)",
 	);
-	assert.match(
-		list,
-		ROW_WIDTH,
-		"every row must be the viewport's width (w-full min-w-0)",
-	);
+	const row = list.match(ROW_CLASS)?.[0];
+	assert.ok(row, "a message row still carries its group/message class string");
+	assert.match(row, ROW_WIDTH_FULL, `the row lost w-full (${row})`);
+	assert.match(row, ROW_WIDTH_MIN, `the row lost min-w-0 (${row})`);
 });
 
 test("the empty-DM trigger hugs its mark instead of stretching to the pane", () => {
@@ -142,7 +146,12 @@ test("the emoji warm-up only runs where the picker can open", () => {
  * back to `false` outside a DOM (its own `try`/`catch`), which is exactly the
  * path a headless run takes.
  */
-test("the warm-up runs once per module, whatever mounts later", async () => {
+test("a cancelled warm-up resumes, and a completed one is a no-op", async () => {
+	// Reproduction first (agent review round 2, R2-M1): the walk used to be
+	// marked done when it STARTED, so React StrictMode's mount -> cleanup ->
+	// remount, and the timeline's unmount on a conversation switch, both left
+	// the cache cold for the rest of the session. Probes are counted through a
+	// fake canvas, so these are real probe executions.
 	const { code } = await transform(source(SUPPORT), {
 		loader: "ts",
 		format: "esm",
@@ -150,28 +159,61 @@ test("the warm-up runs once per module, whatever mounts later", async () => {
 	const module = await import(
 		`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`
 	);
-	const realSetTimeout = globalThis.setTimeout;
-	let scheduled = 0;
-	globalThis.setTimeout = (fn, ms, ...rest) => {
-		scheduled++;
-		return realSetTimeout(fn, ms, ...rest);
+	let paints = 0;
+	const pixels = new Uint8ClampedArray(40 * 40 * 4);
+	const context = {
+		clearRect() {},
+		fillText() {
+			paints++;
+		},
+		getImageData: () => ({ data: pixels }),
+		measureText: () => ({ width: 10 }),
+		set fillStyle(_value) {},
+	};
+	const realDocument = globalThis.document;
+	globalThis.document = {
+		createElement: () => ({ width: 0, height: 0, getContext: () => context }),
+	};
+	const probes = () => paints / 2;
+	// Large enough that a slice-bound walk cannot finish before the cancel: the
+	// cancel has to land mid-walk, which is the state that used to be terminal.
+	const corpus = Array.from({ length: 20_000 }, (_, i) => `e${i}`);
+	const waitFor = async (ok, ms = 5_000) => {
+		const deadline = Date.now() + ms;
+		while (Date.now() < deadline) {
+			if (ok()) return true;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+		}
+		return ok();
 	};
 	try {
-		const corpus = Array.from({ length: 64 }, (_, i) => `e${i}`);
-		module.warmEmojiProbeCache(corpus);
-		assert.equal(scheduled, 1, "the first caller schedules the first slice");
-		// Let the walk finish, then mount a second list the way the thread pane
-		// does. Without the module flag this schedules a second walk of the same
-		// fixed corpus.
-		await new Promise((resolve) => realSetTimeout(resolve, 200));
-		const before = scheduled;
-		module.warmEmojiProbeCache(corpus);
-		assert.equal(
-			scheduled,
-			before,
-			"a later mount must not schedule a walk of the corpus it has already probed",
+		const cancel = module.warmEmojiProbeCache(corpus, 1);
+		await waitFor(() => probes() > 0);
+		const midWalk = probes();
+		assert.ok(
+			midWalk > 0 && midWalk < corpus.length,
+			`the walk must be cancellable mid-way (it reached ${midWalk}/${corpus.length})`,
 		);
+		cancel();
+		const atCancel = probes();
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		assert.equal(
+			probes(),
+			atCancel,
+			"a cancelled walk must actually stop scheduling",
+		);
+		// The remount. Before the fix this was a no-op and the cache stayed cold.
+		module.warmEmojiProbeCache(corpus, 1);
+		assert.ok(
+			await waitFor(() => probes() >= corpus.length),
+			`the resumed walk must reach the whole corpus, not stop at ${probes()}/${corpus.length}`,
+		);
+		// Completed: a later mount must not re-walk what is already probed.
+		const done = probes();
+		module.warmEmojiProbeCache(corpus, 1);
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		assert.equal(done, probes(), "a completed walk must not be repeated");
 	} finally {
-		globalThis.setTimeout = realSetTimeout;
+		globalThis.document = realDocument;
 	}
 });
