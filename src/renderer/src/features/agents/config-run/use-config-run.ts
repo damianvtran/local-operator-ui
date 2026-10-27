@@ -68,9 +68,11 @@ import {
 	type CatalogueSnapshot,
 	RUN_TOOL_NAMES,
 	type RunToolRow,
+	type SkillListRow,
 	diffCatalogue,
 	projectRunToolRow,
 	snapshotCatalogue,
+	snapshotSkills,
 } from "./summary";
 
 /**
@@ -100,6 +102,50 @@ export function configRunEnabled(
 		desktopFeatureEnabled(capabilities, "profile_catalogue") &&
 		desktopFeatureEnabled(capabilities, "team_catalogue")
 	);
+}
+
+/**
+ * Whether a configuration run may be ABOUT A SKILL, on top of `configRunEnabled`.
+ *
+ * A SEPARATE KEY, NOT `agents_config` (seam note §3). An older core advertises
+ * `agents_config` but builds no `skill` tool into the run, so a skill request
+ * there would be answered "I can't edit files" after a paid turn. Only a core
+ * that declares the tool advertises `agents_config_skills`. `skill_library` is
+ * required because the settle diff reads `skills.list` fingerprints; a run whose
+ * result the page cannot read is a write nobody sees. `configRunEnabled` itself
+ * is unchanged, so the agents/teams composer keeps its own gate.
+ */
+export function configSkillRunEnabled(
+	capabilities: DesktopCapabilities | null | undefined,
+): boolean {
+	return (
+		configRunEnabled(capabilities) &&
+		desktopFeatureEnabled(capabilities, "agents_config_skills") &&
+		desktopFeatureEnabled(capabilities, "skill_library")
+	);
+}
+
+/**
+ * The skills dimension of a snapshot, read DIRECTLY (never from the query cache)
+ * and only when the skill run is on.
+ *
+ * WHY NOT THE CACHE. `useSkillsLibrary` fills its key only once the Skills tab has
+ * been opened, and an empty `before` would make the diff report every skill as
+ * created (seam note §4). A failed read is `null`, which the diff treats as "not
+ * read" rather than "empty": a touched skill is still listed, without details.
+ */
+async function readSkillsSnapshot(
+	enabled: boolean,
+): Promise<CatalogueSnapshot["skills"]> {
+	if (!enabled) return null;
+	try {
+		const envelope = await desktopResult<{
+			data?: { skills?: SkillListRow[] };
+		}>({ op: "skills.list" });
+		return snapshotSkills(envelope?.data?.skills ?? null);
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -260,6 +306,7 @@ export type ConfigRunHandle = {
 export function useConfigRun(): ConfigRunHandle {
 	const capabilities = useDesktopCapabilities();
 	const enabled = configRunEnabled(capabilities.data);
+	const skillsEnabled = configSkillRunEnabled(capabilities.data);
 	const client = useQueryClient();
 	const store = useConfigRunStore();
 	const [starting, setStarting] = useState(false);
@@ -377,16 +424,22 @@ export function useConfigRun(): ConfigRunHandle {
 			const before = store.before as CatalogueSnapshot | null;
 			let results: RunResult[] = [];
 			try {
-				const [profiles, teams] = await Promise.all([
+				const [profiles, teams, skills] = await Promise.all([
 					desktopResult<{ profiles: ReusableProfile[] }>({
 						op: "profiles.list",
 					}),
 					desktopResult<{ teams: ReusableTeam[] }>({ op: "teams.list" }),
+					/*
+					 * The third read only with the skill run on, so an agents/teams run on
+					 * a core without the key makes exactly the two reads it always made.
+					 * Its own failure is `null` (not diffed), never the settle's failure.
+					 */
+					readSkillsSnapshot(skillsEnabled),
 				]);
 				if (before) {
 					results = diffCatalogue(
 						before,
-						snapshotCatalogue(profiles.profiles, teams.teams),
+						{ ...snapshotCatalogue(profiles.profiles, teams.teams), skills },
 						store.touched,
 					);
 				}
@@ -429,7 +482,7 @@ export function useConfigRun(): ConfigRunHandle {
 			 * honest about which snapshot it is diffing against.
 			 */
 		},
-		[client, store.before, store.touched],
+		[client, store.before, store.touched, skillsEnabled],
 	);
 
 	useEffect(() => {
@@ -553,10 +606,13 @@ export function useConfigRun(): ConfigRunHandle {
 		setStarting(true);
 		setAttached(false);
 		settleLatch.current = false;
-		const before = snapshotCatalogue(
-			client.getQueryData<ReusableProfile[]>(["desktop", "profiles"]),
-			client.getQueryData<ReusableTeam[]>(["desktop", "teams"]),
-		);
+		const before: CatalogueSnapshot = {
+			...snapshotCatalogue(
+				client.getQueryData<ReusableProfile[]>(["desktop", "profiles"]),
+				client.getQueryData<ReusableTeam[]>(["desktop", "teams"]),
+			),
+			skills: await readSkillsSnapshot(skillsEnabled),
+		};
 		/*
 		 * The context sentence is composed HERE rather than by the composer, so the
 		 * one place that decides what the run is told is also the one place that

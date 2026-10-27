@@ -23,9 +23,12 @@
 import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useHubUpdates } from "@shared/api/local-operator/hub-hooks";
-import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
+import {
+	hubLinksKey,
+	useHubLinks,
+} from "@shared/api/local-operator/hub-link-hooks";
 import { hubItemIndex } from "@shared/api/local-operator/hub-updates";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import {
 	type SkillsListResult,
@@ -109,4 +112,70 @@ export function useSkillsTab(options: {
 		[links.data, updateIndex, inventoryReady],
 	);
 	return { library, cards, join, inventoryReady, linksFailed: !!links.error };
+}
+
+/* ---------------------------------------------------------------- writes --- */
+
+/**
+ * The Skills tab's three writes (core `skill_write:1`): Copy to my skills, the
+ * inline SKILL.md save, and Remove. Each sends a FRESH `requestId` per attempt -
+ * the route receipts by it, so reusing one would replay the first answer instead
+ * of trying again.
+ *
+ * WHAT IS INVALIDATED, AND WHY BOTH. The library key is a prefix of every skill's
+ * detail key, so one invalidation refreshes the list and the open skill; the hub
+ * links inventory is the source of a linked skill's Modified state and its
+ * content presence, which a save or a remove changes. React Query keeps the old
+ * data on screen while the refetch is in flight, so the pane does not flash a
+ * skeleton under the reader.
+ *
+ * A refusal is rethrown as the transport's own error, whose `code` is the
+ * route's machine code (`skill_stale`, `skill_local_changes_unpublished`, ...):
+ * the caller decides the sentence, never a regex over prose.
+ */
+export function useSkillWrites() {
+	const client = useQueryClient();
+	const refresh = useCallback(() => {
+		void client.invalidateQueries({ queryKey: skillsLibraryKey });
+		void client.invalidateQueries({ queryKey: hubLinksKey });
+	}, [client]);
+	const copy = useMutation({
+		mutationFn: (name: string) =>
+			desktopResult({
+				op: "skills.create",
+				requestId: crypto.randomUUID(),
+				name,
+				copyFrom: name,
+			}),
+		onSettled: refresh,
+	});
+	const update = useMutation({
+		mutationFn: (input: {
+			name: string;
+			expectedFingerprint: string;
+			skillMd: string;
+		}) =>
+			desktopResult({
+				op: "skills.update",
+				requestId: crypto.randomUUID(),
+				name: input.name,
+				expectedFingerprint: input.expectedFingerprint,
+				// SKILL.md ONLY, which is safe solely because the caller offers the
+				// inline edit only for a skill with no reference files: the route
+				// replaces the whole file set (`skillEditability`).
+				files: [{ path: "SKILL.md", content: input.skillMd }],
+			}),
+		onSettled: refresh,
+	});
+	const remove = useMutation({
+		mutationFn: (input: { name: string; discardLocalChanges: boolean }) =>
+			desktopResult({
+				op: "skills.remove",
+				requestId: crypto.randomUUID(),
+				name: input.name,
+				discardLocalChanges: input.discardLocalChanges,
+			}),
+		onSettled: refresh,
+	});
+	return { copy, update, remove };
 }

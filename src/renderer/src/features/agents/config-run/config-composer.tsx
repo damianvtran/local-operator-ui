@@ -61,6 +61,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Square } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import type { RunTarget } from "./config-run-store";
 import type { ConfigRunHandle } from "./use-config-run";
 
 /**
@@ -326,11 +327,14 @@ const definitionsPhrase = (count: number): string =>
 function ComposerStatus({
 	run,
 	about,
+	skill = false,
 	blockedReason,
 	hasDraft,
 	onClearAbout,
 	onDismiss,
 }: {
+	/** The Skills tab's box: its own About words and no Clear (see `ConfigComposer`). */
+	skill?: boolean;
 	run: ConfigRunHandle;
 	/**
 	 * Why the page is refusing input, and whether the box holds a draft. TOGETHER
@@ -343,7 +347,7 @@ function ComposerStatus({
 	 */
 	blockedReason?: string | null;
 	hasDraft: boolean;
-	about: { kind: "agent" | "team"; name: string } | null;
+	about: RunTarget | null;
 	onClearAbout: () => void;
 	/** Wraps `run.dismiss` so the caret lands back in the box (UX U8). */
 	onDismiss: () => void;
@@ -551,27 +555,28 @@ function ComposerStatus({
 							<span
 								data-testid="config-composer-about"
 								// The name truncates at 224 px; the full words stay reachable (UX U8).
-								title={t("ui.agents.config.about", {
-									kind: about.kind,
-									name: about.name,
-								})}
+								title={aboutLine(about, skill)}
 								className="max-w-56 truncate text-meta text-ink-muted"
 							>
-								{t("ui.agents.config.about", {
-									kind: about.kind,
-									name: about.name,
-								})}
+								{aboutLine(about, skill)}
 							</span>
-							<Button
-								variant="ghost"
-								size="sm"
-								// The trailing control when no run is showing: `-mr-2` (the button's
-								// own `px-2`) puts its LABEL's last glyph on the column edge (D1).
-								className={showsRun ? undefined : TRAILING_GHOST}
-								onClick={onClearAbout}
-							>
-								{t("ui.agents.config.action.clear")}
-							</Button>
+							{/*
+							 * NO CLEAR ON THE SKILLS TAB (design spec §5.3): the target follows the
+							 * open skill by itself, and a skill run has no create, so an untargeted
+							 * box there could do nothing.
+							 */}
+							{skill ? null : (
+								<Button
+									variant="ghost"
+									size="sm"
+									// The trailing control when no run is showing: `-mr-2` (the button's
+									// own `px-2`) puts its LABEL's last glyph on the column edge (D1).
+									className={showsRun ? undefined : TRAILING_GHOST}
+									onClick={onClearAbout}
+								>
+									{t("ui.agents.config.action.clear")}
+								</Button>
+							)}
 						</>
 					) : null}
 					{showsRun && run.activity.length > 0 ? (
@@ -716,7 +721,9 @@ function ComposerStatus({
 							) : null}
 						</div>
 					) : null}
-					{run.status === "done" ? <RunSummary run={run} /> : null}
+					{run.status === "done" ? (
+						<RunSummary run={run} skill={skill} />
+					) : null}
 					{run.status === "error" && run.error ? (
 						<div className="mt-2 border-danger-border border-t pt-2">
 							<p className="text-body-sm text-danger">{run.error}</p>
@@ -767,6 +774,24 @@ function ComposerStatus({
 }
 
 /**
+ * The About line's words. A skill gets its own key: `ui.agents.config.about`
+ * interpolates the raw wire kind, which every other locale then prints in
+ * English (design spec §5.3, E2).
+ */
+function aboutLine(about: RunTarget, skill: boolean): string {
+	return skill || about.kind === "skill"
+		? t("ui.agents.skills.composer.about", { name: about.name })
+		: t("ui.agents.config.about", { kind: about.kind, name: about.name });
+}
+
+/** The `(kind)` suffix of a summary row; the skill word is keyed (spec §5.4). */
+function kindWord(target: RunTarget): string {
+	return target.kind === "skill"
+		? t("ui.agents.skills.composer.kind")
+		: target.kind;
+}
+
+/**
  * Exactly what changed, in the operator's words.
  *
  * WHY THIS IS NOT A SUCCESS TOAST. A configuration run writes text that future
@@ -776,13 +801,22 @@ function ComposerStatus({
  * empty list (the design's "zero touched entities" case), and an update whose
  * catalogue fields did not move says which fact it cannot see from here.
  */
-function RunSummary({ run }: { run: ConfigRunHandle }) {
+function RunSummary({
+	run,
+	skill = false,
+}: {
+	run: ConfigRunHandle;
+	/** On the Skills tab the zero-change sentence names a skill, not agents or teams. */
+	skill?: boolean;
+}) {
 	useI18nLocale();
 	if (run.results.length === 0) {
 		return (
 			<div className="mt-2 border-hairline border-t pt-2 text-body-sm">
 				<p className="text-ink-muted">
-					{t("ui.agents.config.summary.no_changes")}
+					{skill
+						? t("ui.agents.skills.composer.no_changes")
+						: t("ui.agents.config.summary.no_changes")}
 				</p>
 				{/*
 				 * THE ANSWER ITSELF, and the request it answers. "The run answered" is a
@@ -815,7 +849,7 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 										name: result.target.name,
 									})}
 						</span>
-						<span className="text-ink-muted"> ({result.target.kind})</span>
+						<span className="text-ink-muted"> ({kindWord(result.target)})</span>
 						{result.changes.length > 0 ? (
 							<span className="text-ink-muted">
 								{": "}
@@ -824,7 +858,14 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 						) : result.created ? null : (
 							<span className="text-ink-muted">
 								{": "}
-								{t("ui.agents.config.summary.hidden_changes")}
+								{/*
+								 * A SKILL'S PANE REFRESHES ITSELF (design spec §5.4): the settle
+								 * invalidates the library, so "open it to see what was written" is
+								 * not the next act; the instructions on screen already are.
+								 */}
+								{result.target.kind === "skill"
+									? t("ui.agents.skills.composer.changed_below")
+									: t("ui.agents.config.summary.hidden_changes")}
 							</span>
 						)}
 					</li>
@@ -868,10 +909,8 @@ export const CONFIG_BOX_KEY = "agents-config";
  * sentence that missed one copy would leave a seeded draft the cleanup no longer
  * recognises as seeded, and the operator's next row click would keep it.
  */
-export const configSeedPrompt = (about: {
-	kind: "agent" | "team";
-	name: string;
-}): string => `Change the ${about.kind} ${about.name}: `;
+export const configSeedPrompt = (about: RunTarget): string =>
+	`Change the ${about.kind} ${about.name}: `;
 
 /**
  * THE ONE WRITER OF THE BOX'S TEXT OUTSIDE THE COMPOSER, and the fix for QA
@@ -893,7 +932,7 @@ export const configSeedPrompt = (about: {
  */
 export function askForChange(
 	run: ConfigRunHandle,
-	about: { kind: "agent" | "team"; name: string },
+	about: RunTarget,
 	prompt: string,
 ): void {
 	run.setAbout(about);
@@ -927,10 +966,7 @@ export function askForChange(
  * clears the box only when it still holds exactly what `configSeedPrompt` wrote
  * for the target being left behind, and leaves a hand-typed request alone.
  */
-export function discardSeededConfigBox(about: {
-	kind: "agent" | "team";
-	name: string;
-}): void {
+export function discardSeededConfigBox(about: RunTarget): void {
 	const store = useConversationInputStore.getState();
 	if (
 		store.getCurrentInput(CONFIG_BOX_KEY).trim() ===
@@ -956,12 +992,26 @@ export function ConfigComposer({
 	/** Names the row the next request is about, when one is selected. */
 	about,
 	onClearAbout,
+	skill = false,
+	focusToken = 0,
 }: {
 	run: ConfigRunHandle;
 	hero?: boolean;
 	blockedReason?: string | null;
-	about: { kind: "agent" | "team"; name: string } | null;
+	about: RunTarget | null;
 	onClearAbout: () => void;
+	/**
+	 * THE SKILLS TAB'S BOX (design spec §5). The same composer, run and strip as
+	 * Agents and Teams; the differences are words and one behaviour. The target
+	 * is set by OPENING an eligible skill rather than by a press, so the caret is
+	 * not pulled into the box on every row the reader arrows past (the #1443 rule
+	 * that focus stays on the row); a press of "Ask for a change" moves it with
+	 * `focusToken` instead. The About line, placeholder and label are keyed, and
+	 * there is no Clear.
+	 */
+	skill?: boolean;
+	/** Bumped by the page to put the caret in the box (the Skills tab's Ask press). */
+	focusToken?: number;
 }) {
 	useI18nLocale();
 	const inputRef = useRef<MessageInputHandle | null>(null);
@@ -1113,7 +1163,9 @@ export function ConfigComposer({
 	 * Do not lengthen it without re-running the native pane-width boundary check.
 	 */
 	const placeholder = about
-		? `Change ${about.name}…`
+		? skill
+			? t("ui.agents.skills.composer.placeholder", { name: about.name })
+			: `Change ${about.name}…`
 		: run.enabled
 			? hero
 				? "Describe what you want…"
@@ -1129,9 +1181,14 @@ export function ConfigComposer({
 	 */
 	const aboutKey = about ? `${about.kind}:${about.name}` : null;
 	useEffect(() => {
-		if (!aboutKey) return;
+		// On the Skills tab opening a row sets the target, so a target change is not
+		// a request for the caret (see `skill`); the press bumps `focusToken`.
+		if (!aboutKey || skill) return;
 		inputRef.current?.focusInput();
-	}, [aboutKey]);
+	}, [aboutKey, skill]);
+	useEffect(() => {
+		if (focusToken > 0) inputRef.current?.focusInput();
+	}, [focusToken]);
 
 	/**
 	 * DISMISS AND CLEAR PUT THE CARET BACK (UX U8). Both retire the control the
@@ -1162,7 +1219,9 @@ export function ConfigComposer({
 			data-testid="config-composer"
 		>
 			<div className="sr-only" id="config-composer-label">
-				{t("ui.agents.config.composer.label")}
+				{skill
+					? t("ui.agents.skills.composer.label")
+					: t("ui.agents.config.composer.label")}
 			</div>
 			{/*
 			 * THE BOX IS THE APP'S OWN COMPOSER (Scope B, §3.1).
@@ -1269,6 +1328,7 @@ export function ConfigComposer({
 						<ComposerStatus
 							run={run}
 							about={about}
+							skill={skill}
 							blockedReason={blockedReason}
 							hasDraft={hasDraft}
 							onClearAbout={clearAboutAndFocus}

@@ -2921,6 +2921,57 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			name: skillName.optional(),
 		})
 		.strict(),
+	/*
+	 * THE SKILL LIBRARY'S WRITES (core `skill_write:1`, `desktop_catalogues.py`
+	 * `skill_create` / `skill_update` / `skill_remove`), for the Agents page's
+	 * Skills tab: Copy to my skills, the inline SKILL.md edit, and Remove.
+	 *
+	 * WHY `update` IS A WHOLE FILE SET. The route REPLACES the folder's files with
+	 * exactly what is sent, so a caller that sends `SKILL.md` alone deletes every
+	 * reference file. The tab therefore offers the inline edit only for a skill
+	 * whose detail read reported no reference files and an untruncated body; the
+	 * composer path (core's `skill` tool) owns partial edits. The bounds are the
+	 * route's `SkillFileIn` / `SkillUpdate` limits, so a request this schema
+	 * accepts is one the route can accept.
+	 *
+	 * `discardLocalChanges` is STRICT on the route (a lenient bool once turned a
+	 * typo into a destroyed edit), so it is a real boolean here too.
+	 */
+	z
+		.object({
+			op: z.literal("skills.create"),
+			requestId,
+			name: skillName,
+			copyFrom: skillName,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("skills.update"),
+			requestId,
+			name: skillName,
+			expectedFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+			files: z
+				.array(
+					z
+						.object({
+							path: z.string().min(1).max(240),
+							content: z.string().max(1024 * 1024),
+						})
+						.strict(),
+				)
+				.min(1)
+				.max(64),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("skills.remove"),
+			requestId,
+			name: skillName,
+			discardLocalChanges: z.boolean(),
+		})
+		.strict(),
 	z.object({ op: z.literal("sessions.failovers"), sessionId }).strict(),
 	z
 		.object({
@@ -8972,6 +9023,35 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "skills.create":
+			return {
+				path: "/v1/desktop/skills",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					name: request.name,
+					copy_from: request.copyFrom,
+				},
+			};
+		case "skills.update":
+			return {
+				path: `/v1/desktop/skills/${encodeURIComponent(request.name)}`,
+				method: "PUT",
+				body: {
+					request_id: request.requestId,
+					expected_fingerprint: request.expectedFingerprint,
+					files: request.files,
+				},
+			};
+		case "skills.remove":
+			return {
+				path: `/v1/desktop/skills/${encodeURIComponent(request.name)}`,
+				method: "DELETE",
+				body: {
+					request_id: request.requestId,
+					discard_local_changes: request.discardLocalChanges,
+				},
+			};
 		case "sessions.failovers":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/failovers`,

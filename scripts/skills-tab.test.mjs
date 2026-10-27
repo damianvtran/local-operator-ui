@@ -56,6 +56,10 @@ const pageBundle = await build({
 			 * other (see the note under the import).
 			 */
 			'export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";',
+			// The run's pure seams the Skills composer widens (seam note §3-§4).
+			'export * as summary from "./src/renderer/src/features/agents/config-run/summary";',
+			'export { configRunEnabled, configSkillRunEnabled } from "./src/renderer/src/features/agents/config-run/use-config-run";',
+			'export { configSeedPrompt, CONFIG_BOX_KEY } from "./src/renderer/src/features/agents/config-run/config-composer";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -263,9 +267,23 @@ const SHIMMED_GLOBALS = [
 	"DOMParser",
 	"XMLSerializer",
 ];
+/*
+ * NO REAL NETWORK. A hub skill's pane now mounts the agents' `HubLinksPanel`,
+ * whose sign-in/credential probes reach `HealthApi.healthCheck` through the global
+ * `fetch` - a real request to whatever listens on the configured port, which on a
+ * shared host is somebody's live process. Its keep-alive socket then held this
+ * file open until the runner's timeout (measured: 2 TCP sockets in
+ * `process.getActiveResourcesInfo()` after teardown). The transport under test is
+ * the desktop bridge above; anything that leaves it is refused here, quietly, the
+ * way an offline machine answers.
+ */
+const offlineFetch = async () => {
+	throw new TypeError("fetch is disabled in skills-tab.test.mjs");
+};
 const shims = {
 	window,
 	document: window.document,
+	fetch: offlineFetch,
 	navigator: window.navigator,
 	localStorage: window.localStorage,
 	getComputedStyle: window.getComputedStyle.bind(window),
@@ -510,6 +528,14 @@ const typeInto = async (input, value) => {
 const teardown = async (view) => {
 	await act(async () => view.root.unmount());
 	view.container.remove();
+	/*
+	 * AND THE CLIENT'S CACHE. The default `gcTime: Infinity` above covers queries
+	 * that take the default, but a hub skill's pane mounts `HubLinksPanel`, whose
+	 * memberships query sets its own 10-minute `gcTime`: unmounting arms that
+	 * timer, and it held the file open past the runner's timeout. `clear()` drops
+	 * every query and its timer.
+	 */
+	view.client?.clear();
 };
 /*
  * ABSENCE IS ASSERTED ON A BOOLEAN, NEVER ON THE NODE. `assert.equal(node, null)`
@@ -607,7 +633,10 @@ test("an older core's short rows normalise without throwing", () => {
 		installed: true,
 		fingerprint: null,
 		form: null,
+		// Only an explicit `true` from core is editable; an older row is not.
+		editable: false,
 	});
+	assert.equal(toSkillCard({ name: "n", editable: true }).editable, true);
 	// A label this build does not know is unknown, not a crash and not a guess.
 	assert.equal(toSkillCard({ name: "n", source: "cloud" }).source, null);
 	// Only an explicit false is "not installed".
@@ -750,8 +779,18 @@ test("skill_library present WITHOUT hub_links / hub_updates: one list read, no h
 		1,
 		"exactly one list read, not a refetch loop",
 	);
-	// The inventory can never answer, so the state is "unavailable", not "not downloaded".
-	assert.match(text(rowOf(view.container, "c-hub")), /Link state unavailable/);
+	// The inventory can never answer, so the ROW invents nothing (no "not
+	// downloaded" for a skill that is on disk): line two is the description alone.
+	assert.equal(
+		q(rowOf(view.container, "c-hub"), '[data-testid="skill-row-state"]') ===
+			null,
+		true,
+		"no state word while the hub inventory cannot answer",
+	);
+	assert.doesNotMatch(
+		text(rowOf(view.container, "c-hub")),
+		/Not downloaded|Downloaded|Subscribed/,
+	);
 	await teardown(view);
 });
 
@@ -927,7 +966,10 @@ test("a hub row with a failed update: name and source on line one, the mark lead
 	assert.ok(await settle(() => rowOf(view.container, "hub-linked")));
 	assert.ok(
 		await settle(() =>
-			q(rowOf(view.container, "hub-linked"), '[data-testid="skill-row-mark"]'),
+			q(
+				rowOf(view.container, "hub-linked"),
+				'[data-testid="skill-row-state"] [data-hub-mark-state]',
+			),
 		),
 	);
 	const button = rowOf(view.container, "hub-linked");
@@ -971,7 +1013,11 @@ test("a hub row with a failed update: name and source on line one, the mark lead
 	);
 	// The mark comes first on line two.
 	assert.ok(
-		lineTwo.firstElementChild.getAttribute("data-testid") === "skill-row-mark",
+		lineTwo.firstElementChild.getAttribute("data-testid") === "skill-row-state",
+	);
+	assert.equal(
+		rowOf(view.container, "hub-linked").getAttribute("data-skill-state"),
+		"failed",
 	);
 	await teardown(view);
 });
@@ -1057,8 +1103,11 @@ test("a not-installed skill with no hub sentence keeps its badge", async () => {
 	});
 	assert.ok(
 		await settle(() =>
-			q(view.container, '[data-testid="skill-not-installed"]'),
+			/Not installed/.test(
+				text(q(view.container, '[data-testid="skill-meta"]')),
+			),
 		),
+		"the header's meta line says Not installed",
 	);
 	await teardown(view);
 });
@@ -1100,7 +1149,7 @@ test("a reference preview is clamped behind Show all, and the notice comes befor
 	const pane = q(view.container, '[data-testid="skill-detail"]');
 	// U7: in document order the notice sits BEFORE the instructions block, hence before its Show all.
 	const notice = q(pane, '[data-testid="skill-body-truncated"]');
-	const body = notice.nextElementSibling;
+	const body = q(pane, '[data-testid="skill-instructions"]');
 	assert.ok(body, "the instructions block follows the notice");
 	assert.equal(
 		notice.compareDocumentPosition(body) &
@@ -1124,12 +1173,12 @@ test("a reference preview is clamped behind Show all, and the notice comes befor
 	// asserts the class contract only (`overflow-wrap:anywhere` + `min-w-0`); that the
 	// 2,048-char token really stays inside the pane (scrollWidth <= clientWidth, at
 	// 1380 and 800 px, en and ur) is QA's real-app measurement.
-	const wraps = (node) => {
+	const wraps = (node, preWrap = true) => {
 		const classes = node?.className ?? "";
 		return (
 			classes.includes("[overflow-wrap:anywhere]") &&
 			classes.includes("min-w-0") &&
-			classes.includes("whitespace-pre-wrap")
+			(!preWrap || classes.includes("whitespace-pre-wrap"))
 		);
 	};
 	assert.equal(
@@ -1137,13 +1186,17 @@ test("a reference preview is clamped behind Show all, and the notice comes befor
 		true,
 		"the file preview wraps an unbroken token",
 	);
+	// The instructions are rendered markdown (block elements, so no pre-wrap), in
+	// the same clamp, and still wrap an unbroken token.
 	assert.equal(
-		wraps(
-			q(pane, '[data-testid="skill-body-truncated"]').nextElementSibling
-				.firstElementChild,
-		),
+		wraps(q(body, '[data-break-long-tokens="true"]'), false),
 		true,
 		"the SKILL.md body wraps an unbroken token",
+	);
+	assert.equal(
+		q(body, '[data-read-markdown="true"] .lo-markdown') !== null,
+		true,
+		"the instructions render through ProjectMarkdown",
 	);
 	await teardown(view);
 });
@@ -1599,25 +1652,39 @@ test("the four hub states, with a waiting update told apart from an applied one"
 		await settle(
 			() =>
 				rowOf(view.container, "s-update")?.getAttribute("data-skill-state") ===
-				"update",
+				"available",
 		),
 	);
 	const state = (name) =>
 		rowOf(view.container, name).getAttribute("data-skill-state");
-	assert.equal(state("s-none"), "not-present");
-	assert.equal(state("s-pulled"), "pulled");
-	assert.equal(state("s-sub"), "subscribed");
-	assert.equal(state("s-update"), "update");
+	// ONE state word per row, by the design spec's §2 priority; the default
+	// (pulled and subscribed, nothing waiting) says nothing.
+	assert.equal(state("s-none"), "unlinked");
+	assert.equal(state("s-pulled"), null);
+	assert.equal(state("s-sub"), "not-installed");
+	assert.equal(state("s-update"), "available");
+	assert.equal(state("s-applied"), "applied");
+	// Line two of a quiet row starts with its description (acceptance check 1).
+	assert.match(
+		text(
+			q(rowOf(view.container, "s-pulled"), '[data-testid="skill-row-line2"]'),
+		),
+		/^A skill the reader wrote\./,
+	);
+	for (const row of rows)
+		assert.doesNotMatch(
+			text(rowOf(view.container, row.name)),
+			/Downloaded|Subscribed —|Not downloaded/,
+			`${row.name} carries none of the long hub sentences`,
+		);
 	// installed:false is said in words, not just implied.
 	assert.equal(
 		rowOf(view.container, "s-sub").getAttribute("data-skill-installed"),
 		"false",
 	);
 	assert.match(
-		text(
-			q(rowOf(view.container, "s-sub"), '[data-testid="skill-row-hub-state"]'),
-		),
-		/Subscribed — not installed/,
+		text(q(rowOf(view.container, "s-sub"), '[data-testid="skill-row-state"]')),
+		/Not installed/,
 	);
 	// The WORD differs between a waiting and an applied update.
 	const chip = (name) =>
@@ -1813,6 +1880,13 @@ test("details: body sliced from `detail` for an emoji body; files, truncation an
 		text(q(pane, '[data-testid="skill-files"]')),
 		/references\/big\.md/,
 	);
+	// Details is COLLAPSED on open: no 64-hex string is visible until it opens.
+	assert.equal(
+		/[0-9a-f]{64}/.test(text(pane)),
+		false,
+		"no fingerprint before Details is opened",
+	);
+	await press(q(pane, '[data-testid="skill-details"] button'));
 	assert.match(
 		text(q(pane, '[data-testid="skill-local-path"]')),
 		/\/home\/u\/\.local-operator\/skills\/pulled-org/,
@@ -1820,8 +1894,8 @@ test("details: body sliced from `detail` for an emoji body; files, truncation an
 	assert.match(text(q(pane, '[data-testid="skill-fingerprint"]')), /^f{64}$/);
 	assert.match(text(q(pane, '[data-testid="skill-form"]')), /Single document/);
 	assert.match(
-		text(q(pane, '[data-testid="skill-hub-state"]')),
-		/Downloaded — subscribed/,
+		text(q(pane, '[data-testid="skill-meta"]')),
+		/^Agent Hub · Following updates$/,
 	);
 	await teardown(view);
 });
@@ -1937,16 +2011,12 @@ test("details: an inlined body, and a subscribed-not-installed skill with no SKI
 		text(q(pane, '[data-testid="skill-no-body"]')),
 		/subscribed but not installed/,
 	);
-	// D5: the hub sentence already says it, so the badge must NOT repeat it.
-	assert.equal(
-		q(pane, '[data-testid="skill-not-installed"]') === null,
-		true,
-		"no duplicate badge beside the hub sentence",
-	);
+	// The header says it once, in the plain words; no second badge repeats it.
 	assert.match(
-		text(q(pane, '[data-testid="skill-hub-state"]')),
-		/Subscribed — not installed/,
+		text(q(pane, '[data-testid="skill-meta"]')),
+		/^Agent Hub · Not installed$/,
 	);
+	await press(q(pane, '[data-testid="skill-details"] button'));
 	assert.match(
 		text(q(pane, '[data-testid="skill-fingerprint"]')),
 		/Not available/,
@@ -1957,6 +2027,539 @@ test("details: an inlined body, and a subscribed-not-installed skill with no SKI
 		"no path for a copy that is not there",
 	);
 	await teardown(second);
+});
+
+/* ===================================== the redesign (lane U2), pure rules --- */
+
+test("front matter: stripped only when fenced at offset 0 and closed; other keys survive", () => {
+	const { splitFrontMatter, otherFrontMatter } = PAGE.model;
+	const full =
+		"---\nname: demo\ndescription: >\n  Folded\n  words\nlicense: MIT\n---\n\n# Use it\nDo the thing.";
+	const parts = splitFrontMatter(full);
+	assert.equal(parts.text, "# Use it\nDo the thing.");
+	assert.equal(otherFrontMatter(parts.meta), "license: MIT");
+	// No front matter: untouched.
+	assert.equal(splitFrontMatter("# Plain\nbody").text, "# Plain\nbody");
+	assert.equal(splitFrontMatter("# Plain\nbody").meta, null);
+	// A truncated body whose closing fence was cut is shown whole, never half-stripped.
+	const cut = "---\nname: demo\ndescription: a very long";
+	assert.equal(splitFrontMatter(cut).text, cut);
+	// A fence that is not at offset 0 is not front matter.
+	assert.equal(splitFrontMatter(" ---\nname: x\n---\nb").meta, null);
+	// Only name/description: nothing "other" to show.
+	assert.equal(otherFrontMatter("name: x\ndescription: y"), null);
+});
+
+test("SKILL.md rebuild: only the description line moves; everything else is byte for byte", () => {
+	const { rebuildSkillMd, splitFrontMatter } = PAGE.model;
+	const original =
+		"---\nname: demo\ndescription: >\n  Old\n  folded\nlicense: MIT\nx-extra: 'keep'\n---\n\nBody";
+	// Unchanged description: the file is the same bytes, whatever its quoting.
+	assert.equal(
+		rebuildSkillMd(original, "demo", null, splitFrontMatter(original).text),
+		original,
+	);
+	const next = rebuildSkillMd(original, "demo", "New: words", "New body");
+	assert.equal(
+		next,
+		"---\nname: demo\ndescription: \"New: words\"\nlicense: MIT\nx-extra: 'keep'\n---\n\nNew body",
+	);
+	// A plain-safe description stays plain.
+	assert.match(
+		rebuildSkillMd(original, "demo", "Plain words", "b"),
+		/\ndescription: Plain words\n/,
+	);
+	// A bare file gains the minimal front matter core's validation needs.
+	assert.equal(
+		rebuildSkillMd("just body", "demo", "D", "just body"),
+		"---\nname: demo\ndescription: D\n---\n\njust body",
+	);
+});
+
+test("edit eligibility: core's editable, narrowed by reference files and truncation", () => {
+	const { skillEditability, toSkillCard } = PAGE.model;
+	const kind = (row, detail) => {
+		const result = skillEditability(toSkillCard(row), detail);
+		return [result.kind, result.reason ?? null, result.copy ?? null].join("/");
+	};
+	const none = { files: [], files_total: 0, body_truncated: false };
+	assert.equal(kind(skill(), none), "edit//");
+	assert.equal(kind(skill(), { ...none, files_total: 2 }), "ask/files/");
+	assert.equal(
+		kind(skill(), { ...none, body_truncated: true }),
+		"ask/truncated/",
+	);
+	assert.equal(kind(skill({ source: "hub" }), none), "edit//");
+	assert.equal(
+		kind(skill({ source: "builtin", editable: false }), none),
+		"read-only/builtin/true",
+	);
+	assert.equal(
+		kind(skill({ source: "external", editable: false }), none),
+		"read-only/external/true",
+	);
+	assert.equal(
+		kind(skill({ source: "project", editable: false }), none),
+		"read-only/project/true",
+	);
+	assert.equal(
+		kind(skill({ editable: false, form: "bundle" }), none),
+		"read-only/bundle/false",
+	);
+	assert.equal(
+		kind(skill({ source: "hub", installed: false, editable: false }), none),
+		"not-installed//",
+	);
+	// The UI never re-derives `editable`: a local row core calls not editable is not.
+	assert.equal(
+		kind(skill({ editable: false, source: "cloud" }), none),
+		"read-only/unknown/false",
+	);
+});
+
+test("composer gate: the skill run needs agents_config_skills AND skill_library on top of the agents run", () => {
+	// Paired, as the real capability read is: a feature is only "enabled" when the
+	// desktop plane is available.
+	const caps = (features) => ({ desktop_available: true, features });
+	const base = {
+		agents_config: 1,
+		session_interrupt: 1,
+		profile_catalogue: 1,
+		team_catalogue: 1,
+	};
+	assert.equal(PAGE.configRunEnabled(caps(base)), true);
+	assert.equal(
+		PAGE.configSkillRunEnabled(caps(base)),
+		false,
+		"older core: no skill tool",
+	);
+	assert.equal(
+		PAGE.configSkillRunEnabled(caps({ ...base, agents_config_skills: 1 })),
+		false,
+		"no skill_library: the settle diff could not read skills",
+	);
+	assert.equal(
+		PAGE.configSkillRunEnabled(
+			caps({ ...base, agents_config_skills: 1, skill_library: 1 }),
+		),
+		true,
+	);
+	const { skillComposerGate, toSkillCard } = PAGE.model;
+	assert.equal(skillComposerGate(false, toSkillCard(skill())), "backend");
+	assert.equal(skillComposerGate(true, null), "none");
+	assert.equal(
+		skillComposerGate(true, toSkillCard(skill({ installed: false }))),
+		"not-installed",
+	);
+	assert.equal(
+		skillComposerGate(
+			true,
+			toSkillCard(skill({ source: "builtin", editable: false })),
+		),
+		"read-only",
+	);
+	assert.equal(skillComposerGate(true, toSkillCard(skill())), null);
+	assert.equal(
+		PAGE.configSeedPrompt({ kind: "skill", name: "demo" }),
+		"Change the skill demo: ",
+	);
+});
+
+test("settle diff: a skill fingerprint change is 'instructions changed'; null skills never invent creates", () => {
+	const { diffCatalogue, snapshotSkills, projectRunToolRow } = PAGE.summary;
+	const before = {
+		agents: {},
+		teams: {},
+		skills: snapshotSkills([
+			{ name: "demo", description: "D", fingerprint: "a".repeat(64) },
+			{ name: "other", description: "O", fingerprint: "b".repeat(64) },
+		]),
+	};
+	const after = {
+		agents: {},
+		teams: {},
+		skills: snapshotSkills([
+			{ name: "demo", description: "D", fingerprint: "c".repeat(64) },
+			{ name: "other", description: "O2", fingerprint: "b".repeat(64) },
+			{ name: "fresh", description: "F", fingerprint: "d".repeat(64) },
+		]),
+	};
+	const results = diffCatalogue(before, after, [
+		{ kind: "skill", name: "demo" },
+		{ kind: "skill", name: "other" },
+	]);
+	const line = (r) =>
+		`${r.target.kind}:${r.target.name}:${r.created}:${r.changes.map((c) => c.label).join("|")}`;
+	assert.deepEqual(results.map(line), [
+		"skill:demo:false:instructions changed",
+		"skill:other:false:description changed",
+		"skill:fresh:true:",
+	]);
+	// A skills dimension that was not read on either side is NOT an empty catalogue.
+	const unread = diffCatalogue(
+		{ agents: {}, teams: {}, skills: null },
+		after,
+		[],
+	);
+	assert.equal(
+		unread.length,
+		0,
+		"no phantom creates from a null before-snapshot",
+	);
+	// A touched skill whose list could not be read is still reported, without details.
+	const blind = diffCatalogue({ agents: {}, teams: {}, skills: null }, after, [
+		{ kind: "skill", name: "demo" },
+	]);
+	assert.deepEqual(blind.map(line), ["skill:demo:false:"]);
+	// The run's `skill` tool rows are projected as skill targets; reads do not count.
+	const row = (op) =>
+		projectRunToolRow({
+			toolName: "skill",
+			args: { op, name: "demo" },
+			phase: "done",
+			ts: 1,
+		});
+	assert.equal(row("update").target.kind, "skill");
+	assert.equal(row("update").writes, true);
+	assert.equal(row("update").verb, "Updating skill demo");
+	assert.equal(row("show").writes, false);
+	assert.equal(PAGE.summary.RUN_TOOL_NAMES.has("skill"), true);
+});
+
+/* ================================= the redesign (lane U2), mounted page --- */
+
+const SKILL_RUN = {
+	...WITH_SKILLS,
+	agents_config: 1,
+	agents_config_skills: 1,
+	session_interrupt: 1,
+	skill_write: 1,
+};
+
+/** A world whose `name` read answers a detail for whichever row is asked. */
+const detailWorld = (rows, details = {}) => ({
+	skills: (request) => {
+		if (!request.name) return { skills: rows };
+		const row = rows.find((each) => each.name === request.name);
+		const extra = details[request.name] ?? {};
+		const body =
+			extra.body ??
+			`---\nname: ${row.name}\ndescription: ${row.description}\n---\n\nFollow the steps.`;
+		return {
+			skills: [row],
+			detail: null,
+			skill_detail: {
+				...row,
+				body,
+				body_in_detail: false,
+				body_length: body.length,
+				body_truncated: false,
+				files: [],
+				files_total: 0,
+				files_truncated: false,
+				...extra,
+			},
+		};
+	},
+});
+
+const composerOf = (container) =>
+	q(container, '[data-testid="config-composer"]');
+const boxOf = (container) =>
+	q(container, '[data-testid="config-composer"] textarea');
+const boxText = () =>
+	PAGE.useConversationInputStore
+		.getState()
+		.getCurrentInput(PAGE.CONFIG_BOX_KEY);
+
+test("composer: docked on the Skills tab and pointed at the open editable skill", async () => {
+	PAGE.useConversationInputStore
+		.getState()
+		.setComposerText(PAGE.CONFIG_BOX_KEY, "");
+	const rows = [skill({ name: "d-local", description: "Local one." })];
+	const view = await mount("/agents?kind=skill&name=d-local", {
+		features: SKILL_RUN,
+		...detailWorld(rows),
+	});
+	assert.ok(
+		await settle(() => q(view.container, '[data-testid="skill-actions"]')),
+		"the action cluster painted once the detail answered",
+	);
+	assert.equal(
+		composerOf(view.container) !== null,
+		true,
+		"the dock is mounted",
+	);
+	assert.ok(
+		await settle(
+			() =>
+				text(q(view.container, '[data-testid="config-composer-about"]')) ===
+				"About skill d-local",
+		),
+		"About names the open skill",
+	);
+	assert.equal(
+		boxOf(view.container)?.getAttribute("placeholder"),
+		"Change d-local…",
+	);
+	assert.equal(
+		q(composerOf(view.container), "button")?.textContent?.includes("Clear") ??
+			false,
+		false,
+		"no Clear on the Skills tab",
+	);
+	// Ask for a change seeds the model-facing sentence into the EMPTY box.
+	assert.equal(boxText(), "");
+	await press(q(view.container, '[data-testid="skill-ask"]'));
+	assert.equal(boxText(), "Change the skill d-local: ");
+	// Edit is offered for a SKILL.md-only skill, and Ask is then the ghost.
+	assert.equal(q(view.container, '[data-testid="skill-edit"]') !== null, true);
+	assert.match(
+		q(view.container, '[data-testid="skill-ask"]').className,
+		/hover:bg-/,
+	);
+	await teardown(view);
+	PAGE.useConversationInputStore
+		.getState()
+		.setComposerText(PAGE.CONFIG_BOX_KEY, "");
+});
+
+test("composer on an older core: present, disabled, and saying why (no agents_config_skills)", async () => {
+	const rows = [skill({ name: "d-local" })];
+	const { agents_config_skills: _drop, ...older } = SKILL_RUN;
+	const view = await mount("/agents?kind=skill&name=d-local", {
+		features: older,
+		...detailWorld(rows),
+	});
+	assert.ok(
+		await settle(() => q(view.container, '[data-testid="skill-actions"]')),
+	);
+	assert.equal(
+		composerOf(view.container) !== null,
+		true,
+		"the dock is still there",
+	);
+	assert.equal(
+		q(view.container, '[data-testid="config-composer-about"]') === null,
+		true,
+		"no target on a core that cannot run it",
+	);
+	assert.equal(
+		boxOf(view.container)?.getAttribute("placeholder"),
+		"Update Local Operator to change skills by asking.",
+	);
+	assert.equal(
+		q(view.container, '[data-testid="skill-ask"]') === null,
+		true,
+		"no Ask for a change button",
+	);
+	// No skill run op was ever sent from this page.
+	assert.equal(view.ops.includes("sessions.create"), false);
+	await teardown(view);
+});
+
+test("composer with nothing open: docked, gated, and the select prompt names the change path", async () => {
+	const view = await mount("/agents?kind=skill", {
+		features: SKILL_RUN,
+		...detailWorld(FIVE),
+	});
+	assert.ok(
+		await settle(() =>
+			q(view.container, '[data-testid="skills-select-prompt"]'),
+		),
+	);
+	assert.equal(composerOf(view.container) !== null, true);
+	assert.equal(
+		boxOf(view.container)?.getAttribute("placeholder"),
+		"Open one of your skills to ask for a change.",
+	);
+	assert.match(
+		text(q(view.container, '[data-testid="skills-select-prompt"]')),
+		/or to change one of yours/,
+	);
+	await teardown(view);
+});
+
+test("read-only skill: the info alert, Copy to my skills, no Edit/Ask, and a gated box", async () => {
+	const rows = [
+		skill({ name: "b-builtin", source: "builtin", editable: false }),
+	];
+	const view = await mount("/agents?kind=skill&name=b-builtin", {
+		features: SKILL_RUN,
+		...detailWorld(rows),
+	});
+	assert.ok(
+		await settle(() => q(view.container, '[data-testid="skill-read-only"]')),
+	);
+	assert.match(
+		text(q(view.container, '[data-testid="skill-read-only"]')),
+		/^Built-in skill/,
+	);
+	assert.equal(q(view.container, '[data-testid="skill-copy"]') !== null, true);
+	assert.equal(q(view.container, '[data-testid="skill-edit"]') === null, true);
+	assert.equal(q(view.container, '[data-testid="skill-ask"]') === null, true);
+	assert.equal(
+		q(view.container, '[data-testid="config-composer-about"]') === null,
+		true,
+	);
+	assert.equal(
+		boxOf(view.container)?.getAttribute("placeholder"),
+		"This skill is read-only here.",
+	);
+	assert.match(
+		text(q(view.container, '[data-testid="skill-meta"]')),
+		/^Built-in · Read-only$/,
+	);
+	await teardown(view);
+});
+
+test("reference files: no inline Edit (the PUT replaces the file set); Ask is the bordered control", async () => {
+	const rows = [skill({ name: "with-refs" })];
+	const view = await mount("/agents?kind=skill&name=with-refs", {
+		features: SKILL_RUN,
+		...detailWorld(rows, {
+			"with-refs": {
+				files: [
+					{ path: "ref.md", size: 10, preview: "x", preview_truncated: false },
+				],
+				files_total: 1,
+			},
+		}),
+	});
+	assert.ok(
+		await settle(() => q(view.container, '[data-testid="skill-actions"]')),
+	);
+	assert.equal(q(view.container, '[data-testid="skill-edit"]') === null, true);
+	assert.equal(q(view.container, '[data-testid="skill-ask"]') !== null, true);
+	assert.match(
+		q(view.container, '[data-testid="skill-ask"]').className,
+		/border/,
+		"Ask takes the secondary (bordered) variant when Edit is absent",
+	);
+	assert.match(
+		text(q(view.container, '[data-testid="skill-detail"]')),
+		/has reference files, so change it by asking/,
+	);
+	assert.equal(
+		q(view.container, '[data-testid="skill-detail"]').getAttribute(
+			"data-skill-editability",
+		),
+		"ask",
+	);
+	await teardown(view);
+});
+
+test("no skill_write: the #1443 read-only surface, with no Edit, Copy or Remove", async () => {
+	const rows = [
+		skill({ name: "d-local" }),
+		skill({ name: "b-builtin", source: "builtin", editable: false }),
+	];
+	const { skill_write: _drop, ...noWrites } = SKILL_RUN;
+	const local = await mount("/agents?kind=skill&name=d-local", {
+		features: noWrites,
+		...detailWorld(rows),
+	});
+	assert.ok(
+		await settle(() => q(local.container, '[data-testid="skill-actions"]')),
+	);
+	assert.equal(q(local.container, '[data-testid="skill-edit"]') === null, true);
+	assert.equal(q(local.container, '[data-testid="skill-more"]') === null, true);
+	await teardown(local);
+	const builtin = await mount("/agents?kind=skill&name=b-builtin", {
+		features: noWrites,
+		...detailWorld(rows),
+	});
+	assert.ok(
+		await settle(() => q(builtin.container, '[data-testid="skill-read-only"]')),
+	);
+	assert.equal(
+		q(builtin.container, '[data-testid="skill-copy"]') === null,
+		true,
+	);
+	await teardown(builtin);
+	const none = await mount("/agents?kind=skill", {
+		features: noWrites,
+		...detailWorld(rows),
+	});
+	assert.ok(
+		await settle(() =>
+			q(none.container, '[data-testid="skills-select-prompt"]'),
+		),
+	);
+	assert.match(
+		text(q(none.container, '[data-testid="skills-select-prompt"]')),
+		/Skills are read-only here\./,
+	);
+	await teardown(none);
+});
+
+test("front matter in the pane: the description appears once; instructions start at the body", async () => {
+	const description =
+		"Use this when the operator asks about Minerva admin APIs.";
+	const rows = [skill({ name: "fm", description })];
+	const view = await mount("/agents?kind=skill&name=fm", {
+		features: SKILL_RUN,
+		...detailWorld(rows, {
+			fm: {
+				body: `---\nname: fm\ndescription: ${description}\nlicense: MIT\n---\n\n# Steps\nCall the API.`,
+			},
+		}),
+	});
+	assert.ok(
+		await settle(() => q(view.container, '[data-testid="skill-instructions"]')),
+	);
+	const pane = text(q(view.container, '[data-testid="skill-detail"]'));
+	assert.equal(
+		pane.split(description).length - 1,
+		1,
+		"the description occurs exactly once",
+	);
+	const instructions = text(
+		q(view.container, '[data-testid="skill-instructions"]'),
+	);
+	assert.equal(/^(---|name:|description:)/.test(instructions), false);
+	assert.match(instructions, /^Steps Call the API\./);
+	assert.equal(
+		q(view.container, '[data-testid="skill-instructions"] h1') !== null,
+		true,
+		"the heading is rendered markdown, not a monospace dump",
+	);
+	// The other key is reachable under Details.
+	await press(q(view.container, '[data-testid="skill-details"] button'));
+	assert.equal(
+		text(q(view.container, '[data-testid="skill-front-matter"]')),
+		"license: MIT",
+	);
+	await teardown(view);
+});
+
+test("scope segments: All / Local / Agent Hub / Built-in filter by source, with their own empty sentence", async () => {
+	const view = await mount("/agents?kind=skill", {
+		features: SKILL_RUN,
+		skills: { skills: FIVE.filter((row) => row.source !== "hub") },
+	});
+	assert.ok(
+		await settle(() => q(view.container, '[data-testid="skills-scope-all"]')),
+	);
+	const labels = ["all", "local", "hub", "builtin"].map((value) =>
+		text(q(view.container, `[data-testid="skills-scope-${value}"]`)),
+	);
+	assert.deepEqual(labels, ["All", "Local", "Agent Hub", "Built-in"]);
+	await press(q(view.container, '[data-testid="skills-scope-local"]'));
+	assert.equal(
+		q(view.container, '[data-testid="skills-scope-local"]').getAttribute(
+			"aria-pressed",
+		),
+		"true",
+	);
+	assert.equal(rowOf(view.container, "d-local") !== null, true);
+	assert.equal(rowOf(view.container, "b-builtin") === null, true);
+	await press(q(view.container, '[data-testid="skills-scope-hub"]'));
+	assert.equal(
+		text(q(view.container, '[data-testid="skills-empty"]')),
+		"No skills from Agent Hub.",
+	);
+	await teardown(view);
 });
 
 after(() => {

@@ -36,8 +36,20 @@ export type ConfigRunStatus =
 	| "stopped"
 	| "error";
 
+/**
+ * The kinds of definition a configuration run can be about.
+ *
+ * `skill` joined `agent` and `team` for the Agents page's Skills tab (design spec
+ * C4, seam note §3): the target still travels to the run as the first message's
+ * TEXT ("About the skill “x”: …"), exactly like the other two, because the
+ * server deliberately refuses a `target` field on purpose creates. Only a core
+ * advertising `agents_config_skills` builds the `skill` tool the run would use,
+ * so the Skills tab gates on that key (`configSkillRunEnabled`).
+ */
+export type RunTargetKind = "agent" | "team" | "skill";
+
 /** One definition the run is working on, as its tool rows named it. */
-export type RunTarget = { kind: "agent" | "team"; name: string };
+export type RunTarget = { kind: RunTargetKind; name: string };
 
 import type { WireImage } from "@features/chat/utils/bound-image";
 import type { ChatFile } from "@shared/store/canonical-sessions-store";
