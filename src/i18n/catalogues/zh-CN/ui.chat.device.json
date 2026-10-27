@@ -8,7 +8,7 @@
 	"ui.chat.device.sentence.draft_here": "新对话在此设备上创建。点击可选择其他设备。",
 	"ui.chat.device.sentence.gone": "此对话已移至{name}。此处的副本已删除。点击可将其带回此处。",
 	"ui.chat.device.sentence.gone_did_not_answer": "此对话已移至{name}，但该设备未响应上次读取。此处的副本已删除。点击可将其带回此处。",
-	"ui.chat.device.sentence.local": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后召回。",
+	"ui.chat.device.sentence.local": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。",
 	"ui.chat.device.sentence.moving": "正在将此对话移至{name}。",
 	"ui.chat.device.sentence.remote": "此对话在{name}上运行。点击可将其移回此处，或继续迁移。",
 	"ui.chat.device.sentence.remote_did_not_answer": "此对话在{name}上运行，但该设备未响应上次读取。",

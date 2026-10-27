@@ -734,7 +734,7 @@
 	"ui.chat.pickers.slash.click.runs_command": "کلک کرنے سے کمانڈ چل جائے گی۔",
 	"ui.chat.pickers.slash.click.runs_with_value": "کلک کرنے سے {command}{value} چل جائے گی۔",
 	"ui.chat.pickers.slash.click.stages": "کلک کرنے سے /{label} مسودے میں آ جائے گی۔",
-	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter کے لیے قطار منتخب کرنی ہو گی: پہلے ↓ پھر Enter · Tab اس قطار کو مکمل کرتا ہے",
+	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter کے لیے قطار منتخب کرنی ہو گی: پہلے ↓ پھر Enter · Tab اس قطار کو مکمل کرتا ہے۔",
 	"ui.chat.pickers.slash.phase.arguments": "آرگیومنٹس",
 	"ui.chat.pickers.slash.region_label": "سلیش کمانڈز"
 }
