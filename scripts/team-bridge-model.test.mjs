@@ -1035,6 +1035,31 @@ test("participantLabel reads existing bad rows: 'X (X)' and the person's own nam
 		}
 		assert.equal(model.storedAgentName(stored, "Ben Tran") === null, true);
 	}
+	// The hub cuts the person to 47 UTF-8 bytes before the suffix (R2-1 on
+	// #1441). Expected strings are agent-server main's own `agentMemberLabel`
+	// output, not a re-derivation: a 52-byte Cyrillic and a 63-byte Devanagari
+	// name, each cut mid-name at a rune boundary.
+	for (const [owner, hubStored] of [
+		[
+			"Александр Викторович Петров",
+			"Александр Викторович Пет's chief of staff",
+		],
+		["राजेश कुमार शर्मा वर्मा", "राजेश कुमार शर्मा's chief of staff"],
+	]) {
+		const longOwner = [{ ...ben(), display_label: owner }];
+		assert.equal(model.storedAgentName(hubStored, owner) === null, true);
+		assert.equal(
+			model.participantLabel(agent(hubStored), longOwner, chiefCopy) ===
+				`${owner}'s chief of staff`,
+			true,
+		);
+	}
+	// Truncation never widens the match: a short name is not a prefix match.
+	assert.equal(
+		model.storedAgentName("Ben's chief of staff", "Ben Tran") ===
+			"Ben's chief of staff",
+		true,
+	);
 	// Someone else's chief-of-staff form is not this owner's: it stays a name.
 	assert.equal(
 		model.storedAgentName("Ada's chief of staff", "Ben Tran") ===

@@ -1106,11 +1106,42 @@ export type ChiefLabels = {
 const COMPOSED_LABEL = /^(.+?)\s*\((.+)\)$/;
 
 /**
- * The stored tails of an unnamed agent's label: the hub's own
- * (`chiefOfStaffSuffix`, ASCII apostrophe) and the English catalogue's
- * (typographic). Wire shapes, never rendered; see `storedAgentName`.
+ * The stored tails of an unnamed agent's label. The ASCII form is the only
+ * one the hub writes (`chiefOfStaffSuffix`). The typographic form is the
+ * English catalogue's; no released client stored it, and it is matched
+ * defensively so a client that ever stores the catalogue string verbatim is
+ * not composed twice. Wire shapes, never rendered; see `storedAgentName`.
  */
 const CHIEF_OF_STAFF_SUFFIXES = ["'s chief of staff", "’s chief of staff"];
+
+/**
+ * The hub's byte bound on a stored member label
+ * (`bridgeConversationLabelMax`).
+ */
+const HUB_LABEL_MAX_BYTES = 64;
+
+/**
+ * The person half of the hub's unnamed-agent label, as the hub writes it
+ * (review R2-1 on #1441). `agentMemberLabel` does three things, in order:
+ * - normalises the name (`NormalizeAgentName`: whitespace runs to one
+ *   space, ends trimmed);
+ * - cuts it to 64 − len("'s chief of staff") = 47 UTF-8 bytes, backing off
+ *   to a rune boundary (`truncateConversationLabelTo`);
+ * - trims again, then appends the suffix.
+ * A Cyrillic or Devanagari full name passes 47 bytes well before 47
+ * characters, so without this mirror the read path saw a name that is not
+ * the owner's and composed "Пет's chief of staff (… Петров)". Must stay
+ * byte-for-byte with the hub's rule; it is matched, never rendered.
+ */
+function hubTruncatedPerson(personName: string): string {
+	// `\s` plus NEL (U+0085): Go's `unicode.IsSpace` set, which JS `\s` lacks.
+	const person = personName.replace(/[\s\u0085]+/gu, " ").trim();
+	const bytes = new TextEncoder().encode(person);
+	let cut = HUB_LABEL_MAX_BYTES - CHIEF_OF_STAFF_SUFFIXES[0].length;
+	if (bytes.length <= cut) return person;
+	while (cut > 0 && (bytes[cut] & 0xc0) === 0x80) cut -= 1;
+	return new TextDecoder().decode(bytes.subarray(0, cut)).trim();
+}
 
 /** Case-, space- and accent-insensitive form for "is this the same name". */
 function nameKey(name: string): string {
@@ -1176,8 +1207,10 @@ export function storedAgentName(
 	}
 	if (
 		personName !== null &&
-		CHIEF_OF_STAFF_SUFFIXES.some(
-			(suffix) => nameKey(stored) === nameKey(`${personName}${suffix}`),
+		[personName, hubTruncatedPerson(personName)].some((person) =>
+			CHIEF_OF_STAFF_SUFFIXES.some(
+				(suffix) => nameKey(stored) === nameKey(`${person}${suffix}`),
+			),
 		)
 	) {
 		return null;
