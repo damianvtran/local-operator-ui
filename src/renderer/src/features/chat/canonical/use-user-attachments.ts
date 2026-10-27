@@ -20,7 +20,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TranscriptRecord } from "./transcript-reducer";
 import {
 	type UserAttachmentsListing,
@@ -33,6 +33,8 @@ export type UserAttachmentsState = UserAttachmentsView & {
 	state: "loading" | "ready" | "error";
 	/** The backend can materialise a retained copy (`session_attachments`). */
 	capable: boolean;
+	/** Retry a failed or stale inventory without remounting the canvas. */
+	retry: () => void;
 };
 
 export function useUserAttachments(
@@ -63,11 +65,14 @@ export function useUserAttachments(
 		state: UserAttachmentsState["state"];
 	}>({ key: "", value: null, state: "loading" });
 	const sourceKey = `${sessionId ?? "draft"}:${capable}`;
+	const [retryCount, setRetryCount] = useState(0);
+	const retry = useCallback(() => setRetryCount((count) => count + 1), []);
 	useEffect(() => {
 		// Read inside so the effect re-runs on a new attachment without depending on
 		// the whole records array.
 		void signature;
 		void revisionHint;
+		void retryCount;
 		if (!known || !enabled) return;
 		if (!sessionId || !capable) {
 			setListing({ key: sourceKey, value: null, state: "ready" });
@@ -91,7 +96,16 @@ export function useUserAttachments(
 		return () => {
 			live = false;
 		};
-	}, [known, enabled, sessionId, capable, sourceKey, signature, revisionHint]);
+	}, [
+		known,
+		enabled,
+		sessionId,
+		capable,
+		sourceKey,
+		signature,
+		revisionHint,
+		retryCount,
+	]);
 	// A previous session's listing never paints under the new one.
 	const owned = listing.key === sourceKey ? listing : null;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `signature` stands for `records`' attachment content.
@@ -103,6 +117,7 @@ export function useUserAttachments(
 		...view,
 		state: !known ? "loading" : (owned?.state ?? "loading"),
 		capable,
+		retry,
 	};
 }
 

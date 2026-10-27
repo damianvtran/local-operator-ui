@@ -14,9 +14,10 @@
  * and neither does a conversation whose placement the catalogue has not stated
  * yet: "(not remote)" is not "local" (agent review round 1, n3).
  *
- * THE PATH IS COPYABLE IN FULL even though the line is middle-truncated: a copy
- * control hands the RECORD's value to the clipboard, because selecting the
- * shortened string would copy an ellipsis (design round 1, D1).
+ * THE PATH IS COPYABLE IN FULL even though the line is middle-truncated. When
+ * the origin is gone and a retained copy can be materialised, the inline control
+ * and the actions menu resolve the SAME real-named scratchpad file, never the
+ * internal digest.bin store path.
  */
 
 import type { TranscriptDocument } from "@features/chat/canonical/transcript-reducer";
@@ -201,12 +202,20 @@ export const SentFileCard: FC<{
 			? null
 			: document.storedPath
 		: document.path;
+	const digest = document.attachment;
+	const resolveActionPath = useMemo(
+		() =>
+			missing && !storedGone && digest && sessionId
+				? () => materialiseUserAttachment(sessionId, digest)
+				: undefined,
+		[missing, storedGone, digest, sessionId],
+	);
 	const copyLabel = (done: boolean): string =>
 		missing
 			? t(
 					done
-						? "ui.chat.attachments.saved_path_copied"
-						: "ui.chat.attachments.copy_saved_path",
+						? "ui.chat.attachments.path_copied"
+						: "ui.chat.attachments.copy_path",
 				)
 			: t(
 					done
@@ -220,15 +229,17 @@ export const SentFileCard: FC<{
 	 * icon unchanged rather than claiming a copy that did not happen.
 	 */
 	const copyPath = useCallback(async () => {
-		if (!copyTarget) return;
+		if (!copyTarget && !resolveActionPath) return;
 		try {
-			await navigator.clipboard.writeText(copyTarget);
+			const path = resolveActionPath ? await resolveActionPath() : copyTarget;
+			if (!path) return;
+			await navigator.clipboard.writeText(path);
 			setCopied(true);
 			window.setTimeout(() => setCopied(false), 2000);
 		} catch {
 			setCopied(false);
 		}
-	}, [copyTarget]);
+	}, [copyTarget, resolveActionPath]);
 	/*
 	 * THE HOVER ACTIONS: the shared `FileActionsMenu`, never a fork. Which path
 	 * they act on follows the same truth the card paints: the origin while it is
@@ -240,14 +251,6 @@ export const SentFileCard: FC<{
 	 */
 	const actionPath =
 		missing && !storedGone ? document.storedPath : document.path;
-	const digest = document.attachment;
-	const resolveActionPath = useMemo(
-		() =>
-			missing && !storedGone && digest && sessionId
-				? () => materialiseUserAttachment(sessionId, digest)
-				: undefined,
-		[missing, storedGone, digest, sessionId],
-	);
 	const showActions = !remote && placementKnown && Boolean(actionPath);
 	return (
 		<div

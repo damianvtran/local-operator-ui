@@ -45,6 +45,7 @@ import {
 } from "../../../../../../i18n/format";
 import type { FileIndexState } from "../../canonical/use-session-files";
 import type { CanvasDocument } from "../../types/canvas";
+import { ARTIFACT_HEAD_LENGTH } from "../../utils/artifact-identity";
 import {
 	artifactFileName,
 	artifactTooltip,
@@ -135,10 +136,20 @@ type Props = {
 	 * pinned above the agent's files. `complete: false` = only loaded rows were
 	 * available, which the section header says rather than hides.
 	 */
-	attachments?: { items: FinderItem[]; complete: boolean };
+	attachments?: {
+		items: FinderItem[];
+		complete: boolean;
+		state: "loading" | "ready" | "error";
+		retry: () => void;
+	};
 };
 
-const NO_ATTACHMENTS = { items: [] as FinderItem[], complete: true };
+const NO_ATTACHMENTS = {
+	items: [] as FinderItem[],
+	complete: true,
+	state: "ready" as const,
+	retry: () => {},
+};
 
 /** A button/list keyboard model; no grid/listbox claim without their selection semantics. */
 export function FinderFilesView({
@@ -621,11 +632,11 @@ export function FinderFilesView({
 											items.length + attachments.items.length,
 										),
 									})
-								: t("ui.canvas.files.count", {
-										count:
-											(index.mode === "index" ? index.total : items.length) +
-											attachments.items.length,
-									})}
+								: attachments.state === "loading" && !items.length
+									? t("ui.canvas.files.loading")
+									: t("ui.canvas.files.count", {
+											count: items.length + attachments.items.length,
+										})}
 						{index.mode === "index" &&
 						(index.state === "loading" || index.state === "building") &&
 						index.pendingTotal > 0
@@ -664,6 +675,17 @@ export function FinderFilesView({
 							{t("ui.canvas.files.reset")}
 						</Button>
 					</div>
+				)}
+				{attachments.state === "error" && (
+					<output
+						title={t("ui.canvas.files.attachmentsErrorReason")}
+						className={cn("text-body-sm text-ink-muted")}
+					>
+						{t("ui.canvas.files.attachmentsError")}
+						<Button variant="ghost" size="sm" onClick={attachments.retry}>
+							{t("ui.canvas.files.retry")}
+						</Button>
+					</output>
 				)}
 				{index.error && narrowed.length > 0 && (
 					<output className={cn("text-body-sm text-ink-muted")}>
@@ -733,7 +755,7 @@ export function FinderFilesView({
 								? (index.error ?? t("ui.canvas.files.error"))
 								: index.state === "unsupported"
 									? (index.error ?? t("ui.canvas.files.remote"))
-									: index.state === "loading"
+									: index.state === "loading" || attachments.state === "loading"
 										? t("ui.canvas.files.loading")
 										: index.state === "building"
 											? t("ui.canvas.files.building")
@@ -741,11 +763,13 @@ export function FinderFilesView({
 												? t("ui.canvas.files.noMatch")
 												: t("ui.canvas.files.empty")}
 						</p>
-						{index.state === "ready" && !narrowing && (
-							<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-								{t("ui.canvas.files.emptyDetail")}
-							</p>
-						)}
+						{index.state === "ready" &&
+							attachments.state !== "loading" &&
+							!narrowing && (
+								<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+									{t("ui.canvas.files.emptyDetail")}
+								</p>
+							)}
 						{index.error && (
 							<Button variant="outline" size="sm" onClick={index.refresh}>
 								{index.state === "building"
@@ -921,14 +945,13 @@ export function FinderFilesView({
 										</span>
 										{section.id === ATTACHMENTS_SECTION &&
 											!attachments.complete && (
-												/*
-												 * The list came from the history loaded so far (an
-												 * older backend, a peer's conversation). Saying so is
-												 * the difference between "these are some" and "these
-												 * are all" - the claim this section must never make
-												 * falsely.
-												 */
-												<span className={cn("text-meta text-ink-dim")}>
+												/* A caption, never a control: this markup sits INSIDE the
+												 * section's fold button, and a nested button is invalid
+												 * HTML. The retry for a failed read is the banner below. */
+												<span
+													title={t("ui.canvas.files.attachmentsPartialReason")}
+													className={cn("text-meta text-ink-dim")}
+												>
 													{t("ui.canvas.files.attachmentsPartial")}
 												</span>
 											)}
@@ -1089,7 +1112,12 @@ function FinderEntry({
 	const tiled = band.kind === "tiles" || band.kind === "video";
 	const height = tiled ? band.height - 32 : band.kind === "highlight" ? 40 : 28;
 	const tooltip = doc.artifact
-		? artifactTooltip({ ...doc.artifact, title: doc.title })
+		? item.attachment
+			? t("ui.canvas.files.attachmentTooltip", {
+					name: doc.title,
+					digest: doc.artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH),
+				})
+			: artifactTooltip({ ...doc.artifact, title: doc.title })
 		: doc.path;
 	const sort = useUiPreferencesStore((state) => state.finderFiles.sort);
 	const timestamp = sort === "created" ? item.created : item.modified;
@@ -1192,7 +1220,11 @@ function FinderEntry({
 							viewerFor(doc.path, doc.type) === null ? undefined : onOpen
 						}
 						resolveBytes={() => finderOriginal(doc)}
-						saveName={doc.artifact ? artifactFileName(doc.artifact) : undefined}
+						saveName={
+							doc.artifact && !item.attachment
+								? artifactFileName(doc.artifact)
+								: undefined
+						}
 						resolvePath={
 							doc.artifact && !item.row.missing ? materialise : undefined
 						}
@@ -1226,7 +1258,7 @@ function FinderEntry({
 				tabIndex={tabIndex}
 				onFocus={onFocus}
 				title={tooltip}
-				onClick={onOpen}
+				onClick={tiled && item.row.media === "image" ? onExpand : onOpen}
 				onKeyDown={(event) => {
 					if (
 						(event.shiftKey && event.key === "F10") ||
@@ -1282,7 +1314,12 @@ function FinderEntry({
 					)}
 				>
 					<span
-						className={cn("flex min-w-0 items-center justify-between gap-2")}
+						className={cn(
+							"flex min-w-0 gap-2",
+							tiled && item.attachment
+								? "flex-col gap-0"
+								: "items-center justify-between",
+						)}
 					>
 						<span
 							className={cn(
@@ -1308,11 +1345,24 @@ function FinderEntry({
 										? undefined
 										: formatDateTime(timestamp * 1000)
 								}
-								className={cn("shrink-0 text-meta text-ink-dim")}
+								className={cn(
+									"text-meta text-ink-dim",
+									tiled && item.attachment ? "min-w-0 truncate" : "shrink-0",
+								)}
 							>
-								{tiled && doc.artifact && !item.attachment
-									? t("ui.canvas.files.inSession")
-									: meta}
+								{tiled && item.attachment ? (
+									<>
+										<bdi>{item.attachment.size}</bdi>
+										{item.attachment.when ? (
+											<span aria-hidden="true"> · </span>
+										) : null}
+										<bdi>{item.attachment.when}</bdi>
+									</>
+								) : tiled && doc.artifact && !item.attachment ? (
+									t("ui.canvas.files.inSession")
+								) : (
+									meta
+								)}
 							</span>
 						}
 					</span>
@@ -1372,7 +1422,11 @@ function FinderEntry({
 						}
 						onExpand={item.row.media === "image" ? onExpand : undefined}
 						resolveBytes={() => finderOriginal(doc)}
-						saveName={doc.artifact ? artifactFileName(doc.artifact) : undefined}
+						saveName={
+							doc.artifact && !item.attachment
+								? artifactFileName(doc.artifact)
+								: undefined
+						}
 						resolvePath={
 							doc.artifact && !item.row.missing ? materialise : undefined
 						}

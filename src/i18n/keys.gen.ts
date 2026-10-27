@@ -2698,11 +2698,16 @@ export type MessageParams = {
 	"ui.canvas.files.archives": undefined;
 	"ui.canvas.files.asc": undefined;
 	"ui.canvas.files.attachmentGone": undefined;
+	"ui.canvas.files.attachmentGoneRecovery": undefined;
 	"ui.canvas.files.attachmentImage": undefined;
 	"ui.canvas.files.attachmentMeta": { size: string; when: string };
 	"ui.canvas.files.attachmentRetained": undefined;
+	"ui.canvas.files.attachmentTooltip": { name: string; digest: string };
 	"ui.canvas.files.attachments": undefined;
+	"ui.canvas.files.attachmentsError": undefined;
+	"ui.canvas.files.attachmentsErrorReason": undefined;
 	"ui.canvas.files.attachmentsPartial": undefined;
+	"ui.canvas.files.attachmentsPartialReason": undefined;
 	"ui.canvas.files.audio": undefined;
 	"ui.canvas.files.building": undefined;
 	"ui.canvas.files.clear": undefined;

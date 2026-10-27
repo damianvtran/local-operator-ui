@@ -80,7 +80,14 @@ export type FinderItem = {
 	 * rather than the agent rows' sort-driven metric, and its path actions act
 	 * on the retained copy through `materialise` when the origin is gone.
 	 */
-	attachment?: { key: string; digest: string | null; note: string };
+	attachment?: {
+		key: string;
+		digest: string | null;
+		note: string;
+		/** Separate directional runs so RTL never reorders size and date. */
+		size: string;
+		when: string;
+	};
 };
 
 /**

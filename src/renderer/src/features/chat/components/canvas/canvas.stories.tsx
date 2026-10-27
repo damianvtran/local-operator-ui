@@ -1038,6 +1038,7 @@ const attachmentsState = (
 ): UserAttachmentsState => ({
 	items: [...items].sort((x, y) => y.ts - x.ts),
 	complete: true,
+	retry: () => {},
 	truncated: false,
 	state: "ready",
 	capable: true,
@@ -1109,6 +1110,33 @@ export const FilesAttachmentsWhileLoading: Story = {
 				stopped: false,
 				resume: () => {},
 			}}
+		/>
+	),
+};
+
+/** A pending inventory must not claim the conversation has no files. */
+export const FilesAttachmentsInventoryLoading: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={null}
+			mentionedFiles={[]}
+			documents={[]}
+			attachments={attachmentsState([], { state: "loading", complete: false })}
+		/>
+	),
+};
+
+/** A capable backend's read failure is not the older-backend partial fallback. */
+export const FilesAttachmentsInventoryError: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			attachments={attachmentsState(ATTACHMENTS.slice(1), {
+				state: "error",
+				complete: false,
+			})}
 		/>
 	),
 };

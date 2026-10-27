@@ -52,6 +52,10 @@ import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { SpeechGateScope } from "@shared/components/common/speak-control";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { Button } from "@shared/components/ui";
@@ -878,10 +882,12 @@ function userImagePathActions(
 	scope: AttachmentScope | null,
 	conversationId: string | undefined,
 	remote: boolean,
+	capable: boolean,
 ): ImagePathActions | undefined {
 	const digest = image.attachment;
 	const sessionId = scope?.sessionId;
-	if (!digest || !sessionId || remote || scope?.childId) return undefined;
+	if (!capable || !digest || !sessionId || remote || scope?.childId)
+		return undefined;
 	const resolvePath = () => materialiseUserAttachment(sessionId, digest);
 	return {
 		resolvePath,
@@ -937,12 +943,14 @@ const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
 	scope,
+	capable,
 	conversationId,
 	undelivered = null,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	capable: boolean;
 	conversationId?: string;
 	/** §F3's per-message failure state, when this row is the one it names. */
 	undelivered?: UndeliveredTurn | null;
@@ -1397,7 +1405,11 @@ const UserRow = memo(function UserRow({
 											document={document}
 											remote={remote}
 											placementKnown={placementKnown}
-											sessionId={scope?.sessionId ?? null}
+											sessionId={
+												scope && !scope.childId && capable
+													? scope.sessionId
+													: null
+											}
 										/>
 									))}
 								</div>
@@ -1437,6 +1449,7 @@ const UserRow = memo(function UserRow({
 												scope,
 												conversationId,
 												remote || !placementKnown,
+												capable,
 											)}
 										/>
 									))}
@@ -3182,6 +3195,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	enter = false,
 	isSmallView,
 	scope,
+	capable,
 	conversationId,
 	/*
 	 * The fold onto `origin/main` that carried #490 (`fix(chat): label every
@@ -3213,6 +3227,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	enter?: boolean;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	capable: boolean;
 	conversationId?: string;
 	/**
 	 * The transcript's one read of the rail setting. A BOOLEAN rather than the
@@ -3344,6 +3359,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					scope={scope}
+					capable={capable}
 					conversationId={conversationId}
 					undelivered={undelivered?.recordId === record.id ? undelivered : null}
 				/>
@@ -3624,6 +3640,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	// The pane's own subscription: the notices and status lines below are
 	// translated and the pane must repaint when the locale changes.
 	useI18nLocale();
+	const capabilities = useDesktopCapabilities();
+	const attachmentsCapable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_attachments",
+	);
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
 	// decides what is renderable, and an anchor with nothing to hit-test is an
@@ -6261,6 +6282,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
 					isSmallView={isSmallView}
 					scope={mediaScope}
+					capable={attachmentsCapable}
 					conversationId={conversationId}
 					labelPending={
 						row.record.kind === "tool" &&
@@ -6378,6 +6400,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 										}
 										isSmallView={isSmallView}
 										scope={mediaScope}
+										capable={attachmentsCapable}
 										conversationId={conversationId}
 										labelPending={
 											row.record.kind === "tool" &&
@@ -6417,6 +6440,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				}
 				isSmallView={isSmallView}
 				scope={mediaScope}
+				capable={attachmentsCapable}
 				conversationId={conversationId}
 				labelPending={
 					group.row.record.kind === "tool" &&

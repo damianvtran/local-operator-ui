@@ -74,6 +74,13 @@ function documentFor(item: UserAttachment, sessionId: string): CanvasDocument {
 			name,
 			...(item.bytes !== null ? { sizeBytes: item.bytes } : {}),
 		});
+		if (item.kind === "image" && !item.filename && document.artifact) {
+			document.artifact = {
+				...document.artifact,
+				digest: item.digest,
+				name: t("ui.canvas.files.attachmentImage"),
+			};
+		}
 		// The digest names the bytes; the NAME's extension is what routes the
 		// row to its kind group and its viewer (a PDF opens as a PDF once the
 		// retained copy is materialised).
@@ -88,7 +95,10 @@ function documentFor(item: UserAttachment, sessionId: string): CanvasDocument {
 	}
 	// One row per attachment even when two share a path or a digest: the id is
 	// the attachment's own key, never the file's.
-	return { ...document, id: `${ATTACHMENT_ID_PREFIX}${item.key}` };
+	return {
+		...document,
+		id: `${ATTACHMENT_ID_PREFIX}${item.key}`,
+	};
 }
 
 /**
@@ -132,6 +142,10 @@ export function attachmentFinderItems(
 				digest:
 					item.digest && item.availability !== "gone" ? item.digest : null,
 				note: attachmentNote(item),
+				size: sizeLabel(item.bytes ?? undefined) ?? "",
+				when: item.ts
+					? formatDate(item.ts, { month: "short", day: "numeric" })
+					: "",
 			},
 		};
 	});

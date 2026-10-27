@@ -230,7 +230,9 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 						// What to do next, not only what happened: the path alone leaves
 						// the reader with a three-line wrap and nowhere to go.
 						description: t(
-							"ui.canvas.file_viewer.copy_its_path_from_the_row_s_menu_to_look_for_it_or_check_whether_the_ag",
+							fileDoc.id.startsWith(ATTACHMENT_ID_PREFIX)
+								? "ui.canvas.files.attachmentGoneRecovery"
+								: "ui.canvas.file_viewer.copy_its_path_from_the_row_s_menu_to_look_for_it_or_check_whether_the_ag",
 						),
 					},
 				);
@@ -385,7 +387,9 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			materialise={materialise}
 			attachments={{
 				items: attachmentItems,
-				complete: attachments ? attachments.complete : true,
+				complete: (attachments?.complete ?? true) && !attachments?.truncated,
+				state: attachments?.state ?? "ready",
+				retry: attachments?.retry ?? (() => {}),
 			}}
 			onOpen={(document) => {
 				if (
