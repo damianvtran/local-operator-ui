@@ -23,9 +23,14 @@
  *  4. live tour - the REAL Shepherd instance follows a negotiated locale with
  *     fixtures for French, a pseudo-locale and Urdu, keeping the current step,
  *     the step list and keyboard focus;
- *  5. skin rules - the three declarations whose absence is silent in every
- *     other check (RTL panel anchoring, inline `<code>` direction, the close
- *     control's target-size floor) are still on the rule that must carry them.
+ *  5. skin rules - the declarations whose absence is silent in every other
+ *     check (RTL panel anchoring, inline `<code>` direction, the close
+ *     control's target-size floor, the vendor out-specifying colour, the
+ *     horizontal-overflow clip, the step-7 width cap) are still on the rule
+ *     that must carry them;
+ *  6. step 7's shape - the real tour opens, closes and hops the command palette
+ *     in step with the panel it built (narrow beside the palette above the
+ *     breakpoint, centred with no palette below it), so the two never disagree.
  *
  * WHAT IT CANNOT PROVE: the rendered pixels (the design round and QA own those),
  * a real browser's layout under RTL, or production translations. The non-English
@@ -69,6 +74,14 @@ const RE = {
 	codeDirectionLtr: /^[ \t]*direction:[ \t]*ltr;/m,
 	codeBidiIsolate: /^[ \t]*unicode-bidi:[ \t]*isolate;/m,
 	minWidth24: /^[ \t]*min-width:[ \t]*24px;/m,
+	pointerEventsAuto: /^[ \t]*pointer-events:[ \t]*auto;/m,
+	overflowXClip: /^[ \t]*overflow-x:[ \t]*clip;/m,
+	panelMaxWidth340: /^[ \t]*max-width:[ \t]*340px;/m,
+	inkMuted: /^[ \t]*color:[ \t]*var\(--color-ink-muted\);/m,
+	ink: /^[ \t]*color:[ \t]*var\(--color-ink\);/m,
+	accentWash: /^[ \t]*background-color:[ \t]*var\(--color-accent-wash\);/m,
+	cancelHoverRule:
+		/\.shepherd-element\.shepherd-has-title[\s\S]{0,160}?\.shepherd-cancel-icon:is\(:hover, :focus-visible\)\s*\{/,
 };
 
 /* ---------------------------------------------------------------------------
@@ -140,7 +153,8 @@ Object.defineProperty(globalThis, "localStorage", {
 const built = await build({
 	stdin: {
 		contents: [
-			'export { createTourSteps, applyTourLocale, tourCancelIcon } from "./src/renderer/src/features/onboarding/tour/tour-steps";',
+			'export { createTourSteps, applyTourLocale, tourCancelIcon, STEP_BESIDE_PALETTE_CLASS, STEP_BESIDE_PALETTE_MIN_WIDTH } from "./src/renderer/src/features/onboarding/tour/tour-steps";',
+			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { renderTourBody, TOUR_BODIES, tourLabel } from "./src/renderer/src/features/onboarding/tour/tour-copy";',
 			'export { applyCapabilities, clearRegisteredCatalogues, registerCatalogue, setLocale, t } from "./src/i18n";',
 			'export { textDirectionFor } from "./src/i18n/direction";',
@@ -631,4 +645,176 @@ test("the hook's locale subscription repaints an open tour through capabilities"
 	});
 	container.remove();
 	tour.cancel();
+});
+
+/* ---------------------------------------------------------------------------
+ * 7. Step 7's shape, and the palette hops that belong to it.
+ *
+ * WHY THIS EXISTS. Step 7 used to pin a 500 px panel beside a 640 px palette at
+ * every width, which covered the focused search field the step tells the user
+ * to type into (design round 1, D1). The fix is a shape decision taken when the
+ * steps are built: narrow and attached above the breakpoint, centred with no
+ * palette below it. The neighbouring steps open and close that palette, so the
+ * assertions here run the REAL Shepherd tour at both widths and read the store
+ * its buttons drive - a source pin would not catch a hop that disagrees with
+ * the shape.
+ * ------------------------------------------------------------------------- */
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const paletteOpen = () =>
+	mod.useUiPreferencesStore.getState().isCommandPaletteOpen;
+
+const stepSevenOf = (steps) =>
+	steps.find((step) => step.id === "pre-command-palette-open-canvas");
+
+/** The element Shepherd is currently showing; earlier steps stay in the DOM, hidden. */
+const shownStepElement = () => {
+	const elements = [...document.querySelectorAll(".shepherd-element")].filter(
+		(element) =>
+			!element.hidden && getComputedStyle(element).display !== "none",
+	);
+	return elements[elements.length - 1] ?? null;
+};
+
+const ruleBlockMatching = (pattern) => {
+	const match = pattern.exec(TOUR_CSS);
+	assert.ok(match, `no rule matching ${pattern}`);
+	const open = TOUR_CSS.indexOf("{", match.index);
+	const close = TOUR_CSS.indexOf("}", open);
+	assert.ok(open !== -1 && close !== -1, `unterminated rule for ${pattern}`);
+	return TOUR_CSS.slice(open + 1, close);
+};
+
+test("the tour skin pins step 7's shapes and the close control's colour", () => {
+	const panel = ruleBlock(".shepherd-element");
+	/*
+	 * Both are invisible when missing in a jsdom run: the wheel does not turn
+	 * under a Radix modal, and a lost clip only shows as a scrollbar in one
+	 * script. They are pinned beside the declarations they replace.
+	 */
+	assert.match(panel, RE.pointerEventsAuto);
+	assert.match(panel, RE.overflowXClip);
+	assert.match(
+		ruleBlock(".shepherd-element.tour-beside-palette"),
+		RE.panelMaxWidth340,
+	);
+	assert.match(
+		ruleBlock(
+			".shepherd-element.shepherd-has-title .shepherd-content .shepherd-cancel-icon",
+		),
+		RE.inkMuted,
+	);
+	const hover = ruleBlockMatching(RE.cancelHoverRule);
+	assert.match(hover, RE.accentWash);
+	assert.match(hover, RE.ink);
+});
+
+test("step 7 narrows beside the palette above the breakpoint and centres below it", () => {
+	const original = window.innerWidth;
+	try {
+		window.innerWidth = 1380;
+		const wide = stepSevenOf(mod.createTourSteps());
+		assert.equal(
+			wide.attachTo?.element,
+			'[data-tour-tag="command-palette-dialog"]',
+		);
+		assert.equal(wide.attachTo?.on, "right");
+		assert.ok(
+			wide.classes?.split(" ").includes(mod.STEP_BESIDE_PALETTE_CLASS),
+			"the beside shape must carry the width-cap class",
+		);
+
+		// The threshold itself must still fit beside the palette.
+		window.innerWidth = mod.STEP_BESIDE_PALETTE_MIN_WIDTH;
+		assert.ok(
+			stepSevenOf(mod.createTourSteps())?.attachTo,
+			"the breakpoint must be the first width that fits",
+		);
+
+		window.innerWidth = mod.STEP_BESIDE_PALETTE_MIN_WIDTH - 1;
+		const narrow = stepSevenOf(mod.createTourSteps());
+		assert.equal(narrow.attachTo, undefined, "below the breakpoint, no anchor");
+		assert.equal(narrow.classes, undefined, "and no width cap");
+		// Same step, same copy, same footer: only the shape differs.
+		assert.equal(narrow.title, wide.title);
+		assert.equal(narrow.text, wide.text);
+		assert.equal(narrow.buttons.length, wide.buttons.length);
+		assert.equal(narrow.buttons[0].text, wide.buttons[0].text);
+		assert.equal(narrow.buttons[1].text, wide.buttons[1].text);
+	} finally {
+		window.innerWidth = original;
+	}
+});
+
+/** Walk step 6 -> step 7 -> back -> step 7 -> step 8 -> back, recording both axes. */
+async function walkStepSeven(width) {
+	window.innerWidth = width;
+	mod.useUiPreferencesStore.getState().closeCommandPalette();
+	const tour = new mod.Shepherd.Tour({
+		useModalOverlay: true,
+		defaultStepOptions: { cancelIcon: mod.tourCancelIcon() },
+	});
+	tour.addSteps(mod.createTourSteps());
+	tour.start();
+	await sleep(80);
+	const press = async (variant) => {
+		const element = shownStepElement()?.querySelector(
+			`.shepherd-footer .shepherd-button-${variant}`,
+		);
+		assert.ok(
+			element,
+			`step ${tour.getCurrentStep()?.id} has no ${variant} button`,
+		);
+		element.click();
+		// The actions wait 500 ms for the palette; that has to have elapsed.
+		await sleep(760);
+	};
+	tour.show("agent-capabilities");
+	await sleep(80);
+	assert.equal(tour.getCurrentStep()?.id, "agent-capabilities");
+
+	await press("primary");
+	const arrived = { step: tour.getCurrentStep()?.id, palette: paletteOpen() };
+	await press("secondary");
+	const back = { step: tour.getCurrentStep()?.id, palette: paletteOpen() };
+	await press("primary");
+	const again = { step: tour.getCurrentStep()?.id, palette: paletteOpen() };
+	await press("primary");
+	const forward = { step: tour.getCurrentStep()?.id, palette: paletteOpen() };
+	await press("secondary");
+	const fromEight = { step: tour.getCurrentStep()?.id, palette: paletteOpen() };
+
+	tour.cancel();
+	await sleep(80);
+	for (const element of document.querySelectorAll(".shepherd-element")) {
+		element.remove();
+	}
+	return { arrived, back, again, forward, fromEight };
+}
+
+test("step 7 keeps the palette in step with the shape it was built in", async () => {
+	const original = window.innerWidth;
+	try {
+		const wide = await walkStepSeven(mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40);
+		assert.deepEqual(wide, {
+			arrived: { step: "pre-command-palette-open-canvas", palette: true },
+			back: { step: "agent-capabilities", palette: false },
+			again: { step: "pre-command-palette-open-canvas", palette: true },
+			forward: { step: "canvas-open-button", palette: false },
+			fromEight: { step: "pre-command-palette-open-canvas", palette: true },
+		});
+
+		const narrow = await walkStepSeven(900);
+		assert.deepEqual(narrow, {
+			arrived: { step: "pre-command-palette-open-canvas", palette: false },
+			back: { step: "agent-capabilities", palette: false },
+			again: { step: "pre-command-palette-open-canvas", palette: false },
+			forward: { step: "canvas-open-button", palette: false },
+			fromEight: { step: "pre-command-palette-open-canvas", palette: false },
+		});
+	} finally {
+		window.innerWidth = original;
+		mod.useUiPreferencesStore.getState().closeCommandPalette();
+	}
 });

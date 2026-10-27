@@ -19,24 +19,70 @@
  * `inset-inline-start: 0; inset-inline-end: 0` while Shepherd writes a
  * *physical* inline `left: 50%` and centres with `translate(-50%, -50%)`.
  * That is over-constrained on purpose in LTR (the box's own `left` wins and
- * the UA end edge is dropped), but in RTL the UA's inline-start edge resolves
- * to `right: 0`, Chromium then drops the resolved inline-start — Shepherd's
- * own `left` — and the panel anchors its right edge to the viewport instead of
- * sitting at its Popper position. Clearing `right` re-opens the over-constrain
- * so Shepherd's centring applies in both directions; a logical
- * `inset-inline-end: auto` would clear the *wrong* side under `rtl` because it
- * is the physical `right` the UA parks at 0 there. The physical `left` this
- * cancels is physical too, which is why the pairing is physical.
+ * the UA end edge is dropped). In RTL the UA's inline-start edge resolves to
+ * `right: 0`, so the constraint set is the same pair of physical edges in the
+ * other order: Chromium keeps the inline-start one (the UA's `right`) and
+ * drops the inline-END one, which is where Shepherd's physical `left` lands —
+ * so the panel anchors its right edge to the viewport instead of sitting at its
+ * Popper position. Clearing `right` re-opens the over-constraint so Shepherd's
+ * position applies in both directions; a logical `inset-inline-end: auto`
+ * would clear the physical *left* under `rtl` (inline-end is left there), which
+ * is the side Shepherd's own value is on, while the physical `right` would stay
+ * parked at 0. The physical `left` this cancels is physical too, which is why
+ * the pairing is physical.
  */
 .shepherd-element {
 	right: auto;
+	/*
+	 * The palette is a modal Radix dialog: while it is open it writes
+	 * `pointer-events: none` on <body> and re-enables pointers only inside its
+	 * own content, so every body child outside that subtree — this panel
+	 * included — paints but takes no pointer. Measured on the built app at
+	 * step 7: a press on the panel's Next landed on the palette's SVG beneath
+	 * it. The tour has to stay operable while the surface it just opened is up,
+	 * and `auto` re-admits the panel and its children without touching the
+	 * palette's lock. (Other steps that open a Radix dialog are fixed by the
+	 * same declaration.)
+	 */
+	pointer-events: auto;
 	max-width: 500px;
 	max-height: 95vh;
+	/*
+	 * `overflow-x: clip`, and the reason is RTL-only: Shepherd's arrow sits at
+	 * `left: -8px`, which is the INLINE-END side under `rtl`, so it counts as
+	 * scrollable overflow there and the panel grew a grey horizontal scrollbar
+	 * across its footer (measured: ur scrollWidth 509 / clientWidth 498, offset
+	 * height 448.58 against a 439 client height; en was 498/498 with no bar).
+	 * With `overflow-y: auto` beside it, CSS Overflow 3 §3.1 computes `clip` to
+	 * `hidden` - measured, `getComputedStyle().overflowX === "hidden"` - so the
+	 * box stays a scroll container and `scrollWidth` still counts the arrow;
+	 * what goes away is the bar, which is the whole of the defect (bottom-band
+	 * diff: 108 px changed, exactly the thumb and track; the arrow region is
+	 * 0 px changed in every locale because the scroll container already clipped
+	 * it). No available recipe reports 509 == 498 while the arrow is at -8px:
+	 * `overflow: clip` on both axes still counts it, and moving the arrow inside
+	 * still leaves 501 from the rotated 16px box's 22.6px bounding box.
+	 */
+	overflow-x: clip;
 	overflow-y: auto;
 	border: 1px solid var(--color-hairline);
 	border-radius: var(--radius-md);
 	background-color: var(--color-elevated);
 	box-shadow: var(--shadow-overlay);
+}
+
+/*
+ * Step 7 beside the command palette: a 340 px column, not a 500 px sheet.
+ *
+ * A 500 px panel pinned to a 640 px centred palette covered 130 px of it at
+ * 1380 and 370 px at 900 — including the focused search field the step is
+ * about (design round 1, D1). The narrow shape is only built when the window
+ * can hold it (`STEP_BESIDE_PALETTE_MIN_WIDTH` in `tour/tour-steps.ts`), and
+ * the class is that decision, so the neighbouring steps read the shape back
+ * off the tour rather than measuring the viewport again.
+ */
+.shepherd-element.tour-beside-palette {
+	max-width: 340px;
 }
 
 .shepherd-element .shepherd-content {
@@ -70,17 +116,44 @@
 
 .shepherd-cancel-icon {
 	/* 24px floor: the glyph plus 4px padding measured 22.69px wide, under the
-	   WCAG 2.2 2.5.8 target minimum, and the box is solo in its row so the
-	   extra pixel is invisible. */
+	   WCAG 2.2 2.5.8 target minimum. The extra 1.31px comes out of the title's
+	   `flex: 1 0 auto` growth beside it, not out of empty space — measured on
+	   the built app: no other box in the header moves. */
 	min-width: 24px;
 	padding: 4px;
 	border-radius: var(--radius-sm);
 	font-size: 1.5rem;
-	color: var(--color-ink-muted);
 	transition: background-color var(--duration-fast) var(--ease-out-quart);
 }
 
-.shepherd-cancel-icon:hover {
+/*
+ * The close control's colour has to OUT-SPECIFY Shepherd, not merely arrive
+ * later. Its own sheet ships
+ * `.shepherd-has-title .shepherd-content .shepherd-cancel-icon` at (0,3,0),
+ * with a `:hover` at (0,4,0), so the (0,1,0) declarations this file used to
+ * carry lost both whatever their source order. Measured on the built app: the
+ * glyph painted Shepherd's `hsla(0,0%,50%,.75)` — #a0a09f on the light header
+ * `#fefdfa` (2.57:1) and #6c6b69 on the dark `#312d23` (2.58:1) — and hover
+ * painted `rgba(0,0,0,.75)` on the dark header (1.43:1), which is the control
+ * disappearing under the pointer. Both fail WCAG 2.2 1.4.11 (3:1) for a UI
+ * control. Same class of defect as `right: auto` above: a vendor rule silently
+ * owning a property. Matching its selector is the fix — `!important` would win
+ * this declaration and lose the next one.
+ */
+.shepherd-element.shepherd-has-title .shepherd-content .shepherd-cancel-icon {
+	color: var(--color-ink-muted);
+}
+
+/*
+ * Hover and keyboard focus share the colour step, the way the Button primitive
+ * does: `outline` (the ring from `html :focus-visible`) says focus, the ground
+ * change says the control is live. `:focus-visible` is included because a
+ * Tab-focused control that only grows a ring reads as a different state from
+ * the one the pointer gets.
+ */
+.shepherd-element.shepherd-has-title
+	.shepherd-content
+	.shepherd-cancel-icon:is(:hover, :focus-visible) {
 	background-color: var(--color-accent-wash);
 	color: var(--color-ink);
 }

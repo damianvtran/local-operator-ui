@@ -37,6 +37,129 @@ const pressTourAction = (action: string): void => {
 };
 
 /**
+ * The viewport width at which step 7 can stand BESIDE the command palette.
+ *
+ * The palette is 640 CSS px wide and centred (`w-160 max-w-[90vw]` in
+ * `command-palette.tsx`), and step 7's beside-the-palette panel is capped at
+ * 340 px in `onboarding-tour.css` with an 8 px arrow overhang, so
+ *   640 + 2 x (340 + 8) = 1336
+ * is the first viewport that can hold both with no overlap at all. 1340 is
+ * that floor rounded up, which leaves 10 px between the panel and the window
+ * edge at the threshold rather than the flush edge a 500 px panel had (design
+ * round 1, D5). Narrower than this, the palette is not opened for step 7 at
+ * all: a 500 px panel cannot fit beside a 640 px palette at any size the
+ * desktop window supports, and covering the field this step tells the user to
+ * type into is worse than showing the same copy centred (D1).
+ */
+export const STEP_BESIDE_PALETTE_MIN_WIDTH = 1340;
+
+/**
+ * Marks the step-7 panel that is pinned beside the palette, and caps its width.
+ *
+ * The class is also the record of WHICH shape this tour built. The neighbouring
+ * steps read it back off the tour instead of measuring the viewport again, so a
+ * resize mid-tour cannot pair an attached panel with palette-free navigation
+ * (or the reverse) - the shape and the hops that go with it are one decision.
+ */
+export const STEP_BESIDE_PALETTE_CLASS = "tour-beside-palette";
+
+const STEP_SEVEN_ID = "pre-command-palette-open-canvas";
+
+/** Was this tour's step 7 built in its beside-the-palette shape? */
+const stepSevenSitsBesidePalette = (tour: Tour): boolean =>
+	(tour.getById(STEP_SEVEN_ID)?.options.classes ?? "")
+		.split(" ")
+		.includes(STEP_BESIDE_PALETTE_CLASS);
+
+/**
+ * Open the command palette on the way INTO step 7, but only when the panel will
+ * sit beside it.
+ *
+ * The palette is step 7's context: the step points at the field that takes the
+ * `#`/`@`/`,`/`>` prefixes. Below the breakpoint the step is centred and the
+ * palette is deliberately left closed, so opening it anyway would put a modal
+ * over a panel that is not attached to it - and, because the palette is a modal
+ * Radix dialog, under a body-wide pointer lock the panel would not even be
+ * clickable. The 500 ms is the palette's mount before the panel positions
+ * against it.
+ */
+const openCommandPaletteForStepSeven = (tour: Tour, go: () => void): void => {
+	if (!stepSevenSitsBesidePalette(tour)) {
+		go();
+		return;
+	}
+	useUiPreferencesStore.getState().openCommandPalette();
+	setTimeout(go, 500);
+};
+
+/**
+ * The mirror of the above: close the palette a step-7 approach opened, then
+ * continue. Below the breakpoint nothing was opened, so waiting 500 ms for a
+ * dialog that is not there would be a visible stall on Back/Next.
+ */
+const closeCommandPaletteAfterStepSeven = (
+	tour: Tour,
+	go: () => void,
+): void => {
+	if (!stepSevenSitsBesidePalette(tour)) {
+		go();
+		return;
+	}
+	useUiPreferencesStore.getState().closeCommandPalette();
+	setTimeout(go, 500);
+};
+
+/**
+ * Step 7, in the shape this window can hold.
+ *
+ * Above the breakpoint the panel is pinned to the palette's right edge, so the
+ * focused search field this step is about stays uncovered; the narrow width
+ * lives in `onboarding-tour.css` (`STEP_BESIDE_PALETTE_CLASS`), which is also
+ * how the neighbouring steps learn which shape was built. Below it the palette
+ * is never opened, so there is nothing to attach to and Shepherd centres the
+ * same copy instead - a 500 px panel over a 640 px palette covered the field at
+ * every width the window supports (design round 1, D1).
+ *
+ * The shape is decided once, when the tour's steps are built, so Back and Next
+ * always agree with the panel the user is looking at.
+ */
+const commandPaletteStep = (): StepOptions => {
+	const besidePalette = window.innerWidth >= STEP_BESIDE_PALETTE_MIN_WIDTH;
+	return {
+		id: STEP_SEVEN_ID,
+		...(besidePalette
+			? {
+					attachTo: {
+						element: '[data-tour-tag="command-palette-dialog"]',
+						on: "right" as const,
+					},
+					classes: STEP_BESIDE_PALETTE_CLASS,
+				}
+			: {}),
+		title: tourLabel(
+			"ui.onboarding.tour.pre_command_palette_open_canvas.title",
+		),
+		text: renderTourBody(TOUR_BODIES.pre_command_palette_open_canvas),
+		buttons: [
+			{
+				text: tourLabel("ui.onboarding.tour.action.back"),
+				classes: "shepherd-button-secondary",
+				action: function () {
+					closeCommandPaletteAfterStepSeven(this, () => this.back());
+				},
+			},
+			{
+				text: tourLabel("ui.onboarding.tour.action.next"),
+				classes: "shepherd-button-primary",
+				action: function () {
+					closeCommandPaletteAfterStepSeven(this, () => this.next());
+				},
+			},
+		],
+	};
+};
+
+/**
  * Build the walkthrough's steps in the active language.
  *
  * WHY THIS IS A FACTORY, NOT A MODULE-SCOPE ARRAY. `t()` resolves at call
@@ -186,53 +309,12 @@ export const createTourSteps = (): StepOptions[] => [
 				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
-					const { openCommandPalette } = useUiPreferencesStore.getState();
-
-					openCommandPalette();
-					setTimeout(() => {
-						this.next();
-					}, 500);
+					openCommandPaletteForStepSeven(this, () => this.next());
 				},
 			},
 		],
 	},
-	{
-		id: "pre-command-palette-open-canvas",
-		title: tourLabel(
-			"ui.onboarding.tour.pre_command_palette_open_canvas.title",
-		),
-		attachTo: {
-			element: '[data-tour-tag="command-palette-dialog"]',
-			on: "right",
-		},
-		text: renderTourBody(TOUR_BODIES.pre_command_palette_open_canvas),
-		buttons: [
-			{
-				text: tourLabel("ui.onboarding.tour.action.back"),
-				classes: "shepherd-button-secondary",
-				action: function () {
-					const { closeCommandPalette } = useUiPreferencesStore.getState();
-
-					closeCommandPalette();
-					setTimeout(() => {
-						this.back();
-					}, 500);
-				},
-			},
-			{
-				text: tourLabel("ui.onboarding.tour.action.next"),
-				classes: "shepherd-button-primary",
-				action: function () {
-					const { closeCommandPalette } = useUiPreferencesStore.getState();
-
-					closeCommandPalette();
-					setTimeout(() => {
-						this.next();
-					}, 500); // Wait for canvas and palette to open
-				},
-			},
-		],
-	},
+	commandPaletteStep(),
 	{
 		id: "canvas-open-button",
 		attachTo: {
@@ -246,12 +328,7 @@ export const createTourSteps = (): StepOptions[] => [
 				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
-					const { openCommandPalette } = useUiPreferencesStore.getState();
-
-					openCommandPalette();
-					setTimeout(() => {
-						this.back();
-					}, 500);
+					openCommandPaletteForStepSeven(this, () => this.back());
 				},
 			},
 			{
