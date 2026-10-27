@@ -113,8 +113,15 @@ export function stateSentence(
 export function SkillMarkChip({
 	mark,
 	className,
+	labels,
 }: {
 	mark: HubMark | null;
+	/**
+	 * Per-kind label overrides for a surface whose truth differs from the Hub's.
+	 * The Agents Skills tab passes a shorter `failed` ("Update failed"): the Hub
+	 * string says "open to retry", which is only true where a retry control exists.
+	 */
+	labels?: Partial<Record<HubMark["kind"], WithoutParams>>;
 	/**
 	 * Display override for a caller that sets the chip INLINE inside a line that
 	 * truncates as one run (the Agents Skills roster's second line). The Hub's
@@ -134,7 +141,7 @@ export function SkillMarkChip({
 			)}
 		>
 			<HubStateIcon mark={mark} />
-			<span>{t(MARK_KEY[mark.kind])}</span>
+			<span>{t(labels?.[mark.kind] ?? MARK_KEY[mark.kind])}</span>
 		</span>
 	);
 }

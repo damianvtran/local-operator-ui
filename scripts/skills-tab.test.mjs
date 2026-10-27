@@ -946,6 +946,12 @@ test("a hub row with a failed update: name and source on line one, the mark lead
 		lineTwo.querySelector("[data-hub-mark-state]"),
 		"the mark is on line two",
 	);
+	// The read-only surface must not promise a retry it does not have.
+	assert.equal(
+		text(lineTwo.querySelector("[data-hub-mark-state]")),
+		"Update failed",
+		"the failed mark is the short, instruction-free string",
+	);
 	assert.ok(
 		lineTwo.className.includes("truncate"),
 		"line two truncates as ONE run",

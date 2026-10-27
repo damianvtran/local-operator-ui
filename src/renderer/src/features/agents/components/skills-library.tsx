@@ -239,6 +239,7 @@ export function SkillsRoster({
 									<span data-testid="skill-row-mark">
 										<SkillMarkChip
 											mark={mark}
+											labels={SKILL_MARK_LABELS}
 											className="inline-flex align-middle"
 										/>
 										<span className="text-ink-dim"> · </span>
@@ -320,6 +321,18 @@ export function SkillsRosterBody({
  * pressed and, when the error pane is back, puts focus on its Retry button again.
  * A success is left alone: the content that replaces the pane is not a button.
  */
+/**
+ * THE FAILED-UPDATE MARK ON THIS SURFACE SAYS ONLY THAT IT FAILED. The Hub's own
+ * string is "Update failed - open to retry", true on the Hub page where the detail
+ * has a retry, and false here: U1 is read-only and neither the row nor the details
+ * can retry (UX U1; lead decision on #1443). WHEN THE ACTIONS LAND (U2), THE
+ * LONGER HUB STRING CAN COME BACK - drop this override and the key
+ * `ui.agents.skills.hub.update_failed` together.
+ */
+const SKILL_MARK_LABELS = {
+	failed: "ui.agents.skills.hub.update_failed",
+} as const;
+
 export function useRetryFocus(failed: boolean) {
 	const pressed = useRef(false);
 	const holder = useRef<HTMLDivElement>(null);
@@ -396,6 +409,8 @@ export function SkillDetail({
 		// a Shift+Tab (UX U3 / QA Q7). Below 1000 px the row has left the layout and
 		// focus would fall to <body>, so the heading takes it - the same width the
 		// page's narrow rule uses. Escape is a no-op at wide widths, as on Agents.
+		// Accepted on #1443 (lead decision): an agent row's composer grabbing focus on
+		// open is the very behaviour U2 removed from the tab strip, so it is not the model.
 		const rowGone = window.matchMedia("(max-width: 999px)").matches;
 		if (homeless || (rowGone && active?.closest("[data-skills-roster]")))
 			requestAnimationFrame(() => headingRef.current?.focus());
@@ -453,7 +468,7 @@ export function SkillDetail({
 							.filter(Boolean)
 							.join(" · ")}
 					</p>
-					<SkillMarkChip mark={mark} />
+					<SkillMarkChip mark={mark} labels={SKILL_MARK_LABELS} />
 					{/* The hub sentence in the line above already says "Subscribed - not
 					    installed" for a hub row (design D5); the badge is for the not-installed
 					    row that has no hub sentence to say it. */}

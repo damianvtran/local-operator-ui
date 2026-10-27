@@ -164,6 +164,11 @@
 		"role": "fallback sentence when the backend gave no message",
 		"tone": "plain"
 	},
+	"ui.agents.skills.hub.update_failed": {
+		"note": "Status mark in a Skills roster row and the details header, shown when a hub skill's last update did not complete. Short: it shares a row with the skill name and must not crowd it. Deliberately NOT the Hub page's 'Update failed — open to retry': this read-only surface has no retry control, so it must not promise one. No placeholders.",
+		"role": "status mark in a roster row",
+		"tone": "neutral, short, no imperative"
+	},
 	"ui.agents.skills.hub.unlinked": {
 		"note": "A skill the hub manages whose link could not be matched. Not the same as 'Not downloaded': the skill IS on this machine.",
 		"role": "hub state: no matching link",

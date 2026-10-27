@@ -2121,6 +2121,7 @@ export type MessageParams = {
 	"ui.agents.skills.error.what_fallback": undefined;
 	"ui.agents.skills.hub.unlinked": undefined;
 	"ui.agents.skills.hub.unlinked_help": undefined;
+	"ui.agents.skills.hub.update_failed": undefined;
 	"ui.agents.skills.list_aria": undefined;
 	"ui.agents.skills.retrying": undefined;
 	"ui.agents.skills.search": undefined;

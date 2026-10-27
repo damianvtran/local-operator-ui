@@ -32,6 +32,7 @@
 	"ui.agents.skills.error.meaning": "Nothing is lost. This is a read that failed, so the list may simply be out of date.",
 	"ui.agents.skills.error.title": "Skills could not be read",
 	"ui.agents.skills.error.what_fallback": "The request did not complete.",
+	"ui.agents.skills.hub.update_failed": "Update failed",
 	"ui.agents.skills.hub.unlinked": "Hub link not confirmed",
 	"ui.agents.skills.hub.unlinked_help": "This skill is managed by Agent Hub, but its link is not in the links list yet.",
 	"ui.agents.skills.list_aria": "Skills",
