@@ -4922,8 +4922,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
-			"target_sha256": "c67f520c7a8bd63adc9c345a066fd48f5a4f053b15008e15cda3c31ef660a0ae",
+			"source_sha256": "6fd3d94516a1b0a2175c7e104ea9618e3266894b4b4016438093d2893a9b9603",
+			"target_sha256": "60c0387d0acc2af9db6b5d54bdaf2d7827633f58f44b56919c48217f923b18ba",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -4940,19 +4940,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "e2cc7b3bceb8",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "e3a57e993d00-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
-					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
-					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
-					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
+					"receipt": "i18n/receipts/e3a57e993d00-es.json",
+					"receipt_sha256": "dc67139f7ca8239a214e59e3219e5d7ac141aa3c0751da30a42522d6b09dbe3e",
+					"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
+					"note": "PR #1444 3-key delta (schedule.edit_*); 1 open NIT, see receipt"
 				}
 			],
 			"status": "audited",
@@ -5616,6 +5616,30 @@
 							"receipt": "i18n/receipts/51e7fd6748ed.json",
 							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
 							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+					"target_sha256": "c67f520c7a8bd63adc9c345a066fd48f5a4f053b15008e15cda3c31ef660a0ae",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "e2cc7b3bceb8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+							"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+							"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+							"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 						}
 					],
 					"status": "audited"
@@ -10936,8 +10960,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
-			"target_sha256": "3344e2c95a1e680faea87b80f5e300993e8e09886c3957527215f7adbb9bb31e",
+			"source_sha256": "6fd3d94516a1b0a2175c7e104ea9618e3266894b4b4016438093d2893a9b9603",
+			"target_sha256": "8bc0e3f81131060dc1123e643a39295e1758a406e16c1e0245166823951a1eb4",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -10955,19 +10979,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "e2cc7b3bceb8",
+					"instance": "e3a57e993d00-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
-					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
-					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
-					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
+					"receipt": "i18n/receipts/e3a57e993d00-fr.json",
+					"receipt_sha256": "093e2ad273c4777978f0935b5fd1ea1dc03c5c83c33645399e80a5250b37d2f4",
+					"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
+					"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
 				}
 			],
 			"status": "audited",
@@ -11655,6 +11679,30 @@
 							"receipt": "i18n/receipts/51e7fd6748ed.json",
 							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
 							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+					"target_sha256": "3344e2c95a1e680faea87b80f5e300993e8e09886c3957527215f7adbb9bb31e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "e2cc7b3bceb8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+							"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+							"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+							"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 						}
 					],
 					"status": "audited"
@@ -16883,8 +16931,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
-			"target_sha256": "b1bf7041eb38fbae9f387483a14c48a05162183cc014bceec249d3875d7893d9",
+			"source_sha256": "6fd3d94516a1b0a2175c7e104ea9618e3266894b4b4016438093d2893a9b9603",
+			"target_sha256": "c8113c284259d2de8d03299f4017307e842ebf41a365db1ae61eef801ff34492",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -16901,19 +16949,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "e2cc7b3bceb8",
+					"instance": "e3a57e993d00-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
-					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
-					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
-					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
+					"receipt": "i18n/receipts/e3a57e993d00-hi.json",
+					"receipt_sha256": "20ff79742e2cc1522a015a82938bc9957324ca36e2316633035b38e30ad9d704",
+					"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
+					"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
 				}
 			],
 			"status": "audited",
@@ -17524,6 +17572,30 @@
 							"receipt": "i18n/receipts/51e7fd6748ed.json",
 							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
 							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+					"target_sha256": "b1bf7041eb38fbae9f387483a14c48a05162183cc014bceec249d3875d7893d9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "e2cc7b3bceb8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+							"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+							"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+							"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 						}
 					],
 					"status": "audited"
@@ -22526,8 +22598,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
-			"target_sha256": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
+			"source_sha256": "6fd3d94516a1b0a2175c7e104ea9618e3266894b4b4016438093d2893a9b9603",
+			"target_sha256": "59466dad8b613f99331c26ab9d7bdae51bae5c27c8c6118ef08a9dfdb11158e9",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -22545,19 +22617,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "e2cc7b3bceb8",
+					"instance": "e3a57e993d00-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
-					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
-					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
-					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
+					"receipt": "i18n/receipts/e3a57e993d00-ru.json",
+					"receipt_sha256": "5fdb1001ebdb5137ee30e5d1d9ed090a31b3ae26d25b06e6cde36e228b1454a4",
+					"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
+					"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
 				}
 			],
 			"status": "audited",
@@ -23199,6 +23271,30 @@
 							"receipt": "i18n/receipts/51e7fd6748ed.json",
 							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
 							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+					"target_sha256": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "e2cc7b3bceb8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+							"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+							"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+							"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 						}
 					],
 					"status": "audited"
@@ -28284,8 +28380,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
-			"target_sha256": "660c884b54d3a9b8e6b61679e594c3a6b8bae4285de86ef921b31526f0392db9",
+			"source_sha256": "6fd3d94516a1b0a2175c7e104ea9618e3266894b4b4016438093d2893a9b9603",
+			"target_sha256": "7d7ea1b930056bbfdc06adfad2a574920b09420bce50036466e34f12071a8ada",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -28302,19 +28398,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "e2cc7b3bceb8",
+					"instance": "e3a57e993d00-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
-					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
-					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
-					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
+					"receipt": "i18n/receipts/e3a57e993d00-ur.json",
+					"receipt_sha256": "21019654a6bc96d06f198eaedf7f2f7ac0bd38d97d587b8250de6fe26922ac64",
+					"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
+					"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
 				}
 			],
 			"status": "audited",
@@ -28925,6 +29021,30 @@
 							"receipt": "i18n/receipts/51e7fd6748ed.json",
 							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
 							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+					"target_sha256": "660c884b54d3a9b8e6b61679e594c3a6b8bae4285de86ef921b31526f0392db9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "e2cc7b3bceb8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+							"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+							"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+							"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 						}
 					],
 					"status": "audited"
@@ -34206,8 +34326,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
-			"target_sha256": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
+			"source_sha256": "6fd3d94516a1b0a2175c7e104ea9618e3266894b4b4016438093d2893a9b9603",
+			"target_sha256": "f39e67ccae59c4fb760ef046b891a28c468c69582b13a5accb53024c902b944c",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -34224,19 +34344,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "e2cc7b3bceb8",
+					"instance": "e3a57e993d00-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
-					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
-					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
-					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
+					"receipt": "i18n/receipts/e3a57e993d00-vi.json",
+					"receipt_sha256": "2035db8eefb27d175a3b2990b017593f6e375ffc82c4cef4bac68aa49284ca4f",
+					"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
+					"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
 				}
 			],
 			"status": "audited",
@@ -34878,6 +34998,30 @@
 							"receipt": "i18n/receipts/51e7fd6748ed.json",
 							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
 							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+					"target_sha256": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "e2cc7b3bceb8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+							"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+							"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+							"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 						}
 					],
 					"status": "audited"
@@ -40754,8 +40898,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
-			"target_sha256": "716bc20303a644f41f8560505768c80216a17db4c9cdad69fd09dc866f9051c5",
+			"source_sha256": "6fd3d94516a1b0a2175c7e104ea9618e3266894b4b4016438093d2893a9b9603",
+			"target_sha256": "2bae2c49c27d363a769670eb15fdb3f373d7615b9cba396d0ae8571659c2c78e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -40772,19 +40916,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "e2cc7b3bceb8",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "e3a57e993d00-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/e2cc7b3bceb8.json",
-					"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
-					"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
-					"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
+					"receipt": "i18n/receipts/e3a57e993d00-zh-cn.json",
+					"receipt_sha256": "cc6f48d0bcf84bc41eaca167e9ba230208b0a6a1d9d3a922cee19e42757917fb",
+					"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
+					"note": "PR #1444 3-key delta (schedule.edit_*); 1 open NIT, see receipt"
 				}
 			],
 			"status": "audited",
@@ -41448,6 +41592,30 @@
 							"receipt": "i18n/receipts/51e7fd6748ed.json",
 							"receipt_sha256": "8e15a696d66a4cdf5c1d4b280ba30d19ad257ed5cf394a0472619af92b2af62a",
 							"scope": "Merge integration union: incoming notification key; unchanged profile and inherited namespace audit provenance retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+					"target_sha256": "716bc20303a644f41f8560505768c80216a17db4c9cdad69fd09dc866f9051c5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "e2cc7b3bceb8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e2cc7b3bceb8.json",
+							"receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+							"scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity",
+							"note": "Independent single-key audit, 0 findings. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
 						}
 					],
 					"status": "audited"
