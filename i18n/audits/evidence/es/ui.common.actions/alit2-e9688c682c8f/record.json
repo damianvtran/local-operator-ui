@@ -1,0 +1,67 @@
+{
+  "audit_id": "alit2-e9688c682c8f",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "audit_date": "2026-10-26",
+  "locale": "es",
+  "namespace": "ui.common.actions",
+  "key_count": 1,
+  "keys_audited": [
+    "ui.common.actions.retrying"
+  ],
+  "audited_head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "english_keys_commit": "73af0b6855",
+  "branch": "i18n-agents-literals-2",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "e9688c682c8f",
+    "instance": "e9688c682c8f",
+    "model": "radient/auto",
+    "actual_model_source": "harness session banner in this delegated run: 'Model: radient/auto'",
+    "fallback": null,
+    "independent_from_translator_session": true,
+    "independence_basis": "Did not translate, remediate or author the audited values and read no translator reasoning; wrote only the receipt and these evidence records."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.common.actions.json",
+      "sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+      "sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/es/ui.common.actions.json",
+      "sha256": "ddaeb34dd0150437906969bb296a4b278d8b71114f8cc7ebe9179b176a24c8b6"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/es-agents-literals-audit-e9688c682c8f.json",
+      "sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.common.actions/alit2-e9688c682c8f/record.json",
+      "sha256": null,
+      "note": "this record; its own hash is not self-referential"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [],
+    "result": "clean",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    }
+  },
+  "audit_notes_not_execution_log": "This record is provenance, not a log. The executed commands and their actual stdout live in the receipt's `machine_checks` array and `width_measurements`; no command output is asserted here.",
+  "execution_log": "i18n/receipts/es-agents-literals-audit-e9688c682c8f.json#machine_checks",
+  "receipt": "i18n/receipts/es-agents-literals-audit-e9688c682c8f.json",
+  "receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e",
+  "scope": "ui.common.actions: the 1 new key(s) added on this branch, bound to the sha256 of the English catalogue, its context sidecar and the es catalogue on disk; pre-existing keys in the file proved byte-equal to parent 73af0b6855 and not re-audited.",
+  "note": "Independent es audit of the 1 new ui.common.actions keys; record alit2-e9688c682c8f references i18n/receipts/es-agents-literals-audit-e9688c682c8f.json."
+}
