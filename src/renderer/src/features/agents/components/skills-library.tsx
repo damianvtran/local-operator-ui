@@ -340,27 +340,39 @@ const SKILL_MARK_LABELS = {
  *     pull focus off wherever the reader is (UX U9).
  * The press is spent either way. A further Retry is a further press, which re-arms
  * it; staying armed across settles would let a LATER background failure steal
- * focus from the reader's search box, the defect U9 closed.
+ * focus from the reader's search box, the defect U9 closed. And even at a failed
+ * settle focus moves only if the reader is homeless or still inside the pane.
  */
 export function useRetryFocus(failed: boolean, fetching: boolean) {
 	const pressed = useRef(false);
 	const sawFetch = useRef(false);
 	const holder = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		if (!pressed.current) {
-			sawFetch.current = false;
-			return;
-		}
+		if (!pressed.current) return;
 		if (fetching) {
 			sawFetch.current = true;
 			return;
 		}
-		// Not settled yet: the press has not produced a fetch to wait for.
+		// Not settled yet: the press has not produced a fetch to wait for. This also
+		// carries the press across a render where `failed` clears a beat before
+		// `fetching` flips, which must not be mistaken for a success.
 		if (!sawFetch.current) return;
 		sawFetch.current = false;
 		pressed.current = false;
 		if (!failed) return;
 		requestAnimationFrame(() => {
+			// ONLY IF THE READER IS STILL WHERE THEY PRESSED (QA r5 Q1 / review R5-1).
+			// The settle can land seconds later, and in between they may have tabbed
+			// into the search box; yanking the caret to Retry is the focus theft U9
+			// closed, on the failure branch. Homeless (<body>: the browser drops focus
+			// when the pressed button is disabled or unmounted) or still inside this
+			// pane means "give it back"; anywhere else means leave it alone.
+			const active = document.activeElement;
+			const stillHere =
+				!active ||
+				active === document.body ||
+				Boolean(holder.current?.contains(active));
+			if (!stillHere) return;
 			const retry = holder.current?.querySelector<HTMLButtonElement>("button");
 			if (retry && !retry.disabled) retry.focus();
 		});

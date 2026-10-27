@@ -1219,6 +1219,8 @@ const mountRetryProbe = async () => {
 							},
 							"Retry",
 						),
+						// A second focusable INSIDE the pane (the details pane's own controls).
+						h("a", { "data-testid": "inpane", href: "#x" }, "more"),
 					)
 				: null,
 		);
@@ -1312,14 +1314,116 @@ test("Retry focus: a second Retry after a failed one is a fresh press that is ho
 	await probe.set({ failed: true, fetching: true });
 	await probe.set({ failed: true, fetching: false });
 	assert.equal(probe.focusedId(), "retry");
-	probe.container.querySelector('[data-testid="elsewhere"]').focus();
+	// A real second press: the button has focus, the click arms it, and the button
+	// then disables for the fetch, which drops focus to <body>.
 	await pressRetry(probe);
 	await probe.set({ failed: true, fetching: true });
+	await act(async () => {
+		document.activeElement?.blur();
+	});
 	await probe.set({ failed: true, fetching: false });
 	assert.equal(
 		probe.focusedId(),
 		"retry",
 		"the second press re-arms the hand-back",
+	);
+	await probe.teardown();
+});
+
+/*
+ * R5-1 / R5-2: the hook may hand focus back ONLY to a reader who is homeless or
+ * still inside the pane, and each guard must be load-bearing on its own. Each case
+ * below turns a different single guard red (see the PR comment's revert-and-fail
+ * table); assertions are on primitives (a testid string), never on a DOM node.
+ */
+test("Retry focus THEFT: the reader tabs to the search box while the retry is in flight; the failed settle leaves them there", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	await probe.set({ failed: true, fetching: true });
+	probe.container.querySelector('[data-testid="elsewhere"]').focus();
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(probe.focusedId(), "elsewhere", "focus is not yanked to Retry");
+	await probe.teardown();
+});
+
+test("Retry focus: a reader who is homeless (focus on <body>) at the failed settle gets the hand-back", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	await probe.set({ failed: true, fetching: true });
+	await act(async () => {
+		document.activeElement?.blur();
+	});
+	assert.equal(probe.focusedId(), "", "focus is on <body> before the settle");
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(probe.focusedId(), "retry", "a homeless reader gets Retry back");
+	await probe.teardown();
+});
+
+test("Retry focus: a reader still inside the pane's own holder gets the hand-back", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	await probe.set({ failed: true, fetching: true });
+	probe.container.querySelector('[data-testid="inpane"]').focus();
+	assert.equal(probe.focusedId(), "inpane");
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(
+		probe.focusedId(),
+		"retry",
+		"inside the pane still counts as 'here'",
+	);
+	await probe.teardown();
+});
+
+test("Retry focus: the press is spent - a later REFETCH that fails does not hand focus to Retry, even to a homeless reader", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	await probe.set({ failed: true, fetching: true });
+	await probe.set({ failed: false, fetching: false });
+	// The reader clicks into nothing in particular; focus is on <body>.
+	await act(async () => {
+		document.activeElement?.blur();
+	});
+	// A background refetch: fetching true -> false with the error back.
+	await probe.set({ failed: true, fetching: true });
+	await probe.set({ failed: true, fetching: false });
+	assert.notEqual(probe.focusedId(), "retry", "no press, no hand-back");
+	await probe.teardown();
+});
+
+test("Retry focus: the press is spent at a failed settle - a SECOND settle without a new press does not hand focus back", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	await probe.set({ failed: true, fetching: true });
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(probe.focusedId(), "retry");
+	await act(async () => {
+		document.activeElement?.blur();
+	});
+	await probe.set({ failed: true, fetching: true });
+	await probe.set({ failed: true, fetching: false });
+	assert.notEqual(
+		probe.focusedId(),
+		"retry",
+		"the first press does not outlive its settle",
+	);
+	await probe.teardown();
+});
+
+test("Retry focus: a render where the error clears BEFORE the fetch starts is not mistaken for a settle", async () => {
+	const probe = await mountRetryProbe();
+	// A first full cycle leaves the hook's internal state as it is after a settle.
+	await pressRetry(probe);
+	await probe.set({ failed: true, fetching: true });
+	await probe.set({ failed: true, fetching: false });
+	// Second press: the error clears a beat BEFORE `fetching` flips.
+	await pressRetry(probe);
+	await probe.set({ failed: false, fetching: false });
+	await probe.set({ failed: false, fetching: true });
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(
+		probe.focusedId(),
+		"retry",
+		"the second press is still honoured",
 	);
 	await probe.teardown();
 });
