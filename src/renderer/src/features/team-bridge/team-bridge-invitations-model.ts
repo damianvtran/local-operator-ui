@@ -39,7 +39,7 @@ import { conversationTitle, storedLabel } from "./team-bridge-model";
  * checks the constant and refuses any other value with 409
  * `consent_version_unknown`. Until a served version exists the client echoes
  * the one the hub knows and shows its own copy
- * (`ui.teamBridge.invitations.consent`); when the hub serves a newer version
+ * (`TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY`); when the hub serves a newer version
  * this pin is what answers `consent_version_unknown`, which the view reports as
  * "update the app" rather than as a retryable failure.
  */
@@ -178,6 +178,21 @@ export function pendingAgentInvitations(
  * another device, or the conversation was archived) is dropped: it is not this
  * view's outcome to show.
  */
+export function stableInvitationRows(
+	previous: readonly TeamBridgeInvitation[],
+	current: readonly TeamBridgeInvitation[],
+	answered: ReadonlySet<string>,
+): TeamBridgeInvitation[] {
+	const live = new Map(current.map((row) => [row.key, row]));
+	const kept = previous.flatMap((row) => {
+		const fresh = live.get(row.key);
+		if (fresh) return [fresh];
+		return answered.has(row.key) ? [row] : [];
+	});
+	const seen = new Set(kept.map((row) => row.key));
+	return [...kept, ...current.filter((row) => !seen.has(row.key))];
+}
+
 /**
  * Whether the rail shows its Invitations entry, given what it showed last.
  *
@@ -195,21 +210,6 @@ export function railInvitationsEntryShown(
 	pointerInRail: boolean,
 ): boolean {
 	return pointerInRail ? shownBefore : wanted;
-}
-
-export function stableInvitationRows(
-	previous: readonly TeamBridgeInvitation[],
-	current: readonly TeamBridgeInvitation[],
-	answered: ReadonlySet<string>,
-): TeamBridgeInvitation[] {
-	const live = new Map(current.map((row) => [row.key, row]));
-	const kept = previous.flatMap((row) => {
-		const fresh = live.get(row.key);
-		if (fresh) return [fresh];
-		return answered.has(row.key) ? [row] : [];
-	});
-	const seen = new Set(kept.map((row) => row.key));
-	return [...kept, ...current.filter((row) => !seen.has(row.key))];
 }
 
 /**
@@ -244,8 +244,10 @@ export function withAgentInvitationAnswer(
  * the second answer already holds the first answer's optimistic state, so
  * restoring snapshots in refusal order left the first row "joined" after both
  * were refused. Reverting only this conversation's own agent row, and only
- * from the state this answer wrote, composes with any other answer in flight
- * and leaves a refetched server state alone.
+ * from the state this answer wrote, composes with any other answer in flight.
+ * A refetch that already landed the answer is indistinguishable from this
+ * write (the deadline-but-applied case), so the unconditional `onSettled`
+ * refetch — not this patch — is what corrects the cache to the server's truth.
  */
 export function withoutAgentInvitationAnswer(
 	page: TeamBridgeConversationList,
@@ -306,6 +308,7 @@ export type InvitationFailureKind =
 	| "already_answered"
 	| "gone"
 	| "outdated"
+	| "runtime_outdated"
 	| "not_available"
 	| "sign_in"
 	| "unreachable"
@@ -325,8 +328,10 @@ export function invitationFailureKind(error: unknown): InvitationFailureKind {
 	if (code === "agent_not_permitted") return "agent_unavailable";
 	if (code === "invalid_transition")
 		return rule === "builtin" ? "gone" : "already_answered";
-	// The runtime cannot bind the write to its owner (R7): only an update helps.
-	if (code === TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE) return "outdated";
+	// The runtime cannot bind the write to its owner (R7): only a runtime update
+	// helps, which is a different sentence from the stale-participation-version
+	// one (review round 2, M3).
+	if (code === TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE) return "runtime_outdated";
 	if (code === "member_not_found" || code === "conversation_not_found")
 		return "gone";
 	if (code === "consent_version_unknown") return "outdated";

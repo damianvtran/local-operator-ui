@@ -1686,6 +1686,13 @@
 		"placeholders": {},
 		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
 	},
+	"ui.teamBridge.invitations.failed.runtime_outdated": {
+		"role": "invitations runtime outdated refusal",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server no longer accepts this app's participation version. Shown when the LOCAL runtime cannot bind the consent write to the signed-in account (no owner guard). 'Local Operator' is the runtime's name and is not translated; the thing to update is the runtime, not necessarily the desktop app."
+	},
 	"ui.teamBridge.invitations.failed.outdated": {
 		"role": "invitations outdated",
 		"tone": "Clear, calm, sentence case; factual about what changes",

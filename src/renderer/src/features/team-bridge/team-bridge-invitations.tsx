@@ -47,6 +47,8 @@ const FAILURE_COPY: Record<InvitationFailureKind, () => string> = {
 		t("ui.teamBridge.invitations.failed.already_answered"),
 	gone: () => t("ui.teamBridge.invitations.failed.gone"),
 	outdated: () => t("ui.teamBridge.invitations.failed.outdated"),
+	runtime_outdated: () =>
+		t("ui.teamBridge.invitations.failed.runtime_outdated"),
 	not_available: () => t("ui.teamBridge.invitations.failed.not_available"),
 	sign_in: () => t("ui.teamBridge.invitations.failed.sign_in"),
 	unreachable: () => t("ui.teamBridge.invitations.failed.unreachable"),
@@ -58,6 +60,7 @@ const FINAL_FAILURES: ReadonlySet<InvitationFailureKind> = new Set([
 	"already_answered",
 	"gone",
 	"outdated",
+	"runtime_outdated",
 ]);
 
 /** The sentence a failed row shows, exposed for the copy tests. */
@@ -306,7 +309,20 @@ function TeamBridgeInvitationRow({
 					</>
 				)}
 				{failed !== null && (
-					<p role="alert" className="min-w-0 text-sm text-danger">
+					/*
+					 * The sentence is one line at EVERY width (design round 2, D8).
+					 * Beside the buttons a wrapped sentence grew the slot 32 -> 76 and
+					 * moved the rows below. The full reason is still available on hover
+					 * on hover, and assistive tech reads the whole sentence: `truncate`
+					 * clips the pixels, never the text, so no `tabIndex` is needed to
+					 * reach it. `min-w-0 flex-1` makes this the slot's shrinkable child,
+					 * so the buttons keep their place instead of being pushed out.
+					 */
+					<p
+						role="alert"
+						title={invitationFailureCopy(failed)}
+						className="min-w-0 flex-1 truncate text-sm text-danger"
+					>
 						{invitationFailureCopy(failed)}
 					</p>
 				)}
@@ -360,6 +376,12 @@ function InvitationButton({
 			aria-disabled={inFlight || undefined}
 			aria-busy={pending || undefined}
 			onClick={inFlight ? undefined : onPress}
+			/*
+			 * The global `[aria-disabled]` rule paints `cursor: not-allowed`, which
+			 * says "forbidden" on the button whose request is running. This one
+			 * says "working" (design round 2, D9); the inert sibling keeps it.
+			 */
+			className={pending ? "cursor-progress" : undefined}
 		>
 			<span className="grid">
 				<span

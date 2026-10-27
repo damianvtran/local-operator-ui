@@ -313,6 +313,8 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	});
 	assert.equal(accepting.includes("Accepting…"), true);
 	assert.equal(accepting.includes('aria-busy="true"'), true);
+	// D9: the working button says "working", not "forbidden".
+	assert.equal(accepting.includes("cursor-progress"), true);
 	// Both labels share one cell (fixed width), and in flight the buttons are
 	// inert but keep their own face: aria-disabled, never the disabled face.
 	assert.equal(accepting.includes(">Accept<"), true);
@@ -376,7 +378,7 @@ test("each coded refusal has its own sentence; retry only where it can help", ()
 				code: "team_bridge_owner_guard_unavailable",
 			}),
 		),
-		"outdated",
+		"runtime_outdated",
 	);
 	assert.equal(kind(500, "store_failure"), "unconfirmed");
 	assert.equal(ui.invitationFailureKind(new Error("plain")), "unconfirmed");
@@ -386,6 +388,7 @@ test("each coded refusal has its own sentence; retry only where it can help", ()
 		"already_answered",
 		"gone",
 		"outdated",
+		"runtime_outdated",
 		"not_available",
 		"sign_in",
 		"unreachable",
@@ -401,6 +404,18 @@ test("each coded refusal has its own sentence; retry only where it can help", ()
 	assert.equal(ui.invitationRetryable("unreachable"), true);
 	assert.equal(ui.invitationRetryable("already_answered"), false);
 	assert.equal(ui.invitationRetryable("outdated"), false);
+	assert.equal(ui.invitationRetryable("runtime_outdated"), false);
+	assert.equal(
+		ui
+			.invitationFailureCopy("runtime_outdated")
+			.includes("Update Local Operator"),
+		true,
+	);
+	// M3: the runtime case must not say the app version is too old "any more".
+	assert.equal(
+		ui.invitationFailureCopy("runtime_outdated").includes("any more"),
+		false,
+	);
 
 	const refused = renderView({
 		invitations: [invitation()],
@@ -421,6 +436,16 @@ test("each coded refusal has its own sentence; retry only where it can help", ()
 			"tnt_1|bcv_1": { phase: "failed", kind: "agent_unavailable" },
 		},
 	});
+	// D8: the failure line truncates instead of wrapping, and the whole reason
+	// is one hover/focus away.
+	assert.equal(retryable.includes('role="alert"'), true);
+	assert.equal(retryable.includes("truncate text-sm text-danger"), true);
+	assert.equal(
+		retryable.includes(
+			`title="${ui.invitationFailureCopy("agent_unavailable")}"`,
+		),
+		true,
+	);
 	const retrySlot = slot(retryable);
 	assert.equal(retrySlot.includes(">Accept<"), true);
 	assert.equal(retrySlot.includes("Your agent can’t join from here"), true);
@@ -492,7 +517,10 @@ test("the answer is sent as the owner, patched optimistically, and rolled back e
 	});
 	client.setQueryData(orgKey, structuredClone(page));
 	client.setQueryData(allKey, structuredClone(page));
-	client.invalidateQueries = async () => {};
+	const invalidations = [];
+	client.invalidateQueries = async (filters) => {
+		invalidations.push(filters);
+	};
 
 	// The real transport, with the IPC bridge recorded rather than mocked away.
 	const requests = [];
@@ -551,6 +579,28 @@ test("the answer is sent as the owner, patched optimistically, and rolled back e
 	assert.deepEqual(client.getQueryData(allKey), page);
 	assert.equal(context, undefined);
 
+	// M1: the settle after a REFUSAL re-reads the list, so a row answered
+	// elsewhere shows the server's state rather than the rolled-back guess.
+	invalidations.length = 0;
+	await options.onSettled(
+		undefined,
+		new Error("agent_not_permitted"),
+		variables,
+	);
+	assert.equal(invalidations.length, 1);
+	assert.deepEqual(
+		invalidations[0].queryKey,
+		ui.teamBridgeKeys.conversationsPrefix,
+	);
+	assert.equal(typeof invalidations[0].predicate, "function");
+	assert.equal(invalidations[0].predicate({ queryKey: [...orgKey] }), true);
+	assert.equal(
+		invalidations[0].predicate({
+			queryKey: ui.teamBridgeKeys.conversations("tnt_1", "acct_other"),
+		}),
+		false,
+	);
+
 	const answered = await options.mutationFn(variables);
 	assert.equal(answered.id, "bcv_1");
 	const consent = requests.find(
@@ -607,7 +657,7 @@ test("a runtime without the owner guard answers outdated, through the real trans
 		consentVersion: "bridge_agent_participation_v1",
 	}).catch((caught) => caught);
 	assert.equal(error instanceof Error, true);
-	assert.equal(ui.invitationFailureKind(error), "outdated");
+	assert.equal(ui.invitationFailureKind(error), "runtime_outdated");
 	assert.equal(ui.invitationRetryable(ui.invitationFailureKind(error)), false);
 	globalThis.window = undefined;
 });

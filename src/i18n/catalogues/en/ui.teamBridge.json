@@ -228,6 +228,7 @@
 	"ui.teamBridge.invitations.failed.agent_unavailable": "Your agent can’t join from here: it is paused, turned off or not set up for this organization. Turn it on in Settings, then try again.",
 	"ui.teamBridge.invitations.failed.already_answered": "This invitation was already answered elsewhere. Its current state is shown in the conversation.",
 	"ui.teamBridge.invitations.failed.gone": "This invitation is no longer available. The conversation or your agent’s place in it was removed.",
+	"ui.teamBridge.invitations.failed.runtime_outdated": "This runtime can’t accept invitations. Update Local Operator, then try again.",
 	"ui.teamBridge.invitations.failed.outdated": "This version of the app can’t accept invitations any more. Update the app, then try again.",
 	"ui.teamBridge.invitations.failed.not_available": "Team Bridge isn’t available for this organization right now.",
 	"ui.teamBridge.invitations.failed.sign_in": "You’re signed out. Sign in, then try again.",

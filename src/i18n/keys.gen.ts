@@ -8380,6 +8380,7 @@ export type MessageParams = {
 	"ui.teamBridge.invitations.failed.gone": undefined;
 	"ui.teamBridge.invitations.failed.not_available": undefined;
 	"ui.teamBridge.invitations.failed.outdated": undefined;
+	"ui.teamBridge.invitations.failed.runtime_outdated": undefined;
 	"ui.teamBridge.invitations.failed.sign_in": undefined;
 	"ui.teamBridge.invitations.failed.unconfirmed": undefined;
 	"ui.teamBridge.invitations.failed.unreachable": undefined;
