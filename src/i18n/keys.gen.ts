@@ -128,6 +128,7 @@ import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
 import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
 import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
+import esUiAgentsSkills from "./catalogues/es/ui.agents.skills.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiAgentsTeams from "./catalogues/es/ui.agents.teams.json";
 import esUiAgentsUpload from "./catalogues/es/ui.agents.upload.json";
@@ -222,6 +223,7 @@ import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
 import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
 import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
+import frUiAgentsSkills from "./catalogues/fr/ui.agents.skills.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiAgentsTeams from "./catalogues/fr/ui.agents.teams.json";
 import frUiAgentsUpload from "./catalogues/fr/ui.agents.upload.json";
@@ -316,6 +318,7 @@ import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
 import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
 import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
+import hiUiAgentsSkills from "./catalogues/hi/ui.agents.skills.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
 import hiUiAgentsTeams from "./catalogues/hi/ui.agents.teams.json";
 import hiUiAgentsUpload from "./catalogues/hi/ui.agents.upload.json";
@@ -410,6 +413,7 @@ import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
 import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
+import ruUiAgentsSkills from "./catalogues/ru/ui.agents.skills.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
 import ruUiAgentsTeams from "./catalogues/ru/ui.agents.teams.json";
 import ruUiAgentsUpload from "./catalogues/ru/ui.agents.upload.json";
@@ -504,6 +508,7 @@ import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
 import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
 import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
 import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
+import urUiAgentsSkills from "./catalogues/ur/ui.agents.skills.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
 import urUiAgentsTeams from "./catalogues/ur/ui.agents.teams.json";
 import urUiAgentsUpload from "./catalogues/ur/ui.agents.upload.json";
@@ -598,6 +603,7 @@ import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
 import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
 import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
+import viUiAgentsSkills from "./catalogues/vi/ui.agents.skills.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
 import viUiAgentsTeams from "./catalogues/vi/ui.agents.teams.json";
 import viUiAgentsUpload from "./catalogues/vi/ui.agents.upload.json";
@@ -692,6 +698,7 @@ import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
 import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
 import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
+import zhCNUiAgentsSkills from "./catalogues/zh-CN/ui.agents.skills.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
 import zhCNUiAgentsTeams from "./catalogues/zh-CN/ui.agents.teams.json";
 import zhCNUiAgentsUpload from "./catalogues/zh-CN/ui.agents.upload.json";
@@ -892,6 +899,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
 		...esUiAgentsSettings,
+		...esUiAgentsSkills,
 		...esUiAgentsStarters,
 		...esUiAgentsTeams,
 		...esUiAgentsUpload,
@@ -988,6 +996,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
 		...frUiAgentsSettings,
+		...frUiAgentsSkills,
 		...frUiAgentsStarters,
 		...frUiAgentsTeams,
 		...frUiAgentsUpload,
@@ -1084,6 +1093,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
 		...hiUiAgentsSettings,
+		...hiUiAgentsSkills,
 		...hiUiAgentsStarters,
 		...hiUiAgentsTeams,
 		...hiUiAgentsUpload,
@@ -1180,6 +1190,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
 		...ruUiAgentsSettings,
+		...ruUiAgentsSkills,
 		...ruUiAgentsStarters,
 		...ruUiAgentsTeams,
 		...ruUiAgentsUpload,
@@ -1276,6 +1287,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsPublication,
 		...urUiAgentsRefusals,
 		...urUiAgentsSettings,
+		...urUiAgentsSkills,
 		...urUiAgentsStarters,
 		...urUiAgentsTeams,
 		...urUiAgentsUpload,
@@ -1372,6 +1384,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
 		...viUiAgentsSettings,
+		...viUiAgentsSkills,
 		...viUiAgentsStarters,
 		...viUiAgentsTeams,
 		...viUiAgentsUpload,
@@ -1468,6 +1481,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
 		...zhCNUiAgentsSettings,
+		...zhCNUiAgentsSkills,
 		...zhCNUiAgentsStarters,
 		...zhCNUiAgentsTeams,
 		...zhCNUiAgentsUpload,
