@@ -754,6 +754,168 @@ test("skill_library present WITHOUT hub_links / hub_updates: one list read, no h
 	await teardown(view);
 });
 
+/*
+ * Q2 / R2: opening a skill must not ask `profiles.get` / `teams.get` for the SKILL's
+ * name (a guaranteed 404 on every open, seen on the real wire 5 of 5). Asserted on
+ * the recorded request log with booleans - never on a DOM node (see `assertAbsent`).
+ */
+const definitionReads = (ops) =>
+	ops.filter(
+		(op) => op.startsWith("profiles.get") || op.startsWith("teams.get"),
+	);
+
+test("opening a skill sends no profiles.get / teams.get (capability present)", async () => {
+	const view = await mount("/agents?kind=skill&name=d-local", {
+		skills: (request) =>
+			request.name
+				? {
+						skills: FIVE,
+						detail: "x",
+						skill_detail: {
+							...FIVE[2],
+							body: "BODY",
+							body_in_detail: false,
+							body_length: 4,
+							files: [],
+							files_total: 0,
+							files_truncated: false,
+						},
+					}
+				: { skills: FIVE },
+	});
+	assert.ok(
+		await settle(() =>
+			/BODY/.test(text(q(view.container, '[data-testid="skill-detail"]'))),
+		),
+	);
+	await settle(() => false, 400);
+	assert.deepEqual(definitionReads(view.ops), []);
+	await teardown(view);
+});
+
+test("a kind=skill&name= deep link on a core WITHOUT skill_library sends no profiles.get either", async () => {
+	const view = await mount("/agents?kind=skill&name=some-skill", {
+		features: {},
+		skills: { skills: [] },
+	});
+	await settle(() => view.ops.includes("profiles.list"));
+	await settle(() => false, 400);
+	assert.deepEqual(definitionReads(view.ops), []);
+	assert.deepEqual(skillOps(view.ops), []);
+	await teardown(view);
+});
+
+/*
+ * Q1: THE THREE-TAB STRIP. What jsdom CAN prove is the contract the geometry
+ * depends on: every trigger may shrink (`min-w-0`), the label is the part that
+ * truncates, the count is visually-hidden-not-removed when narrow (so it stays in
+ * the accessible name), the icon is the first thing to go, and the title carries
+ * label + count. What ONLY the real app proves is the pixels: that the strip's
+ * scrollWidth <= clientWidth at 1380 px in each locale and that each trigger's
+ * centre hits the trigger - jsdom has no layout engine, and no container-query
+ * support, so those numbers are QA's real-app measurement, not this file's.
+ */
+test("the browse strip: every trigger can shrink, the label truncates, the count stays in the accessible name", async () => {
+	const view = await mount("/agents", {
+		skills: { skills: FIVE },
+	});
+	assert.ok(
+		await settle(() =>
+			/5/.test(text(q(view.container, '[data-testid="skills-tab"]'))),
+		),
+	);
+	for (const id of ["agents-tab", "teams-tab", "skills-tab"]) {
+		const trigger = q(view.container, `[data-testid="${id}"]`);
+		assert.ok(
+			trigger.className.includes("min-w-0"),
+			`${id} may shrink below its content`,
+		);
+		assert.ok(
+			trigger.className.includes("flex-1"),
+			`${id} takes an equal share`,
+		);
+		assert.ok(
+			trigger.className.includes("@container/tab"),
+			`${id} is its own size container`,
+		);
+		const label = q(trigger, `[data-testid="${id}-label"]`);
+		assert.ok(
+			label.className.includes("truncate"),
+			`${id}'s label is the part that truncates`,
+		);
+	}
+	const skills = q(view.container, '[data-testid="skills-tab"]');
+	// Title carries the whole thing; the count survives narrow as sr-only, not display:none.
+	assert.equal(skills.getAttribute("title"), "Skills 5");
+	const count = [...skills.querySelectorAll("span")].find(
+		(node) => node.textContent === "5",
+	);
+	assert.ok(
+		count.className.includes("@max-[7rem]/tab:sr-only"),
+		"narrow hides the count visually, not from assistive tech",
+	);
+	assert.ok(
+		!count.className.includes("hidden"),
+		"the count is never display:none",
+	);
+	// Label + count both in the accessible text content at any width.
+	assert.match(text(skills), /Skills\s*5/);
+	// The strip itself does not scroll sideways.
+	const strip = q(view.container, '[role="tablist"]');
+	assert.ok(!/overflow-x-(auto|scroll)/.test(strip.className));
+	// R4: the NEW tab adds no `aria-controls` pointing at a panel that does not exist.
+	assert.equal(skills.hasAttribute("aria-controls"), false);
+	await teardown(view);
+});
+
+test("closing a skill returns focus to its row; opening moves it to the heading", async () => {
+	const view = await mount("/agents?kind=skill", {
+		skills: (request) =>
+			request.name
+				? {
+						skills: FIVE,
+						detail: "x",
+						skill_detail: {
+							...FIVE[2],
+							body: "B",
+							body_in_detail: false,
+							body_length: 1,
+							files: [],
+							files_total: 0,
+							files_truncated: false,
+						},
+					}
+				: { skills: FIVE },
+	});
+	assert.ok(await settle(() => rowOf(view.container, "d-local")));
+	rowOf(view.container, "d-local").focus();
+	await press(rowOf(view.container, "d-local"));
+	assert.ok(
+		await settle(() => q(view.container, '[data-testid="skill-detail"] h2')),
+	);
+	assert.ok(
+		await settle(
+			() =>
+				document.activeElement ===
+				q(view.container, '[data-testid="skill-detail"] h2'),
+		),
+		"opening focuses the heading",
+	);
+	// Close through the page's own Back control (the narrow-width route; Escape is the same intent).
+	const back = [...view.container.querySelectorAll("button")].find(
+		(button) => text(button) === "Back to the list",
+	);
+	assert.ok(back, "the Back control is offered while a skill is open");
+	await press(back);
+	assert.ok(
+		await settle(
+			() => document.activeElement === rowOf(view.container, "d-local"),
+		),
+		"closing returns focus to the row that was open",
+	);
+	await teardown(view);
+});
+
 test("capability absent: a stale ?kind=skill link falls back to the Agents tab", async () => {
 	const view = await mount("/agents?kind=skill", {
 		features: {},

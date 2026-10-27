@@ -32,7 +32,7 @@ import type { MessageKey } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { formatByteSize } from "@shared/lib/format-bytes";
 import { cn } from "@shared/lib/utils";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SkillsListResult } from "../../../../../shared/desktop-contract";
 import {
 	SkillMarkChip,
@@ -157,7 +157,11 @@ export function SkillsRoster({
 	};
 
 	return (
-		<ul aria-label={t("ui.agents.skills.list_aria")} className="space-y-0.5">
+		<ul
+			aria-label={t("ui.agents.skills.list_aria")}
+			className="space-y-0.5"
+			data-skills-roster
+		>
 			{cards.map((card) => {
 				const joined = join(card);
 				const sentence = hubSentence(card, joined);
@@ -325,6 +329,26 @@ export function SkillDetail({
 	onRetry: () => void;
 }) {
 	useI18nLocale();
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	/*
+	 * FOCUS FOLLOWS THE OPEN (QA round 1 Q3 / review R6). Below 1000 px the roster
+	 * is `display:none` while a skill is open, so the row that was pressed LEAVES
+	 * the layout and the browser drops focus to <body>; a keyboard user then
+	 * starts again from the top of the page. The heading is the pane's landmark
+	 * (`tabIndex -1`, as the agent and team panes make theirs).
+	 *
+	 * ONLY WHEN FOCUS IS HOMELESS OR WAS IN THE ROSTER, i.e. the open came from
+	 * the user: a deep link or a refetch must not pull focus out of whatever the
+	 * reader is typing in (the search box keeps it while they filter).
+	 */
+	useEffect(() => {
+		const active = document.activeElement;
+		const homeless =
+			!active ||
+			active === document.body ||
+			Boolean(active.closest("[data-skills-roster]"));
+		if (homeless) requestAnimationFrame(() => headingRef.current?.focus());
+	}, []);
 	const wire = detail.data?.skill_detail ?? null;
 	// The list row paints the header at once; a deep link falls back to the
 	// details read's own copy of the row fields.
@@ -359,7 +383,12 @@ export function SkillDetail({
 			data-skill={card.name}
 		>
 			<header className="space-y-1">
-				<h2 className="truncate text-title" title={card.name}>
+				<h2
+					ref={headingRef}
+					tabIndex={-1}
+					className="truncate text-title focus:outline-none"
+					title={card.name}
+				>
 					{card.name}
 				</h2>
 				<div className="flex flex-wrap items-center gap-x-2 gap-y-1">

@@ -74,6 +74,7 @@ import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Bot, Plus, Search, Sparkles, Users } from "lucide-react";
 import {
+	type ReactNode,
 	Suspense,
 	lazy,
 	useCallback,
@@ -256,7 +257,15 @@ export function AgentsPage() {
 		skillMode ? params.get("name") : null,
 		skillsOffered,
 	);
-	const detailEnabled = catalogueEnabled && Boolean(name) && !creating;
+	/*
+	 * NO PROFILE/TEAM DETAIL READ IN SKILL MODE, or on a `kind=skill` link that an
+	 * older core cannot honour. `name` is the open SKILL there, and asking
+	 * `profiles.get` for it is a guaranteed 404 on every open (QA round 1, Q2 / R2).
+	 * `wantsSkills` rather than `skillMode` on purpose: with the capability absent
+	 * the page shows the Agents tab, but the URL's name still is not an agent.
+	 */
+	const detailEnabled =
+		catalogueEnabled && Boolean(name) && !creating && !wantsSkills;
 
 	const profileDetail = useProfileDetail(teamMode ? null : name, detailEnabled);
 	const teamDetail = useTeamDetail(teamMode ? name : null, detailEnabled);
@@ -636,6 +645,28 @@ export function AgentsPage() {
 		clearMark({ kind: teamMode ? "team" : "agent", name: selected });
 	}, [selected, teamMode, skillMode, clearMark]);
 
+	/*
+	 * CLOSING A SKILL GIVES FOCUS BACK TO ITS ROW (QA round 1, Q3). Below 1000 px the
+	 * roster is hidden while a skill is open (the same narrow rule the definitions
+	 * use), so Back / Escape reveals it with focus on <body>. The row that was open
+	 * is the place the reader was; it is found by its test id AFTER the layout has
+	 * shown it again. Skill mode only - the Agents and Teams panes keep their own
+	 * handoff untouched.
+	 */
+	const previousSkill = useRef<string | null>(null);
+	useEffect(() => {
+		const before = previousSkill.current;
+		previousSkill.current = skillMode ? selected : null;
+		if (!skillMode || selected || !before) return;
+		// Matched by comparing the id rather than interpolating the name into a
+		// selector: a skill name may contain a dot, which a selector reads as a class.
+		requestAnimationFrame(() =>
+			[...document.querySelectorAll<HTMLElement>("[data-testid]")]
+				.find((node) => node.dataset.testid === `skill-row-${before}`)
+				?.focus(),
+		);
+	}, [skillMode, selected]);
+
 	const refreshAll = () => {
 		void profiles.refetch();
 		void teams.refetch();
@@ -730,52 +761,36 @@ export function AgentsPage() {
 							aria-label={t("ui.agents.pages.browse_aria")}
 							className="w-full"
 						>
-							<TabsTrigger
+							<BrowseTab
 								value="agent"
-								className="flex-1"
-								data-testid="agents-tab"
-							>
-								<Bot className="size-3.5" />
-								{t("ui.agents.pages.tab.agents")}
-								{profiles.data ? (
-									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-										{profiles.data.length}
-									</span>
-								) : null}
-							</TabsTrigger>
-							<TabsTrigger
+								testId="agents-tab"
+								icon={<Bot className="size-3.5" />}
+								label={t("ui.agents.pages.tab.agents")}
+								count={profiles.data?.length ?? null}
+							/>
+							<BrowseTab
 								value="team"
-								className="flex-1"
-								data-testid="teams-tab"
-							>
-								<Users className="size-3.5" />
-								{t("ui.agents.pages.tab.teams")}
-								{teams.data ? (
-									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-										{teams.data.length}
-									</span>
-								) : null}
-							</TabsTrigger>
+								testId="teams-tab"
+								icon={<Users className="size-3.5" />}
+								label={t("ui.agents.pages.tab.teams")}
+								count={teams.data?.length ?? null}
+							/>
 							{/*
 							 * THE THIRD TAB, OFFERED ONLY WHEN CORE SAYS IT CAN FILL IT
 							 * (`skill_library`). Absent, the strip is the two-tab strip it
-							 * always was and the page sends no skill request. Same trigger,
-							 * same icon size, same count slot as its siblings.
+							 * always was and the page sends no skill request. Same trigger
+							 * as its siblings (`BrowseTab`), so all three fit the 256 px
+							 * column by one rule rather than the new one being the odd one.
 							 */}
 							{skillsOffered ? (
-								<TabsTrigger
+								<BrowseTab
 									value="skill"
-									className="flex-1"
-									data-testid="skills-tab"
-								>
-									<Sparkles className="size-3.5" />
-									{t("ui.agents.skills.tab")}
-									{skills.library.data ? (
-										<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-											{skills.cards.length}
-										</span>
-									) : null}
-								</TabsTrigger>
+									testId="skills-tab"
+									noPanel
+									icon={<Sparkles className="size-3.5" />}
+									label={t("ui.agents.skills.tab")}
+									count={skills.library.data ? skills.cards.length : null}
+								/>
 							) : null}
 						</TabsList>
 					</Tabs>
@@ -1337,6 +1352,73 @@ export function AgentsPage() {
 				)}
 			</main>
 		</div>
+	);
+}
+
+/**
+ * One tab of the browse strip: icon, label and count, sized to a share of the
+ * 256 px list column.
+ *
+ * WHY IT SHRINKS, AND IN WHAT ORDER. The strip is a fixed-width inline-flex, and a
+ * flex item's `min-width: auto` is its content, so three triggers whose content
+ * summed to 327 px could not shrink: the third painted UNDER the content pane and
+ * its centre was unclickable (QA round 1, Q1 - in every language, English
+ * included). `min-w-0` lets the trigger take only its share and the LABEL
+ * truncates (its full text stays in `title` and in the accessible name).
+ *
+ * The count and the icon go first, not the label: each trigger is a size
+ * container, and below 7 rem (three tabs: 80 px; two tabs: 122 px, so the old
+ * two-tab strip is unchanged) the icon is hidden and the count is visually hidden
+ * with `sr-only`, NOT `display:none` - so the accessible name keeps both the
+ * full label and the count at every width. A container query rather than a
+ * viewport one because the column is a fixed 256 px at every window size: what
+ * varies is how many tabs share it, and only the trigger knows its own share.
+ * Padding steps down with it (8 px, back to 12 px at the roomy size) so a short
+ * label gets all the room there is.
+ */
+function BrowseTab({
+	value,
+	testId,
+	icon,
+	label,
+	count,
+	noPanel = false,
+}: {
+	value: string;
+	testId: string;
+	icon: ReactNode;
+	label: string;
+	count: number | null;
+	/**
+	 * Radix points every trigger's `aria-controls` at a `TabsContent` this page does
+	 * not render (the Agents and Teams tabs already do; that is pre-existing and left
+	 * alone). A tab that is NEW must not add another dangling reference, so it opts
+	 * out the way the Hub page's tabs do: an explicit `undefined` wins over Radix's.
+	 */
+	noPanel?: boolean;
+}) {
+	return (
+		<TabsTrigger
+			value={value}
+			data-testid={testId}
+			{...(noPanel ? { "aria-controls": undefined } : {})}
+			title={count === null ? label : `${label} ${count}`}
+			// `px-0`: a container query styles DESCENDANTS only, so the step in padding
+			// lives on the inner span below, not on the element that is the container.
+			className="@container/tab min-w-0 flex-1 px-0"
+		>
+			<span className="flex min-w-0 max-w-full items-center justify-center gap-1.5 px-2 @min-[7rem]/tab:px-3">
+				<span className="flex @max-[7rem]/tab:hidden">{icon}</span>
+				<span className="min-w-0 truncate" data-testid={`${testId}-label`}>
+					{label}
+				</span>
+				{count === null ? null : (
+					<span className="@max-[7rem]/tab:sr-only min-w-[2ch] font-normal text-ink-dim tabular-nums">
+						{count}
+					</span>
+				)}
+			</span>
+		</TabsTrigger>
 	);
 }
 
