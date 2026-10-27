@@ -486,6 +486,7 @@ export function SkillDetail({
 					empty={t("ui.agents.detail.no_description")}
 					showAllLabel={t("ui.agents.skills.detail.show_all")}
 					showLessLabel={t("ui.agents.skills.detail.show_less")}
+					breakLongTokens
 				/>
 			</Section>
 
@@ -511,6 +512,7 @@ export function SkillDetail({
 							mono
 							showAllLabel={t("ui.agents.skills.detail.show_all")}
 							showLessLabel={t("ui.agents.skills.detail.show_less")}
+							breakLongTokens
 						/>
 					</>
 				) : (
@@ -577,6 +579,7 @@ export function SkillDetail({
 													mono
 													showAllLabel={t("ui.agents.skills.detail.show_all")}
 													showLessLabel={t("ui.agents.skills.detail.show_less")}
+													breakLongTokens
 												/>
 											</section>
 										) : (

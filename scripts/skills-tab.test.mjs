@@ -1119,6 +1119,31 @@ test("a reference preview is clamped behind Show all, and the notice comes befor
 		region.querySelector('[class*="line-clamp"]'),
 		"the preview is line-clamped",
 	);
+	// Q6: the clamp must keep wrapping an UNBROKEN token. jsdom has no layout, so this
+	// asserts the class contract only (`overflow-wrap:anywhere` + `min-w-0`); that the
+	// 2,048-char token really stays inside the pane (scrollWidth <= clientWidth, at
+	// 1380 and 800 px, en and ur) is QA's real-app measurement.
+	const wraps = (node) => {
+		const classes = node?.className ?? "";
+		return (
+			classes.includes("[overflow-wrap:anywhere]") &&
+			classes.includes("min-w-0") &&
+			classes.includes("whitespace-pre-wrap")
+		);
+	};
+	assert.equal(
+		wraps(region.querySelector('[data-break-long-tokens="true"]')),
+		true,
+		"the file preview wraps an unbroken token",
+	);
+	assert.equal(
+		wraps(
+			q(pane, '[data-testid="skill-body-truncated"]').nextElementSibling
+				.firstElementChild,
+		),
+		true,
+		"the SKILL.md body wraps an unbroken token",
+	);
 	await teardown(view);
 });
 

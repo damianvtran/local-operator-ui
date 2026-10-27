@@ -126,6 +126,7 @@ export function ReadBlock({
 	mono = false,
 	showAllLabel = "Show all",
 	showLessLabel = "Show less",
+	breakLongTokens = false,
 }: {
 	text: string;
 	empty?: string;
@@ -138,6 +139,15 @@ export function ReadBlock({
 	 */
 	showAllLabel?: string;
 	showLessLabel?: string;
+	/**
+	 * Wrap an UNBROKEN token (a minified file, a base64 blob, a long URL) at the
+	 * block's edge. `whitespace-pre-wrap` only breaks at spaces, so such a token
+	 * painted one row thousands of px wide, past the pane with no scroll and no
+	 * "Show all" (QA r3 Q6: a 2,048-char token was 14,746 px wide). Opt-in: the
+	 * agent and team prompts this block also renders keep the wrapping they have.
+	 * The skill body and reference previews are arbitrary files, so they opt in.
+	 */
+	breakLongTokens?: boolean;
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const [overflows, setOverflows] = useState(false);
@@ -190,13 +200,15 @@ export function ReadBlock({
 	}
 
 	return (
-		<div>
+		<div className={cn(breakLongTokens && "min-w-0")}>
 			<div
 				ref={ref}
+				data-break-long-tokens={breakLongTokens ? "true" : undefined}
 				className={cn(
 					"whitespace-pre-wrap text-body text-ink",
 					!expanded && "line-clamp-10",
 					mono && "font-mono text-meta",
+					breakLongTokens && "min-w-0 break-words [overflow-wrap:anywhere]",
 				)}
 			>
 				{text}
