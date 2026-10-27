@@ -27,7 +27,7 @@
 	"ui.teamBridge.unread.count": "{count, plural, other {{count}条未读}}",
 	"ui.teamBridge.member.count": "{count, plural, other {{count}名成员}}",
 	"ui.teamBridge.member.active_count": "{count, plural, other {{count}名有效成员}}",
-	"ui.teamBridge.member.invited_count": "{count, plural, other {{count}名已邀请}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, other {{count}名受邀成员}}",
 	"ui.teamBridge.group.more": "更多",
 	"ui.teamBridge.thread.withheld": "正在等待智能体接收此消息。",
 	"ui.teamBridge.composer.error": "消息未发送。请重试。",
