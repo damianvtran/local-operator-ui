@@ -493,9 +493,15 @@ const CURRENT = [
 		what: "the entity row's manage control",
 		file: SIDEBAR,
 		expression: () =>
+			/*
+			 * Keyed copy (i18n wave A): the control's accessible name is the
+			 * catalogue's, so the anchor is the expression the source carries -
+			 * matched in its formatted multi-line shape, where `expressionBefore`
+			 * reads the file as text.
+			 */
 			expressionBefore(
 				SIDEBAR,
-				'aria-label={t("ui.chat.sidebar.entity.manage", { name: displayName })}',
+				'aria-label={t("ui.chat.sidebar.entity.manage", {',
 			),
 		stubs: { revealArmed: true, staged: true },
 		ground: false,
