@@ -330,23 +330,6 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	}, [list.isSuccess, list.isFetching, list.dataUpdatedAt]);
 
 	const loaded = list.data;
-	const observedIds = useRef<Set<string> | null>(null);
-	const [newIds, setNewIds] = useState<Set<string>>(() => new Set());
-	useEffect(() => {
-		if (!loaded) return;
-		const next = new Set(
-			[...(loaded.waiting ?? []), ...loaded.items].map((item) => item.id),
-		);
-		const previous = observedIds.current;
-		observedIds.current = next;
-		if (!previous || (listRef.current?.scrollTop ?? 0) < 24) {
-			setNewIds(new Set());
-			return;
-		}
-		const arrivals = [...next].filter((id) => !previous.has(id));
-		if (arrivals.length)
-			setNewIds((current) => new Set([...current, ...arrivals]));
-	}, [loaded]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: confirmedReadVersion is the invalidation signal for the ref-held token map; its identity never changes
 	const items = useMemo(() => {
 		/* The receipt is newer evidence than the list (DC7): one rule, in the model. */
@@ -1254,7 +1237,6 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								onScroll={(event) => {
 									const box = event.currentTarget;
 									setIsAtTop(box.scrollTop <= 24);
-									if (box.scrollTop < 24) setNewIds(new Set());
 									if (
 										list.hasNextPage &&
 										!list.isFetchingNextPage &&
@@ -1265,7 +1247,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [scrollbar-gutter:stable]"
 								data-notifications-list=""
 							>
-								{(newIds.size > 0 || list.newerCount > 0) && (
+								{list.newerCount > 0 && (
 									/*
 									 * BACK TO TOP (code round 5, R5-1). While the operator is scrolled
 									 * deep the page window slides: older pages stay reachable and the
@@ -1279,16 +1261,20 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 											variant="secondary"
 											data-notifications-back-to-top=""
 											onClick={() => {
-												listRef.current?.scrollTo({
-													top: 0,
-													behavior: "smooth",
-												});
-												setNewIds(new Set());
+												/*
+												 * INSTANT, NOT SMOOTH (QA round 6, Q13). The reset prepends
+												 * the late rows while a smooth scroll is still travelling, and
+												 * scroll anchoring holds the viewport over them: QA measured it
+												 * stopping 112 px short, two 56 px rows. At offset 0 the
+												 * browser does not anchor, so the rows land above nothing.
+												 */
+												listRef.current?.scrollTo({ top: 0 });
+												setIsAtTop(true);
 												list.resetToTop();
 											}}
 										>
 											{t("ui.notifications.new_pill", {
-												count: formatNumber(newIds.size + list.newerCount),
+												count: formatNumber(list.newerCount),
 											})}
 										</Button>
 									</div>
