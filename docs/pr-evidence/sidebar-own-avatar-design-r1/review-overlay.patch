@@ -1,0 +1,171 @@
+diff --git a/src/renderer/src/shared/components/navigation/user-profile-sidebar.stories.tsx b/src/renderer/src/shared/components/navigation/user-profile-sidebar.stories.tsx
+index 0cf2d88138..e9cd4d4593 100644
+--- a/src/renderer/src/shared/components/navigation/user-profile-sidebar.stories.tsx
++++ b/src/renderer/src/shared/components/navigation/user-profile-sidebar.stories.tsx
+@@ -37,12 +37,15 @@ import type { Meta, StoryObj } from "@storybook/react";
+ import type { FC, ReactNode } from "react";
+ import { useLayoutEffect } from "react";
+ import profileImage from "../../../assets/radient-icon-1024x1024.png";
++// DESIGN REVIEW OVERLAY (uncommitted): an opaque photo shows the plate's real shape.
++import faceImage from "../../../assets/dr-review-face.jpg";
+ import "../../../styles/index.css";
+ 
+ type BridgeRequest = { op?: string; control?: { operation?: string } };
+ type DesktopResponse = { status: number; body: unknown };
+ 
+-type RowState = "account" | "photo" | "refused" | "checking";
++type RowState = "account" | "photo" | "refused" | "checking" | "signedout";
++let reviewMedia: { face: boolean; delayMs: number } = { face: false, delayMs: 0 };
+ type MediaRequest = { op?: string };
+ type MediaResponse =
+ 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
+@@ -71,6 +74,17 @@ const installBridge = (state: RowState) => {
+ 						// Never settles: the `checking` row is the state under test.
+ 						return await new Promise(() => {});
+ 					}
++					if (state === "signedout") {
++						return {
++							status: 409,
++							body: {
++								detail: {
++									code: "radient_no_credential",
++									message: "Sign in to Radient to access your account",
++								},
++							},
++						};
++					}
+ 					if (state === "refused") {
+ 						return {
+ 							status: 401,
+@@ -149,11 +163,15 @@ if (typeof window !== "undefined") {
+ 		media: async (request: MediaRequest): Promise<MediaResponse> => {
+ 			if (request?.op !== "team_bridge.avatar")
+ 				return { status: 404, kind: "error", detail: "not in this story" };
+-			const bytes = await (await fetch(profileImage)).arrayBuffer();
++			if (reviewMedia.delayMs)
++				await new Promise((r) => setTimeout(r, reviewMedia.delayMs));
++			const bytes = await (
++				await fetch(reviewMedia.face ? faceImage : profileImage)
++			).arrayBuffer();
+ 			return {
+ 				status: 200,
+ 				kind: "bytes",
+-				mimeType: "image/png",
++				mimeType: reviewMedia.face ? "image/jpeg" : "image/png",
+ 				data: new Uint8Array(bytes),
+ 			};
+ 		},
+@@ -175,10 +193,13 @@ const Foot: FC<{ children: ReactNode }> = ({ children }) => (
+ 	</div>
+ );
+ 
+-const Row: FC<{ state: RowState; expanded?: boolean }> = ({
+-	state,
+-	expanded = true,
+-}) => {
++const Row: FC<{
++	state: RowState;
++	expanded?: boolean;
++	face?: boolean;
++	delayMs?: number;
++}> = ({ state, expanded = true, face = false, delayMs = 0 }) => {
++	reviewMedia = { face, delayMs };
+ 	// Installed as the story RENDERS, not from an effect: the row's read can
+ 	// fire before a parent layout effect runs, and a delegate that throws "no
+ 	// bridge installed" would turn that race into a transport error.
+@@ -288,3 +309,95 @@ export const AccountReconnectMenu: Story = {
+ 	args: { state: "refused" },
+ 	render: (args) => <AuthMenuRow state={args.state} />,
+ };
++
++/* ---- DESIGN REVIEW OVERLAY (uncommitted) ---- */
++export const ReviewFace: Story = {
++	args: { state: "photo" },
++	render: (args) => <Row state={args.state} face />,
++};
++export const ReviewFaceCollapsed: Story = {
++	args: { state: "photo" },
++	render: (args) => <Row state={args.state} face expanded={false} />,
++};
++export const ReviewFaceSlow: Story = {
++	args: { state: "photo" },
++	render: (args) => <Row state={args.state} face delayMs={2000000000} />,
++};
++export const ReviewFaceSlowCollapsed: Story = {
++	args: { state: "photo" },
++	render: (args) => (
++		<Row state={args.state} face delayMs={2000000000} expanded={false} />
++	),
++};
++export const ReviewInitialsCollapsed: Story = {
++	args: { state: "account" },
++	render: (args) => <Row state={args.state} expanded={false} />,
++};
++export const ReviewSignedOut: Story = {
++	args: { state: "signedout" },
++	render: (args) => <Row state={args.state} />,
++};
++export const ReviewSignedOutCollapsed: Story = {
++	args: { state: "signedout" },
++	render: (args) => <Row state={args.state} expanded={false} />,
++};
++/* Focus: a script focus with no prior pointer input matches :focus-visible in Chromium. */
++const FocusRow: FC<{ expanded?: boolean; face?: boolean }> = ({
++	expanded = true,
++	face = true,
++}) => {
++	useLayoutEffect(() => {
++		const t = window.setTimeout(() => {
++			document
++				.querySelector<HTMLElement>("[data-review-focus] button")
++				?.focus();
++		}, 1500);
++		return () => window.clearTimeout(t);
++	}, []);
++	return (
++		<span className="contents" data-review-focus>
++			<Row state="photo" face={face} expanded={expanded} />
++		</span>
++	);
++};
++export const ReviewFaceFocus: Story = {
++	args: { state: "photo" },
++	render: () => <FocusRow />,
++};
++export const ReviewFaceFocusCollapsed: Story = {
++	args: { state: "photo" },
++	render: () => <FocusRow expanded={false} />,
++};
++/* Hover: the row's only hover paint is `hover:bg-row-hover`; apply that same
++   utility so the frame shows the hovered ground without a real pointer. */
++const HoverRow: FC<{ expanded?: boolean; state?: RowState; face?: boolean }> = ({
++	expanded = true,
++	state = "photo",
++	face = true,
++}) => {
++	useLayoutEffect(() => {
++		const t = window.setInterval(() => {
++			document
++				.querySelector<HTMLElement>("[data-review-hover] button")
++				?.classList.add("bg-row-hover");
++		}, 500);
++		return () => window.clearInterval(t);
++	}, []);
++	return (
++		<span className="contents" data-review-hover>
++			<Row state={state} face={face} expanded={expanded} />
++		</span>
++	);
++};
++export const ReviewFaceHover: Story = {
++	args: { state: "photo" },
++	render: () => <HoverRow />,
++};
++export const ReviewFaceHoverCollapsed: Story = {
++	args: { state: "photo" },
++	render: () => <HoverRow expanded={false} />,
++};
++export const ReviewInitialsHover: Story = {
++	args: { state: "account" },
++	render: () => <HoverRow state="account" face={false} />,
++};
