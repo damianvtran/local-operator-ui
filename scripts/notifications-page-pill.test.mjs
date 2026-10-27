@@ -386,9 +386,14 @@ test(
 				"the arrivals are not drawn above a deep viewport",
 			);
 
-			const button = page
-				.grid()
-				.querySelector("[data-notifications-back-to-top]");
+			/* In the page header, never inside the scroll port (design round 6, D1). */
+			const button = window.document.querySelector(
+				"[data-notifications-back-to-top]",
+			);
+			assert.ok(
+				!page.grid().contains(button),
+				"the chip takes no room in the list",
+			);
 			await act(async () => {
 				button.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
 			});

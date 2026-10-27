@@ -360,21 +360,32 @@ export function mergeWindowForReel(
  * in the merged answer: the cached window never learnt them. Scrolling away then
  * switched to window rows, the seen arrival left the list, and the pill counted it as
  * "1 new" - history relabelled as news. Writing the drawn arrivals into the window's
- * first page while at the top makes "newer" mean "not yet presented". Returns `null`
- * when there is nothing to add, so a caller can skip the cache write (and the
- * re-render it would cause) on every frame that changes nothing.
+ * first page while at the top makes "newer" mean "not yet presented".
+ *
+ * Returns `null` when there is nothing to add, so a caller can skip the cache write
+ * (and the re-render it would cause) on every frame that changes nothing.
+ *
+ * Returns `"reset"` when the facts page is NOT CONTIGUOUS with the window (code round
+ * 10, R10-1): the facts carry only the newest page, so a burst larger than that page
+ * leaves no facts row the window already holds and more rows behind it
+ * (`factsHasMore`). Prepending would strand the rows between the facts' tail and the
+ * window's old head - never drawn, never counted. The caller resets the window to page
+ * one instead, which reads every row in order. A short facts page with nothing known
+ * is still contiguous (the window's head is right after it), so it prepends.
  */
 export function prependSeenToWindow<
 	Page extends { items: DesktopNotificationItem[] },
 >(
 	pages: readonly Page[],
 	factsItems: readonly DesktopNotificationItem[],
-): Page[] | null {
+	factsHasMore = false,
+): Page[] | "reset" | null {
 	const [first, ...rest] = pages;
 	if (!first) return null;
 	const known = new Set(pages.flatMap((page) => page.items.map((i) => i.id)));
 	const unseen = factsItems.filter((item) => !known.has(item.id));
 	if (unseen.length === 0) return null;
+	if (factsHasMore && unseen.length === factsItems.length) return "reset";
 	/* Newest first, the window's own order, so the head stays the head. */
 	const head = [...unseen].sort((left, right) => right.seq - left.seq);
 	return [{ ...first, items: [...head, ...first.items] }, ...rest];

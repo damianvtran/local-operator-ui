@@ -30,9 +30,18 @@ import {
 	ExternalLink,
 	X,
 } from "lucide-react";
-import { type FC, type KeyboardEvent, useMemo, useState } from "react";
+import {
+	type FC,
+	type KeyboardEvent,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
+import { useDrawerBackToTop } from "../drawer-tab-store";
 import {
 	readSessionUnreadCount,
 	tokensOf,
@@ -168,6 +177,37 @@ export const DrawerTabs: FC<{
 };
 
 /**
+ * The drawer's back-to-top chip, for the drawer's chrome bar (design round 6, D2).
+ *
+ * IN THE FIXED 40 PX BAR, NOT THE LIST OR THE TAB ROW. A band above the list, then an
+ * overlay on it, cost the narrow drawer most of its 47 px scroll port at 200 % text;
+ * the tab row is already full at 360 px, so a chip there wraps onto a new line and
+ * the list shrinks by that line. The chrome bar has a fixed height and a truncating
+ * scope label, so the chip takes the label's room and none of the list's. The
+ * Updates list publishes the count and the action (`useDrawerBackToTop`); this only
+ * draws them, and only on the Updates tab. The chevron says "up, to the top"
+ * without new copy (D4 deferred).
+ */
+export const DrawerBackToTop: FC<{ tab: DrawerTab }> = ({ tab }) => {
+	useI18nLocale();
+	const newerCount = useDrawerBackToTop((state) => state.count);
+	const backToTop = useDrawerBackToTop((state) => state.backToTop);
+	if (tab !== "updates" || !backToTop || newerCount === 0) return null;
+	return (
+		<Button
+			size="sm"
+			variant="secondary"
+			className="shrink-0"
+			data-drawer-back-to-top=""
+			onClick={backToTop}
+		>
+			<ChevronUp aria-hidden="true" />
+			{t("ui.notifications.new_pill", { count: formatNumber(newerCount) })}
+		</Button>
+	);
+};
+
+/**
  * This conversation's unread count, for the tab and the rail door - FROM THE SERVER
  * (code round 4, R4-6). It counted the rows the drawer had loaded, and the drawer
  * pages on scroll, so a conversation with 450 unread showed 100: the badge stopped
@@ -204,9 +244,31 @@ export const DrawerUpdates: FC<{
 	useI18nLocale();
 	const navigate = useNavigate();
 	const [isAtTop, setIsAtTop] = useState(true);
-	const list = useSessionNotifications(sessionId, true, isAtTop);
+	const list = useSessionNotifications(sessionId, true, { atTop: isAtTop });
 	const write = useNotificationsWrite();
 	const nowMs = pinnedNow ?? Date.now();
+	/*
+	 * THE DRAWER GETS THE SAME BACK-TO-TOP AS THE REEL (QA round 4, R6-2). Its list
+	 * pages under the same window, so rows that arrive while it is scrolled deep are
+	 * not drawn above the viewport; without this the only way back to the newest
+	 * update was closing the drawer. The chip itself is drawn by `DrawerTabs` (D2).
+	 * The ref keeps the published callback stable, so publishing cannot re-render
+	 * this list.
+	 */
+	const publishBackToTop = useDrawerBackToTop((state) => state.publish);
+	const resetRef = useRef(list.resetToTop);
+	resetRef.current = list.resetToTop;
+	const backToTop = useCallback(() => {
+		document
+			.querySelector<HTMLElement>("[data-drawer-updates]")
+			?.scrollTo({ top: 0, behavior: "smooth" });
+		setIsAtTop(true);
+		void resetRef.current();
+	}, []);
+	useEffect(() => {
+		publishBackToTop(list.newerCount, list.newerCount > 0 ? backToTop : null);
+	}, [list.newerCount, backToTop, publishBackToTop]);
+	useEffect(() => () => publishBackToTop(0, null), [publishBackToTop]);
 	const rows = useMemo(
 		() =>
 			(list.data?.items ?? [])
@@ -298,7 +360,7 @@ export const DrawerUpdates: FC<{
 	};
 	const ordered = [...unread, ...read];
 	return (
-		<div className="relative flex min-h-0 flex-1 flex-col">
+		<div className="flex min-h-0 flex-1 flex-col">
 			<div
 				data-drawer-updates=""
 				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
@@ -420,40 +482,6 @@ export const DrawerUpdates: FC<{
 					</>
 				)}
 			</div>
-			{/*
-			 * THE DRAWER GETS THE SAME BACK-TO-TOP AS THE REEL (QA round 4, R6-2). Its list
-			 * pages under the same sliding window, so a deep scroll drops the rows above
-			 * the viewport here too; without this the only way back to the newest update
-			 * was closing the drawer. Same control, same copy key as the page.
-			 *
-			 * FLOATING, NOT A BAND (design round 5, D2). As a band above the list it took
-			 * 72 px at 200 % text and left a 32 px slit of list in the narrow drawer. It
-			 * now floats over the top of the scroll port, as the reel's does: no layout
-			 * height, pointer events on the pill only. The drawer's group headers do not
-			 * stick, so nothing pins under it.
-			 */}
-			{list.newerCount > 0 && (
-				<div className="pointer-events-none absolute inset-x-0 top-2 z-[3] flex justify-center">
-					<Button
-						size="sm"
-						variant="secondary"
-						className="pointer-events-auto shadow-overlay"
-						data-drawer-back-to-top=""
-						onClick={() => {
-							const box = document.querySelector<HTMLElement>(
-								"[data-drawer-updates]",
-							);
-							box?.scrollTo({ top: 0, behavior: "smooth" });
-							list.resetToTop();
-						}}
-					>
-						<ChevronUp aria-hidden="true" />
-						{t("ui.notifications.new_pill", {
-							count: formatNumber(list.newerCount),
-						})}
-					</Button>
-				</div>
-			)}
 			<div className="flex shrink-0 items-center justify-between gap-2 border-hairline border-t px-3 py-2 text-meta">
 				{/* Wraps rather than truncates: at the drawer's 320-360px widths the
 				    note lost its last word, and the button beside it never shrinks. */}

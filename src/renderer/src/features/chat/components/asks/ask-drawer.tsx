@@ -295,8 +295,10 @@ export type AskDrawerProps = {
 	 * mount when `features.notifications` is advertised. `strip` draws under the
 	 * chrome bar; `body` REPLACES the asks body while a non-asks tab is chosen.
 	 * Absent means this drawer renders exactly as it did before the feature.
+	 * `action` draws in the chrome bar beside the scope line: the Updates list's
+	 * back-to-top chip lives there so it costs the list none of its height.
 	 */
-	tabs?: { strip: ReactNode; body: ReactNode | null };
+	tabs?: { strip: ReactNode; body: ReactNode | null; action?: ReactNode };
 };
 
 /**
@@ -1055,6 +1057,7 @@ export const AskDrawer = ({
 				>
 					{askScopeLine(scope, view)}
 				</span>
+				{tabs?.action}
 				<Tooltip content={t("ui.chat.asks.close_asks")}>
 					<Button
 						variant="ghost"

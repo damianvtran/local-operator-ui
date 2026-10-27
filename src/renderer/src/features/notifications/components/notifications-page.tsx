@@ -316,7 +316,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const [isAtTop, setIsAtTop] = useState(true);
 	const listRef = useRef<HTMLDivElement>(null);
 
-	const list = useNotificationsList(readState, enabled, isAtTop);
+	const list = useNotificationsList(readState, enabled, { atTop: isAtTop });
 	const write = useNotificationsWrite();
 	const detail = useNotificationDetail(notificationId ?? null, enabled);
 	/* The open conversation's own facts feed the printed count's key (R7-2). */
@@ -1123,20 +1123,60 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					icon={Bell}
 					subtitle={t("ui.notifications.page.subtitle")}
 				>
-					<Button
-						variant="ghost"
-						size="icon"
-						aria-label={t("ui.notifications.page.refresh")}
-						title={t("ui.notifications.page.refresh")}
-						aria-busy={list.isFetching || undefined}
-						disabled={list.isFetching}
-						onClick={() => {
-							setStickyRead(new Map());
-							void list.resetToTop();
-						}}
-					>
-						<RefreshCw />
-					</Button>
+					<div className="flex flex-wrap items-center gap-2">
+						{list.newerCount > 0 && (
+							/*
+							 * BACK TO TOP (code round 5, R5-1). While the operator is scrolled
+							 * deep, rows that arrived above the viewport are not drawn (that would
+							 * move what they are reading). This chip says how many, and pressing it
+							 * is the way back - page one refetches, so the counts and the waiting
+							 * asks on it are fresh.
+							 *
+							 * IN THE HEADER, NOT IN THE LIST (design rounds 5-6, D1). As a sticky
+							 * band inside the scroll port it either covered the sticky group
+							 * header or, with the headers offset below it, the header covered a
+							 * row. Out here it takes no list height: the list's scroll port and
+							 * first row sit exactly where they do with no chip. The chevron says
+							 * "up, to the top" without new copy (D4 deferred).
+							 */
+							<Button
+								size="sm"
+								variant="secondary"
+								data-notifications-back-to-top=""
+								onClick={() => {
+									/*
+									 * INSTANT, NOT SMOOTH (QA round 6, Q13). The reset prepends
+									 * the late rows while a smooth scroll is still travelling, and
+									 * scroll anchoring holds the viewport over them: QA measured it
+									 * stopping 112 px short, two 56 px rows. At offset 0 the
+									 * browser does not anchor, so the rows land above nothing.
+									 */
+									listRef.current?.scrollTo({ top: 0 });
+									setIsAtTop(true);
+									list.resetToTop();
+								}}
+							>
+								<ChevronUp aria-hidden="true" />
+								{t("ui.notifications.new_pill", {
+									count: formatNumber(list.newerCount),
+								})}
+							</Button>
+						)}
+						<Button
+							variant="ghost"
+							size="icon"
+							aria-label={t("ui.notifications.page.refresh")}
+							title={t("ui.notifications.page.refresh")}
+							aria-busy={list.isFetching || undefined}
+							disabled={list.isFetching}
+							onClick={() => {
+								setStickyRead(new Map());
+								void list.resetToTop();
+							}}
+						>
+							<RefreshCw />
+						</Button>
+					</div>
 				</PageHeader>
 				<Toolbar
 					loaded={loaded}
@@ -1244,57 +1284,9 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 									)
 										void list.fetchNextPage();
 								}}
-								className={cn(
-									"flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [scrollbar-gutter:stable]",
-									/* The pill's band height, read by every sticky group header (D1). */
-									list.newerCount > 0 && "[--notifications-pill-band:2.25rem]",
-								)}
+								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [scrollbar-gutter:stable]"
 								data-notifications-list=""
 							>
-								{list.newerCount > 0 && (
-									/*
-									 * BACK TO TOP (code round 5, R5-1). While the operator is scrolled
-									 * deep the page window slides: older pages stay reachable and the
-									 * rows just above the viewport leave memory. This pill says how
-									 * many, and pressing it is the way back - page one refetches, so
-									 * the counts and the waiting asks on it are fresh.
-									 *
-									 * A RESERVED BAND, AND THE HEADERS PIN BELOW IT (design round 5,
-									 * D1). The band and the group header were both `sticky top-0`, so
-									 * the opaque band sat over the header and, at 200 % text, over
-									 * 56 px of the first row. The band's height is now fixed in rem
-									 * (`h-9`, the 1.75rem pill plus 0.25rem above and below) and
-									 * published as `--notifications-pill-band` on the grid; each group
-									 * header sticks at that offset, so header and band never share a
-									 * pixel at any text size. A floating pill was measured too: it
-									 * cleared the header but still covered the first row's title.
-									 */
-									<div className="sticky top-0 z-[2] flex h-9 shrink-0 items-center justify-center bg-canvas">
-										<Button
-											size="sm"
-											variant="secondary"
-											data-notifications-back-to-top=""
-											onClick={() => {
-												/*
-												 * INSTANT, NOT SMOOTH (QA round 6, Q13). The reset prepends
-												 * the late rows while a smooth scroll is still travelling, and
-												 * scroll anchoring holds the viewport over them: QA measured it
-												 * stopping 112 px short, two 56 px rows. At offset 0 the
-												 * browser does not anchor, so the rows land above nothing.
-												 */
-												listRef.current?.scrollTo({ top: 0 });
-												setIsAtTop(true);
-												list.resetToTop();
-											}}
-										>
-											{/* Says "above, back to the top" without new copy (D4). */}
-											<ChevronUp aria-hidden="true" />
-											{t("ui.notifications.new_pill", {
-												count: formatNumber(list.newerCount),
-											})}
-										</Button>
-									</div>
-								)}
 								{groups.map((group) => (
 									<GroupBlock
 										key={group.key}
@@ -1473,7 +1465,7 @@ const GroupBlock: FC<{
 				// biome-ignore lint/a11y/useSemanticElements: a grid's group header row; a native <tr> cannot sit in this flex column
 				role="row"
 				tabIndex={-1}
-				className="sticky top-[var(--notifications-pill-band,0px)] z-[1] flex h-8 items-center gap-2 bg-canvas px-3 text-ink-muted text-meta"
+				className="sticky top-0 z-[1] flex h-8 items-center gap-2 bg-canvas px-3 text-ink-muted text-meta"
 			>
 				<span
 					// biome-ignore lint/a11y/useSemanticElements: the group's header cell inside the grid's header row

@@ -143,6 +143,43 @@ export function useSessionNotificationsFacts(
 }
 
 /**
+ * While the list is at its top, write the drawn late arrivals into the cached window
+ * (design round 5, D5 / Q15). See `prependSeenToWindow`: without this a row the
+ * operator saw at the head was dropped on the next scroll and then counted as "new".
+ * Deep in the list nothing is written - those arrivals are what the pill offers.
+ * A burst bigger than the facts page resets the window to page one instead (R10-1),
+ * so no row is left stranded between the facts and the old head.
+ */
+function useKeepSeenInWindow(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	queryKey: readonly unknown[],
+	scroll: { atTop: boolean } | undefined,
+	facts: DesktopNotificationsList | undefined,
+) {
+	const keyId = JSON.stringify(queryKey);
+	const atTopOwner = scroll?.atTop === true;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `keyId` is the key's identity; the array is rebuilt every render.
+	useEffect(() => {
+		const factsItems = facts?.items;
+		if (!client || !atTopOwner || !factsItems || factsItems.length === 0)
+			return;
+		const data = client.getQueryData<{ pages?: unknown[] }>(queryKey);
+		if (!data || !Array.isArray(data.pages)) return;
+		const pages = prependSeenToWindow(
+			data.pages as { items: DesktopNotificationItem[] }[],
+			factsItems,
+			Boolean(facts.next_cursor),
+		);
+		if (pages === null) return;
+		if (pages === "reset") {
+			void client.resetQueries({ queryKey });
+			return;
+		}
+		client.setQueryData(queryKey, { ...data, pages });
+	}, [client, keyId, atTopOwner, facts]);
+}
+
+/**
  * The reel's list read. The page loads up to the route's 100-row page and the
  * `waiting` group; the client applies kind/priority/from/grouping over that set
  * (design § 2: filters are client-side over the loaded set).
@@ -152,40 +189,16 @@ export function useSessionNotificationsFacts(
  * (contract § 6.3 "Feed down"). Not retried beyond the house rule: a failure
  * keeps the previous data, which is what the stale-list error state draws.
  */
-/**
- * While the list is at its top, write the drawn late arrivals into the cached window
- * (design round 5, D5 / Q15). See `prependSeenToWindow`: without this a row the
- * operator saw at the head was dropped on the next scroll and then counted as "new".
- * Deep in the list nothing is written - those arrivals are what the pill offers.
- */
-function useKeepSeenInWindow(
-	client: ReturnType<typeof useOptionalQueryClient>["client"],
-	queryKey: readonly unknown[],
-	atTop: boolean,
-	factsItems: readonly DesktopNotificationItem[] | undefined,
-) {
-	const keyId = JSON.stringify(queryKey);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `keyId` is the key's identity; the array is rebuilt every render.
-	useEffect(() => {
-		if (!client || !atTop || !factsItems || factsItems.length === 0) return;
-		client.setQueryData(
-			queryKey,
-			(data?: { pages?: unknown[]; pageParams?: unknown[] }) => {
-				if (!data || !Array.isArray(data.pages)) return data;
-				const pages = prependSeenToWindow(
-					data.pages as { items: DesktopNotificationItem[] }[],
-					factsItems,
-				);
-				return pages ? { ...data, pages } : data;
-			},
-		);
-	}, [client, keyId, atTop, factsItems]);
-}
-
 export function useNotificationsList(
 	state: "unread" | "all",
 	enabled: boolean,
-	atTop = true,
+	/*
+	 * Only the surface that OWNS the scroll passes this (the reel, the drawer). Other
+	 * readers of the same key - the flag lines, the unread count - leave it undefined:
+	 * they draw as if at the top, but must never write the shared window (D5 / R10-1),
+	 * or a deep drawer would have rows inserted above its viewport and lose its pill.
+	 */
+	scroll?: { atTop: boolean },
 ) {
 	useNotificationsFeedInvalidation();
 	const { client } = useOptionalQueryClient();
@@ -235,16 +248,11 @@ export function useNotificationsList(
 		refetchInterval: false,
 		refetchIntervalInBackground: false,
 	});
-	useKeepSeenInWindow(
-		client,
-		notificationKeys.list(state),
-		atTop,
-		facts.data?.items,
-	);
+	useKeepSeenInWindow(client, notificationKeys.list(state), scroll, facts.data);
 	const merged = mergeWindowForReel(
 		facts.data,
 		answer.data as DesktopNotificationsList | undefined,
-		atTop,
+		scroll?.atTop ?? true,
 	);
 	return {
 		...answer,
@@ -281,7 +289,13 @@ export function useNotificationsList(
 export function useSessionNotifications(
 	sessionId: string | null,
 	enabled: boolean,
-	atTop = true,
+	/*
+	 * Only the surface that OWNS the scroll passes this (the reel, the drawer). Other
+	 * readers of the same key - the flag lines, the unread count - leave it undefined:
+	 * they draw as if at the top, but must never write the shared window (D5 / R10-1),
+	 * or a deep drawer would have rows inserted above its viewport and lose its pill.
+	 */
+	scroll?: { atTop: boolean },
 ) {
 	useNotificationsFeedInvalidation();
 	const { client } = useOptionalQueryClient();
@@ -329,13 +343,13 @@ export function useSessionNotifications(
 	useKeepSeenInWindow(
 		client,
 		notificationKeys.session(sessionId ?? ""),
-		atTop,
-		facts.data?.items,
+		scroll,
+		facts.data,
 	);
 	const merged = mergeWindowForReel(
 		facts.data,
 		answer.data as DesktopNotificationsList | undefined,
-		atTop,
+		scroll?.atTop ?? true,
 	);
 	return {
 		...answer,

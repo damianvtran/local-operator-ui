@@ -1105,6 +1105,69 @@ test("D5 / Q15: a late row seen at the top joins the window, and never counts as
 	);
 });
 
+test("R10-1: 150 arrivals at the top reset the window, and a full scroll then reaches every row once", () => {
+	/* The server: 300 rows already held, then 150 more arrive between two facts reads. */
+	const old = Array.from({ length: 300 }, (_, at) =>
+		factRow(`n_old${at}`, 300 - at),
+	);
+	const burst = Array.from({ length: 150 }, (_, at) =>
+		factRow(`n_new${at}`, 450 - at),
+	);
+	const server = [...burst, ...old];
+	/* Pages of 100 from a cursor, newest first - the read the window walks. */
+	const readPage = (afterSeq) => {
+		const pool = server.filter((row) => row.seq < afterSeq);
+		const items = pool.slice(0, 100);
+		return {
+			items,
+			next_cursor:
+				pool.length > items.length ? String(items.at(-1).seq) : undefined,
+		};
+	};
+	const walk = (pages) => {
+		const seen = [...pages];
+		while (seen.at(-1).next_cursor)
+			seen.push(readPage(Number(seen.at(-1).next_cursor)));
+		return seen.flatMap((page) => page.items.map((row) => row.id));
+	};
+	/* The window held page one of the OLD list; facts now bring the newest 100. */
+	const windowPages = [
+		{ items: old.slice(0, 100), next_cursor: String(old[99].seq) },
+	];
+	const facts = readPage(Number.MAX_SAFE_INTEGER);
+	const answer = model.prependSeenToWindow(
+		windowPages,
+		facts.items,
+		Boolean(facts.next_cursor),
+	);
+	/*
+	 * Scroll whatever window results: a reset reads page one again; a prepend keeps the
+	 * old pages and walks on from their cursor. The prepend stranded 50 rows (R10-1).
+	 */
+	const ids = walk(
+		answer === "reset"
+			? [readPage(Number.MAX_SAFE_INTEGER)]
+			: (answer ?? windowPages),
+	);
+	assert.equal(ids.length, 450, `every row is reached (reached ${ids.length})`);
+	assert.equal(new Set(ids).size, 450, "exactly once each");
+	assert.equal(
+		answer,
+		"reset",
+		"a non-contiguous facts page resets the window",
+	);
+	/* A burst that fits the facts page is still prepended, and nothing is lost. */
+	const small = model.prependSeenToWindow(
+		windowPages,
+		[factRow("n_x2", 302), factRow("n_x1", 301)],
+		false,
+	);
+	assert.deepEqual(
+		small[0].items.slice(0, 2).map((row) => row.id),
+		["n_x2", "n_x1"],
+	);
+});
+
 test("R7-3c: a confirmed write edits the cached rows in place, and Undo reverses it", () => {
 	const pages = [
 		{

@@ -9,6 +9,7 @@ import { useCodeRequests } from "@features/code-review/hooks/use-code-requests";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
 import {
+	DrawerBackToTop,
 	DrawerTabs,
 	DrawerUpdates,
 	defaultDrawerTab,
@@ -3387,6 +3388,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 														tab === "updates" ? (
 															<DrawerUpdates sessionId={sessionId} />
 														) : null,
+													action: <DrawerBackToTop tab={tab} />,
 												};
 											})()
 										: undefined
