@@ -22,7 +22,7 @@
 	"ui.agentMessages.banner.read": "了解这意味着什么",
 	"ui.agentMessages.banner.hide": "收起详情",
 	"ui.agentMessages.banner.dismiss": "忽略",
-	"ui.agentMessages.banner.consent_unavailable": "完整文本暂时不可用。稍后再试一次。",
-	"ui.agentMessages.banner.turn_off_failed": "无法关闭Team Bridge，未做任何更改。再试一次。",
-	"ui.agentMessages.banner.dismiss_failed": "无法关闭此通知。再试一次。"
+	"ui.agentMessages.banner.consent_unavailable": "完整文本暂时不可用。稍后重试。",
+	"ui.agentMessages.banner.turn_off_failed": "无法关闭Team Bridge，未做任何更改。重试。",
+	"ui.agentMessages.banner.dismiss_failed": "无法忽略此通知。重试。"
 }
