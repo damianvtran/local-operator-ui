@@ -32,6 +32,7 @@
 	"ui.agents.skills.error.meaning": "No se ha perdido nada. Falló una lectura, así que la lista puede estar desactualizada.",
 	"ui.agents.skills.error.title": "No se pudieron leer las habilidades",
 	"ui.agents.skills.error.what_fallback": "La solicitud no se completó.",
+	"ui.agents.skills.hub.update_failed": "La actualización falló",
 	"ui.agents.skills.hub.unlinked": "Enlace con el hub sin confirmar",
 	"ui.agents.skills.hub.unlinked_help": "Esta habilidad la gestiona el Hub de agentes, pero su enlace aún no figura en la lista de enlaces.",
 	"ui.agents.skills.list_aria": "Habilidades",

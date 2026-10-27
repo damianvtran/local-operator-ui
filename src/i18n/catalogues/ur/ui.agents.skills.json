@@ -32,6 +32,7 @@
 	"ui.agents.skills.error.meaning": "کچھ ضائع نہیں ہوا۔ پڑھنے کا عمل ناکام ہوا، اس لیے ہو سکتا ہے فہرست پرانی ہو۔",
 	"ui.agents.skills.error.title": "مہارتیں پڑھی نہیں جا سکیں",
 	"ui.agents.skills.error.what_fallback": "درخواست مکمل نہیں ہوئی۔",
+	"ui.agents.skills.hub.update_failed": "اپ ڈیٹ ناکام",
 	"ui.agents.skills.hub.unlinked": "Agent Hub سے ربط کی تصدیق نہیں ہوئی",
 	"ui.agents.skills.hub.unlinked_help": "یہ مہارت Agent Hub کے زیرِ انتظام ہے، لیکن اس کا ربط ابھی ربط کی فہرست میں نہیں۔",
 	"ui.agents.skills.list_aria": "مہارتیں",

@@ -32,6 +32,7 @@
 	"ui.agents.skills.error.meaning": "没有任何内容丢失。这是一次读取失败，列表可能只是已过期。",
 	"ui.agents.skills.error.title": "无法读取技能",
 	"ui.agents.skills.error.what_fallback": "请求未完成。",
+	"ui.agents.skills.hub.update_failed": "更新失败",
 	"ui.agents.skills.hub.unlinked": "中心关联未确认",
 	"ui.agents.skills.hub.unlinked_help": "此技能由智能体中心管理，但其关联尚未出现在关联列表中。",
 	"ui.agents.skills.list_aria": "技能",

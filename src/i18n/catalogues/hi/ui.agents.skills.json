@@ -32,6 +32,7 @@
 	"ui.agents.skills.error.meaning": "कुछ खोया नहीं है। पढ़ना विफल हुआ, इसलिए सूची शायद पुरानी है।",
 	"ui.agents.skills.error.title": "कौशल पढ़े नहीं जा सके",
 	"ui.agents.skills.error.what_fallback": "अनुरोध पूरा नहीं हुआ।",
+	"ui.agents.skills.hub.update_failed": "अपडेट विफल",
 	"ui.agents.skills.hub.unlinked": "हब लिंक की पुष्टि नहीं हुई",
 	"ui.agents.skills.hub.unlinked_help": "यह कौशल एजेंट हब द्वारा प्रबंधित है, पर इसका लिंक अभी लिंक सूची में नहीं है।",
 	"ui.agents.skills.list_aria": "कौशल",

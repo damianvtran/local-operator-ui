@@ -32,6 +32,7 @@
 	"ui.agents.skills.error.meaning": "Rien n’est perdu. Une lecture a échoué ; la liste est peut-être simplement obsolète.",
 	"ui.agents.skills.error.title": "Impossible de lire les compétences",
 	"ui.agents.skills.error.what_fallback": "La requête n’a pas abouti.",
+	"ui.agents.skills.hub.update_failed": "La mise à jour a échoué",
 	"ui.agents.skills.hub.unlinked": "Lien avec le hub non confirmé",
 	"ui.agents.skills.hub.unlinked_help": "Cette compétence est gérée par le Hub des agents, mais son lien ne figure pas encore dans la liste des liens.",
 	"ui.agents.skills.list_aria": "Compétences",

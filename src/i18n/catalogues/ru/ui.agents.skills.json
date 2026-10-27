@@ -32,6 +32,7 @@
 	"ui.agents.skills.error.meaning": "Ничего не потеряно. Чтение не удалось, поэтому список мог просто устареть.",
 	"ui.agents.skills.error.title": "Не удалось прочитать навыки",
 	"ui.agents.skills.error.what_fallback": "Запрос не выполнен.",
+	"ui.agents.skills.hub.update_failed": "Обновление не удалось",
 	"ui.agents.skills.hub.unlinked": "Связь с хабом не подтверждена",
 	"ui.agents.skills.hub.unlinked_help": "Этот навык управляется через Хаб агентов, но его связи пока нет в списке связей.",
 	"ui.agents.skills.list_aria": "Навыки",
