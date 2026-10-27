@@ -1,0 +1,155 @@
+{
+  "audit_id": "teambridge-pr1441-audit-fe54982cb1b7",
+  "date": "2026-10-27",
+  "locale": "zh-CN",
+  "namespace": "ui.teamBridge",
+  "source_commit": "a61bebd8a59d62092dfe54a4f1d865840b2ad12a",
+  "translator": {
+    "agent": "translator",
+    "role_label": "Local Operator task subagent (translator record: 'same session as implementer')",
+    "model": "anthropic/claude-sonnet-5-5",
+    "record": "i18n-1441-translations.json (coordinating session 17cd3e74c66f scratchpad)",
+    "commits": [
+      "ef8bcb5a03e09b41338152c22af0435924fb0e76",
+      "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823"
+    ],
+    "fallback": "none recorded"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-27",
+      "result": "clean-with-findings",
+      "instance": "fe54982cb1b7-zh-cn",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/fe54982cb1b7-zh-cn.json",
+      "receipt_sha256": "79c04c4d82394cc508b2d3fd8651ca58dfbc00c14a03eda2c0a3f472a96e525b",
+      "scope": "New-key delta: ui.teamBridge.chief.unnamed, member.active_count, member.invited_count (PR #1441); other 208 keys inherited on byte identity.",
+      "note": "PR #1441 3-key delta (chief.unnamed, member.active_count, invited_count); re-bind off dedc59c2f981; 1 open NIT (N1: 有效成员 wording). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1441-audit-fe54982cb1b7/record.json"
+    }
+  ],
+  "independence": "Independent auditor (reviewer role, session fe54982cb1b7). It authored none of the audited strings, edited no catalogue byte, and is neither the translator nor the earlier auditor dedc59c2f981. This run wrote only these receipts, the per-locale evidence records, and the ledger rows (via ledger-assemble.mjs).",
+  "why_rebind": "The row cited i18n/receipts/dedc59c2f981.json, a copy of teambridge-pr1441-audit-dedc59c2f981.json. #1442 (merged) reused instance dedc59c2f981 and its copy at that path won the merge, so the row's receipt_sha256 (306d0b64d4df...) no longer matches and the namespace is not covered: ledger-check failed 14 findings. The earlier audit's bytes survive at i18n/receipts/teambridge-pr1441-audit-dedc59c2f981.json and are kept as superseded history.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "95dd73cc4f3daa03970a3e6c3962b52f9b99390bf3b6047d32a75ff6f70ba100"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+      "sha256": "0766c789cec02f8180c5b9e66509a341d0265c51f1be9d0bf3ab6b75b6a5ea17"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "9ea81e66412a50e9fd071b53a78fb186f0895e028cdfa7a95fc6ac8d2667c844"
+    }
+  },
+  "audited": {
+    "ui.teamBridge.chief.unnamed": {
+      "en": "{person}’s chief of staff",
+      "target": "{person}的首席助理"
+    },
+    "ui.teamBridge.member.active_count": {
+      "en": "{count, plural, one {{count} active member} other {{count} active members}}",
+      "target": "{count, plural, other {{count}名有效成员}}"
+    },
+    "ui.teamBridge.member.invited_count": {
+      "en": "{count, plural, one {{count} invited} other {{count} invited}}",
+      "target": "{count, plural, other {{count}名受邀成员}}"
+    }
+  },
+  "notes": "'{person}的首席助理' reuses chief.fallback 首席助理; no space around the name, full-width conventions. other-only per zh-CN guide; classifier 名 on both lines. See N1.",
+  "findings": [
+    {
+      "id": "N1",
+      "severity": "nit",
+      "locale": "zh-CN",
+      "key": "ui.teamBridge.member.active_count",
+      "summary": "'有效成员' is defensible (membership in force, avoids 活跃) but reads as 'valid members', faintly implying the invited line beneath it lists invalid ones. '已加入成员' would pair with '受邀成员' the way vi pairs 'đã tham gia' with 'đã được mời'.",
+      "disposition": "open - correctness-preserving; follow-up, not a blocker"
+    }
+  ],
+  "checks": {
+    "placeholders": "ICU parsed (@formatjs/icu-messageformat-parser): chief.unnamed has exactly {person}; both counts have exactly {count}",
+    "plural": "CLDR categories for zh-CN (Intl.PluralRules): other; both count keys carry exactly these arms, matching member.count",
+    "bidi": "no U+200E/200F/202A-202E/2066-2069 in any audited string",
+    "glossary": "chief-of-staff term equals ui.teamBridge.chief.fallback (and the style guide where it names one); membership counts follow member.count",
+    "byte_identity": "en, context and target: base + exactly 3 added lines; verified per locale"
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide_fr": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "style_guide_es": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "style_guide_zh-CN": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "style_guide_ru": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    },
+    "style_guide_vi": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "style_guide_ur": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "style_guide_hi": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "core_ref": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6",
+    "AGENTS.md": {
+      "path": "AGENTS.md",
+      "sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+    },
+    "docs/I18N.md": {
+      "path": "docs/I18N.md",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    },
+    "scripts/i18n/ledger-assemble.mjs": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+    }
+  },
+  "superseded_audit": {
+    "instance": "dedc59c2f981",
+    "receipt_now_at": "i18n/receipts/teambridge-pr1441-audit-dedc59c2f981.json",
+    "evidence": "i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1441-audit-dedc59c2f981/record.json"
+  },
+  "audit_notes_not_execution_log": "The notes and findings are this auditor's linguistic judgement, not command output.",
+  "limitations": "No rendered-fit or screenshot evidence: this role has no browser tool. Lengths are comparable to member.count / chief.fallback in every locale.",
+  "receipt": {
+    "path": "i18n/receipts/fe54982cb1b7-zh-cn.json",
+    "sha256": "79c04c4d82394cc508b2d3fd8651ca58dfbc00c14a03eda2c0a3f472a96e525b"
+  }
+}

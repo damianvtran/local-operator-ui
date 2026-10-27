@@ -72,6 +72,7 @@ import { draftTargetKey } from "./team-bridge-drafts";
 import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
+	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeEligibility,
 	type TeamBridgeOrganization,
@@ -83,7 +84,9 @@ import {
 	canArchiveConversation,
 	canManageArchivedConversation,
 	chiefsOfStaff,
+	composeChiefLabel,
 	conversationMemberCount,
+	conversationMembershipCounts,
 	conversationOrganizationName,
 	conversationTitle,
 	directoryFailureKind,
@@ -278,6 +281,12 @@ const TeamBridgeGateLoading: FC = () => {
 		</div>
 	);
 };
+
+/** The localized forms shared by every chief label and storage decision. */
+const chiefLabelCopy = (): ChiefLabels => ({
+	named: (agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+	unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
+});
 
 /**
  * What a signed-in user sees when the bridge says this account or
@@ -785,8 +794,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		() => (mergedView ? [] : chiefsOfStaff(people, selfAccountId)),
 		[mergedView, people, selfAccountId],
 	);
-	const chiefLabel = (agent: string, person: string) =>
-		t("ui.teamBridge.chief.label", { agent, person });
+	const chiefLabels = chiefLabelCopy();
 	const self = useMemo(
 		() =>
 			selfAccountId && selfName?.trim()
@@ -808,7 +816,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			display_label: string;
 		},
 		tenantId: string,
-	) => participantLabel(participant, rosterFor(tenantId), chiefLabel, self);
+	) => participantLabel(participant, rosterFor(tenantId), chiefLabels, self);
 	const profileFor = (sender: TeamBridgeMessage["sender"], tenantId: string) =>
 		rosterFor(tenantId).find(
 			(member) => member.account_id === sender.account_id,
@@ -902,7 +910,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			: (conversationTitle(selected, selfAccountId) ??
 				t("ui.teamBridge.list.untitled"))
 		: draftChief
-			? chiefLabel(draftChief.agentName, personDisplayLabel(draftChief.person))
+			? composeChiefLabel(
+					draftChief.agentName,
+					personDisplayLabel(draftChief.person),
+					chiefLabels,
+				)
 			: draftPerson
 				? personDisplayLabel(draftPerson)
 				: null;
@@ -912,10 +924,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * every chief of staff, labelled the way the rail labels them.
 	 */
 	const candidates = useMemo(
-		() =>
-			recipientCandidates(people, selfAccountId, (agent, person) =>
-				t("ui.teamBridge.chief.label", { agent, person }),
-			),
+		() => recipientCandidates(people, selfAccountId, chiefLabelCopy()),
 		[people, selfAccountId],
 	);
 
@@ -923,6 +932,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	const membershipCounts = shown
+		? conversationMembershipCounts(shown)
+		: { active: 0, invited: 0 };
 	/*
 	 * A quick view (Drafts / Scheduled) REPLACES the conversation in the main
 	 * region, so the thread belonging to that conversation closes with it, the
@@ -1249,8 +1261,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		const label =
 			people.find((row) => row.account_id === draftTarget.accountId)
 				?.display_label ?? t("ui.teamBridge.list.untitled");
+		// A chief draft carries the agent's own name when the directory has one,
+		// so the Drafts view agrees with the rail ("Aida (Ben)", review R1-4).
 		return draftTarget.type === "chief"
-			? chiefLabel(t("ui.teamBridge.chief.fallback"), label)
+			? composeChiefLabel(
+					chiefs.find(
+						(chief) => chief.person.account_id === draftTarget.accountId,
+					)?.agentName ?? "",
+					label,
+					chiefLabelCopy(),
+				)
 			: label;
 	};
 
@@ -1608,9 +1628,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												)}
 												key={chief.person.account_id}
 												chief={chief}
-												label={chiefLabel(
+												label={composeChiefLabel(
 													chief.agentName,
 													personDisplayLabel(chief.person),
+													chiefLabelCopy(),
 												)}
 												selected={isTargetRow(
 													target,
@@ -1804,10 +1825,36 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									</span>
 								)}
 								{shown && shown.kind !== "dm" && (
-									<span className="shrink-0 text-meta-sm text-ink-dim">
-										{t("ui.teamBridge.member.count", {
-											count: conversationMemberCount(shown),
-										})}
+									<span className="flex shrink-0 flex-col text-meta-sm text-ink-dim">
+										{/* A current invitation is membership, not active access, so
+										    with invitees the headline says "active" outright and the
+										    invited count sits beneath it (design review D2 on #1336:
+										    "1 member" over "1 active · 3 invited" repeated the active
+										    count and left "member" unqualified). Never infer the
+										    breakdown from a preview's aggregate `member_count`:
+										    a preview has no rows, so `invited` is 0 there. */}
+										{membershipCounts.invited > 0 ? (
+											<>
+												{/* The headline takes the stronger ink and the invited line
+												    the subordinate one: the invited count qualifies the
+												    headline and must not outrank it (design review D1 on
+												    #1441). The single-line count below keeps its ink. */}
+												<span className="text-ink-muted">
+													{t("ui.teamBridge.member.active_count", {
+														count: membershipCounts.active,
+													})}
+												</span>
+												<span className="text-ink-dim">
+													{t("ui.teamBridge.member.invited_count", {
+														count: membershipCounts.invited,
+													})}
+												</span>
+											</>
+										) : (
+											t("ui.teamBridge.member.count", {
+												count: conversationMemberCount(shown),
+											})
+										)}
 									</span>
 								)}
 								{shown?.last_message_at && shown.latest_seq > 0 && (
@@ -2590,7 +2637,7 @@ const TeamBridgeOwnedPage: FC<{
 	const channelCandidates = recipientCandidates(
 		people,
 		selfAccountId,
-		(agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+		chiefLabelCopy(),
 	);
 
 	const [target, setTarget] = useState<TeamBridgeTarget | null>(() =>
@@ -2727,8 +2774,6 @@ const TeamBridgeOwnedPage: FC<{
 	 * the label written into the conversation is the live name and the agent
 	 * endpoint is the one the directory publishes now.
 	 */
-	const chiefLabel = (agent: string, person: string) =>
-		t("ui.teamBridge.chief.label", { agent, person });
 	const draftRecipients = (): TeamBridgeRecipient[] => {
 		if (target === null) return [];
 		if (target.type === "compose") return target.recipients;
@@ -2754,9 +2799,12 @@ const TeamBridgeOwnedPage: FC<{
 							kind: "agent",
 							accountId: chief.person.account_id,
 							endpointId: chief.endpointId,
-							label: chiefLabel(
-								chief.agentName || t("ui.teamBridge.chief.fallback"),
+							agentName: chief.agentName,
+							ownerLabel: personDisplayLabel(chief.person),
+							label: composeChiefLabel(
+								chief.agentName,
 								personDisplayLabel(chief.person),
+								chiefLabelCopy(),
 							),
 						},
 					]

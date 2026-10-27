@@ -932,7 +932,7 @@ export type DesktopLibrarySessionFilter = string;
  *
  * THE IDS ARE WIRE VOCABULARY, which is why they live here rather than being
  * invented in the renderer: the route validates against this allow-list, and a
- * second copy of nine strings in a component tree is exactly the kind of pair
+ * second copy of ten strings in a component tree is exactly the kind of pair
  * that drifts silently - a rename on one side would leave the other accepting a
  * preference the backend refuses, or worse, storing one it silently drops. The
  * renderer's pure model re-exports this tuple, so there is one spelling.
@@ -952,6 +952,16 @@ export const SIDEBAR_DESTINATION_IDS = [
 	"team-bridge",
 	"agent-hub",
 	"mesh",
+	/*
+	 * APPENDED, NEVER INSERTED (notifications decisions D10). The tuple is wire
+	 * vocabulary shared with core `server/sidebar_layout.py`, and both sides only
+	 * grow it at the end. Where the row LANDS is not decided by this order but by
+	 * `DEFAULT_REGION_BY_ID` plus the explicit default rank in
+	 * `sidebar-destinations.ts` (`DEFAULT_RANK_BY_ID`), which places it under
+	 * Aida. An older core refuses this id on PUT, so the save path strips it
+	 * unless `features.notifications` is advertised (`stripUnadvertisedIds`).
+	 */
+	"notifications",
 ] as const;
 
 /** The stable spelling of one destination, on the wire and in the store. */
@@ -961,7 +971,7 @@ export type SidebarDestinationId = (typeof SIDEBAR_DESTINATION_IDS)[number];
  * One stored arrangement: the ordered rail cut at one fold.
  *
  * `visible ++ more` is the single order a drag operates on; the boundary is
- * `visible.length`, not a second container. All nine ids are stored even when a
+ * `visible.length`, not a second container. All ten ids are stored even when a
  * destination is temporarily unavailable (a capability gate removes it from the
  * render, never from the stored order), so a preference survives an app or
  * backend update that hides a destination and later restores it.
@@ -973,3 +983,142 @@ export type DesktopSidebarLayout = {
 
 /** `GET`/`PUT /v1/desktop/sidebar-layout` answer with the normalised layout. */
 export type DesktopSidebarLayoutResponse = { layout: DesktopSidebarLayout };
+
+/*
+ * THE NOTIFICATIONS REEL (`/v1/desktop/notifications*`, notifications contract
+ * § 2.2 and § 5.2). One normalized item shape for both sources: a `notify` row
+ * an agent raised, and an OPEN ask projected into the reel (decisions D1:
+ * settled asks never appear in the list, only in an item's detail).
+ *
+ * Fields the backend may add later are tolerated by construction (these are
+ * TypeScript types over a JSON answer, not a strict parser). Optional fields
+ * are the ones an older L1 build or an ask row legitimately omits, and the
+ * renderer treats absence as "cannot say", never as a default value.
+ */
+export type DesktopNotificationPriority = "high" | "normal" | "low";
+
+/**
+ * How an item became read. `explicit` is a gesture; `in_view` is the per-item
+ * auto-read (contract § 6.4); `watching` is created-read because the operator
+ * was in the conversation when it arrived (contract § 6.2, decisions D3).
+ */
+export type DesktopNotificationReadVia = "explicit" | "in_view" | "watching";
+
+export type DesktopNotificationItem = {
+	/** `n_…` for a notify row, `ask:<session_id>:<ask_id>` for an open ask. */
+	id: string;
+	source: "notify" | "ask";
+	priority: DesktopNotificationPriority;
+	title: string;
+	/** First 160 characters of the body, or an ask's first question. */
+	excerpt: string;
+	/** Epoch milliseconds. */
+	created_at: number;
+	updated_at: number;
+	/** Machine-wide monotonic cursor; re-stamped on every write to the row. */
+	seq: number;
+	/** The ack token: a read or dismiss names the revision the client rendered. */
+	revision: number;
+	read: boolean;
+	read_via: DesktopNotificationReadVia | null;
+	dismissed: boolean;
+	repeat_count: number;
+	/** The notify collapse key, scoped by session. Absent on an ask. */
+	key?: string;
+	/** The `notify` tool call id: the transcript anchor. Absent on an ask. */
+	anchor_id?: string;
+	session: {
+		id: string;
+		title: string;
+		agent_id?: string;
+		live?: boolean;
+	};
+	projects?: { key: string; name: string; status?: string }[];
+	ask?: {
+		status: string;
+		deadline_at?: number | null;
+		question_count?: number;
+		dismissible?: boolean;
+	} | null;
+	actions?: { dismiss?: boolean; answer?: boolean; read?: boolean };
+};
+
+/** `GET /v1/desktop/notifications`. `waiting` is present on the first page only. */
+export type DesktopNotificationToken = { id: string; revision: number };
+
+export type DesktopNotificationsList = {
+	items: DesktopNotificationItem[];
+	/** Exact page observations; first page also includes its waiting ask refs. */
+	observed: DesktopNotificationToken[];
+	waiting?: DesktopNotificationItem[];
+	next_cursor?: string | null;
+	unread_count: number;
+	waiting_count: number;
+	/** Unread pending asks only: reading never removes an open ask. */
+	waiting_unread_count: number;
+	/** Max `seq` this answer saw: the `throughSeq` of a mark-all / by-session write. */
+	high_water: number;
+};
+
+/** `GET /v1/desktop/notifications/count`, and the feed frame's payload. */
+export type DesktopNotificationsCount = {
+	unread_count: number;
+	waiting_count: number;
+	/** Unread pending asks only: reading never removes an open ask. */
+	waiting_unread_count: number;
+	high_water: number;
+};
+
+export type DesktopNotificationHistoryEntry = {
+	revision: number;
+	at: number;
+	title: string;
+	excerpt: string;
+};
+
+/** `GET /v1/desktop/notifications/{id}`. */
+export type DesktopNotificationDetail = {
+	item: DesktopNotificationItem & {
+		body_md?: string;
+		links?: { label: string; url: string }[];
+	};
+	history: DesktopNotificationHistoryEntry[];
+	session: {
+		id: string;
+		title: string;
+		agent_id?: string;
+		live_state?: string;
+		cwd?: string;
+	};
+	/** The transcript entry at `anchor_id`, bounded; absent when unresolvable. */
+	anchor: { id: string; excerpt: string } | null;
+	projects: { key: string; name: string; status?: string }[];
+	/** That conversation's asks, the frozen `PendingAsk` wire rows. */
+	asks: Record<string, unknown>[];
+};
+
+/*
+ * Why a write left an id alone. The first four answer the PATCH; the rest are
+ * the seen route's re-checks of the evidence (contract § 6.4), each one a
+ * reason the item stays unread. Measured against the core branch's store
+ * (`notifications/*.py`) on 2026-10-25, not copied from the contract text.
+ */
+export type DesktopNotificationsSkipReason =
+	| "live_ask"
+	| "stale_revision"
+	| "unknown"
+	| "already"
+	| "anchor_mismatch"
+	| "no_fresh_evidence"
+	| "stale_evidence"
+	| "no_session";
+
+/** `PATCH /v1/desktop/notifications` and `POST …/seen`. */
+export type DesktopNotificationsWriteResult = {
+	waiting_count: number;
+	waiting_unread_count: number;
+	changed: string[];
+	skipped: { id: string; reason: DesktopNotificationsSkipReason }[];
+	unread_count: number;
+	high_water: number;
+};

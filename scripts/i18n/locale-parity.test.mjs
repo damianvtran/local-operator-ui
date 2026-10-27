@@ -41,9 +41,34 @@ const SOURCE_LOCALE = "en";
  * a UI token. An entry here is a claim that gets reviewed, not a silencer.
  */
 const IDENTICAL_OK = new Map([
+	// French cognates only: these are the normal French UI nouns, not English
+	// fallbacks. Scope to fr so untranslated nouns in other languages still fail.
+	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
+	["fr:ui.notifications.page.title", "French UI noun: Notifications"],
+	[
+		"fr:ui.notifications.filter.group_conversation",
+		"French cognate: Conversation",
+	],
 	[
 		"fr:ui.teamBridge.profile.agent_badge",
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
+	],
+	[
+		"ui.notifications.row.chip.repeat",
+		// `×{count}`: the repeat chip on a collapsed reel row (notifications design
+		// section 4). A multiplication sign and a placeholder, no words; its context
+		// note requires every locale to keep it identical, so a differing value
+		// would be invented punctuation rather than a translation.
+		"language-neutral counter: only '×' and a placeholder, no words",
+	],
+	[
+		"ui.notifications.filter.chip",
+		// `{label}: {value}`: a filter chip's "Kind: All", two placeholders and a
+		// colon. It is ONE message so a locale owns its punctuation (French puts a
+		// space before the colon, Chinese uses a full-width one), which is why a
+		// locale MAY differ; where the locale's punctuation is the same as
+		// English, identical is the correct translation, not a stub.
+		"format string: two placeholders and a colon, punctuation only",
 	],
 	[
 		"ui.console.pane.label",
@@ -1244,6 +1269,29 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.agents.teams.section.description",
 		"French noun « description » has the same spelling; section heading",
+	],
+	// The Skills tab's read-only details (#1443). Each row below is scoped to ONE
+	// locale and cites the shipped, audited value it matches, so none of them
+	// silences a stub in another language.
+	[
+		"es:ui.agents.skills.source.local",
+		"Spanish « Local » has the same spelling; the identical cognate is already shipped in es ui.providers.provider_labels.local (exempted above) and the audit receipts for ui.agents.skills (17d1ca9bf58a-es, aa44e837c157-es) pass it with no finding on this key",
+	],
+	[
+		"fr:ui.agents.skills.detail.section.description",
+		"French noun « description » has the same spelling; same section heading as the shipped fr:ui.agents.teams.section.description (exempted above); the fr audit receipts (17d1ca9bf58a-fr, aa44e837c157-fr) pass it with no finding on this key",
+	],
+	[
+		"fr:ui.agents.skills.detail.section.body",
+		"« Instructions » is the French plural noun with the same spelling (shipped fr already uses it verbatim: fr:ui.agents.detail.section.instructions, exempted above) followed by the literal file name SKILL.md, which is never translated; the fr audit receipts pass it with no finding on this key. No other identical fr value exists to cite, so this is the one entry resting on the word plus the filename",
+	],
+	[
+		"ur:ui.agents.skills.detail.section.hub",
+		"Product name (Agent Hub), kept in Latin like ur:ui.hub.pages.header.title and the shell sidebar entry ui.shell.sidebar_navigation.agent_hub (both exempted); the ur receipt 17d1ca9bf58a-ur records `section.hub equals shell agent_hub in all 7 locales (byte compare)`",
+	],
+	[
+		"ur:ui.agents.skills.source.hub",
+		"Product name (Agent Hub), kept in Latin like ur:ui.hub.pages.header.title and ui.shell.sidebar_navigation.agent_hub (both exempted); the ur audit receipts (17d1ca9bf58a-ur, aa44e837c157-ur) pass it clean with no finding",
 	],
 	[
 		"fr:ui.hub.pages.search_field.description",

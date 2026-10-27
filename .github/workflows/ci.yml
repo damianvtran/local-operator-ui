@@ -1297,6 +1297,53 @@ jobs:
           echo "asks regression control (merge base of this PR): $CONTROL"
           ASKS_CONTROL_OVERRIDE="$CONTROL" node scripts/asks-app-regression.mjs
 
+      # THE POSITIVE FOREGROUND PROOF FOR `notifications.read`, AND THE ONLY
+      # SHOWN WINDOW IN THIS REPOSITORY. A read means "a human saw this", so the
+      # main process refuses it unless the real window is focused; every other
+      # scene launches headless and therefore proves only the refusal. This step
+      # is the other half: a genuinely shown window on this EPHEMERAL
+      # GitHub-HOSTED macOS runner's own desktop (never a self-hosted runner,
+      # never the operator's machine - `resolvedWindowMode` and the scene both
+      # refuse anything else), a trusted input on a real row, main's real guard
+      # letting it through, and the PINNED core backend's SQLite showing exactly
+      # the tested revision read while an unrelated row and a revision raced
+      # behind the click stay unread. A runner with no interactive desktop FAILS
+      # here rather than falling back to headless, because a headless "success"
+      # would be a false positive.
+      #
+      # The backend is the pinned core revision, installed from its own extra and
+      # run on loopback under a throwaway HOME/config with a synthetic bearer.
+      # Nothing here talks to a provider or an operator account.
+      - name: Prove the positive foreground notification read on a shown window
+        id: notifications_native
+        if: runner.os == 'macOS' && github.event_name == 'pull_request'
+        timeout-minutes: 12
+        env:
+          LOCAL_OPERATOR_UI_NATIVE_SCENE: notifications
+          LOCAL_OPERATOR_CORE_REF: 1df606c6caf73a4087e1c2ef562f88ee8d9fa000
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+        run: |
+          set -euo pipefail
+          CORE_VENV="$RUNNER_TEMP/notifications-core-venv"
+          python3 -m venv "$CORE_VENV"
+          "$CORE_VENV/bin/pip" install --quiet --upgrade pip
+          "$CORE_VENV/bin/pip" install --quiet \
+            "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
+          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
+          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
+          node scripts/notifications-app-scene.mjs
+
+      - name: Upload notifications native foreground evidence
+        if: ${{ always() && steps.notifications_native.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: notifications-native-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: artifacts/notifications-native/
+          if-no-files-found: error
+          retention-days: 7
+
       # A run that completed must have produced frames, or this step fails red.
       # The step above being SKIPPED (an earlier gate went red) is not a missing
       # artifact, and reporting it as one buries the real failure under a second,

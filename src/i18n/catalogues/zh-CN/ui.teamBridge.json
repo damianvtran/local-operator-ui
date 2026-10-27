@@ -1,5 +1,6 @@
 {
 	"ui.teamBridge.notify.unavailable": "这条通知已无法在当前账号下打开。",
+	"ui.teamBridge.chief.unnamed": "{person}的首席助理",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "还没有对话",
 	"ui.teamBridge.list.empty.body": "发起私信、群组或频道。",
@@ -25,6 +26,8 @@
 	"ui.teamBridge.create.confirm": "创建",
 	"ui.teamBridge.unread.count": "{count, plural, other {{count}条未读}}",
 	"ui.teamBridge.member.count": "{count, plural, other {{count}名成员}}",
+	"ui.teamBridge.member.active_count": "{count, plural, other {{count}名有效成员}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, other {{count}名受邀成员}}",
 	"ui.teamBridge.group.more": "更多",
 	"ui.teamBridge.thread.withheld": "正在等待智能体接收此消息。",
 	"ui.teamBridge.composer.error": "消息未发送。请重试。",

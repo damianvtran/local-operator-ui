@@ -36,6 +36,8 @@ import {
 	waitingApprovalCount,
 } from "@features/mesh/mesh-approvals";
 import { useMeshMembership } from "@features/mesh/mesh-store";
+import { useNotificationsCount } from "@features/notifications/notifications-api";
+import { badgeCountOf } from "@features/notifications/notifications-model";
 import { useTeamBridgeNavItem } from "@features/team-bridge/team-bridge-nav";
 import {
 	desktopFeatureEnabled,
@@ -61,7 +63,12 @@ import {
 	renderedRegion,
 } from "@shared/components/navigation/sidebar-destinations";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
-import { Badge, BrowserSafeTooltip, Button } from "@shared/components/ui";
+import {
+	Badge,
+	BrowserSafeTooltip,
+	Button,
+	countLabel,
+} from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -83,6 +90,7 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { LucideIcon } from "lucide-react";
 import {
+	Bell,
 	Bot,
 	CalendarDays,
 	ChevronDown,
@@ -195,6 +203,14 @@ type NavItem = {
 	 * without one would draw a badge its name could not state.
 	 */
 	attentionName?: (count: number) => string;
+	/**
+	 * Draw the count in the `emphasis` register instead of the quiet one. Set on
+	 * the Notifications row alone (operator, 2026-10-25, notifications decisions
+	 * D5: the quiet pill was "a bit too subtle" for the one badge whose whole
+	 * job is to be noticed). Every other row keeps `attentionQuiet`, and the More
+	 * row's aggregate stays quiet too: a folded row is a choice to see less.
+	 */
+	attentionEmphasis?: boolean;
 	/**
 	 * Whether the row's thing is working RIGHT NOW - a turn in flight, the user's
 	 * or a proactive wake's. It draws the app's busy mark (the sidebar's spinning
@@ -462,6 +478,20 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const libraryEnabled = desktopFeatureEnabled(capabilities.data, "library", 1);
 	/*
+	 * The Notifications destination and its badge number, on its own capability
+	 * (see the row below). The count read is the cheap `/count` route the feed's
+	 * `notifications` frame refreshes; disabled below the capability.
+	 */
+	const notificationsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"notifications",
+		1,
+	);
+	const notificationsCount = useNotificationsCount(notificationsEnabled);
+	const notificationsBadge = notificationsEnabled
+		? badgeCountOf(notificationsCount.data)
+		: 0;
+	/*
 	 * THE OVERFLOW GROUP'S STATE, persisted beside the collapsed width: a
 	 * low-frequency destination's visibility is a preference about the column,
 	 * not about the route in front of it.
@@ -587,6 +617,37 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			workingName: t("ui.shell.sidebar_navigation.aida_working", {
 				name: aidaName,
 			}),
+		});
+	}
+	/*
+	 * NOTIFICATIONS SITS UNDER AIDA (design.md § 1; decisions D10): she is the
+	 * chief of staff and the reel is what she and every other session flag, so
+	 * the two sit together. Its stored position comes from the layout model's
+	 * default rank, not from this insertion order.
+	 *
+	 * GATED ON `features.notifications`, the Library rule: an older core has no
+	 * routes, and the layout save strips the id there (`stripUnadvertisedIds`).
+	 *
+	 * ITS BADGE IS THE LOUDER `emphasis` PILL (operator, 2026-10-25, decisions
+	 * D5): unread updates plus UNREAD waiting asks, `unread_count +
+	 * waiting_unread_count` (decisions D16; the core field changed when asks grew
+	 * their own read state). Every other row keeps the quiet register.
+	 */
+	if (notificationsEnabled) {
+		destinationItems.set("notifications", {
+			icon: Bell,
+			label: t("ui.notifications.nav.label"),
+			path: "/notifications",
+			isActive: currentView === "notifications",
+			tourTag: "nav-item-notifications",
+			attention: notificationsBadge,
+			attentionTag: "nav-notifications-badge",
+			attentionEmphasis: true,
+			attentionName: (count: number) =>
+				t("ui.notifications.nav.unread", {
+					count,
+					countText: String(count),
+				}),
 		});
 	}
 	/*
@@ -728,7 +789,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		canCustomise,
 		save: saveSidebarLayout,
 		reset: resetSidebarLayout,
-	} = useSidebarLayout(layoutCapable);
+	} = useSidebarLayout(layoutCapable, (feature) =>
+		desktopFeatureEnabled(
+			capabilities.data,
+			feature as Parameters<typeof desktopFeatureEnabled>[1],
+			1,
+		),
+	);
 	/*
 	 * Every render below reads `effectiveLayout`, not `layout`: the fallback is
 	 * the SHIPPED arrangement, not a second opinion about the order. It is also
@@ -1549,13 +1616,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						{attention > 0 && (
 							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
 								<Badge
-									variant="attentionQuiet"
+									variant={
+										item.attentionEmphasis ? "emphasis" : "attentionQuiet"
+									}
 									shape="pill"
 									size="count"
 									className="h-3.5 min-w-3.5 px-0.75 leading-none"
 									data-tour-tag={item.attentionTag}
 								>
-									{attention}
+									{item.attentionEmphasis
+										? countLabel(attention, 99)
+										: attention}
 								</Badge>
 							</span>
 						)}
@@ -1764,12 +1835,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 							 * team-count lines.
 							 */
 							<Badge
-								variant="attentionQuiet"
+								variant={item.attentionEmphasis ? "emphasis" : "attentionQuiet"}
 								shape="pill"
 								size="count"
 								data-tour-tag={item.attentionTag}
 							>
-								{attention}
+								{item.attentionEmphasis ? countLabel(attention, 99) : attention}
 							</Badge>
 						)}
 						{item.working && (

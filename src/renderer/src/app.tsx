@@ -110,6 +110,16 @@ const LibraryPage = lazy(() =>
 		default: m.LibraryPage,
 	})),
 );
+/*
+ * The Notifications page, gated on `features.notifications` exactly as the
+ * Library is: the sidebar row hides on the same predicate, and below it a
+ * hand-typed `/notifications` falls to the catch-all.
+ */
+const NotificationsPage = lazy(() =>
+	import("@features/notifications/components/notifications-page").then((m) => ({
+		default: m.NotificationsPage,
+	})),
+);
 const TeamBridgePage = lazy(() =>
 	import("@features/team-bridge/team-bridge-page").then((m) => ({
 		default: m.TeamBridgePage,
@@ -289,6 +299,10 @@ const App: FC = () => {
 	 */
 	const meshState = desktopFeatureState(capabilities.data, "peers");
 	const libraryState = desktopFeatureState(capabilities.data, "library");
+	const notificationsState = desktopFeatureState(
+		capabilities.data,
+		"notifications",
+	);
 	/* The conversation surface rides the bridge capability: with the backend
 	   dark or older, `/team-bridge` falls through to the catch-all like any
 	   unknown path instead of rendering a page whose every read would 503. */
@@ -961,6 +975,20 @@ const App: FC = () => {
 										<Route path="/browser" element={<BrowserPage />} />
 										{/* Mounted only with `features.library`: without it `/library`
 										    falls through to the catch-all, like any unknown path. */}
+										{/* `features.notifications`: below it `/notifications`
+										    falls through to the catch-all, like `/library`. */}
+										{notificationsState === "enabled" && (
+											<>
+												<Route
+													path="/notifications"
+													element={<NotificationsPage />}
+												/>
+												<Route
+													path="/notifications/:notificationId"
+													element={<NotificationsPage />}
+												/>
+											</>
+										)}
 										{libraryState === "enabled" && (
 											<>
 												<Route path="/library" element={<LibraryPage />} />
