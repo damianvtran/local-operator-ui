@@ -418,10 +418,10 @@ const installBridge = (world) => {
 							},
 						};
 					case "skills.list": {
-						const answer =
-							typeof world.skills === "function"
-								? world.skills(request)
-								: world.skills;
+						// Awaited so a case can HOLD the answer (a promise) to observe loading.
+						const answer = await (typeof world.skills === "function"
+							? world.skills(request)
+							: world.skills);
 						if (answer instanceof Error) throw answer;
 						if (answer?.status) return answer;
 						return { status: 200, body: { result: { data: answer } } };
@@ -815,7 +815,7 @@ test("a kind=skill&name= deep link on a core WITHOUT skill_library sends no prof
  * centre hits the trigger - jsdom has no layout engine, and no container-query
  * support, so those numbers are QA's real-app measurement, not this file's.
  */
-test("the browse strip: every trigger can shrink, the label truncates, the count stays in the accessible name", async () => {
+test("the browse strip: label-sized tabs that can still shrink; the count stays in the accessible name", async () => {
 	const view = await mount("/agents", {
 		skills: { skills: FIVE },
 	});
@@ -830,45 +830,327 @@ test("the browse strip: every trigger can shrink, the label truncates, the count
 			trigger.className.includes("min-w-0"),
 			`${id} may shrink below its content`,
 		);
+		// D3: sized to the LABEL (flex-auto), not an equal third (flex-1), so a short
+		// label hands its slack to the long one.
 		assert.ok(
-			trigger.className.includes("flex-1"),
-			`${id} takes an equal share`,
+			trigger.className.includes("flex-auto"),
+			`${id} is sized to its label`,
 		);
 		assert.ok(
-			trigger.className.includes("@container/tab"),
-			`${id} is its own size container`,
+			!trigger.className.includes("flex-1"),
+			`${id} is not an equal third`,
 		);
-		const label = q(trigger, `[data-testid="${id}-label"]`);
 		assert.ok(
-			label.className.includes("truncate"),
-			`${id}'s label is the part that truncates`,
+			!trigger.className.includes("@container"),
+			`${id} is not a size container (it would defeat flex-auto)`,
+		);
+		assert.ok(
+			q(trigger, `[data-testid="${id}-label"]`).className.includes("truncate"),
+			`${id}'s label is the last-resort truncation`,
+		);
+		assert.equal(
+			trigger.querySelector("svg") === null,
+			true,
+			`${id} draws no icon in the compact strip`,
 		);
 	}
 	const skills = q(view.container, '[data-testid="skills-tab"]');
-	// Title carries the whole thing; the count survives narrow as sr-only, not display:none.
 	assert.equal(skills.getAttribute("title"), "Skills 5");
 	const count = [...skills.querySelectorAll("span")].find(
 		(node) => node.textContent === "5",
 	);
 	assert.ok(
-		count.className.includes("@max-[7rem]/tab:sr-only"),
-		"narrow hides the count visually, not from assistive tech",
+		count.className.includes("sr-only"),
+		"the count is visually hidden, not removed",
 	);
 	assert.ok(
 		!count.className.includes("hidden"),
 		"the count is never display:none",
 	);
-	// Label + count both in the accessible text content at any width.
 	assert.match(text(skills), /Skills\s*5/);
-	// The strip itself does not scroll sideways.
-	const strip = q(view.container, '[role="tablist"]');
-	assert.ok(!/overflow-x-(auto|scroll)/.test(strip.className));
-	// R4: the NEW tab adds no `aria-controls` pointing at a panel that does not exist.
+	assert.ok(
+		!/overflow-x-(auto|scroll)/.test(
+			q(view.container, '[role="tablist"]').className,
+		),
+	);
 	assert.equal(skills.hasAttribute("aria-controls"), false);
 	await teardown(view);
 });
 
-test("closing a skill returns focus to its row; opening moves it to the heading", async () => {
+test("old core (no skill_library): the two-tab strip keeps its equal halves, icons and counts", async () => {
+	const view = await mount("/agents", { features: {}, skills: { skills: [] } });
+	assert.ok(
+		await settle(() =>
+			/\d/.test(text(q(view.container, '[data-testid="agents-tab"]'))),
+		),
+	);
+	for (const id of ["agents-tab", "teams-tab"]) {
+		const trigger = q(view.container, `[data-testid="${id}"]`);
+		assert.ok(trigger.className.includes("flex-1"), `${id} is an equal half`);
+		assert.ok(!trigger.className.includes("flex-auto"));
+		assert.ok(trigger.querySelector("svg"), `${id} keeps its icon`);
+	}
+	const count = [
+		...q(view.container, '[data-testid="agents-tab"]').querySelectorAll("span"),
+	].find((n) => /^\d+$/.test(n.textContent));
+	assert.ok(
+		!count.className.includes("sr-only"),
+		"the count stays visible on the two-tab strip",
+	);
+	await teardown(view);
+});
+
+/*
+ * D1 / U1: a hub row with an update mark must keep its NAME. The structural
+ * contract jsdom can prove: line one holds ONLY the name and the source word (no
+ * mark, no shrink-0 chip beside the name), the mark leads LINE TWO, and line two is
+ * one truncating run. The 0 px name was a pixel fact; the measured acceptance
+ * (every name has non-zero width in en/es/ur at 1380 and 800 px, every row's text
+ * starts at one x) is QA's real-app check, not this file's.
+ */
+test("a hub row with a failed update: name and source on line one, the mark leads line two", async () => {
+	const row = skill({ name: "hub-linked", source: "hub", link_id: "link-1" });
+	const view = await mount("/agents?kind=skill", {
+		skills: { skills: [row] },
+		links: [linkRow({ name: "hub-linked", local_id: "hub-linked" })],
+		updates: [
+			{
+				kind: "skill",
+				name: "hub-linked",
+				state: "failed",
+				error_class: "network",
+				last_error: "x",
+			},
+		],
+	});
+	assert.ok(await settle(() => rowOf(view.container, "hub-linked")));
+	assert.ok(
+		await settle(() =>
+			q(rowOf(view.container, "hub-linked"), '[data-testid="skill-row-mark"]'),
+		),
+	);
+	const button = rowOf(view.container, "hub-linked");
+	const lineOne = q(button, '[data-testid="skill-row-source"]').parentElement;
+	assert.equal(
+		lineOne.querySelector("[data-hub-mark-state]") === null,
+		true,
+		"no mark on line one",
+	);
+	assert.match(text(lineOne), /^hub-linked/);
+	assert.ok(
+		lineOne.firstElementChild.className.includes("truncate"),
+		"the name truncates",
+	);
+	const lineTwo = q(button, '[data-testid="skill-row-line2"]');
+	assert.ok(
+		lineTwo.querySelector("[data-hub-mark-state]"),
+		"the mark is on line two",
+	);
+	assert.ok(
+		lineTwo.className.includes("truncate"),
+		"line two truncates as ONE run",
+	);
+	// The chip keeps its base `shrink-0`, which is inert inside a BLOCK run: line two
+	// must not be a flex container, or that chip could push past the row again.
+	assert.equal(
+		/\b(flex|inline-flex|grid)\b/.test(lineTwo.className),
+		false,
+		"line two is a block run, so no child can refuse to shrink",
+	);
+	assert.equal(
+		/\binline-flex\b/.test(q(lineTwo, "[data-hub-mark-state]").className),
+		true,
+		"the chip is inline inside the run",
+	);
+	// The mark comes first on line two.
+	assert.ok(
+		lineTwo.firstElementChild.getAttribute("data-testid") === "skill-row-mark",
+	);
+	await teardown(view);
+});
+
+/* M1: an old core + a kind=skill&name= link is the Agents tab, not a skeleton forever. */
+test("a kind=skill&name= link on an old core shows the Agents empty pane, not a skeleton", async () => {
+	const view = await mount("/agents?kind=skill&name=whatever", {
+		features: {},
+		skills: { skills: [] },
+	});
+	await settle(() => view.ops.includes("profiles.list"));
+	await settle(() => false, 400);
+	assert.equal(
+		q(view.container, '[aria-hidden="true"].space-y-8') === null,
+		true,
+		"no detail skeleton",
+	);
+	assert.equal(
+		q(view.container, '[data-testid="agents-tab"]').getAttribute("data-state"),
+		"active",
+	);
+	await teardown(view);
+});
+
+/* D4: nothing in the right pane while the list is loading or empty. */
+test("the select-a-skill prompt is absent while loading and when there are no skills", async () => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const loading = await mount("/agents?kind=skill", {
+		skills: async () => {
+			await gate;
+			return { skills: [FIVE[0]] };
+		},
+	});
+	await settle(() => false, 300);
+	assert.equal(
+		q(loading.container, '[data-testid="skills-select-prompt"]') === null,
+		true,
+		"absent while loading",
+	);
+	release();
+	assert.ok(
+		await settle(() =>
+			q(loading.container, '[data-testid="skills-select-prompt"]'),
+		),
+		"present once populated",
+	);
+	await teardown(loading);
+	const empty = await mount("/agents?kind=skill", { skills: { skills: [] } });
+	assert.ok(
+		await settle(() => q(empty.container, '[data-testid="skills-empty"]')),
+	);
+	assert.equal(
+		q(empty.container, '[data-testid="skills-select-prompt"]') === null,
+		true,
+		"absent when empty",
+	);
+	await teardown(empty);
+});
+
+/* D5 positive control: a not-installed row with NO hub sentence still gets the badge. */
+test("a not-installed skill with no hub sentence keeps its badge", async () => {
+	const orphan = skill({ name: "orphan", source: "local", installed: false });
+	const view = await mount("/agents?kind=skill&name=orphan", {
+		skills: (request) =>
+			request.name
+				? {
+						skills: [orphan],
+						detail: null,
+						skill_detail: {
+							...orphan,
+							body: null,
+							body_in_detail: false,
+							body_length: null,
+							files: [],
+							files_total: 0,
+							files_truncated: false,
+						},
+					}
+				: { skills: [orphan] },
+	});
+	assert.ok(
+		await settle(() =>
+			q(view.container, '[data-testid="skill-not-installed"]'),
+		),
+	);
+	await teardown(view);
+});
+
+/* D6 + U7: a reference preview is clamped, and the truncation notice precedes the control. */
+test("a reference preview is clamped behind Show all, and the notice comes before the body's control", async () => {
+	const row = skill({ name: "refs" });
+	const long = Array.from({ length: 40 }, (_, i) => `line ${i}`).join("\n");
+	const view = await mount("/agents?kind=skill&name=refs", {
+		skills: (request) =>
+			request.name
+				? {
+						skills: [row],
+						detail: "T",
+						skill_detail: {
+							...row,
+							body: "T",
+							body_in_detail: false,
+							body_length: 1,
+							body_truncated: true,
+							body_bytes: 300000,
+							files: [
+								{
+									path: "long.txt",
+									size: 400,
+									preview: long,
+									preview_truncated: true,
+								},
+							],
+							files_total: 1,
+							files_truncated: false,
+						},
+					}
+				: { skills: [row] },
+	});
+	assert.ok(
+		await settle(() => q(view.container, '[data-testid="skill-files"]')),
+	);
+	const pane = q(view.container, '[data-testid="skill-detail"]');
+	// U7: in document order the notice sits BEFORE the instructions block, hence before its Show all.
+	const notice = q(pane, '[data-testid="skill-body-truncated"]');
+	const body = notice.nextElementSibling;
+	assert.ok(body, "the instructions block follows the notice");
+	assert.equal(
+		notice.compareDocumentPosition(body) &
+			window.Node.DOCUMENT_POSITION_FOLLOWING,
+		window.Node.DOCUMENT_POSITION_FOLLOWING,
+	);
+	// D6: open the file; its preview uses the clamped ReadBlock (line-clamp class), not a bare <pre>.
+	await press(q(pane, '[data-testid="skill-files"] button'));
+	const region = q(pane, '[data-testid="skill-files"] section');
+	assert.ok(region, "the preview region opened");
+	assert.equal(
+		region.querySelector("pre") === null,
+		true,
+		"no unbounded <pre>",
+	);
+	assert.ok(
+		region.querySelector('[class*="line-clamp"]'),
+		"the preview is line-clamped",
+	);
+	await teardown(view);
+});
+
+/*
+ * U2: arrowing off the Skills tab must leave focus on the tab it landed on. Skill
+ * mode mounts no composer, so activating Teams mounts one, and the composer's
+ * mount-focus claim used to take the caret from the focused tab. The composer is
+ * only enabled (and so only claims focus) with these two capabilities - without
+ * them the case is a false negative - so the case asserts the composer IS there
+ * (a boolean control) before asserting focus stayed on the tab.
+ */
+test("leaving the Skills tab by keyboard keeps focus on the tab, not the composer", async () => {
+	const view = await mount("/agents?kind=skill", {
+		features: { ...WITH_SKILLS, agents_config: 1, session_interrupt: 1 },
+		skills: { skills: FIVE },
+	});
+	assert.ok(
+		await settle(() => q(view.container, '[data-testid="skills-tab"]')),
+	);
+	const teams = q(view.container, '[data-testid="teams-tab"]');
+	await act(async () => {
+		teams.focus();
+	});
+	await settle(() => false, 400);
+	assert.equal(
+		q(view.container, '[data-testid="teams-tab"]').getAttribute("data-state"),
+		"active",
+		"focusing the tab activated it (Radix automatic activation)",
+	);
+	assert.equal(
+		document.activeElement === q(view.container, '[data-testid="teams-tab"]'),
+		true,
+		"focus stayed on the tab",
+	);
+	await teardown(view);
+});
+
+test("opening a skill at a wide width keeps focus on its row; closing returns it there", async () => {
 	const view = await mount("/agents?kind=skill", {
 		skills: (request) =>
 			request.name
@@ -893,13 +1175,13 @@ test("closing a skill returns focus to its row; opening moves it to the heading"
 	assert.ok(
 		await settle(() => q(view.container, '[data-testid="skill-detail"] h2')),
 	);
-	assert.ok(
-		await settle(
-			() =>
-				document.activeElement ===
-				q(view.container, '[data-testid="skill-detail"] h2'),
-		),
-		"opening focuses the heading",
+	// WIDE (the harness's matchMedia answers "not narrow"): the row stays on screen,
+	// so focus STAYS on it and arrow-browsing continues (UX U3).
+	await settle(() => false, 150);
+	assert.equal(
+		document.activeElement === rowOf(view.container, "d-local"),
+		true,
+		"wide: focus stays on the row",
 	);
 	// Close through the page's own Back control (the narrow-width route; Escape is the same intent).
 	const back = [...view.container.querySelectorAll("button")].find(
@@ -1377,9 +1659,11 @@ test("details: an inlined body, and a subscribed-not-installed skill with no SKI
 		text(q(pane, '[data-testid="skill-no-body"]')),
 		/subscribed but not installed/,
 	);
-	assert.ok(
-		q(pane, '[data-testid="skill-not-installed"]'),
-		"the badge says subscribed, not installed",
+	// D5: the hub sentence already says it, so the badge must NOT repeat it.
+	assert.equal(
+		q(pane, '[data-testid="skill-not-installed"]') === null,
+		true,
+		"no duplicate badge beside the hub sentence",
 	);
 	assert.match(
 		text(q(pane, '[data-testid="skill-hub-state"]')),

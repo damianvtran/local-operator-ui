@@ -110,7 +110,18 @@ export function stateSentence(
 	);
 }
 
-export function SkillMarkChip({ mark }: { mark: HubMark | null }) {
+export function SkillMarkChip({
+	mark,
+	className,
+}: {
+	mark: HubMark | null;
+	/**
+	 * Display override for a caller that sets the chip INLINE inside a line that
+	 * truncates as one run (the Agents Skills roster's second line). The Hub's
+	 * cards pass nothing and keep the flex chip they always had.
+	 */
+	className?: string;
+}) {
 	useI18nLocale();
 	if (!mark) return null;
 	return (
@@ -119,6 +130,7 @@ export function SkillMarkChip({ mark }: { mark: HubMark | null }) {
 			className={cn(
 				"flex shrink-0 items-center gap-1 text-meta",
 				MARK_INK[mark.kind],
+				className,
 			)}
 		>
 			<HubStateIcon mark={mark} />

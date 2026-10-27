@@ -207,34 +207,53 @@ export function SkillsRoster({
 								}
 							}}
 						>
+							{/*
+							 * LINE ONE IS THE NAME AND THE SOURCE WORD, exactly as in the Agents
+							 * roster, and nothing else (design D1 / UX U1). The update mark used
+							 * to sit here between them: it and the source word are `shrink-0`, so
+							 * a 30-character mark left the name 0 px wide - the one row a reader
+							 * most needs to identify was the one that lost its name.
+							 */}
 							<span className="flex w-full items-center gap-2">
 								<span className="min-w-0 truncate text-body-sm text-ink">
 									{card.name}
 								</span>
-								<SkillMarkChip mark={mark} />
 								<span
-									className="ms-auto shrink-0 text-meta text-ink-dim"
+									className="ms-auto max-w-[45%] shrink-0 truncate text-meta text-ink-dim"
 									data-testid="skill-row-source"
 								>
 									{skillSourceWord(card.source)}
 								</span>
 							</span>
-							<span className="flex min-h-lh w-full items-baseline text-meta text-ink-muted">
+							{/*
+							 * LINE TWO LEADS WITH THE MARK, then the hub sentence, then the
+							 * description - the way "Proactive ·" leads an agent's second line.
+							 * The mark is NOT `shrink-0` here: the whole line is one flex run that
+							 * truncates at its end, so nothing on it can push past the row.
+							 */}
+							<span
+								className="block min-h-lh w-full min-w-0 truncate text-meta text-ink-muted"
+								data-testid="skill-row-line2"
+							>
+								{mark ? (
+									<span data-testid="skill-row-mark">
+										<SkillMarkChip
+											mark={mark}
+											className="inline-flex align-middle"
+										/>
+										<span className="text-ink-dim"> · </span>
+									</span>
+								) : null}
 								{sentence ? (
-									<span
-										className="me-1 shrink-0"
-										data-testid="skill-row-hub-state"
-									>
+									<span data-testid="skill-row-hub-state">
 										<span className="text-ink">{sentence}</span>
-										<span className="text-ink-dim"> ·</span>
+										<span className="text-ink-dim"> · </span>
 									</span>
 								) : null}
 								{card.description ? (
-									<span className="min-w-0 flex-1 truncate">
-										{card.description}
-									</span>
+									card.description
 								) : (
-									<span className="min-w-0 flex-1 truncate text-ink-dim">
+									<span className="text-ink-dim">
 										{t("ui.agents.detail.no_description")}
 									</span>
 								)}
@@ -293,6 +312,32 @@ export function SkillsRosterBody({
 	);
 }
 
+/**
+ * KEEP KEYBOARD FOCUS ON RETRY (UX U5, focus part only). A failed read with no
+ * cached data renders the error pane; pressing Retry clears the error and the pane
+ * (and the focused button in it) unmounts, so focus fell to <body> and a failure
+ * that returned left the keyboard user nowhere. This remembers that Retry was
+ * pressed and, when the error pane is back, puts focus on its Retry button again.
+ * A success is left alone: the content that replaces the pane is not a button.
+ */
+export function useRetryFocus(failed: boolean) {
+	const pressed = useRef(false);
+	const holder = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!failed || !pressed.current) return;
+		pressed.current = false;
+		requestAnimationFrame(() =>
+			holder.current?.querySelector<HTMLElement>("button")?.focus(),
+		);
+	}, [failed]);
+	return {
+		holder,
+		onPress: () => {
+			pressed.current = true;
+		},
+	};
+}
+
 /* ---------------------------------------------------------------- details --- */
 
 /** A byte count: exact words under a kilobyte, the shared formatter above. */
@@ -330,6 +375,7 @@ export function SkillDetail({
 }) {
 	useI18nLocale();
 	const headingRef = useRef<HTMLHeadingElement>(null);
+	const retryFocus = useRetryFocus(Boolean(detail.error));
 	/*
 	 * FOCUS FOLLOWS THE OPEN (QA round 1 Q3 / review R6). Below 1000 px the roster
 	 * is `display:none` while a skill is open, so the row that was pressed LEAVES
@@ -343,11 +389,16 @@ export function SkillDetail({
 	 */
 	useEffect(() => {
 		const active = document.activeElement;
-		const homeless =
-			!active ||
-			active === document.body ||
-			Boolean(active.closest("[data-skills-roster]"));
-		if (homeless) requestAnimationFrame(() => headingRef.current?.focus());
+		const homeless = !active || active === document.body;
+		// AT WIDE WIDTHS THE ROW STAYS ON SCREEN, so focus stays on it: the reader's
+		// next act is ArrowDown to the next skill (master-detail: the list keeps
+		// focus, the detail follows), and grabbing the heading made every skill cost
+		// a Shift+Tab (UX U3 / QA Q7). Below 1000 px the row has left the layout and
+		// focus would fall to <body>, so the heading takes it - the same width the
+		// page's narrow rule uses. Escape is a no-op at wide widths, as on Agents.
+		const rowGone = window.matchMedia("(max-width: 999px)").matches;
+		if (homeless || (rowGone && active?.closest("[data-skills-roster]")))
+			requestAnimationFrame(() => headingRef.current?.focus());
 	}, []);
 	const wire = detail.data?.skill_detail ?? null;
 	// The list row paints the header at once; a deep link falls back to the
@@ -356,15 +407,20 @@ export function SkillDetail({
 
 	if (detail.error)
 		return (
-			<PaneError
-				title={t("ui.agents.skills.error.detail_title", { name })}
-				what={detail.error.message}
-				meaning={t("ui.agents.skills.error.detail_meaning")}
-				onRetry={onRetry}
-				retrying={detail.isFetching}
-				retryLabel={t("ui.common.actions.retry")}
-				retryingLabel={t("ui.agents.skills.retrying")}
-			/>
+			<div ref={retryFocus.holder}>
+				<PaneError
+					title={t("ui.agents.skills.error.detail_title", { name })}
+					what={detail.error.message}
+					meaning={t("ui.agents.skills.error.detail_meaning")}
+					onRetry={() => {
+						retryFocus.onPress();
+						onRetry();
+					}}
+					retrying={detail.isFetching}
+					retryLabel={t("ui.common.actions.retry")}
+					retryingLabel={t("ui.agents.skills.retrying")}
+				/>
+			</div>
 		);
 	if (!card) return detail.isLoading ? <DetailSkeleton /> : null;
 
@@ -398,7 +454,10 @@ export function SkillDetail({
 							.join(" · ")}
 					</p>
 					<SkillMarkChip mark={mark} />
-					{!card.installed ? (
+					{/* The hub sentence in the line above already says "Subscribed - not
+					    installed" for a hub row (design D5); the badge is for the not-installed
+					    row that has no hub sentence to say it. */}
+					{!card.installed && !sentence ? (
 						<Badge variant="neutral" data-testid="skill-not-installed">
 							{t("ui.agents.skills.detail.installed_not")}
 						</Badge>
@@ -422,12 +481,6 @@ export function SkillDetail({
 					</div>
 				) : body !== null ? (
 					<>
-						<ReadBlock
-							text={body}
-							mono
-							showAllLabel={t("ui.agents.skills.detail.show_all")}
-							showLessLabel={t("ui.agents.skills.detail.show_less")}
-						/>
 						{wire?.body_truncated ? (
 							<p
 								className="text-meta text-warning"
@@ -438,6 +491,12 @@ export function SkillDetail({
 								})}
 							</p>
 						) : null}
+						<ReadBlock
+							text={body}
+							mono
+							showAllLabel={t("ui.agents.skills.detail.show_all")}
+							showLessLabel={t("ui.agents.skills.detail.show_less")}
+						/>
 					</>
 				) : (
 					<p
@@ -490,14 +549,20 @@ export function SkillDetail({
 													path: file.path,
 												})}
 											>
-												<pre className="whitespace-pre-wrap break-words font-mono text-meta text-ink">
-													{file.preview}
-												</pre>
+												{/* The same clamp-and-expand block the SKILL.md body uses, so an
+												    opened preview cannot push the rest of the pane below the fold
+												    (design D6). */}
 												{file.preview_truncated ? (
 													<p className="text-meta text-ink-muted">
 														{t("ui.agents.skills.detail.preview_truncated")}
 													</p>
 												) : null}
+												<ReadBlock
+													text={file.preview}
+													mono
+													showAllLabel={t("ui.agents.skills.detail.show_all")}
+													showLessLabel={t("ui.agents.skills.detail.show_less")}
+												/>
 											</section>
 										) : (
 											<p className="text-meta text-ink-muted">

@@ -112,6 +112,7 @@ import {
 	SkillDetail,
 	SkillsRosterBody,
 	skillSourceWord,
+	useRetryFocus,
 } from "./skills-library";
 import { TeamDetail, memberCountLabel } from "./team-detail";
 
@@ -253,6 +254,7 @@ export function AgentsPage() {
 		linksEnabled: desktopFeatureEnabled(capabilities.data, "hub_links"),
 		updatesEnabled: desktopFeatureEnabled(capabilities.data, "hub_updates"),
 	});
+	const listRetryFocus = useRetryFocus(Boolean(skills.library.error));
 	const skillDetail = useSkillDetail(
 		skillMode ? params.get("name") : null,
 		skillsOffered,
@@ -380,7 +382,12 @@ export function AgentsPage() {
 	 * the filter is a linear pass over a few dozen rows.
 	 */
 	const skillRows = filterSkills(skills.cards, search, skillSourceWord);
-	const selected = name ?? null;
+	/*
+	 * A `kind=skill&name=` link on a core WITHOUT `skill_library` is the Agents tab
+	 * (the capability gate), and the name in it is not an agent: treating it as the
+	 * open record left the pane on a skeleton forever (review round 2, M1).
+	 */
+	const selected = wantsSkills && !skillsOffered ? null : (name ?? null);
 	/*
 	 * THE CLASS SWITCH'S FAILURE SENTENCE LIVES HERE, at the level that survives
 	 * its own refresh (UX round 2, U1). The control re-reads on every failure and
@@ -660,11 +667,15 @@ export function AgentsPage() {
 		if (!skillMode || selected || !before) return;
 		// Matched by comparing the id rather than interpolating the name into a
 		// selector: a skill name may contain a dot, which a selector reads as a class.
-		requestAnimationFrame(() =>
+		requestAnimationFrame(() => {
+			// ONLY IF FOCUS HAS NOWHERE ELSE TO BE (review round 2, M2): a browser Back
+			// while the reader types in the search box must not take their caret.
+			const active = document.activeElement;
+			if (active && active !== document.body) return;
 			[...document.querySelectorAll<HTMLElement>("[data-testid]")]
 				.find((node) => node.dataset.testid === `skill-row-${before}`)
-				?.focus(),
-		);
+				?.focus();
+		});
 	}, [skillMode, selected]);
 
 	const refreshAll = () => {
@@ -767,6 +778,7 @@ export function AgentsPage() {
 								icon={<Bot className="size-3.5" />}
 								label={t("ui.agents.pages.tab.agents")}
 								count={profiles.data?.length ?? null}
+								compact={skillsOffered}
 							/>
 							<BrowseTab
 								value="team"
@@ -774,6 +786,7 @@ export function AgentsPage() {
 								icon={<Users className="size-3.5" />}
 								label={t("ui.agents.pages.tab.teams")}
 								count={teams.data?.length ?? null}
+								compact={skillsOffered}
 							/>
 							{/*
 							 * THE THIRD TAB, OFFERED ONLY WHEN CORE SAYS IT CAN FILL IT
@@ -787,6 +800,7 @@ export function AgentsPage() {
 									value="skill"
 									testId="skills-tab"
 									noPanel
+									compact
 									icon={<Sparkles className="size-3.5" />}
 									label={t("ui.agents.skills.tab")}
 									count={skills.library.data ? skills.cards.length : null}
@@ -1059,20 +1073,25 @@ export function AgentsPage() {
 									 * definitions' and shares none of their dirty-draft state.
 									 */
 									skills.library.error ? (
-										<PaneError
-											title={t("ui.agents.skills.error.title")}
-											what={
-												skills.library.error instanceof Error &&
-												skills.library.error.message
-													? skills.library.error.message
-													: t("ui.agents.skills.error.what_fallback")
-											}
-											meaning={t("ui.agents.skills.error.meaning")}
-											onRetry={() => void skills.library.refetch()}
-											retrying={skills.library.isFetching}
-											retryLabel={t("ui.common.actions.retry")}
-											retryingLabel={t("ui.agents.skills.retrying")}
-										/>
+										<div ref={listRetryFocus.holder}>
+											<PaneError
+												title={t("ui.agents.skills.error.title")}
+												what={
+													skills.library.error instanceof Error &&
+													skills.library.error.message
+														? skills.library.error.message
+														: t("ui.agents.skills.error.what_fallback")
+												}
+												meaning={t("ui.agents.skills.error.meaning")}
+												onRetry={() => {
+													listRetryFocus.onPress();
+													void skills.library.refetch();
+												}}
+												retrying={skills.library.isFetching}
+												retryLabel={t("ui.common.actions.retry")}
+												retryingLabel={t("ui.agents.skills.retrying")}
+											/>
+										</div>
 									) : selected ? (
 										<SkillDetail
 											key={selected}
@@ -1085,7 +1104,12 @@ export function AgentsPage() {
 											detail={skillDetail}
 											onRetry={() => void skillDetail.refetch()}
 										/>
-									) : (
+									) : skills.library.isLoading ||
+										skills.cards.length === 0 ? null : (
+										/*
+										 * NOTHING while the list is loading or empty (design D4): "Select
+										 * a skill" invites a choice among rows that are not there.
+										 */
 										<p
 											className="text-body-sm text-ink-muted"
 											data-testid="skills-select-prompt"
@@ -1356,25 +1380,25 @@ export function AgentsPage() {
 }
 
 /**
- * One tab of the browse strip: icon, label and count, sized to a share of the
- * 256 px list column.
+ * One tab of the browse strip: icon, label and count in the 256 px list column.
  *
- * WHY IT SHRINKS, AND IN WHAT ORDER. The strip is a fixed-width inline-flex, and a
- * flex item's `min-width: auto` is its content, so three triggers whose content
- * summed to 327 px could not shrink: the third painted UNDER the content pane and
- * its centre was unclickable (QA round 1, Q1 - in every language, English
- * included). `min-w-0` lets the trigger take only its share and the LABEL
- * truncates (its full text stays in `title` and in the accessible name).
+ * TWO STRIPS, ONE COMPONENT. With two tabs (a core without `skill_library`) each is
+ * an equal half (`flex-1`, 122 px) and carries icon + label + count exactly as it
+ * always did. With three (`compact`) there is no room for icon or count, and an
+ * equal third (80 px) clipped the longest label ("Habilida…", "Compét…") while its
+ * neighbours had spare room (design D3). So the compact tabs size to their LABEL
+ * (`flex-auto`) and short labels hand their slack to the long one; the pill keeps
+ * 8 px of inline padding. The icon is not drawn and the count is `sr-only` - never
+ * `display:none` - so the accessible name and `title` keep label AND count.
  *
- * The count and the icon go first, not the label: each trigger is a size
- * container, and below 7 rem (three tabs: 80 px; two tabs: 122 px, so the old
- * two-tab strip is unchanged) the icon is hidden and the count is visually hidden
- * with `sr-only`, NOT `display:none` - so the accessible name keeps both the
- * full label and the count at every width. A container query rather than a
- * viewport one because the column is a fixed 256 px at every window size: what
- * varies is how many tabs share it, and only the trigger knows its own share.
- * Padding steps down with it (8 px, back to 12 px at the roomy size) so a short
- * label gets all the room there is.
+ * WHY A PROP AND NOT A CONTAINER QUERY (the first remediation used one). A
+ * `container-type: inline-size` element has no intrinsic inline size, so under
+ * `flex-auto` it fell back to an equal share and defeated the sizing above; which
+ * layout applies is a fact about HOW MANY TABS there are, which the page knows.
+ *
+ * `min-w-0` + a truncating label remain as the last resort: the strip must never
+ * overflow into the content pane (QA Q1), whatever a locale's word is. Widths are
+ * a function of the labels only, so switching tabs moves nothing.
  */
 function BrowseTab({
 	value,
@@ -1382,6 +1406,7 @@ function BrowseTab({
 	icon,
 	label,
 	count,
+	compact,
 	noPanel = false,
 }: {
 	value: string;
@@ -1389,6 +1414,7 @@ function BrowseTab({
 	icon: ReactNode;
 	label: string;
 	count: number | null;
+	compact: boolean;
 	/**
 	 * Radix points every trigger's `aria-controls` at a `TabsContent` this page does
 	 * not render (the Agents and Teams tabs already do; that is pre-existing and left
@@ -1403,21 +1429,22 @@ function BrowseTab({
 			data-testid={testId}
 			{...(noPanel ? { "aria-controls": undefined } : {})}
 			title={count === null ? label : `${label} ${count}`}
-			// `px-0`: a container query styles DESCENDANTS only, so the step in padding
-			// lives on the inner span below, not on the element that is the container.
-			className="@container/tab min-w-0 flex-1 px-0"
+			className={cn("min-w-0", compact ? "flex-auto px-2" : "flex-1")}
 		>
-			<span className="flex min-w-0 max-w-full items-center justify-center gap-1.5 px-2 @min-[7rem]/tab:px-3">
-				<span className="flex @max-[7rem]/tab:hidden">{icon}</span>
-				<span className="min-w-0 truncate" data-testid={`${testId}-label`}>
-					{label}
-				</span>
-				{count === null ? null : (
-					<span className="@max-[7rem]/tab:sr-only min-w-[2ch] font-normal text-ink-dim tabular-nums">
-						{count}
-					</span>
-				)}
+			{compact ? null : icon}
+			<span className="min-w-0 truncate" data-testid={`${testId}-label`}>
+				{label}
 			</span>
+			{count === null ? null : (
+				<span
+					className={cn(
+						"min-w-[2ch] font-normal text-ink-dim tabular-nums",
+						compact && "sr-only",
+					)}
+				>
+					{count}
+				</span>
+			)}
 		</TabsTrigger>
 	);
 }
