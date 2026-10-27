@@ -748,19 +748,53 @@ test("the dialog's title and submit label describe the selected target", () => {
 	const dialog = read(
 		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
 	);
+	/*
+	 * KEYED COPY MOVED THE SENTENCE, NOT THE CLAIM. The claim is that an
+	 * organization selection names the ORGANIZATION rather than "the Agent hub",
+	 * and it now has two independent ways to regress: the org arm can call the
+	 * public key, or the English the org key carries can stop naming a
+	 * destination. A pin on the rendered sentence therefore has to read BOTH —
+	 * the arm's key choice here, and the catalogue entry's English below — or a
+	 * swap on either side passes unobserved.
+	 */
 	assert.match(
 		dialog,
-		/published\.orgName\s*\?\s*`Published "\$\{agentName\}" to \$\{published\.orgName\}`/,
+		/published\.orgName\s*\)\s*\{\s*return\s+t\(\s*"ui\.agents\.upload\.title\.published_org",\s*\{\s*name:\s*agentName,\s*destination:\s*published\.orgName,/,
 		"the receipt names the organization, not the hub",
 	);
 	assert.match(
 		dialog,
-		/targetIsOrg\s*\?\s*`Publish "\$\{agentName\}" to \$\{targetDisplayName\}\?`/,
+		/targetIsOrg\s*\)\s*\{\s*return\s+t\(\s*"ui\.agents\.upload\.title\.publish_org",\s*\{\s*name:\s*agentName,\s*destination:\s*targetDisplayName,/,
 		"the pre-submit title names the organization",
 	);
+	const uploadCopy = JSON.parse(
+		read("src/i18n/catalogues/en/ui.agents.upload.json"),
+	);
+	for (const key of [
+		"ui.agents.upload.title.published_org",
+		"ui.agents.upload.title.publish_org",
+	]) {
+		assert.match(
+			uploadCopy[key],
+			/\{destination\}/,
+			`${key} still puts the organization's name in the sentence`,
+		);
+		assert.doesNotMatch(
+			uploadCopy[key],
+			/Agent Hub/i,
+			`${key} names the organization, not the hub`,
+		);
+	}
+	/*
+	 * ANCHORED ON THE TERNARY'S COLON, NOT ON THE EXPRESSION ALONE. The WHY comment
+	 * above the control quotes `listing && !targetIsOrg` verbatim, so a bare
+	 * /listing && !targetIsOrg/ is satisfied by that prose: deleting the guard from
+	 * the code left this pin green (measured, mutation c). The colon before it
+	 * exists only in the code.
+	 */
 	assert.match(
 		dialog,
-		/listing && !targetIsOrg/,
+		/:\s*listing && !targetIsOrg\s*\?/,
 		"`Update listing` is only true of a PUBLIC listing, because an org publication is always new",
 	);
 });
