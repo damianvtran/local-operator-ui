@@ -535,16 +535,18 @@ test("people render with self, paused and inert states at the rail's rhythm", ()
 	assert.match(html, /Damian \(you\)/);
 	assert.doesNotMatch(html, /Message Damian/);
 	// A reachable person's row is their DM; a paused one says so on the row.
+	// The row keeps its own "Message {name}" name: since 2026-10-26 it anchors
+	// the profile card without being its trigger (a click opens the DM).
 	assert.match(
 		html,
 		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
 		),
 	);
 	assert.match(
 		html,
 		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Cy" })}"`,
+			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Cy" })}"`,
 		),
 	);
 	assert.match(html, />Paused</);
@@ -572,7 +574,7 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 	assert.match(
 		ready,
 		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
 		),
 	);
 	assert.doesNotMatch(ready, new RegExp(`data-conversation-id="${dm.id}"`));
@@ -587,7 +589,7 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 		assert.match(
 			html,
 			new RegExp(
-				`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+				`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
 			),
 			`${listState} list keeps the row`,
 		);
@@ -655,7 +657,7 @@ test("surface F withholds writes but still opens an existing DM", () => {
 	assert.match(
 		withDm,
 		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
 		),
 	);
 });

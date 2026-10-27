@@ -2010,6 +2010,10 @@ function upsert(state: TranscriptState, record: TranscriptRecord) {
 					...(current.sourceAdmissionAnchor && !record.sourceAdmissionAnchor
 						? { sourceAdmissionAnchor: current.sourceAdmissionAnchor }
 						: {}),
+					// The continuation stamp is the row's for the same reason.
+					...(current.sourcePrecedes && !record.sourcePrecedes
+						? { sourcePrecedes: current.sourcePrecedes }
+						: {}),
 					...(current.journalGeneration
 						? {
 								journalGeneration:
@@ -4326,7 +4330,24 @@ export function applyPeerSourcePayload(
 			if (!current) continue;
 			let record = durableRecord(entry, current);
 			if (!record) continue;
-			record = { ...record, sourceEntryId: entry.id };
+			/*
+			 * The continuation stamp is the ROW's, not the read's (the rule
+			 * `applyHistoryPage` keeps for a re-read row): a placed page row that
+			 * lost it here leaves an unanswered page-mate (one the owner's index
+			 * lacks) with nothing of its own page to rank beside, and it drops to
+			 * the boundary of the row the page was loaded in front of (QA round 3
+			 * Q8, `y0 y2 y3 y1 t4 t5`). `durableRecord` never sets one, so the
+			 * carry cannot overwrite a fresher stamp. The arrival anchor is not
+			 * carried here, which is unchanged from v0.44.0 and matches a page
+			 * re-read (`applyHistoryPage` carries only this stamp).
+			 */
+			record = {
+				...record,
+				sourceEntryId: entry.id,
+				...(current.sourcePrecedes
+					? { sourcePrecedes: current.sourcePrecedes }
+					: {}),
+			};
 			if (peerOrdinal(entry.journal_seq)) {
 				record = admitPeerBodyRecord(
 					record,
@@ -4520,6 +4541,20 @@ export function applyHistoryPage(
 	 * unchanged.
 	 */
 	const clearedView = options.keepPaging === true && state.viewEpoch > 0;
+	/*
+	 * The row a continuation's new rows are stamped as loaded IN FRONT OF
+	 * (`JournalPosition.sourcePrecedes`): the cursor row the page was read
+	 * before, when it is a record, else the row at the top of the transcript.
+	 * The cursor can be a journal entry that is no record (a silent custom, a
+	 * `tool:<callId>` result - see the cursor rules below). Every row of the
+	 * page is older than either one. When the chain reaches no coordinate, the
+	 * rankers fall back to the oldest placed row, or to the anchor's slot in the
+	 * unplaced suffix (review round 1, R1-m1).
+	 */
+	const continuationTop =
+		options.pagedBefore !== undefined && state.index.has(options.pagedBefore)
+			? options.pagedBefore
+			: state.records[0]?.id;
 	const incoming: TranscriptRecord[] = [];
 	for (const entry of page.entries) {
 		if (clearedView && !isCompactionOutcome(entry, state.clearedAt)) continue;
@@ -4540,6 +4575,23 @@ export function applyHistoryPage(
 		let record = durableRecord(entry, previous);
 		if (record && state.journalMode)
 			record = { ...record, sourceEntryId: entry.id };
+		/*
+		 * A CONTINUATION'S ROWS ARE OLDER THAN EVERYTHING THE READER HOLDS (see
+		 * `JournalPosition.sourcePrecedes`): a new row is stamped as loaded in front
+		 * of the row at the top of the transcript, so a page that arrives without
+		 * coordinates still ranks above the tail instead of being admitted behind
+		 * it. A row this view already holds keeps the stamp it had - a rebuild from
+		 * a later read must not drop it, any more than `upsert` drops an arrival.
+		 */
+		if (record && state.journalMode) {
+			const precedes =
+				previous?.sourcePrecedes ??
+				(options.pagedBefore !== undefined && !previous
+					? continuationTop
+					: undefined);
+			if (precedes !== undefined && record.sourcePrecedes !== precedes)
+				record = { ...record, sourcePrecedes: precedes };
+		}
 		if (record && peerAdmits && peerOrdinal(entry.journal_seq)) {
 			/*
 			 * THE ADMISSION ITSELF: this row's body was read under the accepted
