@@ -478,7 +478,18 @@ export const LanguageDialog: FC = () => {
 	const refused = answered && !enabled;
 	const capabilitiesFault =
 		capabilities.error && !capabilities.data ? capabilities.error : null;
-	const loadError = capabilitiesFault ?? settingsQuery.error;
+	/*
+	 * A failed REFETCH is not a failed LOAD - the rule the block above states,
+	 * applied to the readback (QA round 1, Q1). `saveImmediateLanguageValue`
+	 * re-reads this same query key, so a readback that fails after a confirmed
+	 * write leaves `settingsQuery.error` set while the answer it was checking is
+	 * still in `data`. Reading that as `loadError` replaced the picker with "the
+	 * server is not responding" - false for a server that had just answered the
+	 * write - and hid the readback warning that says what actually happened. The
+	 * General row draws the same line: its `coldError` requires `!settings.data`.
+	 */
+	const loadError =
+		capabilitiesFault ?? (settingsQuery.data ? null : settingsQuery.error);
 	const pendingCapabilities = !answered && !loadError;
 	const { sentence: pairingSentence, remedy } = pairingCardCopy(
 		pairingCause ?? null,

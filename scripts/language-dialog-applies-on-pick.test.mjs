@@ -90,6 +90,12 @@ let backendLanguage = "en";
 let editDelayMs = 0;
 /** A rejection message, or null for an accepted write. */
 let editFailure = null;
+/**
+ * A refusal message on the readback `settings.list`, or null for the ordinary
+ * answer. QA round 1 (Q1): the WRITE can land while the READBACK fails, and the
+ * dialog must not read that as a server that never answered at all.
+ */
+let readbackFailure = null;
 
 const settingsPayload = () => {
 	const payload = JSON.parse(readFileSync(FIXTURE, "utf8"));
@@ -113,6 +119,12 @@ const desktopRequest = async (request) => {
 				},
 			};
 		case "settings.list":
+			if (readbackFailure) {
+				return {
+					status: 503,
+					body: { status: 503, detail: { message: readbackFailure } },
+				};
+			}
 			return { status: 200, body: { result: settingsPayload() } };
 		case "settings.edit": {
 			if (editDelayMs > 0) {
@@ -185,7 +197,7 @@ const bundle = await build({
 			'export { LanguageDialog } from "./src/renderer/src/features/settings/components/language-dialog";',
 			'export { useLanguageDialogStore } from "./src/renderer/src/features/settings/components/language-dialog-store";',
 			'export { useI18nLocaleSync } from "./src/renderer/src/shared/i18n/locale-sync";',
-			'export { currentLocale } from "./src/renderer/src/shared/i18n";',
+			'export { currentLocale, t } from "./src/renderer/src/shared/i18n";',
 			'export { errorCalls } from "./scripts/language-live-toast-stub.mjs";',
 			"export { createElement };",
 		].join("\n"),
@@ -257,6 +269,7 @@ const {
 	useLanguageDialogStore,
 	useI18nLocaleSync,
 	currentLocale,
+	t: translate,
 	errorCalls,
 } = await import(bundlePath.href);
 
@@ -283,6 +296,7 @@ const mount = async (t) => {
 	backendLanguage = "en";
 	editDelayMs = 0;
 	editFailure = null;
+	readbackFailure = null;
 	errorCalls.length = 0;
 	const client = new QueryClient({
 		defaultOptions: {
@@ -493,6 +507,66 @@ test(
 			currentLocale(),
 			"en",
 			"the interface stays on the old locale",
+		);
+	},
+);
+
+/*
+ * A CONFIRMED WRITE WITH A FAILED READBACK IS NOT A DEAD SERVER (QA round 1, Q1).
+ *
+ * The write answers 200 and the locale moves to fr; the readback `settings.list`
+ * then fails. Both facts hold at once, and the dialog used to collapse them into
+ * the cold-load screen - "Your settings could not be loaded." - which is false:
+ * the server answered, and what it answered was written. The picker vanished
+ * with that screen, so the one surface that can say the write was confirmed but
+ * the state unverified (the row's readback warning) was unreachable.
+ *
+ * The assertion is deliberately a PAIR: the readback sentence present AND the
+ * load-failure sentence absent. Either alone also passes on a screen that says
+ * both, or on one that says neither.
+ */
+test(
+	"a confirmed write with a failed readback warns about the readback, not a dead server",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		await mount(t);
+		await openDialog();
+		readbackFailure = "the readback GET failed";
+		await pick("fr");
+		/*
+		 * Both sentences are read from the catalogue rather than typed here: the
+		 * confirmed write has already moved the interface to fr, so the dialog's
+		 * copy under test is French. A hardcoded English sentence would pass by
+		 * finding nothing, in the locale this very case produces.
+		 */
+		const readbackCopy = translate(
+			"ui.settings.language.general.readback_error",
+		);
+		const loadFailureCopy = translate(
+			"ui.settings.configuration.language_dialog.your_settings_could_not_be_loaded",
+		);
+		await settle(
+			() => document.body.textContent.includes(readbackCopy),
+			"the readback's own warning must be the first screen after a confirmed write",
+		);
+		assert.equal(
+			document.body.textContent.includes(loadFailureCopy),
+			false,
+			"a failed readback is not a failed load: the server answered the write",
+		);
+		const picker = document.querySelector("[data-test-language-picker]");
+		assert.ok(picker, "the picker the write used stays on screen");
+		assert.equal(
+			picker.disabled,
+			true,
+			"an unverified readback must refuse a further pick",
+		);
+		assert.equal(edits().length, 1, "the confirmed write is not re-issued");
+		assert.equal(backendLanguage, "fr", "the write landed");
+		assert.equal(
+			currentLocale(),
+			"fr",
+			"the interface follows the confirmed write",
 		);
 	},
 );
