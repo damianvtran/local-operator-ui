@@ -14,7 +14,9 @@ const {
 	capture,
 	reapLiveBoots,
 } = rendererDriverApi;
-const [BACKEND, SESSION, OUT, LABEL] = process.argv.slice(2);
+// SESSIONS is seed.mjs's output, `<id>:<name>,...`: one launch photographs every
+// session in turn (round 1, F4), so the host pays for one app boot, not four.
+const [BACKEND, SESSIONS, OUT, LABEL] = process.argv.slice(2);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 prepareDriverContext({ apiUrl: BACKEND });
 const handle = await launchApp({
@@ -22,7 +24,7 @@ const handle = await launchApp({
 	logName: `app-${LABEL}.log`,
 	tag: LABEL,
 });
-const report = { label: LABEL, session: SESSION };
+const report = { label: LABEL, sessions: {} };
 let code = 0;
 try {
 	for (let i = 0; i < 240; i += 1) {
@@ -58,7 +60,6 @@ try {
 		)
 		.catch(() => null);
 	await verb(cdp, "setTheme", "localOperatorDark");
-	await verb(cdp, "navigate", `/chat/${SESSION}`);
 	const until = async (expr, ms = 45_000) => {
 		const t0 = Date.now();
 		for (;;) {
@@ -68,23 +69,46 @@ try {
 			await sleep(300);
 		}
 	};
-	report.painted = Boolean(
-		await until(
-			`(document.querySelector('[role="log"]')?.innerText || '').includes('Files are in') ? true : null`,
-		),
-	);
-	await sleep(2500); // the evidence probe for the introducer directory lands one round trip after paint
+	const readItems = `(() => { const log = document.querySelector('[role="log"]'); if (!log) return null; return JSON.stringify([...log.querySelectorAll('li')].map((li) => ({ text: li.textContent.trim(), linked: Boolean(li.querySelector('a')), anchor: li.querySelector('a')?.textContent ?? null, href: li.querySelector('a')?.getAttribute('href') ?? null }))); })()`;
 	const readLinks = `(() => { const log = document.querySelector('[role="log"]'); if (!log) return null; return [...log.querySelectorAll('a')].map((a) => ({ text: a.textContent.trim(), href: a.getAttribute('href') })); })()`;
-	const readItems = `(() => { const log = document.querySelector('[role="log"]'); if (!log) return null; return [...log.querySelectorAll('li')].map((li) => ({ text: li.textContent.trim(), linked: Boolean(li.querySelector('a')), href: li.querySelector('a')?.getAttribute('href') ?? null })); })()`;
-	report.transcriptLinks = await cdp.evaluate(readLinks);
-	report.listItems = await cdp.evaluate(readItems);
-	await cdp.evaluate(
-		`(() => { const li = document.querySelector('[role="log"] li'); if (li) li.scrollIntoView({ block: "center" }); return true; })()`,
-	);
-	await sleep(600);
-	report.transcriptFrame = (
-		await capture(cdp, `transcript-${LABEL}-dark`)
-	).path;
+	let first = null;
+	for (const entry of SESSIONS.split(",")) {
+		const [session, name] = entry.split(":");
+		first ??= session;
+		await verb(cdp, "navigate", `/chat/${session}`);
+		const painted = Boolean(
+			await until(
+				`document.querySelector('[role="log"] li') && location.hash.includes('${session}') ? true : null`,
+			),
+		);
+		/*
+		 * A listed name links only after the disk answers, one probe round trip
+		 * after paint - so read until the list stops changing (six identical reads
+		 * 500 ms apart), rather than trusting one fixed sleep.
+		 */
+		let last = "";
+		let stable = 0;
+		for (let i = 0; i < 60 && stable < 6; i += 1) {
+			const now = (await cdp.evaluate(readItems).catch(() => "")) ?? "";
+			stable = now === last ? stable + 1 : 0;
+			last = now;
+			await sleep(500);
+		}
+		await cdp.evaluate(
+			`(() => { const li = document.querySelector('[role="log"] li'); if (li) li.scrollIntoView({ block: "center" }); return true; })()`,
+		);
+		await sleep(600);
+		report.sessions[name] = {
+			session,
+			painted,
+			listItems: JSON.parse(last || "null"),
+			transcriptLinks: await cdp.evaluate(readLinks),
+			transcriptFrame: (await capture(cdp, `transcript-${LABEL}-${name}-dark`))
+				.path,
+		};
+	}
+	await verb(cdp, "navigate", `/chat/${first}`);
+	await sleep(1500);
 	await until(
 		`document.querySelector('[data-tour-tag="open-canvas-button"]') ? true : null`,
 	);
