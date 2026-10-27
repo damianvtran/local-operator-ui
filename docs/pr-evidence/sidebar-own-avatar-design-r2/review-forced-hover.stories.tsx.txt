@@ -1,0 +1,23 @@
+// Review rig only (untracked, design review round 2 of PR #1437): the browser
+// tool cannot hold a pointer over the row, so this paints the row's own
+// `hover:bg-row-hover` rule as a forced state over the PR's real stories.
+import type { Meta, StoryObj } from "@storybook/react";
+import * as S from "../../src/renderer/src/shared/components/navigation/user-profile-sidebar.stories";
+
+const Forced = ({ children }: { children: React.ReactNode }) => (
+	<>
+		<style>{`button.hover\\:bg-row-hover{background-color:var(--color-row-hover)!important}`}</style>
+		{children}
+	</>
+);
+const meta: Meta = { title: "Review/PR1437 hover", parameters: { layout: "fullscreen" } };
+export default meta;
+type Story = StoryObj;
+const wrap = (s: { args?: object; render?: (a: never) => React.ReactNode }): Story => ({
+	render: () => <Forced>{s.render?.(s.args as never)}</Forced>,
+});
+export const Photo = wrap(S.AccountPhoto as never);
+export const Collapsed = wrap(S.AccountPhotoCollapsed as never);
+export const Transparent = wrap(S.AccountPhotoTransparent as never);
+export const Loading = wrap(S.AccountPhotoLoading as never);
+export const SignedOut = wrap(S.AccountSignedOut as never);

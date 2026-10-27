@@ -1,0 +1,25 @@
+# Static server for the built Storybook, with a control file that shapes ONLY
+# the portrait fixture's response: delay it, or drop the first connection (so
+# fetch rejects -> the hook's failed path -> M1's one retry). Review rig only.
+import functools, http.server, json, os, socketserver, sys, time
+CTL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ctl.json")
+state = {"dropped": 0}
+class H(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+    def do_GET(self):
+        if "storybook-avatar-portrait" in self.path:
+            try: ctl = json.load(open(CTL))
+            except Exception: ctl = {}
+            with open(CTL + ".log", "a") as f: f.write(f"{time.time():.3f} {ctl}\n")
+            if ctl.get("drop", 0) > state["dropped"]:
+                state["dropped"] += 1
+                self.close_connection = True
+                self.connection.close(); return
+            time.sleep(ctl.get("delay", 0))
+        return super().do_GET()
+class S(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True; request_queue_size = 128
+S(("127.0.0.1", 6437), functools.partial(H, directory=sys.argv[1])).serve_forever()
