@@ -31,8 +31,21 @@ for (const name of [
 	"HTMLInputElement",
 	"HTMLTextAreaElement",
 	"HTMLButtonElement",
+	/* Radix menus read these globals while opening and positioning. */
+	"MouseEvent",
+	"KeyboardEvent",
+	"FocusEvent",
 ])
 	globalThis[name] = dom.window[name];
+globalThis.ResizeObserver ??= class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
+globalThis.DOMRect ??= dom.window.DOMRect;
+dom.window.Element.prototype.hasPointerCapture ??= () => false;
+dom.window.Element.prototype.setPointerCapture ??= () => {};
+dom.window.Element.prototype.releasePointerCapture ??= () => {};
 globalThis.getComputedStyle = dom.window.getComputedStyle;
 dom.window.HTMLElement.prototype.scrollIntoView = () => {};
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -56,6 +69,7 @@ const bundle = await build({
  export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api';
  export {desktopRequestSchema, desktopEndpoint} from './src/shared/desktop-contract';
  export function AuthPrincipal(){const auth=useRadientUserQuery();const nav=useTeamBridgeNavItem(true);return React.createElement(React.Fragment,null,React.createElement('output',{'data-auth-principal':auth.user?.account?.id??'unresolved'},auth.user?.account?.id??'unresolved'),React.createElement('output',{'data-nav-attention':true},String(nav?.attention??0)));}
+ export {recorded as toasts} from 'sonner';
  export {TeamBridgePage} from './src/renderer/src/features/team-bridge/team-bridge-page';
  export {teamBridgeKeys} from './src/renderer/src/features/team-bridge/use-team-bridge';
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
@@ -108,13 +122,46 @@ const bundle = await build({
 						};
 					});
 				}
+				// sonner is the toast manager's one edge. The shipped manager (dedupe,
+				// transport-text rewrite) runs for real and lands here, so a test can read
+				// exactly what a person would be shown.
+				b.onResolve({ filter: /^sonner$/ }, () => ({
+					path: "sonner-recorder",
+					namespace: "fixture",
+				}));
+				// OPT-IN (TEAM_BRIDGE_PLAIN_MENUS=1): Radix's dropdown costs ~330 s to OPEN
+				// under jsdom (floating-ui + aria-hidden walks over the whole page), so a
+				// suite that must click through a menu swaps in a plain-DOM one with the same
+				// parts. It is an edge like the transport: the page, its handlers and the
+				// dialogs they open are the shipped ones; only the popup's positioning is
+				// replaced. The real menu is exercised in a browser (Storybook captures).
+				if (process.env.TEAM_BRIDGE_PLAIN_MENUS === "1")
+					b.onResolve({ filter: /components\/ui\/dropdown-menu$/ }, () => ({
+						path: "plain-dropdown-menu",
+						namespace: "fixture",
+					}));
 				b.onResolve({ filter: SIDEBAR }, () => ({
 					path: "sidebar",
 					namespace: "fixture",
 				}));
-				b.onLoad({ filter: ANY, namespace: "fixture" }, () => ({
+				b.onLoad({ filter: ANY, namespace: "fixture" }, ({ path }) => ({
 					loader: "js",
-					contents: `export const rowCurrent=${role};`,
+					contents:
+						path === "sonner-recorder"
+							? `export const recorded=[];
+const push=(m)=>{recorded.push(String(m));return recorded.length;};
+export const toast=Object.assign((m)=>push(m),{error:push,success:push,info:push,warning:push,loading:push,dismiss:()=>{},message:push});
+export const Toaster=()=>null;`
+							: path === "plain-dropdown-menu"
+								? `import React from "react";
+const Ctx=React.createContext(null);
+export const DropdownMenu=({children})=>{const [open,setOpen]=React.useState(false);return React.createElement(Ctx.Provider,{value:{open,setOpen}},children);};
+export const DropdownMenuTrigger=({children,asChild})=>{const c=React.useContext(Ctx);const child=React.Children.only(children);return React.cloneElement(child,{onClick:(e)=>{child.props.onClick?.(e);c.setOpen(!c.open);}});};
+export const DropdownMenuContent=({children})=>{const c=React.useContext(Ctx);return c.open?React.createElement("div",{role:"menu"},children):null;};
+export const DropdownMenuItem=({children,onSelect,onClick})=>{const c=React.useContext(Ctx);return React.createElement("div",{role:"menuitem",onClick:(e)=>{onClick?.(e);onSelect?.(e);c.setOpen(false);}},children);};
+const Pass=({children})=>React.createElement(React.Fragment,null,children);
+export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass,DropdownMenuRadioGroup=Pass,DropdownMenuSubTrigger=Pass,DropdownMenuSubContent=Pass,DropdownMenuCheckboxItem=DropdownMenuItem,DropdownMenuRadioItem=DropdownMenuItem,DropdownMenuLabel=Pass,DropdownMenuSeparator=()=>null,DropdownMenuShortcut=Pass;`
+								: `export const rowCurrent=${role};`,
 				}));
 			},
 		},
@@ -168,7 +215,7 @@ function deferred() {
 	});
 	return { promise, resolve };
 }
-async function mount({ empty = false } = {}) {
+async function mount({ empty = false, lifecycle = null } = {}) {
 	localStorage.clear();
 	const fixture = {
 		account: "acct_a",
@@ -187,6 +234,18 @@ async function mount({ empty = false } = {}) {
 		statusGate: null,
 		historyGate: null,
 		refuseHistory: new Set(),
+		/* ARCHIVE SCENARIO (review round 1, U1). `lifecycle` rows, when set, REPLACE the
+		   single group the other suites use: the live list answers the open ones and
+		   the archived list (`status=archived`) the archived ones, exactly as agent-server
+		   does. `historyByConversation` answers per-id history; `notAMember` names ids
+		   whose history is refused with the server's typed 403. `lifecycleCalls` records
+		   every archive/unarchive/delete the page makes. */
+		lifecycle,
+		historyByConversation: new Map(),
+		notAMember: new Set(),
+		lifecycleCalls: [],
+		deleteFailure: null,
+		lifecycleFailure: null,
 	};
 	window.api = {
 		desktop: {
@@ -269,11 +328,41 @@ async function mount({ empty = false } = {}) {
 							error: null,
 						});
 					case "team_bridge.conversations.list":
+						if (fixture.lifecycle) {
+							const wanted = request.status ?? "open";
+							return reply({
+								conversations: fixture.lifecycle.filter(
+									(row) => row.status === wanted,
+								),
+							});
+						}
 						return reply({
 							conversations: fixture.empty
 								? []
 								: [{ ...conversation(), tenant_id: tenant }],
 						});
+					case "team_bridge.conversations.lifecycle": {
+						fixture.lifecycleCalls.push({
+							op: request.action,
+							id: request.conversation_id,
+						});
+						if (fixture.lifecycleFailure)
+							return fixture.lifecycleFailure(request);
+						for (const row of fixture.lifecycle ?? [])
+							if (row.id === request.conversation_id)
+								row.status = request.action === "archive" ? "archived" : "open";
+						return reply({ id: request.conversation_id });
+					}
+					case "team_bridge.conversations.delete":
+						fixture.lifecycleCalls.push({
+							op: request.op,
+							id: request.conversation_id,
+						});
+						if (fixture.deleteFailure) return fixture.deleteFailure(request);
+						fixture.lifecycle = (fixture.lifecycle ?? []).filter(
+							(row) => row.id !== request.conversation_id,
+						);
+						return reply({ deleted: true });
 					case "team_bridge.directory":
 						return reply({
 							members: ["Peer", "Other peer"].map((name, index) => ({
@@ -292,6 +381,22 @@ async function mount({ empty = false } = {}) {
 						});
 					case "team_bridge.messages.list":
 						if (fixture.historyGate) await fixture.historyGate.promise;
+						if (fixture.notAMember.has(request.conversation_id))
+							return {
+								status: 403,
+								body: {
+									detail: { code: "not_a_member", text: "Not a member" },
+								},
+							};
+						if (fixture.historyByConversation.has(request.conversation_id)) {
+							fixture.calls.push({ historyFor: request.conversation_id });
+							return reply({
+								messages: fixture.historyByConversation.get(
+									request.conversation_id,
+								),
+								has_more: false,
+							});
+						}
 						if (fixture.refuseHistory.has(owner))
 							return {
 								status: 404,
@@ -356,7 +461,7 @@ async function mount({ empty = false } = {}) {
 					ui.MemoryRouter,
 					{
 						initialEntries: [
-							empty
+							empty || lifecycle
 								? "/team-bridge?tenant=org_shared"
 								: "/team-bridge?tenant=org_shared&conversation=bcv_shared",
 						],
@@ -400,7 +505,7 @@ async function mount({ empty = false } = {}) {
 	await act(async () => render());
 	await until(
 		() =>
-			empty
+			empty || lifecycle
 				? host.textContent.includes("Peer")
 				: host.querySelector("textarea"),
 		"production container ready",

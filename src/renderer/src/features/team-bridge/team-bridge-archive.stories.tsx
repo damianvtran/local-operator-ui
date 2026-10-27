@@ -144,6 +144,7 @@ const meta = {
 		onDelete: async () => {},
 		onOpenArchived: () => {},
 		onRetryArchived: () => {},
+		onLoadMoreArchived: () => {},
 		archivedConversations: [proof1, proof2],
 		archivedState: "ready",
 	},
@@ -225,7 +226,61 @@ export const DeletePermanentlyConfirm: Story = {
 	},
 };
 
-/** The archive was refused after the optimistic removal: the row is back, with the reason. */
-export const ArchiveRefused: Story = {
-	args: { archiveFailed: true },
+/** Design round 1, D5: an archived channel with no messages says so, and does not invite a post. */
+export const ArchivedChannelEmpty: Story = {
+	args: {
+		archivedConversations: [proof1, proof2],
+		target: { type: "conversation", id: proof1.id },
+		messages: [],
+	},
+};
+
+/** Server S4: an administrator who never joined can manage the channel but not read it. */
+export const ArchivedChannelAdministratorNotMember: Story = {
+	args: {
+		archivedConversations: [{ ...proof1, member: false }, proof2],
+		target: { type: "conversation", id: proof1.id },
+		messages: [],
+		messageState: "forbidden",
+	},
+};
+
+/** U4: more archived pages exist, so the view offers Load more. */
+export const ArchivedViewLoadMore: Story = {
+	args: { initialQuickView: "archived", archivedHasMore: true },
+};
+
+export const ArchivedViewLoadingMore: Story = {
+	args: {
+		initialQuickView: "archived",
+		archivedHasMore: true,
+		archivedLoadingMore: true,
+	},
+};
+
+export const ArchivedViewLoadMoreFailed: Story = {
+	args: {
+		initialQuickView: "archived",
+		archivedHasMore: true,
+		archivedLoadMoreFailed: true,
+	},
+};
+
+const longName = channel({
+	id: "bcv_proof_long",
+	name: "release-proof-0.84.1-qa-tenant-northwind-regression-sweep-final",
+	status: "archived",
+	archived_at: archivedAt,
+	archived_by: "acct_ada",
+	archived_by_label: "Ada Lovelace",
+});
+
+/** Design round 1, D4: a long name is its own selectable, break-anywhere span in the confirm. */
+export const DeletePermanentlyLongName: Story = {
+	args: {
+		archivedConversations: [longName, proof2],
+		target: { type: "conversation", id: longName.id },
+		messages: [],
+		initialDialog: { kind: "delete", conversationId: longName.id },
+	},
 };

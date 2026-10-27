@@ -117,6 +117,8 @@ export const teamBridgeConversationListSchema = z
 		conversations: z.array(teamBridgeConversationSchema),
 		has_more: z.boolean().optional(),
 		next_before: z.string().optional(),
+		/* The lossless compound position (both scopes); `next_before` is legacy and can drop ties. */
+		next_cursor: z.string().optional(),
 	})
 	.passthrough();
 export type TeamBridgeConversationList = z.infer<

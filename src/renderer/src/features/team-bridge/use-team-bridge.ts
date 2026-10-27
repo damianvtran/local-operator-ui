@@ -38,6 +38,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { useRef } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversationList,
@@ -51,6 +52,8 @@ import type {
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
+	isNotAMemberRefusal,
+	withAppendedPage,
 	withConversationStatus,
 	withNotificationPreference,
 	withoutConversation,
@@ -159,6 +162,45 @@ export function useArchivedTeamBridgeConversations(
 	});
 }
 
+/**
+ * "Load more" for the Archived channels view (review round 1, U4).
+ *
+ * WHY NOT `useInfiniteQuery`. The archive, unarchive and delete writes patch every
+ * owned conversation page with `withoutConversation` / `withConversationStatus`,
+ * which take the single-page shape. An infinite query's `{pages}` shape would make
+ * each of those crash or silently skip the archived list, so the first page stays an
+ * ordinary query and this appends the next page into the same cache entry.
+ *
+ * KNOWN, DELIBERATE LIMIT: any refetch of the archived key (every lifecycle write
+ * invalidates it) returns to the first page and "Load more" reappears. Re-walking
+ * every loaded page on each refetch would spend one request per page to preserve a
+ * scroll position nobody asked to keep; the first page is the server's newest.
+ */
+export function useLoadMoreArchivedTeamBridgeConversations(
+	scope: TeamBridgeScope,
+	accountId?: string,
+): UseMutationResult<TeamBridgeConversationList, Error, void> {
+	const client = useQueryClient();
+	const key = teamBridgeKeys.archivedConversations(
+		scope,
+		accountId ?? "unresolved-owner",
+	);
+	return useMutation({
+		mutationFn: async () => {
+			const current = client.getQueryData<TeamBridgeConversationList>(key);
+			const cursor = current?.next_cursor;
+			if (!current || !cursor) return current ?? { conversations: [] };
+			const next = await readForBridgeOwner(client, accountId, () =>
+				TeamBridgeApi.listConversations(readScope(scope), "archived", cursor),
+			);
+			return withAppendedPage(current, next);
+		},
+		onSuccess: (page) => {
+			client.setQueryData(key, page);
+		},
+	});
+}
+
 export function useTeamBridgeMessages(
 	conversationId: string | null,
 	tenantId?: string,
@@ -178,12 +220,17 @@ export function useTeamBridgeMessages(
 			),
 		enabled: enabled && Boolean(accountId) && Boolean(conversationId),
 		staleTime: 5_000,
+		/* `not_a_member` is a definite answer (an administrator opening an archived
+		   channel they never joined), not a blip: retrying it only delays the state
+		   that explains it, and polling it every eight seconds only repeats the refusal. */
+		retry: (failures, error) => !isNotAMemberRefusal(error) && failures < 3,
 		/* A conversation needs to feel live: without a poll an incoming message
 		   never appears until the reader clicks away. Eight seconds is Slack's
 		   order of immediacy for a background tab without an events stream;
 		   `refetchIntervalInBackground` stays false so a hidden window does not
 		   poll this. */
-		refetchInterval: 8_000,
+		refetchInterval: (query) =>
+			isNotAMemberRefusal(query.state.error) ? false : 8_000,
 		refetchOnWindowFocus: true,
 	});
 }
@@ -876,13 +923,24 @@ export function useUnarchiveTeamBridgeConversation(): UseMutationResult<
  * gone. The dialog stays open and pending until the server answers, and the row
  * leaves the cache only on success.
  *
- * A `conversation_not_found` answer is SUCCESS. The server's delete is crash-safe
- * and idempotent: a retry after a dropped response finds the row already gone and
- * says so, which is exactly the outcome the person asked for.
+ * A `conversation_not_found` answer is NOT, by itself, success (review round 1, U2).
+ * The server answers the same opaque 404 to a caller who has lost authority (a
+ * demoted admin, a removed member, a channel that was never theirs) as to one who
+ * retries a delete that already finished, so treating every 404 as "deleted" told a
+ * person their data was wiped when it was not. It is success ONLY for a retry of a
+ * delete whose earlier attempt was inconclusive (a 503, which the server uses for a
+ * large channel it is still draining, or a transport failure): then the erasure
+ * carried on server-side and "gone" is the expected end. Any other 404 is surfaced
+ * as an error and the lists refetch (`onSettled`), so a channel that really is gone
+ * disappears from the Archived view and one that is not stays visible.
+ *
+ * `inconclusive` is owned by the hook (a ref), not this options object, because
+ * `useMutation` receives a freshly built options object each render.
  */
 export function deleteMutationOptions(
 	client: QueryClient,
 	isCurrent?: () => boolean,
+	inconclusive: Set<string> = new Set(),
 ): UseMutationOptions<unknown, Error, TeamBridgeLifecycleMutationVariables> {
 	const { accountId, epoch } = observedRadientAuthority(client);
 	const current = () =>
@@ -902,8 +960,19 @@ export function deleteMutationOptions(
 					accountId,
 				);
 			} catch (error) {
-				if ((error as { code?: string }).code === "conversation_not_found")
-					return { deleted: true };
+				const failure = error as { code?: string; status?: number | null };
+				if (failure.code === "conversation_not_found") {
+					if (inconclusive.delete(conversationId)) return { deleted: true };
+					throw error;
+				}
+				// No status = the request never produced an answer; 5xx = the server
+				// is mid-drain. Either way the erasure may have carried on.
+				if (
+					failure.status === null ||
+					failure.status === undefined ||
+					failure.status >= 500
+				)
+					inconclusive.add(conversationId);
 				throw error;
 			}
 		},
@@ -933,5 +1002,8 @@ export function useDeleteTeamBridgeConversation(): UseMutationResult<
 > {
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
-	return useMutation(deleteMutationOptions(client, owner.isCurrent));
+	const inconclusive = useRef(new Set<string>());
+	return useMutation(
+		deleteMutationOptions(client, owner.isCurrent, inconclusive.current),
+	);
 }

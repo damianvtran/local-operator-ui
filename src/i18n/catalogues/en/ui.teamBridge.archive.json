@@ -22,5 +22,11 @@
 	"ui.teamBridge.archive.list.loading": "Loading archived channels",
 	"ui.teamBridge.archive.list.error": "Couldn’t load archived channels.",
 	"ui.teamBridge.archive.list.meta_by_on": "Archived by {name} · {date}",
-	"ui.teamBridge.archive.list.meta_on": "Archived {date}"
+	"ui.teamBridge.archive.list.meta_on": "Archived {date}",
+	"ui.teamBridge.archive.thread.empty": "No messages in this channel.",
+	"ui.teamBridge.archive.thread.forbidden": "You can manage this archived channel, but you were never a member, so its messages aren’t available to you.",
+	"ui.teamBridge.archive.delete.not_found": "This channel wasn’t found. It may already be deleted, or you may no longer be allowed to delete it. Refresh the list to check.",
+	"ui.teamBridge.archive.list.load_more": "Load more",
+	"ui.teamBridge.archive.list.load_more_error": "Couldn’t load more archived channels.",
+	"ui.teamBridge.archive.toast.archive_failed": "Couldn’t archive #{name}. It is back in your sidebar."
 }

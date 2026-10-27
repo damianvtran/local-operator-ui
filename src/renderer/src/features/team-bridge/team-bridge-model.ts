@@ -280,6 +280,116 @@ export function withConversationStatus(
 }
 
 /**
+ * Everything a selection may resolve against: the live list, then the archived
+ * rows that are not already in it.
+ *
+ * ONE RULE FOR THE VIEW AND THE CONTAINER (review round 1, U1/D1). The view
+ * resolved a selected id against live + archived while the container resolved
+ * the SAME id against live only, so an archived channel opened from the Archived
+ * channels view had no `selected` in the container, its history read stayed
+ * disabled, and the banner sat over "No messages yet. Say hello." Both now call
+ * this, so the two cannot drift apart again.
+ */
+export function selectableConversations(
+	live: readonly TeamBridgeConversation[],
+	archived: readonly TeamBridgeConversation[],
+): TeamBridgeConversation[] {
+	const known = new Set(live.map((row) => row.id));
+	return [...live, ...archived.filter((row) => !known.has(row.id))];
+}
+
+/**
+ * The rows the Archived channels view lists: archived CHANNELS only (review round 1, U3).
+ *
+ * The server's archived page holds every archived conversation the caller is a member of
+ * (an owner-archived group, a DM archived when its last human left) plus an
+ * administrator's archived tenant channels. The view is named "Archived channels", draws a
+ * `#` and offers Unarchive and Delete, none of which exist for a DM or a group in this UI
+ * (`canManageArchivedConversation` is channels only), so listing them would show a
+ * "#"-iconed "Untitled conversation" the reader can open but do nothing with. They are
+ * filtered here rather than rendered with another icon: there is no action to put beside
+ * them. A row whose status has since flipped to open (an unarchive the cache already
+ * applied, before the refetch) is dropped for the same reason.
+ */
+export function archivedChannelRows(
+	rows: readonly TeamBridgeConversation[],
+): TeamBridgeConversation[] {
+	return rows.filter(
+		(row) => row.kind === "channel" && row.status === "archived",
+	);
+}
+
+/**
+ * Whether a history read was refused because the caller is not a member.
+ *
+ * agent-server answers `not_a_member` for an organization owner/admin reading an archived
+ * tenant channel they never joined (agent-server#219, S4): they may archive, unarchive and
+ * delete it from the Archived view but are not given its messages. That is a state to state
+ * ("you can manage this but not read it"), not a load failure to retry.
+ */
+export function isNotAMemberRefusal(error: unknown): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		(error as { code?: unknown }).code === "not_a_member"
+	);
+}
+
+/**
+ * Where the reader lands after a channel leaves their rail (review round 1, D2).
+ *
+ * Archiving or deleting removes the row the page was showing; leaving the target
+ * on it painted "Untitled conversation" with a dead composer. The landing is the
+ * NEXT channel in the order the rail draws (the one now under the cursor), else
+ * the one before it, else the default the page lands on at first load (#humans,
+ * then the first remaining row), else nothing (the empty state).
+ *
+ * `rows` are the sidebar rows (open conversations only) and may still contain the
+ * removed one: the optimistic cache write and this call are not ordered, so the
+ * function never lands on `removedId` itself.
+ */
+export function landingAfterRemoval(
+	rows: readonly TeamBridgeConversation[],
+	removedId: string,
+): TeamBridgeTarget | null {
+	const channels = railSections(rows).channels;
+	const at = channels.findIndex((row) => row.id === removedId);
+	const neighbour =
+		at >= 0
+			? (channels[at + 1] ?? channels[at - 1])
+			: (channels.find((row) => row.builtin === "humans") ?? channels[0]);
+	const remaining = rows.filter((row) => row.id !== removedId);
+	const next =
+		neighbour && neighbour.id !== removedId
+			? neighbour
+			: (remaining.find((row) => row.builtin === "humans") ?? remaining[0]);
+	return next ? { type: "conversation", id: next.id } : null;
+}
+
+/**
+ * The cached archived page with the next page appended (U4, "Load more").
+ *
+ * The result keeps the single-page shape on purpose: the archive, unarchive and
+ * delete writes patch every owned page with `withoutConversation` and
+ * `withConversationStatus`, and an infinite-query shape would crash them. Rows
+ * already present are skipped (a refetch between pages can repeat a boundary
+ * row) and the paging fields come from the NEW page, so `has_more` ends the walk.
+ */
+export function withAppendedPage(
+	current: TeamBridgeConversationList,
+	next: TeamBridgeConversationList,
+): TeamBridgeConversationList {
+	const known = new Set(current.conversations.map((row) => row.id));
+	return {
+		...next,
+		conversations: [
+			...current.conversations,
+			...next.conversations.filter((row) => !known.has(row.id)),
+		],
+	};
+}
+
+/**
  * Whether a refused notification write belongs to the visible conversation.
  *
  * A write settles against the hook instance that started it, and the reader may

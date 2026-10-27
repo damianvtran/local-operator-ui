@@ -3461,8 +3461,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			scope: z.literal("account").optional(),
 			tenant_id: id.optional(),
 			limit: z.number().int().min(1).max(100).optional(),
-			/* The account page's opaque cursor; the tenant page uses `before`. */
-			cursor: z.string().min(1).max(64).optional(),
+			/*
+			 * The server's opaque compound position (base64 of version, tenant, id and
+			 * instant: ~190 characters), which the core route admits up to 512. A cap of
+			 * 64 refused every real cursor, so "Load more" on the Archived channels view
+			 * could never leave the renderer. `before` stays the legacy timestamp bound.
+			 */
+			cursor: z.string().min(1).max(512).optional(),
 			before: z.string().min(1).max(64).optional(),
 			/*
 			 * The lifecycle half (agent-server `status`). Omitted is the live list and

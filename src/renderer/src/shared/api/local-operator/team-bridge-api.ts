@@ -158,6 +158,8 @@ export const TeamBridgeApi = {
 	async listConversations(
 		scope: TeamBridgeReadScope,
 		status?: "archived",
+		/** The previous page's `next_cursor`: how the archived view pages ("Load more"). */
+		cursor?: string,
 	): Promise<TeamBridgeConversationList> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.list",
@@ -166,6 +168,7 @@ export const TeamBridgeApi = {
 				: { tenant_id: scope.tenantId }),
 			// Sent only when asked: the live list's request stays byte-identical.
 			...(status ? { status } : {}),
+			...(cursor ? { cursor } : {}),
 		});
 		const page = teamBridgeConversationListSchema.parse(answer);
 		/*

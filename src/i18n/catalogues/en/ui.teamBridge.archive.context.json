@@ -182,5 +182,49 @@
 			"date": "date"
 		},
 		"note": "Used when the archiver is unknown."
+	},
+	"ui.teamBridge.archive.thread.empty": {
+		"role": "empty-state line in a message pane",
+		"tone": "plain, neutral",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Shown INSTEAD of the 'say hello' prompt when an archived channel has no messages: nobody can post, so do not invite anyone to. A plain fact, no apology."
+	},
+	"ui.teamBridge.archive.thread.forbidden": {
+		"role": "empty-state explanation in a message pane",
+		"tone": "plain, honest, calm",
+		"length": "One or two sentences.",
+		"placeholders": {},
+		"note": "Shown to an organization owner/admin who opened an archived channel they never joined. They may archive, unarchive and delete it but the server does not give them its messages. Not an error and not something to retry."
+	},
+	"ui.teamBridge.archive.delete.not_found": {
+		"role": "inline error under a destructive dialog",
+		"tone": "plain, careful, complete",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "The server answers one identical 'not found' to two situations: the channel is already deleted, or the person may no longer delete it. This sentence must NOT claim either: do not say 'deleted' as a fact, do not say 'refused'. Suggest refreshing the list to see which."
+	},
+	"ui.teamBridge.archive.list.load_more": {
+		"role": "button label",
+		"tone": "plain, action",
+		"length": "One or two words.",
+		"placeholders": {},
+		"note": "Fetches the next page of archived channels."
+	},
+	"ui.teamBridge.archive.list.load_more_error": {
+		"role": "inline error beside a button",
+		"tone": "plain",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Shown when fetching the next page of archived channels failed; the button stays for a retry."
+	},
+	"ui.teamBridge.archive.toast.archive_failed": {
+		"role": "toast message",
+		"tone": "plain, reassuring",
+		"length": "One short sentence.",
+		"placeholders": {
+			"name": "name"
+		},
+		"note": "{name} is the channel's name; keep {name} verbatim. The channel was removed from the sidebar optimistically and has been put back because the server refused the archive. Say both: it failed, and it is still there."
 	}
 }

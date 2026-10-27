@@ -12,7 +12,7 @@ import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Archive, Hash } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useId, useState } from "react";
+import { Fragment, useEffect, useId, useState } from "react";
 import type { TeamBridgeConversation } from "../../../../shared/team-bridge-contract";
 import { canManageArchivedConversation } from "./team-bridge-model";
 
@@ -40,6 +40,12 @@ export function archivedWhen(
 		locale,
 	);
 }
+
+/**
+ * A character no translation contains, handed to the message in place of the name so the
+ * rendered sentence can be split around it. Private-use, never typed, never localized.
+ */
+const NAME_SLOT = "\uE000";
 
 /** The channel name as the person reads it in the rail (without a leading #). */
 export function archiveChannelName(
@@ -111,10 +117,16 @@ export const TeamBridgeDeleteDialog: FC<{
 	open: boolean;
 	name: string;
 	pending?: boolean;
-	error?: boolean;
+	/**
+	 * `error`: the delete did not go through. `gone`: the server answered its opaque
+	 * "not found", which means EITHER the channel is already gone OR the caller may no
+	 * longer delete it; the two are indistinguishable from here, so the sentence says
+	 * neither "deleted" nor "refused" (review round 1, U2).
+	 */
+	error?: "error" | "gone" | null;
 	onConfirm: () => void;
 	onClose: () => void;
-}> = ({ open, name, pending = false, error = false, onConfirm, onClose }) => {
+}> = ({ open, name, pending = false, error = null, onConfirm, onClose }) => {
 	useI18nLocale();
 	const fieldId = useId();
 	const [typed, setTyped] = useState("");
@@ -123,6 +135,9 @@ export const TeamBridgeDeleteDialog: FC<{
 		if (open) setTyped("");
 	}, [open]);
 	const matches = typed.trim().replace(/^#/, "") === name;
+	const confirmLabelParts = t("ui.teamBridge.archive.delete.confirm_label", {
+		name: NAME_SLOT,
+	}).split(NAME_SLOT);
 	return (
 		<Dialog
 			open={open}
@@ -141,7 +156,21 @@ export const TeamBridgeDeleteDialog: FC<{
 					htmlFor={fieldId}
 					className="flex flex-col gap-1 text-[13px] text-ink-muted"
 				>
-					{t("ui.teamBridge.archive.delete.confirm_label", { name })}
+					{/* DESIGN ROUND 1, D4: the name is the thing being typed, so it is its own
+					    selectable, heavier span that breaks anywhere (`break-all`) and cannot
+					    be mistaken for the label's wording when a long name wraps. The existing
+					    sentence is split AT the placeholder rather than rebuilt from two keys,
+					    so every locale keeps its own word order. */}
+					{confirmLabelParts.map((part, index) => (
+						<Fragment key={`${index}:${part}`}>
+							{index > 0 && (
+								<span className="select-all break-all font-medium text-ink">
+									{name}
+								</span>
+							)}
+							{part}
+						</Fragment>
+					))}
 					<Input
 						id={fieldId}
 						value={typed}
@@ -154,7 +183,9 @@ export const TeamBridgeDeleteDialog: FC<{
 				</label>
 				{error && (
 					<p role="alert" className="text-[13px] text-danger">
-						{t("ui.teamBridge.archive.delete.error")}
+						{error === "gone"
+							? t("ui.teamBridge.archive.delete.not_found")
+							: t("ui.teamBridge.archive.delete.error")}
 					</p>
 				)}
 				<DialogFooter>
@@ -273,7 +304,22 @@ export const TeamBridgeArchivedChannelsView: FC<{
 	organizationName?: (conversation: TeamBridgeConversation) => string | null;
 	onOpen: (conversation: TeamBridgeConversation) => void;
 	onRetry?: () => void;
-}> = ({ state, conversations, organizationName, onOpen, onRetry }) => {
+	/** More archived pages exist; "Load more" appends the next (review round 1, U4). */
+	hasMore?: boolean;
+	loadingMore?: boolean;
+	loadMoreFailed?: boolean;
+	onLoadMore?: () => void;
+}> = ({
+	state,
+	conversations,
+	organizationName,
+	onOpen,
+	onRetry,
+	hasMore = false,
+	loadingMore = false,
+	loadMoreFailed = false,
+	onLoadMore,
+}) => {
 	const locale = useI18nLocale();
 	return (
 		<section
@@ -343,6 +389,25 @@ export const TeamBridgeArchivedChannelsView: FC<{
 						);
 					})}
 				</ul>
+			)}
+			{state === "ready" && (hasMore || loadMoreFailed) && onLoadMore && (
+				<div className="flex flex-col items-start gap-1 pt-1">
+					{loadMoreFailed && (
+						<p role="alert" className="text-[12px] text-danger">
+							{t("ui.teamBridge.archive.list.load_more_error")}
+						</p>
+					)}
+					<Button
+						size="sm"
+						variant="ghost"
+						disabled={loadingMore}
+						onClick={onLoadMore}
+					>
+						{loadingMore
+							? t("ui.teamBridge.archive.list.loading")
+							: t("ui.teamBridge.archive.list.load_more")}
+					</Button>
+				</div>
 			)}
 		</section>
 	);

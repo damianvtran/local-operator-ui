@@ -65,7 +65,7 @@ const bundle = await build({
 			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { TeamBridgeArchivedChannelsView, TeamBridgeArchivedBanner } from "./src/renderer/src/features/team-bridge/team-bridge-archive";
 			export { archiveMutationOptions, unarchiveMutationOptions, deleteMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
-			export { canArchiveConversation, canManageArchivedConversation, withoutConversation, withConversationStatus } from "./src/renderer/src/features/team-bridge/team-bridge-model";
+			export { canArchiveConversation, canManageArchivedConversation, withoutConversation, withConversationStatus, selectableConversations, landingAfterRemoval, withAppendedPage, archivedChannelRows, isNotAMemberRefusal } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-archive.mjs",
@@ -452,4 +452,97 @@ test("the archived view states loading, error, empty and populated", () => {
 	const populated = render({ state: "ready", conversations: [archivedRow()] });
 	assert.match(populated, /release-proof-0\.84\.1/);
 	assert.match(populated, /Archived by Ada Lovelace/);
+});
+
+/*
+ * REVIEW ROUND 1: the pure rules behind U1, D2, U3, U4 and S4, pinned without a
+ * mount (the container behaviour itself is `team-bridge-archive-container.test.mjs`).
+ */
+const row = (id, patch = {}) => ({
+	id,
+	tenant_id: "tnt_1",
+	kind: "channel",
+	name: id,
+	status: "open",
+	...patch,
+});
+
+test("selectableConversations is live then archived, without duplicating a row", () => {
+	const live = [row("a"), row("b")];
+	const archived = [
+		row("b", { status: "archived" }),
+		row("c", { status: "archived" }),
+	];
+	assert.deepEqual(
+		ui.selectableConversations(live, archived).map((r) => [r.id, r.status]),
+		[
+			["a", "open"],
+			["b", "open"],
+			["c", "archived"],
+		],
+	);
+});
+
+test("landingAfterRemoval picks the next channel, else the previous, else the default, else nothing", () => {
+	const rows = [
+		row("humans", { builtin: "humans" }),
+		row("a"),
+		row("b"),
+		row("c"),
+	];
+	assert.deepEqual(ui.landingAfterRemoval(rows, "b"), {
+		type: "conversation",
+		id: "c",
+	});
+	assert.deepEqual(ui.landingAfterRemoval(rows, "c"), {
+		type: "conversation",
+		id: "b",
+	});
+	// A removed id that is not in the rail lands on the default (#humans first).
+	assert.deepEqual(ui.landingAfterRemoval(rows, "gone"), {
+		type: "conversation",
+		id: "humans",
+	});
+	assert.deepEqual(ui.landingAfterRemoval([row("only")], "only"), null);
+	// Never lands on the removed row, even while the cache still holds it.
+	assert.notEqual(ui.landingAfterRemoval([row("x"), row("y")], "y")?.id, "y");
+});
+
+test("withAppendedPage keeps both pages, skips a repeated boundary row and takes the new paging", () => {
+	const first = {
+		conversations: [row("a"), row("b")],
+		has_more: true,
+		next_cursor: "c1",
+	};
+	const next = { conversations: [row("b"), row("c")], has_more: false };
+	const merged = ui.withAppendedPage(first, next);
+	assert.deepEqual(
+		merged.conversations.map((r) => r.id),
+		["a", "b", "c"],
+	);
+	assert.equal(merged.has_more, false);
+	assert.equal(merged.next_cursor, undefined);
+});
+
+test("archivedChannelRows keeps archived CHANNELS only", () => {
+	const rows = [
+		row("ch", { status: "archived" }),
+		row("dm", { status: "archived", kind: "dm" }),
+		row("grp", { status: "archived", kind: "group" }),
+		row("open", { status: "open" }),
+	];
+	assert.deepEqual(
+		ui.archivedChannelRows(rows).map((r) => r.id),
+		["ch"],
+	);
+});
+
+test("isNotAMemberRefusal reads the typed code and nothing looser", () => {
+	assert.equal(ui.isNotAMemberRefusal({ code: "not_a_member" }), true);
+	assert.equal(
+		ui.isNotAMemberRefusal({ code: "conversation_not_found" }),
+		false,
+	);
+	assert.equal(ui.isNotAMemberRefusal(new Error("not_a_member")), false);
+	assert.equal(ui.isNotAMemberRefusal(null), false);
 });
