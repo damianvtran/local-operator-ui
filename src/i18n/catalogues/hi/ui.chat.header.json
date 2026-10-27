@@ -10,5 +10,10 @@
 	"ui.chat.header.close_run_details": "रन का विवरण बंद करें",
 	"ui.chat.header.open_run_details": "रन का विवरण खोलें",
 	"ui.chat.header.new_chat": "नई चैट",
-	"ui.chat.header.new_chat_with": "{target} के साथ नई चैट"
+	"ui.chat.header.new_chat_with": "{target} के साथ नई चैट",
+	"ui.chat.header.archive_conversation": "बातचीत संग्रहित करें",
+	"ui.chat.header.cancel_rename": "नाम बदलना रद्द करें",
+	"ui.chat.header.rename_conversation": "बातचीत का नाम बदलें",
+	"ui.chat.header.restore_conversation": "बातचीत बहाल करें",
+	"ui.chat.header.saving_conversation_name": "बातचीत का नाम सहेजा जा रहा है"
 }

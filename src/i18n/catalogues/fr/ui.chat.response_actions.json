@@ -1,3 +1,7 @@
 {
-	"ui.chat.response_actions.label": "Actions de la réponse"
+	"ui.chat.response_actions.answer_label": "Actions de la réponse",
+	"ui.chat.response_actions.copied": "Copié",
+	"ui.chat.response_actions.copy": "Copier",
+	"ui.chat.response_actions.label": "Actions de la réponse",
+	"ui.chat.response_actions.yours_label": "Actions de votre message"
 }
