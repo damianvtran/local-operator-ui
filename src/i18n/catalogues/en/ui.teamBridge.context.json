@@ -927,6 +927,27 @@
 		"placeholders": {},
 		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
 	},
+	"ui.teamBridge.schedule.edit_failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message. Shown in the edit dialog when the server did not confirm the change for a reason other than a conflict. The author's edits stay in the dialog."
+	},
+	"ui.teamBridge.schedule.edit_conflict": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message. Another device (the same person elsewhere) changed this scheduled message while the dialog was open. The dialog now shows the newest server version, with this author's own changes re-applied where the other device did not change the same field. Ask them to review before confirming again."
+	},
+	"ui.teamBridge.schedule.edit_gone": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message. The message is no longer pending: it was cancelled or delivered (possibly from another device), so editing is impossible. The only action offered is Close; do not suggest retrying."
+	},
 	"ui.teamBridge.schedule.confirm_action": {
 		"role": "Scheduled messaging and intentional draft interface",
 		"tone": "Clear, calm, sentence case",

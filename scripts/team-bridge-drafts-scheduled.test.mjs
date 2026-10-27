@@ -1862,3 +1862,384 @@ test("D33: Escape returns focus to the control that opened the schedule dialog",
 		element.remove();
 	}
 });
+
+/*
+ * agent-server #223 QA r2, Q2-Q4: a stale schedule edit answers 409
+ * `invalid_transition` / `details.rule = "concurrent_edit"` (or 404 when the
+ * schedule moved or vanished). The dialog must never resend its stale draft as
+ * a full replacement. These drive the real list + row + dialog against a fake
+ * desktop transport whose "server" row another device moves, and assert on the
+ * PATCH that goes out and on the strings the user reads.
+ */
+const STALE_EDIT_409 = {
+	status: 409,
+	body: {
+		detail: {
+			code: "invalid_transition",
+			message: "This change is not allowed for this message.",
+			details: { rule: "concurrent_edit" },
+		},
+	},
+};
+const ATTACHMENT_404 = {
+	status: 404,
+	body: { detail: { code: "attachment_not_found", message: "not found" } },
+};
+const SCHEDULE_404 = {
+	status: 404,
+	body: { detail: { code: "not_found", message: "not found" } },
+};
+const CONFLICT_COPY =
+	"This message changed on another device. The latest version is shown with your changes kept where they don't clash. Review it and try again.";
+const GONE_COPY =
+	"This message was cancelled or has already been sent, so it can no longer be changed.";
+const image = (id) => ({
+	id,
+	mime: "image/png",
+	size: 10,
+	width: 1,
+	height: 1,
+	state: "reserved",
+});
+// Whole minutes, inside the hub's 1 min..120 d window, so the local input
+// round-trips exactly.
+const inMinutes = (minutes) =>
+	new Date(
+		Math.floor(Date.now() / 60_000) * 60_000 + minutes * 60_000,
+	).toISOString();
+
+async function mountScheduledEdit(initial, answer) {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const server = { rows: [initial] };
+	const patches = [];
+	window.api = {
+		desktop: {
+			request: async (request) => {
+				patches.push(request);
+				return answer(request, server);
+			},
+		},
+	};
+	let setRows;
+	function Harness() {
+		const [rows, set] = React.useState(server.rows);
+		setRows = set;
+		return React.createElement(model.TeamBridgeScheduledListView, {
+			state: "ready",
+			messages: rows,
+			refresh: async () => setRows([...server.rows]),
+		});
+	}
+	await act(async () => root.render(React.createElement(Harness)));
+	await act(async () =>
+		[...element.querySelectorAll("button")]
+			.find((button) => button.textContent === "Reschedule")
+			.click(),
+	);
+	const dialog = () => document.querySelector('[role="dialog"]');
+	const buttonText = () =>
+		[...(dialog()?.querySelectorAll("button") ?? [])].map(
+			(button) => button.textContent,
+		);
+	const click = async (label) =>
+		act(async () =>
+			[...dialog().querySelectorAll("button")]
+				.find((button) => button.textContent === label)
+				.click(),
+		);
+	const type = async (selector, proto, value) =>
+		act(async () => {
+			const field = dialog().querySelector(selector);
+			Object.getOwnPropertyDescriptor(proto.prototype, "value").set.call(
+				field,
+				value,
+			);
+			field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+		});
+	return {
+		server,
+		patches,
+		dialogOpen: () => dialog() !== null,
+		alert: () => dialog()?.querySelector('[role="alert"]')?.textContent ?? "",
+		body: () => dialog().querySelector("textarea").value,
+		when: () => dialog().querySelector('input[type="datetime-local"]').value,
+		buttonText,
+		click,
+		setWhen: (value) =>
+			type('input[type="datetime-local"]', dom.window.HTMLInputElement, value),
+		setBody: (value) => type("textarea", dom.window.HTMLTextAreaElement, value),
+		confirm: async () => {
+			await click("Review schedule");
+			await click("Confirm schedule");
+		},
+		close: async () => {
+			await act(async () => root.unmount());
+			element.remove();
+			window.api = undefined;
+		},
+	};
+}
+
+test("schedule edit helpers: ids not lengths, deltas rebased, only concurrent_edit is a conflict", () => {
+	assert.equal(model.sameAttachmentIds(["a1"], ["a3"]), false);
+	assert.equal(model.sameAttachmentIds(["a1", "a2"], ["a2", "a1"]), false);
+	assert.equal(model.sameAttachmentIds(["a1"], ["a1"]), true);
+	const sendAt = "2030-04-05T12:30:00Z";
+	const previous = { body: "old", sendAt, attachments: [image("a1")] };
+	const when = model.scheduledLocalInput("2030-04-05T13:30:00Z");
+	// U1: this user moved the time; another device added a2.
+	assert.deepEqual(
+		model.rebaseScheduledEdit(
+			previous,
+			{ ...previous, attachments: [image("a1"), image("a2")] },
+			{ body: "old", when, kept: [image("a1")] },
+		),
+		{ body: "old", when, kept: [image("a1"), image("a2")] },
+	);
+	// U2: this user removed every image; another device edited the text.
+	const u2 = model.rebaseScheduledEdit(
+		previous,
+		{ ...previous, body: "new" },
+		{ body: "old", when: model.scheduledLocalInput(sendAt), kept: [] },
+	);
+	assert.equal(u2.body, "new");
+	assert.deepEqual(u2.kept, []);
+	// Both sides changed the text: the server's wins (the dialog says so).
+	assert.equal(
+		model.rebaseScheduledEdit(
+			previous,
+			{ ...previous, body: "theirs" },
+			{ body: "mine", when, kept: [image("a1")] },
+		).body,
+		"theirs",
+	);
+	// This user's own text edit survives an image-only change elsewhere.
+	assert.equal(
+		model.rebaseScheduledEdit(
+			previous,
+			{ ...previous, attachments: [] },
+			{ body: "mine", when, kept: [image("a1")] },
+		).body,
+		"mine",
+	);
+	const refusal = (status, detail) =>
+		new Promise((resolve) => {
+			window.api = {
+				desktop: { request: async () => ({ status, body: { detail } }) },
+			};
+			model.TeamBridgeApi.scheduledUpdate("org_a", "bsch_x", {}).catch(
+				(error) => resolve(model.scheduledEditFailure(error)),
+			);
+		});
+	return Promise.all([
+		refusal(409, STALE_EDIT_409.body.detail),
+		refusal(409, { code: "invalid_transition", message: "sending" }),
+		refusal(404, SCHEDULE_404.body.detail),
+	]).then((kinds) => {
+		window.api = undefined;
+		assert.deepEqual(kinds, ["conflict", "other", "other"]);
+	});
+});
+
+test("U1: a stale time-only retry after concurrent_edit keeps the other device's image", async () => {
+	const row = {
+		id: "bsch_u1",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "release notes",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+		attachments: [image("a1")],
+	};
+	const later = model.scheduledLocalInput(inMinutes(180));
+	let refuseNext = true;
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		if (refuseNext) {
+			refuseNext = false;
+			// Another device committed an image add between our read and write.
+			server.rows = [{ ...row, attachments: [image("a1"), image("a2")] }];
+			return STALE_EDIT_409;
+		}
+		server.rows = [{ ...server.rows[0], send_at: request.send_at }];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.setWhen(later);
+		await ui.confirm();
+		assert.equal(ui.patches.length, 1);
+		assert.equal(ui.alert(), CONFLICT_COPY);
+		assert.equal(ui.when(), later, "this user's time change survives");
+		assert.equal(ui.body(), "release notes");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 2);
+		const retry = ui.patches[1];
+		assert.equal(retry.op, "team_bridge.scheduled.update");
+		assert.equal(typeof retry.send_at, "string");
+		assert.equal(
+			"attachment_ids" in retry,
+			false,
+			"the retry names no image set, so it cannot replace [a1, a2] with [a1]",
+		);
+		assert.equal("body" in retry, false);
+		assert.deepEqual(
+			ui.server.rows[0].attachments.map((row) => row.id),
+			["a1", "a2"],
+		);
+		assert.equal(ui.dialogOpen(), false);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("U2: a stale Remove-all retry after concurrent_edit does not revert the other device's text", async () => {
+	const row = {
+		id: "bsch_u2",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "old text",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+		attachments: [image("a1")],
+	};
+	let refuseNext = true;
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		if (refuseNext) {
+			refuseNext = false;
+			server.rows = [{ ...row, body: "new text" }];
+			return STALE_EDIT_409;
+		}
+		server.rows = [
+			{
+				...server.rows[0],
+				...(request.body === undefined ? {} : { body: request.body }),
+				attachments: (request.attachment_ids ?? ["a1"]).map(image),
+			},
+		];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.click("Remove images");
+		await ui.confirm();
+		assert.equal(ui.alert(), CONFLICT_COPY);
+		assert.equal(ui.body(), "new text", "re-seeded from the refreshed row");
+		assert.equal(
+			ui.buttonText().includes("Remove images"),
+			false,
+			"this user's removal is still applied",
+		);
+		await ui.confirm();
+		const retry = ui.patches[1];
+		assert.equal("body" in retry, false, "the stale body is not resent");
+		assert.deepEqual(retry.attachment_ids, []);
+		assert.equal(ui.server.rows[0].body, "new text");
+	} finally {
+		await ui.close();
+	}
+});
+
+test("U3: a 404 for a swapped image rebases onto the new set instead of looping", async () => {
+	const row = {
+		id: "bsch_u3",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "swap",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+		attachments: [image("a1")],
+	};
+	const later = model.scheduledLocalInput(inMinutes(240));
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		if (request.attachment_ids?.includes("a1")) return ATTACHMENT_404;
+		if (server.rows[0].attachments[0].id === "a1") {
+			// Another device swapped a1 for a3; this edit's preflight lost.
+			server.rows = [{ ...row, attachments: [image("a3")] }];
+			return ATTACHMENT_404;
+		}
+		server.rows = [{ ...server.rows[0], send_at: request.send_at }];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.setWhen(later);
+		await ui.confirm();
+		assert.equal(ui.alert(), CONFLICT_COPY);
+		assert.equal(ui.when(), later);
+		await ui.confirm();
+		assert.equal(ui.patches.length, 2);
+		assert.equal("attachment_ids" in ui.patches[1], false);
+		assert.deepEqual(
+			ui.server.rows[0].attachments.map((row) => row.id),
+			["a3"],
+		);
+		assert.equal(ui.dialogOpen(), false, "the retry succeeded");
+	} finally {
+		await ui.close();
+	}
+});
+
+test("a 404 for a schedule cancelled or sent elsewhere offers Close, never a retry", async () => {
+	const row = {
+		id: "bsch_gone",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "going away",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+	};
+	const ui = await mountScheduledEdit(row, (_request, server) => {
+		server.rows = [];
+		return SCHEDULE_404;
+	});
+	try {
+		await ui.setBody("my edit");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 1);
+		assert.equal(ui.dialogOpen(), true, "the open dialog is not yanked away");
+		assert.equal(ui.alert(), GONE_COPY);
+		const labels = ui.buttonText();
+		assert.equal(labels.includes("Review schedule"), false);
+		assert.equal(labels.includes("Confirm schedule"), false);
+		assert.equal(labels.includes("Close"), true);
+		await ui.click("Close");
+		assert.equal(ui.dialogOpen(), false);
+		assert.equal(ui.patches.length, 1, "closing sent nothing");
+		assert.equal(
+			document.body.textContent.includes("No pending scheduled messages."),
+			true,
+		);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("a generic edit failure shows edit copy, not the create sentence", async () => {
+	const row = {
+		id: "bsch_generic",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "steady",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+	};
+	const ui = await mountScheduledEdit(row, () => ({
+		status: 429,
+		body: { detail: { code: "rate_limited", message: "slow down" } },
+	}));
+	try {
+		await ui.setBody("edited");
+		await ui.confirm();
+		assert.equal(
+			ui.alert(),
+			"Your change was not confirmed. Your edits are kept here; review them and try again.",
+		);
+		assert.equal(ui.body(), "edited");
+	} finally {
+		await ui.close();
+	}
+});

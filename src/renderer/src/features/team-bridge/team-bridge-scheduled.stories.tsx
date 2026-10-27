@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TeamBridgeScheduledMessage } from "../../../../shared/team-bridge-contract";
 import {
 	TeamBridgeScheduleDialog,
@@ -50,3 +50,63 @@ function ConfirmationStory() {
 	);
 }
 export const Confirmation: Story = { render: () => <ConfirmationStory /> };
+
+/*
+ * THE CONFLICT STATE (agent-server #223 QA r2, Q2): another device added an
+ * image while this dialog was open. The refreshed row reaches the open dialog,
+ * which rebases onto it - the other device's image is now shown, so a retry
+ * cannot erase it - and says the message changed elsewhere. Driven by a prop change
+ * after mount, exactly as a refresh delivers it, so no transport is faked.
+ */
+const conflictImage = (id: string) => ({
+	id,
+	mime: "image/png",
+	size: 1024,
+	width: 240,
+	height: 150,
+	state: "reserved",
+});
+function ConflictStory() {
+	const [open, setOpen] = useState(true);
+	const [server, setServer] = useState({
+		...row,
+		attachments: [conflictImage("batt_story_a")],
+	});
+	useEffect(() => {
+		setServer((current) => ({
+			...current,
+			attachments: [
+				conflictImage("batt_story_a"),
+				conflictImage("batt_story_b"),
+			],
+		}));
+	}, []);
+	return (
+		<TeamBridgeScheduleDialog
+			open={open}
+			onOpenChange={setOpen}
+			busy={false}
+			initialBody={server.body}
+			initialSendAt={server.send_at}
+			initialAttachments={server.attachments}
+			onSchedule={async () => {}}
+		/>
+	);
+}
+export const EditConflict: Story = { render: () => <ConflictStory /> };
+/* The schedule was cancelled or sent on another device: Close, never retry. */
+function GoneStory() {
+	const [open, setOpen] = useState(true);
+	return (
+		<TeamBridgeScheduleDialog
+			open={open}
+			onOpenChange={setOpen}
+			busy={false}
+			unavailable
+			initialBody={row.body}
+			initialSendAt={row.send_at}
+			onSchedule={async () => {}}
+		/>
+	);
+}
+export const EditGone: Story = { render: () => <GoneStory /> };

@@ -1,4 +1,8 @@
-import type { TeamBridgeScheduledMessage } from "../../../../shared/team-bridge-contract";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import type {
+	TeamBridgeAttachment,
+	TeamBridgeScheduledMessage,
+} from "../../../../shared/team-bridge-contract";
 import {
 	type TeamBridgeRecipient,
 	type TeamBridgeTarget,
@@ -138,9 +142,7 @@ export function scheduledEditPatch(
 	// which the hub releases in the same update); an unchanged set is omitted so
 	// a time-only edit stays byte-identical for an older hub.
 	const imagesChanged =
-		attachmentIds !== undefined &&
-		(attachmentIds.length !== before.length ||
-			attachmentIds.some((id, index) => id !== before[index]));
+		attachmentIds !== undefined && !sameAttachmentIds(attachmentIds, before);
 	/*
 	 * An edit that empties the caption but keeps the images is image-only, and
 	 * the contract (like the hub) accepts an empty body only beside a non-empty
@@ -158,6 +160,93 @@ export function scheduledEditPatch(
 			? { attachment_ids: [...(attachmentIds ?? [])] }
 			: {}),
 	};
+}
+
+/*
+ * Image sets are compared BY ID, in order, never by length: the PATCH replaces
+ * the whole set, so a same-length swap made on another device is a change, and
+ * an image another device added is not "this user removed nothing" (agent-server
+ * #223 QA r2, Q3). The dialog and the patch builder share this one comparison so
+ * they cannot disagree about whether an edit touches the images.
+ */
+export function sameAttachmentIds(
+	a: readonly string[],
+	b: readonly string[],
+): boolean {
+	return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+/** The server row an open edit dialog was seeded from (or last rebased onto). */
+export type ScheduledEditBase = {
+	body: string;
+	sendAt: string;
+	attachments: readonly TeamBridgeAttachment[];
+};
+
+/** What the dialog currently holds: `when` is its `datetime-local` value. */
+export type ScheduledEditDraft = {
+	body: string;
+	when: string;
+	kept: readonly TeamBridgeAttachment[];
+};
+
+/*
+ * Move an open edit onto a newer server row instead of keeping a stale draft.
+ *
+ * WHY: the hub's PATCH replaces whole fields (`attachment_ids` is the full set),
+ * so a draft seeded from an older row and resent after a refresh silently
+ * undoes the other device's edit - erasing an image it added or reverting its
+ * text (agent-server #223 QA r2, Q2: U1/U2), or naming an image that no longer
+ * exists and looping on 404 (U3). Only the author's own DELTAS survive:
+ *
+ * - time / text: kept when this user changed it and the server did not; when
+ *   both changed, the server's value wins and the dialog says the message
+ *   changed elsewhere, because silently keeping either side hides the other.
+ * - images: this user can only REMOVE in this dialog, so the delta is the set
+ *   of ids they removed; it is subtracted from the new row's set, which keeps
+ *   anything another device added and drops removals that are already moot.
+ */
+export function rebaseScheduledEdit(
+	previous: ScheduledEditBase,
+	next: ScheduledEditBase,
+	draft: ScheduledEditDraft,
+): ScheduledEditDraft {
+	const bodyEdited = draft.body.trim() !== previous.body;
+	const timeEdited = draft.when !== scheduledLocalInput(previous.sendAt);
+	const keptIds = new Set(draft.kept.map((row) => row.id));
+	const removed = new Set(
+		previous.attachments.map((row) => row.id).filter((id) => !keptIds.has(id)),
+	);
+	return {
+		body: bodyEdited && next.body === previous.body ? draft.body : next.body,
+		when:
+			timeEdited && next.sendAt === previous.sendAt
+				? draft.when
+				: scheduledLocalInput(next.sendAt),
+		kept: next.attachments.filter((row) => !removed.has(row.id)),
+	};
+}
+
+/*
+ * Which refusal an edit met, for the dialog's copy. Only the hub's stale-edit
+ * answer is distinguished (`409 invalid_transition`, `details.rule =
+ * "concurrent_edit"`, relayed intact by core's `_refusal_detail`): every other
+ * refusal is a generic edit failure. A 404 needs no code of its own here - the
+ * refreshed list already says whether the row changed (the dialog rebases) or
+ * vanished (the list marks it gone).
+ */
+export function scheduledEditFailure(error: unknown): "conflict" | "other" {
+	if (
+		error instanceof DesktopControlError &&
+		error.status === 409 &&
+		error.code === "invalid_transition" &&
+		typeof error.detail === "object" &&
+		error.detail !== null &&
+		(error.detail as { details?: { rule?: unknown } }).details?.rule ===
+			"concurrent_edit"
+	)
+		return "conflict";
+	return "other";
 }
 
 export function scheduledTargetAfterSuccess(

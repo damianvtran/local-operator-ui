@@ -20,10 +20,24 @@ import { TeamBridgeScheduledAttachments } from "./team-bridge-attachments";
 import { scheduledSendAt } from "./team-bridge-drafts";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import {
+	type ScheduledEditBase,
 	listScheduledTenants,
+	rebaseScheduledEdit,
+	sameAttachmentIds,
+	scheduledEditFailure,
 	scheduledEditPatch,
 	scheduledLocalInput,
 } from "./team-bridge-scheduling";
+
+/*
+ * Why an open dialog is showing an alert. `failed` is the generic refusal;
+ * `conflict` means the row changed under the dialog (the hub's `concurrent_edit`
+ * 409, or a refresh that moved the row) and the draft was rebased onto it.
+ */
+type ScheduleNotice = "failed" | "conflict" | null;
+
+const attachmentIds = (rows: readonly TeamBridgeAttachment[] | undefined) =>
+	(rows ?? []).map((row) => row.id);
 
 export function TeamBridgeScheduleDialog({
 	open,
@@ -35,6 +49,7 @@ export function TeamBridgeScheduleDialog({
 	initialAttachments,
 	accountId,
 	returnFocus,
+	unavailable = false,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -55,6 +70,13 @@ export function TeamBridgeScheduleDialog({
 	initialAttachments?: readonly TeamBridgeAttachment[];
 	accountId?: string;
 	returnFocus?: { current: HTMLElement | null };
+	/*
+	 * The edited schedule is no longer pending: it vanished from the refreshed
+	 * list (cancelled or sent on another device) or is already `sending`. Nothing
+	 * can be edited any more, so the dialog offers Close instead of a retry that
+	 * could only 404 (agent-server #223 QA r2, Q3).
+	 */
+	unavailable?: boolean;
 }) {
 	const locale = useI18nLocale();
 	const id = useId();
@@ -65,8 +87,14 @@ export function TeamBridgeScheduleDialog({
 	const [kept, setKept] = useState<readonly TeamBridgeAttachment[]>(
 		initialAttachments ?? [],
 	);
-	const [failed, setFailed] = useState(false);
+	const [notice, setNotice] = useState<ScheduleNotice>(null);
 	const [confirming, setConfirming] = useState<string | null>(null);
+	/*
+	 * The server row this draft was derived from. A refresh that moves the row
+	 * is rebased against it, so only this user's own deltas survive (see
+	 * `rebaseScheduledEdit`). A ref, not state: it is bookkeeping, never drawn.
+	 */
+	const base = useRef<ScheduledEditBase | null>(null);
 	/*
 	 * FOCUS RETURNS TO THE OPENER. This dialog is opened programmatically (the
 	 * clock, or a row's Reschedule), so Radix has no trigger to restore to and
@@ -101,7 +129,10 @@ export function TeamBridgeScheduleDialog({
 		initialSendAt && value === scheduledLocalInput(initialSendAt),
 	);
 	const at = unchangedTime ? initialSendAt : scheduledSendAt(value);
-	const imagesChanged = kept.length !== (initialAttachments?.length ?? 0);
+	const imagesChanged = !sameAttachmentIds(
+		attachmentIds(kept),
+		attachmentIds(initialAttachments),
+	);
 	const changed =
 		initialBody === undefined ||
 		body.trim() !== initialBody ||
@@ -109,17 +140,75 @@ export function TeamBridgeScheduleDialog({
 		imagesChanged;
 	const wasOpen = useRef(false);
 	useEffect(() => {
-		// Refreshes may update the row while a failed edit is still open. Preserve
-		// those edits, but reopening must start from the latest server post-state.
-		if (open && !wasOpen.current) {
+		const opening = open && !wasOpen.current;
+		wasOpen.current = open;
+		const next: ScheduledEditBase | null =
+			initialSendAt === undefined
+				? null
+				: {
+						body: initialBody ?? "",
+						sendAt: initialSendAt,
+						attachments: initialAttachments ?? [],
+					};
+		// Opening starts from the latest server post-state.
+		if (opening) {
+			base.current = next;
 			setBody(initialBody ?? "");
 			setKept(initialAttachments ?? []);
 			setValue(initialSendAt ? scheduledLocalInput(initialSendAt) : "");
 			setConfirming(null);
-			setFailed(false);
+			setNotice(null);
+			return;
 		}
-		wasOpen.current = open;
-	}, [open, initialBody, initialSendAt, initialAttachments]);
+		/*
+		 * A refresh moved the row while the dialog is open (after a failed edit,
+		 * or a list refetch). Keeping the old draft is what let a retry resend a
+		 * stale full replacement and erase another device's image or text
+		 * (agent-server #223 QA r2, Q2), so the draft is REBASED onto the new
+		 * row. Compared by value and image ids, never identity: every refetch
+		 * hands down fresh arrays. A row that is no longer pending is not rebased;
+		 * the dialog shows it as gone instead.
+		 */
+		const previous = base.current;
+		if (!open || unavailable || !previous || !next) return;
+		if (
+			previous.body === next.body &&
+			previous.sendAt === next.sendAt &&
+			sameAttachmentIds(
+				attachmentIds(previous.attachments),
+				attachmentIds(next.attachments),
+			)
+		)
+			return;
+		base.current = next;
+		const draft = { body, when: value, kept };
+		const rebased = rebaseScheduledEdit(previous, next, draft);
+		setBody(rebased.body);
+		setValue(rebased.when);
+		setKept(rebased.kept);
+		// A confirmation was for content that no longer exists.
+		setConfirming(null);
+		/*
+		 * Say so only when what the user is looking at actually moved. A lost
+		 * response whose edit DID land refreshes to exactly this draft, and
+		 * telling that user "another device changed it" would be false.
+		 */
+		if (
+			rebased.body.trim() !== draft.body.trim() ||
+			rebased.when !== draft.when ||
+			!sameAttachmentIds(attachmentIds(rebased.kept), attachmentIds(kept))
+		)
+			setNotice("conflict");
+	}, [
+		open,
+		unavailable,
+		initialBody,
+		initialSendAt,
+		initialAttachments,
+		body,
+		value,
+		kept,
+	]);
 	const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	return (
 		<Dialog
@@ -127,7 +216,7 @@ export function TeamBridgeScheduleDialog({
 			onOpenChange={(next) => {
 				if (!busy) {
 					setConfirming(null);
-					setFailed(false);
+					setNotice(null);
 					onOpenChange(next);
 				}
 			}}
@@ -156,7 +245,7 @@ export function TeamBridgeScheduleDialog({
 								setBody(event.target.value);
 								setConfirming(null);
 							}}
-							disabled={busy}
+							disabled={busy || unavailable}
 							className="rounded-md border border-control bg-surface p-2 text-ink"
 						/>
 					</label>
@@ -170,7 +259,7 @@ export function TeamBridgeScheduleDialog({
 						<Button
 							variant="ghost"
 							size="sm"
-							disabled={busy}
+							disabled={busy || unavailable}
 							onClick={() => {
 								setKept([]);
 								setConfirming(null);
@@ -187,7 +276,7 @@ export function TeamBridgeScheduleDialog({
 					id={id}
 					type="datetime-local"
 					value={value}
-					disabled={busy}
+					disabled={busy || unavailable}
 					onChange={(event) => {
 						setValue(event.target.value);
 						setConfirming(null);
@@ -213,51 +302,85 @@ export function TeamBridgeScheduleDialog({
 						})}
 					</p>
 				)}
-				{failed && (
+				{unavailable ? (
 					<p role="alert" className="text-sm text-danger">
-						{t("ui.teamBridge.schedule.failed")}
+						{t("ui.teamBridge.schedule.edit_gone")}
 					</p>
+				) : notice === "conflict" ? (
+					<p role="alert" className="text-sm text-danger">
+						{t("ui.teamBridge.schedule.edit_conflict")}
+					</p>
+				) : (
+					notice === "failed" && (
+						<p role="alert" className="text-sm text-danger">
+							{/* The create copy ("retry with the original text and time")
+							    is the wrong next step for an edit (QA r2, Q4). */}
+							{t(
+								initialSendAt === undefined
+									? "ui.teamBridge.schedule.failed"
+									: "ui.teamBridge.schedule.edit_failed",
+							)}
+						</p>
+					)
 				)}
-				<Button
-					disabled={
-						!at ||
-						!changed ||
-						busy ||
-						(initialBody !== undefined && !body.trim() && kept.length === 0)
-					}
-					onClick={() => {
-						const currentAt = unchangedTime
-							? initialSendAt
-							: scheduledSendAt(value);
-						if (!currentAt) {
-							setConfirming(null);
-							return;
+				{unavailable ? (
+					<Button onClick={() => onOpenChange(false)}>
+						{t("ui.common.actions.close")}
+					</Button>
+				) : (
+					<Button
+						disabled={
+							!at ||
+							!changed ||
+							busy ||
+							(initialBody !== undefined && !body.trim() && kept.length === 0)
 						}
-						if (confirming !== currentAt) {
-							setConfirming(currentAt);
-							return;
-						}
-						setFailed(false);
-						void onSchedule(
-							currentAt,
-							initialBody === undefined ? undefined : body.trim(),
-							initialAttachments === undefined
-								? undefined
-								: kept.map((row) => row.id),
-						)
-							.then(() => {
-								onOpenChange(false);
+						onClick={() => {
+							const currentAt = unchangedTime
+								? initialSendAt
+								: scheduledSendAt(value);
+							if (!currentAt) {
 								setConfirming(null);
-							})
-							.catch(() => setFailed(true));
-					}}
-				>
-					{t(
-						confirming
-							? "ui.teamBridge.schedule.confirm_action"
-							: "ui.teamBridge.schedule.review",
-					)}
-				</Button>
+								return;
+							}
+							if (confirming !== currentAt) {
+								setConfirming(currentAt);
+								return;
+							}
+							setNotice(null);
+							void onSchedule(
+								currentAt,
+								initialBody === undefined ? undefined : body.trim(),
+								initialAttachments === undefined
+									? undefined
+									: kept.map((row) => row.id),
+							)
+								.then(() => {
+									onOpenChange(false);
+									setConfirming(null);
+								})
+								/*
+								 * Never downgrade a conflict: the refresh inside `onSchedule`
+								 * may already have rebased this draft and said so, and the
+								 * generic sentence would hide that the content moved.
+								 */
+								.catch((error) => {
+									const kind = scheduledEditFailure(error);
+									setNotice((current) =>
+										kind === "conflict" || current === "conflict"
+											? "conflict"
+											: "failed",
+									);
+								});
+						}}
+					>
+						{t(
+							confirming
+								? "ui.teamBridge.schedule.confirm_action"
+								: "ui.teamBridge.schedule.review",
+						)}
+					</Button>
+				)}
 			</DialogContent>
 		</Dialog>
 	);
@@ -337,6 +460,28 @@ export function TeamBridgeScheduledListView({
 		if (cancelFailure && !messages.some((row) => row.id === cancelFailure))
 			setCancelFailure(null);
 	}, [messages, cancelFailure]);
+	/*
+	 * The row whose edit dialog is open, as last seen. When a refresh drops it
+	 * (cancelled, or sent on another device) the row is kept mounted as `gone`
+	 * so its OPEN dialog can say so and offer Close; unmounting it would yank the
+	 * dialog away mid-edit, and the old dialog kept retrying into a 404 (agent-
+	 * server #223 QA r2, Q3). Released when that dialog closes.
+	 */
+	const [editing, setEditing] = useState<TeamBridgeScheduledMessage | null>(
+		null,
+	);
+	// Track the LATEST copy of the edited row, so a row that vanishes is shown
+	// as it last was, not as it was when its dialog opened.
+	useEffect(() => {
+		if (!editing) return;
+		const latest = messages.find((row) => row.id === editing.id);
+		if (latest && latest !== editing) setEditing(latest);
+	}, [messages, editing]);
+	const gone =
+		editing && !messages.some((row) => row.id === editing.id) ? editing : null;
+	const rows = gone
+		? [...messages, gone].sort((a, b) => a.send_at.localeCompare(b.send_at))
+		: messages;
 
 	return (
 		<section
@@ -380,13 +525,15 @@ export function TeamBridgeScheduledListView({
 						{t("ui.teamBridge.list.retry")}
 					</Button>
 				</div>
-			) : messages.length === 0 ? (
+			) : rows.length === 0 ? (
 				<p className="text-ink-muted">{t("ui.teamBridge.schedule.empty")}</p>
 			) : (
-				messages.map((message) => (
+				rows.map((message) => (
 					<TeamBridgeScheduledRow
 						key={message.id}
 						message={message}
+						gone={message === gone}
+						onEditingChange={(open) => setEditing(open ? message : null)}
 						refresh={refresh}
 						organizationNames={organizationNames}
 						conversationNames={conversationNames}
@@ -410,6 +557,8 @@ export function TeamBridgeScheduledRow({
 	onCancelFailure,
 	accountId,
 	onCancelSuccess,
+	gone = false,
+	onEditingChange,
 }: {
 	message: TeamBridgeScheduledMessage;
 	refresh: () => Promise<unknown>;
@@ -420,10 +569,22 @@ export function TeamBridgeScheduledRow({
 	/* Whose in-memory upload previews this row may show (account-fenced). */
 	accountId?: string;
 	onCancelSuccess?: () => void;
+	/*
+	 * The list no longer carries this row; it is still mounted only because its
+	 * edit dialog is open (see `TeamBridgeScheduledListView`). It renders the
+	 * dialog alone, in its no-longer-editable state.
+	 */
+	gone?: boolean;
+	/* Lets the list keep this row mounted while its edit dialog is open. */
+	onEditingChange?: (open: boolean) => void;
 }) {
 	const locale = useI18nLocale();
 	const [busy, setBusy] = useState(false);
-	const [edit, setEdit] = useState(false);
+	const [edit, setEditState] = useState(false);
+	const setEdit = (open: boolean) => {
+		setEditState(open);
+		onEditingChange?.(open);
+	};
 	const rescheduleRef = useRef<HTMLButtonElement>(null);
 	const destinationId = useId();
 	/*
@@ -439,6 +600,41 @@ export function TeamBridgeScheduledRow({
 	]
 		.filter(Boolean)
 		.join(" · ");
+	const dialog = (
+		<TeamBridgeScheduleDialog
+			open={edit}
+			onOpenChange={setEdit}
+			returnFocus={rescheduleRef}
+			busy={busy}
+			unavailable={gone || message.status === "sending"}
+			initialBody={message.body}
+			initialSendAt={message.send_at}
+			initialAttachments={message.attachments}
+			accountId={accountId}
+			onSchedule={async (sendAt, body, attachmentIds) => {
+				setBusy(true);
+				try {
+					// `message` is the LATEST row: the dialog rebased its draft onto it,
+					// so the patch carries only this user's deltas against it.
+					await TeamBridgeApi.scheduledUpdate(
+						message.tenant_id,
+						message.id,
+						scheduledEditPatch(message, sendAt, body, attachmentIds),
+					);
+					await refresh();
+				} catch (error) {
+					// The refresh is what lets the dialog rebase (changed row) or show
+					// the schedule as gone (cancelled or sent elsewhere).
+					await refresh();
+					throw error;
+				} finally {
+					setBusy(false);
+				}
+			}}
+		/>
+	);
+	// A gone row is no longer pending: only its open dialog is left to show.
+	if (gone) return dialog;
 	return (
 		/*
 		 * `elevated`, one lightness step above the `surface` page (design round
@@ -505,32 +701,7 @@ export function TeamBridgeScheduledRow({
 					</Button>
 				</div>
 			)}
-			<TeamBridgeScheduleDialog
-				open={edit}
-				onOpenChange={setEdit}
-				returnFocus={rescheduleRef}
-				busy={busy}
-				initialBody={message.body}
-				initialSendAt={message.send_at}
-				initialAttachments={message.attachments}
-				accountId={accountId}
-				onSchedule={async (sendAt, body, attachmentIds) => {
-					setBusy(true);
-					try {
-						await TeamBridgeApi.scheduledUpdate(
-							message.tenant_id,
-							message.id,
-							scheduledEditPatch(message, sendAt, body, attachmentIds),
-						);
-						await refresh();
-					} catch (error) {
-						await refresh();
-						throw error;
-					} finally {
-						setBusy(false);
-					}
-				}}
-			/>
+			{dialog}
 		</article>
 	);
 }
