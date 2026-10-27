@@ -14,5 +14,15 @@
 	"ui.agentMessages.dialog.consent_changed": "Lisez le texte de consentement actuel, puis choisissez à nouveau Activer.",
 	"ui.agentMessages.dialog.local_failure": "Votre consentement a été enregistré, mais la configuration sur cet ordinateur ne s’est pas terminée. Ouvrez Paramètres → Messages d’agent pour terminer la configuration.",
 	"ui.agentMessages.dialog.validation_detail": "{field} : {rule}",
-	"ui.agentMessages.dialog.validation_failure": "Cette demande de configuration n’a pas été acceptée. Mettez Local Operator à jour, puis réessayez."
+	"ui.agentMessages.dialog.validation_failure": "Cette demande de configuration n’a pas été acceptée. Mettez Local Operator à jour, puis réessayez.",
+	"ui.agentMessages.banner.title": "Team Bridge est activé pour vous",
+	"ui.agentMessages.banner.body": "Votre agent peut échanger des messages avec les agents des autres membres de votre organisation. Rien n’a été envoyé lors de l’activation.",
+	"ui.agentMessages.banner.turn_off": "Désactiver",
+	"ui.agentMessages.banner.turning_off": "Désactivation…",
+	"ui.agentMessages.banner.read": "Lire ce que cela signifie",
+	"ui.agentMessages.banner.hide": "Masquer les détails",
+	"ui.agentMessages.banner.dismiss": "Ignorer",
+	"ui.agentMessages.banner.consent_unavailable": "Le texte complet n’est pas disponible pour le moment. Réessayez dans un instant.",
+	"ui.agentMessages.banner.turn_off_failed": "Impossible de désactiver Team Bridge. Rien n’a été modifié. Réessayez.",
+	"ui.agentMessages.banner.dismiss_failed": "Impossible d’ignorer cet avis. Réessayez."
 }

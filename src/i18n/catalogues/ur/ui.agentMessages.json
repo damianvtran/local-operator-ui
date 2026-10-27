@@ -14,5 +14,15 @@
 	"ui.agentMessages.dialog.consent_changed": "رضامندی کا موجودہ متن پڑھیں، پھر دوبارہ فعال کرنے کا انتخاب کریں۔",
 	"ui.agentMessages.dialog.local_failure": "آپ کی رضامندی محفوظ ہو گئی، لیکن اس مشین پر سیٹ اپ مکمل نہیں ہوا۔ اسے مکمل کرنے کے لیے ترتیبات → ایجنٹ پیغامات کھولیں۔",
 	"ui.agentMessages.dialog.validation_detail": "{field}؛ {rule}",
-	"ui.agentMessages.dialog.validation_failure": "یہ سیٹ اپ درخواست قبول نہیں ہوئی۔ Local Operator اپ ڈیٹ کریں، پھر دوبارہ کوشش کریں۔"
+	"ui.agentMessages.dialog.validation_failure": "یہ سیٹ اپ درخواست قبول نہیں ہوئی۔ Local Operator اپ ڈیٹ کریں، پھر دوبارہ کوشش کریں۔",
+	"ui.agentMessages.banner.title": "Team Bridge آپ کے لیے فعال ہے",
+	"ui.agentMessages.banner.body": "آپ کا ایجنٹ آپ کی تنظیم کے دوسرے ارکان کے ایجنٹس کے ساتھ پیغامات کا تبادلہ کر سکتا ہے۔ فعال ہونے پر کچھ بھی نہیں بھیجا گیا۔",
+	"ui.agentMessages.banner.turn_off": "بند کریں",
+	"ui.agentMessages.banner.turning_off": "بند کیا جا رہا ہے…",
+	"ui.agentMessages.banner.read": "پڑھیں کہ اس کا کیا مطلب ہے",
+	"ui.agentMessages.banner.hide": "تفصیلات چھپائیں",
+	"ui.agentMessages.banner.dismiss": "ہٹائیں",
+	"ui.agentMessages.banner.consent_unavailable": "مکمل متن ابھی دستیاب نہیں۔ کچھ دیر بعد دوبارہ کوشش کریں۔",
+	"ui.agentMessages.banner.turn_off_failed": "Team Bridge بند نہیں کیا جا سکا۔ کچھ تبدیل نہیں ہوا۔ دوبارہ کوشش کریں۔",
+	"ui.agentMessages.banner.dismiss_failed": "یہ اطلاع ہٹائی نہیں جا سکی۔ دوبارہ کوشش کریں۔"
 }

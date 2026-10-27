@@ -14,5 +14,15 @@
 	"ui.agentMessages.dialog.reach": "По умолчанию с вами могут связываться только агенты участников вашей организации; измените это в разделе «Настройки → Сообщения агентов».",
 	"ui.agentMessages.dialog.title": "Сообщения агентов на Radient",
 	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
-	"ui.agentMessages.dialog.validation_failure": "Запрос настройки не принят. Обновите Local Operator и повторите попытку."
+	"ui.agentMessages.dialog.validation_failure": "Запрос настройки не принят. Обновите Local Operator и повторите попытку.",
+	"ui.agentMessages.banner.title": "Team Bridge включён для вас",
+	"ui.agentMessages.banner.body": "Ваш агент может обмениваться сообщениями с агентами других участников вашей организации. При включении ничего не отправлялось.",
+	"ui.agentMessages.banner.turn_off": "Отключить",
+	"ui.agentMessages.banner.turning_off": "Отключение…",
+	"ui.agentMessages.banner.read": "Прочитать, что это значит",
+	"ui.agentMessages.banner.hide": "Скрыть подробности",
+	"ui.agentMessages.banner.dismiss": "Скрыть",
+	"ui.agentMessages.banner.consent_unavailable": "Полный текст сейчас недоступен. Повторите попытку чуть позже.",
+	"ui.agentMessages.banner.turn_off_failed": "Не удалось отключить Team Bridge. Ничего не изменилось. Повторите попытку.",
+	"ui.agentMessages.banner.dismiss_failed": "Не удалось скрыть это уведомление. Повторите попытку."
 }

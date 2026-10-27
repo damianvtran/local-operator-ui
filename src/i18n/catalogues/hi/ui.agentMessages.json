@@ -14,5 +14,15 @@
 	"ui.agentMessages.dialog.consent_changed": "सहमति का मौजूदा पाठ पढ़ें, फिर “चालू करें” दोबारा चुनें।",
 	"ui.agentMessages.dialog.local_failure": "आपकी सहमति सहेजी गई, लेकिन इस मशीन पर सेटअप पूरा नहीं हुआ। सेटअप पूरा करने के लिए सेटिंग्स → एजेंट संदेश खोलें।",
 	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
-	"ui.agentMessages.dialog.validation_failure": "सेटअप का यह अनुरोध स्वीकार नहीं हुआ। Local Operator अपडेट करें, फिर कोशिश करें।"
+	"ui.agentMessages.dialog.validation_failure": "सेटअप का यह अनुरोध स्वीकार नहीं हुआ। Local Operator अपडेट करें, फिर कोशिश करें।",
+	"ui.agentMessages.banner.title": "Team Bridge आपके लिए चालू है",
+	"ui.agentMessages.banner.body": "आपका एजेंट आपके संगठन के दूसरे सदस्यों के एजेंटों से संदेशों का आदान-प्रदान कर सकता है। चालू होते समय कुछ भी नहीं भेजा गया।",
+	"ui.agentMessages.banner.turn_off": "बंद करें",
+	"ui.agentMessages.banner.turning_off": "बंद किया जा रहा है…",
+	"ui.agentMessages.banner.read": "पढ़ें कि इसका क्या मतलब है",
+	"ui.agentMessages.banner.hide": "विवरण छिपाएँ",
+	"ui.agentMessages.banner.dismiss": "हटाएँ",
+	"ui.agentMessages.banner.consent_unavailable": "पूरा पाठ अभी उपलब्ध नहीं है। थोड़ी देर में फिर कोशिश करें।",
+	"ui.agentMessages.banner.turn_off_failed": "Team Bridge बंद नहीं किया जा सका। कुछ भी नहीं बदला। फिर कोशिश करें।",
+	"ui.agentMessages.banner.dismiss_failed": "यह सूचना हटाई नहीं जा सकी। फिर कोशिश करें।"
 }

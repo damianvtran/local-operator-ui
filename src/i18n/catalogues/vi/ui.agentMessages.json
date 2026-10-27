@@ -14,5 +14,15 @@
 	"ui.agentMessages.dialog.consent_changed": "Đọc nội dung chấp thuận hiện tại, rồi chọn Bật lần nữa.",
 	"ui.agentMessages.dialog.local_failure": "Đã lưu sự chấp thuận của bạn, nhưng thiết lập trên máy này chưa hoàn tất. Mở Cài đặt → Tin nhắn tác nhân để hoàn tất thiết lập.",
 	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
-	"ui.agentMessages.dialog.validation_failure": "Yêu cầu thiết lập này không được chấp nhận. Hãy cập nhật Local Operator rồi thử lại."
+	"ui.agentMessages.dialog.validation_failure": "Yêu cầu thiết lập này không được chấp nhận. Hãy cập nhật Local Operator rồi thử lại.",
+	"ui.agentMessages.banner.title": "Team Bridge đã được bật cho bạn",
+	"ui.agentMessages.banner.body": "Tác nhân của bạn có thể trao đổi tin nhắn với tác nhân của các thành viên khác trong tổ chức. Không có gì được gửi khi tính năng này được bật.",
+	"ui.agentMessages.banner.turn_off": "Tắt",
+	"ui.agentMessages.banner.turning_off": "Đang tắt…",
+	"ui.agentMessages.banner.read": "Đọc ý nghĩa của việc này",
+	"ui.agentMessages.banner.hide": "Ẩn chi tiết",
+	"ui.agentMessages.banner.dismiss": "Ẩn",
+	"ui.agentMessages.banner.consent_unavailable": "Hiện chưa có toàn văn. Hãy thử lại sau giây lát.",
+	"ui.agentMessages.banner.turn_off_failed": "Không thể tắt Team Bridge. Chưa có gì thay đổi. Hãy thử lại.",
+	"ui.agentMessages.banner.dismiss_failed": "Không thể ẩn thông báo này. Hãy thử lại."
 }

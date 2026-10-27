@@ -14,5 +14,15 @@
 	"ui.agentMessages.dialog.consent_changed": "请阅读最新的同意声明，然后再次点击“启用”。",
 	"ui.agentMessages.dialog.local_failure": "同意已保存，但本机设置尚未完成。请打开“设置”→“智能体消息”完成设置。",
 	"ui.agentMessages.dialog.validation_detail": "{field}：{rule}",
-	"ui.agentMessages.dialog.validation_failure": "此设置请求未被接受。请更新Local Operator后重试。"
+	"ui.agentMessages.dialog.validation_failure": "此设置请求未被接受。请更新Local Operator后重试。",
+	"ui.agentMessages.banner.title": "Team Bridge已为你开启",
+	"ui.agentMessages.banner.body": "你的智能体可以与组织内其他成员的智能体互发消息。开启时未发送任何内容。",
+	"ui.agentMessages.banner.turn_off": "关闭",
+	"ui.agentMessages.banner.turning_off": "正在关闭……",
+	"ui.agentMessages.banner.read": "了解这意味着什么",
+	"ui.agentMessages.banner.hide": "收起详情",
+	"ui.agentMessages.banner.dismiss": "忽略",
+	"ui.agentMessages.banner.consent_unavailable": "完整文本暂时不可用。稍后再试一次。",
+	"ui.agentMessages.banner.turn_off_failed": "无法关闭Team Bridge，未做任何更改。再试一次。",
+	"ui.agentMessages.banner.dismiss_failed": "无法关闭此通知。再试一次。"
 }
