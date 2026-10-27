@@ -70,6 +70,11 @@ const supplementAnchor = z.string().min(1).max(128);
  * `invalid_cwd`) — the check belongs at the end that can actually resolve it.
  */
 const skillCwd = z.string().min(1).max(4096);
+const skillName = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[A-Za-z0-9_.-]+$/);
 /*
  * The MCP field shapes, named once because the session route and the
  * sessionless catalog route accept the same server names, secret references and
@@ -2838,7 +2843,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			sessionId: sessionId.optional(),
 			cwd: skillCwd.optional(),
-			name: id.optional(),
+			/*
+			 * NOT `id`: core's route accepts `[A-Za-z0-9_.-]{1,128}` for a skill name
+			 * (`desktop_catalogues.skills`), and a discovered folder may carry a dot.
+			 * `id` would refuse that name here and the Skills tab's details read would
+			 * fail for a skill the list had just shown.
+			 */
+			name: skillName.optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("sessions.failovers"), sessionId }).strict(),
@@ -3401,10 +3412,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			expected_account_id: id,
 			tenant_id: id.optional(),
 			consent_version: z.string().min(1).max(128).optional(),
+			// Never "default_on": only the hub's enrolment route may assert it and the
+			// runtime answers a client that tries with a 422 (runtime #2790).
 			consented_via: z.enum(["dialog", "settings"]).optional(),
 			label: z.string().min(1).max(128).optional(),
 			state: z.enum(["active", "paused", "disabled"]),
 		})
+		.strict(),
+	/*
+	 * The default-on banner's dismissal (runtime #2790). Idempotent and
+	 * local-only: the runtime records "seen" on this machine and the banner never
+	 * returns. No body, no tenant, no account guard - it changes no hub state, so
+	 * there is no account whose receipt could be stale.
+	 */
+	z
+		.object({ op: z.literal("agent_messages.onboarding.dismiss") })
 		.strict(),
 	z
 		.object({
@@ -4911,6 +4933,87 @@ export const asideAdoptResultSchema = z
 	.passthrough();
 
 export type AsideAdoptResult = z.infer<typeof asideAdoptResultSchema>;
+
+/**
+ * `GET /v1/desktop/skills` -> `result.data`, as the Agents page's Skills tab
+ * reads it (core `skill_library:1`, local-operator #2998).
+ *
+ * EVERY FIELD BEYOND `name` IS OPTIONAL ON PURPOSE. A backend that predates
+ * `skill_library` answers `{name, description}` rows with no `skill_detail`, and
+ * the tab is only OFFERED when the capability is present, but the page must still
+ * parse (and degrade, not crash) if a row arrives short: a missing `source` reads
+ * as unknown, a missing `installed` reads as installed. `passthrough` because the
+ * vocabulary is core's to extend (a sixth `source` label must not throw).
+ *
+ * `source` is a plain string fallback for the same reason `asideAdoptResultSchema`
+ * accepts an unheard-of status: the renderer labels the five it knows and shows
+ * nothing alarming for one it does not.
+ */
+export const skillRowSchema = z
+	.object({
+		name: z.string(),
+		description: z.string().nullish(),
+		source: z.string().nullish(),
+		link_id: z.string().nullish(),
+		editable: z.boolean().nullish(),
+		installed: z.boolean().nullish(),
+		fingerprint: z.string().nullish(),
+		form: z.string().nullish(),
+	})
+	.passthrough();
+export type SkillRowWire = z.infer<typeof skillRowSchema>;
+
+/**
+ * One reference file in a skill's details read. `preview` is the first 2048
+ * bytes (utf-8) or null; `preview_truncated` says the file is longer than it.
+ */
+export const skillFileSchema = z
+	.object({
+		path: z.string(),
+		size: z.number().nullish(),
+		preview: z.string().nullish(),
+		preview_truncated: z.boolean().nullish(),
+	})
+	.passthrough();
+
+/**
+ * The `name` arm's `skill_detail`.
+ *
+ * `body` is null when `body_in_detail` is true: the body is then the prefix
+ * `detail.slice(0, body_length)` of the SAME response's `detail` text, and
+ * `body_length` counts UTF-16 code units, i.e. exactly JavaScript's
+ * `String.length`, which is why the slice is correct here for astral characters
+ * and a Python code-point count would not be (core `build_detail`).
+ */
+export const skillDetailSchema = skillRowSchema
+	.extend({
+		body: z.string().nullish(),
+		body_in_detail: z.boolean().nullish(),
+		body_length: z.number().nullish(),
+		body_bytes: z.number().nullish(),
+		body_truncated: z.boolean().nullish(),
+		files: z.array(skillFileSchema).nullish(),
+		files_total: z.number().nullish(),
+		files_truncated: z.boolean().nullish(),
+		publish_budget: z
+			.object({ limit: z.number(), total: z.number() })
+			.passthrough()
+			.nullish(),
+	})
+	.passthrough();
+export type SkillDetailWire = z.infer<typeof skillDetailSchema>;
+
+export const skillsListResultSchema = z
+	.object({
+		skills: z.array(skillRowSchema),
+		scope: z.string().nullish(),
+		detail: z.string().nullish(),
+		skill_detail: skillDetailSchema.nullish(),
+		warning_count: z.number().nullish(),
+		version: z.string().nullish(),
+	})
+	.passthrough();
+export type SkillsListResult = z.infer<typeof skillsListResultSchema>;
 
 /**
  * The owner's TYPED refusal of an adopt: `409 {"detail": {"code":
@@ -8930,6 +9033,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.label === undefined ? {} : { label: request.label }),
 					state: request.state,
 				},
+			};
+		case "agent_messages.onboarding.dismiss":
+			return {
+				path: "/v1/desktop/team-bridge/onboarding/dismiss",
+				method: "POST",
 			};
 		case "agent_messages.allowlist.get":
 			return {

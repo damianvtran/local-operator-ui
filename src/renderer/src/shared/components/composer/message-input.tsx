@@ -6511,10 +6511,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!autoFocus && !dictationEnded) return;
 			if (isInputDisabled || dictating) return;
 			const activeElement = document.activeElement;
+			/*
+			 * A FOCUSED TAB IS NOT A PLACE TO TAKE FOCUS FROM (UX round 1, U2). Radix
+			 * activates a tab on focus, so arrowing along a tab strip can MOUNT this box
+			 * (leaving a tab whose pane had no composer), and the claim below then moved
+			 * the caret out of the strip mid-keystroke: the second arrow press moved a
+			 * text cursor instead of the next tab. Deliberately NARROW - a tab, not
+			 * "anything focused" - so the box still takes focus on an ordinary page
+			 * open, where focus is on <body> or on a control the user did not just
+			 * arrow with.
+			 */
 			const isInputFocused =
 				activeElement &&
 				(activeElement.tagName === "INPUT" ||
-					activeElement.tagName === "TEXTAREA");
+					activeElement.tagName === "TEXTAREA" ||
+					activeElement.getAttribute("role") === "tab");
 			/*
 			 * Not while nothing is connected: the empty chat's headline invites a
 			 * question and the connect card asks for a provider, and autofocus put

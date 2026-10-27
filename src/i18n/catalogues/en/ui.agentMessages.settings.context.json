@@ -611,5 +611,40 @@
 		"length": "Two to three words; must fit a small button.",
 		"placeholders": {},
 		"note": "Opens the chief-of-staff conversation with its message box ready, so the reader can send the one message that releases the held messages. 'Message' is a verb here. A navigation action, not a confirmation; it sends nothing by itself."
+	},
+	"ui.agentMessages.settings.default_on.b_title": {
+		"role": "settings heading when no endpoint exists yet under default-on",
+		"tone": "sentence case, plain",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Replaces the opt-in 'off' heading. Must not offer or imply an Enable action. 'Team Bridge' stays in English."
+	},
+	"ui.agentMessages.settings.default_on.b_body": {
+		"role": "settings body under the default-on not-yet-set-up heading",
+		"tone": "plain, second person",
+		"length": "One or two sentences.",
+		"placeholders": {},
+		"note": "Says it turns on automatically and that nothing is sent when it does. No call to action."
+	},
+	"ui.agentMessages.settings.default_on.e_body": {
+		"role": "settings body after the member turned Team Bridge off under default-on",
+		"tone": "plain, second person",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "Points to the consent text below and to the explicit turn-on-again path, without the word Enable."
+	},
+	"ui.agentMessages.settings.action.turn_on_again": {
+		"role": "settings button to turn Team Bridge back on after turning it off",
+		"tone": "imperative, sentence case",
+		"length": "Two or three words.",
+		"placeholders": {},
+		"note": "The explicit way back after Turn off under default-on. Deliberately not named Enable."
+	},
+	"ui.agentMessages.settings.consent.via_default_on": {
+		"role": "consent record value: how consent was collected",
+		"tone": "noun phrase, sentence case",
+		"length": "Two or three words, shown in a small grid.",
+		"placeholders": {},
+		"note": "Value for the 'Collected in' row when the runtime enrolled the member automatically."
 	}
 }
