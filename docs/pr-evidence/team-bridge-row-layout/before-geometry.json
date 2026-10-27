@@ -1,0 +1,240 @@
+{
+ "draft-1088-light": {
+  "trigger": {
+   "left": 308,
+   "right": 1068,
+   "width": 760
+  },
+  "plate": {
+   "left": 660,
+   "right": 716,
+   "width": 56
+  },
+  "name": {
+   "left": 308,
+   "right": 1068,
+   "width": 760
+  },
+  "deltaPlateToName": 352
+ },
+ "rows-1088-light": {
+  "clientWidth": 800,
+  "scrollWidth": 800,
+  "wrapperDisplay": "block",
+  "rows": [
+   {
+    "id": "bcmsg_y1",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   },
+   {
+    "id": "bcmsg_t1",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   },
+   {
+    "id": "bcmsg_t2",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   },
+   {
+    "id": "bcmsg_t3",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   },
+   {
+    "id": "bcmsg_long1",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   }
+  ]
+ },
+ "draft-1088-dark": {
+  "trigger": {
+   "left": 308,
+   "right": 1068,
+   "width": 760
+  },
+  "plate": {
+   "left": 660,
+   "right": 716,
+   "width": 56
+  },
+  "name": {
+   "left": 308,
+   "right": 1068,
+   "width": 760
+  },
+  "deltaPlateToName": 352
+ },
+ "rows-1088-dark": {
+  "clientWidth": 800,
+  "scrollWidth": 800,
+  "wrapperDisplay": "block",
+  "rows": [
+   {
+    "id": "bcmsg_y1",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   },
+   {
+    "id": "bcmsg_t1",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   },
+   {
+    "id": "bcmsg_t2",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   },
+   {
+    "id": "bcmsg_t3",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   },
+   {
+    "id": "bcmsg_long1",
+    "right": 1088,
+    "overVisible": 0,
+    "toolbarRight": 1068
+   }
+  ]
+ },
+ "draft-1440-light": {
+  "trigger": {
+   "left": 308,
+   "right": 1420,
+   "width": 1112
+  },
+  "plate": {
+   "left": 836,
+   "right": 892,
+   "width": 56
+  },
+  "name": {
+   "left": 308,
+   "right": 1420,
+   "width": 1112
+  },
+  "deltaPlateToName": 528
+ },
+ "rows-1440-light": {
+  "clientWidth": 1152,
+  "scrollWidth": 1152,
+  "wrapperDisplay": "block",
+  "rows": [
+   {
+    "id": "bcmsg_y1",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   },
+   {
+    "id": "bcmsg_t1",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   },
+   {
+    "id": "bcmsg_t2",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   },
+   {
+    "id": "bcmsg_t3",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   },
+   {
+    "id": "bcmsg_long1",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   }
+  ]
+ },
+ "draft-1440-dark": {
+  "trigger": {
+   "left": 308,
+   "right": 1420,
+   "width": 1112
+  },
+  "plate": {
+   "left": 836,
+   "right": 892,
+   "width": 56
+  },
+  "name": {
+   "left": 308,
+   "right": 1420,
+   "width": 1112
+  },
+  "deltaPlateToName": 528
+ },
+ "rows-1440-dark": {
+  "clientWidth": 1152,
+  "scrollWidth": 1152,
+  "wrapperDisplay": "block",
+  "rows": [
+   {
+    "id": "bcmsg_y1",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   },
+   {
+    "id": "bcmsg_t1",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   },
+   {
+    "id": "bcmsg_t2",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   },
+   {
+    "id": "bcmsg_t3",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   },
+   {
+    "id": "bcmsg_long1",
+    "right": 1440,
+    "overVisible": 0,
+    "toolbarRight": 1420
+   }
+  ]
+ },
+ "pickerRect": {
+  "left": 408,
+  "top": 123.5,
+  "right": 754,
+  "bottom": 593.5,
+  "vw": 1088,
+  "vh": 640
+ },
+ "pickerMs": [
+  "11859.3",
+  "2957.8",
+  "5481.4",
+  "5639.6",
+  "6114.1"
+ ],
+ "playErrors": [
+  "\n  \n    \n    \n      The component failed to render properly, likely due to a configuration issue in Storybook.\n      Here are some common causes and how you can address them:\n    \n    \n      \n        "
+ ]
+}
