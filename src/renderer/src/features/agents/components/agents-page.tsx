@@ -254,7 +254,10 @@ export function AgentsPage() {
 		linksEnabled: desktopFeatureEnabled(capabilities.data, "hub_links"),
 		updatesEnabled: desktopFeatureEnabled(capabilities.data, "hub_updates"),
 	});
-	const listRetryFocus = useRetryFocus(Boolean(skills.library.error));
+	const listRetryFocus = useRetryFocus(
+		Boolean(skills.library.error),
+		skills.library.isFetching,
+	);
 	const skillDetail = useSkillDetail(
 		skillMode ? params.get("name") : null,
 		skillsOffered,

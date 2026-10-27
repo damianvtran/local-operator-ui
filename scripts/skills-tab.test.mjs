@@ -50,6 +50,7 @@ const pageBundle = await build({
 		contents: [
 			'export { AgentsPage } from "./src/renderer/src/features/agents/components/agents-page";',
 			'export * as model from "./src/renderer/src/features/agents/skills-library-model";',
+			'export { useRetryFocus } from "./src/renderer/src/features/agents/components/skills-library";',
 			/*
 			 * The box's own store, so the storage below can be given to THAT store and no
 			 * other (see the note under the import).
@@ -1179,6 +1180,89 @@ test("leaving the Skills tab by keyboard keeps focus on the tab, not the compose
 		"focus stayed on the tab",
 	);
 	await teardown(view);
+});
+
+/*
+ * U9: pressing Retry arms a latch that hands focus back to Retry when the error
+ * pane returns. A retry that SUCCEEDS must disarm it, or a later, unrelated failure
+ * pulls focus to Retry out of whatever the reader is doing. The hook is driven
+ * directly (a later failure cannot be forced through the page), and the assertions
+ * are on booleans, never on the DOM node.
+ */
+const mountRetryProbe = async () => {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	let setState;
+	const { useState, useRef } = await import("react");
+	function Harness() {
+		const [state, set] = useState({ failed: true, fetching: false });
+		setState = set;
+		const retry = PAGE.useRetryFocus(state.failed, state.fetching);
+		const other = useRef(null);
+		return h(
+			"div",
+			null,
+			h("input", { "data-testid": "elsewhere", ref: other }),
+			state.failed
+				? h(
+						"div",
+						{ ref: retry.holder },
+						h(
+							"button",
+							{ "data-testid": "retry", onClick: retry.onPress },
+							"Retry",
+						),
+					)
+				: null,
+		);
+	}
+	await act(async () => {
+		root.render(h(Harness));
+	});
+	const set = async (next) => {
+		await act(async () => {
+			setState(next);
+		});
+		await settle(() => false, 60);
+	};
+	return {
+		container,
+		set,
+		focusedId: () => document.activeElement?.getAttribute("data-testid") ?? "",
+		teardown: async () => {
+			await act(async () => root.unmount());
+			container.remove();
+		},
+	};
+};
+
+test("Retry focus: restored after a failed retry, but a successful retry disarms the latch", async () => {
+	// Positive control: press, the retry fails again -> focus returns to Retry.
+	const failing = await mountRetryProbe();
+	await act(async () => {
+		failing.container.querySelector('[data-testid="retry"]').click();
+	});
+	await failing.set({ failed: false, fetching: true });
+	await failing.set({ failed: true, fetching: false });
+	assert.equal(failing.focusedId(), "retry", "a failed retry hands focus back");
+	await failing.teardown();
+
+	// The defect: press, the retry SUCCEEDS, then an unrelated failure later.
+	const later = await mountRetryProbe();
+	await act(async () => {
+		later.container.querySelector('[data-testid="retry"]').click();
+	});
+	await later.set({ failed: false, fetching: true });
+	await later.set({ failed: false, fetching: false });
+	later.container.querySelector('[data-testid="elsewhere"]').focus();
+	await later.set({ failed: true, fetching: false });
+	assert.equal(
+		later.focusedId(),
+		"elsewhere",
+		"a later background failure does not pull focus to Retry",
+	);
+	await later.teardown();
 });
 
 test("opening a skill at a wide width keeps focus on its row; closing returns it there", async () => {

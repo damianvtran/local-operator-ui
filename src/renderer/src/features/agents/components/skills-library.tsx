@@ -314,14 +314,6 @@ export function SkillsRosterBody({
 }
 
 /**
- * KEEP KEYBOARD FOCUS ON RETRY (UX U5, focus part only). A failed read with no
- * cached data renders the error pane; pressing Retry clears the error and the pane
- * (and the focused button in it) unmounts, so focus fell to <body> and a failure
- * that returned left the keyboard user nowhere. This remembers that Retry was
- * pressed and, when the error pane is back, puts focus on its Retry button again.
- * A success is left alone: the content that replaces the pane is not a button.
- */
-/**
  * THE FAILED-UPDATE MARK ON THIS SURFACE SAYS ONLY THAT IT FAILED. The Hub's own
  * string is "Update failed - open to retry", true on the Hub page where the detail
  * has a retry, and false here: U1 is read-only and neither the row nor the details
@@ -333,16 +325,31 @@ const SKILL_MARK_LABELS = {
 	failed: "ui.agents.skills.hub.update_failed",
 } as const;
 
-export function useRetryFocus(failed: boolean) {
+/**
+ * KEEP KEYBOARD FOCUS ON RETRY (UX U5, focus part only). A failed read with no
+ * cached data renders the error pane; pressing Retry clears the error and the pane
+ * (and the focused button in it) unmounts, so focus fell to <body> and a failure
+ * that returned left the keyboard user nowhere. This remembers that Retry was
+ * pressed and, when the error pane is back, puts focus on its Retry button again.
+ * A success is left alone: the content that replaces the pane is not a button, and
+ * the press is FORGOTTEN once the retry settles without an error (`fetching` back to
+ * false), so a later background failure cannot pull focus to Retry (UX U9).
+ */
+export function useRetryFocus(failed: boolean, fetching: boolean) {
 	const pressed = useRef(false);
 	const holder = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		if (!failed || !pressed.current) return;
-		pressed.current = false;
-		requestAnimationFrame(() =>
-			holder.current?.querySelector<HTMLElement>("button")?.focus(),
-		);
-	}, [failed]);
+		if (!pressed.current) return;
+		if (failed) {
+			pressed.current = false;
+			requestAnimationFrame(() =>
+				holder.current?.querySelector<HTMLElement>("button")?.focus(),
+			);
+		} else if (!fetching) {
+			// The retry settled WITHOUT an error: nothing to hand focus back to.
+			pressed.current = false;
+		}
+	}, [failed, fetching]);
 	return {
 		holder,
 		onPress: () => {
@@ -388,7 +395,7 @@ export function SkillDetail({
 }) {
 	useI18nLocale();
 	const headingRef = useRef<HTMLHeadingElement>(null);
-	const retryFocus = useRetryFocus(Boolean(detail.error));
+	const retryFocus = useRetryFocus(Boolean(detail.error), detail.isFetching);
 	/*
 	 * FOCUS FOLLOWS THE OPEN (QA round 1 Q3 / review R6). Below 1000 px the roster
 	 * is `display:none` while a skill is open, so the row that was pressed LEAVES
