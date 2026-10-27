@@ -58,5 +58,13 @@
 	"ui.chat.canonical.older_history.windowed.short_gesture": "پچھلے کے لیے اوپر سکرول",
 	"ui.chat.canonical.older_history.unproven.short": "پچھلے لوڈ نہیں ہوئے",
 	"ui.chat.canonical.older_history.unproven.long": "پچھلی تاریخ لوڈ نہیں ہوئی",
-	"ui.chat.canonical.older_history.conversation_start": "گفتگو کا آغاز"
+	"ui.chat.canonical.older_history.conversation_start": "گفتگو کا آغاز",
+	"ui.chat.canonical.placeholder.loading": "گفتگو لوڈ ہو رہی ہے…",
+	"ui.chat.canonical.placeholder.region_label": "گفتگو لوڈ ہو رہی ہے",
+	"ui.chat.canonical.tool_row.generic_verb.running": "کال کر رہا ہے",
+	"ui.chat.canonical.tool_row.generic_verb.settled": "کال کیا",
+	"ui.chat.canonical.tool_row.outcome.failed": "ناکام",
+	"ui.chat.canonical.tool_row.outcome.interrupted": "روکی گئی",
+	"ui.chat.canonical.tool_row.outcome.never_ran": "کبھی نہیں چلی",
+	"ui.chat.canonical.tool_row.outcome.succeeded": "کامیاب"
 }

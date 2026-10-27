@@ -113,5 +113,14 @@
 	"ui.chat.question_dock.hint.secret": "{prefix}Escribe o pega el secreto arriba · Intro envía · Esc oculta",
 	"ui.chat.question_dock.hint.secret_held": "{prefix}En espera: no se sabe si esta respuesta llegó — puede que sí, así que nada puede volver a enviarse · Esc en la tarjeta la oculta",
 	"ui.chat.question_dock.hint.type": "{prefix}Escribe tu respuesta abajo.",
-	"ui.chat.question_dock.hint.options": "{prefix}Arriba/Abajo para elegir · Intro o {digits} responde · Esc oculta · o escribe tu propia respuesta abajo"
+	"ui.chat.question_dock.hint.options": "{prefix}Arriba/Abajo para elegir · Intro o {digits} responde · Esc oculta · o escribe tu propia respuesta abajo",
+	"ui.chat.session_status.context_heading": "Contexto",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Contexto: aún no se ha medido nada. La ventana se llena a medida que avanza la conversación.",
+	"ui.chat.session_status.conversation_starting": "Se establece cuando empiece la conversación.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Modelo: aún no hay ninguno resuelto. Elige el modelo con el que se ejecutará esta conversación.",
+	"ui.chat.session_status.not_signed_in": "No has iniciado sesión en {label}",
+	"ui.chat.session_status.not_signed_in_description": "Esta sesión ejecuta {label} sin un inicio de sesión que funcione, así que no podrá responder hasta que lo conectes.",
+	"ui.chat.session_status.nothing_measured_yet": "Aún no se ha medido nada. La ventana se llena a medida que avanza la conversación.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} no está disponible temporalmente",
+	"ui.chat.session_status.temporarily_unavailable_description": "Tu inicio de sesión guardado sigue ahí. Vuelve a intentarlo más tarde o elige otro modelo."
 }

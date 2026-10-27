@@ -80,5 +80,7 @@
 	"ui.chat.run_details.chip.subagents_failed": "{count, plural, other {#个子智能体失败}}",
 	"ui.chat.run_details.chip.attention": "{count, plural, other {#项需要处理}}",
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, other {#个MCP服务器需要处理}}",
-	"ui.chat.run_details.mcp.cold_label": "没有正在运行的会话——无法检查服务器状态。"
+	"ui.chat.run_details.mcp.cold_label": "没有正在运行的会话——无法检查服务器状态。",
+	"ui.chat.run_details.nothing_in_flight": "没有进行中的事项。",
+	"ui.chat.run_details.nothing_to_show_yet": "暂无可显示的内容。"
 }

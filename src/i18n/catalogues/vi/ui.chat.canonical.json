@@ -58,5 +58,13 @@
 	"ui.chat.canonical.older_history.windowed.short_gesture": "Cuộn lên xem phần trước",
 	"ui.chat.canonical.older_history.unproven.short": "Phần trước chưa tải",
 	"ui.chat.canonical.older_history.unproven.long": "Lịch sử trước chưa tải",
-	"ui.chat.canonical.older_history.conversation_start": "Bắt đầu cuộc trò chuyện"
+	"ui.chat.canonical.older_history.conversation_start": "Bắt đầu cuộc trò chuyện",
+	"ui.chat.canonical.placeholder.loading": "Đang tải cuộc trò chuyện…",
+	"ui.chat.canonical.placeholder.region_label": "Đang tải cuộc trò chuyện",
+	"ui.chat.canonical.tool_row.generic_verb.running": "Đang gọi",
+	"ui.chat.canonical.tool_row.generic_verb.settled": "Đã gọi",
+	"ui.chat.canonical.tool_row.outcome.failed": "thất bại",
+	"ui.chat.canonical.tool_row.outcome.interrupted": "bị ngắt",
+	"ui.chat.canonical.tool_row.outcome.never_ran": "chưa chạy",
+	"ui.chat.canonical.tool_row.outcome.succeeded": "thành công"
 }

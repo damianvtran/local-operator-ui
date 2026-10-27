@@ -12,5 +12,16 @@
 	"ui.chat.device.sentence.moving": "Déplacement de cette conversation vers {name}.",
 	"ui.chat.device.sentence.remote": "Cette conversation s’exécute sur {name}. Cliquez pour la rappeler ici ou la déplacer ailleurs.",
 	"ui.chat.device.sentence.remote_did_not_answer": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture.",
-	"ui.chat.device.sentence.remote_did_not_answer_reason": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture ({reason})."
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture ({reason}).",
+	"ui.chat.device.fact.this_device": "cet appareil",
+	"ui.chat.device.footer.move_deletes_copy": "La copie sur cet appareil est supprimée une fois le déplacement confirmé.",
+	"ui.chat.device.label.this_device": "Cet appareil",
+	"ui.chat.device.notice.move_hold_detail": "déplacement en cours · elle continue là-bas ; impossible de l’arrêter d’ici",
+	"ui.chat.device.picker.heading.move": "Déplacer cette conversation vers",
+	"ui.chat.device.picker.heading.start": "Démarrer la conversation sur",
+	"ui.chat.device.row.conversations": "{count, plural, one {{count, number, ::group-off} conversation} many {{count, number, ::group-off} de conversations} other {{count, number, ::group-off} conversations}}",
+	"ui.chat.device.row.not_here_why": "la conversation n’est pas ici ; rappelez-la ici d’abord",
+	"ui.chat.device.sentence.mesh_read_failure": "La liste des appareils n’a pas pu être lue — l’affichage reprend donc la dernière réponse.",
+	"ui.chat.device.sentence.move_in_flight": "Cette conversation est en cours de déplacement vers {name}. Elle continue là-bas ; rien de ce qui serait envoyé d’ici ne serait délivré.",
+	"ui.chat.device.sentence.pairing_guidance": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '<token>'."
 }

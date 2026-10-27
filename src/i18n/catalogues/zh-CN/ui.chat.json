@@ -113,5 +113,14 @@
 	"ui.chat.question_dock.hint.secret": "{prefix}在上方输入或粘贴敏感信息 · Enter发送 · Esc隐藏",
 	"ui.chat.question_dock.hint.secret_held": "{prefix}回答是否送达未知，暂时搁置——可能已经送达，因此无法再次发送 · 在卡片中按Esc可隐藏",
 	"ui.chat.question_dock.hint.type": "{prefix}在下方输入你的回答。",
-	"ui.chat.question_dock.hint.options": "{prefix}上下键选择 · Enter或{digits}作答 · Esc隐藏 · 也可以在下方输入自己的回答"
+	"ui.chat.question_dock.hint.options": "{prefix}上下键选择 · Enter或{digits}作答 · Esc隐藏 · 也可以在下方输入自己的回答",
+	"ui.chat.session_status.context_heading": "上下文",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "上下文：暂无读数。随着对话进行，上下文窗口会逐渐填充。",
+	"ui.chat.session_status.conversation_starting": "对话开始后即可设置。",
+	"ui.chat.session_status.model_none_resolved_tooltip": "模型：尚未确定。选择此对话使用的模型。",
+	"ui.chat.session_status.not_signed_in": "未登录{label}",
+	"ui.chat.session_status.not_signed_in_description": "此会话运行{label}，但没有可用的登录，因此在连接之前无法作答。",
+	"ui.chat.session_status.nothing_measured_yet": "暂无读数。随着对话进行，上下文窗口会逐渐填充。",
+	"ui.chat.session_status.temporarily_unavailable": "{label}暂时不可用",
+	"ui.chat.session_status.temporarily_unavailable_description": "已保存的登录信息仍然保留。稍后重试，或选择其他模型。"
 }

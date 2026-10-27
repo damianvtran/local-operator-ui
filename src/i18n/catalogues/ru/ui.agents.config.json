@@ -26,5 +26,8 @@
 	"ui.agents.config.summary.no_changes": "Запуск ответил, не изменив ни одного агента или команды.",
 	"ui.agents.config.summary.nothing_else": "Больше этот запуск ничего не изменил.",
 	"ui.agents.config.summary.updated": "Обновлено {name}",
-	"ui.agents.config.summary.you_asked": "Ваш запрос: {topic}"
+	"ui.agents.config.summary.you_asked": "Ваш запрос: {topic}",
+	"ui.agents.config.banner.unavailable": "Не удалось связаться с бэкендом, поэтому поле ввода пока недоступно.",
+	"ui.agents.config.disabled_gate": "Агенты настраиваются через разговор",
+	"ui.agents.config.run_details_region": "Подробности запуска"
 }

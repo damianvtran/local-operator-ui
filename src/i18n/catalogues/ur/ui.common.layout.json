@@ -5,5 +5,7 @@
 	"ui.common.layout.sidebar_header.create_a_new_agent": "نیا ایجنٹ بنائیں",
 	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "ZIP فائل سے ایجنٹ درآمد کریں",
 	"ui.common.layout.sidebar_header.import_agent": "ایجنٹ درآمد کریں",
-	"ui.common.layout.sidebar_header.new_agent": "نیا ایجنٹ"
+	"ui.common.layout.sidebar_header.new_agent": "نیا ایجنٹ",
+	"ui.common.layout.toasts.dismiss": "ٹوسٹ بند کریں",
+	"ui.common.layout.toasts.notifications": "اطلاعات"
 }

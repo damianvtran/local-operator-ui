@@ -58,5 +58,13 @@
 	"ui.chat.canonical.older_history.windowed.short_gesture": "Défiler vers le haut",
 	"ui.chat.canonical.older_history.unproven.short": "Historique non chargé",
 	"ui.chat.canonical.older_history.unproven.long": "Historique antérieur non chargé",
-	"ui.chat.canonical.older_history.conversation_start": "Début de la conversation"
+	"ui.chat.canonical.older_history.conversation_start": "Début de la conversation",
+	"ui.chat.canonical.placeholder.loading": "Chargement de la conversation…",
+	"ui.chat.canonical.placeholder.region_label": "Chargement de la conversation",
+	"ui.chat.canonical.tool_row.generic_verb.running": "Appel en cours de",
+	"ui.chat.canonical.tool_row.generic_verb.settled": "Appel de",
+	"ui.chat.canonical.tool_row.outcome.failed": "échoué",
+	"ui.chat.canonical.tool_row.outcome.interrupted": "interrompu",
+	"ui.chat.canonical.tool_row.outcome.never_ran": "jamais exécuté",
+	"ui.chat.canonical.tool_row.outcome.succeeded": "réussi"
 }

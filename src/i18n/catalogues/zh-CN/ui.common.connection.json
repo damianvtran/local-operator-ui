@@ -35,5 +35,10 @@
 	"ui.common.connection.backend.card_governed": "无法加载设置：本机的Local Operator服务器正由另一个程序管理，因此此页面无法读取或更改设置。",
 	"ui.common.connection.backend.card_pre_handshake": "无法加载设置：此应用连接的服务器版本早于其使用的配对握手协议，因此此页面无法从服务器读取设置。",
 	"ui.common.connection.backend.card_credential_refused": "无法加载设置：服务器拒绝了此应用的凭据，因此此页面无法从服务器读取设置。",
-	"ui.common.connection.backend.card_unpaired": "无法加载设置：此应用尚未与正在运行的服务器配对，因此此页面无法从服务器读取设置。"
+	"ui.common.connection.backend.card_unpaired": "无法加载设置：此应用尚未与正在运行的服务器配对，因此此页面无法从服务器读取设置。",
+	"ui.common.connection.session_loss.frame_too_large": "此对话的更新内容过大，无法显示——重新连接后重试。",
+	"ui.common.connection.session_loss.history_unreadable": "无法加载此对话的历史记录——重新连接后重试。",
+	"ui.common.connection.session_loss.lost": "与此对话的连接已断开——重新连接后可继续阅读。",
+	"ui.common.connection.session_loss.not_paired": "此应用尚未与Local Operator服务器配对，因此暂时无法读取此对话。",
+	"ui.common.connection.session_loss.server_down": "Local Operator服务器未运行——恢复后重新连接；若一直未恢复，重启应用。"
 }

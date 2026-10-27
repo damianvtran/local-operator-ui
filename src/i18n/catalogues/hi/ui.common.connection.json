@@ -35,5 +35,10 @@
 	"ui.common.connection.backend.card_governed": "आपकी सेटिंग्स लोड नहीं हो सकीं: इस मशीन के Local Operator सर्वर को दूसरा प्रोग्राम प्रबंधित कर रहा है, इसलिए यह पेज उन्हें यहाँ पढ़ या बदल नहीं सकता।",
 	"ui.common.connection.backend.card_pre_handshake": "आपकी सेटिंग्स लोड नहीं हो सकीं: जिस सर्वर से यह ऐप जुड़ा है वह पेयरिंग हैंडशेक से पुराना है, इसलिए यह पेज उससे उन्हें पढ़ नहीं सकता।",
 	"ui.common.connection.backend.card_credential_refused": "आपकी सेटिंग्स लोड नहीं हो सकीं: सर्वर ने इस ऐप का क्रेडेंशियल अस्वीकार किया, इसलिए यह पेज उससे उन्हें पढ़ नहीं सकता।",
-	"ui.common.connection.backend.card_unpaired": "आपकी सेटिंग्स लोड नहीं हो सकीं: यह ऐप चल रहे सर्वर से पेयर नहीं है, इसलिए यह पेज उससे उन्हें पढ़ नहीं सकता।"
+	"ui.common.connection.backend.card_unpaired": "आपकी सेटिंग्स लोड नहीं हो सकीं: यह ऐप चल रहे सर्वर से पेयर नहीं है, इसलिए यह पेज उससे उन्हें पढ़ नहीं सकता।",
+	"ui.common.connection.session_loss.frame_too_large": "इस बातचीत के अपडेट दिखाने के लिए बहुत बड़े थे — दोबारा कनेक्ट करें, फिर कोशिश करें।",
+	"ui.common.connection.session_loss.history_unreadable": "इस बातचीत का इतिहास लोड नहीं हो सका — दोबारा कनेक्ट करें, फिर कोशिश करें।",
+	"ui.common.connection.session_loss.lost": "इस बातचीत से कनेक्शन टूट गया — पढ़ते रहने के लिए दोबारा कनेक्ट करें।",
+	"ui.common.connection.session_loss.not_paired": "यह ऐप Local Operator सर्वर से पेयर नहीं है, इसलिए यह बातचीत अभी पढ़ी नहीं जा सकती।",
+	"ui.common.connection.session_loss.server_down": "Local Operator सर्वर नहीं चल रहा है — वापस आने पर दोबारा कनेक्ट करें, या वह बंद ही रहे तो ऐप फिर से शुरू करें।"
 }

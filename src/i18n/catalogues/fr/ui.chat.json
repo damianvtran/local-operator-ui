@@ -113,5 +113,14 @@
 	"ui.chat.question_dock.hint.secret": "{prefix}Saisissez ou collez le secret ci-dessus · Entrée envoie · Échap masque",
 	"ui.chat.question_dock.hint.secret_held": "{prefix}Envoi suspendu tant que le sort de cette réponse est inconnu — elle a peut-être été transmise, donc plus rien ne peut être envoyé · Échap dans la carte la masque",
 	"ui.chat.question_dock.hint.type": "{prefix}Saisissez votre réponse ci-dessous.",
-	"ui.chat.question_dock.hint.options": "{prefix}Haut/Bas pour choisir · Entrée ou {digits} pour répondre · Échap masque · ou saisissez votre propre réponse ci-dessous"
+	"ui.chat.question_dock.hint.options": "{prefix}Haut/Bas pour choisir · Entrée ou {digits} pour répondre · Échap masque · ou saisissez votre propre réponse ci-dessous",
+	"ui.chat.session_status.context_heading": "Contexte",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Contexte : rien n’a encore été mesuré. La fenêtre se remplit au fil de la conversation.",
+	"ui.chat.session_status.conversation_starting": "Défini une fois la conversation lancée.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Modèle : aucun n’est encore déterminé. Choisissez le modèle que cette conversation utilisera.",
+	"ui.chat.session_status.not_signed_in": "Non connecté à {label}",
+	"ui.chat.session_status.not_signed_in_description": "Cette session utilise {label} sans connexion active ; elle ne peut donc pas répondre tant que la connexion n’est pas établie.",
+	"ui.chat.session_status.nothing_measured_yet": "Rien n’a encore été mesuré. La fenêtre se remplit au fil de la conversation.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} est temporairement indisponible",
+	"ui.chat.session_status.temporarily_unavailable_description": "Votre connexion reste enregistrée. Réessayez plus tard ou choisissez un autre modèle."
 }

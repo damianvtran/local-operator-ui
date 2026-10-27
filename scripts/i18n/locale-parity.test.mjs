@@ -1261,6 +1261,14 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.hub.teams.brief.trigger",
 		"French noun « brief » has the same spelling; the namespace's long forms are « Brief de collaboration » / « Brief de projet » and its aria is « Voir le brief de {name} »",
 	],
+	[
+		"fr:ui.chat.pickers.slash.phase.arguments",
+		"French command-line term « Arguments » has the same spelling; it labels the slash command's argument phase",
+	],
+	[
+		"fr:ui.common.layout.toasts.notifications",
+		"French plural « Notifications » has the same spelling; the toast region's own accessible name",
+	],
 ]);
 
 /*

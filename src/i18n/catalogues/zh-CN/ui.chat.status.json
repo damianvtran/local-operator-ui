@@ -1,0 +1,6 @@
+{
+	"ui.chat.status.credential_refused": "正在运行的服务器拒绝了此应用的凭据，因此登录、设置和斜杠命令不可用。",
+	"ui.chat.status.degraded": "服务器响应缓慢。消息已排队等待。",
+	"ui.chat.status.internet_offline": "本机已离线。发送将等待。",
+	"ui.chat.status.unreachable": "无法连接Local Operator服务器。发送将等待。"
+}

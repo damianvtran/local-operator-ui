@@ -113,5 +113,14 @@
 	"ui.chat.question_dock.hint.secret": "{prefix}ऊपर गोपनीय जानकारी टाइप करें या पेस्ट करें · Enter भेजता है · Esc छिपाता है",
 	"ui.chat.question_dock.hint.secret_held": "{prefix}यह जवाब इसलिए रुका है कि इसका अंजाम अभी पता नहीं — हो सकता है यह पहुँच गया हो, इसलिए अब कुछ नहीं भेजा जा सकता · कार्ड में Esc इसे छिपाता है",
 	"ui.chat.question_dock.hint.type": "{prefix}नीचे अपना जवाब टाइप करें।",
-	"ui.chat.question_dock.hint.options": "{prefix}ऊपर/नीचे से चुनें · Enter या {digits} से जवाब दें · Esc छिपाता है · या नीचे अपना जवाब टाइप करें"
+	"ui.chat.question_dock.hint.options": "{prefix}ऊपर/नीचे से चुनें · Enter या {digits} से जवाब दें · Esc छिपाता है · या नीचे अपना जवाब टाइप करें",
+	"ui.chat.session_status.context_heading": "संदर्भ",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "संदर्भ: अभी कुछ मापा नहीं गया। बातचीत चलने के साथ विंडो भरती जाती है।",
+	"ui.chat.session_status.conversation_starting": "बातचीत शुरू होने पर तय होगा।",
+	"ui.chat.session_status.model_none_resolved_tooltip": "मॉडल: अभी कोई तय नहीं हुआ। वह मॉडल चुनें जिस पर यह बातचीत चलेगी।",
+	"ui.chat.session_status.not_signed_in": "{label} में साइन इन नहीं है",
+	"ui.chat.session_status.not_signed_in_description": "यह सत्र {label} चलाता है, पर उसके पास कोई काम करने वाला साइन-इन नहीं है, इसलिए जब तक आप साइन-इन कनेक्ट नहीं करते, यह जवाब नहीं दे सकता।",
+	"ui.chat.session_status.nothing_measured_yet": "अभी कुछ मापा नहीं गया। बातचीत चलने के साथ विंडो भरती जाती है।",
+	"ui.chat.session_status.temporarily_unavailable": "{label} अस्थायी रूप से उपलब्ध नहीं है",
+	"ui.chat.session_status.temporarily_unavailable_description": "आपका सहेजा हुआ साइन-इन अब भी मौजूद है। बाद में फिर कोशिश करें या कोई दूसरा मॉडल चुनें।"
 }

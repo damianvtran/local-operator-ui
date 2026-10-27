@@ -12,5 +12,16 @@
 	"ui.chat.device.sentence.moving": "Đang chuyển cuộc trò chuyện này đến {name}.",
 	"ui.chat.device.sentence.remote": "Cuộc trò chuyện này chạy trên {name}. Nhấp để mang nó về đây hoặc chuyển sang thiết bị khác.",
 	"ui.chat.device.sentence.remote_did_not_answer": "Cuộc trò chuyện này chạy trên {name}, thiết bị đó không phản hồi lần đọc gần nhất.",
-	"ui.chat.device.sentence.remote_did_not_answer_reason": "Cuộc trò chuyện này chạy trên {name}, thiết bị đó không phản hồi lần đọc gần nhất ({reason})."
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "Cuộc trò chuyện này chạy trên {name}, thiết bị đó không phản hồi lần đọc gần nhất ({reason}).",
+	"ui.chat.device.fact.this_device": "thiết bị này",
+	"ui.chat.device.footer.move_deletes_copy": "Bản sao trên thiết bị này sẽ bị xóa khi quá trình chuyển hoàn tất.",
+	"ui.chat.device.label.this_device": "Thiết bị này",
+	"ui.chat.device.notice.move_hold_detail": "đang bàn giao · cuộc trò chuyện tiếp tục ở đó; không thể dừng từ đây",
+	"ui.chat.device.picker.heading.move": "Chuyển cuộc trò chuyện này đến",
+	"ui.chat.device.picker.heading.start": "Bắt đầu cuộc trò chuyện trên",
+	"ui.chat.device.row.conversations": "{count, plural, other {{count, number, ::group-off} cuộc trò chuyện}}",
+	"ui.chat.device.row.not_here_why": "cuộc trò chuyện không ở đây để chuyển; hãy mang nó về đây trước",
+	"ui.chat.device.sentence.mesh_read_failure": "Không đọc được danh sách thiết bị, nên đây là những gì câu trả lời gần nhất còn giữ.",
+	"ui.chat.device.sentence.move_in_flight": "Cuộc trò chuyện này đang chuyển đến {name}. Nó tiếp tục ở đó; mọi thứ gửi từ đây sẽ không được chuyển đến.",
+	"ui.chat.device.sentence.pairing_guidance": "Thiết bị này chưa ở trong mạng nào. Tạo mạng bằng `lop network init`, hoặc tham gia bằng `lop network join '<token>'`."
 }
