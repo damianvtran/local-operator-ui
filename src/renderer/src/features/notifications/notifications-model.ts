@@ -15,6 +15,9 @@ import type {
 	DesktopNotificationsList,
 } from "../../../../shared/desktop-control-contract";
 
+/** The four write verbs the cache updater understands (contract § 5.2). */
+export type NotificationVerb = "read" | "unread" | "dismiss" | "undismiss";
+
 export type NotificationKindFilter = "all" | "asks" | "updates";
 export type NotificationPriorityFilter = "any" | "high" | "normal_up";
 export type NotificationGrouping = "time" | "conversation";
@@ -275,103 +278,87 @@ export const mergeConfirmedReads = (
 			: item;
 	});
 
-/**
- * How many pages the reel keeps in memory (code round 5, R5-1).
+/*
+ * NO EVICTION, NO SLIDING WINDOW (code round 7 decision).
  *
- * WHY A WINDOW AT ALL: `useInfiniteQuery` refetches every loaded page on each
- * invalidation, and the feed invalidates on frames, so an unbounded reel turns one
- * frame into as many reads as the operator has scrolled.
+ * Eviction answered DC5, a MINOR memory concern, and every major since round 4 came
+ * from it: maxPages -> tail trim -> slide -> facts split -> a window that snapped back
+ * to the top. The memory it saved is small - ~35 KB per 100-row page, so 5,000 loaded
+ * rows is about 1.75 MB - and the real cost (refetching every loaded page on each
+ * background refresh) is gone now that page one's facts live in their own query. The
+ * window therefore keeps everything it fetched: no cap, no trim, no slide, and nothing
+ * falls out of the list while the operator is reading it.
  */
-export const NOTIFICATIONS_PAGE_WINDOW = 5;
 
 /**
- * The drawer's bound: ten pages (code round 5, R5-1 - QA measured the drawer still
- * on the reel's five, so both bounds are exported from here and the tests pin them).
- */
-export const DRAWER_PAGE_WINDOW = 10;
-
-/** Page one is pinned: it is the only page carrying `waiting`, the counts and the
- * high-water mark the reel and Mark all read enumerate under. */
-const PINNED_PAGES = 1;
-
-export interface NotificationPageLike {
-	readonly items: readonly unknown[];
-}
-
-/**
- * Slide the reel's page window so OLDER rows stay reachable (code round 5, R5-1).
- *
- * The previous fix trimmed from the TAIL, which is where the cursor appends: the
- * next page was fetched and thrown away in the same tick, so nothing older than the
- * newest window was ever reachable again - "8 scroll fetches over 900 rows leave
- * rows 401-900, and every scroll near the bottom fetches a page and discards it".
- *
- * This keeps page one (pinned, see above) plus the NEWEST OF THE OLDER PAGES - the
- * end of the array, where the cursor continues - and drops from the head of the
- * scroll run: the rows just above the viewport, which the reader reaches again by
- * scroll-to-top.
- *
- * `hiddenSoFar` is carried in because a row dropped two fetches ago is still hidden:
- * the count is cumulative until the operator returns to the top, and that running
- * total is what the affordance shows.
- *
- * Page params travel with their pages: page one keeps its sentinel param and the
- * tail keeps its cursors, so `getNextPageParam` still asks for the page after the
- * oldest one loaded rather than re-fetching from the start.
- */
-export function slideNotificationWindow<
-	Page extends NotificationPageLike,
-	Param,
->(
-	pages: readonly Page[],
-	pageParams: readonly Param[],
-	limit: number = NOTIFICATIONS_PAGE_WINDOW,
-	hiddenSoFar = 0,
-): { pages: Page[]; pageParams: Param[]; hiddenNewer: number } {
-	if (pages.length <= limit)
-		return {
-			pages: [...pages],
-			pageParams: [...pageParams],
-			hiddenNewer: hiddenSoFar,
-		};
-	const tailCount = Math.max(limit - PINNED_PAGES, 1);
-	const dropped = pages.slice(PINNED_PAGES, pages.length - tailCount);
-	const hiddenNewer =
-		hiddenSoFar + dropped.reduce((total, page) => total + page.items.length, 0);
-	return {
-		pages: [pages[0] as Page, ...pages.slice(pages.length - tailCount)],
-		pageParams: [pageParams[0] as never, ...pageParams.slice(-tailCount)],
-		hiddenNewer,
-	};
-}
-
-/**
- * Back to top: page one alone, with fresh facts (code round 5, R5-1). Dropping the
- * scroll pages is what makes the next read page one again, and page one's own
- * refetch is the "fresh facts" half of the return.
- */
-export const pinFirstPage = <Page, Param>(
-	pages: readonly Page[],
-	pageParams: readonly Param[],
-) => ({
-	pages: pages.slice(0, PINNED_PAGES),
-	pageParams: pageParams.slice(0, PINNED_PAGES),
-});
-
-/**
- * Which drawn rows a successful write removes (QA round 3, Q12).
- *
- * A conversation-wide dismiss covers rows this window did not necessarily draw - and
- * rows the mark-all path deliberately KEPT on screen after reading them ("stay as
- * already-read until the next refresh"). When the dismiss succeeds those kept rows
- * are no longer part of anything the server lists, so leaving them drawn showed ~101
- * rows against a server list of 0. The exit machinery is the existing way a row
- * leaves the list: hand it the ids the server confirmed.
+ * Which drawn rows a successful write removes (QA round 3, Q12): the ids the server
+ * confirmed that this window is actually drawing.
  */
 export const coveredByWrite = (
 	drawnIds: ReadonlySet<string>,
 	changed: readonly string[],
 ): Set<string> => new Set(changed.filter((id) => drawnIds.has(id)));
+
+/**
+ * What the reel draws, given page one's facts and the scrolled window (round 7, Q13).
+ *
+ * At the top the facts' rows are the head of the list, so a late arrival is simply
+ * drawn. Scrolled away from the top they are NOT inserted above the viewport (that
+ * would shift what the operator is reading); `newerCount` says how many there are and
+ * the pill offers them. It counts only ids the window does not hold, so it cannot grow
+ * with rows that were already there.
+ */
+export function mergeWindowForReel(
+	facts: DesktopNotificationsList | undefined,
+	windowAnswer: DesktopNotificationsList | undefined,
+	atTop: boolean,
+): (DesktopNotificationsList & { newerCount: number }) | undefined {
+	if (!windowAnswer) return facts ? { ...facts, newerCount: 0 } : undefined;
+	if (!facts) return { ...windowAnswer, newerCount: 0 };
+	const known = new Set(windowAnswer.items.map((item) => item.id));
+	const newerCount = facts.items.filter((item) => !known.has(item.id)).length;
+	if (!atTop) return { ...windowAnswer, newerCount };
+	const items = new Map<string, DesktopNotificationItem>();
+	for (const item of windowAnswer.items) items.set(item.id, item);
+	for (const item of facts.items) {
+		const previous = items.get(item.id);
+		if (!previous || item.revision >= previous.revision)
+			items.set(item.id, item);
+	}
+	return {
+		...facts,
+		/* Newest first: the facts' late arrivals belong at the head of the reel. */
+		items: [...items.values()].sort((left, right) => right.seq - left.seq),
+		next_cursor: windowAnswer.next_cursor,
+		newerCount: 0,
+	};
+}
+
+/**
+ * Apply a CONFIRMED write to the cached window rows (round 7, R7-1).
+ *
+ * The window is no longer invalidated by a write: that refetched every loaded page and,
+ * before the facts split, replaced a deep scroll. The receipt names the ids the server
+ * actually changed, so the cache is edited in place. Dismiss flips `dismissed` rather
+ * than deleting the row, which is also what makes Undo a flag flip with no refetch.
+ */
+export function applyConfirmedToWindow<
+	Page extends { items: DesktopNotificationItem[] },
+>(
+	pages: readonly Page[],
+	changed: readonly string[],
+	verb: NotificationVerb,
+): Page[] {
+	const ids = new Set(changed);
+	const flipped = (item: DesktopNotificationItem): DesktopNotificationItem => {
+		if (!ids.has(item.id)) return item;
+		if (verb === "read") return { ...item, read: true, read_via: "explicit" };
+		if (verb === "unread") return { ...item, read: false, read_via: null };
+		if (verb === "dismiss") return { ...item, dismissed: true };
+		return { ...item, dismissed: false };
+	};
+	return pages.map((page) => ({ ...page, items: page.items.map(flipped) }));
+}
 
 export const scopeCountBoundary = (
 	highWaterMark: number | undefined,
@@ -388,41 +375,6 @@ export const scopeCountBoundary = (
  * this conversation's own rows: their ids and revisions, which move only when one
  * of them is read, dismissed or updated.
  */
-/**
- * Layer page one's facts over the scroll window (code round 6, R6-2).
- *
- * The facts query is the only thing a frame or the 30 s interval refreshes, so its
- * rows are the newest ones known; the window holds what the operator scrolled into.
- * Facts win on identity (they are fresher), their `waiting`, counts and high-water
- * are the reel's, and `genuinelyNewer` counts facts rows the window does not hold at
- * all - the number a "N new" pill may add without counting rows that were already
- * there.
- */
-export function mergeWindowForReel(
-	facts: DesktopNotificationsList | undefined,
-	windowAnswer: DesktopNotificationsList | undefined,
-): (DesktopNotificationsList & { genuinelyNewer: number }) | undefined {
-	if (!windowAnswer) return facts ? { ...facts, genuinelyNewer: 0 } : undefined;
-	if (!facts) return { ...windowAnswer, genuinelyNewer: 0 };
-	const known = new Set(windowAnswer.items.map((item) => item.id));
-	const genuinelyNewer = facts.items.filter(
-		(item) => !known.has(item.id),
-	).length;
-	const items = new Map<string, DesktopNotificationItem>();
-	for (const item of windowAnswer.items) items.set(item.id, item);
-	for (const item of facts.items) {
-		const previous = items.get(item.id);
-		if (!previous || item.revision >= previous.revision)
-			items.set(item.id, item);
-	}
-	return {
-		...facts,
-		items: [...items.values()],
-		next_cursor: windowAnswer.next_cursor,
-		genuinelyNewer,
-	};
-}
-
 export const scopeCountSignature = (
 	items: readonly DesktopNotificationItem[],
 	sessionId: string,

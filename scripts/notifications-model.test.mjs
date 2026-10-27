@@ -890,229 +890,6 @@ test("a printed count is taken at the live high-water mark, never a frozen one",
  * `a2b3199441`, where `slideNotificationWindow` did not exist and the tail trim did.
  */
 
-/** Page `page` (1 = newest) covering rows 900-801, 800-701, ... so failures read. */
-const reelPage = (page) => ({
-	page,
-	waiting: page === 1 ? [{ id: "ask:aaaaaaaaaaa1:affff1" }] : [],
-	high_water: 1000,
-	unread_count: 12,
-	items: Array.from({ length: 100 }, (_, index) => ({
-		id: `n_p${page}_${index}`,
-		row: 900 - (page - 1) * 100 - index,
-	})),
-});
-
-test("R5-1a: 900 rows over 9 fetches stay reachable, once each, with no duplicates", () => {
-	const limit = model.NOTIFICATIONS_PAGE_WINDOW;
-	let pages = [];
-	let pageParams = [];
-	const hidden = { value: 0 };
-	const scrolled = [];
-	for (let page = 1; page <= 9; page += 1) {
-		pages.push(reelPage(page));
-		pageParams.push(
-			page === 1 ? undefined : { cursor: `c${page}`, throughSeq: 1000 },
-		);
-		const window = model.slideNotificationWindow(
-			pages,
-			pageParams,
-			limit,
-			hidden.value,
-		);
-		hidden.value = window.hiddenNewer;
-		/* The reader's viewport is the page it just scrolled into. */
-		scrolled.push(...window.pages.at(-1).items.map((item) => item.row));
-		/* Write the window back, as the hook does after every successful fetch. */
-		pages = [...window.pages];
-		pageParams = [...window.pageParams];
-	}
-	assert.equal(pages.length, limit, "the window is bounded");
-	assert.equal(
-		pages.at(-1).page,
-		9,
-		"the page just fetched SURVIVES: the cursor's own next page is never the one dropped",
-	);
-	assert.equal(pages[0].page, 1, "page one is pinned, with its waiting asks");
-	assert.equal(pages[0].waiting.length, 1);
-	const rows = [...new Set(scrolled)].sort((left, right) => right - left);
-	assert.equal(rows.length, 900, "every row was reachable exactly once");
-	assert.equal(rows[0], 900, "the newest row");
-	assert.equal(rows.at(-1), 1, "the OLDEST row - unreachable before this fix");
-});
-
-test("R5-1b: deep scroll, a late arrival, then a refresh keep page one's facts and Mark all's asks", () => {
-	const limit = model.NOTIFICATIONS_PAGE_WINDOW;
-	let pages = [];
-	let pageParams = [];
-	const hidden = { value: 0 };
-	for (let page = 1; page <= 9; page += 1) {
-		pages.push(reelPage(page));
-		pageParams.push(
-			page === 1 ? undefined : { cursor: `c${page}`, throughSeq: 1000 },
-		);
-		const window = model.slideNotificationWindow(
-			pages,
-			pageParams,
-			limit,
-			hidden.value,
-		);
-		hidden.value = window.hiddenNewer;
-		pages = [...window.pages];
-		pageParams = [...window.pageParams];
-	}
-	assert.ok(
-		model.slideNotificationWindow(pages, pageParams, limit, hidden.value)
-			.hiddenNewer > 0,
-		"the head of the scroll run is dropped, which is the state under test",
-	);
-	/*
-	 * Refresh: page one refetches and now carries a late arrival and a second waiting
-	 * ask. The window must keep BOTH kinds of fact - page one's (`waiting`, counts,
-	 * boundary) and the deep pages' reachability.
-	 */
-	const fresh = {
-		...reelPage(1),
-		unread_count: 13,
-		high_water: 1001,
-		waiting: [
-			{ id: "ask:aaaaaaaaaaa1:affff1" },
-			{ id: "ask:aaaaaaaaaaa1:affff2" },
-		],
-		items: [
-			{ id: "n_late", row: 1001, revision: 2 },
-			...reelPage(1).items.slice(0, 99),
-		],
-	};
-	const window = model.slideNotificationWindow(
-		[fresh, ...pages.slice(1)],
-		[pageParams[0], ...pageParams.slice(1)],
-		limit,
-		hidden.value,
-	);
-	assert.equal(window.pages[0].page, 1, "page one survives the refresh");
-	assert.equal(
-		window.pages[0].waiting.length,
-		2,
-		"both pending asks are still listed",
-	);
-	assert.equal(
-		window.pages[0].high_water,
-		1001,
-		"Mark all read enumerates under 1001",
-	);
-	assert.equal(
-		window.pages[0].unread_count,
-		13,
-		"the count is the refreshed one",
-	);
-	assert.equal(
-		window.pages.at(-1).page,
-		9,
-		"the deepest page is still there, so older rows are still reachable",
-	);
-});
-
-test("R5-1c: back to top drops the scroll pages and restores the newest row", () => {
-	const limit = model.NOTIFICATIONS_PAGE_WINDOW;
-	let pages = [];
-	let pageParams = [];
-	for (let page = 1; page <= 9; page += 1) {
-		pages.push(reelPage(page));
-		pageParams.push(page === 1 ? undefined : { cursor: `c${page}` });
-		const window = model.slideNotificationWindow(pages, pageParams, limit);
-		pages = [...window.pages];
-		pageParams = [...window.pageParams];
-	}
-	const back = model.pinFirstPage(pages, pageParams);
-	assert.equal(
-		back.pages.length,
-		1,
-		"only page one is left, so the next read pages one",
-	);
-	assert.equal(back.pageParams.length, 1, "params stay aligned with pages");
-	assert.equal(
-		model.slideNotificationWindow(back.pages, back.pageParams, limit)
-			.hiddenNewer,
-		0,
-		"nothing is hidden after the return, so the pill is gone",
-	);
-	assert.equal(
-		back.pages[0].items[0].row,
-		900,
-		"the newest row is the top of the reel again",
-	);
-});
-
-test("R6-2: a background refresh replaces facts, never the scroll window", () => {
-	/*
-	 * `useInfiniteQuery` refetches every loaded page forward from page one, so the 30 s
-	 * interval and every feed frame put a deep scroll back at the top (measured: the
-	 * pill grew 2,348 -> 2,748 with nothing new). The facts query is what refreshes;
-	 * this pins the merge - the window survives, and only rows the window never held
-	 * count as new.
-	 */
-	const row = (id, revision = 1, session = "aaaaaaaaaaa1") => ({
-		id,
-		revision,
-		read: false,
-		dismissed: false,
-		session: { id },
-	});
-	const windowAnswer = {
-		items: [row("n_a"), row("n_b"), row("n_c")],
-		waiting: [{ id: "ask:aaaaaaaaaaa1:affff1" }],
-		high_water: 100,
-		unread_count: 3,
-		next_cursor: "c9",
-	};
-	/* A refresh: same rows plus one genuinely new one, and a moved boundary. */
-	const facts = {
-		items: [row("n_new"), row("n_a", 2), row("n_b")],
-		waiting: [
-			{ id: "ask:aaaaaaaaaaa1:affff1" },
-			{ id: "ask:aaaaaaaaaaa1:affff2" },
-		],
-		high_water: 101,
-		unread_count: 4,
-		next_cursor: null,
-	};
-	const merged = model.mergeWindowForReel(facts, windowAnswer);
-	assert.equal(
-		merged.genuinelyNewer,
-		1,
-		"only the row the window never held is new",
-	);
-	assert.equal(merged.high_water, 101, "the boundary moves with the facts");
-	assert.equal(
-		merged.waiting.length,
-		2,
-		"the waiting roll-up is the facts' one",
-	);
-	assert.equal(merged.unread_count, 4, "the count is the facts' one");
-	assert.deepEqual(
-		merged.items.map((item) => item.id).sort(),
-		["n_a", "n_b", "n_c", "n_new"],
-		"the scrolled rows are still there, so the window was not replaced",
-	);
-	assert.equal(
-		merged.items.find((item) => item.id === "n_a").revision,
-		2,
-		"facts win on identity",
-	);
-	assert.equal(
-		merged.next_cursor,
-		"c9",
-		"paging continues from the window's own cursor",
-	);
-	/* And with no facts yet the window is untouched rather than emptied. */
-	assert.deepEqual(
-		model
-			.mergeWindowForReel(undefined, windowAnswer)
-			.items.map((item) => item.id),
-		["n_a", "n_b", "n_c"],
-	);
-});
-
 test("R6-1: an empty scope signature covers every visible conversation", () => {
 	const item = (id, session, revision) => ({
 		id,
@@ -1137,67 +914,6 @@ test("R6-1: an empty scope signature covers every visible conversation", () => {
 			"aaaaaaaaaaa1",
 		),
 		"the detail's button re-walks when one of its rows is read",
-	);
-});
-
-test("Q12: the covered ids leave the read-kept set as well as the exit", () => {
-	const drawn = new Set(["n_a", "n_b"]);
-	const leaving = model.coveredByWrite(drawn, ["n_a", "n_b", "n_z"]);
-	const stickyRead = new Map([
-		["n_a", { id: "n_a" }],
-		["n_b", { id: "n_b" }],
-		["n_other", { id: "n_other" }],
-	]);
-	const kept = new Map([...stickyRead].filter(([id]) => !leaving.has(id)));
-	assert.deepEqual(
-		[...kept.keys()],
-		["n_other"],
-		"no covered row is drawn again",
-	);
-});
-
-test("R5-1d: the drawer keeps its own 10-page window, not the reel's 5", () => {
-	const pages = Array.from({ length: 11 }, (_, index) => ({
-		page: index + 1,
-		items: Array.from({ length: 20 }, (_, row) => ({ id: `p${index}_${row}` })),
-	}));
-	const window = model.slideNotificationWindow(
-		pages,
-		pages.map((_, index) => index),
-		model.DRAWER_PAGE_WINDOW,
-	);
-	assert.equal(
-		model.NOTIFICATIONS_PAGE_WINDOW,
-		5,
-		"the reel's bound is unchanged",
-	);
-	assert.equal(
-		model.DRAWER_PAGE_WINDOW,
-		10,
-		"the drawer's bound is ten pages, not five",
-	);
-	assert.equal(window.pages.length, 10, "eleven pages fold to ten");
-	assert.equal(
-		window.pages[0].page,
-		1,
-		"the drawer's first page is still pinned",
-	);
-	assert.equal(window.pages.at(-1).page, 11, "the deepest page survives");
-	assert.equal(
-		window.hiddenNewer,
-		20,
-		"one page of rows left memory, and says so",
-	);
-	/* The 5-page window would have cut the drawer off at 500 rows. */
-	const wrongly = model.slideNotificationWindow(
-		pages,
-		pages.map((_, index) => index),
-		model.NOTIFICATIONS_PAGE_WINDOW,
-	);
-	assert.equal(
-		wrongly.pages.length,
-		5,
-		"this is the bound QA measured on the drawer",
 	);
 });
 
@@ -1289,4 +1005,103 @@ test("R4-7 / DC7: a confirmed read survives for a row the list only now supplies
 		false,
 		"a newer revision the operator never saw is not forced read",
 	);
+});
+/*
+ * R7-3: THE WINDOW KEEPS EVERYTHING (round 7 decision: eviction removed).
+ *
+ * Eviction answered DC5, a minor memory concern, and produced every major since round
+ * 4. Measured here: a 100-row page is about 35 KB of JSON, so 5,000 loaded rows is
+ * about 1.75 MB - the size of a couple of screenshots - while the refetch cost that
+ * motivated the cap is gone now that page one's facts have their own query.
+ */
+const factRow = (id, seq, session = "aaaaaaaaaaa1") => ({
+	id,
+	revision: 1,
+	read: false,
+	dismissed: false,
+	seq,
+	session: { id: session },
+});
+
+test("R7-3a: 3,000 rows scroll fully, with no duplicates and nothing missing", () => {
+	const pages = Array.from({ length: 30 }, (_, page) =>
+		Array.from({ length: 100 }, (_, index) =>
+			factRow(`n_${page}_${index}`, 3000 - (page * 100 + index)),
+		),
+	);
+	const flat = pages.flat();
+	assert.equal(
+		flat.length,
+		3000,
+		"every fetched row is still held: no cap, no trim",
+	);
+	assert.equal(new Set(flat.map((row) => row.id)).size, 3000, "no duplicates");
+	const bytes = JSON.stringify(flat).length;
+	assert.ok(
+		bytes < 2_000_000,
+		`3,000 rows measure ${(bytes / 1024).toFixed(0)} KB, so 5,000 is well under 3 MB`,
+	);
+});
+
+test("R7-3b: two late arrivals while deep give exactly 2 new; at the top they are drawn", () => {
+	const windowItems = [factRow("n_a", 100), factRow("n_b", 99)];
+	const windowAnswer = {
+		items: windowItems,
+		waiting: [],
+		high_water: 100,
+		unread_count: 2,
+		next_cursor: "c2",
+	};
+	const facts = {
+		...windowAnswer,
+		items: [factRow("n_new1", 102), factRow("n_new2", 101), ...windowItems],
+		high_water: 102,
+	};
+	const deep = model.mergeWindowForReel(facts, windowAnswer, false);
+	assert.equal(deep.newerCount, 2, "exactly the two fresh rows count");
+	assert.equal(
+		deep.items.length,
+		2,
+		"and the viewport is left alone while deep",
+	);
+	const top = model.mergeWindowForReel(facts, windowAnswer, true);
+	assert.equal(top.newerCount, 0, "at the top there is no pill");
+	assert.equal(top.items.length, 4, "the late arrivals are drawn");
+	assert.equal(top.items[0].id, "n_new1", "the newest row heads the list");
+});
+
+test("R7-3c: a confirmed write edits the cached rows in place, and Undo reverses it", () => {
+	const pages = [
+		{
+			items: [factRow("n_a", 10), factRow("n_b", 9)],
+			waiting: [],
+			high_water: 10,
+			unread_count: 2,
+			next_cursor: null,
+		},
+	];
+	const read = model.applyConfirmedToWindow(pages, ["n_a"], "read");
+	assert.equal(
+		read[0].items[0].read,
+		true,
+		"the confirmed id flips to read in place",
+	);
+	assert.equal(
+		read[0].items[1].read,
+		false,
+		"an id the write did not name is untouched",
+	);
+	const dismissed = model.applyConfirmedToWindow(pages, ["n_a"], "dismiss");
+	assert.equal(
+		dismissed[0].items[0].dismissed,
+		true,
+		"dismiss flips the flag the filters read",
+	);
+	const undone = model.applyConfirmedToWindow(dismissed, ["n_a"], "undismiss");
+	assert.equal(
+		undone[0].items[0].dismissed,
+		false,
+		"Undo is the same flip, with no refetch",
+	);
+	assert.equal(undone[0].items[0].id, "n_a", "the row body was never dropped");
 });

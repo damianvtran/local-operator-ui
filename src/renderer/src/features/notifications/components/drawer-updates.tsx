@@ -23,7 +23,7 @@ import { cn } from "@shared/lib/utils";
 import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUp, Circle, ExternalLink, X } from "lucide-react";
-import { type FC, type KeyboardEvent, useMemo } from "react";
+import { type FC, type KeyboardEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
 import {
@@ -196,7 +196,8 @@ export const DrawerUpdates: FC<{
 }> = ({ sessionId, nowMs: pinnedNow }) => {
 	useI18nLocale();
 	const navigate = useNavigate();
-	const list = useSessionNotifications(sessionId, true);
+	const [isAtTop, setIsAtTop] = useState(true);
+	const list = useSessionNotifications(sessionId, true, isAtTop);
 	const write = useNotificationsWrite();
 	const nowMs = pinnedNow ?? Date.now();
 	const rows = useMemo(
@@ -297,7 +298,7 @@ export const DrawerUpdates: FC<{
 			 * the viewport here too; without this the only way back to the newest update
 			 * was closing the drawer. Same control, same copy key as the page.
 			 */}
-			{list.hiddenNewer > 0 && (
+			{list.newerCount > 0 && (
 				<div className="flex shrink-0 justify-center py-1">
 					<Button
 						size="sm"
@@ -312,7 +313,7 @@ export const DrawerUpdates: FC<{
 						}}
 					>
 						{t("ui.notifications.new_pill", {
-							count: formatNumber(list.hiddenNewer),
+							count: formatNumber(list.newerCount),
 						})}
 					</Button>
 				</div>
@@ -328,6 +329,7 @@ export const DrawerUpdates: FC<{
 					 * this cannot skip or duplicate rows as the session keeps writing.
 					 */
 					const box = event.currentTarget;
+					setIsAtTop(box.scrollTop <= 24);
 					if (
 						list.hasNextPage &&
 						!list.isFetchingNextPage &&

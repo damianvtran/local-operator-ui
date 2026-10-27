@@ -36,7 +36,7 @@ import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
 import { type InViewReader, createInViewReader } from "../in-view-read";
 import {
-	notificationKeys,
+	applyConfirmedWrite,
 	postNotificationsSeen,
 	tokensOf,
 	useNotificationsEnabled,
@@ -85,7 +85,7 @@ export const FlagLinesProvider: FC<{
 				.then((result) => {
 					const changed = new Set(result.changed);
 					owned.forget(batch.items.filter((item) => !changed.has(item.id)));
-					void client.invalidateQueries({ queryKey: notificationKeys.all });
+					applyConfirmedWrite(client, "read", [...changed]);
 				})
 				.catch(() => {
 					// Stay unread on failure, but allow a later fresh human edge to retry.

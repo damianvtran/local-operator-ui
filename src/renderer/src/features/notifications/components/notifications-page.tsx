@@ -96,6 +96,7 @@ import {
 import {
 	type NotificationsTarget,
 	type NotificationsVerb,
+	applyConfirmedWrite,
 	notificationKeys,
 	readSessionDismissCounts,
 	tokensOf,
@@ -309,9 +310,11 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const confirmedReadTokens = useRef(new Map<string, number>());
 	const [confirmedReadVersion, setConfirmedReadVersion] = useState(0);
 	const [lastGoodAt, setLastGoodAt] = useState<number | null>(null);
+	/** True while the list is scrolled to its top: fresh rows merge in, the pill hides. */
+	const [isAtTop, setIsAtTop] = useState(true);
 	const listRef = useRef<HTMLDivElement>(null);
 
-	const list = useNotificationsList(readState, enabled);
+	const list = useNotificationsList(readState, enabled, isAtTop);
 	const write = useNotificationsWrite();
 	const detail = useNotificationDetail(notificationId ?? null, enabled);
 
@@ -536,11 +539,16 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					showSuccessToast(t("ui.notifications.toast.undone"));
 				else showInfoToast(operationText(progress));
 				settled = receipt;
+				/* R7-1: the confirmed ids edit the cached rows in place - no page refetch. */
+				applyConfirmedWrite(
+					client,
+					verb,
+					receipt.changed.map((token) => token.id),
+				);
 			} finally {
 				operationLock.current = false;
 				setOperationBusy(false);
 				settleOperationProgress(settled, setOperationProgress);
-				void client.invalidateQueries({ queryKey: notificationKeys.all });
 			}
 		},
 		[client],
@@ -660,6 +668,12 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					},
 				);
 				settled = receipt;
+				/* R7-1: the confirmed ids edit the cached rows in place - no page refetch. */
+				applyConfirmedWrite(
+					client,
+					verb,
+					receipt.changed.map((token) => token.id),
+				);
 			} finally {
 				operationLock.current = false;
 				setOperationBusy(false);
@@ -670,7 +684,6 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				 */
 				if (settled?.error) clearExit(new Set(sent.map((token) => token.id)));
 				settleOperationProgress(settled, setOperationProgress);
-				void client.invalidateQueries({ queryKey: notificationKeys.all });
 			}
 		},
 		[client, byId, clearExit, writeUndo],
@@ -1122,7 +1135,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 						disabled={list.isFetching}
 						onClick={() => {
 							setStickyRead(new Map());
-							void client.invalidateQueries({ queryKey: notificationKeys.all });
+							void list.resetToTop();
 						}}
 					>
 						<RefreshCw />
@@ -1226,6 +1239,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								onKeyDown={onListKeyDown}
 								onScroll={(event) => {
 									const box = event.currentTarget;
+									setIsAtTop(box.scrollTop <= 24);
 									if (box.scrollTop < 24) setNewIds(new Set());
 									if (
 										list.hasNextPage &&
@@ -1237,7 +1251,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [scrollbar-gutter:stable]"
 								data-notifications-list=""
 							>
-								{(newIds.size > 0 || list.hiddenNewer > 0) && (
+								{(newIds.size > 0 || list.newerCount > 0) && (
 									/*
 									 * BACK TO TOP (code round 5, R5-1). While the operator is scrolled
 									 * deep the page window slides: older pages stay reachable and the
@@ -1260,7 +1274,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 											}}
 										>
 											{t("ui.notifications.new_pill", {
-												count: formatNumber(newIds.size + list.hiddenNewer),
+												count: formatNumber(newIds.size + list.newerCount),
 											})}
 										</Button>
 									</div>

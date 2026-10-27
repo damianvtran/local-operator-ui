@@ -37,13 +37,7 @@ import {
 	useMutation,
 	useQuery,
 } from "@tanstack/react-query";
-import {
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-	useSyncExternalStore,
-} from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -52,11 +46,8 @@ import type {
 	DesktopNotificationsWriteResult,
 } from "../../../../shared/desktop-control-contract";
 import {
-	DRAWER_PAGE_WINDOW,
-	NOTIFICATIONS_PAGE_WINDOW,
+	applyConfirmedToWindow,
 	mergeWindowForReel,
-	pinFirstPage,
-	slideNotificationWindow,
 } from "./notifications-model";
 
 export const notificationKeys = {
@@ -69,6 +60,10 @@ export const notificationKeys = {
 	count: ["desktop", "notifications", "count"] as const,
 	facts: (state: "unread" | "all") =>
 		["desktop", "notifications", "facts", state] as const,
+	/** The drawer's page-one facts, one per conversation (same split as the reel). */
+	sessionFacts: (sessionId: string) =>
+		["desktop", "notifications", "session-facts", sessionId] as const,
+	sessionFactsAll: ["desktop", "notifications", "session-facts"] as const,
 	/** The reel's list reads, without the per-id detail reads. */
 	listRoot: ["desktop", "notifications", "list"] as const,
 	/**
@@ -88,71 +83,6 @@ export const notificationKeys = {
 export function useNotificationsEnabled(): boolean {
 	const capabilities = useDesktopCapabilities();
 	return desktopFeatureEnabled(capabilities.data, "notifications", 1);
-}
-
-/**
- * Hold the reel's page window to a bound that keeps OLDER rows reachable (code
- * round 5, R5-1).
- *
- * Trimming from the tail made the cursor's own next page the first thing evicted,
- * so the reel could never reach past its newest window. The window now slides from
- * the head of the scroll run and always keeps page one, whose `waiting` group and
- * counts are the facts the reel and Mark all read enumerate under. `hiddenNewer` is
- * the number of rows dropped above the viewport, which the page renders as the
- * back-to-top affordance.
- */
-function useReelWindow(
-	client: ReturnType<typeof useOptionalQueryClient>["client"],
-	key: readonly unknown[],
-	trigger: number | undefined,
-	limit: number = NOTIFICATIONS_PAGE_WINDOW,
-): { hiddenNewer: number; resetToTop: () => void } {
-	const [hiddenNewer, setHiddenNewer] = useState(0);
-	/* Cumulative until the operator returns to the top (R5-1): a row dropped two
-	   fetches ago is still above the viewport, so the pill keeps counting it. */
-	const hiddenSoFar = useRef(0);
-	useEffect(() => {
-		if (!client || trigger === undefined) return;
-		const current = client.getQueryData<{
-			pages: { items: readonly unknown[] }[];
-			pageParams: unknown[];
-		}>([...key]);
-		if (!current || current.pages.length <= limit) return;
-		const next = slideNotificationWindow(
-			current.pages,
-			current.pageParams,
-			limit,
-			hiddenSoFar.current,
-		);
-		client.setQueryData([...key], {
-			pages: next.pages,
-			pageParams: next.pageParams,
-		});
-		hiddenSoFar.current = next.hiddenNewer;
-		setHiddenNewer(next.hiddenNewer);
-	}, [client, key, trigger, limit]);
-
-	/*
-	 * Back to top drops every scroll page and refetches page one, so the operator
-	 * lands on the newest rows with fresh counts rather than a stale pinned page.
-	 */
-	const resetToTop = useCallback(() => {
-		if (!client) return;
-		const current = client.getQueryData<{
-			pages: unknown[];
-			pageParams: unknown[];
-		}>([...key]);
-		if (!current) return;
-		client.setQueryData(
-			[...key],
-			pinFirstPage(current.pages, current.pageParams),
-		);
-		hiddenSoFar.current = 0;
-		setHiddenNewer(0);
-		void client.invalidateQueries({ queryKey: [...key] });
-	}, [client, key]);
-
-	return { hiddenNewer, resetToTop };
 }
 
 /**
@@ -185,6 +115,33 @@ export function useNotificationsFacts(
 }
 
 /**
+ * The drawer's page-one facts: counts, `waiting` and the boundary for one conversation.
+ * A feed frame and the interval refresh THIS, never the drawer's scroll window.
+ */
+export function useSessionNotificationsFacts(
+	sessionId: string | null,
+	enabled: boolean,
+) {
+	useNotificationsFeedInvalidation();
+	return useQuery({
+		queryKey: notificationKeys.sessionFacts(sessionId ?? ""),
+		enabled: enabled && Boolean(sessionId),
+		queryFn: () =>
+			desktopResult<DesktopNotificationsList>({
+				op: "notifications.list",
+				state: "all",
+				source: "notify",
+				sessionId: sessionId ?? "",
+				limit: 100,
+			}),
+		retry: retryDesktopQuery,
+		staleTime: 5_000,
+		refetchInterval: 30_000,
+		refetchIntervalInBackground: false,
+	});
+}
+
+/**
  * The reel's list read. The page loads up to the route's 100-row page and the
  * `waiting` group; the client applies kind/priority/from/grouping over that set
  * (design § 2: filters are client-side over the loaded set).
@@ -197,6 +154,7 @@ export function useNotificationsFacts(
 export function useNotificationsList(
 	state: "unread" | "all",
 	enabled: boolean,
+	atTop = true,
 ) {
 	useNotificationsFeedInvalidation();
 	const { client } = useOptionalQueryClient();
@@ -218,10 +176,9 @@ export function useNotificationsList(
 			last.next_cursor
 				? { cursor: last.next_cursor, throughSeq: last.high_water }
 				: undefined,
-		// Only page one carries waiting. Deduplicate keyed items across a cursor
-		// boundary if content changed between reads, retaining the freshest token.
+		/* Deduplicate across a cursor boundary; keep the freshest token per id. */
 		select: (answer): DesktopNotificationsList => {
-			const first = answer.pages[0];
+			const first = answer.pages[0] as DesktopNotificationsList;
 			const items = new Map<string, DesktopNotificationItem>();
 			for (const page of answer.pages)
 				for (const item of page.items) {
@@ -237,31 +194,20 @@ export function useNotificationsList(
 		},
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
-		/* NO INTERVAL, NO FRAME REFETCH (code round 6, R6-2): `useNotificationsFacts`
-		   owns the refresh. Refetching this query walks every loaded page forward from
-		   page one, which is what snapped a deep scroll back to the top. */
+		/*
+		 * NO CAP AND NO INTERVAL (code round 7 decision). The window keeps every page it
+		 * fetched - ~35 KB per 100 rows, so 5,000 rows is about 1.75 MB - and page one's
+		 * facts in their own query are what the frame and the interval refresh. Refetching
+		 * this query walks every loaded page forward from page one, which is what used to
+		 * snap a deep scroll back to the top.
+		 */
 		refetchInterval: false,
 		refetchIntervalInBackground: false,
-		/*
-		 * NO LIBRARY CAP: THE WINDOW IS BOUNDED FROM THE TAIL (code round 4, R4-4).
-		 * `maxPages` evicts the OLDEST page, and here that is page one - the newest
-		 * rows, the only page carrying `waiting`, the counts and the boundary. A deep
-		 * scroll therefore lost the waiting asks, hid late arrivals and left Mark all
-		 * read blind to unread asks. `trimNotificationPages` keeps the head instead.
-		 */
 	});
-	const reel = useReelWindow(
-		client,
-		notificationKeys.list(state),
-		answer.dataUpdatedAt,
-	);
-	/* Page one's facts are the head of the reel: the window below them is whatever the
-	   operator scrolled into, and `hiddenNewer` counts what the facts know about that
-	   the window no longer holds - genuinely new rows first, then the ones the window
-	   dropped above the viewport. */
 	const merged = mergeWindowForReel(
 		facts.data,
 		answer.data as DesktopNotificationsList | undefined,
+		atTop,
 	);
 	return {
 		...answer,
@@ -270,9 +216,9 @@ export function useNotificationsList(
 			answer.dataUpdatedAt,
 			facts.dataUpdatedAt as number,
 		),
-		hiddenNewer: reel.hiddenNewer + (merged?.genuinelyNewer ?? 0),
-		resetToTop: reel.resetToTop,
-		refetchAll: () => {
+		newerCount: merged?.newerCount ?? 0,
+		/** Back to top: page one again, with fresh facts, so the pill clears. */
+		resetToTop: () => {
 			void client?.invalidateQueries({
 				queryKey: notificationKeys.list(state),
 			});
@@ -298,9 +244,11 @@ export function useNotificationsList(
 export function useSessionNotifications(
 	sessionId: string | null,
 	enabled: boolean,
+	atTop = true,
 ) {
 	useNotificationsFeedInvalidation();
 	const { client } = useOptionalQueryClient();
+	const facts = useSessionNotificationsFacts(sessionId, enabled);
 	const answer = useInfiniteQuery({
 		queryKey: notificationKeys.session(sessionId ?? ""),
 		enabled: enabled && Boolean(sessionId),
@@ -321,7 +269,7 @@ export function useSessionNotifications(
 				? { cursor: last.next_cursor, throughSeq: last.high_water }
 				: undefined,
 		select: (answer): DesktopNotificationsList => {
-			const first = answer.pages[0];
+			const first = answer.pages[0] as DesktopNotificationsList;
 			const items = new Map<string, DesktopNotificationItem>();
 			for (const page of answer.pages)
 				for (const item of page.items) {
@@ -337,19 +285,32 @@ export function useSessionNotifications(
 		},
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
-		/* Same policy as the reel (code round 4, R4-4): bound from the tail, never
-		   evict the head, so the door's badge and the flag lines keep page one. */
+		/* Same policy as the reel: no cap, no interval, facts refresh separately. */
+		refetchInterval: false,
+		refetchIntervalInBackground: false,
 	});
-	const drawer = useReelWindow(
-		client,
-		notificationKeys.session(sessionId ?? ""),
-		answer.dataUpdatedAt,
-		DRAWER_PAGE_WINDOW,
+	const merged = mergeWindowForReel(
+		facts.data,
+		answer.data as DesktopNotificationsList | undefined,
+		atTop,
 	);
 	return {
 		...answer,
-		hiddenNewer: drawer.hiddenNewer,
-		resetToTop: drawer.resetToTop,
+		data: merged,
+		dataUpdatedAt: Math.max(
+			answer.dataUpdatedAt,
+			facts.dataUpdatedAt as number,
+		),
+		newerCount: merged?.newerCount ?? 0,
+		resetToTop: () => {
+			void client?.invalidateQueries({
+				queryKey: notificationKeys.session(sessionId ?? ""),
+			});
+			void client?.invalidateQueries({
+				queryKey: notificationKeys.sessionFacts(sessionId ?? ""),
+			});
+			return facts.refetch();
+		},
 	};
 }
 
@@ -566,10 +527,52 @@ export function useNotificationsWrite() {
 			target: NotificationsTarget;
 		}) => writeNotifications(verb, target),
 		retry: retryDesktopMutation,
-		onSettled: () => {
-			void client.invalidateQueries({ queryKey: notificationKeys.all });
+		onSuccess: (result, variables) => {
+			applyConfirmedWrite(client, variables.verb, result.changed);
 		},
 	});
+}
+
+/**
+ * Edit the cached rows a confirmed write touched, and refresh only the FACTS (R7-1).
+ *
+ * A write used to invalidate `notificationKeys.all`, which refetched every loaded page
+ * of the reel and of every open drawer - the same refetch that once snapped a deep
+ * scroll back to the top. The receipt names exactly which ids the server changed, so
+ * the cached window is edited in place (`applyConfirmedToWindow`: read/unread flip the
+ * flag, dismiss/undismiss flip `dismissed`, which Undo reverses without a row body).
+ * Only the facts, the detail and the count are invalidated: they are small reads that
+ * the server answers authoritatively.
+ */
+export function applyConfirmedWrite(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	verb: NotificationsVerb,
+	changed: readonly string[],
+): void {
+	if (!client || changed.length === 0) return;
+	const edit = <Page extends { items: DesktopNotificationItem[] }>(data?: {
+		pages: Page[];
+		pageParams: unknown[];
+	}) =>
+		data
+			? { ...data, pages: applyConfirmedToWindow(data.pages, changed, verb) }
+			: data;
+	client.setQueriesData({ queryKey: notificationKeys.listRoot }, edit as never);
+	client.setQueriesData(
+		{ queryKey: notificationKeys.sessionsRoot },
+		edit as never,
+	);
+	client.setQueriesData(
+		{ queryKey: notificationKeys.sessionFactsAll },
+		edit as never,
+	);
+	void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
+	void client.invalidateQueries({ queryKey: notificationKeys.sessionFactsAll });
+	void client.invalidateQueries({ queryKey: notificationKeys.count });
+	for (const id of changed)
+		void client.invalidateQueries({
+			queryKey: notificationKeys.detail(id),
+		});
 }
 
 /** The per-item in-view evidence write (contract § 6.4). */
