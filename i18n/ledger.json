@@ -25543,8 +25543,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
-			"target_sha256": "c2c219f979a0de875543f109f5485cbb7e2db360e1cad95f0b61389fde009adf",
+			"source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+			"target_sha256": "4772ed26451c1118c927a0aec722428eb88f3cd3f26c80dfae183ec2b14af0c1",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -25552,21 +25552,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean-with-findings",
-					"instance": "aef2ad9d3193-ur",
+					"instance": "181144042069-waveb-urnib",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/aef2ad9d3193-ur.json",
-					"receipt_sha256": "761ef6187f5c0629540bbde90b19e53d23f123b419191e43cbd0fcc89f3ae52e",
-					"scope": "ONLY ui.chat.pickers at 3f983092b2: the round-3 findings R3-UR-PICKERS-01..06 and their direct neighbours. All 720 keys were checked mechanically (key set, ICU parse, arguments, skeletons, tags, plural/select arms); the 7 changed values and the keys they compose with were re-read semantically. Catalogue audit only; no rendered RTL frame, no native-speaker sign-off and no design/QA approval are claimed.",
-					"note": "Round-4 scoped re-audit; residual R4-UR-PICKERS-01 (nit, «» quote pair in the provider-listing sentence)."
+					"receipt": "i18n/receipts/181144042069-waveb-urnib.json",
+					"receipt_sha256": "9bfb16ae654920be5943a0bd5fa0dc9b6153ac6d448d37d4304a681a96007650",
+					"scope": "Independent nib delta re-audit of the coordinator's UR-WBD-01 one-value amendment: ui.chat.pickers.slash.enter_needs_a_pick now ends U+06D4; audited against the English value, its context sidecar and the component that paints it, with the other eight namespaces proved unchanged by sha256. Catalogue-level, no rendered frame.",
+					"note": "UR-WBD-01 (minor) RESOLVED by this amendment - the receipt lists it under findings with state 'resolved', so ledger-rules counts it; no open blocker/major/minor/nit. Record: i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -25608,6 +25608,30 @@
 							"receipt_sha256": "feea54fdf8a3f6046e1e90a195224aa509b498c00d6568f2989754c03b82efa8",
 							"scope": "independent round-1 audit of namespaces unchanged by remediation",
 							"note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Fit watches retained for rendered RTL QA."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+					"target_sha256": "c2c219f979a0de875543f109f5485cbb7e2db360e1cad95f0b61389fde009adf",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "aef2ad9d3193-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/aef2ad9d3193-ur.json",
+							"receipt_sha256": "761ef6187f5c0629540bbde90b19e53d23f123b419191e43cbd0fcc89f3ae52e",
+							"scope": "ONLY ui.chat.pickers at 3f983092b2: the round-3 findings R3-UR-PICKERS-01..06 and their direct neighbours. All 720 keys were checked mechanically (key set, ICU parse, arguments, skeletons, tags, plural/select arms); the 7 changed values and the keys they compose with were re-read semantically. Catalogue audit only; no rendered RTL frame, no native-speaker sign-off and no design/QA approval are claimed.",
+							"note": "Round-4 scoped re-audit; residual R4-UR-PICKERS-01 (nit, «» quote pair in the provider-listing sentence)."
 						}
 					],
 					"status": "audited"
@@ -37413,8 +37437,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.device",
-			"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
-			"target_sha256": "0dbaa05e826b2b02841ea3ea1404ca660c16450128a536cda3e1a68c6cde30ad",
+			"source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+			"target_sha256": "ef39c17d6fbc2a5f65661e8c97d8b2bab1657bfa0a2527359f1a0f348a7435d1",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -37422,24 +37446,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "zh-cn-extract-734dc4749c3d-r2",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "wb-zh-cn-nib-20261027-ca81be025b12",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
-					"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/wb-zh-cn-nib-20261027-ca81be025b12.json",
+					"receipt_sha256": "2fc47d14bf2518575a297a3d092103a508e3603781f2d27e397e236452f58a3c",
+					"scope": "Independent nib delta re-audit of the coordinator's ZH-WBD-1 one-value amendment: ui.chat.device.sentence.local 或稍后召回 -> 或稍后移回此处, read against the English source, the context sidecar, the other recall controls in the locale and the call site; no rendered frame.",
+					"note": "Coordinator amendment re-audited independently; 0 blocker/major/minor/nit. Record: i18n/audits/evidence/zh-CN/ui.chat.device/wb-nib-ca81be025b12/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+					"target_sha256": "0dbaa05e826b2b02841ea3ea1404ca660c16450128a536cda3e1a68c6cde30ad",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "zh-cn-extract-734dc4749c3d-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
+							"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
