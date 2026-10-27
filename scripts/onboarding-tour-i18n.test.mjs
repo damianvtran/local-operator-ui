@@ -28,9 +28,12 @@
  *     control's target-size floor, the vendor out-specifying colour, the
  *     horizontal-overflow clip, the step-7 width cap) are still on the rule
  *     that must carry them;
- *  6. step 7's shape - the real tour opens, closes and hops the command palette
- *     in step with the panel it built (narrow beside the palette above the
- *     breakpoint, centred with no palette below it), so the two never disagree.
+ *  6. step 7's shape - the tour keeps the panel and the palette in step, and
+ *     re-decides the shape for the window the step is shown in;
+ *  7. the hop state machine - a tour cancelled during a hop's 500 ms wait stays
+ *     closed, ending a tour releases only the palette it opened, and a window
+ *     resized across the breakpoint mid-tour is honoured at show time (review
+ *     round 3, R3-1 to R3-3).
  *
  * WHAT IT CANNOT PROVE: the rendered pixels (the design round and QA own those),
  * a real browser's layout under RTL, or production translations. The non-English
@@ -816,5 +819,413 @@ test("step 7 keeps the palette in step with the shape it was built in", async ()
 	} finally {
 		window.innerWidth = original;
 		mod.useUiPreferencesStore.getState().closeCommandPalette();
+	}
+});
+
+/* ---------------------------------------------------------------------------
+ * 8. The hop state machine (review round 3).
+ *
+ * R8-1 to R8-3 all live in the 500 ms between a hop's button press and the
+ * `next()`/`back()` it defers, which is why the tests here run the REAL tour and
+ * press its REAL buttons: a source read cannot see a timer that outlives the
+ * tour that scheduled it.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * A real tour started through the hook, the way the onboarding provider does it.
+ *
+ * The hook owns two listeners these tests are about - the end-of-tour palette
+ * release and the step-7 show sync - so a bare `new Tour(...)` would exercise
+ * neither. `walkStepSeven` above keeps its own inline button press so that test
+ * stays byte-identical to the round it was approved in.
+ */
+async function startTourThroughHook(width, { closePalette = true } = {}) {
+	window.innerWidth = width;
+	if (closePalette) mod.useUiPreferencesStore.getState().closeCommandPalette();
+	const tour = new mod.Shepherd.Tour({
+		useModalOverlay: true,
+		defaultStepOptions: { cancelIcon: mod.tourCancelIcon() },
+	});
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = mod.createRoot(container);
+	const Harness = () => {
+		const { startTour } = mod.useOnboardingTour();
+		mod.React.useEffect(() => {
+			startTour({ forceModalCompleted: true });
+		}, []);
+		return null;
+	};
+	await mod.act(async () => {
+		root.render(
+			mod.React.createElement(
+				mod.MemoryRouter,
+				{ future: { v7_startTransition: true, v7_relativeSplatPath: true } },
+				mod.React.createElement(
+					mod.ShepherdJourneyContext.Provider,
+					{ value: { tour, Shepherd: mod.Shepherd } },
+					mod.React.createElement(Harness),
+				),
+			),
+		);
+	});
+	const started = await mod.act(async () => waitFor(() => shownStepElement()));
+	assert.ok(started, "the hook must start the real tour");
+	return {
+		tour,
+		async stop() {
+			await mod.act(async () => {
+				root.unmount();
+			});
+			container.remove();
+			// After unmount the tour keeps the listeners it registered, so this
+			// still runs the release path the tests exercise.
+			if (tour.isActive()) tour.cancel();
+			await sleep(60);
+			for (const element of document.querySelectorAll(".shepherd-element")) {
+				element.remove();
+			}
+			mod.useUiPreferencesStore.getState().closeCommandPalette();
+		},
+	};
+}
+
+/** Press the shown step's footer button and let the hop's 500 ms wait elapse. */
+async function hop(tour, variant, waitMs = 760) {
+	const button = shownStepElement()?.querySelector(
+		`.shepherd-footer .shepherd-button-${variant}`,
+	);
+	assert.ok(
+		button,
+		`step ${tour.getCurrentStep()?.id} has no ${variant} button`,
+	);
+	/*
+	 * The store update a hop's palette open/close triggers repaints the mounted
+	 * hook, so it has to flush inside `act` or React reports the update as the
+	 * test's fault.
+	 */
+	await mod.act(async () => {
+		button.click();
+		await sleep(waitMs);
+	});
+}
+
+/** Advance a hook-started tour from step 1 to step 6, where the hop begins. */
+async function walkToStepSix(tour) {
+	tour.show("agent-capabilities");
+	await sleep(80);
+	assert.equal(tour.getCurrentStep()?.id, "agent-capabilities");
+}
+
+test("a hop's deferred show cannot restart a tour cancelled during its wait", async () => {
+	const original = window.innerWidth;
+	try {
+		window.innerWidth = mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40;
+		mod.useUiPreferencesStore.getState().closeCommandPalette();
+		const tour = new mod.Shepherd.Tour({
+			useModalOverlay: true,
+			defaultStepOptions: { cancelIcon: mod.tourCancelIcon() },
+		});
+		tour.addSteps(mod.createTourSteps());
+		tour.start();
+		await sleep(80);
+		await walkToStepSix(tour);
+
+		// Step 6 -> Next opens the palette and defers step 7 by 500 ms.
+		shownStepElement()
+			?.querySelector(".shepherd-footer .shepherd-button-primary")
+			?.click();
+		await sleep(120);
+		assert.equal(paletteOpen(), true, "the hop must open the palette first");
+		tour.cancel();
+		assert.equal(tour.isActive(), false, "cancel must end the tour");
+		await sleep(700);
+
+		assert.equal(
+			tour.isActive(),
+			false,
+			"the deferred next() may not resume it",
+		);
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			"agent-capabilities",
+			"the cancelled tour must stay where it was cancelled",
+		);
+		assert.equal(
+			document.querySelectorAll(".shepherd-element").length,
+			0,
+			"no panel may be rendered for the cancelled tour",
+		);
+	} finally {
+		window.innerWidth = original;
+		for (const element of document.querySelectorAll(".shepherd-element")) {
+			element.remove();
+		}
+		mod.useUiPreferencesStore.getState().closeCommandPalette();
+	}
+});
+
+test("the close control during a hop's wait cancels for good", async () => {
+	const original = window.innerWidth;
+	try {
+		window.innerWidth = mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40;
+		mod.useUiPreferencesStore.getState().closeCommandPalette();
+		const tour = new mod.Shepherd.Tour({
+			useModalOverlay: true,
+			defaultStepOptions: { cancelIcon: mod.tourCancelIcon() },
+		});
+		tour.addSteps(mod.createTourSteps());
+		tour.start();
+		await sleep(80);
+		await walkToStepSix(tour);
+
+		shownStepElement()
+			?.querySelector(".shepherd-footer .shepherd-button-primary")
+			?.click();
+		await sleep(120);
+		/*
+		 * The panel re-admitted pointer events (onboarding-tour.css), so the X is
+		 * a live target during the wait - which is why this path is reachable at
+		 * all (review round 3, R3-1).
+		 */
+		const close = shownStepElement()?.querySelector(".shepherd-cancel-icon");
+		assert.ok(close, "the shown step must carry the close control");
+		close.click();
+		await sleep(40);
+		assert.equal(tour.isActive(), false, "the close control must cancel");
+		await sleep(700);
+		assert.equal(tour.isActive(), false, "and the hop must not undo it");
+		assert.equal(
+			document.querySelectorAll(".shepherd-element").length,
+			0,
+			"no panel may be rendered for the cancelled tour",
+		);
+	} finally {
+		window.innerWidth = original;
+		for (const element of document.querySelectorAll(".shepherd-element")) {
+			element.remove();
+		}
+		mod.useUiPreferencesStore.getState().closeCommandPalette();
+	}
+});
+
+test("ending the tour at step 7 closes the palette it opened", async () => {
+	const original = window.innerWidth;
+	const started = await startTourThroughHook(
+		mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40,
+	);
+	try {
+		await walkToStepSix(started.tour);
+		await hop(started.tour, "primary");
+		assert.equal(
+			started.tour.getCurrentStep()?.id,
+			"pre-command-palette-open-canvas",
+		);
+		assert.equal(
+			paletteOpen(),
+			true,
+			"step 7 opens the palette it sits beside",
+		);
+
+		const close = shownStepElement()?.querySelector(".shepherd-cancel-icon");
+		assert.ok(close, "step 7 must carry the close control");
+		await mod.act(async () => {
+			close.click();
+			await sleep(80);
+		});
+
+		assert.equal(started.tour.isActive(), false, "the tour ended");
+		assert.equal(
+			paletteOpen(),
+			false,
+			"the palette the tour opened must not outlive it",
+		);
+	} finally {
+		await started.stop();
+		window.innerWidth = original;
+	}
+});
+
+test("completing at step 7 closes the palette it opened", async () => {
+	const original = window.innerWidth;
+	const started = await startTourThroughHook(
+		mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40,
+	);
+	try {
+		await walkToStepSix(started.tour);
+		await hop(started.tour, "primary");
+		assert.equal(
+			paletteOpen(),
+			true,
+			"step 7 opens the palette it sits beside",
+		);
+
+		// The last step is reachable without step 7's Next, so completion has to
+		// release the palette on its own rather than rely on that ordering.
+		await mod.act(async () => {
+			started.tour.complete();
+			await sleep(80);
+		});
+
+		assert.equal(started.tour.isActive(), false, "the tour completed");
+		assert.equal(
+			paletteOpen(),
+			false,
+			"completion must release the palette the tour opened",
+		);
+	} finally {
+		await started.stop();
+		window.innerWidth = original;
+	}
+});
+
+test("a palette the user opened survives a tour that never opened one", async () => {
+	const original = window.innerWidth;
+	mod.useUiPreferencesStore.getState().openCommandPalette();
+	const started = await startTourThroughHook(900, { closePalette: false });
+	try {
+		assert.equal(paletteOpen(), true, "the user's palette is up");
+		await mod.act(async () => {
+			started.tour.cancel();
+			await sleep(80);
+		});
+
+		assert.equal(started.tour.isActive(), false, "the tour ended");
+		assert.equal(
+			paletteOpen(),
+			true,
+			"a palette the tour never opened is the user's to close",
+		);
+	} finally {
+		await started.stop();
+		window.innerWidth = original;
+	}
+});
+
+test("a palette the user re-opens after the hop survives completion", async () => {
+	const original = window.innerWidth;
+	const started = await startTourThroughHook(
+		mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40,
+	);
+	try {
+		await walkToStepSix(started.tour);
+		await hop(started.tour, "primary");
+		await hop(started.tour, "primary");
+		assert.equal(
+			started.tour.getCurrentStep()?.id,
+			"canvas-open-button",
+			"step 7's Next lands on step 8",
+		);
+		assert.equal(paletteOpen(), false, "the hop closed the palette it opened");
+
+		// Ownership is spent: the tour closed its palette, so a later palette is
+		// the user's again.
+		mod.useUiPreferencesStore.getState().openCommandPalette();
+		await mod.act(async () => {
+			started.tour.complete();
+			await sleep(80);
+		});
+
+		assert.equal(
+			paletteOpen(),
+			true,
+			"a palette opened after the tour released its own must survive",
+		);
+	} finally {
+		await started.stop();
+		window.innerWidth = original;
+	}
+});
+
+test("a hop resized across the breakpoint takes the shape of the window it lands in", async () => {
+	const original = window.innerWidth;
+	const cleanup = () => {
+		for (const element of document.querySelectorAll(".shepherd-element")) {
+			element.remove();
+		}
+		mod.useUiPreferencesStore.getState().closeCommandPalette();
+	};
+	try {
+		// Built above the breakpoint, resized below it mid-tour: the beside shape
+		// must not survive into a window that cannot hold it (R3-3).
+		window.innerWidth = mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 60;
+		const wideBuild = new mod.Shepherd.Tour({
+			useModalOverlay: true,
+			defaultStepOptions: { cancelIcon: mod.tourCancelIcon() },
+		});
+		wideBuild.addSteps(mod.createTourSteps());
+		wideBuild.start();
+		await sleep(80);
+		await walkToStepSix(wideBuild);
+		window.innerWidth = 900;
+		await hop(wideBuild, "primary");
+
+		const narrowed = stepSevenOf(wideBuild.steps);
+		assert.equal(
+			wideBuild.getCurrentStep()?.id,
+			"pre-command-palette-open-canvas",
+		);
+		assert.equal(
+			narrowed.options.attachTo,
+			undefined,
+			"a window that cannot hold the beside shape must not keep its anchor",
+		);
+		assert.equal(narrowed.options.classes, undefined, "nor its width cap");
+		assert.equal(paletteOpen(), false, "nor the palette it opened");
+		wideBuild.cancel();
+
+		// The reverse: built narrow, widened mid-tour, so the hop must take the
+		// beside shape rather than leave a centred panel over nothing.
+		window.innerWidth = 900;
+		const narrowBuild = new mod.Shepherd.Tour({
+			useModalOverlay: true,
+			defaultStepOptions: { cancelIcon: mod.tourCancelIcon() },
+		});
+		narrowBuild.addSteps(mod.createTourSteps());
+		narrowBuild.start();
+		await sleep(80);
+		await walkToStepSix(narrowBuild);
+		window.innerWidth = mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 60;
+		await hop(narrowBuild, "primary");
+
+		const widened = stepSevenOf(narrowBuild.steps);
+		assert.equal(widened.options.attachTo?.on, "right");
+		assert.ok(
+			widened.options.classes
+				?.split(" ")
+				.includes(mod.STEP_BESIDE_PALETTE_CLASS),
+			"the widened hop must apply the beside shape",
+		);
+		assert.equal(paletteOpen(), true, "and open the palette it sits beside");
+		narrowBuild.cancel();
+	} finally {
+		cleanup();
+		window.innerWidth = original;
+	}
+});
+
+test("step 7's shape follows a resize even when the tour shows it directly", async () => {
+	const original = window.innerWidth;
+	const started = await startTourThroughHook(900);
+	try {
+		// No hop: `tour.show` bypasses the hop helpers, so only the hook's `show`
+		// listener can re-decide the shape for this window.
+		window.innerWidth = mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 60;
+		started.tour.show("pre-command-palette-open-canvas");
+		await sleep(80);
+
+		const step = stepSevenOf(started.tour.steps);
+		assert.equal(
+			started.tour.getCurrentStep()?.id,
+			"pre-command-palette-open-canvas",
+		);
+		assert.equal(step.options.attachTo?.on, "right");
+		assert.ok(
+			step.options.classes?.split(" ").includes(mod.STEP_BESIDE_PALETTE_CLASS),
+			"a direct show must still apply the shape of the window it renders in",
+		);
+	} finally {
+		await started.stop();
+		window.innerWidth = original;
 	}
 });

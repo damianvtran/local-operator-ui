@@ -8,9 +8,28 @@ import type { StepOptions, Tour } from "shepherd.js";
 import {
 	applyTourLocale,
 	createTourSteps,
+	releaseTourCommandPalette,
 	rememberTourLocale,
+	syncStepSevenShapeOnShow,
 	tourCancelIcon,
 } from "../tour/tour-steps";
+
+/**
+ * One end-of-tour palette release per tour instance.
+ *
+ * Shepherd matches listeners by identity, so an arrow rebuilt on every
+ * `startTour` would stack a new listener per restart while the `off()` above it
+ * removed nothing. Memoising one handler per tour keeps the off/on pair
+ * symmetric, which is what the store listeners below already rely on.
+ */
+const paletteReleaseByTour = new WeakMap<Tour, () => void>();
+const paletteReleaseHandlerFor = (tour: Tour): (() => void) => {
+	const existing = paletteReleaseByTour.get(tour);
+	if (existing) return existing;
+	const handler = () => releaseTourCommandPalette(tour);
+	paletteReleaseByTour.set(tour, handler);
+	return handler;
+};
 
 export const useOnboardingTour = () => {
 	const navigate = useNavigate();
@@ -123,6 +142,25 @@ export const useOnboardingTour = () => {
 		tourInstance.on("complete", completeTourOnboarding);
 		tourInstance.off("cancel", completeTourOnboarding); // Remove first
 		tourInstance.on("cancel", completeTourOnboarding);
+		/*
+		 * The palette step 7 opened belongs to the tour: ending the tour closes it,
+		 * and a palette the USER opened is left alone (review round 3, R3-2 -
+		 * ownership is recorded in `releaseTourCommandPalette`, not inferred from
+		 * the palette being open). `complete` is listed because the last step must
+		 * not depend on step 7's Next having closed it first.
+		 */
+		const releasePalette = paletteReleaseHandlerFor(tourInstance);
+		tourInstance.off("complete", releasePalette);
+		tourInstance.on("complete", releasePalette);
+		tourInstance.off("cancel", releasePalette);
+		tourInstance.on("cancel", releasePalette);
+		/*
+		 * Step 7's beside/below shape is re-decided for the window each step is
+		 * shown in, so a mid-tour resize cannot attach the panel where it does not
+		 * fit (review round 3, R3-3).
+		 */
+		tourInstance.off("show", syncStepSevenShapeOnShow);
+		tourInstance.on("show", syncStepSevenShapeOnShow);
 
 		// Resolve the copy in the language active at start (see ./tour/tour-steps).
 		const tourSteps = createTourSteps();

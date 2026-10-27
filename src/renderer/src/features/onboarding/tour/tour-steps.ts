@@ -1,6 +1,6 @@
 import { t } from "@shared/i18n";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import type { StepOptions, Tour } from "shepherd.js";
+import type { Step, StepOptions, Tour } from "shepherd.js";
 import { TOUR_BODIES, renderTourBody, tourLabel } from "./tour-copy";
 
 /**
@@ -56,20 +56,85 @@ export const STEP_BESIDE_PALETTE_MIN_WIDTH = 1340;
 /**
  * Marks the step-7 panel that is pinned beside the palette, and caps its width.
  *
- * The class is also the record of WHICH shape this tour built. The neighbouring
- * steps read it back off the tour instead of measuring the viewport again, so a
- * resize mid-tour cannot pair an attached panel with palette-free navigation
- * (or the reverse) - the shape and the hops that go with it are one decision.
+ * The class records the shape step 7 is CURRENTLY in, not the one the tour was
+ * built in. It used to be a build-time record, which is wrong the moment the
+ * window moves under the tour: `startTour` builds the steps once, so a window
+ * resized from the beside width down to 900 px kept the attached shape and
+ * reopened the 130 px overlap D1 removed (review round 3, R3-3).
+ * `applyStepSevenShape` therefore re-decides the shape from the live viewport on
+ * every hop into step 7 and on every `show`, and this class follows the
+ * decision - which is also what the CSS keys its 340 px cap on.
  */
 export const STEP_BESIDE_PALETTE_CLASS = "tour-beside-palette";
 
 const STEP_SEVEN_ID = "pre-command-palette-open-canvas";
 
-/** Was this tour's step 7 built in its beside-the-palette shape? */
+/** Is step 7 currently in its beside-the-palette shape? */
 const stepSevenSitsBesidePalette = (tour: Tour): boolean =>
 	(tour.getById(STEP_SEVEN_ID)?.options.classes ?? "")
 		.split(" ")
 		.includes(STEP_BESIDE_PALETTE_CLASS);
+
+/**
+ * Re-decide step 7's shape from the live viewport, and apply it to the step.
+ *
+ * Called before every hop into or out of step 7 and from the tour's `show`
+ * listener (`syncStepSevenShapeOnShow`), so the panel a user is looking at
+ * always matches the window it renders in. Shepherd rebuilds a step's element
+ * and re-resolves `attachTo` on every `_show`, so writing the options just
+ * before a show is enough - no re-layout of a panel that is already on screen is
+ * attempted, which is the one resize case this deliberately does not chase
+ * (a resize while standing on step 7 is corrected by the next Back/Next).
+ *
+ * Returns whether the shape is beside after the decision, which is what the hop
+ * helpers need before they touch the palette.
+ */
+const applyStepSevenShape = (tour: Tour): boolean => {
+	const beside = window.innerWidth >= STEP_BESIDE_PALETTE_MIN_WIDTH;
+	const step = tour.getById(STEP_SEVEN_ID);
+	if (step && stepSevenSitsBesidePalette(tour) !== beside) {
+		/*
+		 * Write both fields together: the class alone would cap a centred panel
+		 * at 340 px, and `attachTo` alone would pin a panel that cannot fit.
+		 */
+		step.updateStepOptions(
+			beside
+				? {
+						attachTo: {
+							element: '[data-tour-tag="command-palette-dialog"]',
+							on: "right",
+						},
+						classes: STEP_BESIDE_PALETTE_CLASS,
+					}
+				: { attachTo: undefined, classes: undefined },
+		);
+	}
+	return beside;
+};
+
+/**
+ * Tours that opened the command palette and have not closed it again.
+ *
+ * R3-2 is a contract about ownership: the tour closes the palette IT opened and
+ * leaves a palette the user opened alone. That cannot be answered by asking
+ * whether the palette is open - it is open in both cases - so each tour records
+ * its own claim here. A WeakSet keeps a tour that disappears without a complete
+ * or cancel from leaving state behind.
+ */
+const paletteOpenedByTour = new WeakSet<Tour>();
+
+/**
+ * Close the palette if THIS tour opened it, and do nothing otherwise.
+ *
+ * Called when a tour ends (the hook's cancel/complete listener) and when a hop
+ * out of step 7 leaves. `WeakSet.delete` doubles as the atomic
+ * "claim was there" test, so a second call - a hop that already closed it, then
+ * a cancel - cannot close a palette the user has opened in between.
+ */
+export const releaseTourCommandPalette = (tour: Tour): void => {
+	if (!paletteOpenedByTour.delete(tour)) return;
+	useUiPreferencesStore.getState().closeCommandPalette();
+};
 
 /**
  * Open the command palette on the way INTO step 7, but only when the panel will
@@ -84,29 +149,76 @@ const stepSevenSitsBesidePalette = (tour: Tour): boolean =>
  * against it.
  */
 const openCommandPaletteForStepSeven = (tour: Tour, go: () => void): void => {
-	if (!stepSevenSitsBesidePalette(tour)) {
+	if (!applyStepSevenShape(tour)) {
 		go();
 		return;
 	}
-	useUiPreferencesStore.getState().openCommandPalette();
-	setTimeout(go, 500);
+	/*
+	 * Only a palette this tour opens is a palette this tour may close: a user's
+	 * palette that is already up must outlive the tour, so it is neither opened
+	 * nor claimed here.
+	 */
+	const store = useUiPreferencesStore.getState();
+	if (!store.isCommandPaletteOpen) {
+		store.openCommandPalette();
+		paletteOpenedByTour.add(tour);
+	}
+	/*
+	 * The wait is skipped when the tour has ended in the meantime. Without the
+	 * guard the deferred `next()`/`back()` resumes a cancelled tour: the X is a
+	 * live target during the wait since the panel re-admitted pointer events
+	 * (review round 3, R3-1).
+	 */
+	setTimeout(() => {
+		if (tour.isActive()) go();
+	}, 500);
 };
 
 /**
  * The mirror of the above: close the palette a step-7 approach opened, then
  * continue. Below the breakpoint nothing was opened, so waiting 500 ms for a
  * dialog that is not there would be a visible stall on Back/Next.
+ *
+ * The predicate is ownership, not the shape: a window resized to the narrow
+ * shape while step 7 is on screen still leaves a palette the tour opened behind,
+ * and that one has to close.
  */
 const closeCommandPaletteAfterStepSeven = (
 	tour: Tour,
 	go: () => void,
 ): void => {
-	if (!stepSevenSitsBesidePalette(tour)) {
+	if (!paletteOpenedByTour.has(tour)) {
 		go();
 		return;
 	}
-	useUiPreferencesStore.getState().closeCommandPalette();
-	setTimeout(go, 500);
+	releaseTourCommandPalette(tour);
+	setTimeout(() => {
+		if (tour.isActive()) go();
+	}, 500);
+};
+
+/**
+ * Shepherd's tour-level `show` listener: re-decide step 7's shape for the window
+ * the step is about to render in.
+ *
+ * The hop helpers make the same decision before they touch the palette, but a
+ * show can also come from anywhere else - a direct `tour.show(id)`, or a resize
+ * inside the 500 ms the palette takes to mount. Deciding here, right before
+ * Shepherd rebuilds the panel, is what keeps "the shape" and "the palette on
+ * screen" one decision rather than two that can disagree.
+ *
+ * The event payload is Shepherd's (`{ step }`), which is what lets this be a
+ * stable module-scope listener the hook can `off()` before re-adding.
+ */
+export const syncStepSevenShapeOnShow = (event: { step?: Step }): void => {
+	const step = event?.step;
+	if (step?.id !== STEP_SEVEN_ID) return;
+	const beside = applyStepSevenShape(step.tour);
+	/*
+	 * A shape that just became narrow cannot sit beside a palette; if this tour
+	 * opened one it is now an orphan over a centred panel, so hand it back.
+	 */
+	if (!beside) releaseTourCommandPalette(step.tour);
 };
 
 /**
@@ -120,8 +232,10 @@ const closeCommandPaletteAfterStepSeven = (
  * same copy instead - a 500 px panel over a 640 px palette covered the field at
  * every width the window supports (design round 1, D1).
  *
- * The shape is decided once, when the tour's steps are built, so Back and Next
- * always agree with the panel the user is looking at.
+ * The shape is decided when the tour's steps are built AND re-decided by
+ * `applyStepSevenShape` on every hop and every show, so Back and Next always
+ * agree with the panel the user is actually looking at, including after a
+ * mid-tour resize across the breakpoint (review round 3, R3-3).
  */
 const commandPaletteStep = (): StepOptions => {
 	const besidePalette = window.innerWidth >= STEP_BESIDE_PALETTE_MIN_WIDTH;
