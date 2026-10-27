@@ -68,7 +68,7 @@ the constraint is one rule rather than one per offending element. Long
 unbroken text, code and tables keep wrapping or scrolling inside the row
 (`lo-markdown` breaks words; `pre` and tables scroll in their own box).
 
-## 3. Reaction picker open time (incomplete: cold-path gate unmeasured)
+## 3. Reaction picker open time (evidence corrected, cold-open gate still pending)
 
 The picker filtered all 3963 emoji candidates through a per-glyph canvas font
 probe (two paints and two `getImageData` readbacks each) before its first
@@ -76,8 +76,19 @@ render. Two commits change that: the probe is paged to the visible window and
 the rest is filled in 8 ms idle slices after paint, and the timeline warms the
 whole corpus from its mount, so opening is a cache lookup.
 
-Measured click → painted (two `requestAnimationFrame` frames after the click
-dispatch), picker story at 1088:
+**`10-before-picker-1088-light.png` and `11-after-picker-1088-light.png` are
+byte-identical** (md5 `f600e692145daa7ee89aa691d85c12c5` for both), so they are
+**not** a before/after pair. They show the settled picker unchanged by this PR -
+correct as a label, wrong as a claim of a visual fix. The picker gains no pixel:
+it gains time.
+
+**Provenance of the timing table below.** The numbers were taken from the story
+revision as captured, whose play function clicked through `userEvent`; the
+committed board dispatches the pointer and click events directly, because
+`userEvent`'s own action delays are harness time rather than the operator's
+wait. They are therefore an upper bound measured on a host at load average
+60-137 with swap 9.3/10.2 GiB in use, and they are not reproducible from the
+committed board as it stands.
 
 | Run | Before (story `userEvent` click) | After (story `userEvent` click) |
 | --- | --- | --- |
@@ -87,23 +98,32 @@ dispatch), picker story at 1088:
 | 4 | 5639.6 ms | 861.6 ms |
 | 5 | 6114.1 ms | 758.9 ms |
 
-These figures still include Storybook's `userEvent` dispatch cost and were
-taken on a host at load average 60–137 with swap 9.3/10.2 GiB in use, so they
-are an upper bound and not the operator's wait. A direct pointer dispatch on a
-warm page measured 145.1 ms and 101.0 ms painted (under the 200 ms gate), and
-1083.4 ms of synchronous canvas readbacks on the very first, cold open before
-the warm-cache commit landed.
+A direct pointer dispatch on a warm page measured 145.1 ms and 101.0 ms
+painted (under the 200 ms gate), and 1083.4 ms of synchronous canvas readbacks
+on the very first, cold open before the warm-cache commit landed.
 
-**Not yet proven:** the cold-open figure with the warm-cache commit in the
-build. The host froze all Storybook and browser runs before the rebuild could
-be taken, so this PR states the gate as pending rather than met, and the timing
-must be re-measured on a quiet host before merge.
+**The 200 ms gate is not measured, and the committed board does not measure
+it.** Under the committed holds `PickerOpensInsideViewport` returns at its
+`if (!toolbar)` check and records `held` as its `data-picker-measured` value,
+because no toolbar or picker renders in this build. Re-measuring needs the
+untracked scratch config that flips the two holds at build time. The cold-open
+figure with the warm-cache commit therefore stays a pending merge condition,
+not a met one.
 
-The picker's own containment held in every run — rect `408, 123.5 → 754, 593.5`
+**One transient state is uncaptured.** A cold open now fills the grid, its
+height and `aria-rowcount` in place while idle slices probe, which shows as a
+scroll thumb that resizes. No frame records that state; the capture pass that
+re-measures the cold open should also take consecutive frames of it.
+
+The picker's own containment held in every run - rect `408, 123.5 -> 754, 593.5`
 inside a `1088 x 640` viewport, i.e. it opens inside the viewport from a trigger
-at the column's end edge. The `PickerOpensInsideViewport` board asserts both
-the rect and the 200 ms bound, so the gate fails loudly the moment the timing is
-measured again on a quiet host.
+at the column's end edge.
+
+**Dropped probe.** Both geometry files used to carry a `playErrors` key holding
+Storybook's generic "The component failed to render properly" copy. No story
+failed: the capture scraped `.sb-errordisplay`, which Storybook mounts
+unconditionally with that placeholder text. The key was a bad probe and has
+been removed from both files rather than annotated.
 
 ## Regression boards added
 
@@ -115,6 +135,15 @@ measured again on a quiet host.
   table in the fixture.
 - `Team Bridge/Reactions → PickerOpensInsideViewport`: click → painted under
   200 ms from `performance.measure`, and the picker's rect inside the viewport.
+  Under the committed holds this board records `held` and asserts nothing (see
+  section 3).
+- `scripts/team-bridge-row-layout-pin.test.mjs` (CI, registered in
+  `test:desktop`): the guard that fails on a revert. It pins the thread pane's
+  block wrapper (the only behaviour this PR changes), the page's two matching
+  wrappers, the list's and rows' width constraint and the draft trigger's
+  `self-start`, and it exercises the warm-up's once-per-module guarantee against
+  the real module. Red on `origin/main` (5 of its 6 assertions fail), green at
+  head.
 
 ## Scratch, not committed
 

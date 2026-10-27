@@ -233,8 +233,5 @@
   "802.4",
   "861.6",
   "758.9"
- ],
- "playErrors": [
-  "\n  \n    \n    \n      The component failed to render properly, likely due to a configuration issue in Storybook.\n      Here are some common causes and how you can address them:\n    \n    \n      \n        "
  ]
 }
