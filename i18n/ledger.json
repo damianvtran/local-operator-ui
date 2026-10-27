@@ -43172,6 +43172,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.archive",
+			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
+			"target_sha256": "aba188282ddfb2951e0ecdb16d3542aa5cabec9aaf7c15b7c782f6ec92775be4",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "dedc59c2f981",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/dedc59c2f981.json",
+					"receipt_sha256": "58cf48c787f9d338be5887ad0fe932d3634495cc845597a44c251378e45b3376",
+					"scope": "PR #1438 ui.teamBridge.archive at a128abe184: full new namespace, 30 keys",
+					"note": "Receipt teambridge-pr1438-audit-dedc59c2f981; earlier-round findings fixed by the translator and re-audited (resolved_findings). Evidence: i18n/audits/evidence/fr/ui.teamBridge.archive/teambridge-pr1438-audit-dedc59c2f981/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.archive",
+			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
+			"target_sha256": "fbcbc83fd9d1737283fea8d3ec010ec6725e5d0ab9396bf257d690b2dbcb3e6f",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "dedc59c2f981",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/dedc59c2f981.json",
+					"receipt_sha256": "58cf48c787f9d338be5887ad0fe932d3634495cc845597a44c251378e45b3376",
+					"scope": "PR #1438 ui.teamBridge.archive at a128abe184: full new namespace, 30 keys",
+					"note": "Receipt teambridge-pr1438-audit-dedc59c2f981; earlier-round findings fixed by the translator and re-audited (resolved_findings). Evidence: i18n/audits/evidence/es/ui.teamBridge.archive/teambridge-pr1438-audit-dedc59c2f981/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.archive",
+			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
+			"target_sha256": "080e119f6b400b0e0d03504975e1fae6af12c4ed05af00385a76757c806d797c",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "dedc59c2f981",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/dedc59c2f981.json",
+					"receipt_sha256": "58cf48c787f9d338be5887ad0fe932d3634495cc845597a44c251378e45b3376",
+					"scope": "PR #1438 ui.teamBridge.archive at a128abe184: full new namespace, 30 keys",
+					"note": "Receipt teambridge-pr1438-audit-dedc59c2f981; earlier-round findings fixed by the translator and re-audited (resolved_findings). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge.archive/teambridge-pr1438-audit-dedc59c2f981/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.archive",
+			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
+			"target_sha256": "a61b9f5f9e8a5bf6ff8eb73a43a0cd9c8419a3c8cdc4fd792f3808b6e0985b8e",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "dedc59c2f981",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/dedc59c2f981.json",
+					"receipt_sha256": "58cf48c787f9d338be5887ad0fe932d3634495cc845597a44c251378e45b3376",
+					"scope": "PR #1438 ui.teamBridge.archive at a128abe184: full new namespace, 30 keys",
+					"note": "Receipt teambridge-pr1438-audit-dedc59c2f981; earlier-round findings fixed by the translator and re-audited (resolved_findings). Evidence: i18n/audits/evidence/ru/ui.teamBridge.archive/teambridge-pr1438-audit-dedc59c2f981/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.archive",
+			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
+			"target_sha256": "8cfe97f51c9fb23622d286b422bc5cc28ac53c05a4fe2e1ceff8fed494e2086e",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "dedc59c2f981",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/dedc59c2f981.json",
+					"receipt_sha256": "58cf48c787f9d338be5887ad0fe932d3634495cc845597a44c251378e45b3376",
+					"scope": "PR #1438 ui.teamBridge.archive at a128abe184: full new namespace, 30 keys",
+					"note": "Receipt teambridge-pr1438-audit-dedc59c2f981; earlier-round findings fixed by the translator and re-audited (resolved_findings). Evidence: i18n/audits/evidence/vi/ui.teamBridge.archive/teambridge-pr1438-audit-dedc59c2f981/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.archive",
+			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
+			"target_sha256": "c89f6ace08fe6d8a2cd3667d0a892f13080f57704b24dd6bd5e04ceb15e4d5ab",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "dedc59c2f981",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/dedc59c2f981.json",
+					"receipt_sha256": "58cf48c787f9d338be5887ad0fe932d3634495cc845597a44c251378e45b3376",
+					"scope": "PR #1438 ui.teamBridge.archive at a128abe184: full new namespace, 30 keys",
+					"note": "Receipt teambridge-pr1438-audit-dedc59c2f981; earlier-round findings fixed by the translator and re-audited (resolved_findings). Evidence: i18n/audits/evidence/ur/ui.teamBridge.archive/teambridge-pr1438-audit-dedc59c2f981/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.archive",
+			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
+			"target_sha256": "c3c890626986920de1125b64c413596163e3fc8312465344ef1f7db15f5845fb",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "dedc59c2f981",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/dedc59c2f981.json",
+					"receipt_sha256": "58cf48c787f9d338be5887ad0fe932d3634495cc845597a44c251378e45b3376",
+					"scope": "PR #1438 ui.teamBridge.archive at a128abe184: full new namespace, 30 keys",
+					"note": "Receipt teambridge-pr1438-audit-dedc59c2f981; earlier-round findings fixed by the translator and re-audited (resolved_findings). Evidence: i18n/audits/evidence/hi/ui.teamBridge.archive/teambridge-pr1438-audit-dedc59c2f981/"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
