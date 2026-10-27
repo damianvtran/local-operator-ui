@@ -1138,3 +1138,54 @@ test("R7-2: the printed count's key moves when the conversation's facts move", (
 		"no conversation in scope, no facts",
 	);
 });
+
+test("R8-4: a dismissed row leaves the reel, and R8-3 keeps the facts' waiting while deep", () => {
+	const base = {
+		revision: 1,
+		read: false,
+		dismissed: false,
+		seq: 10,
+		priority: "normal",
+		source: "notify",
+		session: { id: "aaaaaaaaaaa1" },
+	};
+	const rows = Array.from({ length: 10 }, (_, index) => ({
+		...base,
+		id: `n_${index}`,
+		seq: 10 - index,
+	}));
+	assert.equal(
+		model.filterItems(rows, model.DEFAULT_FILTERS).length,
+		10,
+		"ten rows are drawn to start with",
+	);
+	const dismissed = rows.map((row) => ({ ...row, dismissed: true }));
+	assert.equal(
+		model.filterItems(dismissed, model.DEFAULT_FILTERS).length,
+		0,
+		"after dismissing all ten, nothing remains drawn",
+	);
+	/* R8-3: deep, the rows come from the window but the facts' waiting and boundary win. */
+	const windowAnswer = {
+		items: rows,
+		waiting: [],
+		high_water: 10,
+		unread_count: 10,
+		next_cursor: "c2",
+	};
+	const facts = {
+		...windowAnswer,
+		items: rows.slice(0, 2),
+		waiting: [{ id: "ask:aaaaaaaaaaa1:affff9" }],
+		high_water: 12,
+		unread_count: 12,
+	};
+	const deep = model.mergeWindowForReel(facts, windowAnswer, false);
+	assert.equal(deep.items.length, 10, "the scrolled rows are kept");
+	assert.equal(
+		deep.waiting.length,
+		1,
+		"and the new ask is visible to Mark all read",
+	);
+	assert.equal(deep.high_water, 12, "and the boundary is the fresh one");
+});

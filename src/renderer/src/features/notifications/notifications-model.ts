@@ -56,6 +56,13 @@ export function filterItems(
 	filters: NotificationFilters,
 ): DesktopNotificationItem[] {
 	return items.filter((item) => {
+		/*
+		 * A DISMISSED ROW LEAVES THE REEL (code round 8, R8-4 / Q12). The write path flips
+		 * `dismissed` in the cache instead of deleting the row (so Undo is a flip back),
+		 * which left it drawn once its exit animation finished - 138 rows standing after
+		 * the server had dismissed all 138. The drawer already filtered this way.
+		 */
+		if (item.dismissed) return false;
 		if (filters.kind === "asks" && item.source !== "ask") return false;
 		if (filters.kind === "updates" && item.source !== "notify") return false;
 		if (filters.priority === "high" && item.priority !== "high") return false;
@@ -317,7 +324,19 @@ export function mergeWindowForReel(
 	if (!facts) return { ...windowAnswer, newerCount: 0 };
 	const known = new Set(windowAnswer.items.map((item) => item.id));
 	const newerCount = facts.items.filter((item) => !known.has(item.id)).length;
-	if (!atTop) return { ...windowAnswer, newerCount };
+	if (!atTop)
+		/*
+		 * THE WINDOW KEEPS ITS ROWS; THE FACTS KEEP THE FACTS (code round 8, R8-3). Deep
+		 * scrolling used to take the ugly half of both: the rows came from the window AND
+		 * `waiting`, the counts and the boundary came from the window's stale page one, so
+		 * Mark all read missed an ask that had arrived while the operator was reading.
+		 */
+		return {
+			...facts,
+			items: windowAnswer.items,
+			next_cursor: windowAnswer.next_cursor,
+			newerCount,
+		};
 	const items = new Map<string, DesktopNotificationItem>();
 	for (const item of windowAnswer.items) items.set(item.id, item);
 	for (const item of facts.items) {
