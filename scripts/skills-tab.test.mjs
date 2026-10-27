@@ -1210,7 +1210,13 @@ const mountRetryProbe = async () => {
 						{ ref: retry.holder },
 						h(
 							"button",
-							{ "data-testid": "retry", onClick: retry.onPress },
+							{
+								"data-testid": "retry",
+								onClick: retry.onPress,
+								// The real PaneError disables its button while fetching ("Retrying...")
+								// and a disabled button cannot take focus - the state QA r5 Q1 hit.
+								disabled: state.fetching,
+							},
 							"Retry",
 						),
 					)
@@ -1237,32 +1243,85 @@ const mountRetryProbe = async () => {
 	};
 };
 
-test("Retry focus: restored after a failed retry, but a successful retry disarms the latch", async () => {
-	// Positive control: press, the retry fails again -> focus returns to Retry.
-	const failing = await mountRetryProbe();
+const pressRetry = async (probe) => {
 	await act(async () => {
-		failing.container.querySelector('[data-testid="retry"]').click();
+		probe.container.querySelector('[data-testid="retry"]').click();
 	});
-	await failing.set({ failed: false, fetching: true });
-	await failing.set({ failed: true, fetching: false });
-	assert.equal(failing.focusedId(), "retry", "a failed retry hands focus back");
-	await failing.teardown();
+};
 
-	// The defect: press, the retry SUCCEEDS, then an unrelated failure later.
-	const later = await mountRetryProbe();
-	await act(async () => {
-		later.container.querySelector('[data-testid="retry"]').click();
-	});
-	await later.set({ failed: false, fetching: true });
-	await later.set({ failed: false, fetching: false });
-	later.container.querySelector('[data-testid="elsewhere"]').focus();
-	await later.set({ failed: true, fetching: false });
+test("Retry focus, no cached data: the pane unmounts while fetching; a failed retry hands focus back", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	await probe.set({ failed: false, fetching: true });
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(probe.focusedId(), "retry", "a failed retry hands focus back");
+	await probe.teardown();
+});
+
+test("Retry focus, CACHED data: the pane stays mounted with a disabled button; focus lands on Retry only at the settle", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	// The error survives the fetch and the button is disabled: nothing may be focused yet.
+	await probe.set({ failed: true, fetching: true });
+	assert.notEqual(
+		probe.focusedId(),
+		"retry",
+		"a disabled Retry is never focused",
+	);
+	// Settles with an error again: the button is enabled and takes focus.
+	await probe.set({ failed: true, fetching: false });
 	assert.equal(
-		later.focusedId(),
+		probe.focusedId(),
+		"retry",
+		"focus lands on the re-enabled Retry",
+	);
+	await probe.teardown();
+});
+
+test("Retry focus, CACHED data, retry succeeds: disarmed, focus is not pulled onto Retry", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	await probe.set({ failed: true, fetching: true });
+	await probe.set({ failed: false, fetching: false });
+	probe.container.querySelector('[data-testid="elsewhere"]').focus();
+	assert.equal(probe.focusedId(), "elsewhere");
+	// A LATER, unrelated background failure must not steal focus.
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(
+		probe.focusedId(),
 		"elsewhere",
 		"a later background failure does not pull focus to Retry",
 	);
-	await later.teardown();
+	await probe.teardown();
+});
+
+test("Retry focus: a background failure after a successful no-cache retry does not steal focus", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	await probe.set({ failed: false, fetching: true });
+	await probe.set({ failed: false, fetching: false });
+	probe.container.querySelector('[data-testid="elsewhere"]').focus();
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(probe.focusedId(), "elsewhere");
+	await probe.teardown();
+});
+
+test("Retry focus: a second Retry after a failed one is a fresh press that is honoured again", async () => {
+	const probe = await mountRetryProbe();
+	await pressRetry(probe);
+	await probe.set({ failed: true, fetching: true });
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(probe.focusedId(), "retry");
+	probe.container.querySelector('[data-testid="elsewhere"]').focus();
+	await pressRetry(probe);
+	await probe.set({ failed: true, fetching: true });
+	await probe.set({ failed: true, fetching: false });
+	assert.equal(
+		probe.focusedId(),
+		"retry",
+		"the second press re-arms the hand-back",
+	);
+	await probe.teardown();
 });
 
 test("opening a skill at a wide width keeps focus on its row; closing returns it there", async () => {

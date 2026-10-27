@@ -326,29 +326,44 @@ const SKILL_MARK_LABELS = {
 } as const;
 
 /**
- * KEEP KEYBOARD FOCUS ON RETRY (UX U5, focus part only). A failed read with no
- * cached data renders the error pane; pressing Retry clears the error and the pane
- * (and the focused button in it) unmounts, so focus fell to <body> and a failure
- * that returned left the keyboard user nowhere. This remembers that Retry was
- * pressed and, when the error pane is back, puts focus on its Retry button again.
- * A success is left alone: the content that replaces the pane is not a button, and
- * the press is FORGOTTEN once the retry settles without an error (`fetching` back to
- * false), so a later background failure cannot pull focus to Retry (UX U9).
+ * KEEP KEYBOARD FOCUS ON RETRY (UX U5, focus part only), ACTING ON THE SETTLE.
+ *
+ * Pressing Retry starts a fetch, and what happens to the error pane depends on the
+ * cache. With NO cached data react-query clears `error`, so the pane (and the
+ * focused button in it) unmounts and focus fell to <body>. With CACHED data the
+ * `error` survives the fetch: the pane stays mounted with its button DISABLED
+ * ("Retrying..."), and a disabled button cannot take focus (QA r5 Q1). Both end the
+ * same way - the fetch settles - so this waits for that edge (`fetching` true ->
+ * false) instead of the first moment `failed` is true:
+ *   - settled WITH an error: focus the Retry button, which is enabled again;
+ *   - settled WITHOUT one: forget the press, so a later background failure cannot
+ *     pull focus off wherever the reader is (UX U9).
+ * The press is spent either way. A further Retry is a further press, which re-arms
+ * it; staying armed across settles would let a LATER background failure steal
+ * focus from the reader's search box, the defect U9 closed.
  */
 export function useRetryFocus(failed: boolean, fetching: boolean) {
 	const pressed = useRef(false);
+	const sawFetch = useRef(false);
 	const holder = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		if (!pressed.current) return;
-		if (failed) {
-			pressed.current = false;
-			requestAnimationFrame(() =>
-				holder.current?.querySelector<HTMLElement>("button")?.focus(),
-			);
-		} else if (!fetching) {
-			// The retry settled WITHOUT an error: nothing to hand focus back to.
-			pressed.current = false;
+		if (!pressed.current) {
+			sawFetch.current = false;
+			return;
 		}
+		if (fetching) {
+			sawFetch.current = true;
+			return;
+		}
+		// Not settled yet: the press has not produced a fetch to wait for.
+		if (!sawFetch.current) return;
+		sawFetch.current = false;
+		pressed.current = false;
+		if (!failed) return;
+		requestAnimationFrame(() => {
+			const retry = holder.current?.querySelector<HTMLButtonElement>("button");
+			if (retry && !retry.disabled) retry.focus();
+		});
 	}, [failed, fetching]);
 	return {
 		holder,
