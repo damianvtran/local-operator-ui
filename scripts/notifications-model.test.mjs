@@ -1105,3 +1105,28 @@ test("R7-3c: a confirmed write edits the cached rows in place, and Undo reverses
 	);
 	assert.equal(undone[0].items[0].id, "n_a", "the row body was never dropped");
 });
+
+test("R7-2: the printed count's key moves when the conversation's facts move", () => {
+	/* Rows this window has not loaded cannot appear in the row signature, so the
+	   conversation's own server facts are folded in: a late arrival in a conversation we
+	   have not paged to still re-walks the count (header 9 against confirm 10). */
+	const waiting = [{ id: "ask:aaaaaaaaaaa1:affff1" }];
+	const before = model.conversationFactsKey({
+		high_water: 100,
+		waiting,
+		unread_count: 9,
+	});
+	const lateArrival = model.conversationFactsKey({
+		high_water: 101,
+		waiting,
+		unread_count: 10,
+	});
+	const unchanged = model.conversationFactsKey({
+		high_water: 100,
+		waiting,
+		unread_count: 9,
+	});
+	assert.notEqual(lateArrival, before, "a row we have not loaded still moves the key");
+	assert.equal(unchanged, before, "and nothing else does");
+	assert.equal(model.conversationFactsKey(undefined), "", "no conversation in scope, no facts");
+});

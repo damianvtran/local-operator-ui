@@ -103,6 +103,7 @@ import {
 	useNotificationDetail,
 	useNotificationsList,
 	useNotificationsWrite,
+	useSessionNotificationsFacts,
 	writeNotifications,
 } from "../notifications-api";
 import {
@@ -120,6 +121,7 @@ import {
 	rangeSelect,
 	rowOrder,
 	scopeCountBoundary,
+	conversationFactsKey,
 	scopeCountSignature,
 	sessionScopeCountsEnabled,
 } from "../notifications-model";
@@ -317,6 +319,11 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const list = useNotificationsList(readState, enabled, isAtTop);
 	const write = useNotificationsWrite();
 	const detail = useNotificationDetail(notificationId ?? null, enabled);
+	/* The open conversation's own facts feed the printed count's key (R7-2). */
+	const sessionFacts = useSessionNotificationsFacts(
+		detail.data?.item.session.id ?? null,
+		enabled && Boolean(detail.data?.item.session.id),
+	);
 
 	useEffect(() => {
 		if (list.isSuccess && !list.isFetching) setLastGoodAt(list.dataUpdatedAt);
@@ -433,10 +440,17 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		loaded?.high_water,
 		Boolean(loaded) &&
 			sessionScopeCountsEnabled(grouping, Boolean(notificationId)),
-		scopeCountSignature(
-			loaded?.items ?? [],
-			detail.data?.item.session.id ?? "",
-		),
+		[
+			scopeCountSignature(
+				loaded?.items ?? [],
+				detail.data?.item.session.id ?? "",
+			),
+			/* R7-2: the conversation's own server-side facts, so rows we have not loaded
+			   still move the number. Empty while no conversation is in scope. */
+			conversationFactsKey(
+				detail.data?.item.session.id ? sessionFacts.data : undefined,
+			),
+		].join("|"),
 	);
 	const scopeCounts = scopeCount.counts;
 	const writesPaused = refreshFailed || operationBusy;

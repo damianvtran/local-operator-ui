@@ -392,6 +392,28 @@ export const scopeCountSignature = (
 		.sort()
 		.join(",");
 
+/**
+ * The conversation's own FACTS, folded into the printed count's key (round 7, R7-2).
+ *
+ * `scopeCountSignature` sees only the rows this window has loaded, so a conversation
+ * whose page has not arrived yet could not move the number: the header showed 9 while
+ * its confirm enumerated 10. The session facts query is that conversation's server-side
+ * answer - its boundary, its pending asks and its unread count - so a late arrival in a
+ * conversation we have not paged to is a change in this string.
+ */
+export const conversationFactsKey = (
+	facts:
+		| {
+				high_water?: number;
+				waiting?: readonly unknown[];
+				unread_count?: number;
+		  }
+		| undefined,
+): string =>
+	facts
+		? `${facts.high_water ?? 0}:${facts.waiting?.length ?? 0}:${facts.unread_count ?? 0}`
+		: "";
+
 export const sessionScopeCountsEnabled = (
 	grouping: NotificationGrouping,
 	detailOpen: boolean,
