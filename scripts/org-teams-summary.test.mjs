@@ -99,6 +99,18 @@ const layerDate = (iso) =>
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-09-30T12:00:00.000Z");
+/*
+ * The mounted roster calls teamRecency() without a clock, just as the product
+ * does. Freeze the wall clock for this file so its fixed roster timestamps keep
+ * the same relative age on every day and in every timezone; otherwise a fixture
+ * written on 2026-09-30 eventually reads "1 month ago" instead of "3 days ago".
+ * Restore the real clock after the suite so this cannot affect other tests.
+ */
+const realDateNow = Date.now;
+Date.now = () => NOW;
+after(() => {
+	Date.now = realDateNow;
+});
 const team = (overrides = {}) => ({
 	id: "t1",
 	tenant_id: "tenant-1",
