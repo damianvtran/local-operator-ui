@@ -1355,8 +1355,37 @@ const listingRecord = (text) => ({
 const panelPaths = (text) =>
 	extractMentionedPaths([listingRecord(text)]).map((mention) => mention.path);
 
-test("a bare filename listed under an introducing directory resolves on both surfaces", () => {
-	assert.deepEqual(panelPaths(LISTING), LISTED, "the Files panel");
+/**
+ * Answer the disk for every suspect the pre-scan names in `text`, through the
+ * app's own probe cache: present when `exists` lists it, missing otherwise. A
+ * listed name links only on the disk's "exists" (round 1, review F1 / QA Q1),
+ * so a positive test has to say which files are there.
+ */
+const diskFor = (text, exists) =>
+	Promise.all(
+		ambiguousTargetsIn(text).map((target) =>
+			probeTarget(target, async (paths) =>
+				paths.map((path) => ({
+					exists: exists.includes(path),
+					isFile: true,
+				})),
+			),
+		),
+	);
+
+test("a bare filename listed under an introducing directory resolves on both surfaces", async () => {
+	/*
+	 * The legacy panel has no oracle, so it admits only the whitespace-free
+	 * known-extension name; `X (editable).docx` is the backend ledger's to list.
+	 */
+	assert.deepEqual(panelPaths(LISTING), [LISTED[0]], "the Files panel");
+	/* Cold, nothing listed links: the disk has not been asked yet. */
+	assert.deepEqual(
+		linksIn(LISTING).filter((link) => LISTED.includes(link.url)),
+		[],
+		"cold",
+	);
+	await diskFor(LISTING, LISTED);
 	const links = linksIn(LISTING).map((link) => link.url);
 	for (const target of LISTED) assert.ok(links.includes(target), target);
 	/* The anchor covers the item's own text, the whole name and nothing else. */
@@ -1372,10 +1401,17 @@ test("a bare filename listed under an introducing directory resolves on both sur
 	);
 });
 
+/** Whitespace in a listed name, which the oracle-free panel refuses. */
+const SPACE = /\s/;
+/** A directory url's trailing slash, for comparing it with the bare spelling. */
+const TRAILING_SLASH = /\/+$/;
+/** The listed names the parity table uses. */
+const PDF = /\.pdf$/;
+
 /** A link url that names a file by extension, rather than the introducing directory. */
 const EXTENSIONED = /\.[a-z]+$/;
 
-test("the listing rule's other introducer spellings and item markers", () => {
+test("the listing rule's other introducer spellings and item markers", async () => {
 	const cases = [
 		["Saved to ~/out/:\n* a.pdf\n* b.csv", ["~/out/a.pdf", "~/out/b.csv"]],
 		["Saved to ~/out/:\n+ a.pdf\n+ [x] b.csv", ["~/out/a.pdf", "~/out/b.csv"]],
@@ -1390,12 +1426,17 @@ test("the listing rule's other introducer spellings and item markers", () => {
 		["Files in ~/out:\n\n- a.pdf\n\n- b.pdf", ["~/out/a.pdf", "~/out/b.pdf"]],
 	];
 	for (const [text, expected] of cases) {
-		/* The panel admits a `file://` directory on its own (an existing rule). */
+		/*
+		 * The panel admits a `file://` directory on its own (an existing rule), and
+		 * no name with a space in it (it has no oracle).
+		 */
 		assert.deepEqual(
 			panelPaths(text).filter((path) => !path.endsWith("/")),
-			expected,
+			expected.filter((path) => !SPACE.test(path.slice(path.lastIndexOf("/")))),
 			`panel: ${text}`,
 		);
+		resetProbeCache();
+		await diskFor(text, expected);
 		/* Exactly the listed names link: the introducer's own directory may too. */
 		const links = linksIn(text)
 			.map((link) => link.url)
@@ -1443,10 +1484,22 @@ test("the listing rule's negative controls stay unresolved on both surfaces", ()
 	}
 });
 
-test("only the IMMEDIATE list is resolved, and nested items are not", () => {
+test("only the IMMEDIATE list is resolved, and nested items are not", async () => {
 	const text =
 		"Files in ~/out:\n- a.pdf\n  - nested.pdf\n- b.pdf\n\nAnd later:\n- c.pdf";
 	assert.deepEqual(panelPaths(text), ["~/out/a.pdf", "~/out/b.pdf"]);
+	/* Even with every spelling on disk, only the immediate items are asked or linked. */
+	assert.deepEqual(ambiguousTargetsIn(text), [
+		"~/out", // the introducer itself, an extensionless prose path (existing rule)
+		"~/out/a.pdf",
+		"~/out/b.pdf",
+	]);
+	await diskFor(text, [
+		"~/out/a.pdf",
+		"~/out/b.pdf",
+		"~/out/nested.pdf",
+		"~/out/c.pdf",
+	]);
 	const urls = linksIn(text).map((link) => link.url);
 	assert.deepEqual(urls, ["~/out/a.pdf", "~/out/b.pdf"]);
 });
@@ -1488,16 +1541,16 @@ const answerDisk = (present) =>
 	);
 
 test("an annotated item resolves its HEAD only, when the disk vouches for it (the 12:27 message)", async () => {
-	/* The pre-scan asks the disk about the annotated head - and only that. */
-	assert.deepEqual(listedSuspects(SCREENSHOT_1227), [LISTED[1]]);
-	/* Cold: the whole-item name links, the annotated head waits for the disk. */
+	/* The pre-scan asks the disk about BOTH listed names, whole item and head. */
+	assert.deepEqual(listedSuspects(SCREENSHOT_1227), LISTED);
+	/* Cold: neither links until the disk answers. */
 	assert.deepEqual(
 		linksIn(SCREENSHOT_1227).filter(
 			(link) => link.url !== "~/Documents/Radient/",
 		),
-		[{ url: LISTED[0], text: "Radient-IP-Scope-for-Counsel-2026-10-27.pdf" }],
+		[],
 	);
-	await answerDisk({ exists: [LISTED[1]] });
+	await answerDisk({ exists: LISTED });
 	assert.equal(evidenceFor(LISTED[1]), "exists");
 	assert.deepEqual(
 		linksIn(SCREENSHOT_1227).filter(
@@ -1610,4 +1663,201 @@ test("annotated negatives: no extension, unknown extension, missing on disk, no 
 	/* The panel's legacy scan has no oracle, so it never admits an annotated head. */
 	assert.deepEqual(panelPaths(text), []);
 	assert.deepEqual(panelPaths(SCREENSHOT_1227), [LISTED[0]]);
+});
+
+/*
+ * ROUND 1 (review F1 / QA Q1): a WHOLE-item listed name took no evidence, so a
+ * change summary, a note and a deliverable that was never written all linked.
+ * Every case below linked on a895cf571b; each must now stay plain on BOTH
+ * surfaces unless the disk says the exact `<dir>/<name>` exists.
+ */
+const nonDirectoryLinks = (text, directory) =>
+	linksIn(text).filter(
+		(link) => link.url.replace(TRAILING_SLASH, "") !== directory,
+	);
+
+test("F1: a sentence listed as a whole item is not a name, even when it ends in one", async () => {
+	const cases = [
+		[
+			"Changes in `~/repo/`:\n- Fixed the parser in parse.ts\n- Added tests to test_parse.py",
+			"~/repo",
+			[
+				"~/repo/Fixed the parser in parse.ts",
+				"~/repo/Added tests to test_parse.py",
+			],
+		],
+		[
+			"Files in ~/out:\n- I wrote report.pdf",
+			"~/out",
+			["~/out/I wrote report.pdf"],
+		],
+		[
+			"Files are in ~/out/:\n- See the summary in report.pdf",
+			"~/out",
+			["~/out/See the summary in report.pdf"],
+		],
+		/* A head with no known extension used to fall through to the whole item. */
+		[
+			"Files in ~/out:\n- Notes: final.pdf",
+			"~/out",
+			["~/out/Notes: final.pdf"],
+		],
+		[
+			"Files in ~/out:\n- Run the tests - see log.txt",
+			"~/out",
+			["~/out/Run the tests - see log.txt"],
+		],
+	];
+	for (const [text, directory, sentences] of cases) {
+		resetProbeCache();
+		/* The legacy panel has no oracle: whitespace refuses outright. */
+		assert.deepEqual(panelPaths(text), [], `panel: ${text}`);
+		/* The transcript ASKS (every listed candidate is a suspect)... */
+		for (const sentence of sentences)
+			assert.ok(
+				ambiguousTargetsIn(text).includes(sentence),
+				`asked: ${sentence}`,
+			);
+		/* ...cold it links nothing, and the disk saying no keeps it that way. */
+		assert.deepEqual(nonDirectoryLinks(text, directory), [], `cold: ${text}`);
+		await diskFor(text, []);
+		assert.deepEqual(
+			nonDirectoryLinks(text, directory),
+			[],
+			`missing: ${text}`,
+		);
+	}
+});
+
+test("Q1: a listed deliverable that is not on disk stays plain (the /tmp/q1 repro)", async () => {
+	const text = "Files are in `/tmp/q1/`:\n- a.pdf\n- b.docx";
+	assert.deepEqual(listedSuspects(text), ["/tmp/q1/a.pdf", "/tmp/q1/b.docx"]);
+	/* Unknown is not exists: nothing links before the probe lands. */
+	assert.deepEqual(nonDirectoryLinks(text, "/tmp/q1"), []);
+	/* `mkdir -p /tmp/q1 && : > /tmp/q1/a.pdf` - b.docx is never written. */
+	await diskFor(text, ["/tmp/q1/a.pdf"]);
+	assert.equal(evidenceFor("/tmp/q1/b.docx"), "missing");
+	assert.deepEqual(nonDirectoryLinks(text, "/tmp/q1"), [
+		{ url: "/tmp/q1/a.pdf", text: "a.pdf" },
+	]);
+	/* The nested-list instance QA found: `notes-qa.md` linked with no file. */
+	resetProbeCache();
+	const nested = "Files in ~/out:\n- a.pdf\n  - b.pdf\n- notes-qa.md";
+	await diskFor(nested, ["~/out/a.pdf"]);
+	assert.deepEqual(nonDirectoryLinks(nested, "~/out"), [
+		{ url: "~/out/a.pdf", text: "a.pdf" },
+	]);
+});
+
+test("F2: an unknown-extension item and a non-directory introducer need the disk", async () => {
+	const deps = "Upgraded deps in `~/repo/`:\n- Next.js\n- Node.js\n- v1.2.3";
+	/* `.js` is a known extension, so the legacy panel is shape-only here: */
+	assert.deepEqual(panelPaths(deps), ["~/repo/Next.js", "~/repo/Node.js"]);
+	await diskFor(deps, []);
+	assert.deepEqual(
+		nonDirectoryLinks(deps, "~/repo"),
+		[],
+		"transcript: on disk only",
+	);
+	/* A dotted last segment does not introduce at all - nothing is even asked. */
+	for (const text of [
+		"Bumped ~/repo/v1.2.3:\n- a.pdf",
+		"See ~/x/Next.js:\n- a.pdf",
+	]) {
+		assert.deepEqual(listedSuspects(text), [], `not an introducer: ${text}`);
+		/* (`~/x/Next.js` itself is an existing prose-path tile; no listed one.) */
+		assert.deepEqual(
+			panelPaths(text).filter((path) => path.endsWith("/a.pdf")),
+			[],
+			`panel: ${text}`,
+		);
+	}
+	/*
+	 * `Makefile:` has no dot, so it is shape-admitted as a root (the oracle
+	 * answers exists/missing, not "is a directory"). The transcript asks about
+	 * `~/repo/Makefile/target.o`, the disk says no (a file has no children), and
+	 * nothing links; the panel refuses `.o` as an unknown extension.
+	 */
+	const make = "Edit ~/repo/Makefile:\n- target.o";
+	assert.deepEqual(listedSuspects(make), ["~/repo/Makefile/target.o"]);
+	await diskFor(make, []);
+	assert.deepEqual(
+		linksIn(make).filter((link) => link.url.startsWith("~/repo/Makefile/")),
+		[],
+	);
+	assert.deepEqual(panelPaths(make), []);
+	/* A dot-directory is still a directory. */
+	const dot = "Wrote ~/.config/app:\n- settings.json";
+	resetProbeCache();
+	await diskFor(dot, ["~/.config/app/settings.json"]);
+	assert.ok(
+		linksIn(dot).some((link) => link.url === "~/.config/app/settings.json"),
+	);
+});
+
+/*
+ * ROUND 1 (review F3): the panel's line walker and the transcript's mdast walker
+ * must refuse the same block shapes. Each input runs through BOTH, with the disk
+ * answering yes for every spelling, so the only thing that can differ is the
+ * walker. Names are whitespace-free and known-extension so the panel's
+ * oracle-free policy is not what decides.
+ */
+const PARITY = [
+	/* Refused by both. */
+	["fenced", "```\nSaved to ~/out/:\n- a.pdf\n- b.pdf\n```", []],
+	["tilde fence", "~~~\nSaved to ~/out/:\n- a.pdf\n~~~", []],
+	[
+		"indented code",
+		"Intro.\n\n    Saved to ~/out/:\n    - a.pdf\n    - b.pdf",
+		[],
+	],
+	["heading introducer", "## Files in ~/out/:\n- a.pdf", []],
+	["blockquote introducer", "> Files in ~/out/:\n- a.pdf", []],
+	["quoted listing", "> Files in ~/out/:\n> - a.pdf", []],
+	["ordered list not at 1", "Saved to /tmp/out:\n2. a.pdf\n3. b.pdf", []],
+	[
+		"fence straight under the introducer",
+		"Saved to ~/out/:\n```\n- a.pdf\n```",
+		[],
+	],
+	/* Admitted by both. */
+	[
+		"bullets",
+		"Saved to ~/out/:\n- a.pdf\n- b.pdf",
+		["~/out/a.pdf", "~/out/b.pdf"],
+	],
+	[
+		"ordered at 1",
+		"Saved to /tmp/out:\n1. a.pdf\n2. b.pdf",
+		["/tmp/out/a.pdf", "/tmp/out/b.pdf"],
+	],
+	[
+		"ordered not at 1 after a blank",
+		"Saved to /tmp/out:\n\n2. a.pdf",
+		["/tmp/out/a.pdf"],
+	],
+	[
+		"listing after a fence closes",
+		"```\ncode\n```\nSaved to ~/out/:\n- a.pdf",
+		["~/out/a.pdf"],
+	],
+	[
+		"indented item content is not code",
+		"Saved to ~/out/:\n- a.pdf\n\n- b.pdf",
+		["~/out/a.pdf", "~/out/b.pdf"],
+	],
+];
+
+test("F3: the panel walker and the transcript walker resolve the same listing shapes", async () => {
+	for (const [name, text, expected] of PARITY) {
+		resetProbeCache();
+		const listed = (path) => PDF.test(path);
+		const panel = panelPaths(text).filter(listed);
+		await diskFor(text, ambiguousTargetsIn(text));
+		const transcript = linksIn(text)
+			.map((link) => link.url)
+			.filter(listed);
+		assert.deepEqual(panel, expected, `panel: ${name}`);
+		assert.deepEqual(transcript, expected, `transcript: ${name}`);
+	}
 });

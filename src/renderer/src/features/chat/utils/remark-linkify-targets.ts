@@ -372,18 +372,6 @@ const continuation = (
 };
 
 /**
- * Rewrite every child list in the tree, once.
- *
- * Depth-first and in place: the walker recurses through `children` for every
- * node that is not on `NO_DESCENT`, rewriting `text` and whole-span
- * `inlineCode` children as it goes. The rewrite SPLICES rather than replaces,
- * so a `text` node holding two targets becomes five siblings — and WHAT COUNTS
- * AS HAVING CHANGED IS A FLAG RATHER THAN A LENGTH, because an atom count is
- * wrong in the one case that made the inline-code half of this plugin silently
- * inert: a linkified `inlineCode` is ONE node replacing ONE node, so a length
- * comparison reads "unchanged" and the rewrite is thrown away.
- */
-/**
  * The directory a paragraph INTRODUCES a list with, read from its last SOURCE line.
  *
  * The directory-anchored listing rule (`link-grammar.ts`, "directory-anchored
@@ -402,8 +390,15 @@ function introducedDirectory(
 	const end = paragraph.position?.end?.offset;
 	if (source === undefined || typeof start !== "number") return null;
 	if (typeof end !== "number") return null;
-	const text = source.slice(start, end);
-	return listingDirectoryIn(text.slice(text.lastIndexOf("\n") + 1));
+	/*
+	 * The WHOLE source line the paragraph ends on, from column 0 - not from the
+	 * paragraph's own start, which for a one-line paragraph inside a quote sits
+	 * past the `> `. `listingDirectoryIn` refuses a quoted line on both walkers
+	 * (round 1, review F3), so it has to see the marker the panel sees.
+	 */
+	return listingDirectoryIn(
+		source.slice(source.lastIndexOf("\n", end - 1) + 1, end),
+	);
 }
 
 /**
@@ -419,11 +414,11 @@ function introducedDirectory(
  * (`listedTargetsIn`) calls too, so the two surfaces resolve the same items.
  *
  * The anchor is the SAME atom the rest of this plugin builds, under the same
- * evidenced policy. A whole-item name always carries an extension, so the
- * evidence gate never decides it - exactly as for an extensioned `/abs` token. An
- * annotated HEAD is admitted only when the disk says it exists (the pre-scan in
- * `ambiguousTargetsIn` asks), and only the head is linked - never the
- * description.
+ * evidenced policy. EVERY listed name - a whole item or an annotated head - is
+ * admitted only when the disk says `<directory>/<name>` exists (the pre-scan in
+ * `ambiguousTargetsIn` asks about each one; round 1, review F1 / QA Q1), so a
+ * sentence item, a missing deliverable and an unprobed name all render plain.
+ * Only the head of an annotated item is linked - never the description.
  */
 function linkListedItems(list: MdastNode, directory: string): void {
 	for (const item of list.children ?? []) {
@@ -478,6 +473,18 @@ function linkListedItems(list: MdastNode, directory: string): void {
 	}
 }
 
+/**
+ * Rewrite every child list in the tree, once.
+ *
+ * Depth-first and in place: the walker recurses through `children` for every
+ * node that is not on `NO_DESCENT`, rewriting `text` and whole-span
+ * `inlineCode` children as it goes. The rewrite SPLICES rather than replaces,
+ * so a `text` node holding two targets becomes five siblings — and WHAT COUNTS
+ * AS HAVING CHANGED IS A FLAG RATHER THAN A LENGTH, because an atom count is
+ * wrong in the one case that made the inline-code half of this plugin silently
+ * inert: a linkified `inlineCode` is ONE node replacing ONE node, so a length
+ * comparison reads "unchanged" and the rewrite is thrown away.
+ */
 function walk(node: MdastNode, source: string | undefined): void {
 	const children = node.children;
 	if (!children) return;
