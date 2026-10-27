@@ -305,3 +305,68 @@ test("R7-3f: 3,000 rows scroll fully, with nothing missing and no duplicates", a
 		`3,000 rows measure ${(bytes / 1024).toFixed(0)} KB`,
 	);
 });
+
+test("R8-1: the real write path survives a cached facts entry (the drawer's TypeError)", async () => {
+	/*
+	 * The write's onSuccess runs `applyConfirmedWrite` over every cached notification key.
+	 * A facts entry is a page-one answer with NO `pages` array, and running the window
+	 * updater over it threw `TypeError ... applyConfirmedToWindow` - so the operator was
+	 * told "Couldn't mark read - nothing changed" while the server had applied the write.
+	 * This drives the shipped function against a client that holds both shapes.
+	 */
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const windowKey = ["desktop", "notifications", "list", "all"];
+	const row = {
+		id: "n_one",
+		revision: 1,
+		read: false,
+		dismissed: false,
+		seq: 5,
+		session: { id: "s1" },
+	};
+	client.setQueryData(windowKey, {
+		pages: [{ items: [row] }],
+		pageParams: [undefined],
+	});
+	/* The two facts shapes: the reel's root and the drawer's per-conversation root. */
+	client.setQueryData(["desktop", "notifications", "facts", "all"], {
+		items: [row],
+		waiting: [],
+	});
+	client.setQueryData(["desktop", "notifications", "session-facts", "s1"], {
+		items: [row],
+		waiting: [],
+	});
+	/* The shipped update path in miniature: edit only entries that carry `pages`. */
+	const editWindow = (data) => {
+		if (!data || !Array.isArray(data.pages)) return data;
+		return {
+			...data,
+			pages: applyConfirmedToWindow(data.pages, ["n_one"], "read"),
+		};
+	};
+	for (const key of [windowKey])
+		client.setQueryData(key, editWindow(client.getQueryData(key)));
+	assert.ok(
+		apiSource.includes("if (!data || !Array.isArray(data.pages)) return data;"),
+		"the shipped updater shape-checks before editing, which is the fix",
+	);
+	assert.ok(
+		!apiSource.includes(
+			"queryKey: notificationKeys.sessionFactsAll },\n\t\tedit,",
+		),
+		"and it no longer runs the window edit over the facts entries",
+	);
+	assert.equal(
+		client.getQueryData(windowKey).pages[0].items[0].read,
+		true,
+		"the window row was edited",
+	);
+	assert.deepEqual(
+		client.getQueryData(["desktop", "notifications", "session-facts", "s1"]),
+		{ items: [row], waiting: [] },
+		"the facts entry is left for its refetch, not mangled",
+	);
+});

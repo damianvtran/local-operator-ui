@@ -550,21 +550,30 @@ export function applyConfirmedWrite(
 	changed: readonly string[],
 ): void {
 	if (!client || changed.length === 0) return;
-	const edit = <Page extends { items: DesktopNotificationItem[] }>(data?: {
-		pages: Page[];
-		pageParams: unknown[];
-	}) =>
-		data
-			? { ...data, pages: applyConfirmedToWindow(data.pages, changed, verb) }
-			: data;
-	client.setQueriesData({ queryKey: notificationKeys.listRoot }, edit as never);
+	/*
+	 * ONLY INFINITE QUERIES CARRY PAGES (code round 8, R8-1). This updater used to run
+	 * over `sessionFactsAll` too, whose entries are plain page-one answers with no
+	 * `pages` array, so `applyConfirmedToWindow` threw a TypeError inside the write's
+	 * onSuccess: the operator saw "Couldn't mark read - nothing changed" (or an uncaught
+	 * TypeError) while the server HAD applied the write. The facts are invalidated
+	 * below anyway, so they need no edit - and every cached entry is shape-checked so a
+	 * future key of a different shape cannot break the write path either.
+	 */
+	const editWindow = (data?: { pages?: unknown[]; pageParams?: unknown[] }) => {
+		if (!data || !Array.isArray(data.pages)) return data;
+		return {
+			...data,
+			pages: applyConfirmedToWindow(
+				data.pages as { items: DesktopNotificationItem[] }[],
+				changed,
+				verb,
+			),
+		};
+	};
+	client.setQueriesData({ queryKey: notificationKeys.listRoot }, editWindow);
 	client.setQueriesData(
 		{ queryKey: notificationKeys.sessionsRoot },
-		edit as never,
-	);
-	client.setQueriesData(
-		{ queryKey: notificationKeys.sessionFactsAll },
-		edit as never,
+		editWindow,
 	);
 	void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
 	void client.invalidateQueries({ queryKey: notificationKeys.sessionFactsAll });
