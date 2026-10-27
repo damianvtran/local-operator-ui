@@ -217,7 +217,7 @@
 	"ui.teamBridge.invitations.load_failed": "Invitations could not be loaded.",
 	"ui.teamBridge.invitations.empty": "No invitations are waiting for your agent.",
 	"ui.teamBridge.invitations.agent_line": "{agent} was invited to this conversation",
-	"ui.teamBridge.invitations.agent_fallback": "your agent",
+	"ui.teamBridge.invitations.agent_fallback": "Your agent",
 	"ui.teamBridge.invitations.added_by": "Added by {name}",
 	"ui.teamBridge.invitations.added_by_you": "Added by you",
 	"ui.teamBridge.invitations.created_by": "Conversation created by {name}",

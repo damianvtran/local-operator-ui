@@ -1576,7 +1576,7 @@
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "Short; one line.",
 		"placeholders": {
-			"agent": "the reader's own agent's display name, or the lowercase fallback 'your agent'"
+			"agent": "the reader's own agent's display name, or the fallback 'Your agent' (agent_fallback)"
 		},
 		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. States that the reader's agent is the invitee of this conversation."
 	},
@@ -1585,7 +1585,7 @@
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "Short; one line.",
 		"placeholders": {},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Fills {agent} when the agent has no name; the sentence-internal outcome copy uses *_unnamed instead; it never starts a sentence."
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Fills {agent} in agent_line only, when the agent has no name; the outcome sentences use accepted_unnamed/declined_unnamed instead. In English it starts agent_line, so it is capitalized; in each locale, capitalize it only if it starts that locale's agent_line."
 	},
 	"ui.teamBridge.invitations.added_by": {
 		"role": "invitations added by",

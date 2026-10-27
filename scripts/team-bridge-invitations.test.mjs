@@ -345,10 +345,12 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	// A missing name must not inject a capitalized fallback into either outcome.
 	const unnamed = invitation({ agentName: null });
 	const unnamedLine = renderView({ invitations: [unnamed] });
+	// ...but agent_line starts with {agent}, so the fallback opens the sentence.
 	assert.equal(
-		unnamedLine.includes("your agent was invited to this conversation"),
+		unnamedLine.includes(">Your agent was invited to this conversation<"),
 		true,
 	);
+	assert.equal(unnamedLine.includes("your agent was invited"), false);
 	const unnamedAccepted = renderView({
 		invitations: [unnamed],
 		rowStates: { "tnt_1|bcv_1": { phase: "done", decision: "accept" } },

@@ -217,7 +217,7 @@
 	"ui.teamBridge.invitations.load_failed": "Không tải được lời mời.",
 	"ui.teamBridge.invitations.empty": "Không có lời mời nào đang chờ tác nhân của bạn.",
 	"ui.teamBridge.invitations.agent_line": "{agent} đã được mời vào cuộc trò chuyện này",
-	"ui.teamBridge.invitations.agent_fallback": "tác nhân của bạn",
+	"ui.teamBridge.invitations.agent_fallback": "Tác nhân của bạn",
 	"ui.teamBridge.invitations.added_by": "Do {name} thêm",
 	"ui.teamBridge.invitations.added_by_you": "Do bạn thêm",
 	"ui.teamBridge.invitations.created_by": "Cuộc trò chuyện do {name} tạo",
