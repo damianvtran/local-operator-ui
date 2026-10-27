@@ -30,7 +30,9 @@ type FrameState =
 	| "off"
 	| "failed"
 	| "v1"
-	| "loading";
+	| "loading"
+	/** "Enabled on this machine" off under a paused endpoint (review R2-2). */
+	| "machine_off_paused";
 type FrameProps = {
 	surface: "settings" | "page";
 	state: FrameState;
@@ -98,6 +100,12 @@ function Frame({ surface, state, before = false }: FrameProps) {
 		}
 		// Authoritative 2035-byte ConsentTextV2, extracted without paraphrasing.
 		// Its source and SHA-256 live beside the fixture; the suite pins the hash.
+		if (state === "machine_off_paused" && settings.endpoint) {
+			settings.endpoint.state = "paused";
+			status.surface_state = "D";
+			status.local.enabled = false;
+			status.default_on = { in_force: true, notice_pending: false };
+		}
 		if (before && state === "off" && settings.endpoint) {
 			settings.endpoint.state = "disabled";
 			settings.settings.consent_required = true;
@@ -150,6 +158,9 @@ function Frame({ surface, state, before = false }: FrameProps) {
 					<TeamBridgePageView
 						{...pageMeta.args}
 						gatePending={state === "loading"}
+						eligibility={
+							state === "machine_off_paused" ? "off_local" : undefined
+						}
 						notice={
 							before ? null : (
 								<TeamBridgeDefaultOnBanner
@@ -192,6 +203,29 @@ function scene(
 		play: async ({ canvasElement }) => {
 			const canvas = within(canvasElement);
 			if (state === "loading") return;
+			if (state === "machine_off_paused") {
+				if (surface === "page") {
+					await canvas.findByRole("heading", {
+						name: t("ui.agentMessages.page_off.local_title"),
+					});
+					expect(
+						canvas
+							.getByRole("link", {
+								name: t("ui.agentMessages.page_off.action"),
+							})
+							.getAttribute("href"),
+					).toBe("/settings?setting=team_bridge.enabled");
+				} else {
+					await canvas.findByRole("heading", {
+						name: t("ui.agentMessages.settings.state.d_title"),
+					});
+					await canvas.findByRole("switch", {
+						name: t("ui.agentMessages.settings.local.label"),
+					});
+				}
+				expect(canvas.queryByRole("button", { name: /enable/i })).toBeNull();
+				return;
+			}
 			if (before || state === "v1") {
 				if (surface === "settings") {
 					await canvas.findByRole("heading", {
@@ -262,6 +296,8 @@ export const PageOff = scene("page", "off");
 export const PageFailed = scene("page", "failed");
 export const PageV1 = scene("page", "v1");
 export const PageLoading = scene("page", "loading");
+export const SettingsMachineOffPaused = scene("settings", "machine_off_paused");
+export const PageMachineOffPaused = scene("page", "machine_off_paused");
 export const BeforeSettingsPending = scene("settings", "pending", true);
 export const BeforeSettingsDismissed = scene("settings", "dismissed", true);
 export const BeforeSettingsOff = scene("settings", "off", true);

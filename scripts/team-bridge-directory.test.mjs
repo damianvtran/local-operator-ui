@@ -425,7 +425,7 @@ test("explicit endpoint/local off gates the page without reinterpreting runtime 
 				model.teamBridgeEligibility(
 					status({ ...base, surface_state, local: { enabled: false } }),
 				),
-				"off",
+				"off_local",
 				`local opt-out, default-on=${in_force}`,
 			);
 		}
@@ -495,6 +495,36 @@ test("off page replaces composer and write controls with the Team Bridge off sta
 	assert.match(html, />Turn on in Settings</);
 	assert.doesNotMatch(html, /<textarea|<button|role="(?:dialog|alertdialog)"/);
 	assert.doesNotMatch(html, /Team Bridge requires|Enable/);
+});
+
+test("machine-only off names this machine, claims no consent step, and links to the switch (R2-2)", async () => {
+	const { MemoryRouter } = await import("react-router-dom");
+	const html = renderToStaticMarkup(
+		createElement(
+			MemoryRouter,
+			null,
+			createElement(
+				ui.TeamBridgePageView,
+				viewProps({
+					eligibility: "off_local",
+					selectedConversation: conversation(),
+					readOnly: false,
+				}),
+			),
+		),
+	);
+	assert.match(html, /Team Bridge is off on this machine/);
+	assert.match(html, /Your account is still set up/);
+	// The machine switch collects no consent; the account-level copy would lie.
+	assert.equal(/consent/i.test(html), false, "no consent claim");
+	assert.equal(/for this account/.test(html), false, "not the account copy");
+	assert.equal(
+		html.includes('href="/settings?setting=team_bridge.enabled"'),
+		true,
+		"links to the Settings control that clears it",
+	);
+	assert.doesNotMatch(html, /<textarea|<button|role="(?:dialog|alertdialog)"/);
+	assert.doesNotMatch(html, /Enable/);
 });
 
 // ---------------------------------------------------------------------------

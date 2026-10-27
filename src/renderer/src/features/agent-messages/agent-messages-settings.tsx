@@ -101,6 +101,19 @@ export type AgentMessagesSettingsProps = {
 	focus?: boolean;
 };
 
+/**
+ * The off gate's way-back controls, most specific first (review R2-3). E's
+ * own re-enrol control comes first; E renders no machine switch, so its
+ * "Enable again" (v1) is reached only after the switch has been ruled out.
+ * In C/D the switch outranks ConsentRenewal's "Enable again", because the
+ * switch is what the `off_local` gate is waiting on.
+ */
+const OFF_GATE_FOCUS_ORDER = [
+	'[data-agent-messages-action="turn_on_again"]',
+	'[role="switch"]',
+	'[data-agent-messages-action="enable"]',
+] as const;
+
 /** Radix refuses an empty item value, and "" is the designation's own word. */
 const NO_SESSION = "__none__";
 
@@ -262,13 +275,18 @@ export function AgentMessagesSettings({
 	 * must land ON the control that turns it back on, not at the section top.
 	 * Which control that is depends on how it was turned off: E offers "Turn
 	 * on again" (default-on) or "Enable again" (v1), both after the served
-	 * consent text and both `data-agent-messages-action`; a local opt-out in
-	 * C/D is the "Enabled on this machine" switch. Only an ENABLED control is
-	 * focused - a disabled one (no consent served yet, a write in flight)
-	 * cannot take focus - so the effect re-runs as the settings read, the
-	 * pending write and the status settle. Native `focus()` also scrolls the
-	 * control into view. Same mechanism as the General language row's
-	 * `focus` prop.
+	 * consent text; a local opt-out in C/D is the "Enabled on this machine"
+	 * switch. Only an ENABLED control is focused - a disabled one (no consent
+	 * served yet, a write in flight) cannot take focus - so the effect re-runs
+	 * as the settings read, the pending write and the status settle. Native
+	 * `focus()` also scrolls the control into view. Same mechanism as the
+	 * General language row's `focus` prop.
+	 *
+	 * PRIORITY, NOT DOCUMENT ORDER (review R2-3). A selector list returns the
+	 * first match in the DOM, so a v1 C state with stale consent and the
+	 * machine switch off landed on ConsentRenewal's "Enable again" (which
+	 * renders above the switch) instead of the switch that actually clears
+	 * the gate. The candidates are tried one by one in `OFF_GATE_FOCUS_ORDER`.
 	 */
 	const sectionRoot = useRef<HTMLDivElement>(null);
 	const focused = useRef(false);
@@ -279,9 +297,10 @@ export function AgentMessagesSettings({
 			return;
 		}
 		if (focused.current || load.kind !== "ready" || pending !== null) return;
-		const control = sectionRoot.current?.querySelector<HTMLElement>(
-			'[data-agent-messages-action="turn_on_again"]:not(:disabled), [data-agent-messages-action="enable"]:not(:disabled), [role="switch"]:not(:disabled)',
-		);
+		const root = sectionRoot.current;
+		const control = OFF_GATE_FOCUS_ORDER.map((selector) =>
+			root?.querySelector<HTMLElement>(`${selector}:not(:disabled)`),
+		).find((candidate) => candidate != null);
 		if (!control) return;
 		control.focus();
 		focused.current = true;
@@ -897,6 +916,30 @@ const SettingsState: FC<SettingsStateProps> = ({
 							disabled={disabled || !consent}
 						/>
 					)}
+					{/* The machine switch belongs to D too (review R2-2). Paused is
+					    an endpoint state; the switch is this machine's preference
+					    under it. Without it, a member who turned this machine off
+					    while paused had no way to clear the Team Bridge page's
+					    `off_local` gate: Resume reactivates the endpoint and leaves
+					    the machine off. Same control and write as C. */}
+					<LocalSwitch
+						value={localEnabled}
+						disabled={disabled}
+						description={t("ui.agentMessages.settings.local.stays_enrolled")}
+						onChange={async (next) => {
+							setPending("local");
+							onActionRefusal(null);
+							try {
+								await api.localSetting("team_bridge.enabled", next);
+								onLocalEnabled(next);
+								await onRefreshStatus(true);
+							} catch (error) {
+								onActionRefusal(agentMessagesRefusal(error));
+							} finally {
+								setPending(null);
+							}
+						}}
+					/>
 				</div>
 			)}
 		</div>

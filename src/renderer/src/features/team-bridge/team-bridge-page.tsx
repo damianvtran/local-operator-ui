@@ -270,6 +270,12 @@ const TeamBridgeGateLoading: FC = () => {
  * keeps its own consent semantics (the served text above "Turn on again").
  * It reuses the promoted `?setting=team_bridge.enabled` deep link, which
  * already resolves to that section (`promoted-setting-sections.ts`).
+ *
+ * `off_local` (review R2-2) is the same gate for a member who turned off only
+ * "Enabled on this machine": the account stays enrolled and the way back is
+ * that switch, which collects no consent. Its copy says so; reusing the
+ * account-level "off for this account ... asks for your consent" text would
+ * misdescribe both the scope and the step.
  */
 export const TeamBridgeEligibilityPanel: FC<{
 	reason: TeamBridgeEligibility;
@@ -280,6 +286,10 @@ export const TeamBridgeEligibilityPanel: FC<{
 		off: {
 			title: "ui.agentMessages.page_off.title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
 			reason: "ui.agentMessages.page_off.body",
+		},
+		off_local: {
+			title: "ui.agentMessages.page_off.local_title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
+			reason: "ui.agentMessages.page_off.local_body",
 		},
 		plan_required: {
 			title: "ui.teamBridge.plan.title",
@@ -318,7 +328,7 @@ export const TeamBridgeEligibilityPanel: FC<{
 					{t(copy[reason].title)}
 				</h1>
 				<div className="mt-2">
-					{reason !== "off" && (
+					{reason !== "off" && reason !== "off_local" && (
 						<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
 							{t("ui.teamBridge.plan.body")}
 						</p>
@@ -326,7 +336,7 @@ export const TeamBridgeEligibilityPanel: FC<{
 					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
 						{t(copy[reason].reason)}
 					</p>
-					{reason === "off" && (
+					{(reason === "off" || reason === "off_local") && (
 						<Button asChild variant="secondary" size="sm" className="mt-4">
 							<Link
 								to={`/settings?setting=${TEAM_BRIDGE_ENABLED_SETTING_KEY}`}

@@ -7,11 +7,12 @@
  * would pass while an Enable button sat beside it, so every state asserts the
  * absence of /enable/i buttons and of role=dialog/alertdialog explicitly.
  *
- * The local "Enabled on this machine" switch (role=switch) is ALLOWED in state C
- * and F and asserted exactly: it is the machine-local control of an enrolment
- * that already holds, not a way to opt in to Team Bridge, and the existing
- * settings surface owns it. It must NOT appear in B, D or E, and no other
- * switch may appear anywhere.
+ * The local "Enabled on this machine" switch (role=switch) is ALLOWED in states
+ * C, D and F and asserted exactly: it is the machine-local control of an
+ * enrolment that already holds, not a way to opt in to Team Bridge, and the
+ * existing settings surface owns it. D carries it since review R2-2 (it is the
+ * only way back from a local opt-out while paused). It must NOT appear in B or
+ * E, and no other switch may appear anywhere.
  *
  * Every "no dialog" claim about the onboarding dialog is made against a MOUNTED
  * AgentMessagesOnboarding with a negative control (a v1 hub does open it), so
@@ -266,15 +267,17 @@ const switchLabels = () =>
 
 /** The absences the product ruling demands, asserted in every state. */
 function assertNoOptInAffordance(where) {
-	// Only Settings states C and F carry the machine-local switch (see header).
+	// Only Settings states C, D and F carry the machine-local switch (see header).
 	const state =
 		document
 			.querySelector("[data-agent-messages-state]")
 			?.getAttribute("data-agent-messages-state") ?? null;
 	assert.deepEqual(
 		switchLabels(),
-		state === "C" || state === "F" ? ["Enabled on this machine"] : [],
-		`${where}: only the machine-local switch, only in C/F`,
+		state === "C" || state === "D" || state === "F"
+			? ["Enabled on this machine"]
+			: [],
+		`${where}: only the machine-local switch, only in C/D/F`,
 	);
 	assert.deepEqual(
 		enableButtons().map(labelOf),
@@ -802,6 +805,47 @@ test("Settings: an off-gate deep link focuses the way-back control once it can t
 	const back = button("Turn on again");
 	assert.equal(back === undefined, false, "Turn on again rendered");
 	assert.equal(document.activeElement === back, true, "Turn on again focused");
+});
+
+test("Settings: a v1 C with stale consent and the machine off focuses the switch, not Enable again (R2-3)", async (t) => {
+	// v1 (no default_on): ConsentRenewal's "Enable again" renders ABOVE the
+	// switch, so document order alone would have picked it.
+	const stale = settingsWith({ defaultOn: undefined });
+	stale.endpoint.consent.current = false;
+	await mountSettings(t, {
+		status: statusWith({ surface: "C", enabled: false }),
+		settings: stale,
+		focus: true,
+	});
+	const renew = buttons().find((el) => labelOf(el) === "Enable again");
+	assert.equal(
+		renew === undefined,
+		false,
+		"stale-consent Enable again rendered",
+	);
+	assert.equal(renew.disabled, false, "and it could take focus");
+	const toggle = document.querySelector('[role="switch"]');
+	assert.equal(toggle === null, false, "machine switch rendered");
+	assert.equal(document.activeElement === toggle, true, "switch focused");
+	assert.equal(document.activeElement === renew, false, "not Enable again");
+});
+
+test("Settings: D (paused) with the machine off offers the machine switch and focuses it (R2-2)", async (t) => {
+	await mountSettings(t, {
+		status: statusWith({ surface: "D", defaultOn: SEEN, enabled: false }),
+		settings: settingsWith({ state: "paused" }),
+		focus: true,
+	});
+	assert.equal(
+		document.querySelector('[data-agent-messages-state="D"]') === null,
+		false,
+		"state D rendered",
+	);
+	assert.deepEqual(switchLabels(), ["Enabled on this machine"]);
+	const toggle = document.querySelector('[role="switch"]');
+	assert.equal(toggle.getAttribute("aria-checked"), "false");
+	assert.equal(document.activeElement === toggle, true, "switch focused");
+	assertNoOptInAffordance("D, machine off");
 });
 
 test("Settings: without the deep link nothing is focused for the reader", async (t) => {

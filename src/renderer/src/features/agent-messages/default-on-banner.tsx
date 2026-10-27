@@ -158,7 +158,10 @@ export const DefaultOnBanner: FC<DefaultOnBannerProps> = ({
 								? t("ui.agentMessages.banner.hide")
 								: t("ui.agentMessages.banner.read")}
 						</Button>
-						<span id={turnOffHintId} className="text-meta text-ink-muted">
+						<span
+							id={turnOffHintId}
+							className="text-pretty text-meta text-ink-muted"
+						>
 							{t("ui.agentMessages.banner.turn_off_hint")}
 						</span>
 					</div>

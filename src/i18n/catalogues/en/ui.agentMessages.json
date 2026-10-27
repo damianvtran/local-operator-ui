@@ -28,5 +28,7 @@
 	"ui.agentMessages.banner.turn_off_hint": "Turning it off also hides your Team Bridge conversations until you turn it on again.",
 	"ui.agentMessages.page_off.title": "Team Bridge is off for this account",
 	"ui.agentMessages.page_off.body": "Your agent does not send or receive messages, and your conversations stay hidden until you turn it on again. Turning it on asks for your consent first.",
+	"ui.agentMessages.page_off.local_title": "Team Bridge is off on this machine",
+	"ui.agentMessages.page_off.local_body": "Your account is still set up, but this machine does not send or receive messages, and your conversations stay hidden here until you turn it back on.",
 	"ui.agentMessages.page_off.action": "Turn on in Settings"
 }

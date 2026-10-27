@@ -1582,6 +1582,8 @@ export type MessageParams = {
 	"ui.agentMessages.dialog.validation_failure": undefined;
 	"ui.agentMessages.page_off.action": undefined;
 	"ui.agentMessages.page_off.body": undefined;
+	"ui.agentMessages.page_off.local_body": undefined;
+	"ui.agentMessages.page_off.local_title": undefined;
 	"ui.agentMessages.page_off.title": undefined;
 	"ui.agentMessages.settings.action.enable": undefined;
 	"ui.agentMessages.settings.action.enable_again": undefined;
