@@ -15,6 +15,8 @@ import {
 	teamBridgeSuspendArrivals,
 } from "./team-bridge-arrival-model";
 import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
+import { EMOJI_ENTRIES } from "./team-bridge-emoji-model";
+import { warmEmojiProbeCache } from "./team-bridge-emoji-support";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
@@ -189,6 +191,14 @@ export const TeamBridgeMessageList: FC<{
 	const locale = useI18nLocale();
 	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
 	const items = threadItems(messages, new Date());
+	/* Warm the emoji font probe while the reader is reading, so opening the
+	   reaction picker is a cache lookup rather than hundreds of canvas
+	   readbacks inside its click handler. Mounted here because the row's
+	   toolbar - the only door to the picker - lives on this list. */
+	useEffect(
+		() => warmEmojiProbeCache(EMOJI_ENTRIES.map((entry) => entry.emoji)),
+		[],
+	);
 	return (
 		/* THE SHARED WIDTH CONSTRAINT (operator report 2026-10-27: the hover
 		   band and the action row ran past the visible column). The list is

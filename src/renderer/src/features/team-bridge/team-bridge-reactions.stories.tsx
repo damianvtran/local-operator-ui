@@ -408,8 +408,10 @@ const afterPaint = () =>
  * the picker opens from a trigger with no room to its end: Radix must shift it
  * back inside (`collisionPadding`). The play function clicks the real react
  * button, then asserts the picker's rect lies within the viewport and that
- * click -> painted is under 200 ms, read from `performance.measure` so the
- * number is in the Performance panel as well as the assertion.
+ * click dispatch -> painted is under 200 ms, read from `performance.measure`
+ * so the number is in the Performance panel as well as the assertion. The
+ * synthetic pointer dispatch is direct: `userEvent`'s configured typing and
+ * action delays are harness time, not time the operator waits for the picker.
  *
  * Both reaction holds (`shared/team-bridge-notify.ts`) render no toolbar in
  * this build, so the measurement runs only where the surface exists; the
@@ -438,7 +440,23 @@ export const PickerOpensInsideViewport: Story = {
 		});
 		performance.clearMarks("tb-picker-click");
 		performance.mark("tb-picker-click");
-		await userEvent.click(trigger);
+		trigger.dispatchEvent(
+			new PointerEvent("pointerdown", {
+				bubbles: true,
+				button: 0,
+				pointerId: 1,
+				pointerType: "mouse",
+			}),
+		);
+		trigger.dispatchEvent(
+			new PointerEvent("pointerup", {
+				bubbles: true,
+				button: 0,
+				pointerId: 1,
+				pointerType: "mouse",
+			}),
+		);
+		trigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 		const body = canvasElement.ownerDocument.body;
 		const picker = await waitFor(
 			() => {

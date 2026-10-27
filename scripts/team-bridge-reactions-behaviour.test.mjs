@@ -87,7 +87,7 @@ const bundle = await build({
 				}));
 				b.onLoad({ filter: ANY_SEAM, namespace: "seam" }, (args) => ({
 					contents: args.path.includes("emoji-support")
-						? "export const canRenderEmoji=(emoji)=>!globalThis.__unsupportedGlyphs?.has(emoji);"
+						? "export const canRenderEmoji=(emoji)=>!globalThis.__unsupportedGlyphs?.has(emoji); export const warmEmojiProbeCache=()=>()=>{};"
 						: args.path.includes("api/")
 							? "export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)};"
 							: args.path.includes("markdown")

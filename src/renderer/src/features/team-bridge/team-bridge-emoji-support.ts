@@ -63,3 +63,43 @@ export function canRenderEmoji(emoji: string): boolean {
 	cache.set(emoji, supported);
 	return supported;
 }
+
+/**
+ * WARM THE PROBE CACHE BEFORE THE PICKER IS ASKED FOR (operator report
+ * 2026-10-27: the picker took seconds to open). `canRenderEmoji` is a canvas
+ * paint plus `getImageData` per sequence - about 0.7 ms each here, so the
+ * first picker open used to pay for hundreds of them inside its own click
+ * handler, and the operator waited on a click that had not painted. This walks
+ * the corpus in idle slices instead, starting when a timeline mounts (the
+ * toolbar that opens the picker is on every row), so the synchronous probe left
+ * on the open path is a cache lookup.
+ *
+ * Deliberately returns its cancel function: the caller mounts it once per
+ * timeline, a slice yields before the browser's next frame, and repeated
+ * mounts (every conversation switch) resume from the same module-wide cache,
+ * so a second call costs one `performance.now()` per slice. `requestIdleCallback`
+ * is not used: it is absent in older WebKit and the scheduler here only needs
+ * "after paint", which a zero-delay timer already gives.
+ */
+export function warmEmojiProbeCache(
+	entries: readonly string[],
+	sliceMs = 8,
+): () => void {
+	let index = 0;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	let cancelled = false;
+	const slice = () => {
+		if (cancelled) return;
+		const deadline = performance.now() + sliceMs;
+		while (index < entries.length && performance.now() < deadline) {
+			canRenderEmoji(entries[index]);
+			index++;
+		}
+		if (index < entries.length) timer = setTimeout(slice, 0);
+	};
+	timer = setTimeout(slice, 0);
+	return () => {
+		cancelled = true;
+		if (timer !== undefined) clearTimeout(timer);
+	};
+}
