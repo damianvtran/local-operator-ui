@@ -345,5 +345,11 @@
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- ہٹائیں",
 	"ui.canvas.wysiwyg_markdown_editor.add": "+ شامل کریں",
 	"ui.canvas.create_file_dialog.creating": "بنائی جا رہی ہے…",
-	"ui.canvas.variable_form_dialog.saving": "محفوظ ہو رہا ہے…"
+	"ui.canvas.variable_form_dialog.saving": "محفوظ ہو رہا ہے…",
+	"ui.canvas.files.attachments": "منسلکات",
+	"ui.canvas.files.attachmentsPartial": "لوڈ شدہ پیغامات سے",
+	"ui.canvas.files.attachmentImage": "منسلک تصویر",
+	"ui.canvas.files.attachmentRetained": "منتقل شدہ · محفوظ شدہ نقل باقی ہے",
+	"ui.canvas.files.attachmentGone": "منتقل یا حذف شدہ · کوئی محفوظ شدہ نقل نہیں",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}"
 }

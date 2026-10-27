@@ -345,5 +345,11 @@
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- Удалить",
 	"ui.canvas.wysiwyg_markdown_editor.strikethrough": "Зачёркивание",
 	"ui.canvas.wysiwyg_markdown_editor.undo": "Отменить",
-	"ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z": "Отменить (Ctrl+Z)"
+	"ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z": "Отменить (Ctrl+Z)",
+	"ui.canvas.files.attachments": "Вложения",
+	"ui.canvas.files.attachmentsPartial": "По загруженным сообщениям",
+	"ui.canvas.files.attachmentImage": "Вложенное изображение",
+	"ui.canvas.files.attachmentRetained": "Перемещено · копия сохранена",
+	"ui.canvas.files.attachmentGone": "Перемещено или удалено · сохранённой копии нет",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}"
 }

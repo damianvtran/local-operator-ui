@@ -345,5 +345,11 @@
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- 移除",
 	"ui.canvas.wysiwyg_markdown_editor.add": "+ 添加",
 	"ui.canvas.create_file_dialog.creating": "正在创建……",
-	"ui.canvas.variable_form_dialog.saving": "正在保存……"
+	"ui.canvas.variable_form_dialog.saving": "正在保存……",
+	"ui.canvas.files.attachments": "附件",
+	"ui.canvas.files.attachmentsPartial": "来自已加载的消息",
+	"ui.canvas.files.attachmentImage": "附件图片",
+	"ui.canvas.files.attachmentRetained": "已移动 · 已保留副本",
+	"ui.canvas.files.attachmentGone": "已移动或删除 · 无保存的副本",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}"
 }

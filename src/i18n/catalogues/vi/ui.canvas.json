@@ -345,5 +345,11 @@
 	"ui.canvas.wysiwyg_markdown_editor.undo": "Hoàn tác",
 	"ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z": "Hoàn tác (Ctrl+Z)",
 	"ui.canvas.create_file_dialog.creating": "Đang tạo…",
-	"ui.canvas.variable_form_dialog.saving": "Đang lưu…"
+	"ui.canvas.variable_form_dialog.saving": "Đang lưu…",
+	"ui.canvas.files.attachments": "Tệp đính kèm",
+	"ui.canvas.files.attachmentsPartial": "Từ các tin nhắn đã tải",
+	"ui.canvas.files.attachmentImage": "Ảnh đính kèm",
+	"ui.canvas.files.attachmentRetained": "Đã di chuyển · còn bản sao đã lưu",
+	"ui.canvas.files.attachmentGone": "Đã di chuyển hoặc bị xóa · không có bản sao đã lưu",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}"
 }

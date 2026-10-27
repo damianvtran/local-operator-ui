@@ -345,5 +345,11 @@
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- हटाया गया",
 	"ui.canvas.wysiwyg_markdown_editor.add": "+ जोड़ा गया",
 	"ui.canvas.create_file_dialog.creating": "बनाई जा रही है...",
-	"ui.canvas.variable_form_dialog.saving": "सहेजा जा रहा है…"
+	"ui.canvas.variable_form_dialog.saving": "सहेजा जा रहा है…",
+	"ui.canvas.files.attachments": "अटैचमेंट",
+	"ui.canvas.files.attachmentsPartial": "लोड किए गए संदेशों से",
+	"ui.canvas.files.attachmentImage": "अटैच की गई तस्वीर",
+	"ui.canvas.files.attachmentRetained": "स्थानांतरित · सहेजी गई प्रति मौजूद है",
+	"ui.canvas.files.attachmentGone": "स्थानांतरित या हटाया गया · कोई सहेजी गई प्रति नहीं",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}"
 }

@@ -345,5 +345,11 @@
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- Quitar",
 	"ui.canvas.wysiwyg_markdown_editor.add": "+ Añadir",
 	"ui.canvas.create_file_dialog.creating": "Creando...",
-	"ui.canvas.variable_form_dialog.saving": "Guardando…"
+	"ui.canvas.variable_form_dialog.saving": "Guardando…",
+	"ui.canvas.files.attachments": "Adjuntos",
+	"ui.canvas.files.attachmentsPartial": "De los mensajes cargados",
+	"ui.canvas.files.attachmentImage": "Imagen adjunta",
+	"ui.canvas.files.attachmentRetained": "Movido · queda una copia guardada",
+	"ui.canvas.files.attachmentGone": "Movido o eliminado · sin copia guardada",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}"
 }
