@@ -14,7 +14,7 @@
 	"ui.teamBridge.archive.banner.unarchive_error": "Không thể bỏ lưu trữ kênh này. Hãy thử lại.",
 	"ui.teamBridge.archive.composer.note": "Kênh này đã được lưu trữ nên không ai có thể đăng bài.",
 	"ui.teamBridge.archive.delete.title": "Xóa vĩnh viễn #{name}?",
-	"ui.teamBridge.archive.delete.body": "Toàn bộ tin nhắn, luồng trả lời, phản ứng và tệp đính kèm trong kênh này sẽ bị xóa. Không thể hoàn tác và không thể khôi phục bất cứ thứ gì.",
+	"ui.teamBridge.archive.delete.body": "Toàn bộ tin nhắn, luồng trò chuyện, cảm xúc và tệp đính kèm trong kênh này sẽ bị xóa. Không thể hoàn tác và không thể khôi phục bất cứ thứ gì.",
 	"ui.teamBridge.archive.delete.confirm_label": "Để xác nhận, hãy nhập {name}",
 	"ui.teamBridge.archive.delete.confirm": "Xóa vĩnh viễn",
 	"ui.teamBridge.archive.delete.error": "Không thể xóa kênh này. Hãy thử lại.",

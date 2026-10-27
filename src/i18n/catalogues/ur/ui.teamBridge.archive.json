@@ -14,7 +14,7 @@
 	"ui.teamBridge.archive.banner.unarchive_error": "یہ چینل آرکائیو سے نہیں نکل سکا۔ دوبارہ کوشش کریں۔",
 	"ui.teamBridge.archive.composer.note": "یہ چینل آرکائیو ہے، اس لیے کوئی بھی پیغام نہیں بھیج سکتا۔",
 	"ui.teamBridge.archive.delete.title": "کیا #{name} کو ہمیشہ کے لیے حذف کرنا ہے؟",
-	"ui.teamBridge.archive.delete.body": "اس چینل کے تمام پیغامات، تھریڈز، ردِعمل اور ملحقات مٹا دیے جائیں گے۔ یہ عمل واپس نہیں ہو سکتا اور کچھ بھی بحال نہیں کیا جا سکے گا۔",
+	"ui.teamBridge.archive.delete.body": "اس چینل کے تمام پیغامات، تھریڈز، ردعمل اور ملحقات مٹا دیے جائیں گے۔ یہ عمل واپس نہیں ہو سکتا اور کچھ بھی بحال نہیں کیا جا سکے گا۔",
 	"ui.teamBridge.archive.delete.confirm_label": "تصدیق کے لیے {name} لکھیں",
 	"ui.teamBridge.archive.delete.confirm": "ہمیشہ کے لیے حذف کریں",
 	"ui.teamBridge.archive.delete.error": "یہ چینل حذف نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
