@@ -1171,10 +1171,6 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « Volumes » has the same spelling; scoped to fr so the other locales still translate it",
 	],
 	[
-		"fr:ui.chat.region.conversation",
-		"French cognate: « Conversation » has the same spelling; scoped to fr so the other locales still translate it",
-	],
-	[
 		"hi:ui.chat.directory.folder.program_files",
 		"Hindi Windows shows this folder name verbatim; the path beside it is never translated.",
 	],

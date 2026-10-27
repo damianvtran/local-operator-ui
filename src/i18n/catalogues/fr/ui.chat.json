@@ -130,6 +130,6 @@
 	"ui.chat.question_dock.hint.secret_held": "{prefix}Envoi suspendu tant que le sort de cette réponse est inconnu — elle a peut-être été transmise, donc plus rien ne peut être envoyé · Échap dans la carte la masque",
 	"ui.chat.question_dock.hint.type": "{prefix}Saisissez votre réponse ci-dessous.",
 	"ui.chat.question_dock.hint.options": "{prefix}Haut/Bas pour choisir · Entrée ou {digits} pour répondre · Échap masque · ou saisissez votre propre réponse ci-dessous",
-	"ui.chat.region.composer": "Zone de saisie du message",
-	"ui.chat.region.conversation": "Conversation"
+	"ui.chat.region.composer": "Zone de rédaction du message",
+	"ui.chat.region.conversation": "Transcription"
 }

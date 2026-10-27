@@ -4,7 +4,7 @@
 	"ui.chat.header.archived": "آرکائیو میں ہے",
 	"ui.chat.header.actions": "گفتگو کے اعمال",
 	"ui.chat.header.archive_conversation": "گفتگو آرکائیو کریں",
-	"ui.chat.header.cancel_rename": "نام بدلنا منسوخ کریں",
+	"ui.chat.header.cancel_rename": "نام کی تبدیلی منسوخ کریں",
 	"ui.chat.header.copy_id": "سیشن ID نقل کریں",
 	"ui.chat.header.move_device": "دوسری ڈیوائس پر منتقل کریں…",
 	"ui.chat.header.rename_conversation": "گفتگو کا نام بدلیں",
