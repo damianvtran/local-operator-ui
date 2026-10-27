@@ -3401,10 +3401,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			expected_account_id: id,
 			tenant_id: id.optional(),
 			consent_version: z.string().min(1).max(128).optional(),
+			// Never "default_on": only the hub's enrolment route may assert it and the
+			// runtime answers a client that tries with a 422 (runtime #2790).
 			consented_via: z.enum(["dialog", "settings"]).optional(),
 			label: z.string().min(1).max(128).optional(),
 			state: z.enum(["active", "paused", "disabled"]),
 		})
+		.strict(),
+	/*
+	 * The default-on banner's dismissal (runtime #2790). Idempotent and
+	 * local-only: the runtime records "seen" on this machine and the banner never
+	 * returns. No body, no tenant, no account guard - it changes no hub state, so
+	 * there is no account whose receipt could be stale.
+	 */
+	z
+		.object({ op: z.literal("agent_messages.onboarding.dismiss") })
 		.strict(),
 	z
 		.object({
@@ -8957,6 +8968,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.label === undefined ? {} : { label: request.label }),
 					state: request.state,
 				},
+			};
+		case "agent_messages.onboarding.dismiss":
+			return {
+				path: "/v1/desktop/team-bridge/onboarding/dismiss",
+				method: "POST",
 			};
 		case "agent_messages.allowlist.get":
 			return {
