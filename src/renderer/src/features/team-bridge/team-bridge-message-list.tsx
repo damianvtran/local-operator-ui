@@ -24,6 +24,7 @@ import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
 } from "./team-bridge-profile-card";
+import { TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-reaction-gate";
 import {
 	TeamBridgeReactionChips,
 	useTeamBridgeReactionState,
@@ -192,13 +193,17 @@ export const TeamBridgeMessageList: FC<{
 	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
 	const items = threadItems(messages, new Date());
 	/* Warm the emoji font probe while the reader is reading, so opening the
-	   reaction picker is a cache lookup rather than hundreds of canvas
-	   readbacks inside its click handler. Mounted here because the row's
-	   toolbar - the only door to the picker - lives on this list. */
-	useEffect(
-		() => warmEmojiProbeCache(EMOJI_ENTRIES.map((entry) => entry.emoji)),
-		[],
-	);
+	   reaction picker is a cache lookup rather than canvas readbacks inside its
+	   click handler. GATED ON THE HOLD (agent review round 1, m1): while
+	   reactions do not ship, no toolbar, picker or chip renders, so the walk
+	   buys this build nothing and would spend the operator's first load on it.
+	   Mounted on the list because the row's toolbar - the only door to the
+	   picker - lives here; the helper itself is once-per-module, so the thread
+	   pane's extra lists do not each take a slice. */
+	useEffect(() => {
+		if (!TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD) return;
+		return warmEmojiProbeCache(EMOJI_ENTRIES.map((entry) => entry.emoji));
+	}, []);
 	return (
 		/* THE SHARED WIDTH CONSTRAINT (operator report 2026-10-27: the hover
 		   band and the action row ran past the visible column). The list is

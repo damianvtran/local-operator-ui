@@ -5,6 +5,8 @@
 const SIZE = 40;
 const FONT_SIZE = 28;
 const cache = new Map<string, boolean>();
+/* Set by the first `warmEmojiProbeCache`; see its comment for why once is enough. */
+let warmed = false;
 let context: CanvasRenderingContext2D | null | undefined;
 
 export function isSingleColorGlyph(
@@ -74,17 +76,21 @@ export function canRenderEmoji(emoji: string): boolean {
  * toolbar that opens the picker is on every row), so the synchronous probe left
  * on the open path is a cache lookup.
  *
- * Deliberately returns its cancel function: the caller mounts it once per
- * timeline, a slice yields before the browser's next frame, and repeated
- * mounts (every conversation switch) resume from the same module-wide cache,
- * so a second call costs one `performance.now()` per slice. `requestIdleCallback`
- * is not used: it is absent in older WebKit and the scheduler here only needs
- * "after paint", which a zero-delay timer already gives.
+ * Deliberately returns its cancel function, and deliberately runs ONCE per
+ * module: the corpus is a fixed table, so every later caller - the thread
+ * pane's own lists, a conversation switch - would otherwise take a slice of
+ * its own on the same walk. `warmed` makes those calls return a no-op canceller
+ * and schedule nothing, so the third list on screen costs no more than the
+ * first. `requestIdleCallback` is not used: it is absent in older WebKit and
+ * the scheduler here only needs "after paint", which a zero-delay timer
+ * already gives.
  */
 export function warmEmojiProbeCache(
 	entries: readonly string[],
 	sliceMs = 8,
 ): () => void {
+	if (warmed) return () => {};
+	warmed = true;
 	let index = 0;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let cancelled = false;
