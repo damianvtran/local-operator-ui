@@ -40,6 +40,7 @@ import {
 } from "@tanstack/react-query";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
+	TeamBridgeConversation,
 	TeamBridgeConversationList,
 	TeamBridgeDirectory,
 	TeamBridgeDirectoryMember,
@@ -48,6 +49,10 @@ import type {
 	TeamBridgeReadState,
 	TeamBridgeUnread,
 } from "../../../../shared/team-bridge-contract";
+import {
+	TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION,
+	withAgentInvitationAnswer,
+} from "./team-bridge-invitations-model";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
@@ -569,6 +574,101 @@ export function useSetTeamBridgeNotify(): UseMutationResult<
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
 	return useMutation(notifyMutationOptions(client, owner.isCurrent));
+}
+
+/** One invitation answer: which conversation, in which org, and the choice. */
+export type TeamBridgeInvitationAnswer = {
+	conversationId: string;
+	tenantId: string;
+	decision: "accept" | "decline";
+};
+
+/**
+ * The invitation-answer mutation's options, separated from the hook for the
+ * same reason as `notifyMutationOptions`: the test that owns the optimistic and
+ * rollback claims drives `onMutate`/`onError` against a real cache, no DOM.
+ *
+ * OPTIMISTIC. The rail count and the row's outcome move the moment the owner
+ * answers (the agent row turns `active`/`removed` in every cached page that
+ * holds it); a refusal restores the exact snapshots, and `onSettled` re-reads
+ * the truth. The patch never touches `notify`, so accepting cannot unmute.
+ *
+ * The owner is captured ONCE, at construction, and every phase re-checks it: a
+ * sign-out or account switch while the request is in flight must neither land
+ * the answer under the next account nor write its rollback into their cache.
+ */
+export function invitationAnswerMutationOptions(
+	client: QueryClient,
+	isCurrent?: () => boolean,
+): UseMutationOptions<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeInvitationAnswer,
+	TeamBridgeNotifyMutationContext
+> {
+	const { accountId } = observedRadientAuthority(client);
+	const current = () =>
+		bridgeOwnerCurrent(client, accountId) && (isCurrent?.() ?? true);
+	const check = () => {
+		if (!current() || !accountId)
+			throw new Error("Team Bridge write authority changed");
+		return accountId;
+	};
+	const owned = {
+		queryKey: teamBridgeKeys.conversationsPrefix,
+		predicate: (query: { queryKey: QueryKey }) =>
+			query.queryKey.at(-1) === accountId &&
+			query.queryKey.at(-2) === "account",
+	};
+	return {
+		mutationFn: ({ conversationId, tenantId, decision }) =>
+			TeamBridgeApi.answerAgentInvitation({
+				conversationId,
+				tenantId,
+				decision,
+				accountId: check(),
+				consentVersion: TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION,
+			}),
+		onMutate: async (variables) => {
+			const self = check();
+			await client.cancelQueries(owned);
+			check();
+			const snapshots =
+				client.getQueriesData<TeamBridgeConversationList>(owned);
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withAgentInvitationAnswer(
+							page,
+							variables,
+							self,
+							variables.decision,
+						),
+			);
+			return { snapshots };
+		},
+		onError: (_error, _variables, context) => {
+			if (!current()) return;
+			for (const [key, data] of context?.snapshots ?? []) {
+				client.setQueryData(key, data);
+			}
+		},
+		onSettled: async () => {
+			if (!current()) return;
+			await client.invalidateQueries(owned);
+		},
+	};
+}
+
+/** Answer one agent invitation, optimistically (see the options above). */
+export function useAnswerTeamBridgeInvitation(): UseMutationResult<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeInvitationAnswer
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	return useMutation(invitationAnswerMutationOptions(client, owner.isCurrent));
 }
 
 export function useMarkTeamBridgeRead(

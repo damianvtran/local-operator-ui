@@ -506,6 +506,35 @@ export const TeamBridgeApi = {
 	},
 
 	/**
+	 * Answer an invitation for the caller's OWN agent (agent-server `Consent`).
+	 *
+	 * An agent added to a channel or group stays `invited` until its owner
+	 * answers; this is the only transition that makes it `active`, and the agent
+	 * can never take it for itself. `accountId` is the owner's account (the hub
+	 * refuses any other with `agent_not_permitted`), and the owner guard rides
+	 * along so a request started under one account cannot land under another.
+	 * The answer is the conversation's post-state; accepting changes only the
+	 * member's state, never its notification register, so it still joins muted.
+	 */
+	async answerAgentInvitation(input: {
+		conversationId: string;
+		accountId: string;
+		tenantId: string;
+		decision: "accept" | "decline";
+		consentVersion: string;
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.consent",
+			...(await teamBridgeWriteOwner(input.accountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			account_id: input.accountId,
+			decision: input.decision,
+			consent_version: input.consentVersion,
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
+	/**
 	 * Set one conversation's notification register.
 	 *
 	 * The desktop op rides the read route's `notify` field (agent-server #148)
