@@ -218,13 +218,13 @@ export function useNotificationsList(
 		),
 		newerCount: merged?.newerCount ?? 0,
 		/** Back to top: page one again, with fresh facts, so the pill clears. */
+		/*
+		 * BACK TO TOP RESETS PAGE ONE (code round 8, Q13). Invalidating the window key
+		 * refetched all 32 loaded pages; resetting it drops them, so the next read is page
+		 * one with fresh facts - and the pill's count is cleared with them.
+		 */
 		resetToTop: () => {
-			void client?.invalidateQueries({
-				queryKey: notificationKeys.list(state),
-			});
-			void client?.invalidateQueries({
-				queryKey: notificationKeys.facts(state),
-			});
+			void client?.resetQueries({ queryKey: notificationKeys.list(state) });
 			return facts.refetch();
 		},
 	};
@@ -303,11 +303,8 @@ export function useSessionNotifications(
 		),
 		newerCount: merged?.newerCount ?? 0,
 		resetToTop: () => {
-			void client?.invalidateQueries({
+			void client?.resetQueries({
 				queryKey: notificationKeys.session(sessionId ?? ""),
-			});
-			void client?.invalidateQueries({
-				queryKey: notificationKeys.sessionFacts(sessionId ?? ""),
 			});
 			return facts.refetch();
 		},
@@ -430,8 +427,15 @@ function invalidateSoon(
 	if (previous) clearTimeout(previous);
 	const timer = setTimeout(() => {
 		pendingInvalidation.delete(client);
+		/*
+		 * A FRAME REFRESHES FACTS, NEVER A SCROLL WINDOW (code round 8, R8-2). This used to
+		 * invalidate `sessionsRoot`, which is the DRAWER's window: one frame refetched every
+		 * page of every open drawer. Both windows are fed by their own facts key now.
+		 */
 		void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
-		void client.invalidateQueries({ queryKey: notificationKeys.sessionsRoot });
+		void client.invalidateQueries({
+			queryKey: notificationKeys.sessionFactsAll,
+		});
 	}, INVALIDATE_COALESCE_MS);
 	pendingInvalidation.set(client, timer);
 	return Promise.resolve();
