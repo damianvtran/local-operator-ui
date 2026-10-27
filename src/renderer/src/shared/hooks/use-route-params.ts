@@ -70,6 +70,7 @@ export const useCurrentView = ():
 	| "mesh"
 	| "browser"
 	| "library"
+	| "notifications"
 	| "team-bridge" => {
 	const currentPath = getCurrentPath();
 
@@ -111,6 +112,10 @@ export const useCurrentView = ():
 
 	if (pathIncludes(currentPath, "/mesh")) {
 		return "mesh";
+	}
+
+	if (pathIncludes(currentPath, "/notifications")) {
+		return "notifications";
 	}
 
 	// Default to chat if no match

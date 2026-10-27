@@ -80,6 +80,10 @@ export function isAcceptedLanguageEdit(
 const FOREGROUND_RECEIPT_OPS: ReadonlySet<string> = new Set([
 	"sessions.seen",
 	"attention.seen",
+	// Notifications reel reads (contract § 5.2); `notifications.dismiss` is not
+	// a "seen" claim and stays unguarded, as `sessions.notified` does.
+	"notifications.read",
+	"notifications.seen",
 ]);
 
 /**

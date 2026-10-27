@@ -97,7 +97,13 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+} from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type {
 	AskDismissReason,
@@ -284,6 +290,15 @@ export type AskDrawerProps = {
 	conversationOf?: (row: AskPresentation) => string | null;
 	/** A story pins the clock so its frames are reproducible. */
 	nowMs?: number;
+	/**
+	 * THE NOTIFICATIONS TAB STRIP (decisions D9, design § 18), supplied by the
+	 * mount when `features.notifications` is advertised. `strip` draws under the
+	 * chrome bar; `body` REPLACES the asks body while a non-asks tab is chosen.
+	 * Absent means this drawer renders exactly as it did before the feature.
+	 * `action` draws in the chrome bar beside the scope line: the Updates list's
+	 * back-to-top chip lives there so it costs the list none of its height.
+	 */
+	tabs?: { strip: ReactNode; body: ReactNode | null; action?: ReactNode };
 };
 
 /**
@@ -306,6 +321,7 @@ export const AskDrawer = ({
 	onDraftChange,
 	conversationOf,
 	nowMs,
+	tabs,
 }: AskDrawerProps) => {
 	useI18nLocale();
 	/*
@@ -422,7 +438,9 @@ export const AskDrawer = ({
 	 * the latch is spent.
 	 */
 	useEffect(() => {
-		if (closedOnce.current) return;
+		// With Notifications the panel also owns updates: an empty asks queue
+		// cannot close an Updates tab (or steal the tab strip after answering).
+		if (tabs || closedOnce.current) return;
 		/*
 		 * NOTHING TO SHOW IS `open === 0` AND NO ROWS, NOT ROWS ALONE (remediation round
 		 * 1, R1). A frame whose LIST the wire bound dropped but whose TALLY survived
@@ -461,7 +479,7 @@ export const AskDrawer = ({
 		 * effect could sit on a stale close verdict for exactly the frame the guard was
 		 * added for.
 		 */
-	}, [view.rows.length, view.open, frameUnread, onClose]);
+	}, [view.rows.length, view.open, frameUnread, onClose, tabs]);
 
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
@@ -1039,6 +1057,7 @@ export const AskDrawer = ({
 				>
 					{askScopeLine(scope, view)}
 				</span>
+				{tabs?.action}
 				<Tooltip content={t("ui.chat.asks.close_asks")}>
 					<Button
 						variant="ghost"
@@ -1062,7 +1081,14 @@ export const AskDrawer = ({
 			 * shrink below its content so `overflow-y-auto` can actually take the overflow
 			 * (without it the drawer grows and the page scroller returns - the D1 defect).
 			 */}
-			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2">
+			{tabs?.strip}
+			{tabs?.body ?? null}
+			<div
+				className={cn(
+					"min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+					tabs?.body ? "hidden" : "flex",
+				)}
+			>
 				{/*
 				 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
 				 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the

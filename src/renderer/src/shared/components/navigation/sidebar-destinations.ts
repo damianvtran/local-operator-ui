@@ -3,7 +3,7 @@
  *
  * WHAT THIS MODULE IS, and what it deliberately is not. It is the pure model
  * behind customising the left column's destination rows (design contract
- * `docs/design/sidebar-customisation.md` § 1-§ 3): the nine stable ids, the
+ * `docs/design/sidebar-customisation.md` § 1-§ 3): the ten stable ids, the
  * two-region layout they live in, the default arrangement, and the operations a
  * drag or the row menu performs on that layout. It imports nothing from React
  * and reads no state, so the same functions are exercised by
@@ -18,7 +18,7 @@
  *
  * WHY THE IDS COME FROM THE WIRE CONTRACT. A destination's id is the stable
  * spelling used in the request body and the stored file (`src/shared/
- * desktop-control-contract.ts`). Re-declaring the nine strings here would be a
+ * desktop-control-contract.ts`). Re-declaring the ten strings here would be a
  * second spelling of the allow-list the route validates against; a rename on
  * one side would then be a preference the other silently drops. The tuple is
  * re-exported so call sites keep importing the model rather than the DTO, and
@@ -42,9 +42,9 @@ import {
 /*
  * Re-exported rather than redeclared: call sites and the node:test harness
  * import the model, not the DTO file, and there must be one spelling of the
- * nine ids in the client. `SIDEBAR_DESTINATION_IDS` is the READONLY tuple in
- * default order, not a copy - a caller that sorted it would be sorting the wire
- * vocabulary.
+ * ten ids in the client. `SIDEBAR_DESTINATION_IDS` is the READONLY tuple in
+ * WIRE order, not a copy - a caller that sorted it would be sorting the wire
+ * vocabulary. The display default is `DEFAULT_ORDER` below, typed against it.
  */
 export { SIDEBAR_DESTINATION_IDS };
 export type { SidebarDestinationId };
@@ -68,10 +68,17 @@ export type SidebarLayout = DesktopSidebarLayout;
  */
 const DEFAULT_REGION_BY_ID: Record<SidebarDestinationId, SidebarRegion> = {
 	aida: "visible",
+	/*
+	 * Notifications is visible by default and Schedules folds into More in
+	 * exchange (operator addendum, 2026-10-25; notifications decisions D10), so
+	 * the visible column keeps its height. Only a layout MISSING an id takes its
+	 * default region: a stored file that already places Schedules keeps it there.
+	 */
+	notifications: "visible",
 	library: "visible",
 	projects: "visible",
 	agents: "visible",
-	schedules: "visible",
+	schedules: "more",
 	browser: "visible",
 	"team-bridge": "more",
 	"agent-hub": "more",
@@ -79,34 +86,86 @@ const DEFAULT_REGION_BY_ID: Record<SidebarDestinationId, SidebarRegion> = {
 };
 
 /**
- * The default arrangement: Aida, Library, Projects, Agents, Schedules, Browser
- * visible, then Team Bridge, Agent Hub and Mesh folded into More.
+ * The DEFAULT DISPLAY ORDER, which is no longer the wire order.
  *
- * DERIVED from `SIDEBAR_DESTINATION_IDS` and `DEFAULT_REGION_BY_ID`, so the
- * default order and the id vocabulary are one fact. Treat it as immutable:
+ * WHY A SECOND LIST. The wire tuple only grows at its end (core and UI share
+ * it, and an inserted id would reorder a vocabulary both sides validate), but a
+ * new destination does not always belong at the end of the column:
+ * Notifications sits directly under Aida (design.md § 1). Re-insertion anchors
+ * on DEFAULT rank, so if rank were the wire index a stored layout missing
+ * `notifications` would get it after Browser for every existing user. This list
+ * is that rank, and the `satisfies` plus the length test in
+ * `scripts/sidebar-destinations.test.mjs` hold it to exactly the wire ids.
+ */
+const DEFAULT_ORDER = [
+	"aida",
+	"notifications",
+	"library",
+	"projects",
+	"agents",
+	"schedules",
+	"browser",
+	"team-bridge",
+	"agent-hub",
+	"mesh",
+] as const satisfies readonly SidebarDestinationId[];
+
+/**
+ * The default arrangement: Aida, Notifications, Library, Projects, Agents,
+ * Browser visible, then Schedules, Team Bridge, Agent Hub and Mesh folded into
+ * More.
+ *
+ * DERIVED from `DEFAULT_ORDER` and `DEFAULT_REGION_BY_ID`, so the default
+ * order and the regions are one fact. Treat it as immutable:
  * `sanitizeSidebarLayout` always returns fresh arrays, and every operation here
  * returns a new object, precisely so this constant can be handed out as a
  * fallback (the failed-read path returns it) without a caller's splice editing
  * every future layout.
  */
 export const DEFAULT_SIDEBAR_LAYOUT: SidebarLayout = {
-	visible: SIDEBAR_DESTINATION_IDS.filter(
-		(id) => DEFAULT_REGION_BY_ID[id] === "visible",
-	),
-	more: SIDEBAR_DESTINATION_IDS.filter(
-		(id) => DEFAULT_REGION_BY_ID[id] === "more",
-	),
+	visible: DEFAULT_ORDER.filter((id) => DEFAULT_REGION_BY_ID[id] === "visible"),
+	more: DEFAULT_ORDER.filter((id) => DEFAULT_REGION_BY_ID[id] === "more"),
 };
 
-/** Default rank of an id in the wire order; the anchor for re-insertion. */
+/** Default rank of an id in the display order; the anchor for re-insertion. */
 const DEFAULT_RANK_BY_ID: ReadonlyMap<SidebarDestinationId, number> = new Map(
-	SIDEBAR_DESTINATION_IDS.map((id, index) => [id, index]),
+	DEFAULT_ORDER.map((id, index) => [id, index]),
 );
+
+/**
+ * Ids a backend must ADVERTISE before a layout naming them may be sent to it.
+ *
+ * An older core validates the PUT body against its own tuple and refuses an
+ * unknown id (422), so every drag save would fail on a new UI paired with an
+ * old core (contract § 8.1 skew table). The read path already re-inserts the id
+ * locally, so stripping it from the request is lossless on that backend.
+ */
+export const CAPABILITY_GATED_IDS: ReadonlyMap<SidebarDestinationId, string> =
+	new Map([["notifications", "notifications"]]);
+
+/**
+ * The layout to SEND: every capability-gated id the backend has not advertised
+ * removed from both regions. `advertised` answers whether a feature name is
+ * present; the caller owns the capabilities read.
+ */
+export function stripUnadvertisedIds(
+	layout: SidebarLayout,
+	advertised: (feature: string) => boolean,
+): SidebarLayout {
+	const keep = (id: SidebarDestinationId) => {
+		const feature = CAPABILITY_GATED_IDS.get(id);
+		return feature === undefined || advertised(feature);
+	};
+	return {
+		visible: layout.visible.filter(keep),
+		more: layout.more.filter(keep),
+	};
+}
 
 const KNOWN_IDS: ReadonlySet<string> = new Set(SIDEBAR_DESTINATION_IDS);
 
 /**
- * Whether `value` is one of the nine destination ids.
+ * Whether `value` is one of the ten destination ids.
  *
  * A predicate rather than a throw or a cast because the input is the STORE's
  * content: an older file, a hand-edited preference or a future id this build
@@ -307,7 +366,7 @@ function insertMissingIntoRegion(
 	layout: SidebarLayout,
 	region: SidebarRegion,
 ): void {
-	for (const id of SIDEBAR_DESTINATION_IDS) {
+	for (const id of DEFAULT_ORDER) {
 		if (DEFAULT_REGION_BY_ID[id] !== region) continue;
 		if (layout.visible.includes(id) || layout.more.includes(id)) continue;
 		const rank = DEFAULT_RANK_BY_ID.get(id) ?? 0;
@@ -339,7 +398,7 @@ function insertMissingIntoRegion(
 
 /**
  * Normalise whatever the store (or a caller's fixture) holds into a layout this
- * module guarantees: all nine ids, exactly once, in a stable order.
+ * module guarantees: all ten ids, exactly once, in a stable order.
  *
  * The rules, and why each exists:
  *
