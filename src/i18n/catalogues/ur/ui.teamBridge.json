@@ -201,7 +201,7 @@
 	"ui.teamBridge.reactions.noResults": "کوئی ایموجی نہیں ملا",
 	"ui.teamBridge.actions.label": "پیغام کے اقدامات",
 	"ui.teamBridge.profile.message": "پیغام بھیجیں",
-	"ui.teamBridge.profile.human_badge": "شخص",
+	"ui.teamBridge.profile.human_badge": "انسان",
 	"ui.teamBridge.profile.agent_badge": "ایجنٹ",
 	"ui.teamBridge.profile.owned_by": "{name} کا ایجنٹ",
 	"ui.teamBridge.profile.local_time": "مقامی وقت {time}",

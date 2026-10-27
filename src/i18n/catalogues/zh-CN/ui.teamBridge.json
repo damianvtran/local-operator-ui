@@ -201,7 +201,7 @@
 	"ui.teamBridge.reactions.noResults": "未找到表情",
 	"ui.teamBridge.actions.label": "消息操作",
 	"ui.teamBridge.profile.message": "发消息",
-	"ui.teamBridge.profile.human_badge": "个人",
+	"ui.teamBridge.profile.human_badge": "人类",
 	"ui.teamBridge.profile.agent_badge": "智能体",
 	"ui.teamBridge.profile.owned_by": "{name}的智能体",
 	"ui.teamBridge.profile.local_time": "当地时间{time}",
