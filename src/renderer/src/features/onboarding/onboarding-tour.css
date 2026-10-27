@@ -12,7 +12,24 @@
  * which is mounted at the app root — a tour started from any surface gets it.
  */
 
+/*
+ * `right: auto` is load-bearing, not a leftover physical property.
+ *
+ * Every step is a `<dialog>`, and Chromium's UA sheet pins it with
+ * `inset-inline-start: 0; inset-inline-end: 0` while Shepherd writes a
+ * *physical* inline `left: 50%` and centres with `translate(-50%, -50%)`.
+ * That is over-constrained on purpose in LTR (the box's own `left` wins and
+ * the UA end edge is dropped), but in RTL the UA's inline-start edge resolves
+ * to `right: 0`, Chromium then drops the resolved inline-start — Shepherd's
+ * own `left` — and the panel anchors its right edge to the viewport instead of
+ * sitting at its Popper position. Clearing `right` re-opens the over-constrain
+ * so Shepherd's centring applies in both directions; a logical
+ * `inset-inline-end: auto` would clear the *wrong* side under `rtl` because it
+ * is the physical `right` the UA parks at 0 there. The physical `left` this
+ * cancels is physical too, which is why the pairing is physical.
+ */
 .shepherd-element {
+	right: auto;
 	max-width: 500px;
 	max-height: 95vh;
 	overflow-y: auto;
@@ -52,6 +69,10 @@
 }
 
 .shepherd-cancel-icon {
+	/* 24px floor: the glyph plus 4px padding measured 22.69px wide, under the
+	   WCAG 2.2 2.5.8 target minimum, and the box is solo in its row so the
+	   extra pixel is invisible. */
+	min-width: 24px;
 	padding: 4px;
 	border-radius: var(--radius-sm);
 	font-size: 1.5rem;
@@ -80,6 +101,29 @@
 	color: inherit;
 	font-size: inherit;
 	line-height: inherit;
+}
+
+/*
+ * Keycap runs are literals (`⌘P`, `⌘K`, `⌘⇧P`) rendered inside `<code>`, and
+ * they are LTR by definition — the modifier glyph belongs left of the key on
+ * every platform the copy names.
+ *
+ * Inherited `direction: rtl` from the Urdu body is what breaks that: the
+ * neutral `⌘`/`⇧` take the paragraph direction while the Latin letter keeps its
+ * own, so the glyph lands *after* the letter and `⌘P` paints `P⌘`. `ltr` gives
+ * the run one direction; `isolate` stops the surrounding RTL paragraph from
+ * reordering it at its boundaries, so the run sits in the sentence without
+ * dragging neighbouring punctuation with it.
+ *
+ * SCOPED TO RTL ON PURPOSE. `isolate` changes line-breaking at the run's
+ * boundaries, and measured in zh-CN it moved `Ctrl+Shift+P` onto the preceding
+ * line — a 13.27px reflow of correct copy, in a locale with no defect to fix.
+ * The `[dir="rtl"]` guard is what keeps every LTR locale byte-identical; the
+ * RTL case is the only one where the paragraph direction fights the run.
+ */
+[dir="rtl"] .shepherd-text code {
+	direction: ltr;
+	unicode-bidi: isolate;
 }
 
 .shepherd-footer {

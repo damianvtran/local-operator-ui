@@ -22,7 +22,10 @@
  *     `setAttribute`;
  *  4. live tour - the REAL Shepherd instance follows a negotiated locale with
  *     fixtures for French, a pseudo-locale and Urdu, keeping the current step,
- *     the step list and keyboard focus.
+ *     the step list and keyboard focus;
+ *  5. skin rules - the three declarations whose absence is silent in every
+ *     other check (RTL panel anchoring, inline `<code>` direction, the close
+ *     control's target-size floor) are still on the rule that must carry them.
  *
  * WHAT IT CANNOT PROVE: the rendered pixels (the design round and QA own those),
  * a real browser's layout under RTL, or production translations. The non-English
@@ -62,6 +65,10 @@ const RE = {
 	notUiLabel: /not (?:a )?UI control label/,
 	newline: /\n/,
 	trailingWhitespace: /\s$/,
+	rightAuto: /^[ \t]*right:[ \t]*auto;/m,
+	codeDirectionLtr: /^[ \t]*direction:[ \t]*ltr;/m,
+	codeBidiIsolate: /^[ \t]*unicode-bidi:[ \t]*isolate;/m,
+	minWidth24: /^[ \t]*min-width:[ \t]*24px;/m,
 };
 
 /* ---------------------------------------------------------------------------
@@ -288,6 +295,45 @@ test("figure layout uses logical properties so RTL mirrors it", () => {
 	assert.doesNotMatch(section, RE.physicalSide);
 	assert.doesNotMatch(section, RE.physicalMargin);
 	assert.doesNotMatch(section, RE.motion);
+});
+
+/**
+ * One rule's declaration block, by exact selector.
+ *
+ * WHY THE BLOCK AND NOT THE FILE. Each declaration pinned below is invisible
+ * when missing - a lost `right: auto` only shows up as an off-centre panel in
+ * one script - so the assertion has to name the rule that must carry it. A
+ * whole-file regex would let the same declaration in an unrelated rule keep the
+ * test green while the tour regressed, which is the exact failure this guards.
+ */
+const ruleBlock = (selector) => {
+	const at = TOUR_CSS.indexOf(`${selector} {`);
+	assert.ok(at !== -1, `${selector} rule is missing`);
+	const open = TOUR_CSS.indexOf("{", at);
+	const close = TOUR_CSS.indexOf("}", open);
+	assert.ok(close !== -1, `${selector} rule is unterminated`);
+	return TOUR_CSS.slice(open + 1, close);
+};
+
+/*
+ * Three rules a later edit could drop without any visible local failure:
+ *
+ *  - `right: auto` on the panel. Every step is a `<dialog>`, whose UA rule
+ *    parks the inline edges at 0 while Shepherd centres with a physical
+ *    `left: 50%`; under `rtl` that leaves the panel flush to the viewport's
+ *    right edge instead of its Popper position. Proven live in QA round 1.
+ *  - `direction: ltr; unicode-bidi: isolate` on inline `<code>` under an
+ *    RTL document: inherited `rtl` paints `⌘P` as `P⌘`. The `[dir="rtl"]`
+ *    scope is part of the pin - unscoped, `isolate` re-wrapped a Chinese line.
+ *  - the close control's 24px width floor (WCAG 2.2 2.5.8); the glyph plus
+ *    padding measures 22.69px without it.
+ */
+test("the tour skin keeps its RTL and target-size rules", () => {
+	assert.match(ruleBlock(".shepherd-element"), RE.rightAuto);
+	const code = ruleBlock('[dir="rtl"] .shepherd-text code');
+	assert.match(code, RE.codeDirectionLtr);
+	assert.match(code, RE.codeBidiIsolate);
+	assert.match(ruleBlock(".shepherd-cancel-icon"), RE.minWidth24);
 });
 
 test("the close label is keyed and described for translators", () => {
