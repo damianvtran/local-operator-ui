@@ -24,5 +24,11 @@
 	"ui.agentMessages.banner.dismiss": "Ẩn",
 	"ui.agentMessages.banner.consent_unavailable": "Hiện chưa có toàn văn. Hãy thử lại sau giây lát.",
 	"ui.agentMessages.banner.turn_off_failed": "Không thể tắt Team Bridge. Chưa có gì thay đổi. Hãy thử lại.",
-	"ui.agentMessages.banner.dismiss_failed": "Không thể ẩn thông báo này. Hãy thử lại."
+	"ui.agentMessages.banner.dismiss_failed": "Không thể ẩn thông báo này. Hãy thử lại.",
+	"ui.agentMessages.banner.turn_off_hint": "Khi tắt, các cuộc trò chuyện Team Bridge của bạn cũng sẽ bị ẩn cho đến khi bạn bật lại.",
+	"ui.agentMessages.page_off.title": "Team Bridge đang tắt cho tài khoản này",
+	"ui.agentMessages.page_off.body": "Tác nhân của bạn không gửi hay nhận tin nhắn, và các cuộc trò chuyện vẫn bị ẩn cho đến khi bạn bật lại. Khi bật lại, bạn sẽ được yêu cầu chấp thuận trước.",
+	"ui.agentMessages.page_off.local_title": "Team Bridge đang tắt trên máy này",
+	"ui.agentMessages.page_off.local_body": "Tài khoản của bạn vẫn được thiết lập, nhưng máy này không gửi hay nhận tin nhắn, và các cuộc trò chuyện vẫn bị ẩn trên máy này cho đến khi bạn bật lại.",
+	"ui.agentMessages.page_off.action": "Mở cài đặt"
 }

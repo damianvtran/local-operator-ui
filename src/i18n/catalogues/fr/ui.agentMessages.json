@@ -24,5 +24,11 @@
 	"ui.agentMessages.banner.dismiss": "Ignorer",
 	"ui.agentMessages.banner.consent_unavailable": "Le texte complet n’est pas disponible pour le moment. Réessayez dans un instant.",
 	"ui.agentMessages.banner.turn_off_failed": "Impossible de désactiver Team Bridge. Rien n’a été modifié. Réessayez.",
-	"ui.agentMessages.banner.dismiss_failed": "Impossible d’ignorer cet avis. Réessayez."
+	"ui.agentMessages.banner.dismiss_failed": "Impossible d’ignorer cet avis. Réessayez.",
+	"ui.agentMessages.banner.turn_off_hint": "Le désactiver masque aussi vos conversations Team Bridge jusqu’à ce que vous le réactiviez.",
+	"ui.agentMessages.page_off.title": "Team Bridge est désactivé pour ce compte",
+	"ui.agentMessages.page_off.body": "Votre agent n’envoie ni ne reçoit de messages, et vos conversations restent masquées jusqu’à ce que vous le réactiviez. Votre consentement vous sera d’abord demandé lors de la réactivation.",
+	"ui.agentMessages.page_off.local_title": "Team Bridge est désactivé sur cet ordinateur",
+	"ui.agentMessages.page_off.local_body": "Votre compte reste configuré, mais cet ordinateur n’envoie ni ne reçoit de messages, et vos conversations y restent masquées jusqu’à ce que vous le réactiviez.",
+	"ui.agentMessages.page_off.action": "Ouvrir les paramètres"
 }

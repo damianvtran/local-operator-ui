@@ -24,5 +24,11 @@
 	"ui.agentMessages.banner.dismiss": "Descartar",
 	"ui.agentMessages.banner.consent_unavailable": "El texto completo no está disponible ahora. Vuelve a intentarlo en un momento.",
 	"ui.agentMessages.banner.turn_off_failed": "No se pudo desactivar Team Bridge. No se cambió nada. Vuelve a intentarlo.",
-	"ui.agentMessages.banner.dismiss_failed": "No se pudo descartar este aviso. Vuelve a intentarlo."
+	"ui.agentMessages.banner.dismiss_failed": "No se pudo descartar este aviso. Vuelve a intentarlo.",
+	"ui.agentMessages.banner.turn_off_hint": "Al desactivarlo, también se ocultan tus conversaciones de Team Bridge hasta que vuelvas a activarlo.",
+	"ui.agentMessages.page_off.title": "Team Bridge está desactivado para esta cuenta",
+	"ui.agentMessages.page_off.body": "Tu agente no envía ni recibe mensajes, y tus conversaciones permanecen ocultas hasta que vuelvas a activarlo. Al activarlo, primero se te pedirá tu consentimiento.",
+	"ui.agentMessages.page_off.local_title": "Team Bridge está desactivado en este equipo",
+	"ui.agentMessages.page_off.local_body": "Tu cuenta sigue configurada, pero este equipo no envía ni recibe mensajes, y tus conversaciones permanecen ocultas aquí hasta que vuelvas a activarlo.",
+	"ui.agentMessages.page_off.action": "Abrir Ajustes"
 }

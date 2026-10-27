@@ -24,5 +24,11 @@
 	"ui.agentMessages.banner.dismiss": "忽略",
 	"ui.agentMessages.banner.consent_unavailable": "完整文本暂时不可用。稍后重试。",
 	"ui.agentMessages.banner.turn_off_failed": "无法关闭Team Bridge，未做任何更改。重试。",
-	"ui.agentMessages.banner.dismiss_failed": "无法忽略此通知。重试。"
+	"ui.agentMessages.banner.dismiss_failed": "无法忽略此通知。重试。",
+	"ui.agentMessages.banner.turn_off_hint": "关闭后，Team Bridge对话也会隐藏，直到重新开启。",
+	"ui.agentMessages.page_off.title": "此账户已关闭Team Bridge",
+	"ui.agentMessages.page_off.body": "智能体不会发送或接收消息，对话也会保持隐藏，直到重新开启。开启时会先征求你的同意。",
+	"ui.agentMessages.page_off.local_title": "此设备已关闭Team Bridge",
+	"ui.agentMessages.page_off.local_body": "账户仍保持注册状态，但此设备不会发送或接收消息，对话在此设备上也会保持隐藏，直到重新开启。",
+	"ui.agentMessages.page_off.action": "在设置中开启"
 }

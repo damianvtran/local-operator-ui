@@ -24,5 +24,11 @@
 	"ui.agentMessages.banner.dismiss": "ہٹائیں",
 	"ui.agentMessages.banner.consent_unavailable": "مکمل متن ابھی دستیاب نہیں۔ کچھ دیر بعد دوبارہ کوشش کریں۔",
 	"ui.agentMessages.banner.turn_off_failed": "Team Bridge بند نہیں کیا جا سکا۔ کچھ تبدیل نہیں ہوا۔ دوبارہ کوشش کریں۔",
-	"ui.agentMessages.banner.dismiss_failed": "یہ اطلاع ہٹائی نہیں جا سکی۔ دوبارہ کوشش کریں۔"
+	"ui.agentMessages.banner.dismiss_failed": "یہ اطلاع ہٹائی نہیں جا سکی۔ دوبارہ کوشش کریں۔",
+	"ui.agentMessages.banner.turn_off_hint": "اسے بند کرنے سے آپ کی Team Bridge گفتگوئیں بھی اس وقت تک پوشیدہ رہیں گی جب تک آپ اسے دوبارہ فعال نہیں کرتے۔",
+	"ui.agentMessages.page_off.title": "اس اکاؤنٹ کے لیے Team Bridge بند ہے",
+	"ui.agentMessages.page_off.body": "آپ کا ایجنٹ نہ پیغامات بھیجتا ہے نہ وصول کرتا ہے، اور جب تک آپ اسے دوبارہ فعال نہیں کرتے آپ کی گفتگوئیں پوشیدہ رہتی ہیں۔ فعال کرنے پر پہلے آپ سے رضامندی طلب کی جاتی ہے۔",
+	"ui.agentMessages.page_off.local_title": "اس مشین پر Team Bridge بند ہے",
+	"ui.agentMessages.page_off.local_body": "آپ کا اکاؤنٹ اب بھی سیٹ اپ ہے، لیکن یہ مشین نہ پیغامات بھیجتی ہے نہ وصول کرتی ہے، اور جب تک آپ اسے دوبارہ فعال نہیں کرتے آپ کی گفتگوئیں یہاں پوشیدہ رہتی ہیں۔",
+	"ui.agentMessages.page_off.action": "ترتیبات کھولیں"
 }

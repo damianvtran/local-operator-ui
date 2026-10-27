@@ -24,5 +24,11 @@
 	"ui.agentMessages.banner.dismiss": "Скрыть",
 	"ui.agentMessages.banner.consent_unavailable": "Полный текст сейчас недоступен. Повторите попытку чуть позже.",
 	"ui.agentMessages.banner.turn_off_failed": "Не удалось отключить Team Bridge. Ничего не изменилось. Повторите попытку.",
-	"ui.agentMessages.banner.dismiss_failed": "Не удалось скрыть это уведомление. Повторите попытку."
+	"ui.agentMessages.banner.dismiss_failed": "Не удалось скрыть это уведомление. Повторите попытку.",
+	"ui.agentMessages.banner.turn_off_hint": "При отключении ваши разговоры в Team Bridge тоже скрываются, пока вы снова его не включите.",
+	"ui.agentMessages.page_off.title": "Team Bridge отключён для этой учётной записи",
+	"ui.agentMessages.page_off.body": "Ваш агент не отправляет и не получает сообщения, а ваши разговоры остаются скрытыми, пока вы снова его не включите. При включении сначала запрашивается ваше согласие.",
+	"ui.agentMessages.page_off.local_title": "Team Bridge отключён на этом компьютере",
+	"ui.agentMessages.page_off.local_body": "Ваша учётная запись по-прежнему настроена, но этот компьютер не отправляет и не получает сообщения, а ваши разговоры остаются здесь скрытыми, пока вы снова его не включите.",
+	"ui.agentMessages.page_off.action": "Открыть настройки"
 }
