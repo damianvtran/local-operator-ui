@@ -308,6 +308,27 @@ jobs:
     # failed to do the job.
     env:
       NOTARIZE: 'true'
+      # THE HEAP CEILING `publish.yml` ALREADY CARRIES, for the same build. Both
+      # architecture passes run `pnpm dist:mac` -> `pnpm run build` (electron-vite),
+      # and with Node 22's default ~2 GB heap on this runner the renderer pass of
+      # v0.44.1's candidate (086b23ab21) died in run 40453982763 on BOTH attempts
+      # (jobs 122044767291, 122060955559): "Ineffective mark-compacts near heap
+      # limit ... JavaScript heap out of memory", Mark-Compact at ~1947 MB, exit
+      # 134 in 'Build signed candidate (arm64)'. `exact-update` was then skipped, so
+      # the one check that drives a real user's updater onto the release never ran:
+      # a red build here leaves the update path UNVERIFIED, not failed. The run
+      # before it (40379260625, d23f15815c, same Node 22.13.1) built in ~4m44s.
+      #
+      # The cause is not proven. The renderer grows release to release (npm
+      # unpackedSize 34.83 MB at 0.43.0, 35.85 MB at 0.44.1), so the default
+      # heap's headroom may simply be eroding, and runner-instance variance may
+      # account for the rest; publish.yml hit the same wall on v0.40.0's x64 leg
+      # and answered it with this value. 4096 MB is a ceiling, not an allocation:
+      # it sits inside the ~7 GB macOS runner. Bound at the job, beside NOTARIZE
+      # and for the same reason - both build passes and any build step added later
+      # inherit it, rather than one pass losing it to a step split - and not at the
+      # workflow, because `exact-update` builds nothing.
+      NODE_OPTIONS: '--max-old-space-size=4096'
     # THE ENVIRONMENT NO LONGER GATES ON A HUMAN, and that is deliberate: the
     # operator asked for releases that need no human input, and a required reviewer
     # is exactly that input. What remains is the environment's **branch policy**
