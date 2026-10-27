@@ -1,0 +1,213 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (new-key delta, PR #1441)",
+	"audit_id": "teambridge-pr1441-audit-dedc59c2f981",
+	"date": "2026-10-27",
+	"instance": "dedc59c2f981",
+	"instance_note": "This auditor session's own id. Distinct from the translator (implementer session, per its record), the coordinating session 17cd3e74c66f, and every instance already on these rows.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header: 'Model: anthropic/claude-opus-5-5'. The translator recorded anthropic/claude-sonnet-5-5, so model, agent role and session all differ.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role). This run wrote none of the audited strings and edited no catalogue byte; remediation commits were authored by a separate translator subagent. This run wrote only this receipt, the per-locale evidence records, and (via ledger-assemble.mjs) the ledger rows.",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"role_label": "Local Operator task subagent (translator record: 'same session as implementer')",
+		"model": "anthropic/claude-sonnet-5-5",
+		"record": "i18n-1441-translations.json (coordinating session 17cd3e74c66f scratchpad)",
+		"commits": [
+			"ef8bcb5a03e09b41338152c22af0435924fb0e76",
+			"02eb623ac357c93eb762ab2eb37ca4ddcbaf8823"
+		],
+		"fallback": "none recorded"
+	},
+	"integration": {
+		"pr": 1441,
+		"branch": "fix/tb-invited-count-own-agent",
+		"base": "dbe1b9d46bafc1595fd7aacdcc1d3d29414f2508",
+		"english_change_commit": "6fcf6d31b94e3da2511b09376adfd9765143cf72",
+		"reviewed_head": "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823",
+		"rounds": "round 1 reviewed ef8bcb5a03 (A1 MAJOR, A2 MINOR, A3 MINOR); round 2 reviewed the remediation delta ef8bcb5a03..02eb623ac3",
+		"worktree": "~/local-operator-ui/.worktrees/audit-1441-dedc59 (removed after commit)"
+	},
+	"namespaces": {
+		"ui.teamBridge": {
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 3,
+			"keys_bound": 211,
+			"sha256": {
+				"en": "95dd73cc4f3daa03970a3e6c3962b52f9b99390bf3b6047d32a75ff6f70ba100",
+				"fr": "43cf83e4f89ac9a8c58231c2a7d6d0d8916a7f29e9637f0a4db66b574ccd576c",
+				"es": "5ff90823a41aa8666b9ad68cb61e96b76c04799ea5ad5cdbef62e5e19dcfad57",
+				"zh-CN": "0766c789cec02f8180c5b9e66509a341d0265c51f1be9d0bf3ab6b75b6a5ea17",
+				"ru": "6ee19cc7de38e3ab0ed6e7d0f147527ba0be347626bd4cadac197e0e8037704a",
+				"vi": "990c55ac32a9fb81efd20e2931117203677b81a28d2f4e0d046bedf2c433b6ed",
+				"ur": "28b52f0b874cb768beea50924400921d614c8ec3b723df06e314fa4a420ceb95",
+				"hi": "e29ffc9595c1260daa9094cfaea6792da5e3317f9482b7b1a3c9257b125a3811"
+			},
+			"context_sha256": "9ea81e66412a50e9fd071b53a78fb186f0895e028cdfa7a95fc6ac8d2667c844",
+			"base_sha256": {
+				"en": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+				"fr": "3344e2c95a1e680faea87b80f5e300993e8e09886c3957527215f7adbb9bb31e",
+				"es": "c67f520c7a8bd63adc9c345a066fd48f5a4f053b15008e15cda3c31ef660a0ae",
+				"zh-CN": "716bc20303a644f41f8560505768c80216a17db4c9cdad69fd09dc866f9051c5",
+				"ru": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
+				"vi": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
+				"ur": "660c884b54d3a9b8e6b61679e594c3a6b8bae4285de86ef921b31526f0392db9",
+				"hi": "b1bf7041eb38fbae9f387483a14c48a05162183cc014bceec249d3875d7893d9"
+			},
+			"findings": [],
+			"keys_audited_linguistically": [
+				"ui.teamBridge.chief.unnamed",
+				"ui.teamBridge.member.active_count",
+				"ui.teamBridge.member.invited_count"
+			],
+			"inherited": "The other 208 keys are inherited on byte identity: at base dbe1b9d46b every locale's ledger row binds exactly the base bytes above (verified), and the PR adds keys only; no existing value changed (verified per locale)."
+		}
+	},
+	"resolved_findings": [
+		{
+			"id": "A1",
+			"severity": "major",
+			"locale": "vi",
+			"key": "ui.teamBridge.member.active_count",
+			"was": "{count, plural, other {{count} thành viên đang hoạt động}}",
+			"now": "{count, plural, other {{count} thành viên đã tham gia}}",
+			"issue": "'đang hoạt động' is the online-presence reading; the context says membership records, not presence.",
+			"fixed_in": "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823",
+			"status": "resolved",
+			"verification": "Re-read at reviewed_head; the value equals 'now', and the mechanical checks re-ran clean."
+		},
+		{
+			"id": "A2",
+			"severity": "minor",
+			"locale": "zh-CN",
+			"key": "ui.teamBridge.member.invited_count",
+			"was": "{count, plural, other {{count}名已邀请}}",
+			"now": "{count, plural, other {{count}名受邀成员}}",
+			"issue": "Classifier 名 followed by an active verb ('who invited').",
+			"fixed_in": "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823",
+			"status": "resolved",
+			"verification": "Re-read at reviewed_head; the value equals 'now', and the mechanical checks re-ran clean."
+		},
+		{
+			"id": "A3",
+			"severity": "minor",
+			"locale": "vi",
+			"key": "ui.teamBridge.member.invited_count",
+			"was": "{count, plural, other {{count} người được mời}}",
+			"now": "{count, plural, other {{count} đã được mời}}",
+			"issue": "'người' is a person, but invitees may be agents.",
+			"fixed_in": "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823",
+			"status": "resolved",
+			"verification": "Re-read at reviewed_head; the value equals 'now', and the mechanical checks re-ran clean."
+		}
+	],
+	"findings_note": "Every finding raised in round 1 was fixed by the translator and verified at reviewed_head, so the bound bytes carry zero open findings. Resolved findings keep their IDs and severities above as history and are not counted against the current bytes.",
+	"observations": [],
+	"audited_strings": {
+		"ui.teamBridge.chief.unnamed": {
+			"en": "{person}’s chief of staff",
+			"fr": "Cheffe de cabinet ({person})",
+			"es": "Jefe de gabinete de {person}",
+			"zh-CN": "{person}的首席助理",
+			"ru": "Координатор ({person})",
+			"vi": "Chánh văn phòng của {person}",
+			"ur": "{person} کا چیف آف اسٹاف",
+			"hi": "{person} का चीफ़ ऑफ़ स्टाफ़",
+			"verdict": "PASS all locales. Each reuses the namespace's settled chief-of-staff term (ui.teamBridge.chief.fallback: Cheffe de cabinet / Jefe de gabinete / 首席助理 / Координатор / Chánh văn phòng / چیف آف اسٹاف / चीफ़ ऑफ़ स्टाफ़; vi also matches the vi guide). fr and ru use the parenthesised '{term} ({person})' shape of ui.teamBridge.chief.label, which avoids de/d’ elision (fr) and declining arbitrary names into the genitive (ru); it names the owner once, so it does not repeat the person. es/zh-CN/vi/ur/hi use the natural possessive. ur/hi use masculine कا/کا to agree with the loan noun. {person} kept once in every locale; no bidi controls in ur (the render layer isolates)."
+		},
+		"ui.teamBridge.member.active_count": {
+			"en": "{count, plural, one {{count} active member} other {{count} active members}}",
+			"fr": "{count, plural, one {{count} membre actif} many {{count} de membres actifs} other {{count} membres actifs}}",
+			"es": "{count, plural, one {{count} miembro activo} many {{count} de miembros activos} other {{count} miembros activos}}",
+			"zh-CN": "{count, plural, other {{count}名有效成员}}",
+			"ru": "{count, plural, one {{count} активный участник} few {{count} активных участника} many {{count} активных участников} other {{count} активного участника}}",
+			"vi": "{count, plural, other {{count} thành viên đã tham gia}}",
+			"ur": "{count, plural, one {{count} فعال رکن} other {{count} فعال ارکان}}",
+			"hi": "{count, plural, one {{count} सक्रिय सदस्य} other {{count} सक्रिय सदस्य}}",
+			"verdict": "PASS (vi after A1). fr/es extend member.count with the agreeing adjective (actif/activo) and keep the 'many' + 'de' branch. ru: one/few/many/other agree (активный участник / активных участника / активных участников / активного участника for fractions). zh-CN: other only, classifier 名; 有效成员 means members whose membership is in force, and avoids 活跃 (activity). ur فعال رکن/ارکان and hi सक्रिय सदस्य are the standard 'active member' (membership standing) phrases. vi was 'đang hoạt động' (online-presence sense, against the context's 'not online presence'); fixed at 02eb623ac3 to 'đã tham gia' (joined), which also pairs with the invited line."
+		},
+		"ui.teamBridge.member.invited_count": {
+			"en": "{count, plural, one {{count} invited} other {{count} invited}}",
+			"fr": "{count, plural, one {{count} invité} many {{count} d’invités} other {{count} invités}}",
+			"es": "{count, plural, one {{count} invitado} many {{count} de invitados} other {{count} invitados}}",
+			"zh-CN": "{count, plural, other {{count}名受邀成员}}",
+			"ru": "{count, plural, one {{count} приглашённый} few {{count} приглашённых} many {{count} приглашённых} other {{count} приглашённого}}",
+			"vi": "{count, plural, other {{count} đã được mời}}",
+			"ur": "{count, plural, one {{count} مدعو} other {{count} مدعو}}",
+			"hi": "{count, plural, one {{count} आमंत्रित} other {{count} आमंत्रित}}",
+			"verdict": "PASS (zh-CN, vi after A2/A3). fr invité / d’invités / invités and es invitado(s): compact substantive fragment, masculine generic, many branch with de. ru: substantivised participle, one приглашённый / few+many приглашённых / other приглашённого (correct for counted adjectival nouns). ur مدعو and hi आमंत्रित are invariant. zh-CN was '名已邀请' (classifier + active verb, 'who invited'); fixed to '名受邀成员'. vi was 'người được mời' ('person', but invitees may be agents); fixed to 'đã được mời'."
+		}
+	},
+	"mechanical": {
+		"tool": "@formatjs/icu-messageformat-parser (requiresOtherClause) + Intl.PluralRules categories, run against on-disk bytes at reviewed_head",
+		"icu_parse": "pass",
+		"plural_categories": "every plural carries exactly the locale's CLDR categories (fr/es one/many/other; ru one/few/many/other; zh-CN/vi other; ur/hi one/other)",
+		"placeholder_parity": "pass (argument sets equal English for every key)",
+		"nfc": true,
+		"manual_bidi_controls": 0,
+		"zero_width": 0,
+		"straight_apostrophes": 0,
+		"ascii_ellipsis": 0,
+		"key_delta": "each locale adds exactly the new English keys and changes no existing value"
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guides": {
+			"fr": {
+				"path": "~/local-operator/i18n/style-guides/fr.md",
+				"revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+				"sha256": "f37e65a3c4ac002c5f3a32ef450061a88eecf0cc89f3d981971e67a12aa864b6"
+			},
+			"es": {
+				"path": "~/local-operator/i18n/style-guides/es.md",
+				"revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+				"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+			},
+			"zh-CN": {
+				"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+				"revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+				"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+			},
+			"ru": {
+				"path": "~/local-operator/i18n/style-guides/ru.md",
+				"revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+				"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+			},
+			"vi": {
+				"path": "~/local-operator/i18n/style-guides/vi.md",
+				"revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+				"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+			},
+			"ur": {
+				"path": "~/local-operator/i18n/style-guides/ur.md",
+				"revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+				"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+			},
+			"hi": {
+				"path": "~/local-operator/i18n/style-guides/hi.md",
+				"revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+				"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+			}
+		},
+		"pin_note": "Glossary and all seven style guides are byte-identical at 85c8cec6264f (the core revision the #1438 translator cited) and at c011c16ead3e (core origin/main at audit time); fr.md differs from e433b2c54afb only by a 'bearer' addition, irrelevant here."
+	},
+	"limitations": [
+		"No rendered frame, pseudo-localization or RTL layout inspection (this auditor session has no browser tool). ur bidi safety was judged from the strings: no manual controls, plus the render layer's FSI/PDI isolation and dir handling (src/i18n/direction.ts, use-document-direction.ts).",
+		"No second independent audit.",
+		"Inherited keys were not re-read (byte identity to already-audited rows)."
+	]
+}
