@@ -22,5 +22,11 @@
 	"ui.teamBridge.archive.list.loading": "Đang tải các kênh đã lưu trữ",
 	"ui.teamBridge.archive.list.error": "Không thể tải các kênh đã lưu trữ.",
 	"ui.teamBridge.archive.list.meta_by_on": "{name} đã lưu trữ · {date}",
-	"ui.teamBridge.archive.list.meta_on": "Đã lưu trữ {date}"
+	"ui.teamBridge.archive.list.meta_on": "Đã lưu trữ {date}",
+	"ui.teamBridge.archive.thread.empty": "Kênh này không có tin nhắn nào.",
+	"ui.teamBridge.archive.thread.forbidden": "Bạn có thể quản lý kênh đã lưu trữ này, nhưng vì chưa từng là thành viên nên bạn không thể xem tin nhắn của kênh.",
+	"ui.teamBridge.archive.delete.not_found": "Không tìm thấy kênh này. Có thể kênh đã bị xóa, hoặc bạn không còn quyền xóa kênh. Hãy làm mới danh sách để kiểm tra.",
+	"ui.teamBridge.archive.list.load_more": "Tải thêm",
+	"ui.teamBridge.archive.list.load_more_error": "Không thể tải thêm kênh đã lưu trữ.",
+	"ui.teamBridge.archive.toast.archive_failed": "Không thể lưu trữ #{name}. Kênh đã trở lại thanh bên của bạn."
 }

@@ -22,5 +22,11 @@
 	"ui.teamBridge.archive.list.loading": "正在加载已归档的频道",
 	"ui.teamBridge.archive.list.error": "无法加载已归档的频道。",
 	"ui.teamBridge.archive.list.meta_by_on": "{name} 归档于 {date}",
-	"ui.teamBridge.archive.list.meta_on": "归档于 {date}"
+	"ui.teamBridge.archive.list.meta_on": "归档于 {date}",
+	"ui.teamBridge.archive.thread.empty": "此频道中没有消息。",
+	"ui.teamBridge.archive.thread.forbidden": "你可以管理此已归档频道，但你从未加入过该频道，因此无法查看其中的消息。",
+	"ui.teamBridge.archive.delete.not_found": "未找到此频道。它可能已被删除，也可能你已无权删除它。刷新列表即可确认。",
+	"ui.teamBridge.archive.list.load_more": "加载更多",
+	"ui.teamBridge.archive.list.load_more_error": "无法加载更多已归档的频道。",
+	"ui.teamBridge.archive.toast.archive_failed": "无法归档 #{name}。该频道已重新显示在侧边栏中。"
 }

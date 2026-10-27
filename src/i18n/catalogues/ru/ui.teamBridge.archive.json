@@ -22,5 +22,11 @@
 	"ui.teamBridge.archive.list.loading": "Загрузка архивных каналов",
 	"ui.teamBridge.archive.list.error": "Не удалось загрузить архивные каналы.",
 	"ui.teamBridge.archive.list.meta_by_on": "Архивирован: {name} · {date}",
-	"ui.teamBridge.archive.list.meta_on": "Архивирован {date}"
+	"ui.teamBridge.archive.list.meta_on": "Архивирован {date}",
+	"ui.teamBridge.archive.thread.empty": "В этом канале нет сообщений.",
+	"ui.teamBridge.archive.thread.forbidden": "Вы можете управлять этим архивным каналом, но никогда не были его участником, поэтому его сообщения вам недоступны.",
+	"ui.teamBridge.archive.delete.not_found": "Канал не найден. Возможно, он уже удалён или у вас больше нет прав на его удаление. Обновите список, чтобы проверить.",
+	"ui.teamBridge.archive.list.load_more": "Загрузить ещё",
+	"ui.teamBridge.archive.list.load_more_error": "Не удалось загрузить ещё архивные каналы.",
+	"ui.teamBridge.archive.toast.archive_failed": "Не удалось архивировать #{name}. Канал снова отображается на боковой панели."
 }

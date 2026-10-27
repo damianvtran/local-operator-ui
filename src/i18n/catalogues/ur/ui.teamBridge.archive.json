@@ -22,5 +22,11 @@
 	"ui.teamBridge.archive.list.loading": "آرکائیو شدہ چینلز لوڈ ہو رہے ہیں",
 	"ui.teamBridge.archive.list.error": "آرکائیو شدہ چینلز لوڈ نہیں ہو سکے۔",
 	"ui.teamBridge.archive.list.meta_by_on": "{name} نے آرکائیو کیا · {date}",
-	"ui.teamBridge.archive.list.meta_on": "{date} کو آرکائیو کیا گیا"
+	"ui.teamBridge.archive.list.meta_on": "{date} کو آرکائیو کیا گیا",
+	"ui.teamBridge.archive.thread.empty": "اس چینل میں کوئی پیغام نہیں۔",
+	"ui.teamBridge.archive.thread.forbidden": "آپ اس آرکائیو شدہ چینل کا انتظام کر سکتے ہیں، لیکن آپ کبھی اس کے رکن نہیں رہے، اس لیے اس کے پیغامات آپ کے لیے دستیاب نہیں ہیں۔",
+	"ui.teamBridge.archive.delete.not_found": "یہ چینل نہیں ملا۔ ممکن ہے یہ پہلے ہی حذف ہو چکا ہو، یا اب آپ کو اسے حذف کرنے کی اجازت نہ ہو۔ جانچنے کے لیے فہرست تازہ کریں۔",
+	"ui.teamBridge.archive.list.load_more": "مزید لوڈ کریں",
+	"ui.teamBridge.archive.list.load_more_error": "مزید آرکائیو شدہ چینلز لوڈ نہیں ہو سکے۔",
+	"ui.teamBridge.archive.toast.archive_failed": "چینل #{name} آرکائیو نہیں ہو سکا۔ یہ دوبارہ آپ کی سائیڈ بار میں موجود ہے۔"
 }

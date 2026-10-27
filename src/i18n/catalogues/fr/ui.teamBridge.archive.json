@@ -22,5 +22,11 @@
 	"ui.teamBridge.archive.list.loading": "Chargement des canaux archivés",
 	"ui.teamBridge.archive.list.error": "Impossible de charger les canaux archivés.",
 	"ui.teamBridge.archive.list.meta_by_on": "Archivé par {name} · {date}",
-	"ui.teamBridge.archive.list.meta_on": "Archivé le {date}"
+	"ui.teamBridge.archive.list.meta_on": "Archivé le {date}",
+	"ui.teamBridge.archive.thread.empty": "Aucun message dans ce canal.",
+	"ui.teamBridge.archive.thread.forbidden": "Vous pouvez gérer ce canal archivé, mais comme vous n’en avez jamais été membre, ses messages ne vous sont pas accessibles.",
+	"ui.teamBridge.archive.delete.not_found": "Ce canal est introuvable. Il a peut-être déjà été supprimé, ou vous n’avez peut-être plus l’autorisation de le supprimer. Actualisez la liste pour vérifier.",
+	"ui.teamBridge.archive.list.load_more": "Afficher plus",
+	"ui.teamBridge.archive.list.load_more_error": "Impossible de charger plus de canaux archivés.",
+	"ui.teamBridge.archive.toast.archive_failed": "Impossible d’archiver #{name}. Le canal est de retour dans votre barre latérale."
 }
