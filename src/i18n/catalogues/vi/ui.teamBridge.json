@@ -1,5 +1,6 @@
 {
 	"ui.teamBridge.notify.unavailable": "Không thể mở thông báo này bằng tài khoản hiện tại nữa.",
+	"ui.teamBridge.chief.unnamed": "Chánh văn phòng của {person}",
 	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.list.empty.title": "Chưa có cuộc trò chuyện nào",
 	"ui.teamBridge.list.empty.body": "Bắt đầu một tin nhắn trực tiếp, một nhóm hoặc một kênh.",
@@ -25,6 +26,8 @@
 	"ui.teamBridge.create.confirm": "Tạo",
 	"ui.teamBridge.unread.count": "{count, plural, other {{count} chưa đọc}}",
 	"ui.teamBridge.member.count": "{count, plural, other {{count} thành viên}}",
+	"ui.teamBridge.member.active_count": "{count, plural, other {{count} thành viên đã tham gia}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, other {{count} đã được mời}}",
 	"ui.teamBridge.group.more": "Khác",
 	"ui.teamBridge.thread.withheld": "Đang chờ tác nhân chấp nhận tin nhắn này.",
 	"ui.teamBridge.composer.error": "Tin nhắn chưa được gửi. Hãy thử lại.",

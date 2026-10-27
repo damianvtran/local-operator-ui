@@ -21,6 +21,11 @@ const model = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
+const chiefCopy = {
+	named: (agent, person) => `${agent} (${person})`,
+	unnamed: (person) => `${person}'s chief of staff`,
+};
+
 const member = (label, kind, state, accountId = `acct_${label}`) => ({
 	account_id: accountId,
 	kind,
@@ -293,7 +298,8 @@ test("a preview header counts member_count when it has no member rows", () => {
 			}),
 		),
 		// member_count counts active + invited; the insider header counts the
-		// active rows only (the avatar strip filters the same state).
+		// active rows only (the avatar strip filters the same state) — invitees are
+		// stated by conversationMembershipCounts instead of merged into this total.
 		2,
 	);
 });
@@ -405,7 +411,7 @@ test("a participant is named from the live directory, not the stored label", () 
 			agent: { endpoint_id: "bep_ben", name: "Aida", state: "active" },
 		},
 	];
-	const chief = (agent, person) => `${agent} (${person})`;
+	const chief = chiefCopy;
 	// The hub stored the creator as the placeholder "Member": the directory wins.
 	assert.equal(
 		model.participantLabel(
@@ -884,16 +890,225 @@ test("recipientCandidates offers reachable people and chiefs, never the reader o
 		person("acct_ben", { endpoint_id: "e1", name: "Aida", state: "active" }),
 		{ ...person("acct_off"), bridge_enabled: false, bridge_state: "disabled" },
 	];
-	const out = model.recipientCandidates(
-		people,
-		"acct_self",
-		(agent, owner) => `${agent} (${owner})`,
-	);
+	const out = model.recipientCandidates(people, "acct_self", chiefCopy);
 	assert.deepEqual(
 		out.map((row) => `${row.kind}:${row.accountId}:${row.label}`),
 		["human:acct_ben:acct_ben", "agent:acct_ben:Aida (acct_ben)"],
 	);
 	assert.equal(out[1].endpointId, "e1");
+});
+
+// R1-2 on #1441: the hub leaves a creator's own agent invited and muted, so a
+// self-agent DM would never deliver. The reader's agent is withheld whatever
+// its directory name, and the reader's human row stays the inert "self".
+test("the reader's own agent is never offered, named, unnamed, or owner-fallback", () => {
+	for (const name of ["Aida", "", "Damian"]) {
+		const self = {
+			...person("acct_self", { endpoint_id: "ep_self", name, state: "active" }),
+			display_label: "Damian",
+		};
+		assert.equal(model.personRowState(self, "acct_self") === "self", true);
+		assert.equal(model.chiefsOfStaff([self], "acct_self").length === 0, true);
+		assert.equal(
+			model.recipientCandidates([self], "acct_self", chiefCopy).length === 0,
+			true,
+		);
+	}
+});
+
+// ---------------------------------------------------------------------------
+// Chief-of-staff label: "Ben Tran (Ben Tran)" (operator report, 2026-10-22).
+// ---------------------------------------------------------------------------
+
+const ben = (agent) => ({
+	account_id: "acct_ben",
+	display_label: "Ben Tran",
+	role: "member",
+	bridge_enabled: true,
+	bridge_state: "active",
+	...(agent ? { agent } : {}),
+});
+
+test("composeChiefLabel names the agent with the person as context, never the person twice", () => {
+	assert.equal(
+		model.composeChiefLabel("Aida", "Ben Tran", chiefCopy),
+		"Aida (Ben Tran)",
+	);
+	// The server defaulted the agent's name to its owner's: that is no name.
+	assert.equal(
+		model.composeChiefLabel("Ben Tran", "Ben Tran", chiefCopy),
+		"Ben Tran's chief of staff",
+	);
+	assert.equal(
+		model.composeChiefLabel("  ben   tran ", "Ben Tran", chiefCopy),
+		"Ben Tran's chief of staff",
+	);
+	assert.equal(
+		model.composeChiefLabel("", "Ben Tran", chiefCopy),
+		"Ben Tran's chief of staff",
+	);
+	assert.equal(
+		model.composeChiefLabel("   ", "Ben Tran", chiefCopy),
+		"Ben Tran's chief of staff",
+	);
+});
+
+test("the rail's recipient label for an unnamed chief never repeats the person", () => {
+	const out = model.recipientCandidates(
+		[ben({ endpoint_id: "e1", name: "Ben Tran", state: "active" })],
+		"acct_self",
+		chiefCopy,
+	);
+	assert.equal(
+		out.find((row) => row.kind === "agent").label,
+		"Ben Tran's chief of staff",
+	);
+});
+
+test("recipientMemberInput never sends a duplicated agent label to the server", () => {
+	const sent = model.recipientMemberInput({
+		kind: "agent",
+		accountId: "acct_ben",
+		endpointId: "e1",
+		label: "Ben Tran (Ben Tran)",
+	});
+	assert.equal(sent.display_label, "Ben Tran");
+	assert.equal(
+		model.recipientMemberInput({
+			kind: "agent",
+			accountId: "acct_ben",
+			endpointId: "e1",
+			label: "Aida (Ben Tran)",
+		}).display_label,
+		"Aida (Ben Tran)",
+	);
+});
+
+test("participantLabel reads existing bad rows: 'X (X)' and the person's own name are absent", () => {
+	const agent = (display_label) => ({
+		account_id: "acct_ben",
+		kind: "agent",
+		display_label,
+	});
+	// Directory names the agent: it wins over a bad stored row.
+	const named = [ben({ endpoint_id: "e1", name: "Aida", state: "active" })];
+	for (const stored of ["Ben Tran (Ben Tran)", "Ben Tran", "Member"]) {
+		assert.equal(
+			model.participantLabel(agent(stored), named, chiefCopy),
+			"Aida (Ben Tran)",
+		);
+	}
+	// Directory agent name is the person's own: no name known.
+	const echoed = [
+		ben({ endpoint_id: "e1", name: "Ben Tran", state: "active" }),
+	];
+	for (const stored of ["Ben Tran (Ben Tran)", "Ben Tran", "Member"]) {
+		assert.equal(
+			model.participantLabel(agent(stored), echoed, chiefCopy),
+			"Ben Tran's chief of staff",
+		);
+	}
+	// No agent in the directory but the person is listed.
+	assert.equal(
+		model.participantLabel(agent("Ben Tran (Ben Tran)"), [ben()], chiefCopy),
+		"Ben Tran's chief of staff",
+	);
+	// A stored "Aida (Ben Tran)" is not composed a second time.
+	assert.equal(
+		model.participantLabel(agent("Aida (Ben Tran)"), [ben()], chiefCopy),
+		"Aida (Ben Tran)",
+	);
+	// The hub's own rewrite of a degenerate label (agent-server
+	// `agentMemberLabel`, ASCII apostrophe) and the English catalogue's shape
+	// are no agent name: never "Ben Tran's chief of staff (Ben Tran)" (R1-1 on #1441).
+	for (const stored of [
+		"Ben Tran's chief of staff",
+		"Ben Tran’s chief of staff",
+		"ben  tran's Chief of Staff",
+	]) {
+		for (const people of [[ben()], echoed]) {
+			assert.equal(
+				model.participantLabel(agent(stored), people, chiefCopy) ===
+					"Ben Tran's chief of staff",
+				true,
+			);
+		}
+		assert.equal(model.storedAgentName(stored, "Ben Tran") === null, true);
+	}
+	// The hub cuts the person to 47 UTF-8 bytes before the suffix (R2-1 on
+	// #1441). Expected strings are agent-server main's own `agentMemberLabel`
+	// output, not a re-derivation: a 52-byte Cyrillic and a 63-byte Devanagari
+	// name, each cut mid-name at a rune boundary.
+	for (const [owner, hubStored] of [
+		[
+			"Александр Викторович Петров",
+			"Александр Викторович Пет's chief of staff",
+		],
+		["राजेश कुमार शर्मा वर्मा", "राजेश कुमार शर्मा's chief of staff"],
+	]) {
+		const longOwner = [{ ...ben(), display_label: owner }];
+		assert.equal(model.storedAgentName(hubStored, owner) === null, true);
+		assert.equal(
+			model.participantLabel(agent(hubStored), longOwner, chiefCopy) ===
+				`${owner}'s chief of staff`,
+			true,
+		);
+	}
+	// Truncation never widens the match: a short name is not a prefix match.
+	assert.equal(
+		model.storedAgentName("Ben's chief of staff", "Ben Tran") ===
+			"Ben's chief of staff",
+		true,
+	);
+	// Someone else's chief-of-staff form is not this owner's: it stays a name.
+	assert.equal(
+		model.storedAgentName("Ada's chief of staff", "Ben Tran") ===
+			"Ada's chief of staff",
+		true,
+	);
+	// Person not in the directory: the stored agent name stands; a doubled one is absent.
+	assert.equal(model.participantLabel(agent("Aida"), [], chiefCopy), "Aida");
+	assert.equal(
+		model.participantLabel(agent("Ben Tran (Ben Tran)"), [], chiefCopy),
+		null,
+	);
+});
+
+test("a DM title with a doubled stored agent label is not the doubled label", () => {
+	const dm = conversation({
+		agent_capable: true,
+		members: [
+			member("Ada", "human", "active", "acct_a"),
+			member("Ben Tran (Ben Tran)", "agent", "active", "acct_ben"),
+		],
+	});
+	assert.equal(model.conversationTitle(dm, "acct_a"), null);
+});
+
+test("the header total counts active rows; invitations are stated in the breakdown", () => {
+	const members = [
+		member("Damian Tran", "human", "active", "acct_self"),
+		member("Ben Tran", "human", "active", "acct_ben"),
+		member("Aida", "agent", "invited", "acct_ben"),
+		member("Juno", "agent", "invited", "acct_sherman"),
+	];
+	// Parent ruling (2026-10-25): the header total stays ACTIVE-only so it agrees
+	// with the avatars beside it; an invitation is stated by the breakdown, never
+	// merged into the total.
+	assert.deepEqual(
+		model.conversationMembershipCounts(conversation({ members })),
+		{
+			active: 2,
+			invited: 2,
+		},
+	);
+	assert.equal(model.conversationMemberCount(conversation({ members })), 2);
+	assert.equal(
+		model.conversationMemberCount(
+			conversation({ members: [], member_count: undefined }),
+		),
+		0,
+	);
 });
 
 // ---------------------------------------------------------------------------
