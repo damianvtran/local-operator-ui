@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { QueryClient } from "@tanstack/react-query";
 import { build } from "esbuild";
@@ -47,6 +48,57 @@ const built = await buildModule();
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString("base64")}`;
 const shipped = await import(moduleUrl);
 const { applyConfirmedToWindow, mergeWindowForReel } = shipped;
+
+/*
+ * THE SHIPPED WRITE PATH, BUNDLED FOR REAL (code round 8, R8-6). R7-3a used to edit a
+ * local array and then assert the client had not been invalidated - nothing had touched
+ * the client, so that could not fail. `applyConfirmedWrite` is what a write's onSuccess
+ * runs, so it is bundled from `notifications-api.ts` with the app's aliases and React /
+ * react-query left external (one copy, shared with this file's `QueryClient`), and
+ * driven against the rig's client below.
+ */
+const writeBundle = await build({
+	stdin: {
+		contents:
+			'export { applyConfirmedWrite } from "./src/renderer/src/features/notifications/notifications-api";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	jsx: "automatic",
+	define: { "import.meta.env": "{}" },
+	banner: {
+		js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',
+	},
+	alias: {
+		"@renderer": "./src/renderer/src",
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+		"@assets": "./src/renderer/src/assets",
+	},
+	loader: { ".css": "empty", ".svg": "text", ".png": "dataurl" },
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		"react-router-dom",
+		"@tanstack/react-query",
+	],
+	tsconfig: "tsconfig.web.json",
+});
+/* On disk for the length of the import only: a data: URL cannot resolve bare specifiers. */
+const writeBundlePath = new URL(
+	`./_notifications-reel-write-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(writeBundlePath, writeBundle.outputFiles[0].text);
+const { applyConfirmedWrite } = await import(writeBundlePath.href);
+await unlink(writeBundlePath);
 
 const apiSource = readFileSync(
 	"src/renderer/src/features/notifications/notifications-api.ts",
@@ -158,16 +210,23 @@ test("R7-3a: a feed-frame invalidation, an interval tick and a write leave the w
 		.getQueryCache()
 		.find({ queryKey: key })
 		?.setState({ dataUpdatedAt: 0 });
-	/* A write edits rows in place instead of invalidating the pages. */
-	const written = applyConfirmedToWindow(
-		before.pages,
-		[firstPageIds[0]],
-		"read",
-	);
+	/*
+	 * A write edits rows in place instead of invalidating the pages - driven through the
+	 * SHIPPED onSuccess path against this client (R8-6), with a facts entry cached so the
+	 * write has something it IS meant to invalidate: a path that invalidated nothing
+	 * would pass the window check and fail the facts one.
+	 */
+	rig.client.setQueryData(notificationKeys.facts("all"), before.pages[0]);
+	applyConfirmedWrite(rig.client, "read", [firstPageIds[0]]);
 	assert.equal(
 		rig.client.getQueryState(key)?.isInvalidated,
 		false,
 		"a write does not invalidate the window",
+	);
+	assert.equal(
+		rig.client.getQueryState(notificationKeys.facts("all"))?.isInvalidated,
+		true,
+		"the same write does invalidate the facts",
 	);
 	const after = rig.client.getQueryData(key);
 	assert.equal(
@@ -180,7 +239,11 @@ test("R7-3a: a feed-frame invalidation, an interval tick and a write leave the w
 		before.pages.at(-1).items.at(-1).id,
 		"the deepest page is the same page",
 	);
-	assert.equal(written[0].items[0].read, true, "and the write landed in place");
+	assert.equal(
+		after.pages[0].items[0].read,
+		true,
+		"and the write landed in place, in the client's own cache",
+	);
 });
 
 test("R7-3b: a write flips the row in place, and Undo flips it back", () => {
