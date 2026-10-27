@@ -14,7 +14,7 @@
 	"ui.chat.device.sentence.remote_did_not_answer": "Esta conversación se ejecuta en {name}, que no respondió a la última lectura.",
 	"ui.chat.device.sentence.remote_did_not_answer_reason": "Esta conversación se ejecuta en {name}, que no respondió a la última lectura ({reason}).",
 	"ui.chat.device.fact.this_device": "este dispositivo",
-	"ui.chat.device.footer.move_deletes_copy": "La copia de este dispositivo se borra cuando se completa el movimiento.",
+	"ui.chat.device.footer.move_deletes_copy": "La copia de este dispositivo se borra cuando se completa el traspaso.",
 	"ui.chat.device.label.this_device": "Este dispositivo",
 	"ui.chat.device.notice.move_hold_detail": "en traspaso · continúa allí; esto no se puede detener desde aquí",
 	"ui.chat.device.picker.heading.move": "Mover esta conversación a",
@@ -23,5 +23,5 @@
 	"ui.chat.device.row.not_here_why": "la conversación no está aquí para moverla; tráela aquí primero",
 	"ui.chat.device.sentence.mesh_read_failure": "No se pudo leer la lista de dispositivos, así que esto es lo que contiene la última respuesta.",
 	"ui.chat.device.sentence.move_in_flight": "Esta conversación se está moviendo a {name}. Continúa allí; nada de lo que se envíe desde aquí se entregará.",
-	"ui.chat.device.sentence.pairing_guidance": "Este dispositivo no está en ninguna red. Crea una con `lop network init` o únete a una con `lop network join '<token>'."
+	"ui.chat.device.sentence.pairing_guidance": "Este dispositivo no está en ninguna red. Crea una con `lop network init` o únete a una con `lop network join '<token>'`."
 }

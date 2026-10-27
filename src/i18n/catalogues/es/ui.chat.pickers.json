@@ -700,7 +700,7 @@
 	"ui.chat.pickers.slash.click.runs_command": "Haz clic para ejecutar el comando.",
 	"ui.chat.pickers.slash.click.runs_with_value": "Haz clic para ejecutar {command}{value}.",
 	"ui.chat.pickers.slash.click.stages": "Haz clic para insertar /{label}.",
-	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter necesita una fila que elijas: ↓ y luego Enter · Tab completa esta fila.",
+	"ui.chat.pickers.slash.enter_needs_a_pick": "Intro necesita que elijas una fila: ↓ y luego Intro · Tab completa esta fila.",
 	"ui.chat.pickers.slash.phase.arguments": "Argumentos",
 	"ui.chat.pickers.slash.region_label": "Comandos slash",
 	"ui.chat.pickers.approvals.title": "Aprobaciones de herramientas",

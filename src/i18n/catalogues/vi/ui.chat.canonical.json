@@ -65,6 +65,6 @@
 	"ui.chat.canonical.tool_row.generic_verb.settled": "Đã gọi",
 	"ui.chat.canonical.tool_row.outcome.failed": "thất bại",
 	"ui.chat.canonical.tool_row.outcome.interrupted": "bị ngắt",
-	"ui.chat.canonical.tool_row.outcome.never_ran": "chưa chạy",
+	"ui.chat.canonical.tool_row.outcome.never_ran": "không chạy",
 	"ui.chat.canonical.tool_row.outcome.succeeded": "thành công"
 }

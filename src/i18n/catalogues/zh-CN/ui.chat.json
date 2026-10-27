@@ -119,8 +119,8 @@
 	"ui.chat.session_status.conversation_starting": "对话开始后即可设置。",
 	"ui.chat.session_status.model_none_resolved_tooltip": "模型：尚未确定。选择此对话使用的模型。",
 	"ui.chat.session_status.not_signed_in": "未登录{label}",
-	"ui.chat.session_status.not_signed_in_description": "此会话运行{label}，但没有可用的登录，因此在连接之前无法作答。",
+	"ui.chat.session_status.not_signed_in_description": "此会话运行{label}，但登录不可用，因此在连接之前无法作答。",
 	"ui.chat.session_status.nothing_measured_yet": "暂无读数。随着对话进行，上下文窗口会逐渐填充。",
 	"ui.chat.session_status.temporarily_unavailable": "{label}暂时不可用",
-	"ui.chat.session_status.temporarily_unavailable_description": "已保存的登录信息仍然保留。稍后重试，或选择其他模型。"
+	"ui.chat.session_status.temporarily_unavailable_description": "登录信息仍已保存。稍后重试，或选择其他模型。"
 }

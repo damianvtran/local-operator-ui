@@ -1,6 +1,6 @@
 {
 	"ui.chat.status.credential_refused": "El servidor en ejecución rechazó la credencial de esta app, así que el inicio de sesión, los ajustes y los comandos slash no están disponibles.",
 	"ui.chat.status.degraded": "El servidor está respondiendo despacio. Tus mensajes están en cola.",
-	"ui.chat.status.internet_offline": "Este equipo está sin conexión. El envío esperará.",
-	"ui.chat.status.unreachable": "No se puede contactar con el servidor de Local Operator. El envío esperará."
+	"ui.chat.status.internet_offline": "Este equipo está sin conexión. El envío quedará en espera.",
+	"ui.chat.status.unreachable": "No se puede contactar con el servidor de Local Operator. El envío quedará en espera."
 }

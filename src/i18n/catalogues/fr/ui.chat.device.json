@@ -20,8 +20,8 @@
 	"ui.chat.device.picker.heading.move": "Déplacer cette conversation vers",
 	"ui.chat.device.picker.heading.start": "Démarrer la conversation sur",
 	"ui.chat.device.row.conversations": "{count, plural, one {{count, number, ::group-off} conversation} many {{count, number, ::group-off} de conversations} other {{count, number, ::group-off} conversations}}",
-	"ui.chat.device.row.not_here_why": "la conversation n’est pas ici ; rappelez-la ici d’abord",
-	"ui.chat.device.sentence.mesh_read_failure": "La liste des appareils n’a pas pu être lue — l’affichage reprend donc la dernière réponse.",
+	"ui.chat.device.row.not_here_why": "la conversation n’est pas ici ; rappelez-la ici avant de la déplacer",
+	"ui.chat.device.sentence.mesh_read_failure": "La liste des appareils n’a pas pu être lue ; l’affichage reprend donc la dernière réponse.",
 	"ui.chat.device.sentence.move_in_flight": "Cette conversation est en cours de déplacement vers {name}. Elle continue là-bas ; rien de ce qui serait envoyé d’ici ne serait délivré.",
-	"ui.chat.device.sentence.pairing_guidance": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '<token>'."
+	"ui.chat.device.sentence.pairing_guidance": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '<token>'`."
 }

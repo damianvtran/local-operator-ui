@@ -118,7 +118,7 @@
 	"ui.chat.session_status.context_nothing_measured_tooltip": "संदर्भ: अभी कुछ मापा नहीं गया। बातचीत चलने के साथ विंडो भरती जाती है।",
 	"ui.chat.session_status.conversation_starting": "बातचीत शुरू होने पर तय होगा।",
 	"ui.chat.session_status.model_none_resolved_tooltip": "मॉडल: अभी कोई तय नहीं हुआ। वह मॉडल चुनें जिस पर यह बातचीत चलेगी।",
-	"ui.chat.session_status.not_signed_in": "{label} में साइन इन नहीं है",
+	"ui.chat.session_status.not_signed_in": "{label} में साइन-इन नहीं है",
 	"ui.chat.session_status.not_signed_in_description": "यह सत्र {label} चलाता है, पर उसके पास कोई काम करने वाला साइन-इन नहीं है, इसलिए जब तक आप साइन-इन कनेक्ट नहीं करते, यह जवाब नहीं दे सकता।",
 	"ui.chat.session_status.nothing_measured_yet": "अभी कुछ मापा नहीं गया। बातचीत चलने के साथ विंडो भरती जाती है।",
 	"ui.chat.session_status.temporarily_unavailable": "{label} अस्थायी रूप से उपलब्ध नहीं है",

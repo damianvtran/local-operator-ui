@@ -20,7 +20,7 @@
 	"ui.chat.device.picker.heading.move": "将此对话迁移到哪个设备",
 	"ui.chat.device.picker.heading.start": "在哪个设备上开始对话",
 	"ui.chat.device.row.conversations": "{count, plural, other {{count, number, ::group-off}个对话}}",
-	"ui.chat.device.row.not_here_why": "对话不在此处，无法迁移；先将其召回到此处",
+	"ui.chat.device.row.not_here_why": "对话不在此处，无法迁移；先将其移回此处",
 	"ui.chat.device.sentence.mesh_read_failure": "无法读取设备列表，以下内容来自上次应答。",
 	"ui.chat.device.sentence.move_in_flight": "此对话正在迁移至{name}，并将在该设备上继续；从此处发送的任何内容都不会送达。",
 	"ui.chat.device.sentence.pairing_guidance": "此设备未加入任何网络。使用`lop network init`创建网络，或使用`lop network join '<token>'`加入。"

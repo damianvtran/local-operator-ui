@@ -734,7 +734,7 @@
 	"ui.chat.pickers.slash.click.runs_command": "क्लिक करने पर कमांड चल जाती है।",
 	"ui.chat.pickers.slash.click.runs_with_value": "क्लिक करने पर {command}{value} चल जाता है।",
 	"ui.chat.pickers.slash.click.stages": "क्लिक करने पर /{label} ड्राफ़्ट में डाल दिया जाता है।",
-	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter के लिए आपको कोई पंक्ति चुननी होगी: ↓ फिर Enter · Tab इस पंक्ति को पूरा करता है",
+	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter के लिए आपको कोई पंक्ति चुननी होगी: ↓ फिर Enter · Tab इस पंक्ति को पूरा करता है।",
 	"ui.chat.pickers.slash.phase.arguments": "आर्ग्युमेंट",
 	"ui.chat.pickers.slash.region_label": "स्लैश कमांड"
 }

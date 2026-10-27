@@ -231,6 +231,40 @@ test("the picker's headings, rows and sentences come from the catalogue", () => 
 	);
 });
 
+/* --------------------------------------------- the pairing line's code spans */
+
+/** A backtick-delimited span: what the picker's plain-text painter shows verbatim. */
+const CODE_SPAN = /`[^`]*`/g;
+
+/**
+ * The pairing line opens two code spans, so it must close two.
+ *
+ * WHY A RENDERED FENCE COUNT RATHER THAN THE STRING: the English value once read
+ * ``join one with `lop network join '<token>'.`` — the second span opened and never
+ * closed, so the picker (which paints this sentence as plain text, not as markdown)
+ * showed a stray backtick and no fenced command. A `includes("lop network join")`
+ * case cannot see that (chat-device-model.test.mjs has one, and stayed green), so the
+ * measurable fact is the fence parity. The `<token>` literal is the other half: the
+ * source quotes it as `'<token>'` because an unquoted angle bracket is an ICU
+ * UNCLOSED_TAG, `t()` degrades a formatting failure to the key, and the quoting
+ * renders away — so a rendered `<token>` proves both the quoting and its removal.
+ */
+test("the pairing line closes both code spans it opens", () => {
+	const rendered = lib.t("ui.chat.device.sentence.pairing_guidance");
+	assert.deepEqual(
+		{
+			backticks: rendered.split("`").length - 1,
+			spans: [...rendered.matchAll(CODE_SPAN)].map((match) => match[0]),
+			token: rendered.includes("<token>"),
+		},
+		{
+			backticks: 4,
+			spans: ["`lop network init`", "`lop network join <token>`"],
+			token: true,
+		},
+	);
+});
+
 /* ------------------------------------------------------------- the status strip */
 
 test("the chat status strip's four sentences are the catalogue's", () => {

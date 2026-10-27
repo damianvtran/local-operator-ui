@@ -115,12 +115,12 @@
 	"ui.chat.question_dock.hint.type": "{prefix}Введите ответ ниже.",
 	"ui.chat.question_dock.hint.options": "{prefix}Вверх/вниз — выбор · Enter или {digits} — ответ · Esc скрывает · или введите свой ответ ниже",
 	"ui.chat.session_status.context_heading": "Контекст",
-	"ui.chat.session_status.context_nothing_measured_tooltip": "Контекст: данных пока нет. Окно контекста заполняется по мере работы разговора.",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Контекст: пока ничего не измерено. Контекстное окно заполняется по ходу разговора.",
 	"ui.chat.session_status.conversation_starting": "Задаётся после начала разговора.",
 	"ui.chat.session_status.model_none_resolved_tooltip": "Модель: ещё не определена. Выберите модель, на которой будет работать этот разговор.",
 	"ui.chat.session_status.not_signed_in": "Вход в {label} не выполнен",
 	"ui.chat.session_status.not_signed_in_description": "Эта сессия работает с {label} без входа, поэтому не сможет ответить, пока вы не войдёте.",
-	"ui.chat.session_status.nothing_measured_yet": "Данных пока нет. Окно контекста заполняется по мере работы разговора.",
+	"ui.chat.session_status.nothing_measured_yet": "Пока ничего не измерено. Контекстное окно заполняется по ходу разговора.",
 	"ui.chat.session_status.temporarily_unavailable": "{label} временно недоступен",
-	"ui.chat.session_status.temporarily_unavailable_description": "Ваш сохранённый вход по-прежнему на месте. Повторите попытку позже или выберите другую модель."
+	"ui.chat.session_status.temporarily_unavailable_description": "Ваш вход по-прежнему сохранён. Повторите попытку позже или выберите другую модель."
 }

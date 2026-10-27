@@ -725,7 +725,7 @@
 	"ui.chat.pickers.at_menu.tag.directory": "Thư mục",
 	"ui.chat.pickers.at_menu.tag.file": "Tệp",
 	"ui.chat.pickers.at_menu.tag.project": "Dự án",
-	"ui.chat.pickers.slash.arguments_region_label": "Đối số lệnh",
+	"ui.chat.pickers.slash.arguments_region_label": "Tham số lệnh",
 	"ui.chat.pickers.slash.click.chooses_name": "Nhấp để chọn tên này.",
 	"ui.chat.pickers.slash.click.completes_label": "Nhấp để hoàn thành /{label}.",
 	"ui.chat.pickers.slash.click.completes_value": "Nhấp để hoàn thành giá trị này.",
@@ -735,6 +735,6 @@
 	"ui.chat.pickers.slash.click.runs_with_value": "Nhấp để chạy {command}{value}.",
 	"ui.chat.pickers.slash.click.stages": "Nhấp để đưa /{label} vào bản nháp.",
 	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter cần một dòng bạn chọn: ↓ rồi Enter · Tab hoàn thành dòng này.",
-	"ui.chat.pickers.slash.phase.arguments": "Đối số",
+	"ui.chat.pickers.slash.phase.arguments": "Tham số",
 	"ui.chat.pickers.slash.region_label": "Lệnh gạch chéo"
 }

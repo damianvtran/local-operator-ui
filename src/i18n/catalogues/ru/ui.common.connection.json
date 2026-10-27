@@ -40,5 +40,5 @@
 	"ui.common.connection.session_loss.history_unreadable": "Не удалось загрузить историю этого разговора — переподключитесь, чтобы повторить.",
 	"ui.common.connection.session_loss.lost": "Соединение с этим разговором потеряно — переподключитесь, чтобы продолжить чтение.",
 	"ui.common.connection.session_loss.not_paired": "Это приложение не сопряжено с сервером Local Operator, поэтому этот разговор пока нельзя прочитать.",
-	"ui.common.connection.session_loss.server_down": "Сервер Local Operator не запущен — переподключитесь, когда он снова заработает, или перезапустите приложение, если он не поднимется."
+	"ui.common.connection.session_loss.server_down": "Сервер Local Operator не запущен — переподключитесь, когда он снова заработает, или перезапустите приложение, если он так и не поднимется."
 }

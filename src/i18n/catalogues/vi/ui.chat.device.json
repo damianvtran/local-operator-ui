@@ -22,6 +22,6 @@
 	"ui.chat.device.row.conversations": "{count, plural, other {{count, number, ::group-off} cuộc trò chuyện}}",
 	"ui.chat.device.row.not_here_why": "cuộc trò chuyện không ở đây để chuyển; hãy mang nó về đây trước",
 	"ui.chat.device.sentence.mesh_read_failure": "Không đọc được danh sách thiết bị, nên đây là những gì câu trả lời gần nhất còn giữ.",
-	"ui.chat.device.sentence.move_in_flight": "Cuộc trò chuyện này đang chuyển đến {name}. Nó tiếp tục ở đó; mọi thứ gửi từ đây sẽ không được chuyển đến.",
+	"ui.chat.device.sentence.move_in_flight": "Cuộc trò chuyện này đang chuyển đến {name}. Cuộc trò chuyện tiếp tục ở đó; mọi thứ gửi từ đây sẽ không đến nơi.",
 	"ui.chat.device.sentence.pairing_guidance": "Thiết bị này chưa ở trong mạng nào. Tạo mạng bằng `lop network init`, hoặc tham gia bằng `lop network join '<token>'`."
 }

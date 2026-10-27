@@ -119,7 +119,7 @@
 	"ui.chat.session_status.conversation_starting": "Se establece cuando empiece la conversación.",
 	"ui.chat.session_status.model_none_resolved_tooltip": "Modelo: aún no hay ninguno resuelto. Elige el modelo con el que se ejecutará esta conversación.",
 	"ui.chat.session_status.not_signed_in": "No has iniciado sesión en {label}",
-	"ui.chat.session_status.not_signed_in_description": "Esta sesión ejecuta {label} sin un inicio de sesión que funcione, así que no podrá responder hasta que lo conectes.",
+	"ui.chat.session_status.not_signed_in_description": "Esta sesión se ejecuta con {label} sin un inicio de sesión que funcione, así que no podrá responder hasta que lo conectes.",
 	"ui.chat.session_status.nothing_measured_yet": "Aún no se ha medido nada. La ventana se llena a medida que avanza la conversación.",
 	"ui.chat.session_status.temporarily_unavailable": "{label} no está disponible temporalmente",
 	"ui.chat.session_status.temporarily_unavailable_description": "Tu inicio de sesión guardado sigue ahí. Vuelve a intentarlo más tarde o elige otro modelo."

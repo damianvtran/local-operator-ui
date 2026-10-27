@@ -734,7 +734,7 @@
 	"ui.chat.pickers.slash.click.runs_command": "Cliquez pour lancer la commande.",
 	"ui.chat.pickers.slash.click.runs_with_value": "Cliquez pour lancer {command}{value}.",
 	"ui.chat.pickers.slash.click.stages": "Cliquez pour préparer /{label}.",
-	"ui.chat.pickers.slash.enter_needs_a_pick": "Entrée exige d’abord une ligne choisie : ↓ puis Entrée · Tab complète cette ligne.",
+	"ui.chat.pickers.slash.enter_needs_a_pick": "Entrée a besoin d’une ligne choisie : ↓ puis Entrée · Tab complète cette ligne.",
 	"ui.chat.pickers.slash.phase.arguments": "Arguments",
 	"ui.chat.pickers.slash.region_label": "Commandes slash"
 }

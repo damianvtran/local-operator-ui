@@ -40,5 +40,5 @@
 	"ui.common.connection.session_loss.history_unreadable": "اس گفتگو کی تاریخ لوڈ نہیں ہو سکی — دوبارہ منسلک ہو کر کوشش کریں۔",
 	"ui.common.connection.session_loss.lost": "اس گفتگو سے رابطہ ٹوٹ گیا — پڑھتے رہنے کے لیے دوبارہ منسلک کریں۔",
 	"ui.common.connection.session_loss.not_paired": "یہ ایپ Local Operator سرور سے جوڑی نہیں گئی، اس لیے یہ گفتگو ابھی پڑھی نہیں جا سکتی۔",
-	"ui.common.connection.session_loss.server_down": "Local Operator سرور نہیں چل رہا — اس کے واپس آنے پر دوبارہ منسلک کریں، یا اگر وہ چلتا نہ رہے تو ایپ دوبارہ شروع کریں۔"
+	"ui.common.connection.session_loss.server_down": "Local Operator سرور نہیں چل رہا — اس کے واپس آنے پر دوبارہ منسلک کریں، یا اگر وہ بند ہی رہے تو ایپ دوبارہ شروع کریں۔"
 }
