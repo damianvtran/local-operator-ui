@@ -111,6 +111,7 @@ import {
 	type NotificationFilters,
 	type NotificationGroup,
 	type NotificationGrouping,
+	conversationFactsKey,
 	coveredByWrite,
 	dismissPlan,
 	filterItems,
@@ -121,7 +122,6 @@ import {
 	rangeSelect,
 	rowOrder,
 	scopeCountBoundary,
-	conversationFactsKey,
 	scopeCountSignature,
 	sessionScopeCountsEnabled,
 } from "../notifications-model";

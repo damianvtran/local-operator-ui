@@ -1126,7 +1126,15 @@ test("R7-2: the printed count's key moves when the conversation's facts move", (
 		waiting,
 		unread_count: 9,
 	});
-	assert.notEqual(lateArrival, before, "a row we have not loaded still moves the key");
+	assert.notEqual(
+		lateArrival,
+		before,
+		"a row we have not loaded still moves the key",
+	);
 	assert.equal(unchanged, before, "and nothing else does");
-	assert.equal(model.conversationFactsKey(undefined), "", "no conversation in scope, no facts");
+	assert.equal(
+		model.conversationFactsKey(undefined),
+		"",
+		"no conversation in scope, no facts",
+	);
 });
