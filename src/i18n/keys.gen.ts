@@ -8367,12 +8367,12 @@ export type MessageParams = {
 	"ui.teamBridge.invitations.added_by_you": undefined;
 	"ui.teamBridge.invitations.agent_fallback": undefined;
 	"ui.teamBridge.invitations.agent_line": { agent: string };
-	"ui.teamBridge.invitations.consent": undefined;
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": undefined;
 	"ui.teamBridge.invitations.count": { count: number };
 	"ui.teamBridge.invitations.created_by": { name: string };
 	"ui.teamBridge.invitations.created_by_you": undefined;
 	"ui.teamBridge.invitations.decline": undefined;
-	"ui.teamBridge.invitations.declined": undefined;
+	"ui.teamBridge.invitations.declined": { agent: string };
 	"ui.teamBridge.invitations.declining": undefined;
 	"ui.teamBridge.invitations.empty": undefined;
 	"ui.teamBridge.invitations.failed.agent_unavailable": undefined;
@@ -8385,6 +8385,7 @@ export type MessageParams = {
 	"ui.teamBridge.invitations.failed.unreachable": undefined;
 	"ui.teamBridge.invitations.load_failed": undefined;
 	"ui.teamBridge.invitations.loading": undefined;
+	"ui.teamBridge.invitations.read_only": undefined;
 	"ui.teamBridge.invitations.title": undefined;
 	"ui.teamBridge.kind.channel": undefined;
 	"ui.teamBridge.kind.dm": undefined;

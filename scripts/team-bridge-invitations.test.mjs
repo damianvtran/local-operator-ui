@@ -60,6 +60,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-invitations";
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-invitations-model";
 			export { invitationAnswerMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { TeamBridgeApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-invitations.mjs",
@@ -96,6 +97,9 @@ const { QueryClient } = await import("@tanstack/react-query");
 const ui = await import(modulePath.href);
 
 const SELF = "acct_self";
+/* The v1 participation statement, verbatim. Changing it needs a new version. */
+const CONSENT_V1 =
+	"Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.";
 const human = (accountId, label, patch = {}) => ({
 	account_id: accountId,
 	kind: "human",
@@ -285,17 +289,18 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 		empty.includes("No invitations are waiting for your agent."),
 		true,
 	);
-	// The consent statement carries all three facts, and nothing about unmuting.
-	assert.equal(
-		empty.includes("read the messages in that conversation from now on"),
-		true,
-	);
-	assert.equal(empty.includes("It joins muted"), true);
-	assert.equal(empty.includes("only when someone @-mentions it"), true);
+	// The consent statement renders, and points at no control the app lacks.
+	assert.equal(empty.includes(CONSENT_V1), true);
+	assert.equal(CONSENT_V1.includes("All"), false);
+	assert.equal(CONSENT_V1.includes("muted"), false);
+	assert.equal(CONSENT_V1.includes("read and post"), true);
 
 	const one = renderView({ invitations: [invitation()] });
 	assert.equal(one.includes("launch-room"), true);
-	assert.equal(one.includes("Robo Damian is invited to join"), true);
+	assert.equal(
+		one.includes("Robo Damian was invited to this conversation"),
+		true,
+	);
 	assert.equal(one.includes("Conversation created by Ada"), true);
 	assert.equal(one.includes(">Accept<"), true);
 	assert.equal(one.includes(">Decline<"), true);
@@ -308,12 +313,32 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	});
 	assert.equal(accepting.includes("Accepting…"), true);
 	assert.equal(accepting.includes('aria-busy="true"'), true);
+	// Both labels share one cell (fixed width), and in flight the buttons are
+	// inert but keep their own face: aria-disabled, never the disabled face.
+	assert.equal(accepting.includes(">Accept<"), true);
+	assert.equal(accepting.includes('aria-disabled="true"'), true);
+	assert.equal(accepting.includes('disabled=""'), false);
+	const readOnly = renderView({ invitations: [invitation()], readOnly: true });
+	assert.equal(readOnly.includes('disabled=""'), true);
+	assert.equal(readOnly.includes("invitations can’t be answered here"), true);
 
 	const done = renderView({
 		invitations: [invitation()],
 		rowStates: { "tnt_1|bcv_1": { phase: "done", decision: "accept" } },
 	});
-	assert.equal(done.includes("joined muted"), true);
+	assert.equal(
+		done.includes(
+			"Accepted. Robo Damian is woken only when someone @-mentions it.",
+		),
+		true,
+	);
+	const declined = renderView({
+		invitations: [invitation()],
+		rowStates: { "tnt_1|bcv_1": { phase: "done", decision: "decline" } },
+	});
+	// Neutral: true even if the agent had already joined from another device.
+	assert.equal(declined.includes("Declined for Robo Damian."), true);
+	assert.equal(declined.includes("not added"), false);
 	assert.equal(done.includes(">Accept<"), false);
 
 	const loadFailed = renderView({ listState: "error" });
@@ -325,12 +350,34 @@ test("each coded refusal has its own sentence; retry only where it can help", ()
 		ui.invitationFailureKind(Object.assign(new Error("x"), { status, code }));
 	assert.equal(kind(403, "agent_not_permitted"), "agent_unavailable");
 	assert.equal(kind(409, "invalid_transition"), "already_answered");
+	const ruled = (rule) =>
+		ui.invitationFailureKind(
+			Object.assign(new Error("x"), {
+				status: 409,
+				code: "invalid_transition",
+				detail: { code: "invalid_transition", details: { rule } },
+			}),
+		);
+	assert.equal(ruled("not_invited"), "already_answered");
+	assert.equal(ruled("builtin"), "gone");
 	assert.equal(kind(404, "member_not_found"), "gone");
 	assert.equal(kind(404, "conversation_not_found"), "gone");
 	assert.equal(kind(409, "consent_version_unknown"), "outdated");
 	assert.equal(kind(403, "bridge_not_available"), "not_available");
 	assert.equal(kind(401, "bridge_signin_required"), "sign_in");
 	assert.equal(kind(null, undefined), "unreachable");
+	// R2: a coded status-null failure (a deadline) may have been applied.
+	assert.equal(kind(null, "deadline_exceeded"), "unconfirmed");
+	assert.equal(kind(null, "desktop_foreground_required"), "unconfirmed");
+	// R7: a runtime without the owner guard needs an update, not a retry.
+	assert.equal(
+		ui.invitationFailureKind(
+			Object.assign(new Error("Team Bridge runtime owner guard unavailable"), {
+				code: "team_bridge_owner_guard_unavailable",
+			}),
+		),
+		"outdated",
+	);
 	assert.equal(kind(500, "store_failure"), "unconfirmed");
 	assert.equal(ui.invitationFailureKind(new Error("plain")), "unconfirmed");
 
@@ -359,8 +406,53 @@ test("each coded refusal has its own sentence; retry only where it can help", ()
 		invitations: [invitation()],
 		rowStates: { "tnt_1|bcv_1": { phase: "failed", kind: "already_answered" } },
 	});
-	assert.equal(refused.includes("This invitation was already answered."), true);
+	assert.equal(
+		refused.includes("This invitation was already answered elsewhere."),
+		true,
+	);
 	assert.equal(refused.includes(">Accept<"), false);
+	// D2: the failure sentence lives IN the action slot (one min-h-8 row), so a
+	// refusal neither grows the card nor leaves an empty band under it.
+	const slot = (html) => html.split('class="flex min-h-8')[1] ?? "";
+	assert.equal(slot(refused).includes("already answered elsewhere"), true);
+	const retryable = renderView({
+		invitations: [invitation()],
+		rowStates: {
+			"tnt_1|bcv_1": { phase: "failed", kind: "agent_unavailable" },
+		},
+	});
+	const retrySlot = slot(retryable);
+	assert.equal(retrySlot.includes(">Accept<"), true);
+	assert.equal(retrySlot.includes("Your agent can’t join from here"), true);
+});
+
+test("the consent text is pinned to the participation version it is consent to", () => {
+	/*
+	 * R1. Editing this English text without minting a new participation
+	 * version (and key) is exactly what this test must catch: the hub records
+	 * an accept as consent to `bridge_agent_participation_v1`.
+	 */
+	assert.equal(
+		ui.TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION,
+		"bridge_agent_participation_v1",
+	);
+	assert.equal(
+		ui.TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY,
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+	);
+	const en = JSON.parse(
+		readFileSync(`${ROOT}/src/i18n/catalogues/en/ui.teamBridge.json`, "utf8"),
+	);
+	assert.equal(en[ui.TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY], CONSENT_V1);
+	assert.equal("ui.teamBridge.invitations.consent" in en, false);
+});
+
+test("the rail entry holds still while the pointer is over the rail", () => {
+	// N1: appearing or leaving would move the list under a pending click.
+	assert.equal(ui.railInvitationsEntryShown(false, true, true), false);
+	assert.equal(ui.railInvitationsEntryShown(true, false, true), true);
+	assert.equal(ui.railInvitationsEntryShown(false, true, false), true);
+	assert.equal(ui.railInvitationsEntryShown(true, false, false), false);
 });
 
 test("an answered row keeps its place; new rows append; foreign removals drop", () => {
@@ -457,6 +549,7 @@ test("the answer is sent as the owner, patched optimistically, and rolled back e
 	options.onError(new Error("refused"), variables, context);
 	assert.deepEqual(client.getQueryData(orgKey), page);
 	assert.deepEqual(client.getQueryData(allKey), page);
+	assert.equal(context, undefined);
 
 	const answered = await options.mutationFn(variables);
 	assert.equal(answered.id, "bcv_1");
@@ -492,4 +585,92 @@ test("the answer is sent as the owner, patched optimistically, and rolled back e
 	assert.deepEqual(otherOrg, page);
 	client.clear();
 	globalThis.window = undefined;
+});
+
+test("a runtime without the owner guard answers outdated, through the real transport (R7)", async () => {
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async () => ({
+					ok: true,
+					status: 200,
+					body: { result: { features: {} } },
+				}),
+			},
+		},
+	};
+	const error = await ui.TeamBridgeApi.answerAgentInvitation({
+		conversationId: "bcv_1",
+		accountId: SELF,
+		tenantId: "tnt_1",
+		decision: "accept",
+		consentVersion: "bridge_agent_participation_v1",
+	}).catch((caught) => caught);
+	assert.equal(error instanceof Error, true);
+	assert.equal(ui.invitationFailureKind(error), "outdated");
+	assert.equal(ui.invitationRetryable(ui.invitationFailureKind(error)), false);
+	globalThis.window = undefined;
+});
+
+test("two interleaved refusals both roll back to invited (R3)", async () => {
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const a = conversation({ id: "bcv_a" });
+	const b = conversation({ id: "bcv_b" });
+	const page = { conversations: [a, b], has_more: false };
+	const orgKey = ui.teamBridgeKeys.conversations("tnt_1", SELF);
+	const allKey = ui.teamBridgeKeys.conversations("all", SELF);
+	client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
+	client.setQueryData(ui.teamBridgeKeys.statusFor(SELF), {
+		account_id: SELF,
+		state: "ready",
+		local: { enabled: true },
+		read_only: false,
+	});
+	client.setQueryData(orgKey, structuredClone(page));
+	client.setQueryData(allKey, structuredClone(page));
+	client.invalidateQueries = async () => {};
+	const options = ui.invitationAnswerMutationOptions(client);
+	const answerA = {
+		conversationId: "bcv_a",
+		tenantId: "tnt_1",
+		decision: "accept",
+	};
+	const answerB = {
+		conversationId: "bcv_b",
+		tenantId: "tnt_1",
+		decision: "decline",
+	};
+	const pending = (key) =>
+		ui
+			.pendingAgentInvitations(client.getQueryData(key).conversations, SELF)
+			.map((row) => row.conversationId)
+			.join(",");
+
+	// Start A, start B, then A is refused, then B is refused: the order that
+	// left A "joined" under whole-page snapshot restores.
+	const ctxA = await options.onMutate(answerA);
+	const ctxB = await options.onMutate(answerB);
+	assert.equal(pending(orgKey), "");
+	options.onError(new Error("agent_not_permitted"), answerA, ctxA);
+	assert.equal(pending(orgKey), "bcv_a");
+	options.onError(new Error("agent_not_permitted"), answerB, ctxB);
+	assert.equal(pending(orgKey), "bcv_a,bcv_b");
+	assert.equal(pending(allKey), "bcv_a,bcv_b");
+	assert.deepEqual(client.getQueryData(orgKey), page);
+
+	// Reverse order, and one success between: only the refused row reverts.
+	await options.onMutate(answerA);
+	const ctxB2 = await options.onMutate(answerB);
+	options.onError(new Error("refused"), answerB, ctxB2);
+	assert.equal(pending(orgKey), "bcv_b");
+	const stateOf = (id) =>
+		client
+			.getQueryData(orgKey)
+			.conversations.find((row) => row.id === id)
+			.members.find((m) => m.kind === "agent" && m.account_id === SELF).state;
+	assert.equal(stateOf("bcv_a"), "active");
+	assert.equal(stateOf("bcv_b"), "invited");
+	client.clear();
 });

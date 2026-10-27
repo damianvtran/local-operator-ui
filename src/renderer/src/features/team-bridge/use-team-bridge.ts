@@ -52,6 +52,7 @@ import type {
 import {
 	TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION,
 	withAgentInvitationAnswer,
+	withoutAgentInvitationAnswer,
 } from "./team-bridge-invitations-model";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -590,8 +591,11 @@ export type TeamBridgeInvitationAnswer = {
  *
  * OPTIMISTIC. The rail count and the row's outcome move the moment the owner
  * answers (the agent row turns `active`/`removed` in every cached page that
- * holds it); a refusal restores the exact snapshots, and `onSettled` re-reads
- * the truth. The patch never touches `notify`, so accepting cannot unmute.
+ * holds it). A refusal applies the INVERSE patch to that one row
+ * (`withoutAgentInvitationAnswer`; review round 1, R3: whole-page snapshots
+ * are wrong when two answers interleave), and `onSettled` re-reads the truth
+ * either way, so a row answered elsewhere (`invalid_transition`) shows the
+ * server's state. The patch never touches `notify`, so accepting cannot unmute.
  *
  * The owner is captured ONCE, at construction, and every phase re-checks it: a
  * sign-out or account switch while the request is in flight must neither land
@@ -603,8 +607,7 @@ export function invitationAnswerMutationOptions(
 ): UseMutationOptions<
 	TeamBridgeConversation,
 	Error,
-	TeamBridgeInvitationAnswer,
-	TeamBridgeNotifyMutationContext
+	TeamBridgeInvitationAnswer
 > {
 	const { accountId } = observedRadientAuthority(client);
 	const current = () =>
@@ -633,8 +636,6 @@ export function invitationAnswerMutationOptions(
 			const self = check();
 			await client.cancelQueries(owned);
 			check();
-			const snapshots =
-				client.getQueriesData<TeamBridgeConversationList>(owned);
 			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
 				page === undefined
 					? page
@@ -645,13 +646,19 @@ export function invitationAnswerMutationOptions(
 							variables.decision,
 						),
 			);
-			return { snapshots };
 		},
-		onError: (_error, _variables, context) => {
-			if (!current()) return;
-			for (const [key, data] of context?.snapshots ?? []) {
-				client.setQueryData(key, data);
-			}
+		onError: (_error, variables) => {
+			if (!current() || !accountId) return;
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withoutAgentInvitationAnswer(
+							page,
+							variables,
+							accountId,
+							variables.decision,
+						),
+			);
 		},
 		onSettled: async () => {
 			if (!current()) return;

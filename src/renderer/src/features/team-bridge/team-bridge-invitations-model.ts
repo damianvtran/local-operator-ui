@@ -9,13 +9,25 @@
  * invitation, so the conversation list is the only place it shows: the caller's
  * list already carries every member row with its state.
  *
+ * KNOWN LIMITS OF THAT SOURCE (review round 1, R4/R5). It is a stopgap until
+ * agent-server's owner-invitations read (`GET /v1/messaging/agents/owned/
+ * invitations`, paginated, with `invited_by_label`) ships and core passes it
+ * through; this module then switches to it.
+ *  - FIRST PAGE ONLY: the rail loads one list page (up to 50 rows, no paging),
+ *    so an invitation to a quiet older conversation is neither counted nor
+ *    listed.
+ *  - OWNER-MEMBER ONLY: the list returns conversations where the caller's
+ *    HUMAN row is a member, plus tenant channels it can discover. An agent
+ *    added to a private channel or group its owner is not in never appears.
+ *
  * Pure functions only (no React, no transport), so the decisions below are
  * tested against the shipped TypeScript (`scripts/team-bridge-invitations.test.mjs`).
  */
-import type {
-	TeamBridgeConversation,
-	TeamBridgeConversationList,
-	TeamBridgeParticipant,
+import {
+	TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE,
+	type TeamBridgeConversation,
+	type TeamBridgeConversationList,
+	type TeamBridgeParticipant,
 } from "../../../../shared/team-bridge-contract";
 import { conversationTitle, storedLabel } from "./team-bridge-model";
 
@@ -33,6 +45,20 @@ import { conversationTitle, storedLabel } from "./team-bridge-model";
  */
 export const TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION =
 	"bridge_agent_participation_v1";
+
+/**
+ * The consent statement for THAT version, as an i18n key named for it.
+ *
+ * DECISION (review round 1, R1): the design calls the participation text
+ * "server-served"; the hub serves none yet, so the text is embedded. To keep
+ * the embedded text honest about what was agreed to, the key carries the
+ * version, and `scripts/team-bridge-invitations.test.mjs` pins the English
+ * text beside this pair: editing the copy fails that test until the version
+ * (and the key) move with it. Seven translations are then consent to exactly
+ * the text recorded under that version.
+ */
+export const TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY =
+	`ui.teamBridge.invitations.consent.${TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION}` as const;
 
 export type TeamBridgeInvitation = {
 	/** `tenant|conversation`: a conversation id is unique only inside its org. */
@@ -152,6 +178,25 @@ export function pendingAgentInvitations(
  * another device, or the conversation was archived) is dropped: it is not this
  * view's outcome to show.
  */
+/**
+ * Whether the rail shows its Invitations entry, given what it showed last.
+ *
+ * The entry exists only while something waits (or the view is open), so it
+ * mounts and unmounts as the list re-reads - and a 30 px row appearing above
+ * the conversation list moves every row under a pointer that is about to
+ * click one (review round 1, N1). The change is therefore HELD while the
+ * pointer is over the rail and applied when it leaves: the reader never sees
+ * the list move under them, and a rail nobody is pointing at still shows no
+ * row when nothing waits.
+ */
+export function railInvitationsEntryShown(
+	shownBefore: boolean,
+	wanted: boolean,
+	pointerInRail: boolean,
+): boolean {
+	return pointerInRail ? shownBefore : wanted;
+}
+
 export function stableInvitationRows(
 	previous: readonly TeamBridgeInvitation[],
 	current: readonly TeamBridgeInvitation[],
@@ -182,7 +227,48 @@ export function withAgentInvitationAnswer(
 	selfAccountId: string,
 	decision: "accept" | "decline",
 ): TeamBridgeConversationList {
-	const state = decision === "accept" ? "active" : "removed";
+	return withSelfAgentState(
+		page,
+		invitation,
+		selfAccountId,
+		"invited",
+		decision === "accept" ? "active" : "removed",
+	);
+}
+
+/**
+ * The exact inverse of `withAgentInvitationAnswer`, for a refused answer.
+ *
+ * WHY AN INVERSE PATCH, NOT A SNAPSHOT RESTORE (review round 1, R3). The view
+ * lets the owner answer several rows at once. A whole-page snapshot taken by
+ * the second answer already holds the first answer's optimistic state, so
+ * restoring snapshots in refusal order left the first row "joined" after both
+ * were refused. Reverting only this conversation's own agent row, and only
+ * from the state this answer wrote, composes with any other answer in flight
+ * and leaves a refetched server state alone.
+ */
+export function withoutAgentInvitationAnswer(
+	page: TeamBridgeConversationList,
+	invitation: Pick<TeamBridgeInvitation, "conversationId" | "tenantId">,
+	selfAccountId: string,
+	decision: "accept" | "decline",
+): TeamBridgeConversationList {
+	return withSelfAgentState(
+		page,
+		invitation,
+		selfAccountId,
+		decision === "accept" ? "active" : "removed",
+		"invited",
+	);
+}
+
+function withSelfAgentState(
+	page: TeamBridgeConversationList,
+	invitation: Pick<TeamBridgeInvitation, "conversationId" | "tenantId">,
+	selfAccountId: string,
+	from: TeamBridgeParticipant["state"],
+	state: TeamBridgeParticipant["state"],
+): TeamBridgeConversationList {
 	return {
 		...page,
 		conversations: page.conversations.map((row) =>
@@ -193,7 +279,7 @@ export function withAgentInvitationAnswer(
 						members: row.members.map((member) =>
 							member.kind === "agent" &&
 							member.account_id === selfAccountId &&
-							member.state === "invited"
+							member.state === from
 								? { ...member, state }
 								: member,
 						),
@@ -209,7 +295,9 @@ export function withAgentInvitationAnswer(
  * Each kind maps to one sentence the view owns. The codes are agent-server's
  * `Consent` refusals: `agent_not_permitted` (the endpoint is not this owner's,
  * not active, or its enrolment consent is not bound to this membership),
- * `invalid_transition` (the row is no longer invited), `member_not_found` /
+ * `invalid_transition` (the row is no longer invited; the server's answer for
+ * this names `details.rule=not_invited`, and `rule=builtin` is the built-in
+ * refusal, which eligibility already excludes), `member_not_found` /
  * `conversation_not_found` (the invitation is gone), `consent_version_unknown`
  * (this client's pinned version is stale) and the plan/kill refusals.
  */
@@ -224,21 +312,39 @@ export type InvitationFailureKind =
 	| "unconfirmed";
 
 export function invitationFailureKind(error: unknown): InvitationFailureKind {
-	const candidate = error as { status?: unknown; code?: unknown } | null;
+	const candidate = error as {
+		status?: unknown;
+		code?: unknown;
+		detail?: { details?: { rule?: unknown } };
+	} | null;
 	const status =
 		typeof candidate?.status === "number" ? candidate.status : null;
 	const code = typeof candidate?.code === "string" ? candidate.code : null;
+	const rule = candidate?.detail?.details?.rule;
 	if (status === 401 || code === "bridge_signin_required") return "sign_in";
 	if (code === "agent_not_permitted") return "agent_unavailable";
-	if (code === "invalid_transition") return "already_answered";
+	if (code === "invalid_transition")
+		return rule === "builtin" ? "gone" : "already_answered";
+	// The runtime cannot bind the write to its owner (R7): only an update helps.
+	if (code === TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE) return "outdated";
 	if (code === "member_not_found" || code === "conversation_not_found")
 		return "gone";
 	if (code === "consent_version_unknown") return "outdated";
 	if (code === "bridge_not_available" || code === "bridge_disabled")
 		return "not_available";
-	// A transport failure never reached the hub; anything else answered without
-	// a code this view knows, so the decision is unconfirmed, not refused.
-	if (status === null && error instanceof Error && "status" in error)
+	/*
+	 * "Nothing was changed" is claimed ONLY for a status-null failure with NO
+	 * code: the IPC call itself failed, so the request never left this machine.
+	 * A CODED status-null failure is not that: `deadline_exceeded` means the
+	 * request was sent and may have been applied (review round 1, R2). It and
+	 * every other unknown answer are unconfirmed, never "nothing changed".
+	 */
+	if (
+		status === null &&
+		code === null &&
+		error instanceof Error &&
+		"status" in error
+	)
 		return "unreachable";
 	return "unconfirmed";
 }

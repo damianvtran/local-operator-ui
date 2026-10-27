@@ -21,10 +21,12 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 import { Hash, Users } from "lucide-react";
 import { useRef, useState } from "react";
 import {
 	type InvitationFailureKind,
+	TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY,
 	type TeamBridgeInvitation,
 	invitationFailureKind,
 	stableInvitationRows,
@@ -190,8 +192,14 @@ export function TeamBridgeInvitationsView({
 				{t("ui.teamBridge.invitations.title")}
 			</h2>
 			<p className="max-w-prose text-sm text-ink-muted">
-				{t("ui.teamBridge.invitations.consent")}
+				{t(TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY)}
 			</p>
+			{/* Disabled answers state their reason once, not per card (design D6). */}
+			{readOnly && invitations.length > 0 && (
+				<p className="max-w-prose text-sm text-ink-muted">
+					{t("ui.teamBridge.invitations.read_only")}
+				</p>
+			)}
 			{listState === "loading" && invitations.length === 0 ? (
 				<Spinner size="sm" label={t("ui.teamBridge.invitations.loading")} />
 			) : listState === "error" && invitations.length === 0 ? (
@@ -245,15 +253,18 @@ function TeamBridgeInvitationRow({
 	const agent =
 		invitation.agentName ?? t("ui.teamBridge.invitations.agent_fallback");
 	const pending = state.phase === "pending";
+	const failed = state.phase === "failed" ? state.kind : null;
 	/*
-	 * The action row keeps ONE height across every phase: the buttons are
-	 * replaced by an outcome line of the same `min-h-8`, so answering does not
-	 * shrink the card and move the rows below it (the no-jitter rule).
+	 * ONE ACTION SLOT, ONE HEIGHT (design round 1, D2). Every phase renders
+	 * into the same `min-h-8` row: the buttons, the buttons plus a retryable
+	 * refusal beside them, or an outcome/final refusal in their place. A
+	 * refusal therefore never grows the card or moves the rows below it, and a
+	 * final refusal leaves no empty band where the buttons were.
 	 */
 	const showActions =
 		state.phase === "idle" ||
 		pending ||
-		(state.phase === "failed" && invitationRetryable(state.kind));
+		(failed !== null && invitationRetryable(failed));
 	return (
 		<li className="flex flex-col gap-1.5 rounded-lg bg-elevated p-3 text-ink">
 			<p className="flex min-w-0 items-center gap-2 text-sm font-medium">
@@ -271,45 +282,99 @@ function TeamBridgeInvitationRow({
 				{t("ui.teamBridge.invitations.agent_line", { agent })}
 			</p>
 			{inviter && <p className="text-meta text-ink-dim">{inviter}</p>}
-			{state.phase === "failed" && (
-				<p role="alert" className="text-sm text-danger">
-					{invitationFailureCopy(state.kind)}
-				</p>
-			)}
 			<div className="flex min-h-8 flex-wrap items-center gap-2">
-				{showActions ? (
+				{showActions && (
 					<>
-						<Button
-							size="sm"
+						<InvitationButton
 							variant="primary"
-							disabled={readOnly || pending}
-							aria-busy={pending && state.decision === "accept"}
-							onClick={() => onAnswer("accept")}
-						>
-							{pending && state.decision === "accept"
-								? t("ui.teamBridge.invitations.accepting")
-								: t("ui.teamBridge.invitations.accept")}
-						</Button>
-						<Button
-							size="sm"
+							idle={t("ui.teamBridge.invitations.accept")}
+							busy={t("ui.teamBridge.invitations.accepting")}
+							pending={pending && state.decision === "accept"}
+							inFlight={pending}
+							readOnly={readOnly}
+							onPress={() => onAnswer("accept")}
+						/>
+						<InvitationButton
 							variant="ghost"
-							disabled={readOnly || pending}
-							aria-busy={pending && state.decision === "decline"}
-							onClick={() => onAnswer("decline")}
-						>
-							{pending && state.decision === "decline"
-								? t("ui.teamBridge.invitations.declining")
-								: t("ui.teamBridge.invitations.decline")}
-						</Button>
+							idle={t("ui.teamBridge.invitations.decline")}
+							busy={t("ui.teamBridge.invitations.declining")}
+							pending={pending && state.decision === "decline"}
+							inFlight={pending}
+							readOnly={readOnly}
+							onPress={() => onAnswer("decline")}
+						/>
 					</>
-				) : state.phase === "done" ? (
+				)}
+				{failed !== null && (
+					<p role="alert" className="min-w-0 text-sm text-danger">
+						{invitationFailureCopy(failed)}
+					</p>
+				)}
+				{state.phase === "done" && (
 					<p aria-live="polite" className="text-sm text-ink-muted">
 						{state.decision === "accept"
 							? t("ui.teamBridge.invitations.accepted", { agent })
-							: t("ui.teamBridge.invitations.declined")}
+							: t("ui.teamBridge.invitations.declined", { agent })}
 					</p>
-				) : null}
+				)}
 			</div>
 		</li>
+	);
+}
+
+/**
+ * Accept or Decline, with a width that never changes (design round 1, D4).
+ *
+ * Both labels occupy ONE grid cell, so the button is as wide as the longer
+ * label in every phase and the pressed row does not push its sibling sideways
+ * (the same mechanism as the live-updates band's Reload). The hidden label is
+ * `invisible` and `aria-hidden`. While in flight the button keeps its own face
+ * rather than the disabled one, so the row reads as working, not unavailable:
+ * `aria-disabled` plus a dropped handler makes it inert, which is the
+ * live-updates band's treatment too. Read-only stays truly `disabled`.
+ */
+function InvitationButton({
+	variant,
+	idle,
+	busy,
+	pending,
+	inFlight,
+	readOnly,
+	onPress,
+}: {
+	variant: "primary" | "ghost";
+	idle: string;
+	busy: string;
+	/** THIS button's answer is in flight: it shows the busy label. */
+	pending: boolean;
+	/** Either answer for the row is in flight: the button is inert. */
+	inFlight: boolean;
+	readOnly: boolean;
+	onPress: () => void;
+}) {
+	return (
+		<Button
+			size="sm"
+			variant={variant}
+			disabled={readOnly}
+			aria-disabled={inFlight || undefined}
+			aria-busy={pending || undefined}
+			onClick={inFlight ? undefined : onPress}
+		>
+			<span className="grid">
+				<span
+					className={cn("col-start-1 row-start-1", pending && "invisible")}
+					aria-hidden={pending}
+				>
+					{idle}
+				</span>
+				<span
+					className={cn("col-start-1 row-start-1", !pending && "invisible")}
+					aria-hidden={!pending}
+				>
+					{busy}
+				</span>
+			</span>
+		</Button>
 	);
 }

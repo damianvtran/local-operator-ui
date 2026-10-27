@@ -78,6 +78,25 @@ export const Outcomes: Story = {
 		},
 	},
 };
+export const Declining: Story = {
+	args: {
+		invitations: [launch, design],
+		rowStates: { [design.key]: { phase: "pending", decision: "decline" } },
+	},
+};
+export const Declined: Story = {
+	args: {
+		invitations: [launch],
+		rowStates: { [launch.key]: { phase: "done", decision: "decline" } },
+	},
+};
+/* Answered elsewhere: the server's `invalid_transition` / `rule=not_invited`. */
+export const AnsweredElsewhere: Story = {
+	args: {
+		invitations: [launch],
+		rowStates: { [launch.key]: { phase: "failed", kind: "already_answered" } },
+	},
+};
 export const ReadOnly: Story = {
 	args: { invitations: [launch], readOnly: true },
 };

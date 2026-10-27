@@ -18,6 +18,7 @@ import {
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
 import {
+	TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE,
 	type TeamBridgeAttachment,
 	type TeamBridgeConversation,
 	type TeamBridgeConversationList,
@@ -78,7 +79,14 @@ export async function teamBridgeWriteOwner(
 		features?: Record<string, number>;
 	}>({ op: "capabilities" });
 	if ((capabilities.features?.team_bridge_conversation_owner_guard ?? 0) < 1)
-		throw new Error("Team Bridge runtime owner guard unavailable");
+		// A plain Error, as before, so existing callers read it unchanged; the
+		// code lets a caller say "update the app" instead of offering a retry.
+		throw Object.assign(
+			new Error("Team Bridge runtime owner guard unavailable"),
+			{
+				code: TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE,
+			},
+		);
 	return { expected_account_id: accountId, tenant_id: tenantId };
 }
 

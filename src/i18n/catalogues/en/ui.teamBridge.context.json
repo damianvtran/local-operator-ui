@@ -1543,12 +1543,12 @@
 		},
 		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Accessible name of the quiet rail count beside 'Invitations'; shown only when at least one is waiting."
 	},
-	"ui.teamBridge.invitations.consent": {
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": {
 		"role": "invitations consent",
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "One or two sentences; permit wrapping.",
 		"placeholders": {},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The consent statement the owner agrees to by pressing Accept. Keep all three facts: the agent can read the conversation's messages from now on; it joins muted; it is woken only by @-mentions unless the owner sets its notifications to All ('All' is the notification level's name)."
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The consent statement the owner agrees to by pressing Accept; the key names the participation version it is consent to (bridge_agent_participation_v1), so ANY change to this English text needs a new version and a new key. Keep both facts: from now on the agent can read the conversation's messages AND post there; it is woken only when someone @-mentions it. Do not say 'muted' (the app's Mute level means never notified)."
 	},
 	"ui.teamBridge.invitations.loading": {
 		"role": "invitations loading",
@@ -1578,7 +1578,7 @@
 		"placeholders": {
 			"agent": "the reader's own agent's display name, or the fallback 'your agent'"
 		},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. States that the reader's agent is the invitee of this conversation."
 	},
 	"ui.teamBridge.invitations.agent_fallback": {
 		"role": "invitations agent fallback",
@@ -1652,16 +1652,18 @@
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "One or two sentences; permit wrapping.",
 		"placeholders": {
-			"agent": "the reader's own agent's display name, or the fallback 'your agent'"
+			"agent": "the reader's own agent's display name, or the fallback 'Your agent'"
 		},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Accept; same wake rule as the consent statement."
 	},
 	"ui.teamBridge.invitations.declined": {
 		"role": "invitations declined",
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "Short; one line.",
-		"placeholders": {},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+		"placeholders": {
+			"agent": "the reader's own agent's display name, or the fallback 'Your agent'"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Decline. Neutral on purpose: it must stay true whether or not the agent had already joined from another device."
 	},
 	"ui.teamBridge.invitations.failed.agent_unavailable": {
 		"role": "invitations agent unavailable",
@@ -1675,7 +1677,7 @@
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "Short; one line.",
 		"placeholders": {},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server says the invitation is no longer pending (answered on another device or by another session); the list re-reads to show the real state."
 	},
 	"ui.teamBridge.invitations.failed.gone": {
 		"role": "invitations gone",
@@ -1711,6 +1713,13 @@
 		"length": "One or two sentences; permit wrapping.",
 		"placeholders": {},
 		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.read_only": {
+		"role": "invitations read-only reason",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One sentence; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Shown under disabled Accept/Decline when the reader's organization is read-only for them, so the disabled buttons have a stated reason."
 	},
 	"ui.teamBridge.invitations.failed.unconfirmed": {
 		"role": "invitations unconfirmed",

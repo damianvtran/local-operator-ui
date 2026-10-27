@@ -61,7 +61,10 @@ import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { draftTargetKey } from "./team-bridge-drafts";
 import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
 import { TeamBridgeInvitations } from "./team-bridge-invitations";
-import { pendingAgentInvitations } from "./team-bridge-invitations-model";
+import {
+	pendingAgentInvitations,
+	railInvitationsEntryShown,
+} from "./team-bridge-invitations-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -535,6 +538,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * no new row at all.
 	 */
 	const invitations = pendingAgentInvitations(conversations, selfAccountId);
+	/* Held while the pointer is over the rail (review round 1, N1), so the
+	   entry appearing or leaving never moves the list under a pending click. */
+	const [pointerInRail, setPointerInRail] = useState(false);
+	const invitationsEntry = useRef(false);
+	invitationsEntry.current = railInvitationsEntryShown(
+		invitationsEntry.current,
+		invitations.length > 0 || quickView === "invitations",
+		pointerInRail,
+	);
 	const [scheduleOpen, setScheduleOpen] = useState(false);
 	const [scheduling, setScheduling] = useState(false);
 	const [scheduledSuccess, setScheduledSuccess] = useState(false);
@@ -1188,6 +1200,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				   on the canvas ground the selected row measured 1.06:1 on `paper`
 				   (design round 1, D2). */
 				className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"
+				onPointerEnter={() => setPointerInRail(true)}
+				onPointerLeave={() => setPointerInRail(false)}
 			>
 				<h1 className="sr-only">{t("ui.teamBridge.page.title")}</h1>
 				<header className="flex h-11 shrink-0 items-center gap-2 px-3">
@@ -1249,7 +1263,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						<Clock size={14} aria-hidden="true" />
 						{t("ui.teamBridge.schedule.list")}
 					</button>
-					{(invitations.length > 0 || quickView === "invitations") && (
+					{invitationsEntry.current && (
 						<button
 							type="button"
 							aria-current={quickView === "invitations" ? "page" : undefined}
@@ -1265,7 +1279,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									variant="attentionQuiet"
 									shape="pill"
 									size="count"
-									className="shrink-0"
+									/* ONE BADGE COLUMN (design round 1, D3): nav rows sit
+									   8px further in than conversation rows (px-3 vs px-1),
+									   so the count pulls back out to their x=276 edge. */
+									className="-me-2 shrink-0"
 									aria-label={t("ui.teamBridge.invitations.count", {
 										count: invitations.length,
 									})}
