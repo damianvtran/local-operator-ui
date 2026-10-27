@@ -58,6 +58,22 @@
 	}
 }
 
+/* An avatar photo arriving over its initials (sidebar account row, design
+ * review round 1, D5): the same opacity-only keyframe as the transcript, at
+ * `--duration-fast` because the plate is 28px and the swap should read as
+ * arrival rather than a flicker, not as an entrance to watch. Radix mounts the
+ * image only once decoded and the box keeps its size, so nothing moves. Under
+ * reduced motion the photo simply appears. */
+.lo-avatar-arrival {
+	animation: lo-transcript-arrival var(--duration-fast) var(--ease-out-quart)
+		both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-avatar-arrival {
+		animation: none;
+	}
+}
+
 /*
  * ONE HIGHLIGHT, ONE STRIP (design round 2, D1; closed properly 2026-10-19).
  * The quote and link toolbars own a highlight that begins in their turn; the

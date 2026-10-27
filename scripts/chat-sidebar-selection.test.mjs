@@ -1808,33 +1808,26 @@ test("the settings rail's group lists carry no ground of their own", () => {
  * THE PLATE INSIDE A ROW, AND THE HALF THE PALETTE GATE CANNOT SEE.
  *
  * The rail's account row is a row state's host (`hover:bg-row-hover`) and it
- * contains an element with a ground of its own — the avatar plate. That plate
- * was chosen when the rail was `sunken`, and re-grounding the rail to `surface`
- * did not touch it, which left a shape this file's own tables do not cover: an
- * element INSIDE a row, on a rung, with the row painting a fill underneath it.
+ * contains an element with a ground of its own — the avatar plate. A row state is
+ * authored as a STEP of the panel it sits on, so on some palette it lands on some
+ * rung: `elevated` against `rowHover` is byte-identical on `arcade` (ΔE00 0.00),
+ * which is why this plate used to wear `bg-elevated` plus a `border-control` ring.
  *
- * The pair under the pointer collapses on the shipped values: `elevated` against
- * `rowHover` is byte-identical on `arcade` (ΔE00 0.00) and inside the field floor
- * on `gruvbox` 1.14, `obsidian` 1.21 and `everforest` 1.90 — hover the row at any
- * of the four and the plate is a disc of the row's own hover colour. That is not a
- * value to re-solve: a row state is authored as a STEP of the panel it sits on, so
- * some palette's state will always land on some rung (16 of the 59 already land
- * within ΔE00 2.0 of `elevated` on `rowSelected`, which is why no fill role is
- * collision-free). So the plate carries `border-control` — this system's role for
- * an edge that IS the boundary of a thing, floored at 3:1 against every ground —
- * and THAT is what this test pins, because it is the half a colour gate cannot see.
- *
- * The colour half is `scripts/contrast-contract.mjs`'s, per palette: `elevated`
- * against `rowHover` at the field floor OR `border-control` against `rowHover` at
- * the non-text floor. On exactly the four palettes the fill fails, the edge clears
- * (3.18 `arcade`, 3.13 `gruvbox`, 3.27 `obsidian`, 3.10 `everforest`), so neither
- * half is decoration and neither file can make the other's assertion — the same
- * split `ROW_STATE_GROUNDS` above records for the grounds.
+ * BORDERLESS SINCE THE OWN-AVATAR CHANGE (design review round 1, D1/D2). The
+ * operator asked for borderless, rounded-square avatars, and the ring dropped
+ * away visibly the moment the photo landed. The plate now wears Team Bridge's
+ * `media-surface` fill, which is not a rung: `scripts/contrast-contract.mjs`
+ * measures it per palette against `surface` and `rowHover` (`team bridge
+ * borderless person and agent plates`) with `inkMuted` initials on it (`team
+ * bridge person initial plate`). What THIS test pins is the half that gate cannot
+ * see: the class text still names that fill on both the root (a transparent photo
+ * keeps the backing) and the fallback, in Team Bridge's `rounded-md` shape, with
+ * no edge.
  *
  * The pair is `rowHover` and NOT `rowSelected`, and that scope is asserted below
- * rather than implied: the account row is not a destination, so it never paints
- * `rowCurrent` and the plate can never be painted over a selection. If it ever
- * does, the pair in the palette gate has to grow, and it does not clear today.
+ * rather than implied: `media-surface` bottoms out at ΔE00 1.83 against
+ * `rowSelected`, so if the account row ever paints `rowCurrent` the plate needs
+ * the selected-row step Team Bridge's rail takes (`surface`).
  */
 const ACCOUNT_ROW =
 	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
@@ -1854,7 +1847,7 @@ const TEAM_BUBBLE =
 const TEAM_BUBBLE_COMPOSITION =
 	/badgeVariants\(\{[\s\S]*?variant:\s*"attentionQuiet"[\s\S]*?shape:\s*"pill"[\s\S]*?size:\s*"count"/;
 
-test("the account row's plate carries an edge a row state cannot overrun", () => {
+test("the account row's plate is Team Bridge's borderless rounded-square plate", () => {
 	const row = sourceOf(ACCOUNT_ROW);
 	assert.ok(
 		row.includes("hover:bg-row-hover"),
@@ -1862,19 +1855,27 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
 	);
 	assert.ok(
 		!row.includes("rowCurrent"),
-		`${ACCOUNT_ROW} now paints or names \`rowCurrent\`, so the account row IS a destination and its plate can be painted over a selection as well as a hover — the pair in \`scripts/contrast-contract.mjs\` has to gain \`rowSelected\`, which it is not satisfiable against today (16 of the 59 palettes sit inside ΔE00 2.0 of \`elevated\` on \`rowSelected\`)`,
+		`${ACCOUNT_ROW} now paints or names \`rowCurrent\`, so the account row IS a destination and its plate can be painted over a selection as well as a hover — \`media-surface\` bottoms out at ΔE00 1.83 against \`rowSelected\`, so the plate needs the selected-row step Team Bridge's rail takes`,
 	);
-	const plate = literalClassAt(ACCOUNT_ROW, "<AvatarFallback", "after")
-		.split(/\s+/)
-		.filter((c) => c.length > 0);
-	assert.ok(
-		plate.includes("bg-elevated"),
-		`the account row's plate no longer paints \`bg-elevated\` — it reads ${JSON.stringify(plate)}. \`scripts/contrast-contract.mjs\` asserts the plate's fill as \`elevated\` against \`rowHover\`, so a re-role here has to move there too`,
-	);
-	assert.ok(
-		plate.includes("border-control"),
-		`the account row's plate is back on a FILL ALONE — it reads ${JSON.stringify(plate)} and carries no \`border-control\`, which is the one property a row's fill cannot overrun. \`elevated\` against \`rowHover\` is ΔE00 0.00 on \`arcade\` (byte-identical), 1.14 \`gruvbox\`, 1.21 \`obsidian\` and 1.90 \`everforest\`: hovering the row turns the plate into a disc of the row's own hover colour. The edge is the carrier, and the palette half of the pair is in \`scripts/contrast-contract.mjs\``,
-	);
+	for (const element of ["<Avatar ", "<AvatarFallback"]) {
+		const plate = literalClassAt(ACCOUNT_ROW, element, "after")
+			.split(/\s+/)
+			.filter((c) => c.length > 0);
+		assert.ok(
+			plate.includes("bg-media-surface"),
+			`the account row's ${element.trim()} no longer paints \`bg-media-surface\` — it reads ${JSON.stringify(plate)}. \`scripts/contrast-contract.mjs\` measures that fill against \`surface\` and \`rowHover\`; on the root it is also the backing a transparent photo needs once Radix unmounts the fallback (design review round 1, D4)`,
+		);
+		assert.ok(
+			plate.includes("rounded-md") && !plate.includes("rounded-full"),
+			`the account row's ${element.trim()} is not Team Bridge's rounded-square plate — it reads ${JSON.stringify(plate)}. \`TeamBridgeAvatar\` draws the same person's photo at \`rounded-md\`, and one person must not be two shapes (design review round 1, D1)`,
+		);
+		const edge = plate.find((c) => EDGE_LIKE.test(c));
+		assert.equal(
+			edge,
+			undefined,
+			`the account row's ${element.trim()} drew an edge back (${JSON.stringify(edge)}). The plate is borderless by the operator's ask; its separation is the measured \`media-surface\` fill (design review round 1, D2)`,
+		);
+	}
 });
 
 /*
@@ -2337,11 +2338,23 @@ const carriersInsideRowStates = async () => {
  */
 const PLATES_INSIDE_ROW_STATES = [
 	{
+		/* Borderless since the own-avatar change (design review round 1, D2): the
+		   rail's account plate takes Team Bridge's measured `media-surface` fill on
+		   both its root and its fallback, so the sweep finds two objects. */
 		what: "the rail's account plate",
 		file: ACCOUNT_ROW,
+		element: "Avatar",
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
+	},
+	{
+		what: "the rail's account plate's initials",
+		file: ACCOUNT_ROW,
 		element: "AvatarFallback",
-		ground: "bg-elevated",
-		edge: true,
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
 	},
 	{
 		what: "the agents sidebar's avatar",
