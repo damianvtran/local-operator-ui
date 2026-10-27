@@ -700,11 +700,11 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	 *
 	 * THE WINDOW IS 5200 RATHER THAN 4200 (UX round 2, U2), and the reason is prose
 	 * rather than structure: the control now carries a block comment explaining why
-	 * it left the Tab ring, which sits between the attribute this search anchors on
-	 * and the `pinned` ternary this reads. A window that no longer REACHES the
-	 * branch fails the `notEqual` below rather than passing quietly, so widening it
-	 * cannot hide a control that stopped being drawn - it only has to reach the
-	 * branch the assertions are about.
+	 * it left the Tab ring, which sits between the CLASS attribute this search
+	 * anchors on and the `pinned` ternary this reads. A window that no longer
+	 * REACHES the branch fails the `notEqual` below rather than passing quietly, so
+	 * widening it cannot hide a control that stopped being drawn - it only has to
+	 * reach the branch the assertions are about.
 	 *
 	 * THE BRANCH'S END IS READ FROM THE SOURCE, NOT FROM THE WINDOW (issue #693).
 	 * The window's job is to bound where the SEARCH STARTS, and using it as a bound
@@ -733,6 +733,14 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 		`the pinned mark must never be display-switched away: ${pinnedBranchText}`,
 	);
 	/*
+	 * The slice ends where the press begins, read from the source rather than
+	 * carried as an offset: the attributes this reads (the name, `aria-pressed`)
+	 * all precede `onClick`, and a fixed window would start missing them the day
+	 * a comment is added above them - the precise class of false positive this
+	 * handler's own comments have caused before.
+	 */
+	const control = source.slice(at, source.indexOf("onClick=", at));
+	/*
 	 * THE STATE IS THE ONLY THING THE PRESS REPORTS, and the label is the ACTION.
 	 * Both are catalogue copy since i18n wave A, so the pin is the KEY and its
 	 * argument rather than the English sentence: `pins.pin_label`/`unpin_label`
@@ -741,7 +749,6 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	 * checked beside it, so a catalogue entry that loses the subject (or its
 	 * quotation marks) is a finding here rather than a silent reword.
 	 */
-	const control = source.slice(at, at + 3000);
 	assert.match(
 		control,
 		/aria-label=\{\s*pinned\s*\?\s*t\("ui\.chat\.sidebar\.pins\.unpin_label",\s*\{\s*title:\s*label\s*\}\)\s*:\s*t\("ui\.chat\.sidebar\.pins\.pin_label",\s*\{\s*title:\s*label\s*\}\)\s*\}/,
