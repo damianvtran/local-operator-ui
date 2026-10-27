@@ -253,8 +253,18 @@ function TeamBridgeInvitationRow({
 }) {
 	const Icon = invitation.conversationKind === "group" ? Users : Hash;
 	const inviter = invitationInviterLine(invitation.inviter);
-	const agent =
-		invitation.agentName ?? t("ui.teamBridge.invitations.agent_fallback");
+	const agent = invitation.agentName;
+	/*
+	 * Unnamed outcomes are separate messages: an oblique or lowercase fallback
+	 * cannot read correctly in every host sentence. Keep {agent} a real name.
+	 */
+	const outcomeKey = agent
+		? state.decision === "accept"
+			? "ui.teamBridge.invitations.accepted"
+			: "ui.teamBridge.invitations.declined"
+		: state.decision === "accept"
+			? "ui.teamBridge.invitations.accepted_unnamed"
+			: "ui.teamBridge.invitations.declined_unnamed";
 	const pending = state.phase === "pending";
 	const failed = state.phase === "failed" ? state.kind : null;
 	/*
@@ -282,7 +292,12 @@ function TeamBridgeInvitationRow({
 				)}
 			</p>
 			<p className="text-sm text-ink-muted">
-				{t("ui.teamBridge.invitations.agent_line", { agent })}
+				{t(
+					"ui.teamBridge.invitations.agent_line",
+					agent
+						? { agent }
+						: { agent: t("ui.teamBridge.invitations.agent_fallback") },
+				)}
 			</p>
 			{inviter && <p className="text-meta text-ink-dim">{inviter}</p>}
 			<div className="flex min-h-8 flex-wrap items-center gap-2">
@@ -328,9 +343,7 @@ function TeamBridgeInvitationRow({
 				)}
 				{state.phase === "done" && (
 					<p aria-live="polite" className="text-sm text-ink-muted">
-						{state.decision === "accept"
-							? t("ui.teamBridge.invitations.accepted", { agent })
-							: t("ui.teamBridge.invitations.declined", { agent })}
+						{agent ? t(outcomeKey, { agent }) : t(outcomeKey)}
 					</p>
 				)}
 			</div>

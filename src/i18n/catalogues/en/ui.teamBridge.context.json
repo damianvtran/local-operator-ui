@@ -1576,7 +1576,7 @@
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "Short; one line.",
 		"placeholders": {
-			"agent": "the reader's own agent's display name, or the fallback 'your agent'"
+			"agent": "the reader's own agent's display name, or the lowercase fallback 'your agent'"
 		},
 		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. States that the reader's agent is the invitee of this conversation."
 	},
@@ -1585,7 +1585,7 @@
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "Short; one line.",
 		"placeholders": {},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Fills {agent} when the agent has no name; it can start a sentence."
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Fills {agent} when the agent has no name; the sentence-internal outcome copy uses *_unnamed instead; it never starts a sentence."
 	},
 	"ui.teamBridge.invitations.added_by": {
 		"role": "invitations added by",
@@ -1652,18 +1652,32 @@
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "One or two sentences; permit wrapping.",
 		"placeholders": {
-			"agent": "the reader's own agent's display name, or the fallback 'Your agent'"
+			"agent": "the reader's own agent's display name, always a display name; the no-name wording is accepted_unnamed"
 		},
 		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Accept; same wake rule as the consent statement."
+	},
+	"ui.teamBridge.invitations.accepted_unnamed": {
+		"role": "invitations accepted unnamed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Accept; same wake rule as the consent statement. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence."
 	},
 	"ui.teamBridge.invitations.declined": {
 		"role": "invitations declined",
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "Short; one line.",
 		"placeholders": {
-			"agent": "the reader's own agent's display name, or the fallback 'Your agent'"
+			"agent": "the reader's own agent's display name, always a display name; the no-name wording is declined_unnamed"
 		},
 		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Decline. Neutral on purpose: it must stay true whether or not the agent had already joined from another device."
+	},
+	"ui.teamBridge.invitations.declined_unnamed": {
+		"role": "invitations declined unnamed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Decline. Neutral on purpose: it must stay true whether or not the agent had already joined from another device. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence."
 	},
 	"ui.teamBridge.invitations.failed.agent_unavailable": {
 		"role": "invitations agent unavailable",

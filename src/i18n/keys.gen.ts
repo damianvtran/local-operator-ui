@@ -8362,6 +8362,7 @@ export type MessageParams = {
 	"ui.teamBridge.group.more": undefined;
 	"ui.teamBridge.invitations.accept": undefined;
 	"ui.teamBridge.invitations.accepted": { agent: string };
+	"ui.teamBridge.invitations.accepted_unnamed": undefined;
 	"ui.teamBridge.invitations.accepting": undefined;
 	"ui.teamBridge.invitations.added_by": { name: string };
 	"ui.teamBridge.invitations.added_by_you": undefined;
@@ -8373,6 +8374,7 @@ export type MessageParams = {
 	"ui.teamBridge.invitations.created_by_you": undefined;
 	"ui.teamBridge.invitations.decline": undefined;
 	"ui.teamBridge.invitations.declined": { agent: string };
+	"ui.teamBridge.invitations.declined_unnamed": undefined;
 	"ui.teamBridge.invitations.declining": undefined;
 	"ui.teamBridge.invitations.empty": undefined;
 	"ui.teamBridge.invitations.failed.agent_unavailable": undefined;

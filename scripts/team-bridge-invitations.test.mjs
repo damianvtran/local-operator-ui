@@ -341,6 +341,30 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	// Neutral: true even if the agent had already joined from another device.
 	assert.equal(declined.includes("Declined for Robo Damian."), true);
 	assert.equal(declined.includes("not added"), false);
+
+	// A missing name must not inject a capitalized fallback into either outcome.
+	const unnamed = invitation({ agentName: null });
+	const unnamedLine = renderView({ invitations: [unnamed] });
+	assert.equal(
+		unnamedLine.includes("your agent was invited to this conversation"),
+		true,
+	);
+	const unnamedAccepted = renderView({
+		invitations: [unnamed],
+		rowStates: { "tnt_1|bcv_1": { phase: "done", decision: "accept" } },
+	});
+	assert.equal(
+		unnamedAccepted.includes(
+			"Accepted. Your agent is woken only when someone @-mentions it.",
+		),
+		true,
+	);
+	const unnamedDeclined = renderView({
+		invitations: [unnamed],
+		rowStates: { "tnt_1|bcv_1": { phase: "done", decision: "decline" } },
+	});
+	assert.equal(unnamedDeclined.includes("Declined for your agent."), true);
+	assert.equal(unnamedDeclined.includes("Declined for Your agent."), false);
 	assert.equal(done.includes(">Accept<"), false);
 
 	const loadFailed = renderView({ listState: "error" });
