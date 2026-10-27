@@ -1347,11 +1347,29 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								onOpenProject={(key) =>
 									navigate(`/projects/${encodeURIComponent(key)}`)
 								}
-								onAsksSettled={() =>
+								/*
+								 * AN ANSWERED ASK REFRESHES FACTS, NOT WINDOWS (code round 8, N1).
+								 * `notificationKeys.all` also reached the reel's and the drawer's
+								 * scroll windows, so answering from the detail re-walked every
+								 * loaded page. The ask's effects live in page one's facts (the
+								 * `waiting` group), each conversation's facts, the rail's count
+								 * (`waiting_count`), and this detail's own `asks` - the asks have
+								 * no query of their own here; the detail read carries them.
+								 */
+								onAsksSettled={() => {
 									void client.invalidateQueries({
-										queryKey: notificationKeys.all,
-									})
-								}
+										queryKey: notificationKeys.factsRoot,
+									});
+									void client.invalidateQueries({
+										queryKey: notificationKeys.sessionFactsAll,
+									});
+									void client.invalidateQueries({
+										queryKey: notificationKeys.count,
+									});
+									void client.invalidateQueries({
+										queryKey: notificationKeys.detail(openItem.id),
+									});
+								}}
 							/>
 						) : (
 							<DetailEmpty />
