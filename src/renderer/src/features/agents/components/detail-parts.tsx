@@ -124,11 +124,20 @@ export function ReadBlock({
 	text,
 	empty = "Nothing here yet.",
 	mono = false,
+	showAllLabel = "Show all",
+	showLessLabel = "Show less",
 }: {
 	text: string;
 	empty?: string;
 	/** Machine voice (a packaged prompt shown for comparison), per branding §5. */
 	mono?: boolean;
+	/**
+	 * The expander's words. The defaults are the English the agent and team
+	 * panes have always printed; a caller that has keyed its copy (the Skills
+	 * tab) passes its own so the block is reused rather than copied.
+	 */
+	showAllLabel?: string;
+	showLessLabel?: string;
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const [overflows, setOverflows] = useState(false);
@@ -203,7 +212,7 @@ export function ReadBlock({
 					aria-expanded={expanded}
 					onClick={() => setExpanded((value) => !value)}
 				>
-					{expanded ? "Show less" : "Show all"}
+					{expanded ? showLessLabel : showAllLabel}
 				</Button>
 			) : null}
 		</div>
@@ -656,7 +665,12 @@ export function PaneError({
 	meaning,
 	onRetry,
 	retrying = false,
+	retryLabel = "Retry",
+	retryingLabel = "Retrying…",
 }: {
+	/** The Retry button's words; defaults are the English the older panes print. */
+	retryLabel?: string;
+	retryingLabel?: string;
 	title: string;
 	/** What happened, in one sentence. */
 	what: string;
@@ -671,7 +685,7 @@ export function PaneError({
 			<p className="text-body-sm text-ink">{what}</p>
 			<p className="text-body-sm text-ink-muted">{meaning}</p>
 			<Button variant="secondary" onClick={onRetry} disabled={retrying}>
-				{retrying ? "Retrying…" : "Retry"}
+				{retrying ? retryingLabel : retryLabel}
 			</Button>
 		</div>
 	);

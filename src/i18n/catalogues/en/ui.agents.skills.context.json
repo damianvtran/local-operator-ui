@@ -1,0 +1,267 @@
+{
+	"ui.agents.skills.detail.body_not_installed": {
+		"note": "Detail view, for a row whose content is absent.",
+		"role": "empty body explanation",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.body_truncated": {
+		"note": "{size} is a formatted size such as '312 KB'. Never imply the text on screen is complete.",
+		"role": "notice that the body is cut",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.body_unavailable": {
+		"note": "Detail view, for an installed skill whose body did not come back.",
+		"role": "empty body explanation",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.file_bytes": {
+		"note": "ICU plural. Used below 1 kB; larger sizes use a shared formatter.",
+		"role": "size of a small file",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.files_count": {
+		"note": "ICU plural.",
+		"role": "count of listed reference files",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.files_none": {
+		"note": "Detail view.",
+		"role": "empty files sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.files_truncated_more": {
+		"note": "Shown when the folder walk itself was cut, so the real total is unknown.",
+		"role": "notice that the file list is cut",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.files_truncated_of": {
+		"note": "Shown when core listed fewer files than the folder holds. 'at least' is deliberate: when the folder walk itself was cut the total is a lower bound, so the sentence must stay true in both cases.",
+		"role": "notice that the file list is cut",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.fingerprint": {
+		"note": "Detail view, identity list. A content hash that changes when the skill's bytes change.",
+		"role": "label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.fingerprint_none": {
+		"note": "Backend gave no fingerprint (unreadable folder, or subscribed but not installed).",
+		"role": "value of Fingerprint",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.form.bundle": {
+		"note": "The skill is a folder with extra files.",
+		"role": "value of Form",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.form.document": {
+		"note": "The skill is one SKILL.md document.",
+		"role": "value of Form",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.form.unknown": {
+		"note": "Backend gave no form.",
+		"role": "value of Form",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.form_label": {
+		"note": "Detail view, identity list. Followed by the value.",
+		"role": "label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.installed_not": {
+		"note": "Meta-line fact for a hub-managed skill whose content is not on this machine yet: the reader subscribed to it but nothing is downloaded.",
+		"role": "status fact in the detail header",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.preview_aria": {
+		"note": "{path} is a relative file path and is never translated.",
+		"role": "accessible name for a file preview region",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.preview_none": {
+		"note": "Binary or unreadable files have no text preview.",
+		"role": "empty preview sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.preview_truncated": {
+		"note": "Under an opened file preview.",
+		"role": "notice that a file preview is cut",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.section.body": {
+		"note": "Detail view. SKILL.md is the file name and stays as is.",
+		"role": "section heading",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.section.description": {
+		"note": "Detail view.",
+		"role": "section heading",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.section.files": {
+		"note": "Detail view. Files that sit beside SKILL.md and that the skill can point to.",
+		"role": "section heading",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.section.hub": {
+		"note": "Detail view. Holds the hub state sentence. Product name.",
+		"role": "section heading",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.section.identity": {
+		"note": "Detail view. Holds the form and fingerprint.",
+		"role": "section heading",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.section.where": {
+		"note": "Detail view.",
+		"role": "section heading",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.show_all": {
+		"note": "Expands the clamped SKILL.md text in place. Same words as the Agents page's own Show all.",
+		"role": "link-style button label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.show_less": {
+		"note": "Collapses the expanded SKILL.md text again.",
+		"role": "link-style button label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.empty.none": {
+		"note": "The skills tab has nothing to list at all (no built-in, hub, local, external or project skills were found). Distinct from the no-match sentence.",
+		"role": "empty roster sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.empty.search": {
+		"note": "{query} is what the reader typed, echoed verbatim between curly quotes. Distinct from the nothing-at-all sentence.",
+		"role": "empty roster sentence after a search",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.detail_meaning": {
+		"note": "Two plausible causes, stated plainly, no blame.",
+		"role": "explanation of a failed details read",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.detail_title": {
+		"note": "{name} is the skill's identifier, shown between curly quotes.",
+		"role": "heading of the details-read failure",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.meaning": {
+		"note": "Says the failure is about reading, not about any skill being changed.",
+		"role": "reassurance line of a failed read",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.title": {
+		"note": "What happened, first line of a three-part failure block (what, meaning, retry).",
+		"role": "heading of the list-read failure",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.what_fallback": {
+		"note": "Used only when the failure carries no message of its own.",
+		"role": "fallback sentence when the backend gave no message",
+		"tone": "plain"
+	},
+	"ui.agents.skills.hub.unlinked": {
+		"note": "A skill the hub manages whose link could not be matched. Not the same as 'Not downloaded': the skill IS on this machine.",
+		"role": "hub state: no matching link",
+		"tone": "plain"
+	},
+	"ui.agents.skills.hub.unlinked_help": {
+		"note": "Detail view only. Calm; no instruction to fix anything.",
+		"role": "explanation of the unconfirmed hub link",
+		"tone": "plain"
+	},
+	"ui.agents.skills.list_aria": {
+		"note": "Names the list of skill rows for assistive tech; same word as the tab.",
+		"role": "accessible name for the roster list",
+		"tone": "plain"
+	},
+	"ui.agents.skills.retrying": {
+		"note": "Replaces 'Retry' while the failed read is being repeated. Ellipsis character, not three dots.",
+		"role": "busy label of the Retry button",
+		"tone": "plain"
+	},
+	"ui.agents.skills.search": {
+		"note": "Placeholder of the roster search while the Skills tab is open. Mirrors 'Search agents' and 'Search teams'.",
+		"role": "search field placeholder",
+		"tone": "plain"
+	},
+	"ui.agents.skills.search_aria": {
+		"note": "No visible label exists, so this is the field's only name while the Skills tab is open.",
+		"role": "accessible name for the roster search",
+		"tone": "plain"
+	},
+	"ui.agents.skills.select_prompt": {
+		"note": "Shown when no skill is open. 'Read-only' tells the reader nothing on this tab can be edited yet. One calm sentence, no call to action.",
+		"role": "hint in the empty detail column",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.builtin": {
+		"note": "Where a skill lives. Same word as the Agents scope filter 'Built-in'.",
+		"role": "source label: ships with the app",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.external": {
+		"note": "A skill found in a folder owned by another coding tool (for example Claude or Codex). Read-only here.",
+		"role": "source label: another tool's skills folder",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.hub": {
+		"note": "'Agent Hub' is the product name and stays untranslated if the locale keeps product names in Latin script.",
+		"role": "source label: managed from Agent Hub",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.local": {
+		"note": "A skill the reader keeps in their own skills folder with no hub link.",
+		"role": "source label: made on this machine",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.project": {
+		"note": "A skill found in the skills folder of a project. Read-only here.",
+		"role": "source label: a project folder's skills",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.unknown": {
+		"note": "Shown when the backend sends a source this version does not know.",
+		"role": "source label fallback",
+		"tone": "plain"
+	},
+	"ui.agents.skills.tab": {
+		"note": "The third tab of the Agents page. One short noun, sentence case; the count is rendered next to it separately.",
+		"role": "tab label beside Agents and Teams",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.builtin": {
+		"note": "Detail view, 'Where it lives' section.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.external": {
+		"note": "Detail view, 'Where it lives' section.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.hub": {
+		"note": "Detail view, 'Where it lives' section. Agent Hub is the product name.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.local": {
+		"note": "Detail view, 'Where it lives' section.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.project": {
+		"note": "Detail view, 'Where it lives' section.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.unknown": {
+		"note": "Detail view, 'Where it lives' section, for an unrecognised source.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	}
+}

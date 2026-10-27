@@ -33,6 +33,7 @@ import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
 import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
+import enUiAgentsSkills from "./catalogues/en/ui.agents.skills.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
 import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
@@ -788,6 +789,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
+	...enUiAgentsSkills,
 	...enUiAgentsStarters,
 	...enUiAgentsTeams,
 	...enUiAgentsUpload,
@@ -2067,6 +2069,62 @@ export type MessageParams = {
 	"ui.agents.settings.system_prompt.enter_instructions_for_the_agent": undefined;
 	"ui.agents.settings.system_prompt.loading_system_prompt": undefined;
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": undefined;
+	"ui.agents.skills.detail.body_not_installed": undefined;
+	"ui.agents.skills.detail.body_truncated": { size: string };
+	"ui.agents.skills.detail.body_unavailable": undefined;
+	"ui.agents.skills.detail.file_bytes": { count: number };
+	"ui.agents.skills.detail.files_count": { count: number };
+	"ui.agents.skills.detail.files_none": undefined;
+	"ui.agents.skills.detail.files_truncated_more": { shown: number };
+	"ui.agents.skills.detail.files_truncated_of": {
+		shown: number;
+		total: number;
+	};
+	"ui.agents.skills.detail.fingerprint": undefined;
+	"ui.agents.skills.detail.fingerprint_none": undefined;
+	"ui.agents.skills.detail.form.bundle": undefined;
+	"ui.agents.skills.detail.form.document": undefined;
+	"ui.agents.skills.detail.form.unknown": undefined;
+	"ui.agents.skills.detail.form_label": undefined;
+	"ui.agents.skills.detail.installed_not": undefined;
+	"ui.agents.skills.detail.preview_aria": { path: string };
+	"ui.agents.skills.detail.preview_none": undefined;
+	"ui.agents.skills.detail.preview_truncated": undefined;
+	"ui.agents.skills.detail.section.body": undefined;
+	"ui.agents.skills.detail.section.description": undefined;
+	"ui.agents.skills.detail.section.files": undefined;
+	"ui.agents.skills.detail.section.hub": undefined;
+	"ui.agents.skills.detail.section.identity": undefined;
+	"ui.agents.skills.detail.section.where": undefined;
+	"ui.agents.skills.detail.show_all": undefined;
+	"ui.agents.skills.detail.show_less": undefined;
+	"ui.agents.skills.empty.none": undefined;
+	"ui.agents.skills.empty.search": { query: string };
+	"ui.agents.skills.error.detail_meaning": undefined;
+	"ui.agents.skills.error.detail_title": { name: string };
+	"ui.agents.skills.error.meaning": undefined;
+	"ui.agents.skills.error.title": undefined;
+	"ui.agents.skills.error.what_fallback": undefined;
+	"ui.agents.skills.hub.unlinked": undefined;
+	"ui.agents.skills.hub.unlinked_help": undefined;
+	"ui.agents.skills.list_aria": undefined;
+	"ui.agents.skills.retrying": undefined;
+	"ui.agents.skills.search": undefined;
+	"ui.agents.skills.search_aria": undefined;
+	"ui.agents.skills.select_prompt": undefined;
+	"ui.agents.skills.source.builtin": undefined;
+	"ui.agents.skills.source.external": undefined;
+	"ui.agents.skills.source.hub": undefined;
+	"ui.agents.skills.source.local": undefined;
+	"ui.agents.skills.source.project": undefined;
+	"ui.agents.skills.source.unknown": undefined;
+	"ui.agents.skills.tab": undefined;
+	"ui.agents.skills.where.builtin": undefined;
+	"ui.agents.skills.where.external": undefined;
+	"ui.agents.skills.where.hub": undefined;
+	"ui.agents.skills.where.local": undefined;
+	"ui.agents.skills.where.project": undefined;
+	"ui.agents.skills.where.unknown": undefined;
 	"ui.agents.starters.action.all_builtins": undefined;
 	"ui.agents.starters.action.all_count": { count: number };
 	"ui.agents.starters.action.done": undefined;

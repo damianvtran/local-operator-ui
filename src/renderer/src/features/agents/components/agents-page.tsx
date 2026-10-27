@@ -72,7 +72,7 @@ import type { MessageKey } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Bot, Plus, Search, Users } from "lucide-react";
+import { ArrowLeft, Bot, Plus, Search, Sparkles, Users } from "lucide-react";
 import {
 	Suspense,
 	lazy,
@@ -94,6 +94,8 @@ import {
 	profileEditorIdentity,
 	teamEditorIdentity,
 } from "../definition-editor-identity";
+import { useSkillDetail, useSkillsTab } from "../hooks/use-skills-library";
+import { filterSkills } from "../skills-library-model";
 import { CLASS_LABEL, classOf } from "../utils/agent-class";
 import { AgentCreate, AgentDetail } from "./agent-detail";
 import {
@@ -105,6 +107,11 @@ import {
 } from "./detail-parts";
 import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
+import {
+	SkillDetail,
+	SkillsRosterBody,
+	skillSourceWord,
+} from "./skills-library";
 import { TeamDetail, memberCountLabel } from "./team-detail";
 
 // Old UUID links remain ordinary chat-agent settings, not reusable profiles.
@@ -200,6 +207,14 @@ export function AgentsPage() {
 	const { agentId } = useParams<{ agentId?: string }>();
 	const [params, setParams] = useSearchParams();
 
+	/*
+	 * THE SKILLS TAB IS A THIRD VALUE OF THE SAME `kind` PARAMETER and, like the
+	 * other two, is read from the URL so Back/Forward and deep links work. It is
+	 * only honoured when core advertises `skill_library` (below): `kind=skill`
+	 * against a backend without it falls back to the Agents tab, so a stale link
+	 * can never land on a tab whose cards the backend cannot fill.
+	 */
+	const wantsSkills = params.get("kind") === "skill";
 	const teamMode =
 		params.get("kind") === "team" || params.get("create") === "team";
 	const creating = params.has("create");
@@ -207,6 +222,11 @@ export function AgentsPage() {
 	const duplicateOf = params.get("duplicate");
 
 	const capabilities = useDesktopCapabilities();
+	const skillsOffered = desktopFeatureEnabled(
+		capabilities.data,
+		"skill_library",
+	);
+	const skillMode = wantsSkills && skillsOffered && !creating;
 	const catalogueEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		teamMode ? "team_catalogue" : "profile_catalogue",
@@ -222,6 +242,20 @@ export function AgentsPage() {
 	 */
 	const profiles = useProfiles(catalogueEnabled);
 	const teams = useTeams(catalogueEnabled);
+	/*
+	 * THE SKILL READS RUN ONLY WITH THE CAPABILITY. Not "on the Skills tab only":
+	 * the tab's count is part of the strip, so the list is read whenever the tab is
+	 * offered. Without `skill_library` nothing here sends a request.
+	 */
+	const skills = useSkillsTab({
+		enabled: skillsOffered,
+		linksEnabled: desktopFeatureEnabled(capabilities.data, "hub_links"),
+		updatesEnabled: desktopFeatureEnabled(capabilities.data, "hub_updates"),
+	});
+	const skillDetail = useSkillDetail(
+		skillMode ? params.get("name") : null,
+		skillsOffered,
+	);
 	const detailEnabled = catalogueEnabled && Boolean(name) && !creating;
 
 	const profileDetail = useProfileDetail(teamMode ? null : name, detailEnabled);
@@ -331,6 +365,12 @@ export function AgentsPage() {
 		[teams.data, search],
 	);
 	const rows = teamMode ? teamRows : agentRows;
+	/*
+	 * The filter matches the TRANSLATED source word, so a reader can type what they
+	 * see. No memo: the page re-renders on a language change (`useI18nLocale`), and
+	 * the filter is a linear pass over a few dozen rows.
+	 */
+	const skillRows = filterSkills(skills.cards, search, skillSourceWord);
 	const selected = name ?? null;
 	/*
 	 * THE CLASS SWITCH'S FAILURE SENTENCE LIVES HERE, at the level that survives
@@ -357,8 +397,10 @@ export function AgentsPage() {
 	const go = useCallback(
 		(next: NavIntent) => {
 			const search = new URLSearchParams();
-			const kind = next.kind ?? (teamMode ? "team" : "agent");
+			const kind =
+				next.kind ?? (skillMode ? "skill" : teamMode ? "team" : "agent");
 			if (kind === "team") search.set("kind", "team");
+			if (kind === "skill") search.set("kind", "skill");
 			if (next.name) search.set("name", next.name);
 			if (next.create !== null && next.create !== undefined)
 				search.set("create", next.create);
@@ -368,7 +410,7 @@ export function AgentsPage() {
 			setPendingNav(null);
 			setParams(search);
 		},
-		[teamMode, setParams],
+		[teamMode, skillMode, setParams],
 	);
 
 	/*
@@ -386,7 +428,7 @@ export function AgentsPage() {
 	 * that remembers to clear it. The panes withdraw their report on unmount too,
 	 * which covers the same window from the other side.
 	 */
-	const paneIdentity = `${teamMode ? "team" : "agent"}:${creating ?? ""}:${selected ?? ""}`;
+	const paneIdentity = `${skillMode ? "skill" : teamMode ? "team" : "agent"}:${creating ?? ""}:${selected ?? ""}`;
 	const reportDirty = useCallback(
 		(dirty: boolean) => setDirtyIdentity(dirty ? paneIdentity : null),
 		[paneIdentity],
@@ -590,9 +632,9 @@ export function AgentsPage() {
 	 * on a timer.
 	 */
 	useEffect(() => {
-		if (!selected) return;
+		if (!selected || skillMode) return;
 		clearMark({ kind: teamMode ? "team" : "agent", name: selected });
-	}, [selected, teamMode, clearMark]);
+	}, [selected, teamMode, skillMode, clearMark]);
 
 	const refreshAll = () => {
 		void profiles.refetch();
@@ -628,7 +670,7 @@ export function AgentsPage() {
 	 * put two composers, two strips and two of every id on screen (M3/D3/U2/Q8).
 	 */
 	const showsEmptyPane =
-		catalogueEnabled && !listError && !creating && !selected;
+		!skillMode && catalogueEnabled && !listError && !creating && !selected;
 
 	const detailLoading = teamMode
 		? teamDetail.isLoading
@@ -676,9 +718,12 @@ export function AgentsPage() {
 				 */}
 				<div className="space-y-2">
 					<Tabs
-						value={teamMode ? "team" : "agent"}
+						value={skillMode ? "skill" : teamMode ? "team" : "agent"}
 						onValueChange={(next) =>
-							requestGo({ kind: next as "agent" | "team", name: null })
+							requestGo({
+								kind: next as "agent" | "team" | "skill",
+								name: null,
+							})
 						}
 					>
 						<TabsList
@@ -711,6 +756,27 @@ export function AgentsPage() {
 									</span>
 								) : null}
 							</TabsTrigger>
+							{/*
+							 * THE THIRD TAB, OFFERED ONLY WHEN CORE SAYS IT CAN FILL IT
+							 * (`skill_library`). Absent, the strip is the two-tab strip it
+							 * always was and the page sends no skill request. Same trigger,
+							 * same icon size, same count slot as its siblings.
+							 */}
+							{skillsOffered ? (
+								<TabsTrigger
+									value="skill"
+									className="flex-1"
+									data-testid="skills-tab"
+								>
+									<Sparkles className="size-3.5" />
+									{t("ui.agents.skills.tab")}
+									{skills.library.data ? (
+										<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
+											{skills.cards.length}
+										</span>
+									) : null}
+								</TabsTrigger>
+							) : null}
 						</TabsList>
 					</Tabs>
 
@@ -722,11 +788,17 @@ export function AgentsPage() {
 						<Input
 							className="ps-8"
 							type="search"
-							aria-label={t("ui.agents.pages.search_aria")}
+							aria-label={
+								skillMode
+									? t("ui.agents.skills.search_aria")
+									: t("ui.agents.pages.search_aria")
+							}
 							placeholder={
-								teamMode
-									? t("ui.agents.pages.search.teams")
-									: t("ui.agents.pages.search.agents")
+								skillMode
+									? t("ui.agents.skills.search")
+									: teamMode
+										? t("ui.agents.pages.search.teams")
+										: t("ui.agents.pages.search.agents")
 							}
 							value={search}
 							onChange={(event) => setSearch(event.target.value)}
@@ -740,7 +812,7 @@ export function AgentsPage() {
 					 * Teams have no `source` on the wire, so the control is the agents' alone
 					 * rather than a chip row that does nothing.
 					 */}
-					{!teamMode && profiles.data ? (
+					{!teamMode && !skillMode && profiles.data ? (
 						<fieldset className="m-0 min-w-0 border-0 p-0">
 							<legend className="sr-only">
 								{t("ui.agents.pages.scope_legend")}
@@ -783,7 +855,18 @@ export function AgentsPage() {
 					data-lo-pane-edge-cues
 					className="min-h-0 flex-1 overflow-y-auto"
 				>
-					{listError ? null : !profiles.data && !teams.data ? (
+					{skillMode ? (
+						<SkillsRosterBody
+							loading={skills.library.isLoading}
+							failed={Boolean(skills.library.error)}
+							cards={skillRows}
+							total={skills.cards.length}
+							search={search}
+							selected={selected}
+							join={skills.join}
+							onOpen={(rowName) => requestGo({ name: rowName })}
+						/>
+					) : listError ? null : !profiles.data && !teams.data ? (
 						<RosterSkeleton />
 					) : rows.length === 0 ? (
 						<p className="px-1 py-2 text-body-sm text-ink-muted">
@@ -819,7 +902,10 @@ export function AgentsPage() {
 				 */}
 				<Button
 					variant="ghost"
-					className="w-full justify-start"
+					// `hidden` (display:none) on the Skills tab: there is nothing to add by
+					// hand until U2, and a class rather than a conditional keeps this block
+					// byte-identical to the Agents/Teams one it shares.
+					className={cn("w-full justify-start", skillMode && "hidden")}
 					disabled={!catalogueEnabled}
 					onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
 				>
@@ -950,7 +1036,49 @@ export function AgentsPage() {
 						 */
 						<div className={CHAT_COLUMN_CONTAINER}>
 							<div className={CHAT_MEASURE}>
-								{!catalogueEnabled ? (
+								{skillMode ? (
+									/*
+									 * THE SKILLS PANE: a failed list read, a prompt, or the open
+									 * skill. No composer is docked below it (U3), and no create
+									 * form exists (U2), so the ladder is shorter than the
+									 * definitions' and shares none of their dirty-draft state.
+									 */
+									skills.library.error ? (
+										<PaneError
+											title={t("ui.agents.skills.error.title")}
+											what={
+												skills.library.error instanceof Error &&
+												skills.library.error.message
+													? skills.library.error.message
+													: t("ui.agents.skills.error.what_fallback")
+											}
+											meaning={t("ui.agents.skills.error.meaning")}
+											onRetry={() => void skills.library.refetch()}
+											retrying={skills.library.isFetching}
+											retryLabel={t("ui.common.actions.retry")}
+											retryingLabel={t("ui.agents.skills.retrying")}
+										/>
+									) : selected ? (
+										<SkillDetail
+											key={selected}
+											name={selected}
+											card={
+												skills.cards.find((card) => card.name === selected) ??
+												null
+											}
+											join={skills.join}
+											detail={skillDetail}
+											onRetry={() => void skillDetail.refetch()}
+										/>
+									) : (
+										<p
+											className="text-body-sm text-ink-muted"
+											data-testid="skills-select-prompt"
+										>
+											{t("ui.agents.skills.select_prompt")}
+										</p>
+									)
+								) : !catalogueEnabled ? (
 									/*
 									 * THREE STATES, THREE TITLES. While the capabilities read is in flight
 									 * the page used to shout "needs a newer backend" over a body that said
@@ -1186,7 +1314,7 @@ export function AgentsPage() {
 				 * so `<label for>` bound to the first only and a screen reader read every
 				 * state change twice. One composer, one placement.
 				 */}
-				{showsEmptyPane ? null : (
+				{showsEmptyPane || skillMode ? null : (
 					/*
 					 * THE DOCK ADDS NOTHING: no rule, no padding, no frame. The band inside
 					 * `MessageInput` already carries the 24 px side inset and the 8 / 16 px
@@ -1214,7 +1342,7 @@ export function AgentsPage() {
 
 /** Where the page can navigate to: one view of the same route. */
 type NavIntent = {
-	kind?: "agent" | "team";
+	kind?: "agent" | "team" | "skill";
 	name?: string | null;
 	create?: "agent" | "team" | null;
 	/** The name a "Duplicate as new agent" form starts from. */
