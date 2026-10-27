@@ -1543,6 +1543,25 @@ const ROW_STATE_GROUNDS = [
 		groundFile: TEAM_BRIDGE_PAGE,
 	},
 	{
+		/*
+		 * The Team Bridge page's own "Archived channels" entry (design round 1, D3).
+		 * It sits in the same `<aside>` as the rail's rows, so it is asserted on the
+		 * same ground: the selected fill is a step of `surface`, and the entry is the
+		 * one place on this page that paints the role outside the rail module.
+		 */
+		what: "the Team Bridge page's Archived channels entry",
+		rowFile: TEAM_BRIDGE_PAGE,
+		expression: () => expressionBefore(TEAM_BRIDGE_PAGE, "? rowCurrent"),
+		stubs: { quickView: "archived", rowCurrent },
+		ground: () =>
+			literalClassAt(
+				TEAM_BRIDGE_PAGE,
+				'data-glass-region="page-sidebar"',
+				"after",
+			),
+		groundFile: TEAM_BRIDGE_PAGE,
+	},
+	{
 		what: "the agents page's roster row",
 		rowFile: AGENTS_PAGE,
 		expression: () =>

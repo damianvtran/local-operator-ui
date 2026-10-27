@@ -40,6 +40,7 @@ import type {
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
+import { rowCurrent } from "../chat/components/chat-sidebar";
 import {
 	TeamBridgeArchiveDialog,
 	TeamBridgeArchivedBanner,
@@ -1359,7 +1360,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									   mark `aria-current` only, so this is the one entry that is also
 									   visibly current while its view is open (design round 1, D3). */
 									quickView === "archived"
-										? "bg-row-selected font-medium text-ink hover:bg-row-selected"
+										? rowCurrent
 										: "text-ink-muted hover:bg-row-hover",
 								)}
 							>
