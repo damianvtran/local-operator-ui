@@ -1,0 +1,77 @@
+{
+  "audit_id": "teambridge-human-badge-audit-e2cc7b3bceb8",
+  "date": "2026-10-26",
+  "locale": "zh-CN",
+  "namespace": "ui.teamBridge",
+  "source_commit": "5a4f5df22b0b5665dedd628147df417bbf111dd5",
+  "translator": {
+    "agent": "translator",
+    "role_label": "Local Operator task subagent",
+    "session": "0b54a00af908",
+    "model": "anthropic/claude-opus-5-5",
+    "fallback": "none",
+    "commit": "5a4f5df22b0b5665dedd628147df417bbf111dd5",
+    "rationale_note": "Translator rationale was read from the coordinating session's scratchpad (i18n-human-badge-translations.json); every value and file hash in it matches the committed bytes."
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-26",
+      "result": "clean",
+      "instance": "e2cc7b3bceb8",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/e2cc7b3bceb8.json",
+      "receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+      "scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity."
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+      "sha256": "716bc20303a644f41f8560505768c80216a17db4c9cdad69fd09dc866f9051c5"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "fc3b5d401f601b14a38bb724d5dac95aa226ad53072d4f4addd698b98d781e88"
+    }
+  },
+  "audited": {
+    "key": "ui.teamBridge.profile.human_badge",
+    "en": "Human",
+    "target": "人类",
+    "agent_badge": "智能体",
+    "verdict": "PASS. '人类' is the established label for the human role opposite an AI/智能体 in Chinese AI products (e.g. role labels 人类/AI); '个人' meant 'personal/individual' and read as an account type. '真人' would add a 'real person / live-action' nuance; '人' alone is too bare for a badge. Two characters, terse per the style guide, balances '智能体'."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "independence": "Independent auditor. This run produced none of the audited strings: the translator (session 0b54a00af908) authored them in commit 5a4f5df22b0b. This run read the catalogues, context sidecar, glossary and style guides, and wrote only this receipt, the per-locale evidence records and (via ledger-assemble.mjs) the ledger rows. No catalogue byte was edited.",
+  "limitations": [
+    "Single-key delta audit; 207 inherited keys per locale not re-read.",
+    "No rendered frame, screenshot, pseudo-localization or RTL layout evidence (no browser tool in this auditor session).",
+    "Second independent audit not performed; this key is a hover-card badge, not a high-visibility group."
+  ],
+  "named_receipt": {
+    "path": "i18n/receipts/teambridge-human-badge-audit-e2cc7b3bceb8.json",
+    "sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22"
+  }
+}
