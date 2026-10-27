@@ -1889,10 +1889,17 @@ const SCHEDULE_404 = {
 	status: 404,
 	body: { detail: { code: "not_found", message: "not found" } },
 };
-const CONFLICT_COPY =
-	"This message changed on another device. The latest version is shown with your changes kept where they don't clash. Review it and try again.";
+// Design review round 1 (D1/D2/D7): the conflict notice is a headline plus
+// one line per field that moved, then the next step; asserted line by line.
+const CONFLICT_HEAD = "This message changed on another device.";
+const CONFLICT_REVIEW =
+	"The latest version is shown, with the rest of your changes kept. Review it and try again.";
+const CONFLICT_NOTHING_LEFT =
+	"The latest version is shown. None of your changes are left to save.";
 const GONE_COPY =
-	"This message was cancelled or has already been sent, so it can no longer be changed.";
+	"This message was cancelled or already sent, so it can't be changed.";
+const EDIT_FAILED_COPY =
+	"Couldn't save your changes. They're still here. Try again.";
 const image = (id) => ({
 	id,
 	mime: "image/png",
@@ -1912,7 +1919,8 @@ async function mountScheduledEdit(initial, answer) {
 	const element = document.createElement("div");
 	document.body.append(element);
 	const root = createRoot(element);
-	const server = { rows: [initial] };
+	// `state`/`failedTenants` let a test make the REFRESH fail (review R1-01).
+	const server = { rows: [initial], state: "ready", failedTenants: [] };
 	const patches = [];
 	window.api = {
 		desktop: {
@@ -1924,12 +1932,22 @@ async function mountScheduledEdit(initial, answer) {
 	};
 	let setRows;
 	function Harness() {
-		const [rows, set] = React.useState(server.rows);
+		const [view, set] = React.useState({
+			rows: server.rows,
+			state: "ready",
+			failedTenants: [],
+		});
 		setRows = set;
 		return React.createElement(model.TeamBridgeScheduledListView, {
-			state: "ready",
-			messages: rows,
-			refresh: async () => setRows([...server.rows]),
+			state: view.state,
+			messages: view.rows,
+			failedTenants: view.failedTenants,
+			refresh: async () =>
+				setRows({
+					rows: [...server.rows],
+					state: server.state,
+					failedTenants: [...server.failedTenants],
+				}),
 		});
 	}
 	await act(async () => root.render(React.createElement(Harness)));
@@ -1963,6 +1981,21 @@ async function mountScheduledEdit(initial, answer) {
 		patches,
 		dialogOpen: () => dialog() !== null,
 		alert: () => dialog()?.querySelector('[role="alert"]')?.textContent ?? "",
+		alertLines: () =>
+			[...(dialog()?.querySelectorAll('[role="alert"] p') ?? [])].map(
+				(line) => line.textContent,
+			),
+		title: () => dialog()?.querySelector("h2")?.textContent ?? "",
+		bodyDisabled: () => dialog().querySelector("textarea").disabled,
+		// Lets a test move the list under an open dialog without a request.
+		pushList: async () =>
+			act(async () =>
+				setRows({
+					rows: [...server.rows],
+					state: server.state,
+					failedTenants: [...server.failedTenants],
+				}),
+			),
 		body: () => dialog().querySelector("textarea").value,
 		when: () => dialog().querySelector('input[type="datetime-local"]').value,
 		buttonText,
@@ -1970,8 +2003,10 @@ async function mountScheduledEdit(initial, answer) {
 		setWhen: (value) =>
 			type('input[type="datetime-local"]', dom.window.HTMLInputElement, value),
 		setBody: (value) => type("textarea", dom.window.HTMLTextAreaElement, value),
+		// A failed submit keeps its confirmed step, so Review may already be past.
 		confirm: async () => {
-			await click("Review schedule");
+			if (buttonText().includes("Review schedule"))
+				await click("Review schedule");
 			await click("Confirm schedule");
 		},
 		close: async () => {
@@ -2070,7 +2105,11 @@ test("U1: a stale time-only retry after concurrent_edit keeps the other device's
 		await ui.setWhen(later);
 		await ui.confirm();
 		assert.equal(ui.patches.length, 1);
-		assert.equal(ui.alert(), CONFLICT_COPY);
+		assert.deepEqual(ui.alertLines(), [
+			CONFLICT_HEAD,
+			"An image was added on the other device.",
+			CONFLICT_REVIEW,
+		]);
 		assert.equal(ui.when(), later, "this user's time change survives");
 		assert.equal(ui.body(), "release notes");
 		await ui.confirm();
@@ -2124,7 +2163,11 @@ test("U2: a stale Remove-all retry after concurrent_edit does not revert the oth
 	try {
 		await ui.click("Remove images");
 		await ui.confirm();
-		assert.equal(ui.alert(), CONFLICT_COPY);
+		assert.deepEqual(ui.alertLines(), [
+			CONFLICT_HEAD,
+			"The text was changed on the other device.",
+			CONFLICT_REVIEW,
+		]);
 		assert.equal(ui.body(), "new text", "re-seeded from the refreshed row");
 		assert.equal(
 			ui.buttonText().includes("Remove images"),
@@ -2166,7 +2209,12 @@ test("U3: a 404 for a swapped image rebases onto the new set instead of looping"
 	try {
 		await ui.setWhen(later);
 		await ui.confirm();
-		assert.equal(ui.alert(), CONFLICT_COPY);
+		assert.deepEqual(ui.alertLines(), [
+			CONFLICT_HEAD,
+			"An image was added on the other device.",
+			"An image was removed on the other device.",
+			CONFLICT_REVIEW,
+		]);
 		assert.equal(ui.when(), later);
 		await ui.confirm();
 		assert.equal(ui.patches.length, 2);
@@ -2234,11 +2282,263 @@ test("a generic edit failure shows edit copy, not the create sentence", async ()
 	try {
 		await ui.setBody("edited");
 		await ui.confirm();
-		assert.equal(
-			ui.alert(),
-			"Your change was not confirmed. Your edits are kept here; review them and try again.",
-		);
+		assert.equal(ui.alert(), EDIT_FAILED_COPY);
 		assert.equal(ui.body(), "edited");
+	} finally {
+		await ui.close();
+	}
+});
+
+/* --------------------- PR #1444 review round 1 remediation -------------------- */
+
+const UNAVAILABLE_503 = {
+	status: 503,
+	body: { detail: { code: "messaging_unavailable", message: "unavailable" } },
+};
+const editRow = (id, extra = {}) => ({
+	id,
+	tenant_id: "org_a",
+	conversation_id: "bcv_a",
+	body: "draft text",
+	send_at: inMinutes(120),
+	status: "scheduled",
+	created_at: new Date().toISOString(),
+	...extra,
+});
+
+test("R1-01: a failed refresh for the row's organization is not 'gone'; two orgs", async () => {
+	const other = { ...editRow("bsch_other"), tenant_id: "org_b" };
+	const ui = await mountScheduledEdit(
+		editRow("bsch_r101"),
+		(_request, server) => {
+			// The hub is down: the edit fails AND org_a's list read fails, so the
+			// refreshed list lacks the row while naming org_a in failedTenants.
+			server.rows = [other];
+			server.failedTenants = ["org_a"];
+			return UNAVAILABLE_503;
+		},
+	);
+	try {
+		ui.server.rows = [editRow("bsch_r101"), other];
+		await ui.pushList();
+		await ui.setBody("my careful edit");
+		await ui.confirm();
+		assert.equal(ui.dialogOpen(), true);
+		assert.equal(ui.alert(), EDIT_FAILED_COPY);
+		assert.equal(ui.alert().includes("cancelled"), false);
+		assert.equal(ui.body(), "my careful edit", "the typed edit survives");
+		assert.equal(ui.bodyDisabled(), false, "still editable");
+		// The submit stays live (it keeps its confirmed step after a failure).
+		assert.equal(ui.buttonText().includes("Confirm schedule"), true);
+		assert.equal(ui.title(), "Schedule message");
+	} finally {
+		await ui.close();
+	}
+});
+
+test("R1-01: a single-org list error keeps the open dialog mounted and editable", async () => {
+	const ui = await mountScheduledEdit(
+		editRow("bsch_single"),
+		(_request, server) => {
+			server.rows = [];
+			server.state = "error";
+			server.failedTenants = ["org_a"];
+			return UNAVAILABLE_503;
+		},
+	);
+	try {
+		await ui.setBody("still mine");
+		await ui.confirm();
+		assert.equal(ui.dialogOpen(), true, "the list error did not unmount it");
+		assert.equal(ui.alert(), EDIT_FAILED_COPY);
+		assert.equal(ui.body(), "still mine");
+		assert.equal(ui.bodyDisabled(), false);
+		// The list behind still says it failed to load.
+		assert.equal(
+			document.body.textContent.includes(
+				"Scheduled messages could not be loaded.",
+			),
+			true,
+		);
+		// When the hub comes back the retry goes through.
+		ui.server.rows = [editRow("bsch_single")];
+		ui.server.state = "ready";
+		ui.server.failedTenants = [];
+		window.api.desktop.request = async (request) => {
+			ui.patches.push(request);
+			ui.server.rows = [{ ...ui.server.rows[0], body: request.body }];
+			return { status: 200, body: { result: ui.server.rows[0] } };
+		};
+		await ui.confirm();
+		assert.equal(ui.patches.at(-1).body, "still mine");
+		assert.equal(ui.dialogOpen(), false);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("R1-02: expected_version pins the seeded row; a stale FIRST submit gets concurrent_edit", async () => {
+	const row = editRow("bsch_v", { version: 3, attachments: [image("a1")] });
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		// The hub's view: another device already moved the row to version 4 and
+		// added a2, which this dialog never saw.
+		if (request.expected_version !== 4) {
+			server.rows = [
+				{ ...row, version: 4, attachments: [image("a1"), image("a2")] },
+			];
+			return STALE_EDIT_409;
+		}
+		server.rows = [{ ...server.rows[0], version: 5, attachments: [] }];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.click("Remove images");
+		await ui.confirm();
+		assert.equal(ui.patches[0].expected_version, 3);
+		assert.deepEqual(ui.patches[0].attachment_ids, []);
+		assert.equal(ui.alertLines()[0], CONFLICT_HEAD);
+		assert.equal(
+			ui.alertLines().includes("An image was added on the other device."),
+			true,
+		);
+		// The rebased draft pins the NEW version and still removes only a1,
+		// the image this user removed; a2 shows up so the user can decide.
+		await ui.click("Remove images");
+		await ui.confirm();
+		assert.equal(ui.patches[1].expected_version, 4);
+		// Desktop wire body carries the field (core relays it to the hub).
+		const wire = model.desktopEndpoint(
+			model.desktopRequestSchema.parse(ui.patches[1]),
+		);
+		assert.equal(wire.body.expected_version, 4);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("R1-02: no version on the row (older hub) sends no expected_version", async () => {
+	const ui = await mountScheduledEdit(
+		editRow("bsch_nov"),
+		(request, server) => {
+			server.rows = [{ ...server.rows[0], body: request.body }];
+			return { status: 200, body: { result: server.rows[0] } };
+		},
+	);
+	try {
+		await ui.setBody("v-less edit");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 1);
+		assert.equal("expected_version" in ui.patches[0], false);
+		assert.equal(
+			"expected_version" in
+				model.desktopEndpoint(model.desktopRequestSchema.parse(ui.patches[0]))
+					.body,
+			false,
+		);
+	} finally {
+		await ui.close();
+	}
+	// A legacy row with an explicit null version parses and is treated the same.
+	assert.equal(
+		model.teamBridgeScheduledMessageSchema.parse(
+			editRow("bsch_null", { version: null }),
+		).version,
+		null,
+	);
+});
+
+test("R1-02: an older core refusing the unknown field (422 invalid_request) retries once without it", async () => {
+	const ui = await mountScheduledEdit(
+		editRow("bsch_core", { version: 0 }),
+		(request, server) => {
+			if ("expected_version" in request)
+				return {
+					status: 422,
+					body: {
+						detail: {
+							code: "invalid_request",
+							message: "the request is not valid",
+						},
+					},
+				};
+			server.rows = [{ ...server.rows[0], body: request.body }];
+			return { status: 200, body: { result: server.rows[0] } };
+		},
+	);
+	try {
+		await ui.setBody("through an old core");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 2);
+		assert.equal(ui.patches[0].expected_version, 0, "0 is sent, not dropped");
+		assert.equal("expected_version" in ui.patches[1], false);
+		assert.equal(ui.patches[1].body, "through an old core");
+		assert.equal(ui.dialogOpen(), false);
+	} finally {
+		await ui.close();
+	}
+	// Only that exact refusal falls back; anything else is thrown unchanged and
+	// the edit is sent exactly once.
+	const calls = [];
+	await assert.rejects(
+		model.updateScheduledEdit(
+			async (_tenant, _id, patch) => {
+				calls.push(patch);
+				throw new Error("offline");
+			},
+			"org_a",
+			"bsch",
+			{ body: "x" },
+			1,
+		),
+		/offline/,
+	);
+	assert.deepEqual(calls, [{ body: "x", expected_version: 1 }]);
+});
+
+test("R1-03: a row that flips to sending while its dialog is open offers only Close", async () => {
+	const ui = await mountScheduledEdit(editRow("bsch_send"), () => SCHEDULE_404);
+	try {
+		await ui.setBody("too late");
+		ui.server.rows = [{ ...editRow("bsch_send"), status: "sending" }];
+		await ui.pushList();
+		assert.equal(ui.alert(), GONE_COPY);
+		const labels = ui.buttonText();
+		assert.equal(labels.includes("Review schedule"), false);
+		assert.equal(labels.includes("Confirm schedule"), false);
+		assert.deepEqual(labels, ["Close"], "one Close, no corner duplicate (D6)");
+		assert.equal(ui.title(), "Message no longer scheduled");
+		assert.equal(ui.bodyDisabled(), true);
+		assert.equal(ui.patches.length, 0);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("D1/D2: a conflict that overrides the user's text says so, offers it back, and never dead-ends", async () => {
+	const row = editRow("bsch_d", { body: "old text" });
+	const ui = await mountScheduledEdit(row, (_request, server) => {
+		server.rows = [{ ...row, body: "their text" }];
+		return STALE_EDIT_409;
+	});
+	try {
+		await ui.setBody("my text");
+		await ui.confirm();
+		assert.deepEqual(ui.alertLines(), [
+			CONFLICT_HEAD,
+			"Your text was replaced by the version from the other device.",
+			CONFLICT_NOTHING_LEFT,
+		]);
+		assert.equal(ui.body(), "their text");
+		// D1: nothing of the user's survived, so the action is Close, not a
+		// disabled Review beside "try again".
+		assert.equal(ui.buttonText().includes("Review schedule"), false);
+		assert.equal(ui.buttonText().includes("Close"), true);
+		// D2: the lost text is recoverable.
+		await ui.click("Use my text instead");
+		assert.equal(ui.body(), "my text");
+		assert.equal(ui.buttonText().includes("Use my text instead"), false);
+		assert.equal(ui.buttonText().includes("Review schedule"), true);
+		assert.equal(ui.alertLines().at(-1), CONFLICT_REVIEW);
 	} finally {
 		await ui.close();
 	}

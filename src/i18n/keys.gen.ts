@@ -8458,6 +8458,15 @@ export type MessageParams = {
 	"ui.teamBridge.schedule.cancel_failed": undefined;
 	"ui.teamBridge.schedule.confirm": { date: string };
 	"ui.teamBridge.schedule.confirm_action": undefined;
+	"ui.teamBridge.schedule.conflict_body_changed": undefined;
+	"ui.teamBridge.schedule.conflict_body_replaced": undefined;
+	"ui.teamBridge.schedule.conflict_images_added": { count: number };
+	"ui.teamBridge.schedule.conflict_images_removed": { count: number };
+	"ui.teamBridge.schedule.conflict_nothing_left": undefined;
+	"ui.teamBridge.schedule.conflict_restore_body": undefined;
+	"ui.teamBridge.schedule.conflict_review": undefined;
+	"ui.teamBridge.schedule.conflict_time_changed": undefined;
+	"ui.teamBridge.schedule.conflict_time_replaced": undefined;
 	"ui.teamBridge.schedule.create_retry": undefined;
 	"ui.teamBridge.schedule.create_uncertain": undefined;
 	"ui.teamBridge.schedule.discard_attempt": undefined;
@@ -8465,6 +8474,7 @@ export type MessageParams = {
 	"ui.teamBridge.schedule.edit_conflict": undefined;
 	"ui.teamBridge.schedule.edit_failed": undefined;
 	"ui.teamBridge.schedule.edit_gone": undefined;
+	"ui.teamBridge.schedule.edit_gone_title": undefined;
 	"ui.teamBridge.schedule.empty": undefined;
 	"ui.teamBridge.schedule.failed": undefined;
 	"ui.teamBridge.schedule.held": undefined;

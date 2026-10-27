@@ -181,6 +181,12 @@ export type ScheduledEditBase = {
 	body: string;
 	sendAt: string;
 	attachments: readonly TeamBridgeAttachment[];
+	/*
+	 * The hub's edit counter for THIS row, when the hub reports one (agent-server
+	 * #223). Sent back as `expected_version` so an edit made from a stale view is
+	 * refused with `concurrent_edit` even on its FIRST submit (review R1-02).
+	 */
+	version?: number;
 };
 
 /** What the dialog currently holds: `when` is its `datetime-local` value. */
@@ -228,6 +234,68 @@ export function rebaseScheduledEdit(
 }
 
 /*
+ * What a rebase did, so the dialog can SAY it rather than let fields change
+ * silently (design review round 1, D2). `*Replaced` means this user's own edit
+ * of that field lost to the other device; `*Changed` means the other device
+ * changed a field this user had not touched. `lostBody` is the text the user
+ * typed and lost, kept so they can recover it.
+ */
+export type ScheduledRebaseReport = {
+	bodyReplaced: boolean;
+	bodyChanged: boolean;
+	lostBody?: string;
+	timeReplaced: boolean;
+	timeChanged: boolean;
+	imagesAdded: number;
+	imagesRemoved: number;
+};
+
+export function describeScheduledRebase(
+	previous: ScheduledEditBase,
+	next: ScheduledEditBase,
+	draft: ScheduledEditDraft,
+): ScheduledRebaseReport {
+	const bodyEdited = draft.body.trim() !== previous.body;
+	const bodyMoved = next.body !== previous.body;
+	const timeEdited = draft.when !== scheduledLocalInput(previous.sendAt);
+	const timeMoved = next.sendAt !== previous.sendAt;
+	const before = new Set(attachmentIdsOf(previous.attachments));
+	const after = new Set(attachmentIdsOf(next.attachments));
+	// A user-removed image that the other device ALSO removed is not news; only
+	// images this user still had in view count as removed elsewhere.
+	const kept = new Set(attachmentIdsOf(draft.kept));
+	return {
+		bodyReplaced: bodyEdited && bodyMoved && draft.body.trim() !== next.body,
+		bodyChanged: !bodyEdited && bodyMoved,
+		...(bodyEdited && bodyMoved && draft.body.trim() !== next.body
+			? { lostBody: draft.body }
+			: {}),
+		timeReplaced:
+			timeEdited &&
+			timeMoved &&
+			draft.when !== scheduledLocalInput(next.sendAt),
+		timeChanged: !timeEdited && timeMoved,
+		imagesAdded: [...after].filter((id) => !before.has(id)).length,
+		imagesRemoved: [...before].filter((id) => !after.has(id) && kept.has(id))
+			.length,
+	};
+}
+
+export function scheduledRebaseIsNews(report: ScheduledRebaseReport) {
+	return (
+		report.bodyReplaced ||
+		report.bodyChanged ||
+		report.timeReplaced ||
+		report.timeChanged ||
+		report.imagesAdded > 0 ||
+		report.imagesRemoved > 0
+	);
+}
+
+const attachmentIdsOf = (rows: readonly TeamBridgeAttachment[]) =>
+	rows.map((row) => row.id);
+
+/*
  * Which refusal an edit met, for the dialog's copy. Only the hub's stale-edit
  * answer is distinguished (`409 invalid_transition`, `details.rule =
  * "concurrent_edit"`, relayed intact by core's `_refusal_detail`): every other
@@ -247,6 +315,53 @@ export function scheduledEditFailure(error: unknown): "conflict" | "other" {
 	)
 		return "conflict";
 	return "other";
+}
+
+type ScheduledPatch = ReturnType<typeof scheduledEditPatch>;
+
+/*
+ * Send an edit pinned to the row version it was derived from (review R1-02).
+ *
+ * WHY THE PIN: the hub's own concurrency check only covers the gap between its
+ * read and its write, so an edit built from a list fetched minutes ago could
+ * still replace an image set another device had changed. `expected_version`
+ * makes the hub refuse that edit with 409 `concurrent_edit` instead.
+ *
+ * WHY THE FALLBACK: the pin is sent only when the row carried a numeric
+ * `version` (a newer hub). The local core relays the PATCH through a STRICT
+ * body model, and a core that predates the field refuses it as 422
+ * `invalid_request` before anything reaches the hub - nothing was written - so
+ * that one refusal is retried once without the pin, which is exactly the edit
+ * an older stack accepted before. Any other refusal is the hub's answer and is
+ * thrown unchanged; a version mismatch is a 409, never this 422.
+ */
+export async function updateScheduledEdit(
+	update: (
+		tenantId: string,
+		scheduledId: string,
+		patch: ScheduledPatch & { expected_version?: number },
+	) => Promise<unknown>,
+	tenantId: string,
+	scheduledId: string,
+	patch: ScheduledPatch,
+	expectedVersion: number | null | undefined,
+): Promise<unknown> {
+	if (typeof expectedVersion !== "number")
+		return update(tenantId, scheduledId, patch);
+	try {
+		return await update(tenantId, scheduledId, {
+			...patch,
+			expected_version: expectedVersion,
+		});
+	} catch (error) {
+		if (
+			error instanceof DesktopControlError &&
+			error.status === 422 &&
+			error.code === "invalid_request"
+		)
+			return update(tenantId, scheduledId, patch);
+		throw error;
+	}
 }
 
 export function scheduledTargetAfterSuccess(
