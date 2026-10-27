@@ -1484,7 +1484,7 @@
 		"tone": "neutral",
 		"length": "One short word.",
 		"placeholders": {},
-		"note": "Identifies a human account, as distinct from an agent account. Use a concise noun for a person, not a job title."
+		"note": "Identifies a human account, as distinct from an agent account; pairs with the Agent badge. English reads \"Human\" (not \"Person\") so the pair contrasts human with AI. Use the concise noun for a human being, not a job title or a generic word for an individual."
 	},
 	"ui.teamBridge.profile.agent_badge": {
 		"role": "profile hover-card identity badge",
