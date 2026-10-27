@@ -27,6 +27,8 @@ import { fireEvent, screen, userEvent, waitFor, within } from "@storybook/test";
 import { Mic, Paperclip, Send } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useMemo } from "react";
 import { toast } from "sonner";
+import type { UserAttachmentsState } from "../../canonical/use-user-attachments";
+import type { UserAttachment } from "../../canonical/user-attachments";
 import "../../../../styles/index.css";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -809,6 +811,7 @@ const CanvasFrame = ({
 	mentionedFiles = DOCUMENTS,
 	documents = DOCUMENTS,
 	variables,
+	attachments,
 	sessionId = STORY_SESSION_ID,
 	goalHistory = [],
 	goalHistoryTruncated = false,
@@ -902,6 +905,8 @@ const CanvasFrame = ({
 	 * and the count it carries comes from `mentionedFiles`.
 	 */
 	documents?: CanvasDocument[];
+	/** The person's attachments for the pinned section; absent = none. */
+	attachments?: UserAttachmentsState;
 }) => {
 	// The story's backend state, installed before anything can ask for it.
 	useMemo(() => {
@@ -938,6 +943,7 @@ const CanvasFrame = ({
 					sessionId={sessionId ?? undefined}
 					fileCount={mentionedFiles.length}
 					scan={scan}
+					attachments={attachments}
 					goalHistory={goalHistory}
 					goalHistoryTruncated={goalHistoryTruncated}
 					goalCapable={goalCapable}
@@ -949,6 +955,175 @@ const CanvasFrame = ({
 			</PaneSlot>
 		</SplitFrame>
 	);
+};
+
+/*
+ * The Attachments section's fixture: one row per state the section has a rule
+ * about. A live picture carries its bytes inline (the shape a just-sent
+ * screenshot has before the owner stores it), so its tile paints with no
+ * backend; the digest-only picture is the stored shape and needs one, which is
+ * why the populated frames come from the live app too.
+ */
+const ATTACHED_AT = 1_793_117_262_985;
+const STORY_SHOT_A =
+	"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAoCAIAAADBrGu+AAABHUlEQVR42mPQiDqhGX1CK/akdvxJ3YRTekmn9VNOG6SdMUo/a5x51iT7nGnOOfO88xYFFyyLLlgVX7QpvWRbfsmu4rJ91WXHmitOdVed66+6NF5za77u3nLdo+2GZ8cN766bPt23fHtv+fXfDph4J3DSnaApd4On3Q2dfi9s5v3w2fcj5j6ImvcwesHDmEWPYhc/il/6OGH5k8SVT5JWPU1Z8yx13bO09c/TNz7P3Pwia+vL7G0vc3a8ytv1On/364K9bwr3vyk++Lbk0LvSI+/Kjr1nGPXAqAdGPTDqgVEPjHpg1AOjHhj1wKgHRj0w6oFRD4x6YNQDox4Y9cCoB0Y9MOqBUQ+MemDUA6MeGPXAqAdGPTDqgVEPkOIBAGnfRBCCHhYgAAAAAElFTkSuQmCC";
+const STORY_SHOT_B =
+	"iVBORw0KGgoAAAANSUhEUgAAAEAAAAAoCAIAAADBrGu+AAABHUlEQVR42mM4EWBzItDmZLDNqVDb0+G2pyPtzkTbnY21Pxdvfz7B4XySw4UUx4tpjpcynC5lOV3Ocb6S53w13/laocu1Ypfrpa43yl1vVrrdrHa7Vet+u879ToPH3SaPuy2e99o873d4Pejyetjj/bDX+1G/9+OJPk8m+zyZ6vt0uu+zmX7PZ/u9mOP/Yp7/ywUBrxYFvF4S+HpZ4JsVQW9XBb1bHfR+bfD79cEfNoZ83BzyaWvop+2hn3eGfdkV9nVP+Ld94d8ORHw/FPHjSOTPY5EMox4Y9cCoB0Y9MOqBUQ+MemDUA6MeGPXAqAdGPTDqgVEPjHpg1AOjHhj1wKgHRj0w6oFRD4x6YNQDox4Y9cCoB0Y9MOoBUjwAACagE1AiAON8AAAAAElFTkSuQmCC";
+const attachment = (
+	over: Partial<UserAttachment> & Pick<UserAttachment, "key" | "kind">,
+): UserAttachment => ({
+	messageId: over.key,
+	ts: ATTACHED_AT,
+	digest: null,
+	data: null,
+	filename: null,
+	mimeType: "application/pdf",
+	bytes: null,
+	path: null,
+	storedPath: null,
+	availability: "present",
+	...over,
+});
+const ATTACHMENTS: UserAttachment[] = [
+	attachment({
+		key: "m1:pdf",
+		kind: "document",
+		filename: "IP Assignment eSignature.pdf",
+		bytes: 293_421,
+		path: "/Users/you/Downloads/IP Assignment eSignature.pdf",
+		digest: "894b00b1b8535352f0b5ee73063d7661",
+	}),
+	attachment({
+		key: "m2:shot",
+		kind: "image",
+		mimeType: "image/png",
+		data: STORY_SHOT_A,
+		bytes: 65_276,
+		ts: ATTACHED_AT + 60_000,
+	}),
+	attachment({
+		key: "m3:shot",
+		kind: "image",
+		mimeType: "image/png",
+		data: STORY_SHOT_B,
+		bytes: 134_607,
+		ts: ATTACHED_AT + 120_000,
+	}),
+];
+const MISSING_ATTACHMENTS: UserAttachment[] = [
+	attachment({
+		key: "m4:moved",
+		kind: "document",
+		filename: "Board deck v3.pdf",
+		bytes: 2_411_520,
+		path: "/Users/you/Desktop/Board deck v3.pdf",
+		digest: "0123456789abcdef0123456789abcdef",
+		availability: "retained",
+	}),
+	attachment({
+		key: "m5:gone",
+		kind: "document",
+		filename: "notes-draft.docx",
+		mimeType:
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		bytes: 18_200,
+		path: "/Users/you/Documents/notes-draft.docx",
+		availability: "gone",
+	}),
+	...ATTACHMENTS,
+];
+const attachmentsState = (
+	items: UserAttachment[],
+	over: Partial<UserAttachmentsState> = {},
+): UserAttachmentsState => ({
+	items: [...items].sort((x, y) => y.ts - x.ts),
+	complete: true,
+	truncated: false,
+	state: "ready",
+	capable: true,
+	...over,
+});
+
+/**
+ * Attachments pinned above the agent's files: a PDF row, then two pasted
+ * screenshots in the Images tile grid. The Files count includes all three.
+ */
+export const FilesWithAttachments: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			attachments={attachmentsState(ATTACHMENTS)}
+		/>
+	),
+};
+
+/**
+ * The three missing states told apart: origin moved but the saved copy kept
+ * (its actions use the copy), both gone (only the old path remains to copy),
+ * and the present ones beside them.
+ */
+export const FilesAttachmentsMissing: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			attachments={attachmentsState(MISSING_ATTACHMENTS)}
+		/>
+	),
+};
+
+/**
+ * An older backend (no `session_attachments`): the section is built from the
+ * loaded messages and says so beside its heading - never "nothing attached".
+ */
+export const FilesAttachmentsPartial: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			attachments={attachmentsState(ATTACHMENTS.slice(1), {
+				complete: false,
+				capable: false,
+			})}
+		/>
+	),
+};
+
+/**
+ * The agent's file index still loading: the attachments the person sent are
+ * already listed (they come from the conversation's own rows), so the section
+ * never waits on the agent's inventory.
+ */
+export const FilesAttachmentsWhileLoading: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			attachments={attachmentsState(ATTACHMENTS)}
+			scan={{
+				active: true,
+				scanned: 1180,
+				hasMore: true,
+				paging: true,
+				stopped: false,
+				resume: () => {},
+			}}
+		/>
+	),
+};
+
+/** No attachments and no agent files: the existing empty state, unchanged. */
+export const FilesAttachmentsEmpty: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={null}
+			mentionedFiles={[]}
+			documents={[]}
+			attachments={attachmentsState([])}
+		/>
+	),
 };
 
 const meta: Meta = {
