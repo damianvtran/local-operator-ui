@@ -43846,6 +43846,216 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+			"target_sha256": "cea49e90c20854f4936f7ea0acf606d7423f1589fa03274dcf8f1781185ac809",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-26",
+					"result": "clean-with-findings",
+					"instance": "17d1ca9bf58a-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/17d1ca9bf58a-es.json",
+					"receipt_sha256": "339081137e5a60a81fba6743c5b9987ba1dc92ebe941599f97d82c004427d7f5",
+					"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+			"target_sha256": "6b76b10baf7c36005232450f90d9bf929d377276547dd5be6febee9c27ad85d9",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-26",
+					"result": "clean-with-findings",
+					"instance": "17d1ca9bf58a-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/17d1ca9bf58a-fr.json",
+					"receipt_sha256": "f3ff5902108f20ce322d8745b05097646b8bf949606cffdee5bdaf10e6807909",
+					"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+			"target_sha256": "898162c99ca65b1d8547a49c8b934990622151caa6acc1b7e719dd1e6fa54aee",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-26",
+					"result": "clean-with-findings",
+					"instance": "17d1ca9bf58a-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/17d1ca9bf58a-hi.json",
+					"receipt_sha256": "87830a4b22200faa66716060b281c584407556140d44d1a4c20636071cb848ce",
+					"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+			"target_sha256": "44b3de392f7f00baa2c9bf62e04fc352265f2253b3635afb746bc3fef674bba4",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-26",
+					"result": "clean-with-findings",
+					"instance": "17d1ca9bf58a-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/17d1ca9bf58a-ru.json",
+					"receipt_sha256": "e5e5d07e4240c62246c6599c0bcedb7c429466b81653e5b812ccc5f21d6b8231",
+					"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+			"target_sha256": "0785e27a93957ca1644f8b02663982ba535c8a7b4b6b05163d098ba823dbf03c",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-26",
+					"result": "clean-with-findings",
+					"instance": "17d1ca9bf58a-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/17d1ca9bf58a-ur.json",
+					"receipt_sha256": "046781b7cf31a8da5fe95a18a5740da41691a96d9f4a316f2f290ff9d1f638fd",
+					"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+			"target_sha256": "d84e7dd0eef13d39b2a6cae6bf0325779eb08994f09f4ebc4504e7450ff11c15",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-26",
+					"result": "clean-with-findings",
+					"instance": "17d1ca9bf58a-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/17d1ca9bf58a-vi.json",
+					"receipt_sha256": "9dbbae0713f6ed7c8a595f8c2599b7f9e702f2b1d645922b33ccd0f7d886b6f4",
+					"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.skills",
+			"source_sha256": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff",
+			"target_sha256": "b280862a3cdfc91392019f494d97a9f197b2edacee8955f7d3e896d81940edd8",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-26",
+					"result": "clean-with-findings",
+					"instance": "17d1ca9bf58a-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/17d1ca9bf58a-zh-cn.json",
+					"receipt_sha256": "65fad9073cb4aca07817164f5a8b1f29784ac0b81d16c2fe5d7388efacd3dadd",
+					"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
