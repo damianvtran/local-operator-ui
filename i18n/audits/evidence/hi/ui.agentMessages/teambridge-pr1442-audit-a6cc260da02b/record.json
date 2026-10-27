@@ -1,0 +1,144 @@
+{
+  "audit_id": "teambridge-pr1442-audit-a6cc260da02b",
+  "date": "2026-10-27",
+  "locale": "hi",
+  "namespace": "ui.agentMessages",
+  "source_commit": "d1aff6d38d1fa081c859e744f377e4c1810cd708",
+  "translator": {
+    "agent": "translator",
+    "session": "1a409475bd7a",
+    "model": "anthropic/claude-opus-5-5",
+    "fallback": "none recorded",
+    "commit": "d1aff6d38d1fa081c859e744f377e4c1810cd708",
+    "method": "LLM reasoning, no MT service (delegation brief; commit message)"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-27",
+      "result": "clean",
+      "instance": "a6cc260da02b-hi",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/a6cc260da02b-hi.json",
+      "receipt_sha256": "e4b55ca1e8235f868b92bc6b70edbd4f055cd0bc24e089557f4e193816eaacbe",
+      "scope": "New-key delta: ui.agentMessages.banner.turn_off_hint and page_off.title, body, local_title, local_body, action (PR #1442); other 26 keys inherited on byte identity.",
+      "note": "PR #1442 6-key delta (turn_off_hint, page_off.*); 0 findings, see receipt"
+    }
+  ],
+  "independence": "Independent auditor (reviewer role, session a6cc260da02b). It authored none of the audited strings and edited no catalogue byte. The translator was session 1a409475bd7a (commit d1aff6d38d). This run wrote only these receipts, the per-locale evidence records, and the ledger rows (via ledger-assemble.mjs).",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.json",
+      "sha256": "3e9973461758e7a759bffcd324df80b673f835a8fd3c4a39608eb854dff98ab3"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/hi/ui.agentMessages.json",
+      "sha256": "12336d8817368dde296cdfb21feee8cf366b35dab06e406b1456dbbc8eedb02e"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.context.json",
+      "sha256": "6b074fca17c3fa94d8e4b687261a1d0101010ce4e5fad6e6a5a3714c5836d8e3"
+    }
+  },
+  "audited": {
+    "ui.agentMessages.banner.turn_off_hint": {
+      "en": "Turning it off also hides your Team Bridge conversations until you turn it on again.",
+      "target": "इसे बंद करने पर आपकी Team Bridge बातचीतें भी तब तक छिपी रहेंगी, जब तक आप इसे फिर से चालू नहीं करते।"
+    },
+    "ui.agentMessages.page_off.title": {
+      "en": "Team Bridge is off for this account",
+      "target": "इस खाते के लिए Team Bridge बंद है"
+    },
+    "ui.agentMessages.page_off.body": {
+      "en": "Your agent does not send or receive messages, and your conversations stay hidden until you turn it on again. Turning it on asks for your consent first.",
+      "target": "आपका एजेंट न संदेश भेजता है, न प्राप्त करता है, और जब तक आप इसे फिर से चालू नहीं करते, आपकी बातचीतें छिपी रहती हैं। चालू करने पर पहले आपकी सहमति माँगी जाती है।"
+    },
+    "ui.agentMessages.page_off.local_title": {
+      "en": "Team Bridge is off on this machine",
+      "target": "इस मशीन पर Team Bridge बंद है"
+    },
+    "ui.agentMessages.page_off.local_body": {
+      "en": "Your account is still set up, but this machine does not send or receive messages, and your conversations stay hidden here until you turn it back on.",
+      "target": "आपके खाते का सेटअप बना रहता है, लेकिन यह मशीन न संदेश भेजती है, न प्राप्त करती है, और जब तक आप इसे फिर से चालू नहीं करते, यहाँ आपकी बातचीतें छिपी रहती हैं।"
+    },
+    "ui.agentMessages.page_off.action": {
+      "en": "Turn on in Settings",
+      "target": "सेटिंग्स खोलें"
+    }
+  },
+  "notes": "आप register; danda; 'Team Bridge' kept Latin. Machine = 'मशीन', matching settings.local.label 'इस मशीन पर चालू है'. 'बंद/चालू' match banner.turn_off 'बंद करें' and e_body. action 'सेटिंग्स खोलें' = Open settings, matches existing open_settings key; no 'चालू करें'. 'बातचीतें' plural matches the catalogue (ui.settings.imports.progress_heading); 'माँगी' matches the catalogue's 29 uses of माँग. local_body: no सहमति; 'यहाँ' = here.",
+  "findings": [],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide_fr": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "49010212a65f0d30d49bf532601bb39ad277be28aef5d476715186cf28525990"
+    },
+    "style_guide_es": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "style_guide_zh-CN": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "style_guide_ru": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "14c6bbbefa7eddad1b0735f1024a518172a8f1b0f859ef005d5f1130bc57676b"
+    },
+    "style_guide_vi": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "style_guide_ur": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "3f8d600cd51d585278405f6bfcf93c0ddd1718d2490423849e8dab3f4f1d6545"
+    },
+    "style_guide_hi": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "core_ref": "195c17a0f91cb309dfdf5114e38ddfff48f105e1",
+    "docs/I18N.md": {
+      "path": "docs/I18N.md",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    },
+    "AGENTS.md": {
+      "path": "AGENTS.md",
+      "sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    },
+    "scripts/i18n/ledger-assemble.mjs": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/a6cc260da02b-hi.json",
+      "sha256": "e4b55ca1e8235f868b92bc6b70edbd4f055cd0bc24e089557f4e193816eaacbe"
+    },
+    "ledger_row": "i18n/ledger.json"
+  },
+  "limitations": "No rendered-fit or screenshot evidence: this role has no browser tool. Lengths sit within the English's range at the same layout (zh-CN shorter; fr/ru body and local_body run 10-25% longer, and the context allows wrapping at a 512 px measure)."
+}

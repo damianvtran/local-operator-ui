@@ -85,5 +85,10 @@
 	"ui.agentMessages.settings.error.no_changes": "Không có cài đặt nào bị thay đổi. Hãy thử lại để kiểm tra trạng thái hiện tại.",
 	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, other {Có {count} tin nhắn đang chờ chánh văn phòng của bạn. Chỉ cần gửi một tin nhắn trong cuộc trò chuyện đó là sẽ nhận được.}}",
 	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": "{count, plural, other {Có {count} tin nhắn đang chờ chánh văn phòng của bạn. Tìm cuộc trò chuyện đó trong thanh bên rồi gửi một tin nhắn là sẽ nhận được.}}",
-	"ui.agentMessages.settings.hold.open": "Nhắn chánh văn phòng"
+	"ui.agentMessages.settings.hold.open": "Nhắn chánh văn phòng",
+	"ui.agentMessages.settings.default_on.b_title": "Team Bridge chưa được thiết lập",
+	"ui.agentMessages.settings.default_on.b_body": "Team Bridge sẽ tự động bật cho bạn khi tổ chức của bạn sẵn sàng. Không có gì được gửi khi bật.",
+	"ui.agentMessages.settings.default_on.e_body": "Team Bridge đang tắt cho tài khoản này. Hãy đọc nội dung chấp thuận bên dưới, rồi bật lại nếu bạn muốn dùng lại.",
+	"ui.agentMessages.settings.action.turn_on_again": "Bật lần nữa",
+	"ui.agentMessages.settings.consent.via_default_on": "Bật theo mặc định"
 }
