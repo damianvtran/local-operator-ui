@@ -1119,7 +1119,9 @@ function DurableDraftStory() {
 			{...meta.args}
 			selfAccountId="acct_story_drafts"
 			target={target}
-			onTarget={setTarget}
+			onTarget={(next) => {
+				if (next) setTarget(next);
+			}}
 			initialDraft="The handoff notes are ready for review."
 			onSend={async () => {
 				throw new Error("fixture send refused");
