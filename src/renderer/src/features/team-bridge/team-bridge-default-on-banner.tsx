@@ -81,7 +81,13 @@ export const TeamBridgeDefaultOnBanner: FC<{
 	});
 	if (!status || !visible) return null;
 	return (
-		<div className="shrink-0 px-6 py-1">
+		/*
+		 * The gutter is this column's, not the chat pane's: `NOTICE_BAND` leaves
+		 * the wrapper to the call site, and the Team Bridge thread column's
+		 * composer sits at `px-4`. With the chat strip's `px-6` the band started
+		 * 8px inside the composer (design D7).
+		 */
+		<div className="shrink-0 px-4 py-1">
 			<DefaultOnBanner
 				consentText={agentMessagesDefaultOnBannerConsentText(
 					status,

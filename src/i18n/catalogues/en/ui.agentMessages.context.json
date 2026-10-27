@@ -183,5 +183,33 @@
 		"length": "One short sentence plus a retry cue.",
 		"placeholders": {},
 		"note": "The notice stays visible after this failure."
+	},
+	"ui.agentMessages.banner.turn_off_hint": {
+		"role": "banner helper text beside the Turn off button",
+		"tone": "plain, factual, second person",
+		"length": "One sentence; wraps under the buttons at narrow widths.",
+		"placeholders": {},
+		"note": "Says what Turn off takes away BEFORE the press: the Team Bridge page, conversations included, is hidden until the member turns it on again. Announced with the Turn off button. 'Team Bridge' is the product name; never translate it and never call it 'agent messages'."
+	},
+	"ui.agentMessages.page_off.title": {
+		"role": "page gate heading",
+		"tone": "sentence case, plain statement, product name kept as-is",
+		"length": "Short heading; one or two lines at a 512 px measure.",
+		"placeholders": {},
+		"note": "Shown in place of the Team Bridge page after the member turned Team Bridge off themselves. States the state and its scope (this account, not the organization). 'Team Bridge' is the product name; never translate it and never call it 'agent messages'."
+	},
+	"ui.agentMessages.page_off.body": {
+		"role": "page gate explanation",
+		"tone": "plain, calm, second person, no blame",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "Says what being off means (no messages sent or received; conversations hidden, not deleted, until it is turned on again) and that turning it on again asks for consent. Sits above the button that opens Settings."
+	},
+	"ui.agentMessages.page_off.action": {
+		"role": "page gate button (navigation)",
+		"tone": "imperative, sentence case",
+		"length": "Two to four words; sits in a small button.",
+		"placeholders": {},
+		"note": "Opens Settings at the control that turns Team Bridge back on. It navigates; it does not turn anything on by itself. Avoid the word 'Enable'."
 	}
 }

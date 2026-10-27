@@ -102,14 +102,55 @@ export function createDefaultOnContainerFixture(input: {
 		async request(request: DesktopRequest): Promise<DesktopResponse> {
 			switch (request.op) {
 				case "capabilities":
-					// Hub-tenant labels are already in status. This isolated story does
-					// not advertise the unrelated account/membership proxy capability.
+					// `radient` gates the account read the page's sign-in gate waits on
+					// (`useRadientUserQuery`); the owner guard keeps the page past its
+					// update gate. Hub-tenant labels are already in status.
 					return answer(request, {
 						desktop_contract: 1,
 						desktop_available: true,
 						desktop_auth: "bearer",
-						features: { team_bridge: 1 },
+						features: {
+							radient: 1,
+							team_bridge: 1,
+							team_bridge_conversation_owner_guard: 1,
+						},
 					});
+				/*
+				 * THE SIGNED-IN SESSION (design round 1, D4). The page resolves its
+				 * account through the backend-held Radient credential, i.e. this
+				 * proxy op, not through the preview's `mock-radient-session`
+				 * sessionStorage (nothing in the renderer reads that any more). Left
+				 * unanswered, a built Storybook settled on "Sign in to Radient" and
+				 * every play below failed; answering it here makes the stories
+				 * reproduce in any browser, with no ambient state.
+				 */
+				case "radient.request":
+					if (request.control?.operation === "account")
+						return answer(request, {
+							data: {
+								msg: "ok",
+								result: {
+									account: {
+										id: status.account_id,
+										name: "Fixture member",
+										email: "member@fixture.invalid",
+									},
+									identity: {},
+								},
+							},
+						});
+					if (request.control?.operation === "memberships.list")
+						return answer(request, {
+							data: { msg: "ok", result: { memberships: [] } },
+						});
+					return answer(
+						request,
+						{
+							code: "fixture_unhandled_op",
+							message: `No fixture response for ${request.control?.operation}`, // i18n: ignore story fixture's wire error body, not rendered copy
+						},
+						503,
+					);
 				case "team_bridge.status":
 				case "agent_messages.status":
 					return answer(request, status);

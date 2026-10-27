@@ -1,4 +1,5 @@
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import { TEAM_BRIDGE_ENABLED_SETTING_KEY } from "@features/settings/promoted-setting-sections";
 import {
 	type DesktopFeatureState,
 	desktopFeatureState,
@@ -22,7 +23,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeConversation,
@@ -258,6 +259,17 @@ const TeamBridgeGateLoading: FC = () => {
  * page could offer (create, scope, compose) would be refused. The surface
  * capability still mounts the page, so this is the honest answer for a build
  * that can render Team Bridge but no plan can serve it.
+ *
+ * THE ONE EXCEPTION IS `off` (design round 1, D1). The member turned Team
+ * Bridge off themselves, so there IS a way forward, and a gate that only says
+ * "turning it on again is possible" is a dead end. The panel names the product
+ * the member just pressed Turn off on (Team Bridge, never the older "Agent
+ * messages"), says what being off means, and links to the Settings control
+ * that turns it back on. The link is NAVIGATION, not an Enable: it lands on
+ * Settings -> Team Bridge with the way-back control focused, and that control
+ * keeps its own consent semantics (the served text above "Turn on again").
+ * It reuses the promoted `?setting=team_bridge.enabled` deep link, which
+ * already resolves to that section (`promoted-setting-sections.ts`).
  */
 export const TeamBridgeEligibilityPanel: FC<{
 	reason: TeamBridgeEligibility;
@@ -265,10 +277,9 @@ export const TeamBridgeEligibilityPanel: FC<{
 	useI18nLocale();
 	const copy = {
 		// Member opt-out is a plain state, not an organization-plan upsell.
-		// Reuse the existing audited Settings copy; no inline Enable path here.
 		off: {
-			title: "ui.agentMessages.settings.state.e_title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
-			reason: "ui.agentMessages.settings.state.e_body",
+			title: "ui.agentMessages.page_off.title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
+			reason: "ui.agentMessages.page_off.body",
 		},
 		plan_required: {
 			title: "ui.teamBridge.plan.title",
@@ -315,6 +326,16 @@ export const TeamBridgeEligibilityPanel: FC<{
 					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
 						{t(copy[reason].reason)}
 					</p>
+					{reason === "off" && (
+						<Button asChild variant="secondary" size="sm" className="mt-4">
+							<Link
+								to={`/settings?setting=${TEAM_BRIDGE_ENABLED_SETTING_KEY}`}
+								data-team-bridge-off-action="settings"
+							>
+								{t("ui.agentMessages.page_off.action")}
+							</Link>
+						</Button>
+					)}
 				</div>
 			</div>
 		</div>

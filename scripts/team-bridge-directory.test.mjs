@@ -464,19 +464,35 @@ test("explicit endpoint/local off gates the page without reinterpreting runtime 
 	);
 });
 
-test("off page replaces composer and write controls with existing translated off state", () => {
+test("off page replaces composer and write controls with the Team Bridge off state and a way back", async () => {
+	// The way back is a router <Link>, so this one render needs a router.
+	const { MemoryRouter } = await import("react-router-dom");
 	const html = renderToStaticMarkup(
 		createElement(
-			ui.TeamBridgePageView,
-			viewProps({
-				eligibility: "off",
-				selectedConversation: conversation(),
-				readOnly: false,
-			}),
+			MemoryRouter,
+			null,
+			createElement(
+				ui.TeamBridgePageView,
+				viewProps({
+					eligibility: "off",
+					selectedConversation: conversation(),
+					readOnly: false,
+				}),
+			),
 		),
 	);
-	assert.match(html, /Turned off/);
-	assert.match(html, /Agent messages are off for this account/);
+	assert.match(html, /Team Bridge is off for this account/);
+	assert.match(html, /conversations stay hidden until you turn it on again/);
+	// Design round 1 D1: the product's own name, never the older noun.
+	assert.doesNotMatch(html, /Agent messages/);
+	// No dead end: one link to the Settings way-back control. It is
+	// navigation (an <a>), never a button that opts in from this page.
+	assert.equal(
+		html.includes('href="/settings?setting=team_bridge.enabled"'),
+		true,
+		"off gate links to the Settings control that turns it back on",
+	);
+	assert.match(html, />Turn on in Settings</);
 	assert.doesNotMatch(html, /<textarea|<button|role="(?:dialog|alertdialog)"/);
 	assert.doesNotMatch(html, /Team Bridge requires|Enable/);
 });

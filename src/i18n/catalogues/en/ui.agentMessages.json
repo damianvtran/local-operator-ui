@@ -24,5 +24,9 @@
 	"ui.agentMessages.banner.dismiss": "Dismiss",
 	"ui.agentMessages.banner.consent_unavailable": "The full text is not available right now. Try again in a moment.",
 	"ui.agentMessages.banner.turn_off_failed": "Team Bridge could not be turned off. Nothing was changed. Try again.",
-	"ui.agentMessages.banner.dismiss_failed": "This notice could not be dismissed. Try again."
+	"ui.agentMessages.banner.dismiss_failed": "This notice could not be dismissed. Try again.",
+	"ui.agentMessages.banner.turn_off_hint": "Turning it off also hides your Team Bridge conversations until you turn it on again.",
+	"ui.agentMessages.page_off.title": "Team Bridge is off for this account",
+	"ui.agentMessages.page_off.body": "Your agent does not send or receive messages, and your conversations stay hidden until you turn it on again. Turning it on asks for your consent first.",
+	"ui.agentMessages.page_off.action": "Turn on in Settings"
 }

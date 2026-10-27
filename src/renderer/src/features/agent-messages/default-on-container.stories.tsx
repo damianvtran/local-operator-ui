@@ -62,11 +62,16 @@ function FullContainer({
 		// Observe cache UPDATE events only: observerOptionsUpdated can fire on a
 		// React rerender, so subscribing indiscriminately and writing state there
 		// would create the very evidence-harness loop this fixture must avoid.
+		// The status read is keyed per signed-in account (`statusFor`); before the
+		// fixture answered the account read (design D4) no key ever matched, so
+		// this audit stayed null and the play could not pass anywhere.
+		const statusKey = JSON.stringify(
+			teamBridgeKeys.statusFor(conversation.created_by),
+		);
 		const stopAudit = client.getQueryCache().subscribe((event) => {
 			if (
 				event.type !== "updated" ||
-				JSON.stringify(event.query.queryKey) !==
-					JSON.stringify(teamBridgeKeys.status)
+				JSON.stringify(event.query.queryKey) !== statusKey
 			)
 				return;
 			setStatusAudit({
@@ -139,6 +144,9 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// The default-on path never names a control Enable (operator ruling).
+const ENABLE_LABEL = /enable/i;
+
 function readAudit(canvas: HTMLElement): ContainerAuditEntry[] {
 	return JSON.parse(
 		canvas.querySelector("[data-runtime-audit]")?.textContent ?? "[]",
@@ -158,10 +166,17 @@ export const Pending: Story = {
 export const TurnOffObserved: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
+		/*
+		 * The composer FIRST, then the band (design round 1, D4). The band mounts
+		 * before the landing conversation opens and is re-parented when it does,
+		 * so a band captured earlier is a detached node by the time it is
+		 * clicked: the click reaches no React handler, no PUT is sent, and the
+		 * audit wait below fails with `expected -1`.
+		 */
+		await canvas.findByRole("textbox");
 		const band = await canvas.findByRole("region", {
 			name: t("ui.agentMessages.banner.title"),
 		});
-		await canvas.findByRole("textbox");
 		await userEvent.click(
 			within(band).getByRole("button", {
 				name: t("ui.agentMessages.banner.turn_off"),
@@ -201,8 +216,17 @@ export const TurnOffObserved: Story = {
 			).toBeNull(),
 		);
 		await canvas.findByRole("heading", {
-			name: t("ui.agentMessages.settings.state.e_title"),
+			name: t("ui.agentMessages.page_off.title"),
 		});
+		// No dead end (design D1): the gate links to the Settings control that
+		// turns Team Bridge back on; it is navigation, never an Enable button.
+		const back = canvas.getByRole("link", {
+			name: t("ui.agentMessages.page_off.action"),
+		});
+		expect(back.getAttribute("href")).toBe(
+			"/settings?setting=team_bridge.enabled",
+		);
+		expect(canvas.queryByRole("button", { name: ENABLE_LABEL })).toBeNull();
 		expect(canvas.queryByRole("textbox")).toBeNull();
 		expect(
 			canvas.queryByRole("button", { name: t("ui.teamBridge.composer.send") }),
@@ -241,6 +265,8 @@ export const TurnOffObserved: Story = {
 
 export const Expanded: Story = {
 	play: async ({ canvasElement }) => {
+		// Settled page first, for the same detached-band reason as TurnOffObserved.
+		await within(canvasElement).findByRole("textbox");
 		const band = await within(canvasElement).findByRole("region", {
 			name: t("ui.agentMessages.banner.title"),
 		});

@@ -46,10 +46,24 @@ export type DefaultOnBannerProps = {
  * already on. A member who turns it off gets back in only through the
  * existing explicit Settings path, never from this band.
  *
+ * TURN OFF SAYS WHAT IT TAKES AWAY (design round 1, D1). Turning Team Bridge
+ * off also gates the Team Bridge page, conversations included, until the
+ * member turns it on again. A quiet band whose main button removes a whole
+ * page must say so BEFORE the press, so the hint sits beside the button and
+ * is wired to it with `aria-describedby`: a screen reader hears the
+ * consequence with the control, not as unrelated body text.
+ *
  * LOOK. The info band grammar (`NOTICE_BAND`) with its border made
  * transparent so the wash alone separates it - the borderless rule for quiet
  * chrome, the same call the chief-of-staff hold notice makes. The consent
  * block is a `bg-sunken` step, not a bordered card.
+ *
+ * This band is multi-row (two to four rows), so it overrides the grammar's
+ * `items-center` with `items-start`: centred, the mark slid from beside the
+ * body to the middle of the consent block as the band grew (design D2). The
+ * Alert's own `mt-px` keeps the mark on the title's first line. The title
+ * takes the info ink the Alert gives its `data-alert-mark` slots (title and
+ * mark in step), so it carries no ink class of its own (design D5).
  */
 export const DefaultOnBanner: FC<DefaultOnBannerProps> = ({
 	consentText,
@@ -62,19 +76,22 @@ export const DefaultOnBanner: FC<DefaultOnBannerProps> = ({
 	useI18nLocale();
 	const [expanded, setExpanded] = useState(defaultExpanded);
 	const detailsId = useId();
+	const turnOffHintId = useId();
 	const busy = pending !== null;
+	const turningOff = pending === "turn_off";
 	return (
 		<section
 			data-agent-messages-banner="default-on"
 			aria-label={t("ui.agentMessages.banner.title")}
 		>
-			<Alert variant="info" className={cn(NOTICE_BAND, "border-transparent")}>
+			<Alert
+				variant="info"
+				className={cn(NOTICE_BAND, "items-start border-transparent")}
+			>
 				<div className="flex w-full min-w-0 flex-col gap-2">
 					<div className="flex w-full min-w-0 items-start gap-3">
 						<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-							<AlertTitle className="text-ink">
-								{t("ui.agentMessages.banner.title")}
-							</AlertTitle>
+							<AlertTitle>{t("ui.agentMessages.banner.title")}</AlertTitle>
 							<p className="text-body-sm text-ink-muted">
 								{t("ui.agentMessages.banner.body")}
 							</p>
@@ -97,11 +114,36 @@ export const DefaultOnBanner: FC<DefaultOnBannerProps> = ({
 							size="sm"
 							disabled={busy}
 							onClick={onTurnOff}
+							aria-describedby={turnOffHintId}
 							data-agent-messages-banner-action="turn_off"
 						>
-							{pending === "turn_off"
-								? t("ui.agentMessages.banner.turning_off")
-								: t("ui.agentMessages.banner.turn_off")}
+							{/*
+							 * BOTH LABELS OCCUPY THE SAME CELL, so the button is as wide as
+							 * the longer one in every state and "Read what this means" does
+							 * not jump 27.5px on the press (design D6). Same mechanism as the
+							 * live-updates band's Reload: the idle label is `invisible` and
+							 * `aria-hidden`, so it takes space but is not read.
+							 */}
+							<span className="grid">
+								<span
+									className={cn(
+										"col-start-1 row-start-1",
+										turningOff && "invisible",
+									)}
+									aria-hidden={turningOff}
+								>
+									{t("ui.agentMessages.banner.turn_off")}
+								</span>
+								<span
+									className={cn(
+										"col-start-1 row-start-1",
+										!turningOff && "invisible",
+									)}
+									aria-hidden={!turningOff}
+								>
+									{t("ui.agentMessages.banner.turning_off")}
+								</span>
+							</span>
 						</Button>
 						<Button
 							variant="ghost"
@@ -116,6 +158,9 @@ export const DefaultOnBanner: FC<DefaultOnBannerProps> = ({
 								? t("ui.agentMessages.banner.hide")
 								: t("ui.agentMessages.banner.read")}
 						</Button>
+						<span id={turnOffHintId} className="text-meta text-ink-muted">
+							{t("ui.agentMessages.banner.turn_off_hint")}
+						</span>
 					</div>
 					{expanded && (
 						<section
@@ -129,8 +174,11 @@ export const DefaultOnBanner: FC<DefaultOnBannerProps> = ({
 							aria-label={t("ui.agentMessages.banner.read")}
 							data-agent-messages-banner-consent=""
 						>
+							{/* The well stays full width; only the text is capped at a
+							    readable measure. Uncapped it ran ~1011px on a 1440 window
+							    (design D3). */}
 							{consentText ? (
-								<p className="whitespace-pre-wrap text-body-sm text-ink-muted">
+								<p className="max-w-prose whitespace-pre-wrap text-body-sm text-ink-muted">
 									{consentText}
 								</p>
 							) : (

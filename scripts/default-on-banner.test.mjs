@@ -226,8 +226,17 @@ const flush = async () => {
 	});
 };
 
+// The accessible name, not raw textContent: Turn off keeps BOTH its labels in
+// one grid cell so its width never changes (design D6), with the inactive one
+// aria-hidden. A screen reader hears only the visible label; so must this.
+const visibleText = (el) => {
+	const copy = el.cloneNode(true);
+	for (const hidden of copy.querySelectorAll('[aria-hidden="true"]'))
+		hidden.remove();
+	return copy.textContent;
+};
 const labelOf = (el) =>
-	`${el.getAttribute("aria-label") ?? ""} ${el.textContent}`.trim();
+	`${el.getAttribute("aria-label") ?? ""} ${visibleText(el)}`.trim();
 const buttons = () => [...document.querySelectorAll("button")];
 const button = (label) => buttons().find((el) => labelOf(el) === label);
 const enableButtons = () =>
@@ -282,7 +291,7 @@ function assertNoOptInAffordance(where) {
 
 async function mountSettings(
 	t,
-	{ status, settings, api, accountId = "account-a" },
+	{ status, settings, api, accountId = "account-a", focus = false },
 ) {
 	window.__agentMessagesState = { accountId, snapshot: { status } };
 	const container = document.createElement("div");
@@ -308,6 +317,7 @@ async function mountSettings(
 						return Promise.resolve();
 					},
 					sessions: [],
+					focus,
 				}),
 			),
 		);
@@ -738,6 +748,72 @@ test("Settings: a double click on Turn off sends one PUT", async (t) => {
 	});
 	await flush();
 	assert.equal(calls.settings.length, 1);
+});
+
+test("Banner: Turn off states its consequence before the press and keeps its width while pending", async (t) => {
+	const base = makeApi(settingsWith());
+	let release;
+	const gate = new Promise((done) => {
+		release = done;
+	});
+	const api = {
+		...base.api,
+		updateSettings: async (body) => {
+			await gate;
+			return base.api.updateSettings(body);
+		},
+	};
+	await mountSettings(t, {
+		status: statusWith({ defaultOn: PENDING }),
+		api,
+	});
+	const turnOff = banner().querySelector(
+		'[data-agent-messages-banner-action="turn_off"]',
+	);
+	// Design D1: the band says what Turn off hides, and the control carries it.
+	const hint = document.getElementById(
+		turnOff.getAttribute("aria-describedby") ?? "",
+	);
+	assert.equal(hint === null, false, "Turn off is described by a hint");
+	assert.match(hint.textContent, /hides your Team Bridge conversations/);
+	// Design D6: both labels always occupy the button, only one is exposed.
+	const cellText = () => turnOff.textContent;
+	assert.equal(
+		cellText().includes("Turning off…"),
+		true,
+		"pending label reserved",
+	);
+	assert.equal(labelOf(turnOff), "Turn off");
+	await act(async () =>
+		turnOff.dispatchEvent(new window.MouseEvent("click", { bubbles: true })),
+	);
+	assert.equal(labelOf(turnOff), "Turning off…");
+	assert.equal(cellText().includes("Turn off"), true, "idle label reserved");
+	release();
+	await flush();
+});
+
+test("Settings: an off-gate deep link focuses the way-back control once it can take focus", async (t) => {
+	await mountSettings(t, {
+		status: statusWith({ surface: "E", defaultOn: SEEN, enabled: false }),
+		settings: settingsWith({ state: "disabled" }),
+		focus: true,
+	});
+	const back = button("Turn on again");
+	assert.equal(back === undefined, false, "Turn on again rendered");
+	assert.equal(document.activeElement === back, true, "Turn on again focused");
+});
+
+test("Settings: without the deep link nothing is focused for the reader", async (t) => {
+	await mountSettings(t, {
+		status: statusWith({ surface: "E", defaultOn: SEEN, enabled: false }),
+		settings: settingsWith({ state: "disabled" }),
+	});
+	assert.equal(
+		document.activeElement === button("Turn on again"),
+		false,
+		"no focus without focus=true",
+	);
 });
 
 test("Settings: Dismiss while Turn off is in flight is dropped", async (t) => {

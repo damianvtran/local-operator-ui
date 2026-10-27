@@ -1562,6 +1562,7 @@ export type MessageParams = {
 	"ui.agentMessages.banner.title": undefined;
 	"ui.agentMessages.banner.turn_off": undefined;
 	"ui.agentMessages.banner.turn_off_failed": undefined;
+	"ui.agentMessages.banner.turn_off_hint": undefined;
 	"ui.agentMessages.banner.turning_off": undefined;
 	"ui.agentMessages.dialog.account_guard_unavailable": undefined;
 	"ui.agentMessages.dialog.activities": undefined;
@@ -1579,6 +1580,9 @@ export type MessageParams = {
 	"ui.agentMessages.dialog.title": undefined;
 	"ui.agentMessages.dialog.validation_detail": { field: string; rule: string };
 	"ui.agentMessages.dialog.validation_failure": undefined;
+	"ui.agentMessages.page_off.action": undefined;
+	"ui.agentMessages.page_off.body": undefined;
+	"ui.agentMessages.page_off.title": undefined;
 	"ui.agentMessages.settings.action.enable": undefined;
 	"ui.agentMessages.settings.action.enable_again": undefined;
 	"ui.agentMessages.settings.action.pause": undefined;

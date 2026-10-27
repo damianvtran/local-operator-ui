@@ -93,6 +93,12 @@ export type AgentMessagesSettingsProps = {
 	 * chief-of-staff hold notice still explains itself but offers no button.
 	 */
 	onOpenSession?: (sessionId: string) => void;
+	/**
+	 * A deep link named this section's way-back control and it should be
+	 * revealed and focused: the Team Bridge page's off gate links here
+	 * (`/settings?setting=team_bridge.enabled`, design round 1 D1).
+	 */
+	focus?: boolean;
 };
 
 /** Radix refuses an empty item value, and "" is the designation's own word. */
@@ -115,6 +121,7 @@ export function AgentMessagesSettings({
 	onRefreshStatus,
 	sessions = [],
 	onOpenSession,
+	focus = false,
 }: AgentMessagesSettingsProps) {
 	useI18nLocale();
 	const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -249,6 +256,37 @@ export function AgentMessagesSettings({
 		onChanged: () => onRefreshStatus(true),
 	});
 
+	/*
+	 * THE OFF GATE'S LANDING (design round 1, D1). The Team Bridge page, when
+	 * off, links here instead of offering an Enable of its own, so the link
+	 * must land ON the control that turns it back on, not at the section top.
+	 * Which control that is depends on how it was turned off: E offers "Turn
+	 * on again" (default-on) or "Enable again" (v1), both after the served
+	 * consent text and both `data-agent-messages-action`; a local opt-out in
+	 * C/D is the "Enabled on this machine" switch. Only an ENABLED control is
+	 * focused - a disabled one (no consent served yet, a write in flight)
+	 * cannot take focus - so the effect re-runs as the settings read, the
+	 * pending write and the status settle. Native `focus()` also scrolls the
+	 * control into view. Same mechanism as the General language row's
+	 * `focus` prop.
+	 */
+	const sectionRoot = useRef<HTMLDivElement>(null);
+	const focused = useRef(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `status` is a re-run trigger, not a value the body reads - a status refresh can enable the control (served consent arrives) after the settings read has settled.
+	useEffect(() => {
+		if (!focus) {
+			focused.current = false;
+			return;
+		}
+		if (focused.current || load.kind !== "ready" || pending !== null) return;
+		const control = sectionRoot.current?.querySelector<HTMLElement>(
+			'[data-agent-messages-action="turn_on_again"]:not(:disabled), [data-agent-messages-action="enable"]:not(:disabled), [role="switch"]:not(:disabled)',
+		);
+		if (!control) return;
+		control.focus();
+		focused.current = true;
+	}, [focus, load, pending, status]);
+
 	if (availability === "absent") return null;
 
 	if (availability === "dark") {
@@ -301,7 +339,11 @@ export function AgentMessagesSettings({
 	const hold = agentMessagesChiefOfStaffHold(status);
 
 	return (
-		<div data-agent-messages-section="" className="flex flex-col gap-6">
+		<div
+			ref={sectionRoot}
+			data-agent-messages-section=""
+			className="flex flex-col gap-6"
+		>
 			{/*
 			 * Above the settings read on purpose: the hold comes from the status
 			 * read the section already has, so it must not wait behind (or vanish
