@@ -40,7 +40,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
-import { after, test } from "node:test";
+import { after, afterEach, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -99,6 +99,8 @@ const layerDate = (iso) =>
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-09-30T12:00:00.000Z");
+/** The real clock, so a mount's frozen clock is handed back even if the mount throws. */
+const REAL_NOW = Date.now;
 const team = (overrides = {}) => ({
 	id: "t1",
 	tenant_id: "tenant-1",
@@ -367,6 +369,20 @@ const stubTransport = (window, teams) => {
 };
 
 const mountRoster = async (teams) => {
+	/*
+	 * THE MOUNTED CLOCK IS THE FIXTURE'S CLOCK, not the wall clock. The roster is
+	 * the shipped component, and its provenance line goes through
+	 * `teamRecency(team)`, whose `now` parameter defaults to `Date.now()`; the
+	 * fixture's `updated_at` is a fixed `NOW - 3d3h`, so a mount left on the real
+	 * clock turns the expected "3 days ago" into "1 month ago" as soon as the
+	 * fixture is older than the formatter's month boundary (observed 2026-10-27:
+	 * `scripts/org-teams-summary.test.mjs:568` expected `/updated \d+ days ago/`,
+	 * the rendered name said `updated 1 month ago`). Freezing `Date.now` for the
+	 * mount and restoring it in `teardown` is this suite's settled idiom for a
+	 * component that reads the clock (`completion-view-ack.test.mjs`); only the
+	 * no-argument reads are affected, `new Date(iso)` parsing still works.
+	 */
+	Date.now = () => NOW;
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url: "http://localhost/",
@@ -411,6 +427,7 @@ const mountRoster = async (teams) => {
 			await act(async () => root.unmount());
 			queryClient.clear();
 			dom.window.close();
+			Date.now = REAL_NOW;
 			globalThis.window = previous.window;
 			globalThis.document = previous.document;
 			globalThis.Element = previous.Element;
@@ -418,6 +435,16 @@ const mountRoster = async (teams) => {
 		},
 	};
 };
+
+/*
+ * The mount restores the clock in its own `teardown`, but a mount that throws
+ * before returning the harness never reaches it; a leaked frozen clock would
+ * then make every later test in this file look deterministic for the wrong
+ * reason. Restoring after each test is the fallback.
+ */
+afterEach(() => {
+	Date.now = REAL_NOW;
+});
 
 const fire = async (dom, element, type, init = {}) => {
 	const Ctor = type.startsWith("key")
