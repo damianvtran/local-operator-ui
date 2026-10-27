@@ -36,5 +36,19 @@
 		"role": "accessible label",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
 		"note": "Shown in sidebar-header.tsx; accessible label in the sidebar header surface."
+	},
+	"ui.common.layout.toasts.dismiss": {
+		"role": "accessible name of the close button on a toast",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The toast region is a live region; every toast carries the same close control, so the name must not include the toast's own message. Supplied to the toaster rather than left to the component's English default.",
+		"placeholders": {}
+	},
+	"ui.common.layout.toasts.notifications": {
+		"role": "accessible name of the toast region itself",
+		"tone": "plural noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "The toaster appends the keyboard shortcut to this name, so it must read as a region label on its own and carry no punctuation or shortcut of its own.",
+		"placeholders": {}
 	}
 }

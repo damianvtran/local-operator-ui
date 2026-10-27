@@ -4261,5 +4261,142 @@
 		"role": "button label",
 		"tone": "Concise in-progress status.",
 		"note": "Shown during the initial live model-catalogue check before the user explicitly requests a refresh."
+	},
+	"ui.chat.pickers.at_menu.heading.files": {
+		"role": "section header inside the `@` mention popup, over the file rows",
+		"tone": "plural noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Drawn only when the popup carries BOTH sections; a file-only popup draws no header. It names a group of rows, so it stays plural.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.at_menu.heading.projects": {
+		"role": "section header inside the `@` mention popup, over the project rows",
+		"tone": "plural noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "The sibling of the Files header: the popup merges projects and files into one list, and the two headers are what separate them.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.at_menu.region_label": {
+		"role": "accessible name of the `@` mention popup listbox",
+		"tone": "plural noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Screen readers announce it as the listbox name. It is pinned by the mentions driver scene and the stories, which query the listbox by this name, so changing the English value means updating those.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.at_menu.tag.directory": {
+		"role": "type tag on a directory row in the `@` mention popup",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "'Directory' rather than the terminal's 'Dir': the composer already says 'Working directory', and the tag answers the one question a path cannot.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.at_menu.tag.file": {
+		"role": "type tag on a file row in the `@` mention popup",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Sits at the right edge of the row, after the path.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.at_menu.tag.project": {
+		"role": "type tag on a project row in the `@` mention popup",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Singular because it labels ONE row, unlike the section header above the group.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.arguments_region_label": {
+		"role": "accessible name of the slash popup listbox while it lists a command's arguments",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The argument phase's name. The command phase uses the popup title (`Commands`).",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.click.chooses_name": {
+		"role": "popup footer line stating what a click does to a name row",
+		"tone": "verb phrase, sentence case, trailing period",
+		"length": "Four words.",
+		"note": "A name row takes an argument after the name, so the click only completes the name.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.click.completes_label": {
+		"role": "popup footer line stating what a click does to a value row",
+		"tone": "verb phrase with the command name, sentence case, trailing period",
+		"length": "Four words plus the command.",
+		"note": "The click completes the row without running it. Keep the leading slash in the placeholder value; never translate or add one.",
+		"placeholders": {
+			"label": "the command's own name, without a leading slash. Machine text: keep it verbatim."
+		}
+	},
+	"ui.chat.pickers.slash.click.completes_value": {
+		"role": "popup footer line stating what a click does to an argument value row",
+		"tone": "verb phrase, sentence case, trailing period",
+		"length": "Four words.",
+		"note": "The argument equivalent of the row that completes a command.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.click.connects": {
+		"role": "popup footer line stating that a click connects an MCP server",
+		"tone": "verb phrase with the server name, sentence case, trailing period",
+		"length": "Three words plus the server name.",
+		"note": "The click opens the server's sign-in route.",
+		"placeholders": {
+			"name": "the MCP server's own name. Machine text: keep it verbatim."
+		}
+	},
+	"ui.chat.pickers.slash.click.runs": {
+		"role": "popup footer line stating what a click does to a command row",
+		"tone": "verb phrase with the command name, sentence case, trailing period",
+		"length": "Three words plus the command.",
+		"note": "The click runs the command without a further key. A reader must be able to tell this apart from the rows that only complete.",
+		"placeholders": {
+			"label": "the command's own name, without a leading slash. Machine text: keep it verbatim."
+		}
+	},
+	"ui.chat.pickers.slash.click.runs_command": {
+		"role": "popup footer line for an argument row that carries its command",
+		"tone": "verb phrase, sentence case, trailing period",
+		"length": "Five words.",
+		"note": "Used when no command name can be named for the row; it still says the click runs rather than completes.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.click.runs_with_value": {
+		"role": "popup footer line stating that a click runs an argument value",
+		"tone": "verb phrase with the command and its value, sentence case, trailing period",
+		"length": "Three words plus the command and value.",
+		"note": "The two placeholders are machine text and must sit adjacent, in that order: the value follows its command with a space the message itself carries. Never translate, reorder or add separators.",
+		"placeholders": {
+			"command": "the command with its leading slash, e.g. `/team`. Machine text.",
+			"value": "the argument value and any flag text after it, with a leading space. Machine text."
+		}
+	},
+	"ui.chat.pickers.slash.click.stages": {
+		"role": "popup footer line stating what a click does to a command row that stages the draft",
+		"tone": "verb phrase with the command name, sentence case, trailing period",
+		"length": "Three words plus the command.",
+		"note": "Staging arms the draft rather than running it: the next Enter runs it. That distinction is the whole reason this line exists.",
+		"placeholders": {
+			"label": "the command's own name, without a leading slash. Machine text: keep it verbatim."
+		}
+	},
+	"ui.chat.pickers.slash.enter_needs_a_pick": {
+		"role": "popup footer line telling the reader which key acts on the highlighted row",
+		"tone": "instruction, sentence case, no trailing period, two clauses separated by a middle dot",
+		"length": "Thirteen words plus two key names.",
+		"note": "The arrow and the key names (Enter, Tab) are keyboard names: keep them verbatim. 'a row you pick' rather than naming the highlighted row, because the arrow moves the highlight off it.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.phase.arguments": {
+		"role": "phase label on the slash popup when a command's arguments are being listed",
+		"tone": "plural noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "One word, like the command phase's `Commands`, because it names what the list now holds.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.region_label": {
+		"role": "accessible name of the slash popup listbox in its command phase",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Screen readers announce it as the listbox name; the argument phase uses its own name.",
+		"placeholders": {}
 	}
 }

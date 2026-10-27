@@ -126,14 +126,19 @@ import type {
 } from "../../../../shared/desktop-session-contract";
 import {
 	DESKTOP_STREAM_DETAIL,
-	HISTORY_UNREADABLE,
 	type SessionFailureNotice,
-	streamFailureNotice,
 } from "../../../../shared/desktop-stream-notice";
 import {
 	type LoadOlderOutcome,
 	createOlderLoader,
 } from "../../features/chat/canonical/load-older";
+/* The sentences are the renderer's: the shared module keeps the machine
+ * vocabulary and the classification (the copy it used to hold pulled every
+ * catalogue into the preload bundle). */
+import {
+	historyUnreadable,
+	streamFailureNotice,
+} from "../../features/chat/canonical/session-failure-notice";
 /* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
@@ -3706,7 +3711,7 @@ export function useCanonicalSessionStream(
 					commitView((state) => ({
 						...state,
 						status: "unavailable",
-						failure: HISTORY_UNREADABLE,
+						failure: historyUnreadable(),
 						heldFrontend: null,
 						// The read gave up, so the banner's press has no answer coming.
 						...(state.liveUpdatesReloading

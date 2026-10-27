@@ -70,71 +70,39 @@ export type SessionFailureNotice = {
 	action: SessionFailureAction | null;
 };
 
-/** The connection is gone but the app and its backend are both alive. */
-const LOST_CONNECTION: SessionFailureNotice = {
-	statement:
-		"Lost the connection to this conversation — reconnect to keep reading.",
-	action: "reconnect",
-};
-
 /**
- * The app's own backend is not answering.
+ * Which product sentence a transport detail calls for, as an ID.
  *
- * Distinct from LOST_CONNECTION because the remedy differs: reconnecting is
- * worth pressing, but if the server stays down the app has to be restarted to
- * bring its managed backend back. The sentence says both, and asserts only what
- * the relay observed (nothing answered), not why.
+ * WHY AN ID AND NOT THE SENTENCE (and why the sentences are not here at all):
+ * this module is imported by main and preload for `DESKTOP_STREAM_DETAIL`, and
+ * reaching the catalogue's `t()` from here pulled every English catalogue into
+ * the PRELOAD bundle — measured at 333 kB before, 7.5 MB after, for copy a
+ * preload script never draws. So the shared half keeps the MACHINE vocabulary
+ * and the classification, which are both locale-free, and the renderer resolves
+ * the ID into copy through `t()` (`features/chat/canonical/session-failure-notice.ts`).
  */
-const SERVER_DOWN: SessionFailureNotice = {
-	statement:
-		"The Local Operator server is not running — reconnect once it is back, or restart the app if it stays down.",
-	action: "reconnect",
-};
-
-/** The app holds no credential for the backend it is talking to. */
-const NOT_PAIRED: SessionFailureNotice = {
-	/*
-	 * "restart the app so it can manage its own server" used to end this sentence,
-	 * and it is the same defect the compatibility banner carried: the app is a CLIENT
-	 * of whatever daemon is running, so a pairing failure is not repaired by making
-	 * the app own the server (design § 1.8, § 3.1). The sentence states what is true
-	 * and offers no action, because the action that helps - main re-claiming the
-	 * plane - is not something this notice can perform or promise.
-	 */
-	statement:
-		"This app is not paired with the Local Operator server, so this conversation cannot be read yet.",
-	action: null,
-};
-
-/** Durable history could not be read, so the transcript may not claim empty. */
-export const HISTORY_UNREADABLE: SessionFailureNotice = {
-	statement:
-		"Could not load this conversation's history — reconnect to try again.",
-	action: "reconnect",
-};
-
-/** A frame larger than the relay's per-frame cap killed the stream. */
-const FRAME_TOO_LARGE: SessionFailureNotice = {
-	statement:
-		"This conversation's updates were too large to display — reconnect to try again.",
-	action: "reconnect",
-};
+export type SessionFailureKind =
+	| "frameTooLarge"
+	| "historyUnreadable"
+	| "lost"
+	| "notPaired"
+	| "serverDown";
 
 /**
- * Translate a transport detail into the sentence the reader sees.
+ * Classify a transport detail.
  *
  * Keyed on the constants above rather than on substrings: a detail the relay
  * gains later falls through to the honest, generic connection sentence, and
  * `refused` is matched by prefix because it carries the backend's status code.
  */
-export function streamFailureNotice(
+export function sessionFailureKind(
 	detail: string | null | undefined,
-): SessionFailureNotice {
-	if (!detail) return LOST_CONNECTION;
-	if (detail === DESKTOP_STREAM_DETAIL.notPaired) return NOT_PAIRED;
-	if (detail === DESKTOP_STREAM_DETAIL.serverDown) return SERVER_DOWN;
-	if (detail === DESKTOP_STREAM_DETAIL.frameBudget) return FRAME_TOO_LARGE;
+): SessionFailureKind {
+	if (!detail) return "lost";
+	if (detail === DESKTOP_STREAM_DETAIL.notPaired) return "notPaired";
+	if (detail === DESKTOP_STREAM_DETAIL.serverDown) return "serverDown";
+	if (detail === DESKTOP_STREAM_DETAIL.frameBudget) return "frameTooLarge";
 	// `ended`, `connectionFailed` and `openFailed` are all "the connection is
 	// gone" to the reader, which is the only distinction they can act on.
-	return LOST_CONNECTION;
+	return "lost";
 }

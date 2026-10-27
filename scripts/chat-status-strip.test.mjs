@@ -34,7 +34,12 @@ const APP = "src/renderer/src/app.tsx";
 
 const bundle = await build({
 	stdin: {
-		contents: 'export * from "./src/renderer/src/features/chat/chat-status";',
+		contents: [
+			'export * from "./src/renderer/src/features/chat/chat-status";',
+			// The render path itself, so the assertions can state the sentence a key
+			// RESOLVES to instead of spelling English twice.
+			'export { setLocale, t } from "@shared/i18n";',
+		].join("\n"),
 		resolveDir: ROOT,
 		loader: "ts",
 	},
@@ -42,11 +47,18 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/*
+	 * The module now imports `t` through the renderer's alias, so the bundle needs
+	 * it exactly as the desktop suite's other i18n bundles do. The alias belongs to
+	 * the BUILD options, not to the `stdin` object that carries the entry point.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
 
-const { CHAT_STATUS_COPY, chatStatusDisplay, chatStatusKey } = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const { chatStatusCopy, chatStatusDisplay, chatStatusKey, setLocale, t } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
 
 const read = (file) => readFileSync(file, "utf8");
 const code = (source) =>
@@ -54,19 +66,29 @@ const code = (source) =>
 
 /* ------------------------------------------------------------ the table */
 
+/** Every sentence the strip used to hold as a literal, for the source case. */
+const ENGLISH_STATUS_SENTENCES = [
+	"Can't reach the Local Operator server. Sending will wait.",
+	"The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.",
+	"The server is answering slowly. Your messages are queued.",
+	"This machine is offline. Sending will wait.",
+	'"Retry"',
+];
+
 test("each root cause states ONE sentence, and the four are §F2's own", () => {
+	/*
+	 * THE SENTENCE IS THE CATALOGUE'S, read through the render path this module
+	 * exposes. What this case holds is WHICH key each root cause resolves —
+	 * `chatStatusCopy` is the strip's one lookup, so a stray literal is invisible
+	 * here as long as it happens to equal the English value. The source case below
+	 * is what refuses that.
+	 */
+	assert.equal(chatStatusCopy("unreachable"), t("ui.chat.status.unreachable"));
 	assert.equal(
-		CHAT_STATUS_COPY.unreachable,
-		"Can't reach the Local Operator server. Sending will wait.",
+		chatStatusCopy("credential-refused"),
+		t("ui.chat.status.credential_refused"),
 	);
-	assert.equal(
-		CHAT_STATUS_COPY["credential-refused"],
-		"The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.",
-	);
-	assert.equal(
-		CHAT_STATUS_COPY.degraded,
-		"The server is answering slowly. Your messages are queued.",
-	);
+	assert.equal(chatStatusCopy("degraded"), t("ui.chat.status.degraded"));
 	/*
 	 * The row the spec's table does not have, and it is not a fifth root cause:
 	 * with the network gone, the server sentence would blame the wrong end of the
@@ -74,9 +96,39 @@ test("each root cause states ONE sentence, and the four are §F2's own", () => {
 	 * (`connectivityIssue`), so the strip must too.
 	 */
 	assert.equal(
-		CHAT_STATUS_COPY["internet-offline"],
-		"This machine is offline. Sending will wait.",
+		chatStatusCopy("internet-offline"),
+		t("ui.chat.status.internet_offline"),
 	);
+});
+
+test("no sentence or action label is a literal in the module", () => {
+	/*
+	 * WHY THIS CASE EXISTS, and why the runtime case cannot cover it: the four
+	 * sentences were literals for as long as the strip existed, and restoring one
+	 * would still return the English text the catalogue holds — equal at run time,
+	 * an untranslated leak on screen. So the module's own source is the subject:
+	 * every sentence must be ABSENT, and the key that replaced it must be present.
+	 *
+	 * MUTATION PROOF: put any one of these sentences back in `chat-status.ts`
+	 * (eg. `title: "The server is answering slowly. Your messages are queued."`)
+	 * and this case fails on that sentence, by name.
+	 */
+	const module = code(read("src/renderer/src/features/chat/chat-status.ts"));
+	for (const sentence of ENGLISH_STATUS_SENTENCES) {
+		assert.ok(
+			!module.includes(sentence),
+			`the literal is back in chat-status.ts: ${sentence}`,
+		);
+	}
+	for (const key of [
+		"ui.chat.status.unreachable",
+		"ui.chat.status.credential_refused",
+		"ui.chat.status.degraded",
+		"ui.chat.status.internet_offline",
+		"ui.common.actions.retry",
+	]) {
+		assert.ok(module.includes(key), `chat-status.ts no longer names ${key}`);
+	}
 });
 
 test("the four states, their washes, their roles and their one action", () => {
@@ -105,7 +157,7 @@ test("the four states, their washes, their roles and their one action", () => {
 	assert.equal(unreachable?.wash, "danger-wash");
 	assert.equal(unreachable?.role, "alert");
 	assert.equal(unreachable?.action, "retry");
-	assert.equal(unreachable?.title, CHAT_STATUS_COPY.unreachable);
+	assert.equal(unreachable?.title, t("ui.chat.status.unreachable"));
 
 	/*
 	 * `wedged` is the same state on this surface as `detached` - the reader cannot
@@ -166,7 +218,7 @@ test("the four states, their washes, their roles and their one action", () => {
 	});
 	assert.equal(deadWhileRetrying?.kind, "unreachable");
 	assert.equal(deadWhileRetrying?.wash, "danger-wash");
-	assert.equal(deadWhileRetrying?.title, CHAT_STATUS_COPY.unreachable);
+	assert.equal(deadWhileRetrying?.title, t("ui.chat.status.unreachable"));
 	assert.equal(
 		at({
 			server: {
@@ -249,7 +301,7 @@ test("a refusal is stated only while its daemon is there, and the absence takes 
 	/* A daemon that is THERE and refusing: the refusal is the reader's fact. */
 	const wedged = refused("wedged");
 	assert.equal(wedged?.kind, "credential-refused");
-	assert.equal(wedged?.title, CHAT_STATUS_COPY["credential-refused"]);
+	assert.equal(wedged?.title, t("ui.chat.status.credential_refused"));
 	/*
 	 * And there is exactly ONE message: the type has one `title`, so a second
 	 * cause has nowhere to go but the one detail slot, which is what makes "the

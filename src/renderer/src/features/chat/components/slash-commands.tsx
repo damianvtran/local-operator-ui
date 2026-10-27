@@ -2087,7 +2087,11 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			// biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order.
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
-			aria-label={argument ? "Command arguments" : "Slash commands"}
+			aria-label={
+				argument
+					? t("ui.chat.pickers.slash.arguments_region_label")
+					: t("ui.chat.pickers.slash.region_label")
+			}
 			className={cn(
 				"@container/slash absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the

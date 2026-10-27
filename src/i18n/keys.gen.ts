@@ -58,6 +58,7 @@ import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.js
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
 import enUiChatSidebar from "./catalogues/en/ui.chat.sidebar.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
+import enUiChatStatus from "./catalogues/en/ui.chat.status.json";
 import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
@@ -813,6 +814,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatRunDetails,
 	...enUiChatSidebar,
 	...enUiChatSidebarView,
+	...enUiChatStatus,
 	...enUiChatTagDialogs,
 	...enUiChatTags,
 	...enUiChatTranscriptCopy,
@@ -1664,8 +1666,10 @@ export type MessageParams = {
 	"ui.agents.config.action.watch": undefined;
 	"ui.agents.config.activity.empty": undefined;
 	"ui.agents.config.background_only": undefined;
+	"ui.agents.config.banner.unavailable": undefined;
 	"ui.agents.config.composer.label": undefined;
 	"ui.agents.config.definitions": { count: number };
+	"ui.agents.config.disabled_gate": undefined;
 	"ui.agents.config.error.stop_refused": undefined;
 	"ui.agents.config.examples.add_twice": undefined;
 	"ui.agents.config.examples.reads_code": undefined;
@@ -1673,6 +1677,7 @@ export type MessageParams = {
 	"ui.agents.config.result.changed": undefined;
 	"ui.agents.config.result.configured": undefined;
 	"ui.agents.config.result.created": undefined;
+	"ui.agents.config.run_details_region": undefined;
 	"ui.agents.config.state.sending": undefined;
 	"ui.agents.config.state.stopping": undefined;
 	"ui.agents.config.status.attached": undefined;
@@ -2818,6 +2823,8 @@ export type MessageParams = {
 	"ui.chat.canonical.older_history.windowed.short_gesture": undefined;
 	"ui.chat.canonical.older_history.windowed.title": undefined;
 	"ui.chat.canonical.older_history.windowed.title_gesture": undefined;
+	"ui.chat.canonical.placeholder.loading": undefined;
+	"ui.chat.canonical.placeholder.region_label": undefined;
 	"ui.chat.canonical.send_failure.aside_not_answered": undefined;
 	"ui.chat.canonical.send_failure.aside_still_answering": undefined;
 	"ui.chat.canonical.send_failure.busy": undefined;
@@ -2852,6 +2859,12 @@ export type MessageParams = {
 	"ui.chat.canonical.supplement.preview_unavailable": undefined;
 	"ui.chat.canonical.supplement.send": undefined;
 	"ui.chat.canonical.this_chat": undefined;
+	"ui.chat.canonical.tool_row.generic_verb.running": undefined;
+	"ui.chat.canonical.tool_row.generic_verb.settled": undefined;
+	"ui.chat.canonical.tool_row.outcome.failed": undefined;
+	"ui.chat.canonical.tool_row.outcome.interrupted": undefined;
+	"ui.chat.canonical.tool_row.outcome.never_ran": undefined;
+	"ui.chat.canonical.tool_row.outcome.succeeded": undefined;
 	"ui.chat.canonical.transcript.connect_provider": undefined;
 	"ui.chat.canonical.transcript.credential_lost": undefined;
 	"ui.chat.canonical.transcript.edit": undefined;
@@ -2942,17 +2955,28 @@ export type MessageParams = {
 	"ui.chat.composer_media.preview_failed": undefined;
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
+	"ui.chat.device.fact.this_device": undefined;
+	"ui.chat.device.footer.move_deletes_copy": undefined;
 	"ui.chat.device.label.moving_to": { name: string };
 	"ui.chat.device.label.new_on": { name: string };
 	"ui.chat.device.label.new_on_this_device": undefined;
 	"ui.chat.device.label.on": { name: string };
 	"ui.chat.device.label.on_this_device": undefined;
+	"ui.chat.device.label.this_device": undefined;
+	"ui.chat.device.notice.move_hold_detail": undefined;
+	"ui.chat.device.picker.heading.move": undefined;
+	"ui.chat.device.picker.heading.start": undefined;
+	"ui.chat.device.row.conversations": { count: number };
+	"ui.chat.device.row.not_here_why": undefined;
 	"ui.chat.device.sentence.draft_elsewhere": { name: string };
 	"ui.chat.device.sentence.draft_here": undefined;
 	"ui.chat.device.sentence.gone": { name: string };
 	"ui.chat.device.sentence.gone_did_not_answer": { name: string };
 	"ui.chat.device.sentence.local": undefined;
+	"ui.chat.device.sentence.mesh_read_failure": undefined;
+	"ui.chat.device.sentence.move_in_flight": { name: string };
 	"ui.chat.device.sentence.moving": { name: string };
+	"ui.chat.device.sentence.pairing_guidance": undefined;
 	"ui.chat.device.sentence.remote": { name: string };
 	"ui.chat.device.sentence.remote_did_not_answer": { name: string };
 	"ui.chat.device.sentence.remote_did_not_answer_reason": {
@@ -3132,9 +3156,20 @@ export type MessageParams = {
 	"ui.chat.reply.replying_to": undefined;
 	"ui.chat.session_status.choose_model": undefined;
 	"ui.chat.session_status.choose_model_tooltip": undefined;
+	"ui.chat.session_status.context_heading": undefined;
+	"ui.chat.session_status.context_nothing_measured_tooltip": undefined;
+	"ui.chat.session_status.conversation_starting": undefined;
 	"ui.chat.session_status.estimate": undefined;
 	"ui.chat.session_status.last_reading": undefined;
+	"ui.chat.session_status.model_none_resolved_tooltip": undefined;
+	"ui.chat.session_status.no_context_tooltip": undefined;
 	"ui.chat.session_status.no_model_resolved": undefined;
+	"ui.chat.session_status.no_model_tooltip": undefined;
+	"ui.chat.session_status.not_signed_in": { label: string };
+	"ui.chat.session_status.not_signed_in_description": { label: string };
+	"ui.chat.session_status.nothing_measured_yet": undefined;
+	"ui.chat.session_status.temporarily_unavailable": { label: string };
+	"ui.chat.session_status.temporarily_unavailable_description": undefined;
 	"ui.chat.skill_invocation.instructions_label": undefined;
 	"ui.chat.skill_invocation.trigger_label": { token: string };
 	"ui.chat.status_strip.dismiss": undefined;
@@ -3342,6 +3377,12 @@ export type MessageParams = {
 	};
 	"ui.chat.pickers.analytics_session_state.z_to_a": undefined;
 	"ui.chat.pickers.approvals.title": undefined;
+	"ui.chat.pickers.at_menu.heading.files": undefined;
+	"ui.chat.pickers.at_menu.heading.projects": undefined;
+	"ui.chat.pickers.at_menu.region_label": undefined;
+	"ui.chat.pickers.at_menu.tag.directory": undefined;
+	"ui.chat.pickers.at_menu.tag.file": undefined;
+	"ui.chat.pickers.at_menu.tag.project": undefined;
 	"ui.chat.pickers.commands.title": undefined;
 	"ui.chat.pickers.context_model.context_breakdown_unavailable": undefined;
 	"ui.chat.pickers.context_model.environment": undefined;
@@ -4064,6 +4105,21 @@ export type MessageParams = {
 	"ui.chat.pickers.session_report_model.without_a_tracked_basis": undefined;
 	"ui.chat.pickers.skills.loading": undefined;
 	"ui.chat.pickers.skills.title": undefined;
+	"ui.chat.pickers.slash.arguments_region_label": undefined;
+	"ui.chat.pickers.slash.click.chooses_name": undefined;
+	"ui.chat.pickers.slash.click.completes_label": { label: string };
+	"ui.chat.pickers.slash.click.completes_value": undefined;
+	"ui.chat.pickers.slash.click.connects": { name: string };
+	"ui.chat.pickers.slash.click.runs": { label: string };
+	"ui.chat.pickers.slash.click.runs_command": undefined;
+	"ui.chat.pickers.slash.click.runs_with_value": {
+		command: string;
+		value: string;
+	};
+	"ui.chat.pickers.slash.click.stages": { label: string };
+	"ui.chat.pickers.slash.enter_needs_a_pick": undefined;
+	"ui.chat.pickers.slash.phase.arguments": undefined;
+	"ui.chat.pickers.slash.region_label": undefined;
 	"ui.chat.pickers.stop.all_sessions": { count: number };
 	"ui.chat.pickers.stop.confirm": { count: number };
 	"ui.chat.pickers.stop.title": undefined;
@@ -4205,6 +4261,8 @@ export type MessageParams = {
 	"ui.chat.run_details.monitors.cancelled": undefined;
 	"ui.chat.run_details.monitors.title": undefined;
 	"ui.chat.run_details.next_subagent": undefined;
+	"ui.chat.run_details.nothing_in_flight": undefined;
+	"ui.chat.run_details.nothing_to_show_yet": undefined;
 	"ui.chat.run_details.pane_label": undefined;
 	"ui.chat.run_details.previous_subagent": undefined;
 	"ui.chat.run_details.reader.delegated_with": undefined;
@@ -4313,6 +4371,10 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.sections": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
+	"ui.chat.status.credential_refused": undefined;
+	"ui.chat.status.degraded": undefined;
+	"ui.chat.status.internet_offline": undefined;
+	"ui.chat.status.unreachable": undefined;
 	"ui.chat.tag_dialogs.assign_created_failed": { name: string };
 	"ui.chat.tag_dialogs.changed_elsewhere": undefined;
 	"ui.chat.tag_dialogs.created_assigned": { name: string };
@@ -4685,6 +4747,11 @@ export type MessageParams = {
 	};
 	"ui.common.connection.floating_alert.dismiss": undefined;
 	"ui.common.connection.provider.requires": { provider: string };
+	"ui.common.connection.session_loss.frame_too_large": undefined;
+	"ui.common.connection.session_loss.history_unreadable": undefined;
+	"ui.common.connection.session_loss.lost": undefined;
+	"ui.common.connection.session_loss.not_paired": undefined;
+	"ui.common.connection.session_loss.server_down": undefined;
 	"ui.common.connection.transport_failure": undefined;
 	"ui.common.editing.conflict": undefined;
 	"ui.common.editing.keep_mine": undefined;
@@ -4907,6 +4974,8 @@ export type MessageParams = {
 	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": undefined;
 	"ui.common.layout.sidebar_header.new_agent": undefined;
 	"ui.common.layout.sidebar_header.search_agents": undefined;
+	"ui.common.layout.toasts.dismiss": undefined;
+	"ui.common.layout.toasts.notifications": undefined;
 	"ui.common.loading.page": undefined;
 	"ui.common.models.default": undefined;
 	"ui.common.models.hosting_select.clear_hosting_provider_selection": undefined;

@@ -113,5 +113,16 @@
 	"ui.chat.question_dock.hint.secret": "{prefix}Type or paste the secret above · Enter sends · Esc hides",
 	"ui.chat.question_dock.hint.secret_held": "{prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
 	"ui.chat.question_dock.hint.type": "{prefix}Type your answer below.",
-	"ui.chat.question_dock.hint.options": "{prefix}Up/Down choose · Enter or {digits} answers · Esc hides · or type your own answer below"
+	"ui.chat.question_dock.hint.options": "{prefix}Up/Down choose · Enter or {digits} answers · Esc hides · or type your own answer below",
+	"ui.chat.session_status.context_heading": "Context",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Context: nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.conversation_starting": "Set once the conversation starts.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Model: none resolved yet. Choose the model this conversation will run on.",
+	"ui.chat.session_status.no_context_tooltip": "Context: nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.no_model_tooltip": "Model: none resolved yet. Choose the model this conversation will run on.",
+	"ui.chat.session_status.not_signed_in": "Not signed in to {label}",
+	"ui.chat.session_status.not_signed_in_description": "This session runs {label} without a working sign-in, so it cannot answer until you connect it.",
+	"ui.chat.session_status.nothing_measured_yet": "Nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} is temporarily unavailable",
+	"ui.chat.session_status.temporarily_unavailable_description": "Your saved sign-in is still present. Try again later or choose another model."
 }
