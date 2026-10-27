@@ -1,0 +1,52 @@
+{
+  "tree": "/Users/damian/local-operator-ui/.worktrees/canvas-attachments-ui-9bac",
+  "checks": [
+    {
+      "key": "mainStub",
+      "value": {
+        "stubbed": true,
+        "wrap": true
+      }
+    },
+    {
+      "key": "counts-populated",
+      "value": {
+        "segment": "files 4",
+        "railAria": "Canvas (⌘⇧C), 4 files",
+        "head": "Mentioned↑Filter4 filesOpen folder",
+        "headers": [
+          "Attachments4"
+        ],
+        "body": "Attachments4Spec.pdf2 KB · Oct 27Attached image0 KB · Oct 27Attached image1 KB · Oct 27pasted-kind.png1 KB · Oct 27"
+      }
+    },
+    {
+      "key": "error-state",
+      "value": {
+        "segment": "files 1",
+        "railAria": "Canvas (⌘⇧C), 1 file",
+        "head": "Mentioned↑Filter1 fileOpen folderCouldn't load attachmentsRetry",
+        "headers": [
+          "Attachments1May be incomplete"
+        ],
+        "body": "Attachments1May be incompleteIP Assignment eSignature.pdf2 KB · Oct 27"
+      }
+    },
+    {
+      "key": "error-retry",
+      "value": {
+        "pressed": true,
+        "after": {
+          "segment": "files 1",
+          "railAria": "Canvas (⌘⇧C), 1 file",
+          "head": "Mentioned↑Filter1 fileOpen folder",
+          "headers": [
+            "Attachments1"
+          ],
+          "body": "Attachments1IP Assignment eSignature.pdf2 KB · Oct 27"
+        },
+        "calls": 5
+      }
+    }
+  ]
+}

@@ -1,0 +1,202 @@
+{
+  "tree": "/Users/damian/local-operator-ui/.worktrees/canvas-attachments-ui-9bac",
+  "checks": [
+    {
+      "key": "mainStub",
+      "value": {
+        "stubbed": true,
+        "wrap": true
+      }
+    },
+    {
+      "key": "populated",
+      "value": {
+        "headers": [
+          "Attachments4"
+        ],
+        "body": "Attachments4Spec.pdf2 KB · Oct 27Attached image0 KB · Oct 27Attached image1 KB · Oct 27pasted-kind.png1 KB · Oct 27",
+        "tiles": [
+          {
+            "id": "attachment:d727214802ed404ba7d016c1a9327820:6894c4b6b992d58650d6d32ae85470d8",
+            "rect": {
+              "x": 784,
+              "y": 220,
+              "width": 178.6640625,
+              "height": 156,
+              "top": 220,
+              "right": 962.6640625,
+              "bottom": 376,
+              "left": 784
+            },
+            "spans": [
+              {
+                "text": "",
+                "rect": {
+                  "x": 788,
+                  "y": 224,
+                  "width": 170.6640625,
+                  "height": 128,
+                  "top": 224,
+                  "right": 958.6640625,
+                  "bottom": 352,
+                  "left": 788
+                },
+                "scrollWidth": 171,
+                "clientWidth": 171
+              },
+              {
+                "text": "Attached image0 KB · Oct 27",
+                "rect": {
+                  "x": 788,
+                  "y": 356,
+                  "width": 170.6640625,
+                  "height": 34.796875,
+                  "top": 356,
+                  "right": 958.6640625,
+                  "bottom": 390.796875,
+                  "left": 788
+                },
+                "scrollWidth": 171,
+                "clientWidth": 171
+              }
+            ]
+          },
+          {
+            "id": "attachment:d12971c0595d46c0bd3625c2774a1853:833c1d3290ef23499ce78e37c4814be6",
+            "rect": {
+              "x": 966.6640625,
+              "y": 220,
+              "width": 178.6640625,
+              "height": 156,
+              "top": 220,
+              "right": 1145.328125,
+              "bottom": 376,
+              "left": 966.6640625
+            },
+            "spans": [
+              {
+                "text": "",
+                "rect": {
+                  "x": 970.6640625,
+                  "y": 224,
+                  "width": 170.6640625,
+                  "height": 128,
+                  "top": 224,
+                  "right": 1141.328125,
+                  "bottom": 352,
+                  "left": 970.6640625
+                },
+                "scrollWidth": 171,
+                "clientWidth": 171
+              },
+              {
+                "text": "Attached image1 KB · Oct 27",
+                "rect": {
+                  "x": 970.6640625,
+                  "y": 356,
+                  "width": 170.6640625,
+                  "height": 34.796875,
+                  "top": 356,
+                  "right": 1141.328125,
+                  "bottom": 390.796875,
+                  "left": 970.6640625
+                },
+                "scrollWidth": 171,
+                "clientWidth": 171
+              }
+            ]
+          },
+          {
+            "id": "attachment:d12971c0595d46c0bd3625c2774a1853:a9382c32a58919012671456fb109c720",
+            "rect": {
+              "x": 1149.328125,
+              "y": 220,
+              "width": 178.671875,
+              "height": 156,
+              "top": 220,
+              "right": 1328,
+              "bottom": 376,
+              "left": 1149.328125
+            },
+            "spans": [
+              {
+                "text": "",
+                "rect": {
+                  "x": 1153.328125,
+                  "y": 224,
+                  "width": 170.671875,
+                  "height": 128,
+                  "top": 224,
+                  "right": 1324,
+                  "bottom": 352,
+                  "left": 1153.328125
+                },
+                "scrollWidth": 171,
+                "clientWidth": 171
+              },
+              {
+                "text": "pasted-kind.png1 KB · Oct 27",
+                "rect": {
+                  "x": 1153.328125,
+                  "y": 356,
+                  "width": 170.671875,
+                  "height": 34.796875,
+                  "top": 356,
+                  "right": 1324,
+                  "bottom": 390.796875,
+                  "left": 1153.328125
+                },
+                "scrollWidth": 171,
+                "clientWidth": 171
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "key": "enter-gallery",
+      "value": {
+        "dialog": true,
+        "documents": "false"
+      }
+    },
+    {
+      "key": "theme-before-light",
+      "value": {
+        "theme": "localOperatorDark",
+        "dark": true,
+        "store": null
+      }
+    },
+    {
+      "key": "retained",
+      "value": {
+        "headers": [
+          "Attachments1"
+        ],
+        "body": "Attachments1Moved Contract.pdfMoved or deleted · saved copy kept",
+        "tiles": []
+      }
+    },
+    {
+      "key": "both-gone",
+      "value": {
+        "headers": [
+          "Attachments1"
+        ],
+        "body": "Attachments1Deleted Invoice.pdfMoved or deleted · no saved copy",
+        "tiles": []
+      }
+    },
+    {
+      "key": "loading",
+      "value": {
+        "headers": [],
+        "body": "Loading session files…",
+        "tiles": []
+      }
+    }
+  ],
+  "error": "Error: wait timed out: document.querySelector('[data-tour-tag=\"files-scroller\"]')?.textContent.includes(\"Couldn't load attachments\")\n    at waitFor (file:///Users/damian/.local-operator/sessions/5f4c49fec12b/scratchpad/remediation-evidence.mjs:24:192)\n    at async file:///Users/damian/.local-operator/sessions/5f4c49fec12b/scratchpad/remediation-evidence.mjs:110:2"
+}
