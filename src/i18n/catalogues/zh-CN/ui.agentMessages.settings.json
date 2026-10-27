@@ -85,5 +85,10 @@
 	"ui.agentMessages.settings.error.no_changes": "未更改任何设置。请重试以检查当前状态。",
 	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, other {{count}条消息待你的首席助理接收。在其对话中发一条消息即可送达。}}",
 	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": "{count, plural, other {{count}条消息待你的首席助理接收。在侧边栏中找到其对话，发一条消息即可送达。}}",
-	"ui.agentMessages.settings.hold.open": "给首席助理发消息"
+	"ui.agentMessages.settings.hold.open": "给首席助理发消息",
+	"ui.agentMessages.settings.default_on.b_title": "Team Bridge尚未设置",
+	"ui.agentMessages.settings.default_on.b_body": "组织就绪后，Team Bridge会自动为你开启，开启时不会发送任何内容。",
+	"ui.agentMessages.settings.default_on.e_body": "此账户已关闭Team Bridge。阅读下方同意声明，如需恢复，可重新开启。",
+	"ui.agentMessages.settings.action.turn_on_again": "重新开启",
+	"ui.agentMessages.settings.consent.via_default_on": "默认开启"
 }
