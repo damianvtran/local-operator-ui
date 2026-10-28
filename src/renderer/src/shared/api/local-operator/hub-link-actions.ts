@@ -55,9 +55,23 @@ export type HubDirectionalReport = Omit<HubMergeReport, "kind"> & {
 	model_used: string | null;
 };
 export type HubLinkActionResponse = {
-	reports: HubDirectionalReport[];
+	/**
+	 * Directional on `apply`/`push`/`retry`; a CHECK answers per-ITEM rows.
+	 *
+	 * Core's check route reports through `ItemMergeReport.to_json()`
+	 * (`local_operator/hub_sync/report.py`), which carries `kind`/`local_id`/
+	 * `name`/`hub_id` and no `link_id` or `direction` - only the directional
+	 * routes enrich a report from the link identity. Reads that need the link
+	 * address go through `isDirectionalReport`.
+	 */
+	reports: HubMergeReport[];
 	status: HubUpdates;
-	links: HubLinks;
+	/**
+	 * Absent from a check answer: core's `/updates/check` returns `reports` and
+	 * `status` alone, so writing this into the inventory cache would blank the
+	 * panel until the post-mutation refetch lands.
+	 */
+	links?: HubLinks;
 	preview?: HubPullPreview | HubPushPreview | null;
 	/**
 	 * Present only on an explicit source confirmation (the `resolve` action): the
@@ -68,6 +82,11 @@ export type HubLinkActionResponse = {
 	link?: HubLink;
 	resolved?: HubSourceResolution;
 };
+/** A report from the directional routes, addressed by the link that produced it. */
+export const isDirectionalReport = (
+	report: HubMergeReport,
+): report is HubDirectionalReport => "link_id" in report;
+
 export type HubLinkAction =
 	| { action: "check"; linkId: string }
 	| {
@@ -88,9 +107,12 @@ export type HubLinkAction =
  * request. Confirmation cannot silently ask for a new proposal and publish it:
  * it sends ONLY the immutable receipt the user just viewed and acknowledged.
  */
-export function useHubLinkActions(linkId: string) {
+export function useHubLinkActions(
+	link: Pick<HubLink, "link_id" | "kind" | "name">,
+) {
 	const client = useQueryClient();
 	const safety = useHubMutationSafety();
+	const linkId = link.link_id;
 	const key = `link:${linkId}`;
 	const sharedPending = useHubActionStore((state) => state.pending.has(key));
 	const mutation = useMutation({
@@ -108,10 +130,17 @@ export function useHubLinkActions(linkId: string) {
 				const requestId = crypto.randomUUID();
 				switch (input.action) {
 					case "check":
+						/*
+						 * ONE item, selected by its local identity. The check route
+						 * has no `link_id` member (core `HubCheck`, extra="forbid"),
+						 * and it checks both directions of the item, so there is no
+						 * direction to send either.
+						 */
 						return desktopResult<HubLinkActionResponse>({
 							op: "hub.check",
 							requestId,
-							linkId: input.linkId,
+							kind: link.kind,
+							name: link.name,
 						});
 					case "apply":
 						return desktopResult<HubLinkActionResponse>({
@@ -157,7 +186,9 @@ export function useHubLinkActions(linkId: string) {
 				}
 			}, safety.snapshot),
 		onSuccess: (response) => {
-			client.setQueryData(hubLinksKey, response.links);
+			// A check answers no inventory; `onSettled` refetches it rather than
+			// this hook writing an absent `links` into the cache.
+			if (response.links) client.setQueryData(hubLinksKey, response.links);
 			client.setQueryData(["desktop", "hub-updates"], response.status);
 			if (response.reports.some((report) => report.applied)) {
 				for (const key of ["profiles", "teams", "skills"])

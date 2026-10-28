@@ -5677,6 +5677,7 @@ export type MessageParams = {
 	"ui.hub.links.aggregate_mark": { count: number; state: string };
 	"ui.hub.links.available": { item: string; source: string };
 	"ui.hub.links.busy": { direction: string; item: string; source: string };
+	"ui.hub.links.check_failed": { item: string; source: string };
 	"ui.hub.links.confirm_publish": undefined;
 	"ui.hub.links.direction_pull": undefined;
 	"ui.hub.links.direction_push": undefined;

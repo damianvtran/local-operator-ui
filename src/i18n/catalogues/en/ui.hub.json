@@ -59,6 +59,7 @@
 	"ui.hub.links.direction_pull": "Incoming update",
 	"ui.hub.links.direction_push": "Outgoing publication",
 	"ui.hub.links.action_failed": "The {direction} for {item} at {source} did not complete. Review its status before trying again.",
+	"ui.hub.links.check_failed": "The check for {item} at {source} did not complete. Review its status before trying again.",
 	"ui.hub.links.preview_warnings": "Review notes",
 	"ui.hub.links.action_result": "{direction} for {item} at {source}: {outcome}",
 	"ui.hub.links.preview_pull": "Preview incoming changes",
