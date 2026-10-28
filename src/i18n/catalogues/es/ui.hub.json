@@ -61,7 +61,7 @@
 	"ui.hub.links.action_failed": "La {direction} de {item} en {source} no se completó. Revisa su estado antes de volver a intentarlo.",
 	"ui.hub.links.preview_recomputed": "El backend vuelve a calcular esta fusión cuando aplicas, así que lo que haya cambiado desde esta vista previa se fusionará tal como esté en ese momento, no como se ve aquí.",
 	"ui.hub.links.incoming_outcome": "Vista previa de {item}: {outcome}",
-	"ui.hub.links.incoming_nothing": "No hay nada que hacer pull: el estado de este elemento es {outcome}.",
+	"ui.hub.links.incoming_nothing": "No hay nada de lo que hacer pull: el estado de este elemento es {outcome}.",
 	"ui.hub.links.name_ambiguous": "Otro elemento tiene el mismo nombre y este backend no puede distinguirlos. Abre el elemento para revisar su enlace antes de aplicar.",
 	"ui.hub.links.check_failed": "La comprobación de {item} en {source} no se completó. Revisa su estado antes de volver a intentarlo.",
 	"ui.hub.links.preview_warnings": "Notas de revisión",
