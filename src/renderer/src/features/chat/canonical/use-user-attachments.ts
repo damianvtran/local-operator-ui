@@ -121,8 +121,22 @@ export function useUserAttachments(
 	const owned = listing.key === sourceKey ? listing : null;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `signature` stands for `records`' attachment content.
 	const view = useMemo(
-		() => mergeUserAttachments(owned?.value ?? null, records),
-		[owned?.value, signature],
+		() =>
+			mergeUserAttachments(
+				owned?.value ?? null,
+				records,
+				/*
+				 * A capable backend judges every row, so until its listing has,
+				 * nothing is allowed (QA R6 Q3). While the capability answer is
+				 * still in flight the backend MAY be one, and the sent-file card's
+				 * origin-path actions do not wait on the capability, so that window
+				 * is withheld too. An older backend (answered, no capability), a
+				 * failed capabilities read and a document with no query client
+				 * (not fetching) keep the capability-only rule.
+				 */
+				capable || capabilities.isLoading,
+			),
+		[owned?.value, signature, capable, capabilities.isLoading],
 	);
 	return {
 		...view,

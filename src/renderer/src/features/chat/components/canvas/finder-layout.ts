@@ -1,5 +1,6 @@
 import { t } from "@shared/i18n";
 import type { FilesSort } from "../../canonical/session-files";
+import type { AttachmentVerdict } from "../../canonical/user-attachments";
 import type { FileKindGroup, FileRow } from "./file-rows";
 
 export type FinderPreferences = {
@@ -96,9 +97,10 @@ export type FinderItem = {
 		when: string;
 		/**
 		 * The backend's verdict (`UserAttachment.materialisable`): `false` = the
-		 * row offers no materialise-backed action; `null` = capability decides.
+		 * row offers no materialise-backed action; `"pending"` = not judged yet,
+		 * so none either (QA R6 Q3); `null` = capability decides.
 		 */
-		materialisable: boolean | null;
+		materialisable: AttachmentVerdict;
 	};
 };
 

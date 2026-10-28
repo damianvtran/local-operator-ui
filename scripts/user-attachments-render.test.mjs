@@ -585,6 +585,14 @@ async function transcriptOffer({
 	capable = true,
 	document: documentOver = {},
 	image: imageOver = {},
+	/*
+	 * QA R6 Q3: the listing's state as the chat sees it. "ready" with
+	 * `inventory`; "loading" / "error" carry no listing at all (the hook hands
+	 * `mergeUserAttachments` null). Every state but the legacy no-prop mount is
+	 * built exactly as `chat-content.tsx` builds it, judging on `capable`.
+	 */
+	listing = "ready",
+	messageId = "u-key",
 }) {
 	requests.length = 0;
 	const conversationId = "abcdef123456";
@@ -594,12 +602,12 @@ async function transcriptOffer({
 	const records = [
 		{
 			kind: "user",
-			id: "u-key",
+			id: messageId,
 			ts: 1793117300000,
 			text: "",
 			images: [
 				{
-					id: "u-key:0",
+					id: `${messageId}:0`,
 					data: null,
 					attachment: SHOT,
 					mimeType: "image/png",
@@ -608,7 +616,7 @@ async function transcriptOffer({
 			],
 			documents: [
 				{
-					id: "u-key:doc:0",
+					id: `${messageId}:doc:0`,
 					attachment: KEY,
 					filename: "id_rsa",
 					mimeType: "application/octet-stream",
@@ -657,16 +665,22 @@ async function transcriptOffer({
 		conversationId,
 		attachmentScope: { sessionId: conversationId, childId: null },
 	};
-	if (inventory !== undefined)
+	if (inventory !== undefined || listing !== "ready")
 		props.refusedAttachments = api.attachmentRefusals(
-			api.mergeUserAttachments({ state: "ready", items: inventory }, records),
+			api.mergeUserAttachments(
+				listing === "ready" ? { state: "ready", items: inventory } : null,
+				records,
+				capable,
+			),
 		);
 	const { container, unmount } = await mount(
 		h(api.QueryClientProvider, { client }, h(api.CanonicalTranscript, props)),
 	);
 	// Let the picture's byte fetch settle so its frame (and menu) paints.
 	await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
-	const card = container.querySelector('[data-document-id="u-key:doc:0"]');
+	const card = container.querySelector(
+		`[data-document-id="${messageId}:doc:0"]`,
+	);
 	const cardButtons = card
 		? [...card.querySelectorAll("button[aria-label]")].map((node) =>
 				node.getAttribute("aria-label"),
@@ -697,10 +711,13 @@ async function transcriptOffer({
 	);
 	const pictureMenu = await openMenu(pictureTrigger);
 	const named = Boolean(card?.textContent.includes("id_rsa"));
+	// Design R4: the pending card reserves the actions' space (no shift later).
+	const reserved = Boolean(card?.className.split(WHITESPACE).includes("pe-7"));
 	await unmount();
 	client.clear();
 	return {
 		named,
+		reserved,
 		cardButtons,
 		cardMenu,
 		pictureMenu,
@@ -1101,7 +1118,8 @@ test("D9/D15/R5-1: a moved row's note takes the space the name leaves, the name 
 	const noteClasses = note.className.split(WHITESPACE);
 	// D15: the note GROWS into what the name leaves (no fixed 50% ceiling) and
 	// truncates; D9: the name keeps a readable floor and only shrinks to it.
-	for (const required of ["flex-1", "truncate", "min-w-[min(6rem,40%)]"])
+	// D17: the note's floor is about half the row, so a long name leaves it room.
+	for (const required of ["flex-1", "truncate", "min-w-[min(13rem,50%)]"])
 		assert.ok(
 			noteClasses.includes(required),
 			`note has ${required}: ${note.className}`,
@@ -1329,9 +1347,17 @@ test("U16: a refused row whose saved copy is gone is inert, even with its origin
 		`no menu (got ${JSON.stringify(offer.labels)})`,
 	);
 	assert.deepEqual(offer.ops, [], "the press opened nothing");
+	// QA R6 Q5: nothing was moved or deleted, so the note says why it is inert.
 	assert.ok(
-		offer.text[0].includes("no saved copy"),
-		`the row says the copy is gone (got ${JSON.stringify(offer.text)})`,
+		REFUSED_HINT.test(offer.text[0]) && !offer.text[0].includes("Moved"),
+		`the row states the refusal, not a move (got ${JSON.stringify(offer.text)})`,
+	);
+	// Control: a refused row whose original the backend saw MISSING keeps the
+	// gone sentence - that one is true.
+	const moved = await canvasOffer([dotEnv({ stored: false, exists: false })]);
+	assert.ok(
+		moved.text[0].includes("Moved or deleted · no saved copy"),
+		`a really moved row keeps the gone note (got ${JSON.stringify(moved.text)})`,
 	);
 	// Control: the same row WITH its saved copy still opens it (read-only).
 	const kept = await pressAndShow(dotEnv({ exists: true }));
@@ -1482,10 +1508,292 @@ test("U18: Shift+F10 on a refused row announces why; keyboard focus shows the re
 		`the reason was announced (got ${JSON.stringify(toasts.map((entry) => entry.title))})`,
 	);
 	await act(async () => button.blur());
+	// This bare row's resting note IS the reason (QA R6 Q5: it has no saved
+	// copy, and its original was not moved); the focus/blur swap is measured
+	// on a row with a size/date note in the Q4 test below.
+	assert.match(button.textContent, REFUSED_HINT, "the resting note says why");
+	await unmount();
+});
+
+/*
+ * PR #1452 round-6 remediation (QA R6 Q3 / Q3b / Q4, review R6-2). Q3: while
+ * the inventory is loading or has failed, "no verdict" meant "allowed", and
+ * Open on `id_rsa` reached the OS. Unknown now withholds every path action on
+ * every surface, the card reserving the space so nothing moves when they appear.
+ */
+const noPathAction = (offer, where) => {
+	for (const label of [...PATH_ACTIONS, ...CANVAS_ACTIONS]) {
+		assert.ok(
+			!offer.cardMenu.includes(label),
+			`${where}: card menu has no "${label}" (got ${JSON.stringify(offer.cardMenu)})`,
+		);
+		assert.ok(
+			!offer.pictureMenu.includes(label),
+			`${where}: picture menu has no "${label}" (got ${JSON.stringify(offer.pictureMenu)})`,
+		);
+	}
+	assert.deepEqual(
+		offer.cardButtons,
+		[],
+		`${where}: no "…" trigger and no inline copy control on the card`,
+	);
+};
+
+test("Q3: while the inventory is loading or failed, the transcript offers no path action", async () => {
+	for (const listing of ["loading", "error"]) {
+		const offer = await transcriptOffer({ listing });
+		assert.ok(offer.named, `${listing}: the card still names the file`);
+		noPathAction(offer, listing);
+		assert.ok(offer.reserved, `${listing}: the actions' space is reserved`);
+		assert.ok(
+			!requests.includes("sessions.userAttachments.materialise"),
+			`${listing}: nothing reached the materialise route`,
+		);
+	}
+	// Once ready: an allowed file gains its actions, a refused one stays bare.
+	const allowed = await transcriptOffer({
+		inventory: transcriptInventory({ materialisable: true }),
+	});
+	assert.ok(
+		allowed.cardMenu.includes("Copy file path"),
+		`ready + allowed: the card menu appears (got ${JSON.stringify(allowed.cardMenu)})`,
+	);
+	assert.ok(allowed.pictureMenu.includes("Show in canvas"));
+	assert.ok(allowed.reserved, "the same space now holds the trigger");
+	const refused = await transcriptOffer({
+		inventory: transcriptInventory({ materialisable: false }),
+	});
+	noPathAction(refused, "ready + refused");
+	// Control: an OLDER backend (no capability) is unchanged - the same loading
+	// listing builds no refusal concept, so the card matches the no-prop mount.
+	const olderLoading = await transcriptOffer({
+		listing: "loading",
+		capable: false,
+	});
+	const olderLegacy = await transcriptOffer({ capable: false });
+	assert.deepEqual(
+		[olderLoading.cardMenu, olderLoading.cardButtons],
+		[olderLegacy.cardMenu, olderLegacy.cardButtons],
+		"an older backend's card is exactly today's",
+	);
+	assert.ok(
+		olderLoading.cardMenu.includes("Copy file path"),
+		`an older backend keeps its origin actions (got ${JSON.stringify(olderLoading.cardMenu)})`,
+	);
+});
+
+test("Q3b: a just-sent file is withheld until the re-read judges it, then clears", async () => {
+	// The listing is ready, but was read before this message was sent.
+	const stale = await transcriptOffer({
+		messageId: "u-new",
+		inventory: transcriptInventory({ materialisable: true }),
+	});
+	noPathAction(stale, "before the re-read");
+	// The re-read lands with the new message's verdicts.
+	const judged = (materialisable) =>
+		transcriptInventory({ message_id: "u-new", materialisable });
+	const allowed = await transcriptOffer({
+		messageId: "u-new",
+		inventory: judged(true),
+	});
+	assert.ok(
+		allowed.cardMenu.includes("Copy file path"),
+		`an allowed send gains its actions (got ${JSON.stringify(allowed.cardMenu)})`,
+	);
+	const refused = await transcriptOffer({
+		messageId: "u-new",
+		inventory: judged(false),
+	});
+	noPathAction(refused, "a refused send after the re-read");
+});
+
+/** The canvas built from LOADED records only, as the chat's hook builds it. */
+async function canvasFromRecords(listing, state) {
+	requests.length = 0;
+	const records = [
+		{
+			kind: "user",
+			id: "u-key",
+			ts: 1793117300000,
+			text: "",
+			images: [
+				{ id: "u-key:0", data: null, attachment: SHOT, mimeType: "image/png" },
+			],
+			documents: [
+				{
+					id: "u-key:doc:0",
+					attachment: KEY,
+					filename: "id_rsa",
+					mimeType: "application/octet-stream",
+					path: "/Users/x/.ssh/id_rsa",
+					storedPath: `/Users/x/.local-operator/attachments/${KEY}.bin`,
+					bytes: 2048,
+				},
+			],
+		},
+	];
+	const view = api.mergeUserAttachments(listing, records, true);
+	const { container, unmount } = await mount(
+		viewer(attachmentsState(view, { state })),
+	);
+	const entries = [
+		...container.querySelectorAll(`[data-file-id^="attachment:"]`),
+	];
+	const labels = [];
+	const text = entries.map((entry) => entry.textContent);
+	for (const entry of entries) {
+		labels.push(...(await menuLabels(entry)));
+		await act(async () => {
+			document.dispatchEvent(
+				new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+			);
+		});
+		await act(async () => entry.querySelector("button[title]").click());
+	}
+	const triggers = container.querySelectorAll(
+		'[data-file-id^="attachment:"] button[aria-haspopup]',
+	).length;
+	await unmount();
+	return { count: entries.length, labels, text, triggers, ops: [...requests] };
+}
+
+test("Q3: the canvas's fallback rows under a loading or failed listing offer no path action", async () => {
+	for (const state of ["loading", "error"]) {
+		const offer = await canvasFromRecords(null, state);
+		assert.equal(offer.count, 2, `${state}: both loaded rows are listed`);
+		for (const label of [...PATH_ACTIONS, ...CANVAS_ACTIONS])
+			assert.ok(
+				!offer.labels.includes(label),
+				`${state}: no "${label}" (got ${JSON.stringify(offer.labels)})`,
+			);
+		assert.ok(
+			!offer.ops.includes("sessions.userAttachments.materialise"),
+			`${state}: no press reached the materialise route (sent ${JSON.stringify(offer.ops)})`,
+		);
+		// Not judged is not refused: nothing claims these are secrets.
+		assert.ok(
+			!offer.text.some((line) => REFUSED_HINT.test(line)),
+			`${state}: no refusal wording on an unjudged row`,
+		);
+	}
+	// Ready and allowed: the same rows regain the entries.
+	const ready = await canvasFromRecords(
+		{ state: "ready", items: transcriptInventory({ materialisable: true }) },
+		"ready",
+	);
+	assert.ok(
+		ready.labels.includes("Copy file path"),
+		`ready + allowed: entries return (got ${JSON.stringify(ready.labels)})`,
+	);
+});
+
+test("Q4: Shift+F10 announces the reason on a refused row WITH a saved copy (an empty menu)", async () => {
+	const toasts = [];
+	const before = api.toast.getHistory().length;
+	const view = api.mergeUserAttachments(
+		{ state: "ready", items: [dotEnv()] },
+		[],
+	);
+	const { container, unmount } = await mount(viewer(attachmentsState(view)));
+	const button = container.querySelector(
+		`[data-file-id^="attachment:"] button[title]`,
+	);
+	await act(async () => button.focus());
+	assert.match(button.textContent, REFUSED_HINT, "keyboard focus shows why");
+	await act(async () => {
+		button.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "F10",
+				shiftKey: true,
+				bubbles: true,
+			}),
+		);
+	});
+	toasts.push(...api.toast.getHistory().slice(before));
+	assert.ok(
+		toasts.some((entry) => REFUSED_HINT.test(String(entry.title))),
+		`the reason was announced (got ${JSON.stringify(toasts.map((entry) => entry.title))})`,
+	);
+	assert.equal(
+		document.querySelectorAll('[role="menu"]').length,
+		0,
+		"no empty menu opened",
+	);
+	await act(async () => button.blur());
 	assert.doesNotMatch(
 		button.textContent,
 		REFUSED_HINT,
 		"blur restores the note",
 	);
 	await unmount();
+	// Control: an allowed row's key opens its menu and announces nothing.
+	const quiet = api.toast.getHistory().length;
+	const open = api.mergeUserAttachments(
+		{ state: "ready", items: [dotEnv({ materialisable: true })] },
+		[],
+	);
+	const mounted = await mount(viewer(attachmentsState(open)));
+	const row = mounted.container.querySelector(
+		`[data-file-id^="attachment:"] button[title]`,
+	);
+	await act(async () => {
+		row.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "F10",
+				shiftKey: true,
+				bubbles: true,
+			}),
+		);
+	});
+	assert.ok(
+		document.querySelectorAll('[role="menuitem"]').length > 0,
+		"the allowed row's menu opened",
+	);
+	assert.equal(api.toast.getHistory().length, quiet, "no announcement");
+	await act(async () => {
+		document.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	await mounted.unmount();
+});
+
+test("R6-2: a keyboard Retry that succeeds leaves no armed refocus for a later failure", async () => {
+	const view = api.mergeUserAttachments(
+		{ state: "ready", items: [dotEnv()] },
+		[],
+	);
+	let state = "error";
+	const render = () =>
+		viewer(attachmentsState(view, { state, retry: () => {} }));
+	const container = document.createElement("div");
+	document.body.append(container);
+	const composer = document.createElement("input");
+	document.body.append(composer);
+	const root = createRoot(container);
+	await act(async () => root.render(render()));
+	const retry = [...container.querySelectorAll("button")].find(
+		(node) => node.textContent === "Retry",
+	);
+	retry.focus();
+	await act(async () => retry.click());
+	state = "loading";
+	await act(async () => root.render(render()));
+	state = "ready";
+	await act(async () => root.render(render()));
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
+	composer.focus();
+	// A later re-read (one per send) fails with no `loading` in between.
+	state = "error";
+	await act(async () => root.render(render()));
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+	// A boolean, not the elements: a failing equal on two jsdom nodes makes
+	// assert inspect the whole DOM graph, which ran the process out of memory.
+	assert.ok(
+		document.activeElement === composer,
+		`focus stays in the composer (got ${document.activeElement?.tagName} "${document.activeElement?.textContent}")`,
+	);
+	await act(async () => root.unmount());
+	container.remove();
+	composer.remove();
 });

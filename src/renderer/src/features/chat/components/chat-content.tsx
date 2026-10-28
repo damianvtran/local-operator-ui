@@ -1468,9 +1468,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * has none (QA R5 Q2). Memoised so the memoised rows compare equal.
 		 */
 		const attachmentItems = userAttachments.items;
+		// `verdicts` carries "not judged yet" (QA R6 Q3): no listing yet, or a
+		// send the listing has not seen, withholds every path action.
+		const attachmentVerdicts = userAttachments.verdicts;
 		const refusedAttachments = useMemo(
-			() => attachmentRefusals({ items: attachmentItems }),
-			[attachmentItems],
+			() =>
+				attachmentRefusals({
+					items: attachmentItems,
+					verdicts: attachmentVerdicts,
+				}),
+			[attachmentItems, attachmentVerdicts],
 		);
 		const mentionedFileCount = combinedFileCount(
 			indexedFiles.mode === "index"

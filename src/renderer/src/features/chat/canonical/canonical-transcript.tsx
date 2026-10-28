@@ -811,8 +811,11 @@ export type CanonicalTranscriptProps = {
 	 * the inventory's message + kind + position, and by origin path - an inline
 	 * file under 768 B has no digest (QA R5 Q2). The sent-file cards and
 	 * pictures here are painted from loaded records, which carry no verdict, so
-	 * they read it from this (`refusalVerdict`). Absent = no refusals: the
-	 * `session_attachments` capability alone governs.
+	 * they read it from this (`refusalVerdict`). It also says when a verdict
+	 * is NOT KNOWN yet (QA R6 Q3: the inventory is loading or failed, or a
+	 * just-sent block awaits the re-read), and that withholds every path
+	 * action. Absent = no refusals: the `session_attachments` capability alone
+	 * governs (an older backend, a child reader).
 	 */
 	refusedAttachments?: AttachmentRefusals;
 	/**
@@ -1446,6 +1449,7 @@ const UserRow = memo(function UserRow({
 														: null
 												}
 												refused={verdict === false}
+												withheld={verdict === "pending"}
 											/>
 										);
 									})}

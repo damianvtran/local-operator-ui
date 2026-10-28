@@ -1041,6 +1041,8 @@ const attachmentsState = (
 	complete: true,
 	retry: () => {},
 	truncated: false,
+	// The stories' rows are hand-built and carry their own verdicts.
+	verdicts: "ready",
 	state: "ready",
 	capable: true,
 	...over,

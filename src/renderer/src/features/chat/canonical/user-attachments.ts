@@ -101,16 +101,56 @@ export type UserAttachment = {
 	 * The backend's per-row materialise verdict: `false` = never copy it out
 	 * (no Open file / Open folder / Copy file path / Show in canvas over a
 	 * copy); `null` = no verdict (a loaded row, or a daemon without the field),
-	 * so the `session_attachments` capability alone governs, as before.
+	 * so the `session_attachments` capability alone governs, as before;
+	 * `"pending"` = a capable backend has not judged this row YET (QA R6 Q3):
+	 * no path action until it has. See `AttachmentVerdicts`.
 	 */
-	materialisable: boolean | null;
+	materialisable: AttachmentVerdict;
+	/**
+	 * The inventory's `exists` (is the ORIGIN still a file), kept so a refused
+	 * row with no saved copy can say why it is inert without claiming the
+	 * original moved (QA R6 Q5). Absent on a loaded row.
+	 */
+	originExists?: boolean | null;
 };
+
+/**
+ * One row's materialise verdict, tri-state plus legacy (see
+ * `UserAttachment.materialisable`). `"pending"` is never sent by the backend:
+ * the renderer derives it while the verdict cannot be known.
+ */
+export type AttachmentVerdict = boolean | null | "pending";
+
+/**
+ * Whether the rows of a view carry the backend's verdicts (QA R6 Q3).
+ *
+ * WHY A THIRD STATE. Every refusal is the backend's: the renderer cannot tell
+ * an `id_rsa` from a `notes.txt` on its own. While a capable backend's
+ * inventory is loading, has failed, or cannot decode the journal, "no
+ * verdict" used to mean "allowed", so every card offered Open / Copy path on
+ * the real key for as long as the listing took (~3.5 s measured), or until a
+ * Retry succeeded. FAIL CLOSED instead:
+ *
+ * - `none`: no refusal concept at all - an older backend without
+ *   `session_attachments`, a peer's conversation (`unsupported`: its paths
+ *   are not this disk's and its cards are remote, hence inert already), or a
+ *   pre-verdict daemon whose rows carry no `materialisable`. Today's rule:
+ *   the capability alone governs.
+ * - `pending`: a capable backend with no usable listing yet (loading, error,
+ *   `unavailable`). Every row is withheld.
+ * - `ready`: a judged listing. Its verdicts apply; a loaded row whose message
+ *   + kind the listing has not judged yet (a send made after the read, until
+ *   the re-read lands - QA R6 Q3b) is withheld like `pending`.
+ */
+export type AttachmentVerdicts = "none" | "pending" | "ready";
 
 export type UserAttachmentsView = {
 	items: UserAttachment[];
 	/** The backend read the whole journal; `false` = loaded rows only. */
 	complete: boolean;
 	truncated: boolean;
+	/** Whether, and how far, the rows carry the backend's verdicts. */
+	verdicts: AttachmentVerdicts;
 };
 
 function availabilityOf(item: UserAttachmentWire): AttachmentAvailability {
@@ -158,6 +198,7 @@ export function fromWire(item: UserAttachmentWire): UserAttachment | null {
 		index: typeof item.index === "number" ? item.index : 0,
 		materialisable:
 			typeof item.materialisable === "boolean" ? item.materialisable : null,
+		originExists: typeof item.exists === "boolean" ? item.exists : null,
 	};
 }
 
@@ -241,6 +282,12 @@ export function attachmentsFromRecords(
 export function mergeUserAttachments(
 	listing: UserAttachmentsListing | null,
 	records: readonly TranscriptRecord[] | null | undefined,
+	/**
+	 * The backend reports `session_attachments`, so a missing verdict means
+	 * "not known yet", never "allowed" (QA R6 Q3). `false` (the default, and
+	 * an older backend) keeps the capability-only rule.
+	 */
+	judging = false,
 ): UserAttachmentsView {
 	const complete = listing?.state === "ready";
 	const server = complete
@@ -248,6 +295,16 @@ export function mergeUserAttachments(
 				.map(fromWire)
 				.filter((item): item is UserAttachment => item !== null)
 		: [];
+	const verdicts: AttachmentVerdicts =
+		!judging || listing?.state === "unsupported"
+			? "none"
+			: !complete
+				? "pending"
+				: // A daemon that lists rows but judges none predates the gate.
+					server.length > 0 &&
+						server.every((item) => item.materialisable === null)
+					? "none"
+					: "ready";
 	const byKey = new Map(server.map((item) => [item.key, item]));
 	const perMessageKind = new Map<string, number>();
 	for (const item of server) {
@@ -262,7 +319,7 @@ export function mergeUserAttachments(
 	 * digest-keyed on the other, and an unjudged duplicate would carry the
 	 * refused file's origin path into the canvas row's Open / Copy file path.
 	 */
-	const refusals = attachmentRefusals({ items: server });
+	const refusals = attachmentRefusals({ items: server, verdicts });
 	const localCount = new Map<string, number>();
 	for (const item of local) {
 		const slot = `${item.messageId}:${item.kind}`;
@@ -284,7 +341,7 @@ export function mergeUserAttachments(
 			path: original.path,
 		});
 		const item =
-			verdict === false ? { ...original, materialisable: false } : original;
+			verdict === null ? original : { ...original, materialisable: verdict };
 		if (item.digest === null) {
 			// No digest yet: the server knows this message+kind only if it already
 			// listed at least as many of that kind for the message.
@@ -301,6 +358,7 @@ export function mergeUserAttachments(
 		items: merged,
 		complete,
 		truncated: Boolean(listing?.truncated),
+		verdicts,
 	};
 }
 
@@ -330,6 +388,10 @@ export type AttachmentRefusals = {
 	/** `${messageId}:${kind}` -> per-position `true` = refused, in send order. */
 	slots: ReadonlyMap<string, readonly boolean[]>;
 	paths: ReadonlySet<string>;
+	/** The view's `AttachmentVerdicts`: what an UNJUDGED block gets. */
+	verdicts: AttachmentVerdicts;
+	/** `${messageId}:${kind}` the inventory judged at least one row of (Q3b). */
+	judged: ReadonlySet<string>;
 };
 
 /** One stable "nothing refused", so a memoised row's prop compares equal. */
@@ -337,19 +399,30 @@ export const NO_REFUSALS: AttachmentRefusals = {
 	digests: new Set(),
 	slots: new Map(),
 	paths: new Set(),
+	verdicts: "none",
+	judged: new Set(),
 };
 
+/** One stable "nothing judged yet": every block is withheld (Q3). */
+const ALL_PENDING: AttachmentRefusals = { ...NO_REFUSALS, verdicts: "pending" };
+
 export function attachmentRefusals(
-	view: Pick<UserAttachmentsView, "items">,
+	view: Pick<UserAttachmentsView, "items"> &
+		Partial<Pick<UserAttachmentsView, "verdicts">>,
 ): AttachmentRefusals {
+	const verdicts = view.verdicts ?? "none";
+	if (verdicts === "pending") return ALL_PENDING;
 	const digests = new Set<string>();
 	const paths = new Set<string>();
+	const judged = new Set<string>();
 	const rows = new Map<string, { index: number; refused: boolean }[]>();
 	for (const item of view.items) {
 		// Only rows the inventory itself judged: a loaded row (no `index`, even
 		// one the merge flagged) or an older daemon's (`null`) has no verdict of
 		// its own to place, and must not shift the positions.
-		if (item.materialisable === null || item.index === undefined) continue;
+		if (typeof item.materialisable !== "boolean" || item.index === undefined)
+			continue;
+		judged.add(`${item.messageId}:${item.kind}`);
 		const refused = item.materialisable === false;
 		if (refused && item.digest) digests.add(item.digest);
 		if (refused && item.path) paths.add(item.path);
@@ -358,7 +431,6 @@ export function attachmentRefusals(
 		list.push({ index: item.index, refused });
 		rows.set(slot, list);
 	}
-	if (!digests.size && !paths.size) return NO_REFUSALS;
 	const slots = new Map<string, boolean[]>();
 	for (const [slot, list] of rows) {
 		if (!list.some((row) => row.refused)) continue;
@@ -368,12 +440,20 @@ export function attachmentRefusals(
 			list.map((row) => row.refused),
 		);
 	}
-	return { digests, slots, paths };
+	/*
+	 * Empty only when NOTHING is refused by any key - a slot-only refusal (a
+	 * pasted `id_rsa`: no digest, no path) is a refusal too (review R6-4) - and
+	 * no unjudged block can be withheld.
+	 */
+	if (!slots.size && verdicts === "none") return NO_REFUSALS;
+	return { digests, slots, paths, verdicts, judged };
 }
 
 /**
  * The verdict for one block of a LOADED record: `false` when the inventory
- * refused it, else `null` (no verdict - the capability alone governs).
+ * refused it, `"pending"` while it cannot be known (QA R6 Q3: no listing yet,
+ * or - Q3b - a message the listing has not judged yet), else `null` (no
+ * refusal - the capability alone governs).
  *
  * `position` / `count` are the block's place among its record's attachments
  * of that kind, counted the way `attachmentsFromRecords` counts them. FAIL
@@ -392,13 +472,21 @@ export function refusalVerdict(
 		digest: string | null | undefined;
 		path?: string | null;
 	},
-): false | null {
+): false | null | "pending" {
 	if (block.digest && refusals.digests.has(block.digest)) return false;
 	if (block.path && refusals.paths.has(block.path)) return false;
-	const slot = refusals.slots.get(`${block.messageId}:${block.kind}`);
-	if (!slot) return null;
-	if (slot.length !== block.count) return false;
-	return slot[block.position] ? false : null;
+	if (refusals.verdicts === "pending") return "pending";
+	const key = `${block.messageId}:${block.kind}`;
+	const slot = refusals.slots.get(key);
+	if (slot) {
+		if (slot.length !== block.count) return false;
+		if (slot[block.position]) return false;
+	}
+	// Q3b: a send made after the listing was read is unjudged until the
+	// re-read lands, which judges its slot and clears this.
+	if (refusals.verdicts === "ready" && !refusals.judged.has(key))
+		return "pending";
+	return null;
 }
 
 /**
@@ -409,19 +497,23 @@ export function refusalVerdict(
  * It is round 2's capability gate (R2-1) with the backend's per-row verdict
  * folded in, so there is one decision rather than two branches that can drift:
  * no `session_attachments` -> nothing; a digest the backend marked
- * `materialisable: false` -> nothing. A digest with NO verdict (a loaded row,
+ * `materialisable: false`, or one it has not judged yet (`"pending"`) ->
+ * nothing. A digest with NO verdict (a loaded row,
  * or an older daemon that never sends the field) is governed by `capable`
  * alone, exactly as before - an absent field is not a denial.
  */
 export function canMaterialiseAttachment(
 	capable: boolean,
-	materialisable: boolean | null | undefined,
+	materialisable: AttachmentVerdict | undefined,
 ): boolean {
-	return capable && materialisable !== false;
+	// `"pending"` withholds like a refusal (QA R6 Q3): unknown is not allowed.
+	return capable && materialisable !== false && materialisable !== "pending";
 }
 
 /** The digests this view owns, so the agent-file list can drop its copy. */
-export function attachmentDigests(view: UserAttachmentsView): Set<string> {
+export function attachmentDigests(
+	view: Pick<UserAttachmentsView, "items">,
+): Set<string> {
 	return new Set(
 		view.items
 			.map((item) => item.digest)

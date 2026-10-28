@@ -58,6 +58,15 @@ export function middleTruncate(path: string, max = 56): string {
  * the saved copy while the origin does not - so the affordance's size, focus
  * ring and feedback cannot drift between the two states.
  */
+/**
+ * The copy control's footprint (`p-0.5` around a `size-3.5` icon), held
+ * while a verdict is pending (QA R6 Q3) so the path does not re-truncate when
+ * the control appears. Nothing to focus, nothing announced.
+ */
+const CopyControlSpace: FC = () => (
+	<span aria-hidden="true" className={cn("size-4.5 shrink-0")} />
+);
+
 const PathCopyControl: FC<{
 	label: string;
 	copied: boolean;
@@ -165,6 +174,16 @@ export const SentFileCard: FC<{
 	 * copy was refused for. The caller also withholds `sessionId`.
 	 */
 	refused?: boolean;
+	/**
+	 * The backend has not judged this file YET (QA R6 Q3): its attachment
+	 * inventory is loading or failed, or this send is newer than the listing.
+	 * Until it has, the card offers no path action, exactly as if refused - it
+	 * could be the key - but it is not refused, so it says nothing about why.
+	 * It reserves the space the actions take, so allowing it once the verdict
+	 * lands moves nothing (design R4's recommendation): no "…" trigger and no
+	 * disabled-looking control in the meantime.
+	 */
+	withheld?: boolean;
 }> = ({
 	document,
 	remote = false,
@@ -173,6 +192,7 @@ export const SentFileCard: FC<{
 	storedExistence,
 	sessionId = null,
 	refused = false,
+	withheld = false,
 }) => {
 	useI18nLocale();
 	const pane = useCanvasPane();
@@ -285,14 +305,20 @@ export const SentFileCard: FC<{
 	const showActions =
 		!remote &&
 		!refused &&
+		!withheld &&
 		placementKnown &&
 		Boolean(actionPath) &&
 		!(savedCopyOnly && !storedGone);
+	// Neither refused nor allowed yet: hold the actions' space (see `withheld`).
+	const gated = refused || withheld;
 	return (
 		<div
 			className={cn(
 				"group relative flex max-w-[32rem] items-start gap-2.5 py-1",
-				showActions && "pe-7",
+				// Withheld: the space the actions will take once judged (no shift).
+				(showActions ||
+					(withheld && !remote && placementKnown && Boolean(actionPath))) &&
+					"pe-7",
 			)}
 			data-document-id={document.id}
 		>
@@ -344,13 +370,14 @@ export const SentFileCard: FC<{
 						 * matters, on a long path (design round 1, D1). A button carries the
 						 * untruncated value from the record.
 						 */}
-						{!missing && !refused && copyTarget && (
+						{!missing && !gated && copyTarget && (
 							<PathCopyControl
 								label={copyLabel(copied)}
 								copied={copied}
 								onCopy={copyPath}
 							/>
 						)}
+						{!missing && withheld && copyTarget && <CopyControlSpace />}
 					</span>
 				)}
 				{missing && (
@@ -410,13 +437,14 @@ export const SentFileCard: FC<{
 						>
 							{middleTruncate(resolvedPath ?? document.storedPath, 40)}
 						</span>
-						{!refused && (
+						{!gated && (
 							<PathCopyControl
 								label={copyLabel(copied)}
 								copied={copied}
 								onCopy={copyPath}
 							/>
 						)}
+						{withheld && <CopyControlSpace />}
 					</span>
 				)}
 			</div>

@@ -63,7 +63,13 @@ function documentFor(item: UserAttachment, sessionId: string): CanvasDocument {
 	 * materialiser), and once gone it carries only its name, which the menu
 	 * treats as "nothing to act on".
 	 */
-	const refused = item.materialisable === false;
+	/*
+	 * A row not judged YET (`"pending"`, QA R6 Q3: the inventory is loading or
+	 * failed, or a just-sent file awaits the re-read) is handled exactly like a
+	 * refused one until the verdict lands: it could be the key.
+	 */
+	const refused =
+		item.materialisable === false || item.materialisable === "pending";
 	let document: CanvasDocument;
 	if (item.availability === "gone" || (!item.digest && !item.data)) {
 		document = canvasDocumentForPath((refused ? null : item.path) ?? name, {
@@ -144,6 +150,20 @@ function documentFor(item: UserAttachment, sessionId: string): CanvasDocument {
 export function attachmentStatus(item: UserAttachment): string {
 	if (item.availability === "retained")
 		return t("ui.canvas.files.attachmentRetained");
+	/*
+	 * A REFUSED row with no saved copy is inert (`gone`, U16) even while its
+	 * original is still on disk, or when it never had one on disk (an inline
+	 * paste) - and "Moved or deleted" was then a false fact (QA R6 Q5). Why it
+	 * is inert is the refusal, so the note says that, in the sentence the
+	 * tooltip, the focus line and Shift+F10 already use (no new copy). Only a
+	 * refused row whose origin the backend saw missing keeps the gone sentence.
+	 */
+	if (
+		item.availability === "gone" &&
+		item.materialisable === false &&
+		item.originExists !== false
+	)
+		return t("ui.canvas.files.attachmentRefused");
 	if (item.availability === "gone") return t("ui.canvas.files.attachmentGone");
 	return "";
 }

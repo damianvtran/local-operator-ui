@@ -54,7 +54,7 @@ import {
 } from "../../utils/artifact-identity";
 import { revealLocalTarget } from "../../utils/link-open";
 import { viewerFor } from "../../utils/viewer-routing";
-import { ImageActionsMenu } from "../image-actions-menu";
+import { ImageActionsMenu, imageMenuActions } from "../image-actions-menu";
 import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
 import {
@@ -231,10 +231,17 @@ export function FinderFilesView({
 		return () => window.clearTimeout(timer);
 	}, [retrying, attachments.state]);
 	useEffect(() => {
-		if (retrying || attachments.state !== "error" || !refocusRetry.current)
-			return;
+		if (retrying || !refocusRetry.current) return;
+		/*
+		 * The flag belongs to ONE retry: once it settles it is spent either way.
+		 * Left armed after a success, the next failed re-read (one per send,
+		 * with no `loading` in between) pulled focus out of the composer onto
+		 * Retry (review R6-2).
+		 */
+		if (attachments.state === "loading") return;
 		refocusRetry.current = false;
-		retryButton.current?.focus({ preventScroll: true });
+		if (attachments.state === "error")
+			retryButton.current?.focus({ preventScroll: true });
 	}, [retrying, attachments.state]);
 	useEffect(() => {
 		if (index.localReadAllowed === false) {
@@ -1209,6 +1216,15 @@ function FinderEntry({
 	 * still opens it by digest, the same door an older backend's rows use.
 	 */
 	const refused = item.attachment?.materialisable === false;
+	/*
+	 * Not judged YET (QA R6 Q3): the inventory is loading or failed, or this
+	 * send is newer than the listing. It gets a refused row's actions (none
+	 * that touch a path) but none of its words: nothing says "secret" about a
+	 * file nobody has judged, and the section header already says it is
+	 * loading or failed.
+	 */
+	const pending = item.attachment?.materialisable === "pending";
+	const gated = refused || pending;
 	const [nearRef, near] = useEverInView("200px");
 	const thumb = useFinderThumbnail(
 		doc,
@@ -1264,9 +1280,14 @@ function FinderEntry({
 		refused && keyboardFocus ? t("ui.canvas.files.attachmentRefused") : null;
 	const sentenceNote = Boolean(item.attachment?.status || focusReason);
 	const openMenu = () => {
-		if (refused && !hasMenu)
+		/*
+		 * Announce whenever the menu would show NO entry (QA R6 Q4): a refused
+		 * row WITH a saved copy has a menu in principle, but every entry is
+		 * filtered out, and the key did nothing at all.
+		 */
+		if (refused && !menuHasEntries)
 			showInfoToast(t("ui.canvas.files.attachmentRefused"));
-		else setMenuOpen(true);
+		else if (menuHasEntries) setMenuOpen(true);
 	};
 	/*
 	 * A gone attachment with no origin path (a pasted picture whose stored copy
@@ -1279,8 +1300,41 @@ function FinderEntry({
 	 */
 	const hasMenu = !(
 		(item.attachment && item.row.missing && !PATH_SEPARATOR.test(doc.path)) ||
-		(refused && !doc.artifact)
+		(gated && !doc.artifact)
 	);
+	/*
+	 * The entries the row's menu would render, asked of the menu's own rule
+	 * (`imageMenuActions`), so the key and the menu cannot disagree about
+	 * whether there is anything to show (Q4).
+	 */
+	const menuShowInCanvas =
+		viewerFor(doc.path, doc.type) === null || gated ? undefined : onOpen;
+	const menuSaveName =
+		doc.artifact && !item.attachment
+			? artifactFileName(doc.artifact)
+			: undefined;
+	const menuResolvePath =
+		doc.artifact && !item.row.missing ? materialise : undefined;
+	const menuMissing = item.row.missing && !doc.artifact;
+	const menuHasEntries =
+		hasMenu &&
+		imageMenuActions({
+			file: doc.path,
+			resolvePath: menuResolvePath,
+			missing: menuMissing,
+			onShowInCanvas: menuShowInCanvas,
+			mediaKind:
+				band.kind === "audio"
+					? "audio"
+					: item.row.media === "image"
+						? "image"
+						: "video",
+			onExpand:
+				band.kind !== "audio" && item.row.media === "image"
+					? onExpand
+					: undefined,
+			saveName: menuSaveName,
+		}).length > 0;
 	const sort = useUiPreferencesStore((state) => state.finderFiles.sort);
 	const timestamp = sort === "created" ? item.created : item.modified;
 	const dateMetric =
@@ -1378,21 +1432,11 @@ function FinderEntry({
 						}}
 						triggerTabIndex={-1}
 						mediaKind="audio"
-						onShowInCanvas={
-							viewerFor(doc.path, doc.type) === null || refused
-								? undefined
-								: onOpen
-						}
+						onShowInCanvas={menuShowInCanvas}
 						resolveBytes={() => finderOriginal(doc)}
-						saveName={
-							doc.artifact && !item.attachment
-								? artifactFileName(doc.artifact)
-								: undefined
-						}
-						resolvePath={
-							doc.artifact && !item.row.missing ? materialise : undefined
-						}
-						missing={item.row.missing && !doc.artifact}
+						saveName={menuSaveName}
+						resolvePath={menuResolvePath}
+						missing={menuMissing}
 					/>
 				</div>
 			</div>
@@ -1541,10 +1585,13 @@ function FinderEntry({
 												 * 14 px at the 400 docked floor, so the name keeps its
 												 * floor above). Its own floor keeps a long name from
 												 * taking the whole row: the note grows from zero, so
-												 * without one it would vanish. The whole sentence is
-												 * the row's tooltip.
+												 * without one it would vanish. That floor is about half
+												 * the row (design R4 D17): at 6rem a long name's note
+												 * read "Moved or delet…" at every width, while the name
+												 * still keeps D9's floor in the other half. The whole
+												 * sentence is the row's tooltip.
 												 */
-												"min-w-[min(6rem,40%)] flex-1 truncate text-end"
+												"min-w-[min(13rem,50%)] flex-1 truncate text-end"
 											: "shrink-0",
 								)}
 							>
@@ -1618,22 +1665,12 @@ function FinderEntry({
 						}}
 						triggerTabIndex={-1}
 						mediaKind={item.row.media === "image" ? "image" : "video"}
-						onShowInCanvas={
-							viewerFor(doc.path, doc.type) === null || refused
-								? undefined
-								: onOpen
-						}
+						onShowInCanvas={menuShowInCanvas}
 						onExpand={item.row.media === "image" ? onExpand : undefined}
 						resolveBytes={() => finderOriginal(doc)}
-						saveName={
-							doc.artifact && !item.attachment
-								? artifactFileName(doc.artifact)
-								: undefined
-						}
-						resolvePath={
-							doc.artifact && !item.row.missing ? materialise : undefined
-						}
-						missing={item.row.missing && !doc.artifact}
+						saveName={menuSaveName}
+						resolvePath={menuResolvePath}
+						missing={menuMissing}
 					/>
 				)}
 			</div>

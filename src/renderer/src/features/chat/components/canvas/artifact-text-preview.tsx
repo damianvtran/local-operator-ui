@@ -144,7 +144,12 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 		>
 			<p
 				className={cn(
-					"flex h-8 shrink-0 items-center truncate px-2 text-meta text-ink-muted",
+					/*
+					 * `ps-2.5`, not `px-2`: the editable view's "Modified …" stamp sits
+					 * inside the band's `px-2` plus its region's `p-0.5`, and switching
+					 * between the two tabs nudged the line 2 px (design R4 D19).
+					 */
+					"flex h-8 shrink-0 items-center truncate ps-2.5 pe-2 text-meta text-ink-muted",
 				)}
 			>
 				{t("ui.canvas.files.attachmentReadOnly")}

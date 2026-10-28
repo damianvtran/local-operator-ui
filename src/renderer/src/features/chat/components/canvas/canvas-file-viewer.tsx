@@ -331,12 +331,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	 * is positional).
 	 */
 	const ownedDigests = useMemo(
-		() =>
-			attachmentDigests({
-				items: attachments?.items ?? [],
-				complete: true,
-				truncated: false,
-			}),
+		() => attachmentDigests({ items: attachments?.items ?? [] }),
 		[attachments?.items],
 	);
 	const pairedItems: FinderItem[] = rows.map((row, position) => {
@@ -370,13 +365,19 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	/*
 	 * Attachment rows the backend refused to copy out (`materialisable: false`,
 	 * core PR #3042 QA round 3, Q1), by row id: the open and materialise doors
-	 * below get the same per-row verdict the row's menu does.
+	 * below get the same per-row verdict the row's menu does. A row it has not
+	 * judged yet (`"pending"`, QA R6 Q3) is in the set too: unknown is not
+	 * allowed, so it opens only by digest, read-only, like a refused one.
 	 */
 	const refusedIds = useMemo(
 		() =>
 			new Set(
 				attachmentItems
-					.filter((item) => item.attachment?.materialisable === false)
+					.filter(
+						(item) =>
+							item.attachment?.materialisable === false ||
+							item.attachment?.materialisable === "pending",
+					)
 					.map((item) => item.row.document.id),
 			),
 		[attachmentItems],

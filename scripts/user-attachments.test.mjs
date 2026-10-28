@@ -573,3 +573,147 @@ test("U16: a refused row is present only through its saved copy", () => {
 	).items;
 	assert.equal(allowed.availability, "present");
 });
+
+/*
+ * PR #1452 round 6 (QA R6 Q3 / Q3b, review R6-4): the verdict is tri-state.
+ * Unknown - no listing yet, or a send the listing has not judged - withholds.
+ */
+test("Q3: a capable backend's rows are pending until a judged listing lands", () => {
+	const record = userRecord("u1", 1793117300000, {
+		documents: [
+			{
+				id: "u1:doc:0",
+				attachment: null,
+				filename: "id_rsa",
+				mimeType: "text/plain",
+				path: "/Users/x/.ssh/id_rsa",
+				storedPath: null,
+				bytes: 258,
+			},
+		],
+	});
+	const block = {
+		messageId: "u1",
+		kind: "document",
+		position: 0,
+		count: 1,
+		digest: null,
+		path: "/Users/x/.ssh/id_rsa",
+	};
+	// Loading / failed / unavailable: no usable listing.
+	for (const listing of [null, { state: "unavailable", items: [] }]) {
+		const view = mergeUserAttachments(listing, [record], true);
+		assert.equal(view.verdicts, "pending");
+		assert.equal(view.items[0].materialisable, "pending");
+		assert.equal(
+			api.refusalVerdict(api.attachmentRefusals(view), block),
+			"pending",
+		);
+		assert.equal(api.canMaterialiseAttachment(true, "pending"), false);
+	}
+	// A judged listing that has not seen this message yet (Q3b).
+	const stale = mergeUserAttachments(
+		{ state: "ready", items: [{ ...pdfWire, materialisable: true }] },
+		[record],
+		true,
+	);
+	assert.equal(stale.verdicts, "ready");
+	assert.equal(
+		api.refusalVerdict(api.attachmentRefusals(stale), block),
+		"pending",
+	);
+	// The re-read judges it: allowed clears to null, refused is false.
+	const judged = (materialisable) =>
+		mergeUserAttachments(
+			{
+				state: "ready",
+				items: [
+					{
+						...pdfWire,
+						message_id: "u1",
+						index: 0,
+						attachment: null,
+						filename: "id_rsa",
+						path: "/Users/x/.ssh/id_rsa",
+						materialisable,
+					},
+				],
+			},
+			[record],
+			true,
+		);
+	assert.equal(
+		api.refusalVerdict(api.attachmentRefusals(judged(true)), block),
+		null,
+	);
+	assert.equal(
+		api.refusalVerdict(api.attachmentRefusals(judged(false)), block),
+		false,
+	);
+	// Controls: an older backend (not judging), a peer's conversation, and a
+	// daemon that lists rows without verdicts keep the capability-only rule.
+	for (const [listing, judging] of [
+		[null, false],
+		[{ state: "unsupported", items: [] }, true],
+		[{ state: "ready", items: [{ ...pdfWire }] }, true],
+	]) {
+		const view = mergeUserAttachments(listing, [record], judging);
+		assert.equal(view.verdicts, "none", JSON.stringify(listing));
+		assert.equal(api.attachmentRefusals(view), api.NO_REFUSALS);
+	}
+});
+
+test("R6-4: a slot-only refusal (no digest, no path) is kept in the index", () => {
+	const pasted = {
+		...pdfWire,
+		message_id: "u2",
+		index: 0,
+		attachment: null,
+		filename: "id_rsa",
+		path: null,
+		exists: null,
+		stored: false,
+		materialisable: false,
+	};
+	const view = mergeUserAttachments({ state: "ready", items: [pasted] }, []);
+	const refusals = api.attachmentRefusals(view);
+	assert.notEqual(refusals, api.NO_REFUSALS);
+	assert.equal(
+		api.refusalVerdict(refusals, {
+			messageId: "u2",
+			kind: "document",
+			position: 0,
+			count: 1,
+			digest: null,
+			path: null,
+		}),
+		false,
+	);
+});
+
+test("Q5: a refused row with no saved copy says why it is inert, not that it moved", () => {
+	const refused = {
+		...pdfWire,
+		filename: "server.pem",
+		path: "/Users/x/proj/server.pem",
+		exists: true,
+		stored: false,
+		materialisable: false,
+	};
+	const note = (over) =>
+		attachmentFinderItems(
+			mergeUserAttachments(
+				{ state: "ready", items: [{ ...refused, ...over }] },
+				[],
+			).items,
+			"abcdef123456",
+		)[0].attachment.note;
+	assert.equal(note({}), "Looks like a secret, so file actions are off");
+	// No origin at all (an inline paste): nothing was moved either.
+	assert.equal(
+		note({ path: null, exists: null }),
+		"Looks like a secret, so file actions are off",
+	);
+	// Control: the original really is missing - the gone sentence is true.
+	assert.equal(note({ exists: false }), "Moved or deleted · no saved copy");
+});
