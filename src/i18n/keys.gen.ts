@@ -1758,6 +1758,7 @@ export type MessageParams = {
 	"ui.agents.config.result.changed": undefined;
 	"ui.agents.config.result.configured": undefined;
 	"ui.agents.config.result.created": undefined;
+	"ui.agents.config.state.did_not_finish": undefined;
 	"ui.agents.config.state.sending": undefined;
 	"ui.agents.config.state.stopping": undefined;
 	"ui.agents.config.status.attached": undefined;
@@ -2136,14 +2137,20 @@ export type MessageParams = {
 	"ui.agents.skills.action.remove": undefined;
 	"ui.agents.skills.action.remove_confirm": undefined;
 	"ui.agents.skills.alert.builtin_body": undefined;
+	"ui.agents.skills.alert.builtin_body_no_copy": undefined;
 	"ui.agents.skills.alert.builtin_title": undefined;
 	"ui.agents.skills.alert.bundle_body": undefined;
+	"ui.agents.skills.alert.bundle_local_body": undefined;
 	"ui.agents.skills.alert.bundle_title": undefined;
 	"ui.agents.skills.alert.conflict_body": undefined;
 	"ui.agents.skills.alert.external_body": undefined;
+	"ui.agents.skills.alert.external_body_no_copy": undefined;
 	"ui.agents.skills.alert.external_title": undefined;
 	"ui.agents.skills.alert.project_body": undefined;
+	"ui.agents.skills.alert.project_body_no_copy": undefined;
 	"ui.agents.skills.alert.project_title": undefined;
+	"ui.agents.skills.alert.too_large_body": undefined;
+	"ui.agents.skills.alert.too_large_title": undefined;
 	"ui.agents.skills.badge.new": undefined;
 	"ui.agents.skills.badge.updated": undefined;
 	"ui.agents.skills.composer.about": { name: string };
@@ -2161,6 +2168,8 @@ export type MessageParams = {
 	"ui.agents.skills.detail.body_unavailable": undefined;
 	"ui.agents.skills.detail.edit_by_asking": undefined;
 	"ui.agents.skills.detail.edit_by_asking_truncated": undefined;
+	"ui.agents.skills.detail.edit_off_files": undefined;
+	"ui.agents.skills.detail.edit_off_truncated": undefined;
 	"ui.agents.skills.detail.file_bytes": { count: number };
 	"ui.agents.skills.detail.files_count": { count: number };
 	"ui.agents.skills.detail.files_none": undefined;
@@ -2185,6 +2194,7 @@ export type MessageParams = {
 	"ui.agents.skills.detail.show_all": undefined;
 	"ui.agents.skills.detail.show_less": undefined;
 	"ui.agents.skills.edit.description_help": undefined;
+	"ui.agents.skills.edit.description_label": undefined;
 	"ui.agents.skills.edit.instructions_help": undefined;
 	"ui.agents.skills.empty.builtin": undefined;
 	"ui.agents.skills.empty.hub": undefined;
@@ -2197,6 +2207,7 @@ export type MessageParams = {
 	"ui.agents.skills.error.title": undefined;
 	"ui.agents.skills.error.what_fallback": undefined;
 	"ui.agents.skills.error.write_fallback": undefined;
+	"ui.agents.skills.hub.needs_review": undefined;
 	"ui.agents.skills.hub.unlinked": undefined;
 	"ui.agents.skills.hub.unlinked_help": undefined;
 	"ui.agents.skills.hub.update_failed": undefined;

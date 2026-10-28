@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
-import { after, test } from "node:test";
+import { after, afterEach, test } from "node:test";
 import { build } from "esbuild";
 
 /*
@@ -50,7 +50,7 @@ const pageBundle = await build({
 		contents: [
 			'export { AgentsPage } from "./src/renderer/src/features/agents/components/agents-page";',
 			'export * as model from "./src/renderer/src/features/agents/skills-library-model";',
-			'export { useRetryFocus } from "./src/renderer/src/features/agents/components/skills-library";',
+			'export { useRetryFocus, skillDownloadRequest } from "./src/renderer/src/features/agents/components/skills-library";',
 			/*
 			 * The box's own store, so the storage below can be given to THAT store and no
 			 * other (see the note under the import).
@@ -491,7 +491,16 @@ const mount = async (path, world) => {
 			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
 			// The write paths (review r1 m3) run mutations, whose own 5-minute gc
 			// timer held the file open the same way.
-			mutations: { gcTime: Number.POSITIVE_INFINITY },
+			/*
+			 * `retry: 1` is the APP's mutation default (`query-client.ts`); without it
+			 * a mutation that forgot to opt out of retrying looked retry-free here
+			 * (QA r1 Q1). `retryDelay: 0` keeps a retried case fast.
+			 */
+			mutations: {
+				gcTime: Number.POSITIVE_INFINITY,
+				retry: 1,
+				retryDelay: 0,
+			},
 		},
 	});
 	const root = createRoot(container);
@@ -2537,7 +2546,7 @@ test("reference files: no inline Edit (the PUT replaces the file set); Ask is th
 	);
 	assert.match(
 		text(q(view.container, '[data-testid="skill-detail"]')),
-		/has reference files, so change it by asking/,
+		/has reference files, so it can't be edited here\. Use Ask for a change\./,
 	);
 	assert.equal(
 		q(view.container, '[data-testid="skill-detail"]').getAttribute(
@@ -2794,8 +2803,20 @@ test("B1: a list read that lands BEFORE the detail cannot make Edit save old byt
 	rig.holdDetail();
 	assert.ok(await refetchSkills(view));
 	await settle(() => false, 150);
-	const offeredMidFetch = editButton(view) !== null;
-	if (offeredMidFetch) await press(editButton(view));
+	/*
+	 * U4 / D4: Edit STAYS during the refetch (no reflow), disabled; Ask keeps its
+	 * ghost style. A press on it opens nothing (B1: no snapshot of a read on its
+	 * way out).
+	 */
+	const midFetch = editButton(view);
+	const shownMidFetch = midFetch !== null;
+	const disabledMidFetch = midFetch?.disabled === true;
+	const askClassMidFetch = q(
+		view.container,
+		'[data-testid="skill-ask"]',
+	)?.className;
+	if (midFetch) await press(midFetch);
+	const openedMidFetch = editForm(view) !== null;
 	rig.hold.release();
 	await settle(() => false, 200);
 	if (!editForm(view)) {
@@ -2810,10 +2831,13 @@ test("B1: a list read that lands BEFORE the detail cannot make Edit save old byt
 			rig.writes.length > 0 ||
 			q(view.container, '[data-testid="skill-conflict"]'),
 	);
+	assert.equal(shownMidFetch, true, "Edit stays in the cluster while fetching");
+	assert.equal(disabledMidFetch, true, "...disabled while the detail fetches");
+	assert.equal(openedMidFetch, false, "a press mid-fetch opens nothing");
 	assert.equal(
-		offeredMidFetch,
-		false,
-		"Edit is not offered while the detail is fetching",
+		askClassMidFetch,
+		q(view.container, '[data-testid="skill-ask"]')?.className,
+		"Ask keeps one style across the refetch",
 	);
 	assert.equal(
 		rig.disk.body.includes("Body B"),
@@ -3055,6 +3079,16 @@ test("m3: Remove asks, and only the SECOND dialog sends discard_local_changes", 
 	}
 });
 
+/*
+ * AFTER EACH CASE, not only at the end (review r2 m5): a case whose assert
+ * throws before its own `teardown` left its root mounted, and the NEXT mounted
+ * case stalled before `after` ever ran - a red case reported as a runner
+ * timeout with its message lost. Sweeping here ends the failed case cleanly.
+ */
+afterEach(async () => {
+	for (const view of [...mounted]) await teardown(view);
+});
+
 after(async () => {
 	for (const view of [...mounted]) await teardown(view);
 	window.close();
@@ -3062,4 +3096,320 @@ after(async () => {
 		if (descriptor) Object.defineProperty(globalThis, key, descriptor);
 		else delete globalThis[key];
 	}
+});
+
+/* ===== #1458 QA r1 / design r1 / UX r1: the round-3 remediation, pinned ===== */
+
+/*
+ * A full direction status, as core sends it: the links panel's `hubLinkView`
+ * reads every field (`error_class.split`), so a partial one crashes the render.
+ */
+const BOTH_CHANGED = {
+	state: "available",
+	classification: "both-changed",
+	enabled: true,
+	last_checked_at: null,
+	last_success_at: null,
+	attempts: 0,
+	next_retry_at: null,
+	error_class: null,
+	error_subclass: null,
+	safe_message: null,
+	operation_id: null,
+	model_used: null,
+	summary: null,
+	backup_receipt: null,
+};
+
+test("Q2/U2: no copy outranks a stale both-changed review in the row state", () => {
+	const { skillRowState, toSkillCard } = PAGE.model;
+	const card = toSkillCard(
+		skill({
+			name: "h",
+			source: "hub",
+			link_id: "L",
+			installed: false,
+			fingerprint: null,
+		}),
+	);
+	const join = {
+		state: { kind: "subscribed" },
+		link: linkRow({ push: BOTH_CHANGED }),
+		update: undefined,
+	};
+	assert.equal(skillRowState(card, join, "review"), "not-installed");
+	assert.equal(skillRowState(card, join, "available"), "not-installed");
+	// A failed update still says so first: it is the one fact with a remedy elsewhere.
+	assert.equal(skillRowState(card, join, "failed"), "failed");
+	// With a copy, the local change still reads Modified.
+	const installed = toSkillCard(
+		skill({ name: "h", source: "hub", link_id: "L" }),
+	);
+	assert.equal(skillRowState(installed, join, null), "modified");
+});
+
+test("U1: Download is built from the link alone and never edits its subscription", () => {
+	const { skillDownloadRequest } = PAGE;
+	const open = skillDownloadRequest(
+		linkRow({
+			name: "hub-absent",
+			hub_id: "H1",
+			policy: { subscribe: true, auto_push: false, revision: "r" },
+		}),
+		"req-1",
+	);
+	assert.equal(open.remoteId, "H1");
+	assert.equal(open.alias, "hub-absent");
+	assert.equal(open.scope.visibility, "public");
+	assert.equal(open.scope.tenantId, null);
+	assert.equal(open.subscribe, true);
+	assert.equal(open.autoPush, false);
+	assert.equal(open.consent, false);
+	const org = skillDownloadRequest(
+		linkRow({
+			visibility: "org",
+			tenant_id: "t-9",
+			tenant_name: "Acme",
+			policy: { subscribe: false, auto_push: true, revision: "r" },
+		}),
+		"req-2",
+	);
+	assert.equal(org.scope.visibility, "org");
+	assert.equal(org.scope.tenantId, "t-9");
+	assert.equal(org.scope.organization, "Acme");
+	assert.equal(org.subscribe, false);
+	assert.equal(org.autoPush, true);
+});
+
+/** A not-installed hub skill whose link has no copy (QA r1's `hub-absent`). */
+const absentWorld = (over = {}) => ({
+	features: { ...SKILL_RUN, hub_skills: 1 },
+	skills: (request) => {
+		const row = skill({
+			name: "hub-absent",
+			source: "hub",
+			link_id: "LA",
+			installed: false,
+			editable: false,
+			fingerprint: null,
+		});
+		if (!request.name) return { skills: [row] };
+		return {
+			skills: [row],
+			detail: null,
+			skill_detail: { ...row, body: null, files: [], files_total: 0 },
+		};
+	},
+	links: [
+		linkRow({
+			link_id: "LA",
+			name: "hub-absent",
+			local_id: "hub-absent",
+			content_state: "absent",
+			local_path: null,
+			push: BOTH_CHANGED,
+			pull: { ...BOTH_CHANGED, classification: null },
+		}),
+	],
+	...over,
+});
+
+test("U1/U2: a not-installed hub skill offers Download, says Download, and claims no local change", async () => {
+	const view = await mount("/agents?kind=skill&name=hub-absent", absentWorld());
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-download"]') !== null,
+		),
+		"Download is in the title-line cluster",
+	);
+	const download = q(view.container, '[data-testid="skill-download"]');
+	assert.equal(text(download), "Download");
+	// The test rig is signed out, so it is disabled and says why.
+	assert.equal(download.disabled, true);
+	assert.match(
+		text(q(view.container, '[data-testid="skill-download-reason"]')),
+		/Sign in to the hub/,
+	);
+	assert.match(
+		text(q(view.container, '[data-testid="skill-meta"]')),
+		/Not installed/,
+	);
+	assert.equal(q(view.container, '[data-testid="skill-modified"]'), null);
+	assert.equal(q(view.container, '[data-testid="skill-hub-local-note"]'), null);
+	assert.equal(
+		rowOf(view.container, "hub-absent").getAttribute("data-skill-state"),
+		"not-installed",
+	);
+	// Preview incoming changes is not offered into a copy that does not exist.
+	const preview = [...view.container.querySelectorAll("button")].find(
+		(button) => text(button) === "Preview incoming changes",
+	);
+	if (preview) assert.equal(preview.disabled, true);
+	assert.equal(
+		boxOf(view.container)?.getAttribute("placeholder"),
+		"Download this skill to change it.",
+	);
+	await teardown(view);
+});
+
+test("Q6: without skill_write the read-only alerts never suggest copying", async () => {
+	const world = detailWorld([
+		skill({ name: "b-builtin", source: "builtin", editable: false }),
+	]);
+	const view = await mount("/agents?kind=skill&name=b-builtin", {
+		...world,
+		features: WITH_SKILLS,
+	});
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-read-only"]') !== null,
+		),
+	);
+	const alert = text(q(view.container, '[data-testid="skill-read-only"]'));
+	assert.equal(/[Cc]opy/.test(alert), false, `no copy promise: ${alert}`);
+	assert.equal(q(view.container, '[data-testid="skill-copy"]'), null);
+	await teardown(view);
+});
+
+test("D1/U8: an oversize local SKILL.md is 'too large', and a local bundle never promises hub updates", async () => {
+	const rows = [
+		skill({ name: "huge-body", form: "bundle", editable: false }),
+		skill({ name: "bundle-skill", form: "bundle", editable: false }),
+	];
+	const world = detailWorld(rows, {
+		"huge-body": { body_truncated: true, body_bytes: 220_000 },
+	});
+	const huge = await mount("/agents?kind=skill&name=huge-body", world);
+	assert.ok(
+		await settle(
+			() => q(huge.container, '[data-testid="skill-read-only"]') !== null,
+		),
+	);
+	const hugeText = text(q(huge.container, '[data-testid="skill-read-only"]'));
+	assert.match(hugeText, /^Too large to edit here/);
+	assert.equal(/bundle|folder|Agent Hub/i.test(hugeText), false, hugeText);
+	await teardown(huge);
+	const bundle = await mount("/agents?kind=skill&name=bundle-skill", world);
+	assert.ok(
+		await settle(
+			() => q(bundle.container, '[data-testid="skill-read-only"]') !== null,
+		),
+	);
+	const bundleText = text(
+		q(bundle.container, '[data-testid="skill-read-only"]'),
+	);
+	assert.equal(/Agent Hub/.test(bundleText), false, bundleText);
+	assert.match(bundleText, /folder on disk/);
+	await teardown(bundle);
+});
+
+test("U7: on a core without the skill run, a skill with reference files says why Edit is off", async () => {
+	const world = detailWorld([skill({ name: "local-refs" })], {
+		"local-refs": {
+			files: [{ path: "ref.md", bytes: 10, preview: "x", truncated: false }],
+			files_total: 1,
+		},
+	});
+	const view = await mount("/agents?kind=skill&name=local-refs", {
+		...world,
+		features: { ...WITH_SKILLS, skill_write: 1 },
+	});
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-edit-reason"]') !== null,
+		),
+	);
+	assert.equal(
+		text(q(view.container, '[data-testid="skill-edit-reason"]')),
+		"This skill has reference files, so it can't be edited here yet.",
+	);
+	assert.equal(q(view.container, '[data-testid="skill-ask"]'), null);
+	await teardown(view);
+});
+
+test("D6: a review mark and the Modified badge never say the same fact twice", async () => {
+	const world = detailWorld([
+		skill({ name: "hub-modified", source: "hub", link_id: "LM" }),
+	]);
+	const view = await mount("/agents?kind=skill&name=hub-modified", {
+		...world,
+		links: [
+			linkRow({
+				link_id: "LM",
+				name: "hub-modified",
+				local_id: "hub-modified",
+				push: BOTH_CHANGED,
+				pull: { ...BOTH_CHANGED, classification: null },
+			}),
+		],
+		// core's shape for "an update met local changes": a refused merge.
+		updates: [
+			{
+				kind: "skill",
+				name: "hub-modified",
+				state: "available",
+				error_class: "merge-refused",
+			},
+		],
+	});
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-meta"]') !== null,
+		),
+	);
+	await settle(() => false, 150);
+	const header = text(q(view.container, '[data-testid="skill-detail"] header'));
+	const marks =
+		(header.match(/Needs review/g) ?? []).length +
+		(header.match(/Modified/g) ?? []).length;
+	assert.equal(marks <= 1, true, `one mark: ${header}`);
+	assert.equal(/needs review/.test(header), false, "sentence case");
+	await teardown(view);
+});
+
+test("Q1: a refused skill write is sent once, never retried", async () => {
+	const rig = diskWorld();
+	const sent = [];
+	const world = {
+		...rig.world,
+		write: async (request) => {
+			sent.push(request.op);
+			return {
+				status: 422,
+				body: { detail: { code: "skill_invalid", text: "Refused." } },
+			};
+		},
+	};
+	const view = await mount("/agents?kind=skill&name=d-local", world);
+	assert.ok(
+		await settle(() => editButton(view) !== null && !editButton(view).disabled),
+	);
+	await press(editButton(view));
+	const area = q(editForm(view), "textarea");
+	await typeArea(area, `${area.value} edited`);
+	await submit(editForm(view));
+	await settle(() => sent.length > 0);
+	await settle(() => false, 1_500);
+	assert.equal(sent.length, 1, `sent ${sent.length} time(s)`);
+	await teardown(view);
+});
+
+test("m7: DEL and C1 controls in a description are escaped, never raw", () => {
+	const { rebuildSkillMd } = PAGE.model;
+	const line = (value) =>
+		/\ndescription: (.*)\n/.exec(
+			rebuildSkillMd("---\nname: a\ndescription: o\n---\n\nB", "a", value, "B"),
+		)[1];
+	assert.equal(line("del\x7fx"), '"del\\u007fx"');
+	assert.equal(line("c1\x80x"), '"c1\\u0080x"');
+	assert.equal(line("nel\x85x"), '"nel\\u0085x"');
+	assert.equal(line("é 🎉"), '"é 🎉"');
+});
+
+test("U6: the seed Ask for a change writes is the shape the run strips from 'You asked'", () => {
+	// use-config-run.ts `typedTopic` restates this literal (import cycle); pinned here.
+	assert.equal(
+		PAGE.configSeedPrompt({ kind: "skill", name: "qa-notes" }),
+		"Change the skill qa-notes: ",
+	);
 });

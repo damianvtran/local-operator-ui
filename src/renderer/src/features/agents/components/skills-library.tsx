@@ -34,7 +34,10 @@
 
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
-import { hubLinkContentState } from "@shared/api/local-operator/hub-links";
+import {
+	type HubLink,
+	hubLinkContentState,
+} from "@shared/api/local-operator/hub-links";
 import {
 	Alert,
 	AlertDescription,
@@ -70,9 +73,11 @@ import {
 	SkillMarkChip,
 	skillMark,
 } from "../../agent-hub/components/hub-skill-mark";
+import { usePullHubSkill } from "../../agent-hub/hooks/use-hub-skills";
 import { useSkillWrites } from "../hooks/use-skills-library";
 import {
 	type SkillCard,
+	type SkillEditability,
 	type SkillHeaderState,
 	type SkillHubJoin,
 	type SkillRowState,
@@ -99,6 +104,7 @@ import {
 	TITLE_LINE_HEIGHT,
 	useEscapeToCancel,
 } from "./detail-parts";
+import { hubLinkSourceName } from "./hub-link-policy-controls";
 
 /* ------------------------------------------------------------------ words --- */
 
@@ -426,6 +432,11 @@ export function SkillsRosterBody({
  */
 const SKILL_MARK_LABELS = {
 	failed: "ui.agents.skills.hub.update_failed",
+	/*
+	 * Sentence case beside the title-case Badge vocabulary (design r1 D6): the
+	 * hub's own "needs review" is a lowercase fragment written for a list cell.
+	 */
+	review: "ui.agents.skills.hub.needs_review",
 } as const;
 
 /**
@@ -527,6 +538,85 @@ const READ_ONLY_ALERT = {
 	],
 } as const satisfies Record<string, readonly [MessageKey, MessageKey]>;
 
+/*
+ * THE READ-ONLY ALERT, SAYING ONLY WHAT IS TRUE OF THIS SKILL (design r1 D1 /
+ * UX U8, QA Q6). Core's `bundle` form is "not one editable text document": a
+ * real folder bundle, or a single SKILL.md over the document limit. A local one
+ * has no Agent Hub updates to promise, and a SKILL.md is not a "folder", so:
+ * - a truncated body (one oversize file) says it is too large to edit here;
+ * - a hub bundle keeps "Updates from Agent Hub still apply";
+ * - a local bundle says neither, and names the file on disk.
+ * And a body that offers "Copy it to your skills" is shown only when Copy is.
+ */
+function readOnlyAlertFor(
+	editability: SkillEditability,
+	card: SkillCard,
+	truncated: boolean,
+	copyOffered: boolean,
+): readonly [WithoutParams, WithoutParams] | null {
+	if (editability.kind !== "read-only" || editability.reason === "unknown")
+		return null;
+	if (editability.reason === "bundle") {
+		if (truncated)
+			return [
+				"ui.agents.skills.alert.too_large_title",
+				"ui.agents.skills.alert.too_large_body",
+			];
+		return card.source === "hub"
+			? READ_ONLY_ALERT.bundle
+			: [
+					"ui.agents.skills.alert.bundle_title",
+					"ui.agents.skills.alert.bundle_local_body",
+				];
+	}
+	const [title, body] = READ_ONLY_ALERT[editability.reason];
+	return copyOffered
+		? [title, body]
+		: [title, READ_ONLY_NO_COPY_BODY[editability.reason]];
+}
+
+/**
+ * The Download a not-installed hub skill sends, built from its LINK alone (UX
+ * r1 U1): the Agent Hub page's `runPull(forLink)` without a catalogue row. The
+ * link's own subscribe/auto-push go back unchanged - a download never edits a
+ * subscription - and consent is never re-asserted by a download.
+ */
+export function skillDownloadRequest(
+	link: Pick<
+		HubLink,
+		"hub_id" | "name" | "visibility" | "tenant_id" | "tenant_name" | "policy"
+	>,
+	requestId: string,
+) {
+	return {
+		requestId,
+		remoteId: link.hub_id,
+		scope:
+			link.visibility === "org" && link.tenant_id
+				? {
+						visibility: "org" as const,
+						tenantId: link.tenant_id,
+						organization: link.tenant_name,
+					}
+				: {
+						visibility: "public" as const,
+						tenantId: null,
+						organization: null,
+					},
+		alias: link.name,
+		subscribe: link.policy.subscribe,
+		autoPush: link.policy.auto_push,
+		consent: false,
+	};
+}
+
+/** The same three bodies without "copy it to your skills" (no `skill_write`). */
+const READ_ONLY_NO_COPY_BODY = {
+	builtin: "ui.agents.skills.alert.builtin_body_no_copy",
+	external: "ui.agents.skills.alert.external_body_no_copy",
+	project: "ui.agents.skills.alert.project_body_no_copy",
+} as const satisfies Record<string, MessageKey>;
+
 /** The draft an inline edit holds: the two fields the pane shows. */
 type SkillDraft = { description: string; instructions: string };
 
@@ -563,6 +653,8 @@ export function SkillDetail({
 	belowHeader,
 	onDirtyChange,
 	onRemoved,
+	hubSignedIn = false,
+	downloadEnabled = false,
 }: {
 	name: string;
 	/** The list row, when the list has loaded and still holds the skill. */
@@ -579,13 +671,21 @@ export function SkillDetail({
 	belowHeader?: ReactNode;
 	/** Reports an unsaved inline edit, so the page can guard navigation. */
 	onDirtyChange?: (dirty: boolean) => void;
-	/** The skill left the library; the page closes it and moves focus on. */
-	onRemoved?: (name: string) => void;
+	/**
+	 * The copy was removed. `stays` is true when the row is still listed (a hub
+	 * link keeps its row as "Not installed"), so the page keeps it open (U5).
+	 */
+	onRemoved?: (name: string, stays: boolean) => void;
+	/** The reader is signed in to Agent Hub: Download needs a credential (U1). */
+	hubSignedIn?: boolean;
+	/** `hub_skills` negotiated: the pull route exists. */
+	downloadEnabled?: boolean;
 }) {
 	useI18nLocale();
 	const headingRef = useRef<HTMLHeadingElement>(null);
 	const retryFocus = useRetryFocus(Boolean(detail.error), detail.isFetching);
 	const writes = useSkillWrites();
+	const pull = usePullHubSkill();
 	/*
 	 * FOCUS FOLLOWS THE OPEN (QA round 1 Q3 / review R6). Below 1000 px the roster
 	 * is `display:none` while a skill is open, so the row that was pressed LEAVES
@@ -723,22 +823,40 @@ export function SkillDetail({
 	const known = Boolean(wire) && !detail.isLoading;
 	const editability = skillEditability(card, wire);
 	/*
-	 * ONLY WHILE THE DETAIL READ IS SETTLED (B1): during a refetch the detail on
-	 * screen may be about to change its file set or fingerprint, and Edit must
-	 * snapshot a read that is not already on its way out.
+	 * OFFERED vs PRESSABLE (U4 / D4 / review m6). Whether Edit is OFFERED is a fact
+	 * about the skill (editable, SKILL.md only, untruncated); whether it can be
+	 * PRESSED right now also needs a settled detail read (B1: Edit snapshots one
+	 * read, never one on its way out). The cluster is built from the first, so a
+	 * background refetch (every window focus after 10 s, every run settle)
+	 * disables Edit for the fetch instead of removing it and restyling Ask.
 	 */
-	const canEdit =
+	const editOffered =
 		writesEnabled &&
 		editability.kind === "edit" &&
 		body !== null &&
-		Boolean(wire?.fingerprint) &&
-		!detail.isFetching;
+		Boolean(wire?.fingerprint);
+	const canEdit = editOffered && !detail.isFetching;
 	const canAsk =
 		askEnabled &&
 		(editability.kind === "edit" || editability.kind === "ask") &&
 		Boolean(onAsk);
 	const canCopy =
 		writesEnabled && editability.kind === "read-only" && editability.copy;
+	/*
+	 * DOWNLOAD, THE WAY IN FOR A NOT-INSTALLED HUB SKILL (QA r1 Q3 / UX U1, spec
+	 * §8 check 12). Wired as the Agent Hub page's `runPull(forLink)`: everything
+	 * the pull needs is on the link row (hub id, source, visibility, tenant), the
+	 * link's own subscribe/auto-push are sent back unchanged (a download never
+	 * edits a subscription), and consent is never re-asserted.
+	 */
+	const absentLink =
+		card.source === "hub" &&
+		!card.installed &&
+		joined?.link &&
+		hubLinkContentState(joined.link) === "absent"
+			? joined.link
+			: null;
+	const canDownload = downloadEnabled && absentLink !== null;
 	const canRemove =
 		writesEnabled &&
 		card.installed &&
@@ -746,10 +864,56 @@ export function SkillDetail({
 		editability.kind !== "not-installed";
 	const linked = card.source === "hub";
 	const otherMeta = otherFrontMatter(parts?.meta ?? null);
-	const readOnlyAlert =
-		editability.kind === "read-only" && editability.reason !== "unknown"
-			? READ_ONLY_ALERT[editability.reason]
+	const readOnlyAlert = readOnlyAlertFor(
+		editability,
+		card,
+		Boolean(wire?.body_truncated),
+		canCopy,
+	);
+	/*
+	 * WHY EDIT IS NOT HERE, said beside the cluster where the eye looks for it
+	 * (UX r1 U7 / D-N2): with the skill run on it names the remedy (ask); on an
+	 * older core it says only why, because there is no Ask to point at.
+	 */
+	const editReason =
+		known && editability.kind === "ask" && writesEnabled
+			? t(
+					editability.reason === "files"
+						? canAsk
+							? "ui.agents.skills.detail.edit_by_asking"
+							: "ui.agents.skills.detail.edit_off_files"
+						: canAsk
+							? "ui.agents.skills.detail.edit_by_asking_truncated"
+							: "ui.agents.skills.detail.edit_off_truncated",
+				)
 			: null;
+	const download = async () => {
+		if (!absentLink || !hubSignedIn || pull.isPending) return;
+		setFailure(null);
+		try {
+			const result = await pull.mutateAsync(
+				skillDownloadRequest(absentLink, crypto.randomUUID()),
+			);
+			// The Hub page's own success test: a pull report that APPLIED.
+			if (
+				!result.reports?.some(
+					(report) => report.applied || report.outcome === "unchanged",
+				)
+			) {
+				setFailure(t("ui.hub.skills.pull_failed"));
+				return;
+			}
+			showSuccessToast(
+				t("ui.hub.skills.installed_alias", {
+					item: absentLink.name,
+					source: hubLinkSourceName(absentLink),
+				}),
+			);
+			requestAnimationFrame(() => headingRef.current?.focus());
+		} catch (caught) {
+			setFailure(userFacingMessage(caught, t("ui.hub.skills.pull_failed")));
+		}
+	};
 
 	const save = async () => {
 		const opened = editBase.current;
@@ -776,6 +940,7 @@ export function SkillDetail({
 		try {
 			await writes.update.mutateAsync({
 				name: card.name,
+				linkId: card.source === "hub" ? card.linkId : null,
 				expectedFingerprint: opened.fingerprint,
 				/*
 				 * The ORIGINAL file with only what changed: the description line when the
@@ -826,7 +991,9 @@ export function SkillDetail({
 				discardLocalChanges,
 			});
 			setRemoving(null);
-			onRemoved?.(card.name);
+			// A hub link keeps its row ("Not installed", with Download); a local
+			// skill leaves the list.
+			onRemoved?.(card.name, linked);
 		} catch (caught) {
 			/*
 			 * A LINKED COPY WITH UNPUBLISHED EDITS IS REFUSED UNTIL THE READER SAYS SO
@@ -877,8 +1044,14 @@ export function SkillDetail({
 									.filter(Boolean)
 									.join(" · ")}
 							</p>
-							<SkillMarkChip mark={mark} labels={SKILL_MARK_LABELS} />
-							{modified ? (
+							{/* NO COPY, NO COPY FACTS (U2): a removed hub copy's link still
+							    says `both-changed` until its next check. */}
+							{card.installed ? (
+								<SkillMarkChip mark={mark} labels={SKILL_MARK_LABELS} />
+							) : null}
+							{/* ONE MARK FOR ONE FACT (D6): a `review` mark already says
+							    the copy changed locally. */}
+							{modified && card.installed && mark?.kind !== "review" ? (
 								<Badge variant="warning" data-testid="skill-modified">
 									{t("ui.agents.detail.badge.modified")}
 								</Badge>
@@ -888,7 +1061,7 @@ export function SkillDetail({
 						    hub skill's edits on this machine and merges updates with them, and
 						    the wire cannot say who publishes it, so the pane says what happens
 						    rather than guessing who owns it. */}
-						{linked && (canEdit || canAsk) ? (
+						{linked && (editOffered || canAsk) ? (
 							<p
 								className="text-meta text-ink-muted"
 								data-testid="skill-hub-local-note"
@@ -899,16 +1072,21 @@ export function SkillDetail({
 					</div>
 					{editing || !known ? null : (
 						<SkillActions
-							canEdit={canEdit}
+							editOffered={editOffered}
+							editReady={canEdit}
 							canAsk={canAsk}
 							canCopy={canCopy}
 							canRemove={canRemove}
+							canDownload={canDownload}
+							downloadReady={hubSignedIn}
+							downloading={pull.isPending}
 							linked={linked}
 							copying={writes.copy.isPending}
+							onDownload={() => void download()}
 							onEdit={() => {
-								// `canEdit` guarantees a settled detail with a body and a
+								// Pressable only from a settled detail with a body and a
 								// fingerprint; the snapshot and the seed are that one read.
-								if (body === null || !wire?.fingerprint) return;
+								if (!canEdit || body === null || !wire?.fingerprint) return;
 								editBase.current = { fingerprint: wire.fingerprint, body };
 								const opened = seed();
 								setBase(opened);
@@ -923,6 +1101,22 @@ export function SkillDetail({
 						/>
 					)}
 				</div>
+				{editReason && !editing ? (
+					<p
+						className="text-meta text-ink-muted"
+						data-testid="skill-edit-reason"
+					>
+						{editReason}
+					</p>
+				) : null}
+				{canDownload && !hubSignedIn ? (
+					<p
+						className="text-meta text-ink-muted"
+						data-testid="skill-download-reason"
+					>
+						{t("ui.hub.status.no_credential")}
+					</p>
+				) : null}
 				{readOnlyAlert && known ? (
 					<Alert variant="info" data-testid="skill-read-only">
 						<AlertTitle>{t(readOnlyAlert[0])}</AlertTitle>
@@ -973,7 +1167,7 @@ export function SkillDetail({
 					<EditSection
 						title={t("ui.agents.detail.section.when_to_use")}
 						description={t("ui.agents.skills.edit.description_help")}
-						label={t("ui.agents.detail.section.when_to_use")}
+						label={t("ui.agents.skills.edit.description_label")}
 						value={draft.description}
 						onChange={(value) =>
 							setDraft((current) => ({ ...current, description: value }))
@@ -1012,18 +1206,7 @@ export function SkillDetail({
 						/>
 					</Section>
 
-					<Section
-						title={t("ui.agents.detail.section.instructions")}
-						description={
-							known && editability.kind === "ask" && canAsk
-								? t(
-										editability.reason === "files"
-											? "ui.agents.skills.detail.edit_by_asking"
-											: "ui.agents.skills.detail.edit_by_asking_truncated",
-									)
-								: undefined
-						}
-					>
+					<Section title={t("ui.agents.detail.section.instructions")}>
 						{detail.isLoading ? (
 							<div aria-hidden="true">
 								<DetailSkeleton />
@@ -1287,37 +1470,67 @@ export function SkillDetail({
  * ghost, then More. Exactly one bordered control whenever any is offered.
  */
 function SkillActions({
-	canEdit,
+	editOffered,
+	editReady,
 	canAsk,
 	canCopy,
 	canRemove,
+	canDownload,
+	downloadReady,
+	downloading,
 	linked,
 	copying,
 	onEdit,
 	onAsk,
 	onCopy,
 	onRemove,
+	onDownload,
 }: {
-	canEdit: boolean;
+	/** Edit is offered for this skill (stable across refetches, U4). */
+	editOffered: boolean;
+	/** ...and can be pressed now (the detail read is settled, B1). */
+	editReady: boolean;
 	canAsk: boolean;
 	canCopy: boolean;
 	canRemove: boolean;
+	canDownload: boolean;
+	/** Signed in to Agent Hub; Download is disabled (with a reason) otherwise. */
+	downloadReady: boolean;
+	downloading: boolean;
 	linked: boolean;
 	copying: boolean;
 	onEdit: () => void;
 	onAsk: () => void;
 	onCopy: () => void;
 	onRemove: () => void;
+	onDownload: () => void;
 }) {
-	if (!canEdit && !canAsk && !canCopy && !canRemove) return null;
+	if (!editOffered && !canAsk && !canCopy && !canRemove && !canDownload)
+		return null;
 	return (
 		<div
 			className={cn("flex shrink-0 items-center gap-2", TITLE_LINE_HEIGHT)}
 			data-testid="skill-actions"
 		>
-			{canEdit ? (
-				<Button variant="secondary" onClick={onEdit} data-testid="skill-edit">
+			{editOffered ? (
+				<Button
+					variant="secondary"
+					onClick={onEdit}
+					disabled={!editReady}
+					data-testid="skill-edit"
+				>
 					{t("ui.agents.detail.action.edit")}
+				</Button>
+			) : null}
+			{canDownload ? (
+				<Button
+					variant="secondary"
+					onClick={onDownload}
+					disabled={!downloadReady || downloading}
+					data-testid="skill-download"
+				>
+					{/* The Agent Hub page's convention: the label holds, the button disables. */}
+					{t("ui.hub.skills.download")}
 				</Button>
 			) : null}
 			{canCopy ? (
@@ -1334,7 +1547,7 @@ function SkillActions({
 			) : null}
 			{canAsk ? (
 				<Button
-					variant={canEdit ? "ghost" : "secondary"}
+					variant={editOffered ? "ghost" : "secondary"}
 					onClick={onAsk}
 					data-testid="skill-ask"
 				>

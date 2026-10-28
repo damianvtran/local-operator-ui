@@ -27,6 +27,7 @@ import {
 	hubLinksKey,
 	useHubLinks,
 } from "@shared/api/local-operator/hub-link-hooks";
+import type { HubLinks } from "@shared/api/local-operator/hub-links";
 import { hubItemIndex } from "@shared/api/local-operator/hub-updates";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
@@ -139,7 +140,16 @@ export function useSkillWrites() {
 		void client.invalidateQueries({ queryKey: skillsLibraryKey });
 		void client.invalidateQueries({ queryKey: hubLinksKey });
 	}, [client]);
+	/*
+	 * NO RETRY ON A SKILL WRITE (QA r1 Q1). The app-wide `mutations.retry: 1`
+	 * repeated every refusal: one Save over a moved skill sent PUT 409 twice, one
+	 * Remove of a modified hub copy DELETE 409 twice, one refused Copy POST 422
+	 * twice. Each retry mints a fresh request id, so it is a second write, not a
+	 * replay - and every refusal here is a fact the reader must answer, not a
+	 * transient the transport should hide.
+	 */
 	const copy = useMutation({
+		retry: 0,
 		mutationFn: (name: string) =>
 			desktopResult({
 				op: "skills.create",
@@ -150,10 +160,13 @@ export function useSkillWrites() {
 		onSettled: refresh,
 	});
 	const update = useMutation({
+		retry: 0,
 		mutationFn: (input: {
 			name: string;
 			expectedFingerprint: string;
 			skillMd: string;
+			/** The hub link this skill is a copy of, when it is one (Q5). */
+			linkId?: string | null;
 		}) =>
 			desktopResult({
 				op: "skills.update",
@@ -165,9 +178,37 @@ export function useSkillWrites() {
 				// replaces the whole file set (`skillEditability`).
 				files: [{ path: "SKILL.md", content: input.skillMd }],
 			}),
+		/*
+		 * A SAVED EDIT ON A HUB COPY IS A LOCAL CHANGE NOW (QA r1 Q5). Core does not
+		 * re-classify the link until its next check, so the row and the header kept
+		 * reading as unmodified after the reader changed it. The link's push side is
+		 * marked `local-only` in the cache (unless it already says `both-changed`,
+		 * the stronger fact); the settled invalidation then re-reads core, whose
+		 * own answer replaces this the moment it has one.
+		 */
+		onSuccess: (_result, input) => {
+			if (!input.linkId) return;
+			client.setQueryData<HubLinks>(hubLinksKey, (current) =>
+				current
+					? {
+							...current,
+							links: current.links.map((link) =>
+								link.link_id === input.linkId &&
+								link.push.classification !== "both-changed"
+									? {
+											...link,
+											push: { ...link.push, classification: "local-only" },
+										}
+									: link,
+							),
+						}
+					: current,
+			);
+		},
 		onSettled: refresh,
 	});
 	const remove = useMutation({
+		retry: 0,
 		mutationFn: (input: { name: string; discardLocalChanges: boolean }) =>
 			desktopResult({
 				op: "skills.remove",

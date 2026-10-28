@@ -212,6 +212,104 @@ export function lastAssistantText(
 }
 
 /**
+ * Why the run's LATEST TURN died, or null when it did not (UX r1 U3 / QA Q4).
+ *
+ * A model that errored (provider 500, refusal, context overflow) ends the turn
+ * with a durable `session_incident` row, and the settle used to read the
+ * incident's own sentence as the run's ANSWER and settle `done`: "Finished
+ * without changing anything · The run answered without changing this skill."
+ * That is a claim the model looked and decided nothing needed changing, when
+ * nothing was attempted. The same shape hit Agents and Teams.
+ *
+ * WHAT COUNTS: after the last `user` row (the request this turn answers), an
+ * error-level `custom` row (the transcript reducer's tier for exactly
+ * `session_incident`), or a final assistant row the provider flagged
+ * `error: true` / `stopReason: "error"`. A tool call that failed is NOT one: the
+ * model reads that result and goes on, so it is the run's own business.
+ * Returns the incident's user-facing headline, or a fixed sentence.
+ */
+/**
+ * What the operator TYPED, for "You asked: …" (UX r1 U6): the box's text less
+ * the "Change the <kind> <name>: " seed that "Ask for a change" wrote for this
+ * same target. The seed is `configSeedPrompt`'s shape (config-composer.tsx,
+ * which imports this module, so the shape is restated rather than imported);
+ * `agents-config-summary.test.mjs` pins the two together. Text that does not
+ * start with the seed is the operator's own and is returned whole.
+ */
+export function typedTopic(text: string, about: RunTarget | null): string {
+	const trimmed = text.trim();
+	if (!about) return trimmed;
+	const seed = `Change the ${about.kind} ${about.name}:`;
+	if (!trimmed.startsWith(seed)) return trimmed;
+	const rest = trimmed.slice(seed.length).trim();
+	return rest || trimmed;
+}
+
+/**
+ * Whether a RETRIED request has reached the transcript: a `user` row at or past
+ * `from`. A transcript the page has not seen the retry land in still ends in the
+ * old turn, which cannot be judged as this request's verdict, so the settle
+ * waits. `from === 0` is a first send on a fresh run: nothing old to mistake
+ * for it, so the settle rules stay exactly what they were.
+ */
+export function requestReached(
+	records: readonly { kind: string }[] | undefined,
+	from: number,
+): boolean {
+	if (from <= 0) return true;
+	if (!records) return false;
+	for (let index = Math.max(0, from); index < records.length; index += 1)
+		if (records[index]?.kind === "user") return true;
+	return false;
+}
+
+export function turnFailure(
+	records:
+		| readonly {
+				kind: string;
+				level?: string;
+				headline?: string;
+				// `unknown`: other record kinds use `error` for their own string field;
+				// only an assistant's literal `true` is read.
+				error?: unknown;
+				stopReason?: unknown;
+				text?: string;
+		  }[]
+		| undefined,
+): string | null {
+	if (!records) return null;
+	let start = 0;
+	for (let index = records.length - 1; index >= 0; index -= 1) {
+		if (records[index]?.kind === "user") {
+			start = index + 1;
+			break;
+		}
+	}
+	let failure: string | null = null;
+	for (let index = start; index < records.length; index += 1) {
+		const row = records[index];
+		if (row?.kind === "custom" && row.level === "error")
+			failure = row.headline?.trim() || TURN_FAILED_FALLBACK;
+		else if (
+			row?.kind === "assistant" &&
+			(row.error === true || row.stopReason === "error")
+		)
+			failure = TURN_FAILED_FALLBACK;
+		// An assistant that answered after the incident (a recovered retry inside
+		// the same turn) is the run's real answer, so a later success clears it.
+		else if (
+			row?.kind === "assistant" &&
+			row.text?.trim() &&
+			row.error !== true
+		)
+			failure = null;
+	}
+	return failure;
+}
+
+const TURN_FAILED_FALLBACK = "The model did not answer this request.";
+
+/**
  * Whether the server says a turn is running on this session, or `null` for
  * "this response did not say".
  *
@@ -297,6 +395,8 @@ export type ConfigRunHandle = {
 	 * delivered and pressing it would run it twice.
 	 */
 	canRetry: boolean;
+	/** The run's turn died (a session incident); see `turnFailure`. */
+	turnFailed: boolean;
 	dismiss: () => void;
 	starting: boolean;
 	/** True once a run has been adopted from the single-flight refusal. */
@@ -312,6 +412,14 @@ export function useConfigRun(): ConfigRunHandle {
 	const [starting, setStarting] = useState(false);
 	const [attached, setAttached] = useState(false);
 	const settleLatch = useRef(false);
+	/*
+	 * WHERE THE CURRENT REQUEST'S TURN STARTS in the run's transcript. A Retry
+	 * after a failed turn re-arms the SAME run, whose transcript still ends in the
+	 * old incident and whose turn count is already non-zero - so without this the
+	 * settle fired on the old turn the instant the retry was sent, and failed it
+	 * again. Nothing settles until a `user` row exists at or past this index.
+	 */
+	const turnStart = useRef(0);
 
 	const live = store.status === "running" || store.status === "stopping";
 	const stream = useCanonicalSessionStream(
@@ -421,6 +529,23 @@ export function useConfigRun(): ConfigRunHandle {
 			 */
 			if (settleLatch.current) return;
 			settleLatch.current = true;
+			/*
+			 * A TURN THAT DIED IS A FAILURE, NOT A QUIET ANSWER (UX r1 U3). Checked
+			 * on the transcript the run itself wrote, before the diff: the run may
+			 * still have written something before the provider failed, so the lists
+			 * are re-read either way (the invalidation below), but the strip says
+			 * the run did not finish and offers Retry instead of "Finished without
+			 * changing anything".
+			 */
+			const died =
+				status === "done"
+					? turnFailure(transcriptRecordsRef.current?.slice(turnStart.current))
+					: null;
+			if (died) {
+				invalidateAuthoring(client);
+				useConfigRunStore.getState().failTurn(died);
+				return;
+			}
 			const before = store.before as CatalogueSnapshot | null;
 			let results: RunResult[] = [];
 			try {
@@ -502,6 +627,8 @@ export function useConfigRun(): ConfigRunHandle {
 		if (!stream.frontend) return;
 		if (stream.frontend.streaming) return;
 		if (stream.turnsCompleted === 0) return;
+		if (!requestReached(transcriptRecordsRef.current, turnStart.current))
+			return;
 		void settleRun(store.status === "stopping" ? "stopped" : "done", answer);
 	}, [
 		live,
@@ -548,8 +675,12 @@ export function useConfigRun(): ConfigRunHandle {
 				// Read at fire time, and once: the two conditions below are about the
 				// same snapshot of the transcript, and a delta arriving between them
 				// must not make them disagree.
-				const closing = lastAssistantText(transcriptRecordsRef.current);
-				if (!closing) return;
+				const records = transcriptRecordsRef.current;
+				if (!requestReached(records, turnStart.current)) return;
+				const current = records?.slice(turnStart.current);
+				// A turn that died has no closing sentence; its incident is the verdict.
+				const closing = lastAssistantText(current);
+				if (!closing && !turnFailure(current)) return;
 				void settleRun(
 					useConfigRunStore.getState().status === "stopping"
 						? "stopped"
@@ -606,6 +737,8 @@ export function useConfigRun(): ConfigRunHandle {
 		setStarting(true);
 		setAttached(false);
 		settleLatch.current = false;
+		// A first send judges the run's whole transcript (see `requestReached`).
+		turnStart.current = 0;
 		const before: CatalogueSnapshot = {
 			...snapshotCatalogue(
 				client.getQueryData<ReusableProfile[]>(["desktop", "profiles"]),
@@ -691,7 +824,15 @@ export function useConfigRun(): ConfigRunHandle {
 				}
 				throw caught;
 			}
-			store.adopt(sessionId, body, before, images, files);
+			// The SENT body is kept for Retry; the strip says back what was typed (U6).
+			store.adopt(
+				sessionId,
+				body,
+				before,
+				images,
+				files,
+				typedTopic(text, about),
+			);
 			/*
 			 * The prompt is a SECOND call on the same session, exactly as the design's
 			 * mechanism table states: create, then message. `startedAt` is the accepted
@@ -792,14 +933,19 @@ export function useConfigRun(): ConfigRunHandle {
 			starting ||
 			!state.unsent ||
 			!state.sessionId ||
-			(!state.topic && state.images.length === 0)
+			(!state.prompt && state.images.length === 0)
 		)
 			return;
 		setStarting(true);
+		turnStart.current = transcriptRecordsRef.current?.length ?? 0;
 		try {
+			/*
+			 * THE SENT BODY, not the typed topic: the retry rule is the same bytes
+			 * or a 409, and the body carries the page's own "About the …" context.
+			 */
 			await sendMessage(
 				state.sessionId,
-				state.topic,
+				state.prompt,
 				state.images,
 				state.files,
 			);
@@ -808,7 +954,14 @@ export function useConfigRun(): ConfigRunHandle {
 			 * and topic it needs are the ones already in hand — so the retry re-arms
 			 * the same run rather than starting a rival.
 			 */
-			store.adopt(state.sessionId, state.topic, state.before);
+			store.adopt(
+				state.sessionId,
+				state.prompt,
+				state.before,
+				state.images,
+				state.files,
+				state.topic,
+			);
 			settleLatch.current = false;
 		} catch (caught) {
 			// Still unsent: the retry did not deliver it either, so it stays retryable.
@@ -879,6 +1032,7 @@ export function useConfigRun(): ConfigRunHandle {
 		stop,
 		retry,
 		canRetry: store.unsent && Boolean(store.sessionId),
+		turnFailed: store.turnFailed,
 		dismiss: store.dismiss,
 		starting,
 		attached,

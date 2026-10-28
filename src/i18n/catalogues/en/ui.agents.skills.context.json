@@ -24,6 +24,11 @@
 		"role": "alert body",
 		"tone": "plain, helpful"
 	},
+	"ui.agents.skills.alert.builtin_body_no_copy": {
+		"note": "Variant of the built-in body for a backend that cannot write skills: no Copy button is shown, so it must not suggest copying. Keep Local Operator in Latin.",
+		"role": "alert body",
+		"tone": "plain"
+	},
 	"ui.agents.skills.alert.builtin_title": {
 		"note": "Info alert on a skill that ships with the app.",
 		"role": "alert title",
@@ -33,6 +38,11 @@
 		"note": "Keep Agent Hub in Latin (product name).",
 		"role": "alert body",
 		"tone": "plain"
+	},
+	"ui.agents.skills.alert.bundle_local_body": {
+		"note": "Info alert body for a LOCAL skill that is not a single editable document. Unlike the hub variant it must not mention Agent Hub: a local skill has no hub updates. The path is in the collapsed Details section.",
+		"role": "alert body",
+		"tone": "plain, helpful"
 	},
 	"ui.agents.skills.alert.bundle_title": {
 		"note": "Info alert on a skill stored as a folder bundle rather than a single document.",
@@ -49,6 +59,11 @@
 		"role": "alert body",
 		"tone": "plain, helpful"
 	},
+	"ui.agents.skills.alert.external_body_no_copy": {
+		"note": "Variant of the other-tool body with no Copy button offered: must not suggest copying. Keep Local Operator in Latin.",
+		"role": "alert body",
+		"tone": "plain"
+	},
 	"ui.agents.skills.alert.external_title": {
 		"note": "Info alert on a skill found in another tool's skills folder.",
 		"role": "alert title",
@@ -59,8 +74,23 @@
 		"role": "alert body",
 		"tone": "plain, helpful"
 	},
+	"ui.agents.skills.alert.project_body_no_copy": {
+		"note": "Variant of the project body with no Copy button offered: must not suggest copying.",
+		"role": "alert body",
+		"tone": "plain"
+	},
 	"ui.agents.skills.alert.project_title": {
 		"note": "Info alert on a skill that belongs to a project folder.",
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.agents.skills.alert.too_large_body": {
+		"note": "Says why there is no Edit and the one way to revise it: the file on disk, whose path is in the collapsed Details section. Never promise Agent Hub updates: this skill may be local.",
+		"role": "alert body",
+		"tone": "plain, helpful"
+	},
+	"ui.agents.skills.alert.too_large_title": {
+		"note": "Info alert on a skill whose single SKILL.md is over the size this tab can edit (core reports it as not a document). It is ONE file, never call it a folder or bundle.",
 		"role": "alert title",
 		"tone": "plain"
 	},
@@ -95,7 +125,7 @@
 		"tone": "plain"
 	},
 	"ui.agents.skills.composer.gate_not_installed": {
-		"note": "Shown when the open hub skill is not on this machine.",
+		"note": "Shown when the open hub skill has no copy on this machine. 'Download' is the label of the button beside the skill's title, so use the same verb as that button.",
 		"role": "composer placeholder",
 		"tone": "plain"
 	},
@@ -140,13 +170,23 @@
 		"tone": "plain"
 	},
 	"ui.agents.skills.detail.edit_by_asking": {
-		"note": "Under Instructions, says why there is no Edit button.",
-		"role": "section note",
+		"note": "Beside the action buttons, says why there is no Edit and names the 'Ask for a change' button, quoted by its own label.",
+		"role": "header note",
 		"tone": "plain"
 	},
 	"ui.agents.skills.detail.edit_by_asking_truncated": {
-		"note": "Under Instructions, says why there is no Edit button.",
-		"role": "section note",
+		"note": "Beside the action buttons, says why there is no Edit (one oversize file) and names the 'Ask for a change' button.",
+		"role": "header note",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.edit_off_files": {
+		"note": "Beside the action buttons, says why there is no Edit, on a backend that cannot run 'Ask for a change' (so it names no remedy).",
+		"role": "header note",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.edit_off_truncated": {
+		"note": "Beside the action buttons, says why there is no Edit when the skill's file is too large, on a backend without 'Ask for a change'.",
+		"role": "header note",
 		"tone": "plain"
 	},
 	"ui.agents.skills.detail.file_bytes": {
@@ -254,6 +294,11 @@
 		"role": "field help",
 		"tone": "plain"
 	},
+	"ui.agents.skills.edit.description_label": {
+		"note": "Label of the description field in the inline editor. The section title above it says 'When to use it'; this names the object so the two do not repeat each other.",
+		"role": "field label",
+		"tone": "plain"
+	},
 	"ui.agents.skills.edit.instructions_help": {
 		"note": "Under the Instructions field in the inline edit.",
 		"role": "field help",
@@ -313,6 +358,11 @@
 		"note": "Shown under 'That did not save' when the backend gave no sentence of its own.",
 		"role": "error fallback",
 		"tone": "plain"
+	},
+	"ui.agents.skills.hub.needs_review": {
+		"note": "Chip in the skill details header when a hub update met local changes and waits for the reader's review. Sentence case, short: it sits beside a source line.",
+		"role": "status chip",
+		"tone": "plain, short"
 	},
 	"ui.agents.skills.hub.unlinked": {
 		"note": "A skill the hub manages whose link could not be matched. Not the same as 'Not downloaded': the skill IS on this machine.",

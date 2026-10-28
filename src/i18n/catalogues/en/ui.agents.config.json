@@ -16,6 +16,7 @@
 	"ui.agents.config.result.changed": "Changed",
 	"ui.agents.config.result.configured": "Configured",
 	"ui.agents.config.result.created": "Created",
+	"ui.agents.config.state.did_not_finish": "Did not finish",
 	"ui.agents.config.state.sending": "Sending…",
 	"ui.agents.config.state.stopping": "Stopping…",
 	"ui.agents.config.status.attached": "Another configuration run was already going, so this page attached to it. Your request was not sent — it is still in the box.",

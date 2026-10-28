@@ -372,6 +372,20 @@ function ComposerStatus({
 		Boolean(blockedReason) && hasDraft && showsRun && !live;
 
 	/*
+	 * A RUN WHOSE TURN DIED HANDS FOCUS TO RETRY (#1458 UX r1 U3): Retry is the
+	 * one next act, and the reader was watching the box or nothing at all. Only
+	 * from there - focus elsewhere on the page is the reader's own, not taken.
+	 */
+	const retryRef = useRef<HTMLButtonElement>(null);
+	useEffect(() => {
+		if (run.status !== "error" || !run.turnFailed) return;
+		const active = document.activeElement;
+		const strip = retryRef.current?.closest('[data-testid="config-composer"]');
+		if (!active || active === document.body || strip?.contains(active))
+			retryRef.current?.focus({ preventScroll: true });
+	}, [run.status, run.turnFailed]);
+
+	/*
 	 * Escape focuses Stop while a run is live — the accelerator the chat composer
 	 * gives its own Stop. It is a FOCUS move rather than a stop: an Escape that
 	 * killed a paid turn by accident is worse than one that did nothing, and the
@@ -419,9 +433,16 @@ function ComposerStatus({
 								 * (`canRetry`) versus a run that ran and then could not be
 								 * read back.
 								 */
-								run.canRetry
-								? "Stopped with an error"
-								: "Finished with an error"
+								/*
+								 * A TURN THAT DIED (a session incident: the provider errored)
+								 * did not finish at all, and saying "Stopped" would read as the
+								 * operator's own Stop (#1458 UX r1 U3).
+								 */
+								run.turnFailed
+								? t("ui.agents.config.state.did_not_finish")
+								: run.canRetry
+									? "Stopped with an error"
+									: "Finished with an error"
 							: "";
 
 	return (
@@ -753,6 +774,7 @@ function ComposerStatus({
 					 */}
 					{run.canRetry ? (
 						<Button
+							ref={retryRef}
 							variant="secondary"
 							size="sm"
 							data-testid="config-retry"

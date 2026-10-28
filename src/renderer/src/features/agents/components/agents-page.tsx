@@ -67,6 +67,7 @@ import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { t } from "@shared/i18n";
 import type { MessageKey } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -249,6 +250,8 @@ export function AgentsPage() {
 	const duplicateOf = params.get("duplicate");
 
 	const capabilities = useDesktopCapabilities();
+	// The skill pane's Download needs a hub credential (UX r1 U1).
+	const { isAuthenticated } = useRadientAuth();
 	const skillsOffered = desktopFeatureEnabled(
 		capabilities.data,
 		"skill_library",
@@ -1229,7 +1232,28 @@ export function AgentsPage() {
 												);
 												setSkillAskFocus((count) => count + 1);
 											}}
-											onRemoved={(skillName) => {
+											hubSignedIn={isAuthenticated}
+											downloadEnabled={desktopFeatureEnabled(
+												capabilities.data,
+												"hub_skills",
+											)}
+											onRemoved={(skillName, stays) => {
+												/*
+												 * A HUB COPY'S ROW STAYS, AS "NOT INSTALLED" (UX r1 U5): the link
+												 * survives the removal, so the pane stays on it - its Download is
+												 * the obvious way back - and focus goes to the pane's heading
+												 * (the menu that asked has closed).
+												 */
+												if (stays) {
+													requestAnimationFrame(() =>
+														document
+															.querySelector<HTMLElement>(
+																'[data-testid="skill-detail"] h2',
+															)
+															?.focus(),
+													);
+													return;
+												}
 												/*
 												 * FOCUS GOES TO THE NEXT ROW (spec §3.2): the closing handoff
 												 * below focuses the row that was open, which is gone, so the

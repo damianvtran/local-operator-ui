@@ -224,6 +224,8 @@ const LEADING_BLANK_LINES = /^(?:[ \t]*\r?\n)*/;
 const INDENTED = /^[ \t]+\S/;
 const BLANK = /^[ \t]*$/;
 const LINE_BREAK = /\r?\n/;
+// DEL and the C1 controls, written as escapes (the source holds no raw control).
+const C1_AND_DEL = /[\u007f-\u009f]/g;
 /** A line break, KEPT by `split` so each line's own separator survives (m2). */
 const LINE_BREAK_KEPT = /(\r?\n)/;
 
@@ -309,7 +311,16 @@ export function otherFrontMatter(meta: string | null): string | null {
  * never re-serialised (`rebuildSkillMd` with `description: null`).
  */
 function yamlScalar(value: string): string {
-	return JSON.stringify(value);
+	/*
+	 * PLUS DEL AND THE C1 CONTROLS (review r2 m7). `JSON.stringify` escapes only
+	 * below U+0020, and YAML forbids raw U+007F-U+009F inside a scalar - PyYAML
+	 * refuses DEL and C1 as invalid front matter and reads U+0085 (NEL) as a line
+	 * break, silently saving "nel x". `\uXXXX` is a YAML double-quoted escape.
+	 */
+	return JSON.stringify(value).replace(
+		C1_AND_DEL,
+		(char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+	);
 }
 
 /**
@@ -415,6 +426,13 @@ export function skillEditability(
 		if (detail?.body_truncated) return { kind: "ask", reason: "truncated" };
 		return { kind: "edit" };
 	}
+	/*
+	 * `bundle` IS CORE'S "NOT ONE EDITABLE TEXT DOCUMENT": a real folder bundle,
+	 * but also a single SKILL.md over the document limit or with binary content
+	 * (`_fingerprint_and_form` falls back to the tree hash). The run's `skill`
+	 * tool refuses the same set (#3055: "bundle-form ... are read-only"), so the
+	 * honest remedy is the files on disk, never "ask for a change" (design D1).
+	 */
 	if (card.form === "bundle")
 		return { kind: "read-only", reason: "bundle", copy: false };
 	if (
@@ -508,10 +526,18 @@ export function skillRowState(
 ): SkillRowState | null {
 	if (!join) return null;
 	if (markKind === "failed") return "failed";
+	/*
+	 * NO COPY OUTRANKS EVERY FACT ABOUT A COPY (QA r1 Q2 / UX U2). After "Discard
+	 * changes and remove" the link's push status still says `both-changed` (and
+	 * its mark `review`) until the next check, so ranking "Modified" first told
+	 * the reader their discarded changes were still there - the removal read as
+	 * failed. With no copy on disk there are no local changes and no update to
+	 * apply to it; the only next act is Download.
+	 */
+	if (!card.installed) return "not-installed";
 	if (markKind === "available") return "available";
 	if (markKind === "applied") return "applied";
 	if (skillLocallyModified(join)) return "modified";
-	if (!card.installed) return "not-installed";
 	if (join.state.kind === "manual") return "updates-off";
 	if (join.state.kind === "not-present") return "unlinked";
 	return null;

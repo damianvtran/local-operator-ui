@@ -84,6 +84,11 @@
 		"plain",
 		"Prefixed to a definition's name: 'Created <name>'. Use the same verb form as result.changed."
 	],
+	"ui.agents.config.state.did_not_finish": [
+		"status title",
+		"plain, honest",
+		"Heading of the configuration-run strip when the run's model failed (provider error, session incident) before it could answer. Must not read as the operator's own Stop, nor as success. Short: it sits on one line beside the elapsed time."
+	],
 	"ui.agents.config.state.sending": [
 		"button label while the request is in flight",
 		"plain, progress",
