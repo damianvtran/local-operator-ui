@@ -1264,6 +1264,14 @@ export function ConfigComposer({
 			 */}
 			<MessageInput
 				ref={inputRef}
+				/*
+				 * NOT WHILE A FAILED TURN'S RETRY IS UP (#1458 QA r2 Q9). The box stops
+				 * being refused the moment the run leaves `running`, and the composer's
+				 * own caret claim re-runs on that edge - so it took focus from Retry in
+				 * the same millisecond the strip gave it. Retry is the one next act
+				 * there; the claim comes back once the strip is dismissed or re-sent.
+				 */
+				autoFocus={!(run.status === "error" && run.turnFailed && run.canRetry)}
 				conversationId={boxKey}
 				messages={EMPTY_MESSAGES}
 				/*

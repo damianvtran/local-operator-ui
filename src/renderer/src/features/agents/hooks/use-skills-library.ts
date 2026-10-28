@@ -27,10 +27,10 @@ import {
 	hubLinksKey,
 	useHubLinks,
 } from "@shared/api/local-operator/hub-link-hooks";
-import type { HubLinks } from "@shared/api/local-operator/hub-links";
+import type { HubLink } from "@shared/api/local-operator/hub-links";
 import { hubItemIndex } from "@shared/api/local-operator/hub-updates";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import {
 	type SkillsListResult,
 	skillsListResultSchema,
@@ -107,10 +107,35 @@ export function useSkillsTab(options: {
 	// the state is unavailable instead of "not downloaded" for a skill that is.
 	const inventoryReady =
 		options.linksEnabled && !links.isLoading && !links.error;
+	const savesVersion = useLocalSavesVersion();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `savesVersion` is a re-derive trigger, read through `savedSinceCheck`.
 	const join = useCallback(
-		(card: SkillCard) =>
-			joinSkillHub(card, links.data?.links, updateIndex, inventoryReady),
-		[links.data, updateIndex, inventoryReady],
+		(card: SkillCard) => {
+			const joined = joinSkillHub(
+				card,
+				links.data?.links,
+				updateIndex,
+				inventoryReady,
+			);
+			// A save core has not checked yet reads as the local change it is (Q8);
+			// `both-changed` is the stronger fact and is left alone.
+			if (
+				!joined?.link ||
+				!card.installed ||
+				!savedSinceCheck(joined.link) ||
+				joined.link.push?.classification === "both-changed"
+			)
+				return joined;
+			return {
+				...joined,
+				link: {
+					...joined.link,
+					push: { ...joined.link.push, classification: "local-only" },
+				},
+			};
+		},
+		// `savesVersion` re-derives the join when a save is recorded.
+		[links.data, updateIndex, inventoryReady, savesVersion],
 	);
 	return { library, cards, join, inventoryReady, linksFailed: !!links.error };
 }
@@ -134,6 +159,42 @@ export function useSkillsTab(options: {
  * route's machine code (`skill_stale`, `skill_local_changes_unpublished`, ...):
  * the caller decides the sentence, never a regex over prose.
  */
+/*
+ * Hub copies saved inline on this machine, by link id, with when. Module scope
+ * on purpose: the mark must survive the pane and the tab remounting, exactly
+ * as long as the renderer holds the cache it corrects.
+ */
+const localSaves = new Map<string, number>();
+const localSaveListeners = new Set<() => void>();
+let localSavesVersion = 0;
+function noteLocalSave(linkId: string) {
+	localSaves.set(linkId, Date.now());
+	localSavesVersion += 1;
+	for (const listener of localSaveListeners) listener();
+}
+/**
+ * Whether this machine saved the linked copy after core last checked it - i.e.
+ * the copy is locally modified though the link cannot say so yet.
+ */
+export function savedSinceCheck(link: HubLink | undefined): boolean {
+	if (!link) return false;
+	const saved = localSaves.get(link.link_id);
+	if (saved === undefined) return false;
+	const checked = link.push?.last_checked_at
+		? Date.parse(link.push.last_checked_at)
+		: Number.NaN;
+	return !(checked > saved);
+}
+function useLocalSavesVersion(): number {
+	return useSyncExternalStore(
+		(listener) => {
+			localSaveListeners.add(listener);
+			return () => localSaveListeners.delete(listener);
+		},
+		() => localSavesVersion,
+	);
+}
+
 export function useSkillWrites() {
 	const client = useQueryClient();
 	const refresh = useCallback(() => {
@@ -179,31 +240,17 @@ export function useSkillWrites() {
 				files: [{ path: "SKILL.md", content: input.skillMd }],
 			}),
 		/*
-		 * A SAVED EDIT ON A HUB COPY IS A LOCAL CHANGE NOW (QA r1 Q5). Core does not
-		 * re-classify the link until its next check, so the row and the header kept
-		 * reading as unmodified after the reader changed it. The link's push side is
-		 * marked `local-only` in the cache (unless it already says `both-changed`,
-		 * the stronger fact); the settled invalidation then re-reads core, whose
-		 * own answer replaces this the moment it has one.
+		 * A SAVED EDIT ON A HUB COPY IS A LOCAL CHANGE NOW (QA r1 Q5, r2 Q8). Core
+		 * does not re-classify the link until its next CHECK, so the links read
+		 * after the save still says `push: null` - and a cache patch was undone by
+		 * that very refetch one frame later. The save is recorded here instead and
+		 * the join reads it as `local-only` until core has checked the link SINCE
+		 * the save (`push.last_checked_at` newer), whose own answer then wins. Not
+		 * a forced check: that needs the hub reachable, and an unreachable hub
+		 * would leave the mark just as wrong.
 		 */
 		onSuccess: (_result, input) => {
-			if (!input.linkId) return;
-			client.setQueryData<HubLinks>(hubLinksKey, (current) =>
-				current
-					? {
-							...current,
-							links: current.links.map((link) =>
-								link.link_id === input.linkId &&
-								link.push.classification !== "both-changed"
-									? {
-											...link,
-											push: { ...link.push, classification: "local-only" },
-										}
-									: link,
-							),
-						}
-					: current,
-			);
+			if (input.linkId) noteLocalSave(input.linkId);
 		},
 		onSettled: refresh,
 	});

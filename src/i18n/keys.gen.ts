@@ -1752,6 +1752,7 @@ export type MessageParams = {
 	"ui.agents.config.composer.label": undefined;
 	"ui.agents.config.definitions": { count: number };
 	"ui.agents.config.error.stop_refused": undefined;
+	"ui.agents.config.error.turn_failed": undefined;
 	"ui.agents.config.examples.add_twice": undefined;
 	"ui.agents.config.examples.reads_code": undefined;
 	"ui.agents.config.examples.team_shipping": undefined;
@@ -2203,6 +2204,7 @@ export type MessageParams = {
 	"ui.agents.skills.empty.search": { query: string };
 	"ui.agents.skills.error.detail_meaning": undefined;
 	"ui.agents.skills.error.detail_title": { name: string };
+	"ui.agents.skills.error.download_failed_title": undefined;
 	"ui.agents.skills.error.meaning": undefined;
 	"ui.agents.skills.error.title": undefined;
 	"ui.agents.skills.error.what_fallback": undefined;

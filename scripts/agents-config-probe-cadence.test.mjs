@@ -133,8 +133,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const probes = () =>
 	probeCalls.filter((call) => call.op === "sessions.get").length;
 
+/** The latest handle, so a case can press Retry the way the strip does. */
+let latestHandle = null;
 function Harness() {
-	useConfigRun();
+	latestHandle = useConfigRun();
 	return null;
 }
 
@@ -345,4 +347,126 @@ test("typedTopic drops the seed Ask for a change wrote, and nothing the operator
 		"Change the skill other: x",
 	);
 	assert.equal(typedTopic("x", null), "x");
+});
+
+/* ===== #1458 review r3 M1 = QA r2 Q7: Retry waits for ITS turn to run ====== */
+
+test("Retry does not settle on its own user row before the retried turn runs", async () => {
+	setStream({
+		transcript: { records: [] },
+		frontend: { streaming: true },
+		turnsCompleted: 0,
+	});
+	const root = await mount();
+	try {
+		// The first turn dies on a provider incident: one completed turn.
+		await act(async () => {
+			setStream({
+				transcript: { records: [userRow, incident] },
+				frontend: { streaming: false },
+				turnsCompleted: 1,
+			});
+		});
+		for (
+			let i = 0;
+			i < 40 && useConfigRunStore.getState().status === "running";
+			i += 1
+		)
+			await act(async () => sleep(25));
+		assert.equal(useConfigRunStore.getState().status, "error");
+		await act(async () => {
+			await latestHandle.retry();
+		});
+		assert.equal(useConfigRunStore.getState().status, "running");
+		/*
+		 * CORE'S ORDER: the retried prompt's user row lands BEFORE `streaming=true`
+		 * (AgentStartEvent waits on the inbox drain and system-block prep), and the
+		 * turn count still says 1 from the dead turn. A fresh `frontend` object is
+		 * what re-runs the settle effect in that window (review r3 P6c).
+		 */
+		await act(async () => {
+			setStream({
+				transcript: { records: [userRow, incident, { ...userRow, id: "u2" }] },
+				frontend: { streaming: false },
+				turnsCompleted: 1,
+			});
+		});
+		await act(async () => sleep(120));
+		assert.equal(
+			useConfigRunStore.getState().status,
+			"running",
+			"settled before the retried turn ran",
+		);
+		// The retried turn runs and finishes: NOW it settles, on its answer.
+		await act(async () => {
+			setStream({
+				transcript: {
+					records: [
+						userRow,
+						incident,
+						{ ...userRow, id: "u2" },
+						{ kind: "assistant", id: "a2", ts: 5, text: "Edited it." },
+					],
+				},
+				frontend: { streaming: false },
+				turnsCompleted: 2,
+			});
+		});
+		for (
+			let i = 0;
+			i < 40 && useConfigRunStore.getState().status === "running";
+			i += 1
+		)
+			await act(async () => sleep(25));
+		const state = useConfigRunStore.getState();
+		assert.equal(state.status, "done");
+		assert.equal(state.answer, "Edited it.");
+	} finally {
+		await act(async () => root.unmount());
+		useConfigRunStore.getState().dismiss();
+		setStream({
+			transcript: { records: [] },
+			frontend: { streaming: true },
+			turnsCompleted: 0,
+		});
+	}
+});
+
+test("a first send still settles on its first completed turn", async () => {
+	setStream({
+		transcript: { records: [] },
+		frontend: { streaming: true },
+		turnsCompleted: 0,
+	});
+	const root = await mount();
+	try {
+		await act(async () => {
+			setStream({
+				transcript: {
+					records: [
+						userRow,
+						{ kind: "assistant", id: "a1", ts: 2, text: "Done." },
+					],
+				},
+				frontend: { streaming: false },
+				turnsCompleted: 1,
+			});
+		});
+		for (
+			let i = 0;
+			i < 40 && useConfigRunStore.getState().status === "running";
+			i += 1
+		)
+			await act(async () => sleep(25));
+		assert.equal(useConfigRunStore.getState().status, "done");
+		assert.equal(useConfigRunStore.getState().answer, "Done.");
+	} finally {
+		await act(async () => root.unmount());
+		useConfigRunStore.getState().dismiss();
+		setStream({
+			transcript: { records: [] },
+			frontend: { streaming: true },
+			turnsCompleted: 0,
+		});
+	}
 });

@@ -10,6 +10,7 @@
 	"ui.agents.config.composer.label": "Ask for an agent or team change",
 	"ui.agents.config.definitions": "{count, plural, one {# definition} other {# definitions}}",
 	"ui.agents.config.error.stop_refused": "The stop did not take — the run is still going.",
+	"ui.agents.config.error.turn_failed": "The model did not answer this request.",
 	"ui.agents.config.examples.add_twice": "Add the coder twice to release-crew",
 	"ui.agents.config.examples.reads_code": "A reviewer that only reads code",
 	"ui.agents.config.examples.team_shipping": "A team called shipping with a manager and two coders",

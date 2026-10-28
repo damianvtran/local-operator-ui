@@ -339,6 +339,11 @@
 		"role": "heading of the details-read failure",
 		"tone": "plain"
 	},
+	"ui.agents.skills.error.download_failed_title": {
+		"note": "Title of the danger alert when Download of a hub skill was refused or failed; the server's sentence is shown under it. Pairs with the 'Download' button label.",
+		"role": "alert title",
+		"tone": "plain"
+	},
 	"ui.agents.skills.error.meaning": {
 		"note": "Says the failure is about reading, not about any skill being changed.",
 		"role": "reassurance line of a failed read",

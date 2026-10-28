@@ -51,6 +51,7 @@ const pageBundle = await build({
 			'export { AgentsPage } from "./src/renderer/src/features/agents/components/agents-page";',
 			'export * as model from "./src/renderer/src/features/agents/skills-library-model";',
 			'export { useRetryFocus, skillDownloadRequest } from "./src/renderer/src/features/agents/components/skills-library";',
+			'export { savedSinceCheck } from "./src/renderer/src/features/agents/hooks/use-skills-library";',
 			/*
 			 * The box's own store, so the storage below can be given to THAT store and no
 			 * other (see the note under the import).
@@ -448,6 +449,7 @@ const installBridge = (world) => {
 						if (answer?.status) return answer;
 						return { status: 200, body: { result: { data: answer } } };
 					}
+					case "hub.skillPull":
 					case "skills.create":
 					case "skills.update":
 					case "skills.remove": {
@@ -3412,4 +3414,153 @@ test("U6: the seed Ask for a change writes is the shape the run strips from 'You
 		PAGE.configSeedPrompt({ kind: "skill", name: "qa-notes" }),
 		"Change the skill qa-notes: ",
 	);
+});
+
+/* ===== #1458 review r3 m1/m3 + QA r2 Q11: every refused write goes out once ===== */
+
+const refusedOnce = (base) => {
+	const sent = [];
+	return {
+		sent,
+		world: {
+			...base,
+			write: async (request) => {
+				sent.push(request.op);
+				return {
+					status: 422,
+					body: { detail: { code: "refused", text: "Refused." } },
+				};
+			},
+		},
+	};
+};
+
+test("r3 m3: a refused Copy is sent once", async () => {
+	const rig = diskWorld({
+		name: "b-builtin",
+		source: "builtin",
+		editable: false,
+	});
+	const { sent, world } = refusedOnce(rig.world);
+	const view = await mount("/agents?kind=skill&name=b-builtin", world);
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-copy"]') !== null,
+		),
+	);
+	await press(q(view.container, '[data-testid="skill-copy"]'));
+	await settle(() => sent.length > 0);
+	await settle(() => false, 1_200);
+	assert.equal(sent.length, 1, `sent ${sent.length} time(s)`);
+	await teardown(view);
+});
+
+test("r3 m3: a refused Remove is sent once", async () => {
+	const rig = diskWorld({ name: "d-local", source: "local" });
+	const { sent, world } = refusedOnce(rig.world);
+	const view = await mount("/agents?kind=skill&name=d-local", world);
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-more"]') !== null,
+		),
+	);
+	const trigger = q(view.container, '[data-testid="skill-more"]');
+	await act(async () => trigger.focus());
+	await act(async () => {
+		trigger.dispatchEvent(
+			new window.KeyboardEvent("keydown", { bubbles: true, key: "Enter" }),
+		);
+	});
+	assert.ok(
+		await settle(() => document.querySelector('[role="menuitem"]') !== null),
+	);
+	await press(document.querySelector('[role="menuitem"]'));
+	const confirm = () =>
+		document.querySelector('[data-testid="skill-remove-confirm"]');
+	assert.ok(await settle(() => confirm() !== null));
+	await press(confirm());
+	await settle(() => sent.length > 0);
+	await settle(() => false, 1_200);
+	assert.equal(sent.length, 1, `sent ${sent.length} time(s)`);
+	await teardown(view);
+});
+
+test("r3 m1 + Q11: Download is guarded per press and never retried (source pins)", async () => {
+	/*
+	 * Driving a SIGNED-IN pull needs the Radient account path faked, which this
+	 * file does not do; QA r2 drives the real one (Q11's 502, 502 repro). What a
+	 * mutant would break is pinned at the source instead: the handler's
+	 * synchronous ref guard (two clicks in one task both passed `isPending`) and
+	 * the call site's `retry: 0` on the shared pull hook.
+	 */
+	const { readFileSync } = await import("node:fs");
+	const pane = readFileSync(
+		"src/renderer/src/features/agents/components/skills-library.tsx",
+		"utf8",
+	);
+	assert.match(pane, /usePullHubSkill\(\{ retry: 0 \}\)/);
+	assert.match(
+		pane,
+		/\|\| downloading\.current\)\s*return;\s*downloading\.current = true;/,
+	);
+	assert.match(pane, /finally \{\s*downloading\.current = false;/);
+	const hook = readFileSync(
+		"src/renderer/src/features/agent-hub/hooks/use-hub-skills.ts",
+		"utf8",
+	);
+	assert.match(
+		hook,
+		/options\.retry === undefined \? \{\} : \{ retry: options\.retry \}/,
+	);
+});
+
+test("Q8: a hub copy saved inline reads Modified through the links refetch, until a newer check", async () => {
+	const { savedSinceCheck } = PAGE;
+	// No save recorded: nothing to say.
+	assert.equal(savedSinceCheck(linkRow({ link_id: "never-saved" })), false);
+	const rig = diskWorld({ name: "h-save", source: "hub" });
+	// Core does not re-classify until a check: every links read says push null-ish.
+	rig.world.links = [
+		linkRow({
+			link_id: "link-1",
+			name: "h-save",
+			local_id: "h-save",
+			push: { ...BOTH_CHANGED, state: "up-to-date", classification: null },
+			pull: { ...BOTH_CHANGED, state: "up-to-date", classification: null },
+		}),
+	];
+	const view = await mount("/agents?kind=skill&name=h-save", rig.world);
+	assert.ok(
+		await settle(() => editButton(view) !== null && !editButton(view).disabled),
+	);
+	assert.equal(q(view.container, '[data-testid="skill-modified"]'), null);
+	await press(editButton(view));
+	const area = q(editForm(view), "textarea");
+	await typeArea(area, `${area.value} edited`);
+	await submit(editForm(view));
+	assert.ok(
+		await settle(() => rig.writes.length === 1 && editForm(view) === null),
+	);
+	// Past the settled refetch of the links (the r2 flash lasted ~40 ms).
+	await settle(() => false, 400);
+	assert.equal(
+		rowOf(view.container, "h-save").getAttribute("data-skill-state"),
+		"modified",
+	);
+	assert.ok(
+		q(view.container, '[data-testid="skill-modified"]'),
+		"header says Modified",
+	);
+	// A check newer than the save hands the fact back to core.
+	const later = new Date(Date.now() + 60_000).toISOString();
+	assert.equal(
+		savedSinceCheck(
+			linkRow({
+				link_id: "link-1",
+				push: { ...BOTH_CHANGED, classification: null, last_checked_at: later },
+			}),
+		),
+		false,
+	);
+	await teardown(view);
 });

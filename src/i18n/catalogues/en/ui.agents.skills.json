@@ -67,6 +67,7 @@
 	"ui.agents.skills.empty.search": "No skill matches “{query}”.",
 	"ui.agents.skills.error.detail_meaning": "The skill may have been removed, or the backend refused the read.",
 	"ui.agents.skills.error.detail_title": "“{name}” could not be read",
+	"ui.agents.skills.error.download_failed_title": "That did not download",
 	"ui.agents.skills.error.meaning": "Nothing is lost. This is a read that failed, so the list may simply be out of date.",
 	"ui.agents.skills.error.title": "Skills could not be read",
 	"ui.agents.skills.error.what_fallback": "The request did not complete.",

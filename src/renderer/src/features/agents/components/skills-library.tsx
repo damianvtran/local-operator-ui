@@ -685,7 +685,7 @@ export function SkillDetail({
 	const headingRef = useRef<HTMLHeadingElement>(null);
 	const retryFocus = useRetryFocus(Boolean(detail.error), detail.isFetching);
 	const writes = useSkillWrites();
-	const pull = usePullHubSkill();
+	const pull = usePullHubSkill({ retry: 0 });
 	/*
 	 * FOCUS FOLLOWS THE OPEN (QA round 1 Q3 / review R6). Below 1000 px the roster
 	 * is `display:none` while a skill is open, so the row that was pressed LEAVES
@@ -750,6 +750,17 @@ export function SkillDetail({
 	 */
 	const editBase = useRef<{ fingerprint: string; body: string } | null>(null);
 	const [failure, setFailure] = useState<string | null>(null);
+	/*
+	 * Which act the failure Alert answers: a refused Download is not "That did
+	 * not save" (#1458 review r3 n1).
+	 */
+	const [failureAct, setFailureAct] = useState<"write" | "download">("write");
+	/*
+	 * ONE DOWNLOAD PER PRESS (review r3 m1): `pull.isPending` is read from this
+	 * render's closure, so two clicks dispatched in one task both passed it and
+	 * core saw two operations with two request ids. A ref is set synchronously.
+	 */
+	const downloading = useRef(false);
 	const [removing, setRemoving] = useState<"ask" | "unpublished" | null>(null);
 	const dirty =
 		draft.description !== base.description ||
@@ -888,8 +899,11 @@ export function SkillDetail({
 				)
 			: null;
 	const download = async () => {
-		if (!absentLink || !hubSignedIn || pull.isPending) return;
+		if (!absentLink || !hubSignedIn || pull.isPending || downloading.current)
+			return;
+		downloading.current = true;
 		setFailure(null);
+		setFailureAct("download");
 		try {
 			const result = await pull.mutateAsync(
 				skillDownloadRequest(absentLink, crypto.randomUUID()),
@@ -912,6 +926,8 @@ export function SkillDetail({
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			setFailure(userFacingMessage(caught, t("ui.hub.skills.pull_failed")));
+		} finally {
+			downloading.current = false;
 		}
 	};
 
@@ -937,6 +953,7 @@ export function SkillDetail({
 			return;
 		}
 		setFailure(null);
+		setFailureAct("write");
 		try {
 			await writes.update.mutateAsync({
 				name: card.name,
@@ -972,6 +989,7 @@ export function SkillDetail({
 	};
 	const copy = async () => {
 		setFailure(null);
+		setFailureAct("write");
 		try {
 			await writes.copy.mutateAsync(card.name);
 			showSuccessToast(
@@ -985,6 +1003,7 @@ export function SkillDetail({
 	};
 	const remove = async (discardLocalChanges: boolean) => {
 		setFailure(null);
+		setFailureAct("write");
 		try {
 			await writes.remove.mutateAsync({
 				name: card.name,
@@ -1146,7 +1165,11 @@ export function SkillDetail({
 				{failure ? (
 					<Alert variant="danger" role="alert" data-testid="skill-write-error">
 						<AlertTitle>
-							{t("ui.agents.detail.alert.save_failed_title")}
+							{t(
+								failureAct === "download"
+									? "ui.agents.skills.error.download_failed_title"
+									: "ui.agents.detail.alert.save_failed_title",
+							)}
 						</AlertTitle>
 						<AlertDescription>{failure}</AlertDescription>
 					</Alert>

@@ -6489,13 +6489,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		useLayoutEffect(() => {
 			const el = textareaRef.current;
 			if (!el || !gatedEmpty) {
+				if (el && fittedPlaceholder.current !== null) el.style.overflowY = "";
 				fittedPlaceholder.current = null;
 				return;
 			}
 			if (fittedPlaceholder.current === el.placeholder) return;
 			fittedPlaceholder.current = el.placeholder;
-			el.style.height = "auto";
-			el.style.height = `${el.scrollHeight}px`;
+			fitGatedBox(el);
 		});
 		useEffect(() => {
 			const el = textareaRef.current;
@@ -6505,8 +6505,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// Width only: the height this sets is itself a resize.
 				if (el.clientWidth === width) return;
 				width = el.clientWidth;
-				el.style.height = "auto";
-				el.style.height = `${el.scrollHeight}px`;
+				fitGatedBox(el);
 			});
 			observer.observe(el);
 			return () => observer.disconnect();
@@ -10654,6 +10653,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 	},
 );
+
+/*
+ * `scrollHeight` is an integer and the laid-out content is not: at 800 px the
+ * fitted box still scrolled by 0.5 px and kept an overlay thumb painted
+ * (QA r2 Q12). The fitted box is read-only and sized to its content, so it
+ * hides overflow; a box at its `max-h` cap still scrolls.
+ */
+function fitGatedBox(el: HTMLTextAreaElement) {
+	el.style.height = "auto";
+	el.style.height = `${Math.ceil(el.scrollHeight)}px`;
+	el.style.overflowY = el.scrollHeight <= el.clientHeight + 1 ? "hidden" : "";
+}
 
 /*
  * THE MEMO BOUNDARY (C1). This component sits under the chat pane, which

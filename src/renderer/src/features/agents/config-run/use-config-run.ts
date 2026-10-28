@@ -289,12 +289,12 @@ export function turnFailure(
 	for (let index = start; index < records.length; index += 1) {
 		const row = records[index];
 		if (row?.kind === "custom" && row.level === "error")
-			failure = row.headline?.trim() || TURN_FAILED_FALLBACK;
+			failure = row.headline?.trim() || turnFailedFallback();
 		else if (
 			row?.kind === "assistant" &&
 			(row.error === true || row.stopReason === "error")
 		)
-			failure = TURN_FAILED_FALLBACK;
+			failure = turnFailedFallback();
 		// An assistant that answered after the incident (a recovered retry inside
 		// the same turn) is the run's real answer, so a later success clears it.
 		else if (
@@ -307,7 +307,9 @@ export function turnFailure(
 	return failure;
 }
 
-const TURN_FAILED_FALLBACK = "The model did not answer this request.";
+// Resolved at call time, in the current locale (#1458 QA r2 Q10): every other
+// line of the failed strip is translated.
+const turnFailedFallback = () => t("ui.agents.config.error.turn_failed");
 
 /**
  * Whether the server says a turn is running on this session, or `null` for
@@ -420,6 +422,19 @@ export function useConfigRun(): ConfigRunHandle {
 	 * again. Nothing settles until a `user` row exists at or past this index.
 	 */
 	const turnStart = useRef(0);
+	/*
+	 * HOW MANY TURNS HAD COMPLETED WHEN RETRY WAS PRESSED (#1458 review r3 M1 =
+	 * QA r2 Q7). A `user` row past `turnStart` is not enough: core appends the
+	 * retried prompt's user row before it publishes `streaming=true`
+	 * (`AgentStartEvent` comes only after the inbox drain and the system-block
+	 * prep), and `turnsCompleted` is a per-subscription count the FAILED turn
+	 * already advanced. In that window "not streaming, a turn completed, the
+	 * request reached" all held, and the settle reported "Finished without
+	 * changing anything" ~100 ms after Retry while the model then edited the
+	 * skill unseen. The live settle now also needs the count to have GROWN past
+	 * this; a first send leaves it at 0, which is the old `turnsCompleted > 0`.
+	 */
+	const turnsAtRetry = useRef(0);
 
 	const live = store.status === "running" || store.status === "stopping";
 	const stream = useCanonicalSessionStream(
@@ -626,7 +641,7 @@ export function useConfigRun(): ConfigRunHandle {
 		if (settleLatch.current) return;
 		if (!stream.frontend) return;
 		if (stream.frontend.streaming) return;
-		if (stream.turnsCompleted === 0) return;
+		if (stream.turnsCompleted <= turnsAtRetry.current) return;
 		if (!requestReached(transcriptRecordsRef.current, turnStart.current))
 			return;
 		void settleRun(store.status === "stopping" ? "stopped" : "done", answer);
@@ -739,6 +754,7 @@ export function useConfigRun(): ConfigRunHandle {
 		settleLatch.current = false;
 		// A first send judges the run's whole transcript (see `requestReached`).
 		turnStart.current = 0;
+		turnsAtRetry.current = 0;
 		const before: CatalogueSnapshot = {
 			...snapshotCatalogue(
 				client.getQueryData<ReusableProfile[]>(["desktop", "profiles"]),
@@ -938,6 +954,7 @@ export function useConfigRun(): ConfigRunHandle {
 			return;
 		setStarting(true);
 		turnStart.current = transcriptRecordsRef.current?.length ?? 0;
+		turnsAtRetry.current = stream.turnsCompleted;
 		try {
 			/*
 			 * THE SENT BODY, not the typed topic: the retry rule is the same bytes
