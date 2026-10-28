@@ -18,6 +18,7 @@ import {
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
 import {
+	TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE,
 	type TeamBridgeAttachment,
 	type TeamBridgeConversation,
 	type TeamBridgeConversationList,
@@ -78,7 +79,14 @@ export async function teamBridgeWriteOwner(
 		features?: Record<string, number>;
 	}>({ op: "capabilities" });
 	if ((capabilities.features?.team_bridge_conversation_owner_guard ?? 0) < 1)
-		throw new Error("Team Bridge runtime owner guard unavailable");
+		// A plain Error, as before, so existing callers read it unchanged; the
+		// code lets a caller say "update the app" instead of offering a retry.
+		throw Object.assign(
+			new Error("Team Bridge runtime owner guard unavailable"),
+			{
+				code: TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE,
+			},
+		);
 	return { expected_account_id: accountId, tenant_id: tenantId };
 }
 
@@ -540,6 +548,35 @@ export const TeamBridgeApi = {
 			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
 			conversation_id: conversationId,
 			...(tenantId ? { tenant_id: tenantId } : {}),
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
+	/**
+	 * Answer an invitation for the caller's OWN agent (agent-server `Consent`).
+	 *
+	 * An agent added to a channel or group stays `invited` until its owner
+	 * answers; this is the only transition that makes it `active`, and the agent
+	 * can never take it for itself. `accountId` is the owner's account (the hub
+	 * refuses any other with `agent_not_permitted`), and the owner guard rides
+	 * along so a request started under one account cannot land under another.
+	 * The answer is the conversation's post-state; accepting changes only the
+	 * member's state, never its notification register, so it still joins muted.
+	 */
+	async answerAgentInvitation(input: {
+		conversationId: string;
+		accountId: string;
+		tenantId: string;
+		decision: "accept" | "decline";
+		consentVersion: string;
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.consent",
+			...(await teamBridgeWriteOwner(input.accountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			account_id: input.accountId,
+			decision: input.decision,
+			consent_version: input.consentVersion,
 		});
 		return teamBridgeConversationSchema.parse(answer);
 	},

@@ -1,0 +1,179 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (remediation delta, PR #1446 round 2)",
+	"audit_id": "teambridge-pr1446-invitations-r2-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"instance": "6d269032fdc7-r2-zh-cn",
+	"instance_note": "Auditor session 6d269032fdc7, round 2, per-locale suffix; distinct from round-1 instance 6d269032fdc7-zh-cn (whose receipt is immutable) and absent from main, #1438 and #1444.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header 'Model: anthropic/claude-opus-5-5'. Independence is by agent role and session.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The remediation translator was session 839f2593b55e (coder role, commit 9200b8ac1f); the round-1 translator was c995ffd759f3. This run wrote only these receipts, the evidence records and the ledger rows (via ledger-assemble.mjs).",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"session": "839f2593b55e",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "9200b8ac1f",
+		"method": "LLM reasoning; transcript references no MT service (0 hits)",
+		"round1": {
+			"session": "c995ffd759f3",
+			"commit": "23ddabe864"
+		}
+	},
+	"integration": {
+		"pr": 1446,
+		"branch": "fix/d5-channel-invites",
+		"reviewed_head": "d565279900c1002f5f6addb1ccba025ce9c5e4f5",
+		"previous_reviewed_head": "084362aa31da788a7945e94417c26a7651adfab4",
+		"main_merged": "25963280aaa92e13895c4901083d6b37068bd9f1",
+		"remediation_commits": [
+			"9200b8ac1f",
+			"9fc7ca4c34 (merge origin/main incl. #1441)",
+			"d565279900 (call-site only)"
+		],
+		"worktree": "~/local-operator-ui/.worktrees/i18n-1446-r2-6d26 (removed after push)"
+	},
+	"locale": "zh-CN",
+	"namespace": "ui.teamBridge",
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.invitations.accepted_unnamed",
+			"ui.teamBridge.invitations.declined_unnamed",
+			"ui.teamBridge.invitations.agent_fallback"
+		],
+		"inherited_from_round1_byte_identical": {
+			"receipt": "i18n/receipts/6d269032fdc7-zh-cn.json",
+			"receipt_sha256": "07acd9b032e7d0cc5bdbe93e8972163af3cebff4bba4ff122be269c506881b16",
+			"keys": [
+				"ui.teamBridge.invitations.title",
+				"ui.teamBridge.invitations.count",
+				"ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+				"ui.teamBridge.invitations.loading",
+				"ui.teamBridge.invitations.load_failed",
+				"ui.teamBridge.invitations.empty",
+				"ui.teamBridge.invitations.agent_line",
+				"ui.teamBridge.invitations.added_by",
+				"ui.teamBridge.invitations.added_by_you",
+				"ui.teamBridge.invitations.created_by",
+				"ui.teamBridge.invitations.created_by_you",
+				"ui.teamBridge.invitations.accept",
+				"ui.teamBridge.invitations.accepting",
+				"ui.teamBridge.invitations.decline",
+				"ui.teamBridge.invitations.declining",
+				"ui.teamBridge.invitations.accepted",
+				"ui.teamBridge.invitations.declined",
+				"ui.teamBridge.invitations.failed.agent_unavailable",
+				"ui.teamBridge.invitations.failed.already_answered",
+				"ui.teamBridge.invitations.failed.gone",
+				"ui.teamBridge.invitations.failed.runtime_outdated",
+				"ui.teamBridge.invitations.failed.outdated",
+				"ui.teamBridge.invitations.failed.not_available",
+				"ui.teamBridge.invitations.failed.sign_in",
+				"ui.teamBridge.invitations.failed.unreachable",
+				"ui.teamBridge.invitations.read_only",
+				"ui.teamBridge.invitations.failed.unconfirmed"
+			],
+			"round1_findings_resolution": "no R1 findings"
+		},
+		"inherited_from_pr1441_byte_identical_to_main": {
+			"receipt": "i18n/receipts/fe54982cb1b7-zh-cn.json",
+			"receipt_sha256": "79c04c4d82394cc508b2d3fd8651ca58dfbc00c14a03eda2c0a3f472a96e525b",
+			"keys": [
+				"ui.teamBridge.chief.unnamed",
+				"ui.teamBridge.member.active_count",
+				"ui.teamBridge.member.invited_count"
+			],
+			"note": "Not re-audited: values equal origin/main bytes, carried on #1441's own receipt."
+		},
+		"inherited_base": "the 208 pre-invitations keys inherit e2cc7b3bceb8 on byte identity (unchanged since round 1)",
+		"delta_kind": "Remediation delta 084362aa31..d565279900: only the listed keys changed in this locale outside #1441's 3 keys from main; verified by key-level comparison against the round-1 head with main's changes applied (0 unexpected keys)."
+	},
+	"sha256": {
+		"en": "fce5422b03052668888a09169a60cabf1a3c963fa760f314f60f65843260c585",
+		"zh-CN": "e614104042ec5b3ba8cb6a63073c063791c34b4f0237175dae214f783974386d"
+	},
+	"context_sha256": "4f9418c85310a7f809fb7e889fa90116c5ae35e0e257ad26faafdede25b7f3fb",
+	"english": {
+		"ui.teamBridge.invitations.accepted_unnamed": {
+			"value": "Accepted. Your agent is woken only when someone @-mentions it.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Accept; same wake rule as the consent statement. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.declined_unnamed": {
+			"value": "Declined for your agent.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Decline. Neutral on purpose: it must stay true whether or not the agent had already joined from another device. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.agent_fallback": {
+			"value": "your agent",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Fills {agent} when the agent has no name; the sentence-internal outcome copy uses *_unnamed instead; it never starts a sentence.",
+			"placeholders": {}
+		}
+	},
+	"audited_strings": {
+		"ui.teamBridge.invitations.accepted_unnamed": "已接受。只有在有人@提及你的智能体时，它才会被唤醒。",
+		"ui.teamBridge.invitations.declined_unnamed": "已为你的智能体拒绝。",
+		"ui.teamBridge.invitations.agent_fallback": "你的智能体"
+	},
+	"checks": {
+		"placeholders": "remediated keys: {agent} only on agent_line/accepted/declined; *_unnamed and agent_fallback placeholder-free, matching English",
+		"icu": "all keys parse (IntlMessageFormat render)",
+		"bidi_controls": "none",
+		"no_mute_wording": "none",
+		"named_and_fallback_renders": "every sentence using {agent} rendered with 'Robo Damian' and with agent_fallback; the outcomes rendered via *_unnamed (fallback_renders)",
+		"call_site": "team-bridge-invitations.tsx at head: agent_line uses agent_fallback when agentName is null; outcomes choose accepted/declined with {agent} or *_unnamed by literal key; scripts/team-bridge-invitations.test.mjs 11/11 pass"
+	},
+	"notes": "agent_fallback unchanged ('你的智能体'); accepted_unnamed '已接受。只有在有人@提及你的智能体时，它才会被唤醒。' and declined_unnamed '已为你的智能体拒绝。' mirror the named forms; no case concerns.",
+	"findings": [],
+	"fallback_renders": [
+		"zh-CN | agent_line named   => Robo Damian已受邀加入此对话",
+		"zh-CN | agent_line unnamed => 你的智能体已受邀加入此对话",
+		"zh-CN | accepted named     => 已接受。只有在有人@提及Robo Damian时，它才会被唤醒。",
+		"zh-CN | accepted_unnamed   => 已接受。只有在有人@提及你的智能体时，它才会被唤醒。",
+		"zh-CN | declined named     => 已为Robo Damian拒绝。",
+		"zh-CN | declined_unnamed   => 已为你的智能体拒绝。"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_zh-CN": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"execution": [
+		{
+			"command": "gh pr view 1446 --json headRefOid",
+			"result": "d565279900c1002f5f6addb1ccba025ce9c5e4f5 OPEN"
+		},
+		{
+			"command": "git worktree add --detach .worktrees/i18n-1446-r2-6d26 d565279900; node_modules -> ../../node_modules (lockfile identical to main)",
+			"result": "HEAD d565279900"
+		},
+		{
+			"command": "node --test scripts/team-bridge-invitations.test.mjs (1024 MB)",
+			"result": "11 pass, 0 fail"
+		},
+		{
+			"command": "IntlMessageFormat render, named and fallback",
+			"result": "see fallback_renders"
+		}
+	],
+	"audit_notes_not_execution_log": "notes, checks and findings are this auditor's linguistic judgement, not command output",
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool.",
+	"evidence_record": "i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1446-invitations-r2-audit-6d269032fdc7/record.json"
+}
