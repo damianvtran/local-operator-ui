@@ -58,5 +58,13 @@
 	"ui.chat.canonical.older_history.windowed.short_gesture": "पहले के लिए ऊपर स्क्रॉल करें",
 	"ui.chat.canonical.older_history.unproven.short": "पहले लोड नहीं हुआ",
 	"ui.chat.canonical.older_history.unproven.long": "पहले का इतिहास लोड नहीं हुआ",
-	"ui.chat.canonical.older_history.conversation_start": "बातचीत की शुरुआत"
+	"ui.chat.canonical.older_history.conversation_start": "बातचीत की शुरुआत",
+	"ui.chat.canonical.placeholder.loading": "बातचीत लोड हो रही है…",
+	"ui.chat.canonical.placeholder.region_label": "बातचीत लोड हो रही है",
+	"ui.chat.canonical.tool_row.generic_verb.running": "कॉल जारी",
+	"ui.chat.canonical.tool_row.generic_verb.settled": "कॉल पूर्ण",
+	"ui.chat.canonical.tool_row.outcome.failed": "विफल",
+	"ui.chat.canonical.tool_row.outcome.interrupted": "रोका गया",
+	"ui.chat.canonical.tool_row.outcome.never_ran": "कभी नहीं चला",
+	"ui.chat.canonical.tool_row.outcome.succeeded": "सफल"
 }

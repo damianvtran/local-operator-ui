@@ -89,7 +89,9 @@ const ASIDE_NOTICE_ID = "config-composer-note";
  * the notice band is that sentence's single carrier (round 2, D7), so repeating it
  * here would put the same 66-character sentence on the card twice, 8 px apart.
  */
-const DISABLED_GATE_LINE = "Configure agents by conversation";
+/* A FUNCTION, not a const: a module-level `t()` freezes the locale the process
+ * started in, and this line is read every time the gate is drawn. */
+const disabledGateLine = () => t("ui.agents.config.disabled_gate");
 
 /** Three things an operator actually asks for, as one-press examples. */
 /**
@@ -270,7 +272,9 @@ function DetailRegion({ children }: { children: ReactNode }) {
 			ref={ref}
 			tabIndex={overflowing ? 0 : undefined}
 			role={overflowing ? "region" : undefined}
-			aria-label={overflowing ? "Run details" : undefined}
+			aria-label={
+				overflowing ? t("ui.agents.config.run_details_region") : undefined
+			}
 			/*
 			 * THE BOUND CUTS TEXT, SO IT SAYS SO (design review round 2 D2): measured,
 			 * 72.5 px of a 1,133 px answer sliced a line through its glyphs with only a
@@ -1078,7 +1082,7 @@ export function ConfigComposer({
 			? "Working on your request…"
 			: run.enabled
 				? undefined
-				: DISABLED_GATE_LINE;
+				: disabledGateLine();
 	/*
 	 * THE INVITATION IS THE SAME WORDS ON BOTH PANES (UX review round 3, U2). The
 	 * heading above this box says "Ask for an agent" or "Ask for a team" depending
@@ -1118,7 +1122,7 @@ export function ConfigComposer({
 			? hero
 				? "Describe what you want…"
 				: "Ask for a change, or describe something new…"
-			: DISABLED_GATE_LINE;
+			: disabledGateLine();
 
 	/*
 	 * "ASK FOR A CHANGE" ARRIVES FROM ELSEWHERE, so the caret has to land here.

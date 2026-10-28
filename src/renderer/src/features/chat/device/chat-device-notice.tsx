@@ -25,7 +25,7 @@ import {
 	useMeshPeers,
 	useMeshTransfer,
 } from "../../mesh/mesh-store";
-import { MOVE_HOLD_DETAIL, arrivalCopy } from "./chat-device-model";
+import { arrivalCopy, moveHoldDetail } from "./chat-device-model";
 import { useChatDeviceStore } from "./chat-device-store";
 
 /** The row the notice lives in: one line of chrome under the header's own band. */
@@ -176,7 +176,7 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 						 * turn in flight, a state the accepted path cannot be in - a busy session
 						 * is REFUSED, not drained).
 						 */
-						detail: MOVE_HOLD_DETAIL,
+						detail: moveHoldDetail(),
 						undo: null,
 					}}
 					onWait={() => undefined}

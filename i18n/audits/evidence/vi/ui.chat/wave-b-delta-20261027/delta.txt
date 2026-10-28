@@ -1,0 +1,50 @@
+=== FILE HASHES (sha256 of committed bytes) ===
+ui.chat.device         en 0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a  CHANGED from d877cfefb93c
+ui.chat.device         vi 01cc5865d7e2c7449ea8b22c25f41edb968b6e59a3bf9f998095d59409cb6392  CHANGED from b85b728857f6
+ui.chat.pickers        en d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c  UNCHANGED
+ui.chat.pickers        vi 93336b32e493b673e9a5c25e37eb5d07f2e4f531f0106ad8963cca6723457e4a  CHANGED from 9e173b2b3658
+ui.chat.canonical      en 5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477  UNCHANGED
+ui.chat.canonical      vi 4ab62e770e9956769ccfea3ddf9f69c544f2a30fbe0c2b811272d39d6aa8d522  CHANGED from 2c975d91d9a3
+ui.chat                en 4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04  UNCHANGED
+ui.chat                vi f4ce605d35572644f664c2c4510f82b26feba094572bcd60dcc193ec9dbc3902  CHANGED from 0b41a158775d
+ui.chat.status         en c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb  UNCHANGED
+ui.chat.status         vi 3bd4883db5e8dd53e17263d74a69796c068d6035f4f5513e4444e0fe5d15fce7  UNCHANGED
+ui.chat.run_details    en 77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61  UNCHANGED
+ui.chat.run_details    vi 989012056e73915fd71d06cb960669325cc6a24a31da3f4a8142aa2aa32ba9ba  UNCHANGED
+ui.common.connection   en 0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681  UNCHANGED
+ui.common.connection   vi 0a2d635126d7c5f78171f4bb8ab5c03a12cb8d499d073839307f563ec2772db4  UNCHANGED
+ui.common.layout       en 1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231  UNCHANGED
+ui.common.layout       vi f15b1cd09fefe247ae5172e12345a3a26aa25f14554cbd8f90b24e209686662f  UNCHANGED
+ui.agents.config       en 534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc  UNCHANGED
+ui.agents.config       vi 01aaf0de576d734c89052e13b1cfbb220c8b683472013dfb7e52232c71ebc1a4  UNCHANGED
+
+=== CHANGED VALUES IN WAVE-B KEYS ===
+--- ui.chat.device [en] changed=1 removed=0 added=0
+  K ui.chat.device.sentence.pairing_guidance
+    OLD: This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'.
+    NEW: This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'`.
+--- ui.chat.device [vi] changed=1 removed=0 added=0
+  K ui.chat.device.sentence.move_in_flight
+    OLD: Cuộc trò chuyện này đang chuyển đến {name}. Nó tiếp tục ở đó; mọi thứ gửi từ đây sẽ không được chuyển đến.
+    NEW: Cuộc trò chuyện này đang chuyển đến {name}. Cuộc trò chuyện tiếp tục ở đó; mọi thứ gửi từ đây sẽ không đến nơi.
+--- ui.chat.pickers [vi] changed=2 removed=0 added=0
+  K ui.chat.pickers.slash.arguments_region_label
+    OLD: Đối số lệnh
+    NEW: Tham số lệnh
+  K ui.chat.pickers.slash.phase.arguments
+    OLD: Đối số
+    NEW: Tham số
+--- ui.chat.canonical [vi] changed=1 removed=0 added=0
+  K ui.chat.canonical.tool_row.outcome.never_ran
+    OLD: chưa chạy
+    NEW: không chạy
+--- ui.chat [vi] changed=3 removed=0 added=0
+  K ui.chat.session_status.context_nothing_measured_tooltip
+    OLD: Ngữ cảnh: chưa đo được gì. Cửa sổ sẽ đầy dần khi cuộc trò chuyện diễn ra.
+    NEW: Ngữ cảnh: chưa đo được gì. Cửa sổ ngữ cảnh sẽ đầy dần khi cuộc trò chuyện diễn ra.
+  K ui.chat.session_status.not_signed_in_description
+    OLD: Phiên này chạy {label} nhưng chưa đăng nhập được, nên sẽ không trả lời cho đến khi bạn kết nối.
+    NEW: Phiên này chạy {label} nhưng chưa đăng nhập được, nên sẽ không trả lời cho đến khi bạn kết nối lại.
+  K ui.chat.session_status.nothing_measured_yet
+    OLD: Chưa đo được gì. Cửa sổ sẽ đầy dần khi cuộc trò chuyện diễn ra.
+    NEW: Chưa đo được gì. Cửa sổ ngữ cảnh sẽ đầy dần khi cuộc trò chuyện diễn ra.

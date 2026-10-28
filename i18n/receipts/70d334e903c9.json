@@ -1,0 +1,320 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "radient/auto",
+ "served_model": "radient/auto",
+ "actual_model_source": "The harness reports this session's model as `radient/auto` (session 70d334e903c9, 2026-10-27). No distinct served-model id is exposed to the auditor, so the route is recorded as served and no claim is made about the model behind it.",
+ "fallback": "none observed — the session's model route did not change during the audit",
+ "instance": "70d334e903c9",
+ "session": "70d334e903c9",
+ "team": "lopdev",
+ "date": "2026-10-27",
+ "locale": "vi",
+ "commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "previous_commit": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "prior_audit": {
+  "auditor_session": "95a30dff1021",
+  "head": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+  "receipt_path": "~/qa/wave-b-audit-vi/export/i18n/receipts/wave-b-95a30dff1021-vi.json",
+  "receipt_sha256": "f5da2f3cced3061dd0f9cf69ea320bb84c3e8f772fd65aa865e64a3c832c7666"
+ },
+ "audit_round": "wave B delta (independent remediation audit): 7 changed vi values and the one changed English source audited value-by-value; the remaining 55 vi values proved byte-identical (per-value sha256) to the audited 0559f7f7d8 bytes. Fresh namespace-scoped hashes for all nine namespaces; no carried-forward audit block is supported by the ledger contract, so all nine are re-recorded at the new head with full 62-key scope.",
+ "status": "passed",
+ "verdict": "clean",
+ "key_count": 62,
+ "namespace_count": 9,
+ "scope": {
+  "namespace_files": [
+   "ui.chat.device",
+   "ui.chat.pickers",
+   "ui.chat.canonical",
+   "ui.chat",
+   "ui.chat.status",
+   "ui.chat.run_details",
+   "ui.common.connection",
+   "ui.common.layout",
+   "ui.agents.config"
+  ],
+  "keys": 62,
+  "changed_values_vi": 7,
+  "changed_values_en": 1,
+  "unchanged_values_vi": 55,
+  "note": "Full 62-key scope: every key read at a5356ce91c; changed values audited against English, the context sidecar and the renderer call site; unchanged values are byte-identical to the previously audited bytes."
+ },
+ "independence": {
+  "authored_translation": false,
+  "translator_session": "not this session",
+  "distinct_from_translator": true,
+  "written_amendments": false,
+  "repo_edits": false,
+  "catalogue_edits": false,
+  "mt_service_used": false,
+  "note": "This delta audit wrote none of the reviewed copy and edited no catalogue, key, context sidecar or ledger row. It read the English source, its context sidecars, the locale style guide and glossary, the renderer call sites, the existing vi catalogue for terminology, and the earlier independent audit's findings and receipt. ICU parsing/formatting ran the repository's own intl-messageformat; no translation API, SDK or MT service was used."
+ },
+ "guidance": {
+  "glossary": {
+   "path": "i18n/glossary.md",
+   "repo": "~/local-operator",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/vi.md",
+   "repo": "~/local-operator",
+   "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+  }
+ },
+ "evidence_root": "i18n/audits/evidence/vi/{namespace}/wave-b-delta-20261027/record.json",
+ "execution_log": {
+  "path": "i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/audit.log",
+  "sha256": "5a7fd697a18a934df5d17bafeba8aab6e343137e02084c225d9aa8ccd8552673"
+ },
+ "namespaces": {
+  "ui.chat.device": {
+   "status": "passed",
+   "verdict": "clean",
+   "namespace": "ui.chat.device",
+   "keys_read": 11,
+   "keys_in_file": 25,
+   "scope_keys": [
+    "ui.chat.device.fact.this_device",
+    "ui.chat.device.footer.move_deletes_copy",
+    "ui.chat.device.label.this_device",
+    "ui.chat.device.notice.move_hold_detail",
+    "ui.chat.device.picker.heading.move",
+    "ui.chat.device.picker.heading.start",
+    "ui.chat.device.row.conversations",
+    "ui.chat.device.row.not_here_why",
+    "ui.chat.device.sentence.mesh_read_failure",
+    "ui.chat.device.sentence.move_in_flight",
+    "ui.chat.device.sentence.pairing_guidance"
+   ],
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.device.json",
+    "vi": "src/i18n/catalogues/vi/ui.chat.device.json",
+    "context": "src/i18n/catalogues/en/ui.chat.device.context.json"
+   },
+   "sha256": {
+    "en": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+    "vi": "01cc5865d7e2c7449ea8b22c25f41edb968b6e59a3bf9f998095d59409cb6392",
+    "context": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a"
+   },
+   "findings": []
+  },
+  "ui.chat.pickers": {
+   "status": "passed",
+   "verdict": "clean",
+   "namespace": "ui.chat.pickers",
+   "keys_read": 18,
+   "keys_in_file": 738,
+   "scope_keys": [
+    "ui.chat.pickers.at_menu.heading.files",
+    "ui.chat.pickers.at_menu.heading.projects",
+    "ui.chat.pickers.at_menu.region_label",
+    "ui.chat.pickers.at_menu.tag.directory",
+    "ui.chat.pickers.at_menu.tag.file",
+    "ui.chat.pickers.at_menu.tag.project",
+    "ui.chat.pickers.slash.arguments_region_label",
+    "ui.chat.pickers.slash.click.chooses_name",
+    "ui.chat.pickers.slash.click.completes_label",
+    "ui.chat.pickers.slash.click.completes_value",
+    "ui.chat.pickers.slash.click.connects",
+    "ui.chat.pickers.slash.click.runs",
+    "ui.chat.pickers.slash.click.runs_command",
+    "ui.chat.pickers.slash.click.runs_with_value",
+    "ui.chat.pickers.slash.click.stages",
+    "ui.chat.pickers.slash.enter_needs_a_pick",
+    "ui.chat.pickers.slash.phase.arguments",
+    "ui.chat.pickers.slash.region_label"
+   ],
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "vi": "src/i18n/catalogues/vi/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "sha256": {
+    "en": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+    "vi": "93336b32e493b673e9a5c25e37eb5d07f2e4f531f0106ad8963cca6723457e4a",
+    "context": "6861dbfbdbc9af23c8c09332670a6f7d77c2a12b5724afc91d0054660ef904d0"
+   },
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "verdict": "clean",
+   "namespace": "ui.chat.canonical",
+   "keys_read": 8,
+   "keys_in_file": 68,
+   "scope_keys": [
+    "ui.chat.canonical.placeholder.loading",
+    "ui.chat.canonical.placeholder.region_label",
+    "ui.chat.canonical.tool_row.generic_verb.running",
+    "ui.chat.canonical.tool_row.generic_verb.settled",
+    "ui.chat.canonical.tool_row.outcome.failed",
+    "ui.chat.canonical.tool_row.outcome.interrupted",
+    "ui.chat.canonical.tool_row.outcome.never_ran",
+    "ui.chat.canonical.tool_row.outcome.succeeded"
+   ],
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "vi": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   },
+   "sha256": {
+    "en": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+    "vi": "4ab62e770e9956769ccfea3ddf9f69c544f2a30fbe0c2b811272d39d6aa8d522",
+    "context": "ea13112039dfed41998801904ccc88531f87452a7e3d7138ab09a5f48f9e65b2"
+   },
+   "findings": []
+  },
+  "ui.chat": {
+   "status": "passed",
+   "verdict": "clean",
+   "namespace": "ui.chat",
+   "keys_read": 9,
+   "keys_in_file": 124,
+   "scope_keys": [
+    "ui.chat.session_status.context_heading",
+    "ui.chat.session_status.context_nothing_measured_tooltip",
+    "ui.chat.session_status.conversation_starting",
+    "ui.chat.session_status.model_none_resolved_tooltip",
+    "ui.chat.session_status.not_signed_in",
+    "ui.chat.session_status.not_signed_in_description",
+    "ui.chat.session_status.nothing_measured_yet",
+    "ui.chat.session_status.temporarily_unavailable",
+    "ui.chat.session_status.temporarily_unavailable_description"
+   ],
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.json",
+    "vi": "src/i18n/catalogues/vi/ui.chat.json",
+    "context": "src/i18n/catalogues/en/ui.chat.context.json"
+   },
+   "sha256": {
+    "en": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+    "vi": "f4ce605d35572644f664c2c4510f82b26feba094572bcd60dcc193ec9dbc3902",
+    "context": "f300190022daa1e49a200072b29501cfc6a5be7c542a57ef741873c14bfa6164"
+   },
+   "findings": []
+  },
+  "ui.chat.status": {
+   "status": "passed",
+   "verdict": "clean",
+   "namespace": "ui.chat.status",
+   "keys_read": 4,
+   "keys_in_file": 4,
+   "scope_keys": [
+    "ui.chat.status.credential_refused",
+    "ui.chat.status.degraded",
+    "ui.chat.status.internet_offline",
+    "ui.chat.status.unreachable"
+   ],
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.status.json",
+    "vi": "src/i18n/catalogues/vi/ui.chat.status.json",
+    "context": "src/i18n/catalogues/en/ui.chat.status.context.json"
+   },
+   "sha256": {
+    "en": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+    "vi": "3bd4883db5e8dd53e17263d74a69796c068d6035f4f5513e4444e0fe5d15fce7",
+    "context": "a62b34dde0f22e95c34793f1f87791fc38385c68c840a0f6c60adf304aaec561"
+   },
+   "findings": []
+  },
+  "ui.chat.run_details": {
+   "status": "passed",
+   "verdict": "clean",
+   "namespace": "ui.chat.run_details",
+   "keys_read": 2,
+   "keys_in_file": 84,
+   "scope_keys": [
+    "ui.chat.run_details.nothing_in_flight",
+    "ui.chat.run_details.nothing_to_show_yet"
+   ],
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "vi": "src/i18n/catalogues/vi/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+   },
+   "sha256": {
+    "en": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+    "vi": "989012056e73915fd71d06cb960669325cc6a24a31da3f4a8142aa2aa32ba9ba",
+    "context": "6e25843e49db6d20254d7593cbfe06c81dd8ba305c369351b4a9e374c6e4e526"
+   },
+   "findings": []
+  },
+  "ui.common.connection": {
+   "status": "passed",
+   "verdict": "clean",
+   "namespace": "ui.common.connection",
+   "keys_read": 5,
+   "keys_in_file": 42,
+   "scope_keys": [
+    "ui.common.connection.session_loss.frame_too_large",
+    "ui.common.connection.session_loss.history_unreadable",
+    "ui.common.connection.session_loss.lost",
+    "ui.common.connection.session_loss.not_paired",
+    "ui.common.connection.session_loss.server_down"
+   ],
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.common.connection.json",
+    "vi": "src/i18n/catalogues/vi/ui.common.connection.json",
+    "context": "src/i18n/catalogues/en/ui.common.connection.context.json"
+   },
+   "sha256": {
+    "en": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+    "vi": "0a2d635126d7c5f78171f4bb8ab5c03a12cb8d499d073839307f563ec2772db4",
+    "context": "99f458fecbeae8ea58c45f171d7ccbc465cc9a717255553aaadc3c1927f875ae"
+   },
+   "findings": []
+  },
+  "ui.common.layout": {
+   "status": "passed",
+   "verdict": "clean",
+   "namespace": "ui.common.layout",
+   "keys_read": 2,
+   "keys_in_file": 9,
+   "scope_keys": [
+    "ui.common.layout.toasts.dismiss",
+    "ui.common.layout.toasts.notifications"
+   ],
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.common.layout.json",
+    "vi": "src/i18n/catalogues/vi/ui.common.layout.json",
+    "context": "src/i18n/catalogues/en/ui.common.layout.context.json"
+   },
+   "sha256": {
+    "en": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+    "vi": "f15b1cd09fefe247ae5172e12345a3a26aa25f14554cbd8f90b24e209686662f",
+    "context": "cb15214ec6712e3a15bf8cb30918b3720348a7546d773788fe06a69b3575b5f6"
+   },
+   "findings": []
+  },
+  "ui.agents.config": {
+   "status": "passed",
+   "verdict": "clean",
+   "namespace": "ui.agents.config",
+   "keys_read": 3,
+   "keys_in_file": 31,
+   "scope_keys": [
+    "ui.agents.config.banner.unavailable",
+    "ui.agents.config.disabled_gate",
+    "ui.agents.config.run_details_region"
+   ],
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.config.json",
+    "vi": "src/i18n/catalogues/vi/ui.agents.config.json",
+    "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+   },
+   "sha256": {
+    "en": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+    "vi": "01aaf0de576d734c89052e13b1cfbb220c8b683472013dfb7e52232c71ebc1a4",
+    "context": "d55725ee860cc40539b200ab0d0018e4f1062d6ade08c16c169520a4f3625db0"
+   },
+   "findings": []
+  }
+ }
+}

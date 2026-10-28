@@ -113,5 +113,14 @@
 	"ui.chat.question_dock.hint.secret": "{prefix}Nhập hoặc dán thông tin bí mật ở trên · Enter để gửi · Esc để ẩn",
 	"ui.chat.question_dock.hint.secret_held": "{prefix}Đang giữ vì chưa rõ câu trả lời này đã tới nơi chưa — có thể đã gửi được nên không thể gửi lại · Esc trong thẻ để ẩn",
 	"ui.chat.question_dock.hint.type": "{prefix}Nhập câu trả lời bên dưới.",
-	"ui.chat.question_dock.hint.options": "{prefix}Lên/Xuống để chọn · Enter hoặc {digits} để trả lời · Esc để ẩn · hoặc nhập câu trả lời riêng bên dưới"
+	"ui.chat.question_dock.hint.options": "{prefix}Lên/Xuống để chọn · Enter hoặc {digits} để trả lời · Esc để ẩn · hoặc nhập câu trả lời riêng bên dưới",
+	"ui.chat.session_status.context_heading": "Ngữ cảnh",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Ngữ cảnh: chưa đo được gì. Cửa sổ ngữ cảnh sẽ đầy dần khi cuộc trò chuyện diễn ra.",
+	"ui.chat.session_status.conversation_starting": "Sẽ được thiết lập khi cuộc trò chuyện bắt đầu.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Mô hình: chưa xác định được. Chọn mô hình mà cuộc trò chuyện này sẽ dùng.",
+	"ui.chat.session_status.not_signed_in": "Chưa đăng nhập vào {label}",
+	"ui.chat.session_status.not_signed_in_description": "Phiên này chạy {label} nhưng chưa đăng nhập được, nên sẽ không trả lời cho đến khi bạn kết nối lại.",
+	"ui.chat.session_status.nothing_measured_yet": "Chưa đo được gì. Cửa sổ ngữ cảnh sẽ đầy dần khi cuộc trò chuyện diễn ra.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} tạm thời không khả dụng",
+	"ui.chat.session_status.temporarily_unavailable_description": "Thông tin đăng nhập đã lưu vẫn còn. Hãy thử lại sau hoặc chọn mô hình khác."
 }
