@@ -639,8 +639,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.canvas",
-			"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
-			"target_sha256": "cce0beeaeafe016b5121047758e57c245f416e71dac6b8787c1f350c1e3a15db",
+			"source_sha256": "36169fd626d09bca2e4cc8c9e8be3386e66aa70dd0195b63eda58672552ecfe8",
+			"target_sha256": "33c7923f45f5931208df24145c3454e7af8fc6d3554bf8e3a6c3263c52dc9b80",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -652,17 +652,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
 					"result": "clean-with-findings",
-					"instance": "i18n-audit-1452-r4-20261028-es",
+					"instance": "i18n-audit-1452-r5-20261028-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-es.json",
-					"receipt_sha256": "e577a1581274d9a42ade4d5e92af3ddb0ab08d1a071ecf061bf8764520469663",
-					"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
-					"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; one NIT, non-gating; other ui.canvas values unchanged since round 3."
+					"receipt": "i18n/receipts/i18n-audit-1452-r5-20261028-es.json",
+					"receipt_sha256": "ad922c03cb5ba5d0193344e0684b9686394fc5c3b14f4dbb71ef997808c4e481",
+					"scope": "PR #1452 round 5: ui.canvas.files.attachmentReadOnly (0f61692348, rebased as 2558056b45) and the revised attachmentRefused en context note",
+					"note": "Round-5 audit (reviewer 595127968969, job 7497dd7ce57e) of the new key attachmentReadOnly added by coder job 44760bfa9008; one finding, non-gating; other ui.canvas values unchanged since round 4."
 				}
 			],
 			"status": "audited",
@@ -780,6 +780,30 @@
 							"receipt_sha256": "4ef9223a8a74406ccc674ddb715944614f2f5d6efde14b86fb678380b7433bc3",
 							"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
 							"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
+					"target_sha256": "cce0beeaeafe016b5121047758e57c245f416e71dac6b8787c1f350c1e3a15db",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-1452-r4-20261028-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-es.json",
+							"receipt_sha256": "e577a1581274d9a42ade4d5e92af3ddb0ab08d1a071ecf061bf8764520469663",
+							"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
+							"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; one NIT, non-gating; other ui.canvas values unchanged since round 3."
 						}
 					],
 					"status": "audited"
@@ -6892,8 +6916,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.canvas",
-			"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
-			"target_sha256": "3044f8c47049109c694eca7a28820a801da3652539e5a6c77f1e1d83400304fc",
+			"source_sha256": "36169fd626d09bca2e4cc8c9e8be3386e66aa70dd0195b63eda58672552ecfe8",
+			"target_sha256": "dac22792e49bf85385535fc43af7b9868ec9cd6c1981a34a750c4bd0b856a273",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6906,17 +6930,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
 					"result": "clean-with-findings",
-					"instance": "i18n-audit-1452-r4-20261028-fr",
+					"instance": "i18n-audit-1452-r5-20261028-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-fr.json",
-					"receipt_sha256": "0b28fcd6c87c3f48ce7c15e1ef30a81ff416ca66b877a45a398121c2dd422d22",
-					"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
-					"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; one NIT, non-gating; other ui.canvas values unchanged since round 3."
+					"receipt": "i18n/receipts/i18n-audit-1452-r5-20261028-fr.json",
+					"receipt_sha256": "e27f0300c1e9d933c5587292cef21f9a5a4f51e38ca9265a0eeed39ba755c4af",
+					"scope": "PR #1452 round 5: ui.canvas.files.attachmentReadOnly (0f61692348, rebased as 2558056b45) and the revised attachmentRefused en context note",
+					"note": "Round-5 audit (reviewer 595127968969, job 7497dd7ce57e) of the new key attachmentReadOnly added by coder job 44760bfa9008; one finding, non-gating; other ui.canvas values unchanged since round 4."
 				}
 			],
 			"superseded": [
@@ -7033,6 +7057,30 @@
 							"receipt_sha256": "aaa3a4137627c180b95fb07cc1debdcce26c110ba9530f57c1f4adffc13c9462",
 							"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
 							"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
+					"target_sha256": "3044f8c47049109c694eca7a28820a801da3652539e5a6c77f1e1d83400304fc",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-1452-r4-20261028-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-fr.json",
+							"receipt_sha256": "0b28fcd6c87c3f48ce7c15e1ef30a81ff416ca66b877a45a398121c2dd422d22",
+							"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
+							"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; one NIT, non-gating; other ui.canvas values unchanged since round 3."
 						}
 					],
 					"status": "audited"
@@ -13607,8 +13655,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.canvas",
-			"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
-			"target_sha256": "1d04e791e87642c453bc979e52e5f19780207c8cac2edfb9ec7d8f921f6f90d2",
+			"source_sha256": "36169fd626d09bca2e4cc8c9e8be3386e66aa70dd0195b63eda58672552ecfe8",
+			"target_sha256": "7dc11c631235553ea73f7f0355d63d0c84598863087f35f7290506aae5b2418a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13619,18 +13667,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "i18n-audit-1452-r4-20261028-hi",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-1452-r5-20261028-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-hi.json",
-					"receipt_sha256": "c2d43f494850b002f678e6bc199699690bc43615ba063e6b441d1603c91c5a13",
-					"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
-					"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; no findings; other ui.canvas values unchanged since round 3."
+					"receipt": "i18n/receipts/i18n-audit-1452-r5-20261028-hi.json",
+					"receipt_sha256": "9d9394416195368c3be961182fc927852213a388f773f306d1e04b905edc547c",
+					"scope": "PR #1452 round 5: ui.canvas.files.attachmentReadOnly (0f61692348, rebased as 2558056b45) and the revised attachmentRefused en context note",
+					"note": "Round-5 audit (reviewer 595127968969, job 7497dd7ce57e) of the new key attachmentReadOnly added by coder job 44760bfa9008; one finding, non-gating; other ui.canvas values unchanged since round 4."
 				}
 			],
 			"status": "audited",
@@ -13749,6 +13797,30 @@
 							"receipt_sha256": "d5063cb71ea4ec271adf8266fd6c42b28ded8286748c8f4ed73ccc8d82050210",
 							"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
 							"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
+					"target_sha256": "1d04e791e87642c453bc979e52e5f19780207c8cac2edfb9ec7d8f921f6f90d2",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "i18n-audit-1452-r4-20261028-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-hi.json",
+							"receipt_sha256": "c2d43f494850b002f678e6bc199699690bc43615ba063e6b441d1603c91c5a13",
+							"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
+							"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; no findings; other ui.canvas values unchanged since round 3."
 						}
 					],
 					"status": "audited"
@@ -20036,8 +20108,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.canvas",
-			"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
-			"target_sha256": "ce988086e30e6aaa7427bab59922e3e268f1f17b2d983c22a88eda1bbf4034bb",
+			"source_sha256": "36169fd626d09bca2e4cc8c9e8be3386e66aa70dd0195b63eda58672552ecfe8",
+			"target_sha256": "ff6094303640271b1cdb8804f887846ac25b936f55395e1663cee3d59d42c6b0",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -20049,17 +20121,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "i18n-audit-1452-r4-20261028-ru",
+					"instance": "i18n-audit-1452-r5-20261028-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-ru.json",
-					"receipt_sha256": "9fbe361ae7af47e9a83e5bec3944a6006000aa92e6d9dfc341edea46bf0dd1bb",
-					"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
-					"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; no findings; other ui.canvas values unchanged since round 3."
+					"receipt": "i18n/receipts/i18n-audit-1452-r5-20261028-ru.json",
+					"receipt_sha256": "31f11daef484f915c40c4ad460efa94746c8849a78aeb9eaaca3b8c6c4060b38",
+					"scope": "PR #1452 round 5: ui.canvas.files.attachmentReadOnly (0f61692348, rebased as 2558056b45) and the revised attachmentRefused en context note",
+					"note": "Round-5 audit (reviewer 595127968969, job 7497dd7ce57e) of the new key attachmentReadOnly added by coder job 44760bfa9008; no findings; other ui.canvas values unchanged since round 4."
 				}
 			],
 			"status": "audited",
@@ -20178,6 +20250,30 @@
 							"receipt_sha256": "10887460382e51735801043cf448d3ddc8281a723b79ab0313fb5aa1af9b2525",
 							"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
 							"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
+					"target_sha256": "ce988086e30e6aaa7427bab59922e3e268f1f17b2d983c22a88eda1bbf4034bb",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "i18n-audit-1452-r4-20261028-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-ru.json",
+							"receipt_sha256": "9fbe361ae7af47e9a83e5bec3944a6006000aa92e6d9dfc341edea46bf0dd1bb",
+							"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
+							"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; no findings; other ui.canvas values unchanged since round 3."
 						}
 					],
 					"status": "audited"
@@ -26380,8 +26476,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.canvas",
-			"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
-			"target_sha256": "b4298eeefff338f73982781e2feaf681769e738b00a23b6629d076ad71b14a4b",
+			"source_sha256": "36169fd626d09bca2e4cc8c9e8be3386e66aa70dd0195b63eda58672552ecfe8",
+			"target_sha256": "aba4f291d96465e01a86994303295b297639dc7f5634cea9ce2080955860b1b4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -26393,17 +26489,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "i18n-audit-1452-r4-20261028-ur",
+					"instance": "i18n-audit-1452-r5-20261028-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-ur.json",
-					"receipt_sha256": "17ae26731e5e09368f7a31355fa70e95fbf896edb15035e1cc15020ca2092683",
-					"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
-					"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; no findings; other ui.canvas values unchanged since round 3."
+					"receipt": "i18n/receipts/i18n-audit-1452-r5-20261028-ur.json",
+					"receipt_sha256": "023fe2865da211e1cae94b89f88c46042a180e9a466ff9cb9b76cfcb174eba1e",
+					"scope": "PR #1452 round 5: ui.canvas.files.attachmentReadOnly (0f61692348, rebased as 2558056b45) and the revised attachmentRefused en context note",
+					"note": "Round-5 audit (reviewer 595127968969, job 7497dd7ce57e) of the new key attachmentReadOnly added by coder job 44760bfa9008; no findings; other ui.canvas values unchanged since round 4."
 				}
 			],
 			"status": "audited",
@@ -26523,6 +26619,30 @@
 							"receipt_sha256": "4436172618959b25d9fd4b025193fec293536e38fbbcd0e4deef001522acb88d",
 							"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
 							"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
+					"target_sha256": "b4298eeefff338f73982781e2feaf681769e738b00a23b6629d076ad71b14a4b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "i18n-audit-1452-r4-20261028-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-ur.json",
+							"receipt_sha256": "17ae26731e5e09368f7a31355fa70e95fbf896edb15035e1cc15020ca2092683",
+							"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
+							"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; no findings; other ui.canvas values unchanged since round 3."
 						}
 					],
 					"status": "audited"
@@ -32707,8 +32827,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.canvas",
-			"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
-			"target_sha256": "8146258218522fe31a168a323877aa279c48e3c7610aaf1cb90113732f9c0427",
+			"source_sha256": "36169fd626d09bca2e4cc8c9e8be3386e66aa70dd0195b63eda58672552ecfe8",
+			"target_sha256": "1e078d1c0c3d078375f4c6e6d7003b2f714330b7a36c1542a54057d90d9cb873",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -32719,18 +32839,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "i18n-audit-1452-r4-20261028-vi",
+					"result": "clean",
+					"instance": "i18n-audit-1452-r5-20261028-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-vi.json",
-					"receipt_sha256": "3ffe6ff6211ed658fbfafd7b5f56d32c8499e80cc43f398d9c0ecc433b8ff97c",
-					"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
-					"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; one NIT, non-gating; other ui.canvas values unchanged since round 3."
+					"receipt": "i18n/receipts/i18n-audit-1452-r5-20261028-vi.json",
+					"receipt_sha256": "c1feb0d820aa8e19c67dd90958cee4b2a65ef88f130f756e56ef84f1be11681a",
+					"scope": "PR #1452 round 5: ui.canvas.files.attachmentReadOnly (0f61692348, rebased as 2558056b45) and the revised attachmentRefused en context note",
+					"note": "Round-5 audit (reviewer 595127968969, job 7497dd7ce57e) of the new key attachmentReadOnly added by coder job 44760bfa9008; no findings; other ui.canvas values unchanged since round 4."
 				}
 			],
 			"status": "audited",
@@ -32849,6 +32969,30 @@
 							"receipt_sha256": "25d40127930dba31a40c667c51761080a4a083df19b90d0ed9c2616e44b36df5",
 							"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
 							"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
+					"target_sha256": "8146258218522fe31a168a323877aa279c48e3c7610aaf1cb90113732f9c0427",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-1452-r4-20261028-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-vi.json",
+							"receipt_sha256": "3ffe6ff6211ed658fbfafd7b5f56d32c8499e80cc43f398d9c0ecc433b8ff97c",
+							"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
+							"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; one NIT, non-gating; other ui.canvas values unchanged since round 3."
 						}
 					],
 					"status": "audited"
@@ -39495,8 +39639,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.canvas",
-			"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
-			"target_sha256": "492e8ecbfc2b348c3f826136db060d1f4c8a020749ebad3be9abc905af1d1766",
+			"source_sha256": "36169fd626d09bca2e4cc8c9e8be3386e66aa70dd0195b63eda58672552ecfe8",
+			"target_sha256": "436836c2ab74448dd3f170617d52443f24fe9c51048ef3222cae3f89d399f67e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -39508,17 +39652,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "i18n-audit-1452-r4-20261028-zh-cn",
+					"instance": "i18n-audit-1452-r5-20261028-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-zh-cn.json",
-					"receipt_sha256": "dad19dc5b8b096ddaa89a3d1e86c738a7980d3312c1d173b2c0cce2c0957815c",
-					"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
-					"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; no findings; other ui.canvas values unchanged since round 3."
+					"receipt": "i18n/receipts/i18n-audit-1452-r5-20261028-zh-cn.json",
+					"receipt_sha256": "7e90c1d5e065fc10a12f2f79506e48e93d468a0128bdcd59531c3f2011331727",
+					"scope": "PR #1452 round 5: ui.canvas.files.attachmentReadOnly (0f61692348, rebased as 2558056b45) and the revised attachmentRefused en context note",
+					"note": "Round-5 audit (reviewer 595127968969, job 7497dd7ce57e) of the new key attachmentReadOnly added by coder job 44760bfa9008; no findings; other ui.canvas values unchanged since round 4."
 				}
 			],
 			"status": "audited",
@@ -39637,6 +39781,30 @@
 							"receipt_sha256": "0e0911232d2faf94745ac3603b52af01b3da9b2a974e3de9ee506d946641d575",
 							"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
 							"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them. I-zh-CN-2 NIT."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
+					"target_sha256": "492e8ecbfc2b348c3f826136db060d1f4c8a020749ebad3be9abc905af1d1766",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "i18n-audit-1452-r4-20261028-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r4-20261028-zh-cn.json",
+							"receipt_sha256": "dad19dc5b8b096ddaa89a3d1e86c738a7980d3312c1d173b2c0cce2c0957815c",
+							"scope": "PR #1452 round 4: ui.canvas.files.attachmentRefused (c6eac7664b, head 9827145233) and its en context note",
+							"note": "Round-4 audit (reviewer 2dbc322519eb, job 12e161dc203d) of the new key attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b; no findings; other ui.canvas values unchanged since round 3."
 						}
 					],
 					"status": "audited"
