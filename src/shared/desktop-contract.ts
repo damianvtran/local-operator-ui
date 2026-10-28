@@ -3754,12 +3754,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			endpoint_id: id.optional(),
 		})
 		.strict(),
+	/*
+	 * The signed-in person's reaction. The captured-owner receipt is REQUIRED here,
+	 * not optional as on the legacy conversation writes: the runtime that
+	 * advertises `team_bridge_reactions` refuses a call without it (422) and
+	 * compares it atomically against the bearer it dispatches with (409
+	 * `account_mismatch`). Required at this schema too, so a renderer caller that
+	 * forgot it fails here, before the wire, instead of on an older runtime that
+	 * would have accepted it unguarded.
+	 */
 	z
 		.object({
 			op: z.literal("team_bridge.reactions.toggle"),
+			expected_account_id: id,
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			tenant_id: id,
 			emoji: z.string().min(1),
 			active: z.boolean(),
 		})
@@ -3782,13 +3792,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	/*
 	 * One thread (root + replies, oldest-first) under the history gate. Paging
 	 * runs FORWARD with an inclusive `after_seq`, because a thread reads top-down.
+	 * The captured-owner receipt is REQUIRED (`team_bridge_threads` runtimes
+	 * refuse a read without it): a thread page answered for account B must never
+	 * land in a read A commissioned.
 	 */
 	z
 		.object({
 			op: z.literal("team_bridge.messages.replies"),
+			expected_account_id: id,
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			tenant_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
 		})
@@ -9461,14 +9475,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 		}
 		case "team_bridge.reactions.toggle": {
 			const path = `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/reactions/${encodeURIComponent(request.emoji)}`;
+			// The receipt rides in the PUT body and in the DELETE query (a DELETE
+			// body is not reliably carried); the runtime never forwards it upstream.
 			return request.active
 				? {
 						path,
 						method: "PUT",
-						body: request.tenant_id ? { tenant_id: request.tenant_id } : {},
+						body: {
+							expected_account_id: request.expected_account_id,
+							tenant_id: request.tenant_id,
+						},
 					}
 				: {
-						path: `${path}${tenantQuery(request.tenant_id)}`,
+						path: `${path}${conversationOwnerQuery(request)}`,
 						method: "DELETE",
 					};
 		}
@@ -9541,8 +9560,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "DELETE",
 			};
 		case "team_bridge.messages.replies": {
-			const query = new URLSearchParams();
-			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			const query = new URLSearchParams({
+				tenant_id: request.tenant_id,
+				expected_account_id: request.expected_account_id,
+			});
 			if (request.limit !== undefined)
 				query.set("limit", String(request.limit));
 			if (request.after_seq !== undefined)
