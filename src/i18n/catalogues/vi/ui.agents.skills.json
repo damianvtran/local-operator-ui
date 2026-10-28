@@ -33,7 +33,7 @@
 	"ui.agents.skills.detail.body_not_installed": "Kỹ năng này đã được theo dõi nhưng chưa cài trên thiết bị này, nên không có SKILL.md để hiển thị.",
 	"ui.agents.skills.detail.body_truncated": "Tệp này nặng {size}. Chỉ hiển thị phần đầu.",
 	"ui.agents.skills.detail.body_unavailable": "Không đọc được chỉ dẫn.",
-	"ui.agents.skills.detail.download_signed_out": "Đăng nhập vào Trung tâm tác nhân để tải xuống kỹ năng này.",
+	"ui.agents.skills.detail.download_signed_out": "Đăng nhập Radient trong Cài đặt để tải xuống kỹ năng này.",
 	"ui.agents.skills.detail.edit_by_asking": "Kỹ năng này có tệp tham chiếu nên không thể sửa tại đây. Hãy dùng “Yêu cầu thay đổi”.",
 	"ui.agents.skills.detail.edit_by_asking_truncated": "Tệp này quá lớn để sửa tại đây. Hãy dùng “Yêu cầu thay đổi”.",
 	"ui.agents.skills.detail.edit_off_files": "Kỹ năng này có tệp tham chiếu nên hiện chưa thể sửa tại đây.",
