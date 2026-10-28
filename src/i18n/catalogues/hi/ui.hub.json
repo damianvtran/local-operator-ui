@@ -59,6 +59,7 @@
 	"ui.hub.links.direction_pull": "आने वाला अपडेट",
 	"ui.hub.links.direction_push": "जाने वाला प्रकाशन",
 	"ui.hub.links.action_failed": "{direction} पूरा नहीं हुआ, {item} के लिए {source} पर। फिर कोशिश करने से पहले इसकी स्थिति जाँचें।",
+	"ui.hub.links.check_failed": "{item} के लिए {source} पर जाँच पूरी नहीं हुई। फिर कोशिश करने से पहले इसकी स्थिति जाँचें।",
 	"ui.hub.links.preview_warnings": "समीक्षा नोट्स",
 	"ui.hub.links.action_result": "{direction}, {item} के लिए {source} पर: {outcome}",
 	"ui.hub.links.preview_pull": "आने वाले बदलावों का पूर्वावलोकन",

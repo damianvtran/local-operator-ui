@@ -59,6 +59,7 @@
 	"ui.hub.links.direction_pull": "Actualización entrante",
 	"ui.hub.links.direction_push": "Publicación saliente",
 	"ui.hub.links.action_failed": "La {direction} de {item} en {source} no se completó. Revisa su estado antes de volver a intentarlo.",
+	"ui.hub.links.check_failed": "La comprobación de {item} en {source} no se completó. Revisa su estado antes de volver a intentarlo.",
 	"ui.hub.links.preview_warnings": "Notas de revisión",
 	"ui.hub.links.action_result": "{direction} de {item} en {source}: {outcome}",
 	"ui.hub.links.preview_pull": "Previsualizar los cambios entrantes",

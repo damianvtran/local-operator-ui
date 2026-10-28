@@ -59,6 +59,7 @@
 	"ui.hub.links.direction_pull": "Mise à jour entrante",
 	"ui.hub.links.direction_push": "Publication sortante",
 	"ui.hub.links.action_failed": "La {direction} pour {item} sur {source} ne s’est pas terminée. Vérifiez son statut avant de réessayer.",
+	"ui.hub.links.check_failed": "La vérification de {item} sur {source} ne s’est pas terminée. Vérifiez son statut avant de réessayer.",
 	"ui.hub.links.preview_warnings": "Notes de vérification",
 	"ui.hub.links.action_result": "{direction} pour {item} sur {source} : {outcome}",
 	"ui.hub.links.preview_pull": "Aperçu des modifications entrantes",
