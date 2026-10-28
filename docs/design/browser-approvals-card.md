@@ -224,3 +224,16 @@ in the `CONTROLS` table), the controller suite
 (`scripts/approvals-overlay.test.mjs`), the spawn-site tables, and the existing
 browser suites the wiring touches. Desktop CI is the terminal automated run for
 the full lane.
+
+## Round-1 remediation notes (S6d)
+
+- **Request swaps hold the decisions inert for 700 ms (U3).** When the controller's pick changes under a
+  card that was already showing a request (withdrawn, expired, dismissed), the document disables every
+  decision and refuses `decide` until the window ends, then re-enables itself with no new push. A user's own
+  Review-all selection and a first paint after a hide are not swaps. No channel and no host validation changed.
+- **The gloss line reserves the tallest sentence (Q1)**, so hover and focus never move the decisions or
+  re-open the D1 overlap. Measured by probe rows `Q1-hover-focus-keeps-decisions-in-place-*`.
+- **The requester headline is bounded to 48 characters (D-2)**, full label in the tooltip, so a long
+  conversation title cannot push the decisions past the 480 DIP cap.
+- Still **not measured**: native composite/transparency, ring hit routing and VoiceOver. A live region in the
+  app renderer now announces arrivals (U4), but a screen-reader pass has not been done.
