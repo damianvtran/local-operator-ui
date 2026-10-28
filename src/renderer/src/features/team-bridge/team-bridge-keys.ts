@@ -52,12 +52,26 @@ export const teamBridgeKeys = {
 	 */
 	directory: (tenantId: string, accountId?: string) =>
 		[...ROOT, "directory", tenantId, ...readOwner(accountId)] as const,
-	/** Thread pages contain private bodies just like timeline pages. */
+	/*
+	 * Thread pages contain private bodies just like timeline pages, and they were
+	 * the path the threads hold existed for (#1304's cache/retry defects: the
+	 * pane cached under tenant/conversation/root alone, so a thread read for A
+	 * could be served from cache - or settle into it - after B signed in).
+	 *
+	 * The key therefore names the WHOLE owner: the signed-in account AND the
+	 * credential epoch that commissioned the read (`radient-account-authority`).
+	 * The epoch matters as much as the account: A -> B -> A returns to the same
+	 * account id with a newer epoch, and a page A's FIRST session cached (or a
+	 * retry it left running) must not revive under A's second one. The owner is
+	 * REQUIRED, so no caller can build an unowned thread key, and the whole
+	 * prefix is cleared at every auth transition
+	 * (`team-bridge-thread-cache.ts`).
+	 */
 	replies: (
 		tenantId: string,
 		conversationId: string,
 		rootId: string,
-		accountId?: string,
+		owner: { accountId: string; epoch: number },
 	) =>
 		[
 			...ROOT,
@@ -65,8 +79,13 @@ export const teamBridgeKeys = {
 			tenantId,
 			conversationId,
 			rootId,
-			...readOwner(accountId),
+			"account",
+			owner.accountId,
+			"epoch",
+			owner.epoch,
 		] as const,
+	/** Invalidation/clear only: every thread page of every owner. */
+	repliesPrefix: [...ROOT, "replies"] as const,
 	// Prefix is invalidation-only. Identity/status answers also belong to an
 	// account; an unresolved auth epoch must not read the legacy unowned entry.
 	status: [...ROOT, "status"] as const,

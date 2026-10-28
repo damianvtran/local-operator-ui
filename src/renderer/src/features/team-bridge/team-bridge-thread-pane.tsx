@@ -30,11 +30,16 @@ import {
 } from "./team-bridge-attachments";
 import { isAttachmentNotFound } from "./team-bridge-attachments-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
+import { useBridgeOwner } from "./team-bridge-owner";
+import {
+	type ThreadOwner,
+	currentThreadOwner,
+	ownedThreadPage,
+} from "./team-bridge-thread-cache";
 import { manageThreadFocus } from "./team-bridge-thread-focus";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import {
 	type ThreadTarget,
-	loadThreadPage,
 	observeDisplayedThreadReplies,
 } from "./team-bridge-thread-read";
 import { useStickToBottom } from "./use-stick-to-bottom";
@@ -457,8 +462,26 @@ export type ThreadPaneMountProps = {
 };
 
 export function TeamBridgeThreadPane(props: ThreadPaneMountProps) {
+	const client = useQueryClient();
 	if (!TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD) return null;
-	return <TeamBridgeThreadPaneMount {...props} />;
+	/*
+	 * NO OWNER, NO PANE. The thread's owner (signed-in account + credential
+	 * epoch) is captured HERE, once, and the mount is KEYED by it: a different
+	 * owner is a different pane instance with its own cache key, read fence and
+	 * send target, never this one re-pointed. While auth is unresolved or signed
+	 * out there is no owner, so nothing mounts and no thread read is sent. (The
+	 * page also remounts its whole tree on `account.token`; this key keeps the
+	 * pane honest when it is mounted by anything else, a story or a rig.)
+	 */
+	const owner = currentThreadOwner(client);
+	if (!owner) return null;
+	return (
+		<TeamBridgeThreadPaneMount
+			key={`${owner.accountId}:${owner.epoch}`}
+			{...props}
+			owner={owner}
+		/>
+	);
 }
 
 function TeamBridgeThreadPaneMount({
@@ -473,9 +496,13 @@ function TeamBridgeThreadPaneMount({
 	reactionContext,
 	accountId,
 	attachmentCapability,
-}: ThreadPaneMountProps) {
+	owner,
+}: ThreadPaneMountProps & { owner: ThreadOwner }) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
+	/* The write fence for this pane's replies: captured as `owner.accountId` at
+	   mount, and `isCurrent()` turns false the moment the auth epoch moves. */
+	const writer = useBridgeOwner(owner.accountId);
 	const read = useMarkTeamBridgeRead(conversationId, tenantId);
 	// Observer recreation (paging/refetch) must not turn a successful read into a
 	// second mutation loop. This ref belongs to the keyed tenant/conversation/root.
@@ -493,20 +520,30 @@ function TeamBridgeThreadPaneMount({
 		},
 		[read.mutateAsync],
 	);
-	const key = [
-		...teamBridgeKeys.all,
-		"replies",
-		tenantId,
-		conversationId,
-		rootId,
-	] as const;
+	/*
+	 * OWNER-KEYED, OWNER-FENCED (team-bridge-thread-cache.ts). Every page of this
+	 * thread lives under account + epoch, every fetch - the first, a page, the
+	 * 8-second poll, the Retry button and React Query's own automatic retries -
+	 * goes through `ownedThreadPage`, which refuses to start or settle once the
+	 * epoch has moved, and the runtime refuses it atomically on its side. The
+	 * poll and retries stop for a foreign owner instead of hammering refusals.
+	 */
+	const key = teamBridgeKeys.replies(tenantId, conversationId, rootId, owner);
+	const ownerLive = () => {
+		const live = currentThreadOwner(client);
+		return (
+			live?.accountId === owner.accountId && live.epoch === owner.epoch
+		);
+	};
 	const query = useInfiniteQuery({
 		queryKey: key,
 		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) => loadThreadPage(target, pageParam),
+		queryFn: ({ pageParam }) =>
+			ownedThreadPage(client, owner, target, pageParam),
 		getNextPageParam: (page) =>
 			page.has_more ? page.next_after_seq : undefined,
-		refetchInterval: 8_000,
+		refetchInterval: () => (ownerLive() ? 8_000 : false),
+		retry: (failures) => ownerLive() && failures < 3,
 	});
 	const replies = useMemo(
 		() => query.data?.pages.flatMap((page) => page.replies) ?? [],
@@ -521,15 +558,24 @@ function TeamBridgeThreadPaneMount({
 			body: string;
 			clientRef: string;
 			attachmentIds?: readonly string[];
-		}) =>
-			TeamBridgeApi.send(conversationId, {
+		}) => {
+			/* The reply carries the captured owner: refused here if the epoch has
+			   moved, and by the runtime if the bearer is someone else's. A thread
+			   reply also requires the `team_bridge_threads` plane (team-bridge-api). */
+			writer.assertCurrent();
+			return TeamBridgeApi.send(conversationId, {
 				body,
 				clientRef,
 				tenantId,
+				expectedAccountId: owner.accountId,
 				threadRootId: rootId,
 				attachmentIds,
-			}),
+			});
+		},
 		onSuccess: async () => {
+			// A reply that settles after a switch refreshes nothing: the next
+			// owner's shared feed prefixes are not this write's to touch.
+			if (!writer.isCurrent()) return;
 			await Promise.all([
 				client.invalidateQueries({ queryKey: key }),
 				client.invalidateQueries({

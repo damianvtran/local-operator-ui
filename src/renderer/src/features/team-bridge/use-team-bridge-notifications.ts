@@ -109,6 +109,7 @@ import {
 	readForBridgeOwner,
 	useTeamBridgeAccount,
 } from "./team-bridge-owner";
+import { useTeamBridgeThreadCacheFence } from "./team-bridge-thread-cache";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { assertThreadPage } from "./team-bridge-thread-read";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
@@ -342,6 +343,14 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	 * two routes only to discard every candidate at the IPC line.
 	 */
 	const available = Boolean(window.api?.desktop?.teamBridge);
+	/*
+	 * The thread cache's auth-transition clear lives in the SHELL (this hook is
+	 * mounted once by app.tsx, whether or not the page is open), because a thread
+	 * page cached under A outlives the page's unmount by the query gc window. It
+	 * runs unconditionally: clearing a foreign owner's thread bodies is right even
+	 * where banners are off or the preload bridge is absent.
+	 */
+	useTeamBridgeThreadCacheFence();
 	const accountAuthority = useTeamBridgeAccount();
 	const status = useTeamBridgeStatus(enabled && available);
 	const selfAccountId = accountAuthority.accountId;

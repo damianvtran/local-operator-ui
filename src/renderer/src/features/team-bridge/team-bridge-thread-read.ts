@@ -46,10 +46,19 @@ export function assertThreadPage(
 	return page;
 }
 
-/** Address the root directly, even if its row has aged out of the timeline page. */
-export async function loadThreadPage(target: ThreadTarget, afterSeq?: number) {
+/** Address the root directly, even if its row has aged out of the timeline page.
+ * `expectedAccountId` is the account that commissioned the read; the runtime
+ * refuses it if the bearer it dispatches with belongs to someone else. Callers
+ * go through `ownedThreadPage` (team-bridge-thread-cache.ts), which adds the
+ * renderer's epoch fence on both sides of the request. */
+export async function loadThreadPage(
+	target: ThreadTarget,
+	expectedAccountId: string,
+	afterSeq?: number,
+) {
 	return assertThreadPage(
 		await TeamBridgeApi.listReplies(target.conversationId, target.rootId, {
+			expectedAccountId,
 			tenantId: target.tenantId,
 			afterSeq,
 		}),
