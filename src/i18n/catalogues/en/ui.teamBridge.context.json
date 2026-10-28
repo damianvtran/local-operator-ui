@@ -1,4 +1,109 @@
 {
+	"ui.teamBridge.members.menu": {
+		"role": "menu item label that opens the member dialog",
+		"tone": "imperative",
+		"length": "2-3 words, one line; keep the trailing ellipsis",
+		"placeholders": {},
+		"note": "The ellipsis is the platform signal that a dialog opens next; do not drop or replace it. It is an action on the current conversation, not a new-conversation command."
+	},
+	"ui.teamBridge.members.current": {
+		"role": "section heading inside the member dialog",
+		"tone": "neutral",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Names the list of people and agents already in this conversation. Not 'participants online' and not organization membership."
+	},
+	"ui.teamBridge.members.current_empty": {
+		"role": "empty state for the current-members section",
+		"tone": "factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "Rare: every conversation has at least its creator, so this appears only in a transient or repaired state. Say there is nobody active or invited; do not suggest the conversation is broken."
+	},
+	"ui.teamBridge.members.invite": {
+		"role": "section heading over the candidate picker",
+		"tone": "neutral",
+		"length": "3-5 words",
+		"placeholders": {},
+		"note": "The section lists the organization's people and its agents so they can be invited. It creates invitations, not active membership."
+	},
+	"ui.teamBridge.members.search": {
+		"role": "placeholder and accessible name of a filter field",
+		"tone": "neutral, noun phrase",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Filters the candidate list by name. Do not add a trailing colon or an ellipsis."
+	},
+	"ui.teamBridge.members.empty": {
+		"role": "empty state for the candidate list",
+		"tone": "factual, non-accusatory",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The organization directory returned no people or agents at all. Distinct from no_matches, which is a filter result."
+	},
+	"ui.teamBridge.members.no_matches": {
+		"role": "empty state for a filtered candidate list",
+		"tone": "factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The search text matched nobody. Implies clearing or changing the search, not that the organization is empty."
+	},
+	"ui.teamBridge.members.load_error": {
+		"role": "error state for the directory read inside the dialog",
+		"tone": "calm, factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The roster could not be loaded; a retry control sits below. Do not claim the conversation or the members are gone."
+	},
+	"ui.teamBridge.members.removing": {
+		"role": "inline pending status appended after a member's role and state",
+		"tone": "neutral",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Read in the middle of a line already like 'Member · Active', so it must stand alone as a status phrase ('Removing member'), not a sentence."
+	},
+	"ui.teamBridge.members.read_only": {
+		"role": "explanation beside the invite controls when they are unavailable",
+		"tone": "factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "Explains why this caller cannot invite or remove members here. It states a permission, never a failure; no retry is implied."
+	},
+	"ui.teamBridge.members.role.owner": {
+		"role": "member role label",
+		"tone": "neutral noun",
+		"length": "one word",
+		"placeholders": {},
+		"note": "The CONVERSATION's owner, which is not the same as an organization owner. Must stay distinct from the organization-owner term used elsewhere in this namespace."
+	},
+	"ui.teamBridge.members.role.member": {
+		"role": "member role label",
+		"tone": "neutral noun",
+		"length": "one word",
+		"placeholders": {},
+		"note": "An ordinary conversation member. Sits beside role.owner in the same column, so the two must read as a pair."
+	},
+	"ui.teamBridge.members.state.active": {
+		"role": "participation state label",
+		"tone": "neutral",
+		"length": "one or two words",
+		"placeholders": {},
+		"note": "Means the person is participating now. It is NOT online presence and not a notification setting; an invited agent is not this state."
+	},
+	"ui.teamBridge.members.state.left": {
+		"role": "participation state label",
+		"tone": "neutral",
+		"length": "one or two words",
+		"placeholders": {},
+		"note": "The member departed and their history remains. Historical state, not an error and not a removal performed by the reader."
+	},
+	"ui.teamBridge.members.mutation_error": {
+		"role": "alert after an add or remove was refused or failed",
+		"tone": "calm, factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The member list keeps its previous state. Say the change was not saved and that the person may try again; do not blame the member or claim a specific server reason."
+	},
 	"ui.teamBridge.members.title": {
 		"role": "member administration dialog heading",
 		"tone": "neutral, sentence case",
