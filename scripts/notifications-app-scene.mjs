@@ -45,6 +45,10 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	prepareDrawerRemediation,
+	runDrawerRemediationScene,
+} from "./notifications-drawer-scene.mjs";
 import { pythonChildEnv } from "./python-child-env.mjs";
 
 const OUT = resolve("artifacts/notifications-native");
@@ -678,6 +682,8 @@ async function main() {
 	backend.stdout.on("data", (chunk) => backendLog.push(chunk.toString()));
 	backend.stderr.on("data", (chunk) => backendLog.push(chunk.toString()));
 
+	// Assigned once the core is healthy; `finally` closes it whether or not it was.
+	let drawerFixture = null;
 	let cdp = null;
 	let nodeCdp = null;
 	const receipt = {
@@ -712,6 +718,19 @@ async function main() {
 			"the seeded backend must demand its bearer",
 		);
 
+		/*
+		 * The drawer remediation lane needs its own session and a transport proxy
+		 * in front of THIS core, so the app is launched against the proxy. Faults are
+		 * off until that lane enables them, so every assertion above and below still
+		 * runs against forwarded, unmodified core answers.
+		 */
+		drawerFixture = await prepareDrawerRemediation({
+			base,
+			config,
+			token,
+			coreStore,
+		});
+
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = token;
 		const _context = api.prepareDriverContext({ apiUrl: base });
 		/*
@@ -724,7 +743,7 @@ async function main() {
 		 */
 		const handle = await api.launchApp({
 			armed: false,
-			apiUrl: base,
+			apiUrl: drawerFixture.apiUrl,
 			tag: "notifications-native",
 			logName: "notifications-native.log",
 			windowMode: "normal",
@@ -860,6 +879,14 @@ async function main() {
 		);
 		assert.ok(!isRead(raced), "the raced revision was read");
 		await screenshot(cdp, "notifications-native-after");
+		// #1466's disjoint ask-remediation invocation belongs immediately above this.
+		await runDrawerRemediationScene({
+			cdp,
+			nodeCdp,
+			fixture: drawerFixture,
+			screenshot,
+			out: OUT,
+		});
 
 		/*
 		 * NEGATIVE CONTROL: THE SAME GESTURE AIMED AT A ROW THAT IS NOT ON SCREEN.
@@ -970,6 +997,7 @@ async function main() {
 		writeFileSync(outfile, JSON.stringify(receipt, null, 2));
 		throw error;
 	} finally {
+		drawerFixture?.close();
 		cdp?.close();
 		nodeCdp?.close();
 		/*

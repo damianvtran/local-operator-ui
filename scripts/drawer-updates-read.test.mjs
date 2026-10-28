@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { unlink, writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
@@ -31,7 +31,7 @@ const bundle = await build({
 			'export { DrawerUpdates, DrawerTabs, useSessionUnreadUpdates } from "./src/renderer/src/features/notifications/components/drawer-updates";',
 			'export { NotificationsPage } from "./src/renderer/src/features/notifications/components/notifications-page";',
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
-			'export { notificationKeys, useNotificationReadState, useNotificationsCount } from "./src/renderer/src/features/notifications/notifications-api";',
+			'export { beginOptimisticWrite, applyConfirmedWrite, notificationKeys, useNotificationReadState, useNotificationsCount } from "./src/renderer/src/features/notifications/notifications-api";',
 			'export { badgeCountOf } from "./src/renderer/src/features/notifications/notifications-model";',
 			/*
 			 * Sonner paints through a portal on its own schedule, so the receipt is read
@@ -39,6 +39,7 @@ const bundle = await build({
 			 * `showInfoToast` holds (the `mark-all-read-control.test.mjs` approach).
 			 */
 			'export { toast as sonnerToast } from "sonner";',
+			'export { resetToastDedup } from "./src/renderer/src/shared/utils/toast-manager";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -108,6 +109,7 @@ const shims = {
 	IS_REACT_ACT_ENVIRONMENT: true,
 	ResizeObserver: NoopObserver,
 	IntersectionObserver: NoopObserver,
+	CSS: { escape: (value) => value },
 	matchMedia: (query) => ({
 		matches: false,
 		media: query,
@@ -238,12 +240,14 @@ const Screen = () => {
  * the fixture answers until released, so a test can look at the screen BETWEEN
  * the click and the server's answer - the window the optimistic update owns.
  */
-async function mount() {
-	const items = [1, 2, 3, 4, 5, 6, 7].map((index) => ({
-		...row(index),
-		read: index <= 2,
-		read_via: index <= 2 ? "explicit" : null,
-	}));
+async function mount(options = {}) {
+	const items =
+		options.items ??
+		[1, 2, 3, 4, 5, 6, 7].map((index) => ({
+			...row(index),
+			read: index <= 2,
+			read_via: index <= 2 ? "explicit" : null,
+		}));
 	const fixture = DRAWER.createNotificationFixture(items, []);
 	let held = null;
 	let factsHeld = null;
@@ -387,6 +391,15 @@ async function mount() {
 
 const BOUNDED = { timeout: 30_000 };
 
+const errorToasts = [];
+const originalErrorToast = DRAWER.sonnerToast.error;
+DRAWER.sonnerToast.error = (message, options) => {
+	errorToasts.push({ message, options });
+	return errorToasts.length;
+};
+after(() => {
+	DRAWER.sonnerToast.error = originalErrorToast;
+});
 const infoToasts = [];
 const originalInfo = DRAWER.sonnerToast.info;
 DRAWER.sonnerToast.info = (message, options) => {
@@ -681,3 +694,663 @@ test(
 		}
 	},
 );
+
+// Round 2: receipts, overlapping intents, count fences and filtered pagination.
+function seedLedger() {
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false, gcTime: 0 } },
+	});
+	const a = row(7);
+	const b = { ...row(6), session: { id: "bbbbbbbbbbb2", title: "other" } };
+	const facts = {
+		items: [a, b],
+		waiting: [],
+		unread_count: 2,
+		waiting_count: 2,
+		waiting_unread_count: 2,
+		high_water: 7,
+		next_cursor: null,
+	};
+	client.setQueryData(DRAWER.notificationKeys.facts("all"), facts);
+	client.setQueryData(DRAWER.notificationKeys.sessionFacts(SESSION), {
+		...facts,
+		items: [a],
+	});
+	client.setQueryData(DRAWER.notificationKeys.count, {
+		...facts,
+		items: undefined,
+	});
+	client.setQueryData(
+		[...DRAWER.notificationKeys.sessionUnread(SESSION), 7],
+		1,
+	);
+	return {
+		client,
+		a,
+		b,
+		get: () => client.getQueryData(DRAWER.notificationKeys.facts("all")),
+	};
+}
+const fullReceipt = (changed, high_water, unread_count, skipped = []) => ({
+	changed,
+	skipped,
+	high_water,
+	unread_count,
+	waiting_count: 2,
+	waiting_unread_count: 2,
+});
+
+test(
+	"R1: partial and all-skipped success receipts preserve refused rows, including Undo",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		let release;
+		try {
+			await page.settle(() => page.tabCount() === "5");
+			release = page.holdFacts();
+			page.fixture.revise("n_row7");
+			const index = infoToasts.length;
+			await page.click("[data-drawer-mark-all-read]");
+			assert.ok(
+				await page.settle(
+					() => infoToasts.length > index && page.rowIds().join() === "n_row7",
+				),
+			);
+			assert.equal(page.tabCount(), "1");
+			assert.equal(page.badge(), "1");
+			await release();
+			release = null;
+			await page.settle(() => false, 50);
+			// Accepted inverses retain the frozen tokens. A revised/re-read row is refused.
+			page.fixture.revise("n_row6");
+			page.fixture.patch("read", { items: [{ id: "n_row6", revision: 2 }] });
+			await act(async () =>
+				page.client.invalidateQueries({
+					queryKey: DRAWER.notificationKeys.all,
+				}),
+			);
+			await page.settle(() => false, 50);
+			release = page.holdFacts();
+			await act(async () => infoToasts[index].options.action.onClick());
+			assert.ok(await page.settle(() => page.rowIds().length === 4));
+			assert.ok(!page.rowIds().includes("n_row6"));
+		} finally {
+			if (release) await release();
+			await page.unmount();
+			page.client.clear();
+		}
+		const { client, a, get } = seedLedger();
+		try {
+			const tx = await DRAWER.beginOptimisticWrite(client, "read", [
+				{ id: a.id, revision: 1 },
+			]);
+			tx.settle(
+				fullReceipt([], 7, 2, [{ id: a.id, reason: "stale_revision" }]),
+			);
+			assert.equal(get().items[0].read, false);
+			assert.equal(get().unread_count, 2);
+		} finally {
+			client.clear();
+		}
+	},
+);
+
+test("R2: failed dismiss cannot resurrect a later confirmed read or its unread contribution", async () => {
+	const { client, a, get } = seedLedger();
+	try {
+		const dismiss = await DRAWER.beginOptimisticWrite(client, "dismiss", [
+			a.id,
+		]);
+		const read = await DRAWER.beginOptimisticWrite(client, "read", [a.id]);
+		read.settle(fullReceipt([a.id], 8, 1));
+		dismiss();
+		assert.equal(get().items[0].read, true);
+		assert.equal(get().items[0].dismissed, false);
+		assert.equal(get().unread_count, 1);
+		assert.equal(
+			client.getQueryData(DRAWER.notificationKeys.sessionFacts(SESSION))
+				.unread_count,
+			1,
+			"session facts carry the GLOBAL count",
+		);
+		// A newer authoritative result during an older pending read survives its refusal.
+		const tx = await DRAWER.beginOptimisticWrite(client, "unread", [a.id]);
+		client.setQueryData(DRAWER.notificationKeys.facts("all"), {
+			...get(),
+			high_water: 12,
+			unread_count: 1,
+			items: get().items.map((r) =>
+				r.id === a.id ? { ...r, read: true, seq: 12 } : r,
+			),
+		});
+		tx();
+		assert.equal(get().items[0].read, true);
+		assert.equal(get().unread_count, 1);
+	} finally {
+		client.clear();
+	}
+});
+
+test("R3: newest seq wins in either facts/window orientation without a duplicate decrement", async () => {
+	for (const newerInFacts of [true, false]) {
+		const { client, a, get } = seedLedger();
+		try {
+			const newer = { ...a, read: true, seq: 20 };
+			client.setQueryData(DRAWER.notificationKeys.facts("all"), {
+				...get(),
+				high_water: 20,
+				unread_count: 1,
+				items: [newerInFacts ? newer : a, row(6)],
+			});
+			client.setQueryData(DRAWER.notificationKeys.list("all"), {
+				pages: [{ ...get(), items: [newerInFacts ? a : newer] }],
+				pageParams: [null],
+			});
+			const tx = await DRAWER.beginOptimisticWrite(client, "read", [a.id]);
+			assert.equal(get().unread_count, 1);
+			tx();
+			assert.equal(get().unread_count, 1);
+		} finally {
+			client.clear();
+		}
+	}
+});
+
+test("R4: pre-click session fetch is cancelled; later old-baseline responses are projected, not trusted blindly", async () => {
+	const { client, a } = seedLedger();
+	let resolve;
+	const key = [...DRAWER.notificationKeys.sessionUnread(SESSION), 7];
+	try {
+		const pending = client
+			.fetchQuery({
+				queryKey: key,
+				queryFn: () =>
+					new Promise((r) => {
+						resolve = r;
+					}),
+			})
+			.catch((error) => error);
+		const tx = await DRAWER.beginOptimisticWrite(client, "read", [a.id]);
+		resolve(1);
+		await pending;
+		assert.equal(client.getQueryData(key), 0);
+		client.setQueryData(key, 1); // a refetch starting during the pending write
+		assert.equal(client.getQueryData(key), 0);
+		tx();
+		assert.equal(client.getQueryData(key), 1);
+	} finally {
+		client.clear();
+	}
+});
+
+test(
+	"R5: session A's placeholder never appears in loading/disabled session B or null",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		const host = document.createElement("div");
+		document.body.append(host);
+		const root = createRoot(host);
+		function Counter({ session, enabled }) {
+			return h(
+				"span",
+				null,
+				String(DRAWER.useSessionUnreadUpdates(session, enabled)),
+			);
+		}
+		const render = async (session, enabled = true) =>
+			act(async () =>
+				root.render(
+					h(
+						QueryClientProvider,
+						{ client: page.client },
+						h(Counter, { session, enabled }),
+					),
+				),
+			);
+		try {
+			await page.settle(() => page.tabCount() === "5");
+			await render(SESSION);
+			assert.equal(host.textContent, "5");
+			const original = window.api.desktop.request;
+			window.api.desktop.request = async (request) =>
+				request.sessionId === "bbbbbbbbbbb2"
+					? new Promise(() => {})
+					: original(request);
+			await render("bbbbbbbbbbb2");
+			assert.equal(host.textContent, "0");
+			await render(null);
+			assert.equal(host.textContent, "0");
+			await render(SESSION, false);
+			assert.equal(host.textContent, "0");
+		} finally {
+			await act(async () => root.unmount());
+			host.remove();
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+test(
+	"U1: both filtered views retain an explicit bounded route to off-page matches",
+	BOUNDED,
+	async () => {
+		for (const view of ["unread", "read"]) {
+			const items = Array.from({ length: 101 }, (_, i) => ({
+				...row(i + 1),
+				read: view === "unread" ? i > 0 : i === 0,
+			}));
+			const page = await mount({ items });
+			try {
+				await page.settle(() => Boolean(page.q("[data-drawer-load-more]")));
+				if (view === "read") await page.click('[data-drawer-read-view="read"]');
+				assert.equal(page.rowIds().length, 0);
+				assert.equal(
+					page.q("[data-drawer-empty]"),
+					null,
+					"not caught up with a cursor",
+				);
+				assert.ok(
+					page.q("[data-drawer-load-more]"),
+					"reachable even without scroll overflow",
+				);
+				await page.click("[data-drawer-load-more]");
+				assert.ok(await page.settle(() => page.rowIds().includes("n_row1")));
+				const pages = page.client.getQueryData(
+					DRAWER.notificationKeys.session(SESSION),
+				).pages;
+				assert.equal(
+					pages.length,
+					2,
+					"one gesture requests one page, not a drain",
+				);
+			} finally {
+				await page.unmount();
+				page.client.clear();
+			}
+		}
+	},
+);
+
+test(
+	"U2/U4: roving radio arrows; disappearing focused row hands off to next row then empty heading",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		try {
+			await page.settle(() => page.rowIds().length === 5);
+			const unread = page.q('[data-drawer-read-view="unread"]');
+			unread.focus();
+			await act(async () =>
+				unread.dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						key: "ArrowRight",
+						bubbles: true,
+					}),
+				),
+			);
+			assert.equal(document.activeElement.dataset.drawerReadView, "read");
+			assert.equal(unread.tabIndex, -1);
+			await page.click('[data-drawer-read-view="unread"]');
+			const first = page.q('[data-drawer-update="n_row7"] button');
+			first.focus();
+			await act(async () =>
+				first.dispatchEvent(
+					new window.KeyboardEvent("keydown", { key: "r", bubbles: true }),
+				),
+			);
+			await flush();
+			assert.equal(
+				document.activeElement.closest("[data-drawer-update]")?.dataset
+					.drawerUpdate,
+				"n_row6",
+			);
+			await page.click("[data-drawer-mark-all-read]");
+			await flush();
+			assert.equal(document.activeElement.dataset.drawerEmpty, "unread");
+		} finally {
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+test(
+	"U3: refused Undo keeps successful original state and offers explicit retry with original tokens",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		try {
+			await page.settle(() => page.rowIds().length === 5);
+			const index = infoToasts.length;
+			await page.click("[data-drawer-mark-all-read]");
+			await page.settle(() => infoToasts.length > index);
+			const before = errorToasts.length;
+			DRAWER.resetToastDedup();
+			page.refuseNextWrite();
+			await act(async () => infoToasts[index].options.action.onClick());
+			assert.ok(await page.settle(() => errorToasts.length > before));
+			assert.equal(page.rowIds().length, 0);
+			assert.equal(
+				typeof errorToasts.at(-1).options.action.onClick,
+				"function",
+			);
+			await act(async () => errorToasts.at(-1).options.action.onClick());
+			assert.ok(await page.settle(() => page.rowIds().length === 5));
+		} finally {
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+const compact = (over = {}) => ({
+	selection_version: 2,
+	high_water: 9,
+	unread_count: 5,
+	waiting_count: 2,
+	waiting_unread_count: 1,
+	counts_high_water: 9,
+	session_counts: { [SESSION]: { unread_count: 3 } },
+	...over,
+});
+test("compact total scopes count loaded rows once, fence replay/session aggregates, and keep asks distinct", async () => {
+	const { client, a, get } = seedLedger();
+	try {
+		client.setQueryData(DRAWER.notificationKeys.count, {
+			unread_count: 10,
+			waiting_count: 2,
+			waiting_unread_count: 2,
+			high_water: 7,
+		});
+		const key = [...DRAWER.notificationKeys.sessionUnread(SESSION), 7];
+		client.setQueryData(key, 6);
+		const earlier = await DRAWER.beginOptimisticWrite(client, "read", [a.id], {
+			throughSeq: 7,
+			unreadDelta: -5,
+			sessionUnreadDeltas: { [SESSION]: -3 },
+			waitingUnreadDelta: -1,
+		});
+		const count = () => client.getQueryData(DRAWER.notificationKeys.count);
+		assert.equal(count().unread_count, 5);
+		assert.equal(count().waiting_unread_count, 1);
+		assert.equal(count().waiting_count, 2);
+		assert.equal(client.getQueryData(key), 3);
+		const later = await DRAWER.beginOptimisticWrite(client, "read", [], {
+			throughSeq: 7,
+			unreadDelta: -1,
+			sessionUnreadDeltas: { [SESSION]: -1 },
+		});
+		later.settleCompact(
+			compact({
+				high_water: 11,
+				unread_count: 8,
+				counts_high_water: 10,
+				session_counts: { [SESSION]: { unread_count: 5 } },
+			}),
+		);
+		earlier();
+		assert.equal(
+			count().unread_count,
+			8,
+			"rollback derives from newer authority, not a stale inverse",
+		);
+		assert.equal(client.getQueryData(key), 5);
+		const replay = await DRAWER.beginOptimisticWrite(client, "read", [], {
+			throughSeq: 7,
+			unreadDelta: -5,
+			sessionUnreadDeltas: { [SESSION]: -3 },
+		});
+		replay.settleCompact(
+			compact({
+				high_water: 12,
+				unread_count: 8,
+				counts_high_water: 9,
+				session_counts: { [SESSION]: { unread_count: 3 } },
+			}),
+		);
+		assert.equal(count().unread_count, 8);
+		assert.equal(
+			client.getQueryData(key),
+			5,
+			"old replay count fence cannot replace newer session count",
+		);
+		assert.equal(
+			get().unread_count,
+			8,
+			"session facts and global facts use global authority",
+		);
+	} finally {
+		client.clear();
+	}
+});
+
+test("compact reconciliation preserves newer rows, settles deep cached skipped revisions, and bounds removals by read fence", async () => {
+	const { client, a, b, get } = seedLedger();
+	try {
+		client.setQueryData(DRAWER.notificationKeys.list("all"), {
+			pages: [
+				{ ...get(), items: [a] },
+				{ ...get(), items: [b] },
+			],
+			pageParams: [null, "older"],
+		});
+		const tx = await DRAWER.beginOptimisticWrite(client, "read", [a.id, b.id]);
+		client.setQueryData(DRAWER.notificationKeys.facts("all"), {
+			...get(),
+			high_water: 30,
+			unread_count: 1,
+			items: [{ ...a, seq: 30, revision: 3, read: false }, b],
+		});
+		tx.settleCompact(
+			compact({
+				high_water: 20,
+				unread_count: 1,
+				counts_high_water: 20,
+				reconciliation: {
+					high_water: 20,
+					items: [
+						{ ...a, seq: 15, revision: 2, read: true },
+						{ ...b, seq: 18, revision: 2, read: false },
+					],
+					absent_ids: [a.id],
+				},
+			}),
+		);
+		assert.equal(get().items[0].seq, 30);
+		assert.equal(get().items[0].read, false);
+		const deep = client.getQueryData(DRAWER.notificationKeys.list("all"))
+			.pages[1].items[0];
+		assert.equal(deep.revision, 2);
+		assert.equal(
+			deep.read,
+			false,
+			"skipped deep-window row uses same-response authority",
+		);
+	} finally {
+		client.clear();
+	}
+});
+
+test("compact v1 uses global authority without inventing a session-count fence", async () => {
+	const { client, a } = seedLedger();
+	try {
+		const key = [...DRAWER.notificationKeys.sessionUnread(SESSION), 7];
+		const tx = await DRAWER.beginOptimisticWrite(client, "read", [a.id], {
+			throughSeq: 7,
+			unreadDelta: -1,
+			sessionUnreadDeltas: { [SESSION]: -1 },
+		});
+		tx.settleCompact({
+			high_water: 9,
+			unread_count: 1,
+			waiting_count: 2,
+			waiting_unread_count: 2,
+			session_counts: { [SESSION]: { unread_delta: -1 } },
+		});
+		assert.equal(
+			client.getQueryData(DRAWER.notificationKeys.count).unread_count,
+			1,
+		);
+		assert.equal(
+			client.getQueryData(key),
+			1,
+			"no fabricated v2 session aggregate; refreshed active counts settle this on v1",
+		);
+	} finally {
+		client.clear();
+	}
+});
+
+test("compact reconciliation routes ask rows and absent asks into waiting without changing actionable counts", async () => {
+	const { client, get } = seedLedger();
+	try {
+		const ask = {
+			...row(3),
+			id: "ask:aaaaaaaaaaa1:test",
+			source: "ask",
+			seq: 7,
+		};
+		client.setQueryData(DRAWER.notificationKeys.facts("all"), {
+			...get(),
+			waiting: [ask],
+		});
+		client.setQueryData(DRAWER.notificationKeys.list("all"), {
+			pages: [{ ...get(), waiting: [ask] }],
+			pageParams: [null],
+		});
+		const tx = await DRAWER.beginOptimisticWrite(client, "read", [ask.id], {
+			throughSeq: 7,
+			unreadDelta: 0,
+			waitingUnreadDelta: -1,
+			sessionUnreadDeltas: {},
+		});
+		assert.equal(
+			get().waiting[0].read,
+			false,
+			"asks remain authoritative-only rows",
+		);
+		assert.equal(
+			client.getQueryData(DRAWER.notificationKeys.count).waiting_count,
+			2,
+		);
+		tx.settleCompact(
+			compact({
+				high_water: 10,
+				unread_count: 2,
+				reconciliation: {
+					high_water: 10,
+					items: [{ ...ask, seq: 10, read: true }],
+					absent_ids: [],
+				},
+			}),
+		);
+		assert.equal(get().waiting[0].read, true);
+		assert.equal(
+			client.getQueryData(DRAWER.notificationKeys.list("all")).pages[0]
+				.waiting[0].read,
+			true,
+		);
+		const settled = await DRAWER.beginOptimisticWrite(client, "read", [ask.id]);
+		settled.settleCompact(
+			compact({
+				high_water: 12,
+				unread_count: 2,
+				reconciliation: { high_water: 12, items: [], absent_ids: [ask.id] },
+			}),
+		);
+		assert.equal(get().waiting.length, 0);
+	} finally {
+		client.clear();
+	}
+});
+
+/*
+ * Tombstone: an absent_ids removal is fenced at reconciliation.high_water. A
+ * facts fetch that STARTED before the write (older snapshot, row seq <= fence)
+ * can land after it; without the fence it would resurrect the removed row. A
+ * genuinely newer row (seq > fence, e.g. undismissed elsewhere) must come back.
+ */
+test("compact reconciliation tombstones absent rows against older fetches but admits newer seqs", async () => {
+	const { client, a, b, get } = seedLedger();
+	try {
+		const tx = await DRAWER.beginOptimisticWrite(client, "dismiss", [a.id]);
+		tx.settleCompact(
+			compact({
+				high_water: 20,
+				unread_count: 1,
+				counts_high_water: 20,
+				reconciliation: { high_water: 20, items: [], absent_ids: [a.id] },
+			}),
+		);
+		assert.deepEqual(
+			get().items.map((item) => item.id),
+			[b.id],
+		);
+		// Stale pre-write snapshot lands late: the tombstone keeps `a` gone.
+		client.setQueryData(DRAWER.notificationKeys.facts("all"), {
+			...get(),
+			high_water: 7,
+			items: [a, b],
+		});
+		assert.deepEqual(
+			get().items.map((item) => item.id),
+			[b.id],
+			"older snapshot cannot resurrect a reconciled-absent row",
+		);
+		// A newer fact for the same id is real state, not a resurrection.
+		client.setQueryData(DRAWER.notificationKeys.facts("all"), {
+			...get(),
+			high_water: 25,
+			items: [{ ...a, seq: 25, revision: 2 }, b],
+		});
+		assert.deepEqual(
+			get().items.map((item) => item.id),
+			[a.id, b.id],
+		);
+	} finally {
+		client.clear();
+	}
+});
+
+test("QA: replay an actual core HTTP partial receipt, preserving the global facts count", async () => {
+	const captured = JSON.parse(
+		await readFile(
+			new URL("./fixtures/notifications-real-partial.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const { facts, receipt } = captured;
+	const client = new QueryClient({
+		defaultOptions: { queries: { gcTime: 0, retry: false } },
+	});
+	try {
+		client.setQueryData(DRAWER.notificationKeys.facts("all"), facts);
+		client.setQueryData(DRAWER.notificationKeys.count, {
+			...facts,
+			items: undefined,
+		});
+		const ids = [...receipt.changed, ...receipt.skipped.map((item) => item.id)];
+		const tx = await DRAWER.beginOptimisticWrite(
+			client,
+			"read",
+			facts.items.filter((item) => ids.includes(item.id)),
+		);
+		tx.settle(receipt);
+		const final = client.getQueryData(DRAWER.notificationKeys.facts("all"));
+		assert.equal(
+			final.items.find((item) => item.id === receipt.skipped[0].id).read,
+			false,
+		);
+		assert.equal(
+			final.items.find((item) => item.id === receipt.changed[0]).read,
+			true,
+		);
+		assert.equal(final.unread_count, receipt.unread_count);
+		assert.equal(final.unread_count, 2);
+	} finally {
+		client.clear();
+	}
+});

@@ -233,10 +233,13 @@ export function useSessionUnreadUpdates(
 		 * so the key changes and the walk restarts; without the previous answer the
 		 * tab's count blinked to nothing between the click and the walk's answer.
 		 */
-		placeholderData: (previous) => previous,
+		placeholderData: (previous, previousQuery) =>
+			enabled && sessionId && previousQuery?.queryKey[3] === sessionId
+				? previous
+				: undefined,
 	});
 	/* Unknown while the walk settles: the page's own rows would under-count. */
-	return count.data ?? 0;
+	return enabled && sessionId ? (count.data ?? 0) : 0;
 }
 
 /**
@@ -294,6 +297,22 @@ export const DrawerUpdates: FC<{
 	);
 	const unread = rows.filter((item) => !item.read);
 	const read = rows.filter((item) => item.read);
+	const shown = view === "unread" ? unread : read;
+	const listElement = useRef<HTMLDivElement>(null);
+	const focusedRow = useRef<{ id: string; index: number } | null>(null);
+	useEffect(() => {
+		const focused = focusedRow.current;
+		if (!focused || shown.some((item) => item.id === focused.id)) return;
+		focusedRow.current = null;
+		// Only recover focus lost by row removal; never steal focus from the toast
+		// Undo or a different panel the operator deliberately moved to.
+		if (document.activeElement !== document.body) return;
+		const next = shown[Math.min(focused.index, shown.length - 1)];
+		const selector = next
+			? `[data-drawer-update="${CSS.escape(next.id)}"] button`
+			: "[data-drawer-empty], [data-drawer-load-more]";
+		listElement.current?.querySelector<HTMLElement>(selector)?.focus();
+	}, [shown]);
 	const showInConversation = (item: DesktopNotificationItem) => {
 		const line = document.querySelector<HTMLElement>(
 			`[data-notification-flag="${CSS.escape(item.id)}"]`,
@@ -309,13 +328,16 @@ export const DrawerUpdates: FC<{
 	};
 	if (list.isLoading)
 		return (
-			<p className="p-3 text-body-sm text-ink-muted">
+			<p data-drawer-loading="" className="p-3 text-body-sm text-ink-muted">
 				{t("ui.notifications.page.loading")}
 			</p>
 		);
 	if (list.isError && !list.data)
 		return (
-			<div className="p-3 text-body-sm text-ink-muted">
+			<div
+				data-drawer-load-error=""
+				className="p-3 text-body-sm text-ink-muted"
+			>
 				<p>{t("ui.notifications.error.load.title")}</p>
 				<Button
 					size="sm"
@@ -337,6 +359,25 @@ export const DrawerUpdates: FC<{
 	 * lost a row without a word. The inverse is the same operation in the other
 	 * direction, so Undo is one more write rather than a special case.
 	 */
+	const undoWrite = (
+		verb: "read" | "unread" | "undismiss",
+		items: ReturnType<typeof tokensOf>,
+	) => {
+		const retry = () =>
+			write.mutate(
+				{ verb, target: { items } },
+				{
+					onError: () =>
+						showErrorToast(t("ui.notifications.error.mark"), {
+							action: {
+								label: t("ui.notifications.error.retry"),
+								onClick: retry,
+							},
+						}),
+				},
+			);
+		retry();
+	};
 	const applyWrite = (
 		item: DesktopNotificationItem,
 		verb: "read" | "unread" | "dismiss",
@@ -346,7 +387,8 @@ export const DrawerUpdates: FC<{
 		write.mutate(
 			{ verb, target: { items: tokensOf([item]) } },
 			{
-				onSuccess: () => {
+				onSuccess: (result) => {
+					if (!result.changed.includes(item.id)) return;
 					showInfoToast(
 						verb === "dismiss"
 							? t("ui.notifications.toast.dismissed", { count: 1 })
@@ -361,11 +403,7 @@ export const DrawerUpdates: FC<{
 							duration: UNDO_WINDOW_MS,
 							action: {
 								label: t("ui.notifications.toast.undo"),
-								onClick: () =>
-									write.mutate({
-										verb: inverse as "read" | "unread" | "undismiss",
-										target: { items: tokensOf([item]) },
-									}),
+								onClick: () => undoWrite(inverse, tokensOf([item])),
 							},
 						},
 					);
@@ -381,6 +419,8 @@ export const DrawerUpdates: FC<{
 	 * out of the Undo, as the reel's ledger does.
 	 */
 	const markAllRead = () => {
+		if (document.activeElement?.hasAttribute("data-drawer-mark-all-read"))
+			focusedRow.current = { id: "bulk-action", index: 0 };
 		const tokens = tokensOf(unread);
 		write.mutate(
 			{ verb: "read", target: { items: tokens } },
@@ -397,8 +437,7 @@ export const DrawerUpdates: FC<{
 							duration: UNDO_WINDOW_MS,
 							action: {
 								label: t("ui.notifications.toast.undo"),
-								onClick: () =>
-									write.mutate({ verb: "unread", target: { items: undo } }),
+								onClick: () => undoWrite("unread", undo),
 							},
 						},
 					);
@@ -407,7 +446,6 @@ export const DrawerUpdates: FC<{
 			},
 		);
 	};
-	const shown = view === "unread" ? unread : read;
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
 			<DrawerReadViews
@@ -431,6 +469,20 @@ export const DrawerUpdates: FC<{
 			/>
 			<div
 				data-drawer-updates=""
+				ref={listElement}
+				onFocusCapture={(event) => {
+					const row = (event.target as HTMLElement).closest<HTMLElement>(
+						"[data-drawer-update]",
+					);
+					focusedRow.current = row?.dataset.drawerUpdate
+						? {
+								id: row.dataset.drawerUpdate,
+								index: shown.findIndex(
+									(item) => item.id === row.dataset.drawerUpdate,
+								),
+							}
+						: null;
+				}}
 				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
 				onScroll={(event) => {
 					/*
@@ -490,8 +542,9 @@ export const DrawerUpdates: FC<{
 					}
 				}}
 			>
-				{shown.length === 0 ? (
-					<p
+				{shown.length === 0 && !list.hasNextPage ? (
+					<h3
+						tabIndex={-1}
 						className="px-3 py-8 text-center text-body-sm text-ink-muted"
 						data-drawer-empty={view}
 					>
@@ -501,7 +554,7 @@ export const DrawerUpdates: FC<{
 							: view === "unread"
 								? t("ui.notifications.empty.caught_up.title")
 								: t("ui.notifications.drawer.empty")}
-					</p>
+					</h3>
 				) : (
 					<ul className="flex flex-col" data-drawer-view-list={view}>
 						{shown.map((item) => (
@@ -518,6 +571,19 @@ export const DrawerUpdates: FC<{
 							/>
 						))}
 					</ul>
+				)}
+				{list.hasNextPage && (
+					<Button
+						variant="ghost"
+						size="sm"
+						data-drawer-load-more=""
+						disabled={list.isFetchingNextPage}
+						onClick={() => void list.fetchNextPage()}
+					>
+						{list.isFetchingNextPage
+							? t("ui.notifications.page.loading")
+							: t("ui.common.forms.compact_pagination.next_page")}
+					</Button>
 				)}
 			</div>
 			<div className="flex shrink-0 items-center justify-between gap-2 border-hairline border-t px-3 py-2 text-meta">
@@ -566,6 +632,35 @@ const DrawerReadViews: FC<{
 					// biome-ignore lint/a11y/useSemanticElements: the reel's segmented control; native radios cannot carry the count badge inside the segment
 					role="radio"
 					aria-checked={view === value}
+					tabIndex={view === value ? 0 : -1}
+					onKeyDown={(event) => {
+						if (
+							![
+								"ArrowRight",
+								"ArrowLeft",
+								"ArrowDown",
+								"ArrowUp",
+								"Home",
+								"End",
+							].includes(event.key)
+						)
+							return;
+						event.preventDefault();
+						const next =
+							event.key === "Home"
+								? "unread"
+								: event.key === "End"
+									? "read"
+									: value === "read"
+										? "unread"
+										: "read";
+						onView(next);
+						event.currentTarget.parentElement
+							?.querySelector<HTMLButtonElement>(
+								`[data-drawer-read-view="${next}"]`,
+							)
+							?.focus();
+					}}
 					data-drawer-read-view={value}
 					onClick={() => onView(value)}
 					className={cn(
