@@ -1,0 +1,14 @@
+{
+	"namespace": "ui.ownerAudit",
+	"scope": "Desktop Team Bridge owner audit, a human-only read-only view of the signed-in owner’s designated chief of staff’s conversations. Preserve the distinction between owner and agent, and between screening verdict and message authorship.",
+	"tone": "Clear, calm, non-technical, sentence case. Do not suggest the owner can post or change these messages.",
+	"glossary": {
+		"chief of staff": "The user’s designated personal agent; use each locale’s established chief-of-staff translation, not a literal job title when a product term exists.",
+		"screening": "The agent’s admission decision, not confidentiality screening.",
+		"audit window": "The bounded period in which the agent was a conversation member."
+	},
+	"placeholders": {
+		"{name}": "A person’s display name; do not translate the placeholder."
+	},
+	"width": "Sidebar labels should be concise. Status and disclosure lines may wrap."
+}

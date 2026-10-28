@@ -123,6 +123,10 @@ import {
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
 import { useBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
 import {
+	type OwnerAuditSlot,
+	useOwnerAuditSurface,
+} from "./team-bridge-owner-audit";
+import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
 } from "./team-bridge-profile-card";
@@ -435,6 +439,8 @@ type OwnedDraft = {
 };
 
 export type TeamBridgePageViewProps = {
+	/** Human-only audit never enters member targets, drafts or the agent lane. */
+	ownerAudit?: OwnerAuditSlot;
 	/** Page-lifetime data journal; no live mutation closure survives an auth epoch. */
 	draftJournal?: OwnedDraft;
 	isDraftCurrent?: () => boolean;
@@ -586,6 +592,7 @@ export type TeamBridgePageViewProps = {
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
+	ownerAudit,
 	renderThreadPane,
 	threadLink,
 	onCloseThread,
@@ -768,6 +775,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const hasContent = Boolean(draft.trim()) || images.count > 0;
 	const imagesSettled = !images.busy && !images.blocked;
 	const selectTarget = (next: TeamBridgeTarget | null) => {
+		ownerAudit?.clear();
 		setQuickView(null);
 		onTarget(next);
 	};
@@ -973,6 +981,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			setThreadSelection(null);
 			onCloseThread?.();
 		}
+		ownerAudit?.clear();
 		setQuickView(next);
 	};
 	const threadIsOpen = Boolean(
@@ -1712,6 +1721,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							</RailSection>
 						</>
 					)}
+					{ownerAudit?.rail(() => {
+						setQuickView(null);
+						setThreadSelection(null);
+						onCloseThread?.();
+					})}
 				</ScrollArea>
 			</aside>
 
@@ -1724,7 +1738,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				)}
 			>
 				{notice}
-				{quickView === "invitations" ? (
+				{ownerAudit?.active ? (
+					ownerAudit.panel
+				) : quickView === "invitations" ? (
 					<TeamBridgeInvitations
 						invitations={invitations}
 						listState={listState}
@@ -2714,6 +2730,20 @@ const TeamBridgeOwnedPage: FC<{
 			: null,
 	);
 	const [channelFormOpen, setChannelFormOpen] = useState(false);
+	const ownerAudit = useOwnerAuditSurface({
+		accountId,
+		enabled:
+			readsEnabled &&
+			(capabilities.data?.features?.team_bridge_owner_audit ?? 0) >= 1,
+		scopeKey: scope,
+		organizations: mergedView
+			? organizations
+			: organizations.filter((row) => row.tenantId === scope),
+		onSelect: () => {
+			setTarget(null);
+			setThreadLink(null);
+		},
+	});
 
 	useEffect(() => {
 		if (!requestedConversation || !requestedTenant) return;
@@ -2763,13 +2793,17 @@ const TeamBridgeOwnedPage: FC<{
 	// Land on the first rail row once (built-ins lead), not on every refetch:
 	// a poll must not move the reader out of the thread they are reading.
 	useEffect(() => {
-		if (target === null && visibleConversations.length > 0) {
+		if (
+			!ownerAudit?.active &&
+			target === null &&
+			visibleConversations.length > 0
+		) {
 			const first =
 				visibleConversations.find((row) => row.builtin === "humans") ??
 				visibleConversations[0];
 			setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, target]);
+	}, [visibleConversations, target, ownerAudit?.active]);
 
 	/*
 	 * ARCHIVE / UNARCHIVE / DELETE. The archived read stays OFF until the
@@ -3084,6 +3118,7 @@ const TeamBridgeOwnedPage: FC<{
 	return (
 		<>
 			<TeamBridgePageView
+				ownerAudit={ownerAudit}
 				key={draftKey}
 				draftJournal={draftJournal}
 				isDraftCurrent={isCurrentOwner}
