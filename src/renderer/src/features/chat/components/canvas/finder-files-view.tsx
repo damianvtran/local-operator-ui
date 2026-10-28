@@ -44,6 +44,7 @@ import {
 	formatNumber,
 } from "../../../../../../i18n/format";
 import type { FileIndexState } from "../../canonical/use-session-files";
+import { canMaterialiseAttachment } from "../../canonical/user-attachments";
 import type { CanvasDocument } from "../../types/canvas";
 import { ARTIFACT_HEAD_LENGTH } from "../../utils/artifact-identity";
 import {
@@ -1042,9 +1043,14 @@ export function FinderFilesView({
 																}}
 																materialise={
 																	// R2-1: an attachment's copy-out needs the
-																	// capable backend; without it the row gets no
+																	// capable backend AND the backend's per-row
+																	// verdict (Q1); without either the row gets no
 																	// resolver, so no path entry is offered at all.
-																	item.attachment && !attachments.capable
+																	item.attachment &&
+																	!canMaterialiseAttachment(
+																		attachments.capable,
+																		item.attachment.materialisable,
+																	)
 																		? undefined
 																		: () => materialise(item.row.document)
 																}
@@ -1129,6 +1135,12 @@ function FinderEntry({
 }) {
 	useI18nLocale();
 	const doc = item.row.document;
+	/*
+	 * The backend refused to copy this attachment out (Q1): besides having no
+	 * resolver, it offers no "Show in canvas" entry either - the row's own click
+	 * still opens it by digest, the same door an older backend's rows use.
+	 */
+	const refused = item.attachment?.materialisable === false;
 	const [nearRef, near] = useEverInView("200px");
 	const thumb = useFinderThumbnail(
 		doc,
@@ -1253,7 +1265,9 @@ function FinderEntry({
 						triggerTabIndex={-1}
 						mediaKind="audio"
 						onShowInCanvas={
-							viewerFor(doc.path, doc.type) === null ? undefined : onOpen
+							viewerFor(doc.path, doc.type) === null || refused
+								? undefined
+								: onOpen
 						}
 						resolveBytes={() => finderOriginal(doc)}
 						saveName={
@@ -1462,7 +1476,9 @@ function FinderEntry({
 						triggerTabIndex={-1}
 						mediaKind={item.row.media === "image" ? "image" : "video"}
 						onShowInCanvas={
-							viewerFor(doc.path, doc.type) === null ? undefined : onOpen
+							viewerFor(doc.path, doc.type) === null || refused
+								? undefined
+								: onOpen
 						}
 						onExpand={item.row.media === "image" ? onExpand : undefined}
 						resolveBytes={() => finderOriginal(doc)}

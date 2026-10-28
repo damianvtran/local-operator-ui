@@ -156,6 +156,15 @@ export const SentFileCard: FC<{
 	 * is gone. Absent (a story, a remote row), actions use the store path as is.
 	 */
 	sessionId?: string | null;
+	/**
+	 * The backend refused to copy this file out (`materialisable: false`: a
+	 * key, an `.env`; core PR #3042 QA round 3, Q1). The card still says what
+	 * was sent and whether it is still there, but offers no path action at all
+	 * - not Open file / Open folder / Copy file path from the menu, nor the
+	 * inline copy controls - because acting on the origin is the same reach the
+	 * copy was refused for. The caller also withholds `sessionId`.
+	 */
+	refused?: boolean;
 }> = ({
 	document,
 	remote = false,
@@ -163,6 +172,7 @@ export const SentFileCard: FC<{
 	existence,
 	storedExistence,
 	sessionId = null,
+	refused = false,
 }) => {
 	useI18nLocale();
 	const pane = useCanvasPane();
@@ -266,6 +276,7 @@ export const SentFileCard: FC<{
 	 */
 	const showActions =
 		!remote &&
+		!refused &&
 		placementKnown &&
 		Boolean(actionPath) &&
 		!(savedCopyOnly && !storedGone);
@@ -325,7 +336,7 @@ export const SentFileCard: FC<{
 						 * matters, on a long path (design round 1, D1). A button carries the
 						 * untruncated value from the record.
 						 */}
-						{!missing && copyTarget && (
+						{!missing && !refused && copyTarget && (
 							<PathCopyControl
 								label={copyLabel(copied)}
 								copied={copied}
@@ -391,11 +402,13 @@ export const SentFileCard: FC<{
 						>
 							{middleTruncate(document.storedPath, 40)}
 						</span>
-						<PathCopyControl
-							label={copyLabel(copied)}
-							copied={copied}
-							onCopy={copyPath}
-						/>
+						{!refused && (
+							<PathCopyControl
+								label={copyLabel(copied)}
+								copied={copied}
+								onCopy={copyPath}
+							/>
+						)}
 					</span>
 				)}
 			</div>

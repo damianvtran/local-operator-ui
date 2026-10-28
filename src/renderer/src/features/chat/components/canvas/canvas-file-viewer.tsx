@@ -16,7 +16,10 @@ import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { useSessionFiles } from "../../canonical/use-session-files";
 import { materialiseUserAttachment } from "../../canonical/use-user-attachments";
 import type { UserAttachmentsState } from "../../canonical/use-user-attachments";
-import { attachmentDigests } from "../../canonical/user-attachments";
+import {
+	attachmentDigests,
+	canMaterialiseAttachment,
+} from "../../canonical/user-attachments";
 import {
 	ATTACHMENT_ID_PREFIX,
 	attachmentFinderItems,
@@ -364,6 +367,25 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	 * defect round 1's F1 and round 2's R2-1 named.
 	 */
 	const attachmentsCapable = attachments?.capable ?? false;
+	/*
+	 * Attachment rows the backend refused to copy out (`materialisable: false`,
+	 * core PR #3042 QA round 3, Q1), by row id: the open and materialise doors
+	 * below get the same per-row verdict the row's menu does.
+	 */
+	const refusedIds = useMemo(
+		() =>
+			new Set(
+				attachmentItems
+					.filter((item) => item.attachment?.materialisable === false)
+					.map((item) => item.row.document.id),
+			),
+		[attachmentItems],
+	);
+	const canCopyOut = (document: CanvasDocument): boolean =>
+		canMaterialiseAttachment(
+			attachmentsCapable,
+			refusedIds.has(document.id) ? false : null,
+		);
 	const materialise = async (document: CanvasDocument): Promise<string> => {
 		/*
 		 * A USER ATTACHMENT copies out through its own route: the file index does
@@ -371,10 +393,11 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		 * here serves both the row's path actions and the canvas open below.
 		 */
 		if (document.id.startsWith(ATTACHMENT_ID_PREFIX) && document.artifact) {
-			// Fail closed: no row offers this on an older backend (R2-1), and a
-			// caller that slips through must not reach a route that cannot answer.
-			if (!attachmentsCapable)
-				throw new Error("Backend cannot materialise attachments");
+			// Fail closed: no row offers this on an older backend (R2-1) or for a
+			// refused row (Q1), and a caller that slips through must not reach a
+			// route that cannot (or will not) answer.
+			if (!canCopyOut(document))
+				throw new Error("Backend cannot materialise this attachment");
 			if (!sessionId) throw new Error("No session for the attachment");
 			return materialiseUserAttachment(sessionId, document.artifact.digest);
 		}
@@ -408,9 +431,10 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			onOpen={(document) => {
 				if (
 					document.artifact &&
-					// An attachment on an older backend has no copy-out route: it
-					// opens by digest in the artifact-aware viewer instead (R2-1).
-					(attachmentsCapable ||
+					// An attachment on an older backend (R2-1), or one the backend
+					// refused to copy out (Q1), opens by digest in the artifact-aware
+					// viewer instead.
+					(canCopyOut(document) ||
 						!document.id.startsWith(ATTACHMENT_ID_PREFIX)) &&
 					document.type !== "image" &&
 					document.type !== "video" &&

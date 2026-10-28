@@ -92,6 +92,11 @@ export type FinderItem = {
 		/** Separate directional runs so RTL never reorders size and date. */
 		size: string;
 		when: string;
+		/**
+		 * The backend's verdict (`UserAttachment.materialisable`): `false` = the
+		 * row offers no materialise-backed action; `null` = capability decides.
+		 */
+		materialisable: boolean | null;
 	};
 };
 

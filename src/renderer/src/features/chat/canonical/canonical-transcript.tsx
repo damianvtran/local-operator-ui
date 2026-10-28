@@ -302,6 +302,7 @@ import {
 } from "./use-transcript-dom-window";
 import { useTurnAnswerRail } from "./use-turn-answer-rail";
 import { materialiseUserAttachment } from "./use-user-attachments";
+import { canMaterialiseAttachment, verdictForDigest } from "./user-attachments";
 import {
 	type WorkingLineState,
 	deriveWorkingLine,
@@ -800,6 +801,14 @@ export type CanonicalTranscriptProps = {
 	 */
 	labelMarked?: ReadonlySet<string>;
 	/**
+	 * Attachment digests the backend refused to copy out (`materialisable:
+	 * false` in the user-attachment inventory; core PR #3042 QA round 3, Q1).
+	 * The sent-file cards and pictures here are painted from loaded records,
+	 * which carry no verdict, so they read it from this set. Absent or empty =
+	 * no refusals: the `session_attachments` capability alone governs.
+	 */
+	refusedAttachments?: ReadonlySet<string>;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -877,6 +886,9 @@ export type UndeliveredTurn = {
  * the menu reports as a failure toast, never silently). Absent, the picture keeps
  * the actions its blob/data source allows.
  */
+/** One stable empty set, so a memoised row's prop compares equal when nothing is refused. */
+const NO_REFUSED_ATTACHMENTS: ReadonlySet<string> = new Set();
+
 function userImagePathActions(
 	image: TranscriptImage,
 	scope: AttachmentScope | null,
@@ -944,6 +956,7 @@ const UserRow = memo(function UserRow({
 	isSmallView,
 	scope,
 	capable,
+	refusedAttachments = NO_REFUSED_ATTACHMENTS,
 	conversationId,
 	undelivered = null,
 }: {
@@ -951,6 +964,7 @@ const UserRow = memo(function UserRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 	capable: boolean;
+	refusedAttachments?: ReadonlySet<string>;
 	conversationId?: string;
 	/** §F3's per-message failure state, when this row is the one it names. */
 	undelivered?: UndeliveredTurn | null;
@@ -1406,9 +1420,23 @@ const UserRow = memo(function UserRow({
 											remote={remote}
 											placementKnown={placementKnown}
 											sessionId={
-												scope && !scope.childId && capable
+												scope &&
+												!scope.childId &&
+												canMaterialiseAttachment(
+													capable,
+													verdictForDigest(
+														refusedAttachments,
+														document.attachment,
+													),
+												)
 													? scope.sessionId
 													: null
+											}
+											refused={
+												verdictForDigest(
+													refusedAttachments,
+													document.attachment,
+												) === false
 											}
 										/>
 									))}
@@ -1449,7 +1477,13 @@ const UserRow = memo(function UserRow({
 												scope,
 												conversationId,
 												remote || !placementKnown,
-												capable,
+												canMaterialiseAttachment(
+													capable,
+													verdictForDigest(
+														refusedAttachments,
+														image.attachment,
+													),
+												),
 											)}
 										/>
 									))}
@@ -3196,6 +3230,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	isSmallView,
 	scope,
 	capable,
+	refusedAttachments = NO_REFUSED_ATTACHMENTS,
 	conversationId,
 	/*
 	 * The fold onto `origin/main` that carried #490 (`fix(chat): label every
@@ -3228,6 +3263,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 	capable: boolean;
+	/** See `CanonicalTranscriptProps.refusedAttachments`. */
+	refusedAttachments?: ReadonlySet<string>;
 	conversationId?: string;
 	/**
 	 * The transcript's one read of the rail setting. A BOOLEAN rather than the
@@ -3360,6 +3397,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					isSmallView={isSmallView}
 					scope={scope}
 					capable={capable}
+					refusedAttachments={refusedAttachments}
 					conversationId={conversationId}
 					undelivered={undelivered?.recordId === record.id ? undelivered : null}
 				/>
@@ -3634,6 +3672,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
+	refusedAttachments = NO_REFUSED_ATTACHMENTS,
 	onReconnect,
 	onStartNewChat,
 }) => {
@@ -6283,6 +6322,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					isSmallView={isSmallView}
 					scope={mediaScope}
 					capable={attachmentsCapable}
+					refusedAttachments={refusedAttachments}
 					conversationId={conversationId}
 					labelPending={
 						row.record.kind === "tool" &&
@@ -6401,6 +6441,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 										isSmallView={isSmallView}
 										scope={mediaScope}
 										capable={attachmentsCapable}
+										refusedAttachments={refusedAttachments}
 										conversationId={conversationId}
 										labelPending={
 											row.record.kind === "tool" &&
@@ -6441,6 +6482,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				isSmallView={isSmallView}
 				scope={mediaScope}
 				capable={attachmentsCapable}
+				refusedAttachments={refusedAttachments}
 				conversationId={conversationId}
 				labelPending={
 					group.row.record.kind === "tool" &&

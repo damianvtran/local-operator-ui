@@ -114,6 +114,7 @@ import {
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import { useSessionFiles } from "../canonical/use-session-files";
 import { useUserAttachments } from "../canonical/use-user-attachments";
+import { unmaterialisableDigests } from "../canonical/user-attachments";
 import {
 	workingLineClaimed,
 	workingLineInputFor,
@@ -1460,6 +1461,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			canonical?.view.transcript.records ?? null,
 			turnTerminal,
 		);
+		/*
+		 * Digests the inventory refused to copy out (Q1), for the transcript's
+		 * sent-file cards and pictures - painted from loaded records, which carry
+		 * no verdict of their own. Memoised so the memoised rows compare equal.
+		 */
+		const attachmentItems = userAttachments.items;
+		const refusedAttachments = useMemo(
+			() => unmaterialisableDigests({ items: attachmentItems }),
+			[attachmentItems],
+		);
 		const mentionedFileCount = combinedFileCount(
 			indexedFiles.mode === "index"
 				? indexedFiles.total
@@ -2740,6 +2751,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										labelPending={canonical.view.labelPending}
 										labelHoldLate={canonical.view.labelHoldLate}
 										labelMarked={canonical.view.labelMarked}
+										refusedAttachments={refusedAttachments}
 										onReconnect={canonical.view.retry}
 										onStartNewChat={onStartNewChat}
 										// The two states a notification click paints before the

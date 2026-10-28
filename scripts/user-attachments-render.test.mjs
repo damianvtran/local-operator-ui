@@ -67,8 +67,26 @@ window.api = {
 			requests.push(request.op);
 			return { status: 404, body: {} };
 		},
+		// The transcript's pictures fetch their bytes by digest (Q1 tests).
+		media: async (request) => {
+			requests.push(request.op);
+			return {
+				kind: "bytes",
+				data: new Uint8Array([137, 80, 78, 71]),
+				mimeType: "image/png",
+			};
+		},
 	},
+	// The sent-file card's existence probe: every path is present.
+	probeFiles: async (paths) =>
+		paths.map((path) => ({ resolved: path, exists: true, isFile: true })),
 };
+URL.createObjectURL ??= () => "blob:http://localhost/stub";
+URL.revokeObjectURL ??= () => {};
+Object.defineProperty(window.navigator, "clipboard", {
+	configurable: true,
+	value: { writeText: async () => {} },
+});
 
 const { createRoot } = await import("react-dom/client");
 const { act, createElement: h } = await import("react");
@@ -79,6 +97,11 @@ const bundled = await build({
  export { CanvasFileViewer } from "./src/renderer/src/features/chat/components/canvas/canvas-file-viewer";
  export { SentFileCard } from "./src/renderer/src/features/chat/canonical/sent-file-card";
  export { mergeUserAttachments } from "./src/renderer/src/features/chat/canonical/user-attachments";
+ export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
+ export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+ export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
+ export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+ export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  `,
 		resolveDir: process.cwd(),
 	},
@@ -374,4 +397,307 @@ test("R2-4: without a materialiser the missing card labels the saved-copy path, 
 	);
 	const capable = await labelsOf(SESSION);
 	assert.ok(capable.includes("Copy path"), `got ${JSON.stringify(capable)}`);
+});
+
+/*
+ * Q1 (core PR #3042 QA round 3, cross-PR): the backend LISTS a sensitive
+ * attachment (`~/.ssh/id_rsa`, `.env`) with `materialisable: false` and
+ * refuses its materialise route. The renderer must offer NO materialise-backed
+ * action for it - Open file, Open folder, Copy file path, Show in canvas - on
+ * ANY surface, while still painting the row; and a daemon that never sends the
+ * field must behave exactly as round 2 did.
+ */
+const PATH_ACTIONS = ["Open file", "Open folder", "Copy file path"];
+const CANVAS_ACTIONS = ["Show in canvas", "Open in canvas"];
+const KEY = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+const KEY_NAME = /id_rsa/;
+const PATH_WORD = /path/i;
+
+/** A credential the person attached, origin still in place, store copy kept. */
+const sensitive = (over = {}) => ({
+	message_id: "m-key",
+	ts: 1793117300,
+	index: 0,
+	kind: "document",
+	attachment: KEY,
+	filename: "id_rsa",
+	mime_type: "application/octet-stream",
+	bytes: 2048,
+	path: "/Users/x/.ssh/id_rsa",
+	exists: true,
+	stored_path: `/Users/x/.local-operator/attachments/${KEY}.bin`,
+	stored: true,
+	...over,
+});
+/** A pasted picture (no origin path): only the retained copy can name it. */
+const sensitivePicture = (over = {}) => ({
+	message_id: "m-shot",
+	ts: 1793117301,
+	index: 0,
+	kind: "image",
+	attachment: SHOT,
+	filename: null,
+	mime_type: "image/png",
+	bytes: 2048,
+	path: null,
+	exists: null,
+	stored_path: `/Users/x/.local-operator/attachments/${SHOT}.bin`,
+	stored: true,
+	...over,
+});
+
+const withoutField = ({ materialisable: _drop, ...rest }) => rest;
+
+/** Every menu label the canvas offers across the section's entries, plus the ops a click sent. */
+async function canvasOffer(items, { capable = true } = {}) {
+	requests.length = 0;
+	const view = api.mergeUserAttachments({ state: "ready", items }, []);
+	const { container, unmount } = await mount(
+		viewer(attachmentsState(view, { capable })),
+	);
+	const entries = [
+		...container.querySelectorAll(`[data-file-id^="attachment:"]`),
+	];
+	const labels = [];
+	const text = entries.map((entry) => entry.textContent);
+	for (const entry of entries) {
+		labels.push(...(await menuLabels(entry)));
+		await act(async () => {
+			document.dispatchEvent(
+				new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+			);
+		});
+		await act(async () => entry.querySelector("button[title]").click());
+	}
+	await unmount();
+	return { count: entries.length, labels, text, ops: [...requests] };
+}
+
+test("Q1: a materialisable:false attachment offers no path action in the canvas, but still renders", async () => {
+	const refused = await canvasOffer([
+		sensitive({ materialisable: false }),
+		sensitivePicture({ materialisable: false }),
+	]);
+	assert.equal(refused.count, 2, "both refused rows are still listed");
+	assert.match(refused.text[0] + refused.text[1], KEY_NAME, "named");
+	for (const label of [...PATH_ACTIONS, ...CANVAS_ACTIONS])
+		assert.ok(
+			!refused.labels.includes(label),
+			`refused row offers no "${label}" (got ${JSON.stringify(refused.labels)})`,
+		);
+	assert.ok(
+		!refused.ops.includes("sessions.userAttachments.materialise"),
+		`no click reaches the refusing route (sent ${JSON.stringify(refused.ops)})`,
+	);
+	// Control: the SAME rows marked materialisable on a capable backend do get
+	// the entries, so the assertion above measures the gate, not an empty menu.
+	const allowed = await canvasOffer([
+		sensitive({ materialisable: true }),
+		sensitivePicture({ materialisable: true }),
+	]);
+	assert.ok(
+		allowed.labels.includes("Copy file path"),
+		`materialisable rows keep the path actions (got ${JSON.stringify(allowed.labels)})`,
+	);
+	assert.ok(
+		allowed.labels.includes("Show in canvas"),
+		`materialisable rows keep Show in canvas (got ${JSON.stringify(allowed.labels)})`,
+	);
+});
+
+test("Q1: a row with no materialisable field (older daemon) behaves exactly as before", async () => {
+	const items = [sensitive(), sensitivePicture()].map(withoutField);
+	const legacy = await canvasOffer(items);
+	const explicit = await canvasOffer([
+		sensitive({ materialisable: true }),
+		sensitivePicture({ materialisable: true }),
+	]);
+	assert.deepEqual(
+		legacy.labels,
+		explicit.labels,
+		"absent = allowed on a capable backend",
+	);
+	assert.deepEqual(legacy.ops, explicit.ops);
+	// Without the capability the field is irrelevant: absent and `true` give
+	// round 2's incapable menu, and nothing reaches the materialise route.
+	const older = await canvasOffer(items, { capable: false });
+	const olderExplicit = await canvasOffer(
+		[
+			sensitive({ materialisable: true }),
+			sensitivePicture({ materialisable: true }),
+		],
+		{ capable: false },
+	);
+	assert.deepEqual(older.labels, olderExplicit.labels);
+	assert.ok(!older.ops.includes("sessions.userAttachments.materialise"));
+});
+
+/*
+ * The transcript surfaces: the sent-file card and the user's picture, mounted
+ * through the shipped `CanonicalTranscript` so the verdict travels the real
+ * path (inventory -> `refusedAttachments` -> UserRow -> card/picture).
+ */
+async function transcriptOffer({ refused, capable = true }) {
+	requests.length = 0;
+	const conversationId = "abcdef123456";
+	api.useCanonicalSessionsStore.setState({
+		placementFacts: { [conversationId]: { locality: "local" } },
+	});
+	const records = [
+		{
+			kind: "user",
+			id: "u-key",
+			ts: 1793117300000,
+			text: "",
+			images: [
+				{ id: "u-key:0", data: null, attachment: SHOT, mimeType: "image/png" },
+			],
+			documents: [
+				{
+					id: "u-key:doc:0",
+					attachment: KEY,
+					filename: "id_rsa",
+					mimeType: "application/octet-stream",
+					path: "/Users/x/.ssh/id_rsa",
+					storedPath: `/Users/x/.local-operator/attachments/${KEY}.bin`,
+					bytes: 2048,
+				},
+			],
+		},
+	];
+	const client = new api.QueryClient({
+		// Infinite gc: a finite one arms a timer that keeps node:test's process
+		// alive for minutes after the last test.
+		defaultOptions: {
+			queries: {
+				retry: false,
+				staleTime: Number.POSITIVE_INFINITY,
+				gcTime: Number.POSITIVE_INFINITY,
+			},
+		},
+	});
+	client.setQueryData(api.desktopKeys.capabilities, {
+		desktop_available: true,
+		features: capable ? { session_attachments: 1 } : {},
+	});
+	const transcript = {
+		...api.EMPTY_TRANSCRIPT,
+		records,
+		index: new Map(records.map((row, at) => [row.id, at])),
+	};
+	const props = {
+		transcript,
+		frontend: null,
+		gate: null,
+		waiting: false,
+		starting: false,
+		loadingOlder: false,
+		onLoadOlder: async () => true,
+		containerRef: { current: null },
+		isSmallView: false,
+		status: "live",
+		failure: null,
+		awaitingHydration: false,
+		onReconnect: () => {},
+		conversationId,
+		attachmentScope: { sessionId: conversationId, childId: null },
+	};
+	if (refused !== undefined) props.refusedAttachments = refused;
+	const { container, unmount } = await mount(
+		h(api.QueryClientProvider, { client }, h(api.CanonicalTranscript, props)),
+	);
+	// Let the picture's byte fetch settle so its frame (and menu) paints.
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+	const card = container.querySelector('[data-document-id="u-key:doc:0"]');
+	const cardButtons = card
+		? [...card.querySelectorAll("button[aria-label]")].map((node) =>
+				node.getAttribute("aria-label"),
+			)
+		: [];
+	const openMenu = async (trigger) => {
+		if (!trigger) return [];
+		await act(async () => {
+			trigger.dispatchEvent(
+				new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+			);
+		});
+		const labels = [...document.querySelectorAll('[role="menuitem"]')].map(
+			(node) => node.textContent.trim(),
+		);
+		await act(async () => {
+			document.dispatchEvent(
+				new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+			);
+		});
+		return labels;
+	};
+	const cardMenu = await openMenu(
+		card?.querySelector('button[aria-label^="Actions for"]'),
+	);
+	const pictureTrigger = container.querySelector(
+		".file-actions-menu button[aria-haspopup]",
+	);
+	const pictureMenu = await openMenu(pictureTrigger);
+	const named = Boolean(card?.textContent.includes("id_rsa"));
+	await unmount();
+	client.clear();
+	return {
+		named,
+		cardButtons,
+		cardMenu,
+		pictureMenu,
+		picture: Boolean(pictureTrigger),
+	};
+}
+
+test("Q1: the transcript's sent-file card and picture offer no path action for a refused digest", async () => {
+	const refused = await transcriptOffer({ refused: new Set([KEY, SHOT]) });
+	assert.ok(refused.named, "the refused card still names the file");
+	for (const label of [...PATH_ACTIONS, ...CANVAS_ACTIONS]) {
+		assert.ok(
+			!refused.cardMenu.includes(label),
+			`card menu: no "${label}" (got ${JSON.stringify(refused.cardMenu)})`,
+		);
+		assert.ok(
+			!refused.pictureMenu.includes(label),
+			`picture menu: no "${label}" (got ${JSON.stringify(refused.pictureMenu)})`,
+		);
+	}
+	assert.ok(
+		!refused.cardButtons.some((label) => PATH_WORD.test(label)),
+		`no inline copy-path control on the card (got ${JSON.stringify(refused.cardButtons)})`,
+	);
+	assert.ok(
+		!requests.includes("sessions.userAttachments.materialise"),
+		"nothing called the refusing route",
+	);
+	// Control: no refusals on a capable backend - the picture gets its path and
+	// canvas entries and the card its menu, so the assertions above measure the
+	// verdict. The same mount WITHOUT the prop (an older daemon's inventory has
+	// no field to build it from) must match exactly.
+	const allowed = await transcriptOffer({ refused: new Set() });
+	assert.ok(allowed.picture, "the picture painted its menu trigger");
+	for (const label of ["Copy file path", "Show in canvas"])
+		assert.ok(
+			allowed.pictureMenu.includes(label),
+			`picture menu keeps "${label}" (got ${JSON.stringify(allowed.pictureMenu)})`,
+		);
+	assert.ok(
+		allowed.cardMenu.includes("Copy file path"),
+		`card menu keeps Copy file path (got ${JSON.stringify(allowed.cardMenu)})`,
+	);
+	const legacy = await transcriptOffer({});
+	assert.deepEqual(
+		{
+			card: legacy.cardMenu,
+			picture: legacy.pictureMenu,
+			buttons: legacy.cardButtons,
+		},
+		{
+			card: allowed.cardMenu,
+			picture: allowed.pictureMenu,
+			buttons: allowed.cardButtons,
+		},
+		"no refusal set behaves exactly as before",
+	);
 });

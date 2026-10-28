@@ -41,6 +41,13 @@ export type UserAttachmentWire = {
 	stored_path?: string | null;
 	stored?: boolean;
 	injection?: "native" | "extracted" | "reference" | null;
+	/**
+	 * `false` when the backend's sensitive-path gate refuses to copy this file
+	 * out (`~/.ssh/id_rsa`, `.env`; core PR #3042 QA round 3, Q1): the row is
+	 * listed but its materialise route answers 404. ABSENT on an older daemon,
+	 * which never had the gate - there the capability bit alone decides.
+	 */
+	materialisable?: boolean;
 };
 
 export type UserAttachmentsListing = {
@@ -82,6 +89,13 @@ export type UserAttachment = {
 	path: string | null;
 	storedPath: string | null;
 	availability: AttachmentAvailability;
+	/**
+	 * The backend's per-row materialise verdict: `false` = never copy it out
+	 * (no Open file / Open folder / Copy file path / Show in canvas over a
+	 * copy); `null` = no verdict (a loaded row, or a daemon without the field),
+	 * so the `session_attachments` capability alone governs, as before.
+	 */
+	materialisable: boolean | null;
 };
 
 export type UserAttachmentsView = {
@@ -125,6 +139,8 @@ export function fromWire(item: UserAttachmentWire): UserAttachment | null {
 		path: item.path ?? null,
 		storedPath: item.stored_path ?? null,
 		availability: availabilityOf(item),
+		materialisable:
+			typeof item.materialisable === "boolean" ? item.materialisable : null,
 	};
 }
 
@@ -146,6 +162,7 @@ function fromDocument(
 		path: document.path,
 		storedPath: document.storedPath,
 		availability: "unknown",
+		materialisable: null,
 	};
 }
 
@@ -167,6 +184,7 @@ function fromImage(
 		path: null,
 		storedPath: null,
 		availability: "unknown",
+		materialisable: null,
 	};
 }
 
@@ -241,6 +259,55 @@ export function mergeUserAttachments(
 		complete,
 		truncated: Boolean(listing?.truncated),
 	};
+}
+
+/**
+ * Digests the backend refused to materialise (`materialisable: false`).
+ *
+ * The transcript's sent-file cards and pictures are painted from the loaded
+ * records, which carry no verdict, so they look the digest up here. Keyed by
+ * digest because the route is: the backend refuses EVERY row sharing a denied
+ * digest (an attached `.env` re-sent as `notes.txt` is the same bytes).
+ */
+export function unmaterialisableDigests(
+	view: Pick<UserAttachmentsView, "items">,
+): Set<string> {
+	return new Set(
+		view.items
+			.filter((item) => item.materialisable === false && item.digest !== null)
+			.map((item) => item.digest as string),
+	);
+}
+
+/**
+ * THE ONE PER-ROW GATE for every materialise-backed action (Open file, Open
+ * folder, Copy file path, Show in canvas over a copy) on every surface: the
+ * canvas rows, the transcript's pictures and the sent-file card.
+ *
+ * It is round 2's capability gate (R2-1) with the backend's per-row verdict
+ * folded in, so there is one decision rather than two branches that can drift:
+ * no `session_attachments` -> nothing; a digest the backend marked
+ * `materialisable: false` -> nothing. A digest with NO verdict (a loaded row,
+ * or an older daemon that never sends the field) is governed by `capable`
+ * alone, exactly as before - an absent field is not a denial.
+ */
+export function canMaterialiseAttachment(
+	capable: boolean,
+	materialisable: boolean | null | undefined,
+): boolean {
+	return capable && materialisable !== false;
+}
+
+/**
+ * The verdict for a digest painted from LOADED records (the transcript's
+ * pictures and sent-file cards carry no verdict of their own): `false` when
+ * the inventory refused that digest, else `null` (no verdict).
+ */
+export function verdictForDigest(
+	refused: ReadonlySet<string>,
+	digest: string | null | undefined,
+): false | null {
+	return digest && refused.has(digest) ? false : null;
 }
 
 /** The digests this view owns, so the agent-file list can drop its copy. */

@@ -53,14 +53,25 @@ function documentFor(item: UserAttachment, sessionId: string): CanvasDocument {
 		sizeBytes: item.bytes ?? undefined,
 		lastAgentModified: item.ts || undefined,
 	};
+	/*
+	 * A row the backend refuses to copy out (`materialisable: false`: a key, an
+	 * `.env`) must not hand its ORIGIN path to the path actions either - Open
+	 * file / Open folder / Copy file path on `~/.ssh/id_rsa` is the same reach
+	 * the copy was refused for. So it never takes the path arm: with retained
+	 * bytes it is a digest document (no path entries exist for one without a
+	 * materialiser), and once gone it carries only its name, which the menu
+	 * treats as "nothing to act on".
+	 */
+	const refused = item.materialisable === false;
 	let document: CanvasDocument;
 	if (item.availability === "gone" || (!item.digest && !item.data)) {
-		document = canvasDocumentForPath(item.path ?? name, {
+		document = canvasDocumentForPath((refused ? null : item.path) ?? name, {
 			...base,
 			availability: item.availability === "gone" ? "missing" : undefined,
 		});
 	} else if (
 		item.path &&
+		!refused &&
 		(item.availability === "present" || item.availability === "unknown") &&
 		(item.kind === "document" || !item.digest)
 	) {
@@ -164,6 +175,7 @@ export function attachmentFinderItems(
 				when: item.ts
 					? formatDate(item.ts, { month: "short", day: "numeric" })
 					: "",
+				materialisable: item.materialisable,
 			},
 		};
 	});

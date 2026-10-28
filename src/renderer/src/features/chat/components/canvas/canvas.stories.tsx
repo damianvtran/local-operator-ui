@@ -982,6 +982,7 @@ const attachment = (
 	path: null,
 	storedPath: null,
 	availability: "present",
+	materialisable: null,
 	...over,
 });
 const ATTACHMENTS: UserAttachment[] = [
