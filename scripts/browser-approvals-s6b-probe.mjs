@@ -146,6 +146,65 @@ app.whenReady().then(async () => {
       footerTop: (() => { const el = document.querySelector('.card-footer'); const card = document.getElementById('approvals-card'); if (!el || !card) return null; return Math.round(el.getBoundingClientRect().top - card.getBoundingClientRect().top); })(),
       decisionRects: [...document.querySelectorAll('#approvals-secondary button')].map((b) => { const r = b.getBoundingClientRect(); const c = document.getElementById('approvals-card').getBoundingClientRect(); return { text: b.textContent, top: Math.round(r.top - c.top), bottom: Math.round(r.bottom - c.top) }; }),
     }))()\`);
+  // D1: where the decision buttons sit against the card the native view gives
+  // them. Rects are in the card's own border-box coordinates; overdraw is how
+  // far the sticky footer's top edge cuts into the lowest decision button, and
+  // bodyOverflow is how much of the body is scrolled out of the card (both 0
+  // when the card was measured after the error line painted).
+  const readD1 = () =>
+    currentCard().webContents.executeJavaScript(\`(() => {
+      const card = document.getElementById('approvals-card');
+      const body = document.querySelector('.card-body');
+      const footer = document.querySelector('.card-footer');
+      const c = card.getBoundingClientRect();
+      const buttons = [document.getElementById('approvals-allow-once'), ...document.querySelectorAll('#approvals-secondary button')].filter(Boolean);
+      const rects = buttons.map((b) => { const r = b.getBoundingClientRect(); return { text: b.textContent, top: +(r.top - c.top).toFixed(2), bottom: +(r.bottom - c.top).toFixed(2) }; });
+      const footerTop = +(footer.getBoundingClientRect().top - c.top).toFixed(2);
+      const lowest = Math.max(...rects.map((r) => r.bottom));
+      const errorEl = document.getElementById('approvals-error');
+      return {
+        errorVisible: !errorEl.hidden,
+        errorText: errorEl.textContent,
+        cardHeight: +c.height.toFixed(2),
+        innerHeight: window.innerHeight,
+        footerTop,
+        lowestDecisionBottom: lowest,
+        overdraw: +Math.max(0, lowest - footerTop).toFixed(2),
+        bodyOverflow: body.scrollHeight - body.clientHeight,
+        insideCard: rects.every((r) => r.top >= 0 && r.bottom <= c.height),
+        rects,
+      };
+    })()\`);
+  // A rebuilt child is mid-load for a moment (a 166 DIP half-painted card was
+  // read once); the reading that counts is the one that repeats AND shows the
+  // state the step asked for, so a mid-reload frame is never recorded as a pass
+  // or a fail.
+  const readD1Settled = async (expectError) => {
+    let previous = "";
+    let last = null;
+    for (let i = 0; i < 80; i += 1) {
+      await sleep(150);
+      try {
+        last = await readD1();
+      } catch {
+        continue;
+      }
+      const key = JSON.stringify([last.errorVisible, last.cardHeight, last.innerHeight, controller.facts().bounds?.view.height]);
+      if (last.errorVisible === expectError && key === previous) return last;
+      previous = key;
+    }
+    return last;
+  };
+  const stableBounds = async () => {
+    let last = null;
+    for (let stable = 0; stable < 4; ) {
+      await sleep(150);
+      const h = controller.facts().bounds?.card.height ?? null;
+      stable = h === last ? stable + 1 : 0;
+      last = h;
+    }
+    return last;
+  };
   const settle = async (predicate, label, timeout = 45000) => {
     const started = Date.now();
     while (Date.now() - started < timeout) {
@@ -319,6 +378,28 @@ app.whenReady().then(async () => {
   const staleResult = await currentCard().webContents.executeJavaScript("window.approvalsCard ? (window.approvalsCard.decide({ seq: 999999, entryId: 'entry-0', decision: 'once' }), 'sent') : 'no-bridge'");
   await sleep(250);
   record("I8-stale-seq", responded.length === beforeStale && controller.facts().actions.dropped >= 1, { staleResult, responded: [...responded], actions: controller.facts().actions });
+
+  // D1 — the stale / unavailable inline error must not push the sticky footer
+  // over "Don't allow". The stale line is the one the I8 drop just painted; the
+  // unavailable line comes from the host's own failure path. Each is read after
+  // the native height has stopped changing, and the pass condition is geometric:
+  // every decision button is inside the card, none is under the footer, and the
+  // body is not scrolled. The measured native card height is recorded beside it.
+  await stableBounds();
+  const d1Stale = await readD1Settled(true);
+  const d1StaleNative = controller.facts().bounds?.card.height ?? null;
+  record("D1-stale-error-keeps-decisions-visible", Boolean(d1Stale.errorVisible && d1Stale.overdraw === 0 && d1Stale.bodyOverflow <= 0 && d1Stale.insideCard), { ...d1Stale, nativeCardHeight: d1StaleNative, nativeViewBounds: controller.facts().bounds?.view ?? null });
+  controller.setModel({ entries, error: "unavailable" });
+  await sleep(300);
+  await stableBounds();
+  const d1Unavailable = await readD1Settled(true);
+  const d1UnavailableNative = controller.facts().bounds?.card.height ?? null;
+  record("D1-unavailable-error-keeps-decisions-visible", Boolean(d1Unavailable.errorVisible && d1Unavailable.overdraw === 0 && d1Unavailable.bodyOverflow <= 0 && d1Unavailable.insideCard), { ...d1Unavailable, nativeCardHeight: d1UnavailableNative });
+  controller.setModel({ entries });
+  await sleep(300);
+  await stableBounds();
+  const d1Normal = await readD1Settled(false);
+  record("D1-normal-keeps-decisions-visible", Boolean(!d1Normal.errorVisible && d1Normal.overdraw === 0 && d1Normal.bodyOverflow <= 0 && d1Normal.insideCard), { ...d1Normal, nativeCardHeight: controller.facts().bounds?.card.height ?? null });
 
   // I4 — Escape dismisses without deciding AND the document repaints the next
   // request. The second half is the Q-S6b-1 regression: a dismissal that only

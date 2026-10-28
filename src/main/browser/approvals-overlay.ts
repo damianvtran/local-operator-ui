@@ -724,8 +724,27 @@ export class ApprovalsOverlayController {
 				error: this.actionError,
 				dismissed: this.dismissed,
 			});
-			this.pushModel(false);
+			this.remeasureAfterModelChange();
 		}
+	}
+
+	/**
+	 * A model change that ADDS A LINE must be measured again, not only pushed (D1).
+	 *
+	 * The stale/unavailable error is an inline line in the sticky footer. Pushing
+	 * it alone grew the card's content by ~14.6 DIP inside a native view that kept
+	 * its old height, so the card's own `max-height` clamp turned the extra line
+	 * into a scrolling body and the sticky footer sat over "Don't allow" (measured
+	 * 14.6 DIP hidden on the S6c head, with no re-measure). `measureAndShow`
+	 * applies the model AND reads the painted height in ONE script (the read is a
+	 * `setTimeout(0)` after the apply, so the error has painted), then
+	 * `maybeShow` resizes the child through `applyBounds`: a height change is a
+	 * plain `setBounds`, never a rebuild. Before the document is ready there is
+	 * nothing to measure; the load's own `measureAndShow` carries the model.
+	 */
+	private remeasureAfterModelChange(): void {
+		this.pushModel(false);
+		if (this.ready) this.measureAndShow();
 	}
 
 	/** Close the card's current entry without deciding it. */
@@ -795,7 +814,8 @@ export class ApprovalsOverlayController {
 	private showActionError(): void {
 		if (!this.model) return;
 		this.model = { ...this.model, error: "unavailable", busy: false };
-		this.pushModel(false);
+		// The same extra line as `dropAction`'s stale error (D1): re-measure.
+		this.remeasureAfterModelChange();
 	}
 
 	/** Focus the card, only through the host's gated helper. */
@@ -874,7 +894,9 @@ export class ApprovalsOverlayController {
 				this.rebuildAt(bounds);
 				return;
 			}
+			const grew = bounds.view.height > current.height;
 			view.setBounds(bounds.view);
+			if (grew) this.verifyViewportFollowed(view, bounds);
 			/*
 			 * Raise only when a page view has been appended since the last pass.
 			 * Re-adding an already-topmost child is not free: it can move focus, and
@@ -889,6 +911,55 @@ export class ApprovalsOverlayController {
 		} catch (error) {
 			this.fail(`bounds_apply_failed:${String(error)}`);
 		}
+	}
+
+	/**
+	 * A height GROWTH must reach the document's VIEWPORT, not only the native view
+	 * (D1).
+	 *
+	 * The card is bottom-pinned with `max-height: calc(100% - 16px)`, so if the
+	 * child's `innerHeight` stays at the old value the card is clamped to it and
+	 * the extra line (the stale/unavailable error) still scrolls the body under
+	 * the sticky footer. Electron 44.3.0 is documented to propagate a height
+	 * `setBounds` to the viewport, but the S6d probe measured a hidden-window
+	 * child whose `innerHeight` stayed at 414 against a 436 DIP view across eight
+	 * reads over 2 s, and again for +10/+30/+60/+200 DIP nudges. The viewport is
+	 * therefore READ BACK after a short settle and, if it is SHORTER than the view
+	 * (the only case where the card gets clamped), the child is rebuilt at the new
+	 * bounds: the same fresh-child boundary a width change already uses, with the
+	 * document loaded at its final size.
+	 *
+	 * Growth only, on purpose: a viewport taller than the view does not clamp the
+	 * card, and rebuilding on every fractional height wobble made ordinary flows
+	 * (an explicit open, a dismissal) tear the document down under a click. A
+	 * rebuild lands the viewport on the new height, so the next pass sees it
+	 * followed and this cannot loop. A non-numeric read (a stubbed or torn-down
+	 * document) is ignored, never treated as a mismatch.
+	 */
+	private verifyViewportFollowed(
+		view: WebContentsView,
+		bounds: ApprovalsCardBounds,
+	): void {
+		setTimeout(() => {
+			if (this.view !== view || view.webContents.isDestroyed()) return;
+			void view.webContents
+				.executeJavaScript("window.innerHeight")
+				.then((innerHeight: unknown) => {
+					if (this.view !== view || this.disposed) return;
+					if (
+						typeof innerHeight !== "number" ||
+						!Number.isFinite(innerHeight) ||
+						innerHeight <= 0 ||
+						innerHeight >= bounds.view.height - 1
+					) {
+						return;
+					}
+					this.rebuildAt(bounds);
+				})
+				.catch(() => {
+					// A document mid-navigation answers on its next load.
+				});
+		}, 100);
 	}
 
 	private rebuildAt(bounds: ApprovalsCardBounds): void {
@@ -1009,10 +1080,7 @@ export class ApprovalsOverlayController {
 			 * `approvalsCard.available: false` and falls back to the dock and band
 			 * instead of waiting on a card that can no longer be answered (S6d, M1).
 			 */
-			const onGone = (
-				_event: Electron.Event,
-				details: { reason?: string },
-			) => {
+			const onGone = (_event: Electron.Event, details: { reason?: string }) => {
 				this.fail(`render_process_gone:${details?.reason ?? "unknown"}`);
 			};
 			view.webContents.on("did-finish-load", onFinish);
