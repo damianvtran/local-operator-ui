@@ -1141,13 +1141,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const decoratedSendRows = useMemo(() => {
 		if (!sendRows || !onTakeBackSend) return sendRows;
 		return new Map(
-			[...sendRows].map(([id, row]) => [
-				id,
-				{
-					...row,
-					onReturnToDraft: () => returnToDraft(row.clientRef),
-				},
-			]),
+			[...sendRows].map(
+				([id, row]) =>
+					[
+						id,
+						{
+							...row,
+							onReturnToDraft: () => returnToDraft(row.clientRef),
+						},
+					] as const,
+			),
 		);
 	}, [sendRows, onTakeBackSend]);
 
