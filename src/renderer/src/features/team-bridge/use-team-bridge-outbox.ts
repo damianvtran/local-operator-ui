@@ -3,6 +3,7 @@ import { observedRadientAuthority } from "@shared/hooks/radient-account-authorit
 import { revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import {
 	type TeamBridgeAttachment,
 	type TeamBridgeConversation,
@@ -169,25 +170,39 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 			tenantId: context.tenantId,
 			epoch: captured.epoch,
 		};
-		let revoked = false;
+		/*
+		 * THE FENCE IS CHECKED AT EVERY STEP, NOT WATCHED IN THE BACKGROUND.
+		 *
+		 * A cache subscription that revoked on the FIRST moment the owner looked
+		 * stale also fired when the page merely UNMOUNTED (the auth hook's own
+		 * lifecycle briefly reports no authority), which killed a send that
+		 * navigation was supposed to leave running. `assertCurrent` runs before
+		 * and after every awaited step instead: a real opt-out, read-only flip,
+		 * sign-out or account change is caught at the next step, and a reader who
+		 * leaves the page keeps their message going.
+		 */
 		const isCurrent = () => {
 			const live = observedRadientAuthority(client);
+			if (live.epoch !== captured.epoch || live.accountId !== context.accountId)
+				return false;
+			/*
+			 * The surface's own answer revokes a send only when it IS an answer.
+			 * A remount briefly has no status entry in the cache (the read is
+			 * refetching), and treating that gap as "the reader opted out" failed a
+			 * post that had already landed. A present, settled status still vetoes:
+			 * read-only, a disabled bridge, or a status naming another account.
+			 */
+			const status = client.getQueryData<AgentMessagesStatus>(
+				teamBridgeKeys.statusFor(context.accountId),
+			);
 			return (
-				!revoked &&
-				live.epoch === captured.epoch &&
-				live.accountId === context.accountId &&
-				bridgeOwnerCurrent(client, context.accountId)
+				status === undefined || bridgeOwnerCurrent(client, context.accountId)
 			);
 		};
 		const assertCurrent = () => {
 			if (!isCurrent()) throw new Error("Team Bridge send authority changed");
 		};
 		assertCurrent();
-		// A transient opt-out/read-only/auth transition revokes this attempt even
-		// if the person re-enables the surface before an outstanding await returns.
-		const unsubscribe = client.getQueryCache().subscribe(() => {
-			if (!isCurrent()) revoked = true;
-		});
 		const effects: TeamBridgeSendEffects<AttachmentChip[]> = {
 			assertCurrent,
 			create: async () => {
@@ -310,9 +325,8 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 					queryKey: teamBridgeKeys.unread(context.tenantId, context.accountId),
 				});
 			},
-			onSettled: unsubscribe,
 		};
-		return { authority, effects, unsubscribe };
+		return { authority, effects, isCurrent };
 	};
 
 	const enqueue = (
@@ -325,23 +339,18 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 		if (accountId !== context.accountId)
 			throw new Error("Team Bridge outbox owner changed");
 		const attempt = capture(context);
-		try {
-			journal.enqueue(
-				{
-					authority: attempt.authority,
-					targetKey: context.targetKey,
-					conversationId: context.conversationId,
-					clientRef,
-					body,
-					sender,
-					attachments: chips.map((chip) => ({ ...chip })),
-				},
-				attempt.effects,
-			);
-		} catch (error) {
-			attempt.unsubscribe();
-			throw error;
-		}
+		journal.enqueue(
+			{
+				authority: attempt.authority,
+				targetKey: context.targetKey,
+				conversationId: context.conversationId,
+				clientRef,
+				body,
+				sender,
+				attachments: chips.map((chip) => ({ ...chip })),
+			},
+			attempt.effects,
+		);
 	};
 
 	/*
@@ -374,12 +383,11 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 			if (accountId !== row.accountId || context.tenantId !== row.tenantId)
 				return;
 			const attempt = capture(context);
+			// A revoked click is not a new send: the row and its bytes stay.
 			try {
-				if (!journal.retry(row.clientRef, attempt.authority, attempt.effects))
-					attempt.unsubscribe();
+				journal.retry(row.clientRef, attempt.authority, attempt.effects);
 			} catch {
-				attempt.unsubscribe();
-				// A revoked click is not a new send: retain the failed row and bytes.
+				/* the authority went away between the click and the capture */
 			}
 		},
 		onDiscard: () => {

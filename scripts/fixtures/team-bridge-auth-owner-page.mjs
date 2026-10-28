@@ -63,6 +63,18 @@ const createObjectURL = () => {
 const revokeObjectURL = (url) => {
 	liveObjectUrls.delete(url);
 };
+/* jsdom's Blob predates `arrayBuffer()`, and staging an image reads the file
+ * that way (`new Uint8Array(await file.arrayBuffer())`). FileReader is real
+ * here, so the polyfill reads through it rather than inventing bytes. */
+if (typeof dom.window.Blob.prototype.arrayBuffer !== "function")
+	dom.window.Blob.prototype.arrayBuffer = function arrayBuffer() {
+		return new Promise((resolve, reject) => {
+			const reader = new dom.window.FileReader();
+			reader.onload = () => resolve(reader.result);
+			reader.onerror = () => reject(reader.error);
+			reader.readAsArrayBuffer(this);
+		});
+	};
 /* Both classes: the renderer resolves `URL` from the global scope, which under
  * Node is Node's own URL, not jsdom's. */
 for (const target of [dom.window.URL, globalThis.URL])

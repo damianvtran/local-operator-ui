@@ -599,7 +599,7 @@ export class TeamBridgeSendJournal<A = TeamBridgeSendAttachmentSnapshot> {
 	): void {
 		requireScope(accountId);
 		requireScope(tenantId);
-		const lane = this.getLane(accountId, tenantId, targetKey);
+		const lane = this.lane(accountId, tenantId, targetKey);
 		const projection = this.projection(
 			accountId,
 			tenantId,
