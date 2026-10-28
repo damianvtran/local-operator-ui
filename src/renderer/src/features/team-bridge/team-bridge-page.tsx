@@ -1124,7 +1124,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * to draft is undone. Growing is the reader's own act, so it only re-follows
 	 * the bottom if the timeline was already following it.
 	 */
-	useComposerAutoGrow(composerRef, draft, { onGrow: timeline.repin });
+	useComposerAutoGrow(composerRef, draft, {
+		onGrow: timeline.repin,
+		// The timeline is the scrolling area this composer shares its column with,
+		// so it is the pane the 40% cap is a fraction of (design round 1, D1).
+		paneRef: timeline.rootRef,
+	});
 	// The retry's idempotency key: a failed send is retried with the SAME
 	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
 	// post the message twice. A genuinely different draft gets a fresh key.

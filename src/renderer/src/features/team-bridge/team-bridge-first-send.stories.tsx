@@ -2,7 +2,7 @@ import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "@storybook/test";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
@@ -49,6 +49,14 @@ const people: TeamBridgeDirectoryMember[] = [
 	},
 ];
 
+/**
+ * A stable draft journal for the story: `useMemo` on the seed text, so the view
+ * does not see a new object every render and reset the draft under the capture.
+ */
+function useStoryDraft(seed: string) {
+	return useMemo(() => ({ body: seed, pending: null }), [seed]);
+}
+
 function FirstSendPage({
 	state: initialState,
 	targetKind,
@@ -58,6 +66,7 @@ function FirstSendPage({
 	dropped = 0,
 	frozen = false,
 	focusAction = "none",
+	composer,
 }: {
 	state: TeamBridgeLocalRowPresentation["state"];
 	targetKind: "chief" | "person";
@@ -85,7 +94,15 @@ function FirstSendPage({
 	 * be captured by a tool that cannot press Tab. Programmatic, and said so.
 	 */
 	focusAction?: "none" | "retry" | "return" | "discard";
+	/**
+	 * Text the composer starts with. The view seeds its draft from `draftJournal`,
+	 * so a story can show the composer GROWN or AT ITS CAP without anybody typing
+	 * during a capture - which is the only way a still can prove the shape of a
+	 * grown field.
+	 */
+	composer: string;
 }) {
+	const draftJournal = useStoryDraft(composer);
 	const [state, setState] = useState(initialState);
 	useEffect(() => {
 		if (focusAction === "none") return;
@@ -206,6 +223,7 @@ function FirstSendPage({
 					selfName="Ada"
 					conversations={[]}
 					resolvedConversation={resolved}
+					draftJournal={draftJournal}
 					target={{ type: targetKind, accountId: recipient }}
 					messages={discarded ? [] : [message]}
 					sendRows={sendRows}
@@ -250,6 +268,7 @@ const meta = {
 		width: "desktop",
 		withImage: true,
 		allowSwap: false,
+		composer: "",
 	},
 	argTypes: {
 		state: { control: "select", options: ["pending", "failed", "confirmed"] },
@@ -261,6 +280,7 @@ const meta = {
 			control: "select",
 			options: ["none", "retry", "return", "discard"],
 		},
+		composer: { control: "text" },
 	},
 } satisfies Meta<typeof FirstSendPage>;
 export default meta;
@@ -268,6 +288,27 @@ type Story = StoryObj<typeof meta>;
 
 export const Pending: Story = {};
 export const Failed: Story = { args: { state: "failed" } };
+
+/** THREE LINES: the composer has grown but is still under its cap. */
+export const ComposerGrown: Story = {
+	args: {
+		state: "confirmed",
+		composer:
+			"Ada - one thing before we start.\nThe Wednesday review moved to Thursday, and the brief needs the numbers from last quarter.",
+	},
+};
+
+/** TWENTY LINES: past the cap, so the field scrolls instead of eating the thread. */
+export const ComposerAtCap: Story = {
+	args: {
+		state: "confirmed",
+		composer: Array.from(
+			{ length: 20 },
+			(_, index) =>
+				`Line ${index + 1}: the quick brown fox jumps over the lazy dog.`,
+		).join("\n"),
+	},
+};
 export const Confirmed: Story = { args: { state: "confirmed" } };
 export const PersonPending: Story = { args: { targetKind: "person" } };
 export const NarrowFailed: Story = {

@@ -369,3 +369,57 @@ test("repin follows the bottom only when the reader was already there", async ()
 		await app.unmount();
 	}
 });
+
+test("a keystroke at the cap keeps the reader's place in a long draft", async () => {
+	/*
+	 * Review A1. In a browser, `height: auto` lets the box fit its content and the
+	 * layout forced by the `scrollHeight` read clamps the offset to that shorter
+	 * box - so a reader who scrolled up inside a long draft lost their place on the
+	 * next character, even though the height was restored a line later.
+	 *
+	 * JSDOM never clamps, so the clamp is modelled where it happens: on the read.
+	 * The hook must then put the saved offset back, which is what this asserts.
+	 */
+	const app = await mountComposer();
+	const { field } = app;
+	const real = Object.getOwnPropertyDescriptor(
+		dom.window.HTMLTextAreaElement.prototype,
+		"scrollHeight",
+	);
+	let clamps = 0;
+	try {
+		Object.defineProperty(dom.window, "innerHeight", {
+			configurable: true,
+			value: 768,
+		});
+		await type(field, text(20)); // over the cap, so the field scrolls
+		assert.equal(overflowOf(field), "auto");
+
+		Object.defineProperty(
+			dom.window.HTMLTextAreaElement.prototype,
+			"scrollHeight",
+			{
+				configurable: true,
+				get() {
+					if (this.scrollTop > 0) {
+						this.scrollTop = 0;
+						clamps += 1;
+					}
+					return real.get.call(this);
+				},
+			},
+		);
+
+		field.scrollTop = 120; // the reader scrolls up inside their own draft
+		await type(field, `${text(20)}y`); // one more character
+		assert.equal(clamps > 0, true, "the measurement did read, and did clamp");
+		assert.equal(field.scrollTop, 120, "and the reader's offset came back");
+	} finally {
+		Object.defineProperty(
+			dom.window.HTMLTextAreaElement.prototype,
+			"scrollHeight",
+			real,
+		);
+		await app.unmount();
+	}
+});
