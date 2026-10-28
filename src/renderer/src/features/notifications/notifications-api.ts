@@ -1465,7 +1465,8 @@ export type NotificationBulkReceipt = {
 	through_seq: number;
 	high_water: number;
 	counts_high_water?: number;
-	selection_version?: 1 | 2;
+	// V1 servers omit the field; the shared facade only recognizes version 2.
+	selection_version?: 2;
 	changed_update_count?: number;
 	changed_ask_count?: number;
 	waiting_unread_delta?: number;
@@ -1475,9 +1476,11 @@ export type NotificationBulkReceipt = {
 		high_water: number;
 	};
 	unread_delta: number;
+	// `unread_count` is the v2 per-session total, fenced by `counts_high_water`;
+	// v1 omits it, and the facade then keeps the session overlay until a walk lands.
 	session_counts: Record<
 		string,
-		{ changed_count: number; unread_delta: number }
+		{ changed_count: number; unread_delta: number; unread_count?: number }
 	>;
 	unread_count: number;
 	waiting_count: number;
@@ -1550,6 +1553,20 @@ export function useNotificationBulkState() {
 		},
 		[client],
 	);
+	/*
+	 * V1 RECEIPTS CARRY NO ROWS. Without `reconciliation`, the shared facade can only
+	 * refetch page-one facts, and `mergeWindowForReel` keeps every row the loaded
+	 * infinite window already holds, so a select-all dismiss left up to a page of
+	 * dismissed rows drawn (and an Undo left them missing). Compact receipts never say
+	 * WHICH rows changed, so guessing per-row flips is ruled out. Resetting drops the
+	 * loaded pages and refetches page one, the same move as "back to top"
+	 * (`resetToTop`). Only v1 settles this way; v2 rows come back in the response.
+	 */
+	const resetWindows = useCallback(() => {
+		if (!client) return;
+		void client.resetQueries({ queryKey: notificationKeys.listRoot });
+		void client.resetQueries({ queryKey: notificationKeys.sessionsRoot });
+	}, [client]);
 	const apply = useCallback(
 		async (
 			verb: "read" | "unread" | "dismiss",
@@ -1583,6 +1600,7 @@ export function useNotificationBulkState() {
 						: { op: "notifications.read", verb, target },
 				);
 				intent?.settleCompact(receipt);
+				if (selection.preview.selection_version !== 2) resetWindows();
 				operations.current.set(receipt.operation_token, {
 					verb,
 					receipt,
@@ -1595,7 +1613,7 @@ export function useNotificationBulkState() {
 				throw error;
 			}
 		},
-		[client, reconcileIds],
+		[client, reconcileIds, resetWindows],
 	);
 	const applyItems = useCallback(
 		async (
@@ -1632,6 +1650,7 @@ export function useNotificationBulkState() {
 							: { op: "notifications.read", verb, target },
 					);
 					intent?.settleCompact(receipt);
+					if (!v2) resetWindows();
 					operations.current.set(receipt.operation_token, {
 						verb,
 						receipt,
@@ -1646,7 +1665,7 @@ export function useNotificationBulkState() {
 			}
 			return { receipts, pending: 0 };
 		},
-		[client, reconcileIds],
+		[client, reconcileIds, resetWindows],
 	);
 	const undo = useCallback(
 		async (operationToken: string) => {
@@ -1690,13 +1709,14 @@ export function useNotificationBulkState() {
 					},
 				});
 				intent?.settleCompact(receipt);
+				if (!original.canReconcile) resetWindows();
 				return receipt;
 			} catch (error) {
 				intent?.();
 				throw error;
 			}
 		},
-		[client],
+		[client, resetWindows],
 	);
 	return { apply, applyItems, undo, activeSessionIds };
 }

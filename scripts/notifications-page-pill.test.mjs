@@ -717,6 +717,120 @@ test(
 );
 
 test(
+	"v2: select-all 650 + asks, uncheck one, read with a skipped row settles compactly, Undo reconciles",
+	BOUNDED,
+	async () => {
+		/*
+		 * The selection_version 2 path end to end: the preview asks for ask reads, the
+		 * mutation carries bounded reconcile_ids, one row changed underneath the frozen
+		 * token is SKIPPED by the server (never guessed as flipped), and Undo goes
+		 * through `notifications.read` with the same reconcile_ids.
+		 */
+		const rows = Array.from({ length: 650 }, (_, i) => row(650 - i));
+		const waiting = [1, 2].map((index) => ({
+			...row(index),
+			id: `ask:aaaaaaaaaaa1:v2-${index}`,
+			source: "ask",
+			priority: "high",
+			seq: 0,
+			ask: { status: "open" },
+		}));
+		const page = await mount({
+			bulk: true,
+			askRead: true,
+			state: "all",
+			items: rows,
+			waiting,
+		});
+		try {
+			assert.ok(await page.settle(() => page.rows().length >= 100));
+			await click(
+				page.container.querySelector("[data-notifications-select-all]"),
+			);
+			assert.ok(
+				await page.settle(() =>
+					page.container.textContent.includes("652 selected"),
+				),
+			);
+			const preview = page.fixture.requests.find((request) => request.preview);
+			assert.equal(preview.includeAskReads, true);
+			await click(
+				page.container.querySelector(
+					'[data-notification-row="n_row0650"] [role="checkbox"]',
+				),
+			);
+			assert.ok(page.container.textContent.includes("651 selected"));
+			/* Changed after the gesture: the frozen token must skip it, not flip it. */
+			const moved = rows.find((item) => item.id === "n_row0010");
+			moved.revision += 1;
+			await click(
+				page.container.querySelector('[data-notifications-bulk-read="read"]'),
+			);
+			assert.ok(
+				await page.settle(
+					() => rows.filter((item) => item.read).length === 648,
+				),
+			);
+			assert.ok(
+				waiting.every((ask) => ask.read),
+				"v2 read acknowledges asks",
+			);
+			assert.equal(page.fixture.counts().waiting_count, 2, "asks not settled");
+			assert.equal(moved.read, false, "the skipped row is untouched");
+			assert.ok(
+				await page.settle(
+					() =>
+						!page.container.querySelector(
+							'[data-notification-row="n_row0649"][data-notification-unread]',
+						),
+				),
+				"the v2 receipt's reconciliation redraws the loaded row read",
+			);
+			const writes = page.fixture.requests.filter(
+				(request) => request.op === "notifications.read",
+			);
+			assert.equal(
+				writes.length,
+				1,
+				"one filtered PATCH, never a per-row loop",
+			);
+			assert.deepEqual(writes[0].target.excludedIds, ["n_row0650"]);
+			assert.ok(writes[0].target.reconcileIds.length <= 500);
+			await act(async () =>
+				page.grid().dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						key: "z",
+						ctrlKey: true,
+						bubbles: true,
+					}),
+				),
+			);
+			assert.ok(
+				await page.settle(() =>
+					[...rows, ...waiting].every((item) => !item.read),
+				),
+			);
+			const undo = page.fixture.requests.filter(
+				(request) => request.verb === "undo",
+			);
+			assert.equal(undo.length, 1);
+			assert.equal(undo[0].op, "notifications.read");
+			assert.ok(Array.isArray(undo[0].target.reconcileIds));
+			/* Rows return from the authoritative reconciliation, drawn unread again. */
+			assert.ok(
+				await page.settle(() =>
+					page.container.querySelector(
+						'[data-notification-row="n_row0649"][data-notification-unread]',
+					),
+				),
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
 	"Cmd+A selects the filtered result, including unloaded matches; old core never silently selects a page",
 	BOUNDED,
 	async () => {
