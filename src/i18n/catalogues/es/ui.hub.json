@@ -205,5 +205,10 @@
 	"ui.hub.subscriptions.save_failed_unsourced": "No se pudo guardar {setting}. Inténtalo de nuevo.",
 	"ui.hub.links.incoming_failed_reason": "Motivo: {reason}",
 	"ui.hub.links.sign_in_required": "Inicia sesión en Radient en Ajustes y vuelve a intentarlo.",
-	"ui.hub.links.incoming_update_failed": "La última actualización entrante no se completó."
+	"ui.hub.links.incoming_update_failed": "La última actualización entrante no se completó.",
+	"ui.hub.links.incoming_failed": "La vista previa no pudo completarse ({outcome}).",
+	"ui.hub.links.incoming_needs_review": "Tanto el hub como tu copia cambiaron este elemento. Elige qué versión conservar y vuelve a hacer pull.",
+	"ui.hub.links.incoming_unknown_baseline": "No se registró ninguna base para esta copia, así que todos los campos cuentan como modificados. Marca la confirmación y vuelve a hacer pull.",
+	"ui.hub.links.legacy_retry_unverified": "Este backend no puede seleccionar este elemento por su nombre de forma segura. Actualiza Local Operator antes de volver a intentarlo.",
+	"ui.hub.subscriptions.auto_push_source_unknown": "Identifica la organización de este enlace antes de activar el push automático."
 }

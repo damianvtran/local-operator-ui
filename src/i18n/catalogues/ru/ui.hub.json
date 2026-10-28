@@ -205,5 +205,10 @@
 	"ui.hub.subscriptions.save_failed_unsourced": "Не удалось сохранить настройку {setting}. Повторите попытку.",
 	"ui.hub.links.incoming_failed_reason": "Причина: {reason}",
 	"ui.hub.links.sign_in_required": "Войдите в Radient в настройках, затем повторите попытку.",
-	"ui.hub.links.incoming_update_failed": "Последнее входящее обновление не завершилось."
+	"ui.hub.links.incoming_update_failed": "Последнее входящее обновление не завершилось.",
+	"ui.hub.links.incoming_failed": "Предпросмотр не удалось завершить ({outcome}).",
+	"ui.hub.links.incoming_needs_review": "И хаб, и ваша копия изменили этот элемент. Выберите, какую версию сохранить, затем повторите загрузку.",
+	"ui.hub.links.incoming_unknown_baseline": "Для этой копии основа не записана, поэтому все поля считаются изменёнными. Отметьте подтверждение, затем повторите загрузку.",
+	"ui.hub.links.legacy_retry_unverified": "Этот бэкенд не может безопасно выбрать этот элемент по имени. Обновите Local Operator перед повторной попыткой.",
+	"ui.hub.subscriptions.auto_push_source_unknown": "Определите организацию этой связи, прежде чем включать автоматическую публикацию."
 }

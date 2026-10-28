@@ -205,5 +205,10 @@
 	"ui.hub.subscriptions.save_failed_unsourced": "{setting} محفوظ نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
 	"ui.hub.links.incoming_failed_reason": "وجہ: {reason}",
 	"ui.hub.links.sign_in_required": "ترتیبات میں Radient میں سائن ان کریں، پھر دوبارہ کوشش کریں۔",
-	"ui.hub.links.incoming_update_failed": "آخری آنے والی اپ ڈیٹ مکمل نہیں ہو سکی۔"
+	"ui.hub.links.incoming_update_failed": "آخری آنے والی اپ ڈیٹ مکمل نہیں ہو سکی۔",
+	"ui.hub.links.incoming_failed": "پیش منظر مکمل نہیں ہو سکا ({outcome})۔",
+	"ui.hub.links.incoming_needs_review": "Agent Hub اور آپ کی نقل دونوں نے اس آئٹم کو بدلا ہے۔ منتخب کریں کہ کون سا پہلو رکھنا ہے، پھر دوبارہ pull کریں۔",
+	"ui.hub.links.incoming_unknown_baseline": "اس نقل کے لیے کوئی بنیادی حالت درج نہیں ہوئی، اس لیے ہر فیلڈ تبدیل شدہ شمار ہوتی ہے۔ تصدیق پر ٹک لگائیں، پھر دوبارہ pull کریں۔",
+	"ui.hub.links.legacy_retry_unverified": "یہ بیک اینڈ اس آئٹم کو محفوظ طریقے سے نام سے منتخب نہیں کر سکتا۔ دوبارہ کوشش سے پہلے Local Operator کو اپ ڈیٹ کریں۔",
+	"ui.hub.subscriptions.auto_push_source_unknown": "خودکار push فعال کرنے سے پہلے اس ربط کی تنظیم کی شناخت کریں۔"
 }

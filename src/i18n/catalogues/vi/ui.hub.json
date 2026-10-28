@@ -205,5 +205,10 @@
 	"ui.hub.subscriptions.save_failed_unsourced": "Không lưu được {setting}. Hãy thử lại.",
 	"ui.hub.links.incoming_failed_reason": "Lý do: {reason}",
 	"ui.hub.links.sign_in_required": "Đăng nhập Radient trong Cài đặt rồi thử lại.",
-	"ui.hub.links.incoming_update_failed": "Cập nhật đến gần nhất chưa hoàn tất."
+	"ui.hub.links.incoming_update_failed": "Cập nhật đến gần nhất chưa hoàn tất.",
+	"ui.hub.links.incoming_failed": "Bản xem trước không thể hoàn tất ({outcome}).",
+	"ui.hub.links.incoming_needs_review": "Cả trung tâm và bản sao của bạn đều đã thay đổi mục này. Chọn bên muốn giữ, rồi tải về lại.",
+	"ui.hub.links.incoming_unknown_baseline": "Không có mốc nào được ghi cho bản sao này, nên mọi trường đều được tính là đã thay đổi. Đánh dấu xác nhận, rồi tải về lại.",
+	"ui.hub.links.legacy_retry_unverified": "Backend này không thể chọn mục này theo tên một cách an toàn. Hãy cập nhật Local Operator trước khi thử lại.",
+	"ui.hub.subscriptions.auto_push_source_unknown": "Hãy xác định tổ chức của liên kết này trước khi bật Tự động đẩy."
 }

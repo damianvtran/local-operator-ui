@@ -205,5 +205,10 @@
 	"ui.hub.subscriptions.save_failed_unsourced": "无法保存“{setting}”设置，请重试。",
 	"ui.hub.links.incoming_failed_reason": "原因：{reason}",
 	"ui.hub.links.sign_in_required": "请在“设置”中登录Radient，然后重试。",
-	"ui.hub.links.incoming_update_failed": "上次传入更新未完成。"
+	"ui.hub.links.incoming_update_failed": "上次传入更新未完成。",
+	"ui.hub.links.incoming_failed": "预览未能完成（{outcome}）。",
+	"ui.hub.links.incoming_needs_review": "中心和你的副本都更改了此项。请选择保留哪一侧，然后再次拉取。",
+	"ui.hub.links.incoming_unknown_baseline": "此副本未记录基线，因此所有字段都视为已更改。请勾选确认项，然后再次拉取。",
+	"ui.hub.links.legacy_retry_unverified": "此后端无法安全地按名称选择此项。请先更新Local Operator后再重试。",
+	"ui.hub.subscriptions.auto_push_source_unknown": "启用自动推送前，请先识别此关联的组织。"
 }
