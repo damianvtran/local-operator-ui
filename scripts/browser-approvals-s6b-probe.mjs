@@ -378,21 +378,22 @@ app.whenReady().then(async () => {
   await settle((f) => f.visible, "reopen for tab order");
   await sleep(200);
   const tabOrder = [];
-  for (let index = 0; index < 7; index += 1) {
+  for (let index = 0; index < 14; index += 1) {
     currentCard().webContents.sendInputEvent({ type: "keyDown", keyCode: "Tab" });
     currentCard().webContents.sendInputEvent({ type: "keyUp", keyCode: "Tab" });
     await sleep(120);
-    tabOrder.push((await readCard()).active);
+    const active = (await readCard()).active;
+    tabOrder.push(active);
+    if (active === "approvals-review") break;
   }
-  // The four secondary decision buttons carry no id; a stable order is proven by
-  // the number of distinct focus stops and by the first/last named controls.
+  // Overflow explanations are intentional extra stops (R3-2), not missing
+  // controls. Preserve the exact original control order after filtering ONLY
+  // the named explanation; unexpected BODY/scrollport stops still fail.
+  const controls = tabOrder.filter(id => id !== "approvals-gloss");
   record(
     "I7-tab-order",
-    tabOrder.length >= 6 &&
-      tabOrder[0] === "approvals-close" &&
-      tabOrder[1] === "approvals-allow-once" &&
-      tabOrder.at(-1) === "approvals-review",
-    { tabOrder },
+    JSON.stringify(controls) === JSON.stringify(["approvals-close", "approvals-allow-once", "", "", "", "", "approvals-review"]),
+    { tabOrder, controls },
   );
 
   // I8 — a stale seq decides nothing (the preload surface called with an old seq).
@@ -517,7 +518,18 @@ app.whenReady().then(async () => {
     await currentCard().webContents.executeJavaScript("document.getElementById('approvals-review').click()");
     await sleep(500);
     await shoot("review-all-list");
+    const reviewLayout = await currentCard().webContents.executeJavaScript("(() => { const r = document.getElementById('approvals-request'); const box = r.getBoundingClientRect(); return { hidden:r.hidden, display:getComputedStyle(r).display, width:box.width, height:box.height, decisions:[...r.querySelectorAll('button')].map(b => {const x=b.getBoundingClientRect();return {width:x.width,height:x.height};}) }; })()");
+    const reviewTabs = [];
+    for (let i=0; i<8; i++) {
+      currentCard().webContents.sendInputEvent({type:'keyDown',keyCode:'Tab'});
+      currentCard().webContents.sendInputEvent({type:'keyUp',keyCode:'Tab'});
+      await sleep(60);
+      reviewTabs.push(await currentCard().webContents.executeJavaScript("Boolean(document.activeElement.closest('#approvals-request'))"));
+    }
+    record("R3-review-all-hides-request-layout-and-tab-stops", reviewLayout.hidden && reviewLayout.display === "none" && reviewLayout.width === 0 && reviewLayout.height === 0 && reviewLayout.decisions.every(r => r.width === 0 && r.height === 0) && !reviewTabs.some(Boolean), {reviewLayout, reviewTabs});
     await currentCard().webContents.executeJavaScript("document.getElementById('approvals-back').click()");
+    const backLayout = await currentCard().webContents.executeJavaScript("(() => { const r=document.getElementById('approvals-request'); return {hidden:r.hidden,display:getComputedStyle(r).display,height:r.getBoundingClientRect().height}; })()");
+    record("R3-back-restores-request-layout", !backLayout.hidden && backLayout.display === 'flex' && backLayout.height > 0, backLayout);
     await sleep(300);
   }
 
@@ -586,6 +598,51 @@ app.whenReady().then(async () => {
     await sleep(150);
     record("Q2-hover-centre-deny-" + (error ?? "normal"), responded.length === before + 1 && responded.at(-1)?.decision === "deny" && geometry.overdraw === 0, { target, geometry, response: responded.at(-1), countBefore: before, countAfter: responded.length });
   }
+
+  // R3-2: native keyboard and wheel must reach the complete selected scope
+  // explanation. DOM-only tests use synthetic heights and cannot prove this.
+  // Fresh IDs avoid the earlier Escape's presentation dismissal selecting the
+  // second fixture entry (which intentionally has no broad/domain option).
+  const explanationEntries = entries.map((entry, index) => ({...entry,entryId:'explanation-'+index}));
+  controller.setModel({ entries: explanationEntries, error: "stale", locale: LOCALE, dir: "ltr", requesterLabels });
+  controller.open({ focus: false });
+  await readD1Settled(true);
+  await sleep(850);
+  const explanationRows = [];
+  for (let index=0; index<5; index++) {
+    const info = await currentCard().webContents.executeJavaScript(\`(() => {
+      const b=[document.getElementById('approvals-allow-once'),...document.querySelectorAll('#approvals-secondary button')][${"${index}"}];
+      b.focus(); const g=document.getElementById('approvals-gloss'); const r=g.getBoundingClientRect();
+      return {text:g.textContent,name:g.getAttribute('aria-label'),label:b.textContent,describedBy:b.getAttribute('aria-describedby'),tabIndex:g.tabIndex,height:g.clientHeight,content:g.scrollHeight,x:r.x+r.width/2,y:r.y+r.height/2};
+    })()\`);
+    if (info.content <= info.height + 1) {
+      explanationRows.push({...info,pass:info.tabIndex === -1,overflow:false});
+      continue;
+    }
+    currentCard().webContents.sendInputEvent({type:'keyDown',keyCode:'Tab'});
+    currentCard().webContents.sendInputEvent({type:'keyUp',keyCode:'Tab'});
+    currentCard().webContents.sendInputEvent({type:'keyDown',keyCode:'End'});
+    currentCard().webContents.sendInputEvent({type:'keyUp',keyCode:'End'});
+    await sleep(100);
+    const keyboard = await currentCard().webContents.executeJavaScript("(() => {const g=document.getElementById('approvals-gloss');return {active:document.activeElement.id,text:g.textContent,end:g.scrollTop+g.clientHeight,content:g.scrollHeight,outline:getComputedStyle(g).outlineStyle};})()");
+    // Reset position ONLY as setup. Actual pointer reveal is native wheel input.
+    await currentCard().webContents.executeJavaScript("document.getElementById('approvals-gloss').scrollTop=0");
+    const dbg = currentCard().webContents.debugger;
+    if (!dbg.isAttached()) dbg.attach('1.3');
+    for (let step=0; step<3; step++) {
+      await dbg.sendCommand('Input.dispatchMouseEvent',{type:'mouseWheel',x:info.x,y:info.y,deltaX:0,deltaY:250});
+      await sleep(100);
+    }
+    const pointer = await currentCard().webContents.executeJavaScript("(() => {const g=document.getElementById('approvals-gloss');return {text:g.textContent,end:g.scrollTop+g.clientHeight,content:g.scrollHeight};})()");
+    const geometry = await readD1();
+    const pass = info.name === info.label && info.describedBy === 'approvals-gloss' && keyboard.active === 'approvals-gloss' && keyboard.text === info.text && keyboard.end >= keyboard.content-1 && pointer.text === info.text && pointer.end >= pointer.content-1 && geometry.overdraw === 0;
+    explanationRows.push({...info,pass,overflow:true,keyboard,pointer,overdraw:geometry.overdraw});
+    if (FRAMES) {
+      const shot=await dbg.sendCommand('Page.captureScreenshot',{format:'png'});
+      writeFileSync(out+'/card-explanation-end-'+index+'.png',Buffer.from(shot.data,'base64'));
+    }
+  }
+  record('R3-complete-scope-text-keyboard-and-pointer', explanationRows.every(r=>r.pass), {explanationRows});
 
   // R2-1 on the real compiled document. This is local DOM focus, not an OS
   // focus claim. Do it after the host action proofs; no decision is submitted.

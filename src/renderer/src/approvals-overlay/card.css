@@ -164,7 +164,8 @@ html[data-opaque="1"] #approvals-card {
 /* Only explanatory text may shrink at the native height cap. Decision buttons
  * retain their intrinsic height; the footer is a separate flex item, so it
  * cannot paint over denial even when a translation needs more space (D2-1). */
-#approvals-request {
+#approvals-request:not([hidden]) {
+	/* An explicit display must not override the UA's [hidden] view switch. */
 	display: flex;
 	flex-direction: column;
 	flex: 1 1 auto;
@@ -260,6 +261,21 @@ html[data-opaque="1"] #approvals-card {
 	color: var(--lo-ink-dim);
 	font-size: 11px;
 	line-height: 1.4;
+	/* Keep gutter width stable when scopes start overflowing. A visible track
+	 * and border mark the explanation as scrollable without moving targets. */
+	scrollbar-gutter: stable;
+	scrollbar-width: thin;
+	scrollbar-color: var(--lo-ink-dim) var(--lo-elevated);
+}
+
+.card-gloss[data-overflow="true"] {
+	outline: 1px solid var(--lo-border-control);
+	outline-offset: 1px;
+}
+
+.card-gloss:focus-visible {
+	outline: 2px solid var(--lo-accent);
+	outline-offset: 2px;
 }
 
 .card-secondary {

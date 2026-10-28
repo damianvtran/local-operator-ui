@@ -78,6 +78,14 @@ function mount() {
 	};
 	dom.window.eval(code);
 	const doc = dom.window.document;
+	// Load the real stylesheet too: DOM hidden=true alone missed the authored
+	// display:flex override. jsdom proves computed visibility, not native rects.
+	const style = doc.createElement("style");
+	style.textContent = readFileSync(
+		"src/renderer/src/approvals-overlay/card.css",
+		"utf8",
+	);
+	doc.head.appendChild(style);
 	const push = (model) => dom.window.__approvalsCard.setModel(model);
 	return { dom, doc, calls, push };
 }
@@ -227,4 +235,131 @@ test("R2-1: re-arming does not replace a focused Review-all row", async () => {
 		doc.activeElement === row,
 		"the timer leaves the focused row intact",
 	);
+});
+
+const participatesInLayout = (dom, node) => {
+	for (let current = node; current; current = current.parentElement) {
+		if (dom.window.getComputedStyle(current).display === "none") return false;
+	}
+	return true;
+};
+const key = (dom, node, value, shiftKey = false) => {
+	const event = new dom.window.KeyboardEvent("keydown", {
+		key: value,
+		shiftKey,
+		bubbles: true,
+		cancelable: true,
+	});
+	node.dispatchEvent(event);
+	return event;
+};
+
+test("R3-1: real document and CSS hide request decisions in Review all, then restore them on Back", () => {
+	const { dom, doc, push } = mount();
+	push(modelOf(1, [req("a"), req("b")]));
+	const request = doc.getElementById("approvals-request");
+	assert.equal(dom.window.getComputedStyle(request).display, "flex");
+	click(dom, doc.getElementById("approvals-review"));
+	assert.equal(request.hidden, true);
+	assert.equal(
+		dom.window.getComputedStyle(request).display,
+		"none",
+		"authored flex rule must not override hidden",
+	);
+	assert.ok(
+		decisionButtons(doc).every((button) => !participatesInLayout(dom, button)),
+		"no request decision participates in the visible/tabbable tree",
+	);
+	assert.ok(participatesInLayout(dom, doc.getElementById("approvals-list")));
+	click(dom, doc.getElementById("approvals-back"));
+	assert.equal(request.hidden, false);
+	assert.equal(dom.window.getComputedStyle(request).display, "flex");
+	assert.ok(
+		decisionButtons(doc).every((button) => participatesInLayout(dom, button)),
+	);
+	assert.equal(
+		dom.window.getComputedStyle(doc.getElementById("approvals-list")).display,
+		"none",
+	);
+});
+
+test("R3-2: overflowing scope explanation is named, associated, reachable and scrollable without replacing its text", () => {
+	const { dom, doc, push, calls } = mount();
+	push(modelOf(1, [req("a", { broadKey: "example.test" })]));
+	const gloss = doc.getElementById("approvals-gloss");
+	// Layout inputs are synthetic in this source-only test. Actual translated
+	// pixel heights, native Tab and wheel-to-end are independent native QA gates.
+	Object.defineProperties(gloss, {
+		clientHeight: { configurable: true, get: () => 25 },
+		scrollHeight: { configurable: true, get: () => 46 },
+	});
+	const buttons = decisionButtons(doc);
+	const domain = buttons[3];
+	domain.focus();
+	const text = gloss.textContent;
+	assert.equal(gloss.tabIndex, 0);
+	assert.equal(gloss.getAttribute("role"), "region");
+	assert.equal(gloss.getAttribute("aria-label"), domain.textContent);
+	assert.ok(
+		buttons.every(
+			(button) => button.getAttribute("aria-describedby") === "approvals-gloss",
+		),
+	);
+	assert.equal(gloss.dataset.overflow, "true");
+	assert.ok(
+		dom.window.getComputedStyle(gloss).outline.includes("solid"),
+		"overflow has a visible border cue",
+	);
+	buttons[1].dispatchEvent(new dom.window.MouseEvent("mouseenter"));
+	assert.notEqual(
+		gloss.textContent,
+		text,
+		"pointer hover can preview another scope",
+	);
+	assert.equal(key(dom, domain, "Tab").defaultPrevented, true);
+	assert.ok(doc.activeElement === gloss);
+	assert.equal(
+		gloss.textContent,
+		text,
+		"keyboard entry restores its own scope, not the last pointer hover",
+	);
+	buttons[1].dispatchEvent(new dom.window.MouseEvent("mouseenter"));
+	assert.equal(
+		gloss.textContent,
+		text,
+		"entering/reading the gloss preserves the selected scope",
+	);
+	key(dom, gloss, "End");
+	assert.equal(
+		gloss.scrollTop + gloss.clientHeight,
+		gloss.scrollHeight,
+		"keyboard reaches the FULL explanation's end",
+	);
+	key(dom, gloss, "Home");
+	assert.equal(gloss.scrollTop, 0);
+	key(dom, gloss, "PageDown");
+	assert.equal(gloss.scrollTop, 21);
+	key(dom, gloss, "Home");
+	key(dom, gloss, "ArrowDown");
+	assert.equal(gloss.scrollTop, 16);
+	key(dom, gloss, "Tab", true);
+	assert.ok(
+		doc.activeElement === domain,
+		"reverse Tab returns to chosen scope",
+	);
+	key(dom, domain, "Tab");
+	key(dom, gloss, "Tab");
+	assert.ok(
+		doc.activeElement === buttons[4],
+		"forward Tab continues to next decision, not the first one",
+	);
+	assert.deepEqual(calls, [], "reading consequences never decides");
+	Object.defineProperty(gloss, "clientHeight", {
+		configurable: true,
+		get: () => 60,
+	});
+	buttons[1].focus();
+	assert.equal(gloss.tabIndex, -1, "short explanations add no stop");
+	assert.equal(gloss.dataset.overflow, "false");
+	assert.equal(key(dom, buttons[1], "Tab").defaultPrevented, false);
 });

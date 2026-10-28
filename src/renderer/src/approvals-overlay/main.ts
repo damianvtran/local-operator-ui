@@ -146,9 +146,99 @@ function expiringText(expiresAt: number): string {
 /** Each decision button's own gloss sentence, so the tallest can be reserved. */
 const glossFor = new WeakMap<HTMLButtonElement, string>();
 
-function setGloss(text: string): void {
-	if (glossNode) glossNode.textContent = text;
+let glossOwner: HTMLButtonElement | null = null;
+
+/** Only real overflow adds a keyboard stop; no extra stop for a short gloss. */
+function syncGlossAccess(): void {
+	if (!glossNode) return;
+	const overflowing =
+		!requestView?.hidden &&
+		glossNode.clientHeight > 0 &&
+		glossNode.scrollHeight > glossNode.clientHeight + 1;
+	glossNode.tabIndex = overflowing ? 0 : -1;
+	glossNode.dataset.overflow = String(overflowing);
+	glossNode.setAttribute("role", "region");
+	glossNode.setAttribute("aria-label", glossOwner?.textContent ?? "");
 }
+
+function setGloss(text: string, owner: HTMLButtonElement): void {
+	if (!glossNode) return;
+	// Once entered, the explanation belongs to the chosen scope. A stray hover
+	// on another decision must not replace its consequences while it is read.
+	if (document.activeElement === glossNode) return;
+	glossOwner = owner;
+	glossNode.textContent = text;
+	glossNode.scrollTop = 0;
+	syncGlossAccess();
+}
+
+function wireGloss(button: HTMLButtonElement, text: string): void {
+	glossFor.set(button, text);
+	button.setAttribute("aria-describedby", "approvals-gloss");
+	button.onmouseenter = () => setGloss(text, button);
+	button.onfocus = () => setGloss(text, button);
+	button.onkeydown = (event) => {
+		// The gloss precedes scoped decisions in DOM order. Route forward Tab
+		// through THAT decision's explanation when it overflows, rather than
+		// forcing users past other scopes that replace the selected text (R3-2).
+		if (event.key !== "Tab" || event.shiftKey) return;
+		// A pointer may have hovered a different scope since this button gained
+		// focus. Keyboard entry must describe the button being left, not that hover.
+		setGloss(text, button);
+		syncGlossAccess();
+		if (glossNode?.tabIndex !== 0) return;
+		event.preventDefault();
+		glossNode.focus();
+	};
+}
+
+// A bounded, named scrollport needs an actual keyboard path to its end, not
+// merely a tabindex. Tab continues after the scope whose text was read; reverse
+// Tab returns to that scope. Neither route changes the decision payload.
+glossNode?.addEventListener("keydown", (event) => {
+	if (!glossNode) return;
+	if (event.key === "Tab" && glossOwner) {
+		const buttons = [
+			allowOnceNode,
+			...(secondaryNode?.querySelectorAll("button") ?? []),
+		];
+		const index = buttons.indexOf(glossOwner);
+		const next = event.shiftKey
+			? glossOwner
+			: (buttons[index + 1] ?? reviewNode);
+		if (next) {
+			event.preventDefault();
+			next.focus();
+		}
+		return;
+	}
+	const maximum = Math.max(0, glossNode.scrollHeight - glossNode.clientHeight);
+	let target: number;
+	switch (event.key) {
+		case "End":
+			target = maximum;
+			break;
+		case "Home":
+			target = 0;
+			break;
+		case "ArrowDown":
+			target = glossNode.scrollTop + 16;
+			break;
+		case "ArrowUp":
+			target = glossNode.scrollTop - 16;
+			break;
+		case "PageDown":
+			target = glossNode.scrollTop + glossNode.clientHeight;
+			break;
+		case "PageUp":
+			target = glossNode.scrollTop - glossNode.clientHeight;
+			break;
+		default:
+			return;
+	}
+	event.preventDefault();
+	glossNode.scrollTop = Math.max(0, Math.min(maximum, target));
+});
 
 function action(
 	label: string,
@@ -158,10 +248,8 @@ function action(
 	const button = document.createElement("button");
 	button.type = "button";
 	button.textContent = label;
-	glossFor.set(button, gloss);
+	wireGloss(button, gloss);
 	button.addEventListener("click", onClick);
-	button.addEventListener("mouseenter", () => setGloss(gloss));
-	button.addEventListener("focus", () => setGloss(gloss));
 	return button;
 }
 
@@ -189,6 +277,7 @@ function reserveGloss(): void {
 		return;
 	}
 	const current = glossNode.textContent;
+	const scrollTop = glossNode.scrollTop;
 	let tallest = 0;
 	for (const text of glossTexts) {
 		glossNode.textContent = text;
@@ -197,6 +286,9 @@ function reserveGloss(): void {
 	glossNode.textContent = current;
 	if (tallest > 0) glossNode.style.flexBasis = `${Math.ceil(tallest)}px`;
 	glossNode.style.flexShrink = "";
+	// Measuring shorter alternatives can clamp the scroll position to zero.
+	// Restore the reader's place after the selected explanation is back.
+	glossNode.scrollTop = scrollTop;
 }
 
 function dismiss(): void {
@@ -340,7 +432,10 @@ function setView(view: "request" | "list"): void {
 	if (reviewNode) reviewNode.hidden = view !== "request";
 	if (backNode) backNode.hidden = view !== "list";
 	if (view === "request") reserveGloss();
-	setTimeout(syncScrim, 0);
+	setTimeout(() => {
+		syncScrim();
+		syncGlossAccess();
+	}, 0);
 }
 
 /** Refresh only inert/expired state, without replacing the focused DOM nodes. */
@@ -421,11 +516,11 @@ function render(): void {
 			allowOnceNode.disabled =
 				model.busy || isInert() || (minutesLeft(request.expiresAt) ?? 1) <= 0;
 			allowOnceNode.onclick = () => sendDecision("once");
-			setGloss(
-				t(
-					"ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to",
-				),
+			const primaryGloss = t(
+				"ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to",
 			);
+			wireGloss(allowOnceNode, primaryGloss);
+			setGloss(primaryGloss, allowOnceNode);
 		}
 		renderSecondary(request);
 		glossTexts = [
@@ -482,7 +577,10 @@ function render(): void {
 	}
 	// After the view switch and the model paint; a timer, not rAF, because the
 	// card's window is hidden and runs no animation frames.
-	setTimeout(syncScrim, 0);
+	setTimeout(() => {
+		syncScrim();
+		syncGlossAccess();
+	}, 0);
 }
 
 window.__approvalsCard = {
@@ -497,6 +595,7 @@ window.__approvalsCard = {
 		reserveGloss();
 		const height = card.getBoundingClientRect().height;
 		card.style.maxHeight = previous;
+		syncGlossAccess();
 		return height;
 	},
 	setModel(next: ApprovalsCardModel): void {
@@ -552,7 +651,13 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("resize", () => {
 	syncScrim();
 	reserveGloss();
+	syncGlossAccess();
 });
+// The native viewport may resize after the host's measurement resolves. Keep
+// accessibility in step with the resulting scrollport, without an IPC channel.
+if (glossNode && typeof ResizeObserver !== "undefined") {
+	new ResizeObserver(syncGlossAccess).observe(glossNode);
+}
 
 setInterval(() => {
 	const request = shownRequest();
