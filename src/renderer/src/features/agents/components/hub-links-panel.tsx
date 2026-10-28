@@ -14,6 +14,7 @@ import {
 	type HubLinkKind,
 	type HubUnresolvedLink,
 	baselineIsKnown,
+	hubLinkContentState,
 	linksForLocalItem,
 } from "@shared/api/local-operator/hub-links";
 import { HubMutationUpgradeRequired } from "@shared/api/local-operator/hub-mutation-safety";
@@ -271,7 +272,17 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 				<Button
 					variant="outline"
 					size="sm"
-					disabled={busy || !actions.canWrite}
+					/*
+					 * NOTHING TO PREVIEW INTO WITHOUT A COPY (QA r1 Q3 / UX U1): on a
+					 * subscribed-but-not-installed skill core answers this dry run 422
+					 * ("did not complete"), a dead end in developer words. The way in
+					 * is the pane's own Download; this waits for a copy to exist.
+					 */
+					disabled={
+						busy ||
+						!actions.canWrite ||
+						(link.kind === "skill" && hubLinkContentState(link) === "absent")
+					}
 					onClick={() =>
 						run({ action: "apply", linkId: link.link_id, preview: true })
 					}

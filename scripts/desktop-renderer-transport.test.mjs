@@ -1293,7 +1293,9 @@ test("the config run's submit and retry guards read attachments, not text alone 
 	);
 	assert.match(
 		config,
-		/\(!state\.topic && state\.images\.length === 0\)/,
+		// `prompt`, the SENT body Retry re-sends (#1458: `topic` is now the typed
+		// words for "You asked", which an image-only run may leave empty).
+		/\(!state\.prompt && state\.images\.length === 0\)/,
 		"retry's guard is text-only again, so the visible Retry control does nothing for an image-only run",
 	);
 });
