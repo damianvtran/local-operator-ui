@@ -113,27 +113,57 @@ const applyStepSevenShape = (tour: Tour): boolean => {
 };
 
 /**
- * Tours that opened the command palette and have not closed it again.
+ * The palette's close generation, and the generation each tour's claim was
+ * taken in.
  *
  * R3-2 is a contract about ownership: the tour closes the palette IT opened and
  * leaves a palette the user opened alone. That cannot be answered by asking
  * whether the palette is open - it is open in both cases - so each tour records
- * its own claim here. A WeakSet keeps a tour that disappears without a complete
+ * its own claim here. A WeakMap keeps a tour that disappears without a complete
  * or cancel from leaving state behind.
+ *
+ * A claim on its own answers a weaker question than the contract asks: "this
+ * tour opened a palette at some point", not "the palette on screen is the one it
+ * opened". `Cmd+K` is a window-level shortcut the tour does not intercept, so a
+ * user standing on step 7 can close the tour's palette and open their own; a
+ * claim that survives that close makes the tour shut a dialog it never opened
+ * (review round 4, R4-1). The store's flag is the only place that transition is
+ * observable, and a WeakMap cannot be enumerated to clear, so a claim records
+ * the generation it was taken in and expires when the generation moves on.
+ * Module state because the claim outlives any mount: the buttons that read it
+ * are Shepherd's, not React's.
  */
-const paletteOpenedByTour = new WeakSet<Tour>();
+let paletteCloseGeneration = 0;
+const paletteClaimGeneration = new WeakMap<Tour, number>();
+
+useUiPreferencesStore.subscribe((state, previous) => {
+	if (previous.isCommandPaletteOpen && !state.isCommandPaletteOpen) {
+		paletteCloseGeneration += 1;
+	}
+});
 
 /**
  * Close the palette if THIS tour opened it, and do nothing otherwise.
  *
  * Called when a tour ends (the hook's cancel/complete listener) and when a hop
- * out of step 7 leaves. `WeakSet.delete` doubles as the atomic
- * "claim was there" test, so a second call - a hop that already closed it, then
- * a cancel - cannot close a palette the user has opened in between.
+ * out of step 7 leaves. `WeakMap.delete` doubles as the atomic "claim was
+ * there" test, so a second call - a hop that already closed it, then a cancel -
+ * cannot close a palette the user has opened in between. Returns whether it
+ * actually closed the palette, which is the difference between waiting for the
+ * palette's unmount and moving on immediately.
  */
-export const releaseTourCommandPalette = (tour: Tour): void => {
-	if (!paletteOpenedByTour.delete(tour)) return;
+export const releaseTourCommandPalette = (tour: Tour): boolean => {
+	const claimed = paletteClaimGeneration.get(tour);
+	if (claimed === undefined) return false;
+	paletteClaimGeneration.delete(tour);
+	/*
+	 * A claim from an earlier generation belongs to a palette the user has since
+	 * replaced, so it is spent rather than ours - and it is dropped on the way
+	 * out so it cannot be spent a second time.
+	 */
+	if (claimed !== paletteCloseGeneration) return false;
 	useUiPreferencesStore.getState().closeCommandPalette();
+	return true;
 };
 
 /**
@@ -161,7 +191,7 @@ const openCommandPaletteForStepSeven = (tour: Tour, go: () => void): void => {
 	const store = useUiPreferencesStore.getState();
 	if (!store.isCommandPaletteOpen) {
 		store.openCommandPalette();
-		paletteOpenedByTour.add(tour);
+		paletteClaimGeneration.set(tour, paletteCloseGeneration);
 	}
 	/*
 	 * The wait is skipped when the tour has ended in the meantime. Without the
@@ -181,17 +211,18 @@ const openCommandPaletteForStepSeven = (tour: Tour, go: () => void): void => {
  *
  * The predicate is ownership, not the shape: a window resized to the narrow
  * shape while step 7 is on screen still leaves a palette the tour opened behind,
- * and that one has to close.
+ * and that one has to close. The wait follows the same answer - a palette the
+ * user closed and replaced is not one this hop has to wait for, and stalling on
+ * it is the second half of R4-1.
  */
 const closeCommandPaletteAfterStepSeven = (
 	tour: Tour,
 	go: () => void,
 ): void => {
-	if (!paletteOpenedByTour.has(tour)) {
+	if (!releaseTourCommandPalette(tour)) {
 		go();
 		return;
 	}
-	releaseTourCommandPalette(tour);
 	setTimeout(() => {
 		if (tour.isActive()) go();
 	}, 500);

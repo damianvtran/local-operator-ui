@@ -33,7 +33,11 @@
  *  7. the hop state machine - a tour cancelled during a hop's 500 ms wait stays
  *     closed, ending a tour releases only the palette it opened, and a window
  *     resized across the breakpoint mid-tour is honoured at show time (review
- *     round 3, R3-1 to R3-3).
+ *     round 3, R3-1 to R3-3);
+ *  8. palette ownership when the user moves the palette - a palette the user
+ *     closed and replaced, or already had open before the hop, is neither
+ *     claimed nor closed, and the close-side hop keeps its cancel guard (review
+ *     round 4, R4-1 and R4-2).
  *
  * WHAT IT CANNOT PROVE: the rendered pixels (the design round and QA own those),
  * a real browser's layout under RTL, or production translations. The non-English
@@ -1223,6 +1227,180 @@ test("step 7's shape follows a resize even when the tour shows it directly", asy
 		assert.ok(
 			step.options.classes?.split(" ").includes(mod.STEP_BESIDE_PALETTE_CLASS),
 			"a direct show must still apply the shape of the window it renders in",
+		);
+	} finally {
+		await started.stop();
+		window.innerWidth = original;
+	}
+});
+
+/* ---------------------------------------------------------------------------
+ * 9. Palette ownership when the user moves the palette (review round 4).
+ *
+ * The claim `releaseTourCommandPalette` keeps is about "the palette this tour
+ * opened", and the three tests here are the cases where that is not the same as
+ * "the palette on screen": a palette the user replaced, a palette the user
+ * already had up before the hop, and the close-side wait those two paths run
+ * through. All three drive the REAL tour and the REAL store, because both
+ * defects live in state that no source read can replay - a claim that outlives
+ * a close, and a timer that outlives a cancel.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Press a footer button and wait for the step it defers, rather than trusting
+ * the fixed sleep inside `hop` to outlast a loaded machine.
+ */
+async function hopTo(tour, variant, stepId) {
+	await hop(tour, variant);
+	await mod.act(async () => {
+		await waitFor(() => tour.getCurrentStep()?.id === stepId);
+	});
+}
+
+test("a palette the user replaced after closing the tour's survives the hop out", async () => {
+	const original = window.innerWidth;
+	const started = await startTourThroughHook(
+		mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40,
+	);
+	try {
+		await walkToStepSix(started.tour);
+		await hopTo(started.tour, "primary", "pre-command-palette-open-canvas");
+		assert.equal(
+			paletteOpen(),
+			true,
+			"step 7 opens the palette it sits beside",
+		);
+
+		/*
+		 * What `Cmd+K` does twice: shut the palette the tour opened, then open the
+		 * user's own. The shortcut is a window-level listener, so the tour never
+		 * sees either transition - the store flag is the only witness (R4-1).
+		 */
+		mod.useUiPreferencesStore.getState().toggleCommandPalette();
+		mod.useUiPreferencesStore.getState().toggleCommandPalette();
+		assert.equal(
+			paletteOpen(),
+			true,
+			"the user's palette is the one on screen",
+		);
+
+		const next = shownStepElement()?.querySelector(
+			".shepherd-footer .shepherd-button-primary",
+		);
+		assert.ok(next, "step 7 must carry its footer");
+		await mod.act(async () => {
+			next.click();
+			await sleep(200);
+		});
+
+		assert.equal(
+			paletteOpen(),
+			true,
+			"the tour must not close a palette it did not open",
+		);
+		/*
+		 * And it must not wait for the palette's unmount either: nothing of the
+		 * tour's was closed, so the step advances at once rather than on the
+		 * 500 ms timer.
+		 */
+		assert.equal(
+			started.tour.getCurrentStep()?.id,
+			"canvas-open-button",
+			"a hop with no palette of its own has nothing to wait for",
+		);
+	} finally {
+		await started.stop();
+		window.innerWidth = original;
+	}
+});
+
+test("a palette the user already had open is neither opened nor claimed", async () => {
+	const original = window.innerWidth;
+	/*
+	 * `closePalette: false` keeps the palette the user opened before the tour
+	 * started. Claiming it would make the tour close a dialog that was never its
+	 * own on the way out (R4-2b).
+	 */
+	mod.useUiPreferencesStore.getState().openCommandPalette();
+	const started = await startTourThroughHook(
+		mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40,
+		{ closePalette: false },
+	);
+	try {
+		assert.equal(paletteOpen(), true, "the user's palette predates the tour");
+		await walkToStepSix(started.tour);
+		await hopTo(started.tour, "primary", "pre-command-palette-open-canvas");
+		assert.equal(
+			started.tour.getCurrentStep()?.id,
+			"pre-command-palette-open-canvas",
+		);
+		assert.equal(
+			paletteOpen(),
+			true,
+			"the hop must leave a palette it did not open alone",
+		);
+
+		await hop(started.tour, "primary");
+		assert.equal(
+			paletteOpen(),
+			true,
+			"and the hop out must not close what it never claimed",
+		);
+	} finally {
+		await started.stop();
+		window.innerWidth = original;
+	}
+});
+
+test("cancelling during the step 7 -> 8 wait keeps the tour closed", async () => {
+	const original = window.innerWidth;
+	const started = await startTourThroughHook(
+		mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40,
+	);
+	try {
+		await walkToStepSix(started.tour);
+		await hopTo(started.tour, "primary", "pre-command-palette-open-canvas");
+
+		// Next closes the tour's palette first, then defers step 8 by 500 ms.
+		const next = shownStepElement()?.querySelector(
+			".shepherd-footer .shepherd-button-primary",
+		);
+		assert.ok(next, "step 7 must carry its footer");
+		/*
+		 * Pressed the way the round-3 tests press a live button: a plain click and a
+		 * short sleep, so `act` cannot flush the pending 500 ms hop before the close
+		 * control is clicked.
+		 */
+		next.click();
+		await sleep(120);
+		assert.equal(paletteOpen(), false, "the close side runs before the wait");
+
+		const close = shownStepElement()?.querySelector(".shepherd-cancel-icon");
+		assert.ok(close, "the panel is still up during the close-side wait");
+		close.click();
+		assert.equal(
+			started.tour.isActive(),
+			false,
+			"the close control must cancel",
+		);
+
+		await mod.act(async () => {
+			await sleep(700);
+		});
+		assert.equal(
+			started.tour.isActive(),
+			false,
+			"the close-side wait may not resume a cancelled tour",
+		);
+		assert.equal(
+			started.tour.getCurrentStep()?.id,
+			"pre-command-palette-open-canvas",
+			"the cancelled tour must stay where it was cancelled",
+		);
+		assert.equal(
+			document.querySelectorAll(".shepherd-element").length,
+			0,
+			"no panel may be rendered for the cancelled tour",
 		);
 	} finally {
 		await started.stop();
