@@ -1,0 +1,109 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-record",
+	"audit_kind": "independent-delta-audit-of-the-wave-b-remediation-head",
+	"batch": "wave-b",
+	"round": "R2 (remediation delta)",
+	"audit_id": "wb-d2-9b3e2c165c87",
+	"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+	"locale": "zh-CN",
+	"namespace": "ui.chat.status",
+	"audit_date": "2026-10-27",
+	"head": "a5356ce91c",
+	"head_full": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+	"parent_full": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+	"key_count": 4,
+	"wave_b_keys": 4,
+	"changed_keys": [
+		"ui.chat.status.internet_offline",
+		"ui.chat.status.unreachable"
+	],
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "9b3e2c165c87",
+		"model": "radient/auto",
+		"model_provenance": {
+			"route": "radient/auto",
+			"route_source": "the harness system prompt of this session ('Model: radient/auto')",
+			"fallback_used": false,
+			"fallback_chain": [],
+			"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/9b3e2c165c87/transcript.jsonl, 264 events, types message/custom only); the phrase occurs only inside prompt text that quotes the guidance itself. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports.",
+			"disclosure": "Every judgement below was made in this session under the recorded route; no model change was requested or observed."
+		},
+		"independent_from_translator_session": true,
+		"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/9b3e2c165c87/transcript.jsonl, 264 events, types message/custom only); the phrase occurs only inside prompt text that quotes the guidance itself. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports."
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"model_note": "router alias recorded by the coordinator for the reply lane; the upstream model is not exposed to the auditor. Disclosed rather than guessed.",
+		"date": "2026-10-27"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.status.json",
+			"sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.status.context.json",
+			"sha256": "a62b34dde0f22e95c34793f1f87791fc38385c68c840a0f6c60adf304aaec561"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.chat.status.json",
+			"sha256": "7fc957cfa3e777bd6d59fb7398b946637c3bca799a52f9008caddd4cd567d86e"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/zh-CN/ui.chat.status/wb-d2-9b3e2c165c87/audit.log",
+			"sha256": "bea14157a893184fd6d10e263e428ebb857132ee5e2c9ffa08e18eb8fcaae2e7"
+		},
+		{
+			"path": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+			"sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d"
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean",
+		"unresolved_blocker_major_count": 0,
+		"severity_counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		},
+		"finding_ids": [],
+		"independent_of_translator": true
+	},
+	"delta": {
+		"changed_keys": [
+			"ui.chat.status.internet_offline",
+			"ui.chat.status.unreachable"
+		],
+		"unchanged_wave_b_values": 2,
+		"note": "Parsed-JSON diff 0559f7f7d8 -> a5356ce91c proves this file's other values are byte-identical to the audited bytes (delta-diff.log); the changed values are audited in audit.log §1-2."
+	},
+	"resolutions": [
+		{
+			"id": "ZH-WB-5",
+			"severity_in_earlier_audit": "NIT",
+			"namespace": "ui.chat.status",
+			"key": "ui.chat.status.internet_offline + ui.chat.status.unreachable",
+			"earlier_suggestion": "…发送将排队等待。",
+			"applied": "本机已离线。发送将排队等待。 / 无法连接Local Operator服务器。发送将排队等待。",
+			"decision": "resolved",
+			"judgement": "Applied to both keys. 排队等待 was the group's one calque (发送将等待); the strip now uses the locale's queued verb, and the 将/已 pair (发送将排队等待 vs 消息已排队等待 in degraded) keeps EN's own distinction between 'Sending will wait' and 'Your messages are queued' while the queue itself is named the same way in both rows. Weighed and not filed: the zh is one step more concrete than EN's bare 'wait', but the promise is the same one EN makes (the send waits, it is not lost), and the two rows that say it are the two where nothing can be delivered yet. The subjects stay correct — 本机 for 'this machine' (shipped: 本机：…, 本机的…), Local Operator untouched and unspaced per the guide.",
+			"checked": "degraded sibling 消息已排队等待; state vocabulary read in chat-status.ts (internet-offline vs degraded are distinct root causes)."
+		}
+	],
+	"findings": [],
+	"next_action": "None: no finding in this namespace.",
+	"limitations": [
+		"No browser or rendered frame was available, so no pixel, truncation or overflow claim is made; widths are codepoint cell counts, not measurements.",
+		"No native-speaker sign-off is claimed; the audit is an independent agent read of the locale against its own shipped catalogue, the glossary and the style guide.",
+		"Pre-existing keys in the nine files were read as terminology evidence, not re-audited, except where a finding names one (ZH-WBD-1).",
+		"The English copy was read as the source, not audited as English; the one English change (the closed code span) was verified only for what it does to both locales through the formatter.",
+		"The upstream model behind the radient/auto route is not exposed to this session; the recorded route is the harness's own."
+	]
+}

@@ -409,6 +409,75 @@
 	"ui.chat.question_dock.hint.secret_held": "Held-state secret hint: nothing can send, only the card's own Escape works.",
 	"ui.chat.question_dock.hint.type": "Hint when the question offers no options.",
 	"ui.chat.question_dock.hint.options": "Hint when options are offered; {digits} is a precomputed key range such as '1-3'.",
+	"ui.chat.session_status.context_heading": {
+		"role": "the word Context as a proportional-heading line in the draft context tooltip",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "A heading, not a sentence: the tooltip draws it as prose (never monospace) over the sentence below it. It names the reading the control shows.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.context_nothing_measured_tooltip": {
+		"role": "accessible name of the context reading on a draft conversation",
+		"tone": "one utterance leading with the word Context, comma after it, two sentences, trailing period",
+		"length": "Fourteen words.",
+		"note": "The same fact the tooltip states, written as ONE utterance for screen readers. 'No reading yet' would also be true of a resumed session and is deliberately not used: a draft's window fills because the user sends the first message.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.conversation_starting": {
+		"role": "the effort reading's line on a draft, before any conversation exists",
+		"tone": "statement, sentence case, trailing period",
+		"length": "Six words.",
+		"note": "The reasoning-effort ladder is real but not yet available on a draft, so the line says when it becomes so. It must not read as an instruction.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.model_none_resolved_tooltip": {
+		"role": "accessible name of the model reading when the backend resolved a model that names none",
+		"tone": "one utterance leading with the word Model, colon after it, two sentences, trailing period",
+		"length": "Fifteen words.",
+		"note": "Only the RESOLVED-no-model state says this: a resolution still in flight, or one that failed, are drawn by their own readings. The second sentence is the offer the control performs.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.not_signed_in": {
+		"role": "title of the model-access band when this session runs a provider with no working sign-in",
+		"tone": "statement of fact, sentence case, no trailing punctuation",
+		"length": "Four words plus the provider name.",
+		"note": "The provider's display label is carried by the placeholder and must stay verbatim. The temporary-unavailability arm has its own title and is selected before this one.",
+		"placeholders": {
+			"label": "the provider's display label as the app received it, e.g. Radient. A product name: keep it verbatim, never translate it."
+		}
+	},
+	"ui.chat.session_status.not_signed_in_description": {
+		"role": "the sentence under the not-signed-in title, naming the remedy",
+		"tone": "statement plus the remedy, sentence case, trailing period",
+		"length": "Twenty words plus the provider name.",
+		"note": "Says what is true of the session rather than what the reader did: the sign-in is missing on this machine, and connecting it is the fix. It must not blame an expired credential — that is the sibling arm's sentence.",
+		"placeholders": {
+			"label": "the provider's display label as the app received it. A product name: keep it verbatim, never translate it."
+		}
+	},
+	"ui.chat.session_status.nothing_measured_yet": {
+		"role": "the sentence under the Context heading in the draft context tooltip",
+		"tone": "statement plus the reason, sentence case, trailing period",
+		"length": "Eleven words.",
+		"note": "Names the fact and the reason. The window is the context window; it fills as the conversation runs, which is why a draft has nothing in it.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.temporarily_unavailable": {
+		"role": "title of the model-access band when the provider is temporarily refusing access",
+		"tone": "statement of fact, sentence case, no trailing punctuation",
+		"length": "Four words plus the provider name.",
+		"note": "The transient arm of the not-signed-in title, selected first when the wire reports `temporarily_unavailable`. The difference from `Not signed in to {label}` matters: nothing was revoked, so the reader should retry rather than reconnect.",
+		"placeholders": {
+			"label": "the provider's display label as the app received it. A product name: keep it verbatim."
+		}
+	},
+	"ui.chat.session_status.temporarily_unavailable_description": {
+		"role": "the sentence under the temporarily-unavailable title",
+		"tone": "reassurance plus two remedies, sentence case, trailing period",
+		"length": "Thirteen words.",
+		"note": "Says the credential is still saved, which is the fact that makes retrying reasonable. Never imply the sign-in was lost or expired.",
+		"placeholders": {}
+	},
 	"ui.chat.checkpoint.turn": {
 		"role": "the structural identity of one turn in the conversation, shown on the run-details rail",
 		"tone": "noun phrase, sentence case, no trailing punctuation",

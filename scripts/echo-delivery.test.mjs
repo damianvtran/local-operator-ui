@@ -52,6 +52,7 @@ const bundle = await build({
 	// The renderer's aliases are tsconfig paths, not node resolutions.
 	alias: {
 		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
 		"@features": "./src/renderer/src/features",
 	},
 	plugins: [

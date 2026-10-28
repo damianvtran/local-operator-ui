@@ -13,6 +13,7 @@
  * cell grid — but which fact lands in which column, and which fact is dropped
  * first when there is no room, are decisions this file keeps identical.
  */
+import { t } from "@shared/i18n";
 
 /**
  * Arguments that identify WHAT a call acted on, as opposed to its payload.
@@ -1448,7 +1449,11 @@ export function toolVerb(toolName: string, op?: string | null): ToolVerb {
 	if (byOp) return { ...byOp, named: true };
 	const known = TOOL_VERBS[name];
 	if (known) return { ...known, named: true };
-	return { settled: "Called", running: "Calling", named: false };
+	return {
+		settled: t("ui.chat.canonical.tool_row.generic_verb.settled"),
+		running: t("ui.chat.canonical.tool_row.generic_verb.running"),
+		named: false,
+	};
 }
 
 export type ToolRowLabel = {

@@ -1,0 +1,218 @@
+{
+	"audit_id": "teambridge-pr1446-invitations-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"locale": "ur",
+	"namespace": "ui.teamBridge",
+	"source_commit": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+	"translator": {
+		"agent": "translator",
+		"session": "c995ffd759f3",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+		"method": "LLM reasoning; the translator transcript references no MT service (deepl/googletrans/libretranslate/argos: 0 hits)"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-27",
+			"result": "changes_requested",
+			"instance": "6d269032fdc7-ur",
+			"findings": {
+				"blocker": 0,
+				"major": 1,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/6d269032fdc7-ur.json",
+			"receipt_sha256": "89f101231914fcedd250f02966faa4a676a6d7ef76f86fd782fd4688085df319",
+			"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+			"note": "PR #1446 invitations audit (F1 MAJOR). Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+		}
+	],
+	"ledger_status": "changes_requested",
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The translator was session c995ffd759f3 (coder role, commit 23ddabe864). This run wrote only these receipts, the per-locale evidence records and the ledger rows (via ledger-assemble.mjs).",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+			"sha256": "feedf3101a471f420b99dbc362292ed9dad1470238adc32edcf01e40c1c5dc1d"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "d0b5a7223fc79264478b8e3b07b6a05b14e548ec388a8a193af3b9ab0db42ef6"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.invitations.title": {
+			"en": "Invitations",
+			"target": "دعوتیں"
+		},
+		"ui.teamBridge.invitations.count": {
+			"en": "{count, plural, one {{count} invitation waiting for you} other {{count} invitations waiting for you}}",
+			"target": "{count, plural, one {{count} دعوت آپ کی منتظر ہے} other {{count} دعوتیں آپ کی منتظر ہیں}}"
+		},
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": {
+			"en": "Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.",
+			"target": "قبول کرنے پر آپ کا ایجنٹ اب سے اس گفتگو کو پڑھ سکے گا اور اس میں پیغامات پوسٹ کر سکے گا۔ یہ صرف تب جاگتا ہے جب کوئی @ کے ساتھ اس کا ذکر کرے۔"
+		},
+		"ui.teamBridge.invitations.loading": {
+			"en": "Loading invitations…",
+			"target": "دعوتیں لوڈ ہو رہی ہیں…"
+		},
+		"ui.teamBridge.invitations.load_failed": {
+			"en": "Invitations could not be loaded.",
+			"target": "دعوتیں لوڈ نہیں ہو سکیں۔"
+		},
+		"ui.teamBridge.invitations.empty": {
+			"en": "No invitations are waiting for your agent.",
+			"target": "آپ کے ایجنٹ کے لیے کوئی دعوت منتظر نہیں۔"
+		},
+		"ui.teamBridge.invitations.agent_line": {
+			"en": "{agent} was invited to this conversation",
+			"target": "{agent} کو اس گفتگو میں مدعو کیا گیا ہے"
+		},
+		"ui.teamBridge.invitations.agent_fallback": {
+			"en": "Your agent",
+			"target": "آپ کا ایجنٹ"
+		},
+		"ui.teamBridge.invitations.added_by": {
+			"en": "Added by {name}",
+			"target": "{name} نے شامل کیا"
+		},
+		"ui.teamBridge.invitations.added_by_you": {
+			"en": "Added by you",
+			"target": "آپ نے شامل کیا"
+		},
+		"ui.teamBridge.invitations.created_by": {
+			"en": "Conversation created by {name}",
+			"target": "گفتگو {name} نے بنائی"
+		},
+		"ui.teamBridge.invitations.created_by_you": {
+			"en": "Conversation created by you",
+			"target": "گفتگو آپ نے بنائی"
+		},
+		"ui.teamBridge.invitations.accept": {
+			"en": "Accept",
+			"target": "قبول کریں"
+		},
+		"ui.teamBridge.invitations.accepting": {
+			"en": "Accepting…",
+			"target": "قبول کیا جا رہا ہے…"
+		},
+		"ui.teamBridge.invitations.decline": {
+			"en": "Decline",
+			"target": "انکار کریں"
+		},
+		"ui.teamBridge.invitations.declining": {
+			"en": "Declining…",
+			"target": "انکار کیا جا رہا ہے…"
+		},
+		"ui.teamBridge.invitations.accepted": {
+			"en": "Accepted. {agent} is woken only when someone @-mentions it.",
+			"target": "قبول کر لیا گیا۔ {agent} صرف تب جاگتا ہے جب کوئی @ کے ساتھ اس کا ذکر کرے۔"
+		},
+		"ui.teamBridge.invitations.declined": {
+			"en": "Declined for {agent}.",
+			"target": "{agent} کے لیے انکار کر دیا گیا۔"
+		},
+		"ui.teamBridge.invitations.failed.agent_unavailable": {
+			"en": "Your agent can’t join from here: it is paused, turned off or not set up for this organization. Turn it on in Settings, then try again.",
+			"target": "آپ کا ایجنٹ یہاں سے شامل نہیں ہو سکتا: یہ موقوف ہے، بند ہے یا اس تنظیم کے لیے سیٹ اپ نہیں۔ اسے ترتیبات میں فعال کریں، پھر دوبارہ کوشش کریں۔"
+		},
+		"ui.teamBridge.invitations.failed.already_answered": {
+			"en": "This invitation was already answered elsewhere. Its current state is shown in the conversation.",
+			"target": "اس دعوت کا جواب کہیں اور پہلے ہی دیا جا چکا ہے۔ اس کی موجودہ حالت گفتگو میں دکھائی گئی ہے۔"
+		},
+		"ui.teamBridge.invitations.failed.gone": {
+			"en": "This invitation is no longer available. The conversation or your agent’s place in it was removed.",
+			"target": "یہ دعوت اب دستیاب نہیں۔ گفتگو، یا اس میں آپ کے ایجنٹ کی جگہ، ہٹا دی گئی ہے۔"
+		},
+		"ui.teamBridge.invitations.failed.runtime_outdated": {
+			"en": "This runtime can’t accept invitations. Update Local Operator, then try again.",
+			"target": "یہ رن ٹائم دعوتیں قبول نہیں کر سکتا۔ Local Operator اپ ڈیٹ کریں، پھر دوبارہ کوشش کریں۔"
+		},
+		"ui.teamBridge.invitations.failed.outdated": {
+			"en": "This version of the app can’t accept invitations any more. Update the app, then try again.",
+			"target": "ایپ کا یہ ورژن اب دعوتیں قبول نہیں کر سکتا۔ ایپ اپ ڈیٹ کریں، پھر دوبارہ کوشش کریں۔"
+		},
+		"ui.teamBridge.invitations.failed.not_available": {
+			"en": "Team Bridge isn’t available for this organization right now.",
+			"target": "Team Bridge اس وقت اس تنظیم کے لیے دستیاب نہیں۔"
+		},
+		"ui.teamBridge.invitations.failed.sign_in": {
+			"en": "You’re signed out. Sign in, then try again.",
+			"target": "آپ سائن آؤٹ ہیں۔ سائن ان کریں، پھر دوبارہ کوشش کریں۔"
+		},
+		"ui.teamBridge.invitations.failed.unreachable": {
+			"en": "The app couldn’t reach Radient. Nothing was changed. Try again.",
+			"target": "ایپ Radient تک نہیں پہنچ سکی۔ کچھ نہیں بدلا گیا۔ دوبارہ کوشش کریں۔"
+		},
+		"ui.teamBridge.invitations.read_only": {
+			"en": "This organization is read-only for you, so invitations can’t be answered here.",
+			"target": "یہ تنظیم آپ کے لیے صرف پڑھنے کے لیے ہے، اس لیے یہاں دعوتوں کا جواب نہیں دیا جا سکتا۔"
+		},
+		"ui.teamBridge.invitations.failed.unconfirmed": {
+			"en": "Your answer was not confirmed. Try again.",
+			"target": "آپ کے جواب کی تصدیق نہیں ہوئی۔ دوبارہ کوشش کریں۔"
+		}
+	},
+	"special_scrutiny": {
+		"key": "ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+		"verdict": "faithful and complete",
+		"checked": [
+			"read AND post in this conversation",
+			"from now on",
+			"woken only on an @-mention",
+			"nothing added",
+			"no muted/silent sense"
+		]
+	},
+	"notes": "آپ register; ایجنٹ, رن ٹائم (15 catalogue uses), ترتیبات per guide, گفتگو and موقوف consistent with namespace; no bidi controls. Consent: 'اب سے اس گفتگو کو پڑھ سکے گا اور اس میں پیغامات پوسٹ کر سکے گا' + 'صرف تب جاگتا ہے جب کوئی @ کے ساتھ اس کا ذکر کرے' - faithful, no خاموش.",
+	"findings": [
+		{
+			"id": "F1",
+			"severity": "MAJOR",
+			"key": "ui.teamBridge.invitations.agent_fallback",
+			"related_keys": [
+				"ui.teamBridge.invitations.agent_line",
+				"ui.teamBridge.invitations.declined",
+				"ui.teamBridge.invitations.accepted"
+			],
+			"issue": "With an unnamed agent {agent} is filled with the direct form 'آپ کا ایجنٹ'. agent_line and declined put it before a postposition, giving ungrammatical 'آپ کا ایجنٹ کو اس گفتگو میں مدعو کیا گیا ہے' and 'آپ کا ایجنٹ کے لیے انکار کر دیا گیا۔' (oblique 'آپ کے ایجنٹ' required). accepted ('… {agent} صرف تب جاگتا ہے …') takes the direct form, so a single fallback cannot serve all three as written.",
+			"evidence": "IntlMessageFormat render with {agent}=agent_fallback (render-1446.txt); call site team-bridge-invitations.tsx:257.",
+			"fix": "Catalogue-only: make every host oblique, e.g. fallback 'آپ کے ایجنٹ' and accepted '… {agent} کو صرف تب جگایا جاتا ہے جب کوئی @ کے ساتھ اس کا ذکر کرے۔'."
+		}
+	],
+	"fallback_renders": [
+		"ur agent_line => آپ کا ایجنٹ کو اس گفتگو میں مدعو کیا گیا ہے",
+		"ur accepted => قبول کر لیا گیا۔ آپ کا ایجنٹ صرف تب جاگتا ہے جب کوئی @ کے ساتھ اس کا ذکر کرے۔",
+		"ur declined => آپ کا ایجنٹ کے لیے انکار کر دیا گیا۔",
+		"ur count 1/2/5/21: 1 دعوت آپ کی منتظر ہے | 2 دعوتیں آپ کی منتظر ہیں | 5 دعوتیں آپ کی منتظر ہیں | 21 دعوتیں آپ کی منتظر ہیں"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ur": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/6d269032fdc7-ur.json",
+			"sha256": "89f101231914fcedd250f02966faa4a676a6d7ef76f86fd782fd4688085df319"
+		}
+	},
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool. Refusal copy is clipped to one line by design (truncate + title); longer fr/ru/hi/ur sentences rely on the hover title and the accessible name for the full text."
+}

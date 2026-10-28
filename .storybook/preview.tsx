@@ -43,6 +43,8 @@ import {
 	setLocale,
 	subscribeLocale,
 } from "@shared/i18n";
+// @ts-ignore Path aliases don't work for Storybook root
+import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import type { Preview } from "@storybook/react";
 import {
 	QueryClient,
@@ -459,9 +461,23 @@ const preview: Preview = {
 										>
 											<ThemeFrame theme={theme}>
 												<LocaleFrame locale={locale}>
-													<ChromeFrame chrome={chrome}>
-														<Story />
-													</ChromeFrame>
+													{/*
+													 * RADIX'S DIRECTION COMES FROM THIS CONTEXT, NOT FROM `<html dir>`: a
+													 * menu's content is portalled out of the subtree that inherits the root
+													 * attribute, so without this provider every portalled surface measures
+													 * `ltr` in Urdu and every logical inset lands on the physical wrong edge
+													 * - measured on the device picker (design review round 1, D5): `ltr`,
+													 * `rect 747,38 320x416` before; `rtl`, `rect 537.5,38 320x416` after.
+													 * The app mounts the same provider around `App` in `main.tsx`, inside its
+													 * router. Here it sits INSIDE `LocaleFrame`, so the locale store is
+													 * already written when this provider reads it and the first frame is not
+													 * one frame of LTR.
+													 */}
+													<LocaleDirectionProvider>
+														<ChromeFrame chrome={chrome}>
+															<Story />
+														</ChromeFrame>
+													</LocaleDirectionProvider>
 												</LocaleFrame>
 											</ThemeFrame>
 										</GlassFrame>

@@ -216,6 +216,18 @@ async function bundleModel() {
 		alias: {
 			"@features": `${ROOT}/src/renderer/src/features`,
 			"@shared": `${ROOT}/src/renderer/src/shared`,
+			/*
+			 * THE CORE, NOT THE RENDERER BINDING (agent review round 1, M4).
+			 * `@shared/i18n` is a renderer alias for `shared/i18n`, whose index also
+			 * re-exports the query-client stack and the locale writer - so `t()` alone
+			 * dragged `desktop-hooks`, `desktop-api`, `use-optional-query-client`,
+			 * `language-writes` and `delegated-cleanup-notice-store` into the pin. Those
+			 * are the transport, not the model's decisions: a cosmetic edit there moved
+			 * `sourceHash` and failed the parity test until someone regenerated a fixture
+			 * that had not changed a single decision. The 24 model harnesses already
+			 * alias the same way, so the pin now hashes what it claims to hash.
+			 */
+			"@shared/i18n": `${ROOT}/src/i18n`,
 		},
 		bundle: true,
 		format: "esm",
@@ -239,7 +251,18 @@ async function bundleModel() {
 		code: bundle.outputFiles[0].text,
 		inputs: Object.keys(bundle.metafile.inputs)
 			.filter(
-				(input) => !input.includes("node_modules") && !input.startsWith("<"),
+				(input) =>
+					!input.includes("node_modules") &&
+					!input.startsWith("<") &&
+					/*
+					 * CATALOGUE COPY IS NOT A DECISION. Wave B keys the row labels, so the
+					 * model bundle now loads the whole English catalogue set; pinning those
+					 * ~760 files would make every copy edit invalidate a fixture that records
+					 * only ids, segment keys, counts and label KINDS, and the i18n gates own
+					 * the values. The pin therefore covers the model's CODE and the locale
+					 * manifest, not the copy it renders.
+					 */
+					!input.startsWith("src/i18n/catalogues/"),
 			)
 			.map((input) => input.replace(/^\.\//, ""))
 			.sort(),

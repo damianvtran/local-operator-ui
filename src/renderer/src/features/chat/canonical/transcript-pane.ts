@@ -123,8 +123,9 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  * guard at the render site. Two states reach the pane with nothing read and
  * nothing painted while the pane is already speaking: the else arm of
  * `reconcileTail`'s `records.length > 0` split, which publishes `unavailable`
- * with `HISTORY_UNREADABLE` and leaves `hydrated` false by construction, and the
- * stream's `gap` arm, which publishes `reconnecting`. Without the term both
+ * with the `historyUnreadable()` notice and leaves `hydrated` false by
+ * construction, and the stream's `gap` arm, which publishes `reconnecting`.
+ * Without the term both
  * painted the pulsing placeholder NEXT TO the notice or the "Reconnecting" line -
  * the same two-contradictory-claims class as Finding 1, with one of the two
  * claims untrue (the load is not still running; it failed, or the stream is

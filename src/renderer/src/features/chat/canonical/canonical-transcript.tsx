@@ -1774,6 +1774,10 @@ const AssistantRow = memo(function AssistantRow({
 						 * block instead of per row.
 						 */
 						linkify
+						// A new message's identity for the link evidence's one re-check,
+						// so a report worded exactly like an earlier message still
+						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).
+						documentId={record.id}
 					/>
 				)}
 				{record.stopReason === "aborted" && (

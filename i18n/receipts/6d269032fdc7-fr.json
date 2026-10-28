@@ -1,0 +1,363 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (new-key delta, PR #1446 invitations)",
+	"audit_id": "teambridge-pr1446-invitations-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"instance": "6d269032fdc7-fr",
+	"instance_note": "Auditor session 6d269032fdc7 with a per-locale suffix (precedent a6cc260da02b-<locale>). Path checked absent on origin/main, #1441, #1438 and #1444.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header 'Model: anthropic/claude-opus-5-5'. The translator session header shows the same model; independence is by agent role and session, which is the ledger's rule.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The translator was session c995ffd759f3 (coder role, commit 23ddabe864). This run wrote only these receipts, the per-locale evidence records and the ledger rows (via ledger-assemble.mjs).",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"translator": {
+		"agent": "translator",
+		"session": "c995ffd759f3",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+		"method": "LLM reasoning; the translator transcript references no MT service (deepl/googletrans/libretranslate/argos: 0 hits)"
+	},
+	"integration": {
+		"pr": 1446,
+		"branch": "fix/d5-channel-invites",
+		"base": "97382c24779a81142b66876a1b6e572141fabefd",
+		"reviewed_head": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+		"english_change_commits": [
+			"1decc306a1",
+			"6daf2d8cff",
+			"c8a4789e9d"
+		],
+		"previous_audit": {
+			"instance": "e2cc7b3bceb8",
+			"note": "row bytes at base; moved to superseded by ledger-assemble"
+		},
+		"worktree": "~/local-operator-ui/.worktrees/i18n-1446-6d26 (removed after push)"
+	},
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.invitations.title",
+			"ui.teamBridge.invitations.count",
+			"ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+			"ui.teamBridge.invitations.loading",
+			"ui.teamBridge.invitations.load_failed",
+			"ui.teamBridge.invitations.empty",
+			"ui.teamBridge.invitations.agent_line",
+			"ui.teamBridge.invitations.agent_fallback",
+			"ui.teamBridge.invitations.added_by",
+			"ui.teamBridge.invitations.added_by_you",
+			"ui.teamBridge.invitations.created_by",
+			"ui.teamBridge.invitations.created_by_you",
+			"ui.teamBridge.invitations.accept",
+			"ui.teamBridge.invitations.accepting",
+			"ui.teamBridge.invitations.decline",
+			"ui.teamBridge.invitations.declining",
+			"ui.teamBridge.invitations.accepted",
+			"ui.teamBridge.invitations.declined",
+			"ui.teamBridge.invitations.failed.agent_unavailable",
+			"ui.teamBridge.invitations.failed.already_answered",
+			"ui.teamBridge.invitations.failed.gone",
+			"ui.teamBridge.invitations.failed.runtime_outdated",
+			"ui.teamBridge.invitations.failed.outdated",
+			"ui.teamBridge.invitations.failed.not_available",
+			"ui.teamBridge.invitations.failed.sign_in",
+			"ui.teamBridge.invitations.failed.unreachable",
+			"ui.teamBridge.invitations.read_only",
+			"ui.teamBridge.invitations.failed.unconfirmed"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.builtin.agents_topic",
+			"ui.teamBridge.notify.mention",
+			"ui.teamBridge.people.paused",
+			"ui.teamBridge.list.empty.title",
+			"ui.teamBridge.create.error",
+			"ui.agentMessages.page_off.action",
+			"ui.agentMessages.dialog.local_failure",
+			"ui.common.actions.retry"
+		],
+		"delta_kind": "new-key delta. From the row's recorded hashes (base 97382c2477, audited by e2cc7b3bceb8) to the reviewed head, en and every target only ADD these 28 keys (208 -> 236, key-complete); no earlier ui.teamBridge value and no earlier context note changed. The other 208 keys inherit the prior audit on byte identity."
+	},
+	"sha256": {
+		"en": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b",
+		"fr": "100725943396e796e5c0c313b22c90b833f443d28d7104ae2647269166147711"
+	},
+	"context_sha256": "d0b5a7223fc79264478b8e3b07b6a05b14e548ec388a8a193af3b9ab0db42ef6",
+	"english": {
+		"ui.teamBridge.invitations.title": {
+			"value": "Invitations",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.count": {
+			"value": "{count, plural, one {{count} invitation waiting for you} other {{count} invitations waiting for you}}",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Accessible name of the quiet rail count beside 'Invitations'; shown only when at least one is waiting.",
+			"placeholders": {
+				"count": "number of pending invitations; a positive integer"
+			}
+		},
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": {
+			"value": "Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The consent statement the owner agrees to by pressing Accept; the key names the participation version it is consent to (bridge_agent_participation_v1), so ANY change to this English text needs a new version and a new key. Keep both facts: from now on the agent can read the conversation's messages AND post there; it is woken only when someone @-mentions it. Do not say 'muted' (the app's Mute level means never notified).",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.loading": {
+			"value": "Loading invitations…",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.load_failed": {
+			"value": "Invitations could not be loaded.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.empty": {
+			"value": "No invitations are waiting for your agent.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.agent_line": {
+			"value": "{agent} was invited to this conversation",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. States that the reader's agent is the invitee of this conversation.",
+			"placeholders": {
+				"agent": "the reader's own agent's display name, or the fallback 'your agent'"
+			}
+		},
+		"ui.teamBridge.invitations.agent_fallback": {
+			"value": "Your agent",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Fills {agent} when the agent has no name; it can start a sentence.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.added_by": {
+			"value": "Added by {name}",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {
+				"name": "a teammate's display name"
+			}
+		},
+		"ui.teamBridge.invitations.added_by_you": {
+			"value": "Added by you",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.created_by": {
+			"value": "Conversation created by {name}",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Not the inviter: the server says only who created the conversation, so the copy must not imply this person added the agent.",
+			"placeholders": {
+				"name": "a teammate's display name"
+			}
+		},
+		"ui.teamBridge.invitations.created_by_you": {
+			"value": "Conversation created by you",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.accept": {
+			"value": "Accept",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.accepting": {
+			"value": "Accepting…",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.decline": {
+			"value": "Decline",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.declining": {
+			"value": "Declining…",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.accepted": {
+			"value": "Accepted. {agent} is woken only when someone @-mentions it.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Accept; same wake rule as the consent statement.",
+			"placeholders": {
+				"agent": "the reader's own agent's display name, or the fallback 'Your agent'"
+			}
+		},
+		"ui.teamBridge.invitations.declined": {
+			"value": "Declined for {agent}.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Decline. Neutral on purpose: it must stay true whether or not the agent had already joined from another device.",
+			"placeholders": {
+				"agent": "the reader's own agent's display name, or the fallback 'Your agent'"
+			}
+		},
+		"ui.teamBridge.invitations.failed.agent_unavailable": {
+			"value": "Your agent can’t join from here: it is paused, turned off or not set up for this organization. Turn it on in Settings, then try again.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.failed.already_answered": {
+			"value": "This invitation was already answered elsewhere. Its current state is shown in the conversation.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server says the invitation is no longer pending (answered on another device or by another session); the list re-reads to show the real state.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.failed.gone": {
+			"value": "This invitation is no longer available. The conversation or your agent’s place in it was removed.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.failed.runtime_outdated": {
+			"value": "This runtime can’t accept invitations. Update Local Operator, then try again.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server no longer accepts this app's participation version. Shown when the LOCAL runtime cannot bind the consent write to the signed-in account (no owner guard). 'Local Operator' is the runtime's name and is not translated; the thing to update is the runtime, not necessarily the desktop app.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.failed.outdated": {
+			"value": "This version of the app can’t accept invitations any more. Update the app, then try again.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server no longer accepts this app's participation version.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.failed.not_available": {
+			"value": "Team Bridge isn’t available for this organization right now.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.failed.sign_in": {
+			"value": "You’re signed out. Sign in, then try again.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.failed.unreachable": {
+			"value": "The app couldn’t reach Radient. Nothing was changed. Try again.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.read_only": {
+			"value": "This organization is read-only for you, so invitations can’t be answered here.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Shown under disabled Accept/Decline when the reader's organization is read-only for them, so the disabled buttons have a stated reason.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.failed.unconfirmed": {
+			"value": "Your answer was not confirmed. Try again.",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server answered without a recognised reason; the answer may or may not have been recorded.",
+			"placeholders": {}
+		}
+	},
+	"audited_strings": {
+		"ui.teamBridge.invitations.title": "Invitations",
+		"ui.teamBridge.invitations.count": "{count, plural, one {{count} invitation vous attend} many {{count} d’invitations vous attendent} other {{count} invitations vous attendent}}",
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": "En acceptant, vous permettez à votre agent de lire et de publier des messages dans cette conversation à partir de maintenant. Il n’est réveillé que lorsque quelqu’un le mentionne avec @.",
+		"ui.teamBridge.invitations.loading": "Chargement des invitations…",
+		"ui.teamBridge.invitations.load_failed": "Les invitations n’ont pas pu être chargées.",
+		"ui.teamBridge.invitations.empty": "Aucune invitation n’attend votre agent.",
+		"ui.teamBridge.invitations.agent_line": "Invitation à cette conversation pour {agent}",
+		"ui.teamBridge.invitations.agent_fallback": "Votre agent",
+		"ui.teamBridge.invitations.added_by": "Ajouté par {name}",
+		"ui.teamBridge.invitations.added_by_you": "Ajouté par vous",
+		"ui.teamBridge.invitations.created_by": "Conversation créée par {name}",
+		"ui.teamBridge.invitations.created_by_you": "Conversation créée par vous",
+		"ui.teamBridge.invitations.accept": "Accepter",
+		"ui.teamBridge.invitations.accepting": "Acceptation…",
+		"ui.teamBridge.invitations.decline": "Refuser",
+		"ui.teamBridge.invitations.declining": "Refus en cours…",
+		"ui.teamBridge.invitations.accepted": "Accepté. Seule une mention avec @ réveille {agent}.",
+		"ui.teamBridge.invitations.declined": "Refusé pour {agent}.",
+		"ui.teamBridge.invitations.failed.agent_unavailable": "Votre agent ne peut pas rejoindre la conversation d’ici : il est en pause, désactivé ou non configuré pour cette organisation. Activez-le dans les paramètres, puis réessayez.",
+		"ui.teamBridge.invitations.failed.already_answered": "Cette invitation a déjà reçu une réponse ailleurs. Son état actuel est affiché dans la conversation.",
+		"ui.teamBridge.invitations.failed.gone": "Cette invitation n’est plus disponible. La conversation, ou la place de votre agent dans celle-ci, a été supprimée.",
+		"ui.teamBridge.invitations.failed.runtime_outdated": "Ce runtime ne peut pas accepter d’invitations. Mettez Local Operator à jour, puis réessayez.",
+		"ui.teamBridge.invitations.failed.outdated": "Cette version de l’application ne peut plus accepter d’invitations. Mettez l’application à jour, puis réessayez.",
+		"ui.teamBridge.invitations.failed.not_available": "Team Bridge n’est pas disponible pour cette organisation pour le moment.",
+		"ui.teamBridge.invitations.failed.sign_in": "Vous êtes déconnecté. Connectez-vous, puis réessayez.",
+		"ui.teamBridge.invitations.failed.unreachable": "L’application n’a pas pu joindre Radient. Aucune modification n’a été effectuée. Réessayez.",
+		"ui.teamBridge.invitations.read_only": "Cette organisation est en lecture seule pour vous ; les invitations ne peuvent donc pas recevoir de réponse ici.",
+		"ui.teamBridge.invitations.failed.unconfirmed": "Votre réponse n’a pas été confirmée. Réessayez."
+	},
+	"special_scrutiny": {
+		"key": "ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+		"verdict": "faithful and complete",
+		"checked": [
+			"read AND post in this conversation",
+			"from now on",
+			"woken only on an @-mention",
+			"nothing added",
+			"no muted/silent sense"
+		]
+	},
+	"checks": {
+		"placeholders": "{agent}/{name}/{count} sets equal English for all 28 keys (script)",
+		"icu": "all 28 parse with @formatjs/icu-messageformat-parser; plural arms equal the locale's CLDR categories (Intl.PluralRules) and the style guide",
+		"bidi_controls": "none (U+200E/F, U+202A-E, U+2066-9, U+061C)",
+		"ascii_ellipsis_apostrophe": "none",
+		"no_mute_wording": "no mute/silent term in any invitations key",
+		"refusal_retry": "final refusals (already_answered, gone) and read_only/empty/load_failed carry no retry; outdated/runtime_outdated keep 'update, then try again' as the English does; retryable refusals keep their retry",
+		"product_names": "'Team Bridge', 'Local Operator', 'Radient' kept verbatim",
+		"created_by": "says only who created the conversation, never that they added the agent",
+		"fallback_render": "agent_fallback substituted into agent_line/accepted/declined and rendered (evidence below)"
+	},
+	"notes": "vous register; U+202F before ':' and ';' verified; paramètres per guide; plural one/many/other. Consent: 'lire et de publier des messages … à partir de maintenant' + 'Il n’est réveillé que lorsque quelqu’un le mentionne avec @' - faithful, no muet/silencieux.",
+	"findings": [
+		{
+			"id": "F2",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.invitations.agent_fallback",
+			"related_keys": [
+				"ui.teamBridge.invitations.agent_line",
+				"ui.teamBridge.invitations.accepted",
+				"ui.teamBridge.invitations.declined"
+			],
+			"issue": "Every fr host places {agent} mid-sentence, so the capitalized fallback reads 'Invitation à cette conversation pour Votre agent', 'Seule une mention avec @ réveille Votre agent.', 'Refusé pour Votre agent.'",
+			"evidence": "render-1446.txt",
+			"fix": "Catalogue-only: fr never starts a sentence with {agent}, so a lowercase fallback 'votre agent' is correct in all three; or the source-level select described for es."
+		},
+		{
+			"id": "N1",
+			"severity": "NIT",
+			"key": "ui.teamBridge.invitations.accepting",
+			"issue": "Asymmetric progress labels: 'Acceptation…' vs 'Refus en cours…'.",
+			"fix": "'Acceptation en cours…' to match the Decline label."
+		}
+	],
+	"fallback_renders": [
+		"fr agent_line => Invitation à cette conversation pour Votre agent",
+		"fr accepted => Accepté. Seule une mention avec @ réveille Votre agent.",
+		"fr declined => Refusé pour Votre agent.",
+		"fr count 1/2/5/21: 1 invitation vous attend | 2 invitations vous attendent | 5 invitations vous attendent | 21 invitations vous attendent"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_fr": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"execution": [
+		{
+			"command": "gh pr view 1446 --json headRefOid",
+			"result": "23ddabe8643350b3de4c83f664ef0b798ec3af4d OPEN"
+		},
+		{
+			"command": "git worktree add --detach .worktrees/i18n-1446-6d26 23ddabe864; node_modules -> ../../node_modules (pnpm-lock.yaml identical to the primary checkout)",
+			"result": "HEAD 23ddabe864"
+		},
+		{
+			"command": "pre-audit gates at 23ddabe864 (NODE_OPTIONS=--max-old-space-size=1024)",
+			"result": "generate --check, check-duplicates, check-strings, context-parity, check-added-strings, check-coverage ok; ledger-check FAILED 21 findings (only the 7 ui.teamBridge rows: stale source/target hashes, receipt names different English bytes)"
+		},
+		{
+			"command": "IntlMessageFormat render of agent_line/accepted/declined with {agent}=agent_fallback and count at 1/2/5/21",
+			"result": "see fallback_renders"
+		}
+	],
+	"audit_notes_not_execution_log": "notes, checks and findings are this auditor's linguistic judgement, not command output",
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool. Refusal copy is clipped to one line by design (truncate + title); longer fr/ru/hi/ur sentences rely on the hover title and the accessible name for the full text.",
+	"evidence_record": "i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+}

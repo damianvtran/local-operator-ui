@@ -36,6 +36,7 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useCallback, useMemo } from "react";
 import {
@@ -143,6 +144,16 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 		sessionId ? state.moves[sessionId] : undefined,
 	);
 	/*
+	 * THE LOCALE THE PICKER'S COPY IS RESOLVED IN. `devicePickerModel` words its
+	 * heading, row facts, footer and guidance through `t()`, which reads the locale
+	 * store WITHOUT subscribing (see `scripts/i18n/locale-reactivity.test.mjs`), so
+	 * the component has to subscribe and the model memo has to depend on the tag it
+	 * read. Without both, a live language switch left an open picker speaking the
+	 * old language until one of its other inputs changed identity (agent review
+	 * round 1, M3). Same pattern as `chat-status-strip.tsx`'s display memo.
+	 */
+	const locale = useI18nLocale();
+	/*
 	 * THE LIVE CONVERSATION'S OWN ROW, for the one fact the pane cannot carry
 	 * itself: where it was created. The row is where `createSession` landed the
 	 * peer's placement (see that action), and the row outlives both the draft and
@@ -244,6 +255,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 		],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` IS read - by `t()` inside `devicePickerModel`, which the linter cannot follow. Without it a language switch leaves the picker's copy in the old language until another input changes.
 	const model = useMemo(
 		() =>
 			devicePickerModel({
@@ -266,6 +278,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			canTransfer,
 			meshRead,
 			move,
+			locale,
 		],
 	);
 

@@ -37,6 +37,12 @@ const bundle = await build({
 	format: "cjs",
 	platform: "node",
 	write: false,
+	/*
+	 * The module now resolves its copy through `t()` (`@shared/i18n`), so the
+	 * bundle needs the renderer's alias exactly as the desktop suite's other i18n
+	 * bundles do. esbuild cannot read tsconfig paths.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 	plugins: [
 		{
 			name: "sonner-first-mount-clock",
@@ -64,6 +70,10 @@ const bundle = await build({
 						   it is a pass-through here, so the theme's shape is what is under
 						   test rather than the store. */
 						export const useSyncExternalStore = (_subscribe, getSnapshot) => getSnapshot();
+						/* @shared i18n reaches the query-client context through the
+						   renderer's i18n index; these cases never mount a provider, so the
+						   context is honestly empty. */
+						export const useContext = () => undefined;
 						export const useRef = current => ({current});
 						export const useMemo = fn => fn();
 						export const useCallback = fn => fn;

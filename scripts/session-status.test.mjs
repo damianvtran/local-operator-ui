@@ -75,6 +75,12 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/*
+	 * The module now resolves its copy through `t()` (`@shared/i18n`), so the
+	 * bundle needs the renderer's alias exactly as the desktop suite's other i18n
+	 * bundles do. esbuild cannot read tsconfig paths.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const {
 	bandYieldsToRadientIssue,
