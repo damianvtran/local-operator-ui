@@ -23,6 +23,7 @@ import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
 import type {
+	TeamBridgeNotificationSender,
 	TeamBridgeNotifyAuthority,
 	TeamBridgeNotifyRequest,
 	TeamBridgeOpenResult,
@@ -7091,6 +7092,10 @@ export type DesktopAPI = {
 	teamBridge?: {
 		setAuthority: (authority: TeamBridgeNotifyAuthority) => Promise<void>;
 		notify: (input: TeamBridgeNotifyRequest) => Promise<{ shown: boolean }>;
+		syncDirectory: (input: {
+			tenantId: string;
+			members: TeamBridgeNotificationSender[];
+		}) => Promise<void>;
 		onOpen: (callback: () => void) => () => void;
 		pendingOpen: () => Promise<TeamBridgeOpenResult | null>;
 	};

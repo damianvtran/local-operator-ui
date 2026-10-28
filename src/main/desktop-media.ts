@@ -273,7 +273,14 @@ export type DesktopMediaResponse =
 			 * at all for the same reason: a media refusal the plane wrote must not be
 			 * rendered as this app's own sentence (design § 3.5, § 5.1).
 			 */
-			code?: DesktopRefusalCode;
+			/**
+			 * `renderer_busy` is MAIN-ONLY, deliberately outside the shared
+			 * pairing-refusal table: core's composite route uses it for a transient
+			 * local overload (503) that the desktop answers with initials. It is a
+			 * fact about one core renderer, not a pairing condition, so it must not
+			 * become a sentence the renderer shows or a code other routes may claim.
+			 */
+			code?: DesktopRefusalCode | "renderer_busy";
 	  };
 
 function endpoint(request: DesktopMediaRequest): {
@@ -529,11 +536,15 @@ export async function requestDesktopMediaOutcome(
 		) {
 			const composite = request.op === "team_bridge.notification_avatar";
 			const mime = responseType.split(";")[0].trim().toLowerCase();
-			const refuse = (status: number): DesktopMediaOutcome => ({
+			const refuse = (
+				status: number,
+				code?: "renderer_busy",
+			): DesktopMediaOutcome => ({
 				response: {
 					kind: "error",
 					status,
 					detail: "The avatar could not be read.",
+					...(code ? { code } : {}),
 				},
 				answered: true,
 			});
@@ -546,8 +557,49 @@ export async function requestDesktopMediaOutcome(
 					: TEAM_BRIDGE_ATTACHMENT_TYPES.has(mime)) ||
 				!response.body
 			) {
-				await response.body?.cancel();
-				return refuse(response.ok ? 502 : response.status);
+				/* The composite's transient refusal is a coded JSON envelope, not an
+				 * image. Read ONLY that closed case, bounded like every other error
+				 * body; the consumer branches on detail.code (core review M1), never
+				 * on the status, which also means an unavailable local transport. */
+				let busy = false;
+				if (
+					composite &&
+					response.status === 503 &&
+					response.body &&
+					mime === "application/json"
+				) {
+					const reader = response.body.getReader();
+					let body = "";
+					try {
+						for (;;) {
+							const { done, value } = await reader.read();
+							if (done) break;
+							body += new TextDecoder().decode(value, { stream: true });
+							if (body.length > 16 * 1024) break;
+						}
+						if (body.length <= 16 * 1024) {
+							const envelope: unknown = JSON.parse(body);
+							busy =
+								typeof envelope === "object" &&
+								envelope !== null &&
+								"detail" in envelope &&
+								typeof envelope.detail === "object" &&
+								envelope.detail !== null &&
+								"code" in envelope.detail &&
+								envelope.detail.code === "renderer_busy";
+						}
+					} catch {
+						// A malformed refusal keeps the generic bounded-image failure.
+					} finally {
+						await reader.cancel().catch(() => undefined);
+					}
+				} else {
+					await response.body?.cancel();
+				}
+				return refuse(
+					response.ok ? 502 : response.status,
+					busy ? "renderer_busy" : undefined,
+				);
 			}
 			const limit = composite ? 256 * 1024 : 1024 * 1024;
 			const reader = response.body.getReader();

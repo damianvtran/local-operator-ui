@@ -121,6 +121,7 @@ import { assertThreadPage } from "./team-bridge-thread-read";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
 import {
 	teamBridgeKeys,
+	useTeamBridgeDirectories,
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 } from "./use-team-bridge";
@@ -511,6 +512,36 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	 * mounted. That is deliberate: the watcher cannot prove membership, notify
 	 * policy or a conversation's title from an unread row alone.
 	 */
+	const directories = useTeamBridgeDirectories(
+		notificationOrganizations.map((organization) =>
+			asTeamBridgeTenantId(organization.tenant_id),
+		),
+		active,
+		selfAccountId,
+	);
+	/*
+	 * Read through a ref for the reason `tenantUnreadRef` exists: `directories`
+	 * is a fresh object every render, so depending on it directly would re-send
+	 * every roster to main on each one. The primitive version below is the
+	 * change detector; the effect depends on it and this ref.
+	 */
+	const directoryVersion = Object.entries(directories)
+		.map(
+			([tenantId, members]) =>
+				`${tenantId}:${members
+					.map(
+						(member) =>
+							`${member.account_id}:${teamBridgeAvatarVersion(member)?.hash ?? ""}`,
+					)
+					.join(",")}`,
+		)
+		.join("|");
+	const directoriesRef = useRef(directories);
+	directoriesRef.current = directories;
+	/** The roster version last sent to main, so one answer is applied once (and a
+	 * StrictMode double-invoke does not repeat every warm). */
+	const lastDirectoryKey = useRef<string | null>(null);
+
 	const conversations = useQuery({
 		queryKey: teamBridgeKeys.conversations(
 			TEAM_BRIDGE_ALL_SCOPE,
@@ -550,6 +581,46 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 			.join(","),
 		selfAccountId ?? "",
 	].join("#");
+
+	// The roster is the sender-photo revocation authority. Every fresh answer
+	// evicts missing members/changed hashes in main and warms 64 px composites.
+	useEffect(() => {
+		if (lastDirectoryKey.current === directoryVersion) return;
+		lastDirectoryKey.current = directoryVersion;
+		const bridge = window.api?.desktop?.teamBridge;
+		if (!bridge?.syncDirectory) return;
+		for (const [tenantId, members] of Object.entries(directoriesRef.current)) {
+			const senders = members
+				.filter((member) => member.account_id !== selfAccountId)
+				.map((member) => {
+					const photo = teamBridgeAvatarVersion(member);
+					return parseTeamBridgeNotificationSender({
+						v: 1,
+						kind: "person",
+						account_id: member.account_id,
+						display_name: safeTeamBridgeBannerText(
+							member.display_label,
+							TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+						),
+						agent_name: safeTeamBridgeBannerText(
+							member.agent?.name ?? "",
+							TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+						),
+						...(photo
+							? { avatar: { account_id: photo.accountId, hash: photo.hash } }
+							: {}),
+					});
+				})
+				.filter(
+					(sender): sender is TeamBridgeNotificationSender =>
+						sender !== null && sender !== undefined,
+				);
+			void bridge.syncDirectory({ tenantId, members: senders }).catch(() => {
+				// A navigation/auth transition may close this channel; the next
+				// fenced roster will reconcile the cache. Photos never gate delivery.
+			});
+		}
+	}, [directoryVersion, selfAccountId]);
 
 	// A different account starts over: seq cursors and org seeds from another
 	// user's conversations are meaningless and could suppress a first banner.
