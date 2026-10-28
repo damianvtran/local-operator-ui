@@ -1001,8 +1001,26 @@ export class ApprovalsOverlayController {
 			) => {
 				this.fail(`load_failed:${code}:${description}`);
 			};
+			/*
+			 * A CHILD THAT DIES AFTER CONSTRUCTION IS A FAILED CARD, not a hidden one.
+			 * `render-process-gone` (crash, OOM, kill) leaves a blank native view over
+			 * the page that nothing would ever repaint; latching the controller off
+			 * disposes it, and `fail` pushes the projection so the renderer sees
+			 * `approvalsCard.available: false` and falls back to the dock and band
+			 * instead of waiting on a card that can no longer be answered (S6d, M1).
+			 */
+			const onGone = (
+				_event: Electron.Event,
+				details: { reason?: string },
+			) => {
+				this.fail(`render_process_gone:${details?.reason ?? "unknown"}`);
+			};
 			view.webContents.on("did-finish-load", onFinish);
 			view.webContents.on("did-fail-load", onFail);
+			view.webContents.on("render-process-gone", onGone);
+			this.childListeners.push(() =>
+				view.webContents.removeListener("render-process-gone", onGone),
+			);
 			this.childListeners.push(() =>
 				view.webContents.removeListener("did-finish-load", onFinish),
 			);
@@ -1166,5 +1184,14 @@ export class ApprovalsOverlayController {
 		// its own load already failed.
 		this.dispose("failed");
 		this.log(`[browser] approvals overlay latched off: ${reason}`);
+		/*
+		 * TELL THE RENDERER. `state().available` just became false, but the chrome
+		 * projection only changes when something pushes it; without this a failure
+		 * after construction left the toolbar and the (unmounted) dock route
+		 * believing the card still existed until the next unrelated projection tick
+		 * (S6d, M1). The shield's `open` is also now false, so the push is what
+		 * returns the Approvals control to the dock/dialog route.
+		 */
+		this.onChanged?.();
 	}
 }

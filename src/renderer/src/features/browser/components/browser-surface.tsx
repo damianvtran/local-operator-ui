@@ -47,6 +47,7 @@ import {
 } from "../model/tab-index-model";
 import { sessionDisplayName } from "../model/tab-index-model";
 import { useApprovalsDockWidth } from "../model/use-approvals-dock-width";
+import { BrowserApprovalsDialog } from "./browser-approvals-dialog";
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
@@ -317,7 +318,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	   dock has no shield to return focus to and falls back to the menu it came
 	   from (round-2 Q2-2). */
 	const pageMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+	/* The DOM dock is the KILL-SWITCH FALLBACK only (S6d): it is mounted when the
+	   host built no native card. With the card available nothing sets this. */
 	const [dockOpen, setDockOpen] = useState(false);
+	/* The Approvals DIALOG (S6d): grants, revoke, revoke all, forget this site and
+	   clear browsing data, for the build whose approvals surface is the native
+	   corner card. A BaseDialog, so the overlay policy already hides the page
+	   while it is up: no page push and no extra native surface. */
+	const [approvalsDialogOpen, setApprovalsDialogOpen] = useState(false);
 
 	/* A menu-opened dock mounts while Radix is still closing; the heading focus is
 	   re-requested once the menu has handed focus back (round 3, U13). */
@@ -370,7 +378,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 */
 	const nativeApprovalsCard = state?.approvalsCard;
 	const approvalsOpen = nativeApprovalsCard?.available
-		? Boolean(nativeApprovalsCard.open)
+		? Boolean(nativeApprovalsCard.open) || approvalsDialogOpen
 		: dockOpen;
 	/*
 	 * THE CARD'S LOCALE FOLLOWS THE APP, INCLUDING WHEN IT AUTO-PRESENTS (U5).
@@ -730,6 +738,60 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		// at the top of the document.
 		(approvalsTriggerRef.current ?? pageMenuTriggerRef.current)?.focus();
 	}, []);
+
+	/*
+	 * THE APPROVALS ROUTE, one rule for both entry points (S6d).
+	 *
+	 * With the native card available the toolbar control is the card's explicit
+	 * open WHEN THERE IS SOMETHING TO DECIDE, and the Approvals dialog otherwise:
+	 * a control that toggled an empty (hidden) card would be a dead button, and the
+	 * grants have no other toolbar home. The page menu always opens the dialog, so
+	 * grants stay reachable while requests are pending (the card does not list
+	 * them). Without the card (the kill switch, or a post-construction child
+	 * failure) it is the dock toggle it always was. `queue.count` is the
+	 * expiry-aware renderer count, the same number the badge shows, so the control
+	 * and its badge cannot disagree about "nothing is pending".
+	 *
+	 * Returns whether this request OPENED something, which the menu reads to decide
+	 * whether Radix may return focus to its trigger.
+	 */
+	const openApprovalsRoute = useCallback(
+		(source: "toolbar" | "menu"): boolean => {
+			if (!nativeApprovalsCard?.available) {
+				const opening = !dockOpen;
+				setDockOpen(opening);
+				return opening;
+			}
+			if (source === "toolbar" && queue.count > 0) {
+				if (nativeApprovalsCard.open) {
+					void window.api?.browser.closeApprovalsCard();
+					return false;
+				}
+				const cardLocale = currentLocale();
+				void window.api?.browser.openApprovalsCard({
+					locale: cardLocale,
+					dir: resolveLanguage(cardLocale).dir,
+				});
+				return true;
+			}
+			setApprovalsDialogOpen(true);
+			return true;
+		},
+		[
+			nativeApprovalsCard?.available,
+			nativeApprovalsCard?.open,
+			queue.count,
+			dockOpen,
+		],
+	);
+
+	/* A card that disappears (a post-construction child failure pushes
+	   `available: false`) takes the dialog's route with it: the dock fallback
+	   owns grants again, and a stale `true` must not reopen the dialog if the
+	   card ever returns. */
+	useEffect(() => {
+		if (!nativeApprovalsCard?.available) setApprovalsDialogOpen(false);
+	}, [nativeApprovalsCard?.available]);
 
 	const currentOrigin = activeTab ? originOfUrl(activeTab.url) : null;
 	// A failed load leaves Chromium's own surface in the view - blank, because
@@ -1096,28 +1158,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 											}
 											size="icon-sm"
 											className={approvalsOpen ? "bg-row-selected" : undefined}
-											onClick={() => {
-												/*
-												 * S6b: when the host built the native card, the shield
-												 * opens THAT surface (focused) instead of the DOM dock;
-												 * the dock is the fallback for a launch without it.
-												 * The locale/direction are resolved in the renderer
-												 * because main has no catalogue (UX U2).
-												 */
-												if (nativeApprovalsCard?.available) {
-													if (nativeApprovalsCard.open) {
-														void window.api?.browser.closeApprovalsCard();
-													} else {
-														const locale = currentLocale();
-														void window.api?.browser.openApprovalsCard({
-															locale,
-															dir: resolveLanguage(locale).dir,
-														});
-													}
-													return;
-												}
-												setDockOpen((open) => !open);
-											}}
+											onClick={() => openApprovalsRoute("toolbar")}
 											aria-expanded={approvalsOpen}
 											aria-label={
 												queue.count > 0
@@ -1169,11 +1210,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 										void chrome.pageControl(state.activeTabId, "reset");
 								}}
 								onOpenDownloads={() => void chrome.revealDownloads()}
-								onOpenApprovals={() => {
-									const opening = !dockOpen;
-									setDockOpen(opening);
-									return opening;
-								}}
+								onOpenApprovals={() => openApprovalsRoute("menu")}
 								onDockOpened={() => setDockFocusRequest((n) => n + 1)}
 								triggerRef={pageMenuTriggerRef}
 								showApprovalsFolded={rowWidth > 0 && rowWidth < 300}
@@ -1228,6 +1265,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    resolved row the user is still reading (spec 3.4's bounded memory). One
 			    pending request and no resolved rows is the common case and the tray then
 			    renders the card alone, which is the band the user already knows. */}
+			{/* The band is the kill-switch FALLBACK (S6d): with the native card it is
+			    not mounted at all, so nothing pushes the page down. */}
 			{!nativeApprovalsCard?.available &&
 				(queue.rows.length > 0 || queue.resolved.length > 0) && (
 					// `aria-live` because this band appears without the user's action: the
@@ -1451,30 +1490,49 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						/>
 					)}
 				</div>
-				<BrowserApprovalsDock
-					open={nativeApprovalsCard?.available ? false : dockOpen}
-					fullWidth={dockFullWidth}
-					focusRequest={dockFocusRequest}
-					rows={queue.rows}
-					resolved={queue.resolved}
-					selectedEntryId={pendingSelected?.entryId ?? null}
-					onSelect={setSelectedEntryId}
-					busy={busy}
-					onDecide={decide}
-					approvals={state?.approvals ?? []}
-					currentOrigin={currentOrigin}
-					onRevoke={(origin) =>
-						void runBusy(() => chrome.revokeApproval(origin))
-					}
-					onRevokeAll={() => void runBusy(() => chrome.revokeAllApprovals())}
-					onForgetSite={(origin) =>
-						void runBusy(() => chrome.forgetSite(origin))
-					}
-					onClearData={(what) => void runBusy(() => chrome.clearData(what))}
-					onClose={closeDock}
-					surfaceTag={dockSurfaceTag}
-				/>
+				{/* The dock is the FALLBACK, not a hidden second surface: when the native
+				    card exists this component is not mounted, so no `data-dock-layout`
+				    node and no dock title exist for a test or a user to find. */}
+				{!nativeApprovalsCard?.available && (
+					<BrowserApprovalsDock
+						open={dockOpen}
+						fullWidth={dockFullWidth}
+						focusRequest={dockFocusRequest}
+						rows={queue.rows}
+						resolved={queue.resolved}
+						selectedEntryId={pendingSelected?.entryId ?? null}
+						onSelect={setSelectedEntryId}
+						busy={busy}
+						onDecide={decide}
+						approvals={state?.approvals ?? []}
+						currentOrigin={currentOrigin}
+						onRevoke={(origin) =>
+							void runBusy(() => chrome.revokeApproval(origin))
+						}
+						onRevokeAll={() => void runBusy(() => chrome.revokeAllApprovals())}
+						onForgetSite={(origin) =>
+							void runBusy(() => chrome.forgetSite(origin))
+						}
+						onClearData={(what) => void runBusy(() => chrome.clearData(what))}
+						onClose={closeDock}
+						surfaceTag={dockSurfaceTag}
+					/>
+				)}
 			</div>
+			<BrowserApprovalsDialog
+				open={Boolean(nativeApprovalsCard?.available) && approvalsDialogOpen}
+				onClose={() => {
+					setApprovalsDialogOpen(false);
+				}}
+				waitingCount={queue.count}
+				approvals={state?.approvals ?? []}
+				currentOrigin={currentOrigin}
+				busy={busy}
+				onRevoke={(origin) => void runBusy(() => chrome.revokeApproval(origin))}
+				onRevokeAll={() => void runBusy(() => chrome.revokeAllApprovals())}
+				onForgetSite={(origin) => void runBusy(() => chrome.forgetSite(origin))}
+				onClearData={(what) => void runBusy(() => chrome.clearData(what))}
+			/>
 			<BrowserHandOverDialog
 				open={handOverTab !== null}
 				tab={handOverTab}
