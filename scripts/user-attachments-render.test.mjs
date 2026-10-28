@@ -81,6 +81,25 @@ window.matchMedia ??= (query) => ({
 	removeListener() {},
 	dispatchEvent: () => false,
 });
+/*
+ * The top-layer pseudo-classes, answered directly (the `checkpoint-rail` /
+ * `projects-force-done` idiom). Every menu this file opens is a Radix popper,
+ * and floating-ui probes each ancestor with `matches(":modal")` and
+ * `matches(":popover-open")`. Under the LOCKFILE's nwsapi (2.2.27, what CI's
+ * frozen install runs) `isModal -> matchesNative -> node.matches` re-enters
+ * the engine ~2,700 frames deep until the stack overflows into a catch that
+ * reads `false`. Measured with 2.2.27 forced: R4-U1 12.4 s instead of 0.18 s,
+ * which on the CI runner became Q3 334 s and the 25-minute lane kill. A
+ * locally drifted nwsapi 2.2.28 guards the re-entry, which is why the file
+ * looked fast here. jsdom has no top layer, so `false` is the answer the
+ * recursion always reached; nothing else about matching changes.
+ */
+const TOP_LAYER_QUERIES = new Set([":modal", ":fullscreen", ":popover-open"]);
+const nativeMatches = window.Element.prototype.matches;
+window.Element.prototype.matches = function matches(selector) {
+	if (TOP_LAYER_QUERIES.has(selector)) return false;
+	return nativeMatches.call(this, selector);
+};
 window.HTMLElement.prototype.scrollIntoView ??= () => {};
 window.HTMLElement.prototype.hasPointerCapture ??= () => false;
 window.HTMLElement.prototype.releasePointerCapture ??= () => {};
