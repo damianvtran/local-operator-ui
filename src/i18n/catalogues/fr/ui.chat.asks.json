@@ -25,6 +25,6 @@
 	"ui.chat.asks.close_asks": "Fermer les demandes",
 	"ui.chat.asks.all_asks": "Toutes les demandes",
 	"ui.chat.asks.conversation_asks": "Demandes de cette conversation",
-	"ui.chat.asks.status.withdrawn": "Retiré — l’agent n’attend plus de réponse",
-	"ui.chat.asks.status.withdrawn_label": "Retiré"
+	"ui.chat.asks.status.withdrawn": "Retirée — l’agent n’attend plus de réponse",
+	"ui.chat.asks.status.withdrawn_label": "Retirée"
 }

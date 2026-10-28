@@ -1104,8 +1104,8 @@ test(
 			assert.ok(!page.pane().textContent.includes("Waiting on an answer"));
 			/* Read after mount: neither the map nor the badge may freeze English at import. */
 			for (const [locale, label] of Object.entries({
-				fr: "Retiré",
-				es: "Retirado",
+				fr: "Retirée",
+				es: "Retirada",
 				"zh-CN": "已撤回",
 				ru: "Отозвано",
 				vi: "Đã rút lại",
