@@ -131,8 +131,10 @@ export interface BrowserChromeState {
 	/** S4b: which list presenter the product chrome has. `suspend` is Tier 1 —
 	 * the field works, the native list does not. Absent on a pre-S4b main. */
 	addressOverlay?: { mode: "popout" | "suspend"; reason: string | null };
-	/** S6b: the native approvals card. Absent on a launch without the opt-in, in
-	 * which case the shield keeps using the DOM dock. */
+	/** The native approvals card (default-on since S6d). `available` is false when
+	 * the launch set the kill switch or the card's child failed after
+	 * construction; the surface then mounts the DOM dock and band as the
+	 * fallback. Absent on a pre-S6b main. */
 	approvalsCard?: { available: boolean; open: boolean };
 	pageControls?: {
 		find: {

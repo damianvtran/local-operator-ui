@@ -254,8 +254,11 @@ export interface StartBrowserHostOptions {
 		documentUrl: string;
 	};
 	/**
-	 * S6a's inert approvals card. Absent means off: no controller, no child, no
-	 * product path. The document URL is the app's trusted packaged sibling.
+	 * The approvals card (default-on since S6d). `src/main/index.ts` passes it on
+	 * every launch; the kill switch (`..._OVERLAY_DISABLE=1`) is read here, so a
+	 * disabled launch builds no controller and no child. Absent means no card
+	 * only for an embedder or a test that omits it. The document URL is the app's
+	 * trusted packaged sibling.
 	 */
 	approvalsOverlay?: {
 		enabled: boolean;
@@ -1125,7 +1128,8 @@ async function initializeBrowserHost(
 			log,
 		});
 		syncApprovalsOverlay = () => {
-			// An ordinary launch has no card at all: no read, no timer, no clock.
+			// No card (kill switch, an embedder that passed none, or a child that
+			// failed to build): no read, no timer, no clock.
 			if (!approvalsOverlay) return;
 			if (approvalsExpiryTimer) {
 				clearTimeout(approvalsExpiryTimer);

@@ -273,6 +273,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-approvals-s6d-capture.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to capture the S6d approvals route and drive the dialog against the real host; the notification kill switch must ride the launch env like every app rig",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-approvals-narrow-panel-proof.mjs",
 		"spawn",
 		1,

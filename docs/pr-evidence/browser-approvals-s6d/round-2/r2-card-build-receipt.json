@@ -1,0 +1,61 @@
+{
+  "scope": "Native card entry only. out/main is not used by the native probe; probe main is bundled from frozen controller source per cell. No whole-app proof.",
+  "head": "46d9b6651a50c7a4d0ba3b0253f18be3ceb40db7",
+  "dirtyPatchSha256": "8d216d07e02aaf4869498a10290e345c1f958ab9e396d33fdc863cb5476fdb84",
+  "source": {
+    "src/main/browser/approvals-overlay.ts": "9b88e1f58db97eda659360caded4f2a948edd20916abb46c3bb72bb8837b8bd0",
+    "src/renderer/src/approvals-overlay/main.ts": "3326669b831ca2b8c62e24a16230f84bf59fcac3ab6e82b6f86a16311f53db03",
+    "src/renderer/src/approvals-overlay/card.css": "6ad92c2ee0908a2932eaf04659078b848940f92903edfbfba223764e0aed12c8",
+    "src/renderer/browser-approvals-overlay.html": "319b3098b406ea3cf0a136822c84119787bf80130c3a12e2b8d002b58144fdd3",
+    "src/preload/browser-approvals-overlay.ts": "4a714df2ecf8caeecb1a7c4b84978a83a5eb89fb62bec062cec624d53015bcd3",
+    "src/shared/browser-approvals-overlay.ts": "4a3228bb3ac9bac7cdea1cb73524a19247898adef3b52514d9ae7a3bd1d13321",
+    "electron.vite.config.js": "ef83abcd5d3a5b388f555a2fac9302cfb536759080f56e0c7690566ef59c2b03"
+  },
+  "before": {
+    "main": {
+      "out/main/bytecode-loader.cjs": "cdcfbe2ab18e7ce3fd8c143e6183fafbcf802508465003549de0075833224c22",
+      "out/main/index.js": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+      "out/main/index.jsc": "e7fbdd18b5266f21598ac6d2032054344de137bcee245d5d8ed1123d49ef45a6"
+    },
+    "preload": {
+      "out/preload/browser-approvals-overlay.js": "9497956e0e76f8cabd4d840cdf11f3351553963482c354bf09f54a5117602ffe",
+      "out/preload/index.js": "f4a2481941d2eb0d5d914a52f38ad2287585cff16e1ad37396a924bea4d64cad"
+    }
+  },
+  "build": {
+    "input": {
+      "approvalsOverlay": "~/local-operator-ui/.worktrees/s6d/src/renderer/browser-approvals-overlay.html"
+    },
+    "outDir": "~/local-operator-ui/.worktrees/s6d/out/renderer",
+    "emptyOutDir": false,
+    "config": "~/local-operator-ui/.worktrees/s6d/electron.vite.config.js",
+    "plugins": [
+      "vite:react-babel",
+      "vite:react-refresh",
+      "@tailwindcss/vite:scan",
+      "@tailwindcss/vite:generate:serve",
+      "@tailwindcss/vite:generate:build",
+      "vite-tsconfig-paths",
+      "desktop-control-proxy",
+      "vite:electron-renderer-preset-config",
+      "vite:electron-renderer-resolved-config"
+    ]
+  },
+  "after": {
+    "main": {
+      "out/main/bytecode-loader.cjs": "cdcfbe2ab18e7ce3fd8c143e6183fafbcf802508465003549de0075833224c22",
+      "out/main/index.js": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+      "out/main/index.jsc": "e7fbdd18b5266f21598ac6d2032054344de137bcee245d5d8ed1123d49ef45a6"
+    },
+    "preload": {
+      "out/preload/browser-approvals-overlay.js": "9497956e0e76f8cabd4d840cdf11f3351553963482c354bf09f54a5117602ffe",
+      "out/preload/index.js": "f4a2481941d2eb0d5d914a52f38ad2287585cff16e1ad37396a924bea4d64cad"
+    }
+  },
+  "artifacts": {
+    "out/renderer/browser-approvals-overlay.html": "59b880b01a2fade137c8d10a521f69aeaeed4458cbe837db392f3fd54924e07b",
+    "out/renderer/assets/approvalsOverlay-BXULKA6x.js": "89799ac8acfe12f5a1dad45532dd46d54e1b3262f331ed160ccff182b5f2b844",
+    "out/renderer/assets/approvalsOverlay-DFlzjkxC.css": "f9c98754140b600d907bb0b91aa43c55bc49417a187409ce1b1c514d1828fc22"
+  },
+  "completedAt": "2026-10-28T18:33:42.160Z"
+}
