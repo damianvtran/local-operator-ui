@@ -1,0 +1,4 @@
+{
+	"ui.notifications.bulk_updates.read": "{count, plural, one {Marcar # actualización como leída} other {Marcar # actualizaciones como leídas}}",
+	"ui.notifications.bulk_updates.unread": "{count, plural, one {Marcar # actualización como no leída} other {Marcar # actualizaciones como no leídas}}"
+}

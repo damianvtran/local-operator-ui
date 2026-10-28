@@ -100,6 +100,7 @@ import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiMiniView from "./catalogues/en/ui.miniView.json";
 import enUiNotices from "./catalogues/en/ui.notices.json";
 import enUiNotificationsBulk from "./catalogues/en/ui.notifications.bulk.json";
+import enUiNotificationsBulkUpdates from "./catalogues/en/ui.notifications.bulk_updates.json";
 import enUiNotifications from "./catalogues/en/ui.notifications.json";
 import enUiNotificationsOperation from "./catalogues/en/ui.notifications.operation.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
@@ -207,6 +208,7 @@ import esUiMesh from "./catalogues/es/ui.mesh.json";
 import esUiMiniView from "./catalogues/es/ui.miniView.json";
 import esUiNotices from "./catalogues/es/ui.notices.json";
 import esUiNotificationsBulk from "./catalogues/es/ui.notifications.bulk.json";
+import esUiNotificationsBulkUpdates from "./catalogues/es/ui.notifications.bulk_updates.json";
 import esUiNotifications from "./catalogues/es/ui.notifications.json";
 import esUiNotificationsOperation from "./catalogues/es/ui.notifications.operation.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
@@ -314,6 +316,7 @@ import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiMiniView from "./catalogues/fr/ui.miniView.json";
 import frUiNotices from "./catalogues/fr/ui.notices.json";
 import frUiNotificationsBulk from "./catalogues/fr/ui.notifications.bulk.json";
+import frUiNotificationsBulkUpdates from "./catalogues/fr/ui.notifications.bulk_updates.json";
 import frUiNotifications from "./catalogues/fr/ui.notifications.json";
 import frUiNotificationsOperation from "./catalogues/fr/ui.notifications.operation.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
@@ -421,6 +424,7 @@ import hiUiMesh from "./catalogues/hi/ui.mesh.json";
 import hiUiMiniView from "./catalogues/hi/ui.miniView.json";
 import hiUiNotices from "./catalogues/hi/ui.notices.json";
 import hiUiNotificationsBulk from "./catalogues/hi/ui.notifications.bulk.json";
+import hiUiNotificationsBulkUpdates from "./catalogues/hi/ui.notifications.bulk_updates.json";
 import hiUiNotifications from "./catalogues/hi/ui.notifications.json";
 import hiUiNotificationsOperation from "./catalogues/hi/ui.notifications.operation.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
@@ -528,6 +532,7 @@ import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiMiniView from "./catalogues/ru/ui.miniView.json";
 import ruUiNotices from "./catalogues/ru/ui.notices.json";
 import ruUiNotificationsBulk from "./catalogues/ru/ui.notifications.bulk.json";
+import ruUiNotificationsBulkUpdates from "./catalogues/ru/ui.notifications.bulk_updates.json";
 import ruUiNotifications from "./catalogues/ru/ui.notifications.json";
 import ruUiNotificationsOperation from "./catalogues/ru/ui.notifications.operation.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
@@ -635,6 +640,7 @@ import urUiMesh from "./catalogues/ur/ui.mesh.json";
 import urUiMiniView from "./catalogues/ur/ui.miniView.json";
 import urUiNotices from "./catalogues/ur/ui.notices.json";
 import urUiNotificationsBulk from "./catalogues/ur/ui.notifications.bulk.json";
+import urUiNotificationsBulkUpdates from "./catalogues/ur/ui.notifications.bulk_updates.json";
 import urUiNotifications from "./catalogues/ur/ui.notifications.json";
 import urUiNotificationsOperation from "./catalogues/ur/ui.notifications.operation.json";
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
@@ -742,6 +748,7 @@ import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiMiniView from "./catalogues/vi/ui.miniView.json";
 import viUiNotices from "./catalogues/vi/ui.notices.json";
 import viUiNotificationsBulk from "./catalogues/vi/ui.notifications.bulk.json";
+import viUiNotificationsBulkUpdates from "./catalogues/vi/ui.notifications.bulk_updates.json";
 import viUiNotifications from "./catalogues/vi/ui.notifications.json";
 import viUiNotificationsOperation from "./catalogues/vi/ui.notifications.operation.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
@@ -849,6 +856,7 @@ import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
 import zhCNUiMiniView from "./catalogues/zh-CN/ui.miniView.json";
 import zhCNUiNotices from "./catalogues/zh-CN/ui.notices.json";
 import zhCNUiNotificationsBulk from "./catalogues/zh-CN/ui.notifications.bulk.json";
+import zhCNUiNotificationsBulkUpdates from "./catalogues/zh-CN/ui.notifications.bulk_updates.json";
 import zhCNUiNotifications from "./catalogues/zh-CN/ui.notifications.json";
 import zhCNUiNotificationsOperation from "./catalogues/zh-CN/ui.notifications.operation.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
@@ -959,6 +967,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiMiniView,
 	...enUiNotices,
 	...enUiNotificationsBulk,
+	...enUiNotificationsBulkUpdates,
 	...enUiNotifications,
 	...enUiNotificationsOperation,
 	...enUiOnboarding,
@@ -1074,6 +1083,7 @@ export const bundledCatalogues: Readonly<
 		...esUiMiniView,
 		...esUiNotices,
 		...esUiNotificationsBulk,
+		...esUiNotificationsBulkUpdates,
 		...esUiNotifications,
 		...esUiNotificationsOperation,
 		...esUiOnboarding,
@@ -1183,6 +1193,7 @@ export const bundledCatalogues: Readonly<
 		...frUiMiniView,
 		...frUiNotices,
 		...frUiNotificationsBulk,
+		...frUiNotificationsBulkUpdates,
 		...frUiNotifications,
 		...frUiNotificationsOperation,
 		...frUiOnboarding,
@@ -1292,6 +1303,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiMiniView,
 		...hiUiNotices,
 		...hiUiNotificationsBulk,
+		...hiUiNotificationsBulkUpdates,
 		...hiUiNotifications,
 		...hiUiNotificationsOperation,
 		...hiUiOnboarding,
@@ -1401,6 +1413,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiMiniView,
 		...ruUiNotices,
 		...ruUiNotificationsBulk,
+		...ruUiNotificationsBulkUpdates,
 		...ruUiNotifications,
 		...ruUiNotificationsOperation,
 		...ruUiOnboarding,
@@ -1510,6 +1523,7 @@ export const bundledCatalogues: Readonly<
 		...urUiMiniView,
 		...urUiNotices,
 		...urUiNotificationsBulk,
+		...urUiNotificationsBulkUpdates,
 		...urUiNotifications,
 		...urUiNotificationsOperation,
 		...urUiOnboarding,
@@ -1619,6 +1633,7 @@ export const bundledCatalogues: Readonly<
 		...viUiMiniView,
 		...viUiNotices,
 		...viUiNotificationsBulk,
+		...viUiNotificationsBulkUpdates,
 		...viUiNotifications,
 		...viUiNotificationsOperation,
 		...viUiOnboarding,
@@ -1728,6 +1743,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiMiniView,
 		...zhCNUiNotices,
 		...zhCNUiNotificationsBulk,
+		...zhCNUiNotificationsBulkUpdates,
 		...zhCNUiNotifications,
 		...zhCNUiNotificationsOperation,
 		...zhCNUiOnboarding,
@@ -6947,6 +6963,8 @@ export type MessageParams = {
 	"ui.notifications.bulk.review_asks": undefined;
 	"ui.notifications.bulk.select_error": undefined;
 	"ui.notifications.bulk.update_required": undefined;
+	"ui.notifications.bulk_updates.read": { count: number };
+	"ui.notifications.bulk_updates.unread": { count: number };
 	"ui.notifications.action.mark_all_read": undefined;
 	"ui.notifications.ask.stays": undefined;
 	"ui.notifications.confirm.cancel": undefined;

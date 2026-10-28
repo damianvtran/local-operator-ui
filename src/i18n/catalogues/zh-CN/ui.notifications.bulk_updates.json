@@ -1,0 +1,4 @@
+{
+	"ui.notifications.bulk_updates.read": "{count, plural, other {将 # 条更新标记为已读}}",
+	"ui.notifications.bulk_updates.unread": "{count, plural, other {将 # 条更新标记为未读}}"
+}

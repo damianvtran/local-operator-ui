@@ -1,0 +1,18 @@
+{
+	"ui.notifications.bulk_updates.read": {
+		"role": "button",
+		"context": "Frozen-all selection v1 supports read only for update notifications, NOT ask notifications. Label must explicitly say updates and state exactly which count it acts on. count is eligible selected updates (not total selection including asks). Disabled for ask-only frozen selections. Explicit individual selection retains existing all-item action. Keep distinct from dismiss, which removes updates.",
+		"tone": "concise, factual",
+		"placeholders": {
+			"count": "integer number of eligible selected updates; ICU plural"
+		}
+	},
+	"ui.notifications.bulk_updates.unread": {
+		"role": "button",
+		"context": "Frozen-all selection v1 supports unread only for update notifications, NOT ask notifications. Label must explicitly say updates and state exactly which count it acts on. count is eligible selected updates (not total selection including asks). Disabled for ask-only frozen selections. Explicit individual selection retains existing all-item action. Keep distinct from dismiss, which removes updates.",
+		"tone": "concise, factual",
+		"placeholders": {
+			"count": "integer number of eligible selected updates; ICU plural"
+		}
+	}
+}

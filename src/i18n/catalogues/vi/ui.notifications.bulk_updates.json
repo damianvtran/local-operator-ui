@@ -1,0 +1,4 @@
+{
+	"ui.notifications.bulk_updates.read": "{count, plural, other {Đánh dấu # cập nhật đã đọc}}",
+	"ui.notifications.bulk_updates.unread": "{count, plural, other {Đánh dấu # cập nhật chưa đọc}}"
+}
