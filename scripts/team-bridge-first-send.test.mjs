@@ -41,7 +41,6 @@ const CAPABILITY = {
  * bounding step passes the bytes through, exactly as it does on a platform
  * without a decoder. The upload seam is where the bytes stop. */
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-const SERVER_MESSAGE = "msg_acct_a";
 
 const outboxReset = ui.resetTeamBridgeOutboxAccountForTests;
 assert.equal(
@@ -59,7 +58,8 @@ const cleanup = (client) => {
 
 const pendingRow = (host) => host.querySelector('[data-send-state="pending"]');
 const failedRow = (host) => host.querySelector('[data-send-state="failed"]');
-const confirmedRow = (host) => host.querySelector('[data-send-state="confirmed"]');
+const confirmedRow = (host) =>
+	host.querySelector('[data-send-state="confirmed"]');
 const rows = (host) => [...host.querySelectorAll("[data-send-state]")];
 
 const clickButton = (scope, label) => {
@@ -191,7 +191,8 @@ test("first send commits a pending row in the click task and only then creates",
 		app.fixture.createGate.resolve();
 		app.fixture.createGate = null;
 		await until(
-			() => creates(app.fixture).length === 1 && posts(app.fixture).length === 1,
+			() =>
+				creates(app.fixture).length === 1 && posts(app.fixture).length === 1,
 			"create then exactly one post",
 		);
 		assert.equal(posts(app.fixture)[0].body, "first send body");
@@ -233,7 +234,10 @@ test("the canonical swap keeps the same row node and its client reference", asyn
 		const canonical = (page?.messages ?? []).find(
 			(message) => message.body === "swap body",
 		);
-		assert.ok(canonical, "the canonical message is in the owner-qualified cache");
+		assert.ok(
+			canonical,
+			"the canonical message is in the owner-qualified cache",
+		);
 		assert.equal(
 			confirmed.getAttribute("data-message-id"),
 			canonical.id,
@@ -303,9 +307,8 @@ test("a failed row retries the same client reference in the created conversation
 		/* Only the earlier, confirmed row is still on screen: discarding the
 		 * failed one removes it and nothing else. */
 		assert.equal(
-			rows(app.host).filter((node) =>
-				node.textContent.includes("retry body"),
-			).length,
+			rows(app.host).filter((node) => node.textContent.includes("retry body"))
+				.length,
 			1,
 		);
 		assert.equal(posts(app.fixture).length, 3);
@@ -360,7 +363,10 @@ test("route unmount and remount keep a pending row and a failed row", async () =
 	const away = "/inbox";
 	const back = "/team-bridge?tenant=org_shared&conversation=bcv_shared";
 	try {
-		await until(() => app.host.querySelector("textarea"), "conversation composer");
+		await until(
+			() => app.host.querySelector("textarea"),
+			"conversation composer",
+		);
 		app.fixture.postGate = deferred();
 		await type(app.host, "pending across navigation");
 		sendSynchronously(app.host);
@@ -394,7 +400,8 @@ test("route unmount and remount keep a pending row and a failed row", async () =
 		await app.navigate(away);
 		await app.navigate(back);
 		await until(
-			() => failedRow(app.host)?.textContent.includes("failed across navigation"),
+			() =>
+				failedRow(app.host)?.textContent.includes("failed across navigation"),
 			"failed row restored after remount",
 		);
 		assert.ok(
@@ -601,7 +608,10 @@ test("tenant navigation keeps the original scoped send and renders nothing under
 					},
 				};
 			if (request.op === "team_bridge.messages.list")
-				return { status: 200, body: { result: { messages: [], has_more: false } } };
+				return {
+					status: 200,
+					body: { result: { messages: [], has_more: false } },
+				};
 			if (request.op === "team_bridge.unread")
 				return {
 					status: 200,
@@ -614,7 +624,10 @@ test("tenant navigation keeps the original scoped send and renders nothing under
 	try {
 		app.fixture.refuse = false;
 		app.fixture.postGate = deferred();
-		await until(() => app.host.querySelector("textarea"), "conversation composer");
+		await until(
+			() => app.host.querySelector("textarea"),
+			"conversation composer",
+		);
 		await type(app.host, body);
 		sendSynchronously(app.host);
 		assert.ok(pendingRow(app.host));
@@ -639,7 +652,10 @@ test("tenant navigation keeps the original scoped send and renders nothing under
 		const gate = app.fixture.postGate;
 		app.fixture.postGate = null;
 		await act(async () => gate.resolve());
-		await until(() => posts(app.fixture).length === 1, "the original post dispatches");
+		await until(
+			() => posts(app.fixture).length === 1,
+			"the original post dispatches",
+		);
 		assert.equal(
 			posts(app.fixture)[0].tenant_id,
 			"org_shared",
@@ -649,7 +665,9 @@ test("tenant navigation keeps the original scoped send and renders nothing under
 
 		await app.navigate("/inbox");
 		app.fixture.tenant = "org_shared";
-		await app.navigate("/team-bridge?tenant=org_shared&conversation=bcv_shared");
+		await app.navigate(
+			"/team-bridge?tenant=org_shared&conversation=bcv_shared",
+		);
 		await until(
 			() => app.host.textContent.includes(body),
 			"back in its own org the row is visible again",
@@ -667,7 +685,11 @@ test("tenant navigation keeps the original scoped send and renders nothing under
  * flag; the auth-owner suite's own pinned baseline is deliberately untouched. */
 test(
 	"baseline source rollback cannot commit a local row in the click task",
-	{ skip: sourceVariant.baseline ? false : "set TEAM_BRIDGE_FIRST_SEND_BASELINE" },
+	{
+		skip: sourceVariant.baseline
+			? false
+			: "set TEAM_BRIDGE_FIRST_SEND_BASELINE",
+	},
 	async () => {
 		assert.equal(sourceVariant.baseline, "8e415fbab9");
 		assert.ok(

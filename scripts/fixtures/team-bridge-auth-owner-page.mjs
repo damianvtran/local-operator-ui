@@ -100,11 +100,37 @@ const bundle = await build({
 				if (firstSendBaseline) {
 					assert.equal(firstSendBaseline, "8e415fbab9");
 					assert.equal(process.env.TEAM_BRIDGE_AUTH_BASELINE, undefined);
-					const git = (...args) => execFileSync("git", args, { encoding: "utf8" });
+					const git = (...args) =>
+						execFileSync("git", args, { encoding: "utf8" });
 					const directory = "src/renderer/src/features/team-bridge";
-					const baseFiles = new Set(git("ls-tree", "-r", "--name-only", firstSendBaseline, "--", directory).trim().split("\n"));
-					const changed = git("diff", "--name-only", firstSendBaseline, "--", directory).trim().split("\n").filter((path) => baseFiles.has(path));
-					const baseline = new Map(changed.map((path) => [path, git("show", `${firstSendBaseline}:${path}`)]));
+					const baseFiles = new Set(
+						git(
+							"ls-tree",
+							"-r",
+							"--name-only",
+							firstSendBaseline,
+							"--",
+							directory,
+						)
+							.trim()
+							.split("\n"),
+					);
+					const changed = git(
+						"diff",
+						"--name-only",
+						firstSendBaseline,
+						"--",
+						directory,
+					)
+						.trim()
+						.split("\n")
+						.filter((path) => baseFiles.has(path));
+					const baseline = new Map(
+						changed.map((path) => [
+							path,
+							git("show", `${firstSendBaseline}:${path}`),
+						]),
+					);
 					b.onLoad({ filter: SOURCE }, ({ path }) => {
 						const name = relative(process.cwd(), path);
 						const contents = baseline.get(name);
@@ -281,12 +307,16 @@ async function mount({
 	window.api = {
 		desktop: {
 			// Binary IPC stays a separate edge, including its real renderer parser.
-			...(media ? { media: (request, bytes) => {
-				const owner = fixture.account;
-				const tenant = fixture.tenant;
-				fixture.calls.push({ owner, tenant, ...request });
-				return media(request, bytes, { owner, tenant, fixture });
-			} } : {}),
+			...(media
+				? {
+						media: (request, bytes) => {
+							const owner = fixture.account;
+							const tenant = fixture.tenant;
+							fixture.calls.push({ owner, tenant, ...request });
+							return media(request, bytes, { owner, tenant, fixture });
+						},
+					}
+				: {}),
 			request: async (request) => {
 				// The fake server captures ownership at dispatch, just as an authenticated
 				// request does. A late A reply must not silently become B's server history.
@@ -298,7 +328,12 @@ async function mount({
 				// Opt-in transport only: keep auth, parsers, QueryClient and the default
 				// security scenarios intact. Undefined delegates to the original server.
 				if (intercept) {
-					const answer = await intercept(request, { owner, tenant, generation, fixture });
+					const answer = await intercept(request, {
+						owner,
+						tenant,
+						generation,
+						fixture,
+					});
 					if (answer !== undefined) return answer;
 				}
 				switch (request.op) {
@@ -498,10 +533,17 @@ async function mount({
 		.subscribe((event) => ownedQueries.add(event.query));
 	const frames = [];
 	let navigate;
-	const receiveNavigate = (value) => { navigate = value; };
-	const page = () => navigation
-		? React.createElement(ui.FixtureRoute, { onNavigate: receiveNavigate }, React.createElement(ui.TeamBridgePage))
-		: React.createElement(ui.TeamBridgePage);
+	const receiveNavigate = (value) => {
+		navigate = value;
+	};
+	const page = () =>
+		navigation
+			? React.createElement(
+					ui.FixtureRoute,
+					{ onNavigate: receiveNavigate },
+					React.createElement(ui.TeamBridgePage),
+				)
+			: React.createElement(ui.TeamBridgePage);
 	const render = () =>
 		root.render(
 			React.createElement(
@@ -539,11 +581,25 @@ async function mount({
 									nav: host.querySelector("[data-nav-attention]")?.textContent,
 									text: host.textContent,
 									draft: host.querySelector("textarea")?.value ?? "",
-									...(navigation ? {
-										location: host.querySelector("[data-fixture-location]")?.getAttribute("data-fixture-location"),
-										images: [...host.querySelectorAll("img")].map((image) => image.getAttribute("src")),
-										cache: JSON.stringify(client.getQueryCache().getAll().map((query) => ({ key: query.queryKey, data: query.state.data }))),
-									} : {}),
+									...(navigation
+										? {
+												location: host
+													.querySelector("[data-fixture-location]")
+													?.getAttribute("data-fixture-location"),
+												images: [...host.querySelectorAll("img")].map((image) =>
+													image.getAttribute("src"),
+												),
+												cache: JSON.stringify(
+													client
+														.getQueryCache()
+														.getAll()
+														.map((query) => ({
+															key: query.queryKey,
+															data: query.state.data,
+														})),
+												),
+											}
+										: {}),
 								});
 							},
 						},
@@ -572,7 +628,10 @@ async function mount({
 		frames,
 		render,
 		async navigate(path) {
-			assert.ok(navigation && navigate, "mount with navigation:true for actual route unmount/remount");
+			assert.ok(
+				navigation && navigate,
+				"mount with navigation:true for actual route unmount/remount",
+			);
 			await act(async () => navigate(path));
 			await delay();
 		},
