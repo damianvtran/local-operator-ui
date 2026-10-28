@@ -121,8 +121,9 @@ export function TeamBridgeAddMembersView({
 		chiefLabel,
 		canRemove,
 	);
-	const selectedMembers = candidates.filter(({ recipient }) =>
-		selected.has(recipientKey(recipient)),
+	const selectedMembers = candidates.filter(
+		({ recipient, disabledReason }) =>
+			disabledReason === null && selected.has(recipientKey(recipient)),
 	);
 	const pending = pendingKey !== null;
 
@@ -284,7 +285,8 @@ export function TeamBridgeAddMembersView({
 									) : (
 										filtered.map((candidate, index) => {
 											const key = recipientKey(candidate.recipient);
-											const checked = selected.has(key);
+											const checked =
+												selected.has(key) && candidate.disabledReason === null;
 											const disabled =
 												!canInvite ||
 												candidate.disabledReason !== null ||
