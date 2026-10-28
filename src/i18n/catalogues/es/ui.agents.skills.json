@@ -71,7 +71,7 @@
 	"ui.agents.skills.error.title": "No se pudieron leer las habilidades",
 	"ui.agents.skills.error.what_fallback": "La solicitud no se completó.",
 	"ui.agents.skills.error.write_fallback": "El cambio no se completó.",
-	"ui.agents.skills.hub.needs_review": "Requiere revisión",
+	"ui.agents.skills.hub.needs_review": "Necesita revisión",
 	"ui.agents.skills.hub.unlinked": "Enlace con el hub sin confirmar",
 	"ui.agents.skills.hub.unlinked_help": "Esta habilidad la gestiona el Hub de agentes, pero su enlace aún no figura en la lista de enlaces.",
 	"ui.agents.skills.hub.update_failed": "La actualización falló",

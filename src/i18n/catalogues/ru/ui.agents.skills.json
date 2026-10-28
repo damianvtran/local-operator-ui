@@ -24,7 +24,7 @@
 	"ui.agents.skills.composer.changed_below": "Показанные инструкции — это новая версия.",
 	"ui.agents.skills.composer.gate_backend": "Обновите Local Operator, чтобы менять навыки по запросу.",
 	"ui.agents.skills.composer.gate_none": "Откройте один из своих навыков, чтобы запросить изменение.",
-	"ui.agents.skills.composer.gate_not_installed": "Загрузите этот навык, чтобы изменить его.",
+	"ui.agents.skills.composer.gate_not_installed": "Загрузите этот навык на компьютер, чтобы изменить его.",
 	"ui.agents.skills.composer.gate_read_only": "Здесь этот навык доступен только для чтения.",
 	"ui.agents.skills.composer.kind": "навык",
 	"ui.agents.skills.composer.label": "Запросить изменение навыка",

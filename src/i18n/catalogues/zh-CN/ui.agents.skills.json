@@ -71,7 +71,7 @@
 	"ui.agents.skills.error.title": "无法读取技能",
 	"ui.agents.skills.error.what_fallback": "请求未完成。",
 	"ui.agents.skills.error.write_fallback": "更改未完成。",
-	"ui.agents.skills.hub.needs_review": "需审核",
+	"ui.agents.skills.hub.needs_review": "需要审核",
 	"ui.agents.skills.hub.unlinked": "中心关联未确认",
 	"ui.agents.skills.hub.unlinked_help": "此技能由智能体中心管理，但其关联尚未出现在关联列表中。",
 	"ui.agents.skills.hub.update_failed": "更新失败",
