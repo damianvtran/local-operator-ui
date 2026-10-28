@@ -1458,6 +1458,16 @@ export function ChatSidebar({
 	);
 	const hubItems = hubItemIndex(hubUpdates.data);
 	const fullHubLinks = desktopFeatureEnabled(capabilities.data, "hub_links");
+	/*
+	 * WHICH ADDRESS the hub mutations send. `hub_items_by_id` is core's exact arm
+	 * (`local_id` reaches one row of one kind); without it the released `name`
+	 * arm is the only one an older core accepts, so the mark passes the row's
+	 * display name instead of its link id.
+	 */
+	const hubItemsById = desktopFeatureEnabled(
+		capabilities.data,
+		"hub_items_by_id",
+	);
 	const hubLinks = useHubLinks(ready && fullHubLinks);
 	const hub = useHubActions();
 	// Whether the backend tracks any hub-linked item at all: the check control is
@@ -7177,6 +7187,8 @@ export function ChatSidebar({
 							link={linkedOrigin}
 							staged={staged}
 							onDetail={() => openHubDetail(kind, name)}
+							displayName={name}
+							itemsById={hubItemsById}
 						/>
 					)}
 					{aggregateOrigins && (

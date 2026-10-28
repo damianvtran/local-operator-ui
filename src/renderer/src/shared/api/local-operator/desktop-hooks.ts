@@ -326,6 +326,15 @@ export type DesktopFeature =
 	/** Full linked inventory and revision-checked independent policy controls. */
 	| "hub_links"
 	/**
+	 * `local_id` addressing on the hub check/apply/retry routes (core
+	 * `desktop_hub.py`, `LocalId`). ITS OWN KEY because the three request models
+	 * inherit `extra="forbid"`: an older core answers 422 to a body carrying
+	 * `local_id`, so a renderer must ASK before sending it and fall back to the
+	 * released `name` arm. A bump of `hub_links` could not answer that, since the
+	 * inventory is served perfectly well by a core without the field.
+	 */
+	| "hub_items_by_id"
+	/**
 	 * Complete initial Skills adapter v1: remote public/org reads (including
 	 * org_skills.list/org_skill.get proxy), local pull/install, and initial
 	 * publish preview/confirm with receipt reconciliation. Older daemons may

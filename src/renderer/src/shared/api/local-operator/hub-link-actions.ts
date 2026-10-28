@@ -89,6 +89,40 @@ export const isDirectionalReport = (
 	report: HubMergeReport,
 ): report is HubDirectionalReport => "link_id" in report;
 
+/**
+ * HOW ONE HUB ITEM IS ADDRESSED ON THE WIRE.
+ *
+ * `local_id` is the exact arm: core's routes narrow through
+ * `check_items(only_ids=...)`, so an id reaches exactly one row of one kind.
+ * It arrived with core's `hub_items_by_id` capability, and an OLDER core refuses
+ * the field outright (`Input` is `extra="forbid"`, so a body carrying it is a
+ * 422) - hence the capability gate at the call site and the name fallback here.
+ *
+ * `name` is the released arm and it is a DISPLAY name: for a skill that is the
+ * local alias (unique, it is a directory), but for an agent or a team a display
+ * name is NOT an identity - the registry refuses only an exact duplicate on
+ * create and checks nothing on rename, so two linked agents can share one and
+ * core would act on both. On an old core the name arm is therefore best-effort
+ * for agents and teams; it is the only address those cores have.
+ */
+export type HubItemAddress = {
+	kind: HubLinkKind;
+	name?: string;
+	localId?: string;
+};
+
+export function hubItemAddress(
+	link: Pick<HubLink, "kind" | "local_id" | "name">,
+	displayName: string | undefined,
+	itemsById: boolean,
+): HubItemAddress {
+	if (itemsById) return { kind: link.kind, localId: link.local_id };
+	return {
+		kind: link.kind,
+		name: displayName?.trim() ? displayName : link.name,
+	};
+}
+
 export type HubLinkAction =
 	| { action: "check"; linkId: string }
 	| {
@@ -97,8 +131,6 @@ export type HubLinkAction =
 			preview?: boolean;
 			prefer?: "local" | "remote";
 			acknowledgeUnknownBaseline?: boolean;
-			previewReceipt?: string;
-			confirmApply?: true;
 	  }
 	| { action: "retry"; linkId: string; direction: HubLinkDirection }
 	| { action: "preview"; linkId: string }
@@ -110,9 +142,15 @@ export type HubLinkAction =
  * it sends ONLY the immutable receipt the user just viewed and acknowledged.
  */
 export function useHubLinkActions(
-	link: Pick<HubLink, "link_id" | "kind" | "name">,
+	link: Pick<HubLink, "link_id" | "kind" | "local_id" | "name">,
+	options: { displayName?: string; itemsById?: boolean } = {},
 ) {
 	const client = useQueryClient();
+	const address = hubItemAddress(
+		link,
+		options.displayName,
+		options.itemsById === true,
+	);
 	const safety = useHubMutationSafety();
 	const linkId = link.link_id;
 	const key = `link:${linkId}`;
@@ -133,39 +171,32 @@ export function useHubLinkActions(
 				switch (input.action) {
 					case "check":
 						/*
-						 * ONE item, selected by its local identity. The check route
-						 * has no `link_id` member (core `HubCheck`, extra="forbid"),
-						 * and it checks both directions of the item, so there is no
-						 * direction to send either.
+						 * ONE item, addressed by `kind` + (`local_id` | display name).
+						 * The check route has no `link_id` member (core `HubCheck`,
+						 * extra="forbid"), and it checks both directions of the item, so
+						 * there is no direction to send either.
 						 */
 						return desktopResult<HubLinkActionResponse>({
 							op: "hub.check",
 							requestId,
-							kind: link.kind,
-							name: link.name,
+							...address,
 						});
 					case "apply":
 						return desktopResult<HubLinkActionResponse>({
 							op: "hub.apply",
 							requestId,
-							linkId: input.linkId,
-							direction: "pull",
+							...address,
 							...(input.preview ? { dryRun: true } : {}),
 							...(input.prefer ? { prefer: input.prefer } : {}),
 							...(input.acknowledgeUnknownBaseline
 								? { acknowledgeUnknownBaseline: true }
 								: {}),
-							...(input.previewReceipt
-								? { previewReceipt: input.previewReceipt }
-								: {}),
-							...(input.confirmApply ? { confirmApply: true } : {}),
 						});
 					case "retry":
 						return desktopResult<HubLinkActionResponse>({
 							op: "hub.retry",
 							requestId,
-							linkId: input.linkId,
-							direction: input.direction,
+							...address,
 						});
 					case "preview":
 						return desktopResult<HubLinkActionResponse>({

@@ -58,9 +58,19 @@ export function HubLinkSidebarMark({
 	link,
 	staged,
 	onDetail,
-}: { link: HubLink; staged: boolean; onDetail: () => void }) {
+	displayName,
+	itemsById = false,
+}: {
+	link: HubLink;
+	staged: boolean;
+	onDetail: () => void;
+	/** The row's DISPLAY name: an agent/team link row's `name` is its id. */
+	displayName?: string;
+	/** `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
+	itemsById?: boolean;
+}) {
 	useI18nLocale();
-	const actions = useHubLinkActions(link);
+	const actions = useHubLinkActions(link, { displayName, itemsById });
 	const [open, setOpen] = useState(false);
 	const [consentOpen, setConsentOpen] = useState(false);
 	const button = useRef<HTMLButtonElement>(null);
