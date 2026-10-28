@@ -76,6 +76,63 @@ const EMPTY_PLAN: MovePlan = {
 };
 
 /**
+ * A catalogue message as prose plus its code spans: backticks become `<code>`.
+ *
+ * WHY IT EXISTS. `ui.chat.device.sentence.pairing_guidance` names two terminal
+ * commands, and its own context note asks for them verbatim inside backticks
+ * (`src/i18n/catalogues/en/ui.chat.device.context.json`). All seven catalogues
+ * carry the markers, so drawing `{guidance}` into a plain `<p>` printed the
+ * markers themselves - the picker's only instruction for a device in no network
+ * read as punctuation instead of as commands. `docs/branding.md` owns the rule
+ * that decides the treatment: "Monospace is machine voice", so a command is a
+ * mono run, and a mono run in the middle of a sentence is a `<code>` element.
+ *
+ * IT IS NOT A MARKDOWN RENDERER, deliberately. This is one catalogue sentence
+ * with two pairs of markers; pulling the chat's markdown pipeline in would let a
+ * catalogue value emit arbitrary markup, which is the class of bug
+ * `ledger-check` and the string scanner exist to keep out of the catalogues.
+ *
+ * `dir="ltr"` IS LOAD-BEARING IN `ur`. The commands are Latin and have to stay
+ * readable inside an RTL paragraph; the explicit direction is also what keeps a
+ * trailing neutral in the run from being resolved to the paragraph's direction,
+ * the bidi class this repo already fixes with an isolate elsewhere.
+ *
+ * AN UNCLOSED MARKER IS TEXT. `split` on one delimiter yields an even number of
+ * pieces only when the marker count is odd - one span opened and never closed -
+ * and that renders the message exactly as written rather than crashing or
+ * drawing half a span. A render path does not throw on a catalogue defect
+ * (`t()` does not either); the catalogue checks own that failure.
+ */
+export const messageRuns = (text: string): ReactNode[] => {
+	const parts = text.split("`");
+	if (parts.length % 2 === 0) return [text];
+	return parts.map((part, index) =>
+		index % 2 === 1 ? (
+			// biome-ignore lint/suspicious/noArrayIndexKey: a run's position in its own sentence is its identity; runs are derived per render from one string and never reordered in place.
+			<code key={index} dir="ltr" className="font-mono text-ink">
+				{part}
+			</code>
+		) : (
+			part
+		),
+	);
+};
+
+/**
+ * The pairing sentence, drawn where `DevicePicker` states it.
+ *
+ * A NAMED COMPONENT RATHER THAN AN INLINE `<p>`, so the suite renders the same
+ * paragraph the picker does: asserting `messageRuns` alone would stay green with
+ * a caller reverted to `{model.guidance}`, which is exactly the shape this fix
+ * closes.
+ */
+export const DeviceGuidance = ({ guidance }: { guidance: string }) => (
+	<p data-device-guidance="" className="px-2 py-1.5 text-meta text-ink-dim">
+		{messageRuns(guidance)}
+	</p>
+);
+
+/**
  * The reachability dot, drawn only where there is a reachability fact to state.
  *
  * THIS DEVICE IS HERE BY DEFINITION and a draft has nothing to be reachable yet, so
@@ -364,12 +421,7 @@ const DevicePicker = ({
 					 * ANSWERED read: see `model.readFailure` below, which is what an empty list
 					 * means when nobody answered.
 					 */
-					<p
-						data-device-guidance=""
-						className="px-2 py-1.5 text-meta text-ink-dim"
-					>
-						{model.guidance}
-					</p>
+					<DeviceGuidance guidance={model.guidance} />
 				) : null}
 			</div>
 			{model.footer ||
