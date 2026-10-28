@@ -1,0 +1,3 @@
+{
+	"ui.notifications.operation.progress": "تبدیل شدہ: {changed, number} · نظر انداز: {skipped, number} · تصدیق نہیں ہوئی: {pending, number}"
+}

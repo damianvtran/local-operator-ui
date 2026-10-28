@@ -1,4 +1,5 @@
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import { TEAM_BRIDGE_ENABLED_SETTING_KEY } from "@features/settings/promoted-setting-sections";
 import {
 	type DesktopFeatureState,
 	desktopFeatureState,
@@ -12,7 +13,17 @@ import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { ArrowUp, Bot, Clock, Hash, Pencil, Plus, Users } from "lucide-react";
+import { showErrorToast } from "@shared/utils/toast-manager";
+import {
+	Archive,
+	ArrowUp,
+	Bot,
+	Clock,
+	Hash,
+	Pencil,
+	Plus,
+	Users,
+} from "lucide-react";
 import type { FC, ReactNode } from "react";
 import {
 	useEffect,
@@ -22,7 +33,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeConversation,
@@ -30,6 +41,14 @@ import type {
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
+import { rowCurrent } from "../chat/components/chat-sidebar";
+import {
+	TeamBridgeArchiveDialog,
+	TeamBridgeArchivedBanner,
+	TeamBridgeArchivedChannelsView,
+	TeamBridgeDeleteDialog,
+	archiveChannelName,
+} from "./team-bridge-archive";
 import {
 	teamBridgeArrivalStreamKey,
 	teamBridgeOpenEmptyArrivals,
@@ -48,19 +67,26 @@ import {
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
+import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { draftTargetKey } from "./team-bridge-drafts";
 import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
+	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeEligibility,
 	type TeamBridgeOrganization,
 	type TeamBridgeRecipient,
 	type TeamBridgeScope,
 	type TeamBridgeTarget,
+	archivedChannelRows,
 	asTeamBridgeTenantId,
+	canArchiveConversation,
+	canManageArchivedConversation,
 	chiefsOfStaff,
+	composeChiefLabel,
 	conversationMemberCount,
+	conversationMembershipCounts,
 	conversationOrganizationName,
 	conversationTitle,
 	directoryFailureKind,
@@ -68,7 +94,9 @@ import {
 	dmWithPerson,
 	draftCreateInput,
 	hubTenantList,
+	isNotAMemberRefusal,
 	isPreviewConversation,
+	landingAfterRemoval,
 	notifyFailureIsVisible,
 	organizationOptions,
 	organizationsReadState,
@@ -78,6 +106,7 @@ import {
 	railSections,
 	recipientCandidates,
 	recipientKey,
+	selectableConversations,
 	sendFirstMessage,
 	targetConversation,
 	teamBridgeEligibility,
@@ -120,8 +149,12 @@ import {
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
+	useArchiveTeamBridgeConversation,
+	useArchivedTeamBridgeConversations,
 	useCreateTeamBridgeConversation,
+	useDeleteTeamBridgeConversation,
 	useJoinTeamBridgeConversation,
+	useLoadMoreArchivedTeamBridgeConversations,
 	useMarkTeamBridgeRead,
 	useSendTeamBridgeMessage,
 	useSetTeamBridgeNotify,
@@ -131,6 +164,7 @@ import {
 	useTeamBridgeMessages,
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
+	useUnarchiveTeamBridgeConversation,
 } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
@@ -248,6 +282,12 @@ const TeamBridgeGateLoading: FC = () => {
 	);
 };
 
+/** The localized forms shared by every chief label and storage decision. */
+const chiefLabelCopy = (): ChiefLabels => ({
+	named: (agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+	unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
+});
+
 /**
  * What a signed-in user sees when the bridge says this account or
  * organization cannot use it.
@@ -257,12 +297,38 @@ const TeamBridgeGateLoading: FC = () => {
  * page could offer (create, scope, compose) would be refused. The surface
  * capability still mounts the page, so this is the honest answer for a build
  * that can render Team Bridge but no plan can serve it.
+ *
+ * THE ONE EXCEPTION IS `off` (design round 1, D1). The member turned Team
+ * Bridge off themselves, so there IS a way forward, and a gate that only says
+ * "turning it on again is possible" is a dead end. The panel names the product
+ * the member just pressed Turn off on (Team Bridge, never the older "Agent
+ * messages"), says what being off means, and links to the Settings control
+ * that turns it back on. The link is NAVIGATION, not an Enable: it lands on
+ * Settings -> Team Bridge with the way-back control focused, and that control
+ * keeps its own consent semantics (the served text above "Turn on again").
+ * It reuses the promoted `?setting=team_bridge.enabled` deep link, which
+ * already resolves to that section (`promoted-setting-sections.ts`).
+ *
+ * `off_local` (review R2-2) is the same gate for a member who turned off only
+ * "Enabled on this machine": the account stays enrolled and the way back is
+ * that switch, which collects no consent. Its copy says so; reusing the
+ * account-level "off for this account ... asks for your consent" text would
+ * misdescribe both the scope and the step.
  */
 export const TeamBridgeEligibilityPanel: FC<{
 	reason: TeamBridgeEligibility;
 }> = ({ reason }) => {
 	useI18nLocale();
 	const copy = {
+		// Member opt-out is a plain state, not an organization-plan upsell.
+		off: {
+			title: "ui.agentMessages.page_off.title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
+			reason: "ui.agentMessages.page_off.body",
+		},
+		off_local: {
+			title: "ui.agentMessages.page_off.local_title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
+			reason: "ui.agentMessages.page_off.local_body",
+		},
 		plan_required: {
 			title: "ui.teamBridge.plan.title",
 			reason: "ui.teamBridge.plan.reason",
@@ -300,12 +366,24 @@ export const TeamBridgeEligibilityPanel: FC<{
 					{t(copy[reason].title)}
 				</h1>
 				<div className="mt-2">
-					<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
-						{t("ui.teamBridge.plan.body")}
-					</p>
+					{reason !== "off" && reason !== "off_local" && (
+						<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
+							{t("ui.teamBridge.plan.body")}
+						</p>
+					)}
 					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
 						{t(copy[reason].reason)}
 					</p>
+					{(reason === "off" || reason === "off_local") && (
+						<Button asChild variant="secondary" size="sm" className="mt-4">
+							<Link
+								to={`/settings?setting=${TEAM_BRIDGE_ENABLED_SETTING_KEY}`}
+								data-team-bridge-off-action="settings"
+							>
+								{t("ui.agentMessages.page_off.action")}
+							</Link>
+						</Button>
+					)}
 				</div>
 			</div>
 		</div>
@@ -358,7 +436,13 @@ export type TeamBridgePageViewProps = {
 	threadLink?: ThreadTarget | null;
 	onCloseThread?: () => void;
 	listState: "loading" | "error" | "ready";
-	messageState: "idle" | "loading" | "error" | "ready";
+	/**
+	 * `forbidden`: the server answered `not_a_member` for the history of an ARCHIVED
+	 * channel the caller can administer but never joined (an org owner/admin). It is
+	 * its own state because "you may manage this but not read it" is neither a load
+	 * failure nor an empty channel.
+	 */
+	messageState: "idle" | "loading" | "error" | "ready" | "forbidden";
 	conversations: TeamBridgeConversation[];
 	/**
 	 * What the rail has selected. The view resolves the conversation it shows
@@ -383,6 +467,29 @@ export type TeamBridgePageViewProps = {
 	notifyFailed?: boolean;
 	onJoin?: () => void;
 	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/**
+	 * ARCHIVE / PERMANENT DELETE. Each is optional so a mount that does not wire
+	 * them (a story, an older container) simply draws none of the controls.
+	 * `onArchive` is optimistic and fire-and-forget; `onDelete` resolves only when
+	 * the server has erased the channel, because the dialog stays open on it.
+	 */
+	onArchive?: (conversation: TeamBridgeConversation) => void;
+	onUnarchive?: (conversation: TeamBridgeConversation) => void;
+	onDelete?: (conversation: TeamBridgeConversation) => Promise<unknown>;
+	unarchiveFailed?: boolean;
+	/** The Archived channels view's read (loaded the first time it is opened). */
+	archivedState?: "loading" | "error" | "ready";
+	archivedConversations?: TeamBridgeConversation[];
+	/** More archived pages exist (the server's `has_more`); "Load more" appends the next. */
+	archivedHasMore?: boolean;
+	archivedLoadingMore?: boolean;
+	archivedLoadMoreFailed?: boolean;
+	onLoadMoreArchived?: () => void;
+	onOpenArchived?: () => void;
+	onRetryArchived?: () => void;
+	/** Story/test seeds: open the view, or a confirm dialog, in its resting state. */
+	initialQuickView?: "archived";
+	initialDialog?: { kind: "archive" | "delete"; conversationId: string };
 	/**
 	 * The `team_bridge_threads` capability answer, computed by the container from
 	 * `useDesktopCapabilities()`. Defaults to `unknown` so a caller that has not
@@ -420,7 +527,13 @@ export type TeamBridgePageViewProps = {
 	eligibility?: TeamBridgeEligibility | null;
 	gatePending?: boolean;
 	readOnly?: boolean;
-	onTarget: (target: TeamBridgeTarget) => void;
+	/**
+	 * A band above the thread pane (the default-on first-run notice). A slot
+	 * rather than a prop bag so the pure view stays ignorant of the notice's
+	 * reads and writes, which live in its container.
+	 */
+	notice?: ReactNode;
+	onTarget: (target: TeamBridgeTarget | null) => void;
 	/**
 	 * Send `body`. For a target with no conversation yet the container creates
 	 * it first; the view does not know or care which.
@@ -487,6 +600,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	notifyFailed = false,
 	onJoin,
 	onNotifyChange,
+	onArchive,
+	onUnarchive,
+	onDelete,
+	unarchiveFailed = false,
+	archivedState = "ready",
+	archivedConversations = [],
+	archivedHasMore = false,
+	archivedLoadingMore = false,
+	archivedLoadMoreFailed = false,
+	onLoadMoreArchived,
+	onOpenArchived,
+	onRetryArchived,
+	initialQuickView,
+	initialDialog,
 	threadsCapabilityState = "unknown",
 	reactionsCapabilityState = "unknown",
 	defaultMenuOpen = false,
@@ -503,6 +630,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	eligibility = null,
 	gatePending = false,
 	readOnly = false,
+	notice = null,
 	onTarget,
 	onSend,
 	onSchedule,
@@ -513,7 +641,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onRetryMemberships,
 }) => {
 	const locale = useI18nLocale();
-	const [quickView, setQuickView] = useState<"drafts" | "scheduled" | null>(
+	const [quickView, setQuickView] = useState<
+		"drafts" | "scheduled" | "archived" | null
+	>(initialQuickView ?? null);
+	/* The confirm dialogs name the conversation they were opened for, not "the
+	   selected one": the selection can change under an open dialog. */
+	const [dialog, setDialog] = useState<{
+		kind: "archive" | "delete";
+		conversationId: string;
+	} | null>(initialDialog ?? null);
+	const [deleting, setDeleting] = useState(false);
+	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
 		null,
 	);
 	const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -606,7 +744,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	/* Text OR at least one staged image; image-only messages are allowed. */
 	const hasContent = Boolean(draft.trim()) || images.count > 0;
 	const imagesSettled = !images.busy && !images.blocked;
-	const selectTarget = (next: TeamBridgeTarget) => {
+	const selectTarget = (next: TeamBridgeTarget | null) => {
 		setQuickView(null);
 		onTarget(next);
 	};
@@ -635,13 +773,28 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		() => visibleConversationRows(conversations, scope, organizations),
 		[conversations, scope, organizations],
 	);
-	const sections = useMemo(() => railSections(listRows), [listRows]);
+	/*
+	 * ARCHIVED CHANNELS LEAVE THE SIDEBAR. The server's default list is `open`
+	 * only, but a server that predates the `status` parameter still returns
+	 * archived rows in it, so the rail filters too: one rule, whichever server
+	 * answered. `listRows` stays whole for selection, because a deep link or a
+	 * notification can still name an archived conversation.
+	 */
+	const sidebarRows = useMemo(
+		() => listRows.filter((row) => row.status !== "archived"),
+		[listRows],
+	);
+	const sections = useMemo(() => railSections(sidebarRows), [sidebarRows]);
+	/* Everything a selection may resolve against: the live list plus the archived view's rows. */
+	const selectable = useMemo(
+		() => selectableConversations(listRows, archivedConversations),
+		[listRows, archivedConversations],
+	);
 	const chiefs = useMemo(
 		() => (mergedView ? [] : chiefsOfStaff(people, selfAccountId)),
 		[mergedView, people, selfAccountId],
 	);
-	const chiefLabel = (agent: string, person: string) =>
-		t("ui.teamBridge.chief.label", { agent, person });
+	const chiefLabels = chiefLabelCopy();
 	const self = useMemo(
 		() =>
 			selfAccountId && selfName?.trim()
@@ -663,7 +816,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			display_label: string;
 		},
 		tenantId: string,
-	) => participantLabel(participant, rosterFor(tenantId), chiefLabel, self);
+	) => participantLabel(participant, rosterFor(tenantId), chiefLabels, self);
 	const profileFor = (sender: TeamBridgeMessage["sender"], tenantId: string) =>
 		rosterFor(tenantId).find(
 			(member) => member.account_id === sender.account_id,
@@ -720,7 +873,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		? sections.directs
 		: unmatchedDirects(sections.directs, people, chiefs, selfAccountId);
 
-	const selected = targetConversation(target, listRows, selfAccountId);
+	const selected = targetConversation(target, selectable, selfAccountId);
 	const previewSelected = selected !== null && isPreviewConversation(selected);
 	const selectedOrganizationName = selected
 		? conversationOrganizationName(selected, organizations)
@@ -757,7 +910,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			: (conversationTitle(selected, selfAccountId) ??
 				t("ui.teamBridge.list.untitled"))
 		: draftChief
-			? chiefLabel(draftChief.agentName, personDisplayLabel(draftChief.person))
+			? composeChiefLabel(
+					draftChief.agentName,
+					personDisplayLabel(draftChief.person),
+					chiefLabels,
+				)
 			: draftPerson
 				? personDisplayLabel(draftPerson)
 				: null;
@@ -767,10 +924,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * every chief of staff, labelled the way the rail labels them.
 	 */
 	const candidates = useMemo(
-		() =>
-			recipientCandidates(people, selfAccountId, (agent, person) =>
-				t("ui.teamBridge.chief.label", { agent, person }),
-			),
+		() => recipientCandidates(people, selfAccountId, chiefLabelCopy()),
 		[people, selfAccountId],
 	);
 
@@ -778,6 +932,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	const membershipCounts = shown
+		? conversationMembershipCounts(shown)
+		: { active: 0, invited: 0 };
 	/*
 	 * A quick view (Drafts / Scheduled) REPLACES the conversation in the main
 	 * region, so the thread belonging to that conversation closes with it, the
@@ -786,7 +943,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * thread open made the Drafts/Scheduled buttons change nothing visible
 	 * (review round 4, R4-02).
 	 */
-	const openQuickView = (next: "drafts" | "scheduled") => {
+	const openQuickView = (next: "drafts" | "scheduled" | "archived") => {
 		if (threadSelection) {
 			setThreadSelection(null);
 			onCloseThread?.();
@@ -817,6 +974,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const canCompose =
 		!readOnly &&
 		!previewSelected &&
+		shown?.status !== "archived" &&
 		!selectedOrganizationUnknown &&
 		(shown !== null ||
 			(target?.type === "compose" && composeRecipients.length > 0) ||
@@ -1103,8 +1261,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		const label =
 			people.find((row) => row.account_id === draftTarget.accountId)
 				?.display_label ?? t("ui.teamBridge.list.untitled");
+		// A chief draft carries the agent's own name when the directory has one,
+		// so the Drafts view agrees with the rail ("Aida (Ben)", review R1-4).
 		return draftTarget.type === "chief"
-			? chiefLabel(t("ui.teamBridge.chief.fallback"), label)
+			? composeChiefLabel(
+					chiefs.find(
+						(chief) => chief.person.account_id === draftTarget.accountId,
+					)?.agentName ?? "",
+					label,
+					chiefLabelCopy(),
+				)
 			: label;
 	};
 
@@ -1149,6 +1315,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					}
 					onSelect={() =>
 						selectTarget({ type: "conversation", id: conversation.id })
+					}
+					onArchive={
+						onArchive && !readOnly && canArchiveConversation(conversation)
+							? () =>
+									setDialog({
+										kind: "archive",
+										conversationId: conversation.id,
+									})
+							: undefined
 					}
 				/>
 			))}
@@ -1230,6 +1405,36 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						<Clock size={14} aria-hidden="true" />
 						{t("ui.teamBridge.schedule.list")}
 					</button>
+					{/* DESIGN ROUND 1, D3: the Channels "..." is hover-only, so in a resting
+					    rail the Archived view did not exist. This is its resting door, drawn
+					    only for a reader who has something to look for (an administrator, or
+					    anyone with an archived channel loaded) and carrying the same
+					    aria-current as Drafts and Scheduled while the view is open. */}
+					{onOpenArchived &&
+						(quickView === "archived" ||
+							archivedChannelRows(archivedConversations).length > 0 ||
+							sidebarRows.some(canArchiveConversation)) && (
+							<button
+								type="button"
+								aria-current={quickView === "archived" ? "page" : undefined}
+								onClick={() => {
+									onOpenArchived();
+									openQuickView("archived");
+								}}
+								className={cn(
+									"flex h-[30px] items-center gap-2 rounded-md px-2 text-sm",
+									/* The selected-row role every sidebar shares; Drafts and Scheduled
+									   mark `aria-current` only, so this is the one entry that is also
+									   visibly current while its view is open (design round 1, D3). */
+									quickView === "archived"
+										? rowCurrent
+										: "text-ink-muted hover:bg-row-hover",
+								)}
+							>
+								<Archive size={14} aria-hidden="true" />
+								{t("ui.teamBridge.archive.section.archived")}
+							</button>
+						)}
 				</nav>
 				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
 					{listState === "error" && (
@@ -1247,6 +1452,24 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					<RailSection
 						id="team-bridge-channels-heading"
 						title={t("ui.teamBridge.section.channels")}
+						menu={
+							onOpenArchived
+								? {
+										label: t("ui.teamBridge.archive.section.menu"),
+										items: [
+											{
+												key: "archived",
+												label: t("ui.teamBridge.archive.section.archived"),
+												icon: <Archive size={14} aria-hidden="true" />,
+												onSelect: () => {
+													onOpenArchived();
+													openQuickView("archived");
+												},
+											},
+										],
+									}
+								: undefined
+						}
 						add={
 							createDisabled
 								? undefined
@@ -1405,9 +1628,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												)}
 												key={chief.person.account_id}
 												chief={chief}
-												label={chiefLabel(
+												label={composeChiefLabel(
 													chief.agentName,
 													personDisplayLabel(chief.person),
+													chiefLabelCopy(),
 												)}
 												selected={isTargetRow(
 													target,
@@ -1445,6 +1669,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					threadIsOpen && "@max-[1024px]/bridge:invisible",
 				)}
 			>
+				{notice}
 				{quickView === "scheduled" && selfAccountId ? (
 					<TeamBridgeScheduledList
 						accountId={selfAccountId}
@@ -1463,6 +1688,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							mergedView ? organizations.map((row) => row.tenantId) : [scope]
 						}
 						readOnly={readOnly}
+					/>
+				) : quickView === "archived" ? (
+					<TeamBridgeArchivedChannelsView
+						state={archivedState}
+						conversations={archivedChannelRows(archivedConversations)}
+						hasMore={archivedHasMore}
+						loadingMore={archivedLoadingMore}
+						loadMoreFailed={archivedLoadMoreFailed}
+						onLoadMore={onLoadMoreArchived}
+						organizationName={
+							mergedView
+								? (conversation) =>
+										conversationOrganizationName(conversation, organizations)
+								: undefined
+						}
+						onRetry={onRetryArchived}
+						onOpen={(conversation) => {
+							/* Opening a row leaves the list for the channel, read-only. */
+							setQuickView(null);
+							selectTarget({ type: "conversation", id: conversation.id });
+						}}
 					/>
 				) : quickView === "drafts" ? (
 					<section
@@ -1579,10 +1825,36 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									</span>
 								)}
 								{shown && shown.kind !== "dm" && (
-									<span className="shrink-0 text-meta-sm text-ink-dim">
-										{t("ui.teamBridge.member.count", {
-											count: conversationMemberCount(shown),
-										})}
+									<span className="flex shrink-0 flex-col text-meta-sm text-ink-dim">
+										{/* A current invitation is membership, not active access, so
+										    with invitees the headline says "active" outright and the
+										    invited count sits beneath it (design review D2 on #1336:
+										    "1 member" over "1 active · 3 invited" repeated the active
+										    count and left "member" unqualified). Never infer the
+										    breakdown from a preview's aggregate `member_count`:
+										    a preview has no rows, so `invited` is 0 there. */}
+										{membershipCounts.invited > 0 ? (
+											<>
+												{/* The headline takes the stronger ink and the invited line
+												    the subordinate one: the invited count qualifies the
+												    headline and must not outrank it (design review D1 on
+												    #1441). The single-line count below keeps its ink. */}
+												<span className="text-ink-muted">
+													{t("ui.teamBridge.member.active_count", {
+														count: membershipCounts.active,
+													})}
+												</span>
+												<span className="text-ink-dim">
+													{t("ui.teamBridge.member.invited_count", {
+														count: membershipCounts.invited,
+													})}
+												</span>
+											</>
+										) : (
+											t("ui.teamBridge.member.count", {
+												count: conversationMemberCount(shown),
+											})
+										)}
 									</span>
 								)}
 								{shown?.last_message_at && shown.latest_seq > 0 && (
@@ -1599,6 +1871,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										<TeamBridgeConversationMenu
 											conversation={shown}
 											onNotifyChange={onNotifyChange}
+											onArchive={
+												onArchive && canArchiveConversation(shown)
+													? () =>
+															setDialog({
+																kind: "archive",
+																conversationId: shown.id,
+															})
+													: undefined
+											}
 											defaultOpen={defaultMenuOpen}
 										/>
 									)}
@@ -1609,6 +1890,22 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							<p role="alert" className="px-5 pb-1 text-[12px] text-danger">
 								{t("ui.teamBridge.notify.error")}
 							</p>
+						)}
+						{shown?.status === "archived" && (
+							<TeamBridgeArchivedBanner
+								conversation={shown}
+								canManage={
+									!readOnly &&
+									Boolean(onUnarchive && onDelete) &&
+									canManageArchivedConversation(shown)
+								}
+								error={unarchiveFailed}
+								onUnarchive={() => onUnarchive?.(shown)}
+								onDelete={() => {
+									setDeleteFailed(null);
+									setDialog({ kind: "delete", conversationId: shown.id });
+								}}
+							/>
 						)}
 						{shown?.builtin && (
 							<p className="px-5 pb-1 text-[12px] text-ink-dim">
@@ -1732,9 +2029,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									<p className="px-5 py-8 text-[13px] text-ink-muted">
 										{t("ui.teamBridge.thread.error")}
 									</p>
+								) : messageState === "forbidden" ? (
+									/* An administrator opening an archived channel they never joined:
+									   the server lets them manage it but not read it (agent-server
+									   S4). Not an error to retry and not an empty channel. */
+									<p className="px-5 py-8 text-[13px] text-ink-muted">
+										{t("ui.teamBridge.archive.thread.forbidden")}
+									</p>
 								) : messages.length === 0 ? (
 									<p className="mt-auto px-5 pb-4 text-[13px] text-ink-muted">
-										{t("ui.teamBridge.thread.empty")}
+										{/* Design round 1, D5: "Say hello" invites a post the line below
+										    refuses. An archived channel's empty state is a plain fact. */}
+										{shown?.status === "archived"
+											? t("ui.teamBridge.archive.thread.empty")
+											: t("ui.teamBridge.thread.empty")}
 									</p>
 								) : (
 									<TeamBridgeMessageList
@@ -1774,7 +2082,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						    No composer in a preview (a non-member cannot write) and none
 						    on surface F, where the reason replaces it. */}
 						{!previewSelected &&
-							(readOnly ? (
+							(shown?.status === "archived" ? (
+								/* Nobody can post: the server refuses it too (`conversation_archived`). */
+								<p className="shrink-0 px-5 pb-4 text-[12px] text-ink-dim leading-snug">
+									{t("ui.teamBridge.archive.composer.note")}
+								</p>
+							) : readOnly ? (
 								<p className="shrink-0 px-5 pb-4 text-[12px] text-ink-dim leading-snug">
 									{t("ui.teamBridge.read_only.composer")}
 								</p>
@@ -2053,6 +2366,75 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						)}
 					</div>
 				)}
+			{(() => {
+				/* The dialogs name the conversation they were opened for. A row that left
+				   the cache (archived, or deleted by someone else) closes its own dialog. */
+				const subject = dialog
+					? selectable.find((row) => row.id === dialog.conversationId)
+					: undefined;
+				if (!dialog || !subject) return null;
+				const name = archiveChannelName(subject);
+				/* Only a selection ON the removed channel has to move: archiving a
+				   channel from another row's menu leaves the reader where they are. */
+				const wasShown =
+					target?.type === "conversation" && target.id === subject.id;
+				return dialog.kind === "archive" ? (
+					<TeamBridgeArchiveDialog
+						open
+						name={name}
+						onClose={() => setDialog(null)}
+						onConfirm={() => {
+							setDialog(null);
+							onArchive?.(subject);
+							/* LEAVE THE CHANNEL THE WAY SLACK DOES (design round 1, D2): the row
+							   is already gone from the rail, so land on the next channel in it
+							   (else the previous one, else the default). Leaving the target on
+							   the archived id painted "Untitled conversation" over a dead composer. */
+							if (wasShown)
+								selectTarget(landingAfterRemoval(sidebarRows, subject.id));
+						}}
+					/>
+				) : (
+					<TeamBridgeDeleteDialog
+						open
+						name={name}
+						pending={deleting}
+						error={deleteFailed}
+						onClose={() => setDialog(null)}
+						onConfirm={() => {
+							if (!onDelete || deleting) return;
+							setDeleting(true);
+							setDeleteFailed(null);
+							onDelete(subject).then(
+								() => {
+									setDeleting(false);
+									setDialog(null);
+									/* An erased channel cannot stay selected. Move the selection off it
+									   (never onto it: it is archived, so it is not in `sidebarRows`) and
+									   return to the Archived channels view, where the reader came from and
+									   where the rest of the clean-up is. */
+									if (wasShown) {
+										onTarget(landingAfterRemoval(sidebarRows, subject.id));
+										onOpenArchived?.();
+										openQuickView("archived");
+									}
+								},
+								(failure: unknown) => {
+									setDeleting(false);
+									/* The server's 404 is opaque: "already gone" and "you may no longer
+									   delete this" look the same. Say exactly that, not "deleted". */
+									setDeleteFailed(
+										(failure as { code?: string } | null)?.code ===
+											"conversation_not_found"
+											? "gone"
+											: "error",
+									);
+								},
+							);
+						}}
+					/>
+				);
+			})()}
 		</div>
 	);
 };
@@ -2255,7 +2637,7 @@ const TeamBridgeOwnedPage: FC<{
 	const channelCandidates = recipientCandidates(
 		people,
 		selfAccountId,
-		(agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+		chiefLabelCopy(),
 	);
 
 	const [target, setTarget] = useState<TeamBridgeTarget | null>(() =>
@@ -2321,9 +2703,36 @@ const TeamBridgeOwnedPage: FC<{
 		}
 	}, [visibleConversations, target]);
 
+	/*
+	 * ARCHIVE / UNARCHIVE / DELETE. The archived read stays OFF until the
+	 * Archived channels view is first opened (`archivedOpened`), so a reader who
+	 * never looks never spends it; once opened it stays warm and every write
+	 * refreshes it through the shared conversations prefix. It also turns on for
+	 * a selection the live list does not hold (a deep link or a notification
+	 * naming an archived channel), so that selection can resolve.
+	 */
+	const [archivedOpened, setArchivedOpened] = useState(false);
+	const selectionOutsideLive =
+		list.isSuccess &&
+		target?.type === "conversation" &&
+		!visibleConversations.some((row) => row.id === target.id);
+	const archivedList = useArchivedTeamBridgeConversations(
+		scope,
+		readsEnabled && (archivedOpened || selectionOutsideLive),
+		accountId,
+	);
+	const archivedRows = archivedList.data?.conversations ?? [];
+	/*
+	 * THE SELECTION RESOLVES AGAINST LIVE + ARCHIVED, through the SAME helper the
+	 * view uses (review round 1, U1/D1). This used the live list alone, so an
+	 * archived channel opened from the Archived channels view had no `selected`
+	 * here: its history read stayed disabled (`messageState` "idle") and the banner
+	 * sat over "No messages yet. Say hello.", which contradicted the confirm's
+	 * promise that members keep read access.
+	 */
 	const selected = targetConversation(
 		target,
-		visibleConversations,
+		selectableConversations(visibleConversations, archivedRows),
 		selfAccountId,
 	);
 	const previewSelected = selected !== null && isPreviewConversation(selected);
@@ -2352,14 +2761,19 @@ const TeamBridgeOwnedPage: FC<{
 		selected?.tenant_id,
 	);
 	const notify = useSetTeamBridgeNotify();
+	const loadMoreArchived = useLoadMoreArchivedTeamBridgeConversations(
+		scope,
+		accountId,
+	);
+	const archive = useArchiveTeamBridgeConversation();
+	const unarchive = useUnarchiveTeamBridgeConversation();
+	const deleteConversation = useDeleteTeamBridgeConversation();
 
 	/*
 	 * WHO A DRAFT IS ADDRESSED TO, resolved from the directory at send time so
 	 * the label written into the conversation is the live name and the agent
 	 * endpoint is the one the directory publishes now.
 	 */
-	const chiefLabel = (agent: string, person: string) =>
-		t("ui.teamBridge.chief.label", { agent, person });
 	const draftRecipients = (): TeamBridgeRecipient[] => {
 		if (target === null) return [];
 		if (target.type === "compose") return target.recipients;
@@ -2385,9 +2799,12 @@ const TeamBridgeOwnedPage: FC<{
 							kind: "agent",
 							accountId: chief.person.account_id,
 							endpointId: chief.endpointId,
-							label: chiefLabel(
-								chief.agentName || t("ui.teamBridge.chief.fallback"),
+							agentName: chief.agentName,
+							ownerLabel: personDisplayLabel(chief.person),
+							label: composeChiefLabel(
+								chief.agentName,
 								personDisplayLabel(chief.person),
+								chiefLabelCopy(),
 							),
 						},
 					]
@@ -2582,6 +2999,9 @@ const TeamBridgeOwnedPage: FC<{
 	// biome-ignore lint/correctness/useExhaustiveDependencies: advance the cursor only when the conversation or its newest seq changes.
 	useEffect(() => {
 		if (!isCurrentOwner() || selected === null || newest === undefined) return;
+		// An archived channel carries no unread and is read-only: advancing its cursor
+		// is a write the server has no reason to accept.
+		if (selected.status === "archived") return;
 		if (newest <= selected.last_read_seq) return;
 		markRead.mutate({ seq: newest });
 	}, [selected?.id, newest]);
@@ -2622,7 +3042,9 @@ const TeamBridgeOwnedPage: FC<{
 						: messages.isPending
 							? "loading"
 							: messages.isError
-								? "error"
+								? isNotAMemberRefusal(messages.error)
+									? "forbidden"
+									: "error"
 								: "ready"
 				}
 				conversations={conversations}
@@ -2642,6 +3064,67 @@ const TeamBridgeOwnedPage: FC<{
 				onJoin={() => {
 					if (isCurrentOwner()) join.mutate();
 				}}
+				onArchive={(conversation) => {
+					if (!isCurrentOwner()) return;
+					archive.mutate(
+						{
+							conversationId: conversation.id,
+							tenantId: conversation.tenant_id,
+						},
+						{
+							/* THE ROLLBACK MUST BE ANNOUNCED (review round 1, U5). The row left the
+							   rail the moment the person confirmed; if the server refuses, it
+							   quietly reappears. A person archiving from a row's menu is not looking
+							   at that channel's header, so an inline line there is never seen:
+							   a toast names the channel and says it is back. */
+							onError: () =>
+								showErrorToast(
+									t("ui.teamBridge.archive.toast.archive_failed", {
+										name: archiveChannelName(conversation),
+									}),
+								),
+						},
+					);
+				}}
+				onUnarchive={(conversation) => {
+					if (!isCurrentOwner()) return;
+					unarchive.mutate({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+					});
+				}}
+				onDelete={(conversation) => {
+					if (!isCurrentOwner())
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					return deleteConversation.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+					});
+				}}
+				unarchiveFailed={notifyFailureIsVisible(
+					unarchive,
+					selected?.id ?? null,
+				)}
+				archivedState={
+					archivedList.isPending
+						? "loading"
+						: archivedList.isError
+							? "error"
+							: "ready"
+				}
+				archivedConversations={archivedRows}
+				archivedHasMore={archivedList.data?.has_more === true}
+				archivedLoadingMore={loadMoreArchived.isPending}
+				archivedLoadMoreFailed={loadMoreArchived.isError}
+				onLoadMoreArchived={() => {
+					if (isCurrentOwner()) loadMoreArchived.mutate();
+				}}
+				onOpenArchived={() => setArchivedOpened(true)}
+				onRetryArchived={() => {
+					void archivedList.refetch();
+				}}
 				onNotifyChange={(next) => {
 					if (!isCurrentOwner() || selected === null) return;
 					notify.mutate({
@@ -2653,6 +3136,8 @@ const TeamBridgeOwnedPage: FC<{
 				onTarget={(next) => {
 					setThreadLink(null);
 					setChannelFormOpen(false);
+					/* `null` is a landing with nothing left to land on: the default-landing
+					   effect above then picks #humans (or the first row) once, as at load. */
 					setTarget(next);
 				}}
 				onSend={sendBody}
@@ -2684,6 +3169,7 @@ const TeamBridgeOwnedPage: FC<{
 				eligibility={eligibility}
 				gatePending={gatePending}
 				readOnly={readOnly}
+				notice={<TeamBridgeDefaultOnBanner status={status.data} />}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();

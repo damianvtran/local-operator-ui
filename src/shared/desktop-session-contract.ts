@@ -2288,6 +2288,28 @@ export type DesktopFeedFrame =
 			session_id: CanonicalSessionId;
 			payload: { revision: number };
 	  }
+	/**
+	 * THE NOTIFICATIONS REEL MOVED (notifications contract § 5.3): an item was
+	 * raised, updated, read or dismissed, or an open ask appeared or settled.
+	 *
+	 * A LEVEL, not a notification, like `catalogue`: invalidation only, carrying
+	 * the store's high-water mark as its revision plus the two counts the
+	 * sidebar badge reads, so a renderer can repaint the badge before its
+	 * refetch lands. Machine-wide (no `session_id`), at most once per backend
+	 * tick. Sent only by a backend advertising `features.notifications`; an
+	 * older renderer falls through every branch of its frame loop.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "notifications";
+			payload: {
+				revision: number;
+				unread_count: number;
+				waiting_count: number;
+				waiting_unread_count: number;
+			};
+	  }
 	| {
 			epoch: string;
 			seq: number;
