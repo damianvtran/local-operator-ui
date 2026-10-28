@@ -1452,7 +1452,21 @@ const CONTROLS = [
 		 * at 3:1 for every palette, tier and scheme.
 		 */
 		name: "rail attention badge (emphasis)",
-		on: ["canvas", "surface", "rowSelected", "rowHover"],
+		/*
+		 * `elevated` and `accentWash` are the org switcher's MENU grounds: its
+		 * per-organization pills render inside `DropdownMenuRadioItem`, on the
+		 * menu panel and on the highlighted row (`dropdown-menu.tsx`). Measured
+		 * 4.51:1 at worst on both (tokyoNight / everforest, review of #1465 m2);
+		 * listed so the 3:1 floor is pinned rather than incidental.
+		 */
+		on: [
+			"canvas",
+			"surface",
+			"rowSelected",
+			"rowHover",
+			"elevated",
+			"accentWash",
+		],
 		fill: "accent",
 		border: null,
 		ink: "onAccent",

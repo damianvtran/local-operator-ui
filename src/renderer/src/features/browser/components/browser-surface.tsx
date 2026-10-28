@@ -1026,6 +1026,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						newTabLabel={newTabLabel}
 						onHandOver={(tab) => setHandOverTab(tab)}
 						onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
+						onShowTabActionsMenu={chrome.showTabActionsMenu}
 					/>
 				</div>
 				{/* THE PERMANENT ADDRESS ROW (S5, LOH-13). One 37px in-flow band

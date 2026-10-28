@@ -66,7 +66,11 @@ const bundle = await build({
 			// through the shipped authorize gate and the shipped validators, which is
 			// where a new tab's conversation id is validated.
 			'export * from "./src/main/browser/ipc";',
-			'export { ipcMain } from "electron";',
+			'export { ipcMain, Menu } from "electron";',
+			// The tab-actions menu's wire contract: the browser-host test drives the
+			// menu CHANNEL through `registerBrowserIpc`, so the same validators the
+			// main process applies are importable here rather than re-spelled.
+			'export * from "./src/shared/browser-tab-actions-menu";',
 			'export * from "./src/main/browser/ownership";',
 			'export * from "./src/main/browser/host";',
 			// The download capture and the file-transfer policy pair. Bundled so the
@@ -157,9 +161,12 @@ const {
 	consentClickHandler,
 	ElectronNotification,
 	ipcMain,
+	Menu,
 	registerBrowserIpc,
 	unregisterBrowserIpc,
 	BROWSER_IPC_CHANNELS,
+	TAB_ACTIONS_MENU_ACTION_IDS,
+	tabActionsMenuSelectionOrNull,
 	OwnershipLedger,
 	BrowserHost,
 	CdpPool,
@@ -2304,6 +2311,7 @@ test("browser readiness reads stay authorized before initialization and across r
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => currentHost,
 		availability: () => availability,
 		clearData: async () => {},
@@ -2352,6 +2360,148 @@ test("browser readiness reads stay authorized before initialization and across r
 			read,
 			"attempts do not replace the handler",
 		);
+	} finally {
+		unregisterBrowserIpc();
+	}
+});
+
+test("the tab actions menu channel: authorization, refusals, validation and one settlement", async () => {
+	/** What the channel logged, so a rig can tell a refusal from a window that
+	 * simply did not show a menu (the diagnosability `window-chrome.ts` argues for). */
+	const logs = [];
+	const frame = { url: "http://localhost:5173/index.html" };
+	let zoom = 1;
+	const webContents = { id: 1, mainFrame: frame, getZoomFactor: () => zoom };
+	let visible = true;
+	const window = {
+		isDestroyed: () => false,
+		isVisible: () => visible,
+		webContents,
+	};
+	/** Mutable because the handler reads the option per call: flipping this is how
+	 * one registration exercises both the headless gate and the normal path. */
+	const state = { headless: false };
+	ipcMain.reset();
+	Menu.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		host: () => null,
+		clearData: async () => {},
+		get headless() {
+			return state.headless;
+		},
+		log: (line) => logs.push(line),
+	});
+	const menu = ipcMain.handlers.get("browser-tab-actions-menu");
+	const event = { sender: webContents, senderFrame: frame };
+	const items = [
+		{ id: "header", label: 'Actions for "Tab 2"', enabled: false },
+		{ id: "watch", label: 'Watch "Tab 2"', enabled: true },
+		{ id: "close", label: 'Close "Tab 2"', enabled: true },
+	];
+	const request = (overrides = {}) => ({
+		tabId: 2,
+		anchor: { x: 40, y: 60 },
+		items,
+		...overrides,
+	});
+	try {
+		/*
+		 * THE SENDER GATE COMES FIRST, and it is the only authority this new channel
+		 * adds: a foreign frame is refused before its payload is even read.
+		 */
+		assert.throws(
+			() => menu({ sender: {}, senderFrame: frame }, request()),
+			/cannot use/,
+		);
+		assert.throws(
+			() => menu({ sender: webContents, senderFrame: { ...frame } }, request()),
+			/cannot use/,
+		);
+
+		/*
+		 * VALIDATION HAPPENS BEFORE A MENU EXISTS. Each payload below is refused as
+		 * a whole, and `Menu.built` staying empty is the property: a menu that
+		 * dropped an unknown row would be a different menu from the strip's.
+		 */
+		for (const bad of [
+			{ items: [{ ...items[1], id: "format-disk" }] },
+			{ items: [{ ...items[1], enabled: "yes" }] },
+			{ items: [] },
+			{ items: [{ ...items[1], label: "" }] },
+			{ anchor: { x: Number.NaN, y: 60 } },
+			{ tabId: 0 },
+		]) {
+			assert.throws(
+				() => menu(event, request(bad)),
+				/Menu item|menu item|items must|anchor|tabId/,
+			);
+		}
+		assert.equal(
+			Menu.built.length,
+			0,
+			"no menu is built for a refused request",
+		);
+
+		/*
+		 * THE LAUNCH-MODE GATE. A headless launch has no window to hang a popup
+		 * from, so the request answers a dismissal AND says so - a rig must be able
+		 * to tell this refusal from a menu that simply did not show.
+		 */
+		state.headless = true;
+		assert.equal(menu(event, request()), null);
+		assert.equal(Menu.built.length, 0);
+		assert.ok(
+			logs.some((line) => /headless/.test(line)),
+			"the headless refusal is logged",
+		);
+		state.headless = false;
+
+		/* A hidden window is the same refusal, and equally dismisses. */
+		visible = false;
+		assert.equal(menu(event, request()), null);
+		assert.equal(Menu.built.length, 0);
+		visible = true;
+
+		/*
+		 * THE BUILT MENU carries the validated list and a DIP anchor: the request's
+		 * CSS px (40, 60) times the window's zoom factor (1.5).
+		 */
+		zoom = 1.5;
+		const first = menu(event, request());
+		assert.equal(Menu.built.length, 1);
+		const built = Menu.built.at(-1);
+		assert.equal(built.popupOptions.window, window);
+		assert.equal(built.popupOptions.x, 60);
+		assert.equal(built.popupOptions.y, 90);
+		assert.deepEqual(
+			built.template.map((entry) => entry.label ?? entry.type),
+			['Actions for "Tab 2"', 'Watch "Tab 2"', 'Close "Tab 2"'],
+		);
+		/*
+		 * ONE SETTLEMENT. A click resolves with the item it named; a second click
+		 * and the popup's own close callback (what Escape/outside press run) cannot
+		 * replace that answer. The answer is drawn from the action vocabulary.
+		 */
+		built.template[1].click();
+		built.template[2].click();
+		built.closePopup();
+		assert.equal(await first, "watch");
+		assert.ok(TAB_ACTIONS_MENU_ACTION_IDS.includes("watch"));
+
+		/* A dismissal settles null, once. */
+		const second = menu(event, request());
+		Menu.built.at(-1).closePopup();
+		assert.equal(await second, null);
+
+		/*
+		 * THE ANSWER DIRECTION IS VALIDATED TOO: an id outside the action set never
+		 * reaches the strip, and every listed action does.
+		 */
+		assert.equal(tabActionsMenuSelectionOrNull("format-disk"), null);
+		for (const id of TAB_ACTIONS_MENU_ACTION_IDS)
+			assert.equal(tabActionsMenuSelectionOrNull(id), id);
 	} finally {
 		unregisterBrowserIpc();
 	}
@@ -2463,6 +2613,7 @@ test("a conversation id is validated at the IPC boundary rather than trusted (R1
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		// The reveal's ANSWER is recorded rather than performed: this fixture has no
@@ -8013,6 +8164,7 @@ test("the download reveal opens the host's own directory and takes no path from 
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		revealDownloads: async () => {
@@ -10189,6 +10341,7 @@ test("human page-control IPC validates owner/frame/URL and primitive inputs", as
 	registerBrowserIpc({
 		window: () => owner,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		log: () => {},
@@ -10354,6 +10507,7 @@ test("tab management IPC rejects foreign sender/frame and malformed permutations
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		log: () => {},

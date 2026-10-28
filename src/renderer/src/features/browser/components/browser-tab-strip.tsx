@@ -1,12 +1,4 @@
 import { Button, Tooltip } from "@shared/components/ui";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@shared/components/ui/dropdown-menu";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
@@ -40,7 +32,12 @@ import {
 	useState,
 } from "react";
 import { textDirectionFor } from "../../../../../i18n/direction";
+import type {
+	TabActionsMenuRequest,
+	TabActionsMenuSelection,
+} from "../../../../../shared/browser-tab-actions-menu";
 import type { BrowserTabView } from "../hooks/use-browser-chrome";
+import { buildTabActionsMenuItems } from "../model/tab-actions-menu-model";
 import {
 	type CloseTabsIntent,
 	closeConversationIntent,
@@ -100,19 +97,18 @@ import {
  * notch moved with it — left on `canvas` they drew a 1px seam where the sheet
  * used to be, in every theme.
  *
- * WHY THE ROW ACTIONS ARE A POPOUT (operator report, 2026-09-28; this SUPERSEDES
- * the in-band ruling of the previous round). The actions expand in a
- * `DropdownMenu` portaled over the content area, and the panel's shared
- * primitive registers a MEASURED pause (S5): a menu wholly inside the band does
- * nothing, and one that crosses into the page hides the native view exactly as a
- * dialog does — measured, because the band below is the page's own top edge. The in-band row it replaces was itself the answer to an occluded
- * dropdown, and it cost the page: opening it grew the strip by its own height
- * (~214px at the worst case it was designed to) and pushed the page and the URL
- * bar down - which is the operator's report. A registered popout takes neither
- * trade: the strip does not grow, the page does not move, and nothing is drawn
- * under the native view. The geometry (strip height unchanged, rect unchanged,
- * suppression present, page restored after dismissal) and the open/close flicker
- * (probe P11, consecutive frames) are measured in `scripts/browser-chrome-proof.mjs`.
+ * WHY THE ROW ACTIONS ARE A NATIVE MENU (LOH-13 operator report, 2026-10-25;
+ * this SUPERSEDES the popout ruling of 2026-09-28). A native `Menu` is drawn by
+ * the OS above the native `WebContentsView`, so the page stays visible for as
+ * long as the menu is up and the strip registers NO overlay suppression for it.
+ * The popout it replaces could only be painted by hiding the page, which put the
+ * "paused" note behind the menu — the operator's report. A native menu also
+ * costs the page nothing: the strip does not grow and the page's rectangle does
+ * not move. The item list (labels, counts and the optional hands) is still the
+ * strip's, because the counts disclose what a destructive press will close; the
+ * native template and its popup live in main
+ * (`src/main/browser/tab-actions-menu.ts`, `ipc.ts`). `scripts/browser-tab-menu-native-proof.mjs`
+ * measures the page staying visible while the menu is open.
  *
  * WHY THE SPINNER IS A PER-TAB FACT (spec §8.3). The gate was `loading &&
  * tab.active`, and `loading` was the ACTIVE tab's state, so a background agent tab
@@ -178,6 +174,19 @@ export interface BrowserTabStripProps {
 		tabId: number,
 		action: "duplicate" | "reload" | "mute" | "unmute",
 	) => void;
+	/**
+	 * Show the tab's actions as a native menu, and answer the item selected.
+	 *
+	 * REQUIRED FOR THE MENU TO EXIST, optional so a story or a projection-only
+	 * test can mount the strip without a bridge (the trigger then answers
+	 * nothing). The strip owns the item list because it owns the rendered order
+	 * and every count the destructive labels disclose; the host owns the popup and
+	 * only ever answers a verb the strip implements (`tabActionsMenuSelectionOrNull`).
+	 * Null is a dismissal, including a run with no window to hang a menu from.
+	 */
+	onShowTabActionsMenu?: (
+		request: TabActionsMenuRequest,
+	) => Promise<TabActionsMenuSelection>;
 	/** What the `+` calls itself. The host's own sentence, because only the host
 	 * knows whether a tab opened here is attributed to a conversation (design R1):
 	 * a `+` labelled `New tab` in both hosts would leave the difference to be
@@ -402,9 +411,6 @@ export function stateChips(
 	};
 }
 
-/** The schemes a `Copy URL` press may copy: what can be pasted somewhere useful. */
-const HTTP_URL = /^https?:\/\//;
-
 /**
  * A group's name, for the strip's chip and the band list's headings.
  *
@@ -456,15 +462,12 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	onTabAction,
 	onHandOver,
 	onRevokeHandOver,
+	onShowTabActionsMenu,
 }) => {
 	const locale = useI18nLocale();
 	const direction = textDirectionFor(locale);
 	const copy = {
 		error: t("ui.browser.chrome.error_title"),
-		left: t("ui.browser.chrome.move_left"),
-		right: t("ui.browser.chrome.move_right"),
-		duplicate: t("ui.browser.chrome.duplicate"),
-		reload: t("ui.browser.chrome.reload"),
 		scrollLeft: t("ui.browser.chrome.scroll_left"),
 		scrollRight: t("ui.browser.chrome.scroll_right"),
 	};
@@ -502,18 +505,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	const [dragging, setDragging] = useState<number | null>(null);
 	const [dropTarget, setDropTarget] = useState<number | null>(null);
 	const [dropAfter, setDropAfter] = useState(false);
-	const move = (id: number, target: number, after = false) => {
-		if (!onReorder || id === target) return;
-		const ids = ordered
-			.map((tab) => tab.tabId)
-			.filter((candidate) => candidate !== id);
-		ids.splice(ids.indexOf(target) + (after ? 1 : 0), 0, id);
-		setActionsTabId(null);
-		void onReorder(ids);
-	};
-	/** Which tab's actions menu is open, if any. Local view state: the open menu is
-	 * not a fact about a tab, and main has no opinion about it. */
-	const [actionsTabId, setActionsTabId] = useState<number | null>(null);
 	/** Whether the pinned control's list of every tab is open, in the band. Local view
 	 * state for the same reason the menu's is: it is not a fact about a tab. */
 	const isMac = navigator.platform.toUpperCase().includes("MAC");
@@ -532,42 +523,17 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	/** The list's own scroller, for the reveal below. */
 	const overflowScrollerRef = useRef<HTMLDivElement | null>(null);
 
-	/*
-	 * NO REGISTRATION HERE ANY MORE (S5). The tab-actions panel is a shared
-	 * `DropdownMenuContent`, and that primitive now registers a MEASURED pause:
-	 * a panel wholly inside the strip's band measures no intersection and does
-	 * nothing, while one that crosses into the page pauses from the measurement.
-	 * Registering unconditionally here was the older, coarser rule — it hid the
-	 * page for a menu that happened not to reach it, and it could not express the
-	 * inside-band case the S5 ruling asks for.
-	 */
-
 	/**
-	 * A TAB THAT STOPS EXISTING TAKES ITS MENU WITH IT — AND RELEASES THE VIEW.
+	 * Which tab's NATIVE actions menu is up, if any.
 	 *
-	 * The menu renders only inside its own row (`actionsTabId === tab.tabId`), so a tab
-	 * that leaves `tabs` WITHOUT a press on the menu — an agent tool closing it in main,
-	 * any close this strip did not initiate — unmounts the row and its portalled content
-	 * while `actionsTabId` still names it: the registration above would stay up (the
-	 * paused note painting "close it to bring the page back" with no menu to close), and
-	 * the close-focus effect's `actionsTabId !== null` gate would stay shut. The in-band
-	 * row carried exactly this guard ("A tab that is closed, or that stops existing, must
-	 * not leave an action row pointing at nothing"); it moves here with the menu. Review
-	 * round 1, M-1 — reproduced with the probe the reviewer attached.
-	 *
-	 * THE CARET: while the menu is open, Radix has moved the caret into it, and an
-	 * unmount would drop it to `<body>`. Parking on the scroller is the same move a
-	 * batch close makes, for the same reason — the strip is where the caret came
-	 * from. Since this menu is non-modal, a caret that genuinely moved elsewhere
-	 * also dismissed the menu (outside press or focus departure), so this effect runs
-	 * only while the menu still owns the caret.
+	 * This is view state for the trigger's `aria-expanded` and the row's selected
+	 * treatment - NOT a suppression input. The native menu is drawn by the OS
+	 * above the `WebContentsView`, so nothing here hides the page (LOH-13
+	 * operator report, 2026-10-25). Before this change the menu was a Radix
+	 * popout whose panel registered a measured pause, which is what put the
+	 * "paused" note behind it.
 	 */
-	useEffect(() => {
-		if (actionsTabId === null) return;
-		if (tabs.some((tab) => tab.tabId === actionsTabId)) return;
-		setActionsTabId(null);
-		scrollerRef.current?.focus();
-	}, [actionsTabId, tabs]);
+	const [expandedTabId, setExpandedTabId] = useState<number | null>(null);
 
 	/**
 	 * Dismiss the pinned list and put the caret back where it came from.
@@ -631,8 +597,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * wait for). While any of them is still in `tabs` THE CLOSE HAS NOT LANDED.
 	 *
 	 * WHY THE RECORD HAS TO SURVIVE THE FIRST RENDER (review round 1, A2 — one bug, three
-	 * reports): `setActionsTabId(null)` renders BEFORE `chrome.closeTabs`'s IPC round trip
-	 * lands, so the first run of this effect after a press still sees every pre-close tab.
+	 * reports): the close's promise settles AFTER `onCloseTabs` resolves, and the tab's
+	 * row is still in `tabs` while the projection is in flight,
+	 * so the first run of this effect after a press still sees every pre-close tab.
 	 * Resolving the selection there focuses the tab that is being removed, which unmounts
 	 * milliseconds later and drops the caret to `<body>` with the flag already spent —
 	 * measured in the app (QA Q4, UX U1: `<body>` at 300ms/1.3s/2.8s) and reproduced in a
@@ -669,22 +636,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 */
 	const closeFocus = useRef<CloseFocusPending | null>(null);
 	const closeFocusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-	/**
-	 * Set when a CLOSE item is what dismisses the menu, and read once by the menu's
-	 * `onCloseAutoFocus`.
-	 *
-	 * THE RACE THIS CLOSES (QA round 2, Q2-1). Radix returns focus to the ⋯ trigger off a
-	 * `setTimeout(0)` scheduled when the content unmounts, while this strip's landing
-	 * placement focuses the survivor off the projection's commit. Which write lands LAST
-	 * owns the caret, and both orders occur under load: measured ~2/20 runs ended on the
-	 * trigger (`BUTTON in-tab=2 id=radix-…`) because the projection had already committed
-	 * and Radix's queued refocus then took the caret back. The close record owns the caret
-	 * while it is armed, so the menu YIELDS to it: a dismissal that ran a close suppresses
-	 * the return, and a dismissal that ran no close item (Escape, an outside press,
-	 * Watch/Copy) keeps Radix's default. Every close path calls `armCloseFocus`, which sets
-	 * this, and the dismissal it suppresses clears it, so a later open starts clean.
-	 */
-	const menuCloseOwnsFocus = useRef(false);
 
 	/** Drop the record and its timer. Nothing here touches focus: every caller has already
 	 * decided that this close will not move the caret (a refusal, a landing, an expiry). */
@@ -706,11 +657,20 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				clearTimeout(closeFocusTimer.current);
 			const pending: CloseFocusPending = {
 				ids,
-				parked: false,
+				parked: true,
 				decided: false,
 			};
-			menuCloseOwnsFocus.current = true;
 			closeFocus.current = pending;
+			/*
+			 * PARK NOW, NOT ON THE NEXT RENDER. The old Radix panel made this render
+			 * itself (`setActionsTabId(null)`); a native menu leaves no renderer state
+			 * to change, and the close's outcome is a ref, so waiting for an effect
+			 * would leave the caret on `<body>` on a refused close - measured in
+			 * `browser-tab-strip-focus.test.mjs`. Parking at arm time is the same
+			 * placement the effect produced one render later, and `parked` keeps it
+			 * from ever running twice.
+			 */
+			scrollerRef.current?.focus({ preventScroll: true });
 			closeFocusTimer.current = setTimeout(() => {
 				if (closeFocus.current === pending) clearCloseFocus();
 			}, CLOSE_FOCUS_SETTLE_MS);
@@ -740,7 +700,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 
 	useEffect(() => {
 		const pending = closeFocus.current;
-		if (!pending || actionsTabId !== null) return;
+		if (!pending) return;
 		const landed = !pending.ids.some((tabId) =>
 			tabs.some((tab) => tab.tabId === tabId),
 		);
@@ -766,7 +726,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						`[data-tab-id="${activeTabId}"] [role="tab"]`,
 					);
 		(next ?? scrollerRef.current)?.focus();
-	}, [actionsTabId, activeTabId, tabs, clearCloseFocus]);
+	}, [activeTabId, tabs, clearCloseFocus]);
 
 	/** One batch close, whatever it closes: drop the row, name what it will take, ask for
 	 * the intent, and leave the caret to the effect above — which the close's own outcome
@@ -780,7 +740,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							.filter((tab) => tab.sessionId === intent.sessionId)
 							.map((tab) => tab.tabId),
 			);
-			setActionsTabId(null);
 			settleCloseFocus(pending, onCloseTabs(intent));
 		},
 		[armCloseFocus, onCloseTabs, settleCloseFocus, tabs],
@@ -794,7 +753,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	const runClose = useCallback(
 		(tabId: number): void => {
 			const pending = armCloseFocus([tabId]);
-			setActionsTabId(null);
 			settleCloseFocus(pending, onClose(tabId));
 		},
 		[armCloseFocus, onClose, settleCloseFocus],
@@ -840,6 +798,21 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	// The SAME model answers ordinal chords and close-right. Group summaries
 	// remain grouped, but never re-sort an explicit human display preference.
 	const ordered = useMemo(() => pooledTabs(tabs), [tabs]);
+	/** Reorder one tab relative to another, in the list the user is looking at.
+	 * `after` places it after the target rather than before. A `useCallback` because
+	 * the native menu's dispatcher depends on it: a new identity every render would
+	 * rebuild that callback for no reason. */
+	const move = useCallback(
+		(id: number, target: number, after = false) => {
+			if (!onReorder || id === target) return;
+			const ids = ordered
+				.map((tab) => tab.tabId)
+				.filter((candidate) => candidate !== id);
+			ids.splice(ids.indexOf(target) + (after ? 1 : 0), 0, id);
+			void onReorder(ids);
+		},
+		[onReorder, ordered],
+	);
 	const orderKey = ordered.map((tab) => tab.tabId).join(",");
 	useEffect(() => {
 		// The overflow controls settle the viewport once. Their slots stay fixed
@@ -890,34 +863,156 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 */
 	const showGroupLabels = groups.length > 1;
 	/**
-	 * The BULK CLOSES whose labels carry a count, and they agree about which list
-	 * that count comes from because they are the SAME list: the one this host is showing
-	 * (`tabs`) — the pane's is a conversation's, the route's is everything. Review round 2
-	 * settled this (the operator's U7 ruling), withdrawing round 1's A3, which had fed
-	 * `others` a second, wider `poolTabs` list so the item could count beyond what the pane
-	 * displays: a band that closes tabs the user cannot see is a scope overreach, and the
-	 * label stays honest either way because it counts what the press closes. `null` means
-	 * "do not offer the item", which is the design's rule for a press that would close
-	 * nothing.
+	 * Build one tab's menu and open it as a NATIVE popup in main (LOH-13
+	 * operator report, 2026-10-25).
+	 *
+	 * WHY THE LIST IS BUILT HERE, ONCE PER PRESS. The old Radix panel re-derived
+	 * its items on every render and its labels were the disclosure for a
+	 * destructive press: "Close 2 other tabs" must name the set the press will
+	 * close. The native menu is a snapshot, so the intents and the counts are
+	 * computed from the SAME `tabs`/`ordered` closures and handed to main in one
+	 * request. A projection that lands while the menu is up does not rewrite a
+	 * menu the user is already reading; selecting an item acts on the snapshot
+	 * the label described.
+	 *
+	 * THE CARET. A native menu takes key focus while it is open and gives it back
+	 * when it closes, but not to a particular element: the strip puts it back on
+	 * the trigger explicitly. A close is the exception - it calls the same
+	 * `runClose`/`runBatchClose` path the panel did, and that path owns the caret
+	 * because the trigger's own row may be leaving (UX round 2, U9).
+	 *
+	 * NO SUPPRESSION, ANYWHERE. The popup is drawn by the OS above the native
+	 * `WebContentsView`, so nothing here registers a pause and the page keeps
+	 * painting while the menu is open - which is the whole defect this replaces.
 	 */
-	const closeOthers =
-		actionsTabId === null ? null : closeOthersIntent(tabs, actionsTabId);
-	const closeRight =
-		actionsTabId === null
-			? null
-			: closeToTheRightIntent(ordered, actionsTabId, direction);
-	/** The failed set's counted close: every tab in the visible list whose last
-	 * navigation was refused — the tabs the strip paints its `Failed` chips on, and
-	 * exactly the set the session store now refuses to restore. Read from the same
-	 * list the press closes, like its siblings. */
-	const closeFailed = closeFailedIntent(tabs);
-	/** How many tabs a conversation holds, for the group item's count and its `>= 2`
-	 * gate: closing "all" of a conversation's single tab is `Close "X"` under a longer
-	 * label. Read from the visible list, and that is the same number the pool would give:
-	 * the pane's list IS that conversation's tabs when the lens is on it, and the
-	 * conversation's tabs are a subset of the list when the lens is on everything. */
-	const conversationTabCount = (sessionId: string): number =>
-		tabs.filter((tab) => tab.sessionId === sessionId).length;
+	const openTabActionsMenu = useCallback(
+		async (
+			tab: BrowserTabView,
+			trigger: HTMLElement | null,
+			pointer?: { x: number; y: number },
+		): Promise<void> => {
+			if (!onShowTabActionsMenu) return;
+			const index = ordered.findIndex(
+				(candidate) => candidate.tabId === tab.tabId,
+			);
+			const others = closeOthersIntent(tabs, tab.tabId);
+			const toTheRight = closeToTheRightIntent(ordered, tab.tabId, direction);
+			const failed = closeFailedIntent(tabs);
+			const conversationCount =
+				tab.sessionId === null
+					? 0
+					: tabs.filter((candidate) => candidate.sessionId === tab.sessionId)
+							.length;
+			const moveLeftIndex = physicalMoveTarget(
+				index,
+				ordered.length,
+				"left",
+				direction,
+			);
+			const moveRightIndex = physicalMoveTarget(
+				index,
+				ordered.length,
+				"right",
+				direction,
+			);
+			const rect = trigger?.getBoundingClientRect();
+			const request: TabActionsMenuRequest = {
+				tabId: tab.tabId,
+				anchor: pointer ?? { x: rect?.left ?? 0, y: rect?.bottom ?? 0 },
+				items: buildTabActionsMenuItems({
+					tab,
+					label: isolatedTabLabel(tab.title),
+					canMoveLeft: moveLeftIndex !== null,
+					canMoveRight: moveRightIndex !== null,
+					canReorder: Boolean(onReorder),
+					canTabAction: Boolean(onTabAction),
+					closeOthers: others?.tabIds.length ?? null,
+					closeRight: toTheRight?.tabIds.length ?? null,
+					closeFailed: failed?.tabIds.length ?? null,
+					conversationCount,
+				}),
+			};
+			setExpandedTabId(tab.tabId);
+			let selection: TabActionsMenuSelection = null;
+			try {
+				selection = await onShowTabActionsMenu(request);
+			} finally {
+				setExpandedTabId((current) => (current === tab.tabId ? null : current));
+			}
+			if (selection === null) {
+				trigger?.focus({ preventScroll: true });
+				return;
+			}
+			switch (selection) {
+				case "watch":
+					onActivate(tab.tabId);
+					break;
+				case "hand-over":
+					onHandOver(tab);
+					break;
+				case "revoke-hand-over":
+					onRevokeHandOver(tab.tabId);
+					break;
+				case "move-left":
+					if (moveLeftIndex !== null)
+						move(
+							tab.tabId,
+							ordered[moveLeftIndex].tabId,
+							moveLeftIndex > index,
+						);
+					break;
+				case "move-right":
+					if (moveRightIndex !== null)
+						move(
+							tab.tabId,
+							ordered[moveRightIndex].tabId,
+							moveRightIndex > index,
+						);
+					break;
+				case "mute":
+				case "unmute":
+				case "duplicate":
+				case "reload":
+					onTabAction?.(tab.tabId, selection);
+					break;
+				case "copy-url":
+					void navigator.clipboard?.writeText(tab.url);
+					break;
+				case "close":
+					runClose(tab.tabId);
+					return;
+				case "close-others":
+					if (others) runBatchClose(others);
+					return;
+				case "close-right":
+					if (toTheRight) runBatchClose(toTheRight);
+					return;
+				case "close-failed":
+					if (failed) runBatchClose(failed);
+					return;
+				case "close-conversation":
+					if (tab.sessionId !== null)
+						runBatchClose(closeConversationIntent(tab.sessionId));
+					return;
+			}
+			trigger?.focus({ preventScroll: true });
+		},
+		[
+			direction,
+			move,
+			onActivate,
+			onHandOver,
+			onReorder,
+			onRevokeHandOver,
+			onShowTabActionsMenu,
+			onTabAction,
+			ordered,
+			runBatchClose,
+			runClose,
+			tabs,
+		],
+	);
+
 	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when the ordered pool changes even though the body never reads it.
 	useEffect(() => {
 		const strip = scrollerRef.current;
@@ -1064,18 +1159,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						const waitingOrdinal = waiting[tab.tabId];
 						// One identity/menu slot + title + close. Status text does not spend
 						// the title's budget; the complete name remains accessible at every width.
-						const moveLeft = physicalMoveTarget(
-							index,
-							ordered.length,
-							"left",
-							direction,
-						);
-						const moveRight = physicalMoveTarget(
-							index,
-							ordered.length,
-							"right",
-							direction,
-						);
 						const floor = tabFloor(active, 0);
 						const previous = index > 0 ? ordered[index - 1] : null;
 						/**
@@ -1237,7 +1320,16 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 									}}
 									onContextMenu={(event) => {
 										event.preventDefault();
-										setActionsTabId(tab.tabId);
+										// A right-click on the row is the same gesture the old panel
+										// served, so it opens the same native menu AT THE POINTER.
+										const trigger =
+											event.currentTarget.querySelector<HTMLElement>(
+												'[data-tour-tag="browser-tab-menu"]',
+											);
+										void openTabActionsMenu(tab, trigger, {
+											x: event.clientX,
+											y: event.clientY,
+										});
 									}}
 									onAuxClick={(event) => {
 										if (event.button === 1) {
@@ -1263,7 +1355,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										// the row is a band under the whole strip, and the only other tie to its
 										// owner was a `:focus-visible` ring, which a mouse click does not paint
 										// (design round 2, D4).
-										actionsTabId === tab.tabId &&
+										expandedTabId === tab.tabId &&
 											!active &&
 											"bg-elevated text-ink",
 									)}
@@ -1411,451 +1503,84 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											{tab.title}
 										</span>
 									</button>
-									{/* display:contents keeps the existing registered menu/focus lifetime,
-									    while its trigger is the row's leading identity slot. No overlay
-									    covers title text on hover or focus. */}
-									<div className="contents">
-										{/* The tab's actions, as a popout whose panel is a MEASURED
-										    pause (S5). It floats over the content area, where a native
-										    view paints above all DOM, so the shared `DropdownMenuContent`
-										    primitive registers only while its painted panel intersects
-										    the view: a panel that stays inside the band does nothing,
-										    and one that crosses hides the view with the paused note
-										    behind it. The strip does not grow and the page does not
-										    move — see the component docstring for the in-band row this
-										    replaces and why. */}
-										<DropdownMenu
-											open={actionsTabId === tab.tabId}
-											/*
-											 * NON-MODAL ON PURPOSE (operator report: a running turn
-											 * must stay readable and stoppable while a tab menu is
-											 * open). Radix's modal menu is a full-window layer: it
-											 * `aria-hidden`s every sibling, sets `pointer-events:
-											 * none` on body, and traps focus. With a turn streaming,
-											 * that hid the transcript from assistive tech and made
-											 * the Stop control unreachable until the menu was
-											 * dismissed - one gesture could neither surface the turn
-											 * nor interrupt it. This menu is a tab's own actions, not
-											 * a modal decision; the page view is already hidden by
-											 * the overlay policy below, and Escape/outside-press
-											 * still dismiss it. A non-modal dismissal lets the
-											 * outside press itself land, so one press on Stop both
-											 * closes the menu and stops the turn.
-											 */
-											modal={false}
-											onOpenChange={(open) => {
-												setActionsTabId(open ? tab.tabId : null);
-											}}
-										>
-											<DropdownMenuTrigger asChild>
-												<Button
-													variant="ghost"
-													size="icon-sm"
-													aria-label={t(
-														"ui.browser.browser_tab_strip.tab_actions",
-														{ title: tab.title },
-													)}
-													className="order-first shrink-0 p-0 focus-visible:-outline-offset-2!"
-													tabIndex={active ? 0 : -1}
-													data-tour-tag="browser-tab-menu"
-												>
-													<TabMark tab={tab} waitingOrdinal={waitingOrdinal} />
-												</Button>
-											</DropdownMenuTrigger>
-											{/*
-											 * THE MENU NAMES ITS TAB (design round 2, D4, carried over
-											 * from the row it replaces): its trigger is one of several
-											 * identical ⋯ controls, so the panel says which tab it
-											 * belongs to rather than leaving that to proximity.
-											 *
-											 * THE ITEM ORDER IS THE OLD ROW'S, in a menu now: the two
-											 * quiet rows first, the destructive family behind a rule
-											 * (D12), and `Copy URL` behind the second rule (D7).
-											 */}
-											{actionsTabId === tab.tabId && (
-												<DropdownMenuContent
-													align="end"
-													/*
-													 * CLEAR OF THE APPROVALS PILL (design round 1, D2; the numbers
-													 * corrected by QA round 2, Q2-2). The panel is end-anchored to its
-													 * trigger, so on the strip's rightmost tab its right edge used to land at
-													 * CSS 1300-1301 in the operator's own worst case, over the pill whose
-													 * leading content starts at CSS 1281.5 — the pill read `pprovals`.
-													 * `collisionPadding` is stated against the WINDOW's right edge rather than
-													 * the pill's coordinates because the pill is right-anchored: 120 = the
-													 * pill's own inset (~98.5) plus a 20px gap.
-													 *
-													 * THE SHIFT'S LIMIT IS THE ANCHOR'S WIDTH, which the first version of
-													 * this comment got wrong: Radix's shift runs with `sticky` at its
-													 * `"partial"` default, `limitShift()` is derived from that setting, and
-													 * it caps the shift at the anchor's width — 28px for this trigger — so
-													 * the worst case lands at right ≈ 1273: the app's own measurement from
-													 * the D2 photograph's state (window 1380) reads panel right 1273
-													 * against the pill's box 1266.3 and its leading content 1275.3 — a
-													 * content gap of 2.3px and a box gap of −6.7px, the overlap landing on
-													 * the pill's transparent padding while the pill reads whole — not the
-													 * ≤1260 / 21.5px the old text claimed. The goal holds (the pill is no
-													 * longer covered; a panel that fits is untouched); the bound is what
-													 * the pinned middleware actually is.
-													 */
-													/*
-													 * `collisionPadding` is PHYSICAL (Radix measures it against window
-													 * edges), while the pill sits at the window's inline END: the right
-													 * edge in LTR, the left in Urdu. Keeping the LTR inset in RTL would
-													 * protect the edge the pill is not on and let the panel cover it on
-													 * the other (design round 1, D1).
-													 */
-													collisionPadding={
-														direction === "rtl" ? { left: 120 } : { right: 120 }
-													}
-													/*
-													 * THE CLOSE RECORD WINS (QA round 2, Q2-1): while a close this menu
-													 * started is still deciding where the caret goes, Radix's own
-													 * return-to-trigger would race the landing placement — see the
-													 * `menuCloseOwnsFocus` note above. A dismissal that ran no close
-													 * item keeps the default, which is what Escape, an outside press
-													 * and the reveal/copy items rely on.
-													 */
-													onCloseAutoFocus={(event) => {
-														if (!menuCloseOwnsFocus.current) return;
-														menuCloseOwnsFocus.current = false;
-														event.preventDefault();
-													}}
-													className="min-w-56"
-													data-tour-tag="browser-tab-actions"
-												>
-													<DropdownMenuLabel className="truncate">
-														{t("ui.browser.browser_tab_strip.actions_for", {
-															title: isolatedTabLabel(tab.title),
-														})}
-													</DropdownMenuLabel>
-													{!tab.active && (
-														/* §8.3's "one click to watch": activation is the
-														   USER's click, which is what design 11.4 permits —
-														   the app never activates a tab on the agent's behalf.
-														   A quiet row: it takes nothing away, and the
-														   destructive family below is the loud one (D11). */
-														<DropdownMenuItem
-															onSelect={() => onActivate(tab.tabId)}
-															data-tour-tag="browser-tab-watch"
-														>
-															{t("ui.browser.browser_tab_strip.watch", {
-																title: isolatedTabLabel(tab.title),
-															})}
-														</DropdownMenuItem>
-													)}
-													{/*
-													 * The hand-over affordances live here rather than in the
-													 * band because a hand-over is a statement about ONE tab,
-													 * and the strip is where tabs are named (design 6.3).
-													 */}
-													{tab.owner === "user" && !tab.handedOver && (
-														<DropdownMenuItem
-															onSelect={() => onHandOver(tab)}
-															data-tour-tag="browser-tab-hand-over"
-														>
-															{t(
-																"ui.browser.browser_tab_strip.let_an_agent_use",
-																{
-																	title: isolatedTabLabel(tab.title),
-																},
-															)}
-															…
-														</DropdownMenuItem>
-													)}
-													{(tab.handedOver || tab.owner === "agent") && (
-														<DropdownMenuItem
-															onSelect={() => onRevokeHandOver(tab.tabId)}
-															data-tour-tag="browser-tab-revoke-hand-over"
-														>
-															{t(
-																"ui.browser.browser_tab_strip.stop_letting_the_agent_use",
-																{
-																	title: isolatedTabLabel(tab.title),
-																},
-															)}
-														</DropdownMenuItem>
-													)}
-													{/*
-													 * THE DESTRUCTIVE FAMILY WEARS THE DESTRUCTIVE ITEM
-													 * STYLE, AND IT STARTS HERE BEHIND A RULE (design
-													 * review round 2, D11 and D12, carried over from the
-													 * in-band row).
-													 *
-													 * D11: the closes were bare text while `Watch` drew an
-													 * outlined box, so the hierarchy read backwards — the
-													 * loudest element on the one item that removes nothing.
-													 * `destructive` is the menu's own variant for a control
-													 * that destroys something (`text-danger`, `danger-wash`
-													 * on highlight), and reusing it owes no new `CONTROLS`
-													 * row: `scripts/contrast-contract.mjs`'s `danger
-													 * callout` entry already asserts `dangerBorder` +
-													 * `danger` ink over `canvas`/`surface` — this panel's
-													 * ground is `elevated` — and `danger` is in that file's
-													 * `AS_TEXT` list, so its text floor is asserted too.
-													 *
-													 * D12: the spec's item table IS two groups — the
-													 * unnumbered rows that take nothing away (`Watch`,
-													 * hand-over/revoke) and the counted closes, which R5's
-													 * own paragraph calls destructive with no undo — and
-													 * D7's ruling is that the destructive family reads as
-													 * one block. One block needs one edge, so the family
-													 * opens at `Close "X"` behind this rule.
-													 */}
-													{onReorder && (
-														<>
-															<DropdownMenuItem
-																disabled={moveLeft === null}
-																onSelect={() => {
-																	if (moveLeft !== null)
-																		move(
-																			tab.tabId,
-																			ordered[moveLeft].tabId,
-																			moveLeft > index,
-																		);
-																}}
-															>
-																{copy.left}
-															</DropdownMenuItem>
-															<DropdownMenuItem
-																disabled={moveRight === null}
-																onSelect={() => {
-																	if (moveRight !== null)
-																		move(
-																			tab.tabId,
-																			ordered[moveRight].tabId,
-																			moveRight > index,
-																		);
-																}}
-															>
-																{copy.right}
-															</DropdownMenuItem>
-														</>
-													)}
-													{onTabAction && (
-														<>
-															{/*
-															 * THE MENU PATH TO THE SAME VERB, FOR THE KEYBOARD (UX round 1,
-															 * U4; design round 1, D1): the control itself is
-															 * `tabIndex={-1}` on a background tab, and the arrow keys that
-															 * reach that tab ACTIVATE it — the page-stealing the control's
-															 * own comment forbids. The menu is the tab's whole verb list,
-															 * including when it is opened from a tab the person has not
-															 * activated, so the verb lives here too. Shown on the control's
-															 * own condition — a silent tab has nothing to silence.
-															 */}
-															{(tab.audible || tab.muted) && (
-																<DropdownMenuItem
-																	onSelect={() => {
-																		setActionsTabId(null);
-																		onTabAction(
-																			tab.tabId,
-																			tab.muted ? "unmute" : "mute",
-																		);
-																	}}
-																	data-tour-tag="browser-tab-actions-mute"
-																>
-																	{tab.muted
-																		? t(
-																				"ui.browser.browser_tab_strip.unmute_tab",
-																			)
-																		: t(
-																				"ui.browser.browser_tab_strip.mute_tab",
-																			)}
-																</DropdownMenuItem>
-															)}
-															<DropdownMenuItem
-																onSelect={() => {
-																	setActionsTabId(null);
-																	onTabAction(tab.tabId, "duplicate");
-																}}
-															>
-																{copy.duplicate}
-															</DropdownMenuItem>
-															<DropdownMenuItem
-																onSelect={() => {
-																	setActionsTabId(null);
-																	onTabAction(tab.tabId, "reload");
-																}}
-															>
-																{copy.reload}
-															</DropdownMenuItem>
-														</>
-													)}
-													<DropdownMenuSeparator />
-													<DropdownMenuItem
-														destructive
-														onSelect={() => runClose(tab.tabId)}
-														data-tour-tag="browser-tab-actions-close"
-													>
-														{t("ui.browser.browser_tab_strip.close", {
-															title: isolatedTabLabel(tab.title),
-														})}
-													</DropdownMenuItem>
-													{/*
-													 * THE BULK ACTIONS (design R5), AND THE COUNTS IN THEIR
-													 * LABELS ARE THE DISCLOSURE. Each is destructive with no
-													 * undo — closing a tab is not recoverable, because the
-													 * session file records the current set rather than a
-													 * history — so the number is what tells the user how much
-													 * one press takes. EVERY COUNT COMES FROM THE LIST THIS
-													 * HOST IS SHOWING (the operator's U7 ruling, review round
-													 * 2): in the pane, scoped to 2 tabs of a pool of 8, `Close
-													 * 1 other tab` is exactly what the press closes. No
-													 * dialog: the count is the disclosure, and a single close
-													 * has no undo either.
-													 */}
-													{closeOthers !== null && (
-														<DropdownMenuItem
-															destructive
-															onSelect={() => runBatchClose(closeOthers)}
-															data-tour-tag="browser-tab-close-others"
-														>
-															{t(
-																"ui.browser.browser_tab_strip.close_other_tabs",
-																{ count: closeOthers.tabIds.length },
-															)}
-														</DropdownMenuItem>
-													)}
-													{closeRight !== null && (
-														/* "To the right" is the RENDERED order — the grouped
-														   one — because that is the only order in which the
-														   words are true for a grouped strip. A tab an agent
-														   creates after the press is not to the right of
-														   anything the user saw and survives. */
-														<DropdownMenuItem
-															destructive
-															onSelect={() => runBatchClose(closeRight)}
-															data-tour-tag="browser-tab-close-right"
-														>
-															{t(
-																"ui.browser.browser_tab_strip.close_right_tabs",
-																{ count: closeRight.tabIds.length },
-															)}
-														</DropdownMenuItem>
-													)}
-													{closeFailed !== null && (
-														/* THE ANTI-ACCUMULATION CONTROL (2026-09-28): THE SET IS
-														   `closeFailedIntent(tabs)` — every tab whose last
-														   navigation was refused, i.e. exactly the tabs the strip
-														   paints its `Failed` chips on — and it is offered only
-														   when there is at least one, so the item cannot sit
-														   inert. The count is the disclosure, like its siblings'. */
-														<DropdownMenuItem
-															destructive
-															onSelect={() => runBatchClose(closeFailed)}
-															data-tour-tag="browser-tab-close-failed"
-														>
-															{t(
-																"ui.browser.browser_tab_strip.close_failed_tabs",
-																{ count: closeFailed.tabIds.length },
-															)}
-														</DropdownMenuItem>
-													)}
-													{tab.sessionId !== null &&
-														conversationTabCount(tab.sessionId) >= 2 && (
-															/* THE COUNT IS ON THIS ONE TOO (review round 1, U3,
-															   Q3): the group chip is drawn only when the pool
-															   holds more than one conversation, so the most
-															   destructive item would be the one with no number
-															   beside it in the single-conversation case. */
-															<DropdownMenuItem
-																destructive
-																onSelect={() =>
-																	runBatchClose(
-																		closeConversationIntent(
-																			tab.sessionId as string,
-																		),
-																	)
-																}
-																data-tour-tag="browser-tab-close-conversation"
-															>
-																{t(
-																	"ui.browser.browser_tab_strip.close_conversation_tabs",
-																	{
-																		count: conversationTabCount(tab.sessionId),
-																	},
-																)}
-															</DropdownMenuItem>
-														)}
-													{/*
-													 * THE SECOND RULE SEPARATES THE CLOSES FROM THE ONE ITEM
-													 * THAT CLOSES NOTHING (D7's ruling): `Copy URL` is last
-													 * among the actions because it is the only one here that
-													 * leaves every tab on screen, so nothing destructive sits
-													 * below the divider.
-													 */}
-													<DropdownMenuSeparator />
-													{HTTP_URL.test(tab.url) && (
-														/* COPY URL NEEDS NO INTENT, which is why it is the one
-														   action here that does not go through
-														   `useBrowserChrome`: the URL is already in the
-														   projection, the clipboard is the renderer's, and
-														   inventing a channel to main for it would be a round
-														   trip to copy a string the user is looking at. The
-														   guard is the scheme — `about:blank`, `file:` and
-														   `data:` are not things to paste into a chat. */
-														<DropdownMenuItem
-															onSelect={() => {
-																void navigator.clipboard?.writeText(tab.url);
-															}}
-															data-tour-tag="browser-tab-copy-url"
-														>
-															{t("ui.browser.browser_tab_strip.copy_url")}
-														</DropdownMenuItem>
-													)}
-												</DropdownMenuContent>
-											)}
-										</DropdownMenu>
-										{/* The chord belongs to the ACTIVE tab's control only (design D-PR3, review
+									{/*
+									 * THE TAB'S ACTIONS, AS A NATIVE MENU (LOH-13 operator report,
+									 * 2026-10-25). The trigger is still the row's leading identity
+									 * slot; pressing it (or right-clicking the row) asks main to pop a
+									 * native `Menu`, which the OS draws above the `WebContentsView`.
+									 * That is why nothing here registers a pause: the page keeps
+									 * painting behind the menu, which is exactly what the popout
+									 * this replaces could not do.
+									 *
+									 * `aria-haspopup` is explicit because no Radix trigger adds it
+									 * any more, and `aria-expanded` reports the popup's own open
+									 * state while the invoke is pending - the strip's only DOM fact
+									 * about a menu it does not contain.
+									 */}
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										aria-label={t("ui.browser.browser_tab_strip.tab_actions", {
+											title: tab.title,
+										})}
+										aria-haspopup="menu"
+										aria-expanded={
+											expandedTabId === tab.tabId ? true : undefined
+										}
+										className="order-first shrink-0 p-0 focus-visible:-outline-offset-2!"
+										tabIndex={active ? 0 : -1}
+										data-tour-tag="browser-tab-menu"
+										onClick={(event) =>
+											void openTabActionsMenu(tab, event.currentTarget)
+										}
+									>
+										<TabMark tab={tab} waitingOrdinal={waitingOrdinal} />
+									</Button>
+									{/* The chord belongs to the ACTIVE tab's control only (design D-PR3, review
 										   R5/U5): Cmd+W closes the active tab, so advertising it on an inactive
 										   tab's X, or announcing it N times to a screen reader, would name a
 										   shortcut that closes a different tab. */}
-										<Tooltip
-											content={
-												active
-													? t(
-															"ui.browser.browser_tab_strip.close_tab_shortcut",
-															{
-																shortcut: closeChord.glyph,
-															},
-														)
-													: t("ui.browser.browser_tab_strip.close_tab")
-											}
+									<Tooltip
+										content={
+											active
+												? t("ui.browser.browser_tab_strip.close_tab_shortcut", {
+														shortcut: closeChord.glyph,
+													})
+												: t("ui.browser.browser_tab_strip.close_tab")
+										}
+									>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											aria-label={t(
+												"ui.browser.browser_tab_strip.close_named_tab",
+												{ title: tab.title },
+											)}
+											aria-keyshortcuts={active ? closeChord.aria : undefined}
+											onClick={() => runClose(tab.tabId)}
+											// Rendered for the active tab always and for an inactive one on
+											// hover OR focus-within (§6): a focusable but invisible control
+											// is a keyboard trap of its own, and the row's actions expansion
+											// is the always-reachable path for the mouse. The reveal is an
+											// opacity step, never a layout shift - and on the active tab,
+											// where this control is permanent, it is IN FLOW, so the title
+											// truncates before it instead of running under it (review
+											// round 3, MAJOR). Below `@max-2xl` - below 672px, which
+											// is the pane's own 640 and every width up to the
+											// route's 1160, and not the 576px `@xl` this used to
+											// name before the container moved to the strip's row - the
+											// whole cluster is overlaid instead, for the reason the
+											// container class above states.
+											className={cn(
+												"transition-opacity focus-visible:-outline-offset-2!",
+												active ? "opacity-100" : REVEAL_ON_HOVER_OR_FOCUS,
+											)}
+											tabIndex={active ? 0 : -1}
+											data-tour-tag="browser-tab-close"
 										>
-											<Button
-												variant="ghost"
-												size="icon-sm"
-												aria-label={t(
-													"ui.browser.browser_tab_strip.close_named_tab",
-													{ title: tab.title },
-												)}
-												aria-keyshortcuts={active ? closeChord.aria : undefined}
-												onClick={() => runClose(tab.tabId)}
-												// Rendered for the active tab always and for an inactive one on
-												// hover OR focus-within (§6): a focusable but invisible control
-												// is a keyboard trap of its own, and the row's actions expansion
-												// is the always-reachable path for the mouse. The reveal is an
-												// opacity step, never a layout shift - and on the active tab,
-												// where this control is permanent, it is IN FLOW, so the title
-												// truncates before it instead of running under it (review
-												// round 3, MAJOR). Below `@max-2xl` - below 672px, which
-												// is the pane's own 640 and every width up to the
-												// route's 1160, and not the 576px `@xl` this used to
-												// name before the container moved to the strip's row - the
-												// whole cluster is overlaid instead, for the reason the
-												// container class above states.
-												className={cn(
-													"transition-opacity focus-visible:-outline-offset-2!",
-													active ? "opacity-100" : REVEAL_ON_HOVER_OR_FOCUS,
-												)}
-												tabIndex={active ? 0 : -1}
-												data-tour-tag="browser-tab-close"
-											>
-												<X aria-hidden className="size-3.5" />
-											</Button>
-										</Tooltip>
-									</div>
+											<X aria-hidden className="size-3.5" />
+										</Button>
+									</Tooltip>
 									{dropTarget === tab.tabId && dragging !== tab.tabId && (
 										<span
 											aria-hidden

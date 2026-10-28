@@ -449,6 +449,13 @@ export function startBrowserHost(
 	unregisterBrowserIpc();
 	registerBrowserIpc({
 		window: () => options.window,
+		/**
+		 * The launch plan's own answer, not a second reading of the mode: `headless`
+		 * is the only mode whose `windowShow` is `"never"` (`src/main/window-mode.ts`
+		 * WINDOW_BEHAVIOUR), so this is the headless fact the tab menu's popup gate
+		 * consumes.
+		 */
+		headless: options.windowShow === "never",
 		expectedUrl: options.expectedUrl,
 		host: () => bindings.host?.() ?? null,
 		webauthn: () => bindings.webauthn?.() ?? null,
