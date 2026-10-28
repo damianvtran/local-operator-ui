@@ -296,6 +296,10 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 				row.attachments = row.attachments.filter(
 					(chip) => chip.prepared || chip.attachment,
 				);
+				// An images-only message whose images all went away has nothing left to
+				// say: refuse here rather than posting an empty body the hub rejects.
+				if (!row.body.trim() && !row.attachments.length)
+					throw new Error("Team Bridge message has nothing left to send");
 				return row.attachments;
 			},
 			post: async (conversation, row) => {
@@ -315,12 +319,26 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 					// The hub's uniform missing-attachment refusal identifies no one
 					// image; retry stages this attempt's originals, never a new draft.
 					if (isAttachmentNotFound(error))
-						// Re-stage only what still has bytes; the rest is abandoned and
-						// counted, so the next attempt posts without it instead of
-						// failing on an image that no longer exists anywhere.
-						for (const chip of row.attachments)
-							if (chip.prepared) chip.attachment = undefined;
-							else row.droppedAttachments += 1;
+						/*
+						 * EVERY staged id this attempt used is now suspect: the hub answers
+						 * one uniform refusal and names no image. Chips that still hold bytes
+						 * go back to "needs staging". The rest are abandoned - their dead id
+						 * CLEARED so the next payload cannot repeat it - and counted ONCE,
+						 * because clearing the id is what stops a retry counting it again.
+						 */
+						for (const chip of row.attachments) {
+							if (chip.attachment && !chip.prepared)
+								row.droppedAttachments += 1;
+							chip.attachment = undefined;
+						}
+					/*
+					 * NOTHING LEFT TO SEND. An images-only message whose images were all
+					 * abandoned must not reach the hub as an empty body: it would be
+					 * refused there with a message the row cannot explain. Fail here, where
+					 * the row already says the image expired.
+					 */
+					if (!row.body.trim() && !row.attachments.length)
+						throw new Error("Team Bridge message has nothing left to send");
 					throw error;
 				}
 			},

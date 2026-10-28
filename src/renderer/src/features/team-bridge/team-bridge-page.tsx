@@ -12,6 +12,7 @@ import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
 import {
 	observedRadientAuthority,
+	radientAuthoritySignedOut,
 	subscribeRadientAuthority,
 } from "@shared/hooks/radient-account-authority";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
@@ -2707,33 +2708,47 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	);
 	/*
 	 * THE ACCOUNT BOUNDARY IS ENFORCED HERE, ABOVE THE KEYED SUBTREE (review round
-	 * 1, F1). `key={account.token}` destroys the outgoing instance, so nothing
-	 * INSIDE it can ever observe a different `accountId`; this effect can, because
-	 * this component is not remounted by an account change. A refresh that merely
-	 * goes pending is not a replacement: only a different SETTLED account, or a
-	 * deliberate sign-out, drops the departing account's rows, receipts and
-	 * preview URLs.
+	 * 1, F1; corrected in round 2).
+	 *
+	 * `key={account.token}` destroys the outgoing instance, so nothing INSIDE it
+	 * can ever observe a different `accountId` - this component can, because an
+	 * account change does not remount it. Two things are easy to get wrong here,
+	 * and both were:
+	 *
+	 * 1. THE MARKER MUST NOT FOLLOW A PENDING FRAME. `account.accountId` is
+	 *    `undefined` while a transition is in flight, so a marker written from
+	 *    render is cleared on the very frame every real switch passes through, and
+	 *    the later settle then sees "no previous account" and purges nothing. The
+	 *    marker only ever advances to a DEFINED account, here and in the listener.
+	 * 2. THE PURGE MUST NOT RUN INSIDE THE ANNOUNCEMENT. It notifies this journal's
+	 *    subscribers, which re-enters the listener before the marker is written -
+	 *    an endless render loop (measured: the account-switch case never settled).
+	 *    So: claim the new account FIRST, then purge in a microtask.
+	 *
+	 * A refresh that merely goes pending is not a replacement; a deliberate
+	 * sign-out (the authority's own `signedOut` absence) is, and it purges too.
 	 */
 	const queryClient = useQueryClient();
-	const purgedAccount = useRef(account.accountId);
+	const settledAccount = useRef<string | undefined>(account.accountId);
+	if (account.accountId) settledAccount.current = account.accountId;
 	useEffect(() => {
-		purgedAccount.current = account.accountId;
+		if (account.accountId) settledAccount.current = account.accountId;
 		return subscribeRadientAuthority(queryClient, () => {
 			const live = observedRadientAuthority(queryClient);
-			const previous = purgedAccount.current;
+			const previous = settledAccount.current;
 			if (!previous) return;
 			if (live.accountId === previous) return;
-			if (live.accountId === undefined && !live.signedOut) return;
 			/*
-			 * CLAIM, THEN PURGE, AND PURGE OFF THE ANNOUNCEMENT. The authority
-			 * announcement can arrive inside a React commit, and the purge notifies
-			 * this journal's own subscribers - which re-enters this listener before
-			 * the marker was written and turned one account change into an endless
-			 * render loop (measured: the account-switch case never settled). Writing
-			 * the marker FIRST makes a re-entrant call a no-op, and the microtask
-			 * keeps the notification out of whatever was rendering.
+			 * `undefined` here means one of two things, and only one is a purge:
+			 * the transition is still pending (nothing to do yet), or the account is
+			 * settled-absent because someone signed out. `observedRadientAuthority`
+			 * reports both as `undefined`, so ask the authority directly rather than
+			 * inventing a field on that projection.
 			 */
-			purgedAccount.current = live.accountId;
+			const settledSignOut =
+				live.accountId === undefined && radientAuthoritySignedOut(queryClient);
+			if (live.accountId === undefined && !settledSignOut) return;
+			settledAccount.current = live.accountId;
 			queueMicrotask(() => teamBridgePurgeAccount(queryClient, previous));
 		});
 	}, [account.accountId, queryClient]);

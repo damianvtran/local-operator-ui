@@ -905,6 +905,16 @@ test("an account change drops the departing account's rows and pictures", async 
 		/* The fence is not the only claim in the isolation table: the journal must
 		 * also EMPTY A's lane at the transition (review round 1, F1). The effect
 		 * that used to do it lived inside the keyed subtree and could never fire. */
+		/* The row lives in the CONVERSATION's lane, not the person lane (review
+		 * round 2, F1c): asserting a lane that never held it passed with the purge
+		 * deleted. Prove it was there, then prove it is gone. */
+		const lane = ["acct_a", "org_shared", "conversation:bcv_shared"];
+		assert.equal(
+			app.journal.rowsFor(...lane).length,
+			1,
+			"A's row is in its lane before the switch",
+		);
+
 		await app.changeAuth("acct_b");
 		const gate = app.fixture.postGate;
 		app.fixture.postGate = null;
@@ -912,7 +922,7 @@ test("an account change drops the departing account's rows and pictures", async 
 		await delay();
 
 		assert.equal(
-			app.journal.rowsFor("acct_a", "org_shared", "person:acct_peer_0").length,
+			app.journal.rowsFor(...lane).length,
 			0,
 			"A's rows are gone once B owns the surface",
 		);

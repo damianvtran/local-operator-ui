@@ -37,6 +37,16 @@ export function radientAuthorityPending(client: QueryClient): boolean {
 	return authority.pending || authority.accountId !== committedAccount;
 }
 
+/**
+ * Whether the account is KNOWN gone rather than still resolving. A credential
+ * refresh is pending, not a sign-out, and a caller that must decide whether to
+ * drop the departing account's data needs to tell them apart: the projection
+ * `observedRadientAuthority` reports both as `undefined` on purpose.
+ */
+export function radientAuthoritySignedOut(client: QueryClient): boolean {
+	return authorities.get(client)?.signedOut === true;
+}
+
 export function radientAuthorityEpoch(client: QueryClient): number {
 	return authorities.get(client)?.epoch ?? 0;
 }
