@@ -447,6 +447,58 @@ test("with nothing pending the toolbar control opens the Approvals dialog, whose
 	handle.unmount();
 });
 
+test("the dialog offers the waiting requests back as the card, through the existing bridge only", async () => {
+	const host = freshContainer();
+	const handle = mount(host, {
+		pending: [pending("a"), pending("b")],
+		approvals: GRANTS,
+	});
+	await flush();
+	// Open the dialog the way the folded (<300px) chrome does: the page menu.
+	const trigger = q('[data-tour-tag="browser-page-menu"]');
+	await act(async () => trigger.focus());
+	await act(async () => {
+		trigger.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+		);
+	});
+	await flush();
+	const item = qa('[role="menuitem"][data-tour-tag="browser-approvals"]')[0];
+	await act(async () => {
+		item.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	const review = q('[data-tour-tag="browser-approvals-dialog-review"]');
+	assert.ok(review, "the dialog offers the waiting requests");
+	assert.equal(review.getAttribute("aria-label"), "Open approvals");
+	assert.ok(
+		review.textContent.includes("2"),
+		"and keeps the live count visible",
+	);
+	await click(review);
+	assert.equal(
+		q('[data-tour-tag="browser-approvals-dialog"]'),
+		null,
+		"the dialog closes",
+	);
+	assert.equal(
+		handle.calls().filter(([name]) => name === "openApprovalsCard").length,
+		1,
+		"and the card is opened through openApprovalsCard",
+	);
+	handle.unmount();
+});
+
+test("with nothing waiting the dialog offers no card button", async () => {
+	const host = freshContainer();
+	const handle = mount(host, { approvals: GRANTS });
+	await flush();
+	await click(toolbarButton());
+	assert.ok(q('[data-tour-tag="browser-approvals-dialog"]'));
+	assert.equal(q('[data-tour-tag="browser-approvals-dialog-review"]'), null);
+	handle.unmount();
+});
+
 test("the page menu's Approvals item opens the dialog even while a request is pending", async () => {
 	const host = freshContainer();
 	const handle = mount(host, { pending: [pending("a")], approvals: GRANTS });

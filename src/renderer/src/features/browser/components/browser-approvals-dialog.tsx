@@ -44,6 +44,15 @@ export interface BrowserApprovalsDialogProps {
 	onClose: () => void;
 	/** Live (expiry-aware) pending count, for the summary line. */
 	waitingCount: number;
+	/**
+	 * Close this dialog and bring the card back. Offered only while something is
+	 * waiting. It exists because below a 300px row the toolbar control is folded
+	 * into the page menu, and the menu opens THIS dialog; without it a card the
+	 * user had dismissed could not be recalled from the chrome at that width.
+	 * It is a renderer-to-main call on the existing `openApprovalsCard` bridge, not
+	 * a card channel.
+	 */
+	onReviewWaiting: () => void;
 	approvals: ApprovalView[];
 	currentOrigin: string | null;
 	busy: boolean;
@@ -57,6 +66,7 @@ export const BrowserApprovalsDialog: FC<BrowserApprovalsDialogProps> = ({
 	open,
 	onClose,
 	waitingCount,
+	onReviewWaiting,
 	approvals,
 	currentOrigin,
 	busy,
@@ -104,6 +114,22 @@ export const BrowserApprovalsDialog: FC<BrowserApprovalsDialogProps> = ({
 					<p className="text-meta text-ink-dim" aria-live="polite">
 						{summary}
 					</p>
+				)}
+				{waitingCount > 0 && (
+					<Button
+						variant="outline"
+						size="sm"
+						className="w-full"
+						// The card's own Review-all wording: the visible label keeps the
+						// count, the accessible name says what pressing it does.
+						aria-label={t("ui.browser.browser_approvals_tray.open_approvals")}
+						onClick={onReviewWaiting}
+						data-tour-tag="browser-approvals-dialog-review"
+					>
+						{t("ui.browser.browser_approvals_tray.header_waiting", {
+							count: waitingCount,
+						})}
+					</Button>
 				)}
 				<p className="text-body-sm text-ink-muted">
 					{t(

@@ -34,6 +34,18 @@ const THEME =
 		? "light"
 		: "dark";
 if (!OUT || OUT.startsWith("--")) throw new Error("--out required");
+// S6d evidence switches. `--frames` writes PNGs of the card document in its
+// request, Review-all, stale-error and unavailable-error views (CDP capture of
+// the card child, no window shown). `--controller <path>` runs the SAME rig
+// against another copy of the controller, which is how the "before" frames and
+// the D1 reproduction are taken from `origin/main`'s controller without
+// touching this tree's. The card DOCUMENT (out/renderer) is unchanged by S6d.
+const FRAMES = process.argv.includes("--frames");
+const CONTROLLER_ARG = process.argv.indexOf("--controller");
+const CONTROLLER =
+	CONTROLLER_ARG >= 0
+		? resolve(process.argv[CONTROLLER_ARG + 1])
+		: join(ROOT, "src/main/browser/approvals-overlay.ts");
 mkdirSync(OUT, { recursive: true });
 // No HOME override: Electron resolves its profile from NSHomeDirectory on
 // macOS, and a scratch HOME is what made the child view fail in the round-2
@@ -54,7 +66,8 @@ writeFileSync(
 	`
 import { app, BrowserWindow, WebContentsView, webContents } from "electron";
 import { writeFileSync } from "node:fs";
-import { ApprovalsOverlayController } from ${JSON.stringify(join(ROOT, "src/main/browser/approvals-overlay.ts"))};
+import { ApprovalsOverlayController } from ${JSON.stringify(CONTROLLER)};
+const FRAMES = ${FRAMES};
 
 const out = ${JSON.stringify(OUT)};
 const cardUrl = ${JSON.stringify(`file://${CARD}`)};
@@ -400,6 +413,38 @@ app.whenReady().then(async () => {
   await stableBounds();
   const d1Normal = await readD1Settled(false);
   record("D1-normal-keeps-decisions-visible", Boolean(!d1Normal.errorVisible && d1Normal.overdraw === 0 && d1Normal.bodyOverflow <= 0 && d1Normal.insideCard), { ...d1Normal, nativeCardHeight: controller.facts().bounds?.card.height ?? null });
+
+  // S6d frames: the card document in the four views the PR evidence names. The
+  // stale / unavailable frames are taken from the SAME settled states the D1 rows
+  // measured, so a frame and its geometry row cannot describe different cards.
+  if (FRAMES) {
+    const shoot = async (name) => {
+      try {
+        const dbg = currentCard().webContents.debugger;
+        if (!dbg.isAttached()) dbg.attach("1.3");
+        const shot = await dbg.sendCommand("Page.captureScreenshot", { format: "png" });
+        writeFileSync(out + "/card-" + name + ".png", Buffer.from(shot.data, "base64"));
+      } catch (error) {
+        writeFileSync(out + "/card-" + name + "-error.txt", String(error));
+      }
+    };
+    await shoot("normal-request");
+    // The stale line through the PRODUCT path (a dropped card action), not a
+    // host-supplied error: dropAction is the path D1 is about.
+    await currentCard().webContents.executeJavaScript("window.approvalsCard.decide({ seq: 999999, entryId: 'entry-0', decision: 'once' })");
+    await readD1Settled(true);
+    await shoot("stale-error");
+    controller.setModel({ entries, error: "unavailable" });
+    await readD1Settled(true);
+    await shoot("unavailable-error");
+    controller.setModel({ entries });
+    await readD1Settled(false);
+    await currentCard().webContents.executeJavaScript("document.getElementById('approvals-review').click()");
+    await sleep(500);
+    await shoot("review-all-list");
+    await currentCard().webContents.executeJavaScript("document.getElementById('approvals-back').click()");
+    await sleep(300);
+  }
 
   // I4 — Escape dismisses without deciding AND the document repaints the next
   // request. The second half is the Q-S6b-1 regression: a dismissal that only

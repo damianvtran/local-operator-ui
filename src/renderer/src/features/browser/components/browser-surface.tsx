@@ -1531,6 +1531,17 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					setApprovalsDialogOpen(false);
 				}}
 				waitingCount={queue.count}
+				onReviewWaiting={() => {
+					// Close first: the dialog hides the page view (and with it the
+					// card), and the open below arms the card's explicit-open latch so
+					// it shows as soon as the page is presented again.
+					setApprovalsDialogOpen(false);
+					const cardLocale = currentLocale();
+					void window.api?.browser.openApprovalsCard({
+						locale: cardLocale,
+						dir: resolveLanguage(cardLocale).dir,
+					});
+				}}
 				approvals={state?.approvals ?? []}
 				currentOrigin={currentOrigin}
 				busy={busy}
