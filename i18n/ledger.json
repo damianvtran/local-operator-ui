@@ -639,8 +639,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.canvas",
-			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
-			"target_sha256": "e98e84496c0ab94d992405cc35684dc7fce89cc399efb461697483d7dd8c9d3f",
+			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+			"target_sha256": "0244e4116c05b7208011dce86535e326b3f6f51dc471db9f5f61d892ffb4e5da",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -651,18 +651,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "i18n-audit-1452-20261027-es",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-1452-r2-20261027-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-20261027-es.json",
-					"receipt_sha256": "02f1f35b25c4f5d2a2c02d35640c0cd6c7a96701c0342cf1c3d60871076176b6",
-					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
-					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-es.json",
+					"receipt_sha256": "71e7ca3dbd22a6ff0cfbb046985d7bbc437086f3c63f7b25b22a2bc00fb6ed3d",
+					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-es-1 MINOR."
 				}
 			],
 			"status": "audited",
@@ -708,6 +708,30 @@
 							},
 							"receipt": "i18n/receipts/3ac75cca27a3.json",
 							"receipt_sha256": "2257b30cca565c081f02b5d321046ce96fb65d70edf10caafc2197caa4be8728"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+					"target_sha256": "e98e84496c0ab94d992405cc35684dc7fce89cc399efb461697483d7dd8c9d3f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "i18n-audit-1452-20261027-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-20261027-es.json",
+							"receipt_sha256": "02f1f35b25c4f5d2a2c02d35640c0cd6c7a96701c0342cf1c3d60871076176b6",
+							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 						}
 					],
 					"status": "audited"
@@ -6820,8 +6844,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.canvas",
-			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
-			"target_sha256": "58825adf3af97853ee25335c0d851af511e704ee4a50dbd5c2ee69bb7de346a4",
+			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+			"target_sha256": "982a31ad9a97e43f249a533c26413b8663e906cb773c38dc8287dae270f63857",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6833,18 +6857,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "i18n-audit-1452-20261027-fr",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-1452-r2-20261027-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-20261027-fr.json",
-					"receipt_sha256": "8809f8df5e3a4e5a874aabfde4d4e183eaa557620b4c9088c707059dc67129f1",
-					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
-					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-fr.json",
+					"receipt_sha256": "765d26315018697617c61a0638d27ca563c7fea7082f44cc374ec7d6ae4f25a6",
+					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-fr-1 MINOR I-fr-2 NIT."
 				}
 			],
 			"superseded": [
@@ -6889,6 +6913,30 @@
 							},
 							"receipt": "i18n/receipts/d94011de0dc0.json",
 							"receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+					"target_sha256": "58825adf3af97853ee25335c0d851af511e704ee4a50dbd5c2ee69bb7de346a4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "i18n-audit-1452-20261027-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-20261027-fr.json",
+							"receipt_sha256": "8809f8df5e3a4e5a874aabfde4d4e183eaa557620b4c9088c707059dc67129f1",
+							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 						}
 					],
 					"status": "audited"
@@ -13463,8 +13511,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.canvas",
-			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
-			"target_sha256": "9f46453337ba6d2b8f3d39102053db0b40afc929bde0979762ac6fe30f4dfba1",
+			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+			"target_sha256": "e890b6f666ce1b9534f57bcd69840f00db1b5a841d9479b80d0d25eea27a73d0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13475,18 +13523,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "i18n-audit-1452-20261027-hi",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-1452-r2-20261027-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-20261027-hi.json",
-					"receipt_sha256": "117df1d4681f849615cd07a626381806546068837084dca527fb56ae09dc72f0",
-					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
-					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-hi.json",
+					"receipt_sha256": "9450c1cbfce66c0a05449c6a86f3c2f7de0f8fd74fe48955144192358722be03",
+					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-hi-1 MINOR."
 				}
 			],
 			"status": "audited",
@@ -13533,6 +13581,30 @@
 							},
 							"receipt": "i18n/receipts/dab47dfc690a.json",
 							"receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+					"target_sha256": "9f46453337ba6d2b8f3d39102053db0b40afc929bde0979762ac6fe30f4dfba1",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "i18n-audit-1452-20261027-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-20261027-hi.json",
+							"receipt_sha256": "117df1d4681f849615cd07a626381806546068837084dca527fb56ae09dc72f0",
+							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 						}
 					],
 					"status": "audited"
@@ -19820,8 +19892,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.canvas",
-			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
-			"target_sha256": "3b023007ea2b51a4e89f4cfc548f80aec2c7651e0756986c6a91e4b8c5d54dbe",
+			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+			"target_sha256": "bc03f08e6dc67ae1d9e6d5801701bc7ffdc53ded38d899121ae3f50a7b0feeaf",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -19832,18 +19904,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "i18n-audit-1452-20261027-ru",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-1452-r2-20261027-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-20261027-ru.json",
-					"receipt_sha256": "cb7c753cecfaaf261685c9387ea0140e923b3303d1254b59362b2383ba90521c",
-					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
-					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-ru.json",
+					"receipt_sha256": "6f6f56b02e84b7b92f6ab630e48568aa8cd74e4b148d8fecdd5e47c14d5f9593",
+					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-ru-1 MINOR I-ru-2 NIT."
 				}
 			],
 			"status": "audited",
@@ -19890,6 +19962,30 @@
 							"receipt": "i18n/receipts/23463a773a32-canvas.json",
 							"receipt_sha256": "d5e7cddbe80bae8dbee4ade1a2a8c28d75f5608c27e9270bd7a9800abd7b696a",
 							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+					"target_sha256": "3b023007ea2b51a4e89f4cfc548f80aec2c7651e0756986c6a91e4b8c5d54dbe",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "i18n-audit-1452-20261027-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-20261027-ru.json",
+							"receipt_sha256": "cb7c753cecfaaf261685c9387ea0140e923b3303d1254b59362b2383ba90521c",
+							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 						}
 					],
 					"status": "audited"
@@ -26092,8 +26188,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.canvas",
-			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
-			"target_sha256": "2d6093fafb08d8874414eb4f3f25ebe79d2dc4a1bda5b88642088370f553d35b",
+			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+			"target_sha256": "0237b378107cdc337c8475c6f3ff1e22f673d629df6c51f46b16ee9425eea6f1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -26105,17 +26201,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
 					"result": "clean-with-findings",
-					"instance": "i18n-audit-1452-20261027-ur",
+					"instance": "i18n-audit-1452-r2-20261027-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-20261027-ur.json",
-					"receipt_sha256": "4df15d056faee235a4bd93e4f526007bc22c7247a67b7145c718708403a29812",
-					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
-					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4). I-ur-1 MINOR: attachmentMeta placeholders need renderer-side bidi isolation; catalogue unchanged."
+					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-ur.json",
+					"receipt_sha256": "8999cc09026d40c332d23532151d1e3de9f03b9d280b2b3ea3b718ea2727aff7",
+					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-ur-1 MINOR I-ur-2 MINOR."
 				}
 			],
 			"status": "audited",
@@ -26163,6 +26259,30 @@
 							"receipt": "i18n/receipts/21fe6c635cf3.json",
 							"receipt_sha256": "3719777f6a0ad81c384b6152f2a44dd20f9f645e6555ae08b7d3c959e39d64c0",
 							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+					"target_sha256": "2d6093fafb08d8874414eb4f3f25ebe79d2dc4a1bda5b88642088370f553d35b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-1452-20261027-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-20261027-ur.json",
+							"receipt_sha256": "4df15d056faee235a4bd93e4f526007bc22c7247a67b7145c718708403a29812",
+							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4). I-ur-1 MINOR: attachmentMeta placeholders need renderer-side bidi isolation; catalogue unchanged."
 						}
 					],
 					"status": "audited"
@@ -32347,8 +32467,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.canvas",
-			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
-			"target_sha256": "333456cde7491503384cca41fe11dc31841345d479ace3bb020409ffe234b181",
+			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+			"target_sha256": "92722a7b85717b88a0049cadc59ae98326f4f78d0743bf6252d95a8d5140f89a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -32359,21 +32479,21 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "i18n-audit-1452-20261027-vi",
+					"result": "changes_requested",
+					"instance": "i18n-audit-1452-r2-20261027-vi",
 					"findings": {
 						"blocker": 0,
-						"major": 0,
-						"minor": 0,
+						"major": 1,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-20261027-vi.json",
-					"receipt_sha256": "e466065591283a5668c5ebbe61634fa58630670a02c74e48ca9615057dd51e04",
-					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
-					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-vi.json",
+					"receipt_sha256": "4748b87497a2d97d8cfa7af6ae3e9f4061927ba04db4fc95dc222d0c4a849386",
+					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-vi-1 MAJOR I-vi-2 MINOR."
 				}
 			],
-			"status": "audited",
+			"status": "changes_requested",
 			"superseded": [
 				{
 					"source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
@@ -32417,6 +32537,30 @@
 							},
 							"receipt": "i18n/receipts/b928c7f0c96d.json",
 							"receipt_sha256": "fa09631a6ef82d9b05796a237dfc2542b700a7dcbe952ee1dfcd2638787c6bc2"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+					"target_sha256": "333456cde7491503384cca41fe11dc31841345d479ace3bb020409ffe234b181",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "i18n-audit-1452-20261027-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-20261027-vi.json",
+							"receipt_sha256": "e466065591283a5668c5ebbe61634fa58630670a02c74e48ca9615057dd51e04",
+							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 						}
 					],
 					"status": "audited"
@@ -39063,8 +39207,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.canvas",
-			"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
-			"target_sha256": "a4f54c81fedfc83a388e5cbf402b03085d23110c449a0465f1bbf7b0cf7229e6",
+			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+			"target_sha256": "aa8ac764beb12ea533caedef98a2ece3909e6c8864cd6273b7ff94f158cddf3e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -39075,21 +39219,21 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "i18n-audit-1452-20261027-zh-cn",
+					"result": "changes_requested",
+					"instance": "i18n-audit-1452-r2-20261027-zh-cn",
 					"findings": {
 						"blocker": 0,
-						"major": 0,
+						"major": 1,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-20261027-zh-cn.json",
-					"receipt_sha256": "7e1a0d8845863e41c8f68e9b6ff3ae1f76b02adbe768ef934d0192b561937d05",
-					"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
-					"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-zh-cn.json",
+					"receipt_sha256": "7de5ae14689b603bd3c7c60ed2fc417e852981bd4fa8437b61ecb5e0ad319649",
+					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-zh-CN-1 MAJOR."
 				}
 			],
-			"status": "audited",
+			"status": "changes_requested",
 			"superseded": [
 				{
 					"source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
@@ -39133,6 +39277,30 @@
 							},
 							"receipt": "i18n/receipts/93ed237d2e46.json",
 							"receipt_sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+					"target_sha256": "a4f54c81fedfc83a388e5cbf402b03085d23110c449a0465f1bbf7b0cf7229e6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "i18n-audit-1452-20261027-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-20261027-zh-cn.json",
+							"receipt_sha256": "7e1a0d8845863e41c8f68e9b6ff3ae1f76b02adbe768ef934d0192b561937d05",
+							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
+							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
 						}
 					],
 					"status": "audited"
