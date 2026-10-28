@@ -18,6 +18,7 @@ import {
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
 import {
+	TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE,
 	type TeamBridgeAttachment,
 	type TeamBridgeConversation,
 	type TeamBridgeConversationList,
@@ -78,7 +79,14 @@ export async function teamBridgeWriteOwner(
 		features?: Record<string, number>;
 	}>({ op: "capabilities" });
 	if ((capabilities.features?.team_bridge_conversation_owner_guard ?? 0) < 1)
-		throw new Error("Team Bridge runtime owner guard unavailable");
+		// A plain Error, as before, so existing callers read it unchanged; the
+		// code lets a caller say "update the app" instead of offering a retry.
+		throw Object.assign(
+			new Error("Team Bridge runtime owner guard unavailable"),
+			{
+				code: TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE,
+			},
+		);
 	return { expected_account_id: accountId, tenant_id: tenantId };
 }
 
@@ -162,14 +170,33 @@ export const TeamBridgeApi = {
 	 */
 	async listConversations(
 		scope: TeamBridgeReadScope,
+		status?: "archived",
+		/** The previous page's `next_cursor`: how the archived view pages ("Load more"). */
+		cursor?: string,
 	): Promise<TeamBridgeConversationList> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.list",
 			...(scope === "account"
 				? { scope: "account" }
 				: { tenant_id: scope.tenantId }),
+			// Sent only when asked: the live list's request stays byte-identical.
+			...(status ? { status } : {}),
+			...(cursor ? { cursor } : {}),
 		});
-		return teamBridgeConversationListSchema.parse(answer);
+		const page = teamBridgeConversationListSchema.parse(answer);
+		/*
+		 * A server older than the `status` parameter ignores it and answers the LIVE
+		 * list. Filter here so such a server shows an empty archive instead of every
+		 * open channel under the "Archived channels" heading.
+		 */
+		return status
+			? {
+					...page,
+					conversations: page.conversations.filter(
+						(row) => row.status === status,
+					),
+				}
+			: page;
 	},
 
 	async getConversation(
@@ -474,6 +501,26 @@ export const TeamBridgeApi = {
 		});
 	},
 
+	/**
+	 * PERMANENTLY delete an ARCHIVED conversation. Irreversible.
+	 *
+	 * Carries the captured-owner receipt like every conversation write, so the call
+	 * is refused before dispatch if the signed-in account changed since the person
+	 * confirmed. The server decides who may delete and refuses an open or built-in
+	 * conversation; a repeat after completion answers `conversation_not_found`.
+	 */
+	async deleteConversation(
+		conversationId: string,
+		tenantId?: string,
+		expectedAccountId?: string,
+	): Promise<unknown> {
+		return desktopResult<unknown>({
+			op: "team_bridge.conversations.delete",
+			conversation_id: conversationId,
+			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
+		});
+	},
+
 	async leave(
 		conversationId: string,
 		tenantId?: string,
@@ -506,6 +553,35 @@ export const TeamBridgeApi = {
 			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
 			conversation_id: conversationId,
 			...(tenantId ? { tenant_id: tenantId } : {}),
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
+	/**
+	 * Answer an invitation for the caller's OWN agent (agent-server `Consent`).
+	 *
+	 * An agent added to a channel or group stays `invited` until its owner
+	 * answers; this is the only transition that makes it `active`, and the agent
+	 * can never take it for itself. `accountId` is the owner's account (the hub
+	 * refuses any other with `agent_not_permitted`), and the owner guard rides
+	 * along so a request started under one account cannot land under another.
+	 * The answer is the conversation's post-state; accepting changes only the
+	 * member's state, never its notification register, so it still joins muted.
+	 */
+	async answerAgentInvitation(input: {
+		conversationId: string;
+		accountId: string;
+		tenantId: string;
+		decision: "accept" | "decline";
+		consentVersion: string;
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.consent",
+			...(await teamBridgeWriteOwner(input.accountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			account_id: input.accountId,
+			decision: input.decision,
+			consent_version: input.consentVersion,
 		});
 		return teamBridgeConversationSchema.parse(answer);
 	},

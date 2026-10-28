@@ -11,7 +11,7 @@ import {
 } from "@shared/components/ui/dropdown-menu";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { Bell, BellOff, MoreHorizontal } from "lucide-react";
+import { Archive, Bell, BellOff, MoreHorizontal } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeNotify } from "../../../../shared/team-bridge-contract";
 import {
@@ -46,9 +46,15 @@ import {
 export const TeamBridgeConversationMenu: FC<{
 	conversation: { notify?: TeamBridgeNotify; muted: boolean };
 	onNotifyChange: (notify: TeamBridgeNotify) => void;
+	/**
+	 * Present only when the caller may archive this channel (the server's
+	 * `can_administer`; never a built-in). Opens the confirm dialog, which is
+	 * where the consequence is stated; the menu item itself changes nothing.
+	 */
+	onArchive?: () => void;
 	/** Story/capture seed only: opens the menu so its rows are visible. */
 	defaultOpen?: boolean;
-}> = ({ conversation, onNotifyChange, defaultOpen = false }) => {
+}> = ({ conversation, onNotifyChange, onArchive, defaultOpen = false }) => {
 	useI18nLocale();
 	const notify = notificationPreference(conversation);
 	const muted = notify === "mute";
@@ -101,6 +107,15 @@ export const TeamBridgeConversationMenu: FC<{
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>
+				{onArchive && (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem onSelect={onArchive}>
+							<Archive size={16} aria-hidden="true" />
+							<span>{t("ui.teamBridge.archive.menu.archive")}</span>
+						</DropdownMenuItem>
+					</>
+				)}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

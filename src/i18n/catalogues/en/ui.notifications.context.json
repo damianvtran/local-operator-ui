@@ -1,0 +1,885 @@
+{
+	"ui.notifications.nav.label": {
+		"role": "sidebar destination row label and page name",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "The sidebar row that opens the Notifications page. Never call it Inbox: that word belongs to Team Bridge.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.nav.unread": {
+		"role": "sidebar row accessible name with a count",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "Read by screen readers when the row's badge shows a number. Count is unread updates plus unread live asks.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Uncapped number of unread items.",
+			"countText": "The same number as plain decimal text."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+	},
+	"ui.notifications.rail.aria_with_updates": {
+		"role": "right-rail asks button accessible name when the conversation also has unread updates",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "Extends the existing asks button name with the unread update count for this conversation.",
+		"length": "One accessible name; counts are never capped.",
+		"placeholders": {
+			"chord": "Empty, or the formatted keyboard chord with a leading space and parentheses.",
+			"subject": "Already formatted queue scope, e.g. This conversation.",
+			"count": "Answerable asks.",
+			"countText": "Asks as decimal text.",
+			"updates": "Unread updates in this conversation.",
+			"updatesText": "Updates as decimal text."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+	},
+	"ui.notifications.page.title": {
+		"role": "page heading",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Notifications",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.page.subtitle": {
+		"role": "page subtitle under the heading",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Questions your agents are waiting on, and updates they flagged for you.",
+		"length": "One line under the title."
+	},
+	"ui.notifications.page.refresh": {
+		"role": "icon button accessible name and tooltip",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Refresh notifications",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.page.checking": {
+		"role": "spinner label while the app asks the backend which features it serves",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Checking the server's notifications support",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.page.unavailable": {
+		"role": "notice shown when the backend predates the feature",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: This server doesn't serve notifications yet. Update Local Operator to use them.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.page.loading": {
+		"role": "accessible label of the skeleton list while the first read is in flight",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Loading notifications",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.page.list_label": {
+		"role": "accessible name of the list grid",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Notifications list",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.read_state": {
+		"role": "accessible name of the Unread/All segmented control",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Read state",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.unread": {
+		"role": "segment label: show only unread items",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Unread",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.all": {
+		"role": "segment label: show read and unread items",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: All",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.kind": {
+		"role": "filter menu label",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Kind",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.kind_all": {
+		"role": "filter value: both asks and updates",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: All",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.kind_asks": {
+		"role": "filter value: questions an agent is waiting on",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Asks",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.kind_updates": {
+		"role": "filter value: items an agent flagged with the notify tool",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Updates",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.priority": {
+		"role": "filter menu label",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Priority",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.priority_any": {
+		"role": "filter value: every priority",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Any",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.priority_high": {
+		"role": "filter value: high priority only",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: High",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.priority_normal_up": {
+		"role": "filter value: normal and high, hides low",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Normal and above",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.from": {
+		"role": "filter menu label: which conversation",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: From",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.from_all": {
+		"role": "filter value: every conversation",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: All conversations",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.group": {
+		"role": "grouping menu label",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Group",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.group_time": {
+		"role": "grouping value: Today / Yesterday / Earlier this week / Older",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Time",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.group_conversation": {
+		"role": "grouping value: one header per conversation",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Conversation",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.clear": {
+		"role": "text button that resets every filter to its default",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Clear filters",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.filter.chip": {
+		"role": "filter chip text: the filter name then its current value",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {label}: {value}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"label": "Already translated filter name, e.g. Kind.",
+			"value": "Already translated current value, e.g. Asks."
+		}
+	},
+	"ui.notifications.action.mark_all_read": {
+		"role": "toolbar button: mark every item the page has loaded as read",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Mark all read",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.group.waiting": {
+		"role": "list group heading for live asks pinned at the top",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Waiting on you",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.group.today": {
+		"role": "time group heading",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Today",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.group.yesterday": {
+		"role": "time group heading",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Yesterday",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.group.week": {
+		"role": "time group heading",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Earlier this week",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.group.older": {
+		"role": "time group heading",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Older",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.group.dismiss_session": {
+		"role": "button on a conversation group heading that dismisses that conversation's updates",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismiss all {count}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Number of updates that will be dismissed (asks are skipped)."
+		}
+	},
+	"ui.notifications.group.untitled": {
+		"role": "fallback conversation name when the session has no title",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Untitled conversation",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.row.priority.high": {
+		"role": "accessible priority level; also the detail header label",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: High priority",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.row.priority.normal": {
+		"role": "accessible priority level",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Normal priority",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.row.priority.low": {
+		"role": "accessible priority level",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Low priority",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.row.chip.high": {
+		"role": "small chip after a high-priority title",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: High",
+		"length": "One short word; the chip is tiny."
+	},
+	"ui.notifications.row.chip.repeat": {
+		"role": "chip counting collapsed repeats of one update",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: ×{count}",
+		"length": "Keep the multiplication sign and the number; no words.",
+		"placeholders": {
+			"count": "How many updates were folded into this row."
+		}
+	},
+	"ui.notifications.row.updated_ago": {
+		"role": "second-line prefix on a collapsed repeat",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: updated {age} ago",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"age": "Compact age such as 6m or 2h, already formatted."
+		}
+	},
+	"ui.notifications.row.ask_options": {
+		"role": "second line of an ask row: how many choices the question offers",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {options, plural, one {One option} other {# options}}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"options": "Number of options."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+	},
+	"ui.notifications.row.ask_expires": {
+		"role": "second line of an ask row: time left before the ask times out",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: expires in {time}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"time": "Compact duration such as 38m, already formatted."
+		}
+	},
+	"ui.notifications.row.mark_read": {
+		"role": "row icon button accessible name and tooltip",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Mark read",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.row.mark_unread": {
+		"role": "row icon button accessible name and tooltip",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Mark unread",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.row.dismiss": {
+		"role": "row icon button accessible name and tooltip; removes an update from the list",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismiss",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.row.answer": {
+		"role": "row icon button on a live ask; opens the answer field",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Answer",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.row.select": {
+		"role": "row checkbox accessible name",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Select {title}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"title": "The item's title."
+		}
+	},
+	"ui.notifications.row.a11y": {
+		"role": "full accessible name of a list row",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {read, select, false {Unread. } other {}}{priority}. {title}. From {source}, {age}.{repeat, plural, =0 {} =1 {} other { # updates.}}",
+		"length": "Screen reader sentence; no visual length limit.",
+		"placeholders": {
+			"read": "true or false; not shown.",
+			"priority": "Already translated level, e.g. High priority.",
+			"title": "Item title.",
+			"source": "Conversation name.",
+			"age": "Compact age, already formatted.",
+			"repeat": "How many updates were folded; 0 or 1 shows nothing."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+	},
+	"ui.notifications.row.more": {
+		"role": "overflow menu button accessible name",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: More actions",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.time.now": {
+		"role": "compact age for under a minute",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: now",
+		"length": "Very short; sits in a narrow time column."
+	},
+	"ui.notifications.time.minutes": {
+		"role": "compact age in minutes",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {count}m",
+		"length": "Very short, like 4m.",
+		"placeholders": {
+			"count": "Whole minutes."
+		}
+	},
+	"ui.notifications.time.hours": {
+		"role": "compact age in hours",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {count}h",
+		"length": "Very short, like 2h.",
+		"placeholders": {
+			"count": "Whole hours."
+		}
+	},
+	"ui.notifications.seen.live": {
+		"role": "quiet provenance mark on a read row created read because the user was in the conversation",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Seen live",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.seen.in_view": {
+		"role": "quiet provenance mark on a row auto-read because it was on screen",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Seen in conversation",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.seen.live_hint": {
+		"role": "tooltip for Seen live",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Marked read because you were in the conversation when it arrived.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.seen.in_view_hint": {
+		"role": "tooltip for Seen in conversation",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Marked read when it was on screen in the conversation.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.read_via.explicit": {
+		"role": "provenance word in the drawer for a row the user read themselves",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Marked read",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.select.count": {
+		"role": "selection bar count",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {count} selected",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Number of selected rows."
+		}
+	},
+	"ui.notifications.select.all": {
+		"role": "select-all checkbox accessible name",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Select all",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.select.clear": {
+		"role": "selection bar text button",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Clear selection",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.select.mark_read": {
+		"role": "selection bar button",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Mark read",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.select.mark_unread": {
+		"role": "selection bar button",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Mark unread",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.select.dismiss": {
+		"role": "selection bar button; the count excludes live asks, which cannot be dismissed",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismiss {count}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Updates that will be dismissed."
+		}
+	},
+	"ui.notifications.select.asks_stay": {
+		"role": "note beside the selection bar and in receipts when live asks were skipped",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {count, plural, one {1 ask stays until it's answered} other {# asks stay until they're answered}}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Live asks skipped."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+	},
+	"ui.notifications.ask.stays": {
+		"role": "polite announcement when the user tries to dismiss a live ask",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Asks stay until they're answered.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.label": {
+		"role": "accessible name of the detail pane",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Notification details",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.close": {
+		"role": "icon button that closes the detail pane",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Close details",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.back": {
+		"role": "back link on a narrow window, returns to the list",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: All notifications",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.open_conversation": {
+		"role": "primary button that jumps to the source conversation",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Open conversation",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.kind.ask": {
+		"role": "kind label in the detail header",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Ask",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.kind.update": {
+		"role": "kind label in the detail header",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Update",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.meta.updates_since": {
+		"role": "detail meta line for a collapsed repeat",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {count} updates since {time}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "How many times this item was updated (repeat count).",
+			"time": "Clock time of the first version, already formatted."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories and keep # and {time} exactly."
+	},
+	"ui.notifications.detail.section.waiting": {
+		"role": "detail section heading above the conversation's open asks",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Waiting on you in this conversation",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.section.context": {
+		"role": "detail section heading above the excerpt of the message the notification was attached to",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: In the conversation",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.section.links": {
+		"role": "detail section heading above links the agent attached",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Links",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.section.from": {
+		"role": "detail section heading above the source conversation card",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: From",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.section.projects": {
+		"role": "detail section heading",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Related projects",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.section.history": {
+		"role": "detail section heading above collapsed repeats",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Earlier updates",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.history.show_all": {
+		"role": "button that expands the earlier updates list",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Show all {count}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Total earlier updates."
+		}
+	},
+	"ui.notifications.detail.from.dismiss_all": {
+		"role": "button in the From card: dismiss every update from this conversation",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismiss all {count}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Updates that will be dismissed."
+		}
+	},
+	"ui.notifications.detail.more.dismiss_session": {
+		"role": "overflow menu item",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismiss all from {source}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"source": "Conversation name."
+		}
+	},
+	"ui.notifications.detail.more.copy_link": {
+		"role": "overflow menu item copying the notification's in-app link",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Copy link",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.dismiss": {
+		"role": "detail action button",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismiss",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.dismiss_repeat": {
+		"role": "detail action button on a collapsed repeat",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismiss {count}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "How many folded updates go with it."
+		}
+	},
+	"ui.notifications.detail.gone.dismissed": {
+		"role": "notice in an open detail when the item was dismissed elsewhere",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: This was dismissed on another device.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.empty": {
+		"role": "detail pane placeholder when nothing is open",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Select a notification to see its details.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.loading": {
+		"role": "accessible label while the detail read is in flight",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Loading details",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.detail.error": {
+		"role": "detail pane error",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Couldn't load this notification.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.confirm.dismiss_session": {
+		"role": "confirmation popover question",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismiss {count, plural, one {# update} other {# updates}} from {source}?",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Updates to dismiss.",
+			"source": "Conversation name."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+	},
+	"ui.notifications.confirm.dismiss_session_ok": {
+		"role": "confirmation popover primary button",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismiss",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.confirm.cancel": {
+		"role": "confirmation popover secondary button",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Cancel",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.toast.dismissed": {
+		"role": "toast after a dismiss, with an Undo action",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Dismissed {count, plural, one {# update} other {# updates}}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Updates dismissed."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+	},
+	"ui.notifications.toast.marked_read": {
+		"role": "toast after mark read",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Marked {count} read",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Items marked."
+		}
+	},
+	"ui.notifications.toast.marked_unread": {
+		"role": "toast after mark unread",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Marked {count} unread",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Items marked."
+		}
+	},
+	"ui.notifications.toast.undo": {
+		"role": "toast action button",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Undo",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.toast.undone": {
+		"role": "toast after Undo succeeds",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Restored",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.toast.copied": {
+		"role": "toast after Copy link",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Link copied",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.empty.caught_up.title": {
+		"role": "empty state title on the Unread filter",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: All caught up",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.empty.caught_up.body": {
+		"role": "empty state body",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Nothing is waiting on you across your conversations. New questions and updates from your agents will appear here.",
+		"length": "One or two lines."
+	},
+	"ui.notifications.empty.caught_up.show_all": {
+		"role": "empty state button that switches to the All filter",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Show all notifications",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.empty.none.title": {
+		"role": "empty state title when nothing has ever arrived",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: No notifications yet",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.empty.none.body": {
+		"role": "empty state body",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: When an agent asks you something or flags an update, it shows up here.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.empty.filtered.title": {
+		"role": "empty state title when filters hide every row",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Nothing matches these filters",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.error.load.title": {
+		"role": "first-load error title",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Couldn't load notifications.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.error.refresh.title": {
+		"role": "refresh error notice title above a stale list",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Couldn't refresh notifications.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.error.refresh.body": {
+		"role": "refresh error notice body",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: The local server didn't answer. Showing what loaded at {time} — dismissing and marking read are paused until it's back.",
+		"length": "One or two lines.",
+		"placeholders": {
+			"time": "Clock time of the last good read, already formatted."
+		}
+	},
+	"ui.notifications.error.dismiss": {
+		"role": "error toast after a failed dismiss",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Couldn't dismiss — nothing changed. Try again.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.error.mark": {
+		"role": "error toast after a failed read/unread write",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Couldn't mark read — nothing changed. Try again.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.error.retry": {
+		"role": "button that retries the failed read",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Try again",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.new_pill": {
+		"role": "pill at the top of the list when items arrived while scrolled",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {count} new",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Items that arrived."
+		}
+	},
+	"ui.notifications.writes_paused_tip": {
+		"role": "tooltip on disabled row actions during a refresh failure",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Paused while the server is unreachable",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.flag.label": {
+		"role": "label at the start of the one-line marker under an assistant message that raised a notification",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Flagged for you:",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.flag.unread": {
+		"role": "state word on the flag line",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Unread",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.flag.seen": {
+		"role": "state word on the flag line after it was read",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Seen",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.flag.seen_hint": {
+		"role": "tooltip on the Seen state word",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Marked read because it was on screen while you were active here.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.flag.open": {
+		"role": "accessible name of the flag line title button",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Open in Notifications",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.tabs_label": {
+		"role": "accessible name of the drawer tab strip",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Asks and updates",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.tab.asks": {
+		"role": "drawer tab",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Asks",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.tab.updates": {
+		"role": "drawer tab",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Updates",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.tab.all": {
+		"role": "drawer tab showing asks across every conversation",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: All conversations",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.unread_count": {
+		"role": "count beside the Updates tab",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: {count} unread",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
+		"placeholders": {
+			"count": "Unread updates in this conversation."
+		}
+	},
+	"ui.notifications.drawer.group.unread": {
+		"role": "drawer group heading",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Unread",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.group.read": {
+		"role": "drawer group heading",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Read",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.mark_read": {
+		"role": "drawer group action: mark this conversation's unread updates read",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Mark read",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.show_in_conversation": {
+		"role": "icon button that scrolls the transcript to the flag line",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Show in conversation",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.footer": {
+		"role": "drawer footer note",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Updates from this conversation only",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.open_notifications": {
+		"role": "drawer footer link to the full page filtered to this conversation",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Open Notifications",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.empty": {
+		"role": "empty Updates tab",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Nothing flagged in this conversation.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	}
+}

@@ -1,0 +1,488 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "independent-delta-audit",
+ "batch": "wave-b-delta",
+ "pr": null,
+ "head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "base": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "locale": "ur",
+ "locale_name": "Urdu",
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "team": "lopdev",
+ "session": "c89cee263ac2",
+ "instance": "c89cee263ac2-waveb-delta-ur",
+ "model": "radient/auto",
+ "model_route": "This session's own runtime state (.local-operator/sessions/c89cee263ac2/tail-anchor.v1.json -> selection_payloads[0].details.selector = 'radient/auto', effort 'auto', boot 'radient/auto') and the run's system context both name one route, 'radient/auto'. That is the harness's router alias: the upstream provider/model behind it is not exposed to the session, so none is invented here.",
+ "fallback": null,
+ "fallback_note": "No fallback notice appeared in this session and no model switch was observed.",
+ "date": "2026-10-27",
+ "independence": "Independent translation audit, second auditor of this branch. This session wrote none of the amendments it audits: the eleven Urdu values and the one English value were read from a read-only `git archive` export of a5356ce91c, and the only files this session produced are the receipt, the nine evidence bundles and the coordinator staging files it names. It did not read the translator's reasoning before forming verdicts (the translator's commit message was read only after the per-value judgements were written, to check that no declined finding had been dropped silently), ran no translation API, SDK, MT service or back-translation, and is a different session from the base auditor (56e45c939c27). ICU rendering used the repo's own intl-messageformat and @formatjs parser; the RTL pass used GNU FriBidi 1.0.16 locally.",
+ "actual_model_source": "Session model selector read from this session's own runtime state (.local-operator/sessions/c89cee263ac2/tail-anchor.v1.json -> selected_model.selector = 'radient/auto'); the run's system context names the same route. The upstream model behind the alias is not exposed, so none is claimed, and no fallback is claimed.",
+ "source_dir": "src/i18n/catalogues/en",
+ "target_dir": "src/i18n/catalogues/ur",
+ "manifest": {
+  "path": "~/local-operator-ui/.worktrees/i18n-wave-b/wave-b-keys.json",
+  "sha256": "f5f2e48d3c1744e071b064bfc2b8f7bd58883bd4d4fe177b36b07d8c91ada8d4",
+  "note": "untracked scope manifest supplied with the task; 62 keys in 9 namespaces. One English value on disk differs from it (pairing_guidance) because this commit closed that message's code span - expected, recorded, not a defect."
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "languages_manifest": {
+   "path": "i18n/languages.json",
+   "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+  }
+ },
+ "method": {
+  "delta_diff": "parsed-JSON value diff of the nine namespace files between 0559f7f7d8 and a5356ce91c for en and ur: 61/62 English values and 51/62 Urdu values are byte-identical to the audited bytes; the twelve that moved are listed per namespace below, and every changed value in those files is a wave-B key (asserted, so no non-wave-B value moved).",
+  "mechanical": "repo locale-parity (44/44), generate --check, check-duplicates, check-strings, context-parity, check-coverage, the ur activation suite (3/3); then ICU argument and plural-arm parity over all 62 keys with @formatjs/icu-messageformat-parser and rendering with intl-messageformat; backtick counts; the ICU-quoted <token> case; CLDR categories for ur (one/other).",
+  "semantic": "each of the twelve changed values read against the English value, its en context sidecar entry, the consuming renderer code, the core glossary, the ur style guide and the shipped ur corpus (6,085 values), plus the earlier finding it answers.",
+  "rtl": "GNU FriBidi 1.0.16 (`fribidi --nopad --nobreak --rtl`, base RTL as use-document-direction.ts sets for ur) over the eleven changed strings and every one of the 62 whose value ends in punctuation or a placeholder (35 strings), plus their rendered forms: manual-bidi-control count, LTR-island contiguity and internal order, island order under RTL paragraph semantics, and edge/island placement.",
+  "limits": "Catalogue-level audit: no rendered frame, screenshot or pixel measurement, and no native-speaker sign-off. No sidecar for these 62 keys carries a maxCells/maxChars budget, so fit is call-site reasoning plus the documented row budgets."
+ },
+ "key_count": 62,
+ "changed_value_count": {
+  "ur": 11,
+  "en": 1
+ },
+ "namespaces": {
+  "ui.agents.config": {
+   "namespace": "ui.agents.config",
+   "status": "passed",
+   "result": "clean",
+   "key_count": 3,
+   "instance": "c89cee263ac2-waveb-delta-ur",
+   "model": "radient/auto",
+   "en_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+   "ur_sha256": "35c369946919f4d93ae1ddc7e79a97196666632f8c727eccca12a8bf53be2a1c",
+   "context_sha256": "d55725ee860cc40539b200ab0d0018e4f1062d6ade08c16c169520a4f3625db0",
+   "en_sha256_audited_at_base": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+   "ur_sha256_audited_at_base": "35c369946919f4d93ae1ddc7e79a97196666632f8c727eccca12a8bf53be2a1c",
+   "ur_bytes_changed_in_commit": false,
+   "en_bytes_changed_in_commit": false,
+   "changed_values": [],
+   "findings": [],
+   "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "status": "passed",
+   "result": "clean",
+   "key_count": 9,
+   "instance": "c89cee263ac2-waveb-delta-ur",
+   "model": "radient/auto",
+   "en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+   "ur_sha256": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+   "context_sha256": "f300190022daa1e49a200072b29501cfc6a5be7c542a57ef741873c14bfa6164",
+   "en_sha256_audited_at_base": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+   "ur_sha256_audited_at_base": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+   "ur_bytes_changed_in_commit": false,
+   "en_bytes_changed_in_commit": false,
+   "changed_values": [],
+   "findings": [],
+   "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "key_count": 8,
+   "instance": "c89cee263ac2-waveb-delta-ur",
+   "model": "radient/auto",
+   "en_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+   "ur_sha256": "5bf58414f7bbd78921fb1671a4032dd66e8b45159c236d4cf072b8b2c4d273d9",
+   "context_sha256": "ea13112039dfed41998801904ccc88531f87452a7e3d7138ab09a5f48f9e65b2",
+   "en_sha256_audited_at_base": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+   "ur_sha256_audited_at_base": "fe16989de9e4ba1bd39756a091ccdbe72bf428044628976aa93d769e8d9732ea",
+   "ur_bytes_changed_in_commit": true,
+   "en_bytes_changed_in_commit": false,
+   "changed_values": [
+    {
+     "key": "ui.chat.canonical.tool_row.generic_verb.running",
+     "was": "کال کر رہا ہے",
+     "now": "کال جاری"
+    },
+    {
+     "key": "ui.chat.canonical.tool_row.generic_verb.settled",
+     "was": "کال کیا",
+     "now": "کال مکمل"
+    }
+   ],
+   "findings": [
+    {
+     "id": "UR-WBD-03",
+     "severity": "nit",
+     "category": "sidecar hint deviation, recorded not churned",
+     "key": "ui.chat.canonical.tool_row.generic_verb.running",
+     "keys": [
+      "ui.chat.canonical.tool_row.generic_verb.running",
+      "ui.chat.canonical.tool_row.generic_verb.settled"
+     ],
+     "answers_finding": "UR-WB-03",
+     "previous_disposition": "open (nit: nominal form proposed)",
+     "adjudication": "resolved (nominal form applied); hint deviation recorded",
+     "current": "کال جاری / کال مکمل",
+     "proposed": "(no value change)",
+     "reason": "The applied values are the ones the finding asked for, and they are better than what they replace: Urdu is verb-final, so a finite predicate in front of the tool name reads as a verb followed by an afterthought, while «کال جاری» / «کال مکمل» compose as a label before the object in the RTL row. Both halves use words the corpus already owns for a call - «ٹول کال», «ہر فراہم کنندہ کال», «ماڈل کالز» - and جاری (91 values) / مکمل (119 values) are the established in-progress / complete pair. Recorded here so the next reader does not mistake a hint for a violation: the sidecars for these two keys say «present participle … one word» and «past tense … one word», and the values are two-word nominals. That is the Hindi sibling's shape too (कॉल जारी / कॉल पूर्ण), and the row's actual budget - the verb column is `shrink-0 whitespace-nowrap`, documented as 'at most three short words' (tool-row.tsx:928) - is met with room to spare. No value change; optionally amend the two sidecar tone lines to «nominal label in SOV locales (hi/ur)».",
+     "scope": "ui.chat.canonical"
+    }
+   ],
+   "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   }
+  },
+  "ui.chat.device": {
+   "namespace": "ui.chat.device",
+   "status": "passed",
+   "result": "clean",
+   "key_count": 11,
+   "instance": "c89cee263ac2-waveb-delta-ur",
+   "model": "radient/auto",
+   "en_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+   "ur_sha256": "7c46f933a3f32d8145f5484c1fda47f42d58c5cde505ba40b419b989f00aa64e",
+   "context_sha256": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a",
+   "en_sha256_audited_at_base": "d877cfefb93c31aadcd6b338ff03ba50522bc3a235f5b0f5a422bb18d5e91c4e",
+   "ur_sha256_audited_at_base": "7c46f933a3f32d8145f5484c1fda47f42d58c5cde505ba40b419b989f00aa64e",
+   "ur_bytes_changed_in_commit": false,
+   "en_bytes_changed_in_commit": true,
+   "changed_values": [
+    {
+     "key": "ui.chat.device.sentence.pairing_guidance",
+     "was": "This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'.",
+     "now": "This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'`."
+    }
+   ],
+   "findings": [
+    {
+     "id": "UR-WBD-OBS-1",
+     "severity": "info",
+     "category": "RTL bidi observation, unchanged bytes",
+     "key": "ui.chat.device.sentence.pairing_guidance",
+     "current": "یہ ڈیوائس کسی نیٹ ورک میں نہیں ہے۔ `lop network init` سے ایک بنائیں، یا `lop network join '<token>'` سے کسی نیٹ ورک میں شامل ہوں۔",
+     "proposed": "(no copy change; renderer isolation)",
+     "reason": "The English fix in this commit closes the second code span; the ur value is unchanged from the audited base and passes the formatter check (4 backticks balanced, literal <token> after ICU unquoting, no stray single quote). One rendering fact is worth recording because it is visible: the picker paints this sentence as plain text (`chat-header-device.tsx:365-372`, a bare <p>), so the backticks are literal, and with no per-run isolation the trailing neutral characters of the second command resolve to the paragraph direction. GNU FriBidi (base RTL) reorders «`lop network join <token>`» to «`<lop network join <token`» - the closing '>' mirrors and moves to the left edge of the Latin run. Copy cannot fix this under the ur style guide (manual bidi controls are forbidden and double-applied); the fix is the one the repo already uses elsewhere - `<bdi dir=\"ltr\">` around the command runs, as in tool-row.tsx:1050 and setting-control.tsx:565. Not counted against the delta: the bytes are the base audit's, and the cause is renderer-level.",
+     "not_counted": true,
+     "scope": "ui.chat.device"
+    }
+   ],
+   "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "key_count": 18,
+   "instance": "c89cee263ac2-waveb-delta-ur",
+   "model": "radient/auto",
+   "en_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+   "ur_sha256": "7802b5fdd2e5a8c3847c8cc97dfb1faabbc0c9064ba50caab7f93aec3de01925",
+   "context_sha256": "6861dbfbdbc9af23c8c09332670a6f7d77c2a12b5724afc91d0054660ef904d0",
+   "en_sha256_audited_at_base": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+   "ur_sha256_audited_at_base": "2190f2c2b7b08480deec9045032663205175c20206aed593ca713c347ec76d0b",
+   "ur_bytes_changed_in_commit": true,
+   "en_bytes_changed_in_commit": false,
+   "changed_values": [
+    {
+     "key": "ui.chat.pickers.slash.click.completes_label",
+     "was": "کلک کرنے سے /{label} مکمل ہو جائے گا۔",
+     "now": "کلک کرنے سے /{label} مکمل ہو جائے گی۔"
+    },
+    {
+     "key": "ui.chat.pickers.slash.click.runs",
+     "was": "کلک کرنے سے /{label} چل جائے گا۔",
+     "now": "کلک کرنے سے /{label} چل جائے گی۔"
+    },
+    {
+     "key": "ui.chat.pickers.slash.click.runs_with_value",
+     "was": "کلک کرنے سے {command}{value} چل جائے گا۔",
+     "now": "کلک کرنے سے {command}{value} چل جائے گی۔"
+    },
+    {
+     "key": "ui.chat.pickers.slash.click.stages",
+     "was": "کلک کرنے سے /{label} مسودے میں آ جائے گا۔",
+     "now": "کلک کرنے سے /{label} مسودے میں آ جائے گی۔"
+    }
+   ],
+   "findings": [
+    {
+     "id": "UR-WBD-01",
+     "severity": "minor",
+     "category": "punctuation / one strip, two lines",
+     "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+     "answers_finding": "UR-WB-06",
+     "previous_disposition": "source-side; no ur change (declined by the translator in a5356ce91c)",
+     "adjudication": "not resolved / overruled",
+     "current": "Enter کے لیے قطار منتخب کرنی ہو گی: پہلے ↓ پھر Enter · Tab اس قطار کو مکمل کرتا ہے",
+     "proposed": "Enter کے لیے قطار منتخب کرنی ہو گی: پہلے ↓ پھر Enter · Tab اس قطار کو مکمل کرتا ہے۔",
+     "reason": "The earlier finding compared this line with the picker_host footers and concluded the English full stop was the odd one out. The call site says otherwise: in the slash popup this line and a click line are ONE bordered strip with two lines - `slash-commands.tsx:2258-2267` renders `{footerText}` then `{clickText}` in that order - and the click line in the same strip ends with a stop in ur («کلک کرنے سے /{label} چل جائے گی۔»). Every English line of that strip ends with '.', including the hardcoded siblings `Enter runs /${label}.` / `Enter completes /{label}.` (`enterFooter`, slash-contract.ts:1237-1272). The wave's own practice for this key is visible in the same commit: Hindi, which carries the identical sidecar line «instruction, sentence case, no trailing period», gained the Devanagari stop । in a5356ce91c while keeping the rest of its value. Urdu is now the only SOV sibling whose line ends bare, and it ends bare directly above a line that does not. Adding ۔ costs one character, keeps the ':' and '·' structure, and leaves the sidecar's other clauses intact. If the coordinator prefers the sidecar's 'no trailing period', the coherent fix is source-side and wider: drop the stop from the English value AND from the click.* lines in all seven locales. Fixing it in ur alone in the other direction is not available, because the adjacent line keeps its stop.",
+     "scope": "ui.chat.pickers"
+    },
+    {
+     "id": "UR-WBD-OBS-2",
+     "severity": "info",
+     "category": "extraction gap, code-level, outside the 62",
+     "key": "ui.chat.pickers.slash.enter_footer.literals",
+     "current": "`enterFooter` returns hardcoded English: «Enter runs /${label}.», «Enter completes /${label}.», «Enter completes /${label}; Enter again runs it.», «Enter stages /${label}; the next Enter runs it.», «Enter completes to ${prefix}.»",
+     "proposed": "(n/a - out of this wave's scope)",
+     "reason": "Every line of the slash popup's first footer line is an un-keyed English template literal except the one key this wave translated (`enterNeedsAPick`). On an Urdu session the strip therefore shows English on line 1 and Urdu on line 2 in most states, and Urdu on both only in the ambiguous fallback. Not counted: no wave-B value is wrong, and the gap predates this commit (unchanged bytes at 0559f7f7d8). Named so the ur popup is not assumed complete.",
+     "not_counted": true,
+     "scope": "ui.chat.pickers"
+    }
+   ],
+   "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "result": "clean",
+   "key_count": 2,
+   "instance": "c89cee263ac2-waveb-delta-ur",
+   "model": "radient/auto",
+   "en_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+   "ur_sha256": "ddce087907e8e07db42bf819cef78c133e66a6f5f02edee98bc503cb0d5d7061",
+   "context_sha256": "6e25843e49db6d20254d7593cbfe06c81dd8ba305c369351b4a9e374c6e4e526",
+   "en_sha256_audited_at_base": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+   "ur_sha256_audited_at_base": "ddce087907e8e07db42bf819cef78c133e66a6f5f02edee98bc503cb0d5d7061",
+   "ur_bytes_changed_in_commit": false,
+   "en_bytes_changed_in_commit": false,
+   "changed_values": [],
+   "findings": [],
+   "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.chat.status": {
+   "namespace": "ui.chat.status",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "key_count": 4,
+   "instance": "c89cee263ac2-waveb-delta-ur",
+   "model": "radient/auto",
+   "en_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+   "ur_sha256": "77138a3d3fe8d02576f05a79346e92d6f71536669d477cda7501398faaf08bfa",
+   "context_sha256": "a62b34dde0f22e95c34793f1f87791fc38385c68c840a0f6c60adf304aaec561",
+   "en_sha256_audited_at_base": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+   "ur_sha256_audited_at_base": "8ebebdff77e46581c84442a3bf088c82eca3b43a90300741bd61f76bd27388b8",
+   "ur_bytes_changed_in_commit": true,
+   "en_bytes_changed_in_commit": false,
+   "changed_values": [
+    {
+     "key": "ui.chat.status.degraded",
+     "was": "سرور سست روی سے جواب دے رہا ہے۔ آپ کے پیغامات قطار میں ہیں۔",
+     "now": "سرور آہستہ جواب دے رہا ہے۔ آپ کے پیغامات قطار میں ہیں۔"
+    },
+    {
+     "key": "ui.chat.status.internet_offline",
+     "was": "یہ مشین آف لائن ہے۔ بھیجنے کے لیے انتظار کرنا ہو گا۔",
+     "now": "یہ مشین آف لائن ہے۔ بھیجنے میں تاخیر ہو گی۔"
+    },
+    {
+     "key": "ui.chat.status.unreachable",
+     "was": "Local Operator سرور تک رسائی ممکن نہیں۔ بھیجنے کے لیے انتظار کرنا ہو گا۔",
+     "now": "Local Operator سرور تک رسائی ممکن نہیں۔ بھیجنے میں تاخیر ہو گی۔"
+    }
+   ],
+   "findings": [
+    {
+     "id": "UR-WBD-02",
+     "severity": "nit",
+     "category": "word choice / corpus precedent",
+     "key": "ui.chat.status.degraded",
+     "answers_finding": "UR-WB-04",
+     "previous_disposition": "open (nit: سست روی سے is newspaper register; proposed آہستہ)",
+     "adjudication": "resolved, with a lower-severity note",
+     "current": "سرور آہستہ جواب دے رہا ہے۔ آپ کے پیغامات قطار میں ہیں۔",
+     "proposed": "سرور دیر سے جواب دے رہا ہے۔ آپ کے پیغامات قطار میں ہیں۔",
+     "reason": "The applied change fixes what the finding named: «سست روی سے» is the abstract news register, and «آہستہ» is the plain adverb a status strip wants. Meaning, subject (the server, not the reader) and the queued consequence are all correct, so this is not a re-audit of the old defect. Two notes, both below the old nit in weight: the corpus's adjective for a slow link is سست, not آہستہ («سست یا رکا ہوا کنکشن», ui.common.updates.check_for_updates_button…; 7 values), so سست carries the established technical register; and آہستہ attached to a verb of speech also carries 'softly / quietly', which the second sentence disambiguates but does not remove. «دیر سے جواب دے رہا ہے» ('answers late') is unambiguous and corpus-shaped. Optional at nit level.",
+     "scope": "ui.chat.status"
+    }
+   ],
+   "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   }
+  },
+  "ui.common.connection": {
+   "namespace": "ui.common.connection",
+   "status": "passed",
+   "result": "clean",
+   "key_count": 5,
+   "instance": "c89cee263ac2-waveb-delta-ur",
+   "model": "radient/auto",
+   "en_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+   "ur_sha256": "455e6f80179c80af412138d3edcd3780b610a10273a2cbcdb7e631cb2fa353ae",
+   "context_sha256": "99f458fecbeae8ea58c45f171d7ccbc465cc9a717255553aaadc3c1927f875ae",
+   "en_sha256_audited_at_base": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+   "ur_sha256_audited_at_base": "dac9b8322b4f20f0a2f7f2c5a152e34d4550d2883951c69c8e9b8b5a856f3942",
+   "ur_bytes_changed_in_commit": true,
+   "en_bytes_changed_in_commit": false,
+   "changed_values": [
+    {
+     "key": "ui.common.connection.session_loss.server_down",
+     "was": "Local Operator سرور نہیں چل رہا — اس کے واپس آنے پر دوبارہ منسلک کریں، یا اگر وہ چلتا نہ رہے تو ایپ دوبارہ شروع کریں۔",
+     "now": "Local Operator سرور نہیں چل رہا — اس کے واپس آنے پر دوبارہ منسلک کریں، یا اگر وہ بند ہی رہے تو ایپ دوبارہ شروع کریں۔"
+    }
+   ],
+   "findings": [],
+   "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.common.layout": {
+   "namespace": "ui.common.layout",
+   "status": "passed",
+   "result": "clean",
+   "key_count": 2,
+   "instance": "c89cee263ac2-waveb-delta-ur",
+   "model": "radient/auto",
+   "en_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+   "ur_sha256": "145bc93d2724ea34181b9c14f2c5847c28896a5d131c16b487ecfbc10c5587e1",
+   "context_sha256": "cb15214ec6712e3a15bf8cb30918b3720348a7546d773788fe06a69b3575b5f6",
+   "en_sha256_audited_at_base": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+   "ur_sha256_audited_at_base": "8d9b3f3f91ac5ad0a26da21ec3d5c351559119877d084f2322e0936380960fcf",
+   "ur_bytes_changed_in_commit": true,
+   "en_bytes_changed_in_commit": false,
+   "changed_values": [
+    {
+     "key": "ui.common.layout.toasts.dismiss",
+     "was": "ٹوسٹ بند کریں",
+     "now": "اطلاع بند کریں"
+    }
+   ],
+   "findings": [],
+   "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  }
+ },
+ "adjudication_of_previous_findings": [
+  {
+   "id": "UR-WB-01",
+   "major": true,
+   "key": "ui.common.layout.toasts.dismiss",
+   "verdict": "resolved",
+   "detail": "«اطلاع بند کریں» replaces the ٹوسٹ coinage. Checked independently: ٹوسٹ is now 0 across all 6,085 shipped ur values, اطلاع (singular) carries 'notice/notification' in 17 values including the dismiss family («ڈاؤن لوڈ کی اطلاع ہٹائیں», «اپ ڈیٹ کی اطلاع ہٹائیں»), بند کریں is the corpus's close verb (72 values, e.g. ui.agentMessages.dialog.close), and the toast region label in the same component is اطلاعات. Singular noun for one toast, plural region for the region - correct. Accessible name only (themed-toast-container.tsx:95), so this phrase is the whole of what a screen reader announces."
+  },
+  {
+   "id": "UR-WB-02",
+   "major": false,
+   "key": "ui.chat.pickers.slash.click.runs + completes_label + stages + runs_with_value",
+   "keys": [
+    "ui.chat.pickers.slash.click.runs",
+    "ui.chat.pickers.slash.click.completes_label",
+    "ui.chat.pickers.slash.click.stages",
+    "ui.chat.pickers.slash.click.runs_with_value"
+   ],
+   "verdict": "resolved",
+   "detail": "All four placeholder footers are now feminine, and the family is coherent rather than uniform: نام (m) keeps گا in chooses_name, {name} (the MCP server, m) keeps گا in connects, قدر (f) keeps گی in completes_value, and the four command footers now agree feminine with کمانڈ - which the corpus treats as feminine («آرگیومنٹ لینے والی کمانڈز…») and which runs_command already used. Corpus has 6 feminine «ہو جائے گی» values beside 8 masculine ones, so the form is not novel. Meaning unchanged in all four; 'runs' vs 'completes' vs 'stages' stay distinct."
+  },
+  {
+   "id": "UR-WB-03",
+   "major": false,
+   "key": "ui.chat.canonical.tool_row.generic_verb.running + settled",
+   "keys": [
+    "ui.chat.canonical.tool_row.generic_verb.running",
+    "ui.chat.canonical.tool_row.generic_verb.settled"
+   ],
+   "verdict": "resolved",
+   "detail": "Nominal form applied; see UR-WBD-03 for the recorded sidecar-hint deviation."
+  },
+  {
+   "id": "UR-WB-04",
+   "major": false,
+   "key": "ui.chat.status.degraded",
+   "verdict": "resolved",
+   "detail": "سست روی سے replaced; see UR-WBD-02."
+  },
+  {
+   "id": "UR-WB-05",
+   "major": false,
+   "key": "ui.common.connection.session_loss.server_down",
+   "verdict": "resolved",
+   "detail": "«یا اگر وہ بند ہی رہے تو ایپ دوبارہ شروع کریں۔» is the idiomatic 'if it stays shut' and agrees masculine with سرور. Both remedies, their order, the em dash and the 'never state a cause' rule are intact; nothing in the sentence blames the reader."
+  },
+  {
+   "id": "UR-WB-06",
+   "major": false,
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "verdict": "not resolved (overruled)",
+   "detail": "The translator declined, following the sidecar's «no trailing period». Overruled on call-site evidence: the line shares one strip with a click line that carries ۔, every English line of that strip carries '.', and Hindi added । for this key in this same commit. See UR-WBD-01."
+  },
+  {
+   "id": "UR-WB-07",
+   "major": false,
+   "key": "ui.chat.status.internet_offline + unreachable",
+   "verdict": "resolved",
+   "detail": "«بھیجنے میں تاخیر ہو گی۔» states what happens to the send instead of putting an obligation on the reader, keeps both keys identical (one fact, one wording), and follows the corpus's own «… میں تاخیر ہو …» construction (ui.schedules.scheduled_task_dialog…). The internet_offline subject is still THIS machine, which the sidecar singles out."
+  }
+ ],
+ "verdict": {
+  "status": "passed",
+  "result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 1,
+   "nit": 2
+  },
+  "finding_ids": [
+   "UR-WBD-01",
+   "UR-WBD-02",
+   "UR-WBD-03"
+  ],
+  "observation_ids": [
+   "UR-WBD-OBS-1",
+   "UR-WBD-OBS-2"
+  ],
+  "summary": "Six of the seven earlier findings are resolved and verified independently; UR-WB-01, the only major, is fixed. UR-WB-06 is overruled - ur should carry the terminal stop the strip's other line and the English already carry (one minor). Two nits and two uncounted observations. No blocker, no major, so the nine namespaces can be recorded as clean-with-findings."
+ },
+ "evidence_root": "i18n/audits/evidence/ur/<namespace>/waveb-delta-20261027/",
+ "audit_notes_not_execution_log": "This receipt states conclusions. The commands behind them were executed on 2026-10-27 in the read-only export of a5356ce91c and their output is quoted verbatim in each namespace bundle's audit.log (six repo gates, the ur activation suite, the ICU rows and the FriBidi rows). Harness sources and their sha256 are recorded in the bundles' record.json. No log is claimed for a command that was not run."
+}

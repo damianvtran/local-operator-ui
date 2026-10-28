@@ -43,6 +43,7 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: { "@shared": "./src/renderer/src/shared" },
 	write: false,
 });
 const {

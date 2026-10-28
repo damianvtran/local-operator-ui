@@ -37,6 +37,7 @@ export type {
 	LocaleSource,
 	LocaleState,
 } from "./locale";
+export { resolveCatalogueLocale } from "./catalogue-locale";
 export {
 	applyCapabilities,
 	currentLocale,

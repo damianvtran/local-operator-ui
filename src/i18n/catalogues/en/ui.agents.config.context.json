@@ -54,6 +54,11 @@
 		"direct, no blame",
 		"The backend refused the interrupt and the run is still writing. The refusal's own reason sits beneath it, already localised by the backend."
 	],
+	"ui.agents.config.error.turn_failed": [
+		"status line under the run strip's 'Did not finish' title",
+		"plain, honest",
+		"Shown when the run's model failed (provider error) and the incident carried no message of its own. Says nothing was answered; must not imply the operator did anything wrong, nor that the request was refused."
+	],
 	"ui.agents.config.examples.add_twice": [
 		"clickable example request",
 		"plain, imperative",
@@ -83,6 +88,11 @@
 		"prefix in the list of changed rows",
 		"plain",
 		"Prefixed to a definition's name: 'Created <name>'. Use the same verb form as result.changed."
+	],
+	"ui.agents.config.state.did_not_finish": [
+		"status title",
+		"plain, honest",
+		"Heading of the configuration-run strip when the run's model failed (provider error, session incident) before it could answer. Must not read as the operator's own Stop, nor as success. Short: it sits on one line beside the elapsed time."
 	],
 	"ui.agents.config.state.sending": [
 		"button label while the request is in flight",
@@ -138,5 +148,26 @@
 		"quoted request under the answer",
 		"plain, factual",
 		"{topic} is the operator's own typed text, unvalidated and possibly long: it wraps, and it is never translated or reworded."
-	]
+	],
+	"ui.agents.config.banner.unavailable": {
+		"role": "composer notice when the backend could not be reached, so the composer cannot send",
+		"tone": "statement of fact, sentence case, trailing period",
+		"length": "Fourteen words.",
+		"note": "Says why the box is unavailable rather than asking for a press: the composer refuses every keystroke in this state.",
+		"placeholders": {}
+	},
+	"ui.agents.config.disabled_gate": {
+		"role": "the box's own line for the disabled gate, shared by the two slots that can carry it",
+		"tone": "imperative-free description of how this surface is configured, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "It DESCRIBES the surface rather than asking for a press, because the box refuses every keystroke while agents cannot be reached. Deliberately not the run's refusal sentence: the notice band is that sentence's single carrier and repeating it here would print it twice, 8 px apart.",
+		"placeholders": {}
+	},
+	"ui.agents.config.run_details_region": {
+		"role": "accessible name of the run details panel's scrollable detail region",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Applied only while the region overflows and is therefore a real tab stop; when everything fits it is not a region and carries no name.",
+		"placeholders": {}
+	}
 }

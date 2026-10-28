@@ -1,0 +1,6 @@
+{
+	"ui.chat.status.credential_refused": "چلتے سرور نے اس ایپ کی اسناد مسترد کر دیں، اس لیے سائن ان، ترتیبات اور سلیش کمانڈز دستیاب نہیں ہیں۔",
+	"ui.chat.status.degraded": "سرور آہستہ جواب دے رہا ہے۔ آپ کے پیغامات قطار میں ہیں۔",
+	"ui.chat.status.internet_offline": "یہ مشین آف لائن ہے۔ بھیجنے میں تاخیر ہو گی۔",
+	"ui.chat.status.unreachable": "Local Operator سرور تک رسائی ممکن نہیں۔ بھیجنے میں تاخیر ہو گی۔"
+}

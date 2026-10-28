@@ -58,5 +58,13 @@
 	"ui.chat.canonical.older_history.windowed.short_gesture": "Вверх — ранние сообщения",
 	"ui.chat.canonical.older_history.unproven.short": "Ранняя история не загружена",
 	"ui.chat.canonical.older_history.unproven.long": "Более ранняя история не загружена",
-	"ui.chat.canonical.older_history.conversation_start": "Начало разговора"
+	"ui.chat.canonical.older_history.conversation_start": "Начало разговора",
+	"ui.chat.canonical.placeholder.loading": "Загрузка разговора…",
+	"ui.chat.canonical.placeholder.region_label": "Загрузка разговора",
+	"ui.chat.canonical.tool_row.generic_verb.running": "Вызывается",
+	"ui.chat.canonical.tool_row.generic_verb.settled": "Вызван",
+	"ui.chat.canonical.tool_row.outcome.failed": "сбой",
+	"ui.chat.canonical.tool_row.outcome.interrupted": "прервано",
+	"ui.chat.canonical.tool_row.outcome.never_ran": "не запускался",
+	"ui.chat.canonical.tool_row.outcome.succeeded": "успешно"
 }

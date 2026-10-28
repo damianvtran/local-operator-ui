@@ -672,9 +672,11 @@ test("the header's menu is the session's actions, and its delete only ASKS", () 
 	// Fail-closed and whole: with neither capability there is no trigger at all,
 	// rather than a menu advertising items that do nothing.
 	assert.match(menu, /<DropdownMenuTrigger/);
-	// Archive and unarchive are one item whose label follows the state.
-	assert.match(menu, /Archive conversation/);
-	assert.match(menu, /Restore conversation/);
+	// Archive and unarchive are one item whose label follows the state, and the
+	// label is the catalogue's (i18n wave A) - pinning the key keeps the
+	// assertion true in every locale.
+	assert.match(menu, /ui\.chat\.header\.archive_conversation/);
+	assert.match(menu, /ui\.chat\.header\.restore_conversation/);
 	assert.match(menu, /onSetArchived\?\.\(!archived\)/);
 	/*
 	 * Delete is painted in the danger ink and does NOT delete: it asks the pane to

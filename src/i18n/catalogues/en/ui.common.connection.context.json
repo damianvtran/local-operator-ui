@@ -231,5 +231,40 @@
 		"tone": "Concise, factual and actionable where the state has a next step.",
 		"length": "One compact status line, placeholder, button, or spoken suffix.",
 		"note": "English source: Your settings could not be loaded: this app is not paired with the running server, so this page cannot read them from it."
+	},
+	"ui.common.connection.session_loss.frame_too_large": {
+		"role": "statement of the notice shown when one stream frame exceeded the relay's size cap",
+		"tone": "statement plus the one action, sentence case, trailing period, em dash between them",
+		"length": "Twelve words.",
+		"note": "Says what the reader can do (reconnect), not what the relay did. Never name a byte count or the transport's own vocabulary.",
+		"placeholders": {}
+	},
+	"ui.common.connection.session_loss.history_unreadable": {
+		"role": "statement of the notice shown when the conversation's stored history could not be read",
+		"tone": "statement plus the one action, sentence case, trailing period, em dash between them",
+		"length": "Eleven words.",
+		"note": "The transcript must not claim to be empty in this state, so the sentence says the history could not be read. Distinct from an empty conversation.",
+		"placeholders": {}
+	},
+	"ui.common.connection.session_loss.lost": {
+		"role": "statement of the notice shown when the connection to the conversation is gone but both processes are alive",
+		"tone": "statement plus the one action, sentence case, trailing period, em dash between them",
+		"length": "Eleven words.",
+		"note": "The generic connection-loss sentence, used when the transport detail names nothing more specific. It asserts only what the app observed: the connection is gone. Never claim the conversation ended or was closed.",
+		"placeholders": {}
+	},
+	"ui.common.connection.session_loss.not_paired": {
+		"role": "statement of the notice shown when the app holds no credential for the backend it is talking to",
+		"tone": "statement of fact, sentence case, trailing period",
+		"length": "Eighteen words.",
+		"note": "Offers no action: the repair is main re-claiming the plane, which this notice cannot perform or promise. Do not add 'restart the app so it manages its own server' - the app is a client of whatever daemon runs.",
+		"placeholders": {}
+	},
+	"ui.common.connection.session_loss.server_down": {
+		"role": "statement of the notice shown when the app's own backend is not answering",
+		"tone": "statement plus two remedies, sentence case, trailing period, em dash before the remedies",
+		"length": "Twenty-one words.",
+		"note": "Distinct from the generic loss sentence because the remedy differs: reconnecting is worth pressing, and a server that stays down needs the app restarted. Both remainders are what the relay observed; never state a cause.",
+		"placeholders": {}
 	}
 }

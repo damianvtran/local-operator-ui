@@ -1,0 +1,572 @@
+{
+	"ui.agents.skills.action.copy": {
+		"note": "Header action on a read-only skill. Makes a same-name editable copy in the reader's own skills folder.",
+		"role": "button",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.action.copying": {
+		"note": "Replaces the Copy to my skills label while the copy is being made.",
+		"role": "button, in progress",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.action.remove": {
+		"note": "More-actions menu item on a local skill. The ellipsis says a confirmation follows.",
+		"role": "menu item",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.action.remove_confirm": {
+		"note": "Confirms removing a local skill in the Remove dialog.",
+		"role": "danger button",
+		"tone": "plain, one word"
+	},
+	"ui.agents.skills.alert.builtin_body": {
+		"note": "Says why it is read-only and the way out (the Copy to my skills button beside it). Keep Local Operator in Latin.",
+		"role": "alert body",
+		"tone": "plain, helpful"
+	},
+	"ui.agents.skills.alert.builtin_body_no_copy": {
+		"note": "Variant of the built-in body for a backend that cannot write skills: no Copy button is shown, so it must not suggest copying. Keep Local Operator in Latin.",
+		"role": "alert body",
+		"tone": "plain"
+	},
+	"ui.agents.skills.alert.builtin_title": {
+		"note": "Info alert on a skill that ships with the app.",
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.agents.skills.alert.bundle_body": {
+		"note": "Keep Agent Hub in Latin (product name).",
+		"role": "alert body",
+		"tone": "plain"
+	},
+	"ui.agents.skills.alert.bundle_local_body": {
+		"note": "Info alert body for a LOCAL skill that is not a single editable document. Unlike the hub variant it must not mention Agent Hub: a local skill has no hub updates. The path is in the collapsed Details section.",
+		"role": "alert body",
+		"tone": "plain, helpful"
+	},
+	"ui.agents.skills.alert.bundle_title": {
+		"note": "Info alert on a skill stored as a folder bundle rather than a single document.",
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.agents.skills.alert.conflict_body": {
+		"note": "Under the shared title 'This changed while you were editing'. The Reload button follows.",
+		"role": "alert body",
+		"tone": "plain, reassuring"
+	},
+	"ui.agents.skills.alert.external_body": {
+		"note": "Says why it is read-only and the two ways out.",
+		"role": "alert body",
+		"tone": "plain, helpful"
+	},
+	"ui.agents.skills.alert.external_body_no_copy": {
+		"note": "Variant of the other-tool body with no Copy button offered: must not suggest copying. Keep Local Operator in Latin.",
+		"role": "alert body",
+		"tone": "plain"
+	},
+	"ui.agents.skills.alert.external_title": {
+		"note": "Info alert on a skill found in another tool's skills folder.",
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.agents.skills.alert.project_body": {
+		"note": "Says why it is read-only and the two ways out.",
+		"role": "alert body",
+		"tone": "plain, helpful"
+	},
+	"ui.agents.skills.alert.project_body_no_copy": {
+		"note": "Variant of the project body with no Copy button offered: must not suggest copying.",
+		"role": "alert body",
+		"tone": "plain"
+	},
+	"ui.agents.skills.alert.project_title": {
+		"note": "Info alert on a skill that belongs to a project folder.",
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.agents.skills.alert.too_large_body": {
+		"note": "Says why there is no Edit and the one way to revise it: the file on disk, whose path is in the collapsed Details section. Never promise Agent Hub updates: this skill may be local.",
+		"role": "alert body",
+		"tone": "plain, helpful"
+	},
+	"ui.agents.skills.alert.too_large_title": {
+		"note": "Info alert on a skill whose single SKILL.md is over the size this tab can edit (core reports it as not a document). It is ONE file, never call it a folder or bundle.",
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.agents.skills.badge.new": {
+		"note": "Roster badge on a skill a configuration run created; cleared when the row is opened.",
+		"role": "badge",
+		"tone": "one word"
+	},
+	"ui.agents.skills.badge.updated": {
+		"note": "Roster badge on a skill a configuration run changed; cleared when the row is opened.",
+		"role": "badge",
+		"tone": "one word"
+	},
+	"ui.agents.skills.composer.about": {
+		"note": "Names the skill the next request is about. {name} is the skill's machine name, kept verbatim.",
+		"role": "composer status label",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.composer.changed_below": {
+		"note": "Follows 'Updated {name} (skill): ' in the run summary. The pane above already shows the new text.",
+		"role": "summary fragment",
+		"tone": "plain"
+	},
+	"ui.agents.skills.composer.gate_backend": {
+		"note": "Shown when the backend cannot run skill changes. Must fit a 304 px box; wrapping is fine, clipping is not.",
+		"role": "composer placeholder",
+		"tone": "plain, actionable"
+	},
+	"ui.agents.skills.composer.gate_none": {
+		"note": "Shown when no skill is open. Must fit a 304 px box.",
+		"role": "composer placeholder",
+		"tone": "plain"
+	},
+	"ui.agents.skills.composer.gate_not_installed": {
+		"note": "Shown when the open hub skill has no copy on this machine. 'Download' is the label of the button beside the skill's title, so use the same verb as that button.",
+		"role": "composer placeholder",
+		"tone": "plain"
+	},
+	"ui.agents.skills.composer.gate_read_only": {
+		"note": "Shown for built-in, other-tool, project and bundle skills; the alert above says why.",
+		"role": "composer placeholder",
+		"tone": "plain"
+	},
+	"ui.agents.skills.composer.kind": {
+		"note": "The noun in the '(skill)' suffix after 'Updated {name}'. Lowercase, in parentheses.",
+		"role": "summary suffix",
+		"tone": "one word"
+	},
+	"ui.agents.skills.composer.label": {
+		"note": "Accessible name of the composer box on the Skills tab.",
+		"role": "screen-reader label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.composer.no_changes": {
+		"note": "Shown when a configuration run finished and changed nothing.",
+		"role": "run summary",
+		"tone": "plain"
+	},
+	"ui.agents.skills.composer.placeholder": {
+		"note": "Invitation in the box when a skill is open. {name} is the skill's machine name. Must fit a 304 px box.",
+		"role": "composer placeholder",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.detail.body_not_installed": {
+		"note": "Detail view, for a row whose content is absent.",
+		"role": "empty body explanation",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.body_truncated": {
+		"note": "{size} is a formatted size such as '312 KB'. Never imply the text on screen is complete.",
+		"role": "notice that the body is cut",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.body_unavailable": {
+		"note": "Detail view, for an installed skill whose body did not come back.",
+		"role": "empty body explanation",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.download_signed_out": {
+		"note": "Under a disabled Download button when the reader is not signed in to Agent Hub. Names the place and the act. Keep Agent Hub in Latin.",
+		"role": "header note",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.edit_by_asking": {
+		"note": "Beside the action buttons, says why there is no Edit and names the 'Ask for a change' button, quoted by its own label.",
+		"role": "header note",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.edit_by_asking_truncated": {
+		"note": "Beside the action buttons, says why there is no Edit (one oversize file) and names the 'Ask for a change' button.",
+		"role": "header note",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.edit_off_files": {
+		"note": "Beside the action buttons, says why there is no Edit, on a backend that cannot run 'Ask for a change' (so it names no remedy).",
+		"role": "header note",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.edit_off_truncated": {
+		"note": "Beside the action buttons, says why there is no Edit when the skill's file is too large, on a backend without 'Ask for a change'.",
+		"role": "header note",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.file_bytes": {
+		"note": "ICU plural. Used below 1 kB; larger sizes use a shared formatter.",
+		"role": "size of a small file",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.files_count": {
+		"note": "ICU plural.",
+		"role": "count of listed reference files",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.files_none": {
+		"note": "Detail view.",
+		"role": "empty files sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.files_truncated_of": {
+		"note": "Shown when core listed fewer files than the folder holds. 'at least' is deliberate: when the folder walk itself was cut the total is a lower bound, so the sentence must stay true in both cases.",
+		"role": "notice that the file list is cut",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.fingerprint": {
+		"note": "Detail view, identity list. A content hash that changes when the skill's bytes change.",
+		"role": "label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.fingerprint_none": {
+		"note": "Backend gave no fingerprint (unreadable folder, or subscribed but not installed).",
+		"role": "value of Fingerprint",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.form.bundle": {
+		"note": "The skill is a folder with extra files.",
+		"role": "value of Form",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.form.document": {
+		"note": "The skill is one SKILL.md document.",
+		"role": "value of Form",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.form.unknown": {
+		"note": "Backend gave no form.",
+		"role": "value of Form",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.form_label": {
+		"note": "Detail view, identity list. Followed by the value.",
+		"role": "label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.front_matter_label": {
+		"note": "Label in Details for YAML keys other than name and description, shown verbatim.",
+		"role": "definition-list label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.hub_local_note": {
+		"note": "Under the header of an editable hub skill. Keep Agent Hub in Latin.",
+		"role": "meta line",
+		"tone": "plain, reassuring"
+	},
+	"ui.agents.skills.detail.location_label": {
+		"note": "Label in Details for where the skill is stored.",
+		"role": "definition-list label",
+		"tone": "plain, one word"
+	},
+	"ui.agents.skills.detail.preview_aria": {
+		"note": "{path} is a relative file path and is never translated.",
+		"role": "accessible name for a file preview region",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.preview_none": {
+		"note": "Binary or unreadable files have no text preview.",
+		"role": "empty preview sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.preview_truncated": {
+		"note": "Under an opened file preview.",
+		"role": "notice that a file preview is cut",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.section.details": {
+		"note": "Collapsed section holding location, form and fingerprint.",
+		"role": "disclosure title",
+		"tone": "plain, one word"
+	},
+	"ui.agents.skills.detail.section.files": {
+		"note": "Detail view. Files that sit beside SKILL.md and that the skill can point to.",
+		"role": "section heading",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.show_all": {
+		"note": "Expands the clamped SKILL.md text in place. Same words as the Agents page's own Show all.",
+		"role": "link-style button label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.detail.show_less": {
+		"note": "Collapses the expanded SKILL.md text again.",
+		"role": "link-style button label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.edit.description_help": {
+		"note": "Under the 'When to use it' field in the inline edit.",
+		"role": "field help",
+		"tone": "plain"
+	},
+	"ui.agents.skills.edit.description_label": {
+		"note": "Label of the description field in the inline editor. The section title above it says 'When to use it'; this names the object so the two do not repeat each other.",
+		"role": "field label",
+		"tone": "plain"
+	},
+	"ui.agents.skills.edit.instructions_help": {
+		"note": "Under the Instructions field in the inline edit.",
+		"role": "field help",
+		"tone": "plain"
+	},
+	"ui.agents.skills.empty.builtin": {
+		"note": "Roster, Built-in segment selected, nothing in it.",
+		"role": "empty state",
+		"tone": "plain"
+	},
+	"ui.agents.skills.empty.hub": {
+		"note": "Roster, Agent Hub segment selected, nothing in it. Keep Agent Hub in Latin.",
+		"role": "empty state",
+		"tone": "plain"
+	},
+	"ui.agents.skills.empty.local": {
+		"note": "Roster, Local segment selected, nothing in it.",
+		"role": "empty state",
+		"tone": "plain"
+	},
+	"ui.agents.skills.empty.none": {
+		"note": "The skills tab has nothing to list at all (no built-in, hub, local, external or project skills were found). Distinct from the no-match sentence.",
+		"role": "empty roster sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.empty.search": {
+		"note": "{query} is what the reader typed, echoed verbatim between curly quotes. Distinct from the nothing-at-all sentence.",
+		"role": "empty roster sentence after a search",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.detail_meaning": {
+		"note": "Two plausible causes, stated plainly, no blame.",
+		"role": "explanation of a failed details read",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.detail_title": {
+		"note": "{name} is the skill's identifier, shown between curly quotes.",
+		"role": "heading of the details-read failure",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.download_failed_body": {
+		"note": "Under 'That did not download', whatever the hub's reason. Says nothing was installed and the next step; 'Download' is the button's own label. Keep Agent Hub in Latin.",
+		"role": "alert body",
+		"tone": "plain, helpful"
+	},
+	"ui.agents.skills.error.download_failed_title": {
+		"note": "Title of the danger alert when Download of a hub skill was refused or failed; the server's sentence is shown under it. Pairs with the 'Download' button label.",
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.meaning": {
+		"note": "Says the failure is about reading, not about any skill being changed.",
+		"role": "reassurance line of a failed read",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.title": {
+		"note": "What happened, first line of a three-part failure block (what, meaning, retry).",
+		"role": "heading of the list-read failure",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.what_fallback": {
+		"note": "Used only when the failure carries no message of its own.",
+		"role": "fallback sentence when the backend gave no message",
+		"tone": "plain"
+	},
+	"ui.agents.skills.error.write_fallback": {
+		"note": "Shown under 'That did not save' when the backend gave no sentence of its own.",
+		"role": "error fallback",
+		"tone": "plain"
+	},
+	"ui.agents.skills.hub.needs_review": {
+		"note": "Chip in the skill details header when a hub update met local changes and waits for the reader's review. Sentence case, short: it sits beside a source line.",
+		"role": "status chip",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.hub.unlinked": {
+		"note": "A skill the hub manages whose link could not be matched. Not the same as 'Not downloaded': the skill IS on this machine.",
+		"role": "hub state: no matching link",
+		"tone": "plain"
+	},
+	"ui.agents.skills.hub.unlinked_help": {
+		"note": "Detail view only. Calm; no instruction to fix anything.",
+		"role": "explanation of the unconfirmed hub link",
+		"tone": "plain"
+	},
+	"ui.agents.skills.hub.update_failed": {
+		"note": "Status mark in a Skills roster row and the details header, shown when a hub skill's last update did not complete. Short: it shares a row with the skill name and must not crowd it. Deliberately NOT the Hub page's 'Update failed — open to retry': this read-only surface has no retry control, so it must not promise one. No placeholders.",
+		"role": "status mark in a roster row",
+		"tone": "neutral, short, no imperative"
+	},
+	"ui.agents.skills.list_aria": {
+		"note": "Names the list of skill rows for assistive tech; same word as the tab.",
+		"role": "accessible name for the roster list",
+		"tone": "plain"
+	},
+	"ui.agents.skills.notice.copied": {
+		"note": "After Copy to my skills succeeded. {name} is the skill's machine name.",
+		"role": "toast",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.notice.saved": {
+		"note": "After an inline edit saved. {name} is the skill's machine name.",
+		"role": "toast",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.remove.body": {
+		"note": "Remove dialog for a local skill.",
+		"role": "dialog body",
+		"tone": "plain, reassuring"
+	},
+	"ui.agents.skills.remove.discard_confirm": {
+		"note": "Second confirmation when the hub copy has unpublished edits.",
+		"role": "danger button",
+		"tone": "plain"
+	},
+	"ui.agents.skills.remove.title": {
+		"note": "Remove dialog for a local skill. {name} is the skill's machine name.",
+		"role": "dialog title",
+		"tone": "plain"
+	},
+	"ui.agents.skills.remove.unpublished_body": {
+		"note": "Second confirmation on a hub skill with local edits. Keep Agent Hub in Latin.",
+		"role": "dialog body",
+		"tone": "plain, careful"
+	},
+	"ui.agents.skills.remove.unpublished_title": {
+		"note": "Second confirmation on a hub skill with local edits.",
+		"role": "dialog title",
+		"tone": "plain"
+	},
+	"ui.agents.skills.retrying": {
+		"note": "Replaces 'Retry' while the failed read is being repeated. Ellipsis character, not three dots.",
+		"role": "busy label of the Retry button",
+		"tone": "plain"
+	},
+	"ui.agents.skills.scope.builtin": {
+		"note": "Segment label in the Skills roster's scope control (All · Built-in · …). Four segments share a 246 px row, so keep it SHORT; it may be shorter than the row's source word ui.agents.skills.source.builtin, which stays unchanged on rows and headers (i18n audit of #1458, the #1432 precedent).",
+		"role": "segmented-control label",
+		"tone": "one or two short words"
+	},
+	"ui.agents.skills.scope.hub": {
+		"note": "Segment label in the Skills roster's scope control (All · Agent Hub · …). Four segments share a 246 px row, so keep it SHORT; it may be shorter than the row's source word ui.agents.skills.source.hub, which stays unchanged on rows and headers (i18n audit of #1458, the #1432 precedent).",
+		"role": "segmented-control label",
+		"tone": "one or two short words"
+	},
+	"ui.agents.skills.scope.local": {
+		"note": "Segment label in the Skills roster's scope control (All · Local · …). Four segments share a 246 px row, so keep it SHORT; it may be shorter than the row's source word ui.agents.skills.source.local, which stays unchanged on rows and headers (i18n audit of #1458, the #1432 precedent).",
+		"role": "segmented-control label",
+		"tone": "one or two short words"
+	},
+	"ui.agents.skills.scope_legend": {
+		"note": "Accessible name of the All / Local / Agent Hub / Built-in segments above the roster.",
+		"role": "screen-reader legend",
+		"tone": "plain"
+	},
+	"ui.agents.skills.search": {
+		"note": "Placeholder of the roster search while the Skills tab is open. Mirrors 'Search agents' and 'Search teams'.",
+		"role": "search field placeholder",
+		"tone": "plain"
+	},
+	"ui.agents.skills.search_aria": {
+		"note": "No visible label exists, so this is the field's only name while the Skills tab is open.",
+		"role": "accessible name for the roster search",
+		"tone": "plain"
+	},
+	"ui.agents.skills.select_prompt": {
+		"note": "Shown when no skill is open. 'Read-only' tells the reader nothing on this tab can be edited yet. One calm sentence, no call to action.",
+		"role": "hint in the empty detail column",
+		"tone": "plain"
+	},
+	"ui.agents.skills.select_prompt_editable": {
+		"note": "Detail pane with nothing open, when this backend can change skills.",
+		"role": "empty pane prompt",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.builtin": {
+		"note": "Where a skill lives. Same word as the Agents scope filter 'Built-in'.",
+		"role": "source label: ships with the app",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.external": {
+		"note": "A skill found in a folder owned by another coding tool (for example Claude or Codex). Read-only here.",
+		"role": "source label: another tool's skills folder",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.hub": {
+		"note": "'Agent Hub' is the product name and stays untranslated if the locale keeps product names in Latin script.",
+		"role": "source label: managed from Agent Hub",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.local": {
+		"note": "A skill the reader keeps in their own skills folder with no hub link.",
+		"role": "source label: made on this machine",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.project": {
+		"note": "A skill found in the skills folder of a project. Read-only here.",
+		"role": "source label: a project folder's skills",
+		"tone": "plain"
+	},
+	"ui.agents.skills.source.unknown": {
+		"note": "Shown when the backend sends a source this version does not know.",
+		"role": "source label fallback",
+		"tone": "plain"
+	},
+	"ui.agents.skills.state.following": {
+		"note": "Header meta line of a subscribed hub skill: 'Agent Hub · Following updates'.",
+		"role": "status word",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.state.hub_unknown": {
+		"note": "Header meta line when the hub links list did not answer.",
+		"role": "status word",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.state.not_installed": {
+		"note": "Roster line two and header of a subscribed hub skill with no copy on this machine.",
+		"role": "status word",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.state.read_only": {
+		"note": "Header meta line of a built-in, other-tool or project skill: 'Built-in · Read-only'.",
+		"role": "status word",
+		"tone": "plain, one word"
+	},
+	"ui.agents.skills.state.updates_off": {
+		"note": "Roster line two and header of a hub skill with its subscription turned off.",
+		"role": "status word",
+		"tone": "plain, short"
+	},
+	"ui.agents.skills.tab": {
+		"note": "The third tab of the Agents page. One short noun, sentence case; the count is rendered next to it separately.",
+		"role": "tab label beside Agents and Teams",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.builtin": {
+		"note": "Detail view, 'Where it lives' section.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.external": {
+		"note": "Detail view, 'Where it lives' section.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.hub": {
+		"note": "Detail view, 'Where it lives' section. Agent Hub is the product name.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.local": {
+		"note": "Detail view, 'Where it lives' section.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.project": {
+		"note": "Detail view, 'Where it lives' section.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	},
+	"ui.agents.skills.where.unknown": {
+		"note": "Detail view, 'Where it lives' section, for an unrecognised source.",
+		"role": "where-it-lives sentence",
+		"tone": "plain"
+	}
+}

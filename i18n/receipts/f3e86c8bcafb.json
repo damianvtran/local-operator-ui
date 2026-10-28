@@ -1,0 +1,161 @@
+{
+  "schema": 1,
+  "audit_id": "wavea-delta-20261027-zhcn",
+  "round": 2,
+  "auditor": "i18n-auditor",
+  "instance": "f3e86c8bcafb",
+  "model": "radient/auto",
+  "model_note": "The harness reports this session's model route as `radient/auto` (an auto-routing alias); it exposes no concrete served provider/model id to this subagent session. No provider fallback, switch or failure was reported or observed during the run. Recorded as the route, not guessed into a vendor id.",
+  "locale": "zh-CN",
+  "date": "2026-10-27",
+  "source_commit": "80ee119bbd1084ee873994a1f39db0c085c62083",
+  "parent_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+  "audit_kind": "delta re-audit (wave A round 2)",
+  "scope": "Wave A zh-CN delta at 80ee119bbd: the 38 wave-A keys in ui.chat (18), ui.chat.header (5), ui.chat.response_actions (4) and ui.chat.sidebar (11). Two of them were amended by this commit (ui.chat.region.conversation 对话->对话区, ui.chat.checkpoint.turn comma->parenthetical); the other 36 are byte-identical to the a81c00cdda bytes this auditor read in round 1 (parsed-JSON equality, proven in the evidence). All 215 keys of the four namespace files were re-checked mechanically (ICU placeholders/types, select option sets, zh-CN plural categories, tags, backticks, typography, key sets); the 177 non-wave-A values are unchanged since their earlier independent audits and were not re-read semantically, per the delta-audit rule for unchanged values. Hash binding is whole-file, as the ledger contract requires.",
+  "independence": "Independent: this auditor (agent i18n-auditor, session f3e86c8bcafb) did not translate these values, wrote no catalogue bytes and edited nothing in the repository. The translator was a different agent instance (the wave-A coder that authored a81c00cdda and the amendments in 80ee119bbd; the shared git identity records no session id). Judgement is by reading the English source, the context sidecars, the call sites and the zh-CN catalogue; no translation API, SDK or MT service was used, and no back-translation service was consulted.",
+  "references": {
+    "style_guide": {
+      "path": "i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "glossary": {
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "note": "Read from the core checkout ~/local-operator at the date of this audit; the UI docs/I18N.md links the core glossary as the shared contract."
+    },
+    "contract": "docs/I18N.md (UI) and the core HOWTO it links"
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "key_count": 18,
+      "namespace_key_count": 133,
+      "keys": [
+        "ui.chat.checkpoint.generating_name",
+        "ui.chat.checkpoint.jump_agent",
+        "ui.chat.checkpoint.jump_agent_unnamed",
+        "ui.chat.checkpoint.jump_user",
+        "ui.chat.checkpoint.jump_user_no_clock",
+        "ui.chat.checkpoint.turn",
+        "ui.chat.header_identity.aria_agent_assign",
+        "ui.chat.header_identity.aria_agent_closed",
+        "ui.chat.header_identity.aria_agent_switch",
+        "ui.chat.header_identity.aria_team_assign",
+        "ui.chat.header_identity.aria_team_closed",
+        "ui.chat.header_identity.aria_team_switch",
+        "ui.chat.header_identity.assign_agent",
+        "ui.chat.header_identity.assign_team",
+        "ui.chat.header_identity.no_agent",
+        "ui.chat.header_identity.no_team",
+        "ui.chat.region.composer",
+        "ui.chat.region.conversation"
+      ],
+      "sha256": {
+        "en": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+        "zh-CN": "ad47f77e03e43d8b386e8c666bfe090ece03117b07e86e62471e364d64ca5c4b"
+      },
+      "context_sha256": "1df3ad0e7054c77b2cc59971eae3a9387059be42839a271d80f70e754e542426",
+      "findings": [
+        {
+          "id": "wavea-zh-d1",
+          "severity": "NIT",
+          "key": "ui.chat.checkpoint.jump_user",
+          "also_keys": [
+            "ui.chat.checkpoint.jump_user_no_clock"
+          ],
+          "issue": "Family punctuation split, cosmetic. The two user forms keep the comma apposition INSIDE the parentheses the translator added (跳转到你的消息（第{turn}轮，共{total}轮）) while checkpoint.turn, jump_agent and jump_agent_unnamed spell the same pair as 第{turn}轮（共{total}轮）. Both are idiomatic Chinese progress forms (compare 第3页（共12页）), checkpoint-model.ts deliberately delegates each sentence's spelling to the catalogue ('the noun and its word order belong to the catalogue', checkpointTurnLabel docstring), and the comma form avoids nesting a second parenthetical inside the destination bracket — so the translator's declination is defensible and this is not a meaning, accuracy or grammar defect. Recorded because the manager asked for the judgement, not because the current text needs a change.",
+          "current": "跳转到你的消息（第{turn, number}轮，共{total, number}轮），{clock}  /  跳转到你的消息（第{turn, number}轮，共{total, number}轮）",
+          "proposed": "跳转到你在第{turn, number}轮（共{total, number}轮）的消息，{clock}  /  跳转到你在第{turn, number}轮（共{total, number}轮）的消息",
+          "proposed_note": "Optional uniformity only. It also makes the 'in turn N of M' relation explicit in the Chinese sentence. No change required for a passing verdict."
+        },
+        {
+          "id": "wavea-zh-d2",
+          "severity": "NIT",
+          "key": "ui.chat.checkpoint.jump_user",
+          "issue": "Code-level, inherited. {clock} is filled by checkpointClockLabel(), which hardcodes the English 12-hour 'h:mm a' shape ('12-hour with an AM/PM marker by request', checkpoint-model.ts). The zh-CN style guide requires 24-hour times (\"14:30\") and this key's own sidecar promises \"{clock} is a clock time already formatted by the locale-aware time formatter\". Measured with the real builder: 跳转到你的消息（第3轮，共12轮），3:45 PM. The Chinese sentence is correct; the English-shaped time comes from the formatter, not the catalogue, and the same hardcoded shape is product-wide (formatMessageDateTime), so this does not gate the translation. Same class as the fr audit's fr-wavea-3.",
+          "current": "跳转到你的消息（第{turn, number}轮，共{total, number}轮），{clock}",
+          "proposed": "(no catalogue change) format {clock} through the locale-aware 24-hour formatter for zh-CN (14:45) in checkpointClockLabel / formatMessageDateTime",
+          "proposed_note": "Belongs in the formatter; the catalogue value stays as it is."
+        },
+        {
+          "id": "wavea-zh-i1",
+          "severity": "INFO",
+          "key": "ui.chat.region.conversation",
+          "issue": "Verified-OK; the wave-A MAJOR (M1) is resolved. chatRegionLabel() rendered through the shipped runtime returns 对话 for sidebar (ui.chat.sidebar.nav.chats), 对话区 for header/transcript (ui.chat.region.conversation) and 消息输入框 for composer (ui.chat.region.composer) — three distinct names, so the sidebar nav and the transcript landmark no longer announce identically. The header <header> carries no aria-label by design (chat-header.tsx: 'NO aria-label ... this is not one of §C4's named three'), so the announced set in this tree is exactly 对话 / 对话区 / 消息输入框. 对话区 is natural product Chinese: 区 is the region word this catalogue already uses (ui.settings.shortcuts.reserved.chat_region_down/up say 对话区域 for the generic plural 'chat regions'; the pickers use 分析区域, 上下文估算区域, 会话诊断区域), but those translate an English 'X region' while this key translates bare 'Conversation'; 对话区 names the place in three characters and fits the guide's terse rule. 对话区域 would also pass and would match the sibling region labels more formally — a preference, not a defect, so no change is proposed."
+        },
+        {
+          "id": "wavea-zh-i3",
+          "severity": "INFO",
+          "key": "ui.chat.region.composer",
+          "issue": "Verified-OK. 消息输入框 names the message box rather than the whole composer <form> (which also holds the status row, alert band and interrupt notice — the same narrowing the fr audit noted as fr-wavea-2), but it is this catalogue's existing word for that area (ui.chat.question_dock.hint.approval_held: 也可以在消息输入框中按Esc停止本轮) and the region's data-region-entry is the textarea itself, so the name a reader hears on landing is truthful. No change."
+        }
+      ]
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "key_count": 5,
+      "namespace_key_count": 17,
+      "keys": [
+        "ui.chat.header.archive_conversation",
+        "ui.chat.header.cancel_rename",
+        "ui.chat.header.rename_conversation",
+        "ui.chat.header.restore_conversation",
+        "ui.chat.header.saving_conversation_name"
+      ],
+      "sha256": {
+        "en": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+        "zh-CN": "602d5487ddebbe0aacc6adfd27ada227f878d847c8c5abc2e2a0467a3ba9e7a1"
+      },
+      "context_sha256": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908",
+      "findings": []
+    },
+    "ui.chat.response_actions": {
+      "status": "passed",
+      "key_count": 4,
+      "namespace_key_count": 5,
+      "keys": [
+        "ui.chat.response_actions.answer_label",
+        "ui.chat.response_actions.copied",
+        "ui.chat.response_actions.copy",
+        "ui.chat.response_actions.yours_label"
+      ],
+      "sha256": {
+        "en": "8c23ba6a5b509c13d878c05aed0454026a6960566b043f5e983008dee93bcb18",
+        "zh-CN": "af1855608c6dde0fc690866461048efa7be469f1459e169862532f1d58abc637"
+      },
+      "context_sha256": "113b419d94df867024a91b9902c1385dc3b652fd39fd0612f37866030f937a28",
+      "findings": [
+        {
+          "id": "wavea-zh-i2",
+          "severity": "INFO",
+          "key": "ui.chat.response_actions.answer_label",
+          "issue": "Verified-OK; answers the manager's question. 回答操作 (Answer actions), 回复操作 (Response actions, pre-existing ui.chat.response_actions.label), 叙述操作 (Commentary actions) and 你的消息操作 (Your message actions) are four different names in one conversation. 回答操作 and 回复操作 share the first syllable 回 but differ in the second (dá vs fù) and are separate words, not a near-duplicate: 回复 is this catalogue's established word for a 'response' (ui.settings.appearance.transcript_display_mode_setting.by_response = 按回复, which 'keeps every settled response'), and 回答 is its word for an answer (ui.notices.chat.answer_changed = 回答已更新; ui.chat.asks.send_answer = 发送回答). The one-character difference therefore encodes the product's own answer/response split that the English sidecar requires these two toolbars to keep distinct, and a screen reader announces each as a whole name on its own row. Acceptable distinctness; no change."
+        }
+      ]
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "key_count": 11,
+      "namespace_key_count": 60,
+      "keys": [
+        "ui.chat.sidebar.entity.collapse_chats",
+        "ui.chat.sidebar.entity.expand_chats",
+        "ui.chat.sidebar.entity.manage",
+        "ui.chat.sidebar.entity.pin",
+        "ui.chat.sidebar.entity.unpin",
+        "ui.chat.sidebar.pins.pin_label",
+        "ui.chat.sidebar.pins.unpin_label",
+        "ui.chat.sidebar.row_menu.archive",
+        "ui.chat.sidebar.row_menu.pin",
+        "ui.chat.sidebar.row_menu.unarchive",
+        "ui.chat.sidebar.row_menu.unpin"
+      ],
+      "sha256": {
+        "en": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+        "zh-CN": "9d8e20609815107a30dfc8e778b821abe966a09489d2430e97972ba02de028df"
+      },
+      "context_sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be",
+      "findings": []
+    }
+  }
+}

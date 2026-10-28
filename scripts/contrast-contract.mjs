@@ -1435,6 +1435,24 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE NOTIFICATIONS ROW'S COUNT (operator, 2026-10-25, notifications
+		 * decisions D5): the `emphasis` badge variant, a filled pill with no border
+		 * because the operator found the quiet register above "a bit too subtle"
+		 * for this one row. Unlike the quiet row, the EDGE IS CLAIMED: with no
+		 * border the fill is the whole boundary, and `accent` clears the 3:1
+		 * non-text floor on all four rail grounds (4.24:1 worst, tokyoNight on
+		 * `rowSelected`), so this row keeps the default edge check rather than
+		 * `edge: false`. The numeral is `onAccent` on `accent`, 4.97:1 worst
+		 * (tokyoNightDay) against the 4.5:1 text floor the loop applies.
+		 */
+		name: "rail notifications badge (emphasis)",
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
+		fill: "accent",
+		border: null,
+		ink: "onAccent",
+	},
+	{
+		/*
 		 * THE SESSION ROW'S OUTSTANDING-ASKS MARK (operator ask, 2026-10-04) — the
 		 * sidebar row's "a queued question is waiting" glyph and count
 		 * (`chat-session-status.tsx`'s `ChatAsksOutstanding`).

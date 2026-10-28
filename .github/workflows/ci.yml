@@ -1201,6 +1201,33 @@ jobs:
           VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
           VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
 
+          # THE HEAP CEILING `publish.yml` ALREADY CARRIES, for the same build.
+          # `npm pack` runs the prepack script (`pnpm run build:npm` ->
+          # `electron-vite build`), and on Node 22's default ~2 GB heap the renderer
+          # pass aborts on macos-latest: run 40628162002 (8c5c5b23, 2026-10-28
+          # 03:41Z), job 122634096939, logged `7694 modules transformed`, then
+          # `rendering chunks...` and `Mark-Compact 1961.6 (2075.3) -> 1930.9
+          # (2050.0) MB`, `FATAL ERROR: Ineffective mark-compacts near heap limit
+          # Allocation failed - JavaScript heap out of memory`, `Abort trap: 6` on
+          # `npm pack`, exit 134. Same signature in runs 40625952174 (a22fd4bf, job
+          # 122625611670) and 40567859580 (cbc7ddbe, job 122430145666), on Node
+          # 22.23.4 and 22.23.3 respectively.
+          #
+          # The cause is not proven: the last green main run of this same job
+          # (40594559669, 1a707a36) packed a 36.3 MB unpacked tarball through this
+          # same path, so either the renderer's growth erodes the default heap's
+          # headroom or the runner draw varies. 4096 MB is a CEILING, not an
+          # allocation: it sits inside the ~7 GB macOS runner and only stops the
+          # default limit aborting a build that would otherwise fit.
+          #
+          # Bound on this step, not the job, because only this step builds: the npx
+          # launch and asks-regression steps below run the packed app and keep a
+          # user's environment. The ubuntu leg shares the step and stays under the
+          # default 2 GB (job 122634096771 succeeded in that run), so the ceiling
+          # only widens headroom there. This workflow sets no other NODE_OPTIONS
+          # for this to overwrite.
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
         # npm pack triggers the prepack script, which builds the npm-channel
         # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
         # here: it would emit bytecode that prepack then overwrites, which is
@@ -1296,6 +1323,53 @@ jobs:
           git cat-file -e "$CONTROL^{commit}" || git fetch --no-tags --depth=1 origin "$CONTROL"
           echo "asks regression control (merge base of this PR): $CONTROL"
           ASKS_CONTROL_OVERRIDE="$CONTROL" node scripts/asks-app-regression.mjs
+
+      # THE POSITIVE FOREGROUND PROOF FOR `notifications.read`, AND THE ONLY
+      # SHOWN WINDOW IN THIS REPOSITORY. A read means "a human saw this", so the
+      # main process refuses it unless the real window is focused; every other
+      # scene launches headless and therefore proves only the refusal. This step
+      # is the other half: a genuinely shown window on this EPHEMERAL
+      # GitHub-HOSTED macOS runner's own desktop (never a self-hosted runner,
+      # never the operator's machine - `resolvedWindowMode` and the scene both
+      # refuse anything else), a trusted input on a real row, main's real guard
+      # letting it through, and the PINNED core backend's SQLite showing exactly
+      # the tested revision read while an unrelated row and a revision raced
+      # behind the click stay unread. A runner with no interactive desktop FAILS
+      # here rather than falling back to headless, because a headless "success"
+      # would be a false positive.
+      #
+      # The backend is the pinned core revision, installed from its own extra and
+      # run on loopback under a throwaway HOME/config with a synthetic bearer.
+      # Nothing here talks to a provider or an operator account.
+      - name: Prove the positive foreground notification read on a shown window
+        id: notifications_native
+        if: runner.os == 'macOS' && github.event_name == 'pull_request'
+        timeout-minutes: 12
+        env:
+          LOCAL_OPERATOR_UI_NATIVE_SCENE: notifications
+          LOCAL_OPERATOR_CORE_REF: 1df606c6caf73a4087e1c2ef562f88ee8d9fa000
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+        run: |
+          set -euo pipefail
+          CORE_VENV="$RUNNER_TEMP/notifications-core-venv"
+          python3 -m venv "$CORE_VENV"
+          "$CORE_VENV/bin/pip" install --quiet --upgrade pip
+          "$CORE_VENV/bin/pip" install --quiet \
+            "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
+          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
+          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
+          node scripts/notifications-app-scene.mjs
+
+      - name: Upload notifications native foreground evidence
+        if: ${{ always() && steps.notifications_native.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: notifications-native-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: artifacts/notifications-native/
+          if-no-files-found: error
+          retention-days: 7
 
       # A run that completed must have produced frames, or this step fails red.
       # The step above being SKIPPED (an earlier gate went red) is not a missing

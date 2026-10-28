@@ -121,7 +121,7 @@ const transcriptBundle = await build({
 		contents: `
 			export { CanonicalTranscript } from "./${canonical}canonical-transcript";
 			export { EMPTY_TRANSCRIPT } from "./${canonical}transcript-reducer";
-			export { streamFailureNotice } from "./src/shared/desktop-stream-notice";
+			export { streamFailureNotice } from "./src/renderer/src/features/chat/canonical/session-failure-notice";
 		`,
 		resolveDir: process.cwd(),
 	},

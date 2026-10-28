@@ -1,0 +1,103 @@
+{
+ "audit_id": "wavea-949ac6eec574-20261027",
+ "audit_kind": "independent-wave-a-key-translation-audit",
+ "date": "2026-10-27",
+ "locale": "es",
+ "namespace": "ui.chat.header",
+ "key_count": 5,
+ "changed_keys": 5,
+ "status": "passed",
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [],
+  "observation_ids": []
+ },
+ "audited_head": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "parent_with_english_source": "6216167f4464bd607a6831e9e636820c0d463816",
+ "branch": "i18n-wave-a",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "949ac6eec574",
+  "instance": "949ac6eec574",
+  "model": "radient/auto",
+  "actual_model_source": "harness system prompt line 'Model: radient/auto' (this session's configured route); no fallback model requested, disclosed or observed in this run",
+  "fallback": null,
+  "independent_from_translator_session": true,
+  "independence_basis": "This run is session 949ac6eec574 (agent i18n-auditor). The es values were written by translation commit a81c00cdda and were read only as archived blobs via `git archive`; this session produced no es value, edited no catalogue, context sidecar, ledger, allowance or generated file, and did not review the es text before this pass. The translation commit records no translator session id, so independence is grounded in this run having authored nothing in the delta rather than in a session-id comparison."
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.header.json",
+   "sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.header.context.json",
+   "sha256": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/es/ui.chat.header.json",
+   "sha256": "fe41fd92450da4b22d57a67bb1c40e2cda9c4cef7b11289465cf06587e62b9bc"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "local_operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "local_operator/i18n/style-guides/es.md",
+   "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  },
+  "docs": {
+   "path": "docs/I18N.md",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+  }
+ },
+ "scope": "Wave A es, namespace ui.chat.header: 5 new keys at a81c00cdda2667dc6b094128ff47ec72d0c4d095, read against the English source, its context sidecar and the renderer call sites.",
+ "method": [
+  "Exported the head read-only: `git -C ~/local-operator-ui archive a81c00cdda | tar -x -C ~/qa/wave-a-audit-es/export`; the shared worktree ~/local-operator-ui/.worktrees/i18n-wave-a was never opened. node_modules was symlinked to the primary checkout only to run the repo's own scripts; nothing was installed.",
+  "Read docs/I18N.md ('Retain checkable audit records', 'Validate the claim, not just the source'), ~/local-operator/i18n/glossary.md and i18n/style-guides/es.md before reading any value, plus a prior es receipt (i18n/receipts/es-final-c7acf4522dbc-ui.chat.header.json) and the es evidence-bundle layout as the format model.",
+  "Byte check: `shasum -a 256` of all 12 files in the export equals `git show a81c00cdda:<path> | shasum -a 256` for every one (MATCH x12), so the audited bytes are the committed bytes.",
+  "Repo gates: `node --test scripts/i18n/locale-parity.test.mjs` -> 44 tests, 44 pass, 0 fail, including all six [es] cases (ships a message; one namespace per key; carries every English key; names only English keys; preserves every ICU placeholder; not an English stub). `node scripts/i18n/generate.mjs --check` -> 'src/i18n/keys.gen.ts is byte-identical to a fresh generation.' `node scripts/i18n/context-parity.mjs` -> 'ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s)'. ledger-check was not run as a gate on this head: the commit states its ledger rows are unbound by design until the audit wave lands receipts.",
+  "Parsed all 38 English and 38 es values with @formatjs/icu-messageformat-parser 3.5.21: argument name sets and argument types are identical in all 38 (turn/total as {n, number}; name/title/label/reason/clock as plain arguments). No message in the delta contains plural, select, selectordinal or pound, so no CLDR category set applies to these 38 and none is missing; es plurals elsewhere (one/many/other, never few) were not exercised by this delta.",
+  "Rendered every value with intl-messageformat 12.1.3 under locale 'es' and read the output as a native reader: all 38 compose readable Spanish. Then rendered the argument-bearing keys against ten adversarial names (vowel-initial, article-initial, embedded typographic quotes, embedded comma, very long, CJK, RTL, Latin/RTL mixed, digit-initial, apostrophe) and three labels: no elision, agreement, case, classifier or word-order break; the quotes stay outside every name; nested-quote and RTL-inside-LTR cases behave exactly as the English does.",
+  "Composition checked at the call sites: the sidebar pin control's aria-label stays 'Fijar “{name}”' while its tooltip toggles to 'Desfijar “{name}”' with aria-pressed carrying the state (chat-sidebar.tsx:7130-7150); the header chip's accessible name is the whole sentence the sidecar describes (chat-header-identity.tsx:470-490); the rename control uses rename/cancel/saving as aria-label + title on a 20px icon button (chat-header.tsx:905-930), so no button width is at stake; chatRegionLabel() feeds the F6 region walk (chat-regions.ts:82-92); the action rows pick their label by kind (message-actions-row.tsx:528-536); checkpointAriaLabel() passes {clock} only when checkpointClockLabel() returns a non-empty string (checkpoint-model.ts:237-259), so the no-clock form is used instead of an empty time.",
+  "Typography and encoding: all 38 are NFC; no leading/trailing space, no double space, no straight quotes or apostrophe, ellipsis is U+2026, quotes are U+201C/U+201D, no space before : ; ? !, no '!', no NBSP/NNBSP, no bidi or zero-width control characters, no BOM. JSON parses in every file; no key added or dropped against English (parity test above).",
+  "Width: none of the 38 carries a maxCells hint in its sidecar, so fit was judged against the English and the chrome each string lands in: visible strings are the row-menu items (18-24 cells vs 16-22 English), the two tooltips (14-18 and 15-25 cells) and the rail lead line ('Turno 3 de 7' 12 vs 'Turn 3 of 7' 11); the remaining 30 are accessible names or screen-reader-only group labels with no width budget. No overflow risk found.",
+  "Second pass on the high-visibility groups (ui.chat, ui.chat.header): re-read with a different lens (each string as the state it names and the control it names it on, rather than string-by-string), plus a re-check of every finding decision. Nothing was added and nothing withdrawn.",
+  "Receipt self-check: deriveReceiptAudit() from scripts/i18n/ledger-rules.mjs re-derived agent, instance, model, result and severity counts from this receipt against the on-disk catalogue hashes for all four namespaces, and every key cited in a finding or observation exists in the es catalogues."
+ ],
+ "findings": [],
+ "observations": [],
+ "audit_notes_not_execution_log": "The narrative in `method` describes what was read and decided; it is not a command log. The commands actually run for this namespace and their captured output are in `audit.log`, whose sha256 this record carries.",
+ "execution": {
+  "log": "audit.log",
+  "sha256": "83774f2727eb8f2156236f7f34f1358b696f6d08ea56646ff3ea4f94d7ccdeff",
+  "commands": [
+   "node --test scripts/i18n/locale-parity.test.mjs   (all six [es] cases)",
+   "node scripts/i18n/generate.mjs --check",
+   "node scripts/i18n/context-parity.mjs",
+   "node audit-es/verify.mjs ui.chat.header   (ICU parse + placeholder parity + intl-messageformat render)",
+   "node audit-es/adversarial.mjs   (adversarial names, clock variants, typography/byte scan)"
+  ]
+ },
+ "artifacts": [
+  {
+   "path": "audit.log",
+   "sha256": "83774f2727eb8f2156236f7f34f1358b696f6d08ea56646ff3ea4f94d7ccdeff",
+   "role": "actual execution log for this namespace"
+  },
+  {
+   "path": "i18n/receipts/949ac6eec574.json",
+   "role": "audit receipt; hashed by the ledger row's receipt_sha256, not stored in this bundle"
+  }
+ ],
+ "receipt": {
+  "path": "i18n/receipts/949ac6eec574.json",
+  "audit_id": "wavea-949ac6eec574-20261027",
+  "instance": "949ac6eec574"
+ },
+ "limitations": "Static catalogue audit plus real ICU rendering: no rendered screen was built or captured, so width statements are code-point arithmetic against the English and the sidecar hints (none of the 38 carries maxCells), not measured pixels. No native-speaker sign-off is claimed beyond this auditor's own reading. This is one independent pass; ui.chat and ui.chat.header also need a second independent auditor instance, which this record does not claim."
+}

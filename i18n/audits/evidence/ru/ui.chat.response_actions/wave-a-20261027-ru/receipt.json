@@ -1,0 +1,104 @@
+{
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "radient/auto",
+ "model_note": "Harness reports the route as `radient/auto` (session header 'Model: radient/auto'; transcript entry details.selector = radient/auto, details.effort = auto). The route does not expose the upstream model, so none is claimed; no provider fallback was reported. The second independent review ran on anthropic/claude-opus-5-5 (harness-reported job model).",
+ "model_provenance": "Harness reports the route as `radient/auto` (session header 'Model: radient/auto'; transcript entry details.selector = radient/auto, details.effort = auto). The route does not expose the upstream model, so none is claimed; no provider fallback was reported. The second independent review ran on anthropic/claude-opus-5-5 (harness-reported job model).",
+ "instance": "wave-a-20261027-ru",
+ "session": "981a9c952f1a",
+ "parent_session": "3ef6295a5545",
+ "team": "lopdev",
+ "date": "2026-10-27",
+ "locale": "ru",
+ "source_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "parent_commit": "6216167f4464bd607a6831e9e636820c0d463816",
+ "audit_id": "wave-a-20261027-ru",
+ "scope": "Wave A, ru, all 38 new chat-surface keys at a81c00cdda (parent 6216167f4463 carries the English source and call sites): ui.chat 18 (six checkpoint labels, ten header-identity sentences/labels, two regions), ui.chat.header 5, ui.chat.response_actions 4, ui.chat.sidebar 11. Each value was read against its English source, its context sidecar (role, tone, length, placeholder notes) and the renderer call site that composes it: checkpointAriaLabel/checkpointTurnLabel, the header chip's one-sentence aria-label and tooltip, the message action rows' toolbar names, the sidebar entity chevron/pin/manage labels and the row-menu items. Mechanical checks: repo generate --check, locale-parity, context-parity, check-strings, the call-site copy suite, ru-activation, intl-messageformat parsing and rendering of all 38 values with realistic and adversarial names, NFC/bidi/quote/dash/ellipsis scan, and SHA-256 identity against git show. No rendered-frame or width claim is made.",
+ "status": "passed",
+ "independence": "Independent audit by the `i18n-auditor` subagent of team lopdev (session 981a9c952f1a, parent 3ef6295a5545). This session produced none of the reviewed copy and did not edit any catalogue, context file, ledger row or receipt: it read a git-archive export of a81c00cdda read-only and wrote only its own receipt and evidence records in that export. The translator was a different agent instance in the translators' wave. No translation API, SDK or MT service was used; the only formatter used was the repository's own intl-messageformat. The radient/auto route hides its upstream model; that is stated rather than guessed.",
+ "second_independent_pass": "A second independent pass over the same 38 values ran as a scout subagent on anthropic/claude-opus-5-5 (harness-reported model, job 4ac1c20aa573), reading the English source, sidecars, ru guide and glossary without the signing auditor's notes. It reported no findings and accepted the same judgement calls: «финальный ответ» for the closing-answer toolbar, the dash form of jump_user, the noun «Управление», «Восстановить» for unarchive, and the comma-appended title in jump_agent that mirrors the sidecar's stated tone.",
+ "reference_sha256": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+  }
+ },
+ "audit_notes": "Recorded judgement calls, checked against the existing ru catalogue (not findings): (1) response_actions.answer_label 'Действия с финальным ответом' adds 'финальный', which en does not spell. The catalogue already renders the turn's closing answer as 'финальный ответ' (ui.settings.appearance.transcript_display_mode_setting.by_turn: 'отмечая финальный ответ хода'), the sibling response_actions.label is 'Действия с ответом', and the code requires the two toolbars to announce differently; the split is coherent and consistent. (2) row_menu.unarchive 'Восстановить разговор' equals header.restore_conversation: the same act on two surfaces, and the existing archived_hint already says 'пока вы не восстановите его'; 'Разархивировать' would be the unidiomatic calque. (3) sidebar.entity.manage 'Управление «X»' is a noun where the sidecar's tone says verb phrase; the infinitive 'Управлять «X»' cannot govern a quoted nominative name, and 'Управление' matches the existing ui.agents.navigation.legacy.title 'Управление агентами'. (4) jump_agent appends the generated title bare after a comma, exactly as the sidecar's tone prescribes ('the title after a comma'); the sidebar keys quote names because their English source carries typographic quotes. (5) The ui.chat.checkpoint.turn sidecar says its first character is lowercased inside the rail tick's sentence; the code at this head does not lowercase it (checkpoint-model.ts: 'embeds the same numbers rather than a lowercased copy'), and 'Ход N из M' is correct either way, so the stale sidecar wording is not a translation requirement.",
+ "namespaces": {
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "status": "passed",
+   "result": "clean",
+   "result_note": "0 blocker, 0 major, 0 minor, 0 nit. One INFO observation is retained; INFO is not a defect and is not counted.",
+   "keys_audited": 18,
+   "locale": "ru",
+   "sha256": {
+    "en": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+    "ru": "83f3d2beba40e431ca242ac4ef5bcdd12db2439d892ed3c34b589d6a4d9f4545"
+   },
+   "context_sha256": "1df3ad0e7054c77b2cc59971eae3a9387059be42839a271d80f70e754e542426",
+   "findings": [
+    {
+     "id": "ru-wa-i1",
+     "severity": "INFO",
+     "file": "src/i18n/catalogues/ru/ui.chat.json",
+     "key": "ui.chat.checkpoint.jump_user",
+     "current": "Перейти к вашему сообщению — ход {turn, number} из {total, number}, {clock}",
+     "issue": "The {clock} slot is filled by checkpointClockLabel() with a 12-hour h:mm plus an English AM/PM marker, so the rendered ru string is «…, 3:42 PM». The ru style guide specifies 24-hour times and the transcript's day divider already formats through Intl.DateTimeFormat. This is pre-existing call-site formatting, not a defect in the translated value; no catalogue wording can fix it.",
+     "why_recorded": "Composition-check observation for a code follow-up; INFO is not counted as a defect.",
+     "suggested": "No catalogue change. In src/renderer/src/features/chat/canonical/checkpoint-model.ts format the clock through the locale-aware Intl.DateTimeFormat path (hour and minute, no pinned hour12) instead of the hardcoded hour12 + AM/PM composition."
+    }
+   ]
+  },
+  "ui.chat.header": {
+   "namespace": "ui.chat.header",
+   "status": "passed",
+   "result": "clean",
+   "result_note": "0 blocker, 0 major, 0 minor, 0 nit; no findings.",
+   "keys_audited": 5,
+   "locale": "ru",
+   "sha256": {
+    "en": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+    "ru": "ea5827699d2742bb69bc0e74d9f0c3be99e20c8546c9b56c6bd7ba373809f954"
+   },
+   "context_sha256": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908",
+   "findings": []
+  },
+  "ui.chat.response_actions": {
+   "namespace": "ui.chat.response_actions",
+   "status": "passed",
+   "result": "clean",
+   "result_note": "0 blocker, 0 major, 0 minor, 0 nit; no findings.",
+   "keys_audited": 4,
+   "locale": "ru",
+   "sha256": {
+    "en": "8c23ba6a5b509c13d878c05aed0454026a6960566b043f5e983008dee93bcb18",
+    "ru": "36f6e3a83c9279de3ba94d92a28421a6a909abbd62bc83a82fa3c40dce3453b0"
+   },
+   "context_sha256": "113b419d94df867024a91b9902c1385dc3b652fd39fd0612f37866030f937a28",
+   "findings": []
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "status": "passed",
+   "result": "clean",
+   "result_note": "0 blocker, 0 major, 0 minor, 0 nit; no findings.",
+   "keys_audited": 11,
+   "locale": "ru",
+   "sha256": {
+    "en": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+    "ru": "6de35731e475914681602cc244a3d245fe1675a912c37ecc9340d6c04fc1d4af"
+   },
+   "context_sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be",
+   "findings": []
+  }
+ }
+}

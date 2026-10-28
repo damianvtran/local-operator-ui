@@ -14,5 +14,21 @@
 	"ui.agentMessages.dialog.consent_changed": "رضامندی کا موجودہ متن پڑھیں، پھر دوبارہ فعال کرنے کا انتخاب کریں۔",
 	"ui.agentMessages.dialog.local_failure": "آپ کی رضامندی محفوظ ہو گئی، لیکن اس مشین پر سیٹ اپ مکمل نہیں ہوا۔ اسے مکمل کرنے کے لیے ترتیبات → ایجنٹ پیغامات کھولیں۔",
 	"ui.agentMessages.dialog.validation_detail": "{field}؛ {rule}",
-	"ui.agentMessages.dialog.validation_failure": "یہ سیٹ اپ درخواست قبول نہیں ہوئی۔ Local Operator اپ ڈیٹ کریں، پھر دوبارہ کوشش کریں۔"
+	"ui.agentMessages.dialog.validation_failure": "یہ سیٹ اپ درخواست قبول نہیں ہوئی۔ Local Operator اپ ڈیٹ کریں، پھر دوبارہ کوشش کریں۔",
+	"ui.agentMessages.banner.title": "Team Bridge آپ کے لیے فعال ہے",
+	"ui.agentMessages.banner.body": "آپ کا ایجنٹ آپ کی تنظیم کے دوسرے ارکان کے ایجنٹس کے ساتھ پیغامات کا تبادلہ کر سکتا ہے۔ فعال ہونے پر کچھ بھی نہیں بھیجا گیا۔",
+	"ui.agentMessages.banner.turn_off": "بند کریں",
+	"ui.agentMessages.banner.turning_off": "بند کیا جا رہا ہے…",
+	"ui.agentMessages.banner.read": "پڑھیں کہ اس کا کیا مطلب ہے",
+	"ui.agentMessages.banner.hide": "تفصیلات چھپائیں",
+	"ui.agentMessages.banner.dismiss": "ہٹائیں",
+	"ui.agentMessages.banner.consent_unavailable": "مکمل متن ابھی دستیاب نہیں۔ کچھ دیر بعد دوبارہ کوشش کریں۔",
+	"ui.agentMessages.banner.turn_off_failed": "Team Bridge بند نہیں کیا جا سکا۔ کچھ تبدیل نہیں ہوا۔ دوبارہ کوشش کریں۔",
+	"ui.agentMessages.banner.dismiss_failed": "یہ اطلاع ہٹائی نہیں جا سکی۔ دوبارہ کوشش کریں۔",
+	"ui.agentMessages.banner.turn_off_hint": "اسے بند کرنے سے آپ کی Team Bridge گفتگوئیں بھی اس وقت تک پوشیدہ رہیں گی جب تک آپ اسے دوبارہ فعال نہیں کرتے۔",
+	"ui.agentMessages.page_off.title": "اس اکاؤنٹ کے لیے Team Bridge بند ہے",
+	"ui.agentMessages.page_off.body": "آپ کا ایجنٹ نہ پیغامات بھیجتا ہے نہ وصول کرتا ہے، اور جب تک آپ اسے دوبارہ فعال نہیں کرتے آپ کی گفتگوئیں پوشیدہ رہتی ہیں۔ فعال کرنے پر پہلے آپ سے رضامندی طلب کی جاتی ہے۔",
+	"ui.agentMessages.page_off.local_title": "اس مشین پر Team Bridge بند ہے",
+	"ui.agentMessages.page_off.local_body": "آپ کا اکاؤنٹ اب بھی سیٹ اپ ہے، لیکن یہ مشین نہ پیغامات بھیجتی ہے نہ وصول کرتی ہے، اور جب تک آپ اسے دوبارہ فعال نہیں کرتے آپ کی گفتگوئیں یہاں پوشیدہ رہتی ہیں۔",
+	"ui.agentMessages.page_off.action": "ترتیبات کھولیں"
 }

@@ -1,0 +1,3 @@
+{
+	"ui.notifications.operation.progress": "{changed, number} mục đã thay đổi · {skipped, number} mục đã bỏ qua · {pending, number} mục chưa xác nhận"
+}
