@@ -16,6 +16,7 @@
 	"ui.agents.config.result.changed": "Modifié :",
 	"ui.agents.config.result.configured": "Configuration appliquée à",
 	"ui.agents.config.result.created": "Créé :",
+	"ui.agents.config.state.did_not_finish": "Non terminé",
 	"ui.agents.config.state.sending": "Envoi…",
 	"ui.agents.config.state.stopping": "Arrêt…",
 	"ui.agents.config.status.attached": "Une autre exécution de configuration était déjà en cours ; cette page s’y est donc rattachée. Votre demande n’a pas été envoyée — elle est toujours dans la zone de saisie.",

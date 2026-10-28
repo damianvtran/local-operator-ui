@@ -16,6 +16,7 @@
 	"ui.agents.config.result.changed": "Изменено",
 	"ui.agents.config.result.configured": "Настроено",
 	"ui.agents.config.result.created": "Создано",
+	"ui.agents.config.state.did_not_finish": "Не завершено",
 	"ui.agents.config.state.sending": "Отправка…",
 	"ui.agents.config.state.stopping": "Остановка…",
 	"ui.agents.config.status.attached": "Уже выполнялся другой запуск конфигурации, поэтому эта страница подключилась к нему. Ваш запрос не отправлен — он остался в поле ввода.",

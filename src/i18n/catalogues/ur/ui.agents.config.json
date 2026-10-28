@@ -16,6 +16,7 @@
 	"ui.agents.config.result.changed": "بدلا گیا",
 	"ui.agents.config.result.configured": "ترتیب شدہ",
 	"ui.agents.config.result.created": "بنایا گیا",
+	"ui.agents.config.state.did_not_finish": "مکمل نہیں ہوا",
 	"ui.agents.config.state.sending": "بھیجا جا رہا ہے…",
 	"ui.agents.config.state.stopping": "روکا جا رہا ہے…",
 	"ui.agents.config.status.attached": "ایک اور کنفیگریشن رن پہلے سے جاری تھا، اس لیے یہ صفحہ اسی سے منسلک ہو گیا۔ آپ کی درخواست نہیں بھیجی گئی — وہ ابھی خانے میں ہے۔",

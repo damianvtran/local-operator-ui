@@ -16,6 +16,7 @@
 	"ui.agents.config.result.changed": "已更改",
 	"ui.agents.config.result.configured": "已配置",
 	"ui.agents.config.result.created": "已创建",
+	"ui.agents.config.state.did_not_finish": "未完成",
 	"ui.agents.config.state.sending": "正在发送……",
 	"ui.agents.config.state.stopping": "正在停止……",
 	"ui.agents.config.status.attached": "另一个配置运行已在进行中，因此此页面已接入该运行。你的请求未发送，仍保留在输入框中。",

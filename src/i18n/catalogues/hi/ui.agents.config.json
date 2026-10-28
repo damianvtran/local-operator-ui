@@ -16,6 +16,7 @@
 	"ui.agents.config.result.changed": "बदला गया",
 	"ui.agents.config.result.configured": "कॉन्फ़िगर किया गया:",
 	"ui.agents.config.result.created": "बनाया गया",
+	"ui.agents.config.state.did_not_finish": "पूरा नहीं हुआ",
 	"ui.agents.config.state.sending": "भेजा जा रहा है…",
 	"ui.agents.config.state.stopping": "रोका जा रहा है…",
 	"ui.agents.config.status.attached": "एक और कॉन्फ़िगरेशन रन पहले से चल रहा था, इसलिए यह पेज उससे जुड़ गया। आपका अनुरोध भेजा नहीं गया — वह अब भी बॉक्स में है।",

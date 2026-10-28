@@ -16,6 +16,7 @@
 	"ui.agents.config.result.changed": "Đã đổi",
 	"ui.agents.config.result.configured": "Đã cấu hình",
 	"ui.agents.config.result.created": "Đã tạo",
+	"ui.agents.config.state.did_not_finish": "Không hoàn tất",
 	"ui.agents.config.state.sending": "Đang gửi…",
 	"ui.agents.config.state.stopping": "Đang dừng…",
 	"ui.agents.config.status.attached": "Một lần chạy cấu hình khác đang diễn ra nên trang này đã gắn vào lần chạy đó. Yêu cầu của bạn chưa được gửi — nó vẫn còn trong ô nhập.",
