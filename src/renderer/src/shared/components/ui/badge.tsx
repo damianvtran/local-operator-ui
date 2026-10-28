@@ -92,11 +92,15 @@ const badgeVariants = cva(
 				attentionQuiet:
 					"border-0 bg-elevated font-normal text-ink-dim text-meta-sm",
 				/*
-				 * THE LOUDER COUNT, for the Notifications row only (operator, 2026-10-25,
-				 * notifications decisions D5): "No border, but ... make the badge
-				 * background brighter/more contrasted so that it stands out a bit more,
-				 * right now the style is just a bit too subtle." The quiet register above
-				 * stays on every other rail row; the operator named this badge alone.
+				 * THE ATTENTION COUNT. Introduced for the Notifications row only
+				 * (operator, 2026-10-25, notifications decisions D5): "No border, but ...
+				 * make the badge background brighter/more contrasted so that it stands
+				 * out a bit more, right now the style is just a bit too subtle." The
+				 * operator REVERSED D5 on 2026-10-28: every sidebar and Team Bridge
+				 * attention count now wears it, through the one `AttentionBadge`
+				 * (`attention-badge.tsx`) - call sites never name this variant directly.
+				 * `attentionQuiet` above stays for non-count marks (the preview chip, the
+				 * team avatar bubble).
 				 *
 				 * WHY `accent` / `on-accent` AND NOT A NEW ROLE. It is the primary
 				 * button's pair, so it is already a contrast-contracted triple on every
@@ -107,7 +111,7 @@ const badgeVariants = cva(
 				 * against the 3:1 non-text floor, and the DIGIT on it reads at 4.97:1
 				 * worst (tokyoNightDay) against 4.5:1. Brand: dark 6.88:1 fill on
 				 * `surface`, 8.58:1 digit; light 5.14:1 and 5.33:1. Its row in
-				 * `scripts/contrast-contract.mjs` ("rail notifications badge
+				 * `scripts/contrast-contract.mjs` ("rail attention badge
 				 * (emphasis)") asserts both, so a palette edit cannot quietly undo it.
 				 * Medium weight because a filled pill at 11px with regular weight thins
 				 * the numeral against the saturated ground.

@@ -1,4 +1,4 @@
-import { Badge, countLabel } from "@shared/components/ui/badge";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -112,18 +112,17 @@ export const TeamBridgeOrgSwitcher: FC<{
 							{t("ui.teamBridge.scope.all")}
 						</span>
 						{totalUnread > 0 && (
-							<Badge
-								variant="attentionQuiet"
-								size="count"
+							/* Unread across every organization: an attention count, so the
+							   shared accent badge the sidebar rows wear (2026-10-28). */
+							<AttentionBadge
+								count={totalUnread}
 								aria-label={t("ui.teamBridge.unread.count", {
 									count: totalUnread,
 								})}
 								title={t("ui.teamBridge.unread.count", {
 									count: totalUnread,
 								})}
-							>
-								{countLabel(totalUnread, 99)}
-							</Badge>
+							/>
 						)}
 					</DropdownMenuRadioItem>
 					{organizations.length > 0 && <DropdownMenuSeparator />}
@@ -143,18 +142,15 @@ export const TeamBridgeOrgSwitcher: FC<{
 								</span>
 							)}
 							{organization.unread > 0 && (
-								<Badge
-									variant="attentionQuiet"
-									size="count"
+								<AttentionBadge
+									count={organization.unread}
 									aria-label={t("ui.teamBridge.unread.count", {
 										count: organization.unread,
 									})}
 									title={t("ui.teamBridge.unread.count", {
 										count: organization.unread,
 									})}
-								>
-									{countLabel(organization.unread, 99)}
-								</Badge>
+								/>
 							)}
 						</DropdownMenuRadioItem>
 					))}
