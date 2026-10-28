@@ -37,7 +37,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { AttentionBadge, ATTENTION_BADGE_CAP } from "./src/renderer/src/shared/components/ui/attention-badge";
+			export { AttentionBadge, ATTENTION_BADGE_CAP, ATTENTION_BADGE_CORNER_CAP } from "./src/renderer/src/shared/components/ui/attention-badge";
 			export { moreAttentionCount } from "./src/renderer/src/shared/components/navigation/sidebar-destinations";
 		`,
 		resolveDir: process.cwd(),
@@ -67,7 +67,12 @@ try {
 } finally {
 	await unlink(bundlePath);
 }
-const { AttentionBadge, ATTENTION_BADGE_CAP, moreAttentionCount } = mod;
+const {
+	AttentionBadge,
+	ATTENTION_BADGE_CAP,
+	ATTENTION_BADGE_CORNER_CAP,
+	moreAttentionCount,
+} = mod;
 
 const render = (props) =>
 	renderToStaticMarkup(React.createElement(AttentionBadge, props));
@@ -100,6 +105,23 @@ test("it caps at 99+ so three digits never clip, and spells smaller counts exact
 	assert.match(render({ count: 99 }), />99</);
 	assert.match(render({ count: 100 }), />99\+</);
 	assert.match(render({ count: 4821 }), />99\+</);
+});
+
+/*
+ * THE CORNER CAPS AT 9+ (design follow-up to #1465, D1): on the collapsed
+ * strip's 16px icon a `99+` mark lay across 37.5 % of the glyph. The cap is the
+ * component's, keyed on placement, so no strip host spells it.
+ */
+test("the corner mark caps at 9+, while the inline mark keeps 99+", () => {
+	assert.equal(ATTENTION_BADGE_CORNER_CAP, 9);
+	const corner = (count) => render({ count, placement: "corner" });
+	assert.match(corner(5), />5</);
+	assert.match(corner(9), />9</);
+	assert.match(corner(10), />9\+</);
+	assert.match(corner(12), />9\+</);
+	assert.match(corner(125), />9\+</);
+	assert.match(render({ count: 12 }), />12</);
+	assert.match(render({ count: 125 }), />99\+</);
 });
 
 test("zero, negative and NaN draw nothing", () => {

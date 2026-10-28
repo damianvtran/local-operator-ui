@@ -15,7 +15,11 @@
 export { Alert, AlertDescription, AlertTitle, alertVariants } from "./alert";
 export type { AlertProps } from "./alert";
 export { Avatar, AvatarFallback, AvatarImage } from "./avatar";
-export { AttentionBadge, ATTENTION_BADGE_CAP } from "./attention-badge";
+export {
+	AttentionBadge,
+	ATTENTION_BADGE_CAP,
+	ATTENTION_BADGE_CORNER_CAP,
+} from "./attention-badge";
 export type { AttentionBadgeProps } from "./attention-badge";
 export { Badge, badgeVariants, countLabel } from "./badge";
 export type { BadgeProps } from "./badge";
