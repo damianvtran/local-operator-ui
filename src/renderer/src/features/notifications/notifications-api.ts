@@ -45,9 +45,12 @@ import type {
 	DesktopNotificationsList,
 	DesktopNotificationsWriteResult,
 } from "../../../../shared/desktop-control-contract";
+import { inverseNotificationVerb } from "./notification-operations";
 import {
 	applyConfirmedToWindow,
+	editFactsForWrite,
 	mergeWindowForReel,
+	optimisticFlips,
 	prependSeenToWindow,
 } from "./notifications-model";
 
@@ -78,6 +81,14 @@ export const notificationKeys = {
 	factsRoot: ["desktop", "notifications", "facts"] as const,
 	/** The per-conversation reads (the drawer, the flag lines). */
 	sessionsRoot: ["desktop", "notifications", "session"] as const,
+	/**
+	 * One conversation's server-walked unread count (the drawer tab and the rail
+	 * door). Spelled here rather than at its one reader so an optimistic write can
+	 * move it with the rows: a key spelled in two places is the drift this module
+	 * exists to prevent.
+	 */
+	sessionUnread: (sessionId: string | null) =>
+		["desktop", "notifications", "session-unread", sessionId] as const,
 };
 
 /** Whether this backend serves the reel. One spelling for every surface. */
@@ -580,6 +591,21 @@ export function writeNotifications(
 export function useNotificationsWrite() {
 	const { client } = useOptionalQueryClient();
 	return useMutation({
+		/*
+		 * OPTIMISTIC, FROM THE SHARED CACHE (the drawer's "click twice" defect). The
+		 * row, the counts and the sidebar badge move on the click; the rollback is
+		 * the inverse edit over exactly the ids this write flipped, so a concurrent
+		 * write's own optimistic edit survives a failure here.
+		 */
+		onMutate: ({ verb, target }) =>
+			"items" in target
+				? beginOptimisticWrite(
+						client,
+						verb,
+						target.items.map((token) => token.id),
+					)
+				: undefined,
+		onError: (_error, _variables, rollback) => rollback?.(),
 		mutationFn: ({
 			verb,
 			target,
@@ -605,6 +631,131 @@ export function useNotificationsWrite() {
  * Only the facts, the detail and the count are invalidated: they are small reads that
  * the server answers authoritatively.
  */
+const editFacts = (
+	data: DesktopNotificationsList | undefined,
+	changed: readonly string[],
+	verb: NotificationsVerb,
+) => editFactsForWrite(data, changed, verb);
+
+/**
+ * Every row the cache holds, newest revision per id: the facts and the windows.
+ * The optimistic write decides from these what the click changes.
+ */
+function cachedRows(client: QueryClient): Map<string, DesktopNotificationItem> {
+	const rows = new Map<string, DesktopNotificationItem>();
+	const keep = (item: DesktopNotificationItem) => {
+		const previous = rows.get(item.id);
+		if (!previous || item.revision >= previous.revision)
+			rows.set(item.id, item);
+	};
+	for (const root of [
+		notificationKeys.factsRoot,
+		notificationKeys.sessionFactsAll,
+		notificationKeys.listRoot,
+		notificationKeys.sessionsRoot,
+	])
+		for (const [, data] of client.getQueriesData<{
+			items?: DesktopNotificationItem[];
+			pages?: { items?: DesktopNotificationItem[] }[];
+		}>({ queryKey: root })) {
+			for (const item of data?.items ?? []) keep(item);
+			for (const page of data?.pages ?? [])
+				for (const item of page?.items ?? []) keep(item);
+		}
+	return rows;
+}
+
+/**
+ * Apply a by-id write to the shared cache BEFORE the server answers, and return
+ * its exact rollback (the drawer's "click twice" defect).
+ *
+ * WHY. The drawer used to change nothing until the write's receipt, and even then
+ * drew the stale facts row (see `applyConfirmedWrite`), so the row moved only after
+ * a second round trip and a click in between looked like it did nothing. Every
+ * surface - the drawer, the reel, the tab's count, the sidebar badge - reads these
+ * keys, so editing them here moves all of them on the click, from one model
+ * (`optimisticFlips`) rather than per-surface state.
+ *
+ * CONSTRAINTS. Only by-id writes are optimistic: a scoped sweep's reach is decided
+ * by the server's walk, which the client cannot predict. Asks are left to their own
+ * lane. In-flight facts reads are cancelled first, so a read that started before the
+ * click cannot land afterwards with the pre-click row; a read that starts later
+ * returns the server's state and the receipt's own edit settles it. The rollback is
+ * the inverse verb over exactly the rows this call flipped, plus the counts it moved,
+ * so a failure never overwrites another write's edit with a snapshot.
+ */
+export async function beginOptimisticWrite(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	verb: NotificationsVerb,
+	ids: readonly string[],
+): Promise<(() => void) | undefined> {
+	if (!client || ids.length === 0) return undefined;
+	await Promise.all([
+		client.cancelQueries({ queryKey: notificationKeys.factsRoot }),
+		client.cancelQueries({ queryKey: notificationKeys.sessionFactsAll }),
+		client.cancelQueries({ queryKey: notificationKeys.count }),
+	]);
+	const flips = optimisticFlips(cachedRows(client), ids, verb);
+	if (flips.length === 0) return undefined;
+	const apply = (applied: NotificationsVerb, direction: 1 | -1) => {
+		const flipped = flips.map((flip) => flip.id);
+		const total = flips.reduce((sum, flip) => sum + flip.unread, 0) * direction;
+		const bySession = new Map<string, number>();
+		for (const flip of flips)
+			bySession.set(
+				flip.sessionId,
+				(bySession.get(flip.sessionId) ?? 0) + flip.unread * direction,
+			);
+		const editWindow = (data?: { pages?: unknown[] }) =>
+			data && Array.isArray(data.pages)
+				? {
+						...data,
+						pages: applyConfirmedToWindow(
+							data.pages as { items: DesktopNotificationItem[] }[],
+							flipped,
+							applied,
+						),
+					}
+				: data;
+		client.setQueriesData({ queryKey: notificationKeys.listRoot }, editWindow);
+		client.setQueriesData(
+			{ queryKey: notificationKeys.sessionsRoot },
+			editWindow,
+		);
+		client.setQueriesData<DesktopNotificationsList>(
+			{ queryKey: notificationKeys.factsRoot },
+			(data) => editFactsForWrite(data, flipped, applied, total),
+		);
+		for (const [key, data] of client.getQueriesData<DesktopNotificationsList>({
+			queryKey: notificationKeys.sessionFactsAll,
+		}))
+			client.setQueryData(
+				key,
+				editFactsForWrite(
+					data,
+					flipped,
+					applied,
+					bySession.get(String(key[3])) ?? 0,
+				),
+			);
+		client.setQueryData<DesktopNotificationsCount>(
+			notificationKeys.count,
+			(count) =>
+				count
+					? { ...count, unread_count: Math.max(0, count.unread_count + total) }
+					: count,
+		);
+		for (const [sessionId, delta] of bySession)
+			client.setQueriesData<number>(
+				{ queryKey: notificationKeys.sessionUnread(sessionId) },
+				(count) =>
+					typeof count === "number" ? Math.max(0, count + delta) : count,
+			);
+	};
+	apply(verb, 1);
+	return () => apply(inverseNotificationVerb(verb), -1);
+}
+
 export function applyConfirmedWrite(
 	client: ReturnType<typeof useOptionalQueryClient>["client"],
 	verb: NotificationsVerb,
@@ -635,6 +786,22 @@ export function applyConfirmedWrite(
 	client.setQueriesData(
 		{ queryKey: notificationKeys.sessionsRoot },
 		editWindow,
+	);
+	/*
+	 * THE FACTS ARE EDITED TOO, not only invalidated (the drawer's "click twice"
+	 * defect). At the top of a list `mergeWindowForReel` lets page one's facts win
+	 * over the window on an EQUAL revision, and core's read/unread moves `seq`, not
+	 * `revision` - so until the facts refetch landed, the stale facts row
+	 * (`read: false`) was what the drawer and the reel drew, hiding the confirmed
+	 * flip. The edit is idempotent, so it is safe after an optimistic one.
+	 */
+	client.setQueriesData<DesktopNotificationsList>(
+		{ queryKey: notificationKeys.factsRoot },
+		(data) => editFacts(data, changed, verb),
+	);
+	client.setQueriesData<DesktopNotificationsList>(
+		{ queryKey: notificationKeys.sessionFactsAll },
+		(data) => editFacts(data, changed, verb),
 	);
 	void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
 	void client.invalidateQueries({ queryKey: notificationKeys.sessionFactsAll });

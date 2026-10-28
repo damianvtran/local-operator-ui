@@ -43,6 +43,7 @@ import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
 import { useDrawerBackToTop } from "../drawer-tab-store";
 import {
+	notificationKeys,
 	readSessionUnreadCount,
 	tokensOf,
 	useNotificationsWrite,
@@ -221,28 +222,43 @@ export function useSessionUnreadUpdates(
 	const list = useSessionNotifications(sessionId, enabled);
 	const boundary = list.data?.high_water;
 	const count = useQuery({
-		queryKey: [
-			"desktop",
-			"notifications",
-			"session-unread",
-			sessionId,
-			boundary,
-		],
+		/* Under the shared key, so an optimistic write moves this with the rows. */
+		queryKey: [...notificationKeys.sessionUnread(sessionId), boundary],
 		enabled: enabled && Boolean(sessionId) && boundary !== undefined,
 		queryFn: () => readSessionUnreadCount(sessionId as string),
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
+		/*
+		 * KEEP THE LAST COUNT ACROSS A BOUNDARY MOVE. Every write moves the boundary,
+		 * so the key changes and the walk restarts; without the previous answer the
+		 * tab's count blinked to nothing between the click and the walk's answer.
+		 */
+		placeholderData: (previous) => previous,
 	});
 	/* Unknown while the walk settles: the page's own rows would under-count. */
 	return count.data ?? 0;
 }
 
+/**
+ * Unread is the inbox, Read the history (operator report: "it was never clear
+ * what was read and what was unread"). One list holding both, split by two
+ * headings, made a mark-read look like nothing happened - the row only changed
+ * groups a few rows away. With the split as a view, marking read takes the row
+ * out of the Unread view, which is the visible receipt of the click.
+ */
+export type DrawerReadView = "unread" | "read";
+
 export const DrawerUpdates: FC<{
 	sessionId: string;
 	nowMs?: number;
-}> = ({ sessionId, nowMs: pinnedNow }) => {
+	/** Stories and evidence pin the opening view; the operator always starts on Unread. */
+	initialView?: DrawerReadView;
+}> = ({ sessionId, nowMs: pinnedNow, initialView = "unread" }) => {
 	useI18nLocale();
 	const navigate = useNavigate();
+	const [view, setView] = useState<DrawerReadView>(initialView);
+	/* The server's count, the same figure the Updates tab prints (R4-6). */
+	const unreadCount = useSessionUnreadUpdates(sessionId, true);
 	const [isAtTop, setIsAtTop] = useState(true);
 	const list = useSessionNotifications(sessionId, true, { atTop: isAtTop });
 	const write = useNotificationsWrite();
@@ -358,9 +374,61 @@ export const DrawerUpdates: FC<{
 			},
 		);
 	};
-	const ordered = [...unread, ...read];
+	/*
+	 * MARK ALL READ GETS THE SAME RECEIPT AND UNDO AS ONE ROW (design § 0.8). It
+	 * names the rendered rows by revision, so the inverse is exactly the ids the
+	 * server confirmed at the revisions the click saw - a row revised since stays
+	 * out of the Undo, as the reel's ledger does.
+	 */
+	const markAllRead = () => {
+		const tokens = tokensOf(unread);
+		write.mutate(
+			{ verb: "read", target: { items: tokens } },
+			{
+				onSuccess: (result) => {
+					const changed = new Set(result.changed);
+					const undo = tokens.filter((token) => changed.has(token.id));
+					if (undo.length === 0) return;
+					showInfoToast(
+						t("ui.notifications.toast.marked_read", {
+							count: formatNumber(undo.length),
+						}),
+						{
+							duration: UNDO_WINDOW_MS,
+							action: {
+								label: t("ui.notifications.toast.undo"),
+								onClick: () =>
+									write.mutate({ verb: "unread", target: { items: undo } }),
+							},
+						},
+					);
+				},
+				onError: () => showErrorToast(t("ui.notifications.error.mark")),
+			},
+		);
+	};
+	const shown = view === "unread" ? unread : read;
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
+			<DrawerReadViews
+				view={view}
+				onView={setView}
+				unreadCount={unreadCount}
+				action={
+					view === "unread" && unread.length > 0 ? (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="shrink-0"
+							data-drawer-mark-all-read=""
+							disabled={list.isError}
+							onClick={markAllRead}
+						>
+							{t("ui.notifications.drawer.mark_read")}
+						</Button>
+					) : null
+				}
+			/>
 			<div
 				data-drawer-updates=""
 				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
@@ -384,19 +452,19 @@ export const DrawerUpdates: FC<{
 					const target = event.target as HTMLElement;
 					const row = target.closest<HTMLElement>("[data-drawer-update]");
 					if (!row) return;
-					const index = ordered.findIndex(
+					const index = shown.findIndex(
 						(item) => item.id === row.dataset.drawerUpdate,
 					);
-					const item = ordered[index];
+					const item = shown[index];
 					if (!item) return;
 					if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 						event.preventDefault();
 						const next =
-							ordered[
+							shown[
 								Math.max(
 									0,
 									Math.min(
-										ordered.length - 1,
+										shown.length - 1,
 										index + (event.key === "ArrowDown" ? 1 : -1),
 									),
 								)
@@ -422,64 +490,34 @@ export const DrawerUpdates: FC<{
 					}
 				}}
 			>
-				{rows.length === 0 ? (
-					<p className="px-3 py-8 text-center text-body-sm text-ink-muted">
-						{t("ui.notifications.drawer.empty")}
+				{shown.length === 0 ? (
+					<p
+						className="px-3 py-8 text-center text-body-sm text-ink-muted"
+						data-drawer-empty={view}
+					>
+						{/* Nothing at all is one sentence; an empty inbox is "caught up". */}
+						{rows.length === 0
+							? t("ui.notifications.drawer.empty")
+							: view === "unread"
+								? t("ui.notifications.empty.caught_up.title")
+								: t("ui.notifications.drawer.empty")}
 					</p>
 				) : (
-					<>
-						{unread.length > 0 && (
-							<DrawerGroup
-								title={t("ui.notifications.drawer.group.unread")}
-								action={
-									<Button
-										variant="ghost"
-										size="sm"
-										disabled={list.isError}
-										onClick={() =>
-											write.mutate({
-												verb: "read",
-												target: { items: tokensOf(unread) },
-											})
-										}
-									>
-										{t("ui.notifications.drawer.mark_read")}
-									</Button>
+					<ul className="flex flex-col" data-drawer-view-list={view}>
+						{shown.map((item) => (
+							<DrawerRow
+								key={item.id}
+								item={item}
+								nowMs={nowMs}
+								onShow={showInConversation}
+								onToggleRead={() =>
+									applyWrite(item, item.read ? "unread" : "read")
 								}
-							>
-								{unread.map((item) => (
-									<DrawerRow
-										key={item.id}
-										item={item}
-										nowMs={nowMs}
-										onShow={showInConversation}
-										onToggleRead={() =>
-											applyWrite(item, item.read ? "unread" : "read")
-										}
-										onDismiss={() => applyWrite(item, "dismiss")}
-										paused={list.isError}
-									/>
-								))}
-							</DrawerGroup>
-						)}
-						{read.length > 0 && (
-							<DrawerGroup title={t("ui.notifications.drawer.group.read")}>
-								{read.map((item) => (
-									<DrawerRow
-										key={item.id}
-										item={item}
-										nowMs={nowMs}
-										onShow={showInConversation}
-										onToggleRead={() =>
-											applyWrite(item, item.read ? "unread" : "read")
-										}
-										onDismiss={() => applyWrite(item, "dismiss")}
-										paused={list.isError}
-									/>
-								))}
-							</DrawerGroup>
-						)}
-					</>
+								onDismiss={() => applyWrite(item, "dismiss")}
+								paused={list.isError}
+							/>
+						))}
+					</ul>
 				)}
 			</div>
 			<div className="flex shrink-0 items-center justify-between gap-2 border-hairline border-t px-3 py-2 text-meta">
@@ -504,18 +542,52 @@ export const DrawerUpdates: FC<{
 	);
 };
 
-const DrawerGroup: FC<{
-	title: string;
-	action?: React.ReactNode;
-	children: React.ReactNode;
-}> = ({ title, action, children }) => (
-	<section className="flex flex-col">
-		<div className="flex h-8 items-center justify-between px-2 text-ink-muted text-meta">
-			<h3>{title}</h3>
-			{action}
+/**
+ * The Unread | Read switch, under the Asks | Updates strip. A segmented control
+ * like the reel's Unread | All (one visual language for read state), with the
+ * Unread count beside its label so the inbox's size is visible from either view.
+ */
+const DrawerReadViews: FC<{
+	view: DrawerReadView;
+	onView: (view: DrawerReadView) => void;
+	unreadCount: number;
+	action: React.ReactNode;
+}> = ({ view, onView, unreadCount, action }) => (
+	<div className="flex shrink-0 flex-wrap items-center justify-between gap-1 px-2 pt-2">
+		<div
+			role="radiogroup"
+			aria-label={t("ui.notifications.filter.read_state")}
+			className="flex items-center gap-0.5 rounded-sm bg-sunken p-0.5"
+		>
+			{(["unread", "read"] as const).map((value) => (
+				<button
+					key={value}
+					type="button"
+					// biome-ignore lint/a11y/useSemanticElements: the reel's segmented control; native radios cannot carry the count badge inside the segment
+					role="radio"
+					aria-checked={view === value}
+					data-drawer-read-view={value}
+					onClick={() => onView(value)}
+					className={cn(
+						"flex h-7 items-center gap-1.5 rounded-xs px-2.5 text-body-sm",
+						view === value
+							? "bg-elevated text-ink"
+							: "text-ink-muted hover:text-ink",
+					)}
+				>
+					{value === "unread"
+						? t("ui.notifications.drawer.group.unread")
+						: t("ui.notifications.drawer.group.read")}
+					{value === "unread" && unreadCount > 0 && (
+						<Badge variant="neutral" size="count">
+							{formatNumber(unreadCount)}
+						</Badge>
+					)}
+				</button>
+			))}
 		</div>
-		<ul className="flex flex-col">{children}</ul>
-	</section>
+		{action}
+	</div>
 );
 
 const DrawerRow: FC<{
@@ -531,11 +603,12 @@ const DrawerRow: FC<{
 		<li
 			className="group/drawer-row flex h-12 items-center gap-2 rounded-sm px-2 hover:bg-row-hover"
 			data-drawer-update={item.id}
+			data-unread={item.read ? undefined : ""}
 		>
 			<span
 				aria-hidden="true"
 				className={cn(
-					"size-1.5 shrink-0 rounded-full bg-accent",
+					"size-1.5 shrink-0 rounded-full bg-accent forced-colors:bg-[CanvasText]",
 					item.read && "invisible",
 				)}
 			/>

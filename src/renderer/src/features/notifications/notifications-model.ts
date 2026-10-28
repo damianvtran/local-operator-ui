@@ -417,6 +417,75 @@ export function applyConfirmedToWindow<
 	return pages.map((page) => ({ ...page, items: page.items.map(flipped) }));
 }
 
+/** One row an optimistic write flips, and what that does to the unread figures. */
+export type OptimisticFlip = { id: string; sessionId: string; unread: number };
+
+/**
+ * Which of `ids` a write would actually change, from the rows the client holds.
+ *
+ * WHY THE MODEL DECIDES THIS (the drawer's "click twice" defect). An optimistic
+ * write must move the row, the drawer's unread count and the sidebar badge by
+ * the same amount, and must undo exactly that amount if the server refuses. A
+ * row already in the target state, or one the client never loaded, moves
+ * nothing, so it contributes no delta - the server's receipt then settles it.
+ * `unread` is the change to the unread figure: -1 when an unread row is read or
+ * dismissed, +1 when a read row is unread or an unread row comes back.
+ */
+export function optimisticFlips(
+	known: ReadonlyMap<string, DesktopNotificationItem>,
+	ids: readonly string[],
+	verb: NotificationVerb,
+): OptimisticFlip[] {
+	const flips: OptimisticFlip[] = [];
+	for (const id of new Set(ids)) {
+		const item = known.get(id);
+		if (!item || item.source !== "notify") continue;
+		const unreadNow = !item.read && !item.dismissed;
+		const changes =
+			verb === "read"
+				? !item.read
+				: verb === "unread"
+					? item.read
+					: verb === "dismiss"
+						? !item.dismissed
+						: item.dismissed;
+		if (!changes) continue;
+		const unreadAfter =
+			verb === "read"
+				? false
+				: verb === "unread"
+					? !item.dismissed
+					: verb === "dismiss"
+						? false
+						: !item.read;
+		flips.push({
+			id,
+			sessionId: item.session.id,
+			unread: Number(unreadAfter) - Number(unreadNow),
+		});
+	}
+	return flips;
+}
+
+/**
+ * Apply a write to a page-one FACTS answer: the rows, and the unread figure by
+ * the flips' delta. Facts are a plain list answer, not an infinite query, so
+ * they need their own edit (`applyConfirmedToWindow` takes pages).
+ */
+export function editFactsForWrite(
+	data: DesktopNotificationsList | undefined,
+	ids: readonly string[],
+	verb: NotificationVerb,
+	unreadDelta = 0,
+): DesktopNotificationsList | undefined {
+	if (!data || !Array.isArray(data.items)) return data;
+	const [page] = applyConfirmedToWindow([data], ids, verb);
+	return {
+		...page,
+		unread_count: Math.max(0, data.unread_count + unreadDelta),
+	};
+}
+
 export const scopeCountBoundary = (
 	highWaterMark: number | undefined,
 ): number | undefined => highWaterMark;

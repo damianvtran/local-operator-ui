@@ -755,7 +755,13 @@ const DRAWER_ITEMS: DesktopNotificationItem[] = [
  * scope selector is its own full-width row, so a long translation cannot squeeze
  * three unrelated labels into one 360px line.
  */
-const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
+const Drawer = ({
+	tab,
+	view = "unread",
+}: {
+	tab: "updates" | "asks";
+	view?: "unread" | "read";
+}) => {
 	/*
 	 * THE REAL DIRECTION SEAM, ON THIS STORY TOO (design round 2, D2).
 	 *
@@ -800,7 +806,11 @@ const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
 							),
 							body:
 								current === "updates" ? (
-									<DrawerUpdates sessionId="aaaaaaaaaaa1" nowMs={NOW} />
+									<DrawerUpdates
+										sessionId="aaaaaaaaaaa1"
+										nowMs={NOW}
+										initialView={view}
+									/>
 								) : null,
 						}}
 					/>
@@ -826,6 +836,18 @@ export const DrawerUpdatesTab: Story = {
 		return (
 			<FreshCache>
 				<Drawer tab="updates" />
+			</FreshCache>
+		);
+	},
+};
+
+/** The Read view: the history a mark-read moves a row into. */
+export const DrawerUpdatesRead: Story = {
+	render: () => {
+		install({ items: DRAWER_ITEMS, waiting: [] });
+		return (
+			<FreshCache>
+				<Drawer tab="updates" view="read" />
 			</FreshCache>
 		);
 	},
