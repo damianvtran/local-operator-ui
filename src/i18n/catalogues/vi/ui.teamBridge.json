@@ -9,6 +9,7 @@
 	"ui.teamBridge.members.empty": "Không có người hoặc tác nhân nào khả dụng trong tổ chức này.",
 	"ui.teamBridge.members.no_matches": "Không có người hoặc tác nhân nào khớp với tìm kiếm của bạn.",
 	"ui.teamBridge.members.load_error": "Không tải được người và tác nhân.",
+	"ui.teamBridge.members.loading": "Đang tải mọi người và tác nhân",
 	"ui.teamBridge.members.add": "Gửi lời mời",
 	"ui.teamBridge.members.remove": "Xóa {name}",
 	"ui.teamBridge.members.removing": "Đang xóa thành viên",

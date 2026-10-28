@@ -243,14 +243,13 @@ export const TeamBridgeApi = {
 	async addMembers(input: {
 		conversationId: string;
 		tenantId: string;
-		expectedAccountId: string;
+		expectedAccountId?: string;
 		members: TeamBridgeMemberInput[];
 	}): Promise<TeamBridgeConversation> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.members.add",
 			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
 			conversation_id: input.conversationId,
-			tenant_id: input.tenantId,
 			members: input.members,
 		});
 		return teamBridgeConversationSchema.parse(answer);
@@ -260,14 +259,13 @@ export const TeamBridgeApi = {
 	async removeMember(input: {
 		conversationId: string;
 		tenantId: string;
-		expectedAccountId: string;
+		expectedAccountId?: string;
 		accountId: string;
 	}): Promise<TeamBridgeConversation> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.members.remove",
 			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
 			conversation_id: input.conversationId,
-			tenant_id: input.tenantId,
 			account_id: input.accountId,
 		});
 		return teamBridgeConversationSchema.parse(answer);

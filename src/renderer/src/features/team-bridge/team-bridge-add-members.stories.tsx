@@ -1,5 +1,3 @@
-import { Button } from "@shared/components/ui/button";
-import { UserPlus } from "lucide-react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, within } from "@storybook/test";
 import type {
@@ -104,16 +102,6 @@ const meta = {
 	decorators: [
 		(Story) => (
 			<div className="min-h-dvh bg-canvas">
-				<div className="flex h-11 items-center justify-end gap-1 border-b border-hairline bg-surface px-5">
-					<Button
-						type="button"
-						size="icon-sm"
-						variant="ghost"
-						aria-label="Add members capture anchor"
-					>
-						<UserPlus size={16} aria-hidden="true" />
-					</Button>
-				</div>
 				<Story />
 			</div>
 		),
@@ -124,7 +112,8 @@ const meta = {
 		people,
 		selfAccountId: "acct_self",
 		peopleState: "ready",
-		canAdminister: true,
+		canInvite: true,
+		canRemove: true,
 		onClose: () => {},
 		onRetryPeople: () => {},
 		onAdd: () => {},
@@ -139,8 +128,12 @@ export const Populated: Story = {
 	play: async ({ canvasElement }) => {
 		const dialog = within(canvasElement.ownerDocument.body);
 		await expect(dialog.getByText("Aida (Damian Tran)")).toBeInTheDocument();
-		await expect(dialog.getByText("Invited; not active yet")).toBeInTheDocument();
-		await expect(dialog.getByRole("button", { name: "Remove Ben Tran" })).toBeInTheDocument();
+		await expect(
+			dialog.getByText("Invited; not active yet"),
+		).toBeInTheDocument();
+		await expect(
+			dialog.getByRole("button", { name: "Remove Ben Tran" }),
+		).toBeInTheDocument();
 	},
 };
 
@@ -157,7 +150,7 @@ export const Empty: Story = {
 };
 
 export const ReadOnly: Story = {
-	args: { canAdminister: false },
+	args: { canInvite: false, canRemove: false },
 };
 
 export const MutationError: Story = {
@@ -168,6 +161,7 @@ export const InvitationPending: Story = {
 	args: { pendingKey: "add" },
 };
 
-export const HeaderControl: Story = {
+/** The dialog closed: later captures pair it with the header/menu stories. */
+export const Closed: Story = {
 	args: { open: false },
 };

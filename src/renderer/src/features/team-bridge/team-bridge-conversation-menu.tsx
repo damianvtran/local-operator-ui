@@ -56,7 +56,13 @@ export const TeamBridgeConversationMenu: FC<{
 	onAddMembers?: () => void;
 	/** Story/capture seed only: opens the menu so its rows are visible. */
 	defaultOpen?: boolean;
-}> = ({ conversation, onNotifyChange, onArchive, onAddMembers, defaultOpen = false }) => {
+}> = ({
+	conversation,
+	onNotifyChange,
+	onArchive,
+	onAddMembers,
+	defaultOpen = false,
+}) => {
 	useI18nLocale();
 	const notify = notificationPreference(conversation);
 	const muted = notify === "mute";

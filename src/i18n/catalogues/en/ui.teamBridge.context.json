@@ -6,6 +6,13 @@
 		"placeholders": {},
 		"note": "Administer an existing group or channel. This is not a new-conversation form."
 	},
+	"ui.teamBridge.members.loading": {
+		"role": "loading state",
+		"tone": "neutral",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Announced while the organization directory loads inside the member dialog; also the spinner's accessible label."
+	},
 	"ui.teamBridge.members.description": {
 		"role": "dialog explanatory text",
 		"tone": "plain and factual",

@@ -9,6 +9,7 @@
 	"ui.teamBridge.members.empty": "اس تنظیم میں کوئی شخص یا ایجنٹ دستیاب نہیں ہے۔",
 	"ui.teamBridge.members.no_matches": "آپ کی تلاش سے کوئی شخص یا ایجنٹ میل نہیں کھاتا۔",
 	"ui.teamBridge.members.load_error": "لوگ اور ایجنٹ لوڈ نہیں ہو سکے۔",
+	"ui.teamBridge.members.loading": "لوگ اور ایجنٹ لوڈ ہو رہے ہیں",
 	"ui.teamBridge.members.add": "دعوتیں بھیجیں",
 	"ui.teamBridge.members.remove": "{name} کو ہٹائیں",
 	"ui.teamBridge.members.removing": "رکن ہٹایا جا رہا ہے",

@@ -9,6 +9,7 @@
 	"ui.teamBridge.members.empty": "В этой организации нет доступных людей или агентов.",
 	"ui.teamBridge.members.no_matches": "Никто из людей или агентов не соответствует запросу.",
 	"ui.teamBridge.members.load_error": "Не удалось загрузить людей и агентов.",
+	"ui.teamBridge.members.loading": "Загрузка людей и агентов",
 	"ui.teamBridge.members.add": "Отправить приглашения",
 	"ui.teamBridge.members.remove": "Удалить {name}",
 	"ui.teamBridge.members.removing": "Удаление участника",
