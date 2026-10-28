@@ -8922,6 +8922,7 @@ export type MessageParams = {
 	"ui.teamBridge.menu.unmute": undefined;
 	"ui.teamBridge.message.discard": undefined;
 	"ui.teamBridge.message.failed": undefined;
+	"ui.teamBridge.message.return_to_draft": undefined;
 	"ui.teamBridge.message.sending": undefined;
 	"ui.teamBridge.nav.label": undefined;
 	"ui.teamBridge.nav.unread": { count: number };

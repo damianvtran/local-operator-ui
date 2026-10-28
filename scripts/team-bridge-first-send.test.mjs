@@ -716,3 +716,145 @@ test(
 		}
 	},
 );
+
+/* The operator's composer rule (2026-10-28): the box empties in the SAME commit
+ * that shows the row, and the durable draft leaves with it, so neither a pencil
+ * icon nor a reload can bring the sent text back. */
+const storedDraftText = (body) =>
+	Object.keys(localStorage).some((key) =>
+		String(localStorage.getItem(key) ?? "").includes(body),
+	);
+
+test("the composer and its persisted draft clear in the same commit as the row", async () => {
+	const app = await mount({ cleanup });
+	try {
+		await type(app.host, "cleared in the click");
+		assert.equal(storedDraftText("cleared in the click"), true);
+		app.fixture.createGate = deferred();
+		sendSynchronously(app.host);
+		/* No await between the click and these three readings: the row, the empty
+		 * box and the erased stored draft are one commit. */
+		assert.ok(pendingRow(app.host), "row in the click task");
+		assert.equal(
+			app.host.querySelector("textarea").value,
+			"",
+			"the composer is empty in the same task",
+		);
+		assert.equal(
+			storedDraftText("cleared in the click"),
+			false,
+			"the durable draft is gone, not merely the on-screen text",
+		);
+		assert.equal(
+			app.host.querySelector("textarea").getAttribute("rows"),
+			"1",
+			"the box is back to one row",
+		);
+	} finally {
+		app.fixture.createGate?.resolve();
+		await app.close();
+	}
+});
+
+test("a failure offers Retry and Return to draft, and the returned draft never overwrites newer text", async () => {
+	const app = await mount({ cleanup });
+	try {
+		await type(app.host, "please return me");
+		await send(app.host);
+		await until(() => failedRow(app.host), "failed row");
+		assert.ok(clickButton(app.host, "Retry"), "Retry is offered");
+		const returnButton = clickButton(app.host, "Return to draft");
+		assert.ok(returnButton, "Return to draft is offered");
+
+		await type(app.host, "typed since the failure");
+		await act(async () => returnButton.click());
+		await until(
+			() => !failedRow(app.host),
+			"the returned row leaves the thread",
+		);
+		const box = app.host.querySelector("textarea").value;
+		assert.equal(
+			box.includes("please return me"),
+			true,
+			"the sent text is back",
+		);
+		assert.equal(
+			box.includes("typed since the failure"),
+			true,
+			"what the person typed since is kept",
+		);
+		assert.equal(
+			storedDraftText("please return me"),
+			true,
+			"the returned draft is durable again",
+		);
+		assert.equal(posts(app.fixture).length, 1, "returning sends nothing");
+	} finally {
+		await app.close();
+	}
+});
+
+test("Retry after an ambiguous failure is idempotent: the hub keeps one message", async () => {
+	const app = await mount({ cleanup });
+	try {
+		app.fixture.postFailsAfterLanding = true;
+		await type(app.host, "landed but unanswered");
+		await send(app.host);
+		await until(() => failedRow(app.host), "failed row after the lost answer");
+		const firstRef = posts(app.fixture)[0].client_ref;
+		assert.equal(
+			app.fixture.messages.get(JSON.stringify(["acct_a", "org_shared"]))
+				?.length,
+			1,
+		);
+
+		app.fixture.refuse = false;
+		await act(async () => clickButton(app.host, "Retry").click());
+		await until(() => confirmedRow(app.host), "confirmed row after the replay");
+		assert.deepEqual(
+			posts(app.fixture).map((call) => call.client_ref),
+			[firstRef, firstRef],
+			"the retry names the same idempotency key",
+		);
+		assert.equal(
+			app.fixture.messages.get(JSON.stringify(["acct_a", "org_shared"]))
+				?.length,
+			1,
+			"one stored message, not two",
+		);
+		assert.equal(
+			rows(app.host).filter((node) =>
+				node.textContent.includes("landed but unanswered"),
+			).length,
+			1,
+			"one row on screen after the replay",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+test("a send that landed and failed cannot come back twice after Return to draft", async () => {
+	const app = await mount({ cleanup });
+	try {
+		app.fixture.postFailsAfterLanding = true;
+		await type(app.host, "returned after landing");
+		await send(app.host);
+		await until(() => failedRow(app.host), "failed row");
+		await act(async () => clickButton(app.host, "Return to draft").click());
+		await until(() => !failedRow(app.host), "the row is gone");
+		/* The hub's history already holds that message; a refetch delivers it as
+		 * canonical history, and the composition must not also resurrect the
+		 * returned row (which would show the same text twice). */
+		await act(async () =>
+			app.client.invalidateQueries({
+				queryKey: ui.teamBridgeKeys.messages("bcv_shared", "org_shared"),
+			}),
+		);
+		await delay();
+		assert.equal(rows(app.host).length, 0, "no local row survives the return");
+		assert.equal(posts(app.fixture).length, 1, "no automatic resend");
+	} finally {
+		await app.close();
+	}
+});

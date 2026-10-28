@@ -301,6 +301,15 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 				{t("ui.common.actions.retry")}
 			</button>
 		)}
+		{row.state === "failed" && row.onReturnToDraft && (
+			<button
+				type="button"
+				onClick={row.onReturnToDraft}
+				className="min-h-6 rounded-sm px-1.5 text-accent hover:underline"
+			>
+				{t("ui.teamBridge.message.return_to_draft")}
+			</button>
+		)}
 		{row.state === "failed" && row.onDiscard && (
 			<button
 				type="button"

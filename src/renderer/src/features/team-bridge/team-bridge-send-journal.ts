@@ -370,6 +370,36 @@ export class TeamBridgeSendJournal<A = TeamBridgeSendAttachmentSnapshot> {
 		return row;
 	}
 
+	/**
+	 * RETURN A FAILED SEND TO THE COMPOSER.
+	 *
+	 * The row leaves the thread and its payload (body and image snapshot, with
+	 * every staged id already uploaded) travels back to the caller, which puts it
+	 * in the draft that authored it. This is not a retry: the next send is a new
+	 * attempt with a new client_ref, because the person may edit the text first.
+	 * Same fences as discard - failed rows only, exact owner and tenant - so a
+	 * stale click can never pull another account's message out of its lane.
+	 */
+	takeBack(
+		clientRef: string,
+		accountId: string,
+		tenantId: string,
+	): TeamBridgeSendRow<A> | null {
+		const key = rowKey(accountId, tenantId, clientRef);
+		const attempt = this.attempts.get(key);
+		if (!attempt || attempt.row.state !== "failed") return null;
+		attempt.valid = false;
+		this.attempts.delete(key);
+		for (const lane of this.lanes.values()) {
+			if (this.root(lane) === attempt.lane)
+				lane.display = lane.display.filter(
+					(slot) => slot.key !== localSlotKey(clientRef),
+				);
+		}
+		this.changed();
+		return attempt.row;
+	}
+
 	/** An explicit owner avoids resolving caller-supplied clientRefs globally. */
 	discard(clientRef: string, accountId: string, tenantId: string): boolean {
 		const key = rowKey(accountId, tenantId, clientRef);

@@ -242,5 +242,6 @@
 	"ui.teamBridge.invitations.failed.sign_in": "You’re signed out. Sign in, then try again.",
 	"ui.teamBridge.invitations.failed.unreachable": "The app couldn’t reach Radient. Nothing was changed. Try again.",
 	"ui.teamBridge.invitations.read_only": "This organization is read-only for you, so invitations can’t be answered here.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Your answer was not confirmed. Try again."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Your answer was not confirmed. Try again.",
+	"ui.teamBridge.message.return_to_draft": "Return to draft"
 }

@@ -242,5 +242,6 @@
 	"ui.teamBridge.invitations.failed.sign_in": "你已退出登录。请登录后重试。",
 	"ui.teamBridge.invitations.failed.unreachable": "应用无法连接到Radient。未做任何更改。请重试。",
 	"ui.teamBridge.invitations.read_only": "此组织对你为只读，因此无法在此答复邀请。",
-	"ui.teamBridge.invitations.failed.unconfirmed": "你的答复未得到确认。请重试。"
+	"ui.teamBridge.invitations.failed.unconfirmed": "你的答复未得到确认。请重试。",
+	"ui.teamBridge.message.return_to_draft": "放回草稿"
 }

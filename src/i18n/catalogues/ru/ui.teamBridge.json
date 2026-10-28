@@ -242,5 +242,6 @@
 	"ui.teamBridge.invitations.failed.sign_in": "Вы не вошли в учётную запись. Войдите и повторите попытку.",
 	"ui.teamBridge.invitations.failed.unreachable": "Приложению не удалось связаться с Radient. Ничего не изменено. Повторите попытку.",
 	"ui.teamBridge.invitations.read_only": "Эта организация доступна вам только для чтения, поэтому отвечать на приглашения здесь нельзя.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Ваш ответ не подтверждён. Повторите попытку."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Ваш ответ не подтверждён. Повторите попытку.",
+	"ui.teamBridge.message.return_to_draft": "Вернуть в черновик"
 }

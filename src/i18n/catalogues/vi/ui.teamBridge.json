@@ -242,5 +242,6 @@
 	"ui.teamBridge.invitations.failed.sign_in": "Bạn đã đăng xuất. Hãy đăng nhập rồi thử lại.",
 	"ui.teamBridge.invitations.failed.unreachable": "Ứng dụng không kết nối được với Radient. Không có gì thay đổi. Hãy thử lại.",
 	"ui.teamBridge.invitations.read_only": "Tổ chức này ở chế độ chỉ đọc với bạn nên không thể trả lời lời mời tại đây.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Câu trả lời của bạn chưa được xác nhận. Hãy thử lại."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Câu trả lời của bạn chưa được xác nhận. Hãy thử lại.",
+	"ui.teamBridge.message.return_to_draft": "Đưa lại vào bản nháp"
 }

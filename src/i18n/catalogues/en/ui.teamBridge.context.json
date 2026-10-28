@@ -1796,5 +1796,12 @@
 		"length": "One word.",
 		"placeholders": {},
 		"note": "Removes that failed message from this device's thread. The server never accepted it, so this is not a server-side deletion and no other reader ever saw it, which is why the label says discard rather than delete. Sits beside ui.teamBridge.message.failed and the shared Retry control (ui.common.actions.retry)."
+	},
+	"ui.teamBridge.message.return_to_draft": {
+		"role": "action label on a failed message",
+		"tone": "plain, imperative, sentence case",
+		"length": "Three words.",
+		"placeholders": {},
+		"note": "Puts the failed message's text and images back in the composer that authored them and removes the row, so the person can edit and send it again. It is not a retry: the next send is a new attempt. Sits beside ui.common.actions.retry and ui.teamBridge.message.discard on a row labelled ui.teamBridge.message.failed."
 	}
 }

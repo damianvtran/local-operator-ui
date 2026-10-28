@@ -242,5 +242,6 @@
 	"ui.teamBridge.invitations.failed.sign_in": "Vous êtes déconnecté. Connectez-vous, puis réessayez.",
 	"ui.teamBridge.invitations.failed.unreachable": "L’application n’a pas pu joindre Radient. Aucune modification n’a été effectuée. Réessayez.",
 	"ui.teamBridge.invitations.read_only": "Cette organisation est en lecture seule pour vous ; les invitations ne peuvent donc pas recevoir de réponse ici.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Votre réponse n’a pas été confirmée. Réessayez."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Votre réponse n’a pas été confirmée. Réessayez.",
+	"ui.teamBridge.message.return_to_draft": "Remettre au brouillon"
 }

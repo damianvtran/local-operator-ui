@@ -344,6 +344,18 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 		}
 	};
 
+	/*
+	 * THE FAILED SEND COMES BACK TO ITS DRAFT. The row is removed only if the
+	 * journal still holds it for this exact owner and tenant, and the payload
+	 * (text plus every image, staged ids included) goes to the composer that
+	 * authored it, together with ownership of the preview URLs. The composer
+	 * keeps whatever the person has typed since.
+	 */
+	const takeBack = (clientRef: string, tenantId: string) => {
+		if (!accountId || !bridgeOwnerCurrent(client, accountId)) return null;
+		return journal.takeBack(clientRef, accountId, tenantId);
+	};
+
 	const presentation = (
 		row: TeamBridgeSendRow<AttachmentChip[]>,
 		context: SendContext,
@@ -385,6 +397,7 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 	return {
 		journal,
 		enqueue,
+		takeBack,
 		conversation: (
 			tenantId: string,
 			targetKey: string,

@@ -301,6 +301,8 @@ async function mount({
 		historyByConversation: new Map(),
 		notAMember: new Set(),
 		lifecycleCalls: [],
+		sentByRef: new Map(),
+		postFailsAfterLanding: false,
 		deleteFailure: null,
 		lifecycleFailure: null,
 	};
@@ -492,23 +494,52 @@ async function mount({
 							...conversation(`created-${generation}`),
 							tenant_id: tenant,
 						});
-					case "team_bridge.messages.send":
+					case "team_bridge.messages.send": {
 						if (fixture.postGate) await fixture.postGate.promise;
-						if (fixture.refuse)
+						if (fixture.refuse) {
+							/* The ambiguous failure: the hub COMMITTED the message and
+							   the answer was lost. A replay with the same client_ref
+							   must return that original message, not a second one. */
+							if (fixture.postFailsAfterLanding) {
+								const landed = {
+									id: `msg_${owner}`,
+									conversation_id: request.conversation_id,
+									seq: 1,
+									sender: person(owner),
+									body: request.body,
+									origin: "human",
+									created_at: now,
+									client_ref: request.client_ref,
+								};
+								fixture.sentByRef.set(
+									JSON.stringify([ownerKey, request.client_ref]),
+									landed,
+								);
+								fixture.messages.set(ownerKey, [landed]);
+							}
 							return { status: 503, body: { detail: "transport refused" } };
-						fixture.messages.set(ownerKey, [
-							{
-								id: `msg_${owner}`,
-								conversation_id: request.conversation_id,
-								seq: 1,
-								sender: person(owner),
-								body: request.body,
-								origin: "human",
-								created_at: now,
-								client_ref: request.client_ref,
-							},
-						]);
-						return reply({ id: `msg_${owner}` });
+						}
+						/* `client_ref` is the hub's idempotency key, per sender
+						   identity. A replay returns the ORIGINAL message, which is
+						   what makes a retry after an ambiguous failure safe; without
+						   it the fixture would happily create a second message. */
+						const refKey = JSON.stringify([ownerKey, request.client_ref]);
+						const replayed = fixture.sentByRef.get(refKey);
+						if (replayed) return reply({ message: replayed });
+						const message = {
+							id: `msg_${owner}`,
+							conversation_id: request.conversation_id,
+							seq: 1,
+							sender: person(owner),
+							body: request.body,
+							origin: "human",
+							created_at: now,
+							client_ref: request.client_ref,
+						};
+						fixture.sentByRef.set(refKey, message);
+						fixture.messages.set(ownerKey, [message]);
+						return reply({ message });
+					}
 					case "team_bridge.read":
 						return reply({
 							conversation_id: request.conversation_id,

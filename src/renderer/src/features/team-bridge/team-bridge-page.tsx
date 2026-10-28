@@ -463,6 +463,15 @@ export type TeamBridgePageViewProps = {
 	sendRows?: ReadonlyMap<string, TeamBridgeLocalRowPresentation>;
 	/** A compose group resolves from its create receipt without changing the target/key. */
 	resolvedConversation?: TeamBridgeConversation | null;
+	/**
+	 * Take a failed send out of the journal and hand its payload back, so the
+	 * composer that authored it can restore the text and images. Returns null
+	 * when the row is no longer the caller's to take (owner, tenant or state).
+	 */
+	onTakeBackSend?: (
+		clientRef: string,
+		tenantId: string,
+	) => { body: string; attachments: readonly AttachmentChip[] } | null;
 	/** The caller's active memberships, already joined with per-org counts. */
 	organizations: TeamBridgeOrganization[];
 	scope: TeamBridgeScope;
@@ -603,6 +612,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	messages,
 	sendRows,
 	resolvedConversation,
+	onTakeBackSend,
 	organizations,
 	scope,
 	totalUnread,
@@ -1095,6 +1105,52 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const pendingSend = useRef<{ body: string; clientRef: string } | null>(
 		draftJournal?.pending ?? null,
 	);
+	/*
+	 * RETURN TO DRAFT (operator, 2026-10-28). A failed send's text and images go
+	 * back into the composer that authored them, and the row leaves the thread.
+	 * NOTHING TYPED SINCE IS LOST: the restored body is placed before whatever is
+	 * in the box now, and if the box already holds exactly that body (a second
+	 * click, or an earlier restore) it is left alone. Images come back with their
+	 * staged ids, so a resend does not upload them twice.
+	 */
+	const returnToDraft = (clientRef: string) => {
+		const taken = onTakeBackSend?.(clientRef, draftTenant);
+		if (!taken) return;
+		if (taken.attachments.length > 0) images.restore(taken.attachments);
+		const restored = taken.body;
+		const typed = draftRef.current;
+		if (restored.trim())
+			setDraft(
+				!typed.trim()
+					? restored
+					: typed.trim() === restored.trim()
+						? typed
+						: `${restored}\n\n${typed}`,
+			);
+		setSubmitRejected(false);
+		composerRef.current?.focus({ preventScroll: true });
+	};
+
+	/* The rows the composer can act on carry BOTH the journal's own actions and
+	 * this view's return-to-draft, which only the composer can perform. The
+	 * handler reads the CURRENT box through a ref, so a keystroke cannot
+	 * rebuild every row's actions. */
+	const draftRef = useRef(draft);
+	draftRef.current = draft;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `returnToDraft` reads the live draft through `draftRef` and the live strip through `images`; only the row data and the container's handler can change what a row offers.
+	const decoratedSendRows = useMemo(() => {
+		if (!sendRows || !onTakeBackSend) return sendRows;
+		return new Map(
+			[...sendRows].map(([id, row]) => [
+				id,
+				{
+					...row,
+					onReturnToDraft: () => returnToDraft(row.clientRef),
+				},
+			]),
+		);
+	}, [sendRows, onTakeBackSend]);
+
 	const submit = () => {
 		const body = draft.trim();
 		if (images.blocked) {
@@ -2157,7 +2213,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : (
 									<TeamBridgeMessageList
 										messages={messages}
-										sendRows={sendRows}
+										sendRows={decoratedSendRows}
 										profileFor={(sender) =>
 											profileFor(sender, shown?.tenant_id ?? "")
 										}
@@ -3127,6 +3183,10 @@ const TeamBridgeOwnedPage: FC<{
 				target={target}
 				messages={projected.messages}
 				sendRows={projected.sendRows}
+				onTakeBackSend={(clientRef, tenantId) => {
+					const row = outbox.takeBack(clientRef, tenantId);
+					return row ? { body: row.body, attachments: row.attachments } : null;
+				}}
 				resolvedConversation={selected}
 				organizations={organizations}
 				scope={scope}

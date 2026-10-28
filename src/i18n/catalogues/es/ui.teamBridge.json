@@ -242,5 +242,6 @@
 	"ui.teamBridge.invitations.failed.sign_in": "No has iniciado sesión. Inicia sesión e inténtalo de nuevo.",
 	"ui.teamBridge.invitations.failed.unreachable": "La app no pudo conectar con Radient. No se cambió nada. Inténtalo de nuevo.",
 	"ui.teamBridge.invitations.read_only": "Esta organización es de solo lectura para ti, así que aquí no se pueden responder invitaciones.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "No se confirmó tu respuesta. Inténtalo de nuevo."
+	"ui.teamBridge.invitations.failed.unconfirmed": "No se confirmó tu respuesta. Inténtalo de nuevo.",
+	"ui.teamBridge.message.return_to_draft": "Devolver al borrador"
 }

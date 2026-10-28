@@ -358,6 +358,23 @@ export function useTeamBridgeAttachments(args: {
 		return captured;
 	};
 
+	/**
+	 * TAKE A FAILED SEND'S IMAGES BACK into the composer it came from: the same
+	 * chips (preview, prepared bytes, staged id), with their URLs owned here
+	 * again. Keys already in the strip are skipped, so a repeat click cannot
+	 * double an image.
+	 */
+	const restore = (returned: readonly AttachmentChip[]) => {
+		const present = new Set(live.current.map((chip) => chip.key));
+		const added = returned
+			.filter((chip) => !present.has(chip.key))
+			.map((chip) => ({ ...chip }));
+		for (const chip of added)
+			if (chip.previewUrl) transferred.current.delete(chip.previewUrl);
+		if (added.length > 0) write([...live.current, ...added]);
+		setNotice(null);
+	};
+
 	const busy = chips.some(
 		(chip) => chip.status === "preparing" || chip.status === "uploading",
 	);
@@ -384,6 +401,7 @@ export function useTeamBridgeAttachments(args: {
 		markExpired,
 		clearSent,
 		detachForSend,
+		restore,
 		/** Something is still on its way: send waits rather than dropping it. */
 		busy,
 		/** A failed/expired chip must be retried or removed before sending. */

@@ -35,4 +35,10 @@ export type TeamBridgeLocalRowPresentation = {
 	onRetry?: () => void;
 	/** Shown only while `failed`. */
 	onDiscard?: () => void;
+	/**
+	 * Shown only while `failed`: puts the text and its images back in the draft
+	 * that authored them and drops the row. Distinct from discard, which throws
+	 * the attempt away, and from retry, which sends the same payload again.
+	 */
+	onReturnToDraft?: () => void;
 };
