@@ -237,6 +237,14 @@ type Stub = {
 	failAfterFirst?: boolean;
 	detail?: DesktopNotificationDetail | null;
 	capability?: boolean;
+	/**
+	 * The conversation's asks as a STATEFUL list (the ask-pane stories): an accepted
+	 * answer flips the row, the detail route then answers 404 for a settled ask (core's
+	 * `notifications/items.py::detail` rule) and `asks.list` carries the settled row.
+	 */
+	asks?: PendingAsk[];
+	/** How `sessions.answer` answers: settle (default), hang (sending), or fail (503). */
+	answerMode?: "settle" | "hang" | "fail";
 };
 
 let stub: Stub = { items: [], waiting: [] };
@@ -313,11 +321,19 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 								session: found.session,
 								anchor: null,
 								projects: found.projects ?? [],
-								asks: found.source === "ask" ? [ASK] : [],
+								asks:
+									found.source === "ask"
+										? structuredClone(stub.asks ?? [ASK])
+										: [],
 							}
 						: null;
 				})();
-			if (!detail)
+			const settledAsk =
+				stub.asks !== undefined &&
+				String(request.id).startsWith("ask:") &&
+				stub.asks.find((row) => String(request.id).endsWith(`:${row.ask_id}`))
+					?.status !== "open";
+			if (!detail || settledAsk)
 				return { status: 404, body: { detail: "no such notification" } };
 			return { status: 200, body: { result: detail } };
 		}
@@ -328,7 +344,32 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 		 * The detail pane's real answer component posts here. Removing the ask is
 		 * what makes an "answered ask leaves the reel" claim observable.
 		 */
+		case "asks.list":
+			return {
+				status: 200,
+				body: { result: { asks: structuredClone(stub.asks ?? []) } },
+			};
 		case "sessions.answer": {
+			if (stub.asks !== undefined) {
+				if (stub.answerMode === "hang") return new Promise(() => {});
+				if (stub.answerMode === "fail")
+					return {
+						status: 503,
+						body: { detail: "The local server did not answer." },
+					};
+				const row = stub.asks.find((ask) => ask.ask_id === request.askId);
+				if (row) {
+					if (request.decline === true) row.status = "declined";
+					else if (request.dismiss) {
+						row.status = "dismissed";
+						row.dismissed_reason = (request.dismiss as { reason?: string })
+							.reason as never;
+					} else {
+						row.status = "answered";
+						row.answers = request.answers as Record<string, string[]>;
+					}
+				}
+			}
 			const index = stub.waiting.findIndex((row) =>
 				row.id.endsWith(`:${request.askId}`),
 			);
@@ -518,6 +559,257 @@ export const AskDetail: Story = {
 				prefs: { "notifications-read-state": "all" },
 			},
 		),
+};
+
+/*
+ * THE ASK-PANE STATES (the stale-card fix). Two near-identical asks in ONE
+ * conversation - the confusion that motivated the settled row's answer line - and a
+ * play that drives the REAL panel: pick an option, press the door, hold the shutter
+ * until the claimed state is on screen.
+ */
+const SESSION_TWIN = "aaaaaaaaaaa2";
+const twinAsk = (askId: string, question: string): PendingAsk =>
+	({
+		...ASK,
+		ask_id: askId,
+		session_id: SESSION_TWIN,
+		urgent: false,
+		expires_at: NOW + 23 * HOUR,
+		questions: [
+			{
+				id: "rotate",
+				question,
+				recommended: 0,
+				multi: false,
+				options: [
+					{
+						label: "Rotate the edge secret after all three leaks are closed",
+						description: "Then rotate, with you approving the exact commands.",
+					},
+					{ label: "No rotation; closing the leaks is enough" },
+				],
+			},
+		],
+	}) as PendingAsk;
+const TWIN_A = twinAsk(
+	"a-7f3c",
+	"RADIENT_EDGE_SECRET was exposed in WAF samples, WAF logs and the Caddy access log. Should the edge secret be rotated once the fixes are live?",
+);
+const TWIN_B = twinAsk(
+	"a-8e21",
+	"RADIENT_EDGE_SECRET was exposed in WAF samples, WAF logs and the Caddy access log. Should the edge secret be rotated before the fixes are live?",
+);
+const twinState = (answerMode?: Stub["answerMode"]): Stub => ({
+	items: POPULATED,
+	waiting: WAITING,
+	asks: [structuredClone(TWIN_A), structuredClone(TWIN_B)],
+	answerMode,
+});
+const ASK_PANE = {
+	path: `/notifications/${encodeURIComponent(ASK_ID)}`,
+	prefs: { "notifications-read-state": "all" },
+};
+const waitFor = async (done: () => boolean, budgetMs = 6_000) => {
+	const until = Date.now() + budgetMs;
+	while (!done() && Date.now() < until)
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	return done();
+};
+/** Drive ask A's card through one door, holding the shutter until `claimed` holds. */
+const NO_LONGER_NEEDED = /no longer needed/i;
+const driveAsk =
+	(
+		door: "answer" | "decline" | "dismiss",
+		claimed: (root: Element) => boolean,
+	) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const root = document.documentElement;
+		root.dataset.capturePending = "true";
+		const card = () =>
+			canvasElement.querySelector(`[data-lo-ask-row="${TWIN_A.ask_id}"]`);
+		const button = (label: string, scope: Element | null = card()) =>
+			[...(scope?.querySelectorAll("button") ?? [])].find(
+				(node) => node.textContent?.trim() === label,
+			) as HTMLButtonElement | undefined;
+		if (!(await waitFor(() => card() !== null))) {
+			root.dataset.captureFailed = "true";
+			return;
+		}
+		if (door === "answer") {
+			(
+				card()?.querySelector("[data-ask-option]") as HTMLElement | null
+			)?.click();
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			button("Send answer")?.click();
+		} else if (door === "decline") button("Decline")?.click();
+		else {
+			button("Dismiss…")?.click();
+			const reason = () =>
+				[...(card()?.querySelectorAll("button") ?? [])].find((node) =>
+					NO_LONGER_NEEDED.test(node.textContent ?? ""),
+				) as HTMLButtonElement | undefined;
+			await waitFor(() => reason() !== undefined, 2_000);
+			reason()?.click();
+		}
+		if (await waitFor(() => claimed(canvasElement)))
+			delete root.dataset.capturePending;
+		else root.dataset.captureFailed = "true";
+	};
+const settledRow = (root: Element, word: string) =>
+	[...root.querySelectorAll("[data-lo-ask-settled] button")].some((node) =>
+		node.textContent?.startsWith(word),
+	);
+
+/** Two near-identical pending asks in one conversation, both answerable. */
+export const AskPanePending: Story = {
+	render: () => page(twinState(), ASK_PANE),
+};
+/** Send answer pressed; the owner has not answered yet: the card says Sending…. */
+export const AskPaneSending: Story = {
+	render: () => page(twinState("hang"), ASK_PANE),
+	play: driveAsk(
+		"answer",
+		(root) => root.querySelector("[data-lo-ask-sending]") !== null,
+	),
+};
+/** Accepted: the card is Answered — delivering with the chosen option; B stays pending. */
+export const AskPaneAnswered: Story = {
+	render: () => page(twinState(), ASK_PANE),
+	play: driveAsk(
+		"answer",
+		(root) =>
+			root
+				.querySelector(`[data-lo-ask-row="${TWIN_A.ask_id}"]`)
+				?.getAttribute("data-lo-ask-status") === "answered",
+	),
+};
+/** Delivered: ask A files under Settled, naming its question and its answer. */
+export const AskPaneDelivered: Story = {
+	/*
+	 * The detail read itself carries the delivered row here (an update's detail, or the
+	 * aggregate's row merged over the pane's read - the same rows either way), opened
+	 * on the still-open twin so the route answers.
+	 */
+	render: () =>
+		page(
+			{
+				items: POPULATED,
+				waiting: WAITING,
+				detail: {
+					item: WAITING[0],
+					history: [],
+					session: WAITING[0].session,
+					anchor: null,
+					projects: [],
+					asks: [
+						{
+							...structuredClone(TWIN_A),
+							status: "answered",
+							delivered: true,
+							answered_at: NOW - 2 * MINUTE,
+							answered_by: { surface: "desktop" },
+							answers: {
+								rotate: [
+									"Rotate the edge secret after all three leaks are closed",
+								],
+							},
+						} as PendingAsk,
+						structuredClone(TWIN_B),
+					],
+				},
+			},
+			ASK_PANE,
+		),
+};
+/** Declined: filed under Settled as Declined; B stays pending. */
+export const AskPaneDeclined: Story = {
+	render: () => page(twinState(), ASK_PANE),
+	play: driveAsk("decline", (root) => settledRow(root, "Declined")),
+};
+/** Dismissed with a reason: filed under Settled as Dismissed. */
+export const AskPaneDismissed: Story = {
+	render: () => page(twinState(), ASK_PANE),
+	play: driveAsk("dismiss", (root) => settledRow(root, "Dismissed")),
+};
+/** A transport failure: the sentence and Retry, the chosen option kept. */
+export const AskPaneError: Story = {
+	render: () => page(twinState("fail"), ASK_PANE),
+	play: driveAsk(
+		"answer",
+		(root) => root.querySelector("[data-lo-ask-refused] button") !== null,
+	),
+};
+
+/** A body with a 200-character unbroken token and a long fenced command (the overflow fix). */
+const LONG = "x".repeat(200);
+const longBody = (box?: { width: number; height: number }) =>
+	page(
+		{
+			items: POPULATED,
+			waiting: WAITING,
+			detail: {
+				...DETAIL,
+				item: {
+					...DETAIL.item,
+					title:
+						"Cloud node: Slack works remotely now; Datadog and Google still need your sign-in",
+					body_md: [
+						"**Slack works on the cloud node.** A new remote session read a Slack profile with the key shared at 07:31.",
+						"",
+						"1. **Datadog:** your sign-in on the Mac has expired. On the Mac, run `lop mcp reauth datadog`. New node sessions pick it up without a restart.",
+						"2. **Google Workspace on the node (optional):** sign in now through a tunnel: run `ssh -L 8000:localhost:8000 -i ~/.ssh/lop-mesh-nprod.pem ec2-user@16.52.14.201` and open the sign-in link.",
+						"",
+						`An unbroken token: ${LONG}`,
+						"",
+						"```",
+						`ssh -L 8000:localhost:8000 -i ~/.ssh/lop-mesh-nprod.pem ec2-user@16.52.14.201 -- ${LONG}`,
+						"```",
+					].join("\n"),
+				},
+				/*
+				 * The operator's item carried the conversation's asks too: a delivering card
+				 * with a long question and a settled history - the cards and the filter row
+				 * were among the clipped boxes.
+				 */
+				asks: [
+					{
+						...structuredClone(TWIN_A),
+						status: "answered",
+						delivered: false,
+						answered_at: NOW - 2 * MINUTE,
+						answers: {
+							rotate: [
+								`Allow one more run once the guard delta is reviewed ${LONG}`,
+							],
+						},
+					} as PendingAsk,
+					...(Array.from({ length: 6 }, (_, n) => ({
+						...structuredClone(TWIN_B),
+						ask_id: `a-90${n}0`,
+						status: "answered",
+						delivered: true,
+						answered_at: NOW - (10 + n) * MINUTE,
+						answers: { rotate: ["No rotation; closing the leaks is enough"] },
+					})) as PendingAsk[]),
+				],
+			},
+		},
+		{
+			path: `/notifications/${FRAUD.id}`,
+			prefs: { "notifications-read-state": "all" },
+			...(box ? { box } : {}),
+		},
+	);
+export const LongBodyDetail: Story = { render: () => longBody() };
+/** The same body at the three evidence widths: wide, the 1024 default and narrow. */
+export const LongBodyWide: Story = {
+	render: () => longBody({ width: 1600, height: 900 }),
+};
+export const LongBody1024: Story = {
+	render: () => longBody({ width: 1024, height: 900 }),
+};
+export const LongBodyNarrow: Story = {
+	render: () => longBody({ width: 820, height: 900 }),
 };
 
 /** A hundred and sixty rows over six conversations: the From menu sorts by volume. */
