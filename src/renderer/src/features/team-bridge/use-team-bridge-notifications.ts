@@ -70,6 +70,7 @@ import {
 	radientAuthoritySnapshot,
 	subscribeRadientAuthority,
 } from "@shared/hooks/radient-account-authority";
+import { teamBridgeAvatarVersion } from "@shared/hooks/use-account-avatar";
 import { t } from "@shared/i18n";
 import {
 	type QueryClient,
@@ -80,6 +81,12 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
+import {
+	TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+	type TeamBridgeNotificationSender,
+	parseTeamBridgeNotificationSender,
+	safeTeamBridgeBannerText,
+} from "../../../../shared/team-bridge-notify";
 import {
 	type TeamBridgeBannerCopy,
 	type TeamBridgeBannerPlace,
@@ -148,30 +155,20 @@ function bannerPlace(
 /**
  * The organization's people, for naming a sender the way the rail does.
  *
- * Through the SAME cache entry the page's People section reads, so a banner and
- * the rail never disagree about a name and an open page costs no second read.
- * A refused or failed directory is an empty list: the sender's own wire label
- * is then the name, which is still a person's name.
+ * Join ONLY the already-fetched owner+tenant cache entry. Notification delivery
+ * must never fetch a directory per message or wait on a directory request.
+ * A missing/refused directory keeps the wire label and the app icon.
  */
-async function directoryPeople(
+function directoryPeople(
 	client: QueryClient,
 	tenantId: string,
 	accountId: string,
-): Promise<readonly TeamBridgeDirectoryMember[]> {
-	try {
-		const directory = await client.fetchQuery({
-			queryKey: teamBridgeKeys.directory(tenantId, accountId),
-			queryFn: () =>
-				readForBridgeOwner(client, accountId, () =>
-					TeamBridgeApi.directory(tenantId),
-				),
-			staleTime: 30_000,
-			retry: false,
-		});
-		return directory.members;
-	} catch {
-		return [];
-	}
+): readonly TeamBridgeDirectoryMember[] {
+	return (
+		client.getQueryData<Awaited<ReturnType<typeof TeamBridgeApi.directory>>>(
+			teamBridgeKeys.directory(tenantId, accountId),
+		)?.members ?? []
+	);
 }
 
 /**
@@ -191,6 +188,7 @@ async function deliverTeamBridgeBanner(
 ): Promise<void> {
 	if (!stillCurrent()) return;
 	let senderLabel = candidate.senderLabel;
+	let sender: TeamBridgeNotificationSender | undefined;
 	let preview: string | null = null;
 	/*
 	 * NO THREAD READ WHILE THE HOLD IS ON. A reply banner would otherwise address
@@ -237,16 +235,42 @@ async function deliverTeamBridgeBanner(
 				return;
 			}
 			if (!stillCurrent()) return;
-			const people = await directoryPeople(
-				client,
-				candidate.tenantId,
-				selfAccountId,
-			);
+			const people = directoryPeople(client, candidate.tenantId, selfAccountId);
 			senderLabel = participantLabel(newest.sender, people, {
 				named: (agent, person) =>
 					t("ui.teamBridge.chief.label", { agent, person }),
 				unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
 			});
+			const person = people.find(
+				(member) => member.account_id === newest.sender.account_id,
+			);
+			if (
+				person &&
+				(newest.sender.kind === "human" || newest.sender.kind === "agent")
+			) {
+				// Directory identity, not the message's possibly stale composed label.
+				// Source=none wins even if an old avatar_url lingers in a response.
+				const photo =
+					person.profile?.avatar?.source === "none"
+						? null
+						: teamBridgeAvatarVersion(person);
+				sender = parseTeamBridgeNotificationSender({
+					v: 1,
+					kind: newest.sender.kind === "human" ? "person" : "person_agent",
+					account_id: person.account_id,
+					display_name: safeTeamBridgeBannerText(
+						person.display_label,
+						TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+					),
+					agent_name: safeTeamBridgeBannerText(
+						person.agent?.name ?? "",
+						TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+					),
+					...(photo
+						? { avatar: { account_id: photo.accountId, hash: photo.hash } }
+						: {}),
+				});
+			}
 			preview = teamBridgePreviewText(newest.body);
 		}
 	} catch {
@@ -314,6 +338,7 @@ async function deliverTeamBridgeBanner(
 			// hold is on (see `threadId` above).
 			...(threadId ? { threadId } : {}),
 			tenantId: candidate.tenantId,
+			...(sender ? { sender } : {}),
 			seq: candidate.seq,
 			title: text.title,
 			subtitle: text.subtitle,

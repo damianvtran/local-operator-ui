@@ -190,6 +190,26 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			size: z.union([z.literal(64), z.literal(256)]),
 		})
 		.strict(),
+	// Sender composites stay on the private avatar authority: never a URL.
+	z
+		.object({
+			op: z.literal("team_bridge.notification_avatar"),
+			expectedAccountId: id,
+			tenantId: id,
+			accountId: id,
+			kind: z.enum(["person", "person_agent"]),
+			theme: z.enum(["light", "dark"]),
+			size: z.union([z.literal(64), z.literal(256)]),
+			initials: z
+				.string()
+				.max(4)
+				.refine((value) => /^[\p{L}\p{N}]{0,2}$/u.test(value.normalize("NFC"))),
+			avatar: z
+				.object({ account_id: id, hash: z.string().regex(/^[0-9a-f]{16}$/) })
+				.strict()
+				.optional(),
+		})
+		.strict(),
 	/*
 	 * The Library's content and thumbnail bytes. The asset id is shape-checked
 	 * here as well as by the backend route: this relay's premise is that
@@ -233,7 +253,13 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
 
 export type DesktopMediaResponse =
-	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
+	| {
+			status: number;
+			kind: "bytes";
+			mimeType: string;
+			data: Uint8Array;
+			cacheControl?: string;
+	  }
 	| { status: number; kind: "json"; body: unknown }
 	| {
 			status: number;
@@ -310,6 +336,24 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
 				method: "GET",
 			};
+		case "team_bridge.notification_avatar": {
+			const query = new URLSearchParams({
+				tenant_id: request.tenantId,
+				expected_account_id: request.expectedAccountId,
+				kind: request.kind,
+				theme: request.theme,
+				size: String(request.size),
+				initials: request.initials,
+			});
+			if (request.avatar) {
+				query.set("v", request.avatar.hash);
+				query.set("avatar_account_id", request.avatar.account_id);
+			}
+			return {
+				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/notification-avatar?${query}`,
+				method: "GET",
+			};
+		}
 		case "team_bridge.avatar":
 			return {
 				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
@@ -341,7 +385,12 @@ export async function requestDesktopMediaOutcome(
 	token: string | null,
 ): Promise<DesktopMediaOutcome> {
 	const parsed = mediaRequestSchema.safeParse(input);
-	if (!parsed.success) {
+	if (
+		!parsed.success ||
+		(parsed.data.op === "team_bridge.notification_avatar" &&
+			parsed.data.avatar &&
+			parsed.data.avatar.account_id !== parsed.data.accountId)
+	) {
 		// Never sent.
 		return {
 			response: {
@@ -406,7 +455,8 @@ export async function requestDesktopMediaOutcome(
 		request.op === "library.thumbnail" ||
 		request.op === "library.waveform" ||
 		request.op === "team_bridge.attachment" ||
-		request.op === "team_bridge.avatar"
+		request.op === "team_bridge.avatar" ||
+		request.op === "team_bridge.notification_avatar"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
@@ -462,15 +512,22 @@ export async function requestDesktopMediaOutcome(
 			body,
 			// Private avatars are cached only as authority-scoped renderer blobs.
 			// Neither Electron nor an intermediary may persist them across login.
-			...(request.op === "team_bridge.avatar"
+			...(request.op === "team_bridge.avatar" ||
+			request.op === "team_bridge.notification_avatar"
 				? { cache: "no-store" as const }
 				: {}),
 			redirect: "error",
-			signal: AbortSignal.timeout(120000),
+			signal: AbortSignal.timeout(
+				request.op === "team_bridge.notification_avatar" ? 1500 : 120000,
+			),
 		});
 		answered = true;
 		const responseType = response.headers.get("content-type") ?? "";
-		if (request.op === "team_bridge.avatar") {
+		if (
+			request.op === "team_bridge.avatar" ||
+			request.op === "team_bridge.notification_avatar"
+		) {
+			const composite = request.op === "team_bridge.notification_avatar";
 			const mime = responseType.split(";")[0].trim().toLowerCase();
 			const refuse = (status: number): DesktopMediaOutcome => ({
 				response: {
@@ -484,13 +541,15 @@ export async function requestDesktopMediaOutcome(
 			// particular, never buffer an unbounded JSON/HTML error as an image.
 			if (
 				!response.ok ||
-				!TEAM_BRIDGE_ATTACHMENT_TYPES.has(mime) ||
+				!(composite
+					? mime === "image/png"
+					: TEAM_BRIDGE_ATTACHMENT_TYPES.has(mime)) ||
 				!response.body
 			) {
 				await response.body?.cancel();
 				return refuse(response.ok ? 502 : response.status);
 			}
-			const limit = 1024 * 1024;
+			const limit = composite ? 256 * 1024 : 1024 * 1024;
 			const reader = response.body.getReader();
 			const chunks: Uint8Array[] = [];
 			let length = 0;

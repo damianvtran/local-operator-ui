@@ -37,19 +37,23 @@
  */
 
 import { type BrowserWindow, type NativeImage, Notification } from "electron";
+import { t } from "../i18n/index";
 import {
+	TEAM_BRIDGE_NOTIFY_MAX_TITLE,
 	type TeamBridgeNotifyAuthority,
 	type TeamBridgeNotifyRequest,
 	type TeamBridgeOpenResult,
 	type TeamBridgeOpenTarget,
 	parseTeamBridgeNotifyAuthority,
 	parseTeamBridgeNotifyRequest,
+	safeTeamBridgeBannerText,
 	teamBridgeNotifyOwnerMatches,
 } from "../shared/team-bridge-notify";
 import {
 	type LifetimeNotification,
 	NotificationLifetime,
 } from "./notification-lifetime";
+import type { TeamBridgeNotificationImageSource } from "./team-bridge-notification-images";
 import type { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 
 /**
@@ -73,7 +77,9 @@ export type TeamBridgeBannerOptions = {
 	subtitle?: string;
 	body: string;
 	silent: boolean;
-	/** The app icon. macOS uses the bundle's own and ignores this field. */
+	/** Sender composite or app fallback. Electron 44.3.0 maps macOS icon to
+	 * UNNotificationAttachment (thumbnail); the bundle icon remains attribution.
+	 * Windows uses appLogoOverride/crop=none; Linux passes libnotify image-data. */
 	icon?: NativeImage | string;
 };
 
@@ -105,6 +111,8 @@ export type TeamBridgeNotifierOptions = {
 	store: TeamBridgeNotifyStore;
 	host: TeamBridgeNotifierHost;
 	icon?: NativeImage | string;
+	/** Non-blocking, memory-only enrichment; never replaces a delivered banner. */
+	images?: TeamBridgeNotificationImageSource;
 	/** Test seam; production constructs Electron's `Notification`. */
 	createBanner?: (options: TeamBridgeBannerOptions) => TeamBridgeBanner;
 	/** Test seam; production asks `Notification.isSupported()`. */
@@ -265,6 +273,13 @@ export class TeamBridgeNotifier {
 		if (!next) throw new Error("Invalid Team Bridge notification authority.");
 		const current = this.authority;
 		if (current && next.epoch < current.epoch) return;
+		if (
+			current?.epoch !== next.epoch ||
+			current.accountId !== next.accountId ||
+			current.settling !== next.settling
+		) {
+			this.options.images?.clear();
+		}
 		/*
 		 * A SETTLED OWNER THAT CHANGED WITHOUT AN EPOCH BUMP IS A SWITCH THAT
 		 * BYPASSED THIS JOURNAL - a credential replaced outside the app (a CLI
@@ -320,6 +335,7 @@ export class TeamBridgeNotifier {
 	/** Document epochs restart on reload. Only main's document lifecycle can
 	 * reset that counter; an IPC payload cannot lower it. */
 	resetAuthority(): void {
+		this.options.images?.clear();
 		this.clearSettleDeadline();
 		// A new document has a new epoch journal, not a new signed-in person.
 		// Keep the last settled owner and banners; suspend admission until its
@@ -383,6 +399,7 @@ export class TeamBridgeNotifier {
 	}
 
 	private revoke(): void {
+		this.options.images?.clear();
 		// Preserve only neutral stale feedback after a settled account change.
 		if (this.pendingOpen) this.pendingUnavailable = true;
 		for (const notification of this.banners.values()) {
@@ -446,6 +463,19 @@ export class TeamBridgeNotifier {
 		 * and the name now says so. This is the same rule the allow-list states:
 		 * the exemption is one line, and it is spelled.
 		 */
+		const sender = request.sender;
+		const title = sender
+			? safeTeamBridgeBannerText(
+					sender.kind === "person_agent"
+						? t("ui.teamBridge.chief.label", {
+								person: sender.display_name,
+								agent: sender.agent_name ?? "",
+							})
+						: sender.display_name,
+					TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+				)
+			: request.title;
+		const icon = this.options.images?.peek(request) ?? this.options.icon;
 		const notification = this.createBanner({
 			id: teamBridgeBannerId(request.owner.accountId, request.conversationId),
 			groupId: teamBridgeBannerId(
@@ -453,11 +483,11 @@ export class TeamBridgeNotifier {
 				request.conversationId,
 			),
 			...teamBridgeBannerLines(
-				request,
+				{ ...request, title },
 				this.options.platform ?? process.platform,
 			),
 			silent: burst,
-			...(this.options.icon ? { icon: this.options.icon } : {}),
+			...(icon ? { icon } : {}),
 		});
 		/*
 		 * RETAINED AND WIRED BY THE SAME CALL, for the reason
@@ -487,6 +517,11 @@ export class TeamBridgeNotifier {
 			request.conversationId,
 			request.seq,
 		);
+		// Only AFTER show/seq recording. Same-tag replacement can re-alert on
+		// macOS/Windows and Linux has no public stable-id replacement guarantee.
+		// Until each platform proves otherwise, completion warms future fallback
+		// only: never close/re-show or mutate this event's routing/lifetime.
+		this.options.images?.warm(request);
 		return { shown: true };
 	}
 

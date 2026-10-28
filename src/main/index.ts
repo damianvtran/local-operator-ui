@@ -12,6 +12,7 @@ import {
 	globalShortcut,
 	ipcMain,
 	nativeImage,
+	nativeTheme,
 	session,
 	shell,
 	webContents,
@@ -141,6 +142,7 @@ import {
 	installSupplementProtocol,
 	registerSupplementScheme,
 } from "./supplement-protocol";
+import { TeamBridgeNotificationImages } from "./team-bridge-notification-images";
 import { TeamBridgeNotifier } from "./team-bridge-notifier";
 import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 import {
@@ -2576,7 +2578,18 @@ app
 		 * only way it knows how (the Dock-click path); the target stays pending for
 		 * the new renderer to pull on mount.
 		 */
+		let notificationAvatarAvailable = false;
+		const notificationImages = new TeamBridgeNotificationImages({
+			enabled: () => notificationAvatarAvailable,
+			request: (input) => backendService.requestDesktopMedia(input, null),
+			theme: () => (nativeTheme.shouldUseDarkColors ? "dark" : "light"),
+			decode: (data) => {
+				const icon = nativeImage.createFromBuffer(Buffer.from(data));
+				return icon.isEmpty() ? undefined : icon;
+			},
+		});
 		const teamBridgeNotifier = new TeamBridgeNotifier({
+			images: notificationImages,
 			window: () => mainWindow,
 			show: windowLaunch.show,
 			icon: image,
@@ -2618,6 +2631,22 @@ app
 		// defers the legacy toast until the read settles, so nothing can slip
 		// through the window in between.
 		backendService.onBackendReady(() => {
+			// Negotiate outside delivery. A restarted/older core drops all image
+			// eligibility until its own capability answers; never 404-probe per event.
+			notificationAvatarAvailable = false;
+			notificationImages.clear();
+			void backendService
+				.requestDesktop({ op: "capabilities" })
+				.then((response) => {
+					const body = response.body as {
+						result?: { features?: Record<string, unknown> };
+					} | null;
+					notificationAvatarAvailable =
+						Number(
+							body?.result?.features?.team_bridge_notification_avatar ?? 0,
+						) >= 1;
+				})
+				.catch(() => undefined);
 			/*
 			 * And the main process's locale, for the same reason and on the same
 			 * transitions: a restarted or newly discovered backend can carry a

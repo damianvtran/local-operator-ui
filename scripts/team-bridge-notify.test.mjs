@@ -84,7 +84,7 @@ const electronFixture = {
 const mainBundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/team-bridge-notifier"; export { registerDesktopIPC } from "./src/main/desktop-ipc";',
+			'export * from "./src/main/team-bridge-notifier"; export * from "./src/main/team-bridge-notification-images"; export { registerDesktopIPC } from "./src/main/desktop-ipc";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -559,6 +559,7 @@ function harness({
 	show = "focus",
 	supported = true,
 	timers,
+	images,
 } = {}) {
 	const banners = [];
 	const signals = [];
@@ -569,6 +570,8 @@ function harness({
 		window: () => window,
 		show,
 		store,
+		images,
+		icon: "app-icon",
 		host: {
 			signalOpen: () => signals.push(true),
 			reopen: () => reopens.push(true),
@@ -1573,4 +1576,249 @@ test("CODE-m1 a banner withdrawn by a sign-out still answers as stale", () => {
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+// Sender v1 is additive; a bad optional identity/image never loses a message.
+const personSender = (patch = {}) => ({
+	v: 1,
+	kind: "person",
+	account_id: "acc_ben",
+	display_name: "Ben Tran",
+	...patch,
+});
+test("sender kinds and owner-avatar equality fail safe without suppressing delivery", () => {
+	for (const kind of ["person", "person_agent"]) {
+		const sender = personSender({
+			kind,
+			agent_name: "Aida",
+			avatar: { account_id: "acc_ben", hash: "0123456789abcdef" },
+		});
+		assert.equal(
+			limits.parseTeamBridgeNotifyRequest(request({ sender })).sender.kind,
+			kind,
+		);
+		sender.avatar.account_id = "acc_someone_else";
+		assert.equal(
+			limits.parseTeamBridgeNotifyRequest(request({ sender })).sender.avatar,
+			undefined,
+		);
+	}
+	for (const sender of [
+		personSender({ kind: "local" }),
+		personSender({ kind: "unknown" }),
+		personSender({ v: 2 }),
+		personSender({ display_name: "Ben\u202e" }),
+		personSender({ kind: "person_agent" }),
+	]) {
+		const parsed = limits.parseTeamBridgeNotifyRequest(request({ sender }));
+		assert.ok(parsed);
+		assert.equal(parsed.sender, undefined);
+	}
+});
+
+test("cold sender enrichment posts synchronously; completion never re-alerts or changes click routing", async () => {
+	const { dir, file } = tempFile();
+	let resolve;
+	const fetch = new Promise((done) => {
+		resolve = done;
+	});
+	let warming = 0;
+	const images = {
+		peek: () => undefined,
+		clear() {},
+		warm() {
+			warming++;
+			void fetch;
+		},
+	};
+	try {
+		const h = harness({ file, images });
+		const result = h.notifier.notify(request({ sender: personSender() }));
+		assert.deepEqual(result, { shown: true });
+		assert.equal(h.banners[0].shown, true);
+		assert.equal(h.banners[0].options.title, "Ben Tran");
+		assert.equal(h.banners[0].options.icon, "app-icon");
+		assert.equal(h.banners[0].options.silent, false);
+		assert.equal(warming, 1);
+		h.banners[0].emit("close");
+		resolve();
+		await fetch;
+		assert.equal(
+			h.banners.length,
+			1,
+			"image completion cannot resurrect the dismissed banner",
+		);
+		h.banners[0].emit("click");
+		assert.deepEqual(h.notifier.takePendingOpen(), {
+			owner: request().owner,
+			conversationId: request().conversationId,
+			tenantId: request().tenantId,
+		});
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("warm composite follows the person source kind; agent title names its owner and agent", () => {
+	const { dir, file } = tempFile();
+	const images = {
+		peek: (r) => (r.sender ? `${r.sender.kind}-composite` : undefined),
+		clear() {},
+		warm() {},
+	};
+	try {
+		const h = harness({ file, images });
+		h.notifier.notify(
+			request({
+				sender: personSender({ kind: "person_agent", agent_name: "Aida" }),
+			}),
+		);
+		assert.equal(h.banners[0].options.icon, "person_agent-composite");
+		assert.match(h.banners[0].options.title, /Ben Tran/);
+		assert.match(h.banners[0].options.title, /Aida/);
+		h.notifier.notify(
+			request({ seq: 5, sender: personSender({ kind: "local" }) }),
+		);
+		assert.equal(h.banners[1].options.icon, "app-icon");
+		assert.equal(
+			h.banners[1].options.silent,
+			true,
+			"burst/DND behavior unchanged",
+		);
+		assert.equal("urgency" in h.banners[1].options, false);
+		assert.equal("timeoutType" in h.banners[1].options, false);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+// This header is enough for the bounded admission check; fake native decoder
+// returns a token. Actual Pillow PNG decoding is covered by core loopback QA.
+const compositePng = () => {
+	const data = Buffer.alloc(100);
+	Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(data);
+	data.writeUInt32BE(13, 8);
+	data.write("IHDR", 12);
+	data.writeUInt32BE(64, 16);
+	data.writeUInt32BE(64, 20);
+	return data;
+};
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+function imageCache(options = {}) {
+	return new notifierModule.TeamBridgeNotificationImages({
+		enabled: () => true,
+		theme: () => "light",
+		request: async () => ({
+			kind: "bytes",
+			status: 200,
+			mimeType: "image/png",
+			data: compositePng(),
+		}),
+		decode: () => "initials-composite",
+		...options,
+	});
+}
+
+test("bounded image cache expires, evicts, separates tenant and epoch, and clears in-flight results", async () => {
+	let now = 0;
+	const cache = imageCache({ now: () => now });
+	const r = request({ sender: personSender() });
+	cache.warm(r);
+	await tick();
+	assert.equal(cache.peek(r), "initials-composite");
+	assert.equal(cache.peek({ ...r, tenantId: "tnt_other" }), undefined);
+	assert.equal(
+		cache.peek({ ...r, owner: { ...r.owner, epoch: 2 } }),
+		undefined,
+	);
+	now = notifierModule.TEAM_BRIDGE_IMAGE_TTL_MS;
+	assert.equal(cache.peek(r), undefined);
+	for (let i = 0; i <= notifierModule.TEAM_BRIDGE_IMAGE_MAX_ENTRIES; i++) {
+		cache.warm({ ...r, sender: personSender({ account_id: `acc_${i}` }) });
+		await tick();
+	}
+	assert.equal(
+		cache.peek({ ...r, sender: personSender({ account_id: "acc_0" }) }),
+		undefined,
+	);
+	assert.equal(
+		cache.peek({ ...r, sender: personSender({ account_id: "acc_64" }) }),
+		"initials-composite",
+	);
+	cache.clear();
+	assert.equal(
+		cache.peek({ ...r, sender: personSender({ account_id: "acc_64" }) }),
+		undefined,
+	);
+	let release;
+	const pending = imageCache({
+		request: () =>
+			new Promise((done) => {
+				release = done;
+			}),
+	});
+	pending.warm(r);
+	pending.clear();
+	release({
+		kind: "bytes",
+		status: 200,
+		mimeType: "image/png",
+		data: compositePng(),
+	});
+	await tick();
+	assert.equal(pending.peek(r), undefined);
+});
+
+test("image fetch error/timeout stays a cache miss and cannot affect an immediate banner", async () => {
+	for (const error of [
+		new Error("offline"),
+		new DOMException("timeout", "TimeoutError"),
+	]) {
+		const cache = imageCache({
+			request: async () => {
+				throw error;
+			},
+		});
+		const { dir, file } = tempFile();
+		try {
+			const h = harness({ file, images: cache });
+			assert.deepEqual(h.notifier.notify(request({ sender: personSender() })), {
+				shown: true,
+			});
+			assert.equal(h.banners[0].shown, true);
+			await tick();
+			assert.equal(h.banners.length, 1);
+			assert.equal(cache.peek(request({ sender: personSender() })), undefined);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}
+});
+
+test("no-store photo is never retained as a future notification's identity", async () => {
+	const calls = [];
+	const cache = imageCache({
+		request: async (input) => {
+			calls.push(input);
+			return {
+				kind: "bytes",
+				status: 200,
+				mimeType: "image/png",
+				data: compositePng(),
+			};
+		},
+	});
+	const r = request({
+		sender: personSender({
+			avatar: { account_id: "acc_ben", hash: "0123456789abcdef" },
+		}),
+	});
+	cache.warm(r);
+	await tick();
+	assert.equal(cache.peek(r), "initials-composite");
+	assert.equal(
+		calls.at(-1).avatar,
+		undefined,
+		"only a no-photo render may enter the fallback cache",
+	);
 });
