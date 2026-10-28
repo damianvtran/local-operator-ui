@@ -53,6 +53,14 @@ export interface BrowserApprovalsDialogProps {
 	 * a card channel.
 	 */
 	onReviewWaiting: () => void;
+	/**
+	 * Where keyboard focus goes when the dialog closes, by any path (U2). Radix
+	 * hands focus back to whatever opened the dialog, and from the page menu that
+	 * is a menu item which unmounts with the menu: focus fell to <body> and the
+	 * next Tab started at the top of the document. The caller names a control that
+	 * is actually mounted (the toolbar Approvals button, else the page menu's).
+	 */
+	returnFocusTo: () => HTMLElement | null;
 	approvals: ApprovalView[];
 	currentOrigin: string | null;
 	busy: boolean;
@@ -67,6 +75,7 @@ export const BrowserApprovalsDialog: FC<BrowserApprovalsDialogProps> = ({
 	onClose,
 	waitingCount,
 	onReviewWaiting,
+	returnFocusTo,
 	approvals,
 	currentOrigin,
 	busy,
@@ -98,6 +107,30 @@ export const BrowserApprovalsDialog: FC<BrowserApprovalsDialogProps> = ({
 			title={t("ui.browser.browser_approvals_dock.approvals")}
 			dataTourTag="browser-approvals-dialog"
 			maxWidth="xs"
+			fullWidth
+			dialogProps={{
+				/*
+				 * OPEN ON THE DIALOG, NEVER ON A DESTRUCTIVE CONTROL (D-1 / U1). Radix's
+				 * default focuses the first tabbable in the body, which is "Revoke" or
+				 * "Forget this site" or "Clear cookies": one Enter, a key repeat or a
+				 * double press of the toolbar control then revoked a grant or signed the
+				 * user out of a site with no confirmation. The fallback dock focused its
+				 * heading for the same reason; the dialog container is the equivalent
+				 * (it carries the title as its accessible name, and Tab reaches the
+				 * first control from there).
+				 */
+				onOpenAutoFocus: (event: Event) => {
+					event.preventDefault();
+					const content = document
+						.querySelector('[data-tour-tag="browser-approvals-dialog"]')
+						?.closest<HTMLElement>('[role="dialog"]');
+					content?.focus({ preventScroll: true });
+				},
+				onCloseAutoFocus: (event: Event) => {
+					event.preventDefault();
+					returnFocusTo()?.focus();
+				},
+			}}
 			actions={
 				<Button
 					variant="ghost"
@@ -120,9 +153,13 @@ export const BrowserApprovalsDialog: FC<BrowserApprovalsDialogProps> = ({
 						variant="outline"
 						size="sm"
 						className="w-full"
-						// The card's own Review-all wording: the visible label keeps the
-						// count, the accessible name says what pressing it does.
-						aria-label={t("ui.browser.browser_approvals_tray.open_approvals")}
+						// The visible label already says what is waiting; the accessible
+						// name must not repeat the dialog's own title as "Open approvals"
+						// (U10), so it is the same waiting sentence the toolbar control
+						// carries.
+						aria-label={t("ui.browser.browser_url_bar.approvals_waiting", {
+							count: waitingCount,
+						})}
 						onClick={onReviewWaiting}
 						data-tour-tag="browser-approvals-dialog-review"
 					>

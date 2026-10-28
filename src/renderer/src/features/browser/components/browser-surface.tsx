@@ -454,7 +454,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	useEffect(() => {
 		const isOpen = Boolean(nativeApprovalsCard?.open);
 		if (cardWasOpen.current && !isOpen) {
-			approvalsTriggerRef.current?.focus();
+			// At a folded row (< 300px) the toolbar control is not mounted and the
+			// card was reached from the page menu: fall back to that trigger so the
+			// close never drops to <body> (U2).
+			(approvalsTriggerRef.current ?? pageMenuTriggerRef.current)?.focus();
 		}
 		cardWasOpen.current = isOpen;
 	}, [nativeApprovalsCard?.open]);
@@ -731,6 +734,34 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		(approvalsTriggerRef.current ?? pageMenuTriggerRef.current)?.focus();
 	}, [bandShowing, dockOpen]);
 
+	/*
+	 * ANNOUNCE A NEW REQUEST WHEN THE CARD IS THE SURFACE (U4). The band this
+	 * replaces carried `aria-live="polite"` because it appears without the user's
+	 * action; with the native card the band is not mounted, the toolbar badge is
+	 * `aria-hidden` and the card document is a separate native view, so nothing in
+	 * the app renderer told a screen-reader user that an agent was waiting. This
+	 * visually hidden status says it with the existing toolbar-control sentence (no
+	 * new copy). It speaks on a count that GROWS, and when the count falls but
+	 * something still waits (the number the user must now act on changed); falling
+	 * to zero clears it silently, because an answer or an expiry is not news and the
+	 * user just caused or does not need it. The region is always mounted, empty
+	 * first: a live region inserted already holding text is not reliably announced.
+	 */
+	const [approvalsAnnouncement, setApprovalsAnnouncement] = useState("");
+	const lastAnnouncedCount = useRef(0);
+	useEffect(() => {
+		const previous = lastAnnouncedCount.current;
+		lastAnnouncedCount.current = queue.count;
+		if (!nativeApprovalsCard?.available || queue.count === previous) return;
+		setApprovalsAnnouncement(
+			queue.count > 0
+				? t("ui.browser.browser_url_bar.approvals_waiting", {
+						count: queue.count,
+					})
+				: "",
+		);
+	}, [queue.count, nativeApprovalsCard?.available]);
+
 	const closeDock = useCallback(() => {
 		setDockOpen(false);
 		// Escape and the close button both return focus to the control that opened
@@ -779,8 +810,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			setApprovalsDialogOpen(true);
 			// The page menu reads `true` as "a panel took focus, decline Radix's
 			// return to the trigger". A dialog is not that panel: it traps focus
-			// itself and `BaseDialog` hands it back to the opener on close, so the
-			// menu may restore its trigger first (which is where the user came from).
+			// itself, and on close it names the control to return to
+			// (`returnFocusTo`). Radix's own return goes to the menu item, which
+			// unmounts with the menu, so the dialog does not rely on it (U2).
 			return false;
 		},
 		[
@@ -1267,6 +1299,15 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						: t("ui.browser.browser_surface.on_another_tab");
 				}}
 			/>
+			{nativeApprovalsCard?.available && (
+				<output
+					aria-live="polite"
+					className="sr-only"
+					data-tour-tag="browser-approvals-announcer"
+				>
+					{approvalsAnnouncement}
+				</output>
+			)}
 			{/* The band renders while there is anything to say: a live request, or a
 			    resolved row the user is still reading (spec 3.4's bounded memory). One
 			    pending request and no resolved rows is the common case and the tray then
@@ -1531,6 +1572,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					setApprovalsDialogOpen(false);
 				}}
 				waitingCount={queue.count}
+				returnFocusTo={() =>
+					approvalsTriggerRef.current ?? pageMenuTriggerRef.current
+				}
 				onReviewWaiting={() => {
 					// Close first: the dialog hides the page view (and with it the
 					// card), and the open below arms the card's explicit-open latch so

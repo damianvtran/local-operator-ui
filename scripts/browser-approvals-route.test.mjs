@@ -233,7 +233,15 @@ export function mount(container, options = {}) {
 			dockSurfaceTag: "browser-route-dock",
 		}),
 	);
-	return { calls: () => calls, unmount: () => root.unmount() };
+	return {
+		calls: () => calls,
+		/** Replace the live queue the way main's projection push does. */
+		setPending: (list) => {
+			state.pendingConsent = list;
+			notify();
+		},
+		unmount: () => root.unmount(),
+	};
 }
 `;
 
@@ -470,7 +478,9 @@ test("the dialog offers the waiting requests back as the card, through the exist
 	await flush();
 	const review = q('[data-tour-tag="browser-approvals-dialog-review"]');
 	assert.ok(review, "the dialog offers the waiting requests");
-	assert.equal(review.getAttribute("aria-label"), "Open approvals");
+	// U10: the accessible name is the toolbar control's waiting sentence, not
+	// "Open approvals" inside a dialog titled Approvals.
+	assert.equal(review.getAttribute("aria-label"), "Approvals, 2 waiting");
 	assert.ok(
 		review.textContent.includes("2"),
 		"and keeps the live count visible",
@@ -527,5 +537,163 @@ test("the page menu's Approvals item opens the dialog even while a request is pe
 		0,
 		"the menu route never opens the card",
 	);
+	handle.unmount();
+});
+
+const pressEscape = async () => {
+	await act(async () => {
+		document.activeElement?.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await flush();
+};
+const REVOKE_ALL = /Revoke all/;
+const DESTRUCTIVE = [
+	"browser-revoke-approval",
+	"browser-forget-site",
+	"browser-clear-cookies",
+	"browser-clear-cache",
+	"browser-clear-everything",
+];
+const isDestructive = (node) =>
+	node?.tagName === "BUTTON" &&
+	(DESTRUCTIVE.includes(node.getAttribute("data-tour-tag")) ||
+		REVOKE_ALL.test(node.textContent ?? ""));
+
+test("D-1/U1: the dialog opens focused on the dialog, not on a destructive control, and Enter on open does nothing (populated and empty)", async () => {
+	for (const [label, approvals] of [
+		["populated", GRANTS],
+		["empty", []],
+	]) {
+		const host = freshContainer();
+		const handle = mount(host, { approvals });
+		await flush();
+		await click(toolbarButton());
+		const dialog = q('[role="dialog"]');
+		assert.ok(dialog, `${label}: the dialog is open`);
+		assert.ok(
+			dialog.contains(document.activeElement),
+			`${label}: focus is inside the dialog`,
+		);
+		assert.equal(
+			isDestructive(document.activeElement),
+			false,
+			`${label}: initial focus is not a destructive control (${document.activeElement?.outerHTML?.slice(0, 80)})`,
+		);
+		// Enter on whatever has focus: a real key press activates a focused button
+		// by clicking it; model that, and require that no host call results.
+		await act(async () => {
+			const target = document.activeElement;
+			target.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+				}),
+			);
+			if (target.tagName === "BUTTON") target.click();
+		});
+		await flush();
+		const sideEffects = handle
+			.calls()
+			.filter(([name]) =>
+				[
+					"revokeApproval",
+					"revokeAllApprovals",
+					"forgetSite",
+					"clearData",
+				].includes(name),
+			);
+		assert.deepEqual(
+			sideEffects,
+			[],
+			`${label}: Enter on open changed nothing`,
+		);
+		await pressEscape();
+		handle.unmount();
+	}
+});
+
+test("U2: closing the dialog (Escape or Close) from the toolbar or the page menu lands focus on a mounted control, never body", async () => {
+	const host = freshContainer();
+	const handle = mount(host, { approvals: GRANTS });
+	await flush();
+	// From the toolbar control.
+	await act(async () => toolbarButton().focus());
+	await click(toolbarButton());
+	assert.ok(q('[role="dialog"]'));
+	await pressEscape();
+	assert.equal(q('[role="dialog"]'), null, "Escape closes the dialog");
+	assert.equal(
+		document.activeElement,
+		toolbarButton(),
+		"toolbar control has focus",
+	);
+
+	// From the page menu: the menu item that opened it unmounts with the menu.
+	const trigger = q('[data-tour-tag="browser-page-menu"]');
+	await act(async () => trigger.focus());
+	await act(async () => {
+		trigger.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+		);
+	});
+	await flush();
+	const item = qa('[role="menuitem"][data-tour-tag="browser-approvals"]')[0];
+	await act(async () => {
+		item.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.ok(q('[role="dialog"]'), "the menu route opens the dialog");
+	await click(q('[data-tour-tag="browser-approvals-dialog-close"]'));
+	assert.notEqual(
+		document.activeElement,
+		document.body,
+		"focus is not on body",
+	);
+	assert.ok(
+		document.activeElement === toolbarButton() ||
+			document.activeElement === trigger,
+		"focus is on the toolbar control or the page menu trigger",
+	);
+	handle.unmount();
+});
+
+test("U4: with the card available a polite status announces a new request, and does not announce when the count falls to zero", async () => {
+	const host = freshContainer();
+	const handle = mount(host, {});
+	await flush();
+	const region = () => q('[data-tour-tag="browser-approvals-announcer"]');
+	assert.ok(region(), "the live region is mounted in the enabled build");
+	assert.equal(region().getAttribute("aria-live"), "polite");
+	assert.equal(region().textContent, "", "empty at rest");
+	handle.setPending([pending("a")]);
+	await flush();
+	assert.equal(region().textContent, "Approvals, 1 waiting");
+	handle.setPending([pending("a"), pending("b")]);
+	await flush();
+	assert.equal(
+		region().textContent,
+		"Approvals, 2 waiting",
+		"a second request announces",
+	);
+	handle.setPending([]);
+	await flush();
+	assert.equal(region().textContent, "", "falling to zero is silent");
+	handle.unmount();
+});
+
+test("U4: in the fallback build the band carries the live region and the announcer is absent", async () => {
+	const host = freshContainer();
+	const handle = mount(host, {
+		pending: [pending("a")],
+		card: { available: false, open: false },
+	});
+	await flush();
+	assert.equal(q('[data-tour-tag="browser-approvals-announcer"]'), null);
 	handle.unmount();
 });
