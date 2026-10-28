@@ -17,7 +17,7 @@
  */
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
-import { after, test } from "node:test";
+import { after, afterEach, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
@@ -38,6 +38,32 @@ globalThis.document = dom.window.document;
 globalThis.Event = dom.window.Event;
 globalThis.CustomEvent = dom.window.CustomEvent;
 globalThis.localStorage = dom.window.localStorage;
+// Node also supplies navigator, but not navigator.onLine. Use the browser
+// navigator so connectivity queries resolve a boolean rather than undefined.
+Object.defineProperty(globalThis, "navigator", {
+	configurable: true,
+	value: dom.window.navigator,
+});
+
+// Health reads use a fixed fixture, never the operator's live daemon.
+// Record unexpected requests as well as rejecting: query hooks may catch errors.
+const unexpectedNetwork = [];
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (input, init) => {
+	const url = new URL(
+		typeof input === "string" || input instanceof URL ? input : input.url,
+	);
+	const method = init?.method ?? input?.method ?? "GET";
+	if (
+		url.origin === "http://localhost:1111" &&
+		url.pathname === "/health" &&
+		method === "GET"
+	)
+		return Response.json({ status: "ok", result: { version: "test" } });
+	unexpectedNetwork.push(`${method} ${url.origin}${url.pathname}`);
+	throw new Error("Unexpected network request in attachment render test");
+};
+window.fetch = globalThis.fetch;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 // Radix/virtualiser plumbing jsdom lacks; no layout is asserted here.
 globalThis.ResizeObserver = class {
@@ -83,6 +109,12 @@ window.api = {
 			};
 		},
 	},
+	// OS hand-offs stop at the bridge in this DOM rig. A real shell is neither
+	// available nor part of the attachment permission assertions below.
+	openFile: async () => {},
+	showItemInFolder: async () => {},
+	openExternal: async () => {},
+	readFile: async () => ({ success: true, content: "test file" }),
 	// The sent-file card's existence probe: every path is present.
 	probeFiles: async (paths) =>
 		paths.map((path) => ({ resolved: path, exists: true, isFile: true })),
@@ -158,7 +190,45 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundled.outputFiles[0].text);
 const api = await import(bundlePath.href);
 await unlink(bundlePath);
-after(() => dom.window.close());
+const mountedRoots = new Set();
+const clients = new Set();
+function testQueryClient() {
+	const client = new api.QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+				staleTime: Number.POSITIVE_INFINITY,
+				gcTime: Number.POSITIVE_INFINITY,
+				refetchOnReconnect: false,
+				refetchOnWindowFocus: false,
+				refetchInterval: false,
+			},
+			mutations: { retry: false },
+		},
+	});
+	clients.add(client);
+	return client;
+}
+// Keep failure paths as isolated as successful ones: a failed assertion must
+// not leave an observer/refetch timer alive for the rest of the test file.
+afterEach(async () => {
+	for (const { root, container } of mountedRoots) {
+		await act(async () => root.unmount());
+		container.remove();
+	}
+	mountedRoots.clear();
+	for (const client of clients) client.clear();
+	clients.clear();
+	assert.deepEqual(
+		unexpectedNetwork.splice(0),
+		[],
+		"no unexpected network requests",
+	);
+});
+after(() => {
+	dom.window.close();
+	globalThis.fetch = originalFetch;
+});
 
 const RETAINED = /Moved or deleted · saved copy kept/;
 const SAVED_COPY = /Saved copy/;
@@ -220,11 +290,14 @@ async function mount(element) {
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
+	const owned = { root, container };
+	mountedRoots.add(owned);
 	await act(async () => root.render(element));
 	return {
 		container,
 		unmount: async () => {
 			await act(async () => root.unmount());
+			mountedRoots.delete(owned);
 			container.remove();
 		},
 	};
@@ -629,17 +702,7 @@ async function transcriptOffer({
 			],
 		},
 	];
-	const client = new api.QueryClient({
-		// Infinite gc: a finite one arms a timer that keeps node:test's process
-		// alive for minutes after the last test.
-		defaultOptions: {
-			queries: {
-				retry: false,
-				staleTime: Number.POSITIVE_INFINITY,
-				gcTime: Number.POSITIVE_INFINITY,
-			},
-		},
-	});
+	const client = testQueryClient();
 	client.setQueryData(api.desktopKeys.capabilities, {
 		desktop_available: true,
 		features: capable ? { session_attachments: 1 } : {},
@@ -836,9 +899,7 @@ async function pressAndShow(item, { capable = true, body = ENV_TEXT } = {}) {
 	if (!opened.length) return { title, opened, ops: [...requests] };
 	// The editable editor needs a query client; give it one, so a regression
 	// fails on the assertions below rather than on a missing provider.
-	const client = new api.QueryClient({
-		defaultOptions: { queries: { gcTime: Number.POSITIVE_INFINITY } },
-	});
+	const client = testQueryClient();
 	const shown = await mount(
 		h(
 			api.QueryClientProvider,
@@ -947,9 +1008,7 @@ test("U12 control: an ordinary text file still opens in the EDITABLE editor", as
 	const document_ = api.canvasDocumentForPath("/tmp/notes.txt", {
 		content: "hello",
 	});
-	const client = new api.QueryClient({
-		defaultOptions: { queries: { gcTime: Number.POSITIVE_INFINITY } },
-	});
+	const client = testQueryClient();
 	const shown = await mount(
 		h(
 			api.QueryClientProvider,
@@ -1027,6 +1086,8 @@ test("U11: Retry shows the loading line while in flight, and the error again if 
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
+	const owned = { root, container };
+	mountedRoots.add(owned);
 	await act(async () => root.render(render()));
 	const retry = [...container.querySelectorAll("button")].find(
 		(node) => node.textContent === "Retry",
@@ -1051,6 +1112,7 @@ test("U11: Retry shows the loading line while in flight, and the error again if 
 	await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
 	assert.ok(container.textContent.includes("Couldn't load attachments"));
 	await act(async () => root.unmount());
+	mountedRoots.delete(owned);
 	container.remove();
 });
 
@@ -1380,9 +1442,7 @@ test("R5-4: a body over the eager-read ceiling with no listed size says too larg
 });
 
 test("R5-3: a new digest on a live preview shows loading, not the previous file", async () => {
-	const client = new api.QueryClient({
-		defaultOptions: { queries: { gcTime: Number.POSITIVE_INFINITY } },
-	});
+	const client = testQueryClient();
 	const SECOND = "c".repeat(32);
 	mediaBytes.set(ENV_DIGEST, {
 		data: new TextEncoder().encode(ENV_TEXT),
@@ -1412,6 +1472,8 @@ test("R5-3: a new digest on a live preview shows loading, not the previous file"
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
+	const owned = { root, container };
+	mountedRoots.add(owned);
 	const render = (digest) =>
 		h(
 			api.QueryClientProvider,
@@ -1434,6 +1496,7 @@ test("R5-3: a new digest on a live preview shows loading, not the previous file"
 	await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 	window.api.desktop.media = original;
 	await act(async () => root.unmount());
+	mountedRoots.delete(owned);
 	container.remove();
 });
 
@@ -1448,6 +1511,8 @@ test("U17: a keyboard Retry keeps focus on Retry when the error returns, after a
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
+	const owned = { root, container };
+	mountedRoots.add(owned);
 	await act(async () => root.render(render()));
 	const findRetry = () =>
 		[...container.querySelectorAll("button")].find(
@@ -1471,6 +1536,7 @@ test("U17: a keyboard Retry keeps focus on Retry when the error returns, after a
 	assert.equal(document.activeElement, findRetry(), "focus is back on Retry");
 	// U19: during the retry only the banner slot says it is loading.
 	await act(async () => root.unmount());
+	mountedRoots.delete(owned);
 	container.remove();
 });
 
@@ -1772,6 +1838,8 @@ test("R6-2: a keyboard Retry that succeeds leaves no armed refocus for a later f
 	const composer = document.createElement("input");
 	document.body.append(composer);
 	const root = createRoot(container);
+	const owned = { root, container };
+	mountedRoots.add(owned);
 	await act(async () => root.render(render()));
 	const retry = [...container.querySelectorAll("button")].find(
 		(node) => node.textContent === "Retry",
@@ -1795,6 +1863,7 @@ test("R6-2: a keyboard Retry that succeeds leaves no armed refocus for a later f
 		`focus stays in the composer (got ${document.activeElement?.tagName} "${document.activeElement?.textContent}")`,
 	);
 	await act(async () => root.unmount());
+	mountedRoots.delete(owned);
 	container.remove();
 	composer.remove();
 });
@@ -1862,15 +1931,7 @@ test("R7-3: a durable echo triggers exactly one re-read, deduped against an in-f
 			});
 		return { status: 200, body: { result: { state: "ready", items: [] } } };
 	};
-	const client = new api.QueryClient({
-		defaultOptions: {
-			queries: {
-				retry: false,
-				staleTime: Number.POSITIVE_INFINITY,
-				gcTime: Number.POSITIVE_INFINITY,
-			},
-		},
-	});
+	const client = testQueryClient();
 	client.setQueryData(api.desktopKeys.capabilities, {
 		desktop_available: true,
 		features: { session_attachments: 1 },
@@ -1886,6 +1947,8 @@ test("R7-3: a durable echo triggers exactly one re-read, deduped against an in-f
 		const container = document.createElement("div");
 		document.body.append(container);
 		const root = createRoot(container);
+		const owned = { root, container };
+		mountedRoots.add(owned);
 		const render = (records) =>
 			act(async () =>
 				root.render(
@@ -1897,6 +1960,7 @@ test("R7-3: a durable echo triggers exactly one re-read, deduped against an in-f
 			rerender: render,
 			unmount: async () => {
 				await act(async () => root.unmount());
+				mountedRoots.delete(owned);
 				container.remove();
 			},
 		};
