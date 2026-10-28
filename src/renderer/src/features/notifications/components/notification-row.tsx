@@ -27,7 +27,7 @@ import {
 	Reply,
 	X,
 } from "lucide-react";
-import type { FC, MouseEvent } from "react";
+import type { FC } from "react";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
 import {
 	type RowTime,
@@ -62,6 +62,24 @@ export const priorityName = (item: DesktopNotificationItem): string =>
 		: item.priority === "normal"
 			? t("ui.notifications.row.priority.normal")
 			: t("ui.notifications.row.priority.low");
+
+/**
+ * THE ONE ALIGNMENT TOKEN for the row's side columns: the height of the title's
+ * line box (`text-body-sm` x its line height, 19.5px at the default scale).
+ *
+ * WHY (operator report, 2026-10-28). The row centred its cells on the row's
+ * middle (`items-center`) and the lead cell had no height of its own: its only
+ * in-flow child was the 6px unread dot, so the row centred a 6px box and the
+ * 24px checkbox - absolutely positioned at that box's static top - hung from the
+ * row's midline down past the second line. The checkbox, the priority glyph and
+ * the trailing actions now each sit in a cell exactly one first-line tall, at the
+ * same top padding as the text, and centre inside it. Their centre is therefore
+ * the first line's centre BY CONSTRUCTION, whatever the row's height does below
+ * it (a High badge, a second line, a longer excerpt). The checkbox itself is
+ * 24px, not a 16px control inside a larger inert wrapper.
+ */
+const FIRST_LINE_CELL =
+	"h-[calc(var(--text-body-sm)*var(--text-body-sm--line-height))] items-center";
 
 export type NotificationRowProps = {
 	item: DesktopNotificationItem;
@@ -144,7 +162,6 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 			return `${t("ui.notifications.row.updated_ago", { age: time })} · ${item.excerpt}`;
 		return item.excerpt;
 	})();
-	const stop = (event: MouseEvent) => event.stopPropagation();
 	const pausedTip = writesPaused
 		? t("ui.notifications.writes_paused_tip")
 		: null;
@@ -181,7 +198,12 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 			}}
 			onFocus={() => onFocusRow(item)}
 			className={cn(
-				"group/row relative flex h-14 cursor-default items-center gap-3 px-3",
+				/*
+				 * `items-start` + `py-2`: the text block and every side cell share one top
+				 * edge, so FIRST_LINE_CELL lines them up (see above). `min-h-14` keeps the
+				 * measured 56px row for the usual two lines.
+				 */
+				"group/row relative flex min-h-14 cursor-default items-start gap-3 px-3 py-2",
 				"outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2",
 				"transition-colors duration-fast ease-out-quart",
 				picked
@@ -195,7 +217,10 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 				// biome-ignore lint/a11y/useSemanticElements: a gridcell of the reel's grid row; the row, not the cell, is the tab stop (roving tabindex), and a native <td> cannot sit in a flex row
 				role="gridcell"
 				tabIndex={-1}
-				className="flex w-4 shrink-0 justify-center"
+				className={cn(
+					"relative flex w-4 shrink-0 justify-center",
+					FIRST_LINE_CELL,
+				)}
 			>
 				{/*
 				 * The dot and the checkbox share the slot. The checkbox is always in the
@@ -210,24 +235,27 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 						"group-hover/row:invisible group-focus-within/row:invisible",
 					)}
 				/>
+
 				<span
+					data-notification-select=""
 					className={cn(
 						"absolute flex size-6 items-center justify-center",
 						selecting || picked
 							? "visible"
 							: "invisible group-hover/row:visible group-focus-within/row:visible",
 					)}
-					onClick={stop}
+					onClick={(event) => event.stopPropagation()}
 					onKeyDown={(event) => event.stopPropagation()}
 				>
 					<Checkbox
 						checked={picked}
 						tabIndex={-1}
-						aria-label={t("ui.notifications.row.select", { title: item.title })}
+						className="size-6"
 						onClick={(event) => {
 							event.stopPropagation();
 							onToggleSelect(item, event.shiftKey);
 						}}
+						aria-label={t("ui.notifications.row.select", { title: item.title })}
 					/>
 				</span>
 			</div>
@@ -235,7 +263,7 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 				// biome-ignore lint/a11y/useSemanticElements: a gridcell of the reel's grid row; the row, not the cell, is the tab stop (roving tabindex), and a native <td> cannot sit in a flex row
 				role="gridcell"
 				tabIndex={-1}
-				className="flex w-5 shrink-0 justify-center"
+				className={cn("flex w-5 shrink-0 justify-center", FIRST_LINE_CELL)}
 			>
 				{item.source === "ask" ? (
 					<MessageCircleQuestion
@@ -309,7 +337,14 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 				// biome-ignore lint/a11y/useSemanticElements: a gridcell of the reel's grid row; the row, not the cell, is the tab stop (roving tabindex), and a native <td> cannot sit in a flex row
 				role="gridcell"
 				tabIndex={-1}
-				className="relative flex h-7 w-16 shrink-0 items-center justify-end"
+				/*
+				 * The 28px actions overflow the 19.5px first-line cell symmetrically
+				 * (flex centring), so they too centre on the title line.
+				 */
+				className={cn(
+					"relative flex w-16 shrink-0 justify-end",
+					FIRST_LINE_CELL,
+				)}
 			>
 				<span
 					className={cn(
