@@ -6199,22 +6199,24 @@ export const STORIES = [
 	 * THE SHARED ATTENTION BADGE (operator, 2026-10-28; `sidebar-attention.stories.tsx`).
 	 * Every sidebar attention count through the real rail's own data paths: the
 	 * small counts with More folded (its badge is the SUM of Mesh and Team
-	 * Bridge), More opened, the `99+` cap, and the collapsed strip in both. The
+	 * Bridge), More opened, the `99+` cap, and the collapsed strip in both, plus
+	 * the strip at 5 / 12 / 125 for the corner's `9+` cap (design D1). The
 	 * expectation waits for the badges the scene seeds, so a frame shot before
 	 * the reads settle is a refusal rather than a picture of a quiet rail.
+	 *
+	 * The two OPEN states expect no `more` badge: an open group's rows carry
+	 * their own pills and More draws none (design D2), so waiting for it would
+	 * turn the correct frame into a refusal. The scene test pins its absence.
 	 */
 	...[
 		["counts", ["aida", "notifications", "browser", "more"]],
-		[
-			"more-open",
-			["aida", "notifications", "browser", "more", "team-bridge", "mesh"],
-		],
-		[
-			"overflow",
-			["aida", "notifications", "browser", "more", "team-bridge", "mesh"],
-		],
+		["more-open", ["aida", "notifications", "browser", "team-bridge", "mesh"]],
+		["overflow", ["aida", "notifications", "browser", "team-bridge", "mesh"]],
 		["collapsed", ["aida", "notifications", "browser", "more"]],
 		["collapsed-overflow", ["aida", "notifications", "browser", "more"]],
+		["collapsed-5", ["aida", "notifications", "browser", "more"]],
+		["collapsed-12", ["aida", "notifications", "browser", "more"]],
+		["collapsed-125", ["aida", "notifications", "browser", "more"]],
 	].map(([state, rows]) => [
 		`shell-sidebar-attention-badges--${state}`,
 		/* 900 tall: the destinations region caps at 50dvh, and below ~880 More's

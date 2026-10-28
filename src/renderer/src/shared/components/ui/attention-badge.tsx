@@ -28,10 +28,11 @@ import { Badge, countLabel } from "./badge";
  * "rail attention badge (emphasis)" asserts on every palette and rail ground.
  * The accent is a role, so each of the fifty-nine themes supplies its own.
  *
- * THE CAP IS FIXED AT 99 ("99+"). `countLabel` leaves the cap to the caller
- * because it is a host geometry fact; every host of this mark is a sidebar or
- * rail row whose trailing column (and the collapsed strip's corner) was sized
- * for three glyphs, so the cap lives here once instead of at each call site.
+ * THE CAP IS 99 ("99+") INLINE, 9 ("9+") IN THE CORNER. `countLabel` leaves
+ * the cap to the caller because it is a host geometry fact; every inline host
+ * of this mark is a sidebar or rail row whose trailing column was sized for
+ * three glyphs, and every corner host is the collapsed strip's 16px icon, so
+ * both caps live here once, keyed on `placement`, instead of at each call site.
  * The accessible name is the caller's: a row states the exact number in its
  * own label, which is why the mark itself is usually inside an `aria-hidden`
  * span.
@@ -39,6 +40,14 @@ import { Badge, countLabel } from "./badge";
  * `placement="corner"` is the collapsed strip's corner mark (#1083): 14px tall,
  * pinned by the host over the icon's top-end corner, so the glyph stays the
  * button's only in-flow content. `inline` is the expanded row's trailing mark.
+ *
+ * THE CORNER CAPS AT 9 ("9+"), NOT 99 (design follow-up to #1465, D1). On a 16px
+ * icon a three-glyph `99+` mark (27.4px wide) covered the top 6px of the whole
+ * glyph - 37.5 % of the Bell and the More ellipsis - so in the 56px strip the
+ * row was recognisable only by its position. Two glyphs at most (~20px) keep the
+ * mark a corner annotation rather than a lid. Nothing is lost: the strip control's
+ * accessible name and tooltip state the exact number, and the expanded row keeps
+ * the `99+` cap because its trailing column has the room.
  *
  * A count of zero or less draws nothing: a badge reading `0` would be a mark
  * that says nothing is being asked.
@@ -53,6 +62,9 @@ export type AttentionBadgeProps = Omit<
 
 /** The digits the badge spells before it caps to `99+`. */
 export const ATTENTION_BADGE_CAP = 99;
+
+/** The collapsed strip's corner mark caps lower, to `9+` (see above). */
+export const ATTENTION_BADGE_CORNER_CAP = 9;
 
 export const AttentionBadge = forwardRef<HTMLSpanElement, AttentionBadgeProps>(
 	({ count, placement = "inline", className, ...props }, ref) => {
@@ -70,7 +82,12 @@ export const AttentionBadge = forwardRef<HTMLSpanElement, AttentionBadgeProps>(
 				)}
 				{...props}
 			>
-				{countLabel(count, ATTENTION_BADGE_CAP)}
+				{countLabel(
+					count,
+					placement === "corner"
+						? ATTENTION_BADGE_CORNER_CAP
+						: ATTENTION_BADGE_CAP,
+				)}
 			</Badge>
 		);
 	},
