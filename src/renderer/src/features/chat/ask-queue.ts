@@ -1211,6 +1211,66 @@ export type AskOutcome = {
 	 * sentence.
 	 */
 	refusedByOwner?: boolean;
+	/**
+	 * THE ACT THIS SURFACE SAW ACCEPTED, painted over a frame that has not caught up
+	 * (`askWithLocalSettle`). A surface whose rows come from a READ rather than the
+	 * live session stream - the Notifications detail pane, the fleet pane between its
+	 * POST and its refetch - otherwise kept drawing the ask `open`, with live options,
+	 * a countdown and `Send answer`, after the owner had accepted the answer: the
+	 * press looked like it did nothing (the Notifications pane bug this field fixes).
+	 *
+	 * It states only what the owner ACCEPTED, never more: an answer is recorded but
+	 * not delivered (`delivered: false`), so the card reads `Answered — delivering`
+	 * exactly as the session drawer's live frame does in the same window. It applies
+	 * only while the wire still says `open`; the moment a frame carries any settled
+	 * status, the wire wins.
+	 */
+	settled?: {
+		status: "answered" | "declined" | "dismissed";
+		/** Client epoch ms the owner accepted the act: the card's stamp until the wire's. */
+		at: number;
+		answers?: Record<string, string[]>;
+		reason?: AskDismissReason;
+	};
+	/**
+	 * Send the SAME act again, after a transport failure (`useAskOutcomes`). Present
+	 * only on a failure the press can recover from: an owner's verdict is final and
+	 * carries none, so the card never offers a Retry whose only outcome is the same
+	 * sentence.
+	 */
+	retry?: () => void;
+};
+
+/**
+ * The ask as the owner has accepted it, when this surface knows more than the frame.
+ *
+ * Returns the frame's own object untouched unless the wire still reads `open` and a
+ * local `settled` record exists - so a frame that has caught up (or moved somewhere
+ * else, e.g. `expired`) is always what is drawn.
+ */
+export const askWithLocalSettle = (
+	ask: PendingAsk,
+	outcome: AskOutcome | undefined,
+): PendingAsk => {
+	const settled = outcome?.settled;
+	if (settled === undefined || ask.status !== "open") return ask;
+	if (settled.status === "dismissed")
+		return {
+			...ask,
+			status: "dismissed",
+			dismissed_at: settled.at,
+			...(settled.reason === undefined
+				? {}
+				: { dismissed_reason: settled.reason }),
+		};
+	return {
+		...ask,
+		status: settled.status,
+		answered_at: settled.at,
+		answered_by: { surface: "desktop" },
+		delivered: false,
+		...(settled.answers === undefined ? {} : { answers: settled.answers }),
+	};
 };
 
 const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
@@ -1427,7 +1487,17 @@ export const askQueueView = (
 			soonestExpiryMs: null,
 			head: null,
 		};
-	const rows = asks.map(presentAsk).sort(compareAsks);
+	/*
+	 * The local record corrects a frame that has not caught up with an act this surface
+	 * saw accepted (`askWithLocalSettle`). The wire's own `asks_open` predates that act
+	 * too, so every row the record moved out of `open` comes off it below.
+	 */
+	const settledLocally = asks.filter(
+		(ask) => askWithLocalSettle(ask, outcomes?.[ask.ask_id]) !== ask,
+	).length;
+	const rows = asks
+		.map((ask) => presentAsk(askWithLocalSettle(ask, outcomes?.[ask.ask_id])))
+		.sort(compareAsks);
 	const open = rows.filter((row) => row.open).length;
 	/*
 	 * The two halves are derived from the ROWS rather than the backend's tally,
@@ -1465,7 +1535,10 @@ export const askQueueView = (
 		 * The derived count is the fallback for a frame that carried rows but no
 		 * count, which is the older producer's shape.
 		 */
-		open: typeof frontend?.asks_open === "number" ? frontend.asks_open : open,
+		open:
+			typeof frontend?.asks_open === "number"
+				? Math.max(0, frontend.asks_open - settledLocally)
+				: open,
 		waiting,
 		movedOn,
 		delivering,

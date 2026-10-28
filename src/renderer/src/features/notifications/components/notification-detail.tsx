@@ -1,16 +1,10 @@
 import {
-	type AnswerOutcome,
 	answerQueuedAsk,
-	createSendLock,
 	declineQueuedAsk,
 	dismissQueuedAsk,
 } from "@features/chat/ask-answer";
-import type {
-	AskDismissReason,
-	AskDraft,
-	AskOutcome,
-} from "@features/chat/ask-queue";
-import { askQueueView, askRefusalSentence } from "@features/chat/ask-queue";
+import type { AskDismissReason, AskDraft } from "@features/chat/ask-queue";
+import { askQueueView } from "@features/chat/ask-queue";
 /**
  * The detail pane (design.md § 2 "Detail", contract § 5.2 `GET …/{id}`).
  *
@@ -31,6 +25,8 @@ import { askQueueView, askRefusalSentence } from "@features/chat/ask-queue";
  * actions disabled, rather than the pane closing under the reader.
  */
 import { AskPanel } from "@features/chat/components/asks/ask-panel";
+import { useFleetAsks } from "@features/chat/fleet-asks";
+import { useAskOutcomes } from "@features/chat/use-ask-outcomes";
 import { ProjectMarkdown } from "@features/projects/project-markdown";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { Alert, Button, Skeleton } from "@shared/components/ui";
@@ -52,7 +48,7 @@ import {
 	MoreHorizontal,
 	X,
 } from "lucide-react";
-import { type FC, useCallback, useMemo, useRef, useState } from "react";
+import { type FC, useMemo, useState } from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -129,7 +125,13 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 		<section
 			aria-label={t("ui.notifications.detail.label")}
 			data-notification-detail={item.id}
-			className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-6 py-4 [scrollbar-gutter:stable]"
+			/*
+			 * NO `overflow-x-hidden` (it used to be here): it is what turned the column's
+			 * overflow into a silent clip at the window edge instead of a visible defect.
+			 * The column is bounded by its parent's `min-w-0` now, and long unbroken text
+			 * wraps (`[overflow-wrap:anywhere]` below), so there is nothing to hide.
+			 */
+			className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 py-4 [overflow-wrap:anywhere] [scrollbar-gutter:stable]"
 		>
 			<div className="flex items-center justify-between gap-2">
 				{narrow ? (
@@ -508,6 +510,27 @@ const DetailSection: FC<{ title: string; children: React.ReactNode }> = ({
  * § 2, contract § 5.2 `asks`). The answer, decline and dismiss doors are the
  * fleet drawer's own helpers addressed at the ask's session, so a press here
  * and a press in the drawer are the same request; one send lock per pane.
+ *
+ * THE OUTCOME IS THE SHARED RECORD (`useAskOutcomes`), not a local `{sending,
+ * refused}` map. This pane's rows are a READ (`notifications.get`), not the live
+ * session stream, so after the owner accepts an answer the rows still say
+ * `open` until the detail is read again - and while the item stays selected that
+ * read may not land for a while. Recording only `{sending, refused}` therefore
+ * left the card on `Queued — the agent is continuing; expires in 23h` with live
+ * options and `Send answer` after a successful press. The hook's `settled`
+ * record is painted over the stale frame (`askWithLocalSettle`), so the card,
+ * its Pending/Settled filter and counts move in the frame the owner answers.
+ *
+ * AND THE WIRE'S OWN ROW TAKES OVER FROM THE AGGREGATE, not from this read. Core's
+ * detail route answers an `ask:<session>:<ask>` item only while that ask is
+ * OUTSTANDING (`notifications/items.py::detail`, `is_outstanding`), so the refetch
+ * after an answer is a 404 and the query keeps the last good - `open` - rows; even
+ * an update's detail is re-read only on an explicit invalidation. Either way the
+ * card's `delivered` was never read again, and it sat on `Answered — delivering`
+ * for as long as the item stayed selected. The fleet aggregate (`asks.list`, the
+ * same durable index this read comes from) carries settled rows with `delivered`
+ * and polls while mounted, so a row it has SETTLED replaces this read's row for the
+ * same ask id; the read stays the source for everything else.
  */
 const DetailAsks: FC<{
 	sessionId: string;
@@ -515,53 +538,29 @@ const DetailAsks: FC<{
 	nowMs: number;
 	onSettled: () => void;
 }> = ({ sessionId, asks, nowMs, onSettled }) => {
-	const lock = useRef(createSendLock()).current;
+	const { lock, outcomes, answering, run } = useAskOutcomes({
+		onAccepted: onSettled,
+	});
 	const [drafts, setDrafts] = useState<Record<string, AskDraft>>(EMPTY_DRAFTS);
-	const [outcomes, setOutcomes] = useState<
-		Record<string, AskOutcome | undefined>
-	>({});
-	const [answering, setAnswering] = useState(false);
+	const fleet = useFleetAsks().rows;
+	const rows = useMemo(() => {
+		const settled = new Map<string, PendingAsk>();
+		for (const row of fleet ?? [])
+			if (row.session_id === sessionId && row.status !== "open")
+				settled.set(row.ask_id, row);
+		return asks.map((ask) => settled.get(ask.ask_id) ?? ask);
+	}, [asks, fleet, sessionId]);
 	const view = useMemo(
 		() =>
 			askQueueView(
 				{
-					asks,
-					asks_open: asks.filter((ask) => ask.status === "open").length,
+					asks: rows,
+					asks_open: rows.filter((ask) => ask.status === "open").length,
 					asks_truncated: false,
 				},
 				outcomes,
 			),
-		[asks, outcomes],
-	);
-	const run = useCallback(
-		(askId: string, send: () => Promise<AnswerOutcome>) => {
-			if (lock.held) return;
-			setAnswering(true);
-			setOutcomes((current) => ({
-				...current,
-				[askId]: { sending: true, refused: null },
-			}));
-			void (async () => {
-				let outcome: AnswerOutcome;
-				try {
-					outcome = await send();
-				} finally {
-					setAnswering(false);
-				}
-				setOutcomes((current) => ({
-					...current,
-					[askId]: {
-						sending: false,
-						refused:
-							outcome.status === "failed"
-								? askRefusalSentence(outcome.error)
-								: null,
-					},
-				}));
-				if (outcome.status === "sent") onSettled();
-			})();
-		},
-		[lock, onSettled],
+		[rows, outcomes],
 	);
 	return (
 		<AskPanel
@@ -574,27 +573,39 @@ const DetailAsks: FC<{
 				setDrafts((current) => ({ ...current, [askId]: next }))
 			}
 			onAnswer={(ask, answers) =>
-				run(ask.ask_id, () =>
-					answerQueuedAsk(
-						{ taskId: ask.ask_id, answers, sessionId, lock },
-						(request) => desktopResult(request),
-					),
-				)
+				run({
+					askId: ask.ask_id,
+					kind: "answered",
+					answers,
+					send: () =>
+						answerQueuedAsk(
+							{ taskId: ask.ask_id, answers, sessionId, lock },
+							(request) => desktopResult(request),
+						),
+				})
 			}
 			onDecline={(ask) =>
-				run(ask.ask_id, () =>
-					declineQueuedAsk({ taskId: ask.ask_id, sessionId, lock }, (request) =>
-						desktopResult(request),
-					),
-				)
+				run({
+					askId: ask.ask_id,
+					kind: "declined",
+					send: () =>
+						declineQueuedAsk(
+							{ taskId: ask.ask_id, sessionId, lock },
+							(request) => desktopResult(request),
+						),
+				})
 			}
 			onDismiss={(ask, reason: AskDismissReason) =>
-				run(ask.ask_id, () =>
-					dismissQueuedAsk(
-						{ taskId: ask.ask_id, reason, sessionId, lock },
-						(request) => desktopResult(request),
-					),
-				)
+				run({
+					askId: ask.ask_id,
+					kind: "dismissed",
+					reason,
+					send: () =>
+						dismissQueuedAsk(
+							{ taskId: ask.ask_id, reason, sessionId, lock },
+							(request) => desktopResult(request),
+						),
+				})
 			}
 		/>
 	);

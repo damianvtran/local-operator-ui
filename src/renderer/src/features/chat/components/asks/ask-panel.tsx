@@ -51,7 +51,14 @@ import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Check, Clock, HelpCircle, type LucideIcon, X } from "lucide-react";
+import {
+	Check,
+	Clock,
+	HelpCircle,
+	Loader2,
+	type LucideIcon,
+	X,
+} from "lucide-react";
 import {
 	useCallback,
 	useEffect,
@@ -1370,9 +1377,47 @@ const AskRow = ({
 			 * the act, so it wears the danger band here too - and no mark, because the
 			 * same refusal must not read differently on the two surfaces.
 			 */}
+			{/*
+			 * THE PRESS IS VISIBLY OUT (Notifications ask-pane fix). The controls disable
+			 * while `sending`, but a disabled button alone reads the same as one that never
+			 * enabled; the line says the act is in flight. The dismissal chooser states its
+			 * own (`Dismissing…`) on the pressed reason, so it is not said twice.
+			 */}
+			{outcome?.sending === true && !dismissOpen ? (
+				<output
+					data-lo-ask-sending=""
+					className="flex items-center gap-1.5 text-ink-muted text-xs"
+				>
+					<Loader2 aria-hidden="true" size={14} className="animate-spin" />
+					{t("ui.agents.config.state.sending")}
+				</output>
+			) : null}
 			{outcome?.refused ? (
-				<output className="block text-body-sm text-danger">
-					{dismissalRefusal ?? outcome.refused}
+				<output
+					data-lo-ask-refused=""
+					className="flex flex-wrap items-center gap-2 text-body-sm text-danger"
+				>
+					<span className="min-w-0 break-words">
+						{dismissalRefusal ?? outcome.refused}
+					</span>
+					{/*
+					 * RETRY, ONLY WHERE A SECOND PRESS CAN LAND. `retry` exists only for a
+					 * transport failure (`useAskOutcomes`): the request never reached the
+					 * owner, so the same act may succeed. An owner's verdict carries none -
+					 * a Retry whose only outcome is the sentence above it is the dead
+					 * control this panel refuses elsewhere. The draft is untouched, so the
+					 * reader's typed answer is still in its field.
+					 */}
+					{outcome.retry !== undefined ? (
+						<button
+							type="button"
+							disabled={busy}
+							onClick={outcome.retry}
+							className="rounded-md border border-control px-2 py-0.5 text-ink text-xs hover:bg-sunken"
+						>
+							{t("ui.common.actions.retry")}
+						</button>
+					) : null}
 				</output>
 			) : null}
 			{outcome?.changed === true ? (
@@ -2184,6 +2229,34 @@ export const AskPanel = ({
 								{question}
 							</span>
 						</span>
+						{(() => {
+							/*
+							 * THE ANSWER RIDES ON THE ONE-LINE ROW (operator report on the
+							 * Notifications pane): one conversation can hold two near-identical
+							 * asks, and a settled history of `Answered · <question>` rows told
+							 * the reader WHICH question was settled but not WITH WHAT - so an
+							 * answered ask could be mistaken for its open twin. Each answered
+							 * question's recorded values follow the question, in the muted step
+							 * and clamped to two lines (the expanded card keeps the full text).
+							 * A secret question's cell is a key name, never shown here.
+							 */
+							const answered = askSettledAnswers(presentation.ask)
+								.filter(
+									(entry) =>
+										presentation.ask.questions.find((q) => q.id === entry.id)
+											?.secret !== true,
+								)
+								.flatMap((entry) => entry.answers)
+								.filter((value) => value.trim() !== "");
+							return answered.length === 0 ? null : (
+								<span
+									data-lo-ask-settled-answer=""
+									className="line-clamp-2 min-w-0 whitespace-normal break-words text-ink-muted text-meta"
+								>
+									{answered.join(", ")}
+								</span>
+							);
+						})()}
 						{refusal === null ? null : (
 							/*
 							 * The danger band and no mark, for the reason the card's own

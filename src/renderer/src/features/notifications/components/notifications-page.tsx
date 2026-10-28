@@ -1322,10 +1322,26 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					</div>
 				)}
 				{!narrow || showDetail ? (
+					/*
+					 * `min-w-0` IS THE OVERFLOW FIX. A flex item's automatic minimum width
+					 * is its content's min-content width, so a body with an unbroken token
+					 * (a 200-character URL, an `ssh -L …` line, a fenced command) or an ask
+					 * card's long question made this column WIDER than the space beside the
+					 * list, and the page clipped it at the window edge - the wrapping rules
+					 * inside never ran because their container was never narrower than the
+					 * content. Bounding the column lets `.lo-markdown`'s wrapping and the
+					 * cards' own `min-w-0` do their job; nothing is hidden to mask it.
+					 *
+					 * THE FRAME IS THE PANEL TIER (docs/branding.md § radii: 10px, no
+					 * edge, ground is the boundary), inset from the window edge by the
+					 * same 24px the page header and the list keep, so the pane reads as
+					 * the Schedules list frame does rather than a slab flush to the edge.
+					 */
 					<div
+						data-glass-region="panel"
 						className={cn(
-							"flex min-h-0 flex-1 flex-col bg-surface",
-							narrow && "w-full",
+							"flex min-h-0 min-w-0 flex-1 flex-col rounded-md bg-surface",
+							narrow ? "mx-3 mb-3 w-auto" : "me-6 mb-6",
 						)}
 					>
 						{showDetail && openItem ? (
