@@ -9017,6 +9017,7 @@ export type MessageParams = {
 	"ui.teamBridge.members.invitation_note": undefined;
 	"ui.teamBridge.members.invite": undefined;
 	"ui.teamBridge.members.load_error": undefined;
+	"ui.teamBridge.members.loading": undefined;
 	"ui.teamBridge.members.menu": undefined;
 	"ui.teamBridge.members.mutation_error": undefined;
 	"ui.teamBridge.members.no_matches": undefined;

@@ -417,24 +417,6 @@ type Story = StoryObj<typeof meta>;
 
 export const PopulatedDirectMessage: Story = {};
 
-/** The reported path: a group owner opens Add members from the header menu. */
-export const AddMembersFromConversationMenu: Story = {
-	args: {
-		conversations: [{ ...group, can_administer: true }],
-		target: { type: "conversation", id: group.id },
-		people: rosterWithChiefs,
-		defaultMenuOpen: true,
-		initialMembersOpen: true,
-		onAddMembers: () => Promise.resolve(),
-		onRemoveMember: () => Promise.resolve(),
-	},
-	play: async ({ canvasElement }) => {
-		const body = within(canvasElement.ownerDocument.body);
-		await expect(body.getAllByText("Add members…").length).toBeGreaterThan(0);
-		await expect(body.getByText("Aida (Damian Tran)")).toBeInTheDocument();
-	},
-};
-
 /*
  * The rail's Invitations entry (D5) beside the unread counts: the reader's own
  * agent is invited to the channel, so the entry shows its quiet count in the
@@ -1059,6 +1041,100 @@ const slackRail = {
 	people: rosterWithChiefs,
 	organizations: [minervaOrganization],
 	scope: minervaOrganization.tenantId,
+};
+
+/**
+ * The operator's report, reproduced: a group they OWN, where the header shows
+ * no way to bring their own chief of staff in. Membership is explicit here so
+ * the frame is the reported case rather than a lucky fixture.
+ */
+const ownedGroup: TeamBridgeConversation = {
+	...group,
+	kind: "group",
+	agent_capable: true,
+	can_administer: true,
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian Tran",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+			role: "member",
+			state: "active",
+		},
+		{
+			account_id: "acct_sherman",
+			kind: "agent",
+			display_label: "Juno",
+			role: "member",
+			state: "invited",
+			joined_seq: 0,
+		},
+	],
+};
+
+const ownedGroupArgs = {
+	...slackRail,
+	conversations: [ownedGroup, ...slackRail.conversations],
+	target: { type: "conversation", id: ownedGroup.id },
+	onAddMembers: () => Promise.resolve(),
+	onRemoveMember: () => Promise.resolve(),
+};
+
+/** The header's person-plus control, beside the ellipsis menu. */
+export const AddMembersHeaderControl: Story = {
+	args: ownedGroupArgs,
+};
+
+/** The same action in the ellipsis menu, where the operator looked for it. */
+export const AddMembersMenuEntry: Story = {
+	args: { ...ownedGroupArgs, defaultMenuOpen: true },
+};
+
+/** The picker: current members with roles, plus the org roster and its agents. */
+export const AddMembersDialog: Story = {
+	args: { ...ownedGroupArgs, initialMembersOpen: true },
+	play: async ({ canvasElement }) => {
+		const body = within(canvasElement.ownerDocument.body);
+		// The reader's OWN chief of staff is offered, under its current name.
+		await expect(body.getByText("Aida (Damian Tran)")).toBeInTheDocument();
+		// An invited agent is never painted as active.
+		await expect(body.getByText("Invited; not active yet")).toBeInTheDocument();
+		await expect(
+			body.getByRole("button", { name: "Remove Ben Tran" }),
+		).toBeInTheDocument();
+	},
+};
+
+/** A plain member may still invite (the hub permits it), but never remove. */
+export const AddMembersPlainMember: Story = {
+	args: {
+		...ownedGroupArgs,
+		conversations: [
+			{
+				...ownedGroup,
+				members: ownedGroup.members.map((member) =>
+					member.account_id === self && member.kind === "human"
+						? { ...member, role: "member" as const }
+						: member,
+				),
+			},
+			...slackRail.conversations,
+		],
+		initialMembersOpen: true,
+	},
+	play: async ({ canvasElement }) => {
+		const body = within(canvasElement.ownerDocument.body);
+		await expect(
+			body.queryByRole("button", { name: "Remove Ben Tran" }),
+		).not.toBeInTheDocument();
+	},
 };
 
 /** Ben's row is selected and IS the DM: no "@ Ben" row exists above People. */

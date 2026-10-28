@@ -45,6 +45,7 @@ import type {
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
 import { rowCurrent } from "../chat/components/chat-sidebar";
+import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import {
 	TeamBridgeArchiveDialog,
 	TeamBridgeArchivedBanner,
@@ -67,7 +68,6 @@ import {
 	isAttachmentNotFound,
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
-import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
@@ -79,8 +79,11 @@ import {
 	pendingAgentInvitations,
 	railInvitationsEntryShown,
 } from "./team-bridge-invitations-model";
+import {
+	canInviteMembers,
+	canRemoveMembers,
+} from "./team-bridge-members-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
-import { canAdministerMembers } from "./team-bridge-members-model";
 import {
 	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -167,6 +170,7 @@ import {
 	useJoinTeamBridgeConversation,
 	useLoadMoreArchivedTeamBridgeConversations,
 	useMarkTeamBridgeRead,
+	useRemoveTeamBridgeMember,
 	useSendTeamBridgeMessage,
 	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
@@ -175,7 +179,6 @@ import {
 	useTeamBridgeMessages,
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
-	useRemoveTeamBridgeMember,
 	useUnarchiveTeamBridgeConversation,
 } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
@@ -1958,27 +1961,30 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									</span>
 								)}
 								<div className="ms-auto flex items-center gap-1">
-									{shown && !previewSelected && !readOnly && canAdministerMembers(shown) && (
-										<Button
-											type="button"
-											size="icon-sm"
-											variant="ghost"
-											aria-label={t("ui.teamBridge.members.menu")}
-											title={t("ui.teamBridge.members.menu")}
-											onClick={() => {
-												setMemberActionFailed(false);
-												setMembersOpen(true);
-											}}
-										>
-											<UserPlus size={16} aria-hidden="true" />
-										</Button>
-									)}
+									{shown &&
+										!previewSelected &&
+										!readOnly &&
+										canInviteMembers(shown, selfAccountId) && (
+											<Button
+												type="button"
+												size="icon-sm"
+												variant="ghost"
+												aria-label={t("ui.teamBridge.members.menu")}
+												title={t("ui.teamBridge.members.menu")}
+												onClick={() => {
+													setMemberActionFailed(false);
+													setMembersOpen(true);
+												}}
+											>
+												<UserPlus size={16} aria-hidden="true" />
+											</Button>
+										)}
 									{shown && !previewSelected && !readOnly && onNotifyChange && (
 										<TeamBridgeConversationMenu
 											conversation={shown}
 											onNotifyChange={onNotifyChange}
 											onAddMembers={
-												canAdministerMembers(shown)
+												canInviteMembers(shown, selfAccountId)
 													? () => {
 															setMemberActionFailed(false);
 															setMembersOpen(true);
@@ -2570,8 +2576,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					conversation={shown}
 					people={shown ? rosterFor(shown.tenant_id) : []}
 					selfAccountId={selfAccountId}
-					peopleState={mergedView ? "ready" : peopleState}
-					canAdminister={!readOnly && canAdministerMembers(shown)}
+					peopleState={
+						mergedView
+							? directories?.[shown.tenant_id]
+								? "ready"
+								: "loading"
+							: peopleState
+					}
+					canInvite={!readOnly && canInviteMembers(shown, selfAccountId)}
+					canRemove={!readOnly && canRemoveMembers(shown, selfAccountId)}
 					mutationError={memberActionFailed}
 					pendingKey={memberMutationKey}
 					onClose={() => {
@@ -2581,14 +2594,24 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					}}
 					onRetryPeople={onRetryPeople}
 					onAdd={(members) => {
-						if (!onAddMembers || readOnly || !canAdministerMembers(shown)) return;
+						if (
+							!onAddMembers ||
+							readOnly ||
+							!canInviteMembers(shown, selfAccountId)
+						)
+							return;
 						setMemberActionFailed(false);
 						void onAddMembers(shown, members).catch(() => {
 							setMemberActionFailed(true);
 						});
 					}}
 					onRemove={(accountId) => {
-						if (!onRemoveMember || readOnly || !canAdministerMembers(shown)) return;
+						if (
+							!onRemoveMember ||
+							readOnly ||
+							!canRemoveMembers(shown, selfAccountId)
+						)
+							return;
 						setMemberActionFailed(false);
 						void onRemoveMember(shown, accountId).catch(() => {
 							setMemberActionFailed(true);
@@ -3297,8 +3320,10 @@ const TeamBridgeOwnedPage: FC<{
 					});
 				}}
 				onAddMembers={(conversation, members) => {
-					if (!isCurrentOwner() || !canAdministerMembers(conversation))
-						return Promise.reject(new Error("Team Bridge write authority changed"));
+					if (!isCurrentOwner() || !canInviteMembers(conversation, accountId))
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
 					return addMembers.mutateAsync({
 						conversationId: conversation.id,
 						tenantId: conversation.tenant_id,
@@ -3307,8 +3332,10 @@ const TeamBridgeOwnedPage: FC<{
 					});
 				}}
 				onRemoveMember={(conversation, memberAccountId) => {
-					if (!isCurrentOwner() || !canAdministerMembers(conversation))
-						return Promise.reject(new Error("Team Bridge write authority changed"));
+					if (!isCurrentOwner() || !canRemoveMembers(conversation, accountId))
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
 					return removeMember.mutateAsync({
 						conversationId: conversation.id,
 						tenantId: conversation.tenant_id,

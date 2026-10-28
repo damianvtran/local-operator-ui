@@ -9,6 +9,7 @@
 	"ui.teamBridge.members.empty": "No hay personas ni agentes disponibles en esta organización.",
 	"ui.teamBridge.members.no_matches": "Ninguna persona ni agente coincide con tu búsqueda.",
 	"ui.teamBridge.members.load_error": "No se pudieron cargar las personas ni los agentes.",
+	"ui.teamBridge.members.loading": "Cargando personas y agentes",
 	"ui.teamBridge.members.add": "Enviar invitaciones",
 	"ui.teamBridge.members.remove": "Eliminar a {name}",
 	"ui.teamBridge.members.removing": "Eliminando miembro",

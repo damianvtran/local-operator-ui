@@ -9,6 +9,7 @@
 	"ui.teamBridge.members.empty": "此组织中没有可用的人员或智能体。",
 	"ui.teamBridge.members.no_matches": "没有符合搜索条件的人员或智能体。",
 	"ui.teamBridge.members.load_error": "无法加载人员和智能体。",
+	"ui.teamBridge.members.loading": "正在加载成员和智能体",
 	"ui.teamBridge.members.add": "发送邀请",
 	"ui.teamBridge.members.remove": "移除{name}",
 	"ui.teamBridge.members.removing": "正在移除成员",

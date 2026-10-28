@@ -5,28 +5,73 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import {
 	type TeamBridgeRecipient,
-	composeChiefLabel,
 	participantLabel,
 	personDisplayLabel,
 	personRowState,
 } from "./team-bridge-model";
 
-/**
- * Administration follows the server's per-conversation answer, never a guessed
- * organization role. An older server that omits `can_administer` therefore hides
- * member administration rather than offering writes that may not be authorized.
+/*
+ * MEMBER AUTHORITY COMES FROM THE HUB'S OWN RULES, NOT `can_administer`.
+ *
+ * `can_administer` on the conversation view is the ARCHIVE/DELETE authority
+ * (`lifecycleAuthority` in agent-server): the conversation owner, or an
+ * organization owner/admin on a channel. It is deliberately NOT reused here,
+ * because the member routes enforce two different rules:
+ *
+ *   - POST /conversations/{id}/members (invite): any ACTIVE human member. The
+ *     service's only membership proof is `loadForMember`, plus refusals for a
+ *     DM, a built-in channel and an archived conversation.
+ *   - DELETE /conversations/{id}/members/{account}: `requireOwner` — the
+ *     caller's own active human row must have role "owner". The route is
+ *     HUMAN-keyed (`BridgeConversationMemberKey(accountID, "")`), so it can
+ *     never address an agent row; an invited agent is answered through consent
+ *     (decline) and an active one through withdraw, not through this route.
+ *
+ * Reading the caller's own published member row is therefore not a second
+ * opinion about authority: it is the same row the server reads, sent to this
+ * client. An unresolved account fails closed (no controls).
  */
-export function canAdministerMembers(
-	conversation: Pick<
-		TeamBridgeConversation,
-		"kind" | "status" | "builtin" | "can_administer"
-	>,
+
+function selfHumanMember(
+	conversation: TeamBridgeConversation,
+	selfAccountId: string | undefined,
+): TeamBridgeParticipant | null {
+	if (!selfAccountId) return null;
+	return (
+		conversation.members.find(
+			(member) =>
+				member.kind === "human" &&
+				member.account_id === selfAccountId &&
+				member.state === "active",
+		) ?? null
+	);
+}
+
+/** The invite route's prerequisites, as the hub enforces them. */
+export function canInviteMembers(
+	conversation: TeamBridgeConversation,
+	selfAccountId: string | undefined,
 ): boolean {
 	return (
 		conversation.kind !== "dm" &&
 		conversation.status === "open" &&
 		!conversation.builtin &&
-		conversation.can_administer === true
+		selfHumanMember(conversation, selfAccountId) !== null
+	);
+}
+
+/** The remove route's prerequisite: the caller's active human row is the owner. */
+export function canRemoveMembers(
+	conversation: TeamBridgeConversation,
+	selfAccountId: string | undefined,
+): boolean {
+	const self = selfHumanMember(conversation, selfAccountId);
+	return (
+		conversation.kind !== "dm" &&
+		conversation.status === "open" &&
+		!conversation.builtin &&
+		self !== null &&
+		self.role === "owner"
 	);
 }
 
@@ -45,22 +90,25 @@ function memberKey(kind: "human" | "agent", accountId: string): string {
 	return `${kind}:${accountId}`;
 }
 
-/** Current means active or invited: both must block a duplicate invitation. */
+/** Active and invited both block a duplicate invitation. */
 function currentMemberKeys(
 	members: readonly TeamBridgeParticipant[],
 ): ReadonlySet<string> {
 	return new Set(
 		members
-			.filter((member) => member.state === "active" || member.state === "invited")
+			.filter(
+				(member) => member.state === "active" || member.state === "invited",
+			)
 			.map((member) => memberKey(member.kind, member.account_id)),
 	);
 }
 
 /**
  * The add-member roster is derived from the whole organization directory, not
- * the direct-message candidate list. In particular, `chiefsOfStaff` deliberately
+ * the direct-message candidate list. In particular `chiefsOfStaff` deliberately
  * excludes the reader's own agent for DMs; inviting it into a group is a valid,
- * distinct action, so this function includes it.
+ * distinct action, so this function includes it. The label is the directory's
+ * CURRENT agent name ("Aida (Ben)"), never a stored add-time label.
  */
 export function memberCandidates(
 	conversation: TeamBridgeConversation,
@@ -73,13 +121,12 @@ export function memberCandidates(
 	for (const person of people) {
 		const personLabel = personDisplayLabel(person);
 		const humanState = personRowState(person, selfAccountId);
-		const humanRecipient: TeamBridgeRecipient = {
-			kind: "human",
-			accountId: person.account_id,
-			label: personLabel,
-		};
 		candidates.push({
-			recipient: humanRecipient,
+			recipient: {
+				kind: "human",
+				accountId: person.account_id,
+				label: personLabel,
+			},
 			disabledReason: current.has(memberKey("human", person.account_id))
 				? "already_member"
 				: humanState === "openable" ||
@@ -89,21 +136,19 @@ export function memberCandidates(
 					: "bridge_unavailable",
 		});
 
-		// The reader's own chief is intentionally NOT skipped. Adding it only
-		// creates an invitation; owner consent remains a separate human action.
+		// The reader's own chief is intentionally NOT skipped. Adding it creates
+		// an invitation only; owner consent remains a separate human action.
 		const agent = person.agent;
 		if (!agent) continue;
-		const agentName = agent.name.trim();
-		const agentRecipient: TeamBridgeRecipient = {
-			kind: "agent",
-			accountId: person.account_id,
-			endpointId: agent.endpoint_id,
-			agentName,
-			ownerLabel: personLabel,
-			label: chiefLabel(agentName, personLabel),
-		};
 		candidates.push({
-			recipient: agentRecipient,
+			recipient: {
+				kind: "agent",
+				accountId: person.account_id,
+				endpointId: agent.endpoint_id,
+				agentName: agent.name.trim(),
+				ownerLabel: personLabel,
+				label: chiefLabel(agent.name.trim(), personLabel),
+			},
 			disabledReason: current.has(memberKey("agent", person.account_id))
 				? "already_member"
 				: !conversation.agent_capable
@@ -116,19 +161,32 @@ export function memberCandidates(
 	return candidates;
 }
 
+/** One row of the current-members list. */
+export type TeamBridgeCurrentMember = {
+	member: TeamBridgeParticipant;
+	label: string;
+	state: "active" | "invited" | "left";
+	/*
+	 * The remove route is human-keyed, so an agent row is never removable here:
+	 * DELETE .../members/{account} would resolve the OWNER's human row, not the
+	 * agent's. Invited agents are answered through consent, not this dialog.
+	 */
+	removable: boolean;
+};
+
 /**
  * The member list is server state, not the directory's roster. Invitation state
  * is rendered explicitly so an invited person/agent never appears active.
+ * `canRemove` is the caller-level owner check; `selfAccountId` keeps the
+ * owner's own "remove" out of the list (leaving is its own action).
  */
 export function currentMembers(
 	conversation: TeamBridgeConversation,
 	people: readonly TeamBridgeDirectoryMember[],
+	selfAccountId: string | undefined,
 	chiefLabel: (agentName: string, ownerLabel: string) => string,
-): Array<{
-	member: TeamBridgeParticipant;
-	label: string;
-	state: "active" | "invited" | "left";
-}> {
+	canRemove: boolean,
+): TeamBridgeCurrentMember[] {
 	return conversation.members
 		.filter(
 			(member) =>
@@ -136,30 +194,25 @@ export function currentMembers(
 				member.state === "invited" ||
 				member.state === "left",
 		)
-		.map((member) => {
-			const label =
+		.map((member) => ({
+			member,
+			label:
 				participantLabel(
 					member,
 					people,
-					participantChiefLabels(chiefLabel),
-				) ?? member.account_id;
-			return { member, label, state: member.state };
-		});
-}
-
-/** Adapt the locale's one composed-label formatter to the shared participant helper. */
-function participantChiefLabels(
-	chiefLabel: (agentName: string, ownerLabel: string) => string,
-): { named: (agentName: string, ownerLabel: string) => string; unnamed: (ownerLabel: string) => string } {
-	return {
-		named: chiefLabel,
-		// Empty is a deliberate sentinel: composeChiefLabel treats it as the
-		// directory's unnamed-agent case and calls this formatter.
-		unnamed: (ownerLabel) => chiefLabel("", ownerLabel),
-	};
-}
-
-/** Stable key for one pending write; only that row is disabled while it settles. */
-export function memberMutationKey(member: TeamBridgeParticipant): string {
-	return memberKey(member.kind, member.account_id);
+					{
+						named: chiefLabel,
+						// Empty is the directory's unnamed-agent case; let the locale
+						// formatter produce its own "X's chief of staff" wording.
+						unnamed: (ownerLabel) => chiefLabel("", ownerLabel),
+					},
+					null,
+				) ?? member.account_id,
+			state: member.state,
+			removable:
+				canRemove &&
+				member.kind === "human" &&
+				member.state !== "left" &&
+				member.account_id !== selfAccountId,
+		}));
 }
