@@ -68,8 +68,10 @@ export type HubLinkActionResponse = {
 	status: HubUpdates;
 	/**
 	 * Absent from a check answer: core's `/updates/check` returns `reports` and
-	 * `status` alone, so writing this into the inventory cache would blank the
-	 * panel until the post-mutation refetch lands.
+	 * `status` alone (the directional routes read the inventory themselves and
+	 * echo it). Optional so the type states that absence instead of promising a
+	 * member a check never sends - a reader that needs the inventory must go
+	 * through `hubLinksKey`, not through this response.
 	 */
 	links?: HubLinks;
 	preview?: HubPullPreview | HubPushPreview | null;
@@ -186,8 +188,10 @@ export function useHubLinkActions(
 				}
 			}, safety.snapshot),
 		onSuccess: (response) => {
-			// A check answers no inventory; `onSettled` refetches it rather than
-			// this hook writing an absent `links` into the cache.
+			// Only a directional answer carries the inventory it just re-read. A
+			// check carries none, and `onSettled` refetches it, so there is nothing
+			// to write (and nothing written is the type's promise, not a blank-panel
+			// guard - TanStack treats `setQueryData(key, undefined)` as a no-op).
 			if (response.links) client.setQueryData(hubLinksKey, response.links);
 			client.setQueryData(["desktop", "hub-updates"], response.status);
 			if (response.reports.some((report) => report.applied)) {
@@ -271,7 +275,10 @@ export function useHubSourceResolution(onResolved?: () => void) {
 			// unmounts the diagnostic. A child effect cannot announce its own removal.
 			showSuccessToast(t("ui.hub.links.resolve_action_done"));
 			onResolved?.();
-			client.setQueryData(hubLinksKey, response.links);
+			// The resolve arm answers `{link, resolved}` and no inventory; the same
+			// absent-member rule as the check arm above, so this cannot write a
+			// member the route never sends.
+			if (response.links) client.setQueryData(hubLinksKey, response.links);
 			client.setQueryData(["desktop", "hub-updates"], response.status);
 		},
 		onSettled: (_data, _error, _input, pendingKey) => {

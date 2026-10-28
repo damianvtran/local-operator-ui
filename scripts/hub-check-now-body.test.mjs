@@ -20,8 +20,11 @@
  *      that would have caught #1269: the schema change alone does not prove the
  *      hook stopped sending what the schema no longer allows.
  *   4. THE ANSWER IT WRITES. Core's check answers `reports` + `status` and NO
- *      inventory, so the hook must not write `undefined` into the links cache
- *      (which blanks the panel until the refetch lands).
+ *      inventory, so the hook must not write the inventory key at all - the
+ *      post-mutation refetch is what refreshes it. Counted by RECORDING
+ *      `setQueryData` calls: TanStack treats `setQueryData(key, undefined)` as a
+ *      no-op, so a cache read cannot see the old code's write and could not
+ *      fail this arm.
  *
  * WHAT IT DOES NOT PROVE: that a live `lop serve` answers 200 and refreshes the
  * panel (QA's real-path pass does, with the fake hub from the #1458 rig), or
@@ -235,7 +238,7 @@ test("the request schema can no longer build a body core would refuse", () => {
 	}
 });
 
-test("the mounted hook sends that body, and a check answer does not blank the inventory", async () => {
+test("the mounted hook sends that body, and a check answer leaves the inventory alone", async () => {
 	const dom = new JSDOM('<div id="root"></div>', {
 		url: "http://fixture.invalid",
 	});
@@ -268,6 +271,19 @@ test("the mounted hook sends that body, and a check answer does not blank the in
 			links: [LINK],
 			unresolved: [],
 		});
+		/*
+		 * Record every write to the inventory key. The old code wrote
+		 * `setQueryData(hubLinksKey, undefined)`, which TanStack discards, so this
+		 * counter is the ONLY observable difference between "no write" and
+		 * "a write of nothing" - a cache read would pass either way.
+		 */
+		const inventoryWrites = [];
+		const setQueryData = client.setQueryData.bind(client);
+		client.setQueryData = (key, value, ...rest) => {
+			if (JSON.stringify(key) === JSON.stringify(api.hubLinksKey))
+				inventoryWrites.push(value);
+			return setQueryData(key, value, ...rest);
+		};
 		const before = globalThis.__hubCheckTest.records.length;
 		await act(async () => {
 			await exposed.mutateAsync({ action: "check", linkId: LINK.link_id });
@@ -284,7 +300,13 @@ test("the mounted hook sends that body, and a check answer does not blank the in
 		const body = api.desktopEndpoint(sent[0]).body;
 		assert.equal(coreHubCheckRefusal(body), null);
 		assert.deepEqual(Object.keys(body).sort(), ["kind", "name", "request_id"]);
-		// A check answers no inventory; writing `undefined` here would blank the panel.
+		// A check answers no inventory, so the hook left that key alone...
+		assert.deepEqual(
+			inventoryWrites,
+			[],
+			"a check answer wrote the inventory key",
+		);
+		// ...and the panel's inventory is still what it was.
 		assert.deepEqual(client.getQueryData(api.hubLinksKey), {
 			links: [LINK],
 			unresolved: [],
