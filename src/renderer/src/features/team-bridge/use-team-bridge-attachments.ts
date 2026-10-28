@@ -113,9 +113,16 @@ export function useTeamBridgeAttachments(args: {
 	const persist = useRef(onPersist);
 	persist.current = onPersist;
 
-	const revokeAll = (list: readonly AttachmentChip[]) => {
+	// Preview URLs detached to the send journal leave `live` (so the unmount
+	// cleanup already skips them), but a SCOPE-CHANGE effect reads the previous
+	// state array, which can still contain a detached chip when the scope moved
+	// in the same render (failed create -> existing conversation, navigation).
+	// Revocation is fenced by ownership: only URLs still owned here are revoked.
+	const transferred = useRef<Set<string>>(new Set());
+	const revokeOwned = (list: readonly AttachmentChip[]) => {
 		for (const chip of list)
-			if (chip.previewUrl) revokeBlobUrl(chip.previewUrl);
+			if (chip.previewUrl && !transferred.current.has(chip.previewUrl))
+				revokeBlobUrl(chip.previewUrl);
 	};
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the destination is the event; `persisted` is read at that moment only.
@@ -125,13 +132,13 @@ export function useTeamBridgeAttachments(args: {
 			chipFromDraft(accountId, row),
 		);
 		setChips((previous) => {
-			revokeAll(previous);
+			revokeOwned(previous);
 			return restored;
 		});
 		setNotice(null);
 	}, [scopeKey, accountId]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: unmount only.
-	useEffect(() => () => revokeAll(live.current), []);
+	useEffect(() => () => revokeOwned(live.current), []);
 
 	const write = (next: AttachmentChip[]) => {
 		live.current = next;
@@ -237,7 +244,7 @@ export function useTeamBridgeAttachments(args: {
 	const remove = (key: string) => {
 		const chip = live.current.find((row) => row.key === key);
 		if (!chip) return;
-		if (chip.previewUrl) revokeBlobUrl(chip.previewUrl);
+		if (chip.previewUrl) revokeOwned([chip]);
 		write(live.current.filter((row) => row.key !== key));
 		setNotice(null);
 		// Best effort: an orphaned staged upload is reaped by the hub's 72 h sweep
@@ -328,9 +335,27 @@ export function useTeamBridgeAttachments(args: {
 		const keep = live.current.filter(
 			(chip) => !(chip.attachment && sent.has(chip.attachment.id)),
 		);
-		revokeAll(live.current.filter((chip) => !keep.includes(chip)));
+		revokeOwned(live.current.filter((chip) => !keep.includes(chip)));
 		write(keep);
 		setNotice(null);
+	};
+
+	/**
+	 * Transfer only the current strip to the send journal. The caller checks
+	 * `busy`/`blocked` first: ongoing preparation/upload still belongs here,
+	 * whereas a detached held image is uploaded by the journal, not uploadHeld.
+	 * Clearing through `write` also clears draft descriptors, but deliberately
+	 * neither revokes previews nor deletes staged ids: the new owner releases
+	 * those resources on discard/revocation, independently of this composer's
+	 * next draft and its unmount cleanup.
+	 */
+	const detachForSend = (): AttachmentChip[] => {
+		const captured = [...live.current];
+		for (const chip of captured)
+			if (chip.previewUrl) transferred.current.add(chip.previewUrl);
+		write([]);
+		setNotice(null);
+		return captured;
 	};
 
 	const busy = chips.some(
@@ -358,6 +383,7 @@ export function useTeamBridgeAttachments(args: {
 		readyIds,
 		markExpired,
 		clearSent,
+		detachForSend,
 		/** Something is still on its way: send waits rather than dropping it. */
 		busy,
 		/** A failed/expired chip must be retried or removed before sending. */

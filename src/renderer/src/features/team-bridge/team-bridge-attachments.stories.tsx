@@ -131,6 +131,7 @@ const chipState = (
 	readyIds: () => [],
 	markExpired: () => {},
 	clearSent: () => {},
+	detachForSend: () => [...chips],
 	busy: chips.some((c) => c.status === "uploading" || c.status === "preparing"),
 	blocked: chips.some((c) => c.status === "error" || c.status === "expired"),
 	held: chips.some((c) => c.status === "held"),

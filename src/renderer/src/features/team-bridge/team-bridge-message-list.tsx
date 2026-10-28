@@ -2,7 +2,7 @@ import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, UserRound } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { FC } from "react";
 import type {
 	TeamBridgeDirectoryMember,
@@ -26,6 +26,7 @@ import {
 	TeamBridgeReactionChips,
 	useTeamBridgeReactionState,
 } from "./team-bridge-reactions";
+import type { TeamBridgeLocalRowPresentation } from "./team-bridge-send-presentation";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { threadSummary } from "./team-bridge-threads-model";
 
@@ -138,6 +139,8 @@ const EMPTY_IDS: ReadonlySet<string> = new Set();
 
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
+	/** Journal metadata keyed by the message id currently projected in this list. */
+	sendRows?: ReadonlyMap<string, TeamBridgeLocalRowPresentation>;
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
 	profileFor?: (
 		sender: TeamBridgeMessage["sender"],
@@ -170,6 +173,7 @@ export const TeamBridgeMessageList: FC<{
 	arrivalsEnabled?: boolean;
 }> = ({
 	messages,
+	sendRows,
 	labelFor,
 	profileFor,
 	onMessagePerson,
@@ -187,8 +191,18 @@ export const TeamBridgeMessageList: FC<{
 	arrivalsEnabled = true,
 }) => {
 	const locale = useI18nLocale();
-	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
-	const items = threadItems(messages, new Date());
+	// Local seqs reserve projection positions, not server arrival watermarks.
+	// Observing one would hide a peer arrival whose real seq is below it; even
+	// confirmed journal rows remain excluded because they never animate here.
+	const arrivalMessages = useMemo(
+		() =>
+			sendRows
+				? messages.filter((message) => !sendRows.has(message.id))
+				: messages,
+		[messages, sendRows],
+	);
+	const arriving = useArrivingRows(arrivalKey, arrivalMessages, arrivalsEnabled);
+	const items = threadItems(messages, new Date(), sendRows !== undefined);
 	return (
 		<ol className="mt-auto flex flex-col pt-4 pb-2">
 			{items.map((item) =>
@@ -196,9 +210,14 @@ export const TeamBridgeMessageList: FC<{
 					<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
 				) : (
 					<MessageRow
-						key={item.message.id}
+						key={sendRows?.get(item.message.id)?.clientRef ?? item.message.id}
 						message={item.message}
-						continuation={item.continuation}
+						sendRow={sendRows?.get(item.message.id)}
+						// Keep the header through confirmation so status never adds a
+						// new line to a continuation or removes one at the server swap.
+						continuation={
+							sendRows?.has(item.message.id) ? false : item.continuation
+						}
 						label={labelFor(item.message.sender)}
 						member={profileFor?.(item.message.sender)}
 						onMessagePerson={onMessagePerson}
@@ -210,7 +229,9 @@ export const TeamBridgeMessageList: FC<{
 						tenantId={tenantId}
 						accountId={accountId}
 						density={density}
-						arriving={arriving.has(item.message)}
+						arriving={
+							!sendRows?.has(item.message.id) && arriving.has(item.message)
+						}
 						onArrivalEnd={arriving.end}
 					/>
 				),
@@ -249,6 +270,39 @@ const DayDivider: FC<{
 	);
 };
 
+/** Status stays in the existing header, never a second message/card. The
+ * minimum height also remains after confirmation so the ACK cannot collapse
+ * the row around the inline retry/discard targets. */
+const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
+	<span className="inline-flex min-h-6 flex-wrap items-baseline gap-x-2 text-[12px] text-ink-muted">
+		<span role="status">
+			{row.state === "failed"
+				? t("ui.teamBridge.message.failed")
+				: row.state === "pending"
+					? t("ui.teamBridge.message.sending")
+					: null}
+		</span>
+		{row.state === "failed" && row.onRetry && (
+			<button
+				type="button"
+				onClick={row.onRetry}
+				className="min-h-6 rounded-sm px-1.5 text-accent hover:underline"
+			>
+				{t("ui.common.actions.retry")}
+			</button>
+		)}
+		{row.state === "failed" && row.onDiscard && (
+			<button
+				type="button"
+				onClick={row.onDiscard}
+				className="min-h-6 rounded-sm px-1.5 text-accent hover:underline"
+			>
+				{t("ui.teamBridge.message.discard")}
+			</button>
+		)}
+	</span>
+);
+
 type ReactionContext = {
 	accountId: string;
 	tenantId: string;
@@ -262,6 +316,7 @@ type ReactionContext = {
  */
 const MessageRow: FC<{
 	message: TeamBridgeMessage;
+	sendRow?: TeamBridgeLocalRowPresentation;
 	continuation: boolean;
 	label: string | null;
 	member?: TeamBridgeDirectoryMember;
@@ -277,10 +332,19 @@ const MessageRow: FC<{
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
 }> = ({ reactionContext, ...props }) =>
-	reactionContext && props.message.body !== null ? (
+	(reactionContext || props.sendRow) && props.message.body !== null ? (
 		<ReactableMessageRow
-			key={`${reactionContext.accountId}:${props.message.id}`}
-			reactionContext={reactionContext}
+			key={`${reactionContext?.accountId ?? props.accountId ?? ""}:${props.sendRow?.clientRef ?? props.message.id}`}
+			// A new target has no reaction context until its conversation exists.
+			// Reserve the same wrapper now so that create receipt cannot remount
+			// a journal image later; the placeholder context is always inert.
+			reactionContext={
+				reactionContext ?? {
+					accountId: props.accountId ?? "",
+					tenantId: props.tenantId ?? "",
+					disabled: true,
+				}
+			}
 			{...props}
 		/>
 	) : (
@@ -295,12 +359,27 @@ const ReactableMessageRow: FC<
 		messageId: props.message.id,
 		...reactionContext,
 		reactions: props.message.reactions,
+		disabled:
+			reactionContext.disabled ||
+			(props.sendRow !== undefined && props.sendRow.state !== "confirmed"),
 	});
-	return <MessageRowView {...props} reactions={reactions} />;
+	// Keep this wrapper mounted across the ACK; switching component types at
+	// confirmation would remount the image subtree even with a stable row key.
+	return (
+		<MessageRowView
+			{...props}
+			reactions={
+				!props.sendRow || props.sendRow.state === "confirmed"
+					? reactions
+					: undefined
+			}
+		/>
+	);
 };
 
 type MessageRowProps = {
 	message: TeamBridgeMessage;
+	sendRow?: TeamBridgeLocalRowPresentation;
 	continuation: boolean;
 	label: string | null;
 	member?: TeamBridgeDirectoryMember;
@@ -319,6 +398,7 @@ type MessageRowProps = {
 
 const MessageRowView: FC<MessageRowProps> = ({
 	message,
+	sendRow,
 	continuation,
 	label: known,
 	member,
@@ -340,6 +420,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	   toolbar button and the "N replies" summary both read, so the affordance
 	   does not render rather than rendering inert. */
 	const canReply =
+		(!sendRow || sendRow.state === "confirmed") &&
 		TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD &&
 		onReply !== undefined &&
 		!message.thread_root_id;
@@ -510,6 +591,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 								{clock}
 							</time>
 						)}
+						{sendRow && <SendStatus row={sendRow} />}
 					</div>
 				)}
 				{/* A null body is an agent member's unadmitted message: say so
@@ -532,6 +614,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 						tenantId={tenantId ?? null}
 						density={density}
 						accountId={accountId}
+						localUrls={sendRow?.previewUrls}
 					/>
 				)}
 				{reactions && <TeamBridgeReactionChips state={reactions} />}

@@ -569,6 +569,8 @@ const MessageImage: FC<{
 	tenantId: string | null;
 	accountId?: string;
 	attachment: TeamBridgeAttachment;
+	/** Journal-owned preview: never retained/revoked by this tile. */
+	localUrl?: string;
 	index: number;
 	count: number;
 	density: "regular" | "compact";
@@ -580,6 +582,7 @@ const MessageImage: FC<{
 	tenantId,
 	accountId,
 	attachment,
+	localUrl,
 	index,
 	count,
 	density,
@@ -587,7 +590,20 @@ const MessageImage: FC<{
 	register,
 	buttonRef,
 }) => {
-	const view = tenantId === null ? "unavailable" : attachmentView(attachment);
+	// A staged descriptor has no message-byte route yet. The author's local
+	// preview can bridge that interval, but never overrides a withheld body or
+	// a hub revocation/expiration. Unknown states remain fail-closed.
+	const preview =
+		message.body !== null &&
+		(attachment.state === undefined ||
+			attachment.state === "staged" ||
+			attachment.state === "bound")
+			? localUrl
+			: undefined;
+	const view =
+		message.body === null || tenantId === null
+			? "unavailable"
+			: attachmentView(attachment);
 	const [attempt, setAttempt] = useState(0);
 	const key = `team-bridge:${tenantId}:${message.conversation_id}:${message.id}:${attachment.id}`;
 	const source = useBridgeAttachmentUrl(
@@ -600,18 +616,22 @@ const MessageImage: FC<{
 			// The receipt, not a lookup: the account this tile was rendered under.
 			expectedAccountId: accountId ?? "",
 		},
-		view === "fetch" && Boolean(accountId),
+		!localUrl && view === "fetch" && Boolean(accountId),
 		attempt,
 	);
 	const label = t("ui.teamBridge.attachments.position", {
 		index: String(index + 1),
 		count: String(count),
 	});
-	const url = source.state === "ready" ? source.url : null;
+	const url =
+		preview ??
+		(!localUrl && view === "fetch" && source.state === "ready"
+			? source.url
+			: null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: publish the URL to the lightbox set when it changes.
 	useEffect(() => register(index, url), [url, index]);
 	const box = boxFor(attachment, count === 1, density === "compact");
-	if (view !== "fetch")
+	if (!preview && view !== "fetch")
 		return (
 			<Placeholder
 				kind={view === "expired" ? "expired" : "unavailable"}
@@ -619,7 +639,7 @@ const MessageImage: FC<{
 				box={box}
 			/>
 		);
-	if (source.state === "failed")
+	if (!preview && source.state === "failed")
 		return (
 			<Placeholder
 				kind="failed"
@@ -674,7 +694,9 @@ export const TeamBridgeMessageAttachments: FC<{
 	/* The captured owner this subtree was rendered under; the byte route needs it. */
 	accountId?: string;
 	density?: "regular" | "compact";
-}> = ({ message, tenantId, density = "regular", accountId }) => {
+	/** Index-aligned journal previews suppress fetching and survive the ACK. */
+	localUrls?: readonly (string | undefined)[];
+}> = ({ message, tenantId, density = "regular", accountId, localUrls }) => {
 	useI18nLocale();
 	const attachments = message.attachments ?? [];
 	const [open, setOpen] = useState<number | null>(null);
@@ -708,12 +730,15 @@ export const TeamBridgeMessageAttachments: FC<{
 				className="mt-1.5 flex flex-wrap gap-2"
 			>
 				{attachments.map((attachment, index) => (
-					<li key={attachment.id}>
+					// Journal order is stable even when provisional attachment ids
+					// become hub ids. Keep the image element, not just its URL.
+					<li key={localUrls ? `local:${index}` : attachment.id}>
 						<MessageImage
 							message={message}
 							tenantId={tenantId}
 							accountId={accountId}
 							attachment={attachment}
+							localUrl={localUrls?.[index]}
 							index={index}
 							count={count}
 							density={density}
