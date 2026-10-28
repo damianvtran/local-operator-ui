@@ -70,9 +70,19 @@ const isBusy = (link: HubLink) =>
  * replaced with a proposal the user has not seen. Core does the final fresh-byte
  * validation/CAS. The UI cannot certify that from its cached inventory.
  */
-export function HubLinkGroup({ link }: { link: HubLink }) {
+export function HubLinkGroup({
+	link,
+	displayName,
+	itemsById,
+}: {
+	link: HubLink;
+	/** The local item's DISPLAY name (an agent/team row's `name` is its id). */
+	displayName?: string;
+	/** `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
+	itemsById: boolean;
+}) {
 	useI18nLocale();
-	const actions = useHubLinkActions(link);
+	const actions = useHubLinkActions(link, { displayName, itemsById });
 	const source = hubLinkSourceName(link);
 	const view = hubLinkView(link);
 	const [publishPreview, setPublishPreview] = useState<HubPushPreview | null>(
@@ -500,8 +510,6 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 										run({
 											action: "apply",
 											linkId: link.link_id,
-											previewReceipt: incomingPreview.preview_receipt,
-											confirmApply: true,
 											prefer: incomingPreview.choices.prefer ?? undefined,
 											acknowledgeUnknownBaseline:
 												incomingPreview.choices.acknowledge_unknown_baseline,
@@ -824,7 +832,15 @@ export function HubLinksPanel({
 	kind,
 	name,
 	localId,
-}: { enabled: boolean; kind?: HubLinkKind; name?: string; localId?: string }) {
+	itemsById = false,
+}: {
+	enabled: boolean;
+	kind?: HubLinkKind;
+	name?: string;
+	localId?: string;
+	/** The caller's `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
+	itemsById?: boolean;
+}) {
 	useI18nLocale();
 	const inventory = useHubLinks(enabled);
 	/*
@@ -1048,7 +1064,12 @@ export function HubLinksPanel({
 				>
 					<div className="divide-y divide-hairline">
 						{rows.map((link) => (
-							<HubLinkGroup key={link.link_id} link={link} />
+							<HubLinkGroup
+								key={link.link_id}
+								link={link}
+								displayName={name}
+								itemsById={itemsById}
+							/>
 						))}
 					</div>
 					{inventory.error && inventory.data && (
