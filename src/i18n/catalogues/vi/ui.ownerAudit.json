@@ -1,6 +1,6 @@
 {
 	"ui.ownerAudit.title": "Tin nhắn của chánh văn phòng của bạn",
-	"ui.ownerAudit.read_only": "Lịch sử chỉ đọc. Không thể gửi, bày tỏ cảm xúc hoặc chỉnh sửa.",
+	"ui.ownerAudit.read_only": "Lịch sử chỉ đọc. Không thể gửi, thêm cảm xúc hoặc chỉnh sửa.",
 	"ui.ownerAudit.loading": "Đang tải tin nhắn được kiểm tra",
 	"ui.ownerAudit.error": "Không thể tải tin nhắn được kiểm tra.",
 	"ui.ownerAudit.retry": "Thử lại",
@@ -23,7 +23,7 @@
 	"ui.ownerAudit.reveal": "Hiển thị nội dung tin nhắn",
 	"ui.ownerAudit.active": "Chánh văn phòng của bạn vẫn là thành viên.",
 	"ui.ownerAudit.left": "Chánh văn phòng của bạn đã rời cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra.",
-	"ui.ownerAudit.removed": "Chánh văn phòng của bạn đã bị xóa; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra.",
+	"ui.ownerAudit.removed": "Chánh văn phòng của bạn đã bị xóa khỏi cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra.",
 	"ui.ownerAudit.disclosure": "Chỉ bạn với tư cách chủ sở hữu tác nhân này mới thấy; các thành viên khác thấy rằng chế độ kiểm tra của chủ sở hữu đã bật.",
 	"ui.ownerAudit.viewer": "{name}, chủ sở hữu tác nhân, cũng có thể thấy.",
 	"ui.ownerAudit.replies": "Đọc các câu trả lời trong luồng"

@@ -24,7 +24,7 @@
 	"ui.ownerAudit.active": "你的首席助理仍是成员。",
 	"ui.ownerAudit.left": "你的首席助理已离开此对话；此后的消息不在审计时段内。",
 	"ui.ownerAudit.removed": "你的首席助理已被移除；此后的消息不在审计时段内。",
-	"ui.ownerAudit.disclosure": "仅你作为此代理的所有者可见；其他成员可看到已启用所有者审计。",
-	"ui.ownerAudit.viewer": "代理所有者 {name} 也可以查看。",
+	"ui.ownerAudit.disclosure": "仅你作为此智能体的所有者可见；其他成员可看到已启用所有者审计。",
+	"ui.ownerAudit.viewer": "智能体所有者 {name} 也可以查看。",
 	"ui.ownerAudit.replies": "阅读讨论串回复"
 }
