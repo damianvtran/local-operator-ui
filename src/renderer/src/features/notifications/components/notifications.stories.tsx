@@ -915,12 +915,12 @@ export const SidebarAfter: Story = {
 };
 
 /**
- * THE BADGE, BEFORE AND AFTER (decisions D5): the quiet register every other
- * rail row keeps, beside the `emphasis` register the Notifications row now
- * wears, on the four grounds the rail draws a count on. Both pills compose the
+ * THE BADGE, BEFORE AND AFTER (decisions D5, reversed 2026-10-28 so every
+ * sidebar attention count now wears `emphasis`): the old quiet register beside
+ * the `emphasis` register, on the four grounds the rail draws a count on. Both pills compose the
  * SHIPPED `badgeVariants` call the rail makes, so this frame cannot drift from
  * the row; the contrast numbers are asserted in `scripts/contrast-contract.mjs`
- * ("rail notifications badge (emphasis)").
+ * ("rail attention badge (emphasis)").
  */
 export const BadgeRegisters: Story = {
 	render: () => (

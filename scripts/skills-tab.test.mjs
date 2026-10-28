@@ -471,6 +471,35 @@ const installBridge = (world) => {
 						const answer = await world.write(request);
 						return answer ?? { status: 200, body: { result: {} } };
 					}
+					case "radient.request":
+						/*
+						 * THE ACCOUNT READ, and nothing else. A signed-in world needs the one
+						 * operation that makes `useRadientAuth` answer authenticated - which is
+						 * what enables Download - so the refusal cases below can press the real
+						 * button. Every other Radient operation stays an unexpected op, so no
+						 * case starts passing on a hub this bridge does not have.
+						 */
+						if (!world.signedIn || request.control?.operation !== "account")
+							throw new Error(
+								`unexpected desktop op in this test: ${request.op}`,
+							);
+						return {
+							status: 200,
+							body: {
+								result: {
+									data: {
+										msg: "ok",
+										result: {
+											account: {
+												id: "account-1",
+												name: "Test Account",
+												email: "test@example.com",
+											},
+										},
+									},
+								},
+							},
+						};
 					default:
 						throw new Error(
 							`unexpected desktop op in this test: ${request.op}`,
@@ -3239,7 +3268,7 @@ test("U1/U2: a not-installed hub skill offers Download, says Download, and claim
 	assert.equal(download.disabled, true);
 	assert.match(
 		text(q(view.container, '[data-testid="skill-download-reason"]')),
-		/^Sign in to Agent Hub to download this skill\.$/,
+		/^Sign in to Radient in Settings to download this skill\.$/,
 	);
 	assert.match(
 		text(q(view.container, '[data-testid="skill-meta"]')),
@@ -3265,6 +3294,186 @@ test("U1/U2: a not-installed hub skill offers Download, says Download, and claim
 	assert.equal(
 		boxOf(view.container)?.getAttribute("placeholder"),
 		"Download this skill to change it.",
+	);
+	await teardown(view);
+});
+
+/*
+ * U11 (UX r3): A REFUSED DOWNLOAD SAYS WHAT TO DO.
+ *
+ * Core answers `hub.skillPull` with a status that names the remedy
+ * (`_raise_skill_refusal` in `desktop_hub.py`), and the pane used to answer every
+ * one of them with "Try Download again later" - advice that cannot work for a
+ * skill the hub has delisted, a machine with no hub sign-in, or a hub copy the
+ * hub itself refused. Each case mounts the real page signed in, presses the real
+ * Download and reads the real alert; the status (and, for a 409, the code) is the
+ * only thing that differs, which is what makes "the sentence is chosen by the
+ * refusal" checkable here rather than asserted on the helper alone.
+ */
+const refusedPullWorld = (status, detail) => {
+	const base = absentWorld();
+	return {
+		...base,
+		// `radient` makes the account read live in the bridge; without it the pane is
+		// signed out, Download is disabled, and no refusal would ever be sent.
+		features: { ...base.features, radient: 1 },
+		signedIn: true,
+		write: (request) => {
+			assert.equal(request.op, "hub.skillPull");
+			return { status, body: { detail } };
+		},
+	};
+};
+
+/** Press Download in a signed-in pane and hand back the refusal's alert. */
+const refusedDownload = async (status, detail) => {
+	const view = await mount(
+		"/agents?kind=skill&name=hub-absent",
+		refusedPullWorld(status, detail),
+	);
+	assert.ok(
+		await settle(
+			() =>
+				q(view.container, '[data-testid="skill-download"]')?.disabled === false,
+		),
+		"Download is enabled once the account read settles",
+	);
+	await press(q(view.container, '[data-testid="skill-download"]'));
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-write-error"]') !== null,
+		),
+		"the refusal is shown",
+	);
+	const alert = q(view.container, '[data-testid="skill-write-error"]');
+	return { view, alert };
+};
+
+/** The alert's body line (the title is the other `<p>`, marked by the component). */
+const refusalBody = (alert) => text(q(alert, "p:not([data-alert-mark])"));
+
+test("U11: a 404 Download refusal says the skill is gone, not that waiting helps", async () => {
+	const { view, alert } = await refusedDownload(404, {
+		code: "skill-not-found",
+		message: "the skill is not on the hub",
+	});
+	// The icon slot in an Alert carries `data-alert-mark` too, so the title is the
+	// MARKED `<p>` and the icon wrapper (a div) is skipped by the element type.
+	assert.equal(text(q(alert, "p[data-alert-mark]")), "That did not download");
+	assert.equal(
+		refusalBody(alert),
+		'"hub-absent" is no longer on the hub, so nothing was downloaded.',
+	);
+	await teardown(view);
+});
+
+test("U11: a 401 Download refusal says the sign-in was refused, not that waiting helps", async () => {
+	// Core's 401 is `no-credential` and carries NO code (`_raise_skill_refusal`
+	// maps it to the sign-in remedy), so the detail here is the body it really sends.
+	const { view, alert } = await refusedDownload(401, {
+		message: "Sign in with `lop login radient` to use the hub.",
+	});
+	assert.equal(
+		refusalBody(alert),
+		'The hub refused this machine\'s sign-in, so "hub-absent" was not downloaded.',
+	);
+	await teardown(view);
+});
+
+test("U11: a 409 policy-revision-changed says to press again, because the link re-reads", async () => {
+	const { view, alert } = await refusedDownload(409, {
+		code: "policy-revision-changed",
+		message: "the link's policy revision changed",
+	});
+	// A local CAS loss, not a hub refusal: the settle re-reads the link, so the
+	// next press works and the sentence must say so (review r1 M1).
+	assert.equal(
+		refusalBody(alert),
+		"Agent Hub couldn't send this skill, so nothing was installed. Try Download again later.",
+	);
+	await teardown(view);
+});
+
+test("U11: a code-less 409 (an update already running here) says to press again", async () => {
+	// Core's `HubBusy` refusal, verbatim: `_refusal(409, str(busy))` with no code,
+	// because a body is only typed when it carries a category (`desktop_hub.py`).
+	const { view, alert } = await refusedDownload(409, {
+		message:
+			"another hub update is running (the update runner or a second `lop` process); try again shortly",
+	});
+	assert.equal(
+		refusalBody(alert),
+		"Agent Hub couldn't send this skill, so nothing was installed. Try Download again later.",
+	);
+	await teardown(view);
+});
+
+test("U11: a bundle-* 409 keeps the refusal sentence, because waiting cannot clear it", async () => {
+	// The control for the split: a 409 that is about the copy itself must NOT take
+	// the retry sentence just because its siblings do.
+	const { view, alert } = await refusedDownload(409, {
+		code: "bundle-local-changes",
+		message: "this machine's copy has unpublished changes",
+	});
+	assert.equal(
+		refusalBody(alert),
+		'The hub refused the download, so "hub-absent" is not here.',
+	);
+	await teardown(view);
+});
+
+test("U11: a 422 Download refusal says the copy was refused, not that waiting helps", async () => {
+	const { view, alert } = await refusedDownload(422, {
+		code: "skill-validation",
+		message: "the skill does not meet the required file and metadata rules",
+	});
+	assert.equal(
+		refusalBody(alert),
+		'The hub refused the download, so "hub-absent" is not here.',
+	);
+	await teardown(view);
+});
+
+test("U11: a 429 still reads as a busy hub, though core folds one into a 502 today", async () => {
+	const { view, alert } = await refusedDownload(429, {
+		message: "the hub is rate limiting this account",
+	});
+	assert.equal(
+		refusalBody(alert),
+		'The hub is busy, so "hub-absent" was not downloaded. Try again in a moment.',
+	);
+	await teardown(view);
+});
+
+test("U11: a 5xx Download refusal keeps the retry sentence, because there a retry is the fix", async () => {
+	const { view, alert } = await refusedDownload(502, {
+		code: "hub-upstream",
+		message: "the hub could not serve this skill",
+	});
+	assert.equal(
+		refusalBody(alert),
+		"Agent Hub couldn't send this skill, so nothing was installed. Try Download again later.",
+	);
+	await teardown(view);
+});
+
+test("U12: the signed-out reason names the Radient sign-in and where it lives", async () => {
+	const view = await mount("/agents?kind=skill&name=hub-absent", absentWorld());
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-download-reason"]') !== null,
+		),
+	);
+	// The whole finding was the sentence pointing at a sign-in that does not
+	// exist: no "Agent Hub" sign-in to find, the account is Radient, and its
+	// section is in Settings. All three words are pinned by this one string.
+	assert.equal(
+		text(q(view.container, '[data-testid="skill-download-reason"]')),
+		"Sign in to Radient in Settings to download this skill.",
+	);
+	assert.equal(
+		q(view.container, '[data-testid="skill-download"]').disabled,
+		true,
 	);
 	await teardown(view);
 });

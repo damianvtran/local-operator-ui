@@ -437,3 +437,30 @@ export function sanitizeSidebarLayout(value: unknown): SidebarLayout {
 	insertMissingIntoRegion(layout, "more");
 	return layout;
 }
+
+/**
+ * THE MORE ROW'S AGGREGATE ATTENTION COUNT: the SUM of every hidden
+ * destination's attention count (design § 3; operator, 2026-10-28).
+ *
+ * WHY A SUM AND NOT A DOT. Every count this column carries is an attention
+ * count - approvals, missed messages, unread notifications, unread Team Bridge
+ * conversations - and since 2026-10-28 they all wear the one shared accent badge
+ * (`AttentionBadge`). There is no mixed register to reconcile, so the fold can
+ * say exactly how much is waiting behind it rather than only that something is;
+ * "a dot when mixed" would throw that number away for no gain. A folded Aida
+ * with 2 missed messages and a folded Mesh with 1 approval reads `3` on More.
+ * Totals never enter this sum: a destination row carries no total, only
+ * attention. The badge caps the rendered sum at `99+`; the control's accessible
+ * name states the exact sum.
+ *
+ * Non-finite or negative entries count as zero, so one malformed read cannot
+ * hide (NaN) or subtract from the others.
+ */
+export function moreAttentionCount(
+	items: ReadonlyArray<{ attention?: number }>,
+): number {
+	return items.reduce((sum, item) => {
+		const count = item.attention ?? 0;
+		return Number.isFinite(count) && count > 0 ? sum + count : sum;
+	}, 0);
+}

@@ -1,0 +1,68 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session 13532684ac79, delta audit of the one ui.agents.skills key #1463 changed; not the PR coder, the translator of 3fc97b914e, or any previous auditor)",
+ "agent": "translation-auditor (lopdev coder-role session 13532684ac79, delta audit of the one ui.agents.skills key #1463 changed; not the PR coder, the translator of 3fc97b914e, or any previous auditor)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header); no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (13532684ac79) from the PR coder (d640d4d6fd), from the translator of this key (3fc97b914e: agent coder, lopdev translator step, anthropic/claude-opus-5-5) and from every earlier auditor of these rows (a26b945b2ee1, 1f3211deab61, 04d9540e57e6, bf41e95b4e1e). SAME-FAMILY, NOT model-independent: the translator and this auditor both ran anthropic/claude-opus-5-5. It is agent-instance independent. The translator's commit message was read only as a list of claims to check. Every verdict was rebuilt from the English source, the en context, the locale's shipped sign-in sentences, the Settings page label, the Download button label and the style guide.",
+ "instance": "13532684ac79-zh-cn",
+ "session": "13532684ac79",
+ "locale": "zh-CN",
+ "branch": "feat/skill-download-refusals",
+ "head": "3fc97b914e35370e505c9bba2c778498a3beba3f",
+ "pr": "damianvtran/local-operator-ui#1463",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "ui.agents.skills: delta audit of the 1 key d640d4d6fd changed in English (detail.download_signed_out, translated in 3fc97b914e). The other keys are byte-identical to the a26b945b2ee1 row.",
+ "inputs_sha256": {
+  "en_context (ui.agents.skills.context.json)": "25d104acb15fdf5165b96eb4470e031f98ec68e375ee069f7eeb5cb4af8e9069",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/zh-CN.md)": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "verified": [
+  "key set equals en; no placeholders in this key (en has none); the value carries no bidi/zero-width/BOM characters, no edge or double spaces; NFC",
+  "carried keys byte-identical to the last audited row: the ledger target_sha256 (a26b945b2ee1) equals the 9054c4a83c blob, and the 3fc97b914e file differs from it on exactly one line (36, this key); en ui.agents.skills likewise differs from its audited blob only on this key",
+  "against the locale's shipped 'Sign in to Radient in Settings…' sentences: 在“设置”中登录Radient以启用朗读。",
+  "Settings place = the page label ui.settings.page.title / sidebar ui.shell.sidebar_navigation.settings = «设置»",
+  "Download verb = ui.hub.skills.download = «下载»",
+  "render slot: skills-library.tsx renders the key in a text-meta <p> (data-testid skill-download-reason) under the disabled Download button, with no truncate or clamp, so length cannot clip",
+  "Same frame as the shipped speech sign-in sentences ('在“设置”中登录Radient…'), quoting the page label 设置 as they do; 下载 is the button's verb; 此技能 the namespace's noun; no space between Han and the Latin run (style guide); full-width 。 for a full sentence. '即可' instead of the speech keys' '以' is idiomatic for 'do X and you can Y', and it is the namespace's own pattern (composer.gate_not_installed 下载此技能后即可更改, select_prompt, gate_none); it also carries over from this key's previous audited value."
+ ],
+ "namespaces": {
+  "ui.agents.skills": {
+   "namespace": "ui.agents.skills",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 114,
+   "delta_keys_audited": [
+    "ui.agents.skills.detail.download_signed_out"
+   ],
+   "values": {
+    "ui.agents.skills.detail.download_signed_out": {
+     "en": "Sign in to Radient in Settings to download this skill.",
+     "before (9054c4a83c, previous English)": "登录智能体中心即可下载此技能。",
+     "translated (3fc97b914e)": "在“设置”中登录Radient即可下载此技能。",
+     "after (this audit)": "在“设置”中登录Radient即可下载此技能。",
+     "changed_by_auditor": false
+    }
+   },
+   "sha256": {
+    "zh-CN": "043d8c06a5acec2b1ea6a5b85645a0ae12a5094cc60bfe120b0b551d37194279",
+    "en": "759e82b60880b166e3403c85802bef8e8dc5f460bb39071fe6d89e999eec431c"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.skills.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.agents.skills.json",
+    "context": "src/i18n/catalogues/en/ui.agents.skills.context.json"
+   },
+   "findings": [
+    {
+     "severity": "INFO",
+     "key": "ui.agents.skills.detail.download_signed_out",
+     "summary": "INFO (not counted): the en context note for this key, rewritten in d640d4d6fd, says 'Keep Radient and Settings in Latin'. Radient is a product name, but Settings is a UI label, localized in every supported locale's sidebar (ui.shell.sidebar_navigation.settings) and page title (ui.settings.page.title). This translation uses the localized label, as every shipped 'Sign in to Radient in Settings…' sentence does. Writing 'Settings' in Latin would name a place this locale's UI never shows. The defect is in the English sidecar, not in this value; a context-only fix ('Keep Radient in Latin; Settings is the page's own label') is recommended to the PR coder."
+    }
+   ]
+  }
+ }
+}

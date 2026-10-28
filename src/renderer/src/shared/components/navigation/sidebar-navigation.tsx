@@ -56,6 +56,7 @@ import {
 	type SidebarLayout,
 	type SidebarRegion,
 	layoutEquals,
+	moreAttentionCount,
 	moveToRegion,
 	moveWithinRegion,
 	placeInRegion,
@@ -64,10 +65,9 @@ import {
 } from "@shared/components/navigation/sidebar-destinations";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import {
-	Badge,
+	AttentionBadge,
 	BrowserSafeTooltip,
 	Button,
-	countLabel,
 } from "@shared/components/ui";
 import {
 	DropdownMenu,
@@ -203,14 +203,6 @@ type NavItem = {
 	 * without one would draw a badge its name could not state.
 	 */
 	attentionName?: (count: number) => string;
-	/**
-	 * Draw the count in the `emphasis` register instead of the quiet one. Set on
-	 * the Notifications row alone (operator, 2026-10-25, notifications decisions
-	 * D5: the quiet pill was "a bit too subtle" for the one badge whose whole
-	 * job is to be noticed). Every other row keeps `attentionQuiet`, and the More
-	 * row's aggregate stays quiet too: a folded row is a choice to see less.
-	 */
-	attentionEmphasis?: boolean;
 	/**
 	 * Whether the row's thing is working RIGHT NOW - a turn in flight, the user's
 	 * or a proactive wake's. It draws the app's busy mark (the sidebar's spinning
@@ -628,10 +620,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * GATED ON `features.notifications`, the Library rule: an older core has no
 	 * routes, and the layout save strips the id there (`stripUnadvertisedIds`).
 	 *
-	 * ITS BADGE IS THE LOUDER `emphasis` PILL (operator, 2026-10-25, decisions
-	 * D5): unread updates plus UNREAD waiting asks, `unread_count +
+	 * ITS BADGE COUNTS unread updates plus UNREAD waiting asks, `unread_count +
 	 * waiting_unread_count` (decisions D16; the core field changed when asks grew
-	 * their own read state). Every other row keeps the quiet register.
+	 * their own read state). Its filled accent pill was this row's alone under
+	 * decision D5 (2026-10-25); the operator reversed that on 2026-10-28, and every
+	 * row's attention count now wears the same shared `AttentionBadge`.
 	 */
 	if (notificationsEnabled) {
 		destinationItems.set("notifications", {
@@ -642,7 +635,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			tourTag: "nav-item-notifications",
 			attention: notificationsBadge,
 			attentionTag: "nav-notifications-badge",
-			attentionEmphasis: true,
 			attentionName: (count: number) =>
 				t("ui.notifications.nav.unread", {
 					count,
@@ -1606,8 +1598,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					 * the 30px row) and the mark is the panel rail's corner mark
 					 * (`panel-rail.tsx`, the browser item's block states the geometry):
 					 * 14px, pinned at -2px/-2px of the box, so the glyph is the button's
-					 * only in-flow content and stays centred. The register stays the quiet
-					 * one below; only the size and the place are the rail's. The busy mark
+					 * only in-flow content and stays centred. The register is the shared
+					 * `AttentionBadge`; only the size and the place are the rail's. The busy mark
 					 * keeps its in-flow slot: where a spinner goes in the strip is a
 					 * design call #1083 does not make.
 					 */
@@ -1615,19 +1607,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						{glyph}
 						{attention > 0 && (
 							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
-								<Badge
-									variant={
-										item.attentionEmphasis ? "emphasis" : "attentionQuiet"
-									}
-									shape="pill"
-									size="count"
-									className="h-3.5 min-w-3.5 px-0.75 leading-none"
+								<AttentionBadge
+									count={attention}
+									placement="corner"
 									data-tour-tag={item.attentionTag}
-								>
-									{item.attentionEmphasis
-										? countLabel(attention, 99)
-										: attention}
-								</Badge>
+								/>
 							</span>
 						)}
 					</span>
@@ -1827,21 +1811,16 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					>
 						{attention > 0 && (
 							/*
-							 * THE QUIET COUNT (operator ask, 2026-09-30): the rail's badge
-							 * is the `attentionQuiet` register rather than the bordered
-							 * `attention` mark - borderless, an `elevated` whisper instead
-							 * of the warning wash, and the count family's own `ink-dim` /
-							 * `text-meta-sm` numeral, so it reads with the sidebar's
-							 * team-count lines.
+							 * THE SHARED ACCENT COUNT (operator, 2026-10-28): every row's
+							 * attention count is the one `AttentionBadge`, the filled accent
+							 * pill Notifications introduced. This reverses the 2026-09-30
+							 * quiet register and notifications decision D5 (Notifications
+							 * alone loud); see `attention-badge.tsx` for the why.
 							 */
-							<Badge
-								variant={item.attentionEmphasis ? "emphasis" : "attentionQuiet"}
-								shape="pill"
-								size="count"
+							<AttentionBadge
+								count={attention}
 								data-tour-tag={item.attentionTag}
-							>
-								{item.attentionEmphasis ? countLabel(attention, 99) : attention}
-							</Badge>
+							/>
 						)}
 						{item.working && (
 							/*
@@ -2135,15 +2114,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						<Icon size={16} aria-hidden="true" />
 						{(props.attention ?? 0) > 0 && (
 							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
-								<Badge
-									variant="attentionQuiet"
-									shape="pill"
-									size="count"
-									className="h-3.5 min-w-3.5 px-0.75 leading-none"
+								<AttentionBadge
+									count={props.attention ?? 0}
+									placement="corner"
 									data-tour-tag={props.attentionTag}
-								>
-									{props.attention}
-								</Badge>
+								/>
 							</span>
 						)}
 						{props.working && (
@@ -2222,8 +2197,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			.map((id) => destinationItems.get(id))
 			.filter((item): item is NavItem => item !== undefined);
 		/*
-		 * THE AGGREGATE (design § 3): every hidden destination's attention is summed
-		 * into this row's badge and any hidden row working draws the spinner. It is
+		 * THE AGGREGATE (design § 3): every hidden destination's attention is SUMMED
+		 * (`moreAttentionCount` states why a sum rather than a dot) into this row's
+		 * badge - the same shared `AttentionBadge` the rows wear, so a count folded
+		 * into More is exactly as loud as it was on its own row - and any hidden row
+		 * working draws the spinner. It is
 		 * the requirement that an unread chief of staff can never be hidden by
 		 * customisation - Aida folded into More still says, on the row that hides her,
 		 * that something is waiting.
@@ -2232,10 +2210,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * reader acts on, and only one sentence can be the control's name. The
 		 * spinner is still drawn beside it, so the state is not lost to sight.
 		 */
-		const moreAttention = hiddenItems.reduce(
-			(sum, item) => sum + (item.attention ?? 0),
-			0,
-		);
+		const moreAttention = moreAttentionCount(hiddenItems);
 		const moreWorking = hiddenItems.some((item) => item.working === true);
 		const moreName =
 			moreAttention > 0
@@ -2275,14 +2250,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						{(moreAttention > 0 || moreWorking) && (
 							<span className="inline-flex shrink-0 items-center gap-1">
 								{moreAttention > 0 && (
-									<Badge
-										variant="attentionQuiet"
-										shape="pill"
-										size="count"
+									<AttentionBadge
+										count={moreAttention}
 										data-tour-tag="nav-more-badge"
-									>
-										{moreAttention}
-									</Badge>
+									/>
 								)}
 								{moreWorking && (
 									<LoaderCircle
