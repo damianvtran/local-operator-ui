@@ -1,0 +1,232 @@
+{
+ "keyCount": 62,
+ "changedCount": 9,
+ "problems": [],
+ "typography": [
+  {
+   "key": "ui.chat.device.row.not_here_why",
+   "fine": "NO U+202F before :",
+   "colonSpaced": "fine",
+   "semis": "fine",
+   "semiSpaced": "fine",
+   "straightApostrophesOutsideCode": 0,
+   "emDash": 0,
+   "nfc": "nfc",
+   "doubleSpace": "none",
+   "bidi": "none",
+   "cells": 68
+  },
+  {
+   "key": "ui.chat.device.sentence.mesh_read_failure",
+   "fine": "NO U+202F before :",
+   "colonSpaced": "fine",
+   "semis": "fine",
+   "semiSpaced": "fine",
+   "straightApostrophesOutsideCode": 0,
+   "emDash": 0,
+   "nfc": "nfc",
+   "doubleSpace": "none",
+   "bidi": "none",
+   "cells": 90
+  },
+  {
+   "key": "ui.chat.device.sentence.pairing_guidance",
+   "fine": "NO U+202F before :",
+   "colonSpaced": "fine",
+   "semis": "n/a",
+   "semiSpaced": "fine",
+   "straightApostrophesOutsideCode": 0,
+   "emDash": 0,
+   "nfc": "nfc",
+   "doubleSpace": "none",
+   "bidi": "none",
+   "cells": 132
+  },
+  {
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "fine": "fine",
+   "colonSpaced": "fine",
+   "semis": "n/a",
+   "semiSpaced": "fine",
+   "straightApostrophesOutsideCode": 0,
+   "emDash": 0,
+   "nfc": "nfc",
+   "doubleSpace": "none",
+   "bidi": "none",
+   "cells": 79
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.running",
+   "fine": "fine",
+   "colonSpaced": "fine",
+   "semis": "n/a",
+   "semiSpaced": "fine",
+   "straightApostrophesOutsideCode": 0,
+   "emDash": 0,
+   "nfc": "nfc",
+   "doubleSpace": "none",
+   "bidi": "none",
+   "cells": 16
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.settled",
+   "fine": "fine",
+   "colonSpaced": "fine",
+   "semis": "n/a",
+   "semiSpaced": "fine",
+   "straightApostrophesOutsideCode": 0,
+   "emDash": 0,
+   "nfc": "nfc",
+   "doubleSpace": "none",
+   "bidi": "none",
+   "cells": 7
+  },
+  {
+   "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+   "fine": "fine",
+   "colonSpaced": "fine",
+   "semis": "n/a",
+   "semiSpaced": "fine",
+   "straightApostrophesOutsideCode": 0,
+   "emDash": 0,
+   "nfc": "nfc",
+   "doubleSpace": "none",
+   "bidi": "none",
+   "cells": 99
+  },
+  {
+   "key": "ui.chat.session_status.nothing_measured_yet",
+   "fine": "NO U+202F before :",
+   "colonSpaced": "fine",
+   "semis": "n/a",
+   "semiSpaced": "fine",
+   "straightApostrophesOutsideCode": 0,
+   "emDash": 0,
+   "nfc": "nfc",
+   "doubleSpace": "none",
+   "bidi": "none",
+   "cells": 88
+  },
+  {
+   "key": "ui.common.connection.session_loss.server_down",
+   "fine": "NO U+202F before :",
+   "colonSpaced": "fine",
+   "semis": "n/a",
+   "semiSpaced": "fine",
+   "straightApostrophesOutsideCode": 0,
+   "emDash": 1,
+   "nfc": "nfc",
+   "doubleSpace": "none",
+   "bidi": "none",
+   "cells": 147
+  }
+ ],
+ "pairingDetail": {
+  "fr": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '<token>'`.",
+  "rendered": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join <token>`.",
+  "backticks": 4,
+  "spans": [
+   "`lop network init`",
+   "`lop network join <token>`"
+  ],
+  "literalToken": true,
+  "enRendered": "This device is in no network. Create one with `lop network init`, or join one with `lop network join <token>`.",
+  "enBackticks": 4,
+  "enSpans": [
+   "`lop network init`",
+   "`lop network join <token>`"
+  ]
+ },
+ "composition": {
+  "running": "Appel en cours :",
+  "settled": "Appel :",
+  "runningCells": 16,
+  "settledCells": 7,
+  "enCells": 7,
+  "composed": {
+   "running": "Appel en cours :bash pnpm vitest run src/renderer",
+   "settled": "Appel :bash pnpm vitest run src/renderer",
+   "mcp": "Appel en cours :list_issues",
+   "fold": "Appel en cours :read src/i18n/messages.ts"
+  }
+ },
+ "changedRows": [
+  {
+   "key": "ui.chat.device.row.not_here_why",
+   "en": "the conversation is not here to move; recall it here first",
+   "fr": "la conversation n’est pas ici ; rappelez-la ici avant de la déplacer",
+   "frRendered": "la conversation n’est pas ici ; rappelez-la ici avant de la déplacer"
+  },
+  {
+   "key": "ui.chat.device.sentence.mesh_read_failure",
+   "en": "The device list could not be read, so this is what the last answer holds.",
+   "fr": "La liste des appareils n’a pas pu être lue ; l’affichage reprend donc la dernière réponse.",
+   "frRendered": "La liste des appareils n’a pas pu être lue ; l’affichage reprend donc la dernière réponse."
+  },
+  {
+   "key": "ui.chat.device.sentence.pairing_guidance",
+   "en": "This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'`.",
+   "fr": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '<token>'`.",
+   "frRendered": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join <token>`."
+  },
+  {
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "en": "Enter needs a row you pick: ↓ then Enter · Tab completes this row.",
+   "fr": "Entrée a besoin d’une ligne choisie : ↓ puis Entrée · Tab complète cette ligne.",
+   "frRendered": "Entrée a besoin d’une ligne choisie : ↓ puis Entrée · Tab complète cette ligne."
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.running",
+   "en": "Calling",
+   "fr": "Appel en cours :",
+   "frRendered": "Appel en cours :"
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.settled",
+   "en": "Called",
+   "fr": "Appel :",
+   "frRendered": "Appel :"
+  },
+  {
+   "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+   "en": "Context: nothing measured yet. The window fills as the conversation runs.",
+   "fr": "Contexte : rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation.",
+   "frRendered": "Contexte : rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation."
+  },
+  {
+   "key": "ui.chat.session_status.nothing_measured_yet",
+   "en": "Nothing measured yet. The window fills as the conversation runs.",
+   "fr": "Rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation.",
+   "frRendered": "Rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation."
+  },
+  {
+   "key": "ui.common.connection.session_loss.server_down",
+   "en": "The Local Operator server is not running — reconnect once it is back, or restart the app if it stays down.",
+   "fr": "Le serveur Local Operator n’est pas démarré — rétablissez la connexion une fois qu’il est de retour, ou redémarrez l’application s’il reste arrêté.",
+   "frRendered": "Le serveur Local Operator n’est pas démarré — rétablissez la connexion une fois qu’il est de retour, ou redémarrez l’application s’il reste arrêté."
+  }
+ ],
+ "pluralRows": [
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.row.conversations",
+   "changed": false,
+   "en": "{count, plural, one {{count, number, ::group-off} conversation} other {{count, number, ::group-off} conversations}}",
+   "fr": "{count, plural, one {{count, number, ::group-off} conversation} many {{count, number, ::group-off} de conversations} other {{count, number, ::group-off} conversations}}",
+   "args": {
+    "count": "plural"
+   },
+   "branches": {
+    "count": [
+     "many",
+     "one",
+     "other"
+    ]
+   },
+   "branches_count": "many/one/other",
+   "enRendered": "3 conversations",
+   "frRendered": "3 conversations",
+   "spans": []
+  }
+ ]
+}

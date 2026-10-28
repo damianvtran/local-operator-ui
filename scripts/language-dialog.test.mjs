@@ -3,20 +3,20 @@
  * settings row, writing through the same seam.
  *
  * Two cases. The FIRST is the dialog's render contract: it opens closed,
- * shows the registry row's control and the `In effect:` note, and keeps Save
- * disabled while nothing is dirty. The SECOND exercises the extracted
- * `saveLanguageValue` seam - the exact function the Save button calls - and
- * proves the write reaches `settings.edit`, renegotiates the capabilities
- * chain, and moves the store (and the note) to the new language.
+ * shows the registry row's control and the `In effect:` note, and carries no
+ * Save step. The SECOND exercises the extracted `saveLanguageValue` seam - the
+ * write a pick reaches through `saveImmediateLanguageValue` - and proves the
+ * write reaches `settings.edit`, renegotiates the capabilities chain, and
+ * moves the store (and the note) to the new language. The pick itself is
+ * driven end to end in `language-dialog-applies-on-pick.test.mjs`.
  *
  * WHY THE SEAM AND NOT A CLICKED PICKER: Radix's portalled listbox commits to
  * no synthetic event jsdom can produce (keyboard focus lands on the container,
  * mouse-typed pointer events, clicks and native-select bridging were each
  * tried), which is the same boundary `settings-language-row.test.mjs` records
  * for the settings row - where the reset button, not the picker, drives the
- * write. Extracting the save as a function keeps the clicked path honest: the
- * button's onClick is `saveLanguageValue({ value, queryClient })` and nothing
- * else.
+ * write. Keeping the write as a function keeps the picker's path honest: the
+ * control's `onValueChange` calls `save(next)` and nothing else.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -476,7 +476,7 @@ test(
 );
 
 test(
-	"the dialog shows the row's control and note, closed until asked, Save clean",
+	"the dialog shows the row's control and caption, closed until opened, no Save step",
 	{ timeout: TEST_TIMEOUT_MS },
 	async (t) => {
 		await mount(t);
@@ -508,21 +508,35 @@ test(
 			document.querySelector(DIALOG_NOTE).textContent,
 			"In effect: English",
 		);
-		const saveButton = document.querySelector("[data-language-save]");
-		assert.ok(saveButton, "the save button must render");
-		assert.ok(saveButton.disabled, "Save must be disabled while clean");
+		/*
+		 * Commit on pick: the picker's value is the backend's, so there is no
+		 * Save button to forget and no dirty state for a close to drop. The
+		 * negative control for both statements lives in
+		 * `language-dialog-applies-on-pick.test.mjs`, which drives a real pick.
+		 */
+		assert.equal(
+			[...document.querySelectorAll("button")].filter(
+				(button) => button.textContent.trim() === "Save",
+			).length,
+			0,
+			"a pick is the write: the dialog carries no second Save step",
+		);
+		assert.equal(
+			document.querySelector("[data-language-status]"),
+			null,
+			"the write's status line renders only while or after a pick",
+		);
 	},
 );
 
 test(
-	"a prior open plus an external change refuses to become a phantom draft",
+	"the control follows the server whether the dialog re-opens or is already open",
 	{ timeout: TEST_TIMEOUT_MS },
 	async (t) => {
 		await mount(t);
 		await settle(() => currentLocale() === "en", "the store must be seeded");
 		const triggerText = () =>
 			document.querySelector('[role="combobox"]')?.textContent ?? "";
-		const saveButton = () => document.querySelector("[data-language-save]");
 
 		/*
 		 * The label the trigger shows is the SHARED control's, so this PR moved
@@ -534,12 +548,11 @@ test(
 		 */
 		const AUTO_LABEL = "Use system";
 		const EN_LABEL = "English";
-		// First open: seeds the server's value and Save stays clean.
+		// First open: seeds the server's value.
 		await act(async () => {
 			useLanguageDialogStore.getState().openLanguage();
 		});
 		await settle(() => triggerText().includes(AUTO_LABEL), "first seed");
-		assert.ok(saveButton().disabled, "clean after the first seed");
 
 		/*
 		 * Close, then the server moves (a refetch would land this value). The
@@ -556,26 +569,21 @@ test(
 		});
 
 		/*
-		 * Re-open: the draft must reset to the NEW server value, with Save
-		 * clean - a stale `auto` kept from the prior open would be a phantom
-		 * dirty edit whose Save writes the old value back over the external
-		 * change (round 1, R1-2).
+		 * Re-open: the control must show the NEW server value. With no local
+		 * draft there is nothing a prior open could carry back over the external
+		 * change - the class of stale phantom edit round 1 (R1-2) guarded against
+		 * is unrepresentable now.
 		 */
 		await act(async () => {
 			useLanguageDialogStore.getState().openLanguage();
 		});
 		await settle(() => triggerText().includes(EN_LABEL), "re-seed to en");
-		assert.ok(
-			saveButton().disabled,
-			"no phantom dirty draft after an external change",
-		);
 
-		// And while OPEN and clean, the draft follows the server again.
+		// And while OPEN, the control follows the server again.
 		await act(async () => {
 			setServerLanguageValue("auto");
 		});
 		await settle(() => triggerText().includes(AUTO_LABEL), "follow while open");
-		assert.ok(saveButton().disabled, "still clean after the follow");
 	},
 );
 

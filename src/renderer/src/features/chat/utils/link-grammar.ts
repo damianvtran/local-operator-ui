@@ -1003,13 +1003,707 @@ const DISCOVERY_POLICY: TargetPolicy = {
  */
 export function ambiguousTargetsIn(text: string): string[] {
 	const seen = new Set<string>();
-	const suspects: string[] = [];
+	const suspects: TargetSpan[] = [];
 	for (const span of targetsIn(text, DISCOVERY_POLICY)) {
 		if (span.kind !== "path") continue;
 		if (!isAmbiguousCandidate(span.target)) continue;
-		if (seen.has(span.target)) continue;
-		seen.add(span.target);
-		suspects.push(span.target);
+		suspects.push(span);
 	}
-	return suspects;
+	/*
+	 * EVERY directory-anchored listed candidate is a suspect: with an oracle
+	 * present, `listedEntryFor` admits none of them without the disk's "exists"
+	 * (round 1, review F1 / QA Q1), and the oracle can only answer what was
+	 * asked. `DISCOVERY_POLICY` suspends that question, so this is exactly the
+	 * set of shapes the transcript could link - the same property as the rest of
+	 * this query, with no second walk to diff (round 1, review F7).
+	 */
+	suspects.push(...listedTargetsIn(text, DISCOVERY_POLICY));
+	return suspects
+		.sort((a, b) => a.start - b.start)
+		.map((span) => span.target)
+		.filter((target) => {
+			if (seen.has(target)) return false;
+			seen.add(target);
+			return true;
+		});
+}
+
+/* ======================================================= directory-anchored listing */
+
+/**
+ * THE AGENT IDIOM THIS SECTION EXISTS FOR (operator report, 2026-10-27).
+ *
+ * An agent naming its deliverables very often writes the directory ONCE and the
+ * files under it as bare names:
+ *
+ *   Files are in `~/Documents/Radient/`:
+ *   - Radient-IP-Scope-for-Counsel-2026-10-27.pdf
+ *   - Radient-IP-Scope-for-Counsel-2026-10-27 (editable).docx
+ *
+ * The rest of this grammar refuses a bare name on purpose - with no cwd,
+ * admitting `notes.md` means guessing a root - so both deliverables were dead
+ * text in the transcript and absent from the Files panel, while the directory
+ * above them linked. The listing supplies the root the bare name lacks: the
+ * ABSOLUTE directory that introduces the list. That is not a guess; the agent
+ * wrote it, one line up, as the thing the list is "in".
+ *
+ * WHY THE SHAPE IS SO NARROW. Each condition is the one that keeps the rule from
+ * becoming the relative-path guess the header refuses:
+ *
+ * - The introducer is the LAST target on its line and the line ENDS with `:`.
+ *   "I looked in ~/x/ and found these:" names a directory mid-sentence and says
+ *   nothing about where the following names live; only a line that ends on the
+ *   directory and a colon is a heading for what follows.
+ * - Only the IMMEDIATELY following list, and only its own items. A list after a
+ *   paragraph, a nested list, a later list: each is a new context the introducer
+ *   no longer speaks for.
+ * - An item is resolved only when its WHOLE text is one name - no `/` (a sub-path
+ *   or an absolute path is the existing rules' business), no line break, no
+ *   placeholder, and an extension that is a short alphanumeric token. Spaces and
+ *   parentheses are allowed because the whole item is the name
+ *   (`X (editable).docx` is a real deliverable), and that is why the extension
+ *   test is the backstop: `Open report.pdf for the summary` has the "extension"
+ *   `pdf for the summary` and is refused, a sentence with no dot has none at all.
+ *   A name containing whitespace additionally needs a KNOWN extension on BOTH
+ *   surfaces, because whitespace is where a list of names and a list of phrases
+ *   overlap and a known extension is the one positive signal left.
+ * - A bare name WITHOUT an introducer stays unresolved, exactly as before.
+ * - An ANNOTATED item - `<name><separator><description>` - resolves its head only,
+ *   and only with the disk's word for it. See `LISTED_ANNOTATION_SEPARATORS` and
+ *   `listedEntryFor`, which carry the exact contract.
+ *
+ * ONE GRAMMAR, TWO WALKERS. The Files panel reads the raw markdown string and
+ * the transcript reads the mdast, so each walks lines or nodes its own way, but
+ * BOTH ask the two questions below - `listingDirectoryIn` (is this line an
+ * introducer, and of which directory) and `listedEntryFor` (is this item a name,
+ * and what does it resolve to under this policy) - so "where does a listed name
+ * end" has one answer. `listedTargetsIn` is the panel's line walker; the
+ * transcript's is the `list` branch in `remark-linkify-targets.ts`.
+ *
+ * WHAT THE POLICIES DO HERE. `knownExtensionRequired` keeps its meaning (the
+ * panel admits only a known extension). An extensionless list item (`Done`,
+ * `Makefile`) is refused by shape rather than probed. EVERY other listed
+ * candidate - whole item or annotated head - takes the evidence gate when the
+ * policy carries an oracle (see `listedEntryFor`), whatever its extension, and
+ * `ambiguousTargetsIn` lists every one of them so the renderer asks the disk
+ * before it can link one. Without an oracle (`MENTION_POLICY`) nothing with
+ * whitespace, a separator or an unknown extension is admitted at all.
+ */
+
+/** What may follow the introducer's directory: closing emphasis/code, then a colon. */
+const LISTING_INTRODUCER_TAIL = /^[`*_]*\s*:\s*$/;
+
+/** The cheap pre-test for an introducer: the line's last character is a colon. */
+const ENDS_WITH_COLON = /:\s*$/;
+
+/** A listed name's extension: a short alphanumeric token, never a phrase. */
+const LISTED_EXTENSION = /^[a-z0-9]{1,10}$/;
+
+/** Sentence punctuation a list item may end with that no name ends with. */
+const LISTED_TRAILING_PUNCTUATION = /[.,;:]+$/;
+
+/**
+ * The directory a line INTRODUCES as the root of a following list, or null.
+ *
+ * The directory token is found by the SAME scanner as every other target, with
+ * the evidence question suspended (`DISCOVERY_POLICY`): the directory is never
+ * emitted as a target by this rule, only used as a root, and the panel has no
+ * oracle to ask. What stands in for the disk is shape: the token must read as a
+ * directory (a trailing slash or no extension) and must not be a one-segment
+ * `/word`, which is as likely a slash command (`Run /new:`) as a folder - `~/x`,
+ * `/tmp/out` and any `file://` URL qualify, a bare `/tmp` does not. That refusal
+ * is a deliberate cost: a list under `/tmp:` stays unresolved.
+ */
+export function listingDirectoryIn(line: string): string | null {
+	// Most lines end in no colon at all, and they are refused before the scanner
+	// runs: the panel asks this of every line of every record it reads.
+	if (!ENDS_WITH_COLON.test(line)) return null;
+	/*
+	 * A HEADING or BLOCKQUOTE line never introduces, on either walker (round 1,
+	 * review F3). Decided here, once, because both walkers hand this function the
+	 * RAW source line: the transcript's mdast already refuses a heading (it is not
+	 * a paragraph), and a quoted paragraph's raw line still starts `>`. Refusing
+	 * both is the fail-safe direction - `## Files in ~/out/:` misses its links -
+	 * and is what the panel's line walker can match without walking quotes.
+	 */
+	const content = line.slice(CONTENT_INDENT.exec(line)?.[0].length ?? 0);
+	if (QUOTE_OR_HEADING.test(content)) return null;
+	const spans = targetsIn(line, DISCOVERY_POLICY);
+	const last = spans[spans.length - 1];
+	if (!last) return null;
+	if (!LISTING_INTRODUCER_TAIL.test(line.slice(last.end))) return null;
+	const directory = last.target;
+	/*
+	 * DIRECTORY SHAPE (round 1, review F2): a trailing slash, or a last segment
+	 * with no dot past its first character (a dot-directory like `~/.config` is
+	 * a directory name, not an extension). The oracle answers
+	 * exists/missing/unknown, not "is a directory", so it cannot vouch for the
+	 * introducer itself; what it does vouch for on the transcript is every ITEM
+	 * (`listedEntryFor`), and `<dir>/<name>` existing proves `<dir>` is a
+	 * directory - a file has no children. So `Edit ~/repo/Makefile:` (no dot,
+	 * shape-admitted) costs one probe of `~/repo/Makefile/<item>`, which says
+	 * missing, and nothing links; `~/repo/v1.2.3:` and `~/x/Next.js:` are
+	 * refused here before any probe. The legacy panel has no oracle, so for it
+	 * `Makefile:` stays a root and only its known-extension rule applies.
+	 * `/etc/nginx/conf.d:` WITHOUT the trailing slash is the same rule: its
+	 * last segment has a dot, so it introduces nothing on either surface
+	 * (round 2, review R2-4) - write `/etc/nginx/conf.d/:` to introduce.
+	 */
+	const lastSegment = directory.slice(directory.lastIndexOf("/") + 1);
+	const isDirectory =
+		directory.endsWith("/") || lastSegment.indexOf(".", 1) === -1;
+	if (!isDirectory) return null;
+	const rooted =
+		last.kind === "file-url" ||
+		directory.startsWith("~/") ||
+		directory.indexOf("/", 1) !== -1;
+	return rooted ? directory : null;
+}
+
+/**
+ * `<directory>/<name>` for one list item's WHOLE text, admitted by SHAPE under
+ * `policy`, or null. See the section header for every rejection and why. This is
+ * the shape half only: `listedEntryFor` adds the evidence half, which decides.
+ */
+export function listedTargetFor(
+	directory: string,
+	item: string,
+	policy: TargetPolicy,
+): string | null {
+	const name = item.trim().replace(LISTED_TRAILING_PUNCTUATION, "");
+	if (!name || name.length > MAX_CANDIDATE_LENGTH) return null;
+	if (LINE_BREAK.test(name)) return null;
+	if (name.includes("/") || name.includes("\\")) return null;
+	if (PLACEHOLDER_MARKERS.test(name)) return null;
+	const extension = extensionOf(name);
+	if (!extension || !LISTED_EXTENSION.test(extension)) return null;
+	const known = KNOWN_EXTENSIONS.has(extension);
+	if (policy.knownExtensionRequired && !known) return null;
+	if (WHITESPACE.test(name) && !known) return null;
+	/*
+	 * No oracle (the legacy Files scan, `MENTION_POLICY`): nothing can tell a
+	 * name with a space in it from a sentence that ends in one (`Fixed the parser
+	 * in parse.ts`), and every annotation separator carries a space - so only a
+	 * whitespace-free name with a KNOWN extension is admitted. The cost, stated:
+	 * `X (editable).docx` gets no tile from this scan. The current daemon's Files
+	 * panel is the backend's session-files ledger, which stats every name, so the
+	 * shape this refuses is still answered there.
+	 */
+	if (!policy.evidence && (WHITESPACE.test(name) || !known)) return null;
+	return `${directory.replace(TRAILING_SLASHES, "")}/${name}`;
+}
+
+/**
+ * The separators that split an ANNOTATED list item into `<name>` and a
+ * description, EXACTLY these four, spaces included:
+ *
+ *   " — "  (space, U+2014 em dash, space)
+ *   " – "  (space, U+2013 en dash, space)
+ *   " - "  (space, U+002D hyphen-minus, space)
+ *   ": "   (U+003A colon, space)
+ *
+ * WHY: listing a deliverable with a note after it is the normal agent shape -
+ * the operator's own report (2026-10-27, 12:27) ended
+ * `- Radient-IP-Scope-for-Counsel-2026-10-27 (editable).docx — the same text
+ * without the Radient styling, so the lawyers can mark it up`. The spaces are
+ * part of every dash separator so that a hyphen INSIDE a filename
+ * (`2026-10-27`) never splits it, and the colon needs only the space after it
+ * because that is how a note is written (`report.pdf: the summary`) and a colon
+ * is not a character a listed name carries. TO BE MIRRORED 1:1 by the backend's
+ * session-files ledger (`local_operator/session_files/scan.py`) in the in-flight
+ * core PR damianvtran/local-operator#3041 - not on that repository's main yet;
+ * once it lands, a change here is a change there.
+ */
+export const LISTED_ANNOTATION_SEPARATORS = [
+	" — ",
+	" – ",
+	" - ",
+	": ",
+] as const;
+
+/** One resolved list item: its target, and how much of the item's text is the name. */
+export type ListedEntry = {
+	/** `<directory>/<name>`. */
+	target: string;
+	/** Length of the name at the start of the (trimmed) item text: the span a link covers. */
+	length: number;
+};
+
+/**
+ * Where the first annotation separator starts in `item`, or -1.
+ *
+ * The FIRST one, by position, across all four: the head is everything before it.
+ */
+const firstSeparatorIn = (item: string): number => {
+	let at = -1;
+	for (const separator of LISTED_ANNOTATION_SEPARATORS) {
+		const index = item.indexOf(separator);
+		if (index > 0 && (at === -1 || index < at)) at = index;
+	}
+	return at;
+};
+
+/**
+ * THE LISTED-ITEM RULE: what one list item under an introducing directory
+ * resolves to, or null. Both surfaces call this - the transcript's `list` walker
+ * and the Files panel's `listedTargetsIn` - so the contract is here once:
+ *
+ * 1. ANNOTATED, tried first. The item contains one of
+ *    `LISTED_ANNOTATION_SEPARATORS`; the HEAD is the text before the FIRST
+ *    separator (by position). The head resolves only when ALL of:
+ *    - it is a complete name by `listedTargetFor`'s rules (no `/` or `\`, no
+ *      placeholder, no line break);
+ *    - its extension is in `KNOWN_EXTENSIONS` (the panel's `MENTION_POLICY`
+ *      list) on EITHER surface - a head is cut out of prose, and a known
+ *      extension is the one positive sign that it is a name and not a phrase
+ *      (`Run the tests - they pass` has none and stays plain);
+ *    - the disk says `<directory>/<head>` EXISTS: `policy.evidence` answers
+ *      "exists". Absent oracle, "missing" and "unknown" all refuse - the same
+ *      gate an ambiguous prose token takes in `targetsIn`, applied here to every
+ *      annotated head because a cut is a guess the shape alone cannot back.
+ *      Consequence, stated: `MENTION_POLICY` carries no oracle, so the renderer's
+ *      legacy Files scan never admits an annotated head (the backend's ledger,
+ *      which stats, is the panel's answer for that shape).
+ *    Once a head qualifies by SHAPE the decision is final: a head the disk
+ *    refuses is not retried as a whole-item name, because the whole item is
+ *    then a name plus prose, and linking it would be the wrong claim.
+ * 2. WHOLE ITEM, otherwise: the entire item text is one name by
+ *    `listedTargetFor`'s SHAPE rules, AND - when the policy carries an oracle -
+ *    the disk says `<directory>/<name>` EXISTS, the same gate as a head (round 1,
+ *    review F1 / QA Q1). A bare listed name is a guess anchored on the line
+ *    above, weaker than an `/abs` token the agent spelled out in full, so shape
+ *    alone never links it: `Fixed the parser in parse.ts`, `Notes: final.pdf`,
+ *    `Next.js` and a deliverable that was never written all stay plain unless
+ *    they are on disk. With NO oracle (the legacy Files scan), `listedTargetFor`
+ *    admits only a whitespace-free name with a known extension instead.
+ *
+ * Missing and unknown refuse alike, on both branches. A sentence item, and
+ * a head with no known extension, stay unresolved. Only the HEAD is ever a
+ * link; the description is never part of the span (`length`).
+ */
+export function listedEntryFor(
+	directory: string,
+	item: string,
+	policy: TargetPolicy,
+): ListedEntry | null {
+	const text = item.trim();
+	const at = firstSeparatorIn(text);
+	if (at > 0) {
+		const head = text.slice(0, at);
+		const extension = extensionOf(head);
+		if (extension !== null && KNOWN_EXTENSIONS.has(extension)) {
+			const target = listedTargetFor(directory, head, policy);
+			// The trailing-punctuation trim must not have changed the head: the span
+			// covers what was written, and a target that differs from it is a guess.
+			if (target?.endsWith(`/${head}`)) {
+				if (policy.evidence?.(target) !== "exists") return null;
+				return { target, length: head.length };
+			}
+		}
+	}
+	const target = listedTargetFor(directory, text, policy);
+	if (!target) return null;
+	// The same gate as a head: a bare name is a guess anchored on the line above,
+	// weaker than an `/abs` token the agent spelled out (round 1, F1 / Q1).
+	if (policy.evidence && policy.evidence(target) !== "exists") return null;
+	return {
+		target,
+		length: target.length - target.lastIndexOf("/") - 1,
+	};
+}
+
+/** A markdown list item line: indent, marker, optional GFM task box, content. */
+const LIST_ITEM_LINE =
+	/^(\s*)([-*+]|\d{1,9}[.)])[ \t]+(?:\[[ xX]\][ \t]+)?(.*)$/;
+
+/**
+ * What identifies ONE list to CommonMark: the bullet character, or an ordered
+ * list's delimiter. `- a` then `+ b` are two lists, and the second follows a
+ * list rather than its introducer, so it is not resolved on either surface.
+ */
+const markerKind = (marker: string): string =>
+	ORDERED_MARKER.test(marker) ? `ordered${marker.slice(-1)}` : marker;
+
+/** An ordered list marker (`1.`, `2)`), as opposed to a bullet. */
+const ORDERED_MARKER = /^\d/;
+
+/** An item that is exactly one code span, whose content is the name. */
+const WHOLE_CODE_SPAN = /^`([^`]+)`$/;
+
+/** A CRLF line's carriage return, which `split("\n")` leaves on the line. */
+const CARRIAGE_RETURN = /\r$/;
+
+/** Where an introducer's own CONTENT starts, past any list marker it sits in. */
+const CONTENT_INDENT = /^\s*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)?/;
+
+/** A line's content that opens a blockquote or an ATX heading. */
+const QUOTE_OR_HEADING = /^(?:>|#{1,6}(?:[ \t]|$))/;
+
+/** A fence line: up to any indent, three or more backticks or tildes, then info. */
+const FENCE_LINE = /^\s*(`{3,}|~{3,})(.*)$/;
+
+/**
+ * CommonMark's "only an ordered list starting at `1` may interrupt a paragraph"
+ * rule, on the DIGIT rather than on the number: micromark's
+ * `canInterruptParagraph` check is `code === 49 && next is . or )`, so `01.`
+ * does NOT interrupt even though `Number("01") === 1` (round 2, review R2-2).
+ */
+const ORDERED_INTERRUPT = /^1[.)]/;
+
+/** Indent in columns, a tab advancing to the next multiple of four. */
+const indentColumns = (line: string): number => {
+	let columns = 0;
+	for (const char of line) {
+		if (char === " ") columns += 1;
+		else if (char === "\t") columns += 4 - (columns % 4);
+		else break;
+	}
+	return columns;
+};
+
+/**
+ * Which lines sit in a CODE region - a fenced block (its fence lines included) or
+ * an indented code block - which the transcript's mdast never walks for a
+ * listing (round 1, review F3: the panel resolved a listing inside both).
+ *
+ * An APPROXIMATION of CommonMark's block parse, scoped to what this walker needs
+ * and erring toward "code" only where that drops a tile, never adds one:
+ * - a fence opens at any indent (deeper than three spaces it is indented code
+ *   instead, which is code all the same) and closes on a run of the same
+ *   character at least as long, alone on its line; an unclosed fence runs to the
+ *   end, as CommonMark's does;
+ * - an indented block is a line four columns in, after a blank line (or at the
+ *   start), outside a list - inside a list that indent is item content, not
+ *   code - and it runs over blank lines until a shallower line.
+ */
+const codeLinesOf = (lines: readonly string[]): boolean[] => {
+	const code: boolean[] = [];
+	let fence: { char: string; length: number } | null = null;
+	let previousBlank = true;
+	let inList = false;
+	let inIndented = false;
+	for (const raw of lines) {
+		const line = raw.replace(CARRIAGE_RETURN, "");
+		const blank = line.trim() === "";
+		if (fence) {
+			code.push(true);
+			const trimmed = line.trim();
+			let run = 0;
+			while (trimmed[run] === fence.char) run += 1;
+			if (run >= fence.length && run === trimmed.length) fence = null;
+			previousBlank = false;
+			continue;
+		}
+		const open = FENCE_LINE.exec(line);
+		// A backtick fence's info string may not hold a backtick: that line is an
+		// inline code span that happens to start it (`markdown-remend.ts`'s rule).
+		const marker = open?.[1] ?? "";
+		if (open && !(marker[0] === "`" && (open[2] ?? "").includes("`"))) {
+			fence = { char: marker[0] ?? "`", length: marker.length };
+			code.push(true);
+			inIndented = false;
+			previousBlank = false;
+			continue;
+		}
+		const indent = indentColumns(line);
+		if (!blank && indent >= 4 && (inIndented || (previousBlank && !inList))) {
+			code.push(true);
+			inIndented = true;
+			previousBlank = false;
+			continue;
+		}
+		if (!blank) {
+			inIndented = false;
+			inList =
+				LIST_ITEM_LINE.test(line) || (inList && (indent > 0 || !previousBlank));
+		}
+		code.push(false);
+		previousBlank = blank;
+	}
+	return code;
+};
+
+/** A named or numeric character reference, which the mdast decodes. */
+const CHARACTER_REFERENCE =
+	/&(?:#([0-9]{1,7})|#[xX]([0-9a-fA-F]{1,6})|([a-zA-Z][a-zA-Z0-9]{1,31}));/g;
+
+/** The named references the transcript can realistically hold in a filename. */
+const NAMED_REFERENCES: Readonly<Record<string, string>> = {
+	amp: "&",
+	lt: "<",
+	gt: ">",
+	quot: '"',
+	apos: "'",
+	nbsp: "\u00a0",
+};
+
+/**
+ * Decode the character references a listed name can carry, so the pre-scan asks
+ * about the SAME string the mdast hands the linkifier (round 2, review R2-5):
+ * `- a&amp;b.pdf` reads as `a&b.pdf` in the mdast, and asking about the raw
+ * `a&amp;b.pdf` left the real spelling unknown and plain forever. Numeric
+ * references decode by code point; the named table covers the ASCII ones a
+ * path can hold, and any other name is left AS WRITTEN (fail-safe: an
+ * undecoded name is asked about as-is and simply does not link).
+ */
+const decodeCharacterReferences = (text: string): string =>
+	text.replace(CHARACTER_REFERENCE, (whole, decimal, hex, named) => {
+		if (named !== undefined) return NAMED_REFERENCES[named] ?? whole;
+		const code = Number.parseInt(hex ?? decimal, hex ? 16 : 10);
+		if (code === 0 || code > 0x10ffff) return whole;
+		try {
+			return String.fromCodePoint(code);
+		} catch {
+			return whole;
+		}
+	});
+
+/** Markdown's backslash escapes, which the mdast decodes and a raw line keeps. */
+const MARKDOWN_ESCAPE = /\\([!-/:-@[-`{-~])/g;
+
+/**
+ * A line opener that starts a NEW block: a list marker, a quote, a heading, a
+ * fence or a thematic break. A non-blank line that does not open one of these
+ * is a paragraph continuation, not a new paragraph.
+ */
+const BLOCK_OPENER =
+	/^\s*(?:(?:[-*+]|\d{1,9}[.)])[ \t]|>|#{1,6}(?:[ \t]|$)|`{3}|~{3}|(?:(?:[-*_])[ \t]*){3,}$)/;
+
+/**
+ * True when `lines[at]` (a non-blank line) continues the paragraph above it,
+ * rather than opening a block of its own - the CommonMark LAZY-CONTINUATION
+ * case (round 2, review R2-2).
+ *
+ * WHY THE LINE WALKER NEEDS IT: `> Intro` / `Files in ~/out/:` / `- a.pdf` is
+ * one blockquote holding a paragraph and a list, so the transcript's mdast has
+ * no introducer paragraph SIBLING of a list and links nothing. The panel's
+ * line walker used to admit the bare `Files in ~/out/:` line as an introducer
+ * anyway, which produced a tile the transcript never linked. Walking back
+ * through consecutive continuation lines finds the paragraph's own first line:
+ * if that opens a quote, the whole run is quoted and the listing is refused on
+ * both surfaces. Non-quoted continuations stay admitted, so a paragraph that
+ * merely wraps before its introducer still resolves as it always did.
+ *
+ * ONLY A QUOTE IS A LAZY PARENT (round 3, review R3-2). An ATX heading is one
+ * line and can never be continued: the line after `## Deliverables` opens a new
+ * paragraph, which IS a sibling of the list below it. Treating the heading like
+ * a quote linked nothing under the most common report shape an agent writes
+ * (`## Deliverables` / `Files are in ~/out/:` / items), so a heading - like
+ * every other block opener - ends the walk as "not a continuation".
+ *
+ * A LIST ITEM IS NOT MODELLED AS A LAZY PARENT (round 3, review R3-5):
+ * `- item` / `Files in ~/out/:` / `- a.pdf` folds the introducer into the
+ * item on the transcript (no link) while this walker stops at the marker and
+ * admits it (one extra panel tile). That disagreement predates this function
+ * and is the documented panel-only over-admission, not a parity claim.
+ */
+/** The `>` markers (and the one optional space after each) opening a quote line. */
+const QUOTE_MARKERS = /^\s*(?:>[ \t]?)+/;
+
+/**
+ * Inside a quote, the openers that end a paragraph and can never be continued:
+ * an ATX heading, a fence, a thematic break.
+ */
+const UNCONTINUABLE_OPENER =
+	/^\s*(?:#{1,6}(?:[ \t]|$)|`{3}|~{3}|(?:(?:[-*_])[ \t]*){3,}$)/;
+
+/**
+ * True when a quote line holds PARAGRAPH text, the only thing a following
+ * unquoted line can lazily continue: `> Intro` yes; `>` (blank), `> ## Notes`,
+ * `> ---` or `> ```` no - after those the quote has closed and the bare line
+ * opens a paragraph of its own, outside it.
+ */
+const quotesParagraphText = (line: string): boolean => {
+	const content = line.replace(QUOTE_MARKERS, "");
+	return content.trim() !== "" && !UNCONTINUABLE_OPENER.test(content);
+};
+
+const continuesParagraph = (lines: readonly string[], at: number): boolean => {
+	let cursor = at;
+	while (cursor >= 0) {
+		const line = (lines[cursor] ?? "").replace(CARRIAGE_RETURN, "");
+		if (line.trim() === "") return false;
+		if (QUOTE_MARKERS.test(line)) return quotesParagraphText(line);
+		if (BLOCK_OPENER.test(line)) return false;
+		cursor -= 1;
+	}
+	return false;
+};
+
+/** An item that OPENS with one code span, which an annotation may follow. */
+const LEADING_CODE_SPAN = /^`([^`]+)`(.*)$/;
+
+/**
+ * One item's text as the mdast would hold it, plus how many raw characters the
+ * name's span is offset by: escapes decoded, and a whole or LEADING code span
+ * unwrapped (`` `X.docx` — note `` reads as `X.docx — note`, the head being the
+ * code span's own value - the shape the transcript walker sees as an
+ * `inlineCode` node followed by a `text` node).
+ *
+ * Character references are decoded in PROSE only (round 3, review R3-4): a
+ * code span's content is literal in markdown - `` `a&amp;b.pdf` `` is the
+ * `inlineCode` value `a&amp;b.pdf` - so only the annotation after a leading
+ * span is decoded, and a whole code span is never touched.
+ */
+const itemText = (content: string): { text: string; code: boolean } => {
+	const trimmed = content.trim();
+	const whole = WHOLE_CODE_SPAN.exec(trimmed);
+	if (whole) return { text: whole[1] ?? "", code: true };
+	const leading = LEADING_CODE_SPAN.exec(trimmed);
+	if (leading) {
+		return {
+			text: `${leading[1] ?? ""}${decodeCharacterReferences(
+				(leading[2] ?? "").replace(MARKDOWN_ESCAPE, "$1"),
+			)}`,
+			code: true,
+		};
+	}
+	return {
+		text: decodeCharacterReferences(trimmed.replace(MARKDOWN_ESCAPE, "$1")),
+		code: false,
+	};
+};
+
+/**
+ * Every listed target in a raw markdown string, as spans over the item's name,
+ * in document order - the Files panel's walker (see the section header).
+ *
+ * It follows CommonMark's list structure as far as the transcript's mdast would
+ * see it, so the two surfaces resolve the same items:
+ *
+ * - blank lines may separate the introducer from the list and items from each
+ *   other (a loose list is still the list);
+ * - the list's items sit at the indent of its first item, which must be inside
+ *   the introducer's own block (at or past its content indent, under four more);
+ *   a deeper marker is a NESTED list and is skipped, a shallower one ends it;
+ * - a non-marker line straight after an item is a continuation of that item, so
+ *   the item is no longer one name and is dropped; after a blank line, a
+ *   non-marker line that is not indented under the list ends the list.
+ *
+ * - an ordered list straight under the introducer must start at `1`, the only
+ *   number CommonMark lets interrupt a paragraph;
+ * - an introducer inside a code region (fenced or indented, `codeLinesOf`) is
+ *   not one, and a heading or blockquote line never introduces
+ *   (`listingDirectoryIn`) - on the transcript too.
+ *
+ * That parity is asserted, input by input, through both walkers in
+ * `scripts/link-targets.test.mjs`. What it does NOT claim: this is a line
+ * approximation of CommonMark, not a parser, so an exotic block shape (a list
+ * inside a quote, HTML blocks, setext headings) is not modelled. Each of those
+ * resolves here only where the shape above matches, and the panel's oracle-free
+ * policy admits only whitespace-free known-extension names, so the worst
+ * disagreement is one tile the transcript would not link.
+ *
+ * LAZY BLOCKQUOTE CONTINUATION - and only that lazy shape - IS REFUSED IN
+ * BOTH WALKERS (round 2, review R2-2; narrowed in round 3, R3-5: lazy
+ * continuation after a LIST ITEM is not modelled, see `continuesParagraph`). CommonMark lets a quote's paragraph continue without its `>` marker
+ * (`> Intro` / `Files in ~/out/:` / `- a.pdf`), and the mdast folds those
+ * lines into the quote: its paragraph is not a sibling of the list, so the
+ * transcript walker never sees an introducer. The line walker matches that
+ * by refusing an introducer that continues a QUOTED paragraph
+ * (`continuesParagraph` walks the paragraph back to its first line). An
+ * ordinary paragraph that merely wraps before its introducer still resolves
+ * exactly as the mdast resolves it.
+ */
+export function listedTargetsIn(
+	text: string,
+	policy: TargetPolicy,
+): TargetSpan[] {
+	if (!text.includes(":")) return [];
+	const found: TargetSpan[] = [];
+	const lines = text.split("\n");
+	const offsets: number[] = [];
+	let offset = 0;
+	for (const line of lines) {
+		offsets.push(offset);
+		offset += line.length + 1;
+	}
+	const code = codeLinesOf(lines);
+	for (let index = 0; index < lines.length; index += 1) {
+		if (code[index]) continue;
+		const introducer = lines[index] ?? "";
+		if (index > 0 && !code[index - 1] && continuesParagraph(lines, index - 1))
+			continue;
+		const directory = listingDirectoryIn(introducer);
+		if (!directory) continue;
+		const floor = CONTENT_INDENT.exec(introducer)?.[0].length ?? 0;
+		let base: number | null = null;
+		let marker = "";
+		let pending: TargetSpan | null = null;
+		let blank = false;
+		let cursor = index + 1;
+		for (; cursor < lines.length; cursor += 1) {
+			const line = (lines[cursor] ?? "").replace(CARRIAGE_RETURN, "");
+			if (line.trim() === "") {
+				blank = true;
+				continue;
+			}
+			const item = LIST_ITEM_LINE.exec(line);
+			const indent = line.length - line.trimStart().length;
+			if (code[cursor]) {
+				// A fence at the list's level ends it (fenced code interrupts a
+				// paragraph); one indented under an item makes that item more than
+				// one name, which the transcript walker refuses too.
+				if (base !== null && indent > base) {
+					pending = null;
+					continue;
+				}
+				break;
+			}
+			if (!item) {
+				// Before the first item nothing introduces anything any more; after
+				// it, a line straight under an item continues that item, and one
+				// after a blank line ends the list unless it is indented under it.
+				if (base === null) break;
+				if (!blank) {
+					pending = null;
+					continue;
+				}
+				if (indent > base) {
+					pending = null;
+					continue;
+				}
+				break;
+			}
+			const afterBlank = blank;
+			blank = false;
+			const kind = markerKind(item[2] ?? "");
+			if (base === null) {
+				if (indent < floor || indent > floor + 3) break;
+				// CommonMark: only an ordered list starting at the digit 1 may
+				// interrupt a paragraph; `2.` and `01.` straight under the
+				// introducer are that paragraph's continuation, so the mdast has
+				// no list there (round 1, F3; round 2, review R2-2).
+				if (
+					!afterBlank &&
+					ORDERED_MARKER.test(item[2] ?? "") &&
+					!ORDERED_INTERRUPT.test(item[2] ?? "")
+				)
+					break;
+				base = indent;
+				marker = kind;
+			}
+			if (indent > base) continue; // a nested list: a new context
+			if (indent < base || kind !== marker) break;
+			if (pending) found.push(pending);
+			pending = null;
+			const content = item[3] ?? "";
+			const read = itemText(content);
+			const entry = listedEntryFor(directory, read.text, policy);
+			if (!entry) continue;
+			const start = (offsets[cursor] ?? 0) + line.length - content.length;
+			pending = {
+				start,
+				// A code-wrapped name's span keeps its two backticks.
+				end: start + entry.length + (read.code ? 2 : 0),
+				kind: "path",
+				target: entry.target,
+				href: entry.target,
+			};
+		}
+		if (pending) found.push(pending);
+		// The list's own lines cannot introduce another list at this level.
+		index = Math.max(index, cursor - 1);
+	}
+	return found;
 }

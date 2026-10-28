@@ -108,6 +108,11 @@ test("destinationNeedsSession is defined once, on the table", () => {
 	);
 	assert.match(
 		registry,
+		/if \(entry\.kind === "navigate"\) return entry\.sessionless !== true;/,
+		"a navigate row is exempt only with its own `sessionless` opt-in (`/notifications`, contract section 8): a page that addresses no conversation must run on a draft pane",
+	);
+	assert.match(
+		registry,
 		/return !\(entry\.kind === "picker" && entry\.sessionless === true\);/,
 		"and the picker side has its own per-row exemption (issue #625): only a row carrying the measured `sessionless` opt-in is presentable on a pane with none",
 	);
@@ -151,15 +156,25 @@ test("the five sessionless pickers carry the opt-in, and only they do", () => {
 		);
 	}
 	/*
-	 * The count, because the row pins above cannot see a SIXTH row quietly
-	 * joining the set: five measured rows, five occurrences — an edit that marks
-	 * another destination has to come back through this file.
+	 * The one NAVIGATE row with the opt-in: `/notifications` opens a page and
+	 * addresses no conversation (contract section 8), pinned by its full row.
+	 */
+	assert.match(
+		registry,
+		/notifications:\s*\{\s*kind:\s*"navigate",\s*route:\s*\(\)\s*=>\s*"\/notifications",\s*sessionless:\s*true/,
+		"`notifications` must carry the navigate opt-in on its own row",
+	);
+	/*
+	 * The count, because the row pins above cannot see a SEVENTH row quietly
+	 * joining the set: five measured pickers plus the one navigate row, six
+	 * occurrences — an edit that marks another destination has to come back
+	 * through this file.
 	 */
 	const flagged = registry.match(/sessionless:\s*true/g) ?? [];
 	assert.equal(
 		flagged.length,
-		5,
-		`exactly the five measured rows carry the opt-in; found ${flagged.length}`,
+		6,
+		`exactly the five measured pickers and /notifications carry the opt-in; found ${flagged.length}`,
 	);
 	/*
 	 * The counter-cases: neighbours that read `sessionId` themselves and must

@@ -1288,11 +1288,15 @@ export function AgentDetail({
 /**
  * One editable section: a heading, the field, and the refusal beside it.
  *
+ * EXPORTED FOR THE SKILLS TAB'S INLINE EDIT, which is the same machine as this
+ * pane's (design spec §3.5): one editor idiom for a definition's description and
+ * instructions, not a second one that drifts.
+ *
  * The refusal sits WITH THE FIELD (UX U2) rather than in a banner at the top of
  * a 966px form, where the operator pressed Save at y=942 and the error rendered
  * at y=190.
  */
-function EditSection({
+export function EditSection({
 	title,
 	description,
 	label,

@@ -1,0 +1,2441 @@
+{
+ "locale": "hi",
+ "head": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "cldr_hi": [
+  "one",
+  "other"
+ ],
+ "namespaces": {
+  "ui.chat": {
+   "en_keys": 133,
+   "hi_keys": 133,
+   "key_sets_equal": true,
+   "missing_in_hi": [],
+   "extra_in_hi": [],
+   "sha256": {
+    "en": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+    "context": "1df3ad0e7054c77b2cc59971eae3a9387059be42839a271d80f70e754e542426",
+    "target": "849a6cd3093ca30986b9d85d347479859314ef99d490f91eeea98ed6639b4ebb"
+   }
+  },
+  "ui.chat.header": {
+   "en_keys": 17,
+   "hi_keys": 17,
+   "key_sets_equal": true,
+   "missing_in_hi": [],
+   "extra_in_hi": [],
+   "sha256": {
+    "en": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+    "context": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908",
+    "target": "e4ddad4a97cb8412fdd34e6d287b0e2176bb177cc4b9b9b4cc8ef5b08e8ae76a"
+   }
+  },
+  "ui.chat.response_actions": {
+   "en_keys": 5,
+   "hi_keys": 5,
+   "key_sets_equal": true,
+   "missing_in_hi": [],
+   "extra_in_hi": [],
+   "sha256": {
+    "en": "8c23ba6a5b509c13d878c05aed0454026a6960566b043f5e983008dee93bcb18",
+    "context": "113b419d94df867024a91b9902c1385dc3b652fd39fd0612f37866030f937a28",
+    "target": "5de763b8d3a5bf9e9c395931e4d150d76a7b7efab4cb8a3ea3f438c37176d55b"
+   }
+  },
+  "ui.chat.sidebar": {
+   "en_keys": 60,
+   "hi_keys": 60,
+   "key_sets_equal": true,
+   "missing_in_hi": [],
+   "extra_in_hi": [],
+   "sha256": {
+    "en": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+    "context": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be",
+    "target": "5aed52ab4d42e21d5ed21114900313e49e4a459bd94e4bcbff494a25080b5c81"
+   }
+  }
+ },
+ "keys": [
+  {
+   "key": "ui.chat.checkpoint.generating_name",
+   "namespace": "ui.chat",
+   "en": "Generating name…",
+   "hi": "नाम बनाया जा रहा है…",
+   "context": {
+    "role": "line on a run-details card while the turn's title is still being generated",
+    "tone": "plain progress statement, sentence case, trailing ellipsis as shown",
+    "length": "Two words plus an ellipsis.",
+    "note": "A temporary line, replaced by the generated title when it lands. The ellipsis is part of the source string; keep it as the locale's own ellipsis character.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "नाम बनाया जा रहा है…"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_agent",
+   "namespace": "ui.chat",
+   "en": "Jump to turn {turn, number} of {total, number}, {name}",
+   "hi": "“{name}” — {total, number} में से टर्न {turn, number} पर जाएँ",
+   "context": {
+    "role": "accessible name of a run-details tick that jumps to an agent turn that has a title",
+    "tone": "action plus the destination, sentence case, then the title after a comma",
+    "length": "Up to a short sentence; the title can be long.",
+    "note": "{turn} and {total} are the same two numbers the tick's visible identity line shows; the turn noun and its word order belong to this sentence. {name} is the turn's own generated title and is never translated.",
+    "placeholders": {
+     "turn": "the turn's 1-based position in the conversation",
+     "total": "the number of turns in the conversation",
+     "name": "the turn's own title"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "turn": [
+      "number:default"
+     ],
+     "total": [
+      "number:default"
+     ],
+     "name": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "name": [
+      "plain"
+     ],
+     "total": [
+      "number:default"
+     ],
+     "turn": [
+      "number:default"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{name}",
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_hi": [
+     "{name}",
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "name",
+     "total",
+     "turn"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "“Acme Ops” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=latin",
+     "text": "“Acme Ops” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=latin-vowel-initial",
+     "text": "“Indira Rao” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=devanagari",
+     "text": "“इंदिरा राव” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=devanagari-vowel-initial",
+     "text": "“आशा टीम” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=ascii-quotes",
+     "text": "“\"Q\" O'Brien” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=comma",
+     "text": "“टीम, प्रमुख” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=danda",
+     "text": "“अंत। नया” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=cjk",
+     "text": "“山田太郎” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=rtl-name",
+     "text": "“محمد علي” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=long",
+     "text": "“A very long agent display name that goes on and on” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=token-like",
+     "text": "“agent_01 (beta)” — 34 में से टर्न 12 पर जाएँ"
+    },
+    {
+     "label": "name=percent-braces-like",
+     "text": "“100% done {x}” — 34 में से टर्न 12 पर जाएँ"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_agent_unnamed",
+   "namespace": "ui.chat",
+   "en": "Jump to turn {turn, number} of {total, number}",
+   "hi": "{total, number} में से टर्न {turn, number} पर जाएँ",
+   "context": {
+    "role": "accessible name of a run-details tick that jumps to an agent turn that has no title yet",
+    "tone": "action plus the destination, sentence case",
+    "length": "Up to a short sentence.",
+    "note": "Same tick as ui.chat.checkpoint.jump_agent while the turn is still unnamed; the title is simply absent, never substituted.",
+    "placeholders": {
+     "turn": "the turn's 1-based position in the conversation",
+     "total": "the number of turns in the conversation"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "turn": [
+      "number:default"
+     ],
+     "total": [
+      "number:default"
+     ]
+    },
+    "hi_signature": {
+     "total": [
+      "number:default"
+     ],
+     "turn": [
+      "number:default"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_hi": [
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "total",
+     "turn"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "34 में से टर्न 12 पर जाएँ"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_user",
+   "namespace": "ui.chat",
+   "en": "Jump to your message in turn {turn, number} of {total, number}, {clock}",
+   "hi": "{total, number} में से टर्न {turn, number} में {clock} पर भेजे गए अपने संदेश पर जाएँ",
+   "context": {
+    "role": "accessible name of a run-details tick that jumps to the reader's own message",
+    "tone": "action plus the destination and a time, sentence case",
+    "length": "Up to a short sentence.",
+    "note": "{turn} and {total} are the same two numbers the tick's visible identity line shows. {clock} is a clock time already formatted by the locale-aware time formatter, not a pattern.",
+    "placeholders": {
+     "turn": "the turn's 1-based position in the conversation",
+     "total": "the number of turns in the conversation",
+     "clock": "the locale-formatted time of the message"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "turn": [
+      "number:default"
+     ],
+     "total": [
+      "number:default"
+     ],
+     "clock": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "total": [
+      "number:default"
+     ],
+     "turn": [
+      "number:default"
+     ],
+     "clock": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{clock}",
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_hi": [
+     "{clock}",
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "clock",
+     "total",
+     "turn"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "34 में से टर्न 12 में 3:42 PM पर भेजे गए अपने संदेश पर जाएँ"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_user_no_clock",
+   "namespace": "ui.chat",
+   "en": "Jump to your message in turn {turn, number} of {total, number}",
+   "hi": "{total, number} में से टर्न {turn, number} में अपने संदेश पर जाएँ",
+   "context": {
+    "role": "accessible name of a run-details tick that jumps to the reader's own message when no time is known",
+    "tone": "action plus the destination, sentence case",
+    "length": "Up to a short sentence.",
+    "note": "The clock half is omitted rather than invented when the message carries no usable timestamp.",
+    "placeholders": {
+     "turn": "the turn's 1-based position in the conversation",
+     "total": "the number of turns in the conversation"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "turn": [
+      "number:default"
+     ],
+     "total": [
+      "number:default"
+     ]
+    },
+    "hi_signature": {
+     "total": [
+      "number:default"
+     ],
+     "turn": [
+      "number:default"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_hi": [
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "total",
+     "turn"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "34 में से टर्न 12 में अपने संदेश पर जाएँ"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.turn",
+   "namespace": "ui.chat",
+   "en": "Turn {turn, number} of {total, number}",
+   "hi": "{total, number} में से टर्न {turn, number}",
+   "context": {
+    "role": "the structural identity of one turn in the conversation, shown on the run-details rail",
+    "tone": "noun phrase, sentence case, no trailing punctuation",
+    "length": "Four words.",
+    "note": "Also used inside the rail tick's accessible name, where its first character is lowercased to sit in sentence position — keep the wording a noun phrase that survives that transform. Both numbers are ordinal-safe counts of turns, not messages.",
+    "placeholders": {
+     "turn": "the turn's 1-based position in the conversation",
+     "total": "the number of turns in the conversation"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "turn": [
+      "number:default"
+     ],
+     "total": [
+      "number:default"
+     ]
+    },
+    "hi_signature": {
+     "total": [
+      "number:default"
+     ],
+     "turn": [
+      "number:default"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_hi": [
+     "{total, number}",
+     "{turn, number}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "total",
+     "turn"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "34 में से टर्न 12"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_agent_assign",
+   "namespace": "ui.chat",
+   "en": "Agent: {label}. Assign an agent",
+   "hi": "एजेंट: {label}। एजेंट सौंपें",
+   "context": {
+    "role": "accessible name of the header agent chip while no agent is attached",
+    "tone": "role and state, then the action, separated by periods",
+    "length": "Up to a short sentence.",
+    "note": "A whole sentence, not a concatenation: {label} is the chip's visible label (usually the no-agent phrase) and must appear verbatim so voice control keeps matching the control.",
+    "placeholders": {
+     "label": "the chip's own visible label"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "label": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "label": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{label}"
+    ],
+    "raw_spans_hi": [
+     "{label}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "label"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "एजेंट: Acme Ops। एजेंट सौंपें"
+    },
+    {
+     "label": "label=latin",
+     "text": "एजेंट: Acme Ops। एजेंट सौंपें"
+    },
+    {
+     "label": "label=latin-vowel-initial",
+     "text": "एजेंट: Indira Rao। एजेंट सौंपें"
+    },
+    {
+     "label": "label=devanagari",
+     "text": "एजेंट: इंदिरा राव। एजेंट सौंपें"
+    },
+    {
+     "label": "label=devanagari-vowel-initial",
+     "text": "एजेंट: आशा टीम। एजेंट सौंपें"
+    },
+    {
+     "label": "label=ascii-quotes",
+     "text": "एजेंट: \"Q\" O'Brien। एजेंट सौंपें"
+    },
+    {
+     "label": "label=comma",
+     "text": "एजेंट: टीम, प्रमुख। एजेंट सौंपें"
+    },
+    {
+     "label": "label=danda",
+     "text": "एजेंट: अंत। नया। एजेंट सौंपें"
+    },
+    {
+     "label": "label=cjk",
+     "text": "एजेंट: 山田太郎। एजेंट सौंपें"
+    },
+    {
+     "label": "label=rtl-name",
+     "text": "एजेंट: محمد علي। एजेंट सौंपें"
+    },
+    {
+     "label": "label=long",
+     "text": "एजेंट: A very long agent display name that goes on and on। एजेंट सौंपें"
+    },
+    {
+     "label": "label=token-like",
+     "text": "एजेंट: agent_01 (beta)। एजेंट सौंपें"
+    },
+    {
+     "label": "label=percent-braces-like",
+     "text": "एजेंट: 100% done {x}। एजेंट सौंपें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_agent_closed",
+   "namespace": "ui.chat",
+   "en": "Agent: {label}. {reason}",
+   "hi": "एजेंट: {label}। {reason}",
+   "context": {
+    "role": "accessible name of the header agent chip while the runtime has closed the seat",
+    "tone": "role and state, then the reason, separated by periods",
+    "length": "Up to a sentence; the reason is backend prose.",
+    "note": "{reason} is the runtime's own closure sentence, served in English by the backend; it is passed through unchanged rather than paraphrased.",
+    "placeholders": {
+     "label": "the attached agent's own display name",
+     "reason": "the runtime-served closure sentence"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "label": [
+      "plain"
+     ],
+     "reason": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "label": [
+      "plain"
+     ],
+     "reason": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{label}",
+     "{reason}"
+    ],
+    "raw_spans_hi": [
+     "{label}",
+     "{reason}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "label",
+     "reason"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "एजेंट: Acme Ops। The runtime closed this seat."
+    },
+    {
+     "label": "label=latin",
+     "text": "एजेंट: Acme Ops। The runtime closed this seat."
+    },
+    {
+     "label": "label=latin-vowel-initial",
+     "text": "एजेंट: Indira Rao। The runtime closed this seat."
+    },
+    {
+     "label": "label=devanagari",
+     "text": "एजेंट: इंदिरा राव। The runtime closed this seat."
+    },
+    {
+     "label": "label=devanagari-vowel-initial",
+     "text": "एजेंट: आशा टीम। The runtime closed this seat."
+    },
+    {
+     "label": "label=ascii-quotes",
+     "text": "एजेंट: \"Q\" O'Brien। The runtime closed this seat."
+    },
+    {
+     "label": "label=comma",
+     "text": "एजेंट: टीम, प्रमुख। The runtime closed this seat."
+    },
+    {
+     "label": "label=danda",
+     "text": "एजेंट: अंत। नया। The runtime closed this seat."
+    },
+    {
+     "label": "label=cjk",
+     "text": "एजेंट: 山田太郎। The runtime closed this seat."
+    },
+    {
+     "label": "label=rtl-name",
+     "text": "एजेंट: محمد علي। The runtime closed this seat."
+    },
+    {
+     "label": "label=long",
+     "text": "एजेंट: A very long agent display name that goes on and on। The runtime closed this seat."
+    },
+    {
+     "label": "label=token-like",
+     "text": "एजेंट: agent_01 (beta)। The runtime closed this seat."
+    },
+    {
+     "label": "label=percent-braces-like",
+     "text": "एजेंट: 100% done {x}। The runtime closed this seat."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_agent_switch",
+   "namespace": "ui.chat",
+   "en": "Agent: {label}. Switch agent",
+   "hi": "एजेंट: {label}। एजेंट बदलें",
+   "context": {
+    "role": "accessible name of the header agent chip while an agent is attached",
+    "tone": "role and state, then the action, separated by periods",
+    "length": "Up to a short sentence.",
+    "note": "The assigned-state twin of aria_agent_assign; the visible agent name is {label} and must appear verbatim.",
+    "placeholders": {
+     "label": "the attached agent's own display name"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "label": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "label": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{label}"
+    ],
+    "raw_spans_hi": [
+     "{label}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "label"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "एजेंट: Acme Ops। एजेंट बदलें"
+    },
+    {
+     "label": "label=latin",
+     "text": "एजेंट: Acme Ops। एजेंट बदलें"
+    },
+    {
+     "label": "label=latin-vowel-initial",
+     "text": "एजेंट: Indira Rao। एजेंट बदलें"
+    },
+    {
+     "label": "label=devanagari",
+     "text": "एजेंट: इंदिरा राव। एजेंट बदलें"
+    },
+    {
+     "label": "label=devanagari-vowel-initial",
+     "text": "एजेंट: आशा टीम। एजेंट बदलें"
+    },
+    {
+     "label": "label=ascii-quotes",
+     "text": "एजेंट: \"Q\" O'Brien। एजेंट बदलें"
+    },
+    {
+     "label": "label=comma",
+     "text": "एजेंट: टीम, प्रमुख। एजेंट बदलें"
+    },
+    {
+     "label": "label=danda",
+     "text": "एजेंट: अंत। नया। एजेंट बदलें"
+    },
+    {
+     "label": "label=cjk",
+     "text": "एजेंट: 山田太郎। एजेंट बदलें"
+    },
+    {
+     "label": "label=rtl-name",
+     "text": "एजेंट: محمد علي। एजेंट बदलें"
+    },
+    {
+     "label": "label=long",
+     "text": "एजेंट: A very long agent display name that goes on and on। एजेंट बदलें"
+    },
+    {
+     "label": "label=token-like",
+     "text": "एजेंट: agent_01 (beta)। एजेंट बदलें"
+    },
+    {
+     "label": "label=percent-braces-like",
+     "text": "एजेंट: 100% done {x}। एजेंट बदलें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_team_assign",
+   "namespace": "ui.chat",
+   "en": "Team: {label}. Assign a team",
+   "hi": "टीम: {label}। टीम सौंपें",
+   "context": {
+    "role": "accessible name of the header team chip while no team is attached",
+    "tone": "role and state, then the action, separated by periods",
+    "length": "Up to a short sentence.",
+    "note": "The team twin of aria_agent_assign; {label} is the chip's visible label and must appear verbatim.",
+    "placeholders": {
+     "label": "the chip's own visible label"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "label": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "label": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{label}"
+    ],
+    "raw_spans_hi": [
+     "{label}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "label"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "टीम: Acme Ops। टीम सौंपें"
+    },
+    {
+     "label": "label=latin",
+     "text": "टीम: Acme Ops। टीम सौंपें"
+    },
+    {
+     "label": "label=latin-vowel-initial",
+     "text": "टीम: Indira Rao। टीम सौंपें"
+    },
+    {
+     "label": "label=devanagari",
+     "text": "टीम: इंदिरा राव। टीम सौंपें"
+    },
+    {
+     "label": "label=devanagari-vowel-initial",
+     "text": "टीम: आशा टीम। टीम सौंपें"
+    },
+    {
+     "label": "label=ascii-quotes",
+     "text": "टीम: \"Q\" O'Brien। टीम सौंपें"
+    },
+    {
+     "label": "label=comma",
+     "text": "टीम: टीम, प्रमुख। टीम सौंपें"
+    },
+    {
+     "label": "label=danda",
+     "text": "टीम: अंत। नया। टीम सौंपें"
+    },
+    {
+     "label": "label=cjk",
+     "text": "टीम: 山田太郎। टीम सौंपें"
+    },
+    {
+     "label": "label=rtl-name",
+     "text": "टीम: محمد علي। टीम सौंपें"
+    },
+    {
+     "label": "label=long",
+     "text": "टीम: A very long agent display name that goes on and on। टीम सौंपें"
+    },
+    {
+     "label": "label=token-like",
+     "text": "टीम: agent_01 (beta)। टीम सौंपें"
+    },
+    {
+     "label": "label=percent-braces-like",
+     "text": "टीम: 100% done {x}। टीम सौंपें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_team_closed",
+   "namespace": "ui.chat",
+   "en": "Team: {label}. {reason}",
+   "hi": "टीम: {label}। {reason}",
+   "context": {
+    "role": "accessible name of the header team chip while the runtime has closed the seat",
+    "tone": "role and state, then the reason, separated by periods",
+    "length": "Up to a sentence; the reason is backend prose.",
+    "note": "{reason} is the runtime's own closure sentence, served in English by the backend; it is passed through unchanged.",
+    "placeholders": {
+     "label": "the attached team's own display name",
+     "reason": "the runtime-served closure sentence"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "label": [
+      "plain"
+     ],
+     "reason": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "label": [
+      "plain"
+     ],
+     "reason": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{label}",
+     "{reason}"
+    ],
+    "raw_spans_hi": [
+     "{label}",
+     "{reason}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "label",
+     "reason"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "टीम: Acme Ops। The runtime closed this seat."
+    },
+    {
+     "label": "label=latin",
+     "text": "टीम: Acme Ops। The runtime closed this seat."
+    },
+    {
+     "label": "label=latin-vowel-initial",
+     "text": "टीम: Indira Rao। The runtime closed this seat."
+    },
+    {
+     "label": "label=devanagari",
+     "text": "टीम: इंदिरा राव। The runtime closed this seat."
+    },
+    {
+     "label": "label=devanagari-vowel-initial",
+     "text": "टीम: आशा टीम। The runtime closed this seat."
+    },
+    {
+     "label": "label=ascii-quotes",
+     "text": "टीम: \"Q\" O'Brien। The runtime closed this seat."
+    },
+    {
+     "label": "label=comma",
+     "text": "टीम: टीम, प्रमुख। The runtime closed this seat."
+    },
+    {
+     "label": "label=danda",
+     "text": "टीम: अंत। नया। The runtime closed this seat."
+    },
+    {
+     "label": "label=cjk",
+     "text": "टीम: 山田太郎। The runtime closed this seat."
+    },
+    {
+     "label": "label=rtl-name",
+     "text": "टीम: محمد علي। The runtime closed this seat."
+    },
+    {
+     "label": "label=long",
+     "text": "टीम: A very long agent display name that goes on and on। The runtime closed this seat."
+    },
+    {
+     "label": "label=token-like",
+     "text": "टीम: agent_01 (beta)। The runtime closed this seat."
+    },
+    {
+     "label": "label=percent-braces-like",
+     "text": "टीम: 100% done {x}। The runtime closed this seat."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_team_switch",
+   "namespace": "ui.chat",
+   "en": "Team: {label}. Switch team",
+   "hi": "टीम: {label}। टीम बदलें",
+   "context": {
+    "role": "accessible name of the header team chip while a team is attached",
+    "tone": "role and state, then the action, separated by periods",
+    "length": "Up to a short sentence.",
+    "note": "The assigned-state twin of aria_team_assign; the visible team name is {label} and must appear verbatim.",
+    "placeholders": {
+     "label": "the attached team's own display name"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "label": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "label": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{label}"
+    ],
+    "raw_spans_hi": [
+     "{label}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "label"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "टीम: Acme Ops। टीम बदलें"
+    },
+    {
+     "label": "label=latin",
+     "text": "टीम: Acme Ops। टीम बदलें"
+    },
+    {
+     "label": "label=latin-vowel-initial",
+     "text": "टीम: Indira Rao। टीम बदलें"
+    },
+    {
+     "label": "label=devanagari",
+     "text": "टीम: इंदिरा राव। टीम बदलें"
+    },
+    {
+     "label": "label=devanagari-vowel-initial",
+     "text": "टीम: आशा टीम। टीम बदलें"
+    },
+    {
+     "label": "label=ascii-quotes",
+     "text": "टीम: \"Q\" O'Brien। टीम बदलें"
+    },
+    {
+     "label": "label=comma",
+     "text": "टीम: टीम, प्रमुख। टीम बदलें"
+    },
+    {
+     "label": "label=danda",
+     "text": "टीम: अंत। नया। टीम बदलें"
+    },
+    {
+     "label": "label=cjk",
+     "text": "टीम: 山田太郎। टीम बदलें"
+    },
+    {
+     "label": "label=rtl-name",
+     "text": "टीम: محمد علي। टीम बदलें"
+    },
+    {
+     "label": "label=long",
+     "text": "टीम: A very long agent display name that goes on and on। टीम बदलें"
+    },
+    {
+     "label": "label=token-like",
+     "text": "टीम: agent_01 (beta)। टीम बदलें"
+    },
+    {
+     "label": "label=percent-braces-like",
+     "text": "टीम: 100% done {x}। टीम बदलें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.assign_agent",
+   "namespace": "ui.chat",
+   "en": "Assign an agent",
+   "hi": "एजेंट सौंपें",
+   "context": {
+    "role": "tooltip of the header chip while no agent is attached",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Three words.",
+    "note": "Tooltip only: the same act is spelled inside the chip's accessible name (ui.chat.header_identity.aria_agent_assign), so keep the verb consistent between the two.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "एजेंट सौंपें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.assign_team",
+   "namespace": "ui.chat",
+   "en": "Assign a team",
+   "hi": "टीम सौंपें",
+   "context": {
+    "role": "tooltip of the header chip while no team is attached",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Three words.",
+    "note": "Tooltip only: the same act is spelled inside the chip's accessible name (ui.chat.header_identity.aria_team_assign), so keep the verb consistent between the two.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "टीम सौंपें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.no_agent",
+   "namespace": "ui.chat",
+   "en": "No agent",
+   "hi": "कोई एजेंट नहीं",
+   "context": {
+    "role": "chip label meaning no agent is attached to the open conversation",
+    "tone": "noun phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "It is an assign affordance, not a status claim about a named-but-unknown agent: pressing it opens the agent picker. The same words appear inside the control's accessible name.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "कोई एजेंट नहीं"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.no_team",
+   "namespace": "ui.chat",
+   "en": "No team",
+   "hi": "कोई टीम नहीं",
+   "context": {
+    "role": "chip label meaning no team is attached to the open conversation",
+    "tone": "noun phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "The team twin of ui.chat.header_identity.no_agent: pressing it opens the team picker. A closed seat never shows this label.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "कोई टीम नहीं"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.region.composer",
+   "namespace": "ui.chat",
+   "en": "Message composer",
+   "hi": "संदेश कंपोज़र",
+   "context": {
+    "role": "accessible name of the composer landmark",
+    "tone": "noun phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "Screen-reader only: it names the form region the message field lives in, and the F6 region walk reads it back. Not a placeholder and not a button label.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "संदेश कंपोज़र"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.region.conversation",
+   "namespace": "ui.chat",
+   "en": "Conversation",
+   "hi": "बातचीत",
+   "context": {
+    "role": "accessible name of the transcript landmark and of the chat header landmark",
+    "tone": "noun phrase, sentence case, no trailing punctuation",
+    "length": "One word.",
+    "note": "Screen-reader only: the transcript's role=log region and the header landmark share it because both head the same conversation. It names the region, not a tab.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "बातचीत"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header.archive_conversation",
+   "namespace": "ui.chat.header",
+   "en": "Archive conversation",
+   "hi": "बातचीत संग्रहित करें",
+   "context": {
+    "role": "header menu item that archives the open conversation",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "Lives beside the header's other conversation actions. Archiving hides the conversation from the chats list until it is restored; the same item becomes 'Restore conversation' while the conversation is archived.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "बातचीत संग्रहित करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header.cancel_rename",
+   "namespace": "ui.chat.header",
+   "en": "Cancel rename",
+   "hi": "नाम बदलना रद्द करें",
+   "context": {
+    "role": "accessible name and tooltip of the header control that abandons a rename in progress",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "Screen-reader and pointer users only: the control is the same pencil glyph the row shows at rest, now acting as the cancel. It appears only while the rename field is open.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "नाम बदलना रद्द करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header.rename_conversation",
+   "namespace": "ui.chat.header",
+   "en": "Rename conversation",
+   "hi": "बातचीत का नाम बदलें",
+   "context": {
+    "role": "accessible name and tooltip of the header control that opens the conversation-name field",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "Same verb as the sidebar row menu's rename item; this one sits in the open conversation's header. It opens an inline field rather than a dialog.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "बातचीत का नाम बदलें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header.restore_conversation",
+   "namespace": "ui.chat.header",
+   "en": "Restore conversation",
+   "hi": "बातचीत बहाल करें",
+   "context": {
+    "role": "header menu item that restores an archived conversation",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "The archived-state face of the archive item: it clears the archive mark instead of setting it, returning the conversation to the chats list.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "बातचीत बहाल करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header.saving_conversation_name",
+   "namespace": "ui.chat.header",
+   "en": "Saving the conversation name",
+   "hi": "बातचीत का नाम सहेजा जा रहा है",
+   "context": {
+    "role": "accessible name and tooltip of the header control while a conversation-name write is in flight",
+    "tone": "plain statement, sentence case, no trailing punctuation",
+    "length": "Four words.",
+    "note": "Screen-reader and pointer users only: it reports the busy state instead of offering an action, because the control no-ops while the write runs.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "बातचीत का नाम सहेजा जा रहा है"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.response_actions.answer_label",
+   "namespace": "ui.chat.response_actions",
+   "en": "Answer actions",
+   "hi": "जवाब की कार्रवाइयाँ",
+   "context": {
+    "role": "group name for the toolbar of actions on an agent's answer",
+    "tone": "noun phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "Screen-reader only: it labels the icon row revealed on the answer, and the buttons inside are icons. It names what the actions act on, not who wrote the row.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "जवाब की कार्रवाइयाँ"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.response_actions.copied",
+   "namespace": "ui.chat.response_actions",
+   "en": "Copied",
+   "hi": "कॉपी किया गया",
+   "context": {
+    "role": "accessible name and tooltip of the copy control immediately after it copied the message",
+    "tone": "plain past-tense statement, sentence case, no trailing punctuation",
+    "length": "One word.",
+    "note": "The confirmed state of the copy control; it returns to the imperative 'Copy' after a short delay.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "कॉपी किया गया"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.response_actions.copy",
+   "namespace": "ui.chat.response_actions",
+   "en": "Copy",
+   "hi": "कॉपी करें",
+   "context": {
+    "role": "accessible name and tooltip of the control that copies the whole message",
+    "tone": "verb, sentence case, no trailing punctuation",
+    "length": "One word.",
+    "note": "Copies the message's plain text to the clipboard. It sits in the row of icon actions on a message, not in the transcript's text-selection toolbar.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "कॉपी करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.response_actions.yours_label",
+   "namespace": "ui.chat.response_actions",
+   "en": "Your message actions",
+   "hi": "आपके संदेश की कार्रवाइयाँ",
+   "context": {
+    "role": "group name for the toolbar of actions on the reader's own message",
+    "tone": "noun phrase, sentence case, no trailing punctuation",
+    "length": "Three words.",
+    "note": "Screen-reader only: the same icon row as the answer's, on a row the reader wrote. The possessive makes the subject plain without repeating the message text.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "आपके संदेश की कार्रवाइयाँ"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.entity.collapse_chats",
+   "namespace": "ui.chat.sidebar",
+   "en": "Collapse {name} chats",
+   "hi": "{name} की चैट समेटें",
+   "context": {
+    "role": "accessible name of the disclosure control that collapses an agent's or team's chats in the sidebar",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Three words plus the entity name.",
+    "note": "The name is the agent or team's own display name and is never translated. The control is the chevron at the start of the entity row; this label is the expanded state.",
+    "placeholders": {
+     "name": "the agent or team's own display name"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{name}"
+    ],
+    "raw_spans_hi": [
+     "{name}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "name"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "Acme Ops की चैट समेटें"
+    },
+    {
+     "label": "name=latin",
+     "text": "Acme Ops की चैट समेटें"
+    },
+    {
+     "label": "name=latin-vowel-initial",
+     "text": "Indira Rao की चैट समेटें"
+    },
+    {
+     "label": "name=devanagari",
+     "text": "इंदिरा राव की चैट समेटें"
+    },
+    {
+     "label": "name=devanagari-vowel-initial",
+     "text": "आशा टीम की चैट समेटें"
+    },
+    {
+     "label": "name=ascii-quotes",
+     "text": "\"Q\" O'Brien की चैट समेटें"
+    },
+    {
+     "label": "name=comma",
+     "text": "टीम, प्रमुख की चैट समेटें"
+    },
+    {
+     "label": "name=danda",
+     "text": "अंत। नया की चैट समेटें"
+    },
+    {
+     "label": "name=cjk",
+     "text": "山田太郎 की चैट समेटें"
+    },
+    {
+     "label": "name=rtl-name",
+     "text": "محمد علي की चैट समेटें"
+    },
+    {
+     "label": "name=long",
+     "text": "A very long agent display name that goes on and on की चैट समेटें"
+    },
+    {
+     "label": "name=token-like",
+     "text": "agent_01 (beta) की चैट समेटें"
+    },
+    {
+     "label": "name=percent-braces-like",
+     "text": "100% done {x} की चैट समेटें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.entity.expand_chats",
+   "namespace": "ui.chat.sidebar",
+   "en": "Expand {name} chats",
+   "hi": "{name} की चैट फैलाएँ",
+   "context": {
+    "role": "accessible name of the disclosure control that expands an agent's or team's chats in the sidebar",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Three words plus the entity name.",
+    "note": "The collapsed state of the same chevron; the name is the agent or team's own display name and is never translated.",
+    "placeholders": {
+     "name": "the agent or team's own display name"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{name}"
+    ],
+    "raw_spans_hi": [
+     "{name}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "name"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "Acme Ops की चैट फैलाएँ"
+    },
+    {
+     "label": "name=latin",
+     "text": "Acme Ops की चैट फैलाएँ"
+    },
+    {
+     "label": "name=latin-vowel-initial",
+     "text": "Indira Rao की चैट फैलाएँ"
+    },
+    {
+     "label": "name=devanagari",
+     "text": "इंदिरा राव की चैट फैलाएँ"
+    },
+    {
+     "label": "name=devanagari-vowel-initial",
+     "text": "आशा टीम की चैट फैलाएँ"
+    },
+    {
+     "label": "name=ascii-quotes",
+     "text": "\"Q\" O'Brien की चैट फैलाएँ"
+    },
+    {
+     "label": "name=comma",
+     "text": "टीम, प्रमुख की चैट फैलाएँ"
+    },
+    {
+     "label": "name=danda",
+     "text": "अंत। नया की चैट फैलाएँ"
+    },
+    {
+     "label": "name=cjk",
+     "text": "山田太郎 की चैट फैलाएँ"
+    },
+    {
+     "label": "name=rtl-name",
+     "text": "محمد علي की चैट फैलाएँ"
+    },
+    {
+     "label": "name=long",
+     "text": "A very long agent display name that goes on and on की चैट फैलाएँ"
+    },
+    {
+     "label": "name=token-like",
+     "text": "agent_01 (beta) की चैट फैलाएँ"
+    },
+    {
+     "label": "name=percent-braces-like",
+     "text": "100% done {x} की चैट फैलाएँ"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.entity.manage",
+   "namespace": "ui.chat.sidebar",
+   "en": "Manage {name}",
+   "hi": "{name} प्रबंधित करें",
+   "context": {
+    "role": "accessible name of the sidebar row control that opens the entity's management page",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "One word plus the entity name.",
+    "note": "Screen-reader only: the control is a bare ellipsis glyph on an agent or team row. It navigates to that profile's page; it opens no menu here.",
+    "placeholders": {
+     "name": "the agent or team's own display name"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{name}"
+    ],
+    "raw_spans_hi": [
+     "{name}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "name"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "Acme Ops प्रबंधित करें"
+    },
+    {
+     "label": "name=latin",
+     "text": "Acme Ops प्रबंधित करें"
+    },
+    {
+     "label": "name=latin-vowel-initial",
+     "text": "Indira Rao प्रबंधित करें"
+    },
+    {
+     "label": "name=devanagari",
+     "text": "इंदिरा राव प्रबंधित करें"
+    },
+    {
+     "label": "name=devanagari-vowel-initial",
+     "text": "आशा टीम प्रबंधित करें"
+    },
+    {
+     "label": "name=ascii-quotes",
+     "text": "\"Q\" O'Brien प्रबंधित करें"
+    },
+    {
+     "label": "name=comma",
+     "text": "टीम, प्रमुख प्रबंधित करें"
+    },
+    {
+     "label": "name=danda",
+     "text": "अंत। नया प्रबंधित करें"
+    },
+    {
+     "label": "name=cjk",
+     "text": "山田太郎 प्रबंधित करें"
+    },
+    {
+     "label": "name=rtl-name",
+     "text": "محمد علي प्रबंधित करें"
+    },
+    {
+     "label": "name=long",
+     "text": "A very long agent display name that goes on and on प्रबंधित करें"
+    },
+    {
+     "label": "name=token-like",
+     "text": "agent_01 (beta) प्रबंधित करें"
+    },
+    {
+     "label": "name=percent-braces-like",
+     "text": "100% done {x} प्रबंधित करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.entity.pin",
+   "namespace": "ui.chat.sidebar",
+   "en": "Pin “{name}”",
+   "hi": "“{name}” पिन करें",
+   "context": {
+    "role": "accessible name of the sidebar control that lifts an agent to the top of its section",
+    "tone": "verb phrase, sentence case, typographic quotes around the name, no trailing punctuation",
+    "length": "One word plus the name.",
+    "note": "The label states the STATE (pinned or not), not the press: aria-pressed carries the toggle, and the tooltip carries the action. The name is the agent's own display name and stays inside typographic quotes.",
+    "placeholders": {
+     "name": "the agent's own display name, inside typographic quotes"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{name}"
+    ],
+    "raw_spans_hi": [
+     "{name}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "name"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "“Acme Ops” पिन करें"
+    },
+    {
+     "label": "name=latin",
+     "text": "“Acme Ops” पिन करें"
+    },
+    {
+     "label": "name=latin-vowel-initial",
+     "text": "“Indira Rao” पिन करें"
+    },
+    {
+     "label": "name=devanagari",
+     "text": "“इंदिरा राव” पिन करें"
+    },
+    {
+     "label": "name=devanagari-vowel-initial",
+     "text": "“आशा टीम” पिन करें"
+    },
+    {
+     "label": "name=ascii-quotes",
+     "text": "“\"Q\" O'Brien” पिन करें"
+    },
+    {
+     "label": "name=comma",
+     "text": "“टीम, प्रमुख” पिन करें"
+    },
+    {
+     "label": "name=danda",
+     "text": "“अंत। नया” पिन करें"
+    },
+    {
+     "label": "name=cjk",
+     "text": "“山田太郎” पिन करें"
+    },
+    {
+     "label": "name=rtl-name",
+     "text": "“محمد علي” पिन करें"
+    },
+    {
+     "label": "name=long",
+     "text": "“A very long agent display name that goes on and on” पिन करें"
+    },
+    {
+     "label": "name=token-like",
+     "text": "“agent_01 (beta)” पिन करें"
+    },
+    {
+     "label": "name=percent-braces-like",
+     "text": "“100% done {x}” पिन करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.entity.unpin",
+   "namespace": "ui.chat.sidebar",
+   "en": "Unpin “{name}”",
+   "hi": "“{name}” अनपिन करें",
+   "context": {
+    "role": "action tooltip on the pin control of an already-pinned sidebar agent",
+    "tone": "verb phrase, sentence case, typographic quotes around the name, no trailing punctuation",
+    "length": "Two words plus the name.",
+    "note": "Tooltip only: it states what the next press does. The accessible name stays the constant 'Pin “name”' with aria-pressed reporting the state.",
+    "placeholders": {
+     "name": "the agent's own display name, inside typographic quotes"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "name": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{name}"
+    ],
+    "raw_spans_hi": [
+     "{name}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "name"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "“Acme Ops” अनपिन करें"
+    },
+    {
+     "label": "name=latin",
+     "text": "“Acme Ops” अनपिन करें"
+    },
+    {
+     "label": "name=latin-vowel-initial",
+     "text": "“Indira Rao” अनपिन करें"
+    },
+    {
+     "label": "name=devanagari",
+     "text": "“इंदिरा राव” अनपिन करें"
+    },
+    {
+     "label": "name=devanagari-vowel-initial",
+     "text": "“आशा टीम” अनपिन करें"
+    },
+    {
+     "label": "name=ascii-quotes",
+     "text": "“\"Q\" O'Brien” अनपिन करें"
+    },
+    {
+     "label": "name=comma",
+     "text": "“टीम, प्रमुख” अनपिन करें"
+    },
+    {
+     "label": "name=danda",
+     "text": "“अंत। नया” अनपिन करें"
+    },
+    {
+     "label": "name=cjk",
+     "text": "“山田太郎” अनपिन करें"
+    },
+    {
+     "label": "name=rtl-name",
+     "text": "“محمد علي” अनपिन करें"
+    },
+    {
+     "label": "name=long",
+     "text": "“A very long agent display name that goes on and on” अनपिन करें"
+    },
+    {
+     "label": "name=token-like",
+     "text": "“agent_01 (beta)” अनपिन करें"
+    },
+    {
+     "label": "name=percent-braces-like",
+     "text": "“100% done {x}” अनपिन करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.pins.pin_label",
+   "namespace": "ui.chat.sidebar",
+   "en": "Pin “{title}”",
+   "hi": "“{title}” पिन करें",
+   "context": {
+    "role": "accessible name and tooltip of the pin control on a conversation row in the pinned section",
+    "tone": "verb plus the title in typographic quotes, no trailing punctuation",
+    "length": "Two words plus the title.",
+    "note": "The action, never the state: pressing pins the conversation, and the pressed state is reported by aria-pressed. The same string is the accessible name and the tooltip.",
+    "placeholders": {
+     "title": "the conversation's own title, inside typographic quotes"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "title": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "title": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{title}"
+    ],
+    "raw_spans_hi": [
+     "{title}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "title"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "“Q3 planning sync” पिन करें"
+    },
+    {
+     "label": "title=latin",
+     "text": "“Acme Ops” पिन करें"
+    },
+    {
+     "label": "title=latin-vowel-initial",
+     "text": "“Indira Rao” पिन करें"
+    },
+    {
+     "label": "title=devanagari",
+     "text": "“इंदिरा राव” पिन करें"
+    },
+    {
+     "label": "title=devanagari-vowel-initial",
+     "text": "“आशा टीम” पिन करें"
+    },
+    {
+     "label": "title=ascii-quotes",
+     "text": "“\"Q\" O'Brien” पिन करें"
+    },
+    {
+     "label": "title=comma",
+     "text": "“टीम, प्रमुख” पिन करें"
+    },
+    {
+     "label": "title=danda",
+     "text": "“अंत। नया” पिन करें"
+    },
+    {
+     "label": "title=cjk",
+     "text": "“山田太郎” पिन करें"
+    },
+    {
+     "label": "title=rtl-name",
+     "text": "“محمد علي” पिन करें"
+    },
+    {
+     "label": "title=long",
+     "text": "“A very long agent display name that goes on and on” पिन करें"
+    },
+    {
+     "label": "title=token-like",
+     "text": "“agent_01 (beta)” पिन करें"
+    },
+    {
+     "label": "title=percent-braces-like",
+     "text": "“100% done {x}” पिन करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.pins.unpin_label",
+   "namespace": "ui.chat.sidebar",
+   "en": "Unpin “{title}”",
+   "hi": "“{title}” अनपिन करें",
+   "context": {
+    "role": "accessible name and tooltip of the pin control on an already-pinned conversation row",
+    "tone": "verb plus the title in typographic quotes, no trailing punctuation",
+    "length": "Two words plus the title.",
+    "note": "The pinned-state face of the same control: pressing returns the conversation to its time-ordered place.",
+    "placeholders": {
+     "title": "the conversation's own title, inside typographic quotes"
+    }
+   },
+   "checks": {
+    "en_signature": {
+     "title": [
+      "plain"
+     ]
+    },
+    "hi_signature": {
+     "title": [
+      "plain"
+     ]
+    },
+    "signature_equal": true,
+    "raw_spans_en": [
+     "{title}"
+    ],
+    "raw_spans_hi": [
+     "{title}"
+    ],
+    "raw_spans_equal": true,
+    "args": [
+     "title"
+    ],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "“Q3 planning sync” अनपिन करें"
+    },
+    {
+     "label": "title=latin",
+     "text": "“Acme Ops” अनपिन करें"
+    },
+    {
+     "label": "title=latin-vowel-initial",
+     "text": "“Indira Rao” अनपिन करें"
+    },
+    {
+     "label": "title=devanagari",
+     "text": "“इंदिरा राव” अनपिन करें"
+    },
+    {
+     "label": "title=devanagari-vowel-initial",
+     "text": "“आशा टीम” अनपिन करें"
+    },
+    {
+     "label": "title=ascii-quotes",
+     "text": "“\"Q\" O'Brien” अनपिन करें"
+    },
+    {
+     "label": "title=comma",
+     "text": "“टीम, प्रमुख” अनपिन करें"
+    },
+    {
+     "label": "title=danda",
+     "text": "“अंत। नया” अनपिन करें"
+    },
+    {
+     "label": "title=cjk",
+     "text": "“山田太郎” अनपिन करें"
+    },
+    {
+     "label": "title=rtl-name",
+     "text": "“محمد علي” अनपिन करें"
+    },
+    {
+     "label": "title=long",
+     "text": "“A very long agent display name that goes on and on” अनपिन करें"
+    },
+    {
+     "label": "title=token-like",
+     "text": "“agent_01 (beta)” अनपिन करें"
+    },
+    {
+     "label": "title=percent-braces-like",
+     "text": "“100% done {x}” अनपिन करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.row_menu.archive",
+   "namespace": "ui.chat.sidebar",
+   "en": "Archive conversation",
+   "hi": "बातचीत संग्रहित करें",
+   "context": {
+    "role": "row context-menu item that archives the conversation",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "The same act as the header's archive item, on the row that names the conversation. The item becomes 'Unarchive conversation' while the row is archived.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "बातचीत संग्रहित करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.row_menu.pin",
+   "namespace": "ui.chat.sidebar",
+   "en": "Pin conversation",
+   "hi": "बातचीत पिन करें",
+   "context": {
+    "role": "row context-menu item that pins the conversation",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "Moves the conversation into the pinned section above the list. Rendered only on rows whose pin state is known; the item becomes 'Unpin conversation' while pinned.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "बातचीत पिन करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.row_menu.unarchive",
+   "namespace": "ui.chat.sidebar",
+   "en": "Unarchive conversation",
+   "hi": "बातचीत बहाल करें",
+   "context": {
+    "role": "row context-menu item that restores an archived conversation",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "The archived-state face of the row's archive item: it clears the archive mark.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "बातचीत बहाल करें"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.row_menu.unpin",
+   "namespace": "ui.chat.sidebar",
+   "en": "Unpin conversation",
+   "hi": "बातचीत अनपिन करें",
+   "context": {
+    "role": "row context-menu item that unpins the conversation",
+    "tone": "verb phrase, sentence case, no trailing punctuation",
+    "length": "Two words.",
+    "note": "The pinned-state face of the row's pin item: it returns the conversation to the time-ordered list.",
+    "placeholders": {}
+   },
+   "checks": {
+    "en_signature": {},
+    "hi_signature": {},
+    "signature_equal": true,
+    "raw_spans_en": [],
+    "raw_spans_hi": [],
+    "raw_spans_equal": true,
+    "args": [],
+    "plural": {},
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophe": false,
+    "ascii_double_quote": false,
+    "edge_space": false,
+    "ellipsis_parity": true
+   },
+   "renders": [
+    {
+     "label": "base",
+     "text": "बातचीत अनपिन करें"
+    }
+   ]
+  }
+ ],
+ "failures": []
+}

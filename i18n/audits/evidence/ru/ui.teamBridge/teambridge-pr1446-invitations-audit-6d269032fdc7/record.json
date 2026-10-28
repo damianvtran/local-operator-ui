@@ -1,0 +1,204 @@
+{
+	"audit_id": "teambridge-pr1446-invitations-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"source_commit": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+	"translator": {
+		"agent": "translator",
+		"session": "c995ffd759f3",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+		"method": "LLM reasoning; the translator transcript references no MT service (deepl/googletrans/libretranslate/argos: 0 hits)"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-27",
+			"result": "clean",
+			"instance": "6d269032fdc7-ru",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/6d269032fdc7-ru.json",
+			"receipt_sha256": "7c3641b28600dfdf4d11aee22cf908cd5e2b023fbc2354d4355c70365c0f6b62",
+			"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+			"note": "PR #1446 invitations audit (none). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The translator was session c995ffd759f3 (coder role, commit 23ddabe864). This run wrote only these receipts, the per-locale evidence records and the ledger rows (via ledger-assemble.mjs).",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "34a05660da9e8a7fb25c2f20205f25ccfdf08ea572bf2aff0db8f08603d0af19"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "d0b5a7223fc79264478b8e3b07b6a05b14e548ec388a8a193af3b9ab0db42ef6"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.invitations.title": {
+			"en": "Invitations",
+			"target": "Приглашения"
+		},
+		"ui.teamBridge.invitations.count": {
+			"en": "{count, plural, one {{count} invitation waiting for you} other {{count} invitations waiting for you}}",
+			"target": "{count, plural, one {{count} приглашение ждёт вас} few {{count} приглашения ждут вас} many {{count} приглашений ждут вас} other {{count} приглашения ждут вас}}"
+		},
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": {
+			"en": "Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.",
+			"target": "Если вы примете приглашение, ваш агент с этого момента сможет читать этот разговор и публиковать в нём сообщения. Он просыпается, только когда кто-то упоминает его через @."
+		},
+		"ui.teamBridge.invitations.loading": {
+			"en": "Loading invitations…",
+			"target": "Загрузка приглашений…"
+		},
+		"ui.teamBridge.invitations.load_failed": {
+			"en": "Invitations could not be loaded.",
+			"target": "Не удалось загрузить приглашения."
+		},
+		"ui.teamBridge.invitations.empty": {
+			"en": "No invitations are waiting for your agent.",
+			"target": "Приглашений для вашего агента нет."
+		},
+		"ui.teamBridge.invitations.agent_line": {
+			"en": "{agent} was invited to this conversation",
+			"target": "{agent}: приглашение в этот разговор"
+		},
+		"ui.teamBridge.invitations.agent_fallback": {
+			"en": "Your agent",
+			"target": "Ваш агент"
+		},
+		"ui.teamBridge.invitations.added_by": {
+			"en": "Added by {name}",
+			"target": "Добавлено пользователем {name}"
+		},
+		"ui.teamBridge.invitations.added_by_you": {
+			"en": "Added by you",
+			"target": "Добавлено вами"
+		},
+		"ui.teamBridge.invitations.created_by": {
+			"en": "Conversation created by {name}",
+			"target": "Разговор создан пользователем {name}"
+		},
+		"ui.teamBridge.invitations.created_by_you": {
+			"en": "Conversation created by you",
+			"target": "Разговор создан вами"
+		},
+		"ui.teamBridge.invitations.accept": {
+			"en": "Accept",
+			"target": "Принять"
+		},
+		"ui.teamBridge.invitations.accepting": {
+			"en": "Accepting…",
+			"target": "Принятие…"
+		},
+		"ui.teamBridge.invitations.decline": {
+			"en": "Decline",
+			"target": "Отклонить"
+		},
+		"ui.teamBridge.invitations.declining": {
+			"en": "Declining…",
+			"target": "Отклонение…"
+		},
+		"ui.teamBridge.invitations.accepted": {
+			"en": "Accepted. {agent} is woken only when someone @-mentions it.",
+			"target": "Принято. {agent} просыпается только при упоминании через @."
+		},
+		"ui.teamBridge.invitations.declined": {
+			"en": "Declined for {agent}.",
+			"target": "{agent}: приглашение отклонено."
+		},
+		"ui.teamBridge.invitations.failed.agent_unavailable": {
+			"en": "Your agent can’t join from here: it is paused, turned off or not set up for this organization. Turn it on in Settings, then try again.",
+			"target": "Ваш агент не может присоединиться отсюда: он приостановлен, отключён или не настроен для этой организации. Включите его в настройках и повторите попытку."
+		},
+		"ui.teamBridge.invitations.failed.already_answered": {
+			"en": "This invitation was already answered elsewhere. Its current state is shown in the conversation.",
+			"target": "На это приглашение уже ответили в другом месте. Его текущее состояние показано в разговоре."
+		},
+		"ui.teamBridge.invitations.failed.gone": {
+			"en": "This invitation is no longer available. The conversation or your agent’s place in it was removed.",
+			"target": "Это приглашение больше недоступно. Разговор или место вашего агента в нём удалены."
+		},
+		"ui.teamBridge.invitations.failed.runtime_outdated": {
+			"en": "This runtime can’t accept invitations. Update Local Operator, then try again.",
+			"target": "Этот рантайм не может принимать приглашения. Обновите Local Operator и повторите попытку."
+		},
+		"ui.teamBridge.invitations.failed.outdated": {
+			"en": "This version of the app can’t accept invitations any more. Update the app, then try again.",
+			"target": "Эта версия приложения больше не может принимать приглашения. Обновите приложение и повторите попытку."
+		},
+		"ui.teamBridge.invitations.failed.not_available": {
+			"en": "Team Bridge isn’t available for this organization right now.",
+			"target": "Team Bridge сейчас недоступен для этой организации."
+		},
+		"ui.teamBridge.invitations.failed.sign_in": {
+			"en": "You’re signed out. Sign in, then try again.",
+			"target": "Вы не вошли в учётную запись. Войдите и повторите попытку."
+		},
+		"ui.teamBridge.invitations.failed.unreachable": {
+			"en": "The app couldn’t reach Radient. Nothing was changed. Try again.",
+			"target": "Приложению не удалось связаться с Radient. Ничего не изменено. Повторите попытку."
+		},
+		"ui.teamBridge.invitations.read_only": {
+			"en": "This organization is read-only for you, so invitations can’t be answered here.",
+			"target": "Эта организация доступна вам только для чтения, поэтому отвечать на приглашения здесь нельзя."
+		},
+		"ui.teamBridge.invitations.failed.unconfirmed": {
+			"en": "Your answer was not confirmed. Try again.",
+			"target": "Ваш ответ не подтверждён. Повторите попытку."
+		}
+	},
+	"special_scrutiny": {
+		"key": "ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+		"verdict": "faithful and complete",
+		"checked": [
+			"read AND post in this conversation",
+			"from now on",
+			"woken only on an @-mention",
+			"nothing added",
+			"no muted/silent sense"
+		]
+	},
+	"notes": "вы register; агент, рантайм (ru guide), разговор/настройки consistent with namespace; one/few/many/other verified for 1/2/5/21. Consent: 'с этого момента сможет читать этот разговор и публиковать в нём сообщения' + 'просыпается, только когда кто-то упоминает его через @' - faithful. {agent} is placed before a colon or as subject, so the unnamed fallback renders grammatically.",
+	"findings": [],
+	"fallback_renders": [
+		"ru agent_line => Ваш агент: приглашение в этот разговор",
+		"ru accepted => Принято. Ваш агент просыпается только при упоминании через @.",
+		"ru declined => Ваш агент: приглашение отклонено.",
+		"ru count 1/2/5/21: 1 приглашение ждёт вас | 2 приглашения ждут вас | 5 приглашений ждут вас | 21 приглашение ждёт вас"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/6d269032fdc7-ru.json",
+			"sha256": "7c3641b28600dfdf4d11aee22cf908cd5e2b023fbc2354d4355c70365c0f6b62"
+		}
+	},
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool. Refusal copy is clipped to one line by design (truncate + title); longer fr/ru/hi/ur sentences rely on the hover title and the accessible name for the full text."
+}

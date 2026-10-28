@@ -230,6 +230,15 @@ export type DesktopFeature =
 	 */
 	| "library"
 	/**
+	 * The notifications reel (`/v1/desktop/notifications*`, the feed's
+	 * `notifications` invalidation frame, the `/notifications` slash destination
+	 * and the sidebar row). Its own key for the Library reason: an older core
+	 * has no routes, refuses `"notifications"` in a sidebar-layout PUT, and
+	 * sends no frame, so absent means no row, no route, no read, no write and the
+	 * asks drawer exactly as it was - never an empty inbox.
+	 */
+	| "notifications"
+	/**
 	 * The sidebar customisation resource (`GET`/`PUT /v1/desktop/sidebar-layout`,
 	 * design contract § 4). Its own key because the column must render TODAY'S
 	 * fixed arrangement on a backend that predates the route: the drag handle and
@@ -325,6 +334,22 @@ export type DesktopFeature =
 	 * not a substitute and its absence must not close the working Hub plane.
 	 */
 	| "hub_skills"
+	/**
+	 * The skill library's READ side (core `skill_library:1`): `skills.list` rows
+	 * carry `source`/`link_id`/`installed`/`fingerprint`/`form` and the `name` arm
+	 * adds `skill_detail`. ITS OWN KEY, not `hub_skills` or `skill_catalogue`, so a
+	 * backend without it keeps the plain name/description list and the Agents page
+	 * never offers a Skills tab whose cards it could only half draw.
+	 */
+	| "skill_library"
+	/**
+	 * The skill library's WRITE side (core `skill_write:1`): `POST` / `PUT` /
+	 * `DELETE /v1/desktop/skills[/{name}]`, i.e. Copy to my skills, the inline
+	 * SKILL.md edit and Remove on the Agents page's Skills tab. Its own key so a
+	 * core that only reads skills keeps the read-only tab and offers no control
+	 * that would 404.
+	 */
+	| "skill_write"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
@@ -532,6 +557,14 @@ export type DesktopFeature =
 	 * path, with one honest line saying why (the `session_interrupt` precedent).
 	 */
 	| "agents_config"
+	/**
+	 * A configuration run that can revise a SKILL (core adds a `skill` tool to the
+	 * run's declaration and advertises `agents_config_skills:1`). Its own key by
+	 * the rule core states for `agents_config`: an older core has the run but no
+	 * skill tool, so a skill request there would end "I can't edit files" after a
+	 * paid turn. Gates the Skills tab's docked composer (`configSkillRunEnabled`).
+	 */
+	| "agents_config_skills"
 	/**
 	 * `input_mode` on `sessions.message`: the harness carries the composer's own
 	 * record of how a message was produced (`typed` / `dictated` / `mixed`, see

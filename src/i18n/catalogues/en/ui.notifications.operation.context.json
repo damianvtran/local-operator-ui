@@ -1,0 +1,13 @@
+{
+	"ui.notifications.operation.progress": {
+		"role": "Live progress and final receipt for bulk notification read/dismiss or Undo",
+		"tone": "Concise factual status; avoid claiming all items changed.",
+		"note": "Three integer counts, each from actual server receipts. Changed is confirmed successful; skipped is explicitly refused/stale/already settled by the server; not confirmed includes not-yet-sent items and items whose network response was lost. Never translate not confirmed as failed, skipped, unchanged or unread: the operation may have reached the server. This line is displayed beside the existing action name and remains after partial failure.",
+		"length": "A wrapping status line, not a fixed-width button. Preserve all three counts and their different meanings.",
+		"placeholders": {
+			"changed": "Nonnegative count of items confirmed changed by server responses.",
+			"skipped": "Nonnegative count of items explicitly skipped in server responses.",
+			"pending": "Nonnegative count without a conclusive response, including items not yet attempted."
+		}
+	}
+}

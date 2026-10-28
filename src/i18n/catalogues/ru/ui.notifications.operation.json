@@ -1,0 +1,3 @@
+{
+	"ui.notifications.operation.progress": "Изменено: {changed, number} · пропущено: {skipped, number} · не подтверждено: {pending, number}"
+}

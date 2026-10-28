@@ -37,6 +37,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, KeyboardEvent } from "react";
@@ -823,7 +824,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			// biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order.
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
-			aria-label="Files"
+			aria-label={t("ui.chat.pickers.at_menu.region_label")}
 			className={cn(
 				"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the row
@@ -902,7 +903,9 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 											role="presentation"
 											className="px-3 pt-2 pb-1 text-meta text-ink-muted"
 										>
-											{row.section === "project" ? "Projects" : "Files"}
+											{row.section === "project"
+												? t("ui.chat.pickers.at_menu.heading.projects")
+												: t("ui.chat.pickers.at_menu.heading.files")}
 										</li>
 									)}
 								{/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */}
@@ -1008,10 +1011,10 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 									 */}
 									<span className="shrink-0 text-meta text-ink-dim">
 										{row.section === "project"
-											? "Project"
+											? t("ui.chat.pickers.at_menu.tag.project")
 											: row.directory
-												? "Directory"
-												: "File"}
+												? t("ui.chat.pickers.at_menu.tag.directory")
+												: t("ui.chat.pickers.at_menu.tag.file")}
 									</span>
 								</li>
 							</Fragment>

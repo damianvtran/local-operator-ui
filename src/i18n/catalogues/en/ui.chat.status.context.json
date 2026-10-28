@@ -1,0 +1,30 @@
+{
+	"ui.chat.status.credential_refused": {
+		"role": "title of the chat status strip when the running server refused this app's credential",
+		"tone": "statement of fact plus its consequence, sentence case, trailing period",
+		"length": "Nineteen words.",
+		"note": "The strip's own sentence for this root cause. It tells the reader why their credential was refused, while the control beside it says Retry: the renderer has no sign-in path, so 'Sign in' would name an act the app cannot perform.",
+		"placeholders": {}
+	},
+	"ui.chat.status.degraded": {
+		"role": "title of the chat status strip when the connection is up but the server is answering slowly",
+		"tone": "statement plus what happens to the reader's messages, sentence case, trailing period",
+		"length": "Nine words.",
+		"note": "Drawn only when the server is reachable: a dead process must not be described as slow. Nothing has failed here - it is a fact about latency.",
+		"placeholders": {}
+	},
+	"ui.chat.status.internet_offline": {
+		"role": "title of the chat status strip when this machine has no network at all",
+		"tone": "statement plus what happens to a send, sentence case, trailing period",
+		"length": "Eight words.",
+		"note": "The subject is THIS machine, not the server: on a machine with no network, blaming the server would send the reader to the wrong remedy.",
+		"placeholders": {}
+	},
+	"ui.chat.status.unreachable": {
+		"role": "title of the chat status strip when nothing is answering",
+		"tone": "statement plus what happens to a send, sentence case, trailing period",
+		"length": "Ten words.",
+		"note": "Covers both 'no server is there' and 'a daemon is there that this app did not attach to': the reader's position is the same, and main's own detail line says which path was taken.",
+		"placeholders": {}
+	}
+}

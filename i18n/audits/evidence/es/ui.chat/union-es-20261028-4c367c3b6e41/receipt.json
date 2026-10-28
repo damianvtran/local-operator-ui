@@ -1,0 +1,219 @@
+{
+	"schema": 1,
+	"kind": "i18n-audit-receipt",
+	"audit_kind": "union-delta-audit of two independently audited wave deltas over unchanged-by-proof bytes",
+	"audit_id": "union-es-20261028-4c367c3b6e41",
+	"instance": "union-es-20261028-4c367c3b6e41",
+	"locale": "es",
+	"namespace": "ui.chat",
+	"audit_date": "2026-10-28",
+	"branch": "i18n-wave-a",
+	"pr": 1449,
+	"head": "c5e19ecec8",
+	"head_full": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+	"merge_parents": [
+		"e5f7c8daeaf3bd5a6267c5910288e2b5f1bcc807",
+		"1d631be71fb7a674b117aab61508d6dd822708b4"
+	],
+	"auditor": "i18n-auditor",
+	"session": "4c367c3b6e41",
+	"team": "lopdev",
+	"model": "radient/auto",
+	"model_provenance": {
+		"route": "radient/auto",
+		"route_source": "this session's harness system prompt: 'Model: radient/auto'",
+		"fallback_used": false,
+		"fallback_chain": [],
+		"actual_model_source": "No [session incident] record and no model-switch notice exists anywhere in this session's transcript (~/.local-operator/sessions/4c367c3b6e41/transcript.jsonl, 260 events, types message/custom only; the phrases appear there only inside quoted prompt text and this session's own commands and output). The upstream model behind the router alias is not exposed to this session, so none is invented.",
+		"disclosure": "Every judgement in this audit was made in this session under the recorded route; no model change was requested or observed."
+	},
+	"status": "passed",
+	"verdict": "passed",
+	"result": "clean-with-findings",
+	"key_count": 142,
+	"sha256": {
+		"en": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+		"es": "b9b27923ee3fed6e9b4b91b4c6f4ebe77fb1d4b0ade1db3b9b4ad8a782e7b9be"
+	},
+	"context_sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e",
+	"findings": [
+		{
+			"id": "UES-N1",
+			"severity": "nit",
+			"key": "ui.chat.error_block.heading",
+			"source": "Error",
+			"current": "Detalle del error",
+			"problem": "The one-word heading grows by 'Detalle del'. Nothing is mistranslated, but the addition narrows the label to 'error detail' and the block can carry only a short error line; it is also the only heading of its family that grows (mermaid.error_title and rendering_error keep the bare noun).",
+			"suggested": "Error"
+		},
+		{
+			"id": "UES-N2",
+			"severity": "nit",
+			"key": "ui.chat.error_block.schema.after",
+			"source": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+			"current": "para solucionarlo. Recomendamos Radient Automatic, que elige para ti la mejor combinación de barato e inteligente según tus solicitudes (normalmente más barato que usar tu propia clave), o uno de los modelos recomendados con el icono de estrella.",
+			"problem": "(a) 'la mejor combinación de barato e inteligente' nominalises two adjectives (colloquial marketing shorthand); (b) the second alternative has no verb, so 'o uno de los modelos recomendados' dangles off 'Recomendamos' after the long relative clause. Meaning survives; nit, not major.",
+			"suggested": "para solucionarlo. Recomendamos usar Radient Automatic, que elige para ti la mejor combinación de económico e inteligente según tus solicitudes (normalmente más barato que usar tu propia clave), o usar uno de los modelos recomendados con el icono de estrella."
+		}
+	],
+	"findings_summary": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 2
+	},
+	"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/es/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt 949ac6eec574 read (80ee119bbd), the 9 wave-B keys equal the bytes receipt 8bbe685ce56d read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology.",
+	"delta": {
+		"base_pre_union": {
+			"commit": "1d631be71f",
+			"es_sha256": "fe15211c61778c618bb83093e3ed59b4e36f0afcd3ec9f576019b3c5c34e44ff",
+			"en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04"
+		},
+		"wave_a_audited_bytes": {
+			"commit": "80ee119bbd",
+			"receipt": "949ac6eec574",
+			"es_sha256": "02e567d424977518b88b54c573273657e4711ba4748a16ecfb6041589a4f202d",
+			"en_sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc"
+		},
+		"wave_b_audited_bytes": {
+			"commit": "a5356ce91c",
+			"receipt": "8bbe685ce56d",
+			"es_sha256": "fe15211c61778c618bb83093e3ed59b4e36f0afcd3ec9f576019b3c5c34e44ff",
+			"en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04"
+		},
+		"pre_wave_base": {
+			"commit": "81f286ee5c",
+			"es_sha256": "4937072e3526f94fe91b7e930eed83ac938dd7c42342a5a47a21b075fed0c4a5",
+			"en_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0"
+		},
+		"key_counts": {
+			"base": 115,
+			"wave_a_head": 133,
+			"origin_main_after_wave_b": 124,
+			"union": 142
+		},
+		"wave_a_keys": [
+			"ui.chat.checkpoint.generating_name",
+			"ui.chat.checkpoint.jump_agent",
+			"ui.chat.checkpoint.jump_agent_unnamed",
+			"ui.chat.checkpoint.jump_user",
+			"ui.chat.checkpoint.jump_user_no_clock",
+			"ui.chat.checkpoint.turn",
+			"ui.chat.header_identity.aria_agent_assign",
+			"ui.chat.header_identity.aria_agent_closed",
+			"ui.chat.header_identity.aria_agent_switch",
+			"ui.chat.header_identity.aria_team_assign",
+			"ui.chat.header_identity.aria_team_closed",
+			"ui.chat.header_identity.aria_team_switch",
+			"ui.chat.header_identity.assign_agent",
+			"ui.chat.header_identity.assign_team",
+			"ui.chat.header_identity.no_agent",
+			"ui.chat.header_identity.no_team",
+			"ui.chat.region.composer",
+			"ui.chat.region.conversation"
+		],
+		"wave_b_keys": [
+			"ui.chat.session_status.context_heading",
+			"ui.chat.session_status.context_nothing_measured_tooltip",
+			"ui.chat.session_status.conversation_starting",
+			"ui.chat.session_status.model_none_resolved_tooltip",
+			"ui.chat.session_status.not_signed_in",
+			"ui.chat.session_status.not_signed_in_description",
+			"ui.chat.session_status.nothing_measured_yet",
+			"ui.chat.session_status.temporarily_unavailable",
+			"ui.chat.session_status.temporarily_unavailable_description"
+		],
+		"shared_key_names": [],
+		"proof": "Parsed-JSON comparison over five snapshots (git show into a throw-away dir, never the shared checkout): 0 value mismatches in en and es for all 142 keys; 0 raw-line mismatches, so every audited key's stored text is byte-identical to the file the earlier receipt bound; key order in the union is origin/main's 124 keys followed by wave A's 18, so no base line moved; en and es key sets and order are identical to each other. See audits/evidence/es/ui.chat/union-es-20261028-4c367c3b6e41/audit.log section 2.",
+		"binding": "Binds es b9b27923ee3fed6e9b4b91b4c6f4ebe77fb1d4b0ade1db3b9b4ad8a782e7b9be and en d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4, each read from a read-only `git archive` export of c5e19ecec8 and cross-checked with `git show c5e19ecec8:<path> | shasum -a 256`. A later commit that changes any value voids this receipt."
+	},
+	"gates": {
+		"ledger-check": "fails exactly 7 rows / 21 findings, every one */ui.chat stale source+target+receipt-vs-bytes: the expected pre-audit state the union bytes are in until this receipt and its six siblings are assembled.",
+		"generate --check": "pass - keys.gen.ts byte-identical to a fresh generation",
+		"context-parity": "pass - 131 allowed gaps in 4 namespaces, all 27 wave keys carry sidecar entries",
+		"check-coverage": "pass - 7 gated languages over 99 namespaces, 0 allowed keys remain",
+		"locale-parity": "pass - 44/44 tests across all shipped locales (es: every key, no unknown key, placeholder parity, not an English stub)",
+		"check-duplicates": "pass - 889 files, 0 duplicate keys",
+		"mechanical_sweep": "pass - 142/142 keys parsed, 172 real intl-messageformat renders, arg/type parity, ICU select/plural block parity (0 diffs), es categories one/many/other with other always present, NFC, no bidi/zero-width, no token drift, no markup"
+	},
+	"independence": "Independent union audit for es. This session wrote no catalogue byte, no context sidecar, no ledger row and no generated file, and could not edit the audited file: it read the committed bytes through a read-only git archive export and read the shared checkout only with git show/grep/log. It did not translate or amend anything for es, and it is not the session that produced either wave (wave A audited by 949ac6eec574, wave B by 8bbe685ce56d, translations by the translator lane). No translation or MT service was used to compare or back-translate anything.",
+	"auditor_continuity": "Fresh session (4c367c3b6e41), distinct from both predecessor auditors and from the translator lane. The error, approval and secret copy was re-read in a second internal pass from the text rather than from either predecessor's reasoning; that is a same-session re-read and is NOT claimed as an independent second audit. No separate second-pass auditor session was requested for this union.",
+	"predecessors": [
+		{
+			"receipt": "949ac6eec574",
+			"namespace": "ui.chat",
+			"status": "passed",
+			"findings": "1 minor (W1: English meridiem inside the composed {clock})",
+			"use": "Supplies the wave-A audited bytes: its en/es/context ui.chat hashes equal the files at 80ee119bbd, re-verified here."
+		},
+		{
+			"receipt": "8bbe685ce56d",
+			"namespace": "ui.chat",
+			"status": "passed",
+			"findings": "none",
+			"use": "Supplies the wave-B audited bytes: its en/es/context ui.chat hashes equal the files at a5356ce91c and at origin/main 1d631be71f, re-verified here."
+		}
+	],
+	"wave_a_minor_closure": "Wave A's W1 (English AM/PM inside the composed {clock}) is CLOSED at this head: checkpointClockLabel returns formatTime(date, { hour: 'numeric', minute: '2-digit' }) (src/renderer/src/features/chat/canonical/checkpoint-model.ts:220, fixed in cbc7082c53), so 'a las {clock}' renders 'a las 15:42' in es. No finding is carried forward.",
+	"observations_not_findings": [
+		{
+			"id": "UES-O1",
+			"topic": "composer vs message box",
+			"detail": "es renders 'composer' as 'compositor' (3 sites, incl. wave A's region.composer) and 'message box' as 'cuadro de mensaje' (2 sites, both approval hints): a strict 1:1 mapping of two English terms the source itself uses, so not a translation collision. Wave A recorded the same observation (O1) and recommended aligning the two 'cuadro de mensaje' sites in a separate change; unchanged here."
+		},
+		{
+			"id": "UES-O2",
+			"topic": "Approve/Deny stay English",
+			"detail": "The approval card prints APPROVAL_OPTIONS labels from src/renderer/src/features/chat/approval-words.ts and submits the label verbatim, and typed answers resolve through English word lists, so 'Elige Approve o Deny' names the controls the reader actually sees."
+		},
+		{
+			"id": "UES-O3",
+			"topic": "{reason} stays English",
+			"detail": "header_identity.aria_*_closed passes {reason} through: the sidecar records it as UI-composed text mirroring core's team_owns_the_agent_slot_message byte for byte (a cross-repo contract), so the mixed-language utterance is intentional in every locale."
+		},
+		{
+			"id": "UES-O4",
+			"topic": "ui.chat.tabs.chat identical to English",
+			"detail": "'Chat' is a recorded, reasoned exemption in scripts/i18n/locale-parity.test.mjs ('es:ui.chat.tabs.chat'); it is the only value identical to English in the file."
+		}
+	],
+	"limitations": [
+		"Catalogue-level audit: proves strings, ICU structure and rendering; it does not render the Electron UI and claims no screenshot (design/QA lanes own visual proof).",
+		"Base and wave-B keys are carried by the delta proof rather than re-derived from a second source; every whole-file mechanical and narrative check was nevertheless re-run over all 142 keys.",
+		"The audit reads catalogue files and the en context sidecar only; no network and no MT."
+	],
+	"references": {
+		"glossary": {
+			"repo": "local-operator (core)",
+			"path": "i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"repo": "local-operator (core)",
+			"path": "i18n/style-guides/es.md",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		},
+		"contract": {
+			"repo": "local-operator-ui",
+			"path": "docs/I18N.md"
+		},
+		"evidence_root": {
+			"repo": "local-operator-ui",
+			"path": "i18n/audits/evidence/es/ui.chat/union-es-20261028-4c367c3b6e41/"
+		}
+	},
+	"inputs": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.json",
+			"sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.context.json",
+			"sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e"
+		},
+		"es": {
+			"path": "src/i18n/catalogues/es/ui.chat.json",
+			"sha256": "b9b27923ee3fed6e9b4b91b4c6f4ebe77fb1d4b0ade1db3b9b4ad8a782e7b9be"
+		}
+	}
+}

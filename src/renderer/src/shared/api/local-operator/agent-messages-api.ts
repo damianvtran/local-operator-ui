@@ -6,6 +6,7 @@ import {
 	type AgentMessagesSettingsPut,
 	type AgentMessagesSettingsResult,
 	agentMessagesAllowlistResultSchema,
+	agentMessagesOnboardingDismissResultSchema,
 	agentMessagesSettingsResultSchema,
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
@@ -72,6 +73,17 @@ export const agentMessagesApi = {
 			...body,
 		});
 		return agentMessagesAllowlistResultSchema.parse(result);
+	},
+	/**
+	 * Dismiss the default-on banner for good (runtime #2790). The runtime owns
+	 * the "seen" marker; the answer is validated so a surprise body is a failed
+	 * dismissal the banner reports, not a silent success that returns later.
+	 */
+	async dismissOnboarding() {
+		const result = await desktopResult<unknown>({
+			op: "agent_messages.onboarding.dismiss",
+		});
+		return agentMessagesOnboardingDismissResultSchema.parse(result);
 	},
 	async localSetting(
 		key: "team_bridge.enabled" | "team_bridge.session",

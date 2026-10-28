@@ -156,15 +156,22 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 	 * first, so the two surfaces present the same two acts in the same sequence
 	 * however they were opened.
 	 */
+	/*
+	 * AND THE WORDING IS THE CATALOGUE'S, pinned by KEY rather than by the
+	 * English (i18n wave A): the row menu's two paired items read the row-menu
+	 * keys the shipped catalogue owns, so the spelling the frame shows and the
+	 * spelling a translator receives cannot drift apart. A literal here is now
+	 * the defect this assertion exists to catch.
+	 */
 	assert.ok(
-		archiveItem.includes(
-			'{archived ? "Unarchive conversation" : "Archive conversation"}',
-		),
-		"the archive item no longer words its act as the row/palette spelling",
+		archiveItem.includes('t("ui.chat.sidebar.row_menu.unarchive")') &&
+			archiveItem.includes('t("ui.chat.sidebar.row_menu.archive")'),
+		"the archive item no longer words its act through the catalogue's row-menu keys",
 	);
 	assert.ok(
-		pinItem.includes('{pinned ? "Unpin conversation" : "Pin conversation"}'),
-		"the pin item no longer words its act as the pair's control does",
+		pinItem.includes('t("ui.chat.sidebar.row_menu.unpin")') &&
+			pinItem.includes('t("ui.chat.sidebar.row_menu.pin")'),
+		"the pin item no longer words its act through the catalogue's row-menu keys",
 	);
 	assert.ok(
 		MENU.indexOf('pressRowAct(row.session_id, "archive")') <

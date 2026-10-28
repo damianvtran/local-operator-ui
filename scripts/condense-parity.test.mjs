@@ -110,7 +110,18 @@ test("the fixture pins the model source it came from, and the pin verifies", asy
 		`the bundle reads ${derived.length} repository files`,
 	);
 	assert.ok(
-		derived.every((file) => file.startsWith("src/")),
+		/*
+		 * `i18n/languages.json` sits outside `src/` and is pinned because the
+		 * bundle reads it for the locale list. Catalogue copy itself is excluded
+		 * by the generator (it can change a word, never a decision); the rule here
+		 * is "a file in this repository", and node_modules or an absolute path
+		 * would still fail it.
+		 */
+		derived.every(
+			(file) =>
+				(file.startsWith("src/") || file === "i18n/languages.json") &&
+				!file.includes("node_modules"),
+		),
 		"every pinned source is a repository source file",
 	);
 	for (const core of [

@@ -80,5 +80,7 @@
 	"ui.chat.run_details.chip.subagents_failed": "{count, plural, one {# субагент с ошибкой} few {# субагента с ошибкой} many {# субагентов с ошибкой} other {# субагента с ошибкой}}",
 	"ui.chat.run_details.chip.attention": "{count, plural, one {# требует внимания} few {# требуют внимания} many {# требуют внимания} other {# требуют внимания}}",
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, one {# MCP-сервер требует внимания} few {# MCP-сервера требуют внимания} many {# MCP-серверов требуют внимания} other {# MCP-сервера требуют внимания}}",
-	"ui.chat.run_details.mcp.cold_label": "Сессия не запущена — состояние серверов проверить нельзя."
+	"ui.chat.run_details.mcp.cold_label": "Сессия не запущена — состояние серверов проверить нельзя.",
+	"ui.chat.run_details.nothing_in_flight": "Ничего не выполняется.",
+	"ui.chat.run_details.nothing_to_show_yet": "Пока нечего показать."
 }

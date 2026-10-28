@@ -5,5 +5,7 @@
 	"ui.common.layout.sidebar_header.create_a_new_agent": "Crear un agente nuevo",
 	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "Importar un agente desde un archivo ZIP",
 	"ui.common.layout.sidebar_header.import_agent": "Importar agente",
-	"ui.common.layout.sidebar_header.new_agent": "Agente nuevo"
+	"ui.common.layout.sidebar_header.new_agent": "Agente nuevo",
+	"ui.common.layout.toasts.dismiss": "Cerrar notificación",
+	"ui.common.layout.toasts.notifications": "Notificaciones"
 }

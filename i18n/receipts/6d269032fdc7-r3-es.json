@@ -1,0 +1,119 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (remediation delta, PR #1446 round 3)",
+	"audit_id": "teambridge-pr1446-invitations-r3-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"instance": "6d269032fdc7-r3-es",
+	"instance_note": "Auditor session 6d269032fdc7, round 3, per-locale suffix; distinct from 6d269032fdc7-<locale> (R1) and 6d269032fdc7-r2-<locale> (R2); unique across main, #1438 and #1444.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header: 'Model: anthropic/claude-opus-5-5'.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The translator was session 839f2593b55e (commit 61f028a155). This run wrote only receipts, evidence records and ledger rows (via ledger-assemble.mjs).",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"session": "839f2593b55e",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "61f028a1556f9f043d598a3e635af22d7a53566a",
+		"method": "LLM reasoning; no MT service referenced"
+	},
+	"integration": {
+		"pr": 1446,
+		"branch": "fix/d5-channel-invites",
+		"reviewed_head": "61f028a1556f9f043d598a3e635af22d7a53566a",
+		"previous_reviewed_head": "87507d9c52cbb929604fda49ea4c54ed5c2e9cd1",
+		"main_at_audit": "8a48072a6192bb76f5122b255aba9d47f47d5a8c",
+		"main_note": "main moved past the PR's merge of it; the new commits touch no src/i18n or i18n path and git merge-tree reports no conflict",
+		"worktree": "~/local-operator-ui/.worktrees/i18n-1446-r3-6d26 (removed after push)"
+	},
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"scope": {
+		"keys_audited_linguistically": [],
+		"rendered_with_fallback": [
+			"ui.teamBridge.invitations.agent_line"
+		],
+		"english_change": "en agent_fallback 'your agent' -> 'Your agent' (it opens the English agent_line); en context notes for agent_line and agent_fallback corrected. No other en key changed.",
+		"inherited_byte_identical": {
+			"round2_receipt": "i18n/receipts/6d269032fdc7-r2-es.json",
+			"round2_receipt_sha256": "ae7850fdfa4e7e8fdaf46fef73d074f119a0b061d9587e0694d062f434f5adaf",
+			"note": "the whole target catalogue is byte-identical to the round-2 audited bytes at 87507d9c52; #1441's keys stay on fe54982cb1b7-es, the base on e2cc7b3bceb8."
+		}
+	},
+	"sha256": {
+		"en": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+		"es": "fafac4e8eb9c693dddad7137ae6d99ee3beefe0dc795d8b49441e3ae36c78a1e"
+	},
+	"context_sha256": "adee106718acc3d6254c2e7ff4ef38cbb0b750e07131b4084ed4e549d58aee57",
+	"english": {
+		"ui.teamBridge.invitations.agent_fallback": {
+			"value": "Your agent",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Fills {agent} in agent_line only, when the agent has no name; the outcome sentences use accepted_unnamed/declined_unnamed instead. In English it starts agent_line, so it is capitalized; in each locale, capitalize it only if it starts that locale's agent_line.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.invitations.agent_line": {
+			"value": "{agent} was invited to this conversation",
+			"context_note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. States that the reader's agent is the invitee of this conversation.",
+			"placeholders": {
+				"agent": "the reader's own agent's display name, or the fallback 'Your agent' (agent_fallback)"
+			}
+		}
+	},
+	"audited_strings": {
+		"ui.teamBridge.invitations.agent_fallback": "tu agente",
+		"ui.teamBridge.invitations.agent_line": "Se invitó a {agent} a esta conversación"
+	},
+	"checks": {
+		"render": "agent_line rendered with 'Robo Damian' and with agent_fallback in all 8 locales (fallback_renders)",
+		"unit_test": "scripts/team-bridge-invitations.test.mjs 11/11 pass at 61f028a155",
+		"bidi_controls": "none",
+		"placeholders": "unchanged"
+	},
+	"notes": "Target byte-identical to round 2. agent_line with fallback: 'Se invitó a tu agente a esta conversación' - fallback mid-sentence, lowercase correct.",
+	"findings": [],
+	"fallback_renders": [
+		"en | agent_fallback = Your agent",
+		"en | agent_line named   => Robo Damian was invited to this conversation",
+		"en | agent_line unnamed => Your agent was invited to this conversation",
+		"es | agent_fallback = tu agente",
+		"es | agent_line named   => Se invitó a Robo Damian a esta conversación",
+		"es | agent_line unnamed => Se invitó a tu agente a esta conversación"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_es": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		}
+	},
+	"execution": [
+		{
+			"command": "gh pr view 1446 --json headRefOid",
+			"result": "61f028a1556f9f043d598a3e635af22d7a53566a OPEN"
+		},
+		{
+			"command": "git diff 87507d9c52 61f028a155",
+			"result": "en/vi agent_fallback, en context (agent_line, agent_fallback notes), test; es fr hi ru ur zh-CN catalogues byte-identical"
+		},
+		{
+			"command": "node --test scripts/team-bridge-invitations.test.mjs (1024 MB)",
+			"result": "11 pass, 0 fail"
+		}
+	],
+	"audit_notes_not_execution_log": "notes and checks are this auditor's linguistic judgement, not command output",
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool.",
+	"evidence_record": "i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+}

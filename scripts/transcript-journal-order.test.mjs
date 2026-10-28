@@ -11,6 +11,10 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 });
 const R = await import(
@@ -904,6 +908,10 @@ test("metadata producer retains the established DEV deep-freeze guard and produc
 			bundle: true,
 			format: "esm",
 			platform: "node",
+			alias: {
+				"@shared": "./src/renderer/src/shared",
+				"@shared/i18n": "./src/i18n",
+			},
 			write: false,
 			define: { "import.meta.env": JSON.stringify({ DEV }) },
 		});

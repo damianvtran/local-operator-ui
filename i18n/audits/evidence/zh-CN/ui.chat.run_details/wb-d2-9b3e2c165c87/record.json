@@ -1,0 +1,107 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-record",
+	"audit_kind": "independent-delta-audit-of-the-wave-b-remediation-head",
+	"batch": "wave-b",
+	"round": "R2 (remediation delta)",
+	"audit_id": "wb-d2-9b3e2c165c87",
+	"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+	"locale": "zh-CN",
+	"namespace": "ui.chat.run_details",
+	"audit_date": "2026-10-27",
+	"head": "a5356ce91c",
+	"head_full": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+	"parent_full": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+	"key_count": 84,
+	"wave_b_keys": 2,
+	"changed_keys": [
+		"ui.chat.run_details.nothing_in_flight"
+	],
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "9b3e2c165c87",
+		"model": "radient/auto",
+		"model_provenance": {
+			"route": "radient/auto",
+			"route_source": "the harness system prompt of this session ('Model: radient/auto')",
+			"fallback_used": false,
+			"fallback_chain": [],
+			"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/9b3e2c165c87/transcript.jsonl, 264 events, types message/custom only); the phrase occurs only inside prompt text that quotes the guidance itself. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports.",
+			"disclosure": "Every judgement below was made in this session under the recorded route; no model change was requested or observed."
+		},
+		"independent_from_translator_session": true,
+		"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/9b3e2c165c87/transcript.jsonl, 264 events, types message/custom only); the phrase occurs only inside prompt text that quotes the guidance itself. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports."
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"model_note": "router alias recorded by the coordinator for the reply lane; the upstream model is not exposed to the auditor. Disclosed rather than guessed.",
+		"date": "2026-10-27"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+			"sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+			"sha256": "6e25843e49db6d20254d7593cbfe06c81dd8ba305c369351b4a9e374c6e4e526"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.chat.run_details.json",
+			"sha256": "0eb302844b1110be4748e72b361d126f865f208e3b02591e3b0b0d9a34a5b0b0"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/zh-CN/ui.chat.run_details/wb-d2-9b3e2c165c87/audit.log",
+			"sha256": "79666902fa957b04b2a07aec9bdec9a92c5b6dd38b1c315c179a0d406196c2b5"
+		},
+		{
+			"path": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+			"sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d"
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean",
+		"unresolved_blocker_major_count": 0,
+		"severity_counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		},
+		"finding_ids": [],
+		"independent_of_translator": true
+	},
+	"delta": {
+		"changed_keys": [
+			"ui.chat.run_details.nothing_in_flight"
+		],
+		"unchanged_wave_b_values": 1,
+		"note": "Parsed-JSON diff 0559f7f7d8 -> a5356ce91c proves this file's other values are byte-identical to the audited bytes (delta-diff.log); the changed values are audited in audit.log §1-2."
+	},
+	"resolutions": [
+		{
+			"id": "ZH-WB-3",
+			"severity_in_earlier_audit": "MINOR",
+			"namespace": "ui.chat.run_details",
+			"key": "ui.chat.run_details.nothing_in_flight",
+			"earlier_suggestion": "没有正在进行的活动。",
+			"applied": "暂无进行中的活动。",
+			"decision": "resolved, with a deviation the auditor accepts",
+			"judgement": "The finding's substance was that 事项 is bound to to-dos in this file (ui.chat.run_details.todos.title = 待办事项), so the line could be heard as a narrower claim than 'Nothing in flight'. 活动 removes that binding and 待办事项 keeps its own word, so the finding is answered. The deviation is accepted on evidence: (a) 进行中 is the catalogue's in-flight term (ui.projects.project_board.in_flight = 进行中, ui.projects.project_model.active = 进行中, ui.common.updates.update_foot_icon.in_progress = {subject}进行中{percent}。); (b) 暂无 opens the file's other empty line (nothing_to_show_yet = 暂无可显示的内容。), so the panel speaks one dialect; (c) it is 18 cells against EN 18, where the proposal was 20. Counter-argument weighed and rejected: 暂无 carries a 'for now' colour that 'Nothing in flight.' does not, and the sibling arm uses 暂无 for EN's explicit 'yet' — but the two lines are the two arms of one return and never draw together (run-details-panel.tsx draws exactly one), and 暂无 is the standard Chinese empty-state opener rather than a prediction. No action required.",
+			"checked": "call site run-details-panel.tsx:437-440 (hasRunDetails ? nothing_to_show_yet : nothing_in_flight); width 18 vs 18."
+		}
+	],
+	"findings": [],
+	"next_action": "None: no finding in this namespace.",
+	"limitations": [
+		"No browser or rendered frame was available, so no pixel, truncation or overflow claim is made; widths are codepoint cell counts, not measurements.",
+		"No native-speaker sign-off is claimed; the audit is an independent agent read of the locale against its own shipped catalogue, the glossary and the style guide.",
+		"Pre-existing keys in the nine files were read as terminology evidence, not re-audited, except where a finding names one (ZH-WBD-1).",
+		"The English copy was read as the source, not audited as English; the one English change (the closed code span) was verified only for what it does to both locales through the formatter.",
+		"The upstream model behind the radient/auto route is not exposed to this session; the recorded route is the harness's own."
+	]
+}

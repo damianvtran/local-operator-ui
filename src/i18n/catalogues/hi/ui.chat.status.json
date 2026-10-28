@@ -1,0 +1,6 @@
+{
+	"ui.chat.status.credential_refused": "चल रहे सर्वर ने इस ऐप का क्रेडेंशियल अस्वीकार कर दिया, इसलिए साइन-इन, सेटिंग्स और स्लैश कमांड उपलब्ध नहीं हैं।",
+	"ui.chat.status.degraded": "सर्वर धीरे जवाब दे रहा है। आपके संदेश कतार में हैं।",
+	"ui.chat.status.internet_offline": "यह मशीन ऑफ़लाइन है। भेजना रुक जाएगा।",
+	"ui.chat.status.unreachable": "Local Operator सर्वर तक नहीं पहुँच सके। भेजना रुक जाएगा।"
+}

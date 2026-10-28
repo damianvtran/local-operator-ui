@@ -293,6 +293,17 @@ export function invalidateAuthoring(queryClient: QueryClient): void {
 		["desktop", "teams"],
 		["desktop", "profile"],
 		["desktop", "team"],
+		/*
+		 * THE SKILL LIBRARY AND ITS HUB LINKS (seam note §4). A run on a core with
+		 * `agents_config_skills` may write a skill, and the live `authoring` frame
+		 * stats only `agents/` and `teams/`, so without these the Skills tab and a
+		 * linked skill's Modified state stay stale until something else refetches.
+		 * The library key is a prefix of every skill's detail key, so one entry
+		 * covers the list and the open skill. Spelled out rather than imported:
+		 * this shared module must not depend on a feature's hook file.
+		 */
+		["desktop", "skills", "library"],
+		["desktop", "hub-links"],
 	] as const) {
 		void queryClient.invalidateQueries({ queryKey: [...key] });
 	}
