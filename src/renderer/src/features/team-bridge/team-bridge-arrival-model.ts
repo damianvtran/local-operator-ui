@@ -14,10 +14,10 @@
  * IDENTITY IS THE MESSAGE ID, AND NOTHING ELSE (review round 1, A1/M5). An
  * earlier revision also treated `seq` and a client ref as aliases for the same
  * message, to protect an optimistic row that is replaced by its server row.
- * Team Bridge has no such row today: a send invalidates the thread query and the
- * message first appears as the canonical server row (`use-team-bridge.ts`,
- * `refreshAfterSend`). Worse, `seq` is numbered PER CONVERSATION, so as an
- * identity token it collided across streams - a live `seq:2` in one conversation
+ * The shared send journal now owns those rows and the list excludes them from
+ * this arrival observer, both before and after confirmation. Their synthetic
+ * seq must NEVER advance the remote-arrival watermark. `seq` is numbered PER
+ * CONVERSATION, so as an identity token it collided across streams - a live `seq:2` in one conversation
  * lit up seq 2 of the next one. The sequence number is still read, but only as a
  * WATERMARK within one stream: a message whose seq is not above everything this
  * stream has already shown is history being restored (an older page, or a

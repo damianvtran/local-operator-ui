@@ -481,6 +481,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	return (
 		<li
 			data-message-id={message.id}
+			data-send-state={sendRow?.state}
 			onAnimationEnd={arriving ? onArrivalEnd : undefined}
 			className={cn(
 				"group/message relative flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",

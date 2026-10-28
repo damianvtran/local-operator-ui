@@ -1538,6 +1538,9 @@ function dayKey(date: Date): string {
 export function threadItems(
 	messages: readonly TeamBridgeMessage[],
 	now: Date,
+	/** The outbox has already anchored local rows to their insertion slots.
+	 * Sorting those rows by a newly assigned server seq would move them at ACK. */
+	preserveOrder = false,
 ): ThreadItem[] {
 	const today = dayKey(now);
 	const yesterday = dayKey(
@@ -1546,7 +1549,7 @@ export function threadItems(
 	const items: ThreadItem[] = [];
 	let previous: TeamBridgeMessage | null = null;
 	let previousDay: string | null = null;
-	for (const message of chronological(messages)) {
+	for (const message of preserveOrder ? messages : chronological(messages)) {
 		const at = new Date(message.created_at);
 		const valid = !Number.isNaN(at.getTime());
 		const day = valid ? dayKey(at) : null;

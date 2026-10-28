@@ -153,7 +153,7 @@ function serverReceipt(result: unknown, conversationId: string) {
 		typeof sender.display_label === "string" &&
 		(sender.kind === "human" || sender.kind === "agent") &&
 		["human", "agent", "system"].includes(String(candidate.origin))
-			? (candidate as TeamBridgeMessage)
+			? (candidate as unknown as TeamBridgeMessage)
 			: null;
 	return { id: typeof id === "string" && id ? id : null, message };
 }

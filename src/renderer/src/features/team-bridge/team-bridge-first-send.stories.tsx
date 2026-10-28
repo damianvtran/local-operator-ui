@@ -8,7 +8,7 @@ import type {
 	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
-import { TREE_SVG } from "./team-bridge-attachments.fixtures";
+import { SHOT_WIDE_DATA_URL } from "./team-bridge-attachments.fixtures";
 import {
 	type TeamBridgeOrganization,
 	asTeamBridgeTenantId,
@@ -132,7 +132,7 @@ function FirstSendPage({
 		sendRows.set(id, {
 			clientRef,
 			state,
-			previewUrls: withImage ? [TREE_SVG] : [],
+			previewUrls: withImage ? [SHOT_WIDE_DATA_URL] : [],
 			onRetry: () => setState("pending"),
 			onDiscard: () => setDiscarded(true),
 		});
@@ -236,7 +236,7 @@ export const Swap: Story = {
 			expect(canvasElement.querySelector(selector(serverId))).toBe(row),
 		);
 		expect(row.querySelector("img")).toBe(image);
-		expect(image.getAttribute("src")).toBe(TREE_SVG);
+		expect(image.getAttribute("src")).toBe(SHOT_WIDE_DATA_URL);
 		expect(row).not.toHaveClass("lo-team-bridge-arrival");
 		expect(image.getBoundingClientRect().width).toBe(before.width);
 		expect(image.getBoundingClientRect().height).toBe(before.height);

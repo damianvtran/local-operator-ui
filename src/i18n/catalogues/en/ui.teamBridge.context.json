@@ -1775,5 +1775,26 @@
 			"count": "number of members whose membership is invited (not yet joined); a nonnegative integer"
 		},
 		"note": "Shown beneath ui.teamBridge.member.active_count, e.g. '1 active member' over '3 invited'. Invited members (people or agents) have been added but have not joined, so they are not counted as active. Use idiomatic agreement and every required plural category."
+	},
+	"ui.teamBridge.message.sending": {
+		"role": "status label",
+		"tone": "plain, sentence case",
+		"length": "One or two words; sits beside a message's time.",
+		"placeholders": {},
+		"note": "Shown beside a message the reader just sent while the server has not confirmed it yet."
+	},
+	"ui.teamBridge.message.failed": {
+		"role": "status label",
+		"tone": "plain, sentence case, matter-of-fact",
+		"length": "One or two words; sits before the shared Retry control.",
+		"placeholders": {},
+		"note": "Shown in the danger colour on a message that could not be sent, immediately before the shared Retry control (ui.common.actions.retry). The message stays in the thread."
+	},
+	"ui.teamBridge.message.discard": {
+		"role": "action label on a failed message",
+		"tone": "plain, imperative, sentence case",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Removes that failed message from this device's thread. The server never accepted it, so this is not a server-side deletion and no other reader ever saw it, which is why the label says discard rather than delete. Sits beside ui.teamBridge.message.failed and the shared Retry control (ui.common.actions.retry)."
 	}
 }
