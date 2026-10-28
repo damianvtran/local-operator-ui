@@ -640,7 +640,7 @@
 			"locale": "es",
 			"namespace": "ui.canvas",
 			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
-			"target_sha256": "0244e4116c05b7208011dce86535e326b3f6f51dc471db9f5f61d892ffb4e5da",
+			"target_sha256": "b34342b9d4927a7edc29e4739f5ce6939011435266a09ffd6255e3ed767e5e80",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -651,18 +651,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean-with-findings",
-					"instance": "i18n-audit-1452-r2-20261027-es",
+					"result": "clean",
+					"instance": "i18n-audit-1452-r3-20261027-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-es.json",
-					"receipt_sha256": "71e7ca3dbd22a6ff0cfbb046985d7bbc437086f3c63f7b25b22a2bc00fb6ed3d",
-					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
-					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-es-1 MINOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-r3-20261027-es.json",
+					"receipt_sha256": "4ef9223a8a74406ccc674ddb715944614f2f5d6efde14b86fb678380b7433bc3",
+					"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
+					"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
 				}
 			],
 			"status": "audited",
@@ -732,6 +732,30 @@
 							"receipt_sha256": "02f1f35b25c4f5d2a2c02d35640c0cd6c7a96701c0342cf1c3d60871076176b6",
 							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
 							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+					"target_sha256": "0244e4116c05b7208011dce86535e326b3f6f51dc471db9f5f61d892ffb4e5da",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-1452-r2-20261027-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-es.json",
+							"receipt_sha256": "71e7ca3dbd22a6ff0cfbb046985d7bbc437086f3c63f7b25b22a2bc00fb6ed3d",
+							"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+							"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-es-1 MINOR."
 						}
 					],
 					"status": "audited"
@@ -6845,7 +6869,7 @@
 			"locale": "fr",
 			"namespace": "ui.canvas",
 			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
-			"target_sha256": "982a31ad9a97e43f249a533c26413b8663e906cb773c38dc8287dae270f63857",
+			"target_sha256": "f4c1ecda54f5261501b1685b51cd6ae0698877b77d672b3bb47f9a7d2d6af97d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6857,18 +6881,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean-with-findings",
-					"instance": "i18n-audit-1452-r2-20261027-fr",
+					"result": "clean",
+					"instance": "i18n-audit-1452-r3-20261027-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-fr.json",
-					"receipt_sha256": "765d26315018697617c61a0638d27ca563c7fea7082f44cc374ec7d6ae4f25a6",
-					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
-					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-fr-1 MINOR I-fr-2 NIT."
+					"receipt": "i18n/receipts/i18n-audit-1452-r3-20261027-fr.json",
+					"receipt_sha256": "aaa3a4137627c180b95fb07cc1debdcce26c110ba9530f57c1f4adffc13c9462",
+					"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
+					"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
 				}
 			],
 			"superseded": [
@@ -6937,6 +6961,30 @@
 							"receipt_sha256": "8809f8df5e3a4e5a874aabfde4d4e183eaa557620b4c9088c707059dc67129f1",
 							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
 							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+					"target_sha256": "982a31ad9a97e43f249a533c26413b8663e906cb773c38dc8287dae270f63857",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-1452-r2-20261027-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-fr.json",
+							"receipt_sha256": "765d26315018697617c61a0638d27ca563c7fea7082f44cc374ec7d6ae4f25a6",
+							"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+							"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-fr-1 MINOR I-fr-2 NIT."
 						}
 					],
 					"status": "audited"
@@ -13512,7 +13560,7 @@
 			"locale": "hi",
 			"namespace": "ui.canvas",
 			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
-			"target_sha256": "e890b6f666ce1b9534f57bcd69840f00db1b5a841d9479b80d0d25eea27a73d0",
+			"target_sha256": "d38def0ee9e7c802086d0e6e47b67e369632733ae185f03d3942228b5e181bb7",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13523,18 +13571,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean-with-findings",
-					"instance": "i18n-audit-1452-r2-20261027-hi",
+					"result": "clean",
+					"instance": "i18n-audit-1452-r3-20261027-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-hi.json",
-					"receipt_sha256": "9450c1cbfce66c0a05449c6a86f3c2f7de0f8fd74fe48955144192358722be03",
-					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
-					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-hi-1 MINOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-r3-20261027-hi.json",
+					"receipt_sha256": "d5063cb71ea4ec271adf8266fd6c42b28ded8286748c8f4ed73ccc8d82050210",
+					"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
+					"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
 				}
 			],
 			"status": "audited",
@@ -13605,6 +13653,30 @@
 							"receipt_sha256": "117df1d4681f849615cd07a626381806546068837084dca527fb56ae09dc72f0",
 							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
 							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+					"target_sha256": "e890b6f666ce1b9534f57bcd69840f00db1b5a841d9479b80d0d25eea27a73d0",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-1452-r2-20261027-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-hi.json",
+							"receipt_sha256": "9450c1cbfce66c0a05449c6a86f3c2f7de0f8fd74fe48955144192358722be03",
+							"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+							"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-hi-1 MINOR."
 						}
 					],
 					"status": "audited"
@@ -19893,7 +19965,7 @@
 			"locale": "ru",
 			"namespace": "ui.canvas",
 			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
-			"target_sha256": "bc03f08e6dc67ae1d9e6d5801701bc7ffdc53ded38d899121ae3f50a7b0feeaf",
+			"target_sha256": "a640ab1ac071fe84861ad094195b75be86d5d2f9ee55ed77a0840123e146e5a4",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -19904,18 +19976,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean-with-findings",
-					"instance": "i18n-audit-1452-r2-20261027-ru",
+					"result": "clean",
+					"instance": "i18n-audit-1452-r3-20261027-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-ru.json",
-					"receipt_sha256": "6f6f56b02e84b7b92f6ab630e48568aa8cd74e4b148d8fecdd5e47c14d5f9593",
-					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
-					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-ru-1 MINOR I-ru-2 NIT."
+					"receipt": "i18n/receipts/i18n-audit-1452-r3-20261027-ru.json",
+					"receipt_sha256": "10887460382e51735801043cf448d3ddc8281a723b79ab0313fb5aa1af9b2525",
+					"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
+					"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
 				}
 			],
 			"status": "audited",
@@ -19986,6 +20058,30 @@
 							"receipt_sha256": "cb7c753cecfaaf261685c9387ea0140e923b3303d1254b59362b2383ba90521c",
 							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
 							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+					"target_sha256": "bc03f08e6dc67ae1d9e6d5801701bc7ffdc53ded38d899121ae3f50a7b0feeaf",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-1452-r2-20261027-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-ru.json",
+							"receipt_sha256": "6f6f56b02e84b7b92f6ab630e48568aa8cd74e4b148d8fecdd5e47c14d5f9593",
+							"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+							"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-ru-1 MINOR I-ru-2 NIT."
 						}
 					],
 					"status": "audited"
@@ -26189,7 +26285,7 @@
 			"locale": "ur",
 			"namespace": "ui.canvas",
 			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
-			"target_sha256": "0237b378107cdc337c8475c6f3ff1e22f673d629df6c51f46b16ee9425eea6f1",
+			"target_sha256": "c7bb34a8569cbdbcd3a9b495858962369157873eece00d5e761e5ae373d0a2de",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -26200,18 +26296,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean-with-findings",
-					"instance": "i18n-audit-1452-r2-20261027-ur",
+					"result": "clean",
+					"instance": "i18n-audit-1452-r3-20261027-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-ur.json",
-					"receipt_sha256": "8999cc09026d40c332d23532151d1e3de9f03b9d280b2b3ea3b718ea2727aff7",
-					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
-					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-ur-1 MINOR I-ur-2 MINOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-r3-20261027-ur.json",
+					"receipt_sha256": "4436172618959b25d9fd4b025193fec293536e38fbbcd0e4deef001522acb88d",
+					"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
+					"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
 				}
 			],
 			"status": "audited",
@@ -26283,6 +26379,30 @@
 							"receipt_sha256": "4df15d056faee235a4bd93e4f526007bc22c7247a67b7145c718708403a29812",
 							"scope": "PR #1452 round 1: 6 new ui.canvas.files.attachment* keys (8953ae18b6..0a02713ed4); other keys byte-identical to base",
 							"note": "Independent audit of translator task job 7c09e08359e1 (commit 0a02713ed4). I-ur-1 MINOR: attachmentMeta placeholders need renderer-side bidi isolation; catalogue unchanged."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+					"target_sha256": "0237b378107cdc337c8475c6f3ff1e22f673d629df6c51f46b16ee9425eea6f1",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-1452-r2-20261027-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-ur.json",
+							"receipt_sha256": "8999cc09026d40c332d23532151d1e3de9f03b9d280b2b3ea3b718ea2727aff7",
+							"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+							"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-ur-1 MINOR I-ur-2 MINOR."
 						}
 					],
 					"status": "audited"
@@ -32468,7 +32588,7 @@
 			"locale": "vi",
 			"namespace": "ui.canvas",
 			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
-			"target_sha256": "92722a7b85717b88a0049cadc59ae98326f4f78d0743bf6252d95a8d5140f89a",
+			"target_sha256": "ccc448a1f19e5b6724edc3c90ec6e91bbf2a39ae27feb8fdc5729dd5f2fc110f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -32479,21 +32599,21 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "changes_requested",
-					"instance": "i18n-audit-1452-r2-20261027-vi",
+					"result": "clean",
+					"instance": "i18n-audit-1452-r3-20261027-vi",
 					"findings": {
 						"blocker": 0,
-						"major": 1,
-						"minor": 1,
+						"major": 0,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-vi.json",
-					"receipt_sha256": "4748b87497a2d97d8cfa7af6ae3e9f4061927ba04db4fc95dc222d0c4a849386",
-					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
-					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-vi-1 MAJOR I-vi-2 MINOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-r3-20261027-vi.json",
+					"receipt_sha256": "25d40127930dba31a40c667c51761080a4a083df19b90d0ed9c2616e44b36df5",
+					"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
+					"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them."
 				}
 			],
-			"status": "changes_requested",
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
@@ -32564,6 +32684,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+					"target_sha256": "92722a7b85717b88a0049cadc59ae98326f4f78d0743bf6252d95a8d5140f89a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "changes_requested",
+							"instance": "i18n-audit-1452-r2-20261027-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 1,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-vi.json",
+							"receipt_sha256": "4748b87497a2d97d8cfa7af6ae3e9f4061927ba04db4fc95dc222d0c4a849386",
+							"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+							"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-vi-1 MAJOR I-vi-2 MINOR."
+						}
+					],
+					"status": "changes_requested"
 				}
 			]
 		},
@@ -39208,7 +39352,7 @@
 			"locale": "zh-CN",
 			"namespace": "ui.canvas",
 			"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
-			"target_sha256": "aa8ac764beb12ea533caedef98a2ece3909e6c8864cd6273b7ff94f158cddf3e",
+			"target_sha256": "d234321924d21a75bd74897cdb22e90a0fecea34389420490cfa39e8b3f51f1f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -39219,21 +39363,21 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "changes_requested",
-					"instance": "i18n-audit-1452-r2-20261027-zh-cn",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-1452-r3-20261027-zh-cn",
 					"findings": {
 						"blocker": 0,
-						"major": 1,
+						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-zh-cn.json",
-					"receipt_sha256": "7de5ae14689b603bd3c7c60ed2fc417e852981bd4fa8437b61ecb5e0ad319649",
-					"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
-					"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-zh-CN-1 MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-1452-r3-20261027-zh-cn.json",
+					"receipt_sha256": "0e0911232d2faf94745ac3603b52af01b3da9b2a974e3de9ee506d946641d575",
+					"scope": "PR #1452 round 3: ui.canvas after remediation 8cbaff82e6 (2690936bc9..8cbaff82e6), plus the five keys given English context notes",
+					"note": "Round-3 independent audit (reviewer 616a95909ebb, job 8a1705fdb14f) of values last changed by coder job 0fc4118bdd37 in 8cbaff82e6; all round-2 findings fixed; row translator field predates them. I-zh-CN-2 NIT."
 				}
 			],
-			"status": "changes_requested",
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
@@ -39304,6 +39448,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+					"target_sha256": "aa8ac764beb12ea533caedef98a2ece3909e6c8864cd6273b7ff94f158cddf3e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "changes_requested",
+							"instance": "i18n-audit-1452-r2-20261027-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 1,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-1452-r2-20261027-zh-cn.json",
+							"receipt_sha256": "7de5ae14689b603bd3c7c60ed2fc417e852981bd4fa8437b61ecb5e0ad319649",
+							"scope": "PR #1452 round 2: ui.canvas keys changed by coder job 4a907cae19a9 in 752abc1c19 (6e73a91069..2690936bc9); other keys byte-identical to round 1",
+							"note": "Round-2 independent audit (reviewer 622e9f2784ab, job 2d97ef80da95) of values authored by coder job 4a907cae19a9 (kimi/k3.1-pro via radient/auto); row translator field predates them. I-zh-CN-1 MAJOR."
+						}
+					],
+					"status": "changes_requested"
 				}
 			]
 		},
