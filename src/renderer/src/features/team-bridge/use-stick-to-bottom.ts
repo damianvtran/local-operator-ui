@@ -45,7 +45,18 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 }: {
 	resetKey: string;
 	contentKey: string;
-}): { rootRef: RefObject<T>; pin: () => void; hold: () => void } {
+}): {
+	rootRef: RefObject<T>;
+	pin: () => void;
+	hold: () => void;
+	/**
+	 * Follow the bottom only if we are already there. For height changes the
+	 * READER did not ask for directly - the composer growing as they type - a
+	 * `pin()` would drag a reader who deliberately scrolled up back down, and no
+	 * pin at all would leave the newest message clipped under a taller composer.
+	 */
+	repin: () => void;
+} {
 	const rootRef = useRef<T>(null);
 	// A ref, not state: following the bottom must not re-render the timeline.
 	const pinned = useRef(true);
@@ -133,5 +144,9 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		};
 	}, [viewport, toBottom, resetKey]);
 
-	return { rootRef, pin, hold };
+	const repin = useCallback(() => {
+		if (pinned.current) toBottom();
+	}, [toBottom]);
+
+	return { rootRef, pin, hold, repin };
 }

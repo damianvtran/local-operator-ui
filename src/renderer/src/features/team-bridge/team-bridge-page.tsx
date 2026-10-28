@@ -158,6 +158,7 @@ import {
 	threadTargetFromSearch,
 } from "./team-bridge-thread-read";
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
+import { useComposerAutoGrow } from "./use-composer-autogrow";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
 	useArchiveTeamBridgeConversation,
@@ -1117,6 +1118,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		resetKey: `${timelineArrivalKey}:${quickView ?? ""}`,
 		contentKey: `${messages.length}:${messages.at(-1)?.id ?? ""}`,
 	});
+	/*
+	 * The composer grows with what is in it (up to ten lines or 40% of the
+	 * window) and shrinks when the draft empties - after a send, or when Return
+	 * to draft is undone. Growing is the reader's own act, so it only re-follows
+	 * the bottom if the timeline was already following it.
+	 */
+	useComposerAutoGrow(composerRef, draft, { onGrow: timeline.repin });
 	// The retry's idempotency key: a failed send is retried with the SAME
 	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
 	// post the message twice. A genuinely different draft gets a fresh key.
@@ -2414,7 +2422,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														: t("ui.teamBridge.composer.placeholder")
 											}
 											aria-label={t("ui.teamBridge.composer.placeholder")}
-											className="block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed"
+											/* No `max-h-40`: the cap is measured in the auto-grow
+											   hook, which needs the box free to read `scrollHeight`.
+											   `min-h-10` is the resting height, so an empty
+											   composer never starts shorter than one row. */
+											className="block min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed"
 										/>
 										<div className="flex items-center gap-2 px-2 pb-2">
 											{/*
