@@ -45,6 +45,15 @@ export function pushTranscriptDelta(text) {
 	for (const listener of listeners) listener();
 }
 
+/**
+ * Replace the whole stream (a finished turn, a session incident), for the
+ * settle cases: `pushTranscriptDelta` only ever appends a streaming answer.
+ */
+export function setStream(next) {
+	stream = { ...stream, ...next };
+	for (const listener of listeners) listener();
+}
+
 export function desktopFeatureEnabled() {
 	return true;
 }

@@ -54,6 +54,11 @@
 		"direct, no blame",
 		"The backend refused the interrupt and the run is still writing. The refusal's own reason sits beneath it, already localised by the backend."
 	],
+	"ui.agents.config.error.turn_failed": [
+		"status line under the run strip's 'Did not finish' title",
+		"plain, honest",
+		"Shown when the run's model failed (provider error) and the incident carried no message of its own. Says nothing was answered; must not imply the operator did anything wrong, nor that the request was refused."
+	],
 	"ui.agents.config.examples.add_twice": [
 		"clickable example request",
 		"plain, imperative",
@@ -83,6 +88,11 @@
 		"prefix in the list of changed rows",
 		"plain",
 		"Prefixed to a definition's name: 'Created <name>'. Use the same verb form as result.changed."
+	],
+	"ui.agents.config.state.did_not_finish": [
+		"status title",
+		"plain, honest",
+		"Heading of the configuration-run strip when the run's model failed (provider error, session incident) before it could answer. Must not read as the operator's own Stop, nor as success. Short: it sits on one line beside the elapsed time."
 	],
 	"ui.agents.config.state.sending": [
 		"button label while the request is in flight",

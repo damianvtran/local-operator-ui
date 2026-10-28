@@ -67,6 +67,7 @@ import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { t } from "@shared/i18n";
 import type { MessageKey } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -87,16 +88,27 @@ import { useParams, useSearchParams } from "react-router-dom";
 import {
 	ConfigComposer,
 	askForChange,
+	configSeedPrompt,
 	discardSeededConfigBox,
 } from "../config-run/config-composer";
 import { targetKey, useConfigRunStore } from "../config-run/config-run-store";
-import { useConfigRun } from "../config-run/use-config-run";
+import {
+	configSkillRunEnabled,
+	useConfigRun,
+} from "../config-run/use-config-run";
 import {
 	profileEditorIdentity,
 	teamEditorIdentity,
 } from "../definition-editor-identity";
 import { useSkillDetail, useSkillsTab } from "../hooks/use-skills-library";
-import { filterSkills } from "../skills-library-model";
+import {
+	SKILL_SCOPES,
+	type SkillComposerGate,
+	type SkillScope,
+	filterSkills,
+	scopeSkills,
+	skillComposerGate,
+} from "../skills-library-model";
 import { CLASS_LABEL, classOf } from "../utils/agent-class";
 import { AgentCreate, AgentDetail } from "./agent-detail";
 import {
@@ -109,6 +121,7 @@ import {
 import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
 import {
+	SKILL_SCOPE_LABEL,
 	SkillDetail,
 	SkillsRosterBody,
 	skillSourceWord,
@@ -146,6 +159,19 @@ const CANONICAL_EFFORT_TIERS: readonly string[] = ["lo", "med", "hi"];
  * English map would freeze at import and never follow the language picker, so the
  * label is resolved through `t()` where the segment renders.
  */
+/**
+ * Why the Skills tab's dock refuses input (design spec §5.4), as the sentence its
+ * placeholder speaks. The dock is present in EVERY Skills state so the detail
+ * scroller never changes height as the reader arrows between an editable and a
+ * read-only skill.
+ */
+const SKILL_GATE_KEY = {
+	backend: "ui.agents.skills.composer.gate_backend",
+	none: "ui.agents.skills.composer.gate_none",
+	"not-installed": "ui.agents.skills.composer.gate_not_installed",
+	"read-only": "ui.agents.skills.composer.gate_read_only",
+} as const satisfies Record<SkillComposerGate, MessageKey>;
+
 const SCOPE_LABEL = {
 	all: "ui.agents.pages.scope.all",
 	custom: "ui.agents.pages.scope.custom",
@@ -224,6 +250,8 @@ export function AgentsPage() {
 	const duplicateOf = params.get("duplicate");
 
 	const capabilities = useDesktopCapabilities();
+	// The skill pane's Download needs a hub credential (UX r1 U1).
+	const { isAuthenticated } = useRadientAuth();
 	const skillsOffered = desktopFeatureEnabled(
 		capabilities.data,
 		"skill_library",
@@ -289,6 +317,22 @@ export function AgentsPage() {
 
 	const [search, setSearch] = useState("");
 	const [scope, setScope] = useState<Scope>("all");
+	/* The Skills tab's own scope: its axis is where a skill comes from (spec §2). */
+	const [skillScope, setSkillScope] = useState<SkillScope>("all");
+	/*
+	 * THE SKILL WRITES AND THE SKILL RUN, EACH BEHIND ITS OWN KEY. `skill_write` is
+	 * the tab's inline actions (Edit, Copy to my skills, Remove); the composer's run
+	 * needs `agents_config_skills` (a core that builds the run's `skill` tool), so
+	 * on an older core the dock is present and says why it cannot be used rather
+	 * than starting a run that would answer "I can't edit files".
+	 */
+	const skillWritesEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"skill_write",
+	);
+	const skillRunEnabled = configSkillRunEnabled(capabilities.data);
+	/** Bumped by "Ask for a change" on a skill, to put the caret in the box. */
+	const [skillAskFocus, setSkillAskFocus] = useState(0);
 	/*
 	 * WHICH PANE SAID IT WAS DIRTY, rather than a bare boolean.
 	 *
@@ -384,7 +428,11 @@ export function AgentsPage() {
 	 * see. No memo: the page re-renders on a language change (`useI18nLocale`), and
 	 * the filter is a linear pass over a few dozen rows.
 	 */
-	const skillRows = filterSkills(skills.cards, search, skillSourceWord);
+	const skillRows = filterSkills(
+		scopeSkills(skills.cards, skillScope),
+		search,
+		skillSourceWord,
+	);
 	/*
 	 * A `kind=skill&name=` link on a core WITHOUT `skill_library` is the Agents tab
 	 * (the capability gate), and the name in it is not an agent: treating it as the
@@ -473,9 +521,11 @@ export function AgentsPage() {
 	 * Source/policy state is independent of the editor's unsaved draft.
 	 */
 	const hubPane = (
-		kind: "agent" | "team",
+		kind: "agent" | "team" | "skill",
 		itemName: string,
 		localId?: string,
+		/** Skills only: the copy is on disk (`card.installed`). */
+		installed = true,
 	) => (
 		<>
 			{/* Full inventory keeps healthy policy editing available; legacy servers
@@ -486,14 +536,28 @@ export function AgentsPage() {
 				localId={localId}
 				enabled={desktopFeatureEnabled(capabilities.data, "hub_links")}
 			/>
-			<HubUpdatePanel
-				kind={kind}
-				name={itemName}
-				enabled={
-					desktopFeatureEnabled(capabilities.data, "hub_updates") &&
-					!desktopFeatureEnabled(capabilities.data, "hub_links")
-				}
-			/>
+			{/*
+			 * NOT ON A SKILL THE LINKS PANEL ALREADY SERVES, AND NEVER WITHOUT A COPY
+			 * (#1458 UX r2 U10). `enabled` gates only the card's own fetch: the Skills
+			 * tab's reader and the sidebar fill the same `hub-updates` cache, so the
+			 * card rendered anyway - and after "Discard changes and remove" it still
+			 * said "You changed this too" and offered "Keep mine", which core refuses
+			 * with no local copy to keep. Narrow on purpose: Agents and Teams on a
+			 * links-capable core show this card today from that same shared cache,
+			 * so changing what `enabled` means would change their pane too.
+			 */}
+			{kind === "skill" &&
+			(!installed ||
+				desktopFeatureEnabled(capabilities.data, "hub_links")) ? null : (
+				<HubUpdatePanel
+					kind={kind}
+					name={itemName}
+					enabled={
+						desktopFeatureEnabled(capabilities.data, "hub_updates") &&
+						!desktopFeatureEnabled(capabilities.data, "hub_links")
+					}
+				/>
+			)}
 		</>
 	);
 
@@ -639,11 +703,31 @@ export function AgentsPage() {
 		const state = useConfigRunStore.getState();
 		const about = state.about;
 		if (!about) return;
-		const kind = teamMode ? "team" : "agent";
+		const kind = skillMode ? "skill" : teamMode ? "team" : "agent";
 		if (selected && about.kind === kind && about.name === selected) return;
 		run.setAbout(null);
 		discardSeededConfigBox(about);
-	}, [selected, teamMode, run]);
+	}, [selected, teamMode, skillMode, run]);
+
+	/*
+	 * ON THE SKILLS TAB THE TARGET IS THE OPEN SKILL, AUTOMATICALLY (design spec
+	 * §5.3, the one deliberate difference from Agents). An untargeted Agents box can
+	 * still CREATE an agent; a skill run has no create, so an untargeted skill box
+	 * could do nothing. Opening an eligible skill names it; the effect above clears
+	 * it when the row or the tab changes. Eligibility is core's (`editable`) and the
+	 * capability, through the same gate the dock's placeholder reads.
+	 */
+	const openSkillCard =
+		skillMode && selected
+			? (skills.cards.find((card) => card.name === selected) ?? null)
+			: null;
+	const skillGate = skillComposerGate(skillRunEnabled, openSkillCard);
+	useEffect(() => {
+		if (!skillMode || !selected || skillGate !== null) return;
+		const about = useConfigRunStore.getState().about;
+		if (about?.kind === "skill" && about.name === selected) return;
+		run.setAbout({ kind: "skill", name: selected });
+	}, [skillMode, selected, skillGate, run]);
 
 	/*
 	 * A ROW THAT WAS MARKED IS UNMARKED BY BEING OPENED — the one-time mark the
@@ -651,8 +735,11 @@ export function AgentsPage() {
 	 * on a timer.
 	 */
 	useEffect(() => {
-		if (!selected || skillMode) return;
-		clearMark({ kind: teamMode ? "team" : "agent", name: selected });
+		if (!selected) return;
+		clearMark({
+			kind: skillMode ? "skill" : teamMode ? "team" : "agent",
+			name: selected,
+		});
 	}, [selected, teamMode, skillMode, clearMark]);
 
 	/*
@@ -876,6 +963,38 @@ export function AgentsPage() {
 							</div>
 						</fieldset>
 					) : null}
+					{/*
+					 * THE SKILLS TAB'S SCOPE, THE AGENTS' CONTROL (design spec §2): the same
+					 * `fieldset` + glass well + `aria-pressed` segments in the same place.
+					 * Four segments, not six: Other tool and Project appear under All and
+					 * the search box matches their source word, and a fifth segment would
+					 * not fit the 256 px column. The labels ARE the row's source words.
+					 */}
+					{skillMode && skills.library.data ? (
+						<fieldset className="m-0 min-w-0 border-0 p-0">
+							<legend className="sr-only">
+								{t("ui.agents.skills.scope_legend")}
+							</legend>
+							<div
+								data-glass-well=""
+								className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+							>
+								{SKILL_SCOPES.map((value) => (
+									<Button
+										key={value}
+										variant="ghost"
+										size="sm"
+										aria-pressed={skillScope === value}
+										data-testid={`skills-scope-${value}`}
+										onClick={() => setSkillScope(value)}
+										className={cn("flex-1", skillScope === value && rowCurrent)}
+									>
+										{t(SKILL_SCOPE_LABEL[value])}
+									</Button>
+								))}
+							</div>
+						</fieldset>
+					) : null}
 				</div>
 
 				{/* The roster: a listbox, so arrow keys move between rows (U12). */}
@@ -894,8 +1013,12 @@ export function AgentsPage() {
 							cards={skillRows}
 							total={skills.cards.length}
 							search={search}
+							scope={skillScope}
 							selected={selected}
 							join={skills.join}
+							marked={
+								new Map(marks.map((mark) => [targetKey(mark), mark.created]))
+							}
 							onOpen={(rowName) => requestGo({ name: rowName })}
 						/>
 					) : listError ? null : !profiles.data && !teams.data ? (
@@ -1099,13 +1222,73 @@ export function AgentsPage() {
 										<SkillDetail
 											key={selected}
 											name={selected}
-											card={
-												skills.cards.find((card) => card.name === selected) ??
-												null
-											}
+											card={openSkillCard}
 											join={skills.join}
 											detail={skillDetail}
 											onRetry={() => void skillDetail.refetch()}
+											writesEnabled={skillWritesEnabled}
+											askEnabled={skillRunEnabled}
+											onDirtyChange={reportDirty}
+											/*
+											 * THE AGENTS' HUB PANEL, for a hub skill only (spec §3.4):
+											 * Subscribe / Auto-push, Check now, Preview incoming changes and
+											 * Preview publish, each with its own eligibility. Matched by the
+											 * link's local name, as the agent pane matches by its own.
+											 */
+											belowHeader={
+												openSkillCard?.source === "hub"
+													? hubPane(
+															"skill",
+															selected,
+															undefined,
+															openSkillCard.installed,
+														)
+													: undefined
+											}
+											onAsk={(skillName) => {
+												askForChange(
+													run,
+													{ kind: "skill", name: skillName },
+													configSeedPrompt({ kind: "skill", name: skillName }),
+												);
+												setSkillAskFocus((count) => count + 1);
+											}}
+											hubSignedIn={isAuthenticated}
+											downloadEnabled={desktopFeatureEnabled(
+												capabilities.data,
+												"hub_skills",
+											)}
+											onRemoved={(skillName, stays) => {
+												/*
+												 * A HUB COPY'S ROW STAYS, AS "NOT INSTALLED" (UX r1 U5): the link
+												 * survives the removal, so the pane stays on it - its Download is
+												 * the obvious way back - and focus goes to the pane's heading
+												 * (the menu that asked has closed).
+												 */
+												if (stays) {
+													requestAnimationFrame(() =>
+														document
+															.querySelector<HTMLElement>(
+																'[data-testid="skill-detail"] h2',
+															)
+															?.focus(),
+													);
+													return;
+												}
+												/*
+												 * FOCUS GOES TO THE NEXT ROW (spec §3.2): the closing handoff
+												 * below focuses the row that was open, which is gone, so the
+												 * neighbour that took its place is named instead.
+												 */
+												const index = skillRows.findIndex(
+													(card) => card.name === skillName,
+												);
+												previousSkill.current =
+													skillRows[index + 1]?.name ??
+													skillRows[index - 1]?.name ??
+													null;
+												go({ name: null });
+											}}
 										/>
 									) : skills.library.isLoading ||
 										skills.cards.length === 0 ? null : (
@@ -1117,7 +1300,10 @@ export function AgentsPage() {
 											className="text-body-sm text-ink-muted"
 											data-testid="skills-select-prompt"
 										>
-											{t("ui.agents.skills.select_prompt")}
+											{/* Still true without `skill_write`, so it stays there. */}
+											{skillWritesEnabled
+												? t("ui.agents.skills.select_prompt_editable")
+												: t("ui.agents.skills.select_prompt")}
 										</p>
 									)
 								) : !catalogueEnabled ? (
@@ -1356,7 +1542,7 @@ export function AgentsPage() {
 				 * so `<label for>` bound to the first only and a screen reader read every
 				 * state change twice. One composer, one placement.
 				 */}
-				{showsEmptyPane || skillMode ? null : (
+				{showsEmptyPane ? null : (
 					/*
 					 * THE DOCK ADDS NOTHING: no rule, no padding, no frame. The band inside
 					 * `MessageInput` already carries the 24 px side inset and the 8 / 16 px
@@ -1369,10 +1555,27 @@ export function AgentsPage() {
 					<div className="shrink-0 bg-canvas">
 						<ConfigComposer
 							run={run}
-							about={run.about}
+							/*
+							 * ON THE SKILLS TAB THE BOX ONLY EVER NAMES A SKILL: an Agents target
+							 * left in the store is cleared by the selection effect, and this keeps
+							 * a frame between the two from naming it here.
+							 */
+							about={
+								skillMode
+									? run.about?.kind === "skill"
+										? run.about
+										: null
+									: run.about
+							}
 							onClearAbout={() => run.setAbout(null)}
+							skill={skillMode}
+							focusToken={skillMode ? skillAskFocus : 0}
 							blockedReason={
-								editDirty ? "Finish or cancel your edit first." : null
+								editDirty
+									? "Finish or cancel your edit first."
+									: skillMode && skillGate !== null
+										? t(SKILL_GATE_KEY[skillGate])
+										: null
 							}
 						/>
 					</div>

@@ -342,6 +342,14 @@ export type DesktopFeature =
 	 * never offers a Skills tab whose cards it could only half draw.
 	 */
 	| "skill_library"
+	/**
+	 * The skill library's WRITE side (core `skill_write:1`): `POST` / `PUT` /
+	 * `DELETE /v1/desktop/skills[/{name}]`, i.e. Copy to my skills, the inline
+	 * SKILL.md edit and Remove on the Agents page's Skills tab. Its own key so a
+	 * core that only reads skills keeps the read-only tab and offers no control
+	 * that would 404.
+	 */
+	| "skill_write"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
@@ -549,6 +557,14 @@ export type DesktopFeature =
 	 * path, with one honest line saying why (the `session_interrupt` precedent).
 	 */
 	| "agents_config"
+	/**
+	 * A configuration run that can revise a SKILL (core adds a `skill` tool to the
+	 * run's declaration and advertises `agents_config_skills:1`). Its own key by
+	 * the rule core states for `agents_config`: an older core has the run but no
+	 * skill tool, so a skill request there would end "I can't edit files" after a
+	 * paid turn. Gates the Skills tab's docked composer (`configSkillRunEnabled`).
+	 */
+	| "agents_config_skills"
 	/**
 	 * `input_mode` on `sessions.message`: the harness carries the composer's own
 	 * record of how a message was produced (`typed` / `dictated` / `mixed`, see

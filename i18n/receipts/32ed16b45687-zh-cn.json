@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session 32ed16b45687, scope-key delta audit; not the PR coder, translator or previous auditor)",
+ "agent": "translation-auditor (lopdev coder-role session 32ed16b45687, scope-key delta audit; not the PR coder, translator or previous auditor)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read, measurement and verdict in this receipt ran on anthropic/claude-opus-5-5; no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (32ed16b45687) from the PR coder that added the scope keys with initial values in 7f20cc0842, from the translator (58d893da06) and from the previous auditor (bf41e95b4e1e) whose fit measurements proposed those values. Same served model family as those sessions, so NOT model-independent; the ledger rule is agent-instance independence.",
+ "instance": "32ed16b45687-zh-cn",
+ "session": "32ed16b45687",
+ "locale": "zh-CN",
+ "namespace": "ui.agents.skills",
+ "branch": "feat/skills-tab-redesign",
+ "head": "7f20cc0842265205e62fa131830ea7c097a57adc",
+ "pr": "damianvtran/local-operator-ui#1458",
+ "date": "2026-10-27",
+ "status": "passed",
+ "result": "clean",
+ "verdict": "pass",
+ "keys_read": 101,
+ "scope": "Delta re-audit after ui.agents.skills.scope.{local,hub,builtin} were added in 7f20cc0842: the 98 carried keys are proven byte-identical to the bf41e95b4e1e audit (git diff 101d9a2a66..7f20cc0842 on this catalogue and on en is exactly the three added lines; the 101d9a2a66 blobs hash to the sha256 recorded in the bf41e95b4e1e receipts), so its findings stand unchanged; the three new keys are audited in full, as segments 2-4 of the Skills scope control whose segment 1 is ui.agents.pages.scope.all.",
+ "sha256": {
+  "zh-CN": "34ba47ad0e46b8114e00a0fbc6c8d0def804dc7fca49f81224e58874f07a9f36",
+  "en": "120bced73452069b6c18a8758c356a9e4babb5dd0740e12fa72855cad4faf3d4"
+ },
+ "inputs_sha256": {
+  "en_context": "2caa5630381423e3da0a297e4ad66acd3283a4b9a67ccf48ed79f917282ccbf9",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/zh-CN.md)": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "verified": [
+  "key set equals en (101 keys); the three new values carry no placeholders, ICU syntax, bidi/zero-width/BOM characters, edge or double spaces; all NFC",
+  "meaning: each segment names the same scope as en (Local = made on this machine, Agent Hub = managed from the hub, Built-in = ships with the app) and matches the row source word it filters; final control: 全部 / 本地 / 智能体中心 / 内置",
+  "grammatical form against segment 1 (ui.agents.pages.scope.all) and #1432's ui.agents.pages.scope.*: No grammatical number; 内置 is byte-equal to ui.agents.pages.scope.builtin; 本地 / 智能体中心 equal source.local / source.hub.",
+  "fit: 全部 39.03 / 本地 39.03 / 智能体中心 73.58 / 内置 39.03 = 190.67 px vs 246 px row (all four segments, natural width, 12 px / 500 + 16 px padding each)",
+  "measurement: harness browser (Local Operator desktop browser host), static CSS replica served from the session scratchpad: span per segment with font: 500 12px system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif (text-meta + font-medium, Button size=sm) and 0 8px padding (px-2), natural widths summed vs the 246 px row; en control 212.48 px reproduces the previous audit's en figure exactly. Replica, not the built app."
+ ],
+ "findings": []
+}

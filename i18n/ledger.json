@@ -44809,8 +44809,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.config",
-			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
-			"target_sha256": "8b05e223c55ebb8bda68482e449a21d498463bfcf0251a249910314d314a7d9e",
+			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+			"target_sha256": "8a609b88321d8f607d16bde6097b43971a3bc9b0a6fce7eeb0d3cdc45afa9ea7",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -44818,21 +44818,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "c3a8965266e3",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "a26b945b2ee1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/c3a8965266e3.json",
-					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
-					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
-					"note": "See i18n/audits/evidence/fr/ui.agents.config/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+					"receipt": "i18n/receipts/a26b945b2ee1-fr.json",
+					"receipt_sha256": "0b72f53080e297975d3acc4980ab2d68333299204b374b31e990d6531f746db7",
+					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -44855,6 +44854,76 @@
 							},
 							"receipt": "i18n/receipts/caa0f0b9574d.json",
 							"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb10c76b64e1308d05d7d3409d0c74ca7c3a3394009a86c1b356c05119ddf80e",
+					"target_sha256": "d224763d8660ae1fccfac3e8b13b21b2eef62b5c8edf604ab1069b2fa6d07fbf",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "04d9540e57e6-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-fr.json",
+							"receipt_sha256": "74bdb92985485f5ea428a4f2277d3a188d9f6976e0b058bbb5d30f95c60a8d4f",
+							"scope": "ui.agents.config, delta re-audit at bb51820e66: 1 remediation key from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+					"target_sha256": "8b05e223c55ebb8bda68482e449a21d498463bfcf0251a249910314d314a7d9e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "c3a8965266e3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c3a8965266e3.json",
+							"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+							"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+							"note": "See i18n/audits/evidence/fr/ui.agents.config/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a13e851f4e1bf5ed8933ac30ed2797a25ad48e714482fbb78d3b9ebe2efc4146",
+					"target_sha256": "ec8adc77693c3c44c0719f4683a162ec491e2e6d4932203856370ca96da1aa9a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "1f3211deab61-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-fr.json",
+							"receipt_sha256": "53c2d9dbdfe0bf5be2c877ea73deeb2783a839a6f61cad142a8e9904b11111dc",
+							"scope": "ui.agents.config, delta audit at f82003d72a: 1 run-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -45067,8 +45136,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agents.config",
-			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
-			"target_sha256": "324b974eeaa30043a54a621822fc441c21ee38a8b37dd5a7e1cd7cb9e62a3339",
+			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+			"target_sha256": "9d401ff36678b4e82dc6f82773d3009a746b19ab5c637a7c7d125f3422e5810f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -45076,21 +45145,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-27",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "8bbe685ce56d",
+					"instance": "a26b945b2ee1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/8bbe685ce56d.json",
-					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
-					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
-					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.agents.config/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
+					"receipt": "i18n/receipts/a26b945b2ee1-es.json",
+					"receipt_sha256": "a2dceadf5fdc45812e9d3207305502f0174df0f8574f94dafab2e17d2170d135",
+					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -45113,6 +45181,76 @@
 							},
 							"receipt": "i18n/receipts/c6732d07a0de.json",
 							"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb10c76b64e1308d05d7d3409d0c74ca7c3a3394009a86c1b356c05119ddf80e",
+					"target_sha256": "751c7cd3ea3ceb0c26bce8974ec68d33e34cc893ff167b42c01ea3b3e0a57542",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "04d9540e57e6-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-es.json",
+							"receipt_sha256": "c8d3565ffc6f1cbe9989cdd46e83fdc2d0a277c5cf656f594b0768dc113840b4",
+							"scope": "ui.agents.config, delta re-audit at bb51820e66: 1 remediation key from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+					"target_sha256": "324b974eeaa30043a54a621822fc441c21ee38a8b37dd5a7e1cd7cb9e62a3339",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "8bbe685ce56d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bbe685ce56d.json",
+							"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+							"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+							"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.agents.config/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a13e851f4e1bf5ed8933ac30ed2797a25ad48e714482fbb78d3b9ebe2efc4146",
+					"target_sha256": "1b2cc6156c88742c6644193ebbbce72065ed6137df587c23150ad6305b72ab9a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-es.json",
+							"receipt_sha256": "f08cd968d4e69e67d2cb0d3eb32d36d5a7508e266114b416861e7dba23f4a2ea",
+							"scope": "ui.agents.config, delta audit at f82003d72a: 1 run-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -45350,8 +45488,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.config",
-			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
-			"target_sha256": "3d60a66713eaf3102dd80ffa63d23956d15156fd9dfabb2a754d0c0585a99b5a",
+			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+			"target_sha256": "ac6d377c08f7b90e21287c8e39a8ffa265bf9e19a8ae7da39375d9baf988b84c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -45359,21 +45497,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "99a6b1da62c4",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "a26b945b2ee1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/99a6b1da62c4.json",
-					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
-					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
-					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.agents.config/wave-b-delta-20261027/record.json"
+					"receipt": "i18n/receipts/a26b945b2ee1-ru.json",
+					"receipt_sha256": "393eefcdc26e4523716aa5cfc766b485d2b3d50c6dbb50cd30b178b2d242b157",
+					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -45396,6 +45533,76 @@
 							},
 							"receipt": "i18n/receipts/cec82e80ef07.json",
 							"receipt_sha256": "014943d97be0008d208fcaff5700cba5a9d074859fb499fb501725fb58a910fa"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb10c76b64e1308d05d7d3409d0c74ca7c3a3394009a86c1b356c05119ddf80e",
+					"target_sha256": "cb6f2b438d24bf8a1ac3b62d90ef737348ae184b9307ce1e864e1e52d4416ce9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "04d9540e57e6-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-ru.json",
+							"receipt_sha256": "d832bb0d3e3bb604ad2c069fa64ffd47b5d56c9945bb4f998de5de5c5bf81ba0",
+							"scope": "ui.agents.config, delta re-audit at bb51820e66: 1 remediation key from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+					"target_sha256": "3d60a66713eaf3102dd80ffa63d23956d15156fd9dfabb2a754d0c0585a99b5a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "99a6b1da62c4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/99a6b1da62c4.json",
+							"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+							"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+							"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.agents.config/wave-b-delta-20261027/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a13e851f4e1bf5ed8933ac30ed2797a25ad48e714482fbb78d3b9ebe2efc4146",
+					"target_sha256": "20cb14f98d7eb482e7c6f2d38c36985aabcae73fbd48b4031280233f3c8cdde1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-ru.json",
+							"receipt_sha256": "8c2f16986fabb24ea2ab3ee54bf51684edfa54b7206a9224aee9276486e38df4",
+							"scope": "ui.agents.config, delta audit at f82003d72a: 1 run-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -45608,8 +45815,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.config",
-			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
-			"target_sha256": "01aaf0de576d734c89052e13b1cfbb220c8b683472013dfb7e52232c71ebc1a4",
+			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+			"target_sha256": "ccc80f5531716d1d400ca1a47bfa548e2a00bd8df8bc564764f173e07ca135a6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -45617,21 +45824,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "70d334e903c9",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "a26b945b2ee1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/70d334e903c9.json",
-					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
-					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
-					"note": "Delta audit record: i18n/audits/evidence/vi/ui.agents.config/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
+					"receipt": "i18n/receipts/a26b945b2ee1-vi.json",
+					"receipt_sha256": "773c96e59015b12fa903fc6b94115e9e7c100babd0768d0c682fd991893735cb",
+					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -45654,6 +45860,76 @@
 							},
 							"receipt": "i18n/receipts/3d1e9640e5ae.json",
 							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb10c76b64e1308d05d7d3409d0c74ca7c3a3394009a86c1b356c05119ddf80e",
+					"target_sha256": "f291eef649e49736b4d57b96a8b5793abd12df13b5ee560c718709d77944e4ae",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "04d9540e57e6-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-vi.json",
+							"receipt_sha256": "2748ac9a9753000defdbcaebb7a7424160c71f8570d3430e4bc2be4ff531def0",
+							"scope": "ui.agents.config, delta re-audit at bb51820e66: 1 remediation key from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+					"target_sha256": "01aaf0de576d734c89052e13b1cfbb220c8b683472013dfb7e52232c71ebc1a4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "70d334e903c9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/70d334e903c9.json",
+							"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+							"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+							"note": "Delta audit record: i18n/audits/evidence/vi/ui.agents.config/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a13e851f4e1bf5ed8933ac30ed2797a25ad48e714482fbb78d3b9ebe2efc4146",
+					"target_sha256": "7f45d62d7ff0d539f1a88b1e360acfcc47a1e0cca5be0d1f4ce42b4729ae228e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-vi.json",
+							"receipt_sha256": "5e1d82d86c3a0a1f21b2d129c444f033d91decd5d84590b036106f541b9f9cf8",
+							"scope": "ui.agents.config, delta audit at f82003d72a: 1 run-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -45866,8 +46142,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.config",
-			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
-			"target_sha256": "2aad3f3b28c4108838834908f42b8742b4ee0e733b20a59e246a72e98d4ca4da",
+			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+			"target_sha256": "0b1b78fdb1e2d0ab4ea19babb39b7292d88fd07e5d92b142e5a31289937a2b13",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -45875,21 +46151,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-27",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "8f4aa3fba6ed",
+					"instance": "a26b945b2ee1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
-					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
-					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.agents.config; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
-					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.agents.config/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
+					"receipt": "i18n/receipts/a26b945b2ee1-hi.json",
+					"receipt_sha256": "dc973266023c0f0984b2777ad86106835748b49959fe84a998b788aab250ba4f",
+					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -45912,6 +46187,76 @@
 							},
 							"receipt": "i18n/receipts/9f3c2137fe40.json",
 							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb10c76b64e1308d05d7d3409d0c74ca7c3a3394009a86c1b356c05119ddf80e",
+					"target_sha256": "a6ce9e5dd0aee497d8463f03ab2a945031d97c0e402ed973d993642df97eb84d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "04d9540e57e6-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-hi.json",
+							"receipt_sha256": "3aa4f7377b409a6a0a041a792fbbbc4c4efe788f64aafe6268c1a4e45b4b9173",
+							"scope": "ui.agents.config, delta re-audit at bb51820e66: 1 remediation key from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+					"target_sha256": "2aad3f3b28c4108838834908f42b8742b4ee0e733b20a59e246a72e98d4ca4da",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "8f4aa3fba6ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+							"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+							"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.agents.config; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+							"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.agents.config/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a13e851f4e1bf5ed8933ac30ed2797a25ad48e714482fbb78d3b9ebe2efc4146",
+					"target_sha256": "45b0a21238ab68cdf4a052e8c56cfd4adadbc898d111cb363288f49bed88ab58",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-hi.json",
+							"receipt_sha256": "7c545cccdd752201191e6b5dbc6aedf87b8c1b2d4f763a3b43f41b1e02daafbe",
+							"scope": "ui.agents.config, delta audit at f82003d72a: 1 run-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -46124,8 +46469,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agents.config",
-			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
-			"target_sha256": "417340255f620bb552045cf68cb3bbb0121d13d08111941b46cf7515a4137286",
+			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+			"target_sha256": "77400405f8b6f5438fc8654d25192fd8287c2001d9d60a3883a52f622bc6769c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46133,21 +46478,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-27",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+					"instance": "a26b945b2ee1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
-					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
-					"scope": "Wave B delta R2: 3 wave-B keys re-read; file byte-identical to the 0559f7f7d8 bytes the earlier audit passed.",
-					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.agents.config/wb-d2-9b3e2c165c87/record.json"
+					"receipt": "i18n/receipts/a26b945b2ee1-zh-cn.json",
+					"receipt_sha256": "701ecb8720c2a6ec9d3463e4c3a1fe315ea1ad2df606e390f933c8d0a8f58407",
+					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -46170,6 +46514,76 @@
 							},
 							"receipt": "i18n/receipts/fa696f7f3dff.json",
 							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb10c76b64e1308d05d7d3409d0c74ca7c3a3394009a86c1b356c05119ddf80e",
+					"target_sha256": "597e24072389b10888109e5e480f1f4f80cd08b312159e5137414d14166bdaec",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "04d9540e57e6-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-zh-cn.json",
+							"receipt_sha256": "f1bbc3064c7315bdf97582892753cd57d36ff2a70a3581f607c7a0f3ea8e7bc2",
+							"scope": "ui.agents.config, delta re-audit at bb51820e66: 1 remediation key from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+					"target_sha256": "417340255f620bb552045cf68cb3bbb0121d13d08111941b46cf7515a4137286",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+							"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+							"scope": "Wave B delta R2: 3 wave-B keys re-read; file byte-identical to the 0559f7f7d8 bytes the earlier audit passed.",
+							"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.agents.config/wb-d2-9b3e2c165c87/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a13e851f4e1bf5ed8933ac30ed2797a25ad48e714482fbb78d3b9ebe2efc4146",
+					"target_sha256": "52781d2442161010cd6eb304c61982bd396108e5a3864d1010ffaa867a47f8e7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-zh-cn.json",
+							"receipt_sha256": "1082c754d4b3dcc96db5ead94b6811adccc2817e4c76ccdb32326b617cf54390",
+							"scope": "ui.agents.config, delta audit at f82003d72a: 1 run-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -46382,8 +46796,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.config",
-			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
-			"target_sha256": "35c369946919f4d93ae1ddc7e79a97196666632f8c727eccca12a8bf53be2a1c",
+			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+			"target_sha256": "d9069340b0379774f565afbe7f5926a1dd4644d57e4c45a42f73e986e2d77117",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46391,21 +46805,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-27",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "c89cee263ac2-waveb-delta-ur",
+					"instance": "a26b945b2ee1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
-					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
-					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
-					"note": "No finding: 3 wave-B values, none changed (file byte-identical to the audited base). Record i18n/audits/evidence/ur/ui.agents.config/waveb-delta-20261027/record.json"
+					"receipt": "i18n/receipts/a26b945b2ee1-ur.json",
+					"receipt_sha256": "6b617174bd59e11a815d2882546bc984ff334d3e83101056897be3c278b6df19",
+					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -46428,6 +46841,76 @@
 							},
 							"receipt": "i18n/receipts/2ae1e9eafd56.json",
 							"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cb10c76b64e1308d05d7d3409d0c74ca7c3a3394009a86c1b356c05119ddf80e",
+					"target_sha256": "0b9502ce9e46c199f7671329bd2a146d9e35015800addb6bd239d3ce90eb7ac9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "04d9540e57e6-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-ur.json",
+							"receipt_sha256": "c8cc11df08eeb478dc3e20dedd14954b04774b754a071a248ebdb9e37f4da483",
+							"scope": "ui.agents.config, delta re-audit at bb51820e66: 1 remediation key from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+					"target_sha256": "35c369946919f4d93ae1ddc7e79a97196666632f8c727eccca12a8bf53be2a1c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "c89cee263ac2-waveb-delta-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+							"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+							"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+							"note": "No finding: 3 wave-B values, none changed (file byte-identical to the audited base). Record i18n/audits/evidence/ur/ui.agents.config/waveb-delta-20261027/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a13e851f4e1bf5ed8933ac30ed2797a25ad48e714482fbb78d3b9ebe2efc4146",
+					"target_sha256": "0a9db9bee30dbf00c2e3cdc17d457efe11ea9357e76fd3970d18a3a0365d8d9e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-ur.json",
+							"receipt_sha256": "12079ed79b68476286e7b1a4a2e01b3e6d1c19872d4b12ef5cf63738d73f9c0b",
+							"scope": "ui.agents.config, delta audit at f82003d72a: 1 run-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -46737,29 +47220,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "0b1665cb62e709e79b0521736a54e15505c09c48e7e038dfa7dca49e8df3105a",
+			"source_sha256": "7b4a8357cf8c68d9c109edae01dd7c9b79a8b9473d9a93951cc9f90fadee1820",
+			"target_sha256": "3832110cedbd66d4fbbc2ed9a19cee0bc9a9629879375923d647830dbf4b7171",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-27",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean-with-findings",
-					"instance": "aa44e837c157-es",
+					"instance": "a26b945b2ee1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 2,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/aa44e837c157-es.json",
-					"receipt_sha256": "b464fe2c50a578f05ecc5126cefd110681c8006ace33ad5b06eb13ede18e0a24",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/a26b945b2ee1-es.json",
+					"receipt_sha256": "a2dceadf5fdc45812e9d3207305502f0174df0f8574f94dafab2e17d2170d135",
+					"scope": "ui.agents.skills, delta audit at 71fe658486: 2 download keys from 01ad02c825 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -46786,35 +47270,151 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "0b1665cb62e709e79b0521736a54e15505c09c48e7e038dfa7dca49e8df3105a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "aa44e837c157-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/aa44e837c157-es.json",
+							"receipt_sha256": "b464fe2c50a578f05ecc5126cefd110681c8006ace33ad5b06eb13ede18e0a24",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+					"target_sha256": "e8e35ef3645eed9442b08e885b45e6184af3b8a954ecaf9d75a41c0453b22bef",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "bf41e95b4e1e-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/bf41e95b4e1e-es.json",
+							"receipt_sha256": "f4d7f3bfc706791ac8365ea9b43ccec2b5e177c513a18d17cc5f1e27082d1d54",
+							"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "120bced73452069b6c18a8758c356a9e4babb5dd0740e12fa72855cad4faf3d4",
+					"target_sha256": "96c8479c5d56301ec879206a6ff60103ef2b5f46015a62cfc4540b28d3b337ab",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "32ed16b45687-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/32ed16b45687-es.json",
+							"receipt_sha256": "1948a2183b935bc7e0e016e5e9b1fe17faeb329d4ecc4c5a22e8c9e3f3246982",
+							"scope": "ui.agents.skills, 101 keys, head 7f20cc0842; delta re-audit after scope.{local,hub,builtin} added, 98 keys byte-identical to the bf41e95b4e1e audit; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7a19ee5602f2eaa5085abcd65c7a032ac38ce7899f317b7c0eb3522b0834f2eb",
+					"target_sha256": "42edd027d31d53d6024322979818e8b78c4a3d27a6e9e442e2dc5bd9204c4206",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "04d9540e57e6-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-es.json",
+							"receipt_sha256": "c8d3565ffc6f1cbe9989cdd46e83fdc2d0a277c5cf656f594b0768dc113840b4",
+							"scope": "ui.agents.skills, delta re-audit at bb51820e66: 13 remediation keys from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "265fc96aa792e8ecd0d01811ff40d43d9149ad40891ca9926d725abddea75f8d",
+					"target_sha256": "35b058ecaec623bc0bfd90757b286b51301005d1a2a5b3dd201b5ef7eb518dc1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-es.json",
+							"receipt_sha256": "f08cd968d4e69e67d2cb0d3eb32d36d5a7508e266114b416861e7dba23f4a2ea",
+							"scope": "ui.agents.skills, delta audit at f82003d72a: 1 download-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "10da40e409f90f48a54d11bee7d276a3d5db45b5d5eb0266d6a8740b2a33dcba",
+			"source_sha256": "7b4a8357cf8c68d9c109edae01dd7c9b79a8b9473d9a93951cc9f90fadee1820",
+			"target_sha256": "155fc84b8e22c66befb391e822c7969ed8c5cff218743fdf545d84081dcb6f6d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-27",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean-with-findings",
-					"instance": "aa44e837c157-fr",
+					"instance": "a26b945b2ee1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 3,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/aa44e837c157-fr.json",
-					"receipt_sha256": "e575c67f481ff37b6d9db56d01fccac4db0b57c928376dce6c8f9d18b2acdbb7",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/a26b945b2ee1-fr.json",
+					"receipt_sha256": "0b72f53080e297975d3acc4980ab2d68333299204b374b31e990d6531f746db7",
+					"scope": "ui.agents.skills, delta audit at 71fe658486: 2 download keys from 01ad02c825 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -46841,35 +47441,151 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "10da40e409f90f48a54d11bee7d276a3d5db45b5d5eb0266d6a8740b2a33dcba",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "aa44e837c157-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/aa44e837c157-fr.json",
+							"receipt_sha256": "e575c67f481ff37b6d9db56d01fccac4db0b57c928376dce6c8f9d18b2acdbb7",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+					"target_sha256": "4152d32be0a8c3cf6237f8ccf557daeab7b4524458839d70b4a6439547111f0d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "bf41e95b4e1e-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/bf41e95b4e1e-fr.json",
+							"receipt_sha256": "95252e099da0ee01e7e1c4ee21592e47fd8b4772c041c02bfee85a089696142e",
+							"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "120bced73452069b6c18a8758c356a9e4babb5dd0740e12fa72855cad4faf3d4",
+					"target_sha256": "332f4d22e7c5fceb021e50ee42eb0eebb833b1bc38826da6ea2c47ebe31319e1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "32ed16b45687-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/32ed16b45687-fr.json",
+							"receipt_sha256": "ae2a0a663afba2e2c5b914586574164b056dcecc3dfe1a065a539d8f9133a4cb",
+							"scope": "ui.agents.skills, 101 keys, head 7f20cc0842; delta re-audit after scope.{local,hub,builtin} added, 98 keys byte-identical to the bf41e95b4e1e audit; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7a19ee5602f2eaa5085abcd65c7a032ac38ce7899f317b7c0eb3522b0834f2eb",
+					"target_sha256": "6396c082ca0e2e5bcc36e3092a4f9cfd52d8c625b31964162952bd08700bb0ad",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "04d9540e57e6-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-fr.json",
+							"receipt_sha256": "74bdb92985485f5ea428a4f2277d3a188d9f6976e0b058bbb5d30f95c60a8d4f",
+							"scope": "ui.agents.skills, delta re-audit at bb51820e66: 13 remediation keys from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "265fc96aa792e8ecd0d01811ff40d43d9149ad40891ca9926d725abddea75f8d",
+					"target_sha256": "030981d98a374e822588c35d8fca9b211c2a273d44734ed0a748c6def658bd44",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-fr.json",
+							"receipt_sha256": "53c2d9dbdfe0bf5be2c877ea73deeb2783a839a6f61cad142a8e9904b11111dc",
+							"scope": "ui.agents.skills, delta audit at f82003d72a: 1 download-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "b7d5de0a257a77f179ee8263904ee98aebdfa0694116add294db06db810fdf22",
+			"source_sha256": "7b4a8357cf8c68d9c109edae01dd7c9b79a8b9473d9a93951cc9f90fadee1820",
+			"target_sha256": "a4669fe4c21ece2c0181b3a59dadcbbb2bf401b0b02d5d7199d7c5751381ee59",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "aa44e837c157-hi",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "a26b945b2ee1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aa44e837c157-hi.json",
-					"receipt_sha256": "28e05583352f83bda1ed1a604d4745e36d5272720469349ffdd4f94b5c821bda",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/a26b945b2ee1-hi.json",
+					"receipt_sha256": "dc973266023c0f0984b2777ad86106835748b49959fe84a998b788aab250ba4f",
+					"scope": "ui.agents.skills, delta audit at 71fe658486: 2 download keys from 01ad02c825 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -46896,35 +47612,151 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "b7d5de0a257a77f179ee8263904ee98aebdfa0694116add294db06db810fdf22",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "aa44e837c157-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aa44e837c157-hi.json",
+							"receipt_sha256": "28e05583352f83bda1ed1a604d4745e36d5272720469349ffdd4f94b5c821bda",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+					"target_sha256": "cfad248a323fb8224842f5e64bf75f5f63c63039945eb979cd2fd7fb3e314487",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "bf41e95b4e1e-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/bf41e95b4e1e-hi.json",
+							"receipt_sha256": "cb37843a72513369b9ca190ce1c1f931ec66751e19bb6ffaf56536afefa663d0",
+							"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "120bced73452069b6c18a8758c356a9e4babb5dd0740e12fa72855cad4faf3d4",
+					"target_sha256": "761d59e0c99c0ea823c5cd1889cc8676efe15b34ff74f480b005d946027023cc",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "32ed16b45687-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/32ed16b45687-hi.json",
+							"receipt_sha256": "7ee0c33ec20dc1416a6f9a00bc2aa10c1ad298e058d557b72411d21615d2119c",
+							"scope": "ui.agents.skills, 101 keys, head 7f20cc0842; delta re-audit after scope.{local,hub,builtin} added, 98 keys byte-identical to the bf41e95b4e1e audit; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7a19ee5602f2eaa5085abcd65c7a032ac38ce7899f317b7c0eb3522b0834f2eb",
+					"target_sha256": "26da2a9b89c6ca9e002d1b04d5b3b67bfe0633a674551f88be13c56d86fac8ba",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "04d9540e57e6-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-hi.json",
+							"receipt_sha256": "3aa4f7377b409a6a0a041a792fbbbc4c4efe788f64aafe6268c1a4e45b4b9173",
+							"scope": "ui.agents.skills, delta re-audit at bb51820e66: 13 remediation keys from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "265fc96aa792e8ecd0d01811ff40d43d9149ad40891ca9926d725abddea75f8d",
+					"target_sha256": "97af09ca3ed5abfb19ebf02f0cca657c0222e6bb92f2d9fd53e7746eafc7c7ad",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-hi.json",
+							"receipt_sha256": "7c545cccdd752201191e6b5dbc6aedf87b8c1b2d4f763a3b43f41b1e02daafbe",
+							"scope": "ui.agents.skills, delta audit at f82003d72a: 1 download-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "035650b8de6e28f015025e6bafac1b26a216c994d40510aa4c8ef793fd440406",
+			"source_sha256": "7b4a8357cf8c68d9c109edae01dd7c9b79a8b9473d9a93951cc9f90fadee1820",
+			"target_sha256": "29cae176cf183f31a656fca9bf0bccaeb8f6b49b95d8ea5dae03cc2b318d6521",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-27",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean-with-findings",
-					"instance": "aa44e837c157-ru",
+					"instance": "a26b945b2ee1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 2,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/aa44e837c157-ru.json",
-					"receipt_sha256": "00f76c11005665a2cd025183e8a5eb6bc8108f492e6664f0483d6f029696390a",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/a26b945b2ee1-ru.json",
+					"receipt_sha256": "393eefcdc26e4523716aa5cfc766b485d2b3d50c6dbb50cd30b178b2d242b157",
+					"scope": "ui.agents.skills, delta audit at 71fe658486: 2 download keys from 01ad02c825 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -46951,35 +47783,151 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "035650b8de6e28f015025e6bafac1b26a216c994d40510aa4c8ef793fd440406",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "aa44e837c157-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/aa44e837c157-ru.json",
+							"receipt_sha256": "00f76c11005665a2cd025183e8a5eb6bc8108f492e6664f0483d6f029696390a",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+					"target_sha256": "1fe7a69d1ba81a5820a7160407e0398dca1c8a3492149ecb24a45b41e52933f6",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "bf41e95b4e1e-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bf41e95b4e1e-ru.json",
+							"receipt_sha256": "9774770e1d2ffc2f288292c03edf3d576d0623194e0e6b160c99dba0c3ea0e38",
+							"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "120bced73452069b6c18a8758c356a9e4babb5dd0740e12fa72855cad4faf3d4",
+					"target_sha256": "bdaef8cd62022a6c5533ddb7850bf31d68336d4911f7d32b4e513a105b549409",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "32ed16b45687-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/32ed16b45687-ru.json",
+							"receipt_sha256": "8e8fd5bfb016df7e8980be60e99689d81d23ef50ef4bc1ef4d8c10fa470d2c45",
+							"scope": "ui.agents.skills, 101 keys, head 7f20cc0842; delta re-audit after scope.{local,hub,builtin} added, 98 keys byte-identical to the bf41e95b4e1e audit; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7a19ee5602f2eaa5085abcd65c7a032ac38ce7899f317b7c0eb3522b0834f2eb",
+					"target_sha256": "bb66eb9e936412b505f7f4c9c803882314b1315ce87a5363ee6b114ab8a40b97",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "04d9540e57e6-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-ru.json",
+							"receipt_sha256": "d832bb0d3e3bb604ad2c069fa64ffd47b5d56c9945bb4f998de5de5c5bf81ba0",
+							"scope": "ui.agents.skills, delta re-audit at bb51820e66: 13 remediation keys from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "265fc96aa792e8ecd0d01811ff40d43d9149ad40891ca9926d725abddea75f8d",
+					"target_sha256": "d3f264fa531eaafa7ed7ae1fd69f21a23e4d7c83a7b9b6059570da2bb50948c6",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-ru.json",
+							"receipt_sha256": "8c2f16986fabb24ea2ab3ee54bf51684edfa54b7206a9224aee9276486e38df4",
+							"scope": "ui.agents.skills, delta audit at f82003d72a: 1 download-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "649a84deb6782ac4fb5a116be1aadab466164476b35f635b41b4169fdc888154",
+			"source_sha256": "7b4a8357cf8c68d9c109edae01dd7c9b79a8b9473d9a93951cc9f90fadee1820",
+			"target_sha256": "7714b854f3f2ae25e07219a88654ea8b92f84273a17b20692837ad53de353ce6",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-27",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "aa44e837c157-ur",
+					"instance": "a26b945b2ee1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aa44e837c157-ur.json",
-					"receipt_sha256": "b5137825f1b3a85fc2520eca9486ccbcb1b218cd6fbce001742f50a1d18c1d61",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/a26b945b2ee1-ur.json",
+					"receipt_sha256": "6b617174bd59e11a815d2882546bc984ff334d3e83101056897be3c278b6df19",
+					"scope": "ui.agents.skills, delta audit at 71fe658486: 2 download keys from 01ad02c825 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -47006,35 +47954,151 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "649a84deb6782ac4fb5a116be1aadab466164476b35f635b41b4169fdc888154",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "aa44e837c157-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aa44e837c157-ur.json",
+							"receipt_sha256": "b5137825f1b3a85fc2520eca9486ccbcb1b218cd6fbce001742f50a1d18c1d61",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+					"target_sha256": "ff32c069fbe9bf9e8ca92a6c6ff2cb3af67416b4130913598928f1ee2249ef09",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "bf41e95b4e1e-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/bf41e95b4e1e-ur.json",
+							"receipt_sha256": "5c0aa83e162c0efbb90202e2429431347abd0b40d313ac70f858e06112976b6c",
+							"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "120bced73452069b6c18a8758c356a9e4babb5dd0740e12fa72855cad4faf3d4",
+					"target_sha256": "4147d7c2e2707301cefd8c67489303f0161cfda00e48be05f615ea52542ca2fa",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "32ed16b45687-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/32ed16b45687-ur.json",
+							"receipt_sha256": "d2ce8f383d6c97c27bc659d294e1cd3f8f7166adce4caafdc8499f8ac0d19288",
+							"scope": "ui.agents.skills, 101 keys, head 7f20cc0842; delta re-audit after scope.{local,hub,builtin} added, 98 keys byte-identical to the bf41e95b4e1e audit; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7a19ee5602f2eaa5085abcd65c7a032ac38ce7899f317b7c0eb3522b0834f2eb",
+					"target_sha256": "086c26919aaef39fe169269f3d42f9a19f23ab5da0b3714489ac907eaa76c770",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "04d9540e57e6-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-ur.json",
+							"receipt_sha256": "c8cc11df08eeb478dc3e20dedd14954b04774b754a071a248ebdb9e37f4da483",
+							"scope": "ui.agents.skills, delta re-audit at bb51820e66: 13 remediation keys from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "265fc96aa792e8ecd0d01811ff40d43d9149ad40891ca9926d725abddea75f8d",
+					"target_sha256": "4b77021422767a0b88e5a5a56f3db53621a739273af58adfc887445274f78bde",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-ur.json",
+							"receipt_sha256": "12079ed79b68476286e7b1a4a2e01b3e6d1c19872d4b12ef5cf63738d73f9c0b",
+							"scope": "ui.agents.skills, delta audit at f82003d72a: 1 download-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "ed0213689558d775e37e0c05483930c06f5011d15648d42ab09411f23c1d6116",
+			"source_sha256": "7b4a8357cf8c68d9c109edae01dd7c9b79a8b9473d9a93951cc9f90fadee1820",
+			"target_sha256": "f1c66a11b890c8f494edb1ff40eebe3433fbb82980bf5527c519de7e2890b1f2",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "aa44e837c157-vi",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "a26b945b2ee1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aa44e837c157-vi.json",
-					"receipt_sha256": "d0225ebfe77a9ff17bce55bea69848fb306abf9089327865a4addd9d5ebbcce4",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/a26b945b2ee1-vi.json",
+					"receipt_sha256": "773c96e59015b12fa903fc6b94115e9e7c100babd0768d0c682fd991893735cb",
+					"scope": "ui.agents.skills, delta audit at 71fe658486: 2 download keys from 01ad02c825 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -47061,35 +48125,151 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "ed0213689558d775e37e0c05483930c06f5011d15648d42ab09411f23c1d6116",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "aa44e837c157-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aa44e837c157-vi.json",
+							"receipt_sha256": "d0225ebfe77a9ff17bce55bea69848fb306abf9089327865a4addd9d5ebbcce4",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+					"target_sha256": "1df75090d7b826addc827aa5754d0fd626b0b9506d58927ae9a1d18e38622f44",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "bf41e95b4e1e-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/bf41e95b4e1e-vi.json",
+							"receipt_sha256": "9067c8fce86fa41710a87c01083b830d60698d65845c3c7ad54bd23d46d68b3e",
+							"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "120bced73452069b6c18a8758c356a9e4babb5dd0740e12fa72855cad4faf3d4",
+					"target_sha256": "91a20374961362237ea28aeac5e985000d37f3610bd6d471a29781938a7948c0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "32ed16b45687-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/32ed16b45687-vi.json",
+							"receipt_sha256": "e0fb6a425cc9541ffca4b8effa7f051a38a7d7ff45d0455f7a7642c13753d06e",
+							"scope": "ui.agents.skills, 101 keys, head 7f20cc0842; delta re-audit after scope.{local,hub,builtin} added, 98 keys byte-identical to the bf41e95b4e1e audit; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7a19ee5602f2eaa5085abcd65c7a032ac38ce7899f317b7c0eb3522b0834f2eb",
+					"target_sha256": "a5e319c6d32504b7d70f363542a53b42223cef3334a9887b5af7ef8813a2363c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "04d9540e57e6-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-vi.json",
+							"receipt_sha256": "2748ac9a9753000defdbcaebb7a7424160c71f8570d3430e4bc2be4ff531def0",
+							"scope": "ui.agents.skills, delta re-audit at bb51820e66: 13 remediation keys from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "265fc96aa792e8ecd0d01811ff40d43d9149ad40891ca9926d725abddea75f8d",
+					"target_sha256": "7ce8d47986704875c8c55a57f586e6dea8666d9d68ae84a70627bf5fddaabfe2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "1f3211deab61-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/1f3211deab61-vi.json",
+							"receipt_sha256": "5e1d82d86c3a0a1f21b2d129c444f033d91decd5d84590b036106f541b9f9cf8",
+							"scope": "ui.agents.skills, delta audit at f82003d72a: 1 download-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "588988fb0ffda6a24f751822cdb657518897daca7eb2f687f49483d5bc0b7124",
+			"source_sha256": "7b4a8357cf8c68d9c109edae01dd7c9b79a8b9473d9a93951cc9f90fadee1820",
+			"target_sha256": "f9a0a707bda3f0d99f164899f4ad8bffb78e468d4ac2472dbb3743450738464f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "aa44e837c157-zh-cn",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "a26b945b2ee1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aa44e837c157-zh-cn.json",
-					"receipt_sha256": "94af4597def7393dbbf918a21f8322680a401dcdbd5334fb271e3e2d39a30638",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/a26b945b2ee1-zh-cn.json",
+					"receipt_sha256": "701ecb8720c2a6ec9d3463e4c3a1fe315ea1ad2df606e390f933c8d0a8f58407",
+					"scope": "ui.agents.skills, delta audit at 71fe658486: 2 download keys from 01ad02c825 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -47113,6 +48293,121 @@
 							"receipt": "i18n/receipts/17d1ca9bf58a-zh-cn.json",
 							"receipt_sha256": "65fad9073cb4aca07817164f5a8b1f29784ac0b81d16c2fe5d7388efacd3dadd",
 							"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "588988fb0ffda6a24f751822cdb657518897daca7eb2f687f49483d5bc0b7124",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "aa44e837c157-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aa44e837c157-zh-cn.json",
+							"receipt_sha256": "94af4597def7393dbbf918a21f8322680a401dcdbd5334fb271e3e2d39a30638",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+					"target_sha256": "31f0041e805dcb9702173c67457b76113e5f16a6166afbf575c5bc841dd2a4a5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "bf41e95b4e1e-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/bf41e95b4e1e-zh-cn.json",
+							"receipt_sha256": "8bea1c7db5b1b72efb053a67f187c0372e7b0abad6ee4704d4b2efde18423188",
+							"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "120bced73452069b6c18a8758c356a9e4babb5dd0740e12fa72855cad4faf3d4",
+					"target_sha256": "34ba47ad0e46b8114e00a0fbc6c8d0def804dc7fca49f81224e58874f07a9f36",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "32ed16b45687-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/32ed16b45687-zh-cn.json",
+							"receipt_sha256": "17974a0bfe382b8e12d4c0d76e7e11fd14c03053199d859354e545f802e56ef8",
+							"scope": "ui.agents.skills, 101 keys, head 7f20cc0842; delta re-audit after scope.{local,hub,builtin} added, 98 keys byte-identical to the bf41e95b4e1e audit; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7a19ee5602f2eaa5085abcd65c7a032ac38ce7899f317b7c0eb3522b0834f2eb",
+					"target_sha256": "6f9ccf805e88dfdec67e7734cdc73f9eca816523d2633564f056f24a752cdcc3",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "04d9540e57e6-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/04d9540e57e6-zh-cn.json",
+							"receipt_sha256": "f1bbc3064c7315bdf97582892753cd57d36ff2a70a3581f607c7a0f3ea8e7bc2",
+							"scope": "ui.agents.skills, delta re-audit at bb51820e66: 13 remediation keys from 3f60d506bd read in full; carried keys byte-identical to the last audited row; auditor ran on anthropic/claude-opus-5-5 (not model-independent)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "265fc96aa792e8ecd0d01811ff40d43d9149ad40891ca9926d725abddea75f8d",
+					"target_sha256": "f545aad566bdecd6fda2e8ddd753231f87e34729831882e1a7a831e4321932dd",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "1f3211deab61-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f3211deab61-zh-cn.json",
+							"receipt_sha256": "1082c754d4b3dcc96db5ead94b6811adccc2817e4c76ccdb32326b617cf54390",
+							"scope": "ui.agents.skills, delta audit at f82003d72a: 1 download-failure key from a8859ad7e7 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"

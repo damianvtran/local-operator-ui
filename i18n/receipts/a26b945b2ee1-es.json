@@ -1,0 +1,122 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session a26b945b2ee1, whole-file audit of the merged ui.agents.config union and delta audit of the two #1458 download keys; not the PR coder, the translator of 71fe658486, or any previous auditor)",
+ "agent": "translation-auditor (lopdev coder-role session a26b945b2ee1, whole-file audit of the merged ui.agents.config union and delta audit of the two #1458 download keys; not the PR coder, the translator of 71fe658486, or any previous auditor)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header); no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (a26b945b2ee1) from the PR coder, from the translator of the two download keys (71fe658486: agent coder, lopdev translator step, openrouter/deepseek/deepseek-v4.1-flash-1017 after fallback from deepseek/deepseek-flash), from the wave-B translator (0559f7f7d8; ledger row: i18n-translator, radient/auto) and from every earlier auditor of these rows (1f3211deab61, 04d9540e57e6, the wave-B auditors). CROSS-FAMILY for the two download keys: DeepSeek translator, Anthropic auditor. For wave B's 3 keys the translator served model is the radient/auto router alias, so model-family independence there cannot be shown; it is agent-instance independent. The translator's commit message was read only as a list of claims to check (one was false: fr U+202F); every verdict was rebuilt from the English source, the en context files, sibling keys and the locale style guide.",
+ "instance": "a26b945b2ee1-es",
+ "session": "a26b945b2ee1",
+ "locale": "es",
+ "branch": "feat/skills-tab-redesign",
+ "head": "71fe6584868cd44514e15dfbd3fcd9498a66fab6",
+ "pr": "damianvtran/local-operator-ui#1458",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "ui.agents.config: whole-file audit of the merged union (33 keys: main's wave-B 3 + this branch's 30), the first audit of these bytes together; the convergence merge eb8a580e5a had kept the branch row and listed main's wave-B audit as superseded without a receipt naming the merged bytes. ui.agents.skills: delta audit of the 2 keys 01ad02c825 added (translated in 71fe658486); the carried keys are byte-identical to the 1f3211deab61 row.",
+ "inputs_sha256": {
+  "en_context (ui.agents.config.context.json)": "00b1effbe1e6c6445a4baafac51505cdcf094117db3ac4f3a65c62482d816ca7",
+  "en_context (ui.agents.skills.context.json)": "f6eac00c474130047ce8532430bd0ba0b1b4f01e12edb2b05558ac82b26dc847",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/es.md)": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "verified": [
+  "key sets equal en in both namespaces; ICU placeholders/plural arms in ui.agents.config match en key by key (definitions keeps the locale's CLDR categories); the audited values carry no bidi/zero-width/BOM characters, no edge or double spaces; all NFC",
+  "carried ui.agents.skills keys byte-identical to the last audited row: the ledger target_sha256 (1f3211deab61) equals the 75d66f0864 blob, and parsed 75d66f0864 vs 71fe658486 differs only by the two added keys (no key changed or removed); en ui.agents.skills likewise adds exactly those two keys",
+  "ui.agents.config union proved, not assumed: the merged file minus wave B's 3 keys equals the 75d66f0864 (branch, audited by 1f3211deab61) file key for key, and every key of the 1d631be71f (main, wave-B audited) file is present with an equal value; the file was nevertheless read whole (33 keys) against the en context",
+  "terminology across the union: did_not_finish (title) and error.turn_failed (line under it) agree with each other and do not echo the banner; banner.unavailable blames the backend, not the operator, and names the composer with this locale's established composer term; disabled_gate describes the surface without an imperative, as its context requires, and never repeats the banner's refusal sentence; run_details_region matches the app's Run details pane name (ui.chat.run_details.title); the run noun, request noun (status.attached / turn_failed / composer.label) and Stop verb (action.stop / stopped.* / stop_refused / state.stopping) are consistent",
+  "download keys: the quoted control equals ui.hub.skills.download in this locale; download_signed_out uses the same verb as that button; download_failed_body says the hub could not send it and nothing was installed, and does not claim a retry happened; both render in wrapping slots (skills-library.tsx: a text-meta <p> and AlertDescription text-body-sm, no truncate/clamp), so the longer native hub name cannot clip",
+  "Agent Hub naming: this locale's established product name is «Hub de agentes» (ui.shell.sidebar_navigation.agent_hub, ui.hub.pages.header.title, ui.agents.skills.source.hub)"
+ ],
+ "namespaces": {
+  "ui.agents.config": {
+   "namespace": "ui.agents.config",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 33,
+   "delta_keys_audited": [
+    "ui.agents.config.about",
+    "ui.agents.config.action.clear",
+    "ui.agents.config.action.dismiss",
+    "ui.agents.config.action.retry",
+    "ui.agents.config.action.stop",
+    "ui.agents.config.action.watch",
+    "ui.agents.config.activity.empty",
+    "ui.agents.config.background_only",
+    "ui.agents.config.composer.label",
+    "ui.agents.config.definitions",
+    "ui.agents.config.error.stop_refused",
+    "ui.agents.config.error.turn_failed",
+    "ui.agents.config.examples.add_twice",
+    "ui.agents.config.examples.reads_code",
+    "ui.agents.config.examples.team_shipping",
+    "ui.agents.config.result.changed",
+    "ui.agents.config.result.configured",
+    "ui.agents.config.result.created",
+    "ui.agents.config.state.did_not_finish",
+    "ui.agents.config.state.sending",
+    "ui.agents.config.state.stopping",
+    "ui.agents.config.status.attached",
+    "ui.agents.config.stopped.kept",
+    "ui.agents.config.stopped.nothing",
+    "ui.agents.config.summary.created",
+    "ui.agents.config.summary.hidden_changes",
+    "ui.agents.config.summary.no_changes",
+    "ui.agents.config.summary.nothing_else",
+    "ui.agents.config.summary.updated",
+    "ui.agents.config.summary.you_asked",
+    "ui.agents.config.banner.unavailable",
+    "ui.agents.config.disabled_gate",
+    "ui.agents.config.run_details_region"
+   ],
+   "sha256": {
+    "es": "9d401ff36678b4e82dc6f82773d3009a746b19ab5c637a7c7d125f3422e5810f",
+    "en": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.config.json",
+    "target": "src/i18n/catalogues/es/ui.agents.config.json",
+    "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+   },
+   "findings": []
+  },
+  "ui.agents.skills": {
+   "namespace": "ui.agents.skills",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 114,
+   "delta_keys_audited": [
+    "ui.agents.skills.detail.download_signed_out",
+    "ui.agents.skills.error.download_failed_body"
+   ],
+   "sha256": {
+    "es": "3832110cedbd66d4fbbc2ed9a19cee0bc9a9629879375923d647830dbf4b7171",
+    "en": "7b4a8357cf8c68d9c109edae01dd7c9b79a8b9473d9a93951cc9f90fadee1820"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.skills.json",
+    "target": "src/i18n/catalogues/es/ui.agents.skills.json",
+    "context": "src/i18n/catalogues/en/ui.agents.skills.context.json"
+   },
+   "findings": [
+    {
+     "severity": "minor",
+     "key": "ui.agents.skills.detail.download_signed_out",
+     "summary": "The en context says 'Keep Agent Hub in Latin', but this locale names the product «Hub de agentes» everywhere the operator meets it: ui.shell.sidebar_navigation.agent_hub, ui.hub.pages.header.title, and this namespace's source.hub / where.hub / empty.hub / detail.hub_local_note. The #1458 audit bf41e95b4e1e settled the same conflict the same way (the shipped surface wins over the sidecar note). In Latin, the note names a place the sidebar never shows, beside sibling sentences that use «Hub de agentes».",
+     "before": "Inicia sesión en Agent Hub para descargar esta habilidad.",
+     "after": "Inicia sesión en el Hub de agentes para descargar esta habilidad.",
+     "resolution": "fixed by auditor in this commit"
+    },
+    {
+     "severity": "minor",
+     "key": "ui.agents.skills.error.download_failed_body",
+     "summary": "The en context says 'Keep Agent Hub in Latin', but this locale names the product «Hub de agentes» everywhere the operator meets it: ui.shell.sidebar_navigation.agent_hub, ui.hub.pages.header.title, and this namespace's source.hub / where.hub / empty.hub / detail.hub_local_note. The #1458 audit bf41e95b4e1e settled the same conflict the same way (the shipped surface wins over the sidecar note). In Latin, the note names a place the sidebar never shows, beside sibling sentences that use «Hub de agentes».",
+     "before": "Agent Hub no pudo enviar esta habilidad, así que no se instaló nada. Reintenta “Descargar” más tarde.",
+     "after": "El Hub de agentes no pudo enviar esta habilidad, así que no se instaló nada. Reintenta “Descargar” más tarde.",
+     "resolution": "fixed by auditor in this commit"
+    }
+   ]
+  }
+ }
+}

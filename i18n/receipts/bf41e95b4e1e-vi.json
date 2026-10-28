@@ -1,0 +1,78 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session bf41e95b4e1e, auditor step; not the translator session)",
+ "agent": "translation-auditor (lopdev coder-role session bf41e95b4e1e, auditor step; not the translator session)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read, check and verdict in this receipt ran on anthropic/claude-opus-5-5; no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (bf41e95b4e1e) from the translator, which ran as agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in commit 58d893da06. The auditor was not shown and did not reuse the translator's reasoning; it judged from English, the context sidecar, the core glossary and the locale style guide. Same served model and the same lopdev role profile, so NOT model-independent and not role-profile-independent; the ledger rule is agent-instance independence.",
+ "instance": "bf41e95b4e1e-vi",
+ "session": "bf41e95b4e1e",
+ "locale": "vi",
+ "namespace": "ui.agents.skills",
+ "branch": "feat/skills-tab-redesign",
+ "head": "58d893da06f9e10abda5d28548e8a0434d24d8bc",
+ "pr": "damianvtran/local-operator-ui#1458",
+ "date": "2026-10-27",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "pass",
+ "keys_read": 98,
+ "scope": "Full audit of ui.agents.skills at 58d893da06: all 51 keys added by #1458 read against en + context; the 47 carried keys read for terminology agreement with the new copy and proven byte-identical to the merge-base values (no carried value changed; the 7 keys the PR removes are absent from en and this locale).",
+ "sha256": {
+  "vi": "1df75090d7b826addc827aa5754d0fd626b0b9506d58927ae9a1d18e38622f44",
+  "en": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9"
+ },
+ "inputs_sha256": {
+  "en_context": "8ee4fd61a875d0f919d8d463ab7f6a490ce06924a28deed8c101b42ebd6ca652",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/vi.md)": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+ },
+ "verified": [
+  "key set equals en (98 keys); placeholder names identical to en in every key; the only placeholder-count differences are the plural arms of the carried detail.file_bytes / detail.files_count (es/fr add many, ru adds few+many, vi/zh-CN keep other only), unchanged from the audited merge base",
+  "no bidi controls, zero-width or BOM characters; all values NFC; no ASCII \"...\", no double or edge spaces",
+  "sentence-final punctuation mirrors en key by key (। for hi, ۔ for ur, 。 for zh-CN)",
+  "skill term follows the glossary row in every new value; \"Local Operator\" kept in Latin",
+  "Agent Hub: every value uses this locale's established rendering, byte-equal to ui.shell.sidebar_navigation.agent_hub and ui.hub.pages.header.title (the sidecar's \"Keep Agent Hub in Latin\" note on four new keys conflicts with that agreed surface; the surface wins)",
+  "shared wording: action.remove_confirm vs ui.agents.teams.action.remove, remove.discard_confirm vs ui.agents.detail.action.discard_changes, alert.bundle_title vs detail.form.bundle, state.read_only vs ui.settings…read_only, conflict_body vs ui.agents.detail.alert.conflict_body, composer.about vs ui.agents.config.about compared in this locale",
+  "register per the style guide (address form, imperative/infinitive for actions, no capitalised formal pronoun)",
+  "length: every new value measured at 12 px against en; outliers recorded as findings or in pr_level_findings"
+ ],
+ "findings": [
+  {
+   "severity": "minor",
+   "key": "ui.agents.skills.state.hub_unknown",
+   "summary": "Bare English \"hub\" in the header meta slot, where the sibling state ui.agents.skills.hub.unlinked (same slot, same namespace) says \"trung tâm\" and the source word is \"Trung tâm tác nhân\". One header line would mix the two words for one thing. CORRECTED by the auditor.",
+   "before": "Không rõ trạng thái hub",
+   "after": "Không rõ trạng thái trung tâm",
+   "resolution": "fixed by auditor in this commit"
+  },
+  {
+   "severity": "nit",
+   "key": "ui.agents.skills.action.copy",
+   "summary": "Header button 1.7x English (156 vs 90 px). Rendered check of the detail header recommended.",
+   "current": "Sao chép vào kỹ năng của tôi"
+  }
+ ],
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 1
+ },
+ "pr_level_findings": [
+  {
+   "severity": "major",
+   "scope": "PR code/layout, not a translation value",
+   "keys": [
+    "ui.agents.skills.source.local",
+    "ui.agents.skills.source.hub",
+    "ui.agents.skills.source.builtin",
+    "ui.agents.pages.scope.all"
+   ],
+   "summary": "The Skills scope control (agents-page.tsx SKILL_SCOPE_LABEL) reuses the row source words as its four equal flex-1 nowrap segments in a 246 px row. Natural width here: Tất cả / Cục bộ / Trung tâm tác nhân / Tích hợp = 301.64 px vs 246 (-55.64). The values are this locale's correct, glossary-consistent source words (source.hub = the sidebar's Agent Hub name), so shortening them would break the row/header/nav agreement; the fix is dedicated short scope keys (as ui.agents.pages.scope.* does) or a layout change. Measured candidate: Tất cả / Cục bộ / Hub / Tích hợp = 213.52 (Trung tâm alone 248.55, -2.55).",
+   "status": "open - reported to the lopdev manager via hub; not counted in this receipt's translation severity counts because no translation value is wrong",
+   "measurement": "harness browser (Local Operator desktop browser host), span with font: 500 12px system-ui stack (text-meta, Button size=sm) + 16 px px-2 padding per segment; en control 212.48 px; Все 22.18 / Свои 30.29 reproduce #1432's real-app numbers exactly. Replica, not the built app."
+  }
+ ]
+}

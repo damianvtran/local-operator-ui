@@ -1281,17 +1281,13 @@ const IDENTICAL_OK = new Map([
 		"es:ui.agents.skills.source.local",
 		"Spanish « Local » has the same spelling; the identical cognate is already shipped in es ui.providers.provider_labels.local (exempted above) and the audit receipts for ui.agents.skills (17d1ca9bf58a-es, aa44e837c157-es) pass it with no finding on this key",
 	],
+	// The Skills roster's short scope segment (#1458, i18n audit fit finding):
+	// the same word as the ur source label exempted beside it, so this row
+	// silences no stub in another language. es needs no row: its delta audit
+	// (32ed16b45687-es) pluralised the segment to « Locales », which differs.
 	[
-		"fr:ui.agents.skills.detail.section.description",
-		"French noun « description » has the same spelling; same section heading as the shipped fr:ui.agents.teams.section.description (exempted above); the fr audit receipts (17d1ca9bf58a-fr, aa44e837c157-fr) pass it with no finding on this key",
-	],
-	[
-		"fr:ui.agents.skills.detail.section.body",
-		"« Instructions » is the French plural noun with the same spelling (shipped fr already uses it verbatim: fr:ui.agents.detail.section.instructions, exempted above) followed by the literal file name SKILL.md, which is never translated; the fr audit receipts pass it with no finding on this key. No other identical fr value exists to cite, so this is the one entry resting on the word plus the filename",
-	],
-	[
-		"ur:ui.agents.skills.detail.section.hub",
-		"Product name (Agent Hub), kept in Latin like ur:ui.hub.pages.header.title and the shell sidebar entry ui.shell.sidebar_navigation.agent_hub (both exempted); the ur receipt 17d1ca9bf58a-ur records `section.hub equals shell agent_hub in all 7 locales (byte compare)`",
+		"ur:ui.agents.skills.scope.hub",
+		"Product name (Agent Hub), kept in Latin; byte-identical to ur:ui.agents.skills.source.hub (exempted here) and ur:ui.hub.pages.header.title; the #1458 scope-key delta audit (32ed16b45687-ur) passes it clean",
 	],
 	[
 		"ur:ui.agents.skills.source.hub",
