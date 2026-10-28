@@ -1,36 +1,39 @@
 /**
- * The one user-facing sentence the app shows when it cannot read a conversation.
+ * The transport's machine vocabulary for a dead stream, and the CLASSIFICATION
+ * that turns it into a locale-free id.
  *
- * WHY this exists rather than showing the transport's own `detail` string. Both
- * transports describe a dead stream in machine register, and they describe the
- * SAME failure in different words: main's relay emits
- * `The event stream was refused (401).` for a rotated token, while the browser
- * dev proxy's `EventSource` can only say `The event stream ended.`. Shipping
- * either one put a bare HTTP status (or, worse, a cause the app does not know -
- * a refused stream did not "end") in front of a reader whose actual question is
- * "have I lost this conversation?". That is design round 1's D1, and the reason
- * the photographed sentence and the packaged sentence were two different
- * sentences for one defect.
+ * WHY THIS EXISTS RATHER THAN SHOWING THE DETAIL. Both transports describe a
+ * dead stream in machine register, and they describe the SAME failure in
+ * different words: main's relay emits `The event stream was refused (401).` for
+ * a rotated token, while the browser dev proxy's `EventSource` can only say
+ * `The event stream ended.`. Shipping either one put a bare HTTP status (or,
+ * worse, a cause the app does not know - a refused stream did not "end") in
+ * front of a reader whose actual question is "have I lost this conversation?".
+ * That is design round 1's D1, and the reason the photographed sentence and the
+ * packaged sentence were two different sentences for one defect.
  *
- * So the detail strings are no longer copy. They are a machine vocabulary,
- * declared ONCE here and emitted by the relay (`src/main/desktop-stream.ts`)
- * and the browser transport (`desktop-api.ts`), and `streamFailureNotice`
- * translates whichever one arrives into a single product sentence that says
- * what happened and what to do next. One authority for the strings means a
- * test can pin the notice to the exact detail the relay emits (see
- * `scripts/session-load-recovery.test.mjs`) instead of asserting a copy that
- * nothing produces.
+ * WHAT THIS MODULE HOLDS, AND WHAT IT DELIBERATELY DOES NOT. The details are not
+ * copy: they are declared ONCE here and emitted by the relay
+ * (`src/main/desktop-stream.ts`) and the browser transport (`desktop-api.ts`),
+ * and `sessionFailureKind` classifies whichever one arrives into an id. The
+ * SENTENCES live in the renderer
+ * (`features/chat/canonical/session-failure-notice.ts`), because wording them
+ * through `t()` from here pulled every English catalogue into the PRELOAD bundle
+ * (measured: 333 kB before, 7.5 MB after) for strings a preload script never
+ * draws. A test can still pin the notice to the exact detail the relay emits
+ * (see `scripts/session-load-recovery.test.mjs`); it goes through the renderer
+ * module now, which is the one authority for the words.
  *
- * Scope: these are the sentences for "this conversation cannot be read". A
- * condition the app cannot act on offers no `action`, so the UI does not paint
- * a control that would promise something it cannot deliver.
+ * `SessionFailureNotice` keeps its contract: state what happened and what to do,
+ * assert no cause the app has not observed, and blame nobody. `action` is null
+ * where no control can honestly help.
  */
 
 /**
  * The transport's machine register for a dead stream.
  *
  * Never rendered. Emitted by the relay / browser transport as an error frame's
- * `detail`, translated by `streamFailureNotice`.
+ * `detail`, classified by `sessionFailureKind` and worded in the renderer.
  */
 export const DESKTOP_STREAM_DETAIL = {
 	/** No desktop pairing token: nothing to authenticate with. */
@@ -64,8 +67,17 @@ export type SessionFailureAction = "reconnect";
  * `statement` is a single sentence in the product's voice - it names what
  * happened and what to do, asserts no cause the app has not observed, and
  * blames nobody. `action` is null where no control can honestly help.
+ *
+ * `kind` travels WITH the sentence rather than beside it, because a caller that
+ * holds this object must be able to ask for the sentence again in another
+ * language: the wording lives in `session-failure-notice.ts` and is resolved
+ * from this id, so a held notice is re-worded (`sessionFailureNotice(kind)`)
+ * instead of keeping the language it was created in. Two fields pointing at one
+ * condition could disagree; the id cannot.
  */
 export type SessionFailureNotice = {
+	/** Which condition this notice words, for re-resolution in a new locale. */
+	kind: SessionFailureKind;
 	statement: string;
 	action: SessionFailureAction | null;
 };

@@ -52,8 +52,16 @@ const ACTION: Record<SessionFailureKind, SessionFailureAction | null> = {
 	serverDown: "reconnect",
 };
 
-function noticeFor(kind: SessionFailureKind): SessionFailureNotice {
-	return { statement: t(STATEMENT_KEY[kind]), action: ACTION[kind] };
+/**
+ * The sentence and control for one classified kind, in the ACTIVE locale.
+ *
+ * Exported because a holder of a notice must be able to ask for it again: the
+ * app's session store stores the notice in render state, and a locale change
+ * has to re-resolve it (see `use-canonical-session`'s locale listener) rather
+ * than leave a stale sentence on screen.
+ */
+export function noticeFor(kind: SessionFailureKind): SessionFailureNotice {
+	return { kind, statement: t(STATEMENT_KEY[kind]), action: ACTION[kind] };
 }
 
 /**

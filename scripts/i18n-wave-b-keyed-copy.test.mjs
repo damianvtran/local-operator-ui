@@ -1,28 +1,31 @@
 /**
- * Wave B of the French pass: the composer, the pickers, the offline states, the
+ * The copy wave B keyed: the composer, the pickers, the offline states, the
  * status readings and the tool-step words.
  *
  *     node --test scripts/i18n-wave-b-keyed-copy.test.mjs
  *
  * WHY THIS SUITE EXISTS. Every string it covers was an English literal in a
- * `.ts`/`.tsx` module, so it rendered English over an otherwise French page: the
- * device picker's heading and pairing line, the `@` and slash popups' headings,
- * the loading and connection-loss sentences, the run details panel's quiet line,
- * the session-status readings, the tool row's outcome words, and the toast
- * region's own labels.
+ * `.ts`/`.tsx` module, so it rendered English over an otherwise translated page:
+ * the device picker's heading and pairing line, the `@` and slash popups'
+ * headings, the loading and connection-loss sentences, the run details panel's
+ * quiet line, the session-status readings, the tool row's outcome words, and the
+ * toast region's own labels. This wave shipped English, context and seven
+ * locales, and `i18n/ledger.json` binds every one of them; the VALUES are the
+ * ledger's and the audits' subject, not this file's.
  *
  * WHAT IT MEASURES, and with which instrument.
  *
- * A. THE CALL SITE READS THE ACTIVE CATALOGUE, AT CALL TIME. The shipped French
- *    catalogue does not carry these keys yet — this wave lands English and
- *    context, and the translator lane follows — so an assertion against `fr`
- *    would fall back to English and prove nothing. Instead a MARKER message is
+ * A. THE CALL SITE READS THE ACTIVE CATALOGUE, AT CALL TIME. A MARKER message is
  *    registered for `fr` for each key and the locale is switched, exactly as a
  *    served catalogue layers over the bundle at runtime (`registerCatalogue`).
  *    A call site that reads the catalogue therefore renders the marker; a call
- *    site that kept its literal renders English and fails. This is also the
- *    MUTATION PROOF: restore any one literal and its case goes red naming the
- *    module (verified by running this file against such a tree).
+ *    site that kept its literal renders English and fails. The marker isolates
+ *    the CALL SITE from whatever the shipped bytes happen to say, so this case
+ *    cannot pass or fail on translation quality - and each registration is
+ *    cleared when its case ends, so no marker answers a later lookup in this
+ *    process (agent review round 1, M5 and M7). This is also the MUTATION PROOF:
+ *    restore any one literal and its case goes red naming the module (verified
+ *    by running this file against such a tree).
  *
  * B. THE LITERAL IS GONE FROM EVERY TOUCHED MODULE. The runtime case cannot see
  *    a literal that happens to equal the English message, so each module's
@@ -53,7 +56,10 @@ const bundle = await build({
 			// The ONE i18n instance every module above sees: a second specifier would
 			// give the test its own copy of the locale store and the switches below
 			// would not reach the modules under test.
-			'export { registerCatalogue, setLocale, t } from "@shared/i18n";',
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale, t } from "@shared/i18n";',
+			// The SHIPPED bytes, for the sweep below: `t()` falls back to English per
+			// key, so "resolves" is not the same claim as "this locale carries it".
+			'export { bundledCatalogues } from "./src/i18n/keys.gen";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -118,6 +124,14 @@ function inFrench(keys, read) {
 		return read();
 	} finally {
 		lib.setLocale("en");
+		/*
+		 * THE MARKERS ARE THIS CASE'S, so they leave with it. `registerCatalogue`
+		 * MERGES into the locale's registry and nothing else removes it, so a marker
+		 * left behind answers every later `t()` for its key in this process - which is
+		 * exactly how the sweep at the foot of this file stayed green over a French
+		 * catalogue that had lost a key (agent review round 1, M5).
+		 */
+		lib.clearRegisteredCatalogues();
 	}
 }
 
@@ -601,6 +615,16 @@ test("the toast region and its close control are labelled from the catalogue", (
 /* ------------------------------------------------------- every shipped locale, no crash */
 
 test("every shipped locale resolves each key the wave added", () => {
+	/*
+	 * THE SWEEP READS THE SHIPPED BUNDLE, NOT THE MARKERS. `inFrench` registers
+	 * marker messages into this process's `fr` catalogue, and a `t()` here would
+	 * answer a marker for a key the real French bytes no longer carry - so the case
+	 * stayed green over a locale that had lost one (agent review round 1, M5).
+	 * Clearing is the isolation; `bundledCatalogues` is the assertion that makes
+	 * "this locale resolves the key" the locale's own claim rather than English's
+	 * per-key fallback, which any missing key would satisfy.
+	 */
+	lib.clearRegisteredCatalogues();
 	for (const tag of SHIPPED) {
 		lib.setLocale(tag);
 		for (const key of [
@@ -620,6 +644,11 @@ test("every shipped locale resolves each key the wave added", () => {
 			"ui.common.connection.session_loss.lost",
 			"ui.common.layout.toasts.dismiss",
 		]) {
+			assert.equal(
+				typeof lib.bundledCatalogues[tag]?.[key],
+				"string",
+				`${tag}: ${key} is carried by its own catalogue`,
+			);
 			const message = lib.t(key);
 			assert.equal(typeof message, "string", `${tag}: ${key}`);
 			assert.notEqual(message, key, `${tag}: ${key} resolves, not echoes`);

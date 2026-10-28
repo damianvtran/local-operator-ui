@@ -1398,3 +1398,38 @@ test("the picker ask is a token the picker's own effect consumes, once", () => {
 		"the mount seeds the last-served token",
 	);
 });
+
+test("the picker is re-worded when the language changes under it", () => {
+	/*
+	 * The heading, row facts, footer and guidance are `t()` output built INSIDE
+	 * `devicePickerModel`, so the memo that owns that call has to depend on the
+	 * locale its words are resolved in - and the slot has to subscribe, because
+	 * `t()` is a plain read of the store rather than a subscription (the split
+	 * `scripts/i18n/locale-reactivity.test.mjs` pins). Without both, a live
+	 * language switch leaves an open picker speaking the old language until one of
+	 * its other inputs happens to change identity (agent review round 1, M3).
+	 */
+	const slot = code(
+		"src/renderer/src/features/chat/device/chat-device-slot.tsx",
+	);
+	assert.match(
+		slot,
+		/useI18nLocale\(\)/,
+		"the slot subscribes to the locale it renders copy for",
+	);
+	const model = slot.slice(
+		slot.indexOf("devicePickerModel({"),
+		slot.indexOf("const onPick = useCallback("),
+	);
+	assert.ok(
+		model.length > 0,
+		"the model call site is where the slot builds it",
+	);
+	const depsStart = model.lastIndexOf("[");
+	const deps = model.slice(depsStart, model.indexOf("]", depsStart));
+	assert.match(
+		deps,
+		/\blocale\b/,
+		`the devicePickerModel dependency list omits the locale its copy resolves from: ${deps}`,
+	);
+});

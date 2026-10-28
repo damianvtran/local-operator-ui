@@ -216,6 +216,18 @@ async function bundleModel() {
 		alias: {
 			"@features": `${ROOT}/src/renderer/src/features`,
 			"@shared": `${ROOT}/src/renderer/src/shared`,
+			/*
+			 * THE CORE, NOT THE RENDERER BINDING (agent review round 1, M4).
+			 * `@shared/i18n` is a renderer alias for `shared/i18n`, whose index also
+			 * re-exports the query-client stack and the locale writer - so `t()` alone
+			 * dragged `desktop-hooks`, `desktop-api`, `use-optional-query-client`,
+			 * `language-writes` and `delegated-cleanup-notice-store` into the pin. Those
+			 * are the transport, not the model's decisions: a cosmetic edit there moved
+			 * `sourceHash` and failed the parity test until someone regenerated a fixture
+			 * that had not changed a single decision. The 24 model harnesses already
+			 * alias the same way, so the pin now hashes what it claims to hash.
+			 */
+			"@shared/i18n": `${ROOT}/src/i18n`,
 		},
 		bundle: true,
 		format: "esm",

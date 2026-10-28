@@ -4382,7 +4382,7 @@
 		"role": "popup footer line telling the reader which key acts on the highlighted row",
 		"tone": "instruction, sentence case, no trailing period, two clauses separated by a middle dot",
 		"length": "Thirteen words plus two key names.",
-		"note": "The arrow and the key names (Enter, Tab) are keyboard names: keep them verbatim. 'a row you pick' rather than naming the highlighted row, because the arrow moves the highlight off it.",
+		"note": "The arrow and the middle dot are symbols: keep them verbatim. The KEY NAMES follow the reader's keyboard, not the English source - es ships `Intro` and fr ships `Entrée` for Enter, while Tab is the same word on those keyboards and stays. 'a row you pick' rather than naming the highlighted row, because the arrow moves the highlight off it.",
 		"placeholders": {}
 	},
 	"ui.chat.pickers.slash.phase.arguments": {
