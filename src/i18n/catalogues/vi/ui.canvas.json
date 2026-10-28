@@ -357,5 +357,6 @@
 	"ui.canvas.files.attachmentRetained": "Đã di chuyển hoặc bị xóa · còn bản sao đã lưu",
 	"ui.canvas.files.attachmentGone": "Đã di chuyển hoặc bị xóa · không có bản sao đã lưu",
 	"ui.canvas.files.attachmentMeta": "{size} · {when}",
-	"ui.canvas.files.attachmentRefused": "Có vẻ là thông tin bí mật nên thao tác với tệp đã bị tắt"
+	"ui.canvas.files.attachmentRefused": "Có vẻ là thông tin bí mật nên thao tác với tệp đã bị tắt",
+	"ui.canvas.files.attachmentReadOnly": "Chỉ đọc — bản sao đã lưu của tệp đính kèm"
 }

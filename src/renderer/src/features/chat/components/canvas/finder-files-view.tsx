@@ -18,6 +18,7 @@ import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { showInfoToast } from "@shared/utils/toast-manager";
 import {
 	ArrowUpDown,
 	ChevronDown,
@@ -120,6 +121,21 @@ const kindLabel = (kind: string): string => {
 };
 /** A path has a separator; a bare attachment name does not. */
 const PATH_SEPARATOR = /[/\\]/;
+/*
+ * The shortest time a Retry's loading line stays up (UX R3 U17). A failure
+ * that returns in 8 ms swapped the banner out and back inside one frame, so the
+ * press looked ignored; 300 ms is long enough to read as "it tried".
+ */
+const RETRY_MIN_VISIBLE_MS = 300;
+
+/** `:focus-visible`, read defensively: an engine without the selector says no. */
+function isFocusVisible(node: Element): boolean {
+	try {
+		return node.matches(":focus-visible");
+	} catch {
+		return false;
+	}
+}
 const REVEAL =
 	"pointer-events-none absolute top-1 end-1 flex gap-1 opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
 
@@ -195,11 +211,31 @@ export function FinderFilesView({
 	const headerControls = useRef(new Map<string, HTMLButtonElement>());
 	const [lightbox, setLightbox] = useState<string | null>(null);
 	const lightboxOpener = useRef<HTMLElement | null>(null);
-	/* A Retry the person pressed is pending until the listing settles (U11). */
+	/*
+	 * A Retry the person pressed is pending until the listing settles (U11),
+	 * and for at least `RETRY_MIN_VISIBLE_MS` (U17). Its button unmounts while
+	 * the loading line stands in, so focus falls to the page: when the error
+	 * comes back, focus goes back to the new Retry button rather than leaving a
+	 * keyboard user to Tab in from the top.
+	 */
 	const [retrying, setRetrying] = useState(false);
+	const retryStartedAt = useRef(0);
+	const retryButton = useRef<HTMLButtonElement>(null);
+	const refocusRetry = useRef(false);
 	useEffect(() => {
-		if (attachments.state !== "loading") setRetrying(false);
-	}, [attachments.state]);
+		if (!retrying || attachments.state === "loading") return;
+		const timer = window.setTimeout(
+			() => setRetrying(false),
+			Math.max(0, RETRY_MIN_VISIBLE_MS - (Date.now() - retryStartedAt.current)),
+		);
+		return () => window.clearTimeout(timer);
+	}, [retrying, attachments.state]);
+	useEffect(() => {
+		if (retrying || attachments.state !== "error" || !refocusRetry.current)
+			return;
+		refocusRetry.current = false;
+		retryButton.current?.focus({ preventScroll: true });
+	}, [retrying, attachments.state]);
 	useEffect(() => {
 		if (index.localReadAllowed === false) {
 			setSettledItems([]);
@@ -647,7 +683,10 @@ export function FinderFilesView({
 											items.length + attachments.items.length,
 										),
 									})
-								: attachments.state === "loading" && !items.length
+								: attachments.state === "loading" &&
+										!items.length &&
+										// A retry says it once, in the banner slot (UX R3 U19).
+										!retrying
 									? t("ui.canvas.files.loading")
 									: t("ui.canvas.files.count", {
 											count: items.length + attachments.items.length,
@@ -691,16 +730,20 @@ export function FinderFilesView({
 						</Button>
 					</div>
 				)}
-				{attachments.state === "error" ? (
+				{attachments.state === "error" && !retrying ? (
 					<output
 						title={t("ui.canvas.files.attachmentsErrorReason")}
 						className={cn("text-body-sm text-ink-muted")}
 					>
 						{t("ui.canvas.files.attachmentsError")}
 						<Button
+							ref={retryButton}
 							variant="ghost"
 							size="sm"
-							onClick={() => {
+							onClick={(event) => {
+								refocusRetry.current =
+									document.activeElement === event.currentTarget;
+								retryStartedAt.current = Date.now();
 								setRetrying(true);
 								attachments.retry();
 							}}
@@ -708,7 +751,7 @@ export function FinderFilesView({
 							{t("ui.canvas.files.retry")}
 						</Button>
 					</output>
-				) : retrying && attachments.state === "loading" ? (
+				) : retrying ? (
 					/*
 					 * THE RETRY IS IN FLIGHT (UX R2 U11): the banner's own slot says so
 					 * with the existing loading line, so the press visibly registered
@@ -988,9 +1031,11 @@ export function FinderFilesView({
 											 * invalid HTML.
 											 */
 											(attachments.state === "loading" ? (
-												<span className={cn("text-meta text-ink-dim")}>
-													{t("ui.canvas.files.loading")}
-												</span>
+												retrying ? null : (
+													<span className={cn("text-meta text-ink-dim")}>
+														{t("ui.canvas.files.loading")}
+													</span>
+												)
 											) : attachments.state === "ready" &&
 												!attachments.complete ? (
 												<span
@@ -1201,6 +1246,41 @@ function FinderEntry({
 	const tooltip = refused
 		? `${statusLine}\n${t("ui.canvas.files.attachmentRefused")}`
 		: statusLine;
+	/*
+	 * THE CONTEXT-MENU KEY ON A REFUSED ROW SAYS WHY (UX R3 U18). A native
+	 * `title` never shows on keyboard focus, and the refused row has no menu, so
+	 * Shift+F10 did nothing at all - the "glitch" U13 fixed for the pointer. The
+	 * same sentence the tooltip carries is announced instead (a toast is the
+	 * app's live region); no new copy. A row WITH a menu opens it as before.
+	 */
+	/*
+	 * ...and ON KEYBOARD FOCUS the row's note line states it (U18's other
+	 * half): a sighted keyboard user never sees the `title`, so the reason
+	 * replaces the size/date while the row holds `:focus-visible`. Pointer focus
+	 * keeps the note (that user has the tooltip).
+	 */
+	const [keyboardFocus, setKeyboardFocus] = useState(false);
+	const focusReason =
+		refused && keyboardFocus ? t("ui.canvas.files.attachmentRefused") : null;
+	const sentenceNote = Boolean(item.attachment?.status || focusReason);
+	const openMenu = () => {
+		if (refused && !hasMenu)
+			showInfoToast(t("ui.canvas.files.attachmentRefused"));
+		else setMenuOpen(true);
+	};
+	/*
+	 * A gone attachment with no origin path (a pasted picture whose stored copy
+	 * was pruned) has nothing any action could act on - not even a path to copy
+	 * - so it carries no menu rather than a menu of dead entries. Its meta line
+	 * already says it is gone. A refused row with no stored bytes carries only
+	 * its bare name (review R4-U1): every entry would act on a cwd-relative
+	 * path. A refused row WITH bytes keeps its digest-only entries (a picture's
+	 * Expand / Copy image).
+	 */
+	const hasMenu = !(
+		(item.attachment && item.row.missing && !PATH_SEPARATOR.test(doc.path)) ||
+		(refused && !doc.artifact)
+	);
 	const sort = useUiPreferencesStore((state) => state.finderFiles.sort);
 	const timestamp = sort === "created" ? item.created : item.modified;
 	const dateMetric =
@@ -1263,7 +1343,7 @@ function FinderEntry({
 								event.key === "ContextMenu"
 							) {
 								event.preventDefault();
-								setMenuOpen(true);
+								openMenu();
 							} else onKeyDown(event);
 						}}
 						className={cn(
@@ -1340,7 +1420,11 @@ function FinderEntry({
 					buttonRef(node);
 				}}
 				tabIndex={tabIndex}
-				onFocus={onFocus}
+				onFocus={(event) => {
+					if (refused) setKeyboardFocus(isFocusVisible(event.currentTarget));
+					onFocus();
+				}}
+				onBlur={() => setKeyboardFocus(false)}
 				title={tooltip}
 				onClick={tiled && item.row.media === "image" ? onExpand : onOpen}
 				onKeyDown={(event) => {
@@ -1349,7 +1433,7 @@ function FinderEntry({
 						event.key === "ContextMenu"
 					) {
 						event.preventDefault();
-						setMenuOpen(true);
+						openMenu();
 					} else onKeyDown(event);
 				}}
 				className={cn(
@@ -1407,7 +1491,18 @@ function FinderEntry({
 					>
 						<span
 							className={cn(
-								"min-w-0 flex-1 truncate",
+								"min-w-0 truncate",
+								/*
+								 * Beside a STATUS sentence the name takes only what it
+								 * needs, down to a floor (design R3 D15): a fixed 50% cap
+								 * cut "saved copy kept" / "no saved copy" - the words that
+								 * tell the states apart - while a short name's box sat
+								 * half empty. D9's guarantee holds through the floor: the
+								 * name never shrinks below 6rem (or half a narrower row).
+								 */
+								!tiled && sentenceNote
+									? "min-w-[min(6rem,50%)] shrink"
+									: "flex-1",
 								item.row.missing ? "text-ink-muted" : "text-ink",
 							)}
 						>
@@ -1424,8 +1519,13 @@ function FinderEntry({
 						)}
 						{
 							<span
+								/*
+								 * The date hint belongs to a size/date note only. On a
+								 * status note it shadowed the row's tooltip, which carries
+								 * the full sentence the truncation cuts (review R5-1).
+								 */
 								title={
-									timestamp === null
+									timestamp === null || sentenceNote
 										? undefined
 										: formatDateTime(timestamp * 1000)
 								}
@@ -1433,19 +1533,24 @@ function FinderEntry({
 									"text-meta text-ink-dim",
 									tiled && item.attachment
 										? "min-w-0 truncate"
-										: item.attachment?.status
+										: sentenceNote
 											? /*
-												 * A row's STATUS sentence may shrink, the name keeps the
-												 * rest (design R2 D9): vi/hi status runs 259-290 px and
-												 * starved the name to 14 px at the 400 docked floor. The
-												 * cap leaves the name at least half the row; the whole
-												 * sentence is the row's tooltip.
+												 * A row's STATUS sentence takes the space the name
+												 * leaves (design R3 D15) and truncates last (design R2
+												 * D9: vi/hi status runs 259-290 px starved the name to
+												 * 14 px at the 400 docked floor, so the name keeps its
+												 * floor above). Its own floor keeps a long name from
+												 * taking the whole row: the note grows from zero, so
+												 * without one it would vanish. The whole sentence is
+												 * the row's tooltip.
 												 */
-												"min-w-0 max-w-[50%] shrink truncate"
+												"min-w-[min(6rem,40%)] flex-1 truncate text-end"
 											: "shrink-0",
 								)}
 							>
-								{item.attachment && !item.attachment.status ? (
+								{focusReason ? (
+									<bdi>{focusReason}</bdi>
+								) : item.attachment && !item.attachment.status ? (
 									/* Size and date as two runs with the separator in markup, on
 									 * tiles AND list rows: one `<bdi>` around "286 KB · 27 اکتوبر"
 									 * resolves LTR from "KB" and mirrors the Urdu date. A
@@ -1496,26 +1601,7 @@ function FinderEntry({
 						</Button>
 					</Tooltip>
 				)}
-				{!(
-					/*
-					 * A gone attachment with no origin path (a pasted picture whose
-					 * stored copy was pruned) has nothing any action could act on - not
-					 * even a path to copy - so it carries no menu rather than a menu of
-					 * dead entries. Its meta line already says it is gone.
-					 */
-					(
-						(item.attachment &&
-							item.row.missing &&
-							!PATH_SEPARATOR.test(doc.path)) ||
-						/*
-						 * A refused row with no stored bytes carries only its bare name
-						 * (review R4-U1): every entry would act on a cwd-relative path.
-						 * A refused row WITH bytes keeps its digest-only entries (a
-						 * picture's Expand / Copy image).
-						 */
-						(refused && !doc.artifact)
-					)
-				) && (
+				{hasMenu && (
 					<ImageActionsMenu
 						file={doc.path}
 						tooltip={

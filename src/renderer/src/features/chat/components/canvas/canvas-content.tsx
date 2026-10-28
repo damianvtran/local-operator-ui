@@ -52,8 +52,10 @@ const CanvasContentComponent: FC<CanvasContentProps> = ({
 	/*
 	 * A TEXT-KIND ARTIFACT HAS NO FILE TO EDIT (PR #1452 U12/Q1). The editors
 	 * below read and write a path; an artifact's path is `artifact:<digest>`, so
-	 * they painted an empty buffer and saved into the cwd. The media and PDF
-	 * viewers resolve their own bytes and keep their branches; every text-shaped
+	 * they painted an empty buffer and saved into the cwd. The media viewers
+	 * resolve their own bytes by digest and keep their branches. The PDF viewer
+	 * keeps its branch too but reads `document.path`, so a digest-only PDF does
+	 * not resolve there (review R5-2, deferred: pre-existing). Every text-shaped
 	 * kind (code, markdown, HTML, a CSV) is shown read-only from the store.
 	 */
 	if (

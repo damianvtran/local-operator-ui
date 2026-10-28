@@ -1606,6 +1606,12 @@
 	"ui.canvas.files.attachmentRefused": {
 		"role": "tooltip",
 		"tone": "Plain, concise product language; calm, not alarming.",
-		"note": "Last line of the hover text on an attached file in the canvas Attachments section when the backend judged it sensitive (an .env file, an SSH key) and the row therefore shows no actions menu. Says why the menu is missing. 'secret' = a password, key or token, the same word the app uses for its secret store; 'file actions' = the row's actions menu (Open file, Open folder, Copy file path). No trailing full stop: it is a tooltip line under the file's name. Fits one tooltip line (about 60 characters)."
+		"note": "Last line of the hover text on an attached file in the canvas Attachments section when the backend judged it sensitive (an .env file, an SSH key) and the row therefore shows no actions menu. Says why the menu is missing. 'secret' = a password, key or token, the same word the app uses for its secret store; 'file actions' = the row's actions menu (Open file, Open folder, Copy file path). No trailing full stop: it is a tooltip line under the file's name. Fits one tooltip line: about 70 characters, and no longer than the identity line above it (name · digest · 'Attached by you, kept in this session')."
+	},
+	"ui.canvas.files.attachmentReadOnly": {
+		"role": "caption",
+		"tone": "Plain, quiet product language; a statement of fact, not a warning.",
+		"note": "One muted line above the text of an attached file opened in the canvas from the app's saved copy (the bytes the person sent, kept in this session). The view cannot be edited, and without this line typing into it looked broken. 'Read-only' = the person can read and select but not change it; 'saved copy' = the same term as the 'Saved copy' label on attachment cards; 'attachment' = a file the person attached to a message. Keep the read-only part first: it is what explains the ignored typing. No trailing full stop: it is a caption, not a sentence.",
+		"length": "One line in a 400 px canvas pane at 12 px: about 50 characters."
 	}
 }

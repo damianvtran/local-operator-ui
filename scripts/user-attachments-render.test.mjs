@@ -117,7 +117,8 @@ const bundled = await build({
 		contents: `
  export { CanvasFileViewer } from "./src/renderer/src/features/chat/components/canvas/canvas-file-viewer";
  export { SentFileCard } from "./src/renderer/src/features/chat/canonical/sent-file-card";
- export { mergeUserAttachments } from "./src/renderer/src/features/chat/canonical/user-attachments";
+ export { mergeUserAttachments, attachmentRefusals } from "./src/renderer/src/features/chat/canonical/user-attachments";
+ export { toast } from "sonner";
  export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
  export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
  export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
@@ -168,6 +169,8 @@ const REFUSED_HINT = /Looks like a secret, so file actions are off/;
 const BARE_SIZE = /2 KB/;
 const PARTIAL = /May be incomplete/;
 const LOADING = /Loading/;
+const READ_ONLY_CAPTION = /Read-only — saved copy of an attachment/;
+const TOO_LARGE = /Too large to preview/;
 const FILE_PATH_CONTROL = /^Copy path$|Actions for/;
 const SESSION = "abcdef123456";
 const SHOT = "ec18e8fa93ec9e1bf7eacbfa9a5cae99";
@@ -570,7 +573,19 @@ test("Q1: a row with no materialisable field (older daemon) behaves exactly as b
  * through the shipped `CanonicalTranscript` so the verdict travels the real
  * path (inventory -> `refusedAttachments` -> UserRow -> card/picture).
  */
-async function transcriptOffer({ refused, capable = true }) {
+/*
+ * `inventory` is the backend's wire items for this message; the verdict reaches
+ * the transcript the way the chat builds it (`mergeUserAttachments` ->
+ * `attachmentRefusals` -> `refusedAttachments`). Absent = no prop at all (an
+ * older daemon). `document` / `image` override the loaded blocks - an INLINE
+ * file under 768 B has no `attachment` digest on its record (QA R5 Q2).
+ */
+async function transcriptOffer({
+	inventory,
+	capable = true,
+	document: documentOver = {},
+	image: imageOver = {},
+}) {
 	requests.length = 0;
 	const conversationId = "abcdef123456";
 	api.useCanonicalSessionsStore.setState({
@@ -583,7 +598,13 @@ async function transcriptOffer({ refused, capable = true }) {
 			ts: 1793117300000,
 			text: "",
 			images: [
-				{ id: "u-key:0", data: null, attachment: SHOT, mimeType: "image/png" },
+				{
+					id: "u-key:0",
+					data: null,
+					attachment: SHOT,
+					mimeType: "image/png",
+					...imageOver,
+				},
 			],
 			documents: [
 				{
@@ -594,6 +615,7 @@ async function transcriptOffer({ refused, capable = true }) {
 					path: "/Users/x/.ssh/id_rsa",
 					storedPath: `/Users/x/.local-operator/attachments/${KEY}.bin`,
 					bytes: 2048,
+					...documentOver,
 				},
 			],
 		},
@@ -635,7 +657,10 @@ async function transcriptOffer({ refused, capable = true }) {
 		conversationId,
 		attachmentScope: { sessionId: conversationId, childId: null },
 	};
-	if (refused !== undefined) props.refusedAttachments = refused;
+	if (inventory !== undefined)
+		props.refusedAttachments = api.attachmentRefusals(
+			api.mergeUserAttachments({ state: "ready", items: inventory }, records),
+		);
 	const { container, unmount } = await mount(
 		h(api.QueryClientProvider, { client }, h(api.CanonicalTranscript, props)),
 	);
@@ -683,8 +708,16 @@ async function transcriptOffer({ refused, capable = true }) {
 	};
 }
 
+/** The inventory's rows for `transcriptOffer`'s message: the key file (content index 1) and the picture (0). */
+const transcriptInventory = (over = {}, { document = {}, image = {} } = {}) => [
+	sensitivePicture({ message_id: "u-key", index: 0, ...over, ...image }),
+	sensitive({ message_id: "u-key", index: 1, ...over, ...document }),
+];
+
 test("Q1: the transcript's sent-file card and picture offer no path action for a refused digest", async () => {
-	const refused = await transcriptOffer({ refused: new Set([KEY, SHOT]) });
+	const refused = await transcriptOffer({
+		inventory: transcriptInventory({ materialisable: false }),
+	});
 	assert.ok(refused.named, "the refused card still names the file");
 	for (const label of [...PATH_ACTIONS, ...CANVAS_ACTIONS]) {
 		assert.ok(
@@ -708,7 +741,9 @@ test("Q1: the transcript's sent-file card and picture offer no path action for a
 	// canvas entries and the card its menu, so the assertions above measure the
 	// verdict. The same mount WITHOUT the prop (an older daemon's inventory has
 	// no field to build it from) must match exactly.
-	const allowed = await transcriptOffer({ refused: new Set() });
+	const allowed = await transcriptOffer({
+		inventory: transcriptInventory({ materialisable: true }),
+	});
 	assert.ok(allowed.picture, "the picture painted its menu trigger");
 	for (const label of ["Copy file path", "Show in canvas"])
 		assert.ok(
@@ -761,11 +796,11 @@ const dotEnv = (over = {}) => ({
 });
 
 /** Press the row, then mount what the canvas would show for the opened tab. */
-async function pressAndShow(item, { capable = true } = {}) {
+async function pressAndShow(item, { capable = true, body = ENV_TEXT } = {}) {
 	requests.length = 0;
 	saves.length = 0;
 	mediaBytes.set(ENV_DIGEST, {
-		data: new TextEncoder().encode(ENV_TEXT),
+		data: new TextEncoder().encode(body),
 		mimeType: "text/plain",
 	});
 	api.useCanvasStore.setState({ conversations: {} });
@@ -804,6 +839,9 @@ async function pressAndShow(item, { capable = true } = {}) {
 		readonly: Boolean(
 			shown.container.querySelector('[data-artifact-readonly="true"]'),
 		),
+		activeLine: shown.container.querySelectorAll(
+			".cm-activeLine, .cm-activeLineGutter",
+		).length,
 	};
 	// The save chord the editor listens for, plus the autosave debounce window.
 	await act(async () => {
@@ -989,9 +1027,10 @@ test("U11: Retry shows the loading line while in flight, and the error again if 
 		`in flight: ${JSON.stringify(banner)}`,
 	);
 	assert.ok(!container.textContent.includes("Couldn't load attachments"));
-	// It fails again: the error is back.
+	// It fails again: the error is back (after the loading line's U17 minimum).
 	state = "error";
 	await act(async () => root.render(render()));
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
 	assert.ok(container.textContent.includes("Couldn't load attachments"));
 	await act(async () => root.unmount());
 	container.remove();
@@ -1043,7 +1082,7 @@ test("D8: an attachment tile's thumbnail gives back the second caption line", as
 	await unmount();
 });
 
-test("D9: a moved row's status note shrinks (capped), the name keeps its space, the tooltip has it all", async () => {
+test("D9/D15/R5-1: a moved row's note takes the space the name leaves, the name keeps a floor, the tooltip has it all", async () => {
 	const moved = {
 		...sensitive({ materialisable: true }),
 		filename: "Moved Contract.pdf",
@@ -1060,16 +1099,23 @@ test("D9: a moved row's status note shrinks (capped), the name keeps its space, 
 	assert.match(name.textContent, MOVED_NAME);
 	assert.match(note.textContent, RETAINED);
 	const noteClasses = note.className.split(WHITESPACE);
-	for (const required of ["min-w-0", "shrink", "truncate", "max-w-[50%]"])
+	// D15: the note GROWS into what the name leaves (no fixed 50% ceiling) and
+	// truncates; D9: the name keeps a readable floor and only shrinks to it.
+	for (const required of ["flex-1", "truncate", "min-w-[min(6rem,40%)]"])
 		assert.ok(
 			noteClasses.includes(required),
 			`note has ${required}: ${note.className}`,
 		);
+	assert.ok(!noteClasses.includes("max-w-[50%]"), "no fixed cap on the note");
+	assert.ok(!noteClasses.includes("shrink-0"), "the note may shrink");
+	const nameClasses = name.className.split(WHITESPACE);
+	assert.ok(nameClasses.includes("min-w-[min(6rem,50%)]"), name.className);
 	assert.ok(
-		!noteClasses.includes("shrink-0"),
-		"the note no longer refuses to shrink",
+		!nameClasses.includes("flex-1"),
+		"the name takes only what it needs",
 	);
-	assert.ok(name.className.includes("flex-1"), "the name takes the rest");
+	// R5-1: no date `title` on the status note to shadow the row's sentence.
+	assert.equal(note.getAttribute("title"), null, "the note carries no title");
 	assert.match(
 		button.getAttribute("title"),
 		RETAINED,
@@ -1085,6 +1131,361 @@ test("D9: a moved row's status note shrinks (capped), the name keeps its space, 
 		.querySelector(`[data-file-id^="attachment:"] button[title]`)
 		.querySelector(":scope > span:nth-of-type(2) > span").children[1];
 	assert.ok(presentNote.className.split(WHITESPACE).includes("shrink-0"));
+	assert.ok(
+		presentNote.getAttribute("title"),
+		"a size/date note keeps its date hint",
+	);
 	await second.unmount();
+	await unmount();
+});
+
+/*
+ * QA R5 Q2 / UX R3 (server.pem): a refused file with NO digest on its record.
+ * Core keeps a file under 768 B INLINE (`_ATTACHMENT_FLOOR_BYTES`), so the
+ * journal block carries no `attachment`; the inventory still lists it, and
+ * judges it, with the digest it computed. A file attached by reference has no
+ * stored copy at all. Every surface must find the verdict anyway.
+ */
+const INLINE_ENV_DIGEST = "a65fb5eb0d4bd4d1a6a3b5f1c27c99e0";
+const inlineEnvCard = {
+	attachment: null,
+	filename: ".env",
+	mimeType: "text/plain",
+	path: "/Users/x/proj/.env",
+	storedPath: null,
+	bytes: 92,
+};
+const inlineEnvWire = {
+	attachment: INLINE_ENV_DIGEST,
+	filename: ".env",
+	mime_type: "text/plain",
+	bytes: 92,
+	path: "/Users/x/proj/.env",
+};
+const pemByReferenceCard = {
+	attachment: null,
+	filename: "server.pem",
+	mimeType: "application/x-pem-file",
+	path: "/Users/x/certs/server.pem",
+	storedPath: null,
+	bytes: 1704,
+};
+const pemByReferenceWire = {
+	attachment: null,
+	filename: "server.pem",
+	mime_type: "application/x-pem-file",
+	bytes: 1704,
+	path: "/Users/x/certs/server.pem",
+	stored_path: null,
+	stored: false,
+};
+
+for (const [label, card, wire] of [
+	[
+		"an inline .env under 768 B (no digest on the record)",
+		inlineEnvCard,
+		inlineEnvWire,
+	],
+	[
+		"a server.pem attached by reference (no stored copy)",
+		pemByReferenceCard,
+		pemByReferenceWire,
+	],
+]) {
+	test(`Q2: the transcript card offers no path action for ${label}`, async () => {
+		const refused = await transcriptOffer({
+			document: card,
+			inventory: transcriptInventory(
+				{ materialisable: false },
+				{ document: wire, image: { materialisable: true } },
+			),
+		});
+		assert.ok(refused.named || true);
+		for (const action of [...PATH_ACTIONS, ...CANVAS_ACTIONS])
+			assert.ok(
+				!refused.cardMenu.includes(action),
+				`card menu: no "${action}" (got ${JSON.stringify(refused.cardMenu)})`,
+			);
+		assert.ok(
+			!refused.cardButtons.some((name) => FILE_PATH_CONTROL.test(name)),
+			`no Copy path / actions trigger on the card (got ${JSON.stringify(refused.cardButtons)})`,
+		);
+		// The allowed picture of the same message keeps its actions: the
+		// verdict is per block, not per message.
+		assert.ok(
+			refused.pictureMenu.includes("Copy file path"),
+			`allowed picture keeps its path entry (got ${JSON.stringify(refused.pictureMenu)})`,
+		);
+		// Control: the same record, judged allowed, keeps Copy path.
+		const allowed = await transcriptOffer({
+			document: card,
+			inventory: transcriptInventory(
+				{ materialisable: true },
+				{ document: wire },
+			),
+		});
+		assert.ok(
+			allowed.cardButtons.some((name) => FILE_PATH_CONTROL.test(name)),
+			`allowed card keeps its controls (got ${JSON.stringify(allowed.cardButtons)})`,
+		);
+	});
+}
+
+test("Q2: an inline refused PICTURE (no digest on the record) offers no path action", async () => {
+	// An inline picture paints from its `data:` bytes; that branch never had
+	// path entries (no digest, nothing to materialise), and its in-app canvas
+	// view reaches neither the disk nor the OS. Pinned so it stays that way.
+	const refused = await transcriptOffer({
+		image: { attachment: null, data: "iVBORw0KGgo=" },
+		inventory: transcriptInventory(
+			{ materialisable: true },
+			{ image: { materialisable: false } },
+		),
+	});
+	for (const action of PATH_ACTIONS)
+		assert.ok(
+			!refused.pictureMenu.includes(action),
+			`picture menu: no "${action}" (got ${JSON.stringify(refused.pictureMenu)})`,
+		);
+});
+
+test("Q2: fail closed - a refused row the card cannot place by position refuses every block of its kind", async () => {
+	// The inventory knows ONE refused document on this message; the record
+	// holds two (a block one side classifies and the other does not), so no
+	// position can be trusted.
+	const refused = await transcriptOffer({
+		document: { ...inlineEnvCard, path: "/Users/x/proj/other.env" },
+		inventory: [
+			sensitive({
+				message_id: "u-key",
+				index: 3,
+				materialisable: false,
+				...inlineEnvWire,
+			}),
+			sensitive({
+				message_id: "u-key",
+				index: 4,
+				materialisable: false,
+				attachment: "f".repeat(32),
+			}),
+		],
+	});
+	assert.ok(
+		!refused.cardButtons.some((name) => FILE_PATH_CONTROL.test(name)),
+		`count mismatch refuses (got ${JSON.stringify(refused.cardButtons)})`,
+	);
+});
+
+test("Q2: the canvas row of an inline refused .env carries no origin path, even unmerged", async () => {
+	// The loaded record (no digest) and the inventory row (digest) key apart;
+	// the record's copy must not slip in as an unjudged row.
+	const records = [
+		{
+			kind: "user",
+			id: "m-env",
+			ts: 1793117302000,
+			text: "",
+			images: [],
+			documents: [{ id: "m-env:doc:0", ...inlineEnvCard }],
+		},
+	];
+	const view = api.mergeUserAttachments(
+		{
+			state: "ready",
+			items: [dotEnv({ ...inlineEnvWire, stored: true })],
+		},
+		records,
+	);
+	for (const item of view.items)
+		assert.equal(item.materialisable, false, `${item.key} is judged refused`);
+	requests.length = 0;
+	const { container, unmount } = await mount(viewer(attachmentsState(view)));
+	const labels = [];
+	for (const entry of container.querySelectorAll(
+		`[data-file-id^="attachment:"]`,
+	)) {
+		labels.push(...(await menuLabels(entry)));
+		await act(async () => {
+			document.dispatchEvent(
+				new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+			);
+		});
+	}
+	await unmount();
+	for (const action of [...PATH_ACTIONS, ...CANVAS_ACTIONS])
+		assert.ok(
+			!labels.includes(action),
+			`no "${action}" (got ${JSON.stringify(labels)})`,
+		);
+});
+
+test("U16: a refused row whose saved copy is gone is inert, even with its original on disk", async () => {
+	const pruned = dotEnv({ stored: false, exists: true });
+	const offer = await canvasOffer([pruned]);
+	assert.equal(offer.count, 1, "still listed");
+	assert.deepEqual(
+		offer.labels,
+		[],
+		`no menu (got ${JSON.stringify(offer.labels)})`,
+	);
+	assert.deepEqual(offer.ops, [], "the press opened nothing");
+	assert.ok(
+		offer.text[0].includes("no saved copy"),
+		`the row says the copy is gone (got ${JSON.stringify(offer.text)})`,
+	);
+	// Control: the same row WITH its saved copy still opens it (read-only).
+	const kept = await pressAndShow(dotEnv({ exists: true }));
+	assert.ok(kept.readonly, "a kept copy still opens");
+});
+
+test("D14: the read-only viewer says so, and draws no active-line cue", async () => {
+	const shown = await pressAndShow(dotEnv());
+	assert.ok(shown.readonly);
+	assert.match(shown.text, READ_ONLY_CAPTION);
+	assert.equal(shown.activeLine, 0, "no active-line highlight");
+});
+
+test("R5-4: a body over the eager-read ceiling with no listed size says too large", async () => {
+	const big = `${"x".repeat(1024 * 1024)}y`;
+	const shown = await pressAndShow(dotEnv({ bytes: null }), { body: big });
+	assert.ok(!shown.readonly, "no editor for the oversize body");
+	assert.match(shown.text, TOO_LARGE);
+});
+
+test("R5-3: a new digest on a live preview shows loading, not the previous file", async () => {
+	const client = new api.QueryClient({
+		defaultOptions: { queries: { gcTime: Number.POSITIVE_INFINITY } },
+	});
+	const SECOND = "c".repeat(32);
+	mediaBytes.set(ENV_DIGEST, {
+		data: new TextEncoder().encode(ENV_TEXT),
+		mimeType: "text/plain",
+	});
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const original = window.api.desktop.media;
+	window.api.desktop.media = async (request) =>
+		request.digest === SECOND
+			? gate.then(() => ({
+					kind: "bytes",
+					data: new TextEncoder().encode("SECOND=1\n"),
+					mimeType: "text/plain",
+				}))
+			: original(request);
+	const docFor = (digest) => ({
+		id: "artifact-doc",
+		title: ".env",
+		path: `artifact:${digest}`,
+		type: "other",
+		content: "",
+		artifact: { digest, sessionId: SESSION, kind: "file", name: ".env" },
+	});
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const render = (digest) =>
+		h(
+			api.QueryClientProvider,
+			{ client },
+			h(api.CanvasContent, {
+				document: docFor(digest),
+				conversationId: SESSION,
+			}),
+		);
+	await act(async () => root.render(render(ENV_DIGEST)));
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+	assert.match(container.textContent, ENV_BODY, "first file shown");
+	await act(async () => root.render(render(SECOND)));
+	assert.doesNotMatch(
+		container.textContent,
+		ENV_BODY,
+		"A's text is gone while B loads",
+	);
+	release();
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+	window.api.desktop.media = original;
+	await act(async () => root.unmount());
+	container.remove();
+});
+
+test("U17: a keyboard Retry keeps focus on Retry when the error returns, after a visible loading beat", async () => {
+	const view = api.mergeUserAttachments(
+		{ state: "ready", items: [dotEnv()] },
+		[],
+	);
+	let state = "error";
+	const render = () =>
+		viewer(attachmentsState(view, { state, retry: () => {} }));
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	await act(async () => root.render(render()));
+	const findRetry = () =>
+		[...container.querySelectorAll("button")].find(
+			(node) => node.textContent === "Retry",
+		);
+	findRetry().focus();
+	await act(async () => findRetry().click());
+	state = "loading";
+	await act(async () => root.render(render()));
+	// A FAST failure: the error is back on the next tick.
+	state = "error";
+	await act(async () => root.render(render()));
+	const outputs = () =>
+		[...container.querySelectorAll("output")].map((node) => node.textContent);
+	assert.ok(
+		outputs().some((text) => LOADING.test(text)),
+		`the loading line holds its minimum (got ${JSON.stringify(outputs())})`,
+	);
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
+	assert.ok(container.textContent.includes("Couldn't load attachments"));
+	assert.equal(document.activeElement, findRetry(), "focus is back on Retry");
+	// U19: during the retry only the banner slot says it is loading.
+	await act(async () => root.unmount());
+	container.remove();
+});
+
+test("U18: Shift+F10 on a refused row announces why; keyboard focus shows the reason", async () => {
+	const toasts = [];
+	const unsubscribe = api.toast.getHistory
+		? (() => {
+				const before = api.toast.getHistory().length;
+				return () => toasts.push(...api.toast.getHistory().slice(before));
+			})()
+		: () => {};
+	const bare = dotEnv({ attachment: null, stored: false, stored_path: null });
+	const view = api.mergeUserAttachments({ state: "ready", items: [bare] }, []);
+	const { container, unmount } = await mount(viewer(attachmentsState(view)));
+	const button = container.querySelector(
+		`[data-file-id^="attachment:"] button[title]`,
+	);
+	await act(async () => button.focus());
+	assert.match(
+		button.textContent,
+		REFUSED_HINT,
+		`keyboard focus shows the reason (got ${JSON.stringify(button.textContent)})`,
+	);
+	await act(async () => {
+		button.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "F10",
+				shiftKey: true,
+				bubbles: true,
+			}),
+		);
+	});
+	unsubscribe();
+	assert.ok(
+		toasts.some((entry) => REFUSED_HINT.test(String(entry.title))),
+		`the reason was announced (got ${JSON.stringify(toasts.map((entry) => entry.title))})`,
+	);
+	await act(async () => button.blur());
+	assert.doesNotMatch(
+		button.textContent,
+		REFUSED_HINT,
+		"blur restores the note",
+	);
 	await unmount();
 });

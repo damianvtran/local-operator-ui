@@ -537,3 +537,39 @@ test("R4-U1: a refused row with no stored bytes is 'nothing to act on'", () => {
 	const [open] = attachmentFinderItems(allowed.items, "abcdef123456");
 	assert.equal(open.row.document.path, "/Users/x/proj/.env");
 });
+
+test("U20: dotenv-family names read TXT, never their suffix", () => {
+	for (const name of [".env", ".env.production", ".env.moved", ".ENV.local"])
+		assert.equal(attachmentMetaLine(name, "text/plain", 0), "TXT", name);
+	// Control: a real extension and a lookalike keep their own label.
+	assert.equal(attachmentMetaLine("notes.md", "text/markdown", 0), "MD");
+	assert.equal(attachmentMetaLine(".envrc", "text/plain", 0), "TXT");
+	assert.equal(attachmentMetaLine("prod.env", "text/plain", 0), "ENV");
+});
+
+test("U16: a refused row is present only through its saved copy", () => {
+	const refused = {
+		...pdfWire,
+		filename: ".env",
+		path: "/Users/x/proj/.env",
+		exists: true,
+		stored: false,
+		materialisable: false,
+	};
+	const [gone] = mergeUserAttachments(
+		{ state: "ready", items: [refused] },
+		[],
+	).items;
+	assert.equal(gone.availability, "gone");
+	const [kept] = mergeUserAttachments(
+		{ state: "ready", items: [{ ...refused, stored: true }] },
+		[],
+	).items;
+	assert.equal(kept.availability, "present");
+	// Control: an allowed row with its origin in place is present without a copy.
+	const [allowed] = mergeUserAttachments(
+		{ state: "ready", items: [{ ...refused, materialisable: true }] },
+		[],
+	).items;
+	assert.equal(allowed.availability, "present");
+});

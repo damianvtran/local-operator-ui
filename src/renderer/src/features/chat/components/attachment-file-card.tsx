@@ -33,7 +33,15 @@ import { extensionOf } from "../utils/file-kind";
  * vendor MIME string: that is the machine's word, and this line is read at a
  * glance.
  */
+/*
+ * The dotenv family (`.env.production`, `.env.local`, `.env.moved`): a
+ * dotfile whose suffix is a variant name, not a type, so the card read `PROD`
+ * and `MOVE` (UX R3 U20). They are text, and read `TXT` like `.env` itself.
+ */
+const DOTENV = /(^|[/\\])\.env(\.[^/\\]*)?$/i;
+
 export function attachmentTypeLabel(name: string, mimeType?: string): string {
+	if (DOTENV.test(name)) return "TXT";
 	const extension = extensionOf(name);
 	if (extension) {
 		if (extension === "jpeg" || extension === "jpg") return "JPEG";

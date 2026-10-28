@@ -302,7 +302,12 @@ import {
 } from "./use-transcript-dom-window";
 import { useTurnAnswerRail } from "./use-turn-answer-rail";
 import { materialiseUserAttachment } from "./use-user-attachments";
-import { canMaterialiseAttachment, verdictForDigest } from "./user-attachments";
+import {
+	type AttachmentRefusals,
+	NO_REFUSALS,
+	canMaterialiseAttachment,
+	refusalVerdict,
+} from "./user-attachments";
 import {
 	type WorkingLineState,
 	deriveWorkingLine,
@@ -801,13 +806,15 @@ export type CanonicalTranscriptProps = {
 	 */
 	labelMarked?: ReadonlySet<string>;
 	/**
-	 * Attachment digests the backend refused to copy out (`materialisable:
-	 * false` in the user-attachment inventory; core PR #3042 QA round 3, Q1).
-	 * The sent-file cards and pictures here are painted from loaded records,
-	 * which carry no verdict, so they read it from this set. Absent or empty =
-	 * no refusals: the `session_attachments` capability alone governs.
+	 * What the backend refused to copy out (`materialisable: false` in the
+	 * user-attachment inventory; core PR #3042 QA round 3, Q1), by digest, by
+	 * the inventory's message + kind + position, and by origin path - an inline
+	 * file under 768 B has no digest (QA R5 Q2). The sent-file cards and
+	 * pictures here are painted from loaded records, which carry no verdict, so
+	 * they read it from this (`refusalVerdict`). Absent = no refusals: the
+	 * `session_attachments` capability alone governs.
 	 */
-	refusedAttachments?: ReadonlySet<string>;
+	refusedAttachments?: AttachmentRefusals;
 	/**
 	 * Re-arm the session's stream and history read.
 	 *
@@ -886,8 +893,6 @@ export type UndeliveredTurn = {
  * the menu reports as a failure toast, never silently). Absent, the picture keeps
  * the actions its blob/data source allows.
  */
-/** One stable empty set, so a memoised row's prop compares equal when nothing is refused. */
-const NO_REFUSED_ATTACHMENTS: ReadonlySet<string> = new Set();
 
 function userImagePathActions(
 	image: TranscriptImage,
@@ -956,7 +961,7 @@ const UserRow = memo(function UserRow({
 	isSmallView,
 	scope,
 	capable,
-	refusedAttachments = NO_REFUSED_ATTACHMENTS,
+	refusedAttachments = NO_REFUSALS,
 	conversationId,
 	undelivered = null,
 }: {
@@ -964,7 +969,7 @@ const UserRow = memo(function UserRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 	capable: boolean;
-	refusedAttachments?: ReadonlySet<string>;
+	refusedAttachments?: AttachmentRefusals;
 	conversationId?: string;
 	/** §F3's per-message failure state, when this row is the one it names. */
 	undelivered?: UndeliveredTurn | null;
@@ -1413,33 +1418,37 @@ const UserRow = memo(function UserRow({
 							)}
 							{(record.documents?.length ?? 0) > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-1")}>
-									{record.documents?.map((document) => (
-										<SentFileCard
-											key={document.id}
-											document={document}
-											remote={remote}
-											placementKnown={placementKnown}
-											sessionId={
-												scope &&
-												!scope.childId &&
-												canMaterialiseAttachment(
-													capable,
-													verdictForDigest(
-														refusedAttachments,
-														document.attachment,
-													),
-												)
-													? scope.sessionId
-													: null
-											}
-											refused={
-												verdictForDigest(
-													refusedAttachments,
-													document.attachment,
-												) === false
-											}
-										/>
-									))}
+									{record.documents?.map((document, index, documents) => {
+										/*
+										 * Judged by position and origin path as well as digest
+										 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
+										 * and its card offered Open on the real file.
+										 */
+										const verdict = refusalVerdict(refusedAttachments, {
+											messageId: record.id,
+											kind: "document",
+											position: index,
+											count: documents.length,
+											digest: document.attachment,
+											path: document.path,
+										});
+										return (
+											<SentFileCard
+												key={document.id}
+												document={document}
+												remote={remote}
+												placementKnown={placementKnown}
+												sessionId={
+													scope &&
+													!scope.childId &&
+													canMaterialiseAttachment(capable, verdict)
+														? scope.sessionId
+														: null
+												}
+												refused={verdict === false}
+											/>
+										);
+									})}
 								</div>
 							)}
 							{pictures.length > 0 && (
@@ -1479,10 +1488,13 @@ const UserRow = memo(function UserRow({
 												remote || !placementKnown,
 												canMaterialiseAttachment(
 													capable,
-													verdictForDigest(
-														refusedAttachments,
-														image.attachment,
-													),
+													refusalVerdict(refusedAttachments, {
+														messageId: record.id,
+														kind: "image",
+														position: index,
+														count: pictures.length,
+														digest: image.attachment,
+													}),
 												),
 											)}
 										/>
@@ -3230,7 +3242,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	isSmallView,
 	scope,
 	capable,
-	refusedAttachments = NO_REFUSED_ATTACHMENTS,
+	refusedAttachments = NO_REFUSALS,
 	conversationId,
 	/*
 	 * The fold onto `origin/main` that carried #490 (`fix(chat): label every
@@ -3264,7 +3276,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	scope: AttachmentScope | null;
 	capable: boolean;
 	/** See `CanonicalTranscriptProps.refusedAttachments`. */
-	refusedAttachments?: ReadonlySet<string>;
+	refusedAttachments?: AttachmentRefusals;
 	conversationId?: string;
 	/**
 	 * The transcript's one read of the rail setting. A BOOLEAN rather than the
@@ -3672,7 +3684,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
-	refusedAttachments = NO_REFUSED_ATTACHMENTS,
+	refusedAttachments = NO_REFUSALS,
 	onReconnect,
 	onStartNewChat,
 }) => {

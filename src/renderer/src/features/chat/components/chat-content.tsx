@@ -114,7 +114,7 @@ import {
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import { useSessionFiles } from "../canonical/use-session-files";
 import { useUserAttachments } from "../canonical/use-user-attachments";
-import { unmaterialisableDigests } from "../canonical/user-attachments";
+import { attachmentRefusals } from "../canonical/user-attachments";
 import {
 	workingLineClaimed,
 	workingLineInputFor,
@@ -1462,13 +1462,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			turnTerminal,
 		);
 		/*
-		 * Digests the inventory refused to copy out (Q1), for the transcript's
+		 * What the inventory refused to copy out (Q1), for the transcript's
 		 * sent-file cards and pictures - painted from loaded records, which carry
-		 * no verdict of their own. Memoised so the memoised rows compare equal.
+		 * no verdict of their own; keyed beyond the digest because an inline file
+		 * has none (QA R5 Q2). Memoised so the memoised rows compare equal.
 		 */
 		const attachmentItems = userAttachments.items;
 		const refusedAttachments = useMemo(
-			() => unmaterialisableDigests({ items: attachmentItems }),
+			() => attachmentRefusals({ items: attachmentItems }),
 			[attachmentItems],
 		);
 		const mentionedFileCount = combinedFileCount(

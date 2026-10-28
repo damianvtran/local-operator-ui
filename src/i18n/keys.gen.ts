@@ -2701,6 +2701,7 @@ export type MessageParams = {
 	"ui.canvas.files.attachmentGoneRecovery": undefined;
 	"ui.canvas.files.attachmentImage": undefined;
 	"ui.canvas.files.attachmentMeta": { size: string; when: string };
+	"ui.canvas.files.attachmentReadOnly": undefined;
 	"ui.canvas.files.attachmentRefused": undefined;
 	"ui.canvas.files.attachmentRetained": undefined;
 	"ui.canvas.files.attachmentTooltip": { name: string; digest: string };
