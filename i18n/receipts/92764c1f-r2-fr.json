@@ -1,0 +1,144 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (DELTA round 2: verification of round-1 remediation, branch fix/team-bridge-optimistic-first-send)",
+	"audit_id": "teambridge-first-send-audit-r2-92764c1f",
+	"date": "2026-10-28",
+	"instance": "92764c1f-r2-fr",
+	"instance_note": "Auditor session fc0128910229 under the random audit id 92764c1f, with an -r2-<locale> suffix (precedent 6d269032fdc7-r2-<locale>). Before writing, this path was checked absent from i18n/receipts and from the ledger.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header 'Model: anthropic/claude-opus-5-5'.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session fc0128910229). It is not the translator, did not apply the round-1 remediation, and is not round 1's auditor (session 086ffbdae3da). It edited no catalogue byte; this run wrote only round-2 receipts and evidence records.",
+	"status": "passed",
+	"result": "clean",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"integration": {
+		"pr": null,
+		"branch": "fix/team-bridge-optimistic-first-send",
+		"reviewed_head": "2775fbf2c3e767de8fd14b67570f3fec2965ea76",
+		"remediation_commit": "2775fbf2c3e767de8fd14b67570f3fec2965ea76",
+		"previous_reviewed_head": "22e3345494c6a4745fb875e8f8fd878ac3886d42",
+		"main_at_audit": "3332dfe562869eeb08399cb663a868d0f13dc535",
+		"worktree": "~/local-operator-ui/.worktrees/tb-first-send",
+		"previous_audit": {
+			"instance": "086ffbdae3da-fr",
+			"receipt": "i18n/receipts/086ffbdae3da-fr.json",
+			"receipt_sha256": "c34723902f33d8238d1e38258d0576b40b9c850bbf1abf17438d23d28ca51139",
+			"target_sha256": "14b8d6d9c33b5b21eb4f52819f328e05fba88766855a1563db86aaa3b37b30a6",
+			"note": "Round 1 named the pre-remediation target bytes. ledger-assemble will refuse it against the current file, so it remains history and is not a ledger row entry."
+		},
+		"ledger_row_at_audit": {
+			"auditors": [
+				"6d269032fdc7-r3-fr"
+			],
+			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+			"target_sha256": "b75cfe24f3983e1047ee6dfeb82285c36a766fcdf4cebf05dcbf5871e2b1f986",
+			"note": "Row bytes are as at origin/main. ledger-assemble moves these audits to superseded because both the en and target hashes differ from disk."
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.message.discard",
+			"ui.teamBridge.message.return_to_draft"
+		],
+		"keys_read_for_consistency": [
+			"ui.agents.detail.action.discard_changes",
+			"ui.projects.project_editors.discard_the_field_edit",
+			"ui.mesh.mesh_approvals_tray.abandon",
+			"ui.teamBridge.attachments.remove",
+			"ui.teamBridge.compose.remove",
+			"ui.chat.reply.remove",
+			"ui.teamBridge.drafts.title",
+			"ui.teamBridge.drafts.indicator"
+		],
+		"english_change": "none since round 1: en and context sha256 identical to round 1's receipt",
+		"unchanged": "Every other key/value is byte-identical to the round-1 target (HEAD~1 22e3345494). The key set (245) and key order are unchanged. Round 1 stands for message.sending/message.failed and was not re-audited here.",
+		"out_of_scope": "es, zh-CN, ru and ur are unchanged; round 1 stands for them"
+	},
+	"sha256": {
+		"en": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+		"fr": "08dfb5cccd29f85beb0821d1526df4a86d44b10305345f27647eb9193d740554"
+	},
+	"context_sha256": "737ad4f0bc007c5101e313affa412c4396b3515ae832b4dac3268c51b987417f",
+	"english": {
+		"ui.teamBridge.message.discard": {
+			"value": "Discard"
+		},
+		"ui.teamBridge.message.return_to_draft": {
+			"value": "Return to draft"
+		}
+	},
+	"audited_strings": {
+		"ui.teamBridge.message.discard": "Abandonner",
+		"ui.teamBridge.message.return_to_draft": "Remettre en brouillon"
+	},
+	"remediation": {
+		"ui.teamBridge.message.discard": {
+			"finding": "I-fr-1",
+			"round1_value": "Retirer",
+			"value": "Abandonner",
+			"verdict": "fixed - correct and idiomatic; no new issue"
+		},
+		"ui.teamBridge.message.return_to_draft": {
+			"finding": "I-fr-2",
+			"round1_value": "Remettre au brouillon",
+			"value": "Remettre en brouillon",
+			"verdict": "fixed - correct and idiomatic; no new issue"
+		}
+	},
+	"checks": {
+		"diff_vs_round1": "git diff 22e3345494..2775fbf2c3 -- src/i18n/catalogues/fr/ui.teamBridge.json: only ui.teamBridge.message.discard, ui.teamBridge.message.return_to_draft changed",
+		"placeholders": "none in English; none in target",
+		"bidi_controls": "none (whole file scanned)",
+		"nfc": "changed values NFC",
+		"keyset": "245 keys, equal to en",
+		"fit": "judged by string length only",
+		"render": "not rendered"
+	},
+	"notes": "I-fr-1 fixed: 'Abandonner' is the catalogue's discard verb (agents.detail.action.discard_changes 'Abandonner les modifications', projects discard_the_field_edit, mesh tray 'Abandonner') and no longer collides with Retirer = Remove/unsend (attachments.remove, compose.remove, chat.reply.remove). Infinitive per the fr guide; one word per the context row; it reads as giving up an attempt, not a server-side delete. I-fr-2 fixed: 'Remettre en brouillon' is the idiomatic state phrase ('repasser/remettre en brouillon'); 'brouillon' matches drafts.title/indicator; still an infinitive, not a retry. Lengths 10 and 21 characters (21 unchanged).",
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_fr": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "49010212a65f0d30d49bf532601bb39ad277be28aef5d476715186cf28525990",
+			"note": "committed blob at core HEAD dadf192382"
+		}
+	},
+	"execution": [
+		{
+			"command": "git rev-parse HEAD origin/main",
+			"result": "head 2775fbf2c3e767de8fd14b67570f3fec2965ea76; origin/main 3332dfe562869eeb08399cb663a868d0f13dc535"
+		},
+		{
+			"command": "git show 2775fbf2c3 -- src/i18n/catalogues/",
+			"result": "fr: 2 lines changed; hi: 1; vi: 1. They are exactly the four round-1 suggestions."
+		},
+		{
+			"command": "python3 compare HEAD~1 vs working tree JSON (keys, values, order) + bidi scan + NFC",
+			"result": "only 2 key(s) differ; order equal; 245 keys == en; 0 bidi controls"
+		},
+		{
+			"command": "shasum -a 256 src/i18n/catalogues/fr/ui.teamBridge.json vs i18n/receipts/086ffbdae3da-fr.json sha256.fr",
+			"result": "current 08dfb5cccd29f85beb0821d1526df4a86d44b10305345f27647eb9193d740554 != round-1 target 14b8d6d9c33b5b21eb4f52819f328e05fba88766855a1563db86aaa3b37b30a6 (expected: remediation); en 7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a == round-1 en"
+		},
+		{
+			"command": "git -C ~/local-operator show HEAD:i18n/{glossary.md,style-guides/<l>.md} | shasum -a 256",
+			"result": "matched the hashes recorded under references"
+		}
+	],
+	"audit_notes_not_execution_log": "notes, checks and remediation verdicts are this auditor's linguistic judgement, not command output",
+	"limitations": "There is no rendered-fit, screenshot or pseudo-localization evidence: this role has no browser tool, and builds and tests were forbidden (disk ~1.6 GiB free). The translator session and model for the original values are still unrecorded (carried from round 1).",
+	"evidence_record": "i18n/audits/evidence/fr/ui.teamBridge/teambridge-first-send-audit-r2-92764c1f/record.json"
+}

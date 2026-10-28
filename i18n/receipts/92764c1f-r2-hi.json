@@ -1,0 +1,133 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (DELTA round 2: verification of round-1 remediation, branch fix/team-bridge-optimistic-first-send)",
+	"audit_id": "teambridge-first-send-audit-r2-92764c1f",
+	"date": "2026-10-28",
+	"instance": "92764c1f-r2-hi",
+	"instance_note": "Auditor session fc0128910229 under the random audit id 92764c1f, with an -r2-<locale> suffix (precedent 6d269032fdc7-r2-<locale>). Before writing, this path was checked absent from i18n/receipts and from the ledger.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header 'Model: anthropic/claude-opus-5-5'.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session fc0128910229). It is not the translator, did not apply the round-1 remediation, and is not round 1's auditor (session 086ffbdae3da). It edited no catalogue byte; this run wrote only round-2 receipts and evidence records.",
+	"status": "passed",
+	"result": "clean",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"integration": {
+		"pr": null,
+		"branch": "fix/team-bridge-optimistic-first-send",
+		"reviewed_head": "2775fbf2c3e767de8fd14b67570f3fec2965ea76",
+		"remediation_commit": "2775fbf2c3e767de8fd14b67570f3fec2965ea76",
+		"previous_reviewed_head": "22e3345494c6a4745fb875e8f8fd878ac3886d42",
+		"main_at_audit": "3332dfe562869eeb08399cb663a868d0f13dc535",
+		"worktree": "~/local-operator-ui/.worktrees/tb-first-send",
+		"previous_audit": {
+			"instance": "086ffbdae3da-hi",
+			"receipt": "i18n/receipts/086ffbdae3da-hi.json",
+			"receipt_sha256": "ce9089877f4aa6663e084d13bf0eed42c446986c8925b0328827f5f247204ac9",
+			"target_sha256": "92410a6adb461d308b6be00447064d424a7ecace035c321cb1e94558a6285b58",
+			"note": "Round 1 named the pre-remediation target bytes. ledger-assemble will refuse it against the current file, so it remains history and is not a ledger row entry."
+		},
+		"ledger_row_at_audit": {
+			"auditors": [
+				"6d269032fdc7-r3-hi"
+			],
+			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+			"target_sha256": "6fc8d10b0ec69f1897b7594afc2b2d99558a474da62e111fe2464224b433ff73",
+			"note": "Row bytes are as at origin/main. ledger-assemble moves these audits to superseded because both the en and target hashes differ from disk."
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.message.return_to_draft"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.drafts.title",
+			"ui.teamBridge.drafts.indicator",
+			"ui.teamBridge.drafts.empty",
+			"ui.teamBridge.drafts.storage_failed",
+			"ui.teamBridge.schedule.failed",
+			"ui.common.errors.chat_start",
+			"ui.chat.sidebar.drafts.clear_all_label",
+			"ui.notices.chat.drafts_offered_name"
+		],
+		"english_change": "none since round 1: en and context sha256 identical to round 1's receipt",
+		"unchanged": "Every other key/value is byte-identical to the round-1 target (HEAD~1 22e3345494). The key set (245) and key order are unchanged. Round 1 stands for message.sending/message.failed and was not re-audited here.",
+		"out_of_scope": "es, zh-CN, ru and ur are unchanged; round 1 stands for them"
+	},
+	"sha256": {
+		"en": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+		"hi": "cf5ae680fc318c3431b70a71b63ca9b43161fb9fc9de468475670f5cdd233144"
+	},
+	"context_sha256": "737ad4f0bc007c5101e313affa412c4396b3515ae832b4dac3268c51b987417f",
+	"english": {
+		"ui.teamBridge.message.return_to_draft": {
+			"value": "Return to draft"
+		}
+	},
+	"audited_strings": {
+		"ui.teamBridge.message.return_to_draft": "ड्राफ़्ट में लौटाएँ"
+	},
+	"remediation": {
+		"ui.teamBridge.message.return_to_draft": {
+			"finding": "I-hi-1",
+			"round1_value": "मसौदे में लौटाएँ",
+			"value": "ड्राफ़्ट में लौटाएँ",
+			"verdict": "fixed - correct and idiomatic; no new issue"
+		}
+	},
+	"checks": {
+		"diff_vs_round1": "git diff 22e3345494..2775fbf2c3 -- src/i18n/catalogues/hi/ui.teamBridge.json: only ui.teamBridge.message.return_to_draft changed",
+		"placeholders": "none in English; none in target",
+		"bidi_controls": "none (whole file scanned)",
+		"nfc": "changed values NFC",
+		"keyset": "245 keys, equal to en",
+		"fit": "judged by string length only",
+		"render": "not rendered"
+	},
+	"notes": "I-hi-1 fixed: 'ड्राफ़्ट' now matches every other hi rendering of draft (drafts.title, drafts.indicator, drafts.empty, drafts.storage_failed, schedule.failed, ui.common.errors.chat_start, ui.chat.sidebar.drafts.clear_all_label, ui.notices drafts plural), with the same code points (U+0921 U+094D U+0930 U+093E U+092B U+093C U+094D U+091F); the nukta is kept as the guide requires. U+092B+U+093C is the NFC form because U+095E is a composition exclusion. The loan is invariant, so the postposition needs no oblique ending. 'लौटाएँ' keeps the guide's polite -एँ imperative (हटाएँ x73, दिखाएँ x32). Still a return-to-composer, not a retry.",
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_hi": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+			"note": "committed blob at core HEAD dadf192382"
+		}
+	},
+	"execution": [
+		{
+			"command": "git rev-parse HEAD origin/main",
+			"result": "head 2775fbf2c3e767de8fd14b67570f3fec2965ea76; origin/main 3332dfe562869eeb08399cb663a868d0f13dc535"
+		},
+		{
+			"command": "git show 2775fbf2c3 -- src/i18n/catalogues/",
+			"result": "fr: 2 lines changed; hi: 1; vi: 1. They are exactly the four round-1 suggestions."
+		},
+		{
+			"command": "python3 compare HEAD~1 vs working tree JSON (keys, values, order) + bidi scan + NFC",
+			"result": "only 1 key(s) differ; order equal; 245 keys == en; 0 bidi controls"
+		},
+		{
+			"command": "shasum -a 256 src/i18n/catalogues/hi/ui.teamBridge.json vs i18n/receipts/086ffbdae3da-hi.json sha256.hi",
+			"result": "current cf5ae680fc318c3431b70a71b63ca9b43161fb9fc9de468475670f5cdd233144 != round-1 target 92410a6adb461d308b6be00447064d424a7ecace035c321cb1e94558a6285b58 (expected: remediation); en 7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a == round-1 en"
+		},
+		{
+			"command": "git -C ~/local-operator show HEAD:i18n/{glossary.md,style-guides/<l>.md} | shasum -a 256",
+			"result": "matched the hashes recorded under references"
+		}
+	],
+	"audit_notes_not_execution_log": "notes, checks and remediation verdicts are this auditor's linguistic judgement, not command output",
+	"limitations": "There is no rendered-fit, screenshot or pseudo-localization evidence: this role has no browser tool, and builds and tests were forbidden (disk ~1.6 GiB free). The translator session and model for the original values are still unrecorded (carried from round 1).",
+	"evidence_record": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-first-send-audit-r2-92764c1f/record.json"
+}

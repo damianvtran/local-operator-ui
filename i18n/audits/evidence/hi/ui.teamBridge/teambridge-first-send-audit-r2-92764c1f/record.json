@@ -1,0 +1,84 @@
+{
+	"audit_id": "teambridge-first-send-audit-r2-92764c1f",
+	"date": "2026-10-28",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"record": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-first-send-audit-r2-92764c1f/record.json",
+	"source_commit": "2775fbf2c3e767de8fd14b67570f3fec2965ea76",
+	"round": 2,
+	"previous_audit_id": "teambridge-first-send-audit-086ffbdae3da",
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "92764c1f-r2-hi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/92764c1f-r2-hi.json",
+			"receipt_sha256": "5b6d9b40fc92aeabd26b17fe119861ec38063fc846b19d15431c06ed16663408",
+			"scope": "Team Bridge first-send round 2: verification of the round-1 remediation (I-hi-1)",
+			"note": "First-send R2 delta: I-hi-1 fixed; 0 findings. Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-first-send-audit-r2-92764c1f/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session fc0128910229). It is not the translator, did not apply the round-1 remediation, and is not round 1's auditor (session 086ffbdae3da). It edited no catalogue byte; this run wrote only round-2 receipts and evidence records.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "cf5ae680fc318c3431b70a71b63ca9b43161fb9fc9de468475670f5cdd233144"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "737ad4f0bc007c5101e313affa412c4396b3515ae832b4dac3268c51b987417f"
+		},
+		"receipt": {
+			"path": "i18n/receipts/92764c1f-r2-hi.json",
+			"sha256": "5b6d9b40fc92aeabd26b17fe119861ec38063fc846b19d15431c06ed16663408"
+		},
+		"previous_receipt": {
+			"path": "i18n/receipts/086ffbdae3da-hi.json",
+			"sha256": "ce9089877f4aa6663e084d13bf0eed42c446986c8925b0328827f5f247204ac9"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.message.return_to_draft": {
+			"en": "Return to draft",
+			"target": "ड्राफ़्ट में लौटाएँ",
+			"round1_target": "मसौदे में लौटाएँ"
+		}
+	},
+	"remediation": {
+		"ui.teamBridge.message.return_to_draft": {
+			"finding": "I-hi-1",
+			"round1_value": "मसौदे में लौटाएँ",
+			"value": "ड्राफ़्ट में लौटाएँ",
+			"verdict": "fixed - correct and idiomatic; no new issue"
+		}
+	},
+	"notes": "I-hi-1 fixed: 'ड्राफ़्ट' now matches every other hi rendering of draft (drafts.title, drafts.indicator, drafts.empty, drafts.storage_failed, schedule.failed, ui.common.errors.chat_start, ui.chat.sidebar.drafts.clear_all_label, ui.notices drafts plural), with the same code points (U+0921 U+094D U+0930 U+093E U+092B U+093C U+094D U+091F); the nukta is kept as the guide requires. U+092B+U+093C is the NFC form because U+095E is a composition exclusion. The loan is invariant, so the postposition needs no oblique ending. 'लौटाएँ' keeps the guide's polite -एँ imperative (हटाएँ x73, दिखाएँ x32). Still a return-to-composer, not a retry.",
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_hi": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+			"note": "committed blob at core HEAD dadf192382"
+		}
+	},
+	"limitations": "There is no rendered-fit, screenshot or pseudo-localization evidence: this role has no browser tool, and builds and tests were forbidden (disk ~1.6 GiB free). The translator session and model for the original values are still unrecorded (carried from round 1)."
+}
