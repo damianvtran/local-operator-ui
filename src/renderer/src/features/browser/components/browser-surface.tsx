@@ -752,8 +752,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * expiry-aware renderer count, the same number the badge shows, so the control
 	 * and its badge cannot disagree about "nothing is pending".
 	 *
-	 * Returns whether this request OPENED something, which the menu reads to decide
-	 * whether Radix may return focus to its trigger.
+	 * Returns whether the request left a PANEL that wants the keyboard (the dock),
+	 * which the page menu reads to decide whether Radix may return focus to its
+	 * trigger. The card and the dialog manage their own focus, so they return
+	 * false.
 	 */
 	const openApprovalsRoute = useCallback(
 		(source: "toolbar" | "menu"): boolean => {
@@ -772,10 +774,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					locale: cardLocale,
 					dir: resolveLanguage(cardLocale).dir,
 				});
-				return true;
+				return false;
 			}
 			setApprovalsDialogOpen(true);
-			return true;
+			// The page menu reads `true` as "a panel took focus, decline Radix's
+			// return to the trigger". A dialog is not that panel: it traps focus
+			// itself and `BaseDialog` hands it back to the opener on close, so the
+			// menu may restore its trigger first (which is where the user came from).
+			return false;
 		},
 		[
 			nativeApprovalsCard?.available,
