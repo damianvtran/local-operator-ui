@@ -1,9 +1,15 @@
 # Browser approvals card — S6b
 
-Status (2026-10-24): **S6b, interactive native child under the S6A opt-in.
-Round-2 remediation applied; the four-cell native probe passes apart from the
-measured I3 ring row. Not a shipped product surface until the independent
-rounds clear.**
+Status (2026-10-28): **S6d, default-on.** The card is the approvals surface of
+the product build; `LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE=1`
+(exactly `1`) is the documented kill switch and restores the DOM dock and band
+for that launch. Grants, revoke, revoke all, Forget this site and Clear browsing
+data live in the Approvals dialog (below), so enabling the card loses nothing.
+**BLOCKED, STATED NOT IMPLIED:** native composite/transparency of the card over
+a live sibling page, the 8 DIP ring's native hit routing, and VoiceOver across
+the card's second document are NOT measured. Enabling by default needs an
+attended check of those three or an explicit owner-named limitation in the
+release notes; this document claims no parity on them.
 
 The approvals card is one native `WebContentsView` over the live page, sized to
 the card and anchored to the content rect's **inline end**: bottom-right in LTR,
@@ -97,6 +103,49 @@ dedicated non-persistent partition, and the pinned deny-all CSP.
   32 KiB total, no HTML) before serialisation.
 - More options and Review all are local view changes; they never cross.
 
+## Where the grants went (S6d)
+
+The card answers what is pending and nothing else; it keeps exactly two
+sender-pinned channels, `dismiss` and `decide`, and `decide`'s enum is not
+widened. Revoke, revoke all, Forget this site and Clear browsing data are
+destructive grant/data actions, so they are NOT a card verb: they live in the
+**Approvals dialog** (`browser-approvals-dialog.tsx`, a `BaseDialog` over the
+shared standing sections in `browser-approvals-sections.tsx`, which the dock
+also renders, so there is one implementation of each affordance and one set of
+copy keys).
+
+- Reached from the toolbar Approvals control when nothing is pending (with a
+  request pending the control toggles the card), and from the page menu's
+  Approvals item at any time.
+- A `BaseDialog` registers with the browser view's overlay policy, so main hides
+  the page view and the card while it is open and restores both on close. No
+  page rectangle moves and no native surface is added. A pending request cannot
+  be decided while the dialog is up; its count is stated in the dialog's summary.
+- The toolbar badge is the renderer's expiry-aware `queue.count`: main fires
+  nothing at expiry, so the count falls on the renderer's own clock.
+- With the card available the dock and the consent band are **not mounted**
+  (no `[data-dock-layout]`, no dock title, no band), proved by absence in
+  `scripts/browser-approvals-route.test.mjs`; they mount only when the host
+  reports `approvalsCard.available: false`.
+
+## Re-measure after the error line (D1)
+
+The stale/unavailable inline error adds a line (about 14.6 DIP) to the sticky
+footer. The controller now re-applies the model and re-reads the painted height
+in the same `setTimeout(0)` task for those two pushes too (`dropAction`,
+`showActionError`), then resizes the child. Measured on Electron 44.3.0: a
+height `setBounds` did not reach the child's `innerHeight` in the hidden-window
+rig, so the viewport stayed shorter than the view and the card's own
+`max-height` still clamped it. A growth whose viewport did not follow is
+therefore read back and the child is rebuilt at the new bounds (the width-change
+boundary). Probe rows `D1-*` assert every decision button lies inside the card
+and above the footer in the stale, unavailable and normal states at 264 and 900,
+both themes.
+
+A child that dies after construction (`did-fail-load`, `render-process-gone`)
+latches the card off and pushes the projection, so the renderer mounts the dock
+fallback instead of waiting on a dead surface.
+
 ## Interaction, focus, accessibility
 
 - Shield click: explicit open. `window-raise.ts`'s `focusBrowserChordTarget`
@@ -163,7 +212,7 @@ override, and reaps its process group; all four boots exit 0 with no leftover
 Electron. The earlier "environment BLOCKED" claim was wrong: a sized child
 loads once the probe follows that recipe.
 
-**BLOCKED and not claimed:** native composite/transparency over a sibling page
+**BLOCKED and not claimed (unchanged by S6d):** native composite/transparency over a sibling page
 (no Screen Recording, hidden window), the 8 DIP ring's native hit routing (no
 sibling-view hit testing in a hidden window), and VoiceOver across the second
 document (manual release gate).
