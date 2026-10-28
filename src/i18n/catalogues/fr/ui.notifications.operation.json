@@ -1,0 +1,3 @@
+{
+	"ui.notifications.operation.progress": "Modifications : {changed, number} · Éléments écartés : {skipped, number} · Sans confirmation : {pending, number}"
+}

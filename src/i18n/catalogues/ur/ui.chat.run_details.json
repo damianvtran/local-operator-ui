@@ -80,5 +80,7 @@
 	"ui.chat.run_details.chip.subagents_failed": "{count, plural, one {# ذیلی ایجنٹ ناکام ہوا} other {# ذیلی ایجنٹ ناکام ہوئے}}",
 	"ui.chat.run_details.chip.attention": "{count, plural, one {# کو توجہ درکار ہے} other {# کو توجہ درکار ہے}}",
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, one {# MCP سرور کو توجہ درکار ہے} other {# MCP سرورز کو توجہ درکار ہے}}",
-	"ui.chat.run_details.mcp.cold_label": "کوئی سیشن نہیں چل رہا — سرور کی حالت جانچی نہیں جا سکتی۔"
+	"ui.chat.run_details.mcp.cold_label": "کوئی سیشن نہیں چل رہا — سرور کی حالت جانچی نہیں جا سکتی۔",
+	"ui.chat.run_details.nothing_in_flight": "کچھ جاری نہیں۔",
+	"ui.chat.run_details.nothing_to_show_yet": "ابھی دکھانے کو کچھ نہیں۔"
 }

@@ -14,5 +14,21 @@
 	"ui.agentMessages.dialog.consent_changed": "请阅读最新的同意声明，然后再次点击“启用”。",
 	"ui.agentMessages.dialog.local_failure": "同意已保存，但本机设置尚未完成。请打开“设置”→“智能体消息”完成设置。",
 	"ui.agentMessages.dialog.validation_detail": "{field}：{rule}",
-	"ui.agentMessages.dialog.validation_failure": "此设置请求未被接受。请更新Local Operator后重试。"
+	"ui.agentMessages.dialog.validation_failure": "此设置请求未被接受。请更新Local Operator后重试。",
+	"ui.agentMessages.banner.title": "Team Bridge已为你开启",
+	"ui.agentMessages.banner.body": "你的智能体可以与组织内其他成员的智能体互发消息。开启时未发送任何内容。",
+	"ui.agentMessages.banner.turn_off": "关闭",
+	"ui.agentMessages.banner.turning_off": "正在关闭……",
+	"ui.agentMessages.banner.read": "了解这意味着什么",
+	"ui.agentMessages.banner.hide": "收起详情",
+	"ui.agentMessages.banner.dismiss": "忽略",
+	"ui.agentMessages.banner.consent_unavailable": "完整文本暂时不可用。稍后重试。",
+	"ui.agentMessages.banner.turn_off_failed": "无法关闭Team Bridge，未做任何更改。重试。",
+	"ui.agentMessages.banner.dismiss_failed": "无法忽略此通知。重试。",
+	"ui.agentMessages.banner.turn_off_hint": "关闭后，Team Bridge对话也会隐藏，直到重新开启。",
+	"ui.agentMessages.page_off.title": "此账户已关闭Team Bridge",
+	"ui.agentMessages.page_off.body": "智能体不会发送或接收消息，对话也会保持隐藏，直到重新开启。开启时会先征求你的同意。",
+	"ui.agentMessages.page_off.local_title": "此设备已关闭Team Bridge",
+	"ui.agentMessages.page_off.local_body": "账户仍保持注册状态，但此设备不会发送或接收消息，对话在此设备上也会保持隐藏，直到重新开启。",
+	"ui.agentMessages.page_off.action": "在设置中开启"
 }

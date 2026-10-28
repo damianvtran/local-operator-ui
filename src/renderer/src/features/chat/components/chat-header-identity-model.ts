@@ -11,6 +11,7 @@
  * without a DOM, and the component only maps their answers onto pixels.
  */
 
+import { t } from "@shared/i18n";
 import type { CanonicalEffectiveIdentity } from "../../../../../shared/desktop-session-contract";
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
 import {
@@ -242,9 +243,20 @@ export type HeaderIdentityView = {
  * rendered where nothing named the identity from either source; a state that
  * could not be asked is held or falls back to the description chip instead
  * (`headerIdentityControlsShown`).
+ *
+ * WHY THESE ARE FUNCTIONS. The chip's label is read at render time; the
+ * interface language can change under a live window (the picker writes the
+ * backend setting and the renderer re-renders, nothing reloads), so a string
+ * built at module load would keep the language the module was first imported
+ * under.
  */
-export const NO_TEAM_LABEL = "No team";
-export const NO_AGENT_LABEL = "No agent";
+export function noTeamLabel(): string {
+	return t("ui.chat.header_identity.no_team");
+}
+
+export function noAgentLabel(): string {
+	return t("ui.chat.header_identity.no_agent");
+}
 
 /**
  * The runtime's own default for a team that names no manager (`Team.manager` in
@@ -331,7 +343,7 @@ export function resolveHeaderIdentity(
 		: undefined;
 	const teamLabel = teamValue
 		? teamDisplayName(teamRow ?? { name: teamValue })
-		: NO_TEAM_LABEL;
+		: noTeamLabel();
 	/*
 	 * ONE STATEMENT OF WHO IS SPEAKING. Under the strict rule the agent slot
 	 * is the team's, so the label is the speaker and NOT `active_agent`: the
@@ -386,7 +398,7 @@ export function resolveHeaderIdentity(
 		teamValue,
 		teamLabel,
 		agentValue,
-		agentLabel: agentValue ?? NO_AGENT_LABEL,
+		agentLabel: agentValue ?? noAgentLabel(),
 		/*
 		 * The manager value the CONSTRAINT reads (see the field's own docblock for
 		 * why it is quieter than the label fallback above: a row that is not there

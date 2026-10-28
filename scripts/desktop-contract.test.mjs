@@ -3625,6 +3625,72 @@ test("team_bridge join adds the caller and notify rides the read route", () => {
 	);
 });
 
+test("team_bridge archive: the list takes a closed status and delete is a DELETE on the conversation", () => {
+	/*
+	 * Archive -> view archived -> permanent delete (agent-server radient-ml/agent-server#219,
+	 * local-operator #3005). The list's `status` is sent ONLY when asked, so the
+	 * default request is byte-identical to the one an older server already
+	 * answers. Delete is a DELETE on the conversation itself, not an action
+	 * on the lifecycle POST: a method that cannot be reached by mistyping an
+	 * `action`, and one the route's own owner-receipt guard covers.
+	 */
+	const live = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.list",
+			tenant_id: "tnt_2",
+		}),
+	);
+	assert.equal(
+		live.path,
+		"/v1/desktop/team-bridge/conversations?tenant_id=tnt_2",
+	);
+
+	const archived = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.list",
+			scope: "account",
+			status: "archived",
+		}),
+	);
+	assert.equal(archived.method, "GET");
+	assert.equal(
+		archived.path,
+		"/v1/desktop/team-bridge/conversations?scope=account&status=archived",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.list",
+			status: "deleted",
+		}).success,
+		false,
+		"status is a closed set at the op boundary",
+	);
+
+	const del = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.delete",
+			conversation_id: "bcv_abc12345",
+			tenant_id: "tnt_2",
+			expected_account_id: "acc_a",
+		}),
+	);
+	assert.equal(del.method, "DELETE");
+	assert.equal(
+		del.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345?tenant_id=tnt_2&expected_account_id=acc_a",
+	);
+	assert.equal(del.body, undefined, "a delete carries no body");
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.lifecycle",
+			conversation_id: "bcv_abc12345",
+			action: "delete",
+		}).success,
+		false,
+		"delete is not a lifecycle action",
+	);
+});
+
 test("team_bridge threads: replies maps to the replies route and send carries thread_root_id", () => {
 	/*
 	 * Threads (agent-server #164, local-operator #2757). The replies op reads

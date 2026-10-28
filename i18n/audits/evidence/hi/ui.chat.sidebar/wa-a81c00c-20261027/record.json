@@ -1,0 +1,188 @@
+{
+ "audit_id": "wa-a81c00c-20261027",
+ "round": 1,
+ "date": "2026-10-27",
+ "audit_date": "2026-10-27",
+ "locale": "hi",
+ "namespace": "ui.chat.sidebar",
+ "batch": "wave-a",
+ "source_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "parent_commit": "6216167f44",
+ "candidate_state": "COMMITTED at a81c00cdda (git archive export, hashes re-derived and matched before reading)",
+ "key_count": 11,
+ "keys_read": [
+  "ui.chat.sidebar.entity.collapse_chats",
+  "ui.chat.sidebar.entity.expand_chats",
+  "ui.chat.sidebar.entity.manage",
+  "ui.chat.sidebar.entity.pin",
+  "ui.chat.sidebar.entity.unpin",
+  "ui.chat.sidebar.pins.pin_label",
+  "ui.chat.sidebar.pins.unpin_label",
+  "ui.chat.sidebar.row_menu.archive",
+  "ui.chat.sidebar.row_menu.pin",
+  "ui.chat.sidebar.row_menu.unarchive",
+  "ui.chat.sidebar.row_menu.unpin"
+ ],
+ "keys_substantive": [
+  "ui.chat.sidebar.entity.collapse_chats",
+  "ui.chat.sidebar.entity.expand_chats",
+  "ui.chat.sidebar.entity.manage",
+  "ui.chat.sidebar.entity.pin",
+  "ui.chat.sidebar.entity.unpin",
+  "ui.chat.sidebar.pins.pin_label",
+  "ui.chat.sidebar.pins.unpin_label",
+  "ui.chat.sidebar.row_menu.archive",
+  "ui.chat.sidebar.row_menu.pin",
+  "ui.chat.sidebar.row_menu.unarchive",
+  "ui.chat.sidebar.row_menu.unpin"
+ ],
+ "scope": "Independent hi audit of the 11 wave-A values in ui.chat.sidebar at a81c00cdda, read against the English source, its context sidecar and its src/renderer call sites; second reading pass by the same auditor. Mechanical checks cover every key of the namespace file (60 en / 60 hi keys).",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "harness": "Local Operator (lop)",
+  "team": "lopdev",
+  "session": "3acece16f468",
+  "instance": "wa-hi-3acece16f468",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "Harness session header for this run reads 'Model: radient/auto'. That is a routing alias: the resolved upstream vendor model behind it is not exposed to the agent and is not inferred here. No provider error, quota event or mid-run model switch was observed in this session.",
+  "fallback": {
+   "used": false,
+   "reason": "no provider error, quota event or mid-run model switch was observed",
+   "scope": "whole audit"
+  },
+  "independent_from_translator_session": true,
+  "independence_basis": "This session translated none of the reviewed bytes and wrote no catalogue, context, generated key, ledger row or code file: it read the git-archive export at a81c00cdda and wrote only this receipt and its evidence bundle. The translator worked in a different agent instance on branch i18n-wave-a. No translation API, SDK or MT service was used to compare or back-translate; ICU parsing and rendering ran the repository's own intl-messageformat."
+ },
+ "status": "passed",
+ "result": "clean",
+ "verdict": "clean",
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": []
+ },
+ "findings": [
+  {
+   "id": "HI-WA-6",
+   "severity": "INFO",
+   "key": "ui.chat.sidebar.row_menu.unarchive",
+   "current": "बातचीत बहाल करें",
+   "problem": "English distinguishes 'Unarchive conversation' (row menu) from 'Restore conversation' (header); Hindi renders both as «बातचीत बहाल करें», byte-identical to ui.chat.header.restore_conversation. Both surfaces perform the same act (clear the archive mark), बहाल is the catalogue's established restore word (ui.chat.header.archived_hint), and a coinage like «अनसंग्रहित करें» would be worse. fr/es do keep the distinction (Désarchiver/Desarchivar); if the programme ever wants it in hi, «बातचीत संग्रह से निकालें» is the honest native phrasing.",
+   "note": "Recorded as a considered collapse of a source distinction, not a defect."
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+   "sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+   "sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+   "sha256": "5aed52ab4d42e21d5ed21114900313e49e4a459bd94e4bcbff494a25080b5c81"
+  }
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+   "sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+   "sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+   "sha256": "5aed52ab4d42e21d5ed21114900313e49e4a459bd94e4bcbff494a25080b5c81"
+  }
+ },
+ "validation": {
+  "key_parity": "60/60",
+  "key_sets_equal": true,
+  "icu_parse": "ok (all audited keys, both sides)",
+  "placeholders_match_en": true,
+  "plural_or_select_in_batch": 0,
+  "plural_arms_hi_cldr": "one/other — all five plural messages in the namespace files carry both",
+  "render_variants": "168 across the batch; no throw, no placeholder leakage",
+  "nfc": true,
+  "bidi_controls": 0,
+  "ascii_quotes": 0,
+  "rendered_fit": "Not executed; no rendered-frame or geometry claim. No maxCells hint on any of the 38 keys."
+ },
+ "receipt": "i18n/receipts/wa-a81c00c-20261027-hi.json",
+ "receipt_sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de",
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/audit.log",
+   "role": "actual command output for every validator, plural and ICU/render run",
+   "sha256": "92a633ba1a21fa5d9e0dff3c66b91fd628e1dd12f168a1f530013f31634d89d6"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/render-table.txt",
+   "role": "rendered output: base table, template width, 168 adversarial/realistic name variants",
+   "sha256": "1e036137f4552940acaa134ba11f2e4f9a473dc600d215c2e7499a24208f1a06"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/icu-digest.json",
+   "role": "machine digest of the 38 per-key ICU/render checks",
+   "sha256": "7dc757a4e61133301734ff3854bf60640f7d8aa0104b8a55ecc8fefae6d2b4f2"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/export-integrity.log",
+   "role": "git show a81c00cdda:<path> vs export byte equality for all 12 inputs",
+   "sha256": "ba15d3cddc8b2177cc1f4158f103e0b4678655e5328789a02e516d505555c1d3"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/tools/icu-audit.mjs",
+   "role": "read-only harness that produced icu-digest.json and the render table",
+   "sha256": "90daa3a44aaaee17910c6f50575434b4aa7779698a27c7a076481e73106a45b6"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/tools/plural-arms.mjs",
+   "role": "plural-arm/CLDR check over the four namespace files",
+   "sha256": "98a2defa5ea84dad76563cbdbb3e21ce5276febe3732cef551154e86f6925c11"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/tools/derive-check.mjs",
+   "role": "the deriveReceiptAudit() invocation whose output is derive-check.json",
+   "sha256": "806e2b850b0b83a420a523dee88011ed22b0f84cd9a70e69cb3cdb9f9965161a"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/derive-check.json",
+   "role": "derived audit per namespace by the repo's own deriveReceiptAudit()",
+   "sha256": "cf7a2f299760ea8cffeec00c4bae1cd1f644bd0d65a80e693aec7cbe9580bab5"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/receipt.json",
+   "role": "byte-identical copy of the served receipt",
+   "sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat.sidebar/wa-a81c00c-20261027/record.json",
+   "role": "this record"
+  },
+  {
+   "path": "i18n/receipts/wa-a81c00c-20261027-hi.json",
+   "role": "the namespace-scoped receipt this record is derived from",
+   "sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de"
+  }
+ ],
+ "independence": "This session translated none of the reviewed bytes and wrote no catalogue, context, generated key, ledger row or code file: it read the git-archive export at a81c00cdda and wrote only this receipt and its evidence bundle. The translator worked in a different agent instance on branch i18n-wave-a. No translation API, SDK or MT service was used to compare or back-translate; ICU parsing and rendering ran the repository's own intl-messageformat.",
+ "limitations": [
+  "Catalogue-only: no rendered frame, browser run, font-fallback check or geometry measurement. The width section in render-table.txt is a cluster-count estimate, not a fit claim, and no key in this batch carries a maxCells/maxChars hint (all 38 sidecars checked).",
+  "No native-speaker sign-off beyond this auditor's own reading; the second pass was the same reader re-reading, not an independent second auditor as high-visibility groups receive.",
+  "No ledger row, ledger-check pass, generated file, catalogue, context or code edit was made. ledger-check's failure at this head is the expected pre-binding state described in method item 3.",
+  "The second `{clock}` meridiems, the English backend sentences passed into {reason}, and the pre-existing कम्पोज़र/कंपोज़र split are outside the 38 values and are recorded as INFO, not counted."
+ ],
+ "audit_notes_not_execution_log": "Command output is in the shared audit.log / render-table.txt / icu-digest.json listed under artifacts; this record states what was checked, not invented terminal text."
+}

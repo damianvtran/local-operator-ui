@@ -8,6 +8,15 @@ import { CodeReviewPane } from "@features/code-review/components/code-review-pan
 import { useCodeRequests } from "@features/code-review/hooks/use-code-requests";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
+import {
+	DrawerBackToTop,
+	DrawerTabs,
+	DrawerUpdates,
+	defaultDrawerTab,
+	useSessionUnreadUpdates,
+} from "@features/notifications/components/drawer-updates";
+import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
+import { useNotificationsEnabled } from "@features/notifications/notifications-api";
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
@@ -1686,9 +1695,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * Both scopes count ANSWERABLE asks, so a lapsed one pulls no attention (D10, D11):
 		 * the session read falls back to the tally only when its list is incomplete.
 		 */
+		/*
+		 * THE DOOR COUNTS LIVE ASKS PLUS THIS CONVERSATION'S UNREAD UPDATES when the
+		 * backend serves the reel (design § 18, contract § 6.5): one door answers
+		 * "what does this conversation need from me?". Without the capability the
+		 * second term is zero and the count is exactly today's.
+		 */
+		const notificationsEnabled = useNotificationsEnabled();
+		const sessionUnreadUpdates = useSessionUnreadUpdates(
+			sessionId ?? null,
+			notificationsEnabled,
+		);
+		const drawerTab = useNotificationDrawerTab((state) => state.tab);
+		const setDrawerTab = useNotificationDrawerTab((state) => state.setTab);
 		const headerAsksCount = headerAsksSession
 			? askAttentionCount(sessionAsksView)
 			: fleetAsks.outstanding;
+		const headerAsksUpdates = headerAsksSession ? sessionUnreadUpdates : 0;
 		const headerAsksOpen =
 			isAskDrawerOpen && askDrawerScope === headerAsksScope;
 		/*
@@ -3329,7 +3352,51 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * which is why this block is gated on it above.
 								 */
 								scope="session"
-								onClose={handleCloseAskDrawer}
+								tabs={
+									notificationsEnabled && sessionId
+										? (() => {
+												/*
+												 * Tab state is per drawer open (design § 18): `null`
+												 * resolves to the default every time it reopens.
+												 */
+												const tab =
+													drawerTab ??
+													defaultDrawerTab(
+														"session",
+														askAttentionCount(sessionAsksView),
+													);
+												return {
+													strip: (
+														<DrawerTabs
+															tab={tab}
+															asks={askAttentionCount(sessionAsksView)}
+															unreadUpdates={sessionUnreadUpdates}
+															sessionless={false}
+															onTab={(next) => {
+																if (next === "all") {
+																	/* The fleet scope IS this tab: the
+																	   shell's mount takes the slot. */
+																	setDrawerTab(null);
+																	setAskDrawerOpen(true, "fleet");
+																	return;
+																}
+																setDrawerTab(next);
+															}}
+														/>
+													),
+													body:
+														tab === "updates" ? (
+															<DrawerUpdates sessionId={sessionId} />
+														) : null,
+													action: <DrawerBackToTop tab={tab} />,
+												};
+											})()
+										: undefined
+								}
+								onClose={(options) => {
+									setDrawerTab(null);
+									handleCloseAskDrawer(options);
+								}}
 								onAnswer={canonical?.onAnswerAsk}
 								onDecline={canonical?.onDeclineAsk}
 								onRevise={canonical?.onReviseAsk}
@@ -3615,6 +3682,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						   expression per fact, so the rail item and the menu row cannot disagree
 						   about which queue a press opens or how many are outstanding. */
 						askCount={headerAsksCount}
+						askUpdates={headerAsksUpdates}
 						askScope={headerAsksScope}
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}

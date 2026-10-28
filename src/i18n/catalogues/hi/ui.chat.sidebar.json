@@ -47,5 +47,16 @@
 	"ui.chat.sidebar.search.unavailable": "बातचीत खोज उपलब्ध नहीं है, इसलिए ये परिणाम नामों के मिलान हैं।",
 	"ui.chat.sidebar.section.current_chat": "मौजूदा चैट",
 	"ui.chat.sidebar.teams.create": "टीम बनाएँ",
-	"ui.chat.sidebar.teams.loading": "टीमें लोड हो रही हैं…"
+	"ui.chat.sidebar.teams.loading": "टीमें लोड हो रही हैं…",
+	"ui.chat.sidebar.entity.collapse_chats": "{name} की चैट समेटें",
+	"ui.chat.sidebar.entity.expand_chats": "{name} की चैट फैलाएँ",
+	"ui.chat.sidebar.entity.manage": "{name} प्रबंधित करें",
+	"ui.chat.sidebar.entity.pin": "“{name}” पिन करें",
+	"ui.chat.sidebar.entity.unpin": "“{name}” अनपिन करें",
+	"ui.chat.sidebar.row_menu.archive": "बातचीत संग्रहित करें",
+	"ui.chat.sidebar.row_menu.pin": "बातचीत पिन करें",
+	"ui.chat.sidebar.row_menu.unarchive": "बातचीत बहाल करें",
+	"ui.chat.sidebar.row_menu.unpin": "बातचीत अनपिन करें",
+	"ui.chat.sidebar.pins.pin_label": "“{title}” पिन करें",
+	"ui.chat.sidebar.pins.unpin_label": "“{title}” अनपिन करें"
 }

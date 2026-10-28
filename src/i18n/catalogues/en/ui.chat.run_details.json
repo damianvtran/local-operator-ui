@@ -80,5 +80,7 @@
 	"ui.chat.run_details.chip.subagents_failed": "{count, plural, one {# subagent failed} other {# subagents failed}}",
 	"ui.chat.run_details.chip.attention": "{count, plural, one {# needs attention} other {# need attention}}",
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, one {# MCP server needs attention} other {# MCP servers need attention}}",
-	"ui.chat.run_details.mcp.cold_label": "No session is running — server status cannot be checked."
+	"ui.chat.run_details.mcp.cold_label": "No session is running — server status cannot be checked.",
+	"ui.chat.run_details.nothing_in_flight": "Nothing in flight.",
+	"ui.chat.run_details.nothing_to_show_yet": "Nothing to show yet."
 }

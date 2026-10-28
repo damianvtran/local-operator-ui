@@ -1,0 +1,6 @@
+{
+	"ui.chat.status.credential_refused": "The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.",
+	"ui.chat.status.degraded": "The server is answering slowly. Your messages are queued.",
+	"ui.chat.status.internet_offline": "This machine is offline. Sending will wait.",
+	"ui.chat.status.unreachable": "Can't reach the Local Operator server. Sending will wait."
+}

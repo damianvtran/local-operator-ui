@@ -19,7 +19,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/canonical/checkpoint-model";',
+			'export * from "./src/renderer/src/features/chat/canonical/checkpoint-model"; export { setLocale } from "./src/i18n";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -151,6 +151,43 @@ test("the accessible name is the two frozen forms, with a real clock", () => {
 		model.checkpointAriaLabel(checkpoint({ ts: 0 }), 4),
 		"Jump to your message in turn 1 of 4",
 	);
+});
+
+test("the clock is the locale's, not a hand-built English pattern (QA round 1, Q1)", () => {
+	/*
+	 * 2026-09-28 14:32 LOCAL once more. The defect: the label was assembled as
+	 * `h:mm AM/PM` by hand, so every non-English session heard an English
+	 * meridiem in an otherwise translated accessible name. The discriminating
+	 * property is the READER's clock, not one string: an English locale keeps the
+	 * 12-hour reading it had, a 24-hour locale reads it its own way.
+	 */
+	const ts = new Date(2026, 8, 28, 14, 32).getTime() / 1000;
+	try {
+		model.setLocale("en");
+		assert.equal(model.checkpointClockLabel(ts), "2:32 PM");
+		model.setLocale("fr");
+		const french = model.checkpointClockLabel(ts);
+		assert.equal(
+			french,
+			"14:32",
+			"a 24-hour locale tells the time its own way",
+		);
+		assert.ok(
+			!/\b(AM|PM)\b/.test(french),
+			"no English meridiem survives into a non-English clock",
+		);
+		const label = model.checkpointAriaLabel(checkpoint({ ts }), 2);
+		assert.ok(
+			label.includes("14:32"),
+			"and the tick's accessible name carries that same clock",
+		);
+		assert.ok(
+			!/\bPM\b/.test(label),
+			"the sentence as a whole carries no English meridiem",
+		);
+	} finally {
+		model.setLocale("en");
+	}
 });
 
 test("the card's lead label is the turn with a dot-name (review round 2)", () => {

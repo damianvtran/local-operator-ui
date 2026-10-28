@@ -1,0 +1,177 @@
+{
+ "audit_id": "wave-a-20261027-ru",
+ "round": 1,
+ "date": "2026-10-27",
+ "audit_date": "2026-10-27",
+ "locale": "ru",
+ "namespace": "ui.chat",
+ "source_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "parent_commit": "6216167f4464bd607a6831e9e636820c0d463816",
+ "source_branch": "i18n-wave-a",
+ "scope": "The 18 ui.chat keys added by wave A: six checkpoint labels (generating/turn/jump_agent/jump_agent_unnamed/jump_user/jump_user_no_clock), ten header-identity labels and sentences (agent/team assign, switch and closed states, the assign tooltips, the no-agent/no-team chip labels) and two region landmark names (composer, conversation). Read against the sidecars and the composing call sites checkpoint-model.ts and chat-header-identity.tsx.",
+ "key_count": 18,
+ "wave_key_count": 38,
+ "key_count_in_namespace": 18,
+ "keys_audited": 18,
+ "keys": [
+  "ui.chat.checkpoint.generating_name",
+  "ui.chat.checkpoint.jump_agent",
+  "ui.chat.checkpoint.jump_agent_unnamed",
+  "ui.chat.checkpoint.jump_user",
+  "ui.chat.checkpoint.jump_user_no_clock",
+  "ui.chat.checkpoint.turn",
+  "ui.chat.header_identity.aria_agent_assign",
+  "ui.chat.header_identity.aria_agent_closed",
+  "ui.chat.header_identity.aria_agent_switch",
+  "ui.chat.header_identity.aria_team_assign",
+  "ui.chat.header_identity.aria_team_closed",
+  "ui.chat.header_identity.aria_team_switch",
+  "ui.chat.header_identity.assign_agent",
+  "ui.chat.header_identity.assign_team",
+  "ui.chat.header_identity.no_agent",
+  "ui.chat.header_identity.no_team",
+  "ui.chat.region.composer",
+  "ui.chat.region.conversation"
+ ],
+ "status": "passed",
+ "result": "clean",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "981a9c952f1a",
+  "parent_session": "3ef6295a5545",
+  "team": "lopdev",
+  "model": "radient/auto",
+  "actual_model_source": "harness system context ('Model: radient/auto') and transcript selected_model (selector radient/auto, effort auto, boot radient/auto); the router's upstream model is not exposed to this session",
+  "independent_from_translator_session": true
+ },
+ "translator": {
+  "note": "Not this session. The ru catalogue bytes were written by the translators' wave (a different agent instance); this auditor produced none of them."
+ },
+ "independence": "Independent reading of the committed bytes in a read-only git-archive export: this session did not translate, edit, commit or ledger this file, and wrote only its own receipt and evidence records in the export. No MT/API translator was used.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.json",
+   "sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.context.json",
+   "sha256": "1df3ad0e7054c77b2cc59971eae3a9387059be42839a271d80f70e754e542426"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ru/ui.chat.json",
+   "sha256": "83f3d2beba40e431ca242ac4ef5bcdd12db2439d892ed3c34b589d6a4d9f4545"
+  }
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "ru-wa-i1"
+  ],
+  "note": "INFO is an observation, not a defect; 0 blocker, 0 major, 0 minor, 0 nit."
+ },
+ "current_audit_report": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "ru-wa-i1"
+  ],
+  "note": "Alias of current_report_verdict for hosts that use this field name."
+ },
+ "findings": [
+  {
+   "id": "ru-wa-i1",
+   "severity": "INFO",
+   "file": "src/i18n/catalogues/ru/ui.chat.json",
+   "key": "ui.chat.checkpoint.jump_user",
+   "current": "Перейти к вашему сообщению — ход {turn, number} из {total, number}, {clock}",
+   "problem": "The {clock} argument reaches the sentence as a 12-hour English '3:42 PM' string from checkpointClockLabel(); the ru guide's 24-hour convention is not met in the rendered label.",
+   "why_not_counted": "Pre-existing call-site formatting; the translated value itself is correct.",
+   "suggested": "No catalogue change. Format the rail clock through the locale-aware Intl.DateTimeFormat path in checkpoint-model.ts."
+  }
+ ],
+ "findings_by_severity": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0,
+  "info": 1
+ },
+ "validation": {
+  "generate_check": "pass — 'byte-identical to a fresh generation', exit 0",
+  "locale_parity": "pass — 44/44 tests; the six [ru] assertions all pass",
+  "context_parity": "pass — every English key covered (131 allowed gaps in 4 namespaces)",
+  "check_strings": "pass — 1376 files, 79 literals at or below baseline",
+  "call_site_copy_suite": "pass — 11/11 (chat header, regions, action rows, sidebar, rail)",
+  "ru_activation": "pass — 3/3",
+  "icu_parse_errors": [],
+  "placeholders_match_en": true,
+  "placeholder_order_match_en": true,
+  "plural_or_select_in_scope": 0,
+  "cldr_categories": "n/a in this group: none of the 38 keys carries plural/select; file-wide plural arms remain covered by locale-parity.test.mjs",
+  "nfc": true,
+  "bidi_controls": 0,
+  "ascii_quotes": 0,
+  "ascii_hyphen_dash": 0,
+  "ellipsis": "U+2026 in ui.chat.checkpoint.generating_name",
+  "quote_pairs": "«» balanced in every value that quotes",
+  "renders": "38/38 formatted by intl-messageformat at locale ru with realistic and adversarial names (see renders.md); no format error",
+  "rendered_fit": "Not executed; no rendered-frame, font or width claim in this record."
+ },
+ "artifacts": [
+  {
+   "kind": "audit.log",
+   "path": "i18n/audits/evidence/ru/ui.chat/wave-a-20261027-ru/audit.log",
+   "sha256": "1f84160471480c15a6b8bc63e68de796a5ecd42c16d54db3d497c5b1a5b3ca40"
+  },
+  {
+   "kind": "icu-check.json",
+   "path": "i18n/audits/evidence/ru/ui.chat/wave-a-20261027-ru/icu-check.json",
+   "sha256": "4bba8d2a0f7ee4805a7683bea83e9aa32f0432a611bc3536ab21eadae8aabb62"
+  },
+  {
+   "kind": "renders.md",
+   "path": "i18n/audits/evidence/ru/ui.chat/wave-a-20261027-ru/renders.md",
+   "sha256": "760f9a0bffb691e7014e3c62b11b53b70cf9ba287d415c0005912112d3fb5b83"
+  },
+  {
+   "kind": "receipt.json",
+   "path": "i18n/audits/evidence/ru/ui.chat/wave-a-20261027-ru/receipt.json",
+   "sha256": "7077e5832ba7b16e587822cd2f29544c8112c7d939c195422d4fd1378b7034ff"
+  }
+ ],
+ "receipt": {
+  "path": "i18n/receipts/wave-a-20261027-ru.json",
+  "sha256": "7077e5832ba7b16e587822cd2f29544c8112c7d939c195422d4fd1378b7034ff",
+  "instance": "wave-a-20261027-ru"
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+  }
+ },
+ "second_independent_pass": {
+  "performed": true,
+  "agent": "scout",
+  "job": "4ac1c20aa573",
+  "model": "anthropic/claude-opus-5-5",
+  "result": "no findings; accepted the five recorded judgement calls",
+  "note": "Independent reading with the same inputs; not a second translation."
+ },
+ "audit_notes_not_execution_log": "This record is a verdict/provenance note, not a command log. The commands and their literal output are in audit.log beside it, and the parser/render facts are in icu-check.json and renders.md; none of those was edited after the run.",
+ "limitations": [
+  "Catalogue and composition audit only: no build, no Electron launch, no rendered frame, no screen-reader session and no width measurement. 'Fits' is a length/sidecar judgement, not a measurement.",
+  "The closed-seat sentences 'Агент: {label}. {reason}' and 'Команда: {label}. {reason}' pass the runtime's English closure sentence through unchanged, as the sidecars require. The mixed language is a source constraint, not a translation defect.",
+  "The ui.chat INFO observation (English AM/PM inside {clock}) is a pre-existing call-site formatting gap affecting every locale that shows this label; the catalogue cannot fix it.",
+  "The second independent pass read the same committed bytes with the same en/context inputs; it is an independent reading, not a second produced translation."
+ ]
+}

@@ -12,5 +12,16 @@
 	"ui.chat.device.sentence.moving": "Перемещение этого разговора на {name}.",
 	"ui.chat.device.sentence.remote": "Этот разговор выполняется на {name}. Нажмите, чтобы вернуть его сюда или переместить дальше.",
 	"ui.chat.device.sentence.remote_did_not_answer": "Этот разговор выполняется на {name}: последний запрос чтения остался без ответа.",
-	"ui.chat.device.sentence.remote_did_not_answer_reason": "Этот разговор выполняется на {name}: последний запрос чтения остался без ответа ({reason})."
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "Этот разговор выполняется на {name}: последний запрос чтения остался без ответа ({reason}).",
+	"ui.chat.device.fact.this_device": "это устройство",
+	"ui.chat.device.footer.move_deletes_copy": "Копия на этом устройстве удаляется, когда перемещение завершится.",
+	"ui.chat.device.label.this_device": "Это устройство",
+	"ui.chat.device.notice.move_hold_detail": "перемещение · разговор продолжится там; отсюда это не остановить",
+	"ui.chat.device.picker.heading.move": "Переместить этот разговор на",
+	"ui.chat.device.picker.heading.start": "Начать разговор на",
+	"ui.chat.device.row.conversations": "{count, plural, one {{count, number, ::group-off} разговор} few {{count, number, ::group-off} разговора} many {{count, number, ::group-off} разговоров} other {{count, number, ::group-off} разговора}}",
+	"ui.chat.device.row.not_here_why": "разговора здесь нет — перемещать нечего; сначала верните его сюда",
+	"ui.chat.device.sentence.mesh_read_failure": "Список устройств прочитать не удалось, поэтому показано то, что было в последнем ответе.",
+	"ui.chat.device.sentence.move_in_flight": "Этот разговор перемещается на {name}. Он продолжится там; отправленное отсюда не будет доставлено.",
+	"ui.chat.device.sentence.pairing_guidance": "Это устройство не входит ни в одну сеть. Создайте сеть командой `lop network init` или присоединитесь к ней командой `lop network join '<token>'`."
 }

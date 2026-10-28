@@ -1,0 +1,198 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (new-key delta, PR #1442 round 3 copy)",
+	"audit_id": "teambridge-pr1442-audit-a6cc260da02b",
+	"date": "2026-10-27",
+	"instance": "a6cc260da02b-hi",
+	"instance_note": "Auditor session a6cc260da02b with a per-locale suffix (precedent: e3a57e993d00-<locale>, 061da45dd19b-<locale>). Distinct from dedc59c2f981, the earlier #1442 audit whose receipt collides add/add with #1441's; these ids are unique across main, #1441 and #1444.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header: 'Model: anthropic/claude-opus-5-5'. The translator recorded the same model; independence is by agent role and session, which is the ledger's rule.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session a6cc260da02b). It authored none of the audited strings and edited no catalogue byte. The translator was session 1a409475bd7a (commit d1aff6d38d). This run wrote only these receipts, the per-locale evidence records, and the ledger rows (via ledger-assemble.mjs).",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"session": "1a409475bd7a",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "d1aff6d38d1fa081c859e744f377e4c1810cd708",
+		"method": "LLM reasoning, no MT service (delegation brief; commit message)"
+	},
+	"integration": {
+		"pr": 1442,
+		"branch": "feat/tb-default-on-banner-v2",
+		"base": "dbe1b9d46bafc1595fd7aacdcc1d3d29414f2508",
+		"english_change_commits": [
+			"b6ec05d1596143111118b8b002d2064a42ffc411",
+			"d8beee377d4d11ec892892b2e519577dbe8f3c24"
+		],
+		"reviewed_head": "d1aff6d38d1fa081c859e744f377e4c1810cd708",
+		"previous_audit": {
+			"instance": "dedc59c2f981",
+			"commit": "7d7f643b09"
+		},
+		"worktree": "~/local-operator-ui/.worktrees/i18n-1442-a6cc (removed after push)"
+	},
+	"locale": "hi",
+	"namespace": "ui.agentMessages",
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.agentMessages.banner.turn_off_hint",
+			"ui.agentMessages.page_off.title",
+			"ui.agentMessages.page_off.body",
+			"ui.agentMessages.page_off.local_title",
+			"ui.agentMessages.page_off.local_body",
+			"ui.agentMessages.page_off.action"
+		],
+		"keys_read_for_consistency": [
+			"ui.agentMessages.banner.turn_off",
+			"ui.agentMessages.banner.title",
+			"ui.agentMessages.dialog.local_failure",
+			"ui.agentMessages.settings.local.label",
+			"ui.agentMessages.settings.local.stays_enrolled",
+			"ui.agentMessages.settings.action.turn_on_again",
+			"ui.agentMessages.settings.default_on.e_body",
+			"ui.teamBridge.list.loading",
+			"ui.settings.configuration.delegated_cleanup_notice.open_settings"
+		],
+		"delta_kind": "new-key delta. The row's recorded source/target hashes equal the bytes at 7d7f643b09 (audited by dedc59c2f981). From there to the reviewed head, en and every target only ADD these six keys (32 keys, key-complete); no earlier ui.agentMessages value and no earlier context note changed. The other 26 keys inherit the prior audit on byte identity. ui.agentMessages.settings rows are not stale and were not re-ledgered."
+	},
+	"sha256": {
+		"en": "3e9973461758e7a759bffcd324df80b673f835a8fd3c4a39608eb854dff98ab3",
+		"hi": "12336d8817368dde296cdfb21feee8cf366b35dab06e406b1456dbbc8eedb02e"
+	},
+	"context_sha256": "6b074fca17c3fa94d8e4b687261a1d0101010ce4e5fad6e6a5a3714c5836d8e3",
+	"english": {
+		"ui.agentMessages.banner.turn_off_hint": {
+			"value": "Turning it off also hides your Team Bridge conversations until you turn it on again.",
+			"context_note": "Says what Turn off takes away BEFORE the press: the Team Bridge page, conversations included, is hidden until the member turns it on again. Announced with the Turn off button. 'Team Bridge' is the product name; never translate it and never call it 'agent messages'."
+		},
+		"ui.agentMessages.page_off.title": {
+			"value": "Team Bridge is off for this account",
+			"context_note": "Shown in place of the Team Bridge page after the member turned Team Bridge off themselves. States the state and its scope (this account, not the organization). 'Team Bridge' is the product name; never translate it and never call it 'agent messages'."
+		},
+		"ui.agentMessages.page_off.body": {
+			"value": "Your agent does not send or receive messages, and your conversations stay hidden until you turn it on again. Turning it on asks for your consent first.",
+			"context_note": "Says what being off means (no messages sent or received; conversations hidden, not deleted, until it is turned on again) and that turning it on again asks for consent. Sits above the button that opens Settings."
+		},
+		"ui.agentMessages.page_off.local_title": {
+			"value": "Team Bridge is off on this machine",
+			"context_note": "Shown in place of the Team Bridge page when the member turned off only the 'Enabled on this machine' switch; the account stays enrolled. Scope is THIS machine, not the account. Use the same word for 'machine' as the 'Enabled on this machine' setting. 'Team Bridge' is the product name; never translate it."
+		},
+		"ui.agentMessages.page_off.local_body": {
+			"value": "Your account is still set up, but this machine does not send or receive messages, and your conversations stay hidden here until you turn it back on.",
+			"context_note": "Says the account is still enrolled, that this machine neither sends nor receives messages, and that conversations are hidden here (not deleted) until the member turns this machine back on. Must NOT mention consent: turning the machine switch back on collects none. Sits above the button that opens Settings at that switch."
+		},
+		"ui.agentMessages.page_off.action": {
+			"value": "Turn on in Settings",
+			"context_note": "Opens Settings at the control that turns Team Bridge back on. It navigates; it does not turn anything on by itself. Avoid the word 'Enable'."
+		}
+	},
+	"audited_strings": {
+		"ui.agentMessages.banner.turn_off_hint": "इसे बंद करने पर आपकी Team Bridge बातचीतें भी तब तक छिपी रहेंगी, जब तक आप इसे फिर से चालू नहीं करते।",
+		"ui.agentMessages.page_off.title": "इस खाते के लिए Team Bridge बंद है",
+		"ui.agentMessages.page_off.body": "आपका एजेंट न संदेश भेजता है, न प्राप्त करता है, और जब तक आप इसे फिर से चालू नहीं करते, आपकी बातचीतें छिपी रहती हैं। चालू करने पर पहले आपकी सहमति माँगी जाती है।",
+		"ui.agentMessages.page_off.local_title": "इस मशीन पर Team Bridge बंद है",
+		"ui.agentMessages.page_off.local_body": "आपके खाते का सेटअप बना रहता है, लेकिन यह मशीन न संदेश भेजती है, न प्राप्त करती है, और जब तक आप इसे फिर से चालू नहीं करते, यहाँ आपकी बातचीतें छिपी रहती हैं।",
+		"ui.agentMessages.page_off.action": "सेटिंग्स खोलें"
+	},
+	"checks": {
+		"placeholders": "none in English or target (no { } # < >); ICU-trivial",
+		"bidi_controls": "none (scanned for U+200E/F, U+202A-E, U+2066-9, U+061C and Cc/Cf)",
+		"product_name": "'Team Bridge' kept verbatim in turn_off_hint, title and local_title",
+		"action_not_enable": "page_off.action carries no Enable-sense verb",
+		"local_body_no_consent": "page_off.local_body names no consent; page_off.body keeps the consent sentence",
+		"machine_term": "page_off.local_title/local_body use the same machine word as ui.agentMessages.settings.local.label",
+		"glossary": "agent term per glossary row; settings term per style guide",
+		"register": "matches the style-guide address decision",
+		"meaning": "off scope (account vs this machine), hidden-not-deleted conversations and the navigate-only action all preserved"
+	},
+	"notes": "आप register; danda; 'Team Bridge' kept Latin. Machine = 'मशीन', matching settings.local.label 'इस मशीन पर चालू है'. 'बंद/चालू' match banner.turn_off 'बंद करें' and e_body. action 'सेटिंग्स खोलें' = Open settings, matches existing open_settings key; no 'चालू करें'. 'बातचीतें' plural matches the catalogue (ui.settings.imports.progress_heading); 'माँगी' matches the catalogue's 29 uses of माँग. local_body: no सहमति; 'यहाँ' = here.",
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_fr": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "49010212a65f0d30d49bf532601bb39ad277be28aef5d476715186cf28525990"
+		},
+		"style_guide_es": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		},
+		"style_guide_zh-CN": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "14c6bbbefa7eddad1b0735f1024a518172a8f1b0f859ef005d5f1130bc57676b"
+		},
+		"style_guide_vi": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+		},
+		"style_guide_ur": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "3f8d600cd51d585278405f6bfcf93c0ddd1718d2490423849e8dab3f4f1d6545"
+		},
+		"style_guide_hi": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"core_ref": "195c17a0f91cb309dfdf5114e38ddfff48f105e1",
+		"docs/I18N.md": {
+			"path": "docs/I18N.md",
+			"sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+		},
+		"AGENTS.md": {
+			"path": "AGENTS.md",
+			"sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+		},
+		"scripts/i18n/ledger-rules.mjs": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"scripts/i18n/ledger-assemble.mjs": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"execution": [
+		{
+			"command": "gh pr view 1442 --json headRefOid,state",
+			"result": "d1aff6d38d1fa081c859e744f377e4c1810cd708 OPEN"
+		},
+		{
+			"command": "git worktree add --detach .worktrees/i18n-1442-a6cc d1aff6d38d; node_modules -> ../../node_modules (lockfile identical to the primary checkout)",
+			"result": "HEAD d1aff6d38d"
+		},
+		{
+			"command": "pre-audit gates at d1aff6d38d (NODE_OPTIONS=--max-old-space-size=1024)",
+			"result": "generate --check, check-duplicates, check-strings, context-parity, check-added-strings, check-coverage ok; ledger-check FAILED 21 findings (only the 7 ui.agentMessages rows: stale source/target hashes, receipt names different English bytes)"
+		},
+		{
+			"command": "git merge-tree --write-tree --name-only d1aff6d38d pr/1441",
+			"result": "CONFLICT (add/add) i18n/receipts/dedc59c2f981.json (pre-existing, R1-1; no a6cc260da02b path involved)"
+		}
+	],
+	"audit_notes_not_execution_log": "The notes and checks are this auditor's linguistic judgement, not command output.",
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool. Lengths sit within the English's range at the same layout (zh-CN shorter; fr/ru body and local_body run 10-25% longer, and the context allows wrapping at a 512 px measure).",
+	"evidence_record": "i18n/audits/evidence/hi/ui.agentMessages/teambridge-pr1442-audit-a6cc260da02b/record.json"
+}

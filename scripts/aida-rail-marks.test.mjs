@@ -870,20 +870,29 @@ test("the primitive takes the ROW's tag, and the name reads the ROW's words", ()
 });
 
 /*
- * THE RAIL'S COUNTED REGISTER (operator ask, 2026-09-30): the rail badge is the
- * quiet mark — borderless, a subtle `elevated` disc, and the count family's own
- * muted numeral — while the bordered `attention` mark stays where the ring is
+ * THE RAIL'S COUNTED REGISTER. It was the quiet mark (operator ask,
+ * 2026-09-30), then Notifications alone went loud (decisions D5, 2026-10-25);
+ * on 2026-10-28 the operator reversed D5 and EVERY rail attention count became
+ * the shared accent `AttentionBadge` (`emphasis`: accent fill, on-accent digit,
+ * no border). `sidebar-attention-badge.test.mjs` pins the wiring and renders the
+ * component; this test keeps the primitive halves - the quiet variant still
+ * exists for non-count marks (Team Bridge's preview chip, the team avatar
+ * bubble) and the bordered `attention` mark stays where the ring is
  * load-bearing (the chat header's globe, the URL bar). Both halves are pinned,
- * because the failure this test exists for is a later edit that "quietens" one
- * and takes the other with it, or that reaches for the quiet register where the
- * ring is what separates the mark from neighbouring glyphs.
+ * because the failure this test exists for is a later edit that changes one
+ * register and takes another with it.
  */
-test("the rail draws the quiet register, and the bordered mark is left where the ring is load-bearing", () => {
+test("the rail draws the shared accent badge, and the bordered mark is left where the ring is load-bearing", () => {
 	const nav = code(NAV);
 	assert.match(
 		nav,
+		/<AttentionBadge\b/,
+		"the rail badge is the shared accent badge, not a per-row register",
+	);
+	assert.doesNotMatch(
+		nav,
 		/variant="attentionQuiet"/,
-		"the rail badge is the quiet register, not the bordered one",
+		"no rail count falls back to the quiet register",
 	);
 	const badge = code(BADGE);
 	const quiet = badge.match(/attentionQuiet:\s*"([^"]+)"/)?.[1] ?? "";

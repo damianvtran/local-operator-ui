@@ -1241,6 +1241,18 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 		tooltip: "Close asks — All conversations, 2 waiting",
 		aria: "Asks, All conversations, 2 waiting",
 	});
+	/*
+	 * NOTIFICATIONS (decisions D9): the door's badge adds this conversation's
+	 * unread updates, so the name says both; zero updates is today's name.
+	 */
+	assert.equal(
+		askRailLabels(false, "session", 1, null, 2).aria,
+		"Asks, This conversation, 1 waiting, 2 unread updates",
+	);
+	assert.equal(
+		askRailLabels(false, "session", 1, null, 0).aria,
+		"Asks, This conversation, 1 waiting",
+	);
 	assert.deepEqual(askRailLabels(false, "session", 0, null), {
 		tooltip: "Open asks — This conversation",
 		aria: "Asks, This conversation",

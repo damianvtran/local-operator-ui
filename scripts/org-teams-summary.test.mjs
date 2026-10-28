@@ -40,7 +40,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
-import { after, test } from "node:test";
+import { after, afterEach, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -98,7 +98,24 @@ const layerDate = (iso) =>
 	}).format(new Date(iso));
 
 const DAY = 86_400_000;
+
+/*
+ * A fixture instant whose calendar day is the same in EVERY host timezone.
+ *
+ * `formatTeamDate` prints the viewer's LOCAL calendar day, which is the right
+ * product behaviour: a team updated at 10:00 UTC on Mar 14 was updated on
+ * Mar 15 for a reader in Kiritimati (UTC+14) and on Mar 13 in Pago Pago
+ * (UTC-11). No single UTC instant keeps one calendar day across UTC-12..UTC+14,
+ * so a fixed `...Z` string asserted as a literal date passes only where the
+ * suite happens to run. Building the instant from local components at local
+ * noon (12 hours from either midnight, wider than any DST shift) keeps the
+ * literal English assertions true on any machine. `month` is 1-based here.
+ */
+const localNoon = (year, month, day) =>
+	new Date(year, month - 1, day, 12).toISOString();
 const NOW = Date.parse("2026-09-30T12:00:00.000Z");
+/** The real clock, so a mount's frozen clock is handed back even if the mount throws. */
+const REAL_NOW = Date.now;
 const team = (overrides = {}) => ({
 	id: "t1",
 	tenant_id: "tenant-1",
@@ -167,7 +184,8 @@ test("recency: updated_at only, honest fallbacks, no lies", () => {
 	);
 
 	const future = lib.teamRecency(
-		team({ updated_at: "2026-10-02T09:00:00.000Z" }),
+		/* Still after NOW in every zone: Oct 2 local noon is >= Oct 1 22:00Z. */
+		team({ updated_at: localNoon(2026, 10, 2) }),
 		NOW,
 	);
 	assert.equal(future.label, "updated");
@@ -317,8 +335,8 @@ test("the announcement is bounded at rest and whole once the row is open", () =>
 test("exact dates for the expanded body come from the stored fields", () => {
 	const dates = lib.teamDates(
 		team({
-			created_date: "2026-03-14T10:00:00.000Z",
-			updated_at: "2026-09-25T10:00:00.000Z",
+			created_date: localNoon(2026, 3, 14),
+			updated_at: localNoon(2026, 9, 25),
 		}),
 	);
 	/*
@@ -367,6 +385,30 @@ const stubTransport = (window, teams) => {
 };
 
 const mountRoster = async (teams) => {
+	/*
+	 * THE MOUNTED CLOCK IS THE FIXTURE'S CLOCK, not the wall clock. The roster is
+	 * the shipped component, and its provenance line goes through
+	 * `teamRecency(team)`, whose `now` parameter defaults to `Date.now()`; the
+	 * fixture's `updated_at` is a fixed `NOW - 3d3h`, so a mount left on the real
+	 * clock turns the expected "3 days ago" into "1 month ago" as soon as the
+	 * fixture is older than the formatter's month boundary (observed 2026-10-27:
+	 * `scripts/org-teams-summary.test.mjs:568` expected `/updated \d+ days ago/`,
+	 * the rendered name said `updated 1 month ago`). Freezing `Date.now` for the
+	 * mount and restoring it in `teardown` is this suite's settled idiom for a
+	 * component that reads the clock (`completion-view-ack.test.mjs`). Only
+	 * `Date.now()` is pinned: `new Date()` with no arguments stays on the wall
+	 * clock, while `new Date(iso)` parsing still works.
+	 *
+	 * The restore hands back the value THIS mount replaced, not the module's
+	 * real clock, because mounts NEST - the open-row test mounts a second roster
+	 * while the first is live. Restoring the constant would release the OUTER
+	 * mount's pin, and after the inner teardown the outer row would reformat its
+	 * provenance against the wall clock (`updated 1 month ago`, agent review
+	 * round 1 M1). Capturing per mount is how `completion-view-ack.test.mjs`
+	 * does it.
+	 */
+	const previousNow = Date.now;
+	Date.now = () => NOW;
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url: "http://localhost/",
@@ -411,6 +453,7 @@ const mountRoster = async (teams) => {
 			await act(async () => root.unmount());
 			queryClient.clear();
 			dom.window.close();
+			Date.now = previousNow;
 			globalThis.window = previous.window;
 			globalThis.document = previous.document;
 			globalThis.Element = previous.Element;
@@ -418,6 +461,16 @@ const mountRoster = async (teams) => {
 		},
 	};
 };
+
+/*
+ * The mount restores the clock in its own `teardown`, but a mount that throws
+ * before returning the harness never reaches it; a leaked frozen clock would
+ * then make every later test in this file look deterministic for the wrong
+ * reason. Restoring after each test is the fallback.
+ */
+afterEach(() => {
+	Date.now = REAL_NOW;
+});
 
 const fire = async (dom, element, type, init = {}) => {
 	const Ctor = type.startsWith("key")
@@ -802,6 +855,40 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 		assert.equal(requests.filter((op) => op === "org_teams.list").length, 1);
 	} finally {
 		await teardown();
+	}
+});
+
+/*
+ * M1 (agent review round 1): mounts NEST - the test above mounts a second roster
+ * while the first one is live - so the teardown must hand back the clock it
+ * replaced, not the module's real clock. Restoring the constant releases the
+ * OUTER mount's pin, and the outer row then reformats its provenance against the
+ * wall clock: the same `updated 1 month ago` rot this PR fixes, one nesting level
+ * away. The click matters: a resting row is not repainted, and only the re-render
+ * reads the clock again.
+ */
+test("an inner roster's teardown leaves the outer mount's clock pinned", async () => {
+	const outer = await mountRoster([ALPHA]);
+	try {
+		/*
+		 * The inner mount freezes the clock again at the same instant, so the
+		 * assertion below is about WHICH pin the teardown restores: releasing to
+		 * the real clock turns the click's re-render into a wall-clock read.
+		 */
+		const inner = await mountRoster([ALPHA]);
+		await inner.teardown();
+
+		const trigger = outer.document.querySelector(
+			'[data-testid="org-teams"] button[aria-expanded]',
+		);
+		await click(outer.dom, trigger);
+		assert.match(
+			accessibleName(trigger),
+			/Ana Perez\s*,\s*updated \d+ days ago/,
+			"the outer mount still reads the fixture's clock after the inner teardown",
+		);
+	} finally {
+		await outer.teardown();
 	}
 });
 

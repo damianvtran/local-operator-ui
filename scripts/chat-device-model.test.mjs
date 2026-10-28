@@ -38,8 +38,12 @@ const code = (path) =>
 
 const bundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export * from "./src/renderer/src/features/chat/device/chat-device-model";',
+			// The render path itself, so an assertion can state the sentence the
+			// catalogue RESOLVES to rather than re-substituting its raw ICU source.
+			'export { t } from "@shared/i18n";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -77,16 +81,13 @@ const {
 	arrivalCopy,
 	devicePickerModel,
 	localConversationCount,
-	MESH_READ_FAILURE,
 	movePair,
-	NOT_HERE_WHY,
 	panePlacement,
 	placementLabel,
 	placementSentence,
-	PAIRING_GUIDANCE,
-	MOVE_FOOTER,
 	moveGateReason,
 	moveGateTone,
+	t,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -677,7 +678,7 @@ test("a move narrows eligibility, and the ineligible row stays readable and expl
 	// The reason carries reachability, so the fact line does not say it twice.
 	assert.equal(gradient.facts.includes("unreachable"), false);
 	// The consequence is pinned, and it is the default move's own.
-	assert.equal(model.footer, MOVE_FOOTER);
+	assert.equal(model.footer, t("ui.chat.device.footer.move_deletes_copy"));
 	assert.match(model.footer, /copy on this device is deleted/);
 });
 
@@ -692,7 +693,7 @@ test("a backend that cannot move keeps the fact and loses every offer, with its 
 test("a device in no network is told the command that exists, not a button that does not", () => {
 	const model = picker({ networks: [], peers: [] });
 	assert.equal(model.sections.length, 0);
-	assert.equal(model.guidance, PAIRING_GUIDANCE);
+	assert.equal(model.guidance, t("ui.chat.device.sentence.pairing_guidance"));
 	assert.match(model.guidance, /lop network join/);
 	// This device is still the one row, and still says which device it is.
 	assert.equal(model.self.facts.includes("this device"), true);
@@ -1050,7 +1051,7 @@ test("a pane that no longer holds the conversation offers the recall and nothing
 	// The device itself is fine - reachable, capable, in a network this device can read -
 	// so the row states the DIRECTION, not a fault, and it stays visible and explained.
 	assert.equal(rowFor(model, THIRD).state, "ineligible");
-	assert.equal(rowFor(model, THIRD).why, NOT_HERE_WHY);
+	assert.equal(rowFor(model, THIRD).why, t("ui.chat.device.row.not_here_why"));
 	// The two picks that do exist are unchanged: the holder is current, and this device's
 	// own row is the recall.
 	assert.equal(rowFor(model, BUILD).state, "current");
@@ -1089,7 +1090,10 @@ test("a read that did not answer is not a membership fact, and neither is one in
 		meshRead: "failed",
 	});
 	assert.equal(failed.guidance, null);
-	assert.equal(failed.readFailure, MESH_READ_FAILURE);
+	assert.equal(
+		failed.readFailure,
+		t("ui.chat.device.sentence.mesh_read_failure"),
+	);
 	assert.equal(failed.offerCheckAgain, true);
 	// The self row keeps its own name in that case.
 	assert.equal(failed.self.name, "This device");
@@ -1102,7 +1106,10 @@ test("a read that did not answer is not a membership fact, and neither is one in
 	assert.equal(pending.offerCheckAgain, false);
 
 	// An answered empty read is the one case the pairing line IS for.
-	assert.equal(picker({ networks: [], peers: [] }).guidance, PAIRING_GUIDANCE);
+	assert.equal(
+		picker({ networks: [], peers: [] }).guidance,
+		t("ui.chat.device.sentence.pairing_guidance"),
+	);
 });
 
 test("a move in flight stands the picker down in words", () => {
@@ -1119,7 +1126,7 @@ test("a move in flight stands the picker down in words", () => {
 	// The rows are still the move's own set (the painter stands them down), so the
 	// heading and the consequence line do not change under the user mid-gesture.
 	assert.equal(model.heading, "Move this conversation to");
-	assert.equal(model.footer, MOVE_FOOTER);
+	assert.equal(model.footer, t("ui.chat.device.footer.move_deletes_copy"));
 	assert.equal(picker().inFlight, null);
 });
 
@@ -1389,5 +1396,40 @@ test("the picker ask is a token the picker's own effect consumes, once", () => {
 		device,
 		/const servedRequestRef = useRef\(pickerRequest\)/,
 		"the mount seeds the last-served token",
+	);
+});
+
+test("the picker is re-worded when the language changes under it", () => {
+	/*
+	 * The heading, row facts, footer and guidance are `t()` output built INSIDE
+	 * `devicePickerModel`, so the memo that owns that call has to depend on the
+	 * locale its words are resolved in - and the slot has to subscribe, because
+	 * `t()` is a plain read of the store rather than a subscription (the split
+	 * `scripts/i18n/locale-reactivity.test.mjs` pins). Without both, a live
+	 * language switch leaves an open picker speaking the old language until one of
+	 * its other inputs happens to change identity (agent review round 1, M3).
+	 */
+	const slot = code(
+		"src/renderer/src/features/chat/device/chat-device-slot.tsx",
+	);
+	assert.match(
+		slot,
+		/useI18nLocale\(\)/,
+		"the slot subscribes to the locale it renders copy for",
+	);
+	const model = slot.slice(
+		slot.indexOf("devicePickerModel({"),
+		slot.indexOf("const onPick = useCallback("),
+	);
+	assert.ok(
+		model.length > 0,
+		"the model call site is where the slot builds it",
+	);
+	const depsStart = model.lastIndexOf("[");
+	const deps = model.slice(depsStart, model.indexOf("]", depsStart));
+	assert.match(
+		deps,
+		/\blocale\b/,
+		`the devicePickerModel dependency list omits the locale its copy resolves from: ${deps}`,
 	);
 });

@@ -35,5 +35,10 @@
 	"ui.common.connection.backend.card_governed": "Không thể tải cài đặt: một chương trình khác đang quản lý máy chủ Local Operator trên máy này nên trang này không thể đọc hoặc thay đổi cài đặt tại đây.",
 	"ui.common.connection.backend.card_pre_handshake": "Không thể tải cài đặt: máy chủ mà ứng dụng đang kết nối cũ hơn giao thức ghép nối nên trang này không thể đọc cài đặt.",
 	"ui.common.connection.backend.card_credential_refused": "Không thể tải cài đặt: máy chủ từ chối thông tin xác thực của ứng dụng nên trang này không thể đọc cài đặt.",
-	"ui.common.connection.backend.card_unpaired": "Không thể tải cài đặt: ứng dụng chưa ghép nối với máy chủ đang chạy nên trang này không thể đọc cài đặt."
+	"ui.common.connection.backend.card_unpaired": "Không thể tải cài đặt: ứng dụng chưa ghép nối với máy chủ đang chạy nên trang này không thể đọc cài đặt.",
+	"ui.common.connection.session_loss.frame_too_large": "Cập nhật của cuộc trò chuyện này quá lớn để hiển thị — hãy kết nối lại rồi thử tiếp.",
+	"ui.common.connection.session_loss.history_unreadable": "Không tải được lịch sử của cuộc trò chuyện này — hãy kết nối lại rồi thử tiếp.",
+	"ui.common.connection.session_loss.lost": "Đã mất kết nối với cuộc trò chuyện này — hãy kết nối lại để đọc tiếp.",
+	"ui.common.connection.session_loss.not_paired": "Ứng dụng này chưa ghép nối với máy chủ Local Operator, nên chưa đọc được cuộc trò chuyện này.",
+	"ui.common.connection.session_loss.server_down": "Máy chủ Local Operator không chạy — hãy kết nối lại khi máy chủ trở lại, hoặc khởi động lại ứng dụng nếu máy chủ vẫn không lên."
 }

@@ -226,6 +226,33 @@
 	margin-top: 0;
 }
 
+/* EMBEDDED MARKDOWN: a document shown INSIDE a pane section (`ReadBlock
+   markdown`, today the Skills tab's Instructions). Its headings belong to the
+   document, not to the page, so none may out-rank the section title above it
+   (`text-heading`, 16px) - and every SKILL.md starts with an `# H1` (14 of 14
+   built-ins), which painted at the PAGE title's 20px with a rule under it,
+   saying the skill's name a second time louder than its section (design review
+   #1458 r1, D2). Every level steps down to the body size at 600 and is told
+   apart by space; the h1 rule is dropped. Chat and Projects are untouched:
+   they own their whole column, so their h1 is the top of the page. */
+[data-read-markdown] .lo-markdown :is(h1, h2, h3, h4, h5, h6) {
+	font-size: var(--text-body);
+	line-height: var(--text-body--line-height);
+	letter-spacing: normal;
+}
+
+/* The h1/h2 code steps above were sized for a 20/16px heading; at the body
+   step they would be LARGER than the heading's own words. */
+[data-read-markdown] .lo-markdown :is(h1, h2) code {
+	font-size: var(--text-body-sm);
+}
+
+[data-read-markdown] .lo-markdown h1 {
+	padding-bottom: 0;
+	border-bottom: 0;
+	margin: 1rem 0 0.25rem;
+}
+
 .lo-markdown ul,
 .lo-markdown ol {
 	padding-left: 1.5rem;

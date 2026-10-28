@@ -1,0 +1,82 @@
+{
+ "ui.chat.device": [
+  "ui.chat.device.fact.this_device",
+  "ui.chat.device.footer.move_deletes_copy",
+  "ui.chat.device.label.this_device",
+  "ui.chat.device.notice.move_hold_detail",
+  "ui.chat.device.picker.heading.move",
+  "ui.chat.device.picker.heading.start",
+  "ui.chat.device.row.conversations",
+  "ui.chat.device.row.not_here_why",
+  "ui.chat.device.sentence.mesh_read_failure",
+  "ui.chat.device.sentence.move_in_flight",
+  "ui.chat.device.sentence.pairing_guidance"
+ ],
+ "ui.chat.pickers": [
+  "ui.chat.pickers.at_menu.heading.files",
+  "ui.chat.pickers.at_menu.heading.projects",
+  "ui.chat.pickers.at_menu.region_label",
+  "ui.chat.pickers.at_menu.tag.directory",
+  "ui.chat.pickers.at_menu.tag.file",
+  "ui.chat.pickers.at_menu.tag.project",
+  "ui.chat.pickers.slash.arguments_region_label",
+  "ui.chat.pickers.slash.click.chooses_name",
+  "ui.chat.pickers.slash.click.completes_label",
+  "ui.chat.pickers.slash.click.completes_value",
+  "ui.chat.pickers.slash.click.connects",
+  "ui.chat.pickers.slash.click.runs",
+  "ui.chat.pickers.slash.click.runs_command",
+  "ui.chat.pickers.slash.click.runs_with_value",
+  "ui.chat.pickers.slash.click.stages",
+  "ui.chat.pickers.slash.enter_needs_a_pick",
+  "ui.chat.pickers.slash.phase.arguments",
+  "ui.chat.pickers.slash.region_label"
+ ],
+ "ui.chat.canonical": [
+  "ui.chat.canonical.placeholder.loading",
+  "ui.chat.canonical.placeholder.region_label",
+  "ui.chat.canonical.tool_row.generic_verb.running",
+  "ui.chat.canonical.tool_row.generic_verb.settled",
+  "ui.chat.canonical.tool_row.outcome.failed",
+  "ui.chat.canonical.tool_row.outcome.interrupted",
+  "ui.chat.canonical.tool_row.outcome.never_ran",
+  "ui.chat.canonical.tool_row.outcome.succeeded"
+ ],
+ "ui.chat": [
+  "ui.chat.session_status.context_heading",
+  "ui.chat.session_status.context_nothing_measured_tooltip",
+  "ui.chat.session_status.conversation_starting",
+  "ui.chat.session_status.model_none_resolved_tooltip",
+  "ui.chat.session_status.not_signed_in",
+  "ui.chat.session_status.not_signed_in_description",
+  "ui.chat.session_status.nothing_measured_yet",
+  "ui.chat.session_status.temporarily_unavailable",
+  "ui.chat.session_status.temporarily_unavailable_description"
+ ],
+ "ui.chat.status": [
+  "ui.chat.status.credential_refused",
+  "ui.chat.status.degraded",
+  "ui.chat.status.internet_offline",
+  "ui.chat.status.unreachable"
+ ],
+ "ui.chat.run_details": [
+  "ui.chat.run_details.nothing_in_flight",
+  "ui.chat.run_details.nothing_to_show_yet"
+ ],
+ "ui.common.connection": [
+  "ui.common.connection.session_loss.frame_too_large",
+  "ui.common.connection.session_loss.history_unreadable",
+  "ui.common.connection.session_loss.lost",
+  "ui.common.connection.session_loss.not_paired",
+  "ui.common.connection.session_loss.server_down"
+ ],
+ "ui.common.layout": [
+  "ui.common.layout.toasts.dismiss",
+  "ui.common.layout.toasts.notifications"
+ ],
+ "ui.agents.config": [
+  "ui.agents.config.banner.unavailable",
+  "ui.agents.config.disabled_gate",
+  "ui.agents.config.run_details_region"
+ ]
+}

@@ -1,5 +1,6 @@
 import { Spinner } from "@shared/components/common/spinner";
-import { Badge, countLabel } from "@shared/components/ui/badge";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
+import { Badge } from "@shared/components/ui/badge";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -10,6 +11,7 @@ import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
+	Archive,
 	AtSign,
 	BellOff,
 	Bot,
@@ -70,16 +72,35 @@ import {
 const ROW =
 	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-start text-[13px] transition-colors duration-fast ease-out-quart";
 
-/** The unread pill every row shares, the sidebar's quiet attention badge. */
+/**
+ * How a rail row hosts its profile card (operator report 2026-10-26: clicking a
+ * person showed the card instead of opening the conversation). A row's click is
+ * its conversation, so the card never opens on click or focus. A pointer resting
+ * on the row for a deliberate ~1.2 s dwell opens it, which a pass across the rail
+ * on the way to a row never reaches. The avatar opens it at the message list's
+ * usual 400 ms, because pointing at a face is asking about the person.
+ * Keyboard readers use Shift+F10 or the context-menu key; see
+ * `TeamBridgeProfileCard`.
+ */
+const RAIL_CARD = {
+	openDelayMs: 1200,
+	fastOpenDelayMs: 400,
+	toggleOnClick: false,
+	openOnFocus: false,
+} as const;
+
+/**
+ * The unread pill every channel, group, person and chief row shares: the
+ * sidebar's shared accent `AttentionBadge` (operator, 2026-10-28), because an
+ * unread conversation is a request for the reader's attention, not a total.
+ */
 const Unread: FC<{ count: number; yieldsToMenu?: boolean }> = ({
 	count,
 	yieldsToMenu = false,
 }) =>
 	count > 0 ? (
-		<Badge
-			variant="attentionQuiet"
-			shape="pill"
-			size="count"
+		<AttentionBadge
+			count={count}
 			/*
 			 * ONE BADGE COLUMN (design round 1, D4). Person and chief rows used to
 			 * reserve `pr-8` for the hover "…", which pushed their counts 24px left
@@ -93,9 +114,7 @@ const Unread: FC<{ count: number; yieldsToMenu?: boolean }> = ({
 					"group-focus-within/row:invisible group-hover/row:invisible",
 			)}
 			aria-label={t("ui.teamBridge.unread.count", { count })}
-		>
-			{countLabel(count, 99)}
-		</Badge>
+		/>
 	) : null;
 
 export const RailSection: FC<{
@@ -111,7 +130,21 @@ export const RailSection: FC<{
 	 * Revealed on hover/focus of the header so a resting rail stays quiet.
 	 */
 	add?: { label: string; onAdd: () => void };
-}> = ({ id, title, children, empty, add }) => {
+	/**
+	 * The section header's "…" (Slack's channel-section menu). It holds the
+	 * section's secondary destinations, today "Archived channels". Revealed like
+	 * the "+" so a resting rail stays quiet, and it stays visible while open.
+	 */
+	menu?: {
+		label: string;
+		items: ReadonlyArray<{
+			key: string;
+			label: string;
+			icon?: ReactNode;
+			onSelect: () => void;
+		}>;
+	};
+}> = ({ id, title, children, empty, add, menu }) => {
 	useI18nLocale();
 	return (
 		<section aria-labelledby={id} className="px-1 pb-1">
@@ -122,6 +155,33 @@ export const RailSection: FC<{
 				>
 					{title}
 				</h2>
+				{menu && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								aria-label={menu.label}
+								title={menu.label}
+								className="flex size-5 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/section:opacity-100 data-[state=open]:opacity-100"
+							>
+								<MoreHorizontal size={13} aria-hidden="true" />
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							align="start"
+							side="right"
+							/* Borderless chrome, as the row menu: the menu rises on its shadow. */
+							className="border-transparent shadow-lg"
+						>
+							{menu.items.map((item) => (
+								<DropdownMenuItem key={item.key} onSelect={item.onSelect}>
+									{item.icon}
+									{item.label}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
 				{add && (
 					<button
 						type="button"
@@ -168,6 +228,12 @@ export const ConversationRailRow: FC<{
 	 */
 	organizationName?: string;
 	onSelect: () => void;
+	/**
+	 * Offered only when the caller may archive this channel (the page decides from
+	 * the server's `can_administer`). Opens the confirm dialog; the row itself
+	 * never archives.
+	 */
+	onArchive?: () => void;
 }> = ({
 	hasDraft = false,
 	conversation,
@@ -176,6 +242,7 @@ export const ConversationRailRow: FC<{
 	title,
 	organizationName,
 	onSelect,
+	onArchive,
 }) => {
 	const locale = useI18nLocale();
 	const Icon =
@@ -192,7 +259,7 @@ export const ConversationRailRow: FC<{
 	const unread = conversation.unread_count;
 	const lastActive = lastActiveTooltip(conversation.last_message_at, locale);
 	return (
-		<li>
+		<li className="group/row relative">
 			<button
 				type="button"
 				onClick={onSelect}
@@ -246,11 +313,45 @@ export const ConversationRailRow: FC<{
 						</span>
 					</span>
 				)}
-				<Unread count={unread} />
+				<Unread count={unread} yieldsToMenu={Boolean(onArchive)} />
 			</button>
+			{onArchive && <ChannelRowMenu name={name} onArchive={onArchive} />}
 		</li>
 	);
 };
+
+/**
+ * The "…" on a channel row you may archive. Same slot, reveal and chrome as the
+ * person row's menu, so the rail has one hover affordance. A right-click is not
+ * bound (the desktop shell owns the native context menu), which is why the
+ * request for "right-click/hover" is met by the hover/focus form only.
+ */
+const ChannelRowMenu: FC<{ name: string; onArchive: () => void }> = ({
+	name,
+	onArchive,
+}) => (
+	<DropdownMenu>
+		<DropdownMenuTrigger asChild>
+			<button
+				type="button"
+				aria-label={t("ui.teamBridge.row.menu", { name })}
+				className="absolute end-1.5 top-[3px] flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
+			>
+				<MoreHorizontal size={14} aria-hidden="true" />
+			</button>
+		</DropdownMenuTrigger>
+		<DropdownMenuContent
+			align="start"
+			side="right"
+			className="border-transparent shadow-lg"
+		>
+			<DropdownMenuItem onSelect={onArchive}>
+				<Archive size={14} aria-hidden="true" />
+				{t("ui.teamBridge.archive.menu.archive")}
+			</DropdownMenuItem>
+		</DropdownMenuContent>
+	</DropdownMenu>
+);
 
 /**
  * The "…" on a reachable row. It sits in the row's trailing slot, revealed by
@@ -286,7 +387,10 @@ const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
 
 /**
  * One person. Clicking selects the person (their DM, or an empty draft to
- * them); nothing is created until the first message is sent.
+ * them) at once; nothing is created until the first message is sent. The
+ * profile card is a long hover, an avatar hover or Shift+F10 away (`RAIL_CARD`).
+ * Inert rows (self, bridge off, identity loading) select nothing but keep the
+ * same card affordances, so who someone is stays reachable.
  *
  * A person whose bridge is off is still drawn, dimmed and `aria-disabled`,
  * with the reason as its description: the roster says who is potentially
@@ -337,6 +441,7 @@ export const PersonRailRow: FC<{
 					label={label}
 					onMessage={onSelect}
 					canMessage={false}
+					{...RAIL_CARD}
 				>
 					<button
 						type="button"
@@ -373,6 +478,7 @@ export const PersonRailRow: FC<{
 					canMessage={
 						!readOnly && state !== "unavailable" && state !== "unknown"
 					}
+					{...RAIL_CARD}
 				>
 					<button
 						type="button"
@@ -417,9 +523,11 @@ export const PersonRailRow: FC<{
 					state !== "unavailable" &&
 					state !== "unknown"
 				}
+				{...RAIL_CARD}
 			>
 				<button
 					type="button"
+					onClick={onSelect}
 					aria-current={selected ? "page" : undefined}
 					data-team-bridge-person={member.account_id}
 					aria-label={t("ui.teamBridge.people.message", { name: label })}
@@ -495,9 +603,11 @@ export const ChiefRailRow: FC<{
 				agentName={label}
 				onMessage={onSelect}
 				canMessage={Boolean(dm) || !readOnly}
+				{...RAIL_CARD}
 			>
 				<button
 					type="button"
+					onClick={onSelect}
 					aria-current={selected ? "page" : undefined}
 					data-team-bridge-chief={chief.person.account_id}
 					aria-label={t("ui.teamBridge.people.message", { name: label })}

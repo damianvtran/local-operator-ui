@@ -1,0 +1,268 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (single-key delta: English source changed Person -> Human)",
+	"audit_id": "teambridge-human-badge-audit-e2cc7b3bceb8",
+	"date": "2026-10-26",
+	"instance": "e2cc7b3bceb8",
+	"instance_note": "This auditor session's own id. Distinct from the translator session 0b54a00af908, the coordinating session 17cd3e74c66f, and every instance already on the ui.teamBridge rows (51e7fd6748ed).",
+	"auditor": "i18n-auditor (independent translation auditor; did not translate or edit the audited copy)",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "The harness session header reports 'Model: anthropic/claude-opus-5-5'. That is the same model family the translator recorded; independence here is by agent role and session (the ledger's rule), not by model.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false,
+		"note": "No quota/fallback message appeared in this run."
+	},
+	"independence": "Independent auditor. This run produced none of the audited strings: the translator (session 0b54a00af908) authored them in commit 5a4f5df22b0b. This run read the catalogues, context sidecar, glossary and style guides, and wrote only this receipt, the per-locale evidence records and (via ledger-assemble.mjs) the ledger rows. No catalogue byte was edited.",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"role_label": "Local Operator task subagent",
+		"session": "0b54a00af908",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none",
+		"commit": "5a4f5df22b0b5665dedd628147df417bbf111dd5",
+		"rationale_note": "Translator rationale was read from the coordinating session's scratchpad (i18n-human-badge-translations.json); every value and file hash in it matches the committed bytes."
+	},
+	"integration": {
+		"branch": "fix/tb-person-click",
+		"reviewed_head": "5a4f5df22b0b5665dedd628147df417bbf111dd5",
+		"english_change_commit": "c34c40209cf26af67e30e92d7a8c95459e988a06",
+		"worktree": "~/local-operator-ui/.worktrees/i18n-human-badge-audit"
+	},
+	"scope": {
+		"namespace": "ui.teamBridge",
+		"keys_audited_linguistically": [
+			"ui.teamBridge.profile.human_badge"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.profile.agent_badge"
+		],
+		"delta_kind": "single-key delta. Since the audited rows' bytes (c34c40209c^ = ledger source/target hashes for every locale), the ONLY changed value in en, fr, es, zh-CN, ur and hi is ui.teamBridge.profile.human_badge (one line each); ru and vi target bytes are unchanged and are re-bound to the new English source.",
+		"inherited": "The other 207 keys per catalogue are inherited on byte identity from the audit recorded on the rows (receipt 51e7fd6748ed); they were not re-audited."
+	},
+	"namespaces": {
+		"ui.teamBridge": {
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"keys_bound": 208,
+			"sha256": {
+				"en": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32",
+				"fr": "3344e2c95a1e680faea87b80f5e300993e8e09886c3957527215f7adbb9bb31e",
+				"es": "c67f520c7a8bd63adc9c345a066fd48f5a4f053b15008e15cda3c31ef660a0ae",
+				"zh-CN": "716bc20303a644f41f8560505768c80216a17db4c9cdad69fd09dc866f9051c5",
+				"ru": "962c0ee69589f4b5f03650d57e0f4280efd98750be27753eb0ced4e292f4affe",
+				"vi": "e22284a1cea5221328d4b34aa32c0e804fa5af6a48ab697b126edf8ed91e5c32",
+				"ur": "660c884b54d3a9b8e6b61679e594c3a6b8bae4285de86ef921b31526f0392db9",
+				"hi": "b1bf7041eb38fbae9f387483a14c48a05162183cc014bceec249d3875d7893d9"
+			},
+			"context_sha256": "fc3b5d401f601b14a38bb724d5dac95aa226ad53072d4f4addd698b98d781e88",
+			"findings": [],
+			"counts_note": "blocker 0, major 0, minor 0, nit 0 for every locale. Observations below are INFO, not findings."
+		}
+	},
+	"english": {
+		"value": "Human",
+		"previous": "Person",
+		"agent_badge": "Agent",
+		"context": {
+			"role": "profile hover-card identity badge",
+			"tone": "neutral",
+			"length": "One short word.",
+			"placeholders": {},
+			"note": "Identifies a human account, as distinct from an agent account; pairs with the Agent badge. English reads \"Human\" (not \"Person\") so the pair contrasts human with AI. Use the concise noun for a human being, not a job title or a generic word for an individual."
+		}
+	},
+	"audited_strings": {
+		"en": {
+			"value": "Human",
+			"agent_badge": "Agent",
+			"verdict": "source"
+		},
+		"fr": {
+			"value": "Humain",
+			"agent_badge": "Agent",
+			"verdict": "PASS. 'Humain' (substantive) is the standard French term opposed to IA/agent ('humain ou IA'); unambiguous, unlike the previous 'Personne' (also 'nobody', and 'individual' not human-vs-AI). One word, neutral register, masculine generic acceptable for a neutral badge; pairs cleanly with 'Agent'."
+		},
+		"es": {
+			"value": "Humano",
+			"agent_badge": "Agente",
+			"verdict": "PASS. 'Humano' is the natural one-word noun for the human side of 'humano o IA'; the previous 'Persona' named an individual. Neutral register, masculine generic acceptable for a badge; pairs with 'Agente'."
+		},
+		"zh-CN": {
+			"value": "人类",
+			"agent_badge": "智能体",
+			"verdict": "PASS. '人类' is the established label for the human role opposite an AI/智能体 in Chinese AI products (e.g. role labels 人类/AI); '个人' meant 'personal/individual' and read as an account type. '真人' would add a 'real person / live-action' nuance; '人' alone is too bare for a badge. Two characters, terse per the style guide, balances '智能体'."
+		},
+		"ru": {
+			"value": "Человек",
+			"agent_badge": "Агент",
+			"verdict": "PASS (unchanged bytes, re-bound to the new English source). 'Человек' is exactly the noun for a human being and the usual opposite of ИИ/агент ('человек или ИИ'); no clearer single-word alternative exists ('Персона' is the individual/persona sense, 'Люди' is plural). Pairs with 'Агент'."
+		},
+		"vi": {
+			"value": "Con người",
+			"agent_badge": "Tác nhân",
+			"verdict": "PASS (unchanged bytes, re-bound to the new English source). 'Con người' is the species-sense noun for a human being, the standard contrast with AI ('con người và AI'); 'Người' alone is generic (person/someone) and 'Cá nhân' is 'individual'. Pairs with 'Tác nhân'."
+		},
+		"ur": {
+			"value": "انسان",
+			"agent_badge": "ایجنٹ",
+			"verdict": "PASS. 'انسان' is the everyday Urdu noun for a human being and the natural contrast with AI/مصنوعی ذہانت; the previous 'شخص' meant individual/person. Native, not over-Persianised, matches the style guide's everyday educated register; single RTL word, no bidi controls, beside 'ایجنٹ'."
+		},
+		"hi": {
+			"value": "मानव",
+			"agent_badge": "एजेंट",
+			"verdict": "PASS. 'मानव' is the standard Hindi noun for 'human' in human-vs-AI usage ('मानव बनाम एआई'); the previous 'व्यक्ति' meant individual. Common rather than heavily Sanskritised ('मनुष्य' would be more formal; 'इंसान' more colloquial), so it fits the style guide's everyday standard Hindi; pairs with 'एजेंट'."
+		}
+	},
+	"observations": [
+		{
+			"id": "O1",
+			"severity": "INFO",
+			"locale": "fr,es",
+			"key": "ui.teamBridge.profile.human_badge",
+			"note": "Masculine generic (Humain/Humano) on a badge that may label a woman. Accepted: neutral one-word labels conventionally take the masculine generic, and neither style guide asks for inclusive forms; no shorter neutral alternative exists."
+		},
+		{
+			"id": "O2",
+			"severity": "INFO",
+			"locale": "zh-CN",
+			"key": "ui.teamBridge.profile.human_badge",
+			"note": "'人类' is species-level ('humankind') but is the established role label opposite AI in Chinese AI products; kept over '真人' (live/real-person nuance)."
+		},
+		{
+			"id": "O3",
+			"severity": "INFO",
+			"locale": "all",
+			"key": "ui.teamBridge.profile.human_badge",
+			"note": "No rendered frame inspected. Every value is shorter than or equal to the agent badge in cells except fr/es/ru/vi, all <= 9 cells for a one-word badge; no fit claim is made."
+		}
+	],
+	"mechanical": {
+		"json_valid": true,
+		"key_counts": {
+			"en": 208,
+			"fr": 208,
+			"es": 208,
+			"zh-CN": 208,
+			"ru": 208,
+			"vi": 208,
+			"ur": 208,
+			"hi": 208
+		},
+		"key_sets_equal_to_en": true,
+		"placeholders": 0,
+		"icu": 0,
+		"nfc": true,
+		"manual_bidi_controls": 0,
+		"width": {
+			"en": 5,
+			"fr": 6,
+			"es": 6,
+			"zh-CN": "2 chars / 4 cells",
+			"ru": 7,
+			"vi": 9,
+			"ur": 5,
+			"hi": 4
+		},
+		"byte_delta_check": "For each locale, the catalogue at c34c40209c^ hashes to the row's recorded target_sha256 (en to source_sha256), and differs from HEAD in exactly one line, the ui.teamBridge.profile.human_badge value (ru, vi: zero lines)."
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_fr": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+		},
+		"style_guide_es": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		},
+		"style_guide_zh-CN": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"style_guide_vi": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+		},
+		"style_guide_ur": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"style_guide_hi": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"i18n_howto": {
+			"path": "docs/I18N.md",
+			"sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+		},
+		"ledger_rules": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"execution": [
+		{
+			"command": "git fetch origin fix/tb-person-click (polled every 60s)",
+			"result": "head 5a4f5df22b0b i18n(team-bridge): translate the Human badge"
+		},
+		{
+			"command": "git worktree add .worktrees/i18n-human-badge-audit -b i18n/human-badge-audit origin/fix/tb-person-click; node_modules -> ../../node_modules",
+			"result": "HEAD 5a4f5df22b0b"
+		},
+		{
+			"command": "shasum -a 256 on the eight catalogues, context sidecar, glossary, seven style guides, docs/I18N.md, ledger-rules.mjs, ledger-assemble.mjs",
+			"result": "values recorded in namespaces.ui.teamBridge.sha256 and references"
+		},
+		{
+			"command": "python3 delta check: catalogue at c34c40209c^ vs HEAD, against i18n/ledger.json ui.teamBridge rows",
+			"result": "all base hashes equal ledger hashes; one changed key (human_badge) in en/fr/es/zh-CN/ur/hi, none in ru/vi"
+		},
+		{
+			"command": "python3 mechanical check: NFC, bidi controls, braces, key-set parity, width",
+			"result": "all pass, see mechanical"
+		}
+	],
+	"audit_notes_not_execution_log": [
+		"Verdicts in audited_strings are the auditor's reading against the context note, glossary and style guides; no translation/MT service was used.",
+		"ledger-assemble.mjs and pnpm check-i18n run after this receipt is written; their output is reported in the commit/PR record, not here, because this receipt is immutable once hashed."
+	],
+	"limitations": [
+		"Single-key delta audit; 207 inherited keys per locale not re-read.",
+		"No rendered frame, screenshot, pseudo-localization or RTL layout evidence (no browser tool in this auditor session).",
+		"Second independent audit not performed; this key is a hover-card badge, not a high-visibility group."
+	],
+	"evidence_records": [
+		"i18n/audits/evidence/fr/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json",
+		"i18n/audits/evidence/es/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json",
+		"i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json",
+		"i18n/audits/evidence/ru/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json",
+		"i18n/audits/evidence/vi/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json",
+		"i18n/audits/evidence/ur/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json",
+		"i18n/audits/evidence/hi/ui.teamBridge/teambridge-human-badge-audit-e2cc7b3bceb8/record.json"
+	]
+}

@@ -1,0 +1,150 @@
+{
+ "receipt": "/Users/damian/qa/wave-b-delta-fr-deliver/i18n/receipts/c3a8965266e3.json",
+ "sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+ "derived": [
+  {
+   "namespace": "ui.chat.device",
+   "agent": "i18n-auditor",
+   "instance": "c3a8965266e3",
+   "model": "radient/auto",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+   "target_sha256": "6fa28c31e2cd37f80f0756b3b3e6690f040d5965941bf73f045601973408dd68",
+   "receipt_sha256": "4fb616ed1860…"
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "agent": "i18n-auditor",
+   "instance": "c3a8965266e3",
+   "model": "radient/auto",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+   "target_sha256": "0f4194326dabd0e12992e7270afd32c44ab45776cec8a1fcc9b083146ff60a71",
+   "receipt_sha256": "4fb616ed1860…"
+  },
+  {
+   "namespace": "ui.chat.canonical",
+   "agent": "i18n-auditor",
+   "instance": "c3a8965266e3",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+   "target_sha256": "8a5e69118ce5bc3432aaa493b2d0d01e7fc3199670083a79cb129ad379567885",
+   "receipt_sha256": "4fb616ed1860…"
+  },
+  {
+   "namespace": "ui.chat",
+   "agent": "i18n-auditor",
+   "instance": "c3a8965266e3",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+   "target_sha256": "e9b9512ea3310705de0ca91dc87a644a8aa742ab59a72f04e8216ae01bb256dd",
+   "receipt_sha256": "4fb616ed1860…"
+  },
+  {
+   "namespace": "ui.chat.status",
+   "agent": "i18n-auditor",
+   "instance": "c3a8965266e3",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+   "target_sha256": "7fab4b75620d10beb7f59e23cd341402bd9bb8884adccbafbfda5add75a1cd00",
+   "receipt_sha256": "4fb616ed1860…"
+  },
+  {
+   "namespace": "ui.chat.run_details",
+   "agent": "i18n-auditor",
+   "instance": "c3a8965266e3",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+   "target_sha256": "fd5bb71bbb7691760c92b9339e3aa032c34519b0a453600447923ce679e42f94",
+   "receipt_sha256": "4fb616ed1860…"
+  },
+  {
+   "namespace": "ui.common.connection",
+   "agent": "i18n-auditor",
+   "instance": "c3a8965266e3",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+   "target_sha256": "33de6a26e72133786f9cab668c16341262cece961ca130e95ca2c6e733c6d51b",
+   "receipt_sha256": "4fb616ed1860…"
+  },
+  {
+   "namespace": "ui.common.layout",
+   "agent": "i18n-auditor",
+   "instance": "c3a8965266e3",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+   "target_sha256": "4bdcbbee0ea92a6fb65e901d0f7839f6bca6748e3f6603fc306de53efc74ca46",
+   "receipt_sha256": "4fb616ed1860…"
+  },
+  {
+   "namespace": "ui.agents.config",
+   "agent": "i18n-auditor",
+   "instance": "c3a8965266e3",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+   "target_sha256": "8b05e223c55ebb8bda68482e449a21d498463bfcf0251a249910314d314a7d9e",
+   "receipt_sha256": "4fb616ed1860…"
+  }
+ ]
+}

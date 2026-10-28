@@ -8,7 +8,7 @@ import { build } from "esbuild";
  * The component, the drag layer and the stories all compose these functions,
  * so this is where the layout invariants are checked rather than in a rendered
  * frame: every one of them is a statement the renderer is allowed to rely on
- * (all nine ids, no duplicates, one fold, unavailable rows staying put). The
+ * (all ten ids, no duplicates, one fold, unavailable rows staying put). The
  * bundle is the same mechanism `library-model.test.mjs` uses - esbuild over the
  * real TypeScript, so a signature change breaks this suite instead of drifting
  * behind a hand-copied fixture.
@@ -36,12 +36,28 @@ const {
 	moveWithinRegion,
 	moveToRegion,
 	placeInRegion,
+	stripUnadvertisedIds,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
 const ALL = new Set(SIDEBAR_DESTINATION_IDS);
+/*
+ * The defaults after the notifications addendum (decisions D10): Notifications
+ * visible under Aida, Schedules folded into More so the column keeps its height.
+ */
 const DEFAULT_VISIBLE = [
+	"aida",
+	"notifications",
+	"library",
+	"projects",
+	"agents",
+	"browser",
+];
+const DEFAULT_MORE = ["schedules", "team-bridge", "agent-hub", "mesh"];
+// The arrangement every user had before the addendum - a stored file written
+// by an earlier build looks like this, minus the id it never knew.
+const PRE_NOTIFICATIONS_VISIBLE = [
 	"aida",
 	"library",
 	"projects",
@@ -49,15 +65,24 @@ const DEFAULT_VISIBLE = [
 	"schedules",
 	"browser",
 ];
-const DEFAULT_MORE = ["team-bridge", "agent-hub", "mesh"];
+const PRE_NOTIFICATIONS_MORE = ["team-bridge", "agent-hub", "mesh"];
 
 const layout = (visible, more) => ({ visible, more });
 
-test("the id tuple is the nine defaults, in default order", () => {
+test("the id tuple is the wire vocabulary, grown only at its end", () => {
+	// Wire order, not display order: core validates the same tuple and both
+	// sides only append. `notifications` is LAST on the wire even though it
+	// renders second - the display default is a separate rank.
 	assert.deepEqual(SIDEBAR_DESTINATION_IDS, [
-		...DEFAULT_VISIBLE,
-		...DEFAULT_MORE,
+		...PRE_NOTIFICATIONS_VISIBLE,
+		...PRE_NOTIFICATIONS_MORE,
+		"notifications",
 	]);
+	// ...and the default layout names exactly those ids, once each.
+	assert.deepEqual(
+		[...DEFAULT_SIDEBAR_LAYOUT.visible, ...DEFAULT_SIDEBAR_LAYOUT.more].sort(),
+		[...SIDEBAR_DESTINATION_IDS].sort(),
+	);
 });
 
 test("default arrangement matches the design contract", () => {
@@ -85,7 +110,7 @@ test("sanitize returns the default for absent, empty and non-object input", () =
 
 test("sanitize re-inserts a missing id at its default position", () => {
 	const missingLibrary = sanitizeSidebarLayout({
-		visible: ["aida", "projects", "agents", "schedules", "browser"],
+		visible: ["aida", "notifications", "projects", "agents", "browser"],
 		more: [...DEFAULT_MORE],
 	});
 	assert.deepEqual(missingLibrary, layout(DEFAULT_VISIBLE, DEFAULT_MORE));
@@ -96,8 +121,9 @@ test("sanitize re-inserts a missing id at its default position", () => {
 	});
 	assert.deepEqual(missingMore, layout(DEFAULT_VISIBLE, DEFAULT_MORE));
 
-	// A CUSTOM order survives; the gap is the only thing filled. Library lands
-	// after its default predecessor (Aida), and the folded ids keep their fold.
+	// A CUSTOM order survives; the gap is the only thing filled. Notifications
+	// lands after its default predecessor (Aida), and the folded ids keep their
+	// fold.
 	const custom = sanitizeSidebarLayout({
 		visible: ["browser", "aida"],
 		more: ["mesh"],
@@ -105,10 +131,68 @@ test("sanitize re-inserts a missing id at its default position", () => {
 	assert.deepEqual(
 		custom,
 		layout(
-			["browser", "aida", "library", "projects", "agents", "schedules"],
-			["team-bridge", "agent-hub", "mesh"],
+			["browser", "aida", "notifications", "library", "projects", "agents"],
+			["schedules", "team-bridge", "agent-hub", "mesh"],
 		),
 	);
+});
+
+test("an existing stored layout gains Notifications under Aida and keeps Schedules", () => {
+	// The upgrade path every customised user takes: their file predates the id.
+	// Notifications is inserted right after Aida (its default predecessor), NOT
+	// after Browser where the wire order would have put it; Schedules stays
+	// where their file stored it - a new default region applies only to an id
+	// that is missing.
+	const upgraded = sanitizeSidebarLayout({
+		visible: [...PRE_NOTIFICATIONS_VISIBLE],
+		more: [...PRE_NOTIFICATIONS_MORE],
+	});
+	assert.deepEqual(
+		upgraded,
+		layout(
+			[
+				"aida",
+				"notifications",
+				"library",
+				"projects",
+				"agents",
+				"schedules",
+				"browser",
+			],
+			PRE_NOTIFICATIONS_MORE,
+		),
+	);
+	// Without Aida stored at all, it still leads the visible region's remainder.
+	const noAida = sanitizeSidebarLayout({
+		visible: ["library", "browser"],
+		more: [],
+	});
+	assert.equal(noAida.visible[0], "aida");
+	assert.equal(noAida.visible[1], "notifications");
+});
+
+test("stripUnadvertisedIds removes a gated id only when its feature is absent", () => {
+	const value = sanitizeSidebarLayout(DEFAULT_SIDEBAR_LAYOUT);
+	// An older core refuses the unknown id on PUT (422), so the body omits it.
+	const old = stripUnadvertisedIds(value, () => false);
+	assert.equal(old.visible.includes("notifications"), false);
+	assert.equal(old.more.includes("notifications"), false);
+	assert.deepEqual(old.visible, [
+		"aida",
+		"library",
+		"projects",
+		"agents",
+		"browser",
+	]);
+	assert.deepEqual(old.more, DEFAULT_MORE);
+	// A backend that advertises it receives the layout unchanged.
+	const current = stripUnadvertisedIds(
+		value,
+		(feature) => feature === "notifications",
+	);
+	assert.deepEqual(current, value);
+	// Never mutates its input.
+	assert.deepEqual(value, layout(DEFAULT_VISIBLE, DEFAULT_MORE));
 });
 
 test("sanitize puts a missing id back in its DEFAULT region", () => {
@@ -146,6 +230,8 @@ test("regionOf reports the stored region", () => {
 	assert.equal(regionOf(value, "aida"), "visible");
 	assert.equal(regionOf(value, "browser"), "visible");
 	assert.equal(regionOf(value, "mesh"), "more");
+	assert.equal(regionOf(value, "notifications"), "visible");
+	assert.equal(regionOf(value, "schedules"), "more");
 });
 
 test("renderedRegion filters unavailable ids without rewriting the layout", () => {
@@ -162,10 +248,12 @@ test("renderedRegion filters unavailable ids without rewriting the layout", () =
 		"aida",
 		"projects",
 		"agents",
-		"schedules",
 		"browser",
 	]);
-	assert.deepEqual(renderedRegion(value, "more", available), ["agent-hub"]);
+	assert.deepEqual(renderedRegion(value, "more", available), [
+		"schedules",
+		"agent-hub",
+	]);
 	// The stored layout is untouched.
 	assert.deepEqual(value.visible, DEFAULT_VISIBLE);
 });
@@ -175,10 +263,10 @@ test("moveWithinRegion swaps rendered neighbours inside one region", () => {
 	const moved = moveWithinRegion(value, "agents", -1, ALL);
 	assert.deepEqual(moved?.visible, [
 		"aida",
+		"notifications",
 		"library",
 		"agents",
 		"projects",
-		"schedules",
 		"browser",
 	]);
 	assert.deepEqual(moved?.more, DEFAULT_MORE);
@@ -192,7 +280,7 @@ test("moveWithinRegion swaps rendered neighbours inside one region", () => {
 	assert.equal(moveWithinRegion(value, "aida", -1, ALL), null);
 	assert.equal(moveWithinRegion(value, "browser", 1, ALL), null);
 	assert.equal(moveWithinRegion(value, "mesh", 1, ALL), null);
-	assert.equal(moveWithinRegion(value, "team-bridge", -1, ALL), null);
+	assert.equal(moveWithinRegion(value, "schedules", -1, ALL), null);
 });
 
 test("moveWithinRegion skips an unavailable id and keeps its stored slot", () => {
@@ -226,12 +314,13 @@ test("moveToRegion appends across the fold", () => {
 	const toMore = moveToRegion(value, "browser", "more");
 	assert.deepEqual(toMore.visible, [
 		"aida",
+		"notifications",
 		"library",
 		"projects",
 		"agents",
-		"schedules",
 	]);
 	assert.deepEqual(toMore.more, [
+		"schedules",
 		"team-bridge",
 		"agent-hub",
 		"mesh",
@@ -240,7 +329,7 @@ test("moveToRegion appends across the fold", () => {
 
 	const toVisible = moveToRegion(value, "team-bridge", "visible");
 	assert.deepEqual(toVisible.visible, [...DEFAULT_VISIBLE, "team-bridge"]);
-	assert.deepEqual(toVisible.more, ["agent-hub", "mesh"]);
+	assert.deepEqual(toVisible.more, ["schedules", "agent-hub", "mesh"]);
 });
 
 test("placeInRegion inserts before a rendered row across the boundary", () => {
@@ -254,14 +343,14 @@ test("placeInRegion inserts before a rendered row across the boundary", () => {
 	);
 	assert.deepEqual(placed?.visible, [
 		"aida",
+		"notifications",
 		"library",
 		"team-bridge",
 		"projects",
 		"agents",
-		"schedules",
 		"browser",
 	]);
-	assert.deepEqual(placed?.more, ["agent-hub", "mesh"]);
+	assert.deepEqual(placed?.more, ["schedules", "agent-hub", "mesh"]);
 
 	// Insertion goes before the anchor's STORED index, so an unavailable row
 	// between the previous rendered row and the anchor keeps its slot.
@@ -285,13 +374,13 @@ test("placeInRegion appends at the end when beforeId is null", () => {
 	const value = sanitizeSidebarLayout(DEFAULT_SIDEBAR_LAYOUT);
 	const placed = placeInRegion(value, "aida", "more", null, ALL);
 	assert.deepEqual(placed?.visible, [
+		"notifications",
 		"library",
 		"projects",
 		"agents",
-		"schedules",
 		"browser",
 	]);
-	assert.deepEqual(placed?.more, ["team-bridge", "agent-hub", "mesh", "aida"]);
+	assert.deepEqual(placed?.more, [...DEFAULT_MORE, "aida"]);
 
 	// The same null target on the visible region puts it after Browser.
 	const toVisible = placeInRegion(value, "mesh", "visible", null, ALL);
@@ -328,7 +417,7 @@ test("layoutEquals is order-sensitive and region-sensitive", () => {
 		layoutEquals(
 			base,
 			layout(
-				["aida", "library", "projects", "agents", "schedules"],
+				["aida", "notifications", "library", "projects", "agents"],
 				["browser", ...DEFAULT_MORE],
 			),
 		),

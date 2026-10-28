@@ -121,11 +121,16 @@ const bundle = await build({
 			// The notice module is the ONE authority for the sentence the reader sees.
 			// Exported through the same bundle so this test compares the shipping mapping
 			// rather than a copy of it (design round 1, D1).
-			'export { streamFailureNotice, DESKTOP_STREAM_DETAIL, HISTORY_UNREADABLE } from "./src/shared/desktop-stream-notice.ts";',
+			'export { DESKTOP_STREAM_DETAIL } from "./src/shared/desktop-stream-notice.ts"; export { streamFailureNotice } from "./src/renderer/src/features/chat/canonical/session-failure-notice.ts";',
 			// Re-exported from the fixture so each fresh copy of the hook can be
 			// bound to its own runtime: a shared global would let a previous
 			// mount's pending render read THIS mount's hook slots.
 			'export { __setRuntime } from "react";',
+			// The locale store, from the SAME bundle instance as the hook and its
+			// `t()`: each `loadHook` tag is its own module graph, so a `setLocale`
+			// imported from the test's copy would write a second store and the
+			// held notice would never see the switch this case is about.
+			'export { DEFAULT_LOCALE, setLocale } from "./src/i18n/locale.ts";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -134,6 +139,10 @@ const bundle = await build({
 	platform: "neutral",
 	mainFields: ["module", "main"],
 	conditions: ["import"],
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 	// The renderer's `@features` / `@shared` aliases are tsconfig paths rather
 	// than node resolutions, and the root tsconfig carries no `paths` of its own
@@ -305,7 +314,6 @@ async function loadHook(tag) {
 const {
 	streamFailureNotice,
 	DESKTOP_STREAM_DETAIL,
-	HISTORY_UNREADABLE,
 	STREAM_SNAPSHOT_DEADLINE_MS,
 	STREAM_SNAPSHOT_RECHECK_MS,
 } = await loadHook("notice");
@@ -1655,6 +1663,58 @@ test("every transport detail maps to ONE product sentence, and none of them leak
 		"no control is offered where reconnecting cannot help",
 	);
 	assert.deepEqual(streamFailureNotice(null), refused);
+});
+
+test("a held failure notice follows a live language switch", async () => {
+	/*
+	 * `session-failure-notice.ts` resolves copy at call time so that a caller
+	 * HOLDING a notice reads one at the moment it renders. The view is that
+	 * caller, and a language switch while the notice is on screen is that
+	 * moment: the stored sentence must follow it (agent review round 1, M2).
+	 */
+	test_state.streams.length = 0;
+	const hook = await loadHook("locale-follow");
+	const mounted = mountHook(hook, SESSION);
+	await settle();
+	// Seven refusals spend the retry budget - the path that PUBLISHES a notice
+	// into view state, rather than retrying behind the pane.
+	for (let attempt = 0; attempt < 6; attempt += 1) {
+		fail(DESKTOP_STREAM_DETAIL.refused(401));
+		await settle();
+		await runTimers();
+	}
+	fail(DESKTOP_STREAM_DETAIL.refused(401));
+	await settle();
+	assert.equal(mounted.view().status, "unavailable");
+	const held = mounted.view().failure;
+	assert.match(
+		held?.statement ?? "",
+		RE_RECONNECT_I,
+		"the notice holds a product sentence to re-word",
+	);
+
+	hook.setLocale("fr");
+	await settle();
+	assert.equal(
+		mounted.view().failure?.statement,
+		hook.streamFailureNotice(DESKTOP_STREAM_DETAIL.refused(401)).statement,
+		"the held notice is re-worded in the language now being read",
+	);
+	assert.notEqual(
+		mounted.view().failure?.statement,
+		held?.statement,
+		"stored English after setLocale('fr') is the defect: the sentence is resolved once and never follows",
+	);
+
+	// Back again, so the mechanism is a re-resolution rather than a one-way
+	// rebuild that only a fresh failure could produce.
+	hook.setLocale(hook.DEFAULT_LOCALE);
+	await settle();
+	assert.equal(
+		mounted.view().failure?.statement,
+		held?.statement,
+		"switching back restores the original sentence in place",
+	);
 });
 
 // ------------------------------------------------------- the connectivity gate

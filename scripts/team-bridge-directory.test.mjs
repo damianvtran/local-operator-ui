@@ -396,7 +396,7 @@ test("one status payload maps onto the plan and sign-in gates", () => {
 });
 
 test("a ready surface, an unasked boundary or no answer yet is eligible", () => {
-	for (const surface_state of ["B", "C", "D", "E", "F", "G", null]) {
+	for (const surface_state of ["B", "C", "D", "F", "G", null]) {
 		assert.equal(
 			model.teamBridgeEligibility(status({ surface_state })),
 			null,
@@ -405,6 +405,126 @@ test("a ready surface, an unasked boundary or no answer yet is eligible", () => 
 	}
 	assert.equal(model.teamBridgeEligibility(null), null);
 	assert.equal(model.teamBridgeEligibility(undefined), null);
+});
+
+test("explicit endpoint/local off gates the page without reinterpreting runtime readonly", () => {
+	for (const in_force of [false, true]) {
+		const base = {
+			default_on: { in_force, notice_pending: true },
+			read_only: false,
+		};
+		for (const surface_state of ["C", "D"]) {
+			assert.equal(
+				model.teamBridgeEligibility(
+					status({ ...base, surface_state, local: { enabled: true } }),
+				),
+				null,
+				`active/paused, default-on=${in_force}`,
+			);
+			assert.equal(
+				model.teamBridgeEligibility(
+					status({ ...base, surface_state, local: { enabled: false } }),
+				),
+				"off_local",
+				`local opt-out, default-on=${in_force}`,
+			);
+		}
+		assert.equal(
+			model.teamBridgeEligibility(
+				status({ ...base, surface_state: "E", local: { enabled: false } }),
+			),
+			"off",
+			"E is off even though runtime read_only is false",
+		);
+		assert.equal(
+			model.teamBridgeEligibility(
+				status({ ...base, surface_state: "E", local: { enabled: true } }),
+			),
+			"off",
+			"disabled endpoint outranks stale local on",
+		);
+	}
+	assert.equal(
+		model.teamBridgeEligibility(
+			status({
+				surface_state: "F",
+				read_only: true,
+				local: { enabled: false },
+			}),
+		),
+		null,
+		"organization readonly keeps retained history",
+	);
+	assert.equal(
+		model.teamBridgeEligibility(
+			status({ surface_state: "B", local: { enabled: false } }),
+		),
+		null,
+		"legacy opt-in on-ramp is unchanged",
+	);
+});
+
+test("off page replaces composer and write controls with the Team Bridge off state and a way back", async () => {
+	// The way back is a router <Link>, so this one render needs a router.
+	const { MemoryRouter } = await import("react-router-dom");
+	const html = renderToStaticMarkup(
+		createElement(
+			MemoryRouter,
+			null,
+			createElement(
+				ui.TeamBridgePageView,
+				viewProps({
+					eligibility: "off",
+					selectedConversation: conversation(),
+					readOnly: false,
+				}),
+			),
+		),
+	);
+	assert.match(html, /Team Bridge is off for this account/);
+	assert.match(html, /conversations stay hidden until you turn it on again/);
+	// Design round 1 D1: the product's own name, never the older noun.
+	assert.doesNotMatch(html, /Agent messages/);
+	// No dead end: one link to the Settings way-back control. It is
+	// navigation (an <a>), never a button that opts in from this page.
+	assert.equal(
+		html.includes('href="/settings?setting=team_bridge.enabled"'),
+		true,
+		"off gate links to the Settings control that turns it back on",
+	);
+	assert.match(html, />Turn on in Settings</);
+	assert.doesNotMatch(html, /<textarea|<button|role="(?:dialog|alertdialog)"/);
+	assert.doesNotMatch(html, /Team Bridge requires|Enable/);
+});
+
+test("machine-only off names this machine, claims no consent step, and links to the switch (R2-2)", async () => {
+	const { MemoryRouter } = await import("react-router-dom");
+	const html = renderToStaticMarkup(
+		createElement(
+			MemoryRouter,
+			null,
+			createElement(
+				ui.TeamBridgePageView,
+				viewProps({
+					eligibility: "off_local",
+					selectedConversation: conversation(),
+					readOnly: false,
+				}),
+			),
+		),
+	);
+	assert.match(html, /Team Bridge is off on this machine/);
+	assert.match(html, /Your account is still set up/);
+	// The machine switch collects no consent; the account-level copy would lie.
+	assert.equal(/consent/i.test(html), false, "no consent claim");
+	assert.equal(/for this account/.test(html), false, "not the account copy");
+	assert.equal(
+		html.includes('href="/settings?setting=team_bridge.enabled"'),
+		true,
+		"links to the Settings control that clears it",
+	);
+	assert.doesNotMatch(html, /<textarea|<button|role="(?:dialog|alertdialog)"/);
+	assert.doesNotMatch(html, /Enable/);
 });
 
 // ---------------------------------------------------------------------------
@@ -535,16 +655,18 @@ test("people render with self, paused and inert states at the rail's rhythm", ()
 	assert.match(html, /Damian \(you\)/);
 	assert.doesNotMatch(html, /Message Damian/);
 	// A reachable person's row is their DM; a paused one says so on the row.
+	// The row keeps its own "Message {name}" name: since 2026-10-26 it anchors
+	// the profile card without being its trigger (a click opens the DM).
 	assert.match(
 		html,
 		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
 		),
 	);
 	assert.match(
 		html,
 		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Cy" })}"`,
+			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Cy" })}"`,
 		),
 	);
 	assert.match(html, />Paused</);
@@ -572,7 +694,7 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 	assert.match(
 		ready,
 		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
 		),
 	);
 	assert.doesNotMatch(ready, new RegExp(`data-conversation-id="${dm.id}"`));
@@ -587,7 +709,7 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 		assert.match(
 			html,
 			new RegExp(
-				`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+				`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
 			),
 			`${listState} list keeps the row`,
 		);
@@ -655,7 +777,7 @@ test("surface F withholds writes but still opens an existing DM", () => {
 	assert.match(
 		withDm,
 		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.profile.open_profile", { name: "Bea" })}"`,
+			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
 		),
 	);
 });

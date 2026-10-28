@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 
@@ -83,27 +85,36 @@ type TranscriptPlaceholderProps = {
 
 export const TranscriptPlaceholder: FC<TranscriptPlaceholderProps> = ({
 	isSmallView = false,
-}) => (
-	/*
-	 * ONE element, `<output>` rather than a div with role="status": it carries
-	 * the same implicit live-region semantics as a native element, which is what
-	 * the a11y lint asks for, and the `aria-label` names the region. The visible
-	 * caption lives INSIDE it rather than beside it, so the whole placeholder is
-	 * one subtree - the transcript's own "is there content yet" reads exclude
-	 * this element by that name, and a caption sitting outside it would have read
-	 * as a transcript row (which is exactly how it was caught: every hydrating
-	 * frame reported itself as settled).
-	 */
-	<output
-		aria-label="Loading conversation"
-		className={cn("flex items-center gap-2", isSmallView && "gap-1.5")}
-	>
-		{/* The mark: `rounded-full` is the contract's word for a status dot, and
+}) => {
+	/* The locale is a subscription, not a value: `t()` reads at call time, and this
+	 * component has no other reason to re-render when the interface language
+	 * changes. */
+	useI18nLocale();
+
+	return (
+		/*
+		 * ONE element, `<output>` rather than a div with role="status": it carries
+		 * the same implicit live-region semantics as a native element, which is what
+		 * the a11y lint asks for, and the `aria-label` names the region. The visible
+		 * caption lives INSIDE it rather than beside it, so the whole placeholder is
+		 * one subtree - the transcript's own "is there content yet" reads exclude
+		 * this element by that name, and a caption sitting outside it would have read
+		 * as a transcript row (which is exactly how it was caught: every hydrating
+		 * frame reported itself as settled).
+		 */
+		<output
+			aria-label={t("ui.chat.canonical.placeholder.region_label")}
+			className={cn("flex items-center gap-2", isSmallView && "gap-1.5")}
+		>
+			{/* The mark: `rounded-full` is the contract's word for a status dot, and
 		    this is one - the surface's liveness, not a piece of content. */}
-		<span
-			aria-hidden="true"
-			className="size-2 shrink-0 rounded-full bg-elevated animate-pulse-visible"
-		/>
-		<span className="text-ink-dim text-meta">Loading conversation…</span>
-	</output>
-);
+			<span
+				aria-hidden="true"
+				className="size-2 shrink-0 rounded-full bg-elevated animate-pulse-visible"
+			/>
+			<span className="text-ink-dim text-meta">
+				{t("ui.chat.canonical.placeholder.loading")}
+			</span>
+		</output>
+	);
+};

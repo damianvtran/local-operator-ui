@@ -36,6 +36,8 @@ import {
 	waitingApprovalCount,
 } from "@features/mesh/mesh-approvals";
 import { useMeshMembership } from "@features/mesh/mesh-store";
+import { useNotificationsCount } from "@features/notifications/notifications-api";
+import { badgeCountOf } from "@features/notifications/notifications-model";
 import { useTeamBridgeNavItem } from "@features/team-bridge/team-bridge-nav";
 import {
 	desktopFeatureEnabled,
@@ -54,6 +56,7 @@ import {
 	type SidebarLayout,
 	type SidebarRegion,
 	layoutEquals,
+	moreAttentionCount,
 	moveToRegion,
 	moveWithinRegion,
 	placeInRegion,
@@ -61,7 +64,11 @@ import {
 	renderedRegion,
 } from "@shared/components/navigation/sidebar-destinations";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
-import { Badge, BrowserSafeTooltip, Button } from "@shared/components/ui";
+import {
+	AttentionBadge,
+	BrowserSafeTooltip,
+	Button,
+} from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -83,6 +90,7 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { LucideIcon } from "lucide-react";
 import {
+	Bell,
 	Bot,
 	CalendarDays,
 	ChevronDown,
@@ -462,6 +470,20 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const libraryEnabled = desktopFeatureEnabled(capabilities.data, "library", 1);
 	/*
+	 * The Notifications destination and its badge number, on its own capability
+	 * (see the row below). The count read is the cheap `/count` route the feed's
+	 * `notifications` frame refreshes; disabled below the capability.
+	 */
+	const notificationsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"notifications",
+		1,
+	);
+	const notificationsCount = useNotificationsCount(notificationsEnabled);
+	const notificationsBadge = notificationsEnabled
+		? badgeCountOf(notificationsCount.data)
+		: 0;
+	/*
 	 * THE OVERFLOW GROUP'S STATE, persisted beside the collapsed width: a
 	 * low-frequency destination's visibility is a preference about the column,
 	 * not about the route in front of it.
@@ -587,6 +609,37 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			workingName: t("ui.shell.sidebar_navigation.aida_working", {
 				name: aidaName,
 			}),
+		});
+	}
+	/*
+	 * NOTIFICATIONS SITS UNDER AIDA (design.md § 1; decisions D10): she is the
+	 * chief of staff and the reel is what she and every other session flag, so
+	 * the two sit together. Its stored position comes from the layout model's
+	 * default rank, not from this insertion order.
+	 *
+	 * GATED ON `features.notifications`, the Library rule: an older core has no
+	 * routes, and the layout save strips the id there (`stripUnadvertisedIds`).
+	 *
+	 * ITS BADGE COUNTS unread updates plus UNREAD waiting asks, `unread_count +
+	 * waiting_unread_count` (decisions D16; the core field changed when asks grew
+	 * their own read state). Its filled accent pill was this row's alone under
+	 * decision D5 (2026-10-25); the operator reversed that on 2026-10-28, and every
+	 * row's attention count now wears the same shared `AttentionBadge`.
+	 */
+	if (notificationsEnabled) {
+		destinationItems.set("notifications", {
+			icon: Bell,
+			label: t("ui.notifications.nav.label"),
+			path: "/notifications",
+			isActive: currentView === "notifications",
+			tourTag: "nav-item-notifications",
+			attention: notificationsBadge,
+			attentionTag: "nav-notifications-badge",
+			attentionName: (count: number) =>
+				t("ui.notifications.nav.unread", {
+					count,
+					countText: String(count),
+				}),
 		});
 	}
 	/*
@@ -728,7 +781,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		canCustomise,
 		save: saveSidebarLayout,
 		reset: resetSidebarLayout,
-	} = useSidebarLayout(layoutCapable);
+	} = useSidebarLayout(layoutCapable, (feature) =>
+		desktopFeatureEnabled(
+			capabilities.data,
+			feature as Parameters<typeof desktopFeatureEnabled>[1],
+			1,
+		),
+	);
 	/*
 	 * Every render below reads `effectiveLayout`, not `layout`: the fallback is
 	 * the SHIPPED arrangement, not a second opinion about the order. It is also
@@ -1539,8 +1598,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					 * the 30px row) and the mark is the panel rail's corner mark
 					 * (`panel-rail.tsx`, the browser item's block states the geometry):
 					 * 14px, pinned at -2px/-2px of the box, so the glyph is the button's
-					 * only in-flow content and stays centred. The register stays the quiet
-					 * one below; only the size and the place are the rail's. The busy mark
+					 * only in-flow content and stays centred. The register is the shared
+					 * `AttentionBadge`; only the size and the place are the rail's. The busy mark
 					 * keeps its in-flow slot: where a spinner goes in the strip is a
 					 * design call #1083 does not make.
 					 */
@@ -1548,15 +1607,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						{glyph}
 						{attention > 0 && (
 							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
-								<Badge
-									variant="attentionQuiet"
-									shape="pill"
-									size="count"
-									className="h-3.5 min-w-3.5 px-0.75 leading-none"
+								<AttentionBadge
+									count={attention}
+									placement="corner"
 									data-tour-tag={item.attentionTag}
-								>
-									{attention}
-								</Badge>
+								/>
 							</span>
 						)}
 					</span>
@@ -1756,21 +1811,16 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					>
 						{attention > 0 && (
 							/*
-							 * THE QUIET COUNT (operator ask, 2026-09-30): the rail's badge
-							 * is the `attentionQuiet` register rather than the bordered
-							 * `attention` mark - borderless, an `elevated` whisper instead
-							 * of the warning wash, and the count family's own `ink-dim` /
-							 * `text-meta-sm` numeral, so it reads with the sidebar's
-							 * team-count lines.
+							 * THE SHARED ACCENT COUNT (operator, 2026-10-28): every row's
+							 * attention count is the one `AttentionBadge`, the filled accent
+							 * pill Notifications introduced. This reverses the 2026-09-30
+							 * quiet register and notifications decision D5 (Notifications
+							 * alone loud); see `attention-badge.tsx` for the why.
 							 */
-							<Badge
-								variant="attentionQuiet"
-								shape="pill"
-								size="count"
+							<AttentionBadge
+								count={attention}
 								data-tour-tag={item.attentionTag}
-							>
-								{attention}
-							</Badge>
+							/>
 						)}
 						{item.working && (
 							/*
@@ -2064,15 +2114,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						<Icon size={16} aria-hidden="true" />
 						{(props.attention ?? 0) > 0 && (
 							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
-								<Badge
-									variant="attentionQuiet"
-									shape="pill"
-									size="count"
-									className="h-3.5 min-w-3.5 px-0.75 leading-none"
+								<AttentionBadge
+									count={props.attention ?? 0}
+									placement="corner"
 									data-tour-tag={props.attentionTag}
-								>
-									{props.attention}
-								</Badge>
+								/>
 							</span>
 						)}
 						{props.working && (
@@ -2151,8 +2197,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			.map((id) => destinationItems.get(id))
 			.filter((item): item is NavItem => item !== undefined);
 		/*
-		 * THE AGGREGATE (design § 3): every hidden destination's attention is summed
-		 * into this row's badge and any hidden row working draws the spinner. It is
+		 * THE AGGREGATE (design § 3): every hidden destination's attention is SUMMED
+		 * (`moreAttentionCount` states why a sum rather than a dot) into this row's
+		 * badge - the same shared `AttentionBadge` the rows wear, so a count folded
+		 * into More is exactly as loud as it was on its own row - and any hidden row
+		 * working draws the spinner. It is
 		 * the requirement that an unread chief of staff can never be hidden by
 		 * customisation - Aida folded into More still says, on the row that hides her,
 		 * that something is waiting.
@@ -2161,10 +2210,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * reader acts on, and only one sentence can be the control's name. The
 		 * spinner is still drawn beside it, so the state is not lost to sight.
 		 */
-		const moreAttention = hiddenItems.reduce(
-			(sum, item) => sum + (item.attention ?? 0),
-			0,
-		);
+		const moreAttention = moreAttentionCount(hiddenItems);
 		const moreWorking = hiddenItems.some((item) => item.working === true);
 		const moreName =
 			moreAttention > 0
@@ -2204,14 +2250,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						{(moreAttention > 0 || moreWorking) && (
 							<span className="inline-flex shrink-0 items-center gap-1">
 								{moreAttention > 0 && (
-									<Badge
-										variant="attentionQuiet"
-										shape="pill"
-										size="count"
+									<AttentionBadge
+										count={moreAttention}
 										data-tour-tag="nav-more-badge"
-									>
-										{moreAttention}
-									</Badge>
+									/>
 								)}
 								{moreWorking && (
 									<LoaderCircle
