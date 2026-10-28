@@ -3,6 +3,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { t } from "@shared/i18n";
+import { useObservedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	useInfiniteQuery,
@@ -462,7 +463,10 @@ export type ThreadPaneMountProps = {
 };
 
 export function TeamBridgeThreadPane(props: ThreadPaneMountProps) {
-	const client = useQueryClient();
+	/* SUBSCRIBED to the credential journal (`useSyncExternalStore` inside), so
+	   the pane re-renders - and unmounts its body - the moment authority moves,
+	   whoever mounted it. */
+	const authority = useObservedRadientAuthority();
 	if (!TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD) return null;
 	/*
 	 * NO OWNER, NO PANE. The thread's owner (signed-in account + credential
@@ -473,8 +477,11 @@ export function TeamBridgeThreadPane(props: ThreadPaneMountProps) {
 	 * page also remounts its whole tree on `account.token`; this key keeps the
 	 * pane honest when it is mounted by anything else, a story or a rig.)
 	 */
-	const owner = currentThreadOwner(client);
-	if (!owner) return null;
+	if (!authority.accountId) return null;
+	const owner: ThreadOwner = {
+		accountId: authority.accountId,
+		epoch: authority.epoch,
+	};
 	return (
 		<TeamBridgeThreadPaneMount
 			key={`${owner.accountId}:${owner.epoch}`}

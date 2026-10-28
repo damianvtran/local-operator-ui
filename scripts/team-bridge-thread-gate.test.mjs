@@ -302,8 +302,8 @@ test("both pane exports guard before any hook mounts", () => {
 	);
 	// The container captures the owner BEFORE mounting, and mounts nothing
 	// without one; the body is keyed by account + epoch.
-	assert.match(mountWrapper, /const owner = currentThreadOwner\(client\);/);
-	assert.match(mountWrapper, /if \(!owner\) return null;/);
+	assert.match(mountWrapper, /useObservedRadientAuthority\(\)/);
+	assert.match(mountWrapper, /if \(!authority\.accountId\) return null;/);
 	assert.match(mountWrapper, /key=\{`\$\{owner\.accountId\}:\$\{owner\.epoch\}`\}/);
 	assert.doesNotMatch(
 		mountWrapper,

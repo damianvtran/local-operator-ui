@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 // Execute the shipped model and render the real pane, not a second state map.
 const bundle = await build({
 	stdin: {
-		contents: `export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list'; export {manageThreadFocus} from './src/renderer/src/features/team-bridge/team-bridge-thread-focus'; export * from './src/renderer/src/features/team-bridge/team-bridge-thread-read'; export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api'; export {teamBridgeOpenPath} from './src/shared/team-bridge-notify'; export {threadSummary} from './src/renderer/src/features/team-bridge/team-bridge-threads-model'; export {TeamBridgeThreadPane, TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane'; export {teamBridgeMessageSchema} from './src/shared/team-bridge-contract'; export {QueryClient, QueryClientProvider} from '@tanstack/react-query'; export {createRoot} from 'react-dom/client'; export {act} from 'react'; export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server';`,
+		contents: `export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list'; export {manageThreadFocus} from './src/renderer/src/features/team-bridge/team-bridge-thread-focus'; export * from './src/renderer/src/features/team-bridge/team-bridge-thread-read'; export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api'; export {teamBridgeOpenPath} from './src/shared/team-bridge-notify'; export {threadSummary} from './src/renderer/src/features/team-bridge/team-bridge-threads-model'; export {TeamBridgeThreadPane, TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane'; export {teamBridgeMessageSchema} from './src/shared/team-bridge-contract'; export {QueryClient, QueryClientProvider} from '@tanstack/react-query'; export {createRoot} from 'react-dom/client'; export {act} from 'react'; export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server'; export {beginRadientAuthorityTransition, settleRadientAuthority, observedRadientAuthority} from './src/renderer/src/shared/hooks/radient-account-authority'; export {useTeamBridgeThreadCacheFence} from './src/renderer/src/features/team-bridge/team-bridge-thread-cache';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -56,16 +56,8 @@ test("thread rollup accepts old messages and bounds participant facepile", () =>
 		mod.teamBridgeMessageSchema.parse({ ...root, reply_count: -1 }),
 	);
 });
-/*
- * THE HOLD AT THE PANE'S OWN DOOR. `TeamBridgeThreadPaneView` is the export a
- * story or rig mounts directly, and it now renders nothing while the thread
- * surface is held: no root body, no state copy (so no invented reply count) and
- * no markdown/image path. These three states used to assert the pane's copy;
- * the copy is unreachable until the constant flips, and asserting it here would
- * be an assertion about a surface no build mounts.
- */
-test("the held pane view renders nothing in every state", () => {
-	for (const state of ["ready", "loading", "error"]) {
+for (const state of ["ready", "loading", "error"])
+	test(`thread pane renders ${state} without fake reply actions`, () => {
 		const html = mod.renderToStaticMarkup(
 			mod.createElement(mod.TeamBridgeThreadPaneView, {
 				root,
@@ -77,11 +69,21 @@ test("the held pane view renders nothing in every state", () => {
 				onSend: async () => {},
 			}),
 		);
-		assert.equal(html, "", `${state}: the held view renders no body`);
-	}
-});
-
-test("a held pane reaches no markdown or image path either", () => {
+		assert.match(html, /Root question/);
+		assert.match(html, /Close thread/);
+		assert.match(
+			html,
+			state === "ready"
+				? /No replies yet/
+				: state === "loading"
+					? /Loading messages/
+					: /Messages could not be loaded/,
+		);
+		// The composer's textbox legitimately carries this name; a reply BUTTON
+		// (the toolbar's) must not exist in the pane.
+		assert.doesNotMatch(html, /<button[^>]*aria-label="Reply in thread"/);
+	});
+test("populated thread renders reply through safe markdown, never image requests", () => {
 	const html = mod.renderToStaticMarkup(
 		mod.createElement(mod.TeamBridgeThreadPaneView, {
 			root,
@@ -101,8 +103,8 @@ test("a held pane reaches no markdown or image path either", () => {
 			onSend: async () => {},
 		}),
 	);
-	assert.equal(html, "");
-	assert.doesNotMatch(html, /I claim this|tracking|<img/);
+	assert.match(html, /I claim this/);
+	assert.doesNotMatch(html, /<img/);
 });
 
 test("displayed replies acknowledge only visible seqs in an active pane, with a cleanup fence", async () => {
@@ -176,7 +178,7 @@ test("displayed replies acknowledge only visible seqs in an active pane, with a 
 	}
 });
 
-test("the held open path carries no thread, while the loader still addresses the root and refuses foreign responses", async () => {
+test("an old-root notification link fetches its root directly, preserves tenant and refuses foreign responses", async () => {
 	const target = {
 		tenantId: "tenant_a",
 		conversationId: root.conversation_id,
@@ -187,12 +189,19 @@ test("the held open path carries no thread, while the loader still addresses the
 		conversationId: target.conversationId,
 		threadId: target.rootId,
 	});
-	// THE HOLD: the conversation is routable, the thread lane is not.
-	assert.equal(
+	assert.deepEqual(
 		mod.threadTargetFromSearch(new URL(url, "http://localhost").searchParams),
+		target,
+	);
+	assert.equal(
+		mod.threadTargetFromSearch(
+			new URLSearchParams({
+				conversation: target.conversationId,
+				thread: target.rootId,
+			}),
+		),
 		null,
 	);
-	assert.doesNotMatch(url, /thread=|bcmsg_root0001/);
 	const calls = [];
 	const original = mod.TeamBridgeApi.listReplies;
 	try {
@@ -200,7 +209,7 @@ test("the held open path carries no thread, while the loader still addresses the
 			calls.push(args);
 			return { root, replies: [], has_more: false };
 		};
-		const page = await mod.loadThreadPage(target);
+		const page = await mod.loadThreadPage(target, "acct_a");
 		assert.equal(
 			page.root.id,
 			root.id,
@@ -210,19 +219,26 @@ test("the held open path carries no thread, while the loader still addresses the
 			[
 				target.conversationId,
 				target.rootId,
-				{ tenantId: "tenant_a", afterSeq: undefined },
+				{
+					expectedAccountId: "acct_a",
+					tenantId: "tenant_a",
+					afterSeq: undefined,
+				},
 			],
 		]);
 		mod.TeamBridgeApi.listReplies = async () => ({
 			root: { ...root, conversation_id: "foreign" },
 			replies: [],
 		});
-		await assert.rejects(() => mod.loadThreadPage(target), /identity mismatch/);
+		await assert.rejects(
+			() => mod.loadThreadPage(target, "acct_a"),
+			/identity mismatch/,
+		);
 		mod.TeamBridgeApi.listReplies = async () => {
 			throw new Error("wrong tenant: conversation_not_found");
 		};
 		await assert.rejects(
-			() => mod.loadThreadPage({ ...target, tenantId: "wrong" }),
+			() => mod.loadThreadPage({ ...target, tenantId: "wrong" }, "acct_a"),
 			/wrong tenant/,
 		);
 	} finally {
@@ -230,7 +246,7 @@ test("the held open path carries no thread, while the loader still addresses the
 	}
 });
 
-test("the held container mounts nothing and issues no thread read or acknowledgement", async () => {
+test("old-root pane load, visible-reply read clears badge, and late old-target responses cannot paint or ack", async () => {
 	const dom = new JSDOM('<div id="app"></div>', {
 		url: "http://localhost/",
 		pretendToBeVisual: true,
@@ -244,34 +260,52 @@ test("the held container mounts nothing and issues no thread read or acknowledge
 	globalThis.window = dom.window;
 	globalThis.document = dom.window.document;
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	dom.window.document.hasFocus = () => true;
+	const observers = [];
+	globalThis.IntersectionObserver = class {
+		constructor(cb) {
+			this.cb = cb;
+			observers.push(this);
+		}
+		observe() {}
+		disconnect() {}
+	};
 	const api = mod.TeamBridgeApi;
 	const originalRead = api.markRead;
 	const originalReplies = api.listReplies;
 	const calls = [];
+	let badge = 1;
+	let finishOld;
 	const client = new mod.QueryClient({
 		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
 	});
+	// The pane mounts only for a signed-in owner (account + auth epoch), and its
+	// read acknowledgement is an owner-fenced write (#1360): seed the real auth
+	// cache and the owner's ready status, never a patched owner hook.
+	client.setQueryData(["radient-user", "user"], {
+		account: { id: "acct_a" },
+	});
+	client.setQueryData(["team-bridge", "status", "account", "acct_a"], {
+		account_id: "acct_a",
+		state: "ready",
+		local: { enabled: true },
+		read_only: false,
+	});
 	const app = mod.createRoot(dom.window.document.getElementById("app"));
-	try {
-		api.markRead = async (...args) => {
-			calls.push(["markRead", ...args]);
-			return { last_read_seq: 2, unread_count: 0 };
-		};
-		api.listReplies = async (...args) => {
-			calls.push(["listReplies", ...args]);
-			return { root, replies: [], has_more: false };
-		};
-		await mod.act(async () => {
+	const target = {
+		tenantId: "tenant_a",
+		conversationId: root.conversation_id,
+		rootId: root.id,
+	};
+	const render = async (identity) =>
+		mod.act(async () => {
 			app.render(
 				mod.createElement(
 					mod.QueryClientProvider,
 					{ client },
 					mod.createElement(mod.TeamBridgeThreadPane, {
-						target: {
-							tenantId: "tenant_a",
-							conversationId: root.conversation_id,
-							rootId: root.id,
-						},
+						key: identity.rootId,
+						target: identity,
 						readOnly: false,
 						labelFor: (s) => s.display_label,
 						onClose() {},
@@ -279,11 +313,95 @@ test("the held container mounts nothing and issues no thread read or acknowledge
 				),
 			);
 		});
+	try {
+		api.markRead = async (conversationId, input) => {
+			calls.push({ conversationId, ...input });
+			if (input.seq >= 2) badge = 0;
+			return { last_read_seq: input.seq, unread_count: badge };
+		};
+		api.listReplies = async () => ({
+			root: { ...root, reply_count: 1 },
+			replies: [
+				{
+					...root,
+					id: "reply_visible",
+					seq: 2,
+					thread_root_id: root.id,
+					body: "Visible answer",
+				},
+			],
+			has_more: false,
+		});
+		await render(target);
 		await mod.act(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 30));
 		});
-		assert.deepEqual(calls, [], "the held mount must not touch the transport");
-		assert.equal(dom.window.document.body.textContent.trim(), "");
+		const row = dom.window.document.querySelector(
+			'[data-message-id="reply_visible"]',
+		);
+		assert.ok(
+			row,
+			"direct replies fetch resolves a root not present in any timeline page",
+		);
+		assert.equal(badge, 1, "loading alone does not acknowledge");
+		await mod.act(async () => {
+			observers.at(-1).cb([
+				{
+					target: row,
+					isIntersecting: true,
+					intersectionRect: { height: 20 },
+				},
+			]);
+		});
+		assert.equal(
+			badge,
+			0,
+			"actually displayed reply acknowledges seq2 for this follower",
+		);
+		assert.deepEqual(calls, [
+			{
+				conversationId: root.conversation_id,
+				tenantId: "tenant_a",
+				expectedAccountId: "acct_a",
+				seq: 2,
+			},
+		]);
+		const oldObserver = observers.at(-1);
+		api.listReplies = () =>
+			new Promise((resolve) => {
+				finishOld = resolve;
+			});
+		await render({ ...target, rootId: "bcmsg_pending" });
+		await mod.act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+		api.listReplies = async () => ({
+			root: { ...root, id: "bcmsg_new", body: "Current target" },
+			replies: [],
+			has_more: false,
+		});
+		await render({ ...target, rootId: "bcmsg_new" });
+		await mod.act(async () => {
+			finishOld({
+				root: { ...root, id: "bcmsg_pending", body: "Stale old target" },
+				replies: [],
+				has_more: false,
+			});
+			await new Promise((resolve) => setTimeout(resolve, 30));
+		});
+		assert.ok(dom.window.document.body.textContent.includes("Current target"));
+		assert.equal(
+			dom.window.document.body.textContent.includes("Stale old target"),
+			false,
+		);
+		oldObserver.cb([
+			{ target: row, isIntersecting: true, intersectionRect: { height: 20 } },
+		]);
+		assert.equal(
+			calls.length,
+			1,
+			"old observer and late fetch cannot acknowledge a new selection",
+		);
 	} finally {
 		await mod.act(async () => app.unmount());
 		client.clear();
@@ -291,6 +409,31 @@ test("the held container mounts nothing and issues no thread read or acknowledge
 		api.listReplies = originalReplies;
 		for (const [name, value] of Object.entries(saved)) globalThis[name] = value;
 		dom.window.close();
+	}
+});
+
+test("loading/error pane does not invent zero replies; a known root count remains honest", () => {
+	for (const state of ["loading", "error"]) {
+		const props = {
+			root,
+			replies: [],
+			state,
+			labelFor: (s) => s.display_label,
+			onClose() {},
+			onRetry() {},
+			onSend: async () => {},
+		};
+		const unknown = mod.renderToStaticMarkup(
+			mod.createElement(mod.TeamBridgeThreadPaneView, props),
+		);
+		assert.equal(unknown.includes("0 replies"), false);
+		const known = mod.renderToStaticMarkup(
+			mod.createElement(mod.TeamBridgeThreadPaneView, {
+				...props,
+				root: { ...root, reply_count: 3 },
+			}),
+		);
+		assert.ok(known.includes("3 replies"));
 	}
 });
 
@@ -333,7 +476,7 @@ test("opening a thread focuses close; Escape respects menus and close restores t
 	dom.window.close();
 });
 
-test("a held row renders no reply control or summary, so neither can nest a plate", () => {
+test("reply hover tool and summary initials have no nested ladder plates", () => {
 	const html = mod.renderToStaticMarkup(
 		mod.createElement(mod.TeamBridgeMessageList, {
 			messages: [
@@ -345,21 +488,199 @@ test("a held row renders no reply control or summary, so neither can nest a plat
 	);
 	const dom = new JSDOM(html);
 	try {
-		// The body still renders; the thread affordances do not.
-		assert.match(html, /Root question/);
-		assert.equal(
-			dom.window.document.querySelector('button[aria-label="Reply in thread"]'),
-			null,
+		const reply = dom.window.document.querySelector(
+			'button[aria-label="Reply in thread"]',
 		);
-		assert.equal(dom.window.document.querySelector('[role="toolbar"]'), null);
+		assert.ok(reply);
 		assert.equal(
-			dom.window.document.querySelectorAll(
+			reply.classList.contains("bg-elevated"),
+			false,
+			"the shared ghost control has no independent resting ground",
+		);
+		/* The reveal moved to the message toolbar (one per row), which shows on
+		   the row's hover AND focus-within; the button itself is the ghost. */
+		const toolbar = reply.closest('[role="toolbar"]');
+		assert.ok(toolbar);
+		assert.ok(
+			toolbar.className.includes("group-focus-within/message:opacity-100"),
+		);
+		assert.equal(
+			reply.classList.contains("hover:bg-accent-wash"),
+			true,
+			"the established ghost primitive owns interaction feedback",
+		);
+		const initials = [
+			...dom.window.document.querySelectorAll(
 				'button span[aria-hidden="true"] span',
-			).length,
-			0,
-			"no summary initials without a summary action",
+			),
+		];
+		assert.equal(initials.length, 2);
+		assert.equal(
+			initials.some((span) => span.classList.contains("bg-sunken")),
+			false,
+			"initials are ink on the summary action, not another plate inside its hover",
 		);
 	} finally {
+		dom.window.close();
+	}
+});
+
+/*
+ * THE ISOLATION THE THREADS HOLD WAITED FOR (#1304's cache/retry defects).
+ *
+ * Account A opens a thread whose read is DELAYED; the machine switches to B
+ * (the real credential journal: `beginRadientAuthorityTransition`, then the
+ * settle and the auth query's new answer) while A's read is in flight; then
+ * back to A. jsdom, the real pane container, the real React Query client and
+ * the real `useTeamBridgeThreadCacheFence`; only the transport is scripted.
+ *
+ * Proves: A's late answer paints no frame under B and lands in no cache; B's
+ * read is B's own (its own key, its own receipt); every page A cached is gone
+ * after the switch; and A's return (a NEW epoch) reads afresh as A instead of
+ * reviving A's first session. Not a real-browser frame: a browser/QA pass on
+ * the live app is separate evidence.
+ */
+test("a delayed thread read for A cannot paint, cache or retry into B, and B->A reads A afresh", async () => {
+	const dom = new JSDOM('<div id="app"></div>', {
+		url: "http://localhost/",
+		pretendToBeVisual: true,
+	});
+	const saved = {
+		window: globalThis.window,
+		document: globalThis.document,
+		IntersectionObserver: globalThis.IntersectionObserver,
+		IS_REACT_ACT_ENVIRONMENT: globalThis.IS_REACT_ACT_ENVIRONMENT,
+	};
+	globalThis.window = dom.window;
+	globalThis.document = dom.window.document;
+	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	globalThis.IntersectionObserver = class {
+		observe() {}
+		disconnect() {}
+	};
+	const api = mod.TeamBridgeApi;
+	const originalReplies = api.listReplies;
+	const reads = [];
+	const pending = [];
+	const client = new mod.QueryClient({
+		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+	});
+	const app = mod.createRoot(dom.window.document.getElementById("app"));
+	const target = {
+		tenantId: "tenant_a",
+		conversationId: root.conversation_id,
+		rootId: root.id,
+	};
+	const pageFor = (who) => ({
+		root: { ...root, body: `Root as ${who}` },
+		replies: [
+			{
+				...root,
+				id: `reply_${who}`,
+				seq: 2,
+				thread_root_id: root.id,
+				body: `Private reply for ${who}`,
+			},
+		],
+		has_more: false,
+	});
+	function Shell() {
+		mod.useTeamBridgeThreadCacheFence();
+		return mod.createElement(mod.TeamBridgeThreadPane, {
+			target,
+			readOnly: false,
+			labelFor: (s) => s.display_label,
+			onClose() {},
+		});
+	}
+	const signIn = async (accountId) =>
+		mod.act(async () => {
+			mod.beginRadientAuthorityTransition(client);
+			const { epoch } = mod.observedRadientAuthority(client);
+			mod.settleRadientAuthority(client, epoch, accountId);
+			client.setQueryData(["radient-user", "user"], {
+				account: { id: accountId },
+			});
+		});
+	const text = () => dom.window.document.body.textContent;
+	const threadKeys = () =>
+		client
+			.getQueryCache()
+			.findAll({ queryKey: ["team-bridge", "replies"] })
+			.map((q) => ({ key: q.queryKey, data: q.state.data !== undefined }));
+	try {
+		api.listReplies = (conversationId, rootId, options) => {
+			reads.push(options.expectedAccountId);
+			return new Promise((resolve) => {
+				pending.push({ who: options.expectedAccountId, resolve });
+			});
+		};
+		await signIn("acct_a");
+		await mod.act(async () => {
+			app.render(
+				mod.createElement(mod.QueryClientProvider, { client }, mod.createElement(Shell)),
+			);
+		});
+		await mod.act(async () => {
+			await new Promise((r) => setTimeout(r, 10));
+		});
+		assert.deepEqual(reads, ["acct_a"], "A's read carries A's receipt");
+		const aFirst = pending.shift();
+
+		// Switch to B while A's read is still in flight.
+		await signIn("acct_b");
+		await mod.act(async () => {
+			await new Promise((r) => setTimeout(r, 10));
+		});
+		assert.deepEqual(reads, ["acct_a", "acct_b"], "B reads as B, under B's own key");
+		// A's late answer arrives AFTER the switch.
+		await mod.act(async () => {
+			aFirst.resolve(pageFor("acct_a"));
+			await new Promise((r) => setTimeout(r, 20));
+		});
+		assert.equal(text().includes("Private reply for acct_a"), false, "no A frame under B");
+		assert.equal(text().includes("Root as acct_a"), false, "no A root under B");
+		assert.equal(
+			threadKeys().some(({ key, data }) => key.includes("acct_a") && data),
+			false,
+			"A's late answer is in no cache",
+		);
+		const bRead = pending.shift();
+		await mod.act(async () => {
+			bRead.resolve(pageFor("acct_b"));
+			await new Promise((r) => setTimeout(r, 20));
+		});
+		assert.ok(text().includes("Private reply for acct_b"), "B sees B's thread");
+		assert.ok(
+			threadKeys().every(({ key }) => key.includes("acct_b")),
+			"only B's pages remain cached under B",
+		);
+
+		// B -> A: A's own state only, read afresh under A's NEW epoch.
+		await signIn("acct_a");
+		await mod.act(async () => {
+			await new Promise((r) => setTimeout(r, 10));
+		});
+		assert.equal(text().includes("Private reply for acct_b"), false, "no B frame under A");
+		assert.equal(
+			threadKeys().some(({ key }) => key.includes("acct_b")),
+			false,
+			"B's pages were cleared at the transition",
+		);
+		assert.deepEqual(reads, ["acct_a", "acct_b", "acct_a"], "A reads again as A");
+		const aSecond = pending.shift();
+		await mod.act(async () => {
+			aSecond.resolve(pageFor("acct_a"));
+			await new Promise((r) => setTimeout(r, 20));
+		});
+		assert.ok(text().includes("Private reply for acct_a"), "A sees A's own thread");
+		const epochs = new Set(threadKeys().map(({ key }) => key.at(-1)));
+		assert.equal(epochs.size, 1, "one epoch's pages, A's current one");
+	} finally {
+		await mod.act(async () => app.unmount());
+		client.clear();
+		api.listReplies = originalReplies;
+		for (const [name, value] of Object.entries(saved)) globalThis[name] = value;
 		dom.window.close();
 	}
 });
