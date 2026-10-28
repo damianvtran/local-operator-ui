@@ -141,6 +141,29 @@ function revokeConfirmedPreviews(accountId: string) {
 		}
 }
 
+/**
+ * DROP A REPLACED ACCOUNT'S ROWS, RECEIPTS AND PREVIEW URLS.
+ *
+ * Design: this must run at the TRANSITION, not in the view (review round 1, F1).
+ * The page is mounted with `key={account.token}`, so React destroys the outgoing
+ * instance before any effect inside it can observe a different `accountId` - an
+ * in-view effect could never fire, and A's rows and blob URLs would survive for
+ * the life of the process. The caller is the page that OWNS the key, which is
+ * not remounted by an account change.
+ */
+/** The journal this client owns, for suites that assert on lanes not pixels. */
+export function teamBridgeJournalForTests(client: QueryClient) {
+	return journalFor(client);
+}
+
+export function teamBridgePurgeAccount(
+	client: QueryClient,
+	accountId: string,
+): void {
+	journalFor(client).clearAccount(accountId, { receipts: true });
+	revokeConfirmedPreviews(accountId);
+}
+
 export function useTeamBridgeOutbox(accountId: string | undefined) {
 	const client = useQueryClient();
 	const journal = journalFor(client);
@@ -250,8 +273,17 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 				for (const chip of row.attachments) {
 					assertCurrent();
 					if (chip.attachment && !isStagedExpired(chip.attachment)) continue;
-					if (!chip.prepared)
-						throw new Error("Team Bridge image bytes unavailable");
+					/*
+					 * NO BYTES AND NO LIVE STAGED ID: this image can never be staged
+					 * again (a draft restored after the hub's staged-id TTL has the id
+					 * but not the bytes). Throwing here made Retry a button that could
+					 * only ever fail; the attempt drops the image instead, posts the
+					 * text, and the row says the image was lost (review round 1, F2).
+					 */
+					if (!chip.prepared) {
+						row.droppedAttachments += 1;
+						continue;
+					}
 					const uploaded = await TeamBridgeApi.uploadAttachment(
 						context.tenantId,
 						conversation.id,
@@ -261,6 +293,9 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 					assertCurrent();
 					chip.attachment = draftAttachment(uploaded, conversation.id);
 				}
+				row.attachments = row.attachments.filter(
+					(chip) => chip.prepared || chip.attachment,
+				);
 				return row.attachments;
 			},
 			post: async (conversation, row) => {
@@ -280,7 +315,12 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 					// The hub's uniform missing-attachment refusal identifies no one
 					// image; retry stages this attempt's originals, never a new draft.
 					if (isAttachmentNotFound(error))
-						for (const chip of row.attachments) chip.attachment = undefined;
+						// Re-stage only what still has bytes; the rest is abandoned and
+						// counted, so the next attempt posts without it instead of
+						// failing on an image that no longer exists anywhere.
+						for (const chip of row.attachments)
+							if (chip.prepared) chip.attachment = undefined;
+							else row.droppedAttachments += 1;
 					throw error;
 				}
 			},
@@ -379,6 +419,7 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 			!keepsConfirmedPreview(row.accountId, row.clientRef)
 				? undefined
 				: row.attachments.map((chip) => chip.previewUrl),
+		droppedAttachments: row.droppedAttachments,
 		onRetry: () => {
 			if (accountId !== row.accountId || context.tenantId !== row.tenantId)
 				return;

@@ -10,11 +10,16 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Badge, countLabel } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
+import {
+	observedRadientAuthority,
+	subscribeRadientAuthority,
+} from "@shared/hooks/radient-account-authority";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	Archive,
 	ArrowUp,
@@ -175,7 +180,11 @@ import {
 	useTeamBridgeAttachments,
 } from "./use-team-bridge-attachments";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
-import { outboxTargetKey, useTeamBridgeOutbox } from "./use-team-bridge-outbox";
+import {
+	outboxTargetKey,
+	teamBridgePurgeAccount,
+	useTeamBridgeOutbox,
+} from "./use-team-bridge-outbox";
 
 /**
  * The Team Bridge page: a Slack-shaped rail, a thread and a composer.
@@ -1074,6 +1083,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const timelineArrivalKey = JSON.stringify([
 		selfAccountId,
 		draftTenant,
+		/*
+		 * In the merged view a person/chief target carries no tenant of its own
+		 * and `draftTenant` is the account-wide sentinel, so this tuple used to be
+		 * identical for the same person messaged in two organizations - one
+		 * arrival watermark for two streams (review round 1, F5). The resolved
+		 * conversation's tenant is what actually separates them.
+		 */
+		shown?.tenant_id ?? "",
 		target,
 	]);
 	/*
@@ -1132,12 +1149,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		setSubmitRejected(false);
 		composerRef.current?.focus({ preventScroll: true });
 	};
+	/*
+	 * The row actions call this through a REF (review round 1, F3): the memo then
+	 * depends only on the row data and the container's handler, and a profession
+	 * of stability cannot go stale - the handler that runs is always this render's
+	 * one, with the live draft, images and tenant.
+	 */
+	const returnToDraftRef = useRef(returnToDraft);
+	returnToDraftRef.current = returnToDraft;
 
 	/* The rows the composer can act on carry BOTH the journal's own actions and
 	 * this view's return-to-draft, which only the composer can perform. The
 	 * handler reads the CURRENT box through a ref, so a keystroke cannot
 	 * rebuild every row's actions. */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `returnToDraft` reads the live draft through `draftRef` and the live strip through `images`; only the row data and the container's handler can change what a row offers.
 	const decoratedSendRows = useMemo(() => {
 		if (!sendRows || !onTakeBackSend) return sendRows;
 		return new Map(
@@ -1147,7 +1171,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						id,
 						{
 							...row,
-							onReturnToDraft: () => returnToDraft(row.clientRef),
+							onReturnToDraft: () => returnToDraftRef.current(row.clientRef),
 						},
 					] as const,
 			),
@@ -2681,6 +2705,39 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			Map<string, { id: string; tenantId: string | undefined }>
 		>(),
 	);
+	/*
+	 * THE ACCOUNT BOUNDARY IS ENFORCED HERE, ABOVE THE KEYED SUBTREE (review round
+	 * 1, F1). `key={account.token}` destroys the outgoing instance, so nothing
+	 * INSIDE it can ever observe a different `accountId`; this effect can, because
+	 * this component is not remounted by an account change. A refresh that merely
+	 * goes pending is not a replacement: only a different SETTLED account, or a
+	 * deliberate sign-out, drops the departing account's rows, receipts and
+	 * preview URLs.
+	 */
+	const queryClient = useQueryClient();
+	const purgedAccount = useRef(account.accountId);
+	useEffect(() => {
+		purgedAccount.current = account.accountId;
+		return subscribeRadientAuthority(queryClient, () => {
+			const live = observedRadientAuthority(queryClient);
+			const previous = purgedAccount.current;
+			if (!previous) return;
+			if (live.accountId === previous) return;
+			if (live.accountId === undefined && !live.signedOut) return;
+			/*
+			 * CLAIM, THEN PURGE, AND PURGE OFF THE ANNOUNCEMENT. The authority
+			 * announcement can arrive inside a React commit, and the purge notifies
+			 * this journal's own subscribers - which re-enters this listener before
+			 * the marker was written and turned one account change into an endless
+			 * render loop (measured: the account-switch case never settled). Writing
+			 * the marker FIRST makes a re-entrant call a no-op, and the microtask
+			 * keeps the notification out of whatever was rendering.
+			 */
+			purgedAccount.current = live.accountId;
+			queueMicrotask(() => teamBridgePurgeAccount(queryClient, previous));
+		});
+	}, [account.accountId, queryClient]);
+
 	// Remount immediately at the real auth transition, before stale TB status can
 	// render. Retain only original-owner data; never carry an A callback into B.
 	return (

@@ -1788,14 +1788,14 @@
 		"tone": "plain, sentence case, matter-of-fact",
 		"length": "One or two words; sits before the shared Retry control.",
 		"placeholders": {},
-		"note": "Shown in the danger colour on a message that could not be sent, immediately before the shared Retry control (ui.common.actions.retry). The message stays in the thread."
+		"note": "Shown in the danger colour on a message that could not be sent, immediately before the shared Retry control (ui.common.actions.retry). The message stays in the thread, and the row also offers ui.teamBridge.message.return_to_draft and ui.teamBridge.message.discard."
 	},
 	"ui.teamBridge.message.discard": {
 		"role": "action label on a failed message",
 		"tone": "plain, imperative, sentence case",
 		"length": "One word.",
 		"placeholders": {},
-		"note": "Removes that failed message from this device's thread. The server never accepted it, so this is not a server-side deletion and no other reader ever saw it, which is why the label says discard rather than delete. Sits beside ui.teamBridge.message.failed and the shared Retry control (ui.common.actions.retry)."
+		"note": "Removes that failed message from this device's thread. The server never accepted it, so this is not a server-side deletion and no other reader ever saw it, which is why the label says discard rather than delete. Sits beside ui.teamBridge.message.failed, after the shared Retry control (ui.common.actions.retry) and ui.teamBridge.message.return_to_draft, as the destructive last action on the row."
 	},
 	"ui.teamBridge.message.return_to_draft": {
 		"role": "action label on a failed message",

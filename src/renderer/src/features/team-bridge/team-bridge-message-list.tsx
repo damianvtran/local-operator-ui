@@ -1,3 +1,4 @@
+import { Button } from "@shared/components/ui/button";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -280,44 +281,73 @@ const DayDivider: FC<{
 	);
 };
 
-/** Status stays in the existing header, never a second message/card. The
- * minimum height also remains after confirmation so the ACK cannot collapse
- * the row around the inline retry/discard targets. */
+/**
+ * THE FAILED STATE, DRAWN THE WAY A PERSON READS IT (design round 1, D1/D2/D3).
+ *
+ * - The status WORD carries the failure: `Not sent` is painted in `danger`, the
+ *   colour its own translator-facing context note promises, instead of the muted
+ *   family it shares with the timestamp one gap away.
+ * - `Retry` is primary on purpose: it is the action almost everyone wants, and a
+ *   filled control is the only thing that says so. `Return to draft` is a quiet
+ *   text action, and `Discard` - which destroys the attempt irreversibly - drops to
+ *   the danger tone with no primary weight. All three are real buttons; none of
+ *   them pretends to be a link.
+ * - The group sits on its OWN ground. The row steps to `rowHover` under the
+ *   pointer, and accent/danger text on that step measures 4.49:1 in `tokyoNight`
+ *   and 4.46:1 in `neonNoir` - just under the AA floor, at 12px, with no
+ *   large-text exemption. A `canvas` strip keeps the text on a ground the
+ *   contrast contract actually asserts, so hovering the row can never lower it.
+ *   (The contract's own gap - `rowHover` missing from `TONE_GROUNDS` - is
+ *   pre-existing and wider than this change; it is reported on the PR.)
+ *
+ * `min-h-6` is 24px, exactly the WCAG 2.2 2.5.8 target floor: the controls have no
+ * headroom, so any change to their padding or size must raise this too.
+ */
 const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
-	<span className="inline-flex min-h-6 flex-wrap items-baseline gap-x-2 text-[12px] text-ink-muted">
-		<output>
+	<span className="inline-flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 rounded-sm bg-canvas px-1 text-[12px]">
+		<output
+			className={cn("text-ink-muted", row.state === "failed" && "text-danger")}
+		>
 			{row.state === "failed"
 				? t("ui.teamBridge.message.failed")
 				: row.state === "pending"
 					? t("ui.teamBridge.message.sending")
 					: null}
 		</output>
+		{/* An image this attempt had to abandon: the hub forgot its staged id and
+		 * the draft held no bytes to upload again, so Retry sends the text. The
+		 * existing expired-image copy says so without a new catalogue key. */}
+		{row.state === "failed" && (row.droppedAttachments ?? 0) > 0 && (
+			<span className="text-ink-muted">
+				{t("ui.teamBridge.attachments.expired")}
+			</span>
+		)}
 		{row.state === "failed" && row.onRetry && (
-			<button
-				type="button"
+			<Button
+				variant="primary"
+				className="h-auto min-h-6 shrink-0 px-2 text-[12px]"
 				onClick={row.onRetry}
-				className="min-h-6 rounded-sm px-1.5 text-accent hover:underline"
 			>
 				{t("ui.common.actions.retry")}
-			</button>
+			</Button>
 		)}
 		{row.state === "failed" && row.onReturnToDraft && (
-			<button
-				type="button"
+			<Button
+				variant="ghost"
+				className="h-auto min-h-6 shrink-0 px-2 text-[12px] text-ink-muted hover:text-ink"
 				onClick={row.onReturnToDraft}
-				className="min-h-6 rounded-sm px-1.5 text-accent hover:underline"
 			>
 				{t("ui.teamBridge.message.return_to_draft")}
-			</button>
+			</Button>
 		)}
 		{row.state === "failed" && row.onDiscard && (
-			<button
-				type="button"
+			<Button
+				variant="ghost"
+				className="h-auto min-h-6 shrink-0 px-2 text-[12px] text-danger hover:text-danger"
 				onClick={row.onDiscard}
-				className="min-h-6 rounded-sm px-1.5 text-accent hover:underline"
 			>
 				{t("ui.teamBridge.message.discard")}
-			</button>
+			</Button>
 		)}
 	</span>
 );

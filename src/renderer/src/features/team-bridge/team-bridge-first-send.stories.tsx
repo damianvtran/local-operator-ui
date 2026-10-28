@@ -174,6 +174,16 @@ function FirstSendPage({
 					peopleState="ready"
 					listState="ready"
 					messageState="ready"
+					/* Return to draft is only decorated when the page can take a row
+					 * back (design round 1, D4): without this the Failed story drew two
+					 * of the three actions and the headline recovery affordance was
+					 * never in any frame. The handler is a stub here, so this story
+					 * evidences the ACTION SET, not the merge-with-typed-text behaviour -
+					 * that half needs the live app. */
+					onTakeBackSend={() => ({
+						body: "Hi Ada, could we move the Wednesday review to Thursday?",
+						attachments: [],
+					})}
 					onTarget={() => {}}
 					onSend={() => undefined}
 					onNewChannel={() => {}}

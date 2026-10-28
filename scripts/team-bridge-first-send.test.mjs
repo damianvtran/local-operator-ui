@@ -535,6 +535,15 @@ test("a late post cannot be dispatched or cached under the account that replaced
 			"no post is dispatched under B",
 		);
 		assert.equal(posts(app.fixture).length, 1, "no automatic retry under B");
+		/* THE OWNER RECEIPT ITSELF (review round 1, F6): the fixture advertises the
+		 * conversation-owner guard but does not enforce it, so the only proof that
+		 * the write names its account is the dispatched request. A regression that
+		 * dropped `expected_account_id` would otherwise pass this suite. */
+		assert.equal(
+			posts(app.fixture)[0]?.expected_account_id,
+			"acct_a",
+			"the dispatched write names the account that authored it",
+		);
 		assertNoForeignCarry(app, body);
 	} finally {
 		app.fixture.postGate?.resolve();
@@ -879,6 +888,55 @@ test("a send that landed and failed cannot come back twice after Return to draft
 		assert.equal(rows(app.host).length, 0, "no local row survives the return");
 		assert.equal(posts(app.fixture).length, 1, "no automatic resend");
 	} finally {
+		await app.close();
+	}
+});
+
+test("an account change drops the departing account's rows and pictures", async () => {
+	const app = await mount({ cleanup });
+	const body = "A row that must not outlive A";
+	try {
+		app.fixture.refuse = false;
+		app.fixture.postGate = deferred();
+		await type(app.host, body);
+		sendSynchronously(app.host);
+		await until(() => posts(app.fixture).length === 1, "A dispatched its post");
+
+		/* The fence is not the only claim in the isolation table: the journal must
+		 * also EMPTY A's lane at the transition (review round 1, F1). The effect
+		 * that used to do it lived inside the keyed subtree and could never fire. */
+		await app.changeAuth("acct_b");
+		const gate = app.fixture.postGate;
+		app.fixture.postGate = null;
+		await act(async () => gate.resolve());
+		await delay();
+
+		assert.equal(
+			app.journal.rowsFor("acct_a", "org_shared", "person:acct_peer_0").length,
+			0,
+			"A's rows are gone once B owns the surface",
+		);
+		assert.equal(app.host.querySelectorAll("[data-send-state]").length, 0);
+		assertNoForeignCarry(app, body);
+	} finally {
+		app.fixture.postGate?.resolve();
+		await app.close();
+	}
+});
+
+test("the failed row offers Retry, Return to draft and Discard, in that order", async () => {
+	const app = await mount({ cleanup });
+	try {
+		app.fixture.refuse = true;
+		await type(app.host, "a message that cannot be sent");
+		await send(app.host);
+		await until(() => failedRow(app.host), "failed row");
+		const labels = [...failedRow(app.host).querySelectorAll("button")].map(
+			(button) => button.textContent.trim(),
+		);
+		assert.deepEqual(labels, ["Retry", "Return to draft", "Discard"]);
+	} finally {
+		app.fixture.refuse = false;
 		await app.close();
 	}
 });

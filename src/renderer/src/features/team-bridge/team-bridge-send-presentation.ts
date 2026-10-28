@@ -41,4 +41,12 @@ export type TeamBridgeLocalRowPresentation = {
 	 * the attempt away, and from retry, which sends the same payload again.
 	 */
 	onReturnToDraft?: () => void;
+	/**
+	 * Shown only while `failed`: how many images this attempt had to abandon
+	 * because they could no longer be staged (the hub forgot the staged id and
+	 * the draft held no bytes). Retry then sends the text; the reader is told
+	 * which part of their message is missing instead of finding out from a
+	 * picture that quietly vanished.
+	 */
+	droppedAttachments?: number;
 };

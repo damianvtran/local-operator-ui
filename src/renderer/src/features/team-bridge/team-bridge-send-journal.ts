@@ -45,6 +45,15 @@ export type TeamBridgeSendRow<A = TeamBridgeSendAttachmentSnapshot> = {
 	serverId: string | null;
 	serverMessage: TeamBridgeMessage | null;
 	error: TeamBridgeSendError | null;
+	/**
+	 * Images this attempt had to abandon because the hub no longer knew their
+	 * staged id and the bytes were gone (a draft restored after the 72 h TTL has
+	 * ids but no `prepared` bytes, so there is nothing to upload again). Retry
+	 * can then post the text instead of failing forever on an image it can never
+	 * stage - and the row says so, with the catalogue's existing expired-image
+	 * copy, rather than dropping the picture in silence.
+	 */
+	droppedAttachments: number;
 	attempt: number;
 	enqueuedAt: number;
 	startedAt: number | null;
@@ -313,6 +322,7 @@ export class TeamBridgeSendJournal<A = TeamBridgeSendAttachmentSnapshot> {
 			serverId: null,
 			serverMessage: null,
 			error: null,
+			droppedAttachments: 0,
 			attempt: 1,
 			enqueuedAt: timestamp,
 			startedAt: null,

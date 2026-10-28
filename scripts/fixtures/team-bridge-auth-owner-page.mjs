@@ -60,6 +60,12 @@ const createObjectURL = () => {
 	liveObjectUrls.add(url);
 	return url;
 };
+/*
+ * Assigned, not defaulted: Node ships its own URL.createObjectURL, so a `??=`
+ * would leave `blob:nodedata:...` in the DOM and this polyfill would be dead
+ * code that looked load-bearing (QA round 1, Q-09). The deterministic string is
+ * what lets an assertion name the preview it expects.
+ */
 const revokeObjectURL = (url) => {
 	liveObjectUrls.delete(url);
 };
@@ -79,8 +85,8 @@ if (typeof dom.window.Blob.prototype.arrayBuffer !== "function")
  * Node is Node's own URL, not jsdom's. */
 for (const target of [dom.window.URL, globalThis.URL])
 	if (target) {
-		target.createObjectURL ??= createObjectURL;
-		target.revokeObjectURL ??= revokeObjectURL;
+		target.createObjectURL = createObjectURL;
+		target.revokeObjectURL = revokeObjectURL;
 	}
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
@@ -115,7 +121,7 @@ const bundle = await build({
  export {MemoryRouter} from 'react-router-dom';
  import {useNavigate,useLocation} from 'react-router-dom';
  export function FixtureRoute({onNavigate,children}){const navigate=useNavigate();const location=useLocation();React.useLayoutEffect(()=>onNavigate(navigate),[navigate,onNavigate]);return React.createElement(React.Fragment,null,React.createElement('output',{'data-fixture-location':location.pathname+location.search}),location.pathname==='/team-bridge'?children:React.createElement('output',{'data-fixture-away':true}));}
- ${process.env.TEAM_BRIDGE_FIRST_SEND_FIXTURE === "1" ? "export {resetTeamBridgeOutboxAccountForTests} from './src/renderer/src/features/team-bridge/use-team-bridge-outbox';" : ""}`,
+ ${process.env.TEAM_BRIDGE_FIRST_SEND_FIXTURE === "1" ? "export {resetTeamBridgeOutboxAccountForTests, teamBridgeJournalForTests} from './src/renderer/src/features/team-bridge/use-team-bridge-outbox';" : ""}`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -560,10 +566,18 @@ async function mount({
 						const refKey = JSON.stringify([ownerKey, request.client_ref]);
 						const replayed = fixture.sentByRef.get(refKey);
 						if (replayed) return reply({ message: replayed });
+						/*
+						 * APPEND, with a monotonic seq - the way the hub behaves. The first
+						 * version of this fixture replaced the whole list with one element,
+						 * which made an "only one stored message" assertion unable to fail
+						 * (QA round 1, Q-02): a real double-post would have overwritten
+						 * itself out of existence in the fixture and looked correct.
+						 */
+						const stored = fixture.messages.get(ownerKey) ?? [];
 						const message = {
-							id: `msg_${owner}`,
+							id: `msg_${owner}_${stored.length + 1}`,
 							conversation_id: request.conversation_id,
-							seq: 1,
+							seq: stored.length + 1,
 							sender: person(owner),
 							body: request.body,
 							origin: "human",
@@ -571,7 +585,7 @@ async function mount({
 							client_ref: request.client_ref,
 						};
 						fixture.sentByRef.set(refKey, message);
-						fixture.messages.set(ownerKey, [message]);
+						fixture.messages.set(ownerKey, [...stored, message]);
 						return reply({ message });
 					}
 					case "team_bridge.read":
@@ -692,6 +706,9 @@ async function mount({
 		client,
 		frames,
 		render,
+		/* The journal the page actually uses, so a test can assert on its lanes
+		 * rather than inferring them from the DOM. */
+		journal: ui.teamBridgeJournalForTests(client),
 		async navigate(path) {
 			assert.ok(
 				navigation && navigate,
