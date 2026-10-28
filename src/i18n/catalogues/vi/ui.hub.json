@@ -59,7 +59,7 @@
 	"ui.hub.links.direction_pull": "Nhận cập nhật",
 	"ui.hub.links.direction_push": "Xuất bản thay đổi",
 	"ui.hub.links.action_failed": "{direction} cho {item} tại {source} chưa hoàn tất. Xem lại trạng thái trước khi thử lại.",
-	"ui.hub.links.check_failed": "Bước kiểm tra cho {item} tại {source} chưa hoàn tất. Xem lại trạng thái trước khi thử lại.",
+	"ui.hub.links.check_failed": "Lần kiểm tra cho {item} tại {source} chưa hoàn tất. Xem lại trạng thái trước khi thử lại.",
 	"ui.hub.links.preview_warnings": "Lưu ý cần xem lại",
 	"ui.hub.links.action_result": "{direction} cho {item} tại {source}: {outcome}",
 	"ui.hub.links.preview_pull": "Xem trước thay đổi nhận về",
