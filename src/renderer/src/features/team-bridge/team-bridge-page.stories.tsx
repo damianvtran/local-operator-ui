@@ -417,6 +417,24 @@ type Story = StoryObj<typeof meta>;
 
 export const PopulatedDirectMessage: Story = {};
 
+/** The reported path: a group owner opens Add members from the header menu. */
+export const AddMembersFromConversationMenu: Story = {
+	args: {
+		conversations: [{ ...group, can_administer: true }],
+		target: { type: "conversation", id: group.id },
+		people: rosterWithChiefs,
+		defaultMenuOpen: true,
+		initialMembersOpen: true,
+		onAddMembers: () => Promise.resolve(),
+		onRemoveMember: () => Promise.resolve(),
+	},
+	play: async ({ canvasElement }) => {
+		const body = within(canvasElement.ownerDocument.body);
+		await expect(body.getAllByText("Add members…").length).toBeGreaterThan(0);
+		await expect(body.getByText("Aida (Damian Tran)")).toBeInTheDocument();
+	},
+};
+
 /*
  * The rail's Invitations entry (D5) beside the unread counts: the reader's own
  * agent is invited to the channel, so the entry shows its quiet count in the
