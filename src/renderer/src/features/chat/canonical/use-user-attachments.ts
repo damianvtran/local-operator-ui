@@ -66,7 +66,18 @@ export function useUserAttachments(
 	}>({ key: "", value: null, state: "loading" });
 	const sourceKey = `${sessionId ?? "draft"}:${capable}`;
 	const [retryCount, setRetryCount] = useState(0);
-	const retry = useCallback(() => setRetryCount((count) => count + 1), []);
+	/*
+	 * A retry is a visible state change (UX R2 U11): the failed listing goes
+	 * back to `loading` the moment it is pressed, so the banner can show the
+	 * loading line and a second failure arrives as a NEW `error`, not as the
+	 * same frame it replaced. The listing's value is kept; only its state moves.
+	 */
+	const retry = useCallback(() => {
+		setListing((current) =>
+			current.state === "error" ? { ...current, state: "loading" } : current,
+		);
+		setRetryCount((count) => count + 1);
+	}, []);
 	useEffect(() => {
 		// Read inside so the effect re-runs on a new attachment without depending on
 		// the whole records array.

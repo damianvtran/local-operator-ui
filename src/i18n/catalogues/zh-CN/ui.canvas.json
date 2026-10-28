@@ -356,5 +356,6 @@
 	"ui.canvas.files.attachmentImage": "附件图片",
 	"ui.canvas.files.attachmentRetained": "已移动或删除 · 已保留副本",
 	"ui.canvas.files.attachmentGone": "已移动或删除 · 无保存的副本",
-	"ui.canvas.files.attachmentMeta": "{size} · {when}"
+	"ui.canvas.files.attachmentMeta": "{size} · {when}",
+	"ui.canvas.files.attachmentRefused": "看起来是敏感信息，因此已关闭文件操作"
 }

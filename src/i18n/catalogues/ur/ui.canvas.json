@@ -356,5 +356,6 @@
 	"ui.canvas.files.attachmentImage": "منسلک تصویر",
 	"ui.canvas.files.attachmentRetained": "منتقل یا حذف شدہ · محفوظ شدہ نقل باقی ہے",
 	"ui.canvas.files.attachmentGone": "منتقل یا حذف شدہ · کوئی محفوظ شدہ نقل نہیں",
-	"ui.canvas.files.attachmentMeta": "{size} · {when}"
+	"ui.canvas.files.attachmentMeta": "{size} · {when}",
+	"ui.canvas.files.attachmentRefused": "یہ راز معلوم ہوتا ہے، اس لیے فائل کے اعمال بند ہیں"
 }

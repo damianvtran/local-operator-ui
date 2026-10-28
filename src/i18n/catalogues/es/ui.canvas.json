@@ -356,5 +356,6 @@
 	"ui.canvas.files.attachmentImage": "Imagen adjunta",
 	"ui.canvas.files.attachmentRetained": "Movido o eliminado · copia guardada disponible",
 	"ui.canvas.files.attachmentGone": "Movido o eliminado · sin copia guardada",
-	"ui.canvas.files.attachmentMeta": "{size} · {when}"
+	"ui.canvas.files.attachmentMeta": "{size} · {when}",
+	"ui.canvas.files.attachmentRefused": "Parece un secreto, así que las acciones del archivo están desactivadas"
 }

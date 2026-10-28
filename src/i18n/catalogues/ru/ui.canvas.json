@@ -356,5 +356,6 @@
 	"ui.canvas.files.attachmentImage": "Вложенное изображение",
 	"ui.canvas.files.attachmentRetained": "Перемещено или удалено · копия сохранена",
 	"ui.canvas.files.attachmentGone": "Перемещено или удалено · сохранённой копии нет",
-	"ui.canvas.files.attachmentMeta": "{size} · {when}"
+	"ui.canvas.files.attachmentMeta": "{size} · {when}",
+	"ui.canvas.files.attachmentRefused": "Похоже на секрет, поэтому действия с файлом отключены"
 }

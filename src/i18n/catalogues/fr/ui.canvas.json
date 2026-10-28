@@ -356,5 +356,6 @@
 	"ui.canvas.files.attachmentImage": "Image jointe",
 	"ui.canvas.files.attachmentRetained": "Déplacé ou supprimé · copie conservée",
 	"ui.canvas.files.attachmentGone": "Déplacé ou supprimé · aucune copie conservée",
-	"ui.canvas.files.attachmentMeta": "{size} · {when}"
+	"ui.canvas.files.attachmentMeta": "{size} · {when}",
+	"ui.canvas.files.attachmentRefused": "Ressemble à un secret, les actions sur le fichier sont donc désactivées"
 }

@@ -17,7 +17,8 @@ const bundle = await build({
 		contents: `
  export * from "./src/renderer/src/features/chat/canonical/user-attachments";
  export * from "./src/renderer/src/features/chat/components/canvas/attachment-items";
- export { finderSections, layoutFinder, DEFAULT_FINDER, ATTACHMENTS_SECTION } from "./src/renderer/src/features/chat/components/canvas/finder-layout";
+ export { finderSections, layoutFinder, DEFAULT_FINDER, ATTACHMENTS_SECTION, tileThumbHeight } from "./src/renderer/src/features/chat/components/canvas/finder-layout";
+ export { attachmentMetaLine } from "./src/renderer/src/features/chat/components/attachment-file-card";
  export { imageActions } from "./src/renderer/src/features/chat/utils/image-actions";
  export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
  `,
@@ -44,6 +45,8 @@ const {
 	layoutFinder,
 	DEFAULT_FINDER,
 	ATTACHMENTS_SECTION,
+	tileThumbHeight,
+	attachmentMetaLine,
 	imageActions,
 	desktopEndpoint,
 	desktopRequestSchema,
@@ -377,4 +380,160 @@ test("a picture whose bytes are still inline keeps the localized attachment name
 		!inline.row.document.title.startsWith("Pasted"),
 		"no hard-coded English label on the inline arm",
 	);
+});
+
+/*
+ * PR #1452 round-4 remediation (UX R2, QA R4, review R4, design R2).
+ */
+
+const BYTES_92 = /92 B/;
+const PDF_LABEL = /^PDF/;
+/** The `text-meta` line box measured on the real app (design R2 D8: 17.4 px). */
+const META_LINE_PX = 17.4;
+/** The name line (`text-meta` too on a tile) plus the tile's `p-1` and `mb-1`. */
+const TILE_CHROME_PX = 4 + 4 + 4;
+
+test("D8: an attachment tile band holds the thumbnail AND both caption lines", () => {
+	const pictures = Array.from({ length: 7 }, (_, at) => ({
+		...shotWire,
+		message_id: `m-${at}`,
+		attachment: `${SHOT.slice(0, -2)}${String(at).padStart(2, "0")}`,
+	}));
+	const view = mergeUserAttachments({ state: "ready", items: pictures }, []);
+	const attachments = attachmentFinderItems(view.items, "abcdef123456");
+	const sections = finderSections(
+		[],
+		DEFAULT_FINDER,
+		false,
+		new Set(),
+		attachments,
+	);
+	for (const width of [400, 440, 560]) {
+		const layout = layoutFinder(sections, width, DEFAULT_FINDER.group);
+		const tiles = layout.bands.filter((band) => band.kind === "tiles");
+		assert.ok(tiles.length >= 2, `two rows of tiles at ${width}`);
+		for (const band of tiles) {
+			const thumb = tileThumbHeight(band);
+			// The tile is the thumbnail, its chrome, and TWO caption lines; the
+			// band (= the row pitch, bands are stacked) must hold all of it.
+			const tile = thumb + TILE_CHROME_PX + 2 * META_LINE_PX;
+			assert.ok(
+				band.height >= tile,
+				`at ${width}: row pitch ${band.height} >= tile ${tile}`,
+			);
+		}
+		// Consecutive tile rows are stacked at exactly the band height.
+		assert.equal(tiles[1].top - tiles[0].top, tiles[0].height);
+	}
+	// Negative control: an agent Images tile keeps its one-line geometry.
+	const agentSections = [
+		{
+			id: "Images",
+			label: "Images",
+			items: attachments.map((item) => ({ ...item, attachment: undefined })),
+			open: true,
+			highlights: false,
+		},
+	];
+	const agent = layoutFinder(agentSections, 440, true).bands.find(
+		(band) => band.kind === "tiles",
+	);
+	const ours = layoutFinder(sections, 440, true).bands.find(
+		(band) => band.kind === "tiles",
+	);
+	assert.equal(ours.height - agent.height, 18, "one extra caption line");
+	assert.equal(tileThumbHeight(ours), tileThumbHeight(agent), "same thumbnail");
+});
+
+test("U14: the list states a small file's size the way the card does", () => {
+	const tiny = {
+		...pdfWire,
+		filename: ".env",
+		bytes: 92,
+		mime_type: "text/plain",
+	};
+	const view = mergeUserAttachments({ state: "ready", items: [tiny] }, []);
+	const [item] = attachmentFinderItems(view.items, "abcdef123456");
+	assert.equal(item.attachment.size, "92 B");
+	assert.match(attachmentMetaLine(".env", "text/plain", 92), BYTES_92);
+});
+
+test("QA n1: text/plain with no extension reads TXT, never PLAI", () => {
+	assert.equal(attachmentMetaLine(".env", "text/plain", 92), "TXT · 92 B");
+	assert.equal(
+		attachmentMetaLine("id_rsa", "text/plain; charset=utf-8", 0),
+		"TXT",
+	);
+	// Control: an extension still wins.
+	assert.match(attachmentMetaLine("a.pdf", "application/pdf", 10), PDF_LABEL);
+});
+
+test("D10: a retained picture tile states 'Saved copy'; its row keeps the sentence", () => {
+	const moved = {
+		...shotWire,
+		filename: "shot.png",
+		path: "/Users/x/shot.png",
+		exists: false,
+	};
+	const view = mergeUserAttachments({ state: "ready", items: [moved] }, []);
+	const [item] = attachmentFinderItems(view.items, "abcdef123456");
+	assert.equal(item.attachment.tileStatus, "Saved copy");
+	assert.equal(item.attachment.status, "Moved or deleted · saved copy kept");
+});
+
+test("D11: a refused picture sent as a file stays a picture (tile), not a glyph row", () => {
+	const refusedShot = {
+		...pdfWire,
+		kind: "document",
+		filename: "key-screenshot.png",
+		path: "/Users/x/Desktop/key-screenshot.png",
+		mime_type: "image/png",
+		materialisable: false,
+	};
+	const allowedShot = {
+		...refusedShot,
+		materialisable: true,
+		attachment: SHOT,
+	};
+	const view = mergeUserAttachments(
+		{ state: "ready", items: [refusedShot, allowedShot] },
+		[],
+	);
+	const items = attachmentFinderItems(view.items, "abcdef123456");
+	assert.deepEqual(
+		items.map((item) => item.row.media),
+		["image", "image"],
+	);
+	// The refused one paints by digest (no origin path is handed anywhere).
+	assert.ok(
+		items[0].row.document.artifact,
+		"refused picture is a digest document",
+	);
+});
+
+test("R4-U1: a refused row with no stored bytes is 'nothing to act on'", () => {
+	const bare = {
+		...pdfWire,
+		attachment: null,
+		filename: ".env",
+		path: "/Users/x/proj/.env",
+		exists: true,
+		stored: false,
+		stored_path: null,
+		materialisable: false,
+	};
+	const view = mergeUserAttachments({ state: "ready", items: [bare] }, []);
+	const [item] = attachmentFinderItems(view.items, "abcdef123456");
+	assert.equal(item.row.document.availability, "missing");
+	assert.ok(
+		!item.row.document.path.includes("/"),
+		"the origin path is not carried",
+	);
+	// Control: the same row without a refusal keeps its origin path.
+	const allowed = mergeUserAttachments(
+		{ state: "ready", items: [{ ...bare, materialisable: true }] },
+		[],
+	);
+	const [open] = attachmentFinderItems(allowed.items, "abcdef123456");
+	assert.equal(open.row.document.path, "/Users/x/proj/.env");
 });

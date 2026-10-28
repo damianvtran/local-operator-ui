@@ -33,7 +33,8 @@ import {
 	canvasDocumentForPath,
 } from "../../utils/canvas-document";
 import { getFileTypeFromPath } from "../../utils/file-types";
-import { buildFileRows, sizeLabel } from "./file-rows";
+import { attachmentSizeLabel } from "../attachment-file-card";
+import { buildFileRows } from "./file-rows";
 import type { FinderItem } from "./finder-layout";
 
 /** The id prefix that keeps an attachment's row distinct from an agent row of the same file. */
@@ -67,7 +68,14 @@ function documentFor(item: UserAttachment, sessionId: string): CanvasDocument {
 	if (item.availability === "gone" || (!item.digest && !item.data)) {
 		document = canvasDocumentForPath((refused ? null : item.path) ?? name, {
 			...base,
-			availability: item.availability === "gone" ? "missing" : undefined,
+			/*
+			 * A refused row with no stored bytes (`attachment: null`, review R4-U1)
+			 * carries only its bare NAME, which the path actions would hand to the
+			 * OS as a cwd-relative path. "missing" is the existing "nothing to act
+			 * on" state, so it gets that too.
+			 */
+			availability:
+				item.availability === "gone" || refused ? "missing" : undefined,
 		});
 	} else if (
 		item.path &&
@@ -79,7 +87,17 @@ function documentFor(item: UserAttachment, sessionId: string): CanvasDocument {
 	} else if (item.digest) {
 		document = canvasDocumentForArtifact({
 			digest: item.digest,
-			kind: item.kind === "image" ? "image" : "file",
+			/*
+			 * A picture sent as a FILE (`key-screenshot.png` dragged in) is still a
+			 * picture. Only a refused or moved one reaches this arm, and kind `file`
+			 * dropped it out of the tile grid into a glyph row while the same block,
+			 * allowed, stayed a thumbnail (design R2 D11). The bytes route serves it
+			 * (only materialise is refused), so it paints by digest like any tile.
+			 */
+			kind:
+				item.kind === "image" || getFileTypeFromPath(name) === "image"
+					? "image"
+					: "file",
 			sessionId,
 			contentType: item.mimeType,
 			name,
@@ -141,7 +159,7 @@ export function attachmentNote(item: UserAttachment): string {
 	const when = item.ts
 		? formatDate(item.ts, { month: "short", day: "numeric" })
 		: "";
-	const size = sizeLabel(item.bytes ?? undefined);
+	const size = attachmentSizeLabel(item.bytes);
 	if (size && when) return t("ui.canvas.files.attachmentMeta", { size, when });
 	return size ?? when;
 }
@@ -171,7 +189,18 @@ export function attachmentFinderItems(
 					item.digest && item.availability !== "gone" ? item.digest : null,
 				note: attachmentNote(item),
 				status: attachmentStatus(item),
-				size: sizeLabel(item.bytes ?? undefined) ?? "",
+				/*
+				 * A tile's caption is ~130-170 px wide, and the retained sentence cut
+				 * to "Moved or deleted · s…" there, losing the half that matters
+				 * (design R2 D10). Tiles say the card's own "Saved copy" instead; the
+				 * full sentence stays in the tile's tooltip. Only retained pictures
+				 * stay tiles (gone ones drop to rows), so that is the only case.
+				 */
+				tileStatus:
+					item.availability === "retained"
+						? t("ui.chat.attachments.saved_copy_label")
+						: attachmentStatus(item),
+				size: attachmentSizeLabel(item.bytes) ?? "",
 				when: item.ts
 					? formatDate(item.ts, { month: "short", day: "numeric" })
 					: "",

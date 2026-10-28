@@ -246,11 +246,19 @@ export const SentFileCard: FC<{
 	 * because it looks like it worked. A rejected clipboard write leaves the
 	 * icon unchanged rather than claiming a copy that did not happen.
 	 */
+	/*
+	 * The real-named copy, once the materialiser has made one (UX R2 U10). The
+	 * control copies THAT path, so the line beside it shows it from then on rather
+	 * than the `<digest>.bin` it never copies - the printed and the copied string
+	 * are one string, and a manual select-all yields it too.
+	 */
+	const [resolvedPath, setResolvedPath] = useState<string | null>(null);
 	const copyPath = useCallback(async () => {
 		if (!copyTarget && !resolveActionPath) return;
 		try {
 			const path = resolveActionPath ? await resolveActionPath() : copyTarget;
 			if (!path) return;
+			if (resolveActionPath) setResolvedPath(path);
 			await navigator.clipboard.writeText(path);
 			setCopied(true);
 			window.setTimeout(() => setCopied(false), 2000);
@@ -398,9 +406,9 @@ export const SentFileCard: FC<{
 							className={cn(
 								"select-all truncate font-mono text-ink-muted text-meta",
 							)}
-							title={document.storedPath}
+							title={resolvedPath ?? document.storedPath}
 						>
-							{middleTruncate(document.storedPath, 40)}
+							{middleTruncate(resolvedPath ?? document.storedPath, 40)}
 						</span>
 						{!refused && (
 							<PathCopyControl

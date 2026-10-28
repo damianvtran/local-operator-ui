@@ -429,6 +429,14 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				retry: attachments?.retry ?? (() => {}),
 			}}
 			onOpen={(document) => {
+				/*
+				 * A refused row with no stored bytes has nothing the app may show:
+				 * its document is the bare name, and a probe or a "no longer exists"
+				 * toast pointing at a menu it does not have would both be wrong
+				 * (review R4-U1). Its tooltip says why. A refused row WITH bytes
+				 * opens them read-only by digest (`ArtifactTextPreview`, U12).
+				 */
+				if (refusedIds.has(document.id) && !document.artifact) return;
 				if (
 					document.artifact &&
 					// An attachment on an older backend (R2-1), or one the backend

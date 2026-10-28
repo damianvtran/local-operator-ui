@@ -89,6 +89,8 @@ export type FinderItem = {
 		 * a row renders `size` and `when` as separate runs only when this is "".
 		 */
 		status: string;
+		/** `status` in the words that fit a tile's caption (design R2 D10). */
+		tileStatus: string;
 		/** Separate directional runs so RTL never reorders size and date. */
 		size: string;
 		when: string;
@@ -295,6 +297,38 @@ export const FINDER_HEADER_BAND = 32;
  */
 export const FOCUS_RING_GAP = 4;
 
+/**
+ * THE TILE CAPTION'S ONE-LINE BUDGET, in pixels: what a tile band adds below
+ * its 4:3 thumbnail for the name line, the tile's padding and the grid gap.
+ * The thumbnail is `band.height - TILE_CAPTION` (`finder-files-view.tsx`).
+ */
+export const TILE_CAPTION = 32;
+
+/**
+ * THE SECOND CAPTION LINE an ATTACHMENT tile carries, in pixels.
+ *
+ * An attachment tile states its name AND its size/date or its status ("Moved or
+ * deleted") on two lines (design R1 D1). The band was still the Images grid's
+ * one-line budget, so with two rows of tiles the second line sat under the next
+ * row's thumbnail - 10.8 of the 17.4 px `text-meta` line painted over, hiding
+ * exactly the status D1 exists to show (design R2 D8). The band grows by one
+ * line and the thumbnail gives the same amount back, so the tile's footprint in
+ * the grid changes by one line and the picture does not grow instead. Agent
+ * Images tiles carry one line and keep their geometry.
+ */
+export const ATTACHMENT_CAPTION_LINE = 18;
+
+/** The thumbnail box's height inside a tiled band (attachment tiles give back their second line). */
+export function tileThumbHeight(band: FinderBand): number {
+	return (
+		band.height -
+		TILE_CAPTION -
+		(band.kind === "tiles" && band.section.id === ATTACHMENTS_SECTION
+			? ATTACHMENT_CAPTION_LINE
+			: 0)
+	);
+}
+
 export function layoutFinder(
 	sections: FinderSection[],
 	width: number,
@@ -336,7 +370,10 @@ export function layoutFinder(
 			);
 			for (const item of files) push(section, "compact", 36, [item]);
 			const tileW = (w - 4 * (cols - 1)) / cols;
-			const height = Math.round(((tileW - 8) * 3) / 4) + 32;
+			const height =
+				Math.round(((tileW - 8) * 3) / 4) +
+				TILE_CAPTION +
+				ATTACHMENT_CAPTION_LINE;
 			for (let i = 0; i < pictures.length; i += cols)
 				push(section, "tiles", height, pictures.slice(i, i + cols), cols);
 		} else if (grouped && section.id === "Images") {

@@ -1602,5 +1602,10 @@
 			"size": "Formatted byte size, e.g. 286 KB",
 			"when": "Short localized date, e.g. Oct 27"
 		}
+	},
+	"ui.canvas.files.attachmentRefused": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; calm, not alarming.",
+		"note": "Last line of the hover text on an attached file in the canvas Attachments section when the backend judged it sensitive (an .env file, an SSH key) and the row therefore shows no actions menu. Says why the menu is missing. 'secret' = a password, key or token, the same word the app uses for its secret store; 'file actions' = the row's actions menu (Open file, Open folder, Copy file path). No trailing full stop: it is a tooltip line under the file's name. Fits one tooltip line (about 60 characters)."
 	}
 }

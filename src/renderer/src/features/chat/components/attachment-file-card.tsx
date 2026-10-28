@@ -40,6 +40,12 @@ export function attachmentTypeLabel(name: string, mimeType?: string): string {
 		return extension.toUpperCase().slice(0, 4);
 	}
 	const subtype = mimeType?.split("/")[1]?.split(";")[0]?.trim();
+	/*
+	 * `text/plain` is the type an extension-less text file (`.env`, a dotfile)
+	 * arrives as, and its four-letter cut read `PLAI` (PR #1452 QA R4 n1). `TXT`
+	 * is the name a person gives it; a machine token, so not translated.
+	 */
+	if (subtype === "plain") return "TXT";
 	return subtype
 		? subtype.toUpperCase().slice(0, 4)
 		: t("ui.chat.attachments.file_type_unknown");
@@ -52,15 +58,27 @@ export function attachmentMetaLine(
 ): string {
 	const type = attachmentTypeLabel(name, mimeType);
 	if (typeof bytes !== "number" || bytes <= 0) return type;
-	/*
-	 * The shared formatter's floor is KB, because every other reader of it weighs
-	 * budgets and bundles. A composer card can hold a 45-byte PDF, which that
-	 * floor would print as "0 KB" - a size that contradicts the file it names - so
-	 * the sub-kilobyte rung is stated here rather than by widening a formatter
-	 * whose other callers would lose a digit.
-	 */
-	const size = bytes < 1000 ? `${bytes} B` : formatByteSize(bytes);
+	const size = attachmentSizeLabel(bytes) ?? "";
 	return t("ui.chat.attachments.file_meta", { type, size });
+}
+
+/**
+ * An attachment's size as every attachment surface states it (`92 B`, `4 KB`).
+ *
+ * The shared formatter's floor is KB, because every other reader of it weighs
+ * budgets and bundles. A composer card can hold a 45-byte PDF, which that floor
+ * would print as "0 KB" - a size that contradicts the file it names - so the
+ * sub-kilobyte rung is stated here rather than by widening a formatter whose
+ * other callers would lose a digit. Exported so the canvas Attachments list
+ * says the same size as the card beside it (PR #1452 UX R2 U14: `0 KB` next to
+ * a card reading `92 B`). `null` when the size is not known.
+ */
+export function attachmentSizeLabel(
+	bytes: number | null | undefined,
+): string | null {
+	if (typeof bytes !== "number" || !Number.isFinite(bytes) || bytes < 0)
+		return null;
+	return bytes < 1000 ? `${bytes} B` : formatByteSize(bytes);
 }
 
 const textExtensions = new Set([

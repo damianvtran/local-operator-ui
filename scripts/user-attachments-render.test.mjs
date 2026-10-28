@@ -61,6 +61,10 @@ window.HTMLElement.prototype.releasePointerCapture ??= () => {};
 
 /** Every desktop op the renderer sent, in order. */
 const requests = [];
+/** Digest -> stored bytes the media relay answers with (default: a PNG head). */
+const mediaBytes = new Map();
+/** Every `saveFile` the renderer asked the bridge for (U12 / Q1). */
+const saves = [];
 window.api = {
 	desktop: {
 		request: async (request) => {
@@ -70,6 +74,8 @@ window.api = {
 		// The transcript's pictures fetch their bytes by digest (Q1 tests).
 		media: async (request) => {
 			requests.push(request.op);
+			const stored = mediaBytes.get(request.digest);
+			if (stored) return { kind: "bytes", ...stored };
 			return {
 				kind: "bytes",
 				data: new Uint8Array([137, 80, 78, 71]),
@@ -80,7 +86,22 @@ window.api = {
 	// The sent-file card's existence probe: every path is present.
 	probeFiles: async (paths) =>
 		paths.map((path) => ({ resolved: path, exists: true, isFile: true })),
+	saveFile: async (path, text) => {
+		saves.push({ path, text });
+	},
 };
+// CodeMirror measures text through Range rects, which jsdom does not lay out.
+window.Range.prototype.getClientRects ??= () => [];
+window.Range.prototype.getBoundingClientRect ??= () => ({
+	x: 0,
+	y: 0,
+	width: 0,
+	height: 0,
+	top: 0,
+	left: 0,
+	right: 0,
+	bottom: 0,
+});
 URL.createObjectURL ??= () => "blob:http://localhost/stub";
 URL.revokeObjectURL ??= () => {};
 Object.defineProperty(window.navigator, "clipboard", {
@@ -102,6 +123,10 @@ const bundled = await build({
  export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
  export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
  export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+ export { CanvasContent } from "./src/renderer/src/features/chat/components/canvas/canvas-content";
+ export { adoptBuffer, proposeBuffer, saveBuffer, resetBuffers, setBufferPorts } from "./src/renderer/src/features/chat/components/canvas/document-buffers";
+ export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
+ export { canvasDocumentForPath } from "./src/renderer/src/features/chat/utils/canvas-document";
  `,
 		resolveDir: process.cwd(),
 	},
@@ -134,6 +159,10 @@ await unlink(bundlePath);
 after(() => dom.window.close());
 
 const RETAINED = /Moved or deleted · saved copy kept/;
+const SAVED_COPY = /Saved copy/;
+const ARTIFACT_PATH = /^artifact:/;
+const ENV_BODY = /DEBUG=1/;
+const REFUSED_HINT = /Looks like a secret, so file actions are off/;
 const BARE_SIZE = /2 KB/;
 const PARTIAL = /May be incomplete/;
 const LOADING = /Loading/;
@@ -225,9 +254,11 @@ test("R2-2: a moved picture's TILE says so - status, not a bare size and date", 
 	const entry = container.querySelector(`[data-file-id^="attachment:"]`);
 	assert.ok(entry, "the attachment renders as a Files entry");
 	const text = entry.textContent;
+	// A tile's caption is too narrow for the sentence (design R2 D10): it says
+	// the card's "Saved copy", and the whole sentence is the tooltip below.
 	assert.match(
 		text,
-		RETAINED,
+		SAVED_COPY,
 		`the tile states the retained copy, got: ${text}`,
 	);
 	assert.doesNotMatch(text, BARE_SIZE, "no bare size that reads as present");
@@ -700,4 +731,266 @@ test("Q1: the transcript's sent-file card and picture offer no path action for a
 		},
 		"no refusal set behaves exactly as before",
 	);
+});
+
+/*
+ * PR #1452 round-4 remediation: UX R2 U12 / QA R4 Q1 (MAJOR) - pressing a
+ * refused text attachment opened an EMPTY, EDITABLE editor, and a save wrote a
+ * file named `artifact:<digest>` into the app's cwd. Now: the press opens the
+ * stored bytes READ-ONLY, and no save path accepts an `artifact:` document.
+ */
+const ENV_DIGEST = "7b8f815cdd60938d77c8017839dce188";
+const ENV_TEXT = "API_KEY=fixture-not-a-secret\nDEBUG=1\n";
+const dotEnv = (over = {}) => ({
+	message_id: "m-env",
+	ts: 1793117302,
+	index: 0,
+	kind: "document",
+	attachment: ENV_DIGEST,
+	filename: ".env",
+	mime_type: "text/plain",
+	bytes: ENV_TEXT.length,
+	path: "/Users/x/proj/.env",
+	exists: true,
+	stored_path: `/Users/x/.local-operator/attachments/${ENV_DIGEST}.bin`,
+	stored: true,
+	materialisable: false,
+	...over,
+});
+
+/** Press the row, then mount what the canvas would show for the opened tab. */
+async function pressAndShow(item, { capable = true } = {}) {
+	requests.length = 0;
+	saves.length = 0;
+	mediaBytes.set(ENV_DIGEST, {
+		data: new TextEncoder().encode(ENV_TEXT),
+		mimeType: "text/plain",
+	});
+	api.useCanvasStore.setState({ conversations: {} });
+	const view = api.mergeUserAttachments({ state: "ready", items: [item] }, []);
+	const listing = await mount(viewer(attachmentsState(view, { capable })));
+	const entry = listing.container.querySelector(
+		`[data-file-id^="attachment:"]`,
+	);
+	const title = entry.querySelector("button[title]").getAttribute("title");
+	await act(async () => entry.querySelector("button[title]").click());
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+	await listing.unmount();
+	const opened =
+		api.useCanvasStore.getState().conversations[SESSION]?.files ?? [];
+	if (!opened.length) return { title, opened, ops: [...requests] };
+	// The editable editor needs a query client; give it one, so a regression
+	// fails on the assertions below rather than on a missing provider.
+	const client = new api.QueryClient({
+		defaultOptions: { queries: { gcTime: Number.POSITIVE_INFINITY } },
+	});
+	const shown = await mount(
+		h(
+			api.QueryClientProvider,
+			{ client },
+			h(api.CanvasContent, { document: opened[0], conversationId: SESSION }),
+		),
+	);
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+	const editors = [...shown.container.querySelectorAll("[contenteditable]")];
+	const out = {
+		title,
+		opened,
+		ops: [...requests],
+		text: shown.container.textContent,
+		editable: editors.map((node) => node.getAttribute("contenteditable")),
+		readonly: Boolean(
+			shown.container.querySelector('[data-artifact-readonly="true"]'),
+		),
+	};
+	// The save chord the editor listens for, plus the autosave debounce window.
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "s", metaKey: true }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 1100));
+	});
+	out.saves = [...saves];
+	await shown.unmount();
+	return out;
+}
+
+test("U12/Q1: pressing a refused .env opens its stored bytes READ-ONLY, and nothing saves", async () => {
+	const pressed = await pressAndShow(dotEnv());
+	assert.equal(pressed.opened.length, 1, "the press opens one tab");
+	assert.match(pressed.opened[0].path, ARTIFACT_PATH, "opened by digest");
+	assert.equal(
+		pressed.opened[0].content,
+		"",
+		"no bytes enter the persisted store",
+	);
+	assert.ok(pressed.readonly, "the read-only artifact viewer is what shows");
+	assert.ok(
+		!pressed.editable.includes("true"),
+		`no editable surface (got ${JSON.stringify(pressed.editable)})`,
+	);
+	assert.match(pressed.text, ENV_BODY, "the stored bytes, not an empty buffer");
+	assert.ok(
+		pressed.ops.includes("sessions.attachment"),
+		`bytes read by digest (sent ${JSON.stringify(pressed.ops)})`,
+	);
+	assert.ok(!pressed.ops.includes("sessions.userAttachments.materialise"));
+	assert.deepEqual(pressed.saves, [], "Cmd+S and the autosave write nothing");
+	// The OLDER-DAEMON arm (no capability, no verdict): a MOVED text file opens
+	// by digest too, and reaches the same read-only viewer. (A present one opens
+	// its origin by path, as before - that is the editable file itself.)
+	const older = await pressAndShow(
+		dotEnv({ materialisable: undefined, exists: false }),
+		{ capable: false },
+	);
+	assert.ok(older.readonly, "older daemon: read-only too");
+	assert.ok(!older.editable.includes("true"));
+	assert.deepEqual(older.saves, []);
+});
+
+test("U12/Q1: the editor's save path refuses any artifact: document; a file still saves", async () => {
+	saves.length = 0;
+	api.resetBuffers();
+	api.setBufferPorts({
+		probe: async () => ({ exists: true, isFile: true, mtimeMs: 1 }),
+		write: async (path, text) => saves.push({ path, text }),
+	});
+	api.adoptBuffer({
+		documentId: "artifact:doc",
+		path: `artifact:${ENV_DIGEST}`,
+		text: "",
+		mtimeMs: 1,
+	});
+	api.proposeBuffer("artifact:doc", "typed-by-ux");
+	const explicit = await api.saveBuffer("artifact:doc", { explicit: true });
+	const automatic = await api.saveBuffer("artifact:doc");
+	assert.equal(explicit.status, "unavailable");
+	assert.equal(automatic.status, "unavailable");
+	assert.deepEqual(saves, [], "no write reached the bridge");
+	// Control: the same owner writes a real path, so the refusal is the guard.
+	api.adoptBuffer({
+		documentId: "file",
+		path: "/tmp/a.txt",
+		text: "",
+		mtimeMs: 1,
+	});
+	api.proposeBuffer("file", "words");
+	const written = await api.saveBuffer("file", { explicit: true });
+	assert.equal(written.status, "written");
+	assert.deepEqual(
+		saves.map((save) => save.path),
+		["/tmp/a.txt"],
+	);
+	api.resetBuffers();
+	api.setBufferPorts(null);
+});
+
+test("U12 control: an ordinary text file still opens in the EDITABLE editor", async () => {
+	const document_ = api.canvasDocumentForPath("/tmp/notes.txt", {
+		content: "hello",
+	});
+	const client = new api.QueryClient({
+		defaultOptions: { queries: { gcTime: Number.POSITIVE_INFINITY } },
+	});
+	const shown = await mount(
+		h(
+			api.QueryClientProvider,
+			{ client },
+			h(api.CanvasContent, { document: document_, conversationId: SESSION }),
+		),
+	);
+	const editable = [
+		...shown.container.querySelectorAll("[contenteditable]"),
+	].map((node) => node.getAttribute("contenteditable"));
+	await shown.unmount();
+	assert.ok(editable.includes("true"), `got ${JSON.stringify(editable)}`);
+});
+
+test("U13: a refused row's tooltip says why it has no actions; an allowed one does not", async () => {
+	const refused = await pressAndShow(dotEnv());
+	assert.match(refused.title, REFUSED_HINT);
+	const allowed = await canvasOffer([sensitive({ materialisable: true })]);
+	const { container, unmount } = await mount(
+		viewer(
+			attachmentsState(
+				api.mergeUserAttachments(
+					{ state: "ready", items: [sensitive({ materialisable: true })] },
+					[],
+				),
+			),
+		),
+	);
+	const title = container
+		.querySelector(`[data-file-id^="attachment:"] button[title]`)
+		.getAttribute("title");
+	await unmount();
+	assert.ok(allowed.count === 1);
+	assert.doesNotMatch(title, REFUSED_HINT);
+});
+
+test("R4-U1: a refused row with no stored bytes offers nothing and its press does nothing", async () => {
+	const bare = dotEnv({
+		attachment: null,
+		stored: false,
+		stored_path: null,
+	});
+	const offer = await canvasOffer([bare]);
+	assert.equal(offer.count, 1, "still listed");
+	assert.deepEqual(
+		offer.labels,
+		[],
+		`no menu (got ${JSON.stringify(offer.labels)})`,
+	);
+	assert.deepEqual(offer.ops, [], "the press sent nothing");
+	// Control: the same row, not refused, keeps its origin-path actions.
+	const allowed = await canvasOffer([{ ...bare, materialisable: true }]);
+	assert.ok(
+		allowed.labels.includes("Open file"),
+		`got ${JSON.stringify(allowed.labels)}`,
+	);
+});
+
+test("U11: Retry shows the loading line while in flight, and the error again if it fails", async () => {
+	const view = api.mergeUserAttachments(
+		{ state: "ready", items: [dotEnv()] },
+		[],
+	);
+	let state = "error";
+	let retried = 0;
+	const render = () =>
+		viewer(
+			attachmentsState(view, {
+				state,
+				retry: () => {
+					retried += 1;
+				},
+			}),
+		);
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	await act(async () => root.render(render()));
+	const retry = [...container.querySelectorAll("button")].find(
+		(node) => node.textContent === "Retry",
+	);
+	assert.ok(retry, "the error banner offers Retry");
+	await act(async () => retry.click());
+	assert.equal(retried, 1);
+	// The hook moves a retried listing to `loading`; the banner slot says so.
+	state = "loading";
+	await act(async () => root.render(render()));
+	const banner = [...container.querySelectorAll("output")].map(
+		(node) => node.textContent,
+	);
+	assert.ok(
+		banner.some((text) => LOADING.test(text)),
+		`in flight: ${JSON.stringify(banner)}`,
+	);
+	assert.ok(!container.textContent.includes("Couldn't load attachments"));
+	// It fails again: the error is back.
+	state = "error";
+	await act(async () => root.render(render()));
+	assert.ok(container.textContent.includes("Couldn't load attachments"));
+	await act(async () => root.unmount());
+	container.remove();
 });

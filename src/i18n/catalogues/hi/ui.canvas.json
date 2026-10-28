@@ -356,5 +356,6 @@
 	"ui.canvas.files.attachmentImage": "अटैच की गई तस्वीर",
 	"ui.canvas.files.attachmentRetained": "स्थानांतरित या हटाया गया · सहेजी गई प्रति मौजूद है",
 	"ui.canvas.files.attachmentGone": "स्थानांतरित या हटाया गया · कोई सहेजी गई प्रति नहीं",
-	"ui.canvas.files.attachmentMeta": "{size} · {when}"
+	"ui.canvas.files.attachmentMeta": "{size} · {when}",
+	"ui.canvas.files.attachmentRefused": "यह गोपनीय जानकारी लगती है, इसलिए फ़ाइल कार्रवाइयाँ बंद हैं"
 }

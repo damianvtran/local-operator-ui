@@ -67,6 +67,7 @@ import {
 	finderWindow,
 	layoutFinder,
 	sortFinder,
+	tileThumbHeight,
 } from "./finder-layout";
 import { finderOriginal, useFinderThumbnail } from "./finder-thumbnails";
 
@@ -194,6 +195,11 @@ export function FinderFilesView({
 	const headerControls = useRef(new Map<string, HTMLButtonElement>());
 	const [lightbox, setLightbox] = useState<string | null>(null);
 	const lightboxOpener = useRef<HTMLElement | null>(null);
+	/* A Retry the person pressed is pending until the listing settles (U11). */
+	const [retrying, setRetrying] = useState(false);
+	useEffect(() => {
+		if (attachments.state !== "loading") setRetrying(false);
+	}, [attachments.state]);
 	useEffect(() => {
 		if (index.localReadAllowed === false) {
 			setSettledItems([]);
@@ -685,17 +691,34 @@ export function FinderFilesView({
 						</Button>
 					</div>
 				)}
-				{attachments.state === "error" && (
+				{attachments.state === "error" ? (
 					<output
 						title={t("ui.canvas.files.attachmentsErrorReason")}
 						className={cn("text-body-sm text-ink-muted")}
 					>
 						{t("ui.canvas.files.attachmentsError")}
-						<Button variant="ghost" size="sm" onClick={attachments.retry}>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => {
+								setRetrying(true);
+								attachments.retry();
+							}}
+						>
 							{t("ui.canvas.files.retry")}
 						</Button>
 					</output>
-				)}
+				) : retrying && attachments.state === "loading" ? (
+					/*
+					 * THE RETRY IS IN FLIGHT (UX R2 U11): the banner's own slot says so
+					 * with the existing loading line, so the press visibly registered
+					 * even when the section (and its header caption) is not on screen.
+					 * A second failure replaces this with the banner again.
+					 */
+					<output className={cn("text-body-sm text-ink-dim")}>
+						{t("ui.canvas.files.loading")}
+					</output>
+				) : null}
 				{index.error && narrowed.length > 0 && (
 					<output className={cn("text-body-sm text-ink-muted")}>
 						{index.error}
@@ -1149,7 +1172,11 @@ function FinderEntry({
 	const [menuOpen, setMenuOpen] = useState(false);
 	const rowControl = useRef<HTMLButtonElement | null>(null);
 	const tiled = band.kind === "tiles" || band.kind === "video";
-	const height = tiled ? band.height - 32 : band.kind === "highlight" ? 40 : 28;
+	const height = tiled
+		? tileThumbHeight(band)
+		: band.kind === "highlight"
+			? 40
+			: 28;
 	const identity = doc.artifact
 		? item.attachment
 			? t("ui.canvas.files.attachmentTooltip", {
@@ -1164,9 +1191,16 @@ function FinderEntry({
 	 * on two lines, never one sentence joined in code, so each locale keeps its
 	 * own punctuation.
 	 */
-	const tooltip = item.attachment?.status
+	const statusLine = item.attachment?.status
 		? `${identity}\n${item.attachment.status}`
 		: identity;
+	/*
+	 * A refused row has no actions, and silence beside a sibling that has them
+	 * read as a glitch (UX R2 U13): the tooltip says why, as its own line.
+	 */
+	const tooltip = refused
+		? `${statusLine}\n${t("ui.canvas.files.attachmentRefused")}`
+		: statusLine;
 	const sort = useUiPreferencesStore((state) => state.finderFiles.sort);
 	const timestamp = sort === "created" ? item.created : item.modified;
 	const dateMetric =
@@ -1397,7 +1431,18 @@ function FinderEntry({
 								}
 								className={cn(
 									"text-meta text-ink-dim",
-									tiled && item.attachment ? "min-w-0 truncate" : "shrink-0",
+									tiled && item.attachment
+										? "min-w-0 truncate"
+										: item.attachment?.status
+											? /*
+												 * A row's STATUS sentence may shrink, the name keeps the
+												 * rest (design R2 D9): vi/hi status runs 259-290 px and
+												 * starved the name to 14 px at the 400 docked floor. The
+												 * cap leaves the name at least half the row; the whole
+												 * sentence is the row's tooltip.
+												 */
+												"min-w-0 max-w-[50%] shrink truncate"
+											: "shrink-0",
 								)}
 							>
 								{item.attachment && !item.attachment.status ? (
@@ -1418,8 +1463,13 @@ function FinderEntry({
 									t("ui.canvas.files.inSession")
 								) : (
 									/* One directional run: a row's note can be a sentence in an RTL
-									 * locale, and an unisolated run beside the name reorders it. */
-									<bdi>{meta}</bdi>
+									 * locale, and an unisolated run beside the name reorders it.
+									 * A tile states the short status (D10). */
+									<bdi>
+										{tiled && item.attachment
+											? item.attachment.tileStatus
+											: meta}
+									</bdi>
 								)}
 							</span>
 						}
@@ -1454,9 +1504,16 @@ function FinderEntry({
 					 * dead entries. Its meta line already says it is gone.
 					 */
 					(
-						item.attachment &&
-						item.row.missing &&
-						!PATH_SEPARATOR.test(doc.path)
+						(item.attachment &&
+							item.row.missing &&
+							!PATH_SEPARATOR.test(doc.path)) ||
+						/*
+						 * A refused row with no stored bytes carries only its bare name
+						 * (review R4-U1): every entry would act on a cwd-relative path.
+						 * A refused row WITH bytes keeps its digest-only entries (a
+						 * picture's Expand / Copy image).
+						 */
+						(refused && !doc.artifact)
 					)
 				) && (
 					<ImageActionsMenu
