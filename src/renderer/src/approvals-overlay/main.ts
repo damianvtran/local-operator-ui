@@ -103,6 +103,8 @@ let lastEntryId: string | null = null;
  */
 let inertUntil = 0;
 const INERT_MS = 700;
+/** Characters of the requester label the headline shows (D-2). */
+const REQUESTER_MAX = 48;
 /** Whether the previous render painted a request (a hidden card is not a swap). */
 let lastShown = false;
 let inertTimer: ReturnType<typeof setTimeout> | null = null;
@@ -363,8 +365,20 @@ function render(): void {
 	const request = shownRequest();
 	if (request) {
 		if (requesterNode) {
-			requesterNode.textContent =
+			const label =
 				request.requester || t("ui.browser.browser_consent_request.an_agent");
+			// BOUND THE HEADLINE (D-2). The requester is a conversation title: arbitrary
+			// text the model caps at 256 characters. Unbounded, it wraps to many lines
+			// at the narrowest width and pushes the decisions past the 480 DIP height
+			// cap, where the sticky footer covers the lowest one (measured overdraw 2.1
+			// at 264, 98 characters). The question is "which site", not "which title",
+			// so the headline is clipped and the full label stays reachable as a tooltip.
+			const clipped = [...label];
+			requesterNode.textContent =
+				clipped.length > REQUESTER_MAX
+					? `${clipped.slice(0, REQUESTER_MAX - 1).join("")}\u2026`
+					: label;
+			requesterNode.title = clipped.length > REQUESTER_MAX ? label : "";
 		}
 		if (leadNode) {
 			leadNode.textContent = t(

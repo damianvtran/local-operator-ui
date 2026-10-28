@@ -170,3 +170,16 @@ test("only the two card verbs exist in the document's world", () => {
 		"dismiss",
 	]);
 });
+
+test("D-2: a very long requester label is clipped in the headline and kept whole in the tooltip", () => {
+	const { doc, push } = mount();
+	const long = "x".repeat(98);
+	push(modelOf(1, [req("a", { requester: long })]));
+	const node = doc.getElementById("approvals-requester");
+	assert.ok([...node.textContent].length <= 48, "the headline is bounded");
+	assert.ok(node.textContent.endsWith("\u2026"));
+	assert.equal(node.title, long);
+	push(modelOf(2, [req("a", { requester: "Short title" })]));
+	assert.equal(node.textContent, "Short title");
+	assert.equal(node.title, "");
+});

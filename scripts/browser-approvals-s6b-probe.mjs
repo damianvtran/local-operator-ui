@@ -414,6 +414,56 @@ app.whenReady().then(async () => {
   const d1Normal = await readD1Settled(false);
   record("D1-normal-keeps-decisions-visible", Boolean(!d1Normal.errorVisible && d1Normal.overdraw === 0 && d1Normal.bodyOverflow <= 0 && d1Normal.insideCard), { ...d1Normal, nativeCardHeight: controller.facts().bounds?.card.height ?? null });
 
+  // Q1: HOVER AND FOCUS MUST NOT MOVE THE DECISIONS. The gloss line follows the
+  // pointer and the keyboard, and the "Don't allow" sentence wraps to two lines
+  // where the others take one. Before the reserved min-height the card grew inside
+  // a native view that stayed put: overdraw 9, every button slid 15 px, and a click
+  // at the pre-hover centre landed in the gap. For each decision, in the normal
+  // state and under the stale error line, the rects must be identical before and
+  // during hover and during focus, overdraw must stay 0, and the element at the
+  // pre-hover centre must still be that same button (the hover-then-click check).
+  const hoverProbe = () =>
+    currentCard().webContents.executeJavaScript(\`(async () => {
+      const card = document.getElementById('approvals-card');
+      const footer = document.querySelector('.card-footer');
+      const buttons = [document.getElementById('approvals-allow-once'), ...document.querySelectorAll('#approvals-secondary button')].filter(Boolean);
+      const read = () => {
+        const c = card.getBoundingClientRect();
+        return buttons.map((b) => { const r = b.getBoundingClientRect(); return { top: +r.top.toFixed(2), bottom: +r.bottom.toFixed(2), cx: r.left + r.width / 2, cy: r.top + r.height / 2 }; });
+      };
+      const overdraw = () => {
+        const lowest = Math.max(...buttons.map((b) => b.getBoundingClientRect().bottom));
+        return +Math.max(0, lowest - footer.getBoundingClientRect().top).toFixed(2);
+      };
+      const idle = read();
+      const out = { idle: idle.map((r) => [r.top, r.bottom]), moved: [], overdrawMax: overdraw(), hitMiss: [], glossHeights: [] };
+      for (const mode of ['hover', 'focus']) {
+        for (let i = 0; i < buttons.length; i += 1) {
+          buttons[i].dispatchEvent(new MouseEvent(mode === 'hover' ? 'mouseenter' : 'focus', { bubbles: false }));
+          if (mode === 'focus') buttons[i].focus();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          const during = read();
+          during.forEach((r, j) => { if (r.top !== idle[j].top || r.bottom !== idle[j].bottom) out.moved.push(mode + ':' + i + '->' + j); });
+          out.overdrawMax = Math.max(out.overdrawMax, overdraw());
+          const hit = document.elementFromPoint(idle[i].cx, idle[i].cy);
+          if (hit !== buttons[i] && !buttons[i].contains(hit)) out.hitMiss.push(mode + ':' + i);
+          out.glossHeights.push(+document.getElementById('approvals-gloss').getBoundingClientRect().height.toFixed(2));
+        }
+      }
+      return out;
+    })()\`);
+  const q1Normal = await hoverProbe();
+  record("Q1-hover-focus-keeps-decisions-in-place-normal", Boolean(q1Normal.moved.length === 0 && q1Normal.overdrawMax === 0 && q1Normal.hitMiss.length === 0), q1Normal);
+  controller.setModel({ entries, error: "stale" });
+  await sleep(300);
+  await stableBounds();
+  await readD1Settled(true);
+  const q1Stale = await hoverProbe();
+  record("Q1-hover-focus-keeps-decisions-in-place-stale", Boolean(q1Stale.moved.length === 0 && q1Stale.overdrawMax === 0 && q1Stale.hitMiss.length === 0), q1Stale);
+  controller.setModel({ entries });
+  await sleep(300);
+  await stableBounds();
+
   // S6d frames: the card document in the four views the PR evidence names. The
   // stale / unavailable frames are taken from the SAME settled states the D1 rows
   // measured, so a frame and its geometry row cannot describe different cards.
