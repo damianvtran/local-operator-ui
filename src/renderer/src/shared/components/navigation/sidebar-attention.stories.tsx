@@ -275,7 +275,8 @@ export const Counts: Story = {
 	render: () => <Scene counts={SMALL} collapsed={false} moreOpen={false} />,
 };
 
-/** More opened: the hidden rows draw their own counts beneath it. */
+/** More opened: the hidden rows draw their own counts beneath it, and More
+    itself draws none - its sum summarises what is HIDDEN (design D2). */
 export const MoreOpen: Story = {
 	render: () => <Scene counts={SMALL} collapsed={false} moreOpen />,
 };
@@ -317,4 +318,35 @@ export const CollapsedOverflow: Story = {
 			moreOpen={false}
 		/>
 	),
+};
+
+/*
+ * THE CORNER CAP, ONE STORY PER WIDTH (design follow-up to #1465, D1): one, two
+ * and three digits on every corner-marked row at once, so the frames show the
+ * mark at `5`, at the `9+` cap from a two-digit count, and at the same `9+` from
+ * a three-digit one - the case that used to draw a `99+` lid over the Bell. Team
+ * Bridge stays at zero so More's corner shows Mesh's count alone (the same N),
+ * not a doubled sum.
+ */
+const scaled = (n: number): Counts => ({
+	aida: 1,
+	notifications: n,
+	browser: n,
+	mesh: n,
+	teamBridge: 0,
+});
+
+/** The collapsed strip with single-digit counts: drawn exactly. */
+export const Collapsed5: Story = {
+	render: () => <Scene counts={scaled(5)} collapsed moreOpen={false} />,
+};
+
+/** Two digits in the strip: the corner caps at `9+`; the name keeps `12`. */
+export const Collapsed12: Story = {
+	render: () => <Scene counts={scaled(12)} collapsed moreOpen={false} />,
+};
+
+/** Three digits in the strip: still `9+`, never the `99+` lid. */
+export const Collapsed125: Story = {
+	render: () => <Scene counts={scaled(125)} collapsed moreOpen={false} />,
 };
