@@ -2209,6 +2209,9 @@ export type MessageParams = {
 	"ui.agents.skills.remove.unpublished_body": undefined;
 	"ui.agents.skills.remove.unpublished_title": undefined;
 	"ui.agents.skills.retrying": undefined;
+	"ui.agents.skills.scope.builtin": undefined;
+	"ui.agents.skills.scope.hub": undefined;
+	"ui.agents.skills.scope.local": undefined;
 	"ui.agents.skills.scope_legend": undefined;
 	"ui.agents.skills.search": undefined;
 	"ui.agents.skills.search_aria": undefined;

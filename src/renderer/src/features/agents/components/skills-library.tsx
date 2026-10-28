@@ -159,12 +159,19 @@ const HEADER_STATE_KEY = {
 	"read-only": "ui.agents.skills.state.read_only",
 } as const satisfies Record<SkillHeaderState, MessageKey>;
 
-/** The scope segments' labels: the row's own source words, so the two match. */
+/**
+ * The scope segments' labels: SHORT keys of their own, not the rows' source
+ * words. Four segments share a 246 px row, and "Agent Hub" / "Integrada" /
+ * "Встроенный" in their translated source forms overflowed it in es, fr, ru and
+ * vi (i18n audit of #1458; the same fix #1432 made for the Agents scope). The
+ * rows and the header keep `ui.agents.skills.source.*`. `all` is the Agents
+ * control's own word, the identical meaning.
+ */
 export const SKILL_SCOPE_LABEL = {
 	all: "ui.agents.pages.scope.all",
-	local: "ui.agents.skills.source.local",
-	hub: "ui.agents.skills.source.hub",
-	builtin: "ui.agents.skills.source.builtin",
+	local: "ui.agents.skills.scope.local",
+	hub: "ui.agents.skills.scope.hub",
+	builtin: "ui.agents.skills.scope.builtin",
 } as const satisfies Record<SkillScope, MessageKey>;
 
 const SCOPE_EMPTY_KEY = {

@@ -374,6 +374,21 @@
 		"role": "busy label of the Retry button",
 		"tone": "plain"
 	},
+	"ui.agents.skills.scope.builtin": {
+		"note": "Segment label in the Skills roster's scope control (All · Built-in · …). Four segments share a 246 px row, so keep it SHORT; it may be shorter than the row's source word ui.agents.skills.source.builtin, which stays unchanged on rows and headers (i18n audit of #1458, the #1432 precedent).",
+		"role": "segmented-control label",
+		"tone": "one or two short words"
+	},
+	"ui.agents.skills.scope.hub": {
+		"note": "Segment label in the Skills roster's scope control (All · Agent Hub · …). Four segments share a 246 px row, so keep it SHORT; it may be shorter than the row's source word ui.agents.skills.source.hub, which stays unchanged on rows and headers (i18n audit of #1458, the #1432 precedent).",
+		"role": "segmented-control label",
+		"tone": "one or two short words"
+	},
+	"ui.agents.skills.scope.local": {
+		"note": "Segment label in the Skills roster's scope control (All · Local · …). Four segments share a 246 px row, so keep it SHORT; it may be shorter than the row's source word ui.agents.skills.source.local, which stays unchanged on rows and headers (i18n audit of #1458, the #1432 precedent).",
+		"role": "segmented-control label",
+		"tone": "one or two short words"
+	},
 	"ui.agents.skills.scope_legend": {
 		"note": "Accessible name of the All / Local / Agent Hub / Built-in segments above the roster.",
 		"role": "screen-reader legend",
