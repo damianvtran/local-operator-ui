@@ -5260,8 +5260,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "fafac4e8eb9c693dddad7137ae6d99ee3beefe0dc795d8b49441e3ae36c78a1e",
+			"source_sha256": "15702697617ce227e7fefe665077e28b3a26a7f9190beeb5884f252884ec9e04",
+			"target_sha256": "efdc4a0c79f5e672e0e9e124d1b5d53ef3539980a824faa557ab0b1f28a5f974",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -5278,19 +5278,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "6d269032fdc7-r3-es",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "c6f6f47ef39d-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-es.json",
-					"receipt_sha256": "f9c9e3027119add0b52c70e384644c5fa033d1adb93dac73c28ed662d263fd1e",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/c6f6f47ef39d-r2-es.json",
+					"receipt_sha256": "493e9cc667e03b3a4b41d0db7db0161035a0c9ba34e4ba7fa91a7e9c7ea9b4cc",
+					"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
+					"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); prior N2 resolved; 1 open MINOR M1 (conflict_images_removed eliminar->quitar), see receipt"
 				}
 			],
 			"status": "audited",
@@ -6099,6 +6099,30 @@
 							"receipt_sha256": "dc67139f7ca8239a214e59e3219e5d7ac141aa3c0751da30a42522d6b09dbe3e",
 							"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
 							"note": "PR #1444 3-key delta (schedule.edit_*); 1 open NIT, see receipt"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "fafac4e8eb9c693dddad7137ae6d99ee3beefe0dc795d8b49441e3ae36c78a1e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-es.json",
+							"receipt_sha256": "f9c9e3027119add0b52c70e384644c5fa033d1adb93dac73c28ed662d263fd1e",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -11757,8 +11781,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "b75cfe24f3983e1047ee6dfeb82285c36a766fcdf4cebf05dcbf5871e2b1f986",
+			"source_sha256": "15702697617ce227e7fefe665077e28b3a26a7f9190beeb5884f252884ec9e04",
+			"target_sha256": "2594f84c91fb5f7ec106add59edf9a81611956588058152429e57774db5e0896",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -11776,19 +11800,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "6d269032fdc7-r3-fr",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "c6f6f47ef39d-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-fr.json",
-					"receipt_sha256": "eeac8625243665b9eee570ab2647e4dd0a1ef34cc10167d1c898aadb9114710c",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/c6f6f47ef39d-r2-fr.json",
+					"receipt_sha256": "3e405c489a58a63f5dbdd51e2befd9a17d74464f6c9076d62f6ed935ae8ad5e1",
+					"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
+					"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); 1 open MINOR M1 (conflict_images_removed supprimer->retirer), see receipt"
 				}
 			],
 			"status": "audited",
@@ -12621,6 +12645,30 @@
 							"receipt_sha256": "093e2ad273c4777978f0935b5fd1ea1dc03c5c83c33645399e80a5250b37d2f4",
 							"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
 							"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "b75cfe24f3983e1047ee6dfeb82285c36a766fcdf4cebf05dcbf5871e2b1f986",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-fr.json",
+							"receipt_sha256": "eeac8625243665b9eee570ab2647e4dd0a1ef34cc10167d1c898aadb9114710c",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -18185,8 +18233,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "6fc8d10b0ec69f1897b7594afc2b2d99558a474da62e111fe2464224b433ff73",
+			"source_sha256": "15702697617ce227e7fefe665077e28b3a26a7f9190beeb5884f252884ec9e04",
+			"target_sha256": "a8c25fc63e15efe0abf7f35ee02abc717bb50ea377819008ff7b3cce00d6b918",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18203,19 +18251,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-hi",
+					"instance": "c6f6f47ef39d-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-hi.json",
-					"receipt_sha256": "783da201c8fd41e61871f9bfdae39591152bb557f63187fdf934de3cbc6bd233",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/c6f6f47ef39d-r2-hi.json",
+					"receipt_sha256": "b0bbba5fbdd3d93d8c46a78d6e08b9ff21fe0db8e7a5e1e99bea9f8bd342030a",
+					"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
+					"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); 0 findings, see receipt"
 				}
 			],
 			"status": "audited",
@@ -18971,6 +19019,30 @@
 							"receipt_sha256": "20ff79742e2cc1522a015a82938bc9957324ca36e2316633035b38e30ad9d704",
 							"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
 							"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "6fc8d10b0ec69f1897b7594afc2b2d99558a474da62e111fe2464224b433ff73",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-hi.json",
+							"receipt_sha256": "783da201c8fd41e61871f9bfdae39591152bb557f63187fdf934de3cbc6bd233",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -24312,8 +24384,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "13c4ae135e70247bfe6926bb8590273ab29636be1f3e5478aabb943e78432535",
+			"source_sha256": "15702697617ce227e7fefe665077e28b3a26a7f9190beeb5884f252884ec9e04",
+			"target_sha256": "b3aced50404cef41836a6108e45505728e442babbd745e93e4bb517bbcef34a2",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -24331,19 +24403,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-ru",
+					"instance": "c6f6f47ef39d-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-ru.json",
-					"receipt_sha256": "f1e445f0d28d5ae49a4356a8bc92a92ed7c8cba39e80aba8e8d88e2c1528a847",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/c6f6f47ef39d-r2-ru.json",
+					"receipt_sha256": "77d5e906d77f9c1bd1422f6c961d3abbc1d8e25f33cbd5e42d55b320a2495614",
+					"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
+					"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); 0 findings, see receipt"
 				}
 			],
 			"status": "audited",
@@ -25130,6 +25202,30 @@
 							"receipt_sha256": "5fdb1001ebdb5137ee30e5d1d9ed090a31b3ae26d25b06e6cde36e228b1454a4",
 							"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
 							"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "13c4ae135e70247bfe6926bb8590273ab29636be1f3e5478aabb943e78432535",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-ru.json",
+							"receipt_sha256": "f1e445f0d28d5ae49a4356a8bc92a92ed7c8cba39e80aba8e8d88e2c1528a847",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -30550,8 +30646,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "c2e9318791713d1dae5f94443c353541f8a625834608e24bdf76d4f140b19599",
+			"source_sha256": "15702697617ce227e7fefe665077e28b3a26a7f9190beeb5884f252884ec9e04",
+			"target_sha256": "4bdb9986d5a3b87268688b54108fe862610f73ddad41a9e8749fa5e1982df2c6",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -30568,19 +30664,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-ur",
+					"instance": "c6f6f47ef39d-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-ur.json",
-					"receipt_sha256": "5782d67121ac0c2186d0d14e60f59da7310ca7b57f005f73180cd0f106d24a1b",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/c6f6f47ef39d-r2-ur.json",
+					"receipt_sha256": "42f317cac5f89bdb0e033ad510a629295da9483061834f6b9ba953b581cc01bc",
+					"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
+					"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); 0 findings, see receipt"
 				}
 			],
 			"status": "audited",
@@ -31336,6 +31432,30 @@
 							"receipt_sha256": "21019654a6bc96d06f198eaedf7f2f7ac0bd38d97d587b8250de6fe26922ac64",
 							"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
 							"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "c2e9318791713d1dae5f94443c353541f8a625834608e24bdf76d4f140b19599",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-ur.json",
+							"receipt_sha256": "5782d67121ac0c2186d0d14e60f59da7310ca7b57f005f73180cd0f106d24a1b",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -36957,8 +37077,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "538c492eed7dcebfd3ac0d74914bbcb8c010adfd978849b6f82f1cc91d058a06",
+			"source_sha256": "15702697617ce227e7fefe665077e28b3a26a7f9190beeb5884f252884ec9e04",
+			"target_sha256": "05a8acff0b19e4258afa6b94fe59a350fb707cc182ebabb6e5406d63b54c6018",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -36975,19 +37095,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-vi",
+					"instance": "c6f6f47ef39d-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-vi.json",
-					"receipt_sha256": "71faf1200f76f5a10e3062170178a1fcda4754e909de58c2e96c8710884ab9c9",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/c6f6f47ef39d-r2-vi.json",
+					"receipt_sha256": "35663a131ad3954aad8773fda35037539e4898984d9b2b961a81a905a5d9764f",
+					"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
+					"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); 0 findings, see receipt"
 				}
 			],
 			"status": "audited",
@@ -37774,6 +37894,30 @@
 							"receipt_sha256": "2035db8eefb27d175a3b2990b017593f6e375ffc82c4cef4bac68aa49284ca4f",
 							"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
 							"note": "PR #1444 3-key delta (schedule.edit_*); no findings"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "538c492eed7dcebfd3ac0d74914bbcb8c010adfd978849b6f82f1cc91d058a06",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-vi.json",
+							"receipt_sha256": "71faf1200f76f5a10e3062170178a1fcda4754e909de58c2e96c8710884ab9c9",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
@@ -43988,8 +44132,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "e614104042ec5b3ba8cb6a63073c063791c34b4f0237175dae214f783974386d",
+			"source_sha256": "15702697617ce227e7fefe665077e28b3a26a7f9190beeb5884f252884ec9e04",
+			"target_sha256": "bbe84d6c472e55b62b256ad0b7bbececc9b1d4354b52012fcf9a4e25edfb9b19",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -44006,19 +44150,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-zh-cn",
+					"instance": "c6f6f47ef39d-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-zh-cn.json",
-					"receipt_sha256": "9b28b45e43516ecad130ba4261e111abc4317ebd8862281ef3607fe5d87d0b58",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/c6f6f47ef39d-r2-zh-cn.json",
+					"receipt_sha256": "4d4d9992fd2578d6a4443f6688ed1c048a3c3ba9492b7a270b5ffb58d9837e5b",
+					"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
+					"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); prior N1 (bei passive) resolved; 0 findings, see receipt"
 				}
 			],
 			"status": "audited",
@@ -44827,6 +44971,30 @@
 							"receipt_sha256": "cc6f48d0bcf84bc41eaca167e9ba230208b0a6a1d9d3a922cee19e42757917fb",
 							"scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
 							"note": "PR #1444 3-key delta (schedule.edit_*); 1 open NIT, see receipt"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "e614104042ec5b3ba8cb6a63073c063791c34b4f0237175dae214f783974386d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-zh-cn.json",
+							"receipt_sha256": "9b28b45e43516ecad130ba4261e111abc4317ebd8862281ef3607fe5d87d0b58",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
 						}
 					],
 					"status": "audited"
