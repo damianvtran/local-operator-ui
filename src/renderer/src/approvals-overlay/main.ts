@@ -87,6 +87,26 @@ const cardBody = document.querySelector(".card-body");
 let model: ApprovalsCardModel | null = null;
 let localView: "request" | "list" = "request";
 let lastEntryId: string | null = null;
+/**
+ * THE DECISIONS ARE INERT UNTIL THIS INSTANT (U3). When the request on screen
+ * changes UNDER the user (withdrawn, expired, dismissed: the controller's pick
+ * moved, not the user's own list selection), the card repaints the next request
+ * in place in a few milliseconds with every button live. A click aimed at the
+ * request the user had read then granted a durable scope for a site they never
+ * saw (measured: a 724 ms click recorded the queued site). The sequence number
+ * does not help, because the model carrying the new request is pushed BEFORE the
+ * click, so the click carries the new `seq`. The only defence that adds no
+ * channel and widens no host validation is not to let a decision leave the
+ * document for a short bounded window after the swap: long enough for a pointer
+ * already travelling to land on nothing, short enough not to feel broken to
+ * someone who reads the new site first.
+ */
+let inertUntil = 0;
+const INERT_MS = 700;
+/** Whether the previous render painted a request (a hidden card is not a swap). */
+let lastShown = false;
+let inertTimer: ReturnType<typeof setTimeout> | null = null;
+const isInert = (): boolean => Date.now() < inertUntil;
 /** A row the operator picked in the queue list; overrides the controller's pick. */
 let selectedEntryId: string | null = null;
 
@@ -119,6 +139,9 @@ function expiringText(expiresAt: number): string {
 	});
 }
 
+/** Each decision button's own gloss sentence, so the tallest can be reserved. */
+const glossFor = new WeakMap<HTMLButtonElement, string>();
+
 function setGloss(text: string): void {
 	if (glossNode) glossNode.textContent = text;
 }
@@ -126,15 +149,44 @@ function setGloss(text: string): void {
 function action(
 	label: string,
 	onClick: () => void,
-	onGloss: () => void,
+	gloss: string,
 ): HTMLButtonElement {
 	const button = document.createElement("button");
 	button.type = "button";
 	button.textContent = label;
+	glossFor.set(button, gloss);
 	button.addEventListener("click", onClick);
-	button.addEventListener("mouseenter", onGloss);
-	button.addEventListener("focus", onGloss);
+	button.addEventListener("mouseenter", () => setGloss(gloss));
+	button.addEventListener("focus", () => setGloss(gloss));
 	return button;
+}
+
+/**
+ * RESERVE THE TALLEST GLOSS (Q1). The one gloss line follows hover and focus, and
+ * the "Don't allow" sentence wraps to two lines where the others take one. Nothing
+ * re-measures on a hover, so the card grew inside a native view that stayed put:
+ * the footer covered the lowest decision (measured: overdraw 9) and every button
+ * slid 15 px under the pointer, so a click landed in the gap. The line is sized
+ * to the tallest sentence it can show, at the width it will show them (locale and
+ * card width both change the wrap), so hovering moves nothing and the host's
+ * measurement already contains the worst case.
+ */
+let glossTexts: string[] = [];
+function reserveGloss(): void {
+	if (!glossNode) return;
+	glossNode.style.minHeight = "";
+	// A hidden view or the provisional zero-width child reports a height that is
+	// not the card's: reserve nothing there; the next render, view switch or
+	// resize does it at the real width.
+	if (glossNode.getBoundingClientRect().width <= 0) return;
+	const current = glossNode.textContent;
+	let tallest = 0;
+	for (const text of glossTexts) {
+		glossNode.textContent = text;
+		tallest = Math.max(tallest, glossNode.getBoundingClientRect().height);
+	}
+	glossNode.textContent = current;
+	if (tallest > 0) glossNode.style.minHeight = `${Math.ceil(tallest)}px`;
 }
 
 function dismiss(): void {
@@ -159,6 +211,7 @@ function sendDecision(decision: ApprovalsCardDecision): void {
 	if (!model) return;
 	const request = shownRequest();
 	if (!request) return;
+	if (isInert()) return;
 	window.approvalsCard?.decide({
 		seq: model.seq,
 		entryId: request.entryId,
@@ -182,22 +235,14 @@ function renderSecondary(request: ApprovalsCardRequest): void {
 		action(
 			t("ui.browser.browser_consent_request.allow_until_the_app_quits"),
 			() => sendDecision("session"),
-			() =>
-				setGloss(
-					t(
-						"ui.browser.browser_consent_request.this_site_for_this_run_only_and",
-					),
-				),
+			t("ui.browser.browser_consent_request.this_site_for_this_run_only_and"),
 		),
 		action(
 			t("ui.browser.browser_consent_request.always_allow_this_site"),
 			() => sendDecision("site"),
-			() =>
-				setGloss(
-					t(
-						"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared",
-					),
-				),
+			t(
+				"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared",
+			),
 		),
 	];
 	if (request.broadKey) {
@@ -205,10 +250,7 @@ function renderSecondary(request: ApprovalsCardRequest): void {
 			action(
 				`${t("ui.browser.browser_consent_request.allow_all_of")}${request.broadKey}`,
 				() => sendDecision("domain"),
-				() =>
-					setGloss(
-						`${t("ui.browser.browser_consent_request.every_site_under")}${request.broadKey}${t("ui.browser.browser_consent_request.kept_until_you_revoke_it_shared_with")}`,
-					),
+				`${t("ui.browser.browser_consent_request.every_site_under")}${request.broadKey}${t("ui.browser.browser_consent_request.kept_until_you_revoke_it_shared_with")}`,
 			),
 		);
 	}
@@ -216,12 +258,9 @@ function renderSecondary(request: ApprovalsCardRequest): void {
 		action(
 			t("ui.browser.browser_consent_request.don_t_allow"),
 			() => sendDecision("deny"),
-			() =>
-				setGloss(
-					t(
-						"ui.browser.browser_consent_request.the_agent_stops_asking_about_this_site",
-					),
-				),
+			t(
+				"ui.browser.browser_consent_request.the_agent_stops_asking_about_this_site",
+			),
 		),
 	);
 	secondaryNode.append(...buttons);
@@ -290,6 +329,7 @@ function setView(view: "request" | "list"): void {
 	if (listView) listView.hidden = view !== "list";
 	if (reviewNode) reviewNode.hidden = view !== "request";
 	if (backNode) backNode.hidden = view !== "list";
+	if (view === "request") reserveGloss();
 	setTimeout(syncScrim, 0);
 }
 
@@ -302,6 +342,17 @@ function render(): void {
 	 * queue) and painted it again (Q-S6b-1). Reset on every controller pick, and
 	 * clear on an empty pick, so the painted request always follows main. */
 	if (model.request && model.request.entryId !== lastEntryId) {
+		// Inert only when the pick moved under a card that was already showing a
+		// request. The first request after a hide is not a swap, and the user's own
+		// list selection (`selectedEntryId`) never goes through here.
+		if (lastEntryId !== null && lastShown) {
+			inertUntil = Date.now() + INERT_MS;
+			if (inertTimer) clearTimeout(inertTimer);
+			inertTimer = setTimeout(() => {
+				inertTimer = null;
+				render();
+			}, INERT_MS + 20);
+		}
 		lastEntryId = model.request.entryId;
 		selectedEntryId = null;
 		// A new request always opens on the request view, never on the list a
@@ -330,7 +381,7 @@ function render(): void {
 			// (round-2 minor): an expired request cannot be answered from a stale
 			// card.
 			allowOnceNode.disabled =
-				model.busy || (minutesLeft(request.expiresAt) ?? 1) <= 0;
+				model.busy || isInert() || (minutesLeft(request.expiresAt) ?? 1) <= 0;
 			allowOnceNode.onclick = () => sendDecision("once");
 			setGloss(
 				t(
@@ -339,7 +390,16 @@ function render(): void {
 			);
 		}
 		renderSecondary(request);
+		glossTexts = [
+			t(
+				"ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to",
+			),
+			...[...(secondaryNode?.querySelectorAll("button") ?? [])].map(
+				(button) => glossFor.get(button) ?? "",
+			),
+		];
 	}
+	lastShown = request !== null;
 	if (reviewNode) {
 		// The count says what the list holds (D9), and the accessible name says
 		// what pressing it does, so the visible status text is still a known
@@ -353,16 +413,26 @@ function render(): void {
 			t("ui.browser.browser_approvals_tray.open_approvals"),
 		);
 		reviewNode.disabled = model.busy;
-		reviewNode.onclick = () => setView("list");
+		reviewNode.onclick = () => {
+			setView("list");
+			// The pressed button is hidden by the view switch; without this the
+			// document's focus fell to <body> and the next Tab started over (U11).
+			backNode?.focus();
+		};
 	}
 	if (backNode) {
 		backNode.textContent = t("ui.browser.browser_url_bar.back");
-		backNode.onclick = () => setView("request");
+		backNode.onclick = () => {
+			setView("request");
+			reviewNode?.focus();
+		};
 	}
 	renderRows(model.pending);
 	setView(localView);
 	const disabled =
-		model.busy || (request ? (minutesLeft(request.expiresAt) ?? 1) <= 0 : true);
+		model.busy ||
+		isInert() ||
+		(request ? (minutesLeft(request.expiresAt) ?? 1) <= 0 : true);
 	for (const button of secondaryNode?.querySelectorAll("button") ?? []) {
 		button.disabled = disabled;
 	}
@@ -432,7 +502,10 @@ document.addEventListener("keydown", (event) => {
 
 // The expiry line is the one value that changes without a model push. A local
 // tick repaints it; it crosses no boundary and decides nothing.
-window.addEventListener("resize", syncScrim);
+window.addEventListener("resize", () => {
+	syncScrim();
+	reserveGloss();
+});
 
 setInterval(() => {
 	const request = shownRequest();
