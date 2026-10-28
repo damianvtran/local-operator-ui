@@ -139,18 +139,23 @@ function sanitizeRequesterLabels(
 	return labels;
 }
 
-/** The exact opt-in for S6a. Absent or not exactly `1` is off. */
-export const APPROVALS_OVERLAY_S6A_ENV =
-	"LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_S6A";
+/**
+ * S6c's one product switch. The card is ON by default; exactly `1` is the
+ * kill switch that restores the DOM dock and band for that launch. Any other
+ * value (including absent) leaves the card on. The switch is read once in the
+ * host, so a launch either builds the child or never creates it.
+ */
+export const APPROVALS_OVERLAY_DISABLE_ENV =
+	"LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE";
 
 const TRANSPARENT = "#00000000";
 const OPAQUE = "#1b1f24";
 
-/** The only opt-in, in one place so the host and its test spell it the same. */
+/** The only switch, in one place so the host and its test spell it the same. */
 export function approvalsOverlayEnabled(
 	env: Record<string, string | undefined>,
 ): boolean {
-	return env[APPROVALS_OVERLAY_S6A_ENV] === "1";
+	return env[APPROVALS_OVERLAY_DISABLE_ENV] !== "1";
 }
 
 /**

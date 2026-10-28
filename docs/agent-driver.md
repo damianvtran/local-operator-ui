@@ -473,6 +473,21 @@ S2 matrix on the current head as its regression surface and adds the focus, IME
 and accessibility rows; `docs/design/browser-address-overlay.md` holds what those
 rows do and do not establish.
 
+## The approvals card's kill switch (S6c)
+
+The native approvals card is a **product surface and on by default**. Exactly
+`LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE=1` restores the DOM dock and
+band for that launch; an absent value or any other value leaves the card on. The
+switch is read once in the browser host, so a disabled launch creates **no card
+controller and no `WebContentsView` child at all**; it is not a hidden view.
+
+Platform/fallback rules stay: the child is opaque on non-darwin (the
+opaque-square fallback), and if the child cannot be created the host projects
+`approvalsCard.available: false`, which makes the renderer fall back to the dock.
+The card takes the Approvals route from the shield **and** from the page menu's
+Approvals item; while it is available the dock component is not mounted. The
+card is not claimed at VoiceOver parity (see the PR's owner-named limitation).
+
 ## Isolation: what the run cannot reach
 
 A driver run happens on the operator's desktop, next to his real app. Every path

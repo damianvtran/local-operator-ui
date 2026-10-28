@@ -31,7 +31,9 @@ export const safeStorage = { isEncryptionAvailable: () => false };
 export const protocol = { registerSchemesAsPrivileged() {} };
 export const ipcMain = {
  handle: (name, fn) => { if (f().handlers.has(name)) throw new Error("Attempted to register a second handler for '" + name + "'"); f().handlers.set(name, fn); },
- removeHandler: name => f().handlers.delete(name) };
+ removeHandler: name => f().handlers.delete(name),
+ on: () => {},
+ removeListener: () => {} };
 export const session = { fromPartition: () => f().session };
 export class WebContentsView {
  constructor() {
@@ -50,6 +52,12 @@ export class WebContentsView {
      getAllEntries: () => [{ url: wc.url || 'about:blank' }] }
   });
   this.webContents = wc; this.setBounds = () => {}; this.setVisible = () => {};
+  // The card child reads its provisional width and sets its ground through
+  // these; a launch that builds the card must not fail on a missing native
+  // boundary, and the zero-width measurement returns before any DOM read.
+  this.setBackgroundColor = () => {};
+  this.getBounds = () => ({ x: 0, y: 0, width: 0, height: 0 });
+  wc.executeJavaScript = async () => 0;
   f().views.add(wc.id); f().peak = Math.max(f().peak, f().views.size);
  }
 }
@@ -177,7 +185,16 @@ function fixture(failConsole) {
 	const window = Object.assign(new EventEmitter(), {
 		isDestroyed: () => false,
 		webContents,
-		contentView: { addChildView() {}, removeChildView() {} },
+		contentView: {
+			children: [],
+			addChildView(view) {
+				this.children.push(view);
+			},
+			removeChildView(view) {
+				const index = this.children.indexOf(view);
+				if (index >= 0) this.children.splice(index, 1);
+			},
+		},
 		getContentBounds: () => ({ x: 0, y: 0, width: 1000, height: 700 }),
 	});
 	const f = {
@@ -249,6 +266,86 @@ test("production startup owns IPC before awaits, rolls back seven restored views
 		);
 	} finally {
 		await stopBrowserHost();
+	}
+});
+
+/** S6c's launch option, exactly the shape `src/main/index.ts` now passes. */
+function overlayOptions() {
+	return {
+		enabled: true,
+		documentUrl: "file:///isolated/browser-approvals-overlay.html",
+		preloadPath: "/isolated/browser-approvals-overlay.js",
+	};
+}
+
+// Pinned to APPROVALS_OVERLAY_DISABLE_ENV in src/main/browser/approvals-overlay.ts;
+// the unit test asserts the constant's exact spelling and values.
+const APPROVALS_OVERLAY_DISABLE_ENV =
+	"LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE";
+
+/** The card child among the restored tab views the fake window now records. */
+function cardChildren(f) {
+	return f.window.contentView.children.filter((view) =>
+		view.webContents.getURL().includes("browser-approvals-overlay.html"),
+	);
+}
+
+test("the approvals card is default-on: an ordinary launch builds its child", async () => {
+	const previous = process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	const f = fixture(false);
+	try {
+		await startBrowserHost({
+			...options(f),
+			approvalsOverlay: overlayOptions(),
+		});
+		assert.equal(
+			cardChildren(f).length,
+			1,
+			"the enabled launch adds the native card child",
+		);
+		const projection = f.handlers.get("browser-state")({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		});
+		assert.equal(projection.approvalsCard.available, true);
+	} finally {
+		await stopBrowserHost();
+		assert.equal(
+			cardChildren(f).length,
+			0,
+			"stopping the host removes the card child",
+		);
+		if (previous === undefined) {
+			delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+		} else {
+			process.env[APPROVALS_OVERLAY_DISABLE_ENV] = previous;
+		}
+	}
+});
+
+test("the disable switch makes an ordinary launch create no card child at all", async () => {
+	const previous = process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	process.env[APPROVALS_OVERLAY_DISABLE_ENV] = "1";
+	const f = fixture(false);
+	try {
+		await startBrowserHost({
+			...options(f),
+			approvalsOverlay: overlayOptions(),
+		});
+		assert.equal(cardChildren(f).length, 0, "the kill switch creates no child");
+		const projection = f.handlers.get("browser-state")({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		});
+		assert.equal(projection.approvalsCard.available, false);
+	} finally {
+		await stopBrowserHost();
+		if (previous === undefined) {
+			delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+		} else {
+			process.env[APPROVALS_OVERLAY_DISABLE_ENV] = previous;
+		}
 	}
 });
 

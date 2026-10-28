@@ -228,19 +228,21 @@ test("geometry: a fractional measured card rounds up, not down to the floor", ()
 	assert.equal(bounds.view.y + 8, bounds.card.y);
 });
 
-test("controller: S6a is opt-in on the exact env value only", () => {
-	assert.equal(mod.approvalsOverlayEnabled({}), false);
+test("controller: the card is on by default; only the disable switch turns it off", () => {
+	assert.equal(mod.approvalsOverlayEnabled({}), true);
 	assert.equal(
-		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_S6A_ENV]: "0" }),
-		false,
-	);
-	assert.equal(
-		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_S6A_ENV]: "true" }),
-		false,
-	);
-	assert.equal(
-		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_S6A_ENV]: "1" }),
+		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_DISABLE_ENV]: "0" }),
 		true,
+	);
+	assert.equal(
+		mod.approvalsOverlayEnabled({
+			[mod.APPROVALS_OVERLAY_DISABLE_ENV]: "true",
+		}),
+		true,
+	);
+	assert.equal(
+		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_DISABLE_ENV]: "1" }),
+		false,
 	);
 });
 
