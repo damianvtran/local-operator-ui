@@ -12,9 +12,12 @@
  * exactly the "second way of doing things" this repo treats as a defect.
  */
 
+import { ProjectMarkdown } from "@features/projects/project-markdown";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -122,11 +125,44 @@ export function ReadBlock({
 	text,
 	empty = "Nothing here yet.",
 	mono = false,
+	showAllLabel = "Show all",
+	showLessLabel = "Show less",
+	breakLongTokens = false,
+	markdown = false,
 }: {
 	text: string;
 	empty?: string;
 	/** Machine voice (a packaged prompt shown for comparison), per branding §5. */
 	mono?: boolean;
+	/**
+	 * The expander's words. The defaults are the English the agent and team
+	 * panes have always printed; a caller that has keyed its copy (the Skills
+	 * tab) passes its own so the block is reused rather than copied.
+	 */
+	showAllLabel?: string;
+	showLessLabel?: string;
+	/**
+	 * Wrap an UNBROKEN token (a minified file, a base64 blob, a long URL) at the
+	 * block's edge. `whitespace-pre-wrap` only breaks at spaces, so such a token
+	 * painted one row thousands of px wide, past the pane with no scroll and no
+	 * "Show all" (QA r3 Q6: a 2,048-char token was 14,746 px wide). Opt-in: the
+	 * agent and team prompts this block also renders keep the wrapping they have.
+	 * The skill body and reference previews are arbitrary files, so they opt in.
+	 */
+	breakLongTokens?: boolean;
+	/**
+	 * Render the text as markdown through `ProjectMarkdown` (the app's one
+	 * non-transcript markdown surface) inside the SAME clamp and "Show all".
+	 *
+	 * WHY A HEIGHT AND NOT `line-clamp`: rendered markdown is a stack of blocks
+	 * (headings, lists, code), and `line-clamp` counts lines of one inline
+	 * formatting context; a `max-height` of ten of the block's own line boxes
+	 * (`10lh`) bounds every shape, and the same `scrollHeight > clientHeight`
+	 * measurement still answers "is anything hidden". The Skills tab's
+	 * instructions opt in (a SKILL.md is markdown written for a model to read);
+	 * the agent and team prompts keep their plain text.
+	 */
+	markdown?: boolean;
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const [overflows, setOverflows] = useState(false);
@@ -179,16 +215,22 @@ export function ReadBlock({
 	}
 
 	return (
-		<div>
+		<div className={cn(breakLongTokens && "min-w-0")}>
 			<div
 				ref={ref}
+				data-break-long-tokens={breakLongTokens ? "true" : undefined}
+				data-read-markdown={markdown ? "true" : undefined}
 				className={cn(
-					"whitespace-pre-wrap text-body text-ink",
-					!expanded && "line-clamp-10",
+					"text-body text-ink",
+					markdown
+						? !expanded && "max-h-[10lh] overflow-hidden"
+						: "whitespace-pre-wrap",
+					!markdown && !expanded && "line-clamp-10",
 					mono && "font-mono text-meta",
+					breakLongTokens && "min-w-0 break-words [overflow-wrap:anywhere]",
 				)}
 			>
-				{text}
+				{markdown ? <ProjectMarkdown>{text}</ProjectMarkdown> : text}
 			</div>
 			{overflows ? (
 				<Button
@@ -201,7 +243,7 @@ export function ReadBlock({
 					aria-expanded={expanded}
 					onClick={() => setExpanded((value) => !value)}
 				>
-					{expanded ? "Show less" : "Show all"}
+					{expanded ? showLessLabel : showAllLabel}
 				</Button>
 			) : null}
 		</div>
@@ -243,15 +285,24 @@ export function SourceChip({
  * It has three readers - the roster's right edge, the chip, and the detail
  * header's meta line - and three spellings of "Built-in" would be the kind of
  * drift the shared roster / detail vocabulary exists to prevent.
+ *
+ * READ THROUGH `t()` AT CALL TIME, against the roster's existing scope keys.
+ * These literals were English on a fully translated page ("Built-in" beside a
+ * French roster), and the page already names this exact set for its scope
+ * filter - `ui.agents.pages.scope.builtin|installed|custom` - so the chip and
+ * the filter that selects it read as one word instead of two spellings that
+ * could drift apart per language. Every caller re-renders on a language switch
+ * (`useI18nLocale()` in `agents-page.tsx`, which mounts the roster and the
+ * detail pane), which is what makes the follow-at-call-time visible.
  */
 export function sourceLabel(
 	source: "builtin" | "installed" | "custom",
 ): string {
 	return source === "builtin"
-		? "Built-in"
+		? t("ui.agents.pages.scope.builtin")
 		: source === "installed"
-			? "Installed"
-			: "Custom";
+			? t("ui.agents.pages.scope.installed")
+			: t("ui.agents.pages.scope.custom");
 }
 
 /**
@@ -332,8 +383,8 @@ export function EditFooter({
 	pending,
 	onSave,
 	onCancel,
-	saveLabel = "Save changes",
-	pendingLabel = "Saving…",
+	saveLabel = t("ui.agents.detail.action.save_changes"),
+	pendingLabel = t("ui.agents.detail.action.saving"),
 	dirtyHint,
 	submit,
 	confirming,
@@ -369,6 +420,9 @@ export function EditFooter({
 	confirming?: boolean;
 	onConfirmingChange?: (next: boolean) => void;
 }) {
+	// `t()` is read during render (including the label defaults above), so the
+	// subscription is what makes a locale change repaint the footer.
+	useI18nLocale();
 	const [uncontrolledConfirming, setUncontrolledConfirming] = useState(false);
 	const primaryRef = useRef<HTMLButtonElement>(null);
 	const keepEditingRef = useRef<HTMLButtonElement>(null);
@@ -506,10 +560,10 @@ export function EditFooter({
 			{isConfirming ? (
 				<>
 					<span className="text-body-sm text-ink-muted">
-						{dirtyHint ?? "Discard your unsaved changes?"}
+						{dirtyHint ?? t("ui.agents.detail.action.discard_question")}
 					</span>
 					<Button variant="danger" onClick={onCancel}>
-						Discard changes
+						{t("ui.agents.detail.action.discard_changes")}
 					</Button>
 					<Button
 						ref={keepEditingRef}
@@ -524,7 +578,7 @@ export function EditFooter({
 							primaryRef.current?.focus();
 						}}
 					>
-						Keep editing
+						{t("ui.agents.detail.action.keep_editing")}
 					</Button>
 				</>
 			) : (
@@ -544,11 +598,13 @@ export function EditFooter({
 					}}
 					disabled={pending}
 				>
-					Cancel
+					{t("ui.common.actions.cancel")}
 				</Button>
 			)}
 			{dirty && !isConfirming ? (
-				<span className="ms-auto text-meta text-ink-dim">Unsaved changes</span>
+				<span className="ms-auto text-meta text-ink-dim">
+					{t("ui.agents.detail.action.unsaved_changes")}
+				</span>
 			) : null}
 		</div>
 	);
@@ -640,7 +696,12 @@ export function PaneError({
 	meaning,
 	onRetry,
 	retrying = false,
+	retryLabel = "Retry",
+	retryingLabel = "Retrying…",
 }: {
+	/** The Retry button's words; defaults are the English the older panes print. */
+	retryLabel?: string;
+	retryingLabel?: string;
 	title: string;
 	/** What happened, in one sentence. */
 	what: string;
@@ -655,7 +716,7 @@ export function PaneError({
 			<p className="text-body-sm text-ink">{what}</p>
 			<p className="text-body-sm text-ink-muted">{meaning}</p>
 			<Button variant="secondary" onClick={onRetry} disabled={retrying}>
-				{retrying ? "Retrying…" : "Retry"}
+				{retrying ? retryingLabel : retryLabel}
 			</Button>
 		</div>
 	);

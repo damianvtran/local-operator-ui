@@ -12,6 +12,21 @@ export const teamBridgeKeys = {
 	all: ROOT,
 	conversations: (scope: TeamBridgeScope, accountId?: string) =>
 		[...ROOT, "conversations", scope, ...readOwner(accountId)] as const,
+	/*
+	 * The ARCHIVED half of the list. It sits under the conversations prefix on
+	 * purpose: every write that refreshes the live list (and the archive/unarchive
+	 * writes themselves) then refreshes this too with no second invalidation to
+	 * forget, and the account tail keeps it inside the notify/archive mutations'
+	 * owner predicate.
+	 */
+	archivedConversations: (scope: TeamBridgeScope, accountId?: string) =>
+		[
+			...ROOT,
+			"conversations",
+			scope,
+			"archived",
+			...readOwner(accountId),
+		] as const,
 	conversationsPrefix: [...ROOT, "conversations"] as const,
 	// Notification dispatch must distinguish optimistic display policy from a
 	// settled write, without mixing pending mutations from another auth epoch.

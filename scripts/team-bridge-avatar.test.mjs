@@ -15,7 +15,7 @@ const { createRoot } = await import("react-dom/client");
 const bundle = await build({
 	stdin: {
 		contents: `
-export * from './src/renderer/src/features/team-bridge/use-team-bridge-avatar';
+export * from './src/renderer/src/shared/hooks/use-account-avatar';
 export * from './src/renderer/src/shared/hooks/radient-account-authority';
 export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api';
 export {requestDesktopMediaOutcome} from './src/main/desktop-media';

@@ -28,6 +28,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { IntlMessageFormat } from "intl-messageformat";
 
 /*
  * The storage shim the store needs to load in node at all: zustand's `persist`
@@ -1677,10 +1678,45 @@ test("the pin's label is the subject and the state is aria-pressed", () => {
 		"the pin is not wrapped in the app's own Tooltip",
 	);
 	const control = source.slice(tooltipAt, at + 900);
-	assert.ok(
-		control.includes("aria-label={`Pin “${name}”`}"),
-		"the pin's label no longer names the agent it pins",
+	/*
+	 * THE LABEL IS THE CATALOGUE'S (i18n wave A), so what the pin pins is the
+	 * key, its ARGUMENT and the composed English - not the sentence a literal
+	 * used to spell. The subject is `{ name }`, and each state asks for its own
+	 * key: `entity.pin` while the row is unpinned, `entity.unpin` while it is
+	 * already pinned (QA round 1, Q2: a control that unpins must not be announced
+	 * as "Pin …" while `aria-pressed` says it is pressed). The composed messages
+	 * are checked below, because either one must still read `Pin "<name>"` /
+	 * `Unpin "<name>"` or the reader loses the object of the action.
+	 *
+	 * The shape is matched loosely across whitespace because the formatter owns
+	 * the line breaks here, the same reason `chat-sidebar-selection` matches its
+	 * keyed anchor by the expression's opening lines.
+	 */
+	assert.match(
+		control,
+		/aria-label=\{\s*t\(\s*pinnedAgent\s*\?\s*"ui\.chat\.sidebar\.entity\.unpin"\s*:\s*"ui\.chat\.sidebar\.entity\.pin",\s*\{\s*name\s*\},?\s*\)/,
+		"the pin's accessible name no longer names the agent AND flips with the state",
 	);
+	assert.match(
+		control,
+		/pinnedAgent\s*\?\s*t\("ui\.chat\.sidebar\.entity\.unpin",\s*\{\s*name\s*\}\)\s*:\s*t\("ui\.chat\.sidebar\.entity\.pin",\s*\{\s*name\s*\}\)/,
+		"the pin's tooltip no longer asks the catalogue for the action and its release, with the agent's name",
+	);
+	const sidebarCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
+	);
+	for (const [key, expected] of [
+		["ui.chat.sidebar.entity.pin", "Pin “Writer”"],
+		["ui.chat.sidebar.entity.unpin", "Unpin “Writer”"],
+	]) {
+		assert.equal(
+			new IntlMessageFormat(sidebarCopy[key], "en").format({
+				name: "Writer",
+			}),
+			expected,
+			`${key} no longer composes to a sentence that names its subject`,
+		);
+	}
 	assert.ok(
 		control.includes("aria-pressed={pinnedAgent}"),
 		"the pin's state left aria-pressed",

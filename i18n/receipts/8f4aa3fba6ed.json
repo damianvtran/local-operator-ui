@@ -1,0 +1,159 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-receipt",
+ "audit_kind": "Independent DELTA audit of one locale's wave-B batch at the amendment head: the whole 62-key batch re-read and re-recorded, with the two amended Hindi values audited as changes and every other value proved byte-identical to the audited parent.",
+ "date": "2026-10-27",
+ "locale": "hi",
+ "locale_name": "Hindi",
+ "branch": "i18n-wave-b",
+ "head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "base": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "instance": "8f4aa3fba6ed",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "role": "independent translation auditor (team lopdev); authored none of the values under audit and edited no catalogue, sidecar, ledger or allowance",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "session": "8f4aa3fba6ed",
+  "instance": "8f4aa3fba6ed",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "harness model route as this session reports it: selector radient/auto (router alias). The harness exposes no resolved upstream model id and no provider fallback occurred during the run.",
+  "fallback": null,
+  "fallback_note": "No provider fallback was recorded for this session or observed during the run.",
+  "independent_from_translator": true,
+  "independence": "This session translated none of the reviewed copy and wrote no catalogue byte. It read the branch head through a read-only `git archive` export whose every file was lstat- and hash-checked against `git show a5356ce91c:<path>`, and wrote only its receipt, the per-namespace records and their logs. No translation API, SDK or MT service was used; the repository's own @formatjs/icu-messageformat-parser and intl-messageformat were used for validation and rendering, never as a source."
+ },
+ "keys_read": 62,
+ "keys_audited": 62,
+ "scope": "Wave B for hi at a5356ce91c: 62 keys across nine namespaces (ui.chat.device 11, ui.chat.pickers 18, ui.chat.canonical 8, ui.chat 9, ui.chat.status 4, ui.chat.run_details 2, ui.common.connection 5, ui.common.layout 2, ui.agents.config 3). Two Hindi values changed (HI-WB-1, HI-WB-2); every other value is byte-identical to the audited bytes at 0559f7f7d8. Each changed value was read against the English source, its context sidecar and its renderer call site, then judged against the locale's own noun/verb usage and the style guide; the whole batch was re-checked mechanically (locale parity, generate --check, coverage, context parity, hi activation, ICU/placeholder parity with the real parser and formatter) and re-read for meaning and idiom.",
+ "namespaces": {
+  "ui.chat.device": {
+   "namespace": "ui.chat.device",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 11,
+   "keys_in_batch": 11,
+   "namespace_keys": 25,
+   "en_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+   "hi_sha256": "c4ac8e0f0f2cfed113aa50908d32addcd8d879c4d59def32cf7d11f64156244e",
+   "context_sha256": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a",
+   "findings": []
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 18,
+   "keys_in_batch": 18,
+   "namespace_keys": 738,
+   "en_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+   "hi_sha256": "08357c40cafa8fe5298658adc952f4c6fe030330b1aa5ce23b622ba90e023673",
+   "context_sha256": "6861dbfbdbc9af23c8c09332670a6f7d77c2a12b5724afc91d0054660ef904d0",
+   "findings": [
+    {
+     "id": "HI-WB-4-INFO",
+     "severity": "INFO",
+     "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+     "current": "Enter के लिए आपको कोई पंक्ति चुननी होगी: ↓ फिर Enter · Tab इस पंक्ति को पूरा करता है।",
+     "problem": "ENGLISH-SIDE OBSERVATION, not a defect in hi. The English sidecar's tone line for this key says “no trailing period”, but the English value ends in a full stop and all eight sibling click.* footer lines in the same popup carry “trailing period” in their tone and a period in their value. The shipped Hindi follows the value, not the outlier note (danda, matching those eight). No shipped copy should change: correct src/i18n/catalogues/en/ui.chat.pickers.context.json tone to “instruction, sentence case, trailing period, two clauses separated by a middle dot” in a metadata-only commit.",
+     "suggested": "Fix the English context tone only; leave the English and Hindi values as they are.",
+     "file": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+    }
+   ]
+  },
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "keys_in_batch": 8,
+   "namespace_keys": 68,
+   "en_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+   "hi_sha256": "2d1c8aae11fe236f19badb3ba86208c901b2dfc57cb06c0bf23a43bc0e975555",
+   "context_sha256": "ea13112039dfed41998801904ccc88531f87452a7e3d7138ab09a5f48f9e65b2",
+   "findings": []
+  },
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 9,
+   "keys_in_batch": 9,
+   "namespace_keys": 124,
+   "en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+   "hi_sha256": "2c5d82df782e1451017cc234eb4f6fec82be4d7c73a0110c98bab5bc967044ca",
+   "context_sha256": "f300190022daa1e49a200072b29501cfc6a5be7c542a57ef741873c14bfa6164",
+   "findings": []
+  },
+  "ui.chat.status": {
+   "namespace": "ui.chat.status",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 4,
+   "keys_in_batch": 4,
+   "namespace_keys": 4,
+   "en_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+   "hi_sha256": "9ea7bfb48b3d870d48f9716f4791255ed3fc4d2c29a5e77d4ed973af0827a071",
+   "context_sha256": "a62b34dde0f22e95c34793f1f87791fc38385c68c840a0f6c60adf304aaec561",
+   "findings": []
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 2,
+   "keys_in_batch": 2,
+   "namespace_keys": 84,
+   "en_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+   "hi_sha256": "795b794d52dd5475314444b45d0dcdd2a10463eb277aa251508e48bb59ad7c2b",
+   "context_sha256": "6e25843e49db6d20254d7593cbfe06c81dd8ba305c369351b4a9e374c6e4e526",
+   "findings": []
+  },
+  "ui.common.connection": {
+   "namespace": "ui.common.connection",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 5,
+   "keys_in_batch": 5,
+   "namespace_keys": 42,
+   "en_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+   "hi_sha256": "53570762dc08ed06e1e67dd72ba686627d38215b81702d899af630e0e499f145",
+   "context_sha256": "99f458fecbeae8ea58c45f171d7ccbc465cc9a717255553aaadc3c1927f875ae",
+   "findings": []
+  },
+  "ui.common.layout": {
+   "namespace": "ui.common.layout",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 2,
+   "keys_in_batch": 2,
+   "namespace_keys": 9,
+   "en_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+   "hi_sha256": "5efd48e932f5baea09722821019505f8a6d2bc9adf844fcc4a93a189d2608cc7",
+   "context_sha256": "cb15214ec6712e3a15bf8cb30918b3720348a7546d773788fe06a69b3575b5f6",
+   "findings": []
+  },
+  "ui.agents.config": {
+   "namespace": "ui.agents.config",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "keys_in_batch": 3,
+   "namespace_keys": 31,
+   "en_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+   "hi_sha256": "2aad3f3b28c4108838834908f42b8742b4ee0e733b20a59e246a72e98d4ca4da",
+   "context_sha256": "d55725ee860cc40539b200ab0d0018e4f1062d6ade08c16c169520a4f3625db0",
+   "findings": []
+  }
+ },
+ "findings": [],
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [],
+  "note": "Both earlier findings are resolved at these bytes: HI-WB-1 (साइन-इन) and HI-WB-2 (terminal danda) were applied exactly as suggested and independently re-judged correct. The one INFO entry is an English-side observation about a context sidecar note, carries no locale defect and is not counted."
+ },
+ "documents": "The per-namespace records are the readable audit; this receipt is the byte-level certificate the ledger derives a row from. Findings live in i18n/audits/evidence/hi/<namespace>/wave-b-delta-20261027/record.json.",
+ "method": "Judgement first: each of the 62 Hindi values was read against its English source and sidecar before any checker ran, so a green checker could not stand in for a reading. The delta itself was derived mechanically as a parsed-JSON comparison of all nine namespace files in both locales between 0559f7f7d8 and a5356ce91c, which yields exactly three changed values (two hi, one en) and no key additions, removals or reordering."
+}

@@ -1,36 +1,39 @@
 /**
- * The one user-facing sentence the app shows when it cannot read a conversation.
+ * The transport's machine vocabulary for a dead stream, and the CLASSIFICATION
+ * that turns it into a locale-free id.
  *
- * WHY this exists rather than showing the transport's own `detail` string. Both
- * transports describe a dead stream in machine register, and they describe the
- * SAME failure in different words: main's relay emits
- * `The event stream was refused (401).` for a rotated token, while the browser
- * dev proxy's `EventSource` can only say `The event stream ended.`. Shipping
- * either one put a bare HTTP status (or, worse, a cause the app does not know -
- * a refused stream did not "end") in front of a reader whose actual question is
- * "have I lost this conversation?". That is design round 1's D1, and the reason
- * the photographed sentence and the packaged sentence were two different
- * sentences for one defect.
+ * WHY THIS EXISTS RATHER THAN SHOWING THE DETAIL. Both transports describe a
+ * dead stream in machine register, and they describe the SAME failure in
+ * different words: main's relay emits `The event stream was refused (401).` for
+ * a rotated token, while the browser dev proxy's `EventSource` can only say
+ * `The event stream ended.`. Shipping either one put a bare HTTP status (or,
+ * worse, a cause the app does not know - a refused stream did not "end") in
+ * front of a reader whose actual question is "have I lost this conversation?".
+ * That is design round 1's D1, and the reason the photographed sentence and the
+ * packaged sentence were two different sentences for one defect.
  *
- * So the detail strings are no longer copy. They are a machine vocabulary,
- * declared ONCE here and emitted by the relay (`src/main/desktop-stream.ts`)
- * and the browser transport (`desktop-api.ts`), and `streamFailureNotice`
- * translates whichever one arrives into a single product sentence that says
- * what happened and what to do next. One authority for the strings means a
- * test can pin the notice to the exact detail the relay emits (see
- * `scripts/session-load-recovery.test.mjs`) instead of asserting a copy that
- * nothing produces.
+ * WHAT THIS MODULE HOLDS, AND WHAT IT DELIBERATELY DOES NOT. The details are not
+ * copy: they are declared ONCE here and emitted by the relay
+ * (`src/main/desktop-stream.ts`) and the browser transport (`desktop-api.ts`),
+ * and `sessionFailureKind` classifies whichever one arrives into an id. The
+ * SENTENCES live in the renderer
+ * (`features/chat/canonical/session-failure-notice.ts`), because wording them
+ * through `t()` from here pulled every English catalogue into the PRELOAD bundle
+ * (measured: 333 kB before, 7.5 MB after) for strings a preload script never
+ * draws. A test can still pin the notice to the exact detail the relay emits
+ * (see `scripts/session-load-recovery.test.mjs`); it goes through the renderer
+ * module now, which is the one authority for the words.
  *
- * Scope: these are the sentences for "this conversation cannot be read". A
- * condition the app cannot act on offers no `action`, so the UI does not paint
- * a control that would promise something it cannot deliver.
+ * `SessionFailureNotice` keeps its contract: state what happened and what to do,
+ * assert no cause the app has not observed, and blame nobody. `action` is null
+ * where no control can honestly help.
  */
 
 /**
  * The transport's machine register for a dead stream.
  *
  * Never rendered. Emitted by the relay / browser transport as an error frame's
- * `detail`, translated by `streamFailureNotice`.
+ * `detail`, classified by `sessionFailureKind` and worded in the renderer.
  */
 export const DESKTOP_STREAM_DETAIL = {
 	/** No desktop pairing token: nothing to authenticate with. */
@@ -64,77 +67,54 @@ export type SessionFailureAction = "reconnect";
  * `statement` is a single sentence in the product's voice - it names what
  * happened and what to do, asserts no cause the app has not observed, and
  * blames nobody. `action` is null where no control can honestly help.
+ *
+ * `kind` travels WITH the sentence rather than beside it, because a caller that
+ * holds this object must be able to ask for the sentence again in another
+ * language: the wording lives in `session-failure-notice.ts` and is resolved
+ * from this id, so a held notice is re-worded (`sessionFailureNotice(kind)`)
+ * instead of keeping the language it was created in. Two fields pointing at one
+ * condition could disagree; the id cannot.
  */
 export type SessionFailureNotice = {
+	/** Which condition this notice words, for re-resolution in a new locale. */
+	kind: SessionFailureKind;
 	statement: string;
 	action: SessionFailureAction | null;
 };
 
-/** The connection is gone but the app and its backend are both alive. */
-const LOST_CONNECTION: SessionFailureNotice = {
-	statement:
-		"Lost the connection to this conversation — reconnect to keep reading.",
-	action: "reconnect",
-};
-
 /**
- * The app's own backend is not answering.
+ * Which product sentence a transport detail calls for, as an ID.
  *
- * Distinct from LOST_CONNECTION because the remedy differs: reconnecting is
- * worth pressing, but if the server stays down the app has to be restarted to
- * bring its managed backend back. The sentence says both, and asserts only what
- * the relay observed (nothing answered), not why.
+ * WHY AN ID AND NOT THE SENTENCE (and why the sentences are not here at all):
+ * this module is imported by main and preload for `DESKTOP_STREAM_DETAIL`, and
+ * reaching the catalogue's `t()` from here pulled every English catalogue into
+ * the PRELOAD bundle — measured at 333 kB before, 7.5 MB after, for copy a
+ * preload script never draws. So the shared half keeps the MACHINE vocabulary
+ * and the classification, which are both locale-free, and the renderer resolves
+ * the ID into copy through `t()` (`features/chat/canonical/session-failure-notice.ts`).
  */
-const SERVER_DOWN: SessionFailureNotice = {
-	statement:
-		"The Local Operator server is not running — reconnect once it is back, or restart the app if it stays down.",
-	action: "reconnect",
-};
-
-/** The app holds no credential for the backend it is talking to. */
-const NOT_PAIRED: SessionFailureNotice = {
-	/*
-	 * "restart the app so it can manage its own server" used to end this sentence,
-	 * and it is the same defect the compatibility banner carried: the app is a CLIENT
-	 * of whatever daemon is running, so a pairing failure is not repaired by making
-	 * the app own the server (design § 1.8, § 3.1). The sentence states what is true
-	 * and offers no action, because the action that helps - main re-claiming the
-	 * plane - is not something this notice can perform or promise.
-	 */
-	statement:
-		"This app is not paired with the Local Operator server, so this conversation cannot be read yet.",
-	action: null,
-};
-
-/** Durable history could not be read, so the transcript may not claim empty. */
-export const HISTORY_UNREADABLE: SessionFailureNotice = {
-	statement:
-		"Could not load this conversation's history — reconnect to try again.",
-	action: "reconnect",
-};
-
-/** A frame larger than the relay's per-frame cap killed the stream. */
-const FRAME_TOO_LARGE: SessionFailureNotice = {
-	statement:
-		"This conversation's updates were too large to display — reconnect to try again.",
-	action: "reconnect",
-};
+export type SessionFailureKind =
+	| "frameTooLarge"
+	| "historyUnreadable"
+	| "lost"
+	| "notPaired"
+	| "serverDown";
 
 /**
- * Translate a transport detail into the sentence the reader sees.
+ * Classify a transport detail.
  *
  * Keyed on the constants above rather than on substrings: a detail the relay
  * gains later falls through to the honest, generic connection sentence, and
  * `refused` is matched by prefix because it carries the backend's status code.
  */
-export function streamFailureNotice(
+export function sessionFailureKind(
 	detail: string | null | undefined,
-): SessionFailureNotice {
-	if (!detail) return LOST_CONNECTION;
-	if (detail === DESKTOP_STREAM_DETAIL.notPaired) return NOT_PAIRED;
-	if (detail === DESKTOP_STREAM_DETAIL.serverDown) return SERVER_DOWN;
-	if (detail === DESKTOP_STREAM_DETAIL.frameBudget) return FRAME_TOO_LARGE;
+): SessionFailureKind {
+	if (!detail) return "lost";
+	if (detail === DESKTOP_STREAM_DETAIL.notPaired) return "notPaired";
+	if (detail === DESKTOP_STREAM_DETAIL.serverDown) return "serverDown";
+	if (detail === DESKTOP_STREAM_DETAIL.frameBudget) return "frameTooLarge";
 	// `ended`, `connectionFailed` and `openFailed` are all "the connection is
 	// gone" to the reader, which is the only distinction they can act on.
-	return LOST_CONNECTION;
+	return "lost";
 }

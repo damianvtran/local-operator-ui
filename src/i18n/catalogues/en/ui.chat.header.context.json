@@ -69,5 +69,40 @@
 		"tone": "short title, sentence case",
 		"maxCells": 32,
 		"note": "{target} is the agent or team's own display name and is never translated. Names the staged draft before it has a conversation; once one exists the conversation's name replaces it. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.archive_conversation": {
+		"role": "header menu item that archives the open conversation",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Lives beside the header's other conversation actions. Archiving hides the conversation from the chats list until it is restored; the same item becomes 'Restore conversation' while the conversation is archived.",
+		"placeholders": {}
+	},
+	"ui.chat.header.cancel_rename": {
+		"role": "accessible name and tooltip of the header control that abandons a rename in progress",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Screen-reader and pointer users only: the control is the same pencil glyph the row shows at rest, now acting as the cancel. It appears only while the rename field is open.",
+		"placeholders": {}
+	},
+	"ui.chat.header.rename_conversation": {
+		"role": "accessible name and tooltip of the header control that opens the conversation-name field",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Same verb as the sidebar row menu's rename item; this one sits in the open conversation's header. It opens an inline field rather than a dialog.",
+		"placeholders": {}
+	},
+	"ui.chat.header.restore_conversation": {
+		"role": "header menu item that restores an archived conversation",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The archived-state face of the archive item: it clears the archive mark instead of setting it, returning the conversation to the chats list.",
+		"placeholders": {}
+	},
+	"ui.chat.header.saving_conversation_name": {
+		"role": "accessible name and tooltip of the header control while a conversation-name write is in flight",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Screen-reader and pointer users only: it reports the busy state instead of offering an action, because the control no-ops while the write runs.",
+		"placeholders": {}
 	}
 }

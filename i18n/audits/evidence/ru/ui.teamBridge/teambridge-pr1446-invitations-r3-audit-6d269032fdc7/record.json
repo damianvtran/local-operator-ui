@@ -1,0 +1,102 @@
+{
+	"audit_id": "teambridge-pr1446-invitations-r3-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"source_commit": "61f028a1556f9f043d598a3e635af22d7a53566a",
+	"translator": {
+		"agent": "translator",
+		"session": "839f2593b55e",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "61f028a1556f9f043d598a3e635af22d7a53566a",
+		"method": "LLM reasoning; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-27",
+			"result": "clean",
+			"instance": "6d269032fdc7-r3-ru",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/6d269032fdc7-r3-ru.json",
+			"receipt_sha256": "f1e445f0d28d5ae49a4356a8bc92a92ed7c8cba39e80aba8e8d88e2c1528a847",
+			"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+			"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The translator was session 839f2593b55e (commit 61f028a155). This run wrote only receipts, evidence records and ledger rows (via ledger-assemble.mjs).",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "13c4ae135e70247bfe6926bb8590273ab29636be1f3e5478aabb943e78432535"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adee106718acc3d6254c2e7ff4ef38cbb0b750e07131b4084ed4e549d58aee57"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.invitations.agent_fallback": {
+			"en": "Your agent",
+			"target": "Ваш агент"
+		},
+		"ui.teamBridge.invitations.agent_line": {
+			"en": "{agent} was invited to this conversation",
+			"target": "{agent}: приглашение в этот разговор"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [],
+		"rendered_with_fallback": [
+			"ui.teamBridge.invitations.agent_line"
+		],
+		"english_change": "en agent_fallback 'your agent' -> 'Your agent' (it opens the English agent_line); en context notes for agent_line and agent_fallback corrected. No other en key changed.",
+		"inherited_byte_identical": {
+			"round2_receipt": "i18n/receipts/6d269032fdc7-r2-ru.json",
+			"round2_receipt_sha256": "1dd623d03567c913dfd325256671668e91c170dcd3a7134ede98e7716a8e544d",
+			"note": "the whole target catalogue is byte-identical to the round-2 audited bytes at 87507d9c52; #1441's keys stay on fe54982cb1b7-ru, the base on e2cc7b3bceb8."
+		}
+	},
+	"notes": "Target byte-identical to round 2. agent_line with fallback: 'Ваш агент: приглашение в этот разговор' - sentence-initial, capitalized, correct.",
+	"findings": [],
+	"fallback_renders": [
+		"en | agent_fallback = Your agent",
+		"en | agent_line named   => Robo Damian was invited to this conversation",
+		"en | agent_line unnamed => Your agent was invited to this conversation",
+		"ru | agent_fallback = Ваш агент",
+		"ru | agent_line named   => Robo Damian: приглашение в этот разговор",
+		"ru | agent_line unnamed => Ваш агент: приглашение в этот разговор"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/6d269032fdc7-r3-ru.json",
+			"sha256": "f1e445f0d28d5ae49a4356a8bc92a92ed7c8cba39e80aba8e8d88e2c1528a847"
+		}
+	},
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool."
+}

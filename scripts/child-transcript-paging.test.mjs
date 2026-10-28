@@ -42,6 +42,7 @@ const bundle = await build({
 	write: false,
 	alias: {
 		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
 		"@features": "./src/renderer/src/features",
 	},
 	plugins: [

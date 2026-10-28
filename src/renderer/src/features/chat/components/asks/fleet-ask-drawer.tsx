@@ -67,15 +67,49 @@
  * layout (one scroller, no footer, design D1) has nowhere to put.
  */
 
+import {
+	DrawerTabs,
+	useSessionUnreadUpdates,
+} from "@features/notifications/components/drawer-updates";
+import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
+import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
+/** The four receipts this drawer raises on a settled fleet press. */
+type FleetAskReceipt = "answered" | "changed" | "declined" | "dismissed";
+
+/*
+ * Each receipt is two messages rather than one sentence plus a name: the named
+ * form is the sentence, so a translation may put the conversation where its own
+ * grammar needs it instead of inheriting English word order.
+ */
+const FLEET_ASK_RECEIPT = {
+	answered: {
+		plain: "ui.notices.chat.ask_answered",
+		named: "ui.notices.chat.ask_answered_named",
+	},
+	changed: {
+		plain: "ui.notices.chat.ask_changed",
+		named: "ui.notices.chat.ask_changed_named",
+	},
+	declined: {
+		plain: "ui.notices.chat.ask_declined",
+		named: "ui.notices.chat.ask_declined_named",
+	},
+	dismissed: {
+		plain: "ui.notices.chat.ask_dismissed",
+		named: "ui.notices.chat.ask_dismissed_named",
+	},
+} as const;
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type AnswerOutcome,
@@ -119,6 +153,12 @@ export const FleetAskDrawer = ({
 	onClose: (options?: AskDrawerCloseOptions) => void;
 }) => {
 	const { rows, frontend } = useFleetAsks();
+	const currentSessionId =
+		useCanonicalSessionsStore((state) => state.activeSessionId) ?? null;
+	const setAskDrawerOpen = useUiPreferencesStore(
+		(state) => state.setAskDrawerOpen,
+	);
+	const setTab = useNotificationDrawerTab((state) => state.setTab);
 	const { client } = useOptionalQueryClient();
 	/*
 	 * THE DISMISS DOOR'S GATE (harness PR #2833, SA-D5): a backend that does not
@@ -130,6 +170,15 @@ export const FleetAskDrawer = ({
 	const dismissEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		"ask_dismiss",
+	);
+	const notificationsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"notifications",
+		1,
+	);
+	const unreadUpdates = useSessionUnreadUpdates(
+		currentSessionId,
+		notificationsEnabled,
 	);
 	const lock = useRef(createSendLock()).current;
 	const [drafts, setDrafts] =
@@ -225,15 +274,24 @@ export const FleetAskDrawer = ({
 	 * drawer has one scroller and no footer on purpose - design D1's fix).
 	 */
 	const receipt = useCallback(
-		(verb: string, askId: string) => {
+		(kind: FleetAskReceipt, askId: string) => {
 			const name = labels.get(askId);
-			showSuccessToast(name ? `${verb} ${name}` : verb);
+			showSuccessToast(
+				name
+					? t(FLEET_ASK_RECEIPT[kind].named, { name })
+					: t(FLEET_ASK_RECEIPT[kind].plain),
+			);
 		},
 		[labels],
 	);
 
 	const settle = useCallback(
-		(askId: string, outcome: AnswerOutcome, verb: string, changed = false) => {
+		(
+			askId: string,
+			outcome: AnswerOutcome,
+			kind: FleetAskReceipt,
+			changed = false,
+		) => {
 			/*
 			 * ONLY THE OWNER'S OWN REFUSAL CLOSES §10's CHANGE DOOR (agent review round 2,
 			 * minor). A transport failure's sentence still lands in the row (the reader is
@@ -264,7 +322,7 @@ export const FleetAskDrawer = ({
 				},
 			}));
 			if (outcome.status !== "sent") return;
-			receipt(verb, askId);
+			receipt(kind, askId);
 			refresh();
 		},
 		[receipt, refresh],
@@ -289,7 +347,7 @@ export const FleetAskDrawer = ({
 				} finally {
 					setAnswering(false);
 				}
-				settle(askId, outcome, "Answer sent to");
+				settle(askId, outcome, "answered");
 			})();
 		},
 		[lock, rows, settle],
@@ -325,7 +383,7 @@ export const FleetAskDrawer = ({
 				} finally {
 					setAnswering(false);
 				}
-				settle(askId, outcome, "Answer changed for", true);
+				settle(askId, outcome, "changed", true);
 			})();
 		},
 		[lock, rows, settle],
@@ -350,7 +408,7 @@ export const FleetAskDrawer = ({
 				} finally {
 					setAnswering(false);
 				}
-				settle(askId, outcome, "Declined the ask in");
+				settle(askId, outcome, "declined");
 			})();
 		},
 		[lock, rows, settle],
@@ -391,14 +449,14 @@ export const FleetAskDrawer = ({
 					 * transport failure carries the owner's words, and a `refused` outcome
 					 * reached nothing and records neither.
 					 */
-					settle(askId, outcome, "Dismissed the ask in");
+					settle(askId, outcome, "dismissed");
 					return;
 				}
 				setOutcomes((current) => ({
 					...current,
 					[askId]: { sending: false, refused: null, dismissed: reason },
 				}));
-				receipt("Dismissed the ask in", askId);
+				receipt("dismissed", askId);
 				refresh();
 			})();
 		},
@@ -409,7 +467,36 @@ export const FleetAskDrawer = ({
 		<AskDrawer
 			frontend={frontend}
 			scope="fleet"
-			onClose={onClose}
+			tabs={
+				notificationsEnabled
+					? {
+							strip: (
+								<DrawerTabs
+									tab="all"
+									asks={
+										(rows ?? []).filter(
+											(ask) =>
+												ask.session_id === currentSessionId &&
+												ask.status === "open",
+										).length
+									}
+									unreadUpdates={unreadUpdates}
+									sessionless={!currentSessionId}
+									onTab={(tab) => {
+										if (tab === "all" || !currentSessionId) return;
+										setTab(tab);
+										setAskDrawerOpen(true, "session");
+									}}
+								/>
+							),
+							body: null,
+						}
+					: undefined
+			}
+			onClose={(options) => {
+				setTab(null);
+				onClose(options);
+			}}
 			onAnswer={onAnswer}
 			onDecline={onDecline}
 			onRevise={onRevise}

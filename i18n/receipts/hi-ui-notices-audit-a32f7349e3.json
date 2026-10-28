@@ -1,0 +1,274 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "model": "deepseek/deepseek-flash",
+  "model_provenance": "Session model as configured for this run: deepseek/deepseek-flash. No fallback was observed in this session.",
+  "session": "9cf00b7eb72d",
+  "instance": "9cf00b7eb72d",
+  "date": "2026-10-25",
+  "locale": "hi",
+  "locale_name": "Hindi",
+  "namespace": "ui.notices",
+  "branch": "feat/i18n-toasts",
+  "head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+  "base": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+  "round": 2,
+  "audit_kind": "delta re-audit of the remediation round against the first independent hi audit at ec4518da56; unchanged keys were not re-litigated",
+  "scope": "Delta ec4518da56..a32f7349e3 for hi: the 9 remediated existing values, the 1 new key (ui.notices.chat.archive_offered_title) and the composed sentences those values take part in (archive head+tail, update-hold body+relaunch, bulk-read lead+remainders, config-run receipts, credential receipts). Whole-catalogue structural re-check (94/94 keys against English) to confirm the remediation broke nothing that passed: argument names, styles, plural categories, punctuation, quote balance and register. No rendered frame, native-speaker or activation claim.",
+  "keys_read": 94,
+  "keys_audited": 94,
+  "keys_in_delta": 10,
+  "new_keys_audited": 1,
+  "delta_changed_keys": [
+    "ui.notices.agents.config_run_changed",
+    "ui.notices.agents.config_run_updated",
+    "ui.notices.chat.archive_offered_title",
+    "ui.notices.chat.mark_all_read_cleared",
+    "ui.notices.chat.mark_all_read_deferred",
+    "ui.notices.chat.mark_all_read_superseded",
+    "ui.notices.chat.mark_all_read_unknown",
+    "ui.notices.credentials.unconfirmed",
+    "ui.notices.credentials.unstored",
+    "ui.notices.main.update_hold_body"
+  ],
+  "sha256": {
+    "en": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+    "hi": "040fee3f8babb7f1ae97d03774bbfcb45928663147f09c072e83da769eb2bd12",
+    "context": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859",
+    "en_previous": "f473fa10e95b24f50ce13647ae50a923b34d8efd31249d99d6c437e183722277",
+    "hi_previous": "dde060bfb4e23e2295c0f21c258f4a13d3f8db056b9919d35c937257cedd67a3"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "previous_audit": {
+    "path": "i18n/receipts/hi-ui-notices-audit-ec4518da56.json",
+    "head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+    "result": "clean-with-findings",
+    "status": "passed",
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 2,
+      "nit": 2
+    }
+  },
+  "previous_findings": [
+    {
+      "id": "HIN-1",
+      "severity": "minor",
+      "status": "fixed",
+      "key": "ui.notices.main.update_hold_body",
+      "verified_value": "संस्करण {version} का अपडेट अभी इंस्टॉल हो रहा है — इस समय ऐप खोलने पर वह रद्द हो जाएगा। {relaunch} इस सूचना पर क्लिक करने से ऐप जल्दी नहीं खुलेगा।",
+      "note": "वर्ज़न is gone: 0 occurrences in all 78 hi namespace files; संस्करण now appears in 58 strings / 64 occurrences, including the update surfaces this notice sits beside. The value is byte-for-byte the first audit's proposed text."
+    },
+    {
+      "id": "HIN-2",
+      "severity": "minor",
+      "status": "fixed",
+      "key": "ui.notices.credentials.unstored",
+      "verified_value": "{count, plural, one {{count} क्रेडेंशियल सहेजा नहीं जा सका} other {{count} क्रेडेंशियल सहेजे नहीं जा सके}} ({keys}); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "note": "The finite verb moved inside both arms: one क्रेडेंशियल सहेजा नहीं जा सका, other {count} क्रेडेंशियल सहेजे नहीं जा सके. The implemented value equals the first audit's proposed text after the required one-arm 1→{count} substitution. Rendered 0/1/2/5/21: the finite verb is masculine singular at 0/1 and masculine plural at 2+, which is the agreement HIN-2 asked for. The noun form in the other arm is HIN-D1 separately."
+    },
+    {
+      "id": "HIN-3",
+      "severity": "nit",
+      "status": "open",
+      "disposition": "recorded nit, not part of this remediation",
+      "key": "ui.notices.agents.config_run_changed | ui.notices.agents.config_run_updated | ui.notices.chat.drafts_offered_name | ui.notices.chat.mark_all_read_cleared | ui.notices.chat.mark_all_read_deferred | ui.notices.chat.mark_all_read_superseded | ui.notices.chat.mark_all_read_unknown | ui.notices.credentials.unconfirmed | ui.notices.credentials.unstored",
+      "note": "The nine keys still print a bare {count} rather than {count, number}; the remediation's one-arm switch from literal 1 to {count} preserves that same bare-number convention. The first audit recorded this as a source-level nit that has to be fixed in the English skeleton first, not churned in the translation."
+    },
+    {
+      "id": "HIN-4",
+      "severity": "nit",
+      "status": "open",
+      "disposition": "recorded nit, not part of this remediation",
+      "key": "ui.notices.chat.archive_offered_verb",
+      "verified_value": "को संग्रहित किया गया।",
+      "note": "The archive tail is unchanged and still measures materially longer than English (108.2px vs 52.7px in the first audit's CoreText measurement at the card's 13px); it fits the card, and shortening it would require splitting the key from the no-name head, a code change. Not reopened here."
+    }
+  ],
+  "findings": [
+    {
+      "id": "HIN-D1",
+      "severity": "minor",
+      "status": "pre-existing; not introduced by the remediation",
+      "keys": [
+        "ui.notices.credentials.unstored",
+        "ui.notices.credentials.unconfirmed"
+      ],
+      "key": "ui.notices.credentials.unstored / ui.notices.credentials.unconfirmed (other arm)",
+      "current": "{count, plural, one {{count} क्रेडेंशियल सहेजा नहीं जा सका} other {{count} क्रेडेंशियल सहेजे नहीं जा सके}} ({keys}); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "current_unconfirmed": "{count, plural, one {{count} क्रेडेंशियल} other {{count} क्रेडेंशियल}} सहेजे जाने की पुष्टि नहीं हो सकी ({keys}); एजेंट को बताया गया है कि इस्तेमाल से पहले जाँच करे। दोबारा सहेजने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "proposed": "{count, plural, one {{count} क्रेडेंशियल सहेजा नहीं जा सका} other {{count} क्रेडेंशियल्स सहेजे नहीं जा सके}} ({keys}); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "proposed_unconfirmed": "{count, plural, one {{count} क्रेडेंशियल} other {{count} क्रेडेंशियल्स}} सहेजे जाने की पुष्टि नहीं हो सकी ({keys}); एजेंट को बताया गया है कि इस्तेमाल से पहले जाँच करे। दोबारा सहेजने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "reason": "The hi style guide records the plural of क्रेडेंशियल as क्रेडेंशियल्स, and the shipped catalogue uses that form in the other plural contexts (no_credentials_stored_yet, stored_credentials, removes_one_stored_account_credentials, hosting_select.detail and the settings configuration row). Both notices print the singular noun after a plural count (2+) in the other arm; the one arm stays singular, which is correct at 1 and, per the hi guide, at 0. Meaning is unaffected; this is glossary consistency, not a HIN-2 regression."
+    }
+  ],
+  "checks": [
+    {
+      "check": "key-set parity both directions",
+      "result": "PASS",
+      "detail": "94 en keys, 94 hi keys, no missing, no extra, identical order; all seven locales carry the new key. The repo's locale-parity test passed 44/44 at this head."
+    },
+    {
+      "check": "delta scope exact",
+      "result": "PASS",
+      "detail": "git diff ec4518da56..a32f7349e3 of hi/ui.notices.json is exactly 9 changed existing values + 1 added key, 0 removed; the other 84 values are byte-identical to the first-audit head. No other hi namespace file was touched in the range."
+    },
+    {
+      "check": "ICU argument integrity",
+      "result": "PASS",
+      "detail": "Parsed all 94 values with @formatjs/icu-messageformat-parser 3.5.21: argument-name sets equal to English for 94/94, number-skeleton sets equal for 94/94 (0 diffs). The new key carries {title}; credentials.* keep {count} and {keys}; main.update_hold_body keeps {version} and {relaunch}; nothing added, dropped, renamed or re-styled."
+    },
+    {
+      "check": "plural categories are the locale's CLDR set",
+      "result": "PASS",
+      "detail": "Ten hi plural messages, every one selecting from one/other only. Intl.PluralRules('hi'): 0→one, 1→one, 2→other, 5→other, 21→other, 1000000→other. No zero/few/many arm invented; no English count===1 rule carried in."
+    },
+    {
+      "check": "plural category parity vs the English arms",
+      "result": "PASS",
+      "detail": "English is also one/other in all ten; every English arm has a hi counterpart and the arm sets match exactly. drafts_offered_name/verb print no number in either arm in both locales, as their head/tail contract requires."
+    },
+    {
+      "check": "no one arm prints a bare 1",
+      "result": "PASS",
+      "detail": "Parsed all ten one arms and scanned their literal text for digits: 0 bare 1s. Eight one arms (the six changed config/bulk-read arms plus the two credential arms) now carry {count}; rendered at 0 they print 0, at 1 they print 1. The two drafts one arms print no numeral (ड्राफ़्ट / मिटा दिया गया।), matching English Draft/discarded. No arm can print a false 1 for zero."
+    },
+    {
+      "check": "HIN-1 terminology",
+      "result": "PASS",
+      "detail": "Current update_hold_body equals the first audit's proposed text byte-for-byte: संस्करण {version} का अपडेट … All 78 hi namespace files contain 0 occurrences of वर्ज़न and 64 occurrences of संस्करण in 58 strings, including ui.common.updates, ui.settings.updates and the update notification family. The swap adds one code point to a wrapping toast body; no width finding."
+    },
+    {
+      "check": "HIN-2 agreement",
+      "result": "PASS",
+      "detail": "The finite verb is inside the plural selector in both arms: one {count} क्रेडेंशियल सहेजा नहीं जा सका, other {count} क्रेडेंशियल सहेजे नहीं जा सके. Rendered 0/1/2/5/21; at 1 the verb is masculine singular against the singular subject, at 2+ the verb is masculine plural. The one arm is correct. HIN-D1 records the separate, pre-existing noun-form drift in the other arm (singular क्रेडेंशियल where the hi guide records the plural क्रेडेंशियल्स); it is not a HIN-2 regression. The neighbouring credentials.unconfirmed keeps its invariant verbal noun सहेजे जाने की पुष्टि नहीं हो सकी, which is correct for both arms."
+    },
+    {
+      "check": "composed sentences",
+      "result": "PASS",
+      "detail": "Rendered the changed values through the repo's intl-messageformat 12.1.3 with the values the components pass, and joined them as the components join them. Archive: “Quarterly retention sweep and the transcript” को संग्रहित किया गया। and बातचीत को संग्रहित किया गया। Update hold: both relaunch variants read as complete three-sentence paragraphs (see composed_renders). Bulk read 1/2/5 and credential 1/2 read as complete sentences with correct agreement."
+    },
+    {
+      "check": "register and address form",
+      "result": "PASS",
+      "detail": "No तुम/तू in any changed value; the untouched tails keep the polite -एँ/-ें imperatives (चिपकाएँ, खुद शुरू करें). No कृपया, no exclamation mark, no padding honorific. आप is the namespace's register; the changed update body does not address the user directly, and its relaunch arm uses the polite imperative."
+    },
+    {
+      "check": "typography and encoding",
+      "result": "PASS",
+      "detail": "All ten changed values are NFC. Danda for full stops; ASCII colon in the config-run receipts mirrors English; the credentials semicolon and parentheses are unchanged; the new key's “ ” pair balances 1/1; the update body keeps its spaced em dash. No leading/trailing/double spaces, no Cf/Cc characters, no ZWJ/ZWNJ, no bidi controls."
+    },
+    {
+      "check": "direction / bidi",
+      "result": "N/A",
+      "detail": "hi is left-to-right; the changed values contain no bidi control characters and no embedded RTL runs."
+    },
+    {
+      "check": "overflow",
+      "result": "PASS",
+      "detail": "The new title key is exactly the quote wrapper the code hardcoded before, so its width is unchanged; the update body gains one code point and remains a wrapping toast body. The first audit measured update_hold_body at 448.7px against English's 503.0px at the card's 13px, so the swap stays inside the English budget. No rendered frame was captured for this delta."
+    },
+    {
+      "check": "call-site reachability",
+      "result": "PASS",
+      "detail": "The changed one arms are gated in shipped code: use-config-run.ts:412 results.length > 0; mark-all-read.ts:186 attempted===0 returns the separate nothing key, and superseded/unknown/deferred/cleared each render only when > 0; message-input.tsx:2922/2932/3074/3076 gate refused and unconfirmed on .length > 0. Per the hi style guide, 0 is singular in the one arm anyway, so even an ungated 0 would not print a false 1."
+    },
+    {
+      "check": "mechanical gates at this head",
+      "result": "PASS",
+      "detail": "node scripts/i18n/generate.mjs --check exit 0 (keys.gen.ts byte-identical to a fresh generation); context-parity.mjs ok (131 allowed gaps in 4 other namespaces; ui.notices' own sidecar covers 94/94); check-coverage.mjs ok (7 gated languages over 78 namespaces, 0 remaining allowed keys); node --test scripts/i18n/locale-parity.test.mjs 44/44 pass. i18n/ledger.json still has no hi/ui.notices row; that is the assembler step after this receipt, not a defect in the translation. No catalogue, ledger, allowance or generated file was edited."
+    }
+  ],
+  "structural": {
+    "key_set": "94/94 present at head (93 at the audited base + 1 new); zero missing, zero extra; key order identical to en; no duplicate keys.",
+    "icu": "94/94 parse under hi; argument-name sets, number styles and plural/select option sets identical to en across every key (0 set-level diffs). The only node-level difference is the intended {count} reference added inside the eight one arms where English prints a literal 1.",
+    "placeholders": "the new key carries {title}; every remediated value keeps its own argument exactly — {count} in the config/bulk-read/credential arms, {keys} in the credential receipts, {version} and {relaunch} in update_hold_body. No placeholder dropped, renamed or reordered anywhere in the namespace.",
+    "plural_categories": "ten hi plural messages, all one/other; hi's one covers 0 and 1; no zero/few/many arm invented.",
+    "one_arms": "0 of 10 one arms contains a literal 1; eight carry {count}, two (drafts name/verb) print no numeral in either locale.",
+    "encoding": "NFC throughout; zero Cf/Cc characters; zero manual bidi controls; quotes balanced.",
+    "punctuation": "danda for full stops in prose; ASCII colon only where English uses one; semicolon/parentheses in the credential receipts unchanged; curly “ ” in the new title key.",
+    "register": "आप address throughout; no तुम/तू, no exclamation marks, no padding honorific added by the remediation."
+  },
+  "delta_structural": {
+    "changed_existing_values": 9,
+    "new_values": 1,
+    "removed_keys": 0,
+    "total_delta_keys": 10,
+    "unintended_changes": "none — the hi delta is exactly those 10 keys; no other hi namespace file was touched at a32f7349e3."
+  },
+  "composed_renders": {
+    "archive_offer_title": "“Quarterly retention sweep and the transcript” को संग्रहित किया गया।",
+    "archive_offer_no_name": "बातचीत को संग्रहित किया गया।",
+    "archive_offer_note": "The new title key supplies the quote pair around user data; the verb key still starts with को, so the joined sentence is grammatical and has no double quotes or double space.",
+    "update_hold_relaunch": "संस्करण 0.20.1 का अपडेट अभी इंस्टॉल हो रहा है — इस समय ऐप खोलने पर वह रद्द हो जाएगा। इंस्टॉल पूरा होते ही Local Operator अपने आप खुल जाएगा। इस सूचना पर क्लिक करने से ऐप जल्दी नहीं खुलेगा।",
+    "update_hold_no_relaunch": "संस्करण 0.20.1 का अपडेट अभी इंस्टॉल हो रहा है — इस समय ऐप खोलने पर वह रद्द हो जाएगा। इस इंस्टॉल के लिए दोबारा खुलना तय नहीं हो सका, इसलिए इंस्टॉल पूरा होने पर Local Operator खुद शुरू करें। इस सूचना पर क्लिक करने से ऐप जल्दी नहीं खुलेगा।",
+    "bulk_read_lead": {
+      "1": "1 चैट को पढ़ा हुआ चिह्नित किया।",
+      "2": "2 चैट को पढ़ा हुआ चिह्नित किया।",
+      "5": "5 चैट को पढ़ा हुआ चिह्नित किया।"
+    },
+    "bulk_read_remainder": {
+      "1": "1 चैट में नया परिणाम आ चुका है, इसलिए वह अपठित रहती है। 1 चैट साफ़ नहीं हो सकी और वह अपठित रहती है। 1 चैट दूसरे डिवाइस पर है और उस डिवाइस के अपडेट होने पर पढ़ी हुई हो जाएगी।",
+      "2": "2 चैट में नए परिणाम आ चुके हैं, इसलिए वे अपठित रहती हैं। 2 चैट साफ़ नहीं हो सकीं और वे अपठित रहती हैं। 2 चैट दूसरे डिवाइसों पर हैं और उन डिवाइसों के अपडेट होने पर पढ़ी हुई हो जाएँगी।"
+    },
+    "bulk_read_full": {
+      "1": "1 चैट को पढ़ा हुआ चिह्नित किया। 1 चैट में नया परिणाम आ चुका है, इसलिए वह अपठित रहती है। 1 चैट साफ़ नहीं हो सकी और वह अपठित रहती है। 1 चैट दूसरे डिवाइस पर है और उस डिवाइस के अपडेट होने पर पढ़ी हुई हो जाएगी।",
+      "2": "2 चैट को पढ़ा हुआ चिह्नित किया। 2 चैट में नए परिणाम आ चुके हैं, इसलिए वे अपठित रहती हैं। 2 चैट साफ़ नहीं हो सकीं और वे अपठित रहती हैं। 2 चैट दूसरे डिवाइसों पर हैं और उन डिवाइसों के अपडेट होने पर पढ़ी हुई हो जाएँगी।"
+    },
+    "config_run_changed": {
+      "1": "कॉन्फ़िगरेशन रन पूरा हुआ: 1 परिभाषा बदली।",
+      "2": "कॉन्फ़िगरेशन रन पूरा हुआ: 2 परिभाषाएँ बदलीं।"
+    },
+    "config_run_updated": {
+      "1": "कॉन्फ़िगरेशन रन पूरा हुआ: 1 परिभाषा अपडेट हुई।",
+      "2": "कॉन्फ़िगरेशन रन पूरा हुआ: 2 परिभाषाएँ अपडेट हुईं।"
+    },
+    "credentials_unstored_current": {
+      "1": "1 क्रेडेंशियल सहेजा नहीं जा सका (ALPHA); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "2": "2 क्रेडेंशियल सहेजे नहीं जा सके (ALPHA); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।"
+    },
+    "credentials_unstored_proposed": {
+      "2": "2 क्रेडेंशियल्स सहेजे नहीं जा सके (ALPHA); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।"
+    },
+    "credentials_unconfirmed_current": {
+      "1": "1 क्रेडेंशियल सहेजे जाने की पुष्टि नहीं हो सकी (ALPHA); एजेंट को बताया गया है कि इस्तेमाल से पहले जाँच करे। दोबारा सहेजने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "2": "2 क्रेडेंशियल सहेजे जाने की पुष्टि नहीं हो सकी (ALPHA); एजेंट को बताया गया है कि इस्तेमाल से पहले जाँच करे। दोबारा सहेजने के लिए /credential के बाद मान फिर चिपकाएँ।"
+    },
+    "credentials_unconfirmed_proposed": {
+      "2": "2 क्रेडेंशियल्स सहेजे जाने की पुष्टि नहीं हो सकी (ALPHA); एजेंट को बताया गया है कि इस्तेमाल से पहले जाँच करे। दोबारा सहेजने के लिए /credential के बाद मान फिर चिपकाएँ।"
+    }
+  },
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "counts_note": "counts are this delta's findings; HIN-3 and HIN-4 are the first audit's open nits, carried in prior_open_nits and not re-counted here.",
+  "prior_open_nits": 2,
+  "result": "clean-with-findings",
+  "status": "passed",
+  "namespace_verdict": "delta clean-with-findings — 94 of 94 keys read (9 remediated existing values + 1 new key); 0 blocker, 0 major, 1 pre-existing minor. HIN-1 and HIN-2 are fixed in the bytes and in rendered output; no one arm prints a bare 1; arguments, plural categories, register, punctuation and RTL are unchanged where they passed. HIN-D1 is the only new observation: the other arm of both credential notices still uses the singular क्रेडेंशियल after a plural count, while the hi guide records क्रेडेंशियल्स. HIN-3 and HIN-4 remain the first audit's recorded nits, unchanged.",
+  "overall_verdict": "Delta clean-with-findings (0 blocker, 0 major): HIN-1 and HIN-2 are fixed; every one arm avoids a bare literal 1; no placeholder, plural category, register, punctuation or composition regression. One pre-existing minor remains (HIN-D1, plural noun form in the two credential notices) and the two first-audit nits stay recorded. HIN-D1 does not gate the delta; it is a one-word glossary-consistency fix for the next remediation.",
+  "evidence_provenance": "Every check above was executed in this worktree against the committed head bytes (git show HEAD:...), whose sha256 are recorded. Tools: Node 24 with the repository's own intl-messageformat 12.1.3 and @formatjs/icu-messageformat-parser 3.5.21 for the structural parse, the one-arm scan and the renders; Python 3.14 for the delta, naming, plural-rule, parity and encoding scans over the 94-key file and the 78 hi namespace files; node scripts/i18n/{generate,context-parity,check-coverage}.mjs and node --test scripts/i18n/locale-parity.test.mjs for the mechanical gates. Call-site reachability was read from source, not assumed. No result is quoted from a translator's report. This audit edited no catalogue, ledger, allowance or generated file; its only added file is this receipt.",
+  "binding_note": "This receipt binds the committed head a32f7349e3 (git show HEAD:src/i18n/catalogues/{en,hi}/ui.notices.json and en/ui.notices.context.json). The worktree files were byte-identical to those blobs when the hashes were computed and still verify at the end of the audit.",
+  "scratch_note": "Audit scripts live outside the repo under $LOCAL_OPERATOR_SCRATCHPAD; only the receipt was added to the worktree."
+}

@@ -1,0 +1,294 @@
+{
+ "audit_id": "wave-a-vi-delta-20261027",
+ "round": 2,
+ "carried_forward_check": {
+  "question": "may the three namespaces whose bytes did not change be carried forward from the a81c00cdda receipt instead of re-recorded?",
+  "answer": "no - the format has no bound carried-forward block, so all four namespaces are re-recorded at this head",
+  "evidence": [
+   "scripts/i18n/ledger-rules.mjs:349 receiptScope() resolves a namespace's verdict and findings only from `namespaces.<ns>.status` plus that block's own findings; there is no carried-forward state a row could bind",
+   "scripts/i18n/ledger-rules.mjs:521 deriveReceiptAudit() requires every namespace block to name its own en_sha256 and vi_sha256, and :499 states root hashes cannot supply a missing block hash - a block copied from an older head would have to claim hashes it did not audit",
+   "docs/I18N.md 'Retain checkable audit records' defines record/receipt contents and the two ledger contracts, and names no carried-forward block or inheritance rule",
+   "consequence: the cheap-looking option (point three rows at the round-1 receipt) is exactly the staleness the same checker refuses, because the ENGLISH source hashes moved at 80ee119bbd's parent even where the vi bytes did not"
+  ]
+ },
+ "round_scope": "delta: the one amended value plus the 37 wave-A values re-verified byte-identical",
+ "date": "2026-10-27",
+ "locale": "vi",
+ "namespace": "ui.chat",
+ "source_head": "80ee119bbd1084ee873994a1f39db0c085c62083",
+ "source_parent_head": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "wave_a_source_head": "6216167f4464bd607a6831e9e636820c0d463816",
+ "branch": "i18n-wave-a",
+ "scope": "Delta re-record of the wave A vi audit at 80ee119bbd (parent a81c00cdda): all 18 wave-A ui.chat keys re-read against src/i18n/catalogues/en/ui.chat.json, its context sidecar and chat-regions.ts (the only consumer of the changed key); 17 of them are byte-identical to the values audited at a81c00cdda and the 18th — ui.chat.region.conversation — is the one amended value, re-read in full. The other 115 ui.chat values are outside the wave's scope and byte-identical to the previously landed head. Catalogue-only: no build, browser, render or activation evidence.",
+ "status": "passed",
+ "result": "clean",
+ "key_count": 18,
+ "keys_read": 18,
+ "keys_substantive": [
+  "ui.chat.checkpoint.generating_name",
+  "ui.chat.checkpoint.jump_agent",
+  "ui.chat.checkpoint.jump_agent_unnamed",
+  "ui.chat.checkpoint.jump_user",
+  "ui.chat.checkpoint.jump_user_no_clock",
+  "ui.chat.checkpoint.turn",
+  "ui.chat.header_identity.aria_agent_assign",
+  "ui.chat.header_identity.aria_agent_closed",
+  "ui.chat.header_identity.aria_agent_switch",
+  "ui.chat.header_identity.aria_team_assign",
+  "ui.chat.header_identity.aria_team_closed",
+  "ui.chat.header_identity.aria_team_switch",
+  "ui.chat.header_identity.assign_agent",
+  "ui.chat.header_identity.assign_team",
+  "ui.chat.header_identity.no_agent",
+  "ui.chat.header_identity.no_team",
+  "ui.chat.region.composer",
+  "ui.chat.region.conversation"
+ ],
+ "delta_regression": {
+  "wave_a_keys_in_scope": 38,
+  "byte_identical_since_previous_round": 37,
+  "changed": [
+   "ui.chat.region.conversation"
+  ],
+  "parsed_json_diff": "a81c00cdda vs 80ee119bbd over the four vi wave-A files: 1 value changed, 0 keys added, 0 keys dropped (diff.json beside this record)",
+  "this_namespace_bytes_changed": true
+ },
+ "measured": {
+  "apparatus": {
+   "node": "v24.22.1",
+   "export": "read-only `git -C ~/local-operator-ui archive 80ee119bbd | tar -x -C ~/qa/wave-a-delta-vi`",
+   "parser": "repo-installed @formatjs/icu-messageformat-parser",
+   "formatter": "repo-installed intl-messageformat (locale vi)",
+   "tools": "tools/delta-audit.mjs and tools/region-names.mjs, kept beside audit.log in this bundle"
+  },
+  "model_route": "radient/auto",
+  "model_route_evidence": "session system-prompt header «Model: radient/auto»",
+  "audit_notes_not_execution_log": "This record's prose is analysis; audit.log beside it holds the captured output of every command this session ran. Nothing here claims a command that is not in that log."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "eb62f05b28e1",
+  "team": "lopdev",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "The harness reported the model as «radient/auto» (a routing alias); the concrete provider/model id is not exposed in-session. No fallback was selected, configured or observed.",
+  "fallback": null,
+  "independent_from_translator_session": true,
+  "independence_statement": "The translator ran in a different agent instance. This session authored none of the 38 values, amended none of them, edited no catalogue, context sidecar, English source, ledger, allowance or generated file, and read the copy only from the git archive of 80ee119bbd. The translator's rejection of this auditor's earlier «Hội thoại» suggestion was judged on the catalogue's own bytes, not taken on trust."
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.json",
+   "sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.context.json",
+   "sha256": "1df3ad0e7054c77b2cc59971eae3a9387059be42839a271d80f70e754e542426"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/vi/ui.chat.json",
+   "sha256": "008ac443d140f40f0de80165ccb014348123fe2084089eb4de0bd2240ce00bae"
+  }
+ },
+ "hash_verification": {
+  "method": "git -C ~/local-operator-ui show 80ee119bbd:<path> | shasum -a 256, compared with shasum -a 256 over the archived export",
+  "result": "identical for all three inputs of this namespace"
+ },
+ "reference_hashes": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/vi.md",
+   "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/receipts/wave-a-vi-delta-eb62f05b28e1.json",
+   "sha256": "c729f7c063f99485ba688ff189f611d88a2ded0867909a91f779c8061b485801",
+   "role": "receipt"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/audit.log",
+   "sha256": "962b894f02ede8fdec7934afa4a5329f90a6f630e744dc433363348e484a3900"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/render-table.json",
+   "sha256": "310a24ea0202500729076dfd554450c158deb726c6f595c3aaa56d1e3e8b0969"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/diff.json",
+   "sha256": "563cfcfbf6a33188bd1cc7b561c73c0bd2f6093dc85c45f0602f510d8950a367"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/tools/delta-audit.mjs",
+   "sha256": "2c513b30a5066f4a4c7a41d12f8f8121e9f220cd384538076e133119e9887c14"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/tools/region-names.mjs",
+   "sha256": "36716fb450dfea98bc04072ad4bcee14b03028893b210e6ced68e9370c626f15"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/ledger-rows.json",
+   "sha256": "5e64f194ad1a9f9dd64b8c0a9298c7d7cb52afbf9917a2d70be370ed120020d7",
+   "role": "assembled-ledger-rows (the writer's output, re-extracted after the run)"
+  }
+ ],
+ "findings": [
+  {
+   "id": "vi-wa-1",
+   "severity": "INFO",
+   "key": "ui.chat.region.conversation",
+   "issue": "ROUND-1 FINDING, RESOLVED AT THIS HEAD. Raised as MINOR at a81c00cdda: «Cuộc trò chuyện» was byte-identical to ui.chat.sidebar.nav.chats, so the F6 walk announced one name for the nav and the transcript. The head under audit carries the translator's «Khung trò chuyện»; this auditor re-read the value and accepts it. Recorded as INFO because the value being audited is the fixed one and no unresolved finding remains — the round-1 severity above is kept verbatim so the downgrade cannot be mistaken for a clean first pass."
+  },
+  {
+   "id": "vi-wa-i1",
+   "severity": "INFO",
+   "key": "ui.chat.checkpoint.jump_user / ui.chat.checkpoint.jump_user_no_clock",
+   "issue": "{clock} is supplied by checkpointClockLabel() as 12-hour «h:mm AM/PM», while the vi guide's numbers/dates section specifies 24-hour times. Code-level format outside the catalogue; the vi value consumes {clock} as given. Unchanged at this head, not counted."
+  },
+  {
+   "id": "vi-wa-i2",
+   "severity": "INFO",
+   "key": "ui.chat.header_identity.aria_agent_assign / ui.chat.header_identity.aria_agent_closed",
+   "issue": "With {label} = «Không có tác nhân» the sentence reads «Tác nhân: Không có tác nhân. Gán tác nhân»; the repetition is inherited from the English design («Agent: No agent. Assign an agent») and the sidecar requires {label} verbatim for voice-control matching. Not counted."
+  },
+  {
+   "id": "vi-wa-i3",
+   "severity": "INFO",
+   "key": "ui.chat.header_identity.no_agent",
+   "issue": "«Không có tác nhân» is 17 cells against English 8. The chip is min-w-0 max-w-[24ch] truncate, so it renders whole (17 <= 24) and the conversation title yields instead; no overflow in the styles. No rendered-frame claim. Not counted."
+  },
+  {
+   "id": "vi-wa-i7",
+   "severity": "INFO",
+   "key": "ui.chat.region.conversation",
+   "issue": "The header and transcript landmarks deliberately share one accessible name (chat-regions.ts maps both onto this key; the English sidecar records the sharing). The vi walk therefore announces «Khung trò chuyện» twice in one F6 cycle, exactly as English announces «Conversation» twice. Design, not translation. Not counted."
+  }
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "vi-wa-1",
+   "vi-wa-i1",
+   "vi-wa-i2",
+   "vi-wa-i3",
+   "vi-wa-i7"
+  ],
+  "severity_counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  },
+  "severity_counts_note": "Unresolved counts on the audited head. vi-wa-1 was MINOR in round 1 and is resolved here; it is listed as an INFO observation so its original severity stays visible."
+ },
+ "validation": {
+  "key_parity": "18/18",
+  "icu_parse_errors": [],
+  "placeholders_match_en": true,
+  "argument_names_and_types_match_en": true,
+  "plural_select_arms_match_en": true,
+  "plural_arms": [],
+  "render_errors": [],
+  "nfc_all": true,
+  "bidi_controls": 0,
+  "ascii_ellipsis": 0,
+  "straight_quotes": 0,
+  "leading_trailing_whitespace": 0,
+  "over_max_cells": [],
+  "repo_checks": {
+   "generate_check": "byte-identical, exit 0",
+   "locale_parity_test": "44/44 pass (vi: 6/6 rows)",
+   "context_parity": "ok — 131 allowed shrink-only gaps in 4 namespaces",
+   "check_duplicates": "ok — 844 file(s) scanned, 0 duplicate key(s)",
+   "vi_activation_test": "4/4 pass",
+   "chat_header_sidebar_copy_test": "11/11 pass",
+   "ledger_check": "FAILED (84 findings) — pre-existing: the wave A receipts for all seven locales are not yet assembled into i18n/ledger.json at this head; the dump is in audit.log. This audit supplies vi's four rows (see ledger-rows.json)."
+  },
+  "rendered_fit": "NOT EXECUTED — no rendered-frame or pixel claim. Cell counts are computed from the catalogue strings; the changed key is screen-reader-only and declares no maxCells."
+ },
+ "second_pass": "All 38 wave-A values were read twice at this head by this auditor: once while re-reading the delta, and again after the mechanical runs. The 37 unchanged values were re-read against the English source and sidecar rather than assumed from the previous round; the one changed value was read three times (before, against the catalogue's own pane vocabulary, and after the region-name probe). The second read was performed by this auditor, not by a second independent auditor; no high-visibility group (onboarding/errors/settings) is in this scope, so the manager's extra-pass rule does not apply.",
+ "limitations": [
+  "Catalogue-only: no build, browser, render, activation or pixel measurement was run. Width statements come from the catalogue strings and styles read from source.",
+  "No MT, translation API, back-translation or translation service was used to compare or produce any value; every judgement is this auditor's own reading of the two catalogues.",
+  "The {reason} placeholder is backend-served English prose at runtime; only the surrounding pattern is translatable and was audited as such."
+ ],
+ "ledger_note": "Wave A vi delta, head 80ee119bbd: 18/18 keys; 0 blocker/major/minor/nit; vi-wa-1 resolved. Record i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/record.json",
+ "wording_judgement": {
+  "key": "ui.chat.region.conversation",
+  "english": "Conversation",
+  "previous_vi": "Cuộc trò chuyện",
+  "new_vi": "Khung trò chuyện",
+  "verdict": "accept",
+  "what_it_names": "the F6 region walk's accessible name for the transcript landmark AND the chat header landmark (src/renderer/src/features/chat/chat-regions.ts:80-90 maps header and transcript onto this one key; the English sidecar records the sharing as deliberate: 'both head the same conversation ... It names the region, not a tab')",
+  "distinctness": {
+   "claim": "the nav landmark and the transcript landmark no longer announce the same name; the walk keeps exactly the English design's 3-distinct-names-in-4-regions shape",
+   "en": {
+    "sidebar": "Chats",
+    "header": "Conversation",
+    "transcript": "Conversation",
+    "composer": "Message composer",
+    "distinct": 3
+   },
+   "vi_head": {
+    "sidebar": "Cuộc trò chuyện",
+    "header": "Khung trò chuyện",
+    "transcript": "Khung trò chuyện",
+    "composer": "Ô soạn tin",
+    "distinct": 3
+   },
+   "vi_previous_round": {
+    "sidebar": "Cuộc trò chuyện",
+    "header": "Cuộc trò chuyện",
+    "transcript": "Cuộc trò chuyện",
+    "composer": "Ô soạn tin",
+    "distinct": 2
+   },
+   "evidence": "node tools/region-names.mjs <export> en vi — captured in audit.log; the key->region mapping is the switch in chat-regions.ts, read at this head"
+  },
+  "idiom_evidence": {
+   "khung_is_the_pane_word": [
+    "ui.chat.aside.close_label = «Đóng khung bên lề» (close side pane)",
+    "ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change = «Khung này …» (this pane)",
+    "ui.common.layout.chat_layout.resize_asks… = «Đổi kích thước khung câu hỏi … chiều rộng khung dùng chung» (asks pane / shared pane width)",
+    "ui.mesh.mesh_page.canvas = «Khung vẽ», ui.shell.rail.canvas.tooltip = «Đóng/Mở khung vẽ» (canvas pane)"
+   ],
+   "khung_is_also_the_time_window_word": "34 of 6061 vi values contain «khung»: 21 in the analytics time-window sense («trong khung này», «khung thời gian», analytics_panel.window = «Khung»), 12 naming a pane or frame (khung vẽ x7, khung bên lề x2, khung câu hỏi / khung dùng chung, «Khung này» for a pane, «Vừa khung»), plus this key. A homonym confined to the analytics namespace, which the chat surface never announces, so no ambiguity reaches the region walk. Noted, not counted.",
+   "tro_chuyen_is_the_product_noun": "359 of 6061 vi values contain «trò chuyện» (282 with the «cuộc» classifier, 77 without it as a noun modifier, e.g. «Tùy chọn trò chuyện», «Luồng trò chuyện», «Yêu cầu trò chuyện»), so «Khung trò chuyện» follows an established compound pattern rather than inventing one",
+   "hội_thoại_zero_uses": "grep over all 94 vi catalogue files: 0 values contain «hội thoại»; 3 contain «hộp thoại» (dialog)"
+  },
+  "translator_rejection_of_auditor_suggestion": {
+   "suggestion": "«Hội thoại» (round-1 vi-wa-1 suggestion)",
+   "auditor_position": "upheld — the rejection is sound on the evidence, and this auditor withdraws «Hội thoại» as an alternative for this key",
+   "reasons": [
+    "aural collision in the exact context that consumes it: the value is screen-reader-only, and «hội thoại» differs from the catalogue's «hộp thoại» (dialog, 3 uses) by one final consonant — a landmark announced a beat away from a dialog is the worst place to introduce that pair",
+    "zero catalogue precedent for «hội thoại» (0/6061) against 359 values built on «trò chuyện»; the style guide's Locale calls record «trò chuyện» as the product's word and ask for terse developer register, while «hội thoại» is the literary/dialogue register",
+    "«khung» is the catalogue's own pane word (four independent surfaces above), so the compound names the thing the region is, and it also reads as more informative than a bare synonym of the nav name"
+   ],
+   "residue": "two of the four announced names now share the head «trò chuyện» («Khung trò chuyện» / «Cuộc trò chuyện»); they differ in the first word and in what they name (pane vs list), matching English «Chats»/«Conversation». Accepted, not counted."
+  },
+  "style_guide_followup": "not a copy defect: the vi style guide's 'Locale calls' has no entry for region/pane naming. Recording «region name → khung + <noun>» there would stop a later translator relitigating vi-wa-1. Left to the translator/manager; this auditor edits no guide."
+ },
+ "ledger_row_ready": {
+  "locale": "vi",
+  "namespace": "ui.chat",
+  "source_sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+  "target_sha256": "008ac443d140f40f0de80165ccb014348123fe2084089eb4de0bd2240ce00bae",
+  "auditor": {
+   "agent": "i18n-auditor",
+   "model": "radient/auto",
+   "session": "eb62f05b28e1"
+  },
+  "instance": "wave-a-vi-delta-eb62f05b28e1",
+  "result": "clean",
+  "receipt": "i18n/receipts/wave-a-vi-delta-eb62f05b28e1.json",
+  "receipt_sha256": "c729f7c063f99485ba688ff189f611d88a2ded0867909a91f779c8061b485801",
+  "note": "Wave A vi delta, head 80ee119bbd: 18/18 keys; 0 blocker/major/minor/nit; vi-wa-1 resolved. Record i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/record.json",
+  "note_length": 166
+ }
+}

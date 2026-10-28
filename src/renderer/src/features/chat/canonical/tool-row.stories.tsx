@@ -26,10 +26,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef } from "react";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
-import {
-	type SessionFailureNotice,
-	streamFailureNotice,
-} from "../../../../../shared/desktop-stream-notice";
+import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import { streamFailureNotice } from "./session-failure-notice";
 import "../../../styles/index.css";
 import { peerFields } from "../components/trace/receipt-row-model";
 import { formatDuration } from "../components/trace/tool-row-model";

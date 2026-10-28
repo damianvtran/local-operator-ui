@@ -4,6 +4,7 @@ import {
 	ipcMain,
 	shell,
 } from "electron";
+import { LANGUAGE_SETTING_KEY } from "../i18n/locale";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
@@ -42,6 +43,31 @@ function isAcceptedKeymapEdit(
 }
 
 /**
+ * Whether this request is a language write the backend ACCEPTED.
+ *
+ * Same split as `isAcceptedKeymapEdit`: the op and key are read from the
+ * REQUEST, acceptance from the RESPONSE. Crucially the VALUE is never read -
+ * an accepted write is a signal to re-read the backend's resolved tag, so a
+ * compromised or confused renderer that posts `ui`/`zh-CN` gains nothing but a
+ * round trip; a refused write changed nothing, so it triggers nothing.
+ *
+ * `settings.reset` is included because resetting the language row returns the
+ * setting to `auto`, which can resolve to a different tag than the one on screen.
+ */
+export function isAcceptedLanguageEdit(
+	input: unknown,
+	response: DesktopResponse,
+): boolean {
+	if (response.status < 200 || response.status >= 300) return false;
+	if (input === null || typeof input !== "object") return false;
+	const request = input as { op?: unknown; key?: unknown };
+	return (
+		(request.op === "settings.edit" || request.op === "settings.reset") &&
+		request.key === LANGUAGE_SETTING_KEY
+	);
+}
+
+/**
  * The ops that owe a VISIBLE, FOCUSED window before they may be sent.
  *
  * A set rather than two chained comparisons, because the match is by op NAME
@@ -54,6 +80,10 @@ function isAcceptedKeymapEdit(
 const FOREGROUND_RECEIPT_OPS: ReadonlySet<string> = new Set([
 	"sessions.seen",
 	"attention.seen",
+	// Notifications reel reads (contract § 5.2); `notifications.dismiss` is not
+	// a "seen" claim and stays unguarded, as `sessions.notified` does.
+	"notifications.read",
+	"notifications.seen",
 ]);
 
 /**
@@ -242,6 +272,20 @@ export function registerDesktopIPC(
 	 * `noteLeftSession` callback into a notifier argument in the JS harnesses.
 	 */
 	teamBridgeNotifier?: TeamBridgeNotifier,
+	/**
+	 * The language setting's write-through tap, the twin of the keymap one above.
+	 *
+	 * APPENDED after `teamBridgeNotifier` rather than placed beside its keymap
+	 * sibling, for the reason that parameter's own note gives: every existing
+	 * caller passes the earlier parameters positionally, and inserting one above
+	 * any of them would silently reinterpret a callback in the harnesses.
+	 *
+	 * It carries no payload. The callback re-reads the backend's resolved language
+	 * (`{ op: "capabilities" }`) rather than accepting whatever the renderer wrote,
+	 * because the setting has one owner and main only mirrors what the backend
+	 * answers.
+	 */
+	onLanguageSettingEdited?: () => void,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -273,6 +317,15 @@ export function registerDesktopIPC(
 			outcome.then(
 				(response) => {
 					if (isAcceptedKeymapEdit(input, response)) onKeymapSettingEdited();
+				},
+				() => {},
+			);
+		}
+		if (onLanguageSettingEdited) {
+			outcome.then(
+				(response) => {
+					if (isAcceptedLanguageEdit(input, response))
+						onLanguageSettingEdited();
 				},
 				() => {},
 			);

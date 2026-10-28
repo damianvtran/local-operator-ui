@@ -1,4 +1,5 @@
 import { Notification } from "electron";
+import { t } from "../../i18n/index";
 import {
 	type LifetimeNotification,
 	NotificationLifetime,
@@ -48,12 +49,12 @@ import {
  * ask about one site, and several are a count — a banner that named one origin
  * while three were waiting would be the half-truth this feature's copy standard
  * exists to prevent. */
-export const CONSENT_TITLE = "Site approval needed";
+export const CONSENT_TITLE = (): string => t("ui.notices.main.consent_title");
 
 export function consentBody(count: number, origin: string): string {
 	return count === 1
-		? `An agent wants to open ${origin}. Approve or deny it in the browser tab.`
-		: `${count} site approvals are waiting. Approve or deny them in the browser tab.`;
+		? t("ui.notices.main.consent_body_one", { origin })
+		: t("ui.notices.main.consent_body_many", { count });
 }
 
 export interface ConsentNotifierOptions {
@@ -147,7 +148,7 @@ export class ConsentNotifier {
 		try {
 			const notification = (create ?? ((options) => new Notification(options)))(
 				{
-					title: CONSENT_TITLE,
+					title: CONSENT_TITLE(),
 					body: consentBody(count, oldest.origin),
 					silent: false,
 				},

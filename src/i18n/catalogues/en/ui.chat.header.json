@@ -1,14 +1,19 @@
 {
-	"ui.chat.header.conversation_name": "Conversation name",
-	"ui.chat.header.archived_hint": "This conversation is archived. It is hidden from your chats until you restore it.",
-	"ui.chat.header.archived": "Archived",
 	"ui.chat.header.actions": "Conversation actions",
-	"ui.chat.header.copy_id": "Copy session ID",
-	"ui.chat.header.move_device": "Move to another device…",
-	"ui.chat.header.transcript_display": "Transcript display",
-	"ui.chat.header.delete": "Delete conversation…",
+	"ui.chat.header.archive_conversation": "Archive conversation",
+	"ui.chat.header.archived": "Archived",
+	"ui.chat.header.archived_hint": "This conversation is archived. It is hidden from your chats until you restore it.",
+	"ui.chat.header.cancel_rename": "Cancel rename",
 	"ui.chat.header.close_run_details": "Close run details",
-	"ui.chat.header.open_run_details": "Open run details",
+	"ui.chat.header.conversation_name": "Conversation name",
+	"ui.chat.header.copy_id": "Copy session ID",
+	"ui.chat.header.delete": "Delete conversation…",
+	"ui.chat.header.move_device": "Move to another device…",
 	"ui.chat.header.new_chat": "New chat",
-	"ui.chat.header.new_chat_with": "New chat with {target}"
+	"ui.chat.header.new_chat_with": "New chat with {target}",
+	"ui.chat.header.open_run_details": "Open run details",
+	"ui.chat.header.rename_conversation": "Rename conversation",
+	"ui.chat.header.restore_conversation": "Restore conversation",
+	"ui.chat.header.saving_conversation_name": "Saving the conversation name",
+	"ui.chat.header.transcript_display": "Transcript display"
 }

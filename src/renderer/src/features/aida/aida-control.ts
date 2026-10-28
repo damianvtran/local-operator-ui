@@ -13,6 +13,7 @@
  * MINOR-1). The hooks and the route calls live in `use-aida-target.ts`.
  */
 
+import { t } from "../../../../i18n";
 import type { DesktopAidaControlResult } from "../../../../shared/desktop-control-contract";
 import {
 	DesktopControlError,
@@ -117,10 +118,7 @@ export function aidaControlReceipt(
  * must not do is fail in the language of the crash.
  */
 export function aidaControlFailureCopy(error: unknown): string {
-	return userFacingMessage(
-		error,
-		"Aida's controls could not reach the backend.",
-	);
+	return userFacingMessage(error, t("ui.notices.aida.unreachable"));
 }
 
 /**

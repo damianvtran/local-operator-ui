@@ -54,6 +54,7 @@ import {
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
@@ -165,6 +166,7 @@ function changedFields(base: Draft, draft: Draft): Record<string, unknown> {
  * spelling; reactive is the default and is not said.
  */
 function AgentMeta({ profile }: { profile: ReusableProfile }) {
+	useI18nLocale();
 	const facts = [
 		sourceLabel(profile.source),
 		classOf(profile) === "proactive" ? CLASS_LABEL.proactive : null,
@@ -175,7 +177,7 @@ function AgentMeta({ profile }: { profile: ReusableProfile }) {
 		<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
 			<p className="text-body-sm text-ink-muted">{facts.join(" · ")}</p>
 			{profile.divergent_fields?.length ? (
-				<Badge variant="warning">Modified</Badge>
+				<Badge variant="warning">{t("ui.agents.detail.badge.modified")}</Badge>
 			) : null}
 		</div>
 	);
@@ -246,6 +248,7 @@ function AgentClassControl({
 	/** The record may have moved; re-read it. The same contract `Install` uses. */
 	onChanged: (name: string) => void;
 }) {
+	useI18nLocale();
 	const current = classOf(profile);
 	const [optimistic, setOptimistic] = useState<ActionClass | null>(null);
 	const [pending, setPending] = useState(false);
@@ -299,8 +302,8 @@ function AgentClassControl({
 			onChanged(profile.name);
 			showSuccessToast(
 				next === "proactive"
-					? `${displayedName} is now proactive — it may message you on its own.`
-					: `${displayedName} is now reactive — proactive messaging stopped.`,
+					? t("ui.notices.agents.proactive", { name: displayedName })
+					: t("ui.notices.agents.reactive", { name: displayedName }),
 			);
 		} catch (caught) {
 			/*
@@ -369,7 +372,7 @@ function AgentClassControl({
 				 * the sentence below carries what the state means.
 				 */}
 				<span id={labelId} className="text-ink">
-					Can message me on its own
+					{t("ui.agents.detail.class.label")}
 				</span>
 				<span aria-live="polite" className="text-ink-muted">
 					{pending ? "Switching…" : shown === "proactive" ? "On" : "Off"}
@@ -390,7 +393,7 @@ function AgentClassControl({
 					 * complete, and the read above has since put the switch in whatever
 					 * position the backend actually holds.
 					 */}
-					<AlertTitle>The switch did not go through</AlertTitle>
+					<AlertTitle>{t("ui.agents.detail.class.error_title")}</AlertTitle>
 					<AlertDescription>{notice}</AlertDescription>
 				</Alert>
 			) : null}
@@ -419,6 +422,7 @@ function ToolsEditor({
 	onChange: (next: string[] | null) => void;
 	error?: string | null;
 }) {
+	useI18nLocale();
 	const [entry, setEntry] = useState("");
 	const [entryError, setEntryError] = useState<string | null>(null);
 	const inputId = useId();
@@ -447,13 +451,13 @@ function ToolsEditor({
 				<Switch
 					checked={tools === null}
 					onCheckedChange={(checked) => onChange(checked ? null : [])}
-					aria-label="Give this agent every tool"
+					aria-label={t("ui.agents.detail.tools.every_tool_aria")}
 				/>
-				<span>All tools</span>
+				<span>{t("ui.agents.detail.tools.all_label")}</span>
 			</div>
 			{tools === null ? (
 				<p className="text-meta text-ink-muted">
-					This agent may use whatever the session offers.
+					{t("ui.agents.detail.tools.may_use_any")}
 				</p>
 			) : (
 				<>
@@ -480,7 +484,7 @@ function ToolsEditor({
 						</ul>
 					) : (
 						<p className="text-meta text-ink-muted">
-							No tools yet. Add one below, or turn on All tools.
+							{t("ui.agents.detail.tools.empty")}
 						</p>
 					)}
 					<div className="flex items-end gap-2">
@@ -494,7 +498,7 @@ function ToolsEditor({
 								id={inputId}
 								value={entry}
 								inputSize="md"
-								placeholder="Tool name"
+								placeholder={t("ui.agents.detail.tools.placeholder")}
 								aria-invalid={Boolean(entryError ?? error)}
 								onChange={(event) => {
 									setEntry(event.target.value);
@@ -512,7 +516,7 @@ function ToolsEditor({
 							/>
 						</div>
 						<Button variant="secondary" onClick={add} disabled={!entry.trim()}>
-							Add
+							{t("ui.agents.detail.tools.add")}
 						</Button>
 					</div>
 				</>
@@ -567,6 +571,7 @@ export function AgentDetail({
 	 */
 	belowHeader?: ReactNode;
 }) {
+	useI18nLocale();
 	const [editing, setEditing] = useState(false);
 	const [base, setBase] = useState<Draft>(() => draftOf(profile));
 	const [draft, setDraft] = useState<Draft>(() => draftOf(profile));
@@ -737,7 +742,7 @@ export function AgentDetail({
 			// the base so a second save in the same session is not a stale compare.
 			baseRevisionRef.current = result.definition_revision;
 			onSaved(result.name);
-			showSuccessToast(`Saved ${result.name}.`);
+			showSuccessToast(t("ui.notices.agents.saved", { name: result.name }));
 			// Focus lands on the pane's heading rather than `body`: the pressed
 			// button unmounts with the edit mode (UX U8).
 			requestAnimationFrame(() => headingRef.current?.focus());
@@ -799,9 +804,7 @@ export function AgentDetail({
 				status < 500;
 			setUnconfirmed(!definitive);
 			if (!definitive) {
-				showErrorToast(
-					"The save could not be confirmed. Check whether it was applied before retrying.",
-				);
+				showErrorToast(t("ui.notices.agents.save_unconfirmed"));
 			}
 		} finally {
 			setPending(false);
@@ -822,7 +825,7 @@ export function AgentDetail({
 			setBase(next);
 			setDraft(next);
 			onSaved(result.name);
-			showSuccessToast(`Installed ${result.name}. It can be edited now.`);
+			showSuccessToast(t("ui.notices.agents.installed", { name: result.name }));
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
@@ -903,7 +906,7 @@ export function AgentDetail({
 									navigate("/chat");
 								}}
 							>
-								New chat
+								{t("ui.agents.detail.action.new_chat")}
 							</Button>
 							{readOnly ? (
 								<Button
@@ -926,7 +929,7 @@ export function AgentDetail({
 										baseRevisionRef.current = profile.definition_revision;
 									}}
 								>
-									Edit
+									{t("ui.agents.detail.action.edit")}
 								</Button>
 							)}
 							{askEnabled ? (
@@ -936,7 +939,7 @@ export function AgentDetail({
 										onAskAgent(`Change the agent ${profile.name}: `)
 									}
 								>
-									Ask for a change
+									{t("ui.agents.detail.action.ask_change")}
 								</Button>
 							) : null}
 							{/*
@@ -952,7 +955,7 @@ export function AgentDetail({
 									<Button
 										variant="ghost"
 										size="icon"
-										aria-label="More actions"
+										aria-label={t("ui.agents.detail.action.more_actions")}
 										className="-mr-2"
 									>
 										<MoreHorizontal aria-hidden="true" />
@@ -960,7 +963,7 @@ export function AgentDetail({
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="end">
 									<DropdownMenuItem onSelect={() => onDuplicate(profile)}>
-										Duplicate as new agent
+										{t("ui.agents.detail.action.duplicate")}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
@@ -969,21 +972,20 @@ export function AgentDetail({
 				</div>
 				{readOnly ? (
 					<Alert variant="info">
-						<AlertTitle>Built-in agent</AlertTitle>
+						<AlertTitle>{t("ui.agents.detail.alert.builtin_title")}</AlertTitle>
 						<AlertDescription>
-							This one ships with the app and cannot be edited in place. Install
-							it to get an editable copy, or duplicate it as a new agent.
+							{t("ui.agents.detail.alert.builtin_body")}
 						</AlertDescription>
 					</Alert>
 				) : null}
 				{conflict ? (
 					<Alert variant="warning" data-testid="agent-conflict">
-						<AlertTitle>This changed while you were editing</AlertTitle>
+						<AlertTitle>
+							{t("ui.agents.detail.alert.conflict_title")}
+						</AlertTitle>
 						<AlertDescription>
 							<span className="block">
-								Something else — a configuration run, or another window — wrote
-								to this agent after you opened it. Your edits are kept; saving
-								writes only the fields you changed.
+								{t("ui.agents.detail.alert.conflict_body")}
 							</span>
 							<Button
 								variant="secondary"
@@ -991,23 +993,26 @@ export function AgentDetail({
 								className="mt-2"
 								onClick={cancel}
 							>
-								Reload the saved version
+								{t("ui.agents.detail.alert.conflict_reload")}
 							</Button>
 						</AlertDescription>
 					</Alert>
 				) : null}
 				{unconfirmed ? (
 					<Alert variant="danger" data-testid="agent-unconfirmed">
-						<AlertTitle>The last save was not confirmed</AlertTitle>
+						<AlertTitle>
+							{t("ui.agents.detail.alert.unconfirmed_title")}
+						</AlertTitle>
 						<AlertDescription>
-							The backend did not answer, so the write may or may not have
-							landed. Check the agent below, then edit again.
+							{t("ui.agents.detail.alert.unconfirmed_body")}
 						</AlertDescription>
 					</Alert>
 				) : null}
 				{error && !errorField ? (
 					<Alert variant="danger" role="alert" data-testid="agent-save-error">
-						<AlertTitle>That did not save</AlertTitle>
+						<AlertTitle>
+							{t("ui.agents.detail.alert.save_failed_title")}
+						</AlertTitle>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				) : null}
@@ -1033,7 +1038,7 @@ export function AgentDetail({
 				{editing ? (
 					<>
 						<EditSection
-							title="When to use it"
+							title={t("ui.agents.detail.section.when_to_use")}
 							description="One sentence the model reads to decide when this agent is the right one."
 							label="When to use this agent"
 							value={draft.description}
@@ -1043,7 +1048,7 @@ export function AgentDetail({
 							}
 						/>
 						<EditSection
-							title="Instructions"
+							title={t("ui.agents.detail.section.instructions")}
 							description="What the agent is told to do. This is the agent's whole behaviour."
 							label="Instructions"
 							value={draft.instructions}
@@ -1054,7 +1059,7 @@ export function AgentDetail({
 								setDraft((current) => ({ ...current, instructions: value }))
 							}
 						/>
-						<Section title="Tools">
+						<Section title={t("ui.agents.detail.section.tools")}>
 							<ToolsEditor
 								tools={draft.tools}
 								error={errorField === "tools" ? error : null}
@@ -1064,7 +1069,7 @@ export function AgentDetail({
 							/>
 						</Section>
 						<Section
-							title="Delegation and effort"
+							title={t("ui.agents.detail.section.delegation")}
 							description="Whether this agent may hand work to subagents, and which effort tier it runs at."
 						>
 							<div className="space-y-4">
@@ -1074,9 +1079,9 @@ export function AgentDetail({
 										onCheckedChange={(checked) =>
 											setDraft((current) => ({ ...current, delegate: checked }))
 										}
-										aria-label="May delegate to subagents"
+										aria-label={t("ui.agents.detail.delegate.aria")}
 									/>
-									<span>May delegate to subagents</span>
+									<span>{t("ui.agents.detail.delegate.label")}</span>
 								</div>
 								<div className="space-y-1">
 									<FieldLabel
@@ -1087,7 +1092,7 @@ export function AgentDetail({
 									<SearchableSelect
 										ariaLabel="Effort tier"
 										showLabel={false}
-										placeholder="Choose an effort tier"
+										placeholder={t("ui.agents.detail.field.effort_placeholder")}
 										busyLabel="Loading effort tiers"
 										options={["inherit", ...effortTiers].map((tier) => ({
 											id: tier,
@@ -1120,13 +1125,13 @@ export function AgentDetail({
 					</>
 				) : (
 					<>
-						<Section title="When to use it">
+						<Section title={t("ui.agents.detail.section.when_to_use")}>
 							<ReadBlock
 								text={profile.description || ""}
 								empty="No description yet — add one so a model knows when to pick this agent."
 							/>
 						</Section>
-						<Section title="Instructions">
+						<Section title={t("ui.agents.detail.section.instructions")}>
 							<ReadBlock
 								text={
 									profile.instructions ?? profile.packaged_instructions ?? ""
@@ -1134,7 +1139,7 @@ export function AgentDetail({
 								empty="No instructions yet."
 							/>
 						</Section>
-						<Section title="Tools">
+						<Section title={t("ui.agents.detail.section.tools")}>
 							{profile.tools && profile.tools.length > 0 ? (
 								<ul className="flex flex-wrap gap-1.5">
 									{profile.tools.map((tool) => (
@@ -1144,17 +1149,21 @@ export function AgentDetail({
 									))}
 								</ul>
 							) : (
-								<Badge variant="neutral">All tools</Badge>
+								<Badge variant="neutral">
+									{t("ui.agents.detail.tools.all_label")}
+								</Badge>
 							)}
 						</Section>
-						<Section title="Delegation and effort">
+						<Section title={t("ui.agents.detail.section.delegation")}>
 							<p className="text-body-sm text-ink">
 								{profile.delegate
 									? "May hand work to subagents."
 									: "Does its own work; it does not delegate."}
 							</p>
 							<p className="text-body-sm text-ink-muted">
-								Effort tier: {profile.effort ?? "inherit"}
+								{t("ui.agents.detail.read.effort_label")}{" "}
+								{/* i18n: ignore effort fallback - "inherit" is the wire's tier id, not copy */}
+								{profile.effort ?? "inherit"}
 							</p>
 							{/*
 							 * THE PIN'S REACH, at the pin (design note §4). An agent-level effort
@@ -1191,7 +1200,7 @@ export function AgentDetail({
 							 * the description carries both vocabulary words once, so the badge the
 							 * roster shows and the switch below stay one idea.
 							 */
-							title="Messaging"
+							title={t("ui.agents.detail.section.messaging")}
 							description="Reactive agents only reply. Proactive agents may also message you first."
 						>
 							<AgentClassControl
@@ -1203,7 +1212,7 @@ export function AgentDetail({
 							/>
 						</Section>
 						<Section
-							title="Used by"
+							title={t("ui.agents.detail.section.used_by")}
 							description="Teams that name this agent as a manager or a member."
 						>
 							{usedBy.length > 0 ? (
@@ -1225,12 +1234,12 @@ export function AgentDetail({
 								</ul>
 							) : (
 								<p className="text-body-sm text-ink-muted">
-									No team uses it yet.
+									{t("ui.agents.detail.empty.used_by")}
 								</p>
 							)}
 						</Section>
 						<Section
-							title="Where it came from"
+							title={t("ui.agents.detail.section.origin")}
 							description={
 								profile.source === "builtin"
 									? "Shipped with the app."
@@ -1242,14 +1251,16 @@ export function AgentDetail({
 							<dl className="space-y-1 text-body-sm">
 								{profile.seed_origin ? (
 									<div className="flex gap-2">
-										<dt className="text-ink-muted">Source</dt>
+										<dt className="text-ink-muted">
+											{t("ui.agents.detail.origin.source")}
+										</dt>
 										<dd className="text-ink">{profile.seed_origin}</dd>
 									</div>
 								) : null}
 								{profile.divergent_fields?.length ? (
 									<div className="flex gap-2">
 										<dt className="text-ink-muted">
-											Changed from the packaged copy
+											{t("ui.agents.detail.origin.changed")}
 										</dt>
 										<dd className="text-ink">
 											{profile.divergent_fields.join(", ")}
@@ -1277,11 +1288,15 @@ export function AgentDetail({
 /**
  * One editable section: a heading, the field, and the refusal beside it.
  *
+ * EXPORTED FOR THE SKILLS TAB'S INLINE EDIT, which is the same machine as this
+ * pane's (design spec §3.5): one editor idiom for a definition's description and
+ * instructions, not a second one that drifts.
+ *
  * The refusal sits WITH THE FIELD (UX U2) rather than in a banner at the top of
  * a 966px form, where the operator pressed Save at y=942 and the error rendered
  * at y=190.
  */
-function EditSection({
+export function EditSection({
 	title,
 	description,
 	label,
@@ -1371,6 +1386,7 @@ export function AgentCreate({
 	onSaved: (name: string) => void;
 	onCancel: () => void;
 }) {
+	useI18nLocale();
 	const [name, setName] = useState(() =>
 		initial ? duplicateNameCandidates(initial.name, takenNames) : "",
 	);
@@ -1478,7 +1494,9 @@ export function AgentCreate({
 					delegate: draft.delegate,
 				},
 			});
-			showSuccessToast(`Created ${result.name}.`);
+			showSuccessToast(
+				t("ui.notices.agents.created_named", { name: result.name }),
+			);
 			/*
 			 * The pane the page is about to open takes the caret (QA round 1, Q7): the
 			 * create form cannot focus a heading that does not exist yet.
@@ -1512,7 +1530,9 @@ export function AgentCreate({
 			</header>
 			{error && !errorField ? (
 				<Alert variant="danger" role="alert" data-testid="agent-create-error">
-					<AlertTitle>That did not save</AlertTitle>
+					<AlertTitle>
+						{t("ui.agents.detail.alert.save_failed_title")}
+					</AlertTitle>
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
 			) : null}
@@ -1534,7 +1554,7 @@ export function AgentCreate({
 				}}
 				className="space-y-8"
 			>
-				<Section title="Name and role">
+				<Section title={t("ui.agents.detail.section.name_role")}>
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="space-y-1">
 							<FieldLabel
@@ -1571,10 +1591,10 @@ export function AgentCreate({
 									 * Specialist` was internal vocabulary — UX NIT 2.)
 									 */}
 									<SelectItem value="role">
-										You can chat with it directly
+										{t("ui.agents.detail.kind.role")}
 									</SelectItem>
 									<SelectItem value="specialist">
-										Other agents can call on it
+										{t("ui.agents.detail.kind.specialist")}
 									</SelectItem>
 								</SelectContent>
 							</Select>
@@ -1582,7 +1602,7 @@ export function AgentCreate({
 					</div>
 				</Section>
 				<EditSection
-					title="When to use it"
+					title={t("ui.agents.detail.section.when_to_use")}
 					description="One sentence the model reads to decide when this agent is the right one."
 					label="When to use this agent"
 					value={draft.description}
@@ -1592,7 +1612,7 @@ export function AgentCreate({
 					}
 				/>
 				<EditSection
-					title="Instructions"
+					title={t("ui.agents.detail.section.instructions")}
 					description="What the agent is told to do. This is the agent's whole behaviour."
 					label="Instructions"
 					value={draft.instructions}
@@ -1604,7 +1624,7 @@ export function AgentCreate({
 						setDraft((current) => ({ ...current, instructions: value }))
 					}
 				/>
-				<Section title="Delegation and effort">
+				<Section title={t("ui.agents.detail.section.delegation")}>
 					<div className="space-y-4">
 						<div className="flex items-center gap-2 text-body-sm">
 							<Switch
@@ -1612,9 +1632,9 @@ export function AgentCreate({
 								onCheckedChange={(checked) =>
 									setDraft((current) => ({ ...current, delegate: checked }))
 								}
-								aria-label="May delegate to subagents"
+								aria-label={t("ui.agents.detail.delegate.aria")}
 							/>
-							<span>May delegate to subagents</span>
+							<span>{t("ui.agents.detail.delegate.label")}</span>
 						</div>
 						<div className="space-y-1">
 							<FieldLabel label="Effort tier" htmlFor="agent-create-effort" />
@@ -1622,7 +1642,7 @@ export function AgentCreate({
 								ariaLabel="Effort tier"
 								showLabel={false}
 								busyLabel="Loading effort tiers"
-								placeholder="Choose an effort tier"
+								placeholder={t("ui.agents.detail.field.effort_placeholder")}
 								options={["inherit", ...effortTiers].map((tier) => ({
 									id: tier,
 									name: tier,
@@ -1641,7 +1661,9 @@ export function AgentCreate({
 							/>
 						</div>
 						<div className="space-y-1">
-							<span className="text-body-sm text-ink-muted">Tools</span>
+							<span className="text-body-sm text-ink-muted">
+								{t("ui.agents.detail.section.tools")}
+							</span>
 							<ToolsEditor
 								tools={draft.tools}
 								error={errorField === "tools" ? error : null}

@@ -159,7 +159,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
-			export { answerActionsFor, forkEntryId, forkExcerpt, FORK_EXCERPT_MAX_CHARS, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
+			export { answerActionsFor, forkEntryId, forkExcerpt, FORK_EXCERPT_MAX_CHARS, answerActionsLabel, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { transcriptRowActions } from "./src/renderer/src/features/chat/canonical/transcript-copy";
 			export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";
 			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
@@ -609,7 +609,7 @@ test("the row is a toolbar with the actions as its leftmost content", async () =
 	const toolbar = dom.window.document.querySelector("[data-lo-answer-actions]");
 	assert.ok(toolbar, "the toolbar is in the DOM");
 	assert.equal(toolbar.getAttribute("role"), "toolbar");
-	assert.equal(toolbar.getAttribute("aria-label"), mod.ANSWER_ACTIONS_LABEL);
+	assert.equal(toolbar.getAttribute("aria-label"), mod.answerActionsLabel());
 	assert.ok(
 		button("Copy"),
 		"Copy is offered at rest, with no pointer in the frame",

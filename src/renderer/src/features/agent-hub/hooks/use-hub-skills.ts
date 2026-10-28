@@ -173,9 +173,18 @@ function settleSkillLinkWrite(client: QueryClient) {
 	void client.invalidateQueries({ queryKey: ["desktop", "skills"] });
 }
 
-export function usePullHubSkill() {
+export function usePullHubSkill(
+	/*
+	 * `retry: 0` for the Skills tab's Download (#1458 QA r2 Q11 / review r3 m2):
+	 * a refused pull there is an answer the pane shows, and the app default
+	 * (`mutations.retry: 1`) sent it twice. The Agent Hub page keeps the default:
+	 * its id is reused per tuple, so its retry is a receipt replay it relies on.
+	 */
+	options: { retry?: number } = {},
+) {
 	const client = useQueryClient();
 	return useMutation({
+		...(options.retry === undefined ? {} : { retry: options.retry }),
 		mutationFn: (input: {
 			requestId: string;
 			remoteId: string;

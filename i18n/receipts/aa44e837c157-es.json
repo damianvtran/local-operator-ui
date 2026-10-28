@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Session started on deepseek/deepseek-flash and switched to anthropic/claude-sonnet-5-5 after a provider quota error (HTTP 402) before any catalogue was read; every read, check and verdict in this receipt ran on anthropic/claude-sonnet-5-5.",
+ "fallback": "deepseek/deepseek-flash -> anthropic/claude-sonnet-5-5 (quota 402)",
+ "independence": "Separate agent role and session from the translator, which the operator reports ran on anthropic/claude-sonnet-5-5 after a fallback. Same served model (and same model as the previous audit), so NOT model-independent; no different model family was available to this session. The ledger rule is agent-independence.",
+ "instance": "aa44e837c157-es",
+ "session": "aa44e837c157",
+ "locale": "es",
+ "namespace": "ui.agents.skills",
+ "branch": "feat/agents-skills-tab",
+ "head": "dabd636f468fc7dc65bb0fa2f8fc6e804dad7621",
+ "pr": "damianvtran/local-operator-ui#1443",
+ "date": "2026-10-27",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "pass",
+ "keys_read": 54,
+ "scope": "re-audit after ui.agents.skills.hub.update_failed was added: 53 keys proven byte-identical to the head audited in f7245429b0 (git diff shows only that one added line; en diff shows only the new key); new key audited in full",
+ "sha256": {
+  "es": "0b1665cb62e709e79b0521736a54e15505c09c48e7e038dfa7dca49e8df3105a",
+  "en": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14"
+ },
+ "verified": [
+  "git diff f7245429b0..dabd636f46 on the locale catalogue is exactly one added line (the new key); on en exactly one added line plus the sidecar note; the receipts' recorded sha256 equal the f7245429b0 blobs, so the 53 other keys are byte-identical and the earlier minors/nits (listed in the 17d1ca9bf58a receipt) are unchanged, not worsened",
+  "new key 'La actualización falló' is a status mark: no imperative, no 'open to retry' clause, no placeholders or plural syntax, no leading/trailing space",
+  "strict prefix: ui.hub.skills.update_failed in this locale starts with the new text followed by ' — ' (byte compare), so one state reads with one wording on the Agents and Hub pages",
+  "Hub 'Update available' / 'Update applied' marks in this locale use the same update noun as the new text",
+  "no Cf/Cc code points in the new string",
+  "node scripts/i18n/generate.mjs --check, check-strings, context-parity ok at head"
+ ],
+ "findings": [
+  {
+   "severity": "nit",
+   "key": "ui.agents.skills.hub.update_failed",
+   "current": "La actualización falló",
+   "proposed": "unchanged",
+   "summary": "Fit note: 22 chars vs en 13; the Hub-prefix wording is the natural Spanish and no shorter wording stays a strict prefix of the Hub string. Acceptable: the mark leads line two, which truncates at its END, so the mark itself is never the clipped part. Rendered check at the narrowest roster width is not something this audit did."
+  }
+ ]
+}

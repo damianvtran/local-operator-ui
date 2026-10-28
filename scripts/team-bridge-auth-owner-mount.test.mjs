@@ -377,6 +377,9 @@ for (const [op, fields, location] of [
 		{ conversation_id: "conv", account_id: "member" },
 		"query",
 	],
+	// Irreversible: it must be refused before dispatch if the signed-in account
+	// is not the one that captured the screen the person confirmed on.
+	["conversations.delete", { conversation_id: "conv" }, "query"],
 ]) {
 	test(`conversation owner guard ${op} ${fields.action ?? ""} uses ${location} with explicit target tenant`, () => {
 		const input = {

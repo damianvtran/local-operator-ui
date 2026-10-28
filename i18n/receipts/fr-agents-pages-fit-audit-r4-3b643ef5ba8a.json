@@ -1,0 +1,263 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-receipt",
+	"audit_kind": "independent-translation-audit",
+	"batch": "agents-pages-fit",
+	"round": 4,
+	"focus": "fit-remediation",
+	"round_note": "Focused round-4 confirmation of the round-3 remediation in ONE namespace: five fr values (scope.all, scope.builtin, scope.custom, scope.installed, scope_legend) changed to resolve F-r3-1 (major: the shared scope words are also the per-agent source word, so they must be masculine SINGULAR) and F-r3-2 (minor: the sr-only legend named 'définitions'). This run did not translate or remediate, wrote no catalogue/context/ledger/git state, and is independent of the translator session and of the round-3 auditor.",
+	"head": "99abae51a82b7abdb3293fc2da8ebfb25eed7e18",
+	"head_note": "HEAD 99abae51a82b7abdb3293fc2da8ebfb25eed7e18 plus the uncommitted fr delta under audit. `git diff --numstat` for the fr file is 5 5, one hunk, and a per-key comparison against `git show HEAD:...` shows exactly the five scope keys moved with the other 17 byte-identical; the HEAD blob is 33b4134fec995c556c89b730e4e28d07d84054caa7be559fc307de803ca5dab8, the round-2 audited bytes. The same worktree also carries an uncommitted ru delta and an uncommitted test rewrite, both outside this receipt; neither was judged.",
+	"branch": "i18n-agents-pages",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+	"locale": "fr",
+	"locale_name": "French",
+	"namespace": "ui.agents.pages",
+	"date": "2026-10-26",
+	"audit_date": "2026-10-26",
+	"status": "passed",
+	"result": "passed",
+	"verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over all 22 keys. F-r3-1 is resolved at BOTH readers of the shared keys: the four filter segments read 'Tout | Créé | Installé | Intégré' in the real render with no truncation, and the per-agent slot (roster SourceChip + detail AgentMeta) reads the masculine singular 'Intégré', 'Créé', 'Installé' under one agent each. F-r3-2 is resolved: the sr-only legend now names 'les agents'.",
+	"key_count": 22,
+	"keys_audited": 22,
+	"keys_read": 22,
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "F-r3-1",
+			"severity": "major",
+			"status": "resolved",
+			"keys": [
+				"ui.agents.pages.scope.all",
+				"ui.agents.pages.scope.builtin",
+				"ui.agents.pages.scope.custom",
+				"ui.agents.pages.scope.installed"
+			],
+			"verification": "Both readers checked in code and in the translator's real-render frames. (a) Filter slot: agents-page.tsx:140-145 maps SCOPE_LABEL keys, :760-770 renders {t(SCOPE_LABEL[value])} into aria-pressed buttons; measured scopeButtons = [Tout, Créé, Installé, Intégré] with truncatedCount 0, every segment scrollWidth == clientWidth == 62 and minContentSum 199.59 px inside buttonBoxSum 246 px. (b) Per-agent slot: detail-parts.tsx:258-266 sourceLabel() returns the same three keys to SourceChip (detail-parts.tsx:231) and AgentMeta (agent-detail.tsx:171); frames show 'Créé' on aa-custom, 'Installé' on Aida and 'Intégré' on each built-in row, and the detail meta lines read 'Intégré' (coder), 'Créé' (aa-custom), 'Installé · Proactif · Delegates' (Aida), each with pluralHits []. A masculine singular adjective is the only form that is grammatical in BOTH slots; 'Tout' is the shipped invariable 'All'.",
+			"accepted_note": "Considered and rejected: 'Tous' as the All label (it would put a plural pronoun beside three singular class labels in one row, and 'Tout' already ships for this sense in ui.common.actions.find_replace_widget.all). Raised as no finding: a bare masculine singular is a normal French class label and the row reads natively."
+		},
+		{
+			"id": "F-r3-2",
+			"severity": "minor",
+			"status": "resolved",
+			"keys": [
+				"ui.agents.pages.scope_legend"
+			],
+			"verification": "Value is now 'Afficher les agents selon leur propriétaire'. The fieldset is rendered only when !teamMode (agents-page.tsx:743-746, the scope control filters agents alone), so naming 'agents' is the accurate noun and matches the page's visible vocabulary ('Agents et équipes', 'Rechercher des agents', 'Aucun agent…'). sr-only, so no fit change; measured scopeLegend equals the audited value."
+		}
+	],
+	"observations": [
+		{
+			"id": "O-r4-1",
+			"scope": "outside this namespace, non-gating for this receipt",
+			"what": "AgentMeta still appends two hardcoded English literals on a French page: agent-detail.tsx:173 `profile.delegate ? \"Delegates\" : null` and :174 `profile.kind === \"specialist\" ? \"Specialist\" : null`. Visible in frames/fr-detail-aida.png as the detail meta line 'Installé · Proactif · Delegates'.",
+			"why_not_here": "No ui.agents.pages key produces these words and no catalogue value can fix them; the defect is a code literal, not translated copy.",
+			"suggested": "Route both through catalogue keys in ui.agents.detail (fr: 'Délègue' / 'Spécialiste') read with t() at call time, exactly as CLASS_LABEL and sourceLabel already are."
+		},
+		{
+			"id": "O-r4-2",
+			"scope": "not catalogue-keyed, out of catalogue scope",
+			"what": "The right-hand composer pane in the same frames is English ('Ask for an agent', 'Describe what you want…', 'Or add an agent by hand') while the starter prompts below it are French.",
+			"why_not_here": "`git grep` finds none of those three strings in ANY en or fr catalogue file, so they are not catalogue copy (server/API-provided). Nothing in ui.agents.pages is implicated; recorded so the English pane is not mistaken for a leak from this namespace."
+		},
+		{
+			"id": "O-r4-3",
+			"scope": "PR-level, must ship with the delta",
+			"what": "At HEAD the fr delta alone fails scripts/agents-source-and-recency-locale.test.mjs: its fixture pinned fr scope.builtin/installed/custom to 'Intégrées'/'Installées'/'Créées' (failure at :155, actual 'Intégré' vs expected 'Intégrées'). Mid-audit the worktree gained an uncommitted rewrite of that test that reads the expectations from the catalogues; it now passes 7/7 for fr and ur.",
+			"why_not_here": "Authored by another session, not by this audit; I neither wrote nor required it. Recorded because dropping that test change would leave the PR red.",
+			"suggested": "Carry the test rewrite in the same change as the five fr values."
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [],
+		"closed_finding_ids": [
+			"F-r3-1",
+			"F-r3-2"
+		],
+		"observation_ids": [
+			"O-r4-1",
+			"O-r4-2",
+			"O-r4-3"
+		]
+	},
+	"input_binding": {
+		"bound_by": "task brief hashes, checked BEFORE reading any file: both matched the working-tree bytes exactly",
+		"en_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+		"fr_sha256": "f47cf6722ca91cfde0d32701dc03305fcc1c7651396d1e19d992bf039ba8caef",
+		"context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+		"head_blob_fr_sha256": "33b4134fec995c556c89b730e4e28d07d84054caa7be559fc307de803ca5dab8",
+		"match": true,
+		"mismatch_action": "would have stopped on mismatch; none occurred"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.pages.json",
+			"sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+			"sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642"
+		},
+		"fr": {
+			"path": "src/i18n/catalogues/fr/ui.agents.pages.json",
+			"sha256": "f47cf6722ca91cfde0d32701dc03305fcc1c7651396d1e19d992bf039ba8caef"
+		}
+	},
+	"en_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+	"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+	"fr_sha256": "f47cf6722ca91cfde0d32701dc03305fcc1c7651396d1e19d992bf039ba8caef",
+	"target_sha256": "f47cf6722ca91cfde0d32701dc03305fcc1c7651396d1e19d992bf039ba8caef",
+	"context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"harness": "Local Operator",
+		"team": "lopdev",
+		"session": "3b643ef5ba8a",
+		"instance": "3b643ef5ba8a",
+		"model": "radient/auto",
+		"actual_model": "radient/auto",
+		"actual_model_source": "Harness session header for this run: 'Model: radient/auto'. That header is the only model evidence available to this session; no served-model id, provider response header or router log is exposed to it, so none is claimed or inferred.",
+		"model_fallback": "none observed and none claimed: the session header reports one route for the whole round, no fallback was signalled or detected, and no provider switch was disclosed to the agent",
+		"model_provenance": "One route for the whole round - style guide/glossary reading, catalogue review, gate commands, receipt derivation: the harness header reported radient/auto throughout and this session never switched model or provider.",
+		"independence": "Independent of the translator and of the round-3 auditor: this session wrote no catalogue, context, ledger, context-allowance or git object, and the only file it wrote is this receipt. It did not translate or edit the five values; it read them only after they existed, bound to the task-supplied hashes first. No translation, MT service, API or SDK was used to compare, back-translate or generate copy - every judgement is this auditor's own reading of French.",
+		"independent_from_translator_session": true
+	},
+	"agent": "i18n-auditor",
+	"instance": "3b643ef5ba8a",
+	"session": "3b643ef5ba8a",
+	"model": "radient/auto",
+	"scope": {
+		"worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+		"branch": "i18n-agents-pages",
+		"head": "99abae51a82b7abdb3293fc2da8ebfb25eed7e18",
+		"namespaces": [
+			"ui.agents.pages"
+		],
+		"note": "Focused round 4 over the uncommitted fr fit-remediation delta: exactly five values changed in src/i18n/catalogues/fr/ui.agents.pages.json (git diff --numstat 5 5, one hunk, per-key comparison against HEAD: 5 moved, 17 byte-identical). All 22 keys were read against the English source and its context sidecar. The ru delta and the test rewrite in the same worktree are outside this receipt."
+	},
+	"delta": {
+		"keys_moved": 5,
+		"keys_identical_to_head": 17,
+		"values": [
+			{
+				"key": "ui.agents.pages.scope.all",
+				"before": "Toutes",
+				"after": "Tout"
+			},
+			{
+				"key": "ui.agents.pages.scope.builtin",
+				"before": "Intégrées",
+				"after": "Intégré"
+			},
+			{
+				"key": "ui.agents.pages.scope.custom",
+				"before": "Créées",
+				"after": "Créé"
+			},
+			{
+				"key": "ui.agents.pages.scope.installed",
+				"before": "Installées",
+				"after": "Installé"
+			},
+			{
+				"key": "ui.agents.pages.scope_legend",
+				"before": "Afficher les définitions selon leur propriétaire",
+				"after": "Afficher les agents selon leur propriétaire"
+			}
+		]
+	},
+	"checks": {
+		"icu_plural": "No plural/select/selectordinal message exists in this namespace in en or fr (regex scan of all 44 values), so CLDR category completeness is vacuous here and no category can be missing. The only placeholder in the namespace is {query} (empty.search), present once on both sides.",
+		"locale_parity_fr": "node --test --test-name-pattern='\\[fr\\]' scripts/i18n/locale-parity.test.mjs -> tests 6, pass 6, fail 0 (ships at least one message; defines each key in at most one namespace file; carries EVERY key; names only English keys; preserves every ICU placeholder; not an English stub).",
+		"context_parity": "node scripts/i18n/context-parity.mjs -> context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only).",
+		"duplicates": "node scripts/i18n/check-duplicates.mjs -> check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s).",
+		"generate_check": "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+		"source_chip_test": "node --test scripts/agents-source-and-recency-locale.test.mjs -> tests 7, pass 7, fail 0 (run against the worktree as it stands, i.e. including the concurrent catalogue-derived fixture rewrite; the translator's measurements/stale-test.log records the 6/7 failure it had before that rewrite).",
+		"structure": "22 keys on both sides; key set equal to en; key order equal to en; tab indent; single trailing newline; no CRLF; every value NFC; no duplicate members.",
+		"typography": "U+202F before '?' in both discard_bar questions and inside the guillemets of empty.search; U+2019 apostrophes; no ASCII apostrophe, no plain space before ; : ! ? in any of the 22 values.",
+		"fit": "Real render at 1380x900 / dpr 2: well 256 px client and scroll, buttonBoxSum 246 px, segment minContentSum 199.59 px, lastSegmentRight 530 px inside well.right 532 px, truncatedCount 0, every segment scrollWidth == clientWidth == 62. The five audited strings are shorter than the plural forms they replaced, so the row cannot be tighter than the round-3 measurement.",
+		"fit_at_both_slots": "Rendered strings taken from the frames equal the audited catalogue values exactly: scopeButtons [Tout, Créé, Installé, Intégré]; row chips Créé (aa-custom), Installé (Aida), Intégré (11 built-ins); detail meta lines Intégré, Créé, Installé · Proactif · Delegates; pluralHits [] on all three.",
+		"label_in_name": "The four segments have no aria-label: their accessible name is the visible label, so the singular word is what AT announces, under the legend. No control composes the scope label into a longer sentence (the empty states are whole sentences owned per scope, agents-page.tsx:147-164), so nothing re-pluralises it.",
+		"counted_plural_stays_plural": "The sidebar count '11 agents intégrés disponibles' is its own message, ui.agents.starters.available, a one/many/other ICU plural that is not composed from scope.builtin; the singular label therefore leaks nowhere a count governs the noun."
+	},
+	"consistency": {
+		"empty_states": [
+			{
+				"key": "ui.agents.pages.empty.custom",
+				"value": "Aucun agent créé.",
+				"agrees_with": "Créé"
+			},
+			{
+				"key": "ui.agents.pages.empty.installed",
+				"value": "Aucun agent installé.",
+				"agrees_with": "Installé"
+			},
+			{
+				"key": "ui.agents.pages.empty.builtin",
+				"value": "Aucun agent intégré.",
+				"agrees_with": "Intégré"
+			}
+		],
+		"shipped_family": "ui.agents.detail.alert.builtin_title 'Agent intégré' (rendered in frames/fr-detail-coder.png as 'Agent intégré'), ui.agents.settings.general.created 'Créé', ui.common.actions.find_replace_widget.all 'Tout' - all masculine singular for one agent or invariable, matching the new labels."
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+		},
+		"contract": {
+			"path": "docs/I18N.md",
+			"sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+		},
+		"context_sidecar": {
+			"path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+			"sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642"
+		}
+	},
+	"evidence": {
+		"root": "/Users/damian/.local-operator/sessions/c7ec6bc12a21/scratchpad/rendered-1432-fit2",
+		"kind": "translator's real-render capture of the app's own webContents.capturePage() against the audited bytes; this audit read the frames and measurements, it did not run the rig",
+		"frames": [
+			{
+				"path": "frames/fr-agents-roster.png",
+				"sha256": "c042f12a97e410cf41ac2697b3ac9813eb0de382463725446474fc59694ff532",
+				"shows": "filter row Tout | Créé | Installé | Intégré; row chips; '11 agents intégrés disponibles'"
+			},
+			{
+				"path": "frames/fr-detail-coder.png",
+				"sha256": "e7d17e3f2e363d5c4796f82d6175e7a369231c71976bcdad5c4fc2a80979312c",
+				"shows": "meta line Intégré; alert 'Agent intégré'"
+			},
+			{
+				"path": "frames/fr-detail-aa-custom.png",
+				"sha256": "47de410a3a0ab7608b81408db561740bb7c2636ca845a192bf1588eb0567bcf7",
+				"shows": "meta line Créé"
+			},
+			{
+				"path": "frames/fr-detail-aida.png",
+				"sha256": "b56cfbc76bce8ef90438a63d7d6190c69b71d862236a3ce91588ffdb76e0acf3",
+				"shows": "meta line Installé · Proactif · Delegates"
+			}
+		],
+		"measurements": {
+			"path": "measurements/run-fr.out.json",
+			"sha256": "3501f88bc1f611cfd644cb27f61529a352a3e8697d0774bc0a77e03ac02d0669"
+		},
+		"readme": {
+			"path": "README.md",
+			"sha256": "001ba3a72c07451aaebce06c4b1c0aedce51689ae7b5d2d44efd1f693e0dd56a"
+		}
+	}
+}

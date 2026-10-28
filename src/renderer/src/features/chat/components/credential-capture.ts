@@ -136,6 +136,7 @@ export const MASK_CELL = "\u2022";
  * module is bundled from source by `scripts/soft-breaks.test.mjs` with no alias
  * map, and `ask-answer.ts` reads `@shared`.
  */
+import { t } from "../../../../../i18n";
 import { approvalAnswerValue } from "../approval-words";
 import { SEPARATOR, SEPARATOR_CLASS, pyTrim } from "./slash-token";
 
@@ -2054,7 +2055,7 @@ export const CREDENTIAL_CLEAR_UNDO_LABEL = "Undo";
  * number the control's accessible name carries.
  */
 export const clearedToastLine = (index: number): string =>
-	`Credential #${index} removed`;
+	t("ui.notices.credentials.removed", { index });
 
 /** Which sentence the composer's notice line carries, as one decision. */
 export type ComposerNoticeInput = {
@@ -2193,7 +2194,7 @@ export function restoreClearedCredential(args: {
  * verb that stored them, so this is the operator's half.
  */
 export const storedNotice = (keys: readonly string[]): string =>
-	`Stored ${keys.join(", ")}. Injected into every bash command as an environment variable; the agent cannot read the value.`;
+	t("ui.notices.credentials.stored", { keys: keys.join(", ") });
 
 /**
  * The notice for a store that ANSWERED and refused the write (§9.4), naming
@@ -2211,8 +2212,10 @@ export const storedNotice = (keys: readonly string[]): string =>
  * stored" is a claim this one may not make on silence's behalf.
  */
 export function unstoredNotice(keys: readonly string[]): string {
-	const noun = keys.length === 1 ? "credential" : "credentials";
-	return `${keys.length} ${noun} could not be stored (${[...keys].sort().join(", ")}); the agent has been told so. Paste the value again after /credential to retry.`;
+	return t("ui.notices.credentials.unstored", {
+		count: keys.length,
+		keys: [...keys].sort().join(", "),
+	});
 }
 
 /**
@@ -2294,8 +2297,10 @@ export const unconfirmedHover = (citation: string): string =>
  * again.
  */
 export function unconfirmedNotice(keys: readonly string[]): string {
-	const noun = keys.length === 1 ? "credential" : "credentials";
-	return `${keys.length} ${noun} could not be confirmed as stored (${[...keys].sort().join(", ")}); the agent has been told to check before using it. ${UNCONFIRMED_OPERATOR_MOVE}`;
+	return t("ui.notices.credentials.unconfirmed", {
+		count: keys.length,
+		keys: [...keys].sort().join(", "),
+	});
 }
 
 /** Shown while the token is seated and the secret has not started arriving. */

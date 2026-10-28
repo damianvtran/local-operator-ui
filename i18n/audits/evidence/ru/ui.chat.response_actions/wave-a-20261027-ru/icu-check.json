@@ -1,0 +1,949 @@
+{
+ "locale": "ru",
+ "source_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "key_count": 38,
+ "placeholders_match": true,
+ "problems": [],
+ "keys_with_plural_or_select": [],
+ "results": [
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.generating_name",
+   "en": "Generating name…",
+   "ru": "Создание названия…",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Создание названия…"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.jump_agent",
+   "en": "Jump to turn {turn, number} of {total, number}, {name}",
+   "ru": "Перейти к ходу {turn, number} из {total, number}, {name}",
+   "args": "name=argument,total=number(default),turn=number(default)",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "turn": 1,
+     "total": 1234,
+     "name": "Исправить сборку"
+    },
+    {
+     "turn": 21,
+     "total": 1234,
+     "name": "Оценка"
+    },
+    {
+     "turn": 3,
+     "total": 1234,
+     "name": "«Срочный фикс»"
+    },
+    {
+     "turn": 2,
+     "total": 1234,
+     "name": "Исправить сборку, затем деплой"
+    },
+    {
+     "turn": 7,
+     "total": 1234,
+     "name": "Проверить сборку релиза и развернуть её на всех устройствах команды"
+    },
+    {
+     "turn": 4,
+     "total": 1234,
+     "name": "Build 修复 — 构建发布"
+    },
+    {
+     "turn": 1000,
+     "total": 1234,
+     "name": "شركة النور — Local Operator"
+    },
+    {
+     "turn": 8,
+     "total": 1234,
+     "name": "Q4 launch review"
+    }
+   ],
+   "renders": [
+    "Перейти к ходу 1 из 1 234, Исправить сборку",
+    "Перейти к ходу 21 из 1 234, Оценка",
+    "Перейти к ходу 3 из 1 234, «Срочный фикс»",
+    "Перейти к ходу 2 из 1 234, Исправить сборку, затем деплой",
+    "Перейти к ходу 7 из 1 234, Проверить сборку релиза и развернуть её на всех устройствах команды",
+    "Перейти к ходу 4 из 1 234, Build 修复 — 构建发布",
+    "Перейти к ходу 1 000 из 1 234, شركة النور — Local Operator",
+    "Перейти к ходу 8 из 1 234, Q4 launch review"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.jump_agent_unnamed",
+   "en": "Jump to turn {turn, number} of {total, number}",
+   "ru": "Перейти к ходу {turn, number} из {total, number}",
+   "args": "total=number(default),turn=number(default)",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "turn": 1,
+     "total": 1
+    },
+    {
+     "turn": 1234,
+     "total": 1234
+    }
+   ],
+   "renders": [
+    "Перейти к ходу 1 из 1",
+    "Перейти к ходу 1 234 из 1 234"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.jump_user",
+   "en": "Jump to your message in turn {turn, number} of {total, number}, {clock}",
+   "ru": "Перейти к вашему сообщению — ход {turn, number} из {total, number}, {clock}",
+   "args": "clock=argument,total=number(default),turn=number(default)",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "turn": 3,
+     "total": 12,
+     "clock": "3:42 PM"
+    },
+    {
+     "turn": 3,
+     "total": 12,
+     "clock": "12:05 AM"
+    },
+    {
+     "turn": 3,
+     "total": 12,
+     "clock": "11:11 PM"
+    },
+    {
+     "turn": 3,
+     "total": 12,
+     "clock": "15:42"
+    }
+   ],
+   "renders": [
+    "Перейти к вашему сообщению — ход 3 из 12, 3:42 PM",
+    "Перейти к вашему сообщению — ход 3 из 12, 12:05 AM",
+    "Перейти к вашему сообщению — ход 3 из 12, 11:11 PM",
+    "Перейти к вашему сообщению — ход 3 из 12, 15:42"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.jump_user_no_clock",
+   "en": "Jump to your message in turn {turn, number} of {total, number}",
+   "ru": "Перейти к вашему сообщению — ход {turn, number} из {total, number}",
+   "args": "total=number(default),turn=number(default)",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "turn": 3,
+     "total": 12
+    }
+   ],
+   "renders": [
+    "Перейти к вашему сообщению — ход 3 из 12"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.turn",
+   "en": "Turn {turn, number} of {total, number}",
+   "ru": "Ход {turn, number} из {total, number}",
+   "args": "total=number(default),turn=number(default)",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "turn": 1,
+     "total": 1
+    },
+    {
+     "turn": 1000,
+     "total": 1234
+    }
+   ],
+   "renders": [
+    "Ход 1 из 1",
+    "Ход 1 000 из 1 234"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_agent_assign",
+   "en": "Agent: {label}. Assign an agent",
+   "ru": "Агент: {label}. Назначить агента",
+   "args": "label=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "label": "Без агента"
+    },
+    {
+     "label": "Local Operator Dev"
+    },
+    {
+     "label": "ООО «Ромашка»"
+    },
+    {
+     "label": "Очень длинное имя агента для проверки переноса"
+    }
+   ],
+   "renders": [
+    "Агент: Без агента. Назначить агента",
+    "Агент: Local Operator Dev. Назначить агента",
+    "Агент: ООО «Ромашка». Назначить агента",
+    "Агент: Очень длинное имя агента для проверки переноса. Назначить агента"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_agent_closed",
+   "en": "Agent: {label}. {reason}",
+   "ru": "Агент: {label}. {reason}",
+   "args": "label=argument,reason=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "label": "Local Operator Dev",
+     "reason": "The runtime closed this seat."
+    }
+   ],
+   "renders": [
+    "Агент: Local Operator Dev. The runtime closed this seat."
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_agent_switch",
+   "en": "Agent: {label}. Switch agent",
+   "ru": "Агент: {label}. Сменить агента",
+   "args": "label=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "label": "Local Operator Dev"
+    },
+    {
+     "label": "ООО «Ромашка»"
+    }
+   ],
+   "renders": [
+    "Агент: Local Operator Dev. Сменить агента",
+    "Агент: ООО «Ромашка». Сменить агента"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_team_assign",
+   "en": "Team: {label}. Assign a team",
+   "ru": "Команда: {label}. Назначить команду",
+   "args": "label=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "label": "Без команды"
+    },
+    {
+     "label": "Platform"
+    }
+   ],
+   "renders": [
+    "Команда: Без команды. Назначить команду",
+    "Команда: Platform. Назначить команду"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_team_closed",
+   "en": "Team: {label}. {reason}",
+   "ru": "Команда: {label}. {reason}",
+   "args": "label=argument,reason=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "label": "Platform",
+     "reason": "The runtime closed this seat."
+    }
+   ],
+   "renders": [
+    "Команда: Platform. The runtime closed this seat."
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_team_switch",
+   "en": "Team: {label}. Switch team",
+   "ru": "Команда: {label}. Сменить команду",
+   "args": "label=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "label": "Platform"
+    }
+   ],
+   "renders": [
+    "Команда: Platform. Сменить команду"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.assign_agent",
+   "en": "Assign an agent",
+   "ru": "Назначить агента",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Назначить агента"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.assign_team",
+   "en": "Assign a team",
+   "ru": "Назначить команду",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Назначить команду"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.no_agent",
+   "en": "No agent",
+   "ru": "Без агента",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Без агента"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.no_team",
+   "en": "No team",
+   "ru": "Без команды",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Без команды"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.region.composer",
+   "en": "Message composer",
+   "ru": "Ввод сообщения",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Ввод сообщения"
+   ]
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.region.conversation",
+   "en": "Conversation",
+   "ru": "Разговор",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Разговор"
+   ]
+  },
+  {
+   "namespace": "ui.chat.header",
+   "key": "ui.chat.header.archive_conversation",
+   "en": "Archive conversation",
+   "ru": "Архивировать разговор",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Архивировать разговор"
+   ]
+  },
+  {
+   "namespace": "ui.chat.header",
+   "key": "ui.chat.header.cancel_rename",
+   "en": "Cancel rename",
+   "ru": "Отменить переименование",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Отменить переименование"
+   ]
+  },
+  {
+   "namespace": "ui.chat.header",
+   "key": "ui.chat.header.rename_conversation",
+   "en": "Rename conversation",
+   "ru": "Переименовать разговор",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Переименовать разговор"
+   ]
+  },
+  {
+   "namespace": "ui.chat.header",
+   "key": "ui.chat.header.restore_conversation",
+   "en": "Restore conversation",
+   "ru": "Восстановить разговор",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Восстановить разговор"
+   ]
+  },
+  {
+   "namespace": "ui.chat.header",
+   "key": "ui.chat.header.saving_conversation_name",
+   "en": "Saving the conversation name",
+   "ru": "Сохранение названия разговора",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Сохранение названия разговора"
+   ]
+  },
+  {
+   "namespace": "ui.chat.response_actions",
+   "key": "ui.chat.response_actions.answer_label",
+   "en": "Answer actions",
+   "ru": "Действия с финальным ответом",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Действия с финальным ответом"
+   ]
+  },
+  {
+   "namespace": "ui.chat.response_actions",
+   "key": "ui.chat.response_actions.copied",
+   "en": "Copied",
+   "ru": "Скопировано",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Скопировано"
+   ]
+  },
+  {
+   "namespace": "ui.chat.response_actions",
+   "key": "ui.chat.response_actions.copy",
+   "en": "Copy",
+   "ru": "Копировать",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Копировать"
+   ]
+  },
+  {
+   "namespace": "ui.chat.response_actions",
+   "key": "ui.chat.response_actions.yours_label",
+   "en": "Your message actions",
+   "ru": "Действия с вашим сообщением",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Действия с вашим сообщением"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.collapse_chats",
+   "en": "Collapse {name} chats",
+   "ru": "Свернуть чаты «{name}»",
+   "args": "name=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "name": "Исправить сборку"
+    },
+    {
+     "name": "Оценка"
+    },
+    {
+     "name": "«Срочный фикс»"
+    },
+    {
+     "name": "Исправить сборку, затем деплой"
+    },
+    {
+     "name": "Проверить сборку релиза и развернуть её на всех устройствах команды"
+    },
+    {
+     "name": "Build 修复 — 构建发布"
+    },
+    {
+     "name": "شركة النور — Local Operator"
+    },
+    {
+     "name": "Q4 launch review"
+    }
+   ],
+   "renders": [
+    "Свернуть чаты «Исправить сборку»",
+    "Свернуть чаты «Оценка»",
+    "Свернуть чаты ««Срочный фикс»»",
+    "Свернуть чаты «Исправить сборку, затем деплой»",
+    "Свернуть чаты «Проверить сборку релиза и развернуть её на всех устройствах команды»",
+    "Свернуть чаты «Build 修复 — 构建发布»",
+    "Свернуть чаты «شركة النور — Local Operator»",
+    "Свернуть чаты «Q4 launch review»"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.expand_chats",
+   "en": "Expand {name} chats",
+   "ru": "Развернуть чаты «{name}»",
+   "args": "name=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "name": "Исправить сборку"
+    },
+    {
+     "name": "Оценка"
+    },
+    {
+     "name": "«Срочный фикс»"
+    },
+    {
+     "name": "Исправить сборку, затем деплой"
+    },
+    {
+     "name": "Проверить сборку релиза и развернуть её на всех устройствах команды"
+    },
+    {
+     "name": "Build 修复 — 构建发布"
+    },
+    {
+     "name": "شركة النور — Local Operator"
+    },
+    {
+     "name": "Q4 launch review"
+    }
+   ],
+   "renders": [
+    "Развернуть чаты «Исправить сборку»",
+    "Развернуть чаты «Оценка»",
+    "Развернуть чаты ««Срочный фикс»»",
+    "Развернуть чаты «Исправить сборку, затем деплой»",
+    "Развернуть чаты «Проверить сборку релиза и развернуть её на всех устройствах команды»",
+    "Развернуть чаты «Build 修复 — 构建发布»",
+    "Развернуть чаты «شركة النور — Local Operator»",
+    "Развернуть чаты «Q4 launch review»"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.manage",
+   "en": "Manage {name}",
+   "ru": "Управление «{name}»",
+   "args": "name=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "name": "Исправить сборку"
+    },
+    {
+     "name": "Оценка"
+    },
+    {
+     "name": "«Срочный фикс»"
+    },
+    {
+     "name": "Исправить сборку, затем деплой"
+    },
+    {
+     "name": "Проверить сборку релиза и развернуть её на всех устройствах команды"
+    },
+    {
+     "name": "Build 修复 — 构建发布"
+    },
+    {
+     "name": "شركة النور — Local Operator"
+    },
+    {
+     "name": "Q4 launch review"
+    }
+   ],
+   "renders": [
+    "Управление «Исправить сборку»",
+    "Управление «Оценка»",
+    "Управление ««Срочный фикс»»",
+    "Управление «Исправить сборку, затем деплой»",
+    "Управление «Проверить сборку релиза и развернуть её на всех устройствах команды»",
+    "Управление «Build 修复 — 构建发布»",
+    "Управление «شركة النور — Local Operator»",
+    "Управление «Q4 launch review»"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.pin",
+   "en": "Pin “{name}”",
+   "ru": "Закрепить «{name}»",
+   "args": "name=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "name": "Исправить сборку"
+    },
+    {
+     "name": "Оценка"
+    },
+    {
+     "name": "«Срочный фикс»"
+    },
+    {
+     "name": "Исправить сборку, затем деплой"
+    },
+    {
+     "name": "Проверить сборку релиза и развернуть её на всех устройствах команды"
+    },
+    {
+     "name": "Build 修复 — 构建发布"
+    },
+    {
+     "name": "شركة النور — Local Operator"
+    },
+    {
+     "name": "Q4 launch review"
+    }
+   ],
+   "renders": [
+    "Закрепить «Исправить сборку»",
+    "Закрепить «Оценка»",
+    "Закрепить ««Срочный фикс»»",
+    "Закрепить «Исправить сборку, затем деплой»",
+    "Закрепить «Проверить сборку релиза и развернуть её на всех устройствах команды»",
+    "Закрепить «Build 修复 — 构建发布»",
+    "Закрепить «شركة النور — Local Operator»",
+    "Закрепить «Q4 launch review»"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.entity.unpin",
+   "en": "Unpin “{name}”",
+   "ru": "Открепить «{name}»",
+   "args": "name=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "name": "Исправить сборку"
+    },
+    {
+     "name": "Оценка"
+    },
+    {
+     "name": "«Срочный фикс»"
+    },
+    {
+     "name": "Исправить сборку, затем деплой"
+    },
+    {
+     "name": "Проверить сборку релиза и развернуть её на всех устройствах команды"
+    },
+    {
+     "name": "Build 修复 — 构建发布"
+    },
+    {
+     "name": "شركة النور — Local Operator"
+    },
+    {
+     "name": "Q4 launch review"
+    }
+   ],
+   "renders": [
+    "Открепить «Исправить сборку»",
+    "Открепить «Оценка»",
+    "Открепить ««Срочный фикс»»",
+    "Открепить «Исправить сборку, затем деплой»",
+    "Открепить «Проверить сборку релиза и развернуть её на всех устройствах команды»",
+    "Открепить «Build 修复 — 构建发布»",
+    "Открепить «شركة النور — Local Operator»",
+    "Открепить «Q4 launch review»"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.pins.pin_label",
+   "en": "Pin “{title}”",
+   "ru": "Закрепить «{title}»",
+   "args": "title=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "title": "Исправить сборку"
+    },
+    {
+     "title": "Оценка"
+    },
+    {
+     "title": "«Срочный фикс»"
+    },
+    {
+     "title": "Исправить сборку, затем деплой"
+    },
+    {
+     "title": "Проверить сборку релиза и развернуть её на всех устройствах команды"
+    },
+    {
+     "title": "Build 修复 — 构建发布"
+    },
+    {
+     "title": "شركة النور — Local Operator"
+    },
+    {
+     "title": "Q4 launch review"
+    }
+   ],
+   "renders": [
+    "Закрепить «Исправить сборку»",
+    "Закрепить «Оценка»",
+    "Закрепить ««Срочный фикс»»",
+    "Закрепить «Исправить сборку, затем деплой»",
+    "Закрепить «Проверить сборку релиза и развернуть её на всех устройствах команды»",
+    "Закрепить «Build 修复 — 构建发布»",
+    "Закрепить «شركة النور — Local Operator»",
+    "Закрепить «Q4 launch review»"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.pins.unpin_label",
+   "en": "Unpin “{title}”",
+   "ru": "Открепить «{title}»",
+   "args": "title=argument",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {
+     "title": "Исправить сборку"
+    },
+    {
+     "title": "Оценка"
+    },
+    {
+     "title": "«Срочный фикс»"
+    },
+    {
+     "title": "Исправить сборку, затем деплой"
+    },
+    {
+     "title": "Проверить сборку релиза и развернуть её на всех устройствах команды"
+    },
+    {
+     "title": "Build 修复 — 构建发布"
+    },
+    {
+     "title": "شركة النور — Local Operator"
+    },
+    {
+     "title": "Q4 launch review"
+    }
+   ],
+   "renders": [
+    "Открепить «Исправить сборку»",
+    "Открепить «Оценка»",
+    "Открепить ««Срочный фикс»»",
+    "Открепить «Исправить сборку, затем деплой»",
+    "Открепить «Проверить сборку релиза и развернуть её на всех устройствах команды»",
+    "Открепить «Build 修复 — 构建发布»",
+    "Открепить «شركة النور — Local Operator»",
+    "Открепить «Q4 launch review»"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.row_menu.archive",
+   "en": "Archive conversation",
+   "ru": "Архивировать разговор",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Архивировать разговор"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.row_menu.pin",
+   "en": "Pin conversation",
+   "ru": "Закрепить разговор",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Закрепить разговор"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.row_menu.unarchive",
+   "en": "Unarchive conversation",
+   "ru": "Восстановить разговор",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Восстановить разговор"
+   ]
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "key": "ui.chat.sidebar.row_menu.unpin",
+   "en": "Unpin conversation",
+   "ru": "Открепить разговор",
+   "args": "",
+   "argsMatch": true,
+   "nfc": true,
+   "bidi": 0,
+   "render_samples": [
+    {}
+   ],
+   "renders": [
+    "Открепить разговор"
+   ]
+  }
+ ]
+}

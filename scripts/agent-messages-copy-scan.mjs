@@ -13,7 +13,13 @@ export function copyScanAgentMessages(text, { canonicalConsent = false } = {}) {
 			AGENT_MESSAGES_CANONICAL_CONSENT_SHA256
 	)
 		return [];
-	const qualified = text.replace(/\bagent teams?\b/gi, "");
+	// "Team Bridge" is the product's own name (operator-approved banner title,
+	// batch-5 deliverable 4), not the banned human-group noun; it is qualified
+	// the same way "agent team" is. Case-sensitive on purpose: only the proper
+	// noun is exempt, never a lower-case "team bridge" sentence.
+	const qualified = text
+		.replace(/\bagent teams?\b/gi, "")
+		.replace(/\bTeam Bridge\b/g, "");
 	return [...qualified.matchAll(/\b(?:teams?|teammates?)\b/gi)].map(
 		(match) => ({ word: match[0], offset: match.index }),
 	);

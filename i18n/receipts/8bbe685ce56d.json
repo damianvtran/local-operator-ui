@@ -1,0 +1,233 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-translation-audit",
+ "locale": "es",
+ "date": "2026-10-27",
+ "audited_head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "previous_audited_head": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "base": "59ec56f686dcb8f6e93e0d4cb8a8cd5149cbf2",
+ "instance": "8bbe685ce56d",
+ "model": "radient/auto",
+ "status": "passed",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "8bbe685ce56d",
+  "model": "radient/auto",
+  "team": "lopdev",
+  "independent_from_translator_session": true,
+  "actual_model_source": "Harness session header for this run: 'Model: radient/auto' (router alias; the harness does not expose the upstream model). No fallback observed: every tool result in this run returned normally and no provider error was recorded.",
+  "independence_basis": "This auditor wrote none of the reviewed bytes: the amendments are translator commit a5356ce91c, the fixes it answers are the 0559f7f7d8 audit findings of a different session, and this session read the head bytes only through a detached worktree at that commit (18/18 file hashes cross-checked with `git show a5356ce91c:<path> | shasum -a 256`). It edited no catalogue, context file or ledger row; its writes are its own receipt and evidence records."
+ },
+ "scope": "Delta audit of all nine wave-B namespaces at a5356ce91c. 62/62 keys read in es. 6 es values and 1 en value changed since the audited 0559f7f7d8; the other 56 wave-B values are byte-identical to the audited bytes (triples snapshot 62/62 == parent bytes). Every changed value was judged against English, its context sidecar, its renderer call site, the glossary, the es style guide and the prior finding it answers. Mechanical: generate --check, check-duplicates, locale-parity (44/44), context-parity, check-coverage vs 0559f7f7d8, es activation (3/3), and ICU/placeholder parity over 62/62 keys through intl-messageformat 12.1.3 (the app's own construction) including es plural arms at 0/1/2/1e6/1.5e6 and the pairing_guidance render proof (4 backticks, literal <token>).",
+ "findings_summary": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "verdict": "passed - 62/62 values read; no blocker or major. Prior findings es-01..es-05 resolved (es-03 traspaso, es-02 Intro plus the pairing code span fixed in both en and es). One nit recorded: the English context note still tells a translator to keep '(Enter, Tab)' verbatim while the es catalogue's settled rendering is 'Intro'; the value is right, the note will regress it.",
+ "namespaces": {
+  "ui.agents.config": {
+   "status": "passed",
+   "result": "clean",
+   "en_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+   "es_sha256": "324b974eeaa30043a54a621822fc441c21ee38a8b37dd5a7e1cd7cb9e62a3339",
+   "context_sha256": "d55725ee860cc40539b200ab0d0018e4f1062d6ade08c16c169520a4f3625db0",
+   "key_count": 3,
+   "keys_audited": [
+    "ui.agents.config.banner.unavailable",
+    "ui.agents.config.disabled_gate",
+    "ui.agents.config.run_details_region"
+   ],
+   "findings": []
+  },
+  "ui.chat": {
+   "status": "passed",
+   "result": "clean",
+   "en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+   "es_sha256": "fe15211c61778c618bb83093e3ed59b4e36f0afcd3ec9f576019b3c5c34e44ff",
+   "context_sha256": "f300190022daa1e49a200072b29501cfc6a5be7c542a57ef741873c14bfa6164",
+   "key_count": 9,
+   "keys_audited": [
+    "ui.chat.session_status.context_heading",
+    "ui.chat.session_status.context_nothing_measured_tooltip",
+    "ui.chat.session_status.conversation_starting",
+    "ui.chat.session_status.model_none_resolved_tooltip",
+    "ui.chat.session_status.not_signed_in",
+    "ui.chat.session_status.not_signed_in_description",
+    "ui.chat.session_status.nothing_measured_yet",
+    "ui.chat.session_status.temporarily_unavailable",
+    "ui.chat.session_status.temporarily_unavailable_description"
+   ],
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "result": "clean",
+   "en_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+   "es_sha256": "2400791e8d09be36634efeff3f5a781f6b1e1cbf4dd32588ed62fe732c8800b5",
+   "context_sha256": "ea13112039dfed41998801904ccc88531f87452a7e3d7138ab09a5f48f9e65b2",
+   "key_count": 8,
+   "keys_audited": [
+    "ui.chat.canonical.placeholder.loading",
+    "ui.chat.canonical.placeholder.region_label",
+    "ui.chat.canonical.tool_row.generic_verb.running",
+    "ui.chat.canonical.tool_row.generic_verb.settled",
+    "ui.chat.canonical.tool_row.outcome.failed",
+    "ui.chat.canonical.tool_row.outcome.interrupted",
+    "ui.chat.canonical.tool_row.outcome.never_ran",
+    "ui.chat.canonical.tool_row.outcome.succeeded"
+   ],
+   "findings": []
+  },
+  "ui.chat.device": {
+   "status": "passed",
+   "result": "clean",
+   "en_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+   "es_sha256": "7942950281a19dfd9277f5a7de0ef67da95cfd6513e709e327073049ed3a91e3",
+   "context_sha256": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a",
+   "key_count": 11,
+   "keys_audited": [
+    "ui.chat.device.fact.this_device",
+    "ui.chat.device.footer.move_deletes_copy",
+    "ui.chat.device.label.this_device",
+    "ui.chat.device.notice.move_hold_detail",
+    "ui.chat.device.picker.heading.move",
+    "ui.chat.device.picker.heading.start",
+    "ui.chat.device.row.conversations",
+    "ui.chat.device.row.not_here_why",
+    "ui.chat.device.sentence.mesh_read_failure",
+    "ui.chat.device.sentence.move_in_flight",
+    "ui.chat.device.sentence.pairing_guidance"
+   ],
+   "findings": []
+  },
+  "ui.chat.pickers": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "en_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+   "es_sha256": "33a92db2a4e9e42f3657e597d36626f33a84805ba8669511764f0e30cbcfebf0",
+   "context_sha256": "6861dbfbdbc9af23c8c09332670a6f7d77c2a12b5724afc91d0054660ef904d0",
+   "key_count": 18,
+   "keys_audited": [
+    "ui.chat.pickers.at_menu.heading.files",
+    "ui.chat.pickers.at_menu.heading.projects",
+    "ui.chat.pickers.at_menu.region_label",
+    "ui.chat.pickers.at_menu.tag.directory",
+    "ui.chat.pickers.at_menu.tag.file",
+    "ui.chat.pickers.at_menu.tag.project",
+    "ui.chat.pickers.slash.arguments_region_label",
+    "ui.chat.pickers.slash.click.chooses_name",
+    "ui.chat.pickers.slash.click.completes_label",
+    "ui.chat.pickers.slash.click.completes_value",
+    "ui.chat.pickers.slash.click.connects",
+    "ui.chat.pickers.slash.click.runs",
+    "ui.chat.pickers.slash.click.runs_command",
+    "ui.chat.pickers.slash.click.runs_with_value",
+    "ui.chat.pickers.slash.click.stages",
+    "ui.chat.pickers.slash.enter_needs_a_pick",
+    "ui.chat.pickers.slash.phase.arguments",
+    "ui.chat.pickers.slash.region_label"
+   ],
+   "findings": [
+    {
+     "severity": "nit",
+     "id": "es-d1",
+     "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+     "issue": "The English context note says the key names '(Enter, Tab)' are 'keyboard names: keep them verbatim', but the settled es rendering is 'Intro' (17 keys / 18 occurrences in the es catalogue, and both other composer hints in this file). The es value is CORRECT and needs no change; the note is what will regress it, because the next translator following it writes 'Enter' again. Amend the note to 'keep the locale's recorded key label (es: Intro; Tab stays Tab)' and record the decision in i18n/style-guides/es.md (core repo, out of this branch's scope).",
+     "disposition": "deferred - the sidecar and the es style guide live outside this UI branch"
+    }
+   ]
+  },
+  "ui.chat.run_details": {
+   "status": "passed",
+   "result": "clean",
+   "en_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+   "es_sha256": "fa74b44d526b7310b0e71d9691de08e176f87adabc790a080005692b040d491a",
+   "context_sha256": "6e25843e49db6d20254d7593cbfe06c81dd8ba305c369351b4a9e374c6e4e526",
+   "key_count": 2,
+   "keys_audited": [
+    "ui.chat.run_details.nothing_in_flight",
+    "ui.chat.run_details.nothing_to_show_yet"
+   ],
+   "findings": []
+  },
+  "ui.chat.status": {
+   "status": "passed",
+   "result": "clean",
+   "en_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+   "es_sha256": "a4afaf09a82a6f7802a1350ccbe2cc98cc82afb9b11d7e91bc80d57975b84421",
+   "context_sha256": "a62b34dde0f22e95c34793f1f87791fc38385c68c840a0f6c60adf304aaec561",
+   "key_count": 4,
+   "keys_audited": [
+    "ui.chat.status.credential_refused",
+    "ui.chat.status.degraded",
+    "ui.chat.status.internet_offline",
+    "ui.chat.status.unreachable"
+   ],
+   "findings": []
+  },
+  "ui.common.connection": {
+   "status": "passed",
+   "result": "clean",
+   "en_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+   "es_sha256": "0e178122c83f31137e682ac9cfea9f8cbc9895e0365b7dd8643a724fc3699213",
+   "context_sha256": "99f458fecbeae8ea58c45f171d7ccbc465cc9a717255553aaadc3c1927f875ae",
+   "key_count": 5,
+   "keys_audited": [
+    "ui.common.connection.session_loss.frame_too_large",
+    "ui.common.connection.session_loss.history_unreadable",
+    "ui.common.connection.session_loss.lost",
+    "ui.common.connection.session_loss.not_paired",
+    "ui.common.connection.session_loss.server_down"
+   ],
+   "findings": []
+  },
+  "ui.common.layout": {
+   "status": "passed",
+   "result": "clean",
+   "en_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+   "es_sha256": "7ee0d233bdc06cf44232dd0b235dbdfd072804afa2edcdeab3b02ac9c357a412",
+   "context_sha256": "cb15214ec6712e3a15bf8cb30918b3720348a7546d773788fe06a69b3575b5f6",
+   "key_count": 2,
+   "keys_audited": [
+    "ui.common.layout.toasts.dismiss",
+    "ui.common.layout.toasts.notifications"
+   ],
+   "findings": []
+  }
+ },
+ "validation": {
+  "key_parity": "62/62 es keys present, no extra key in the nine files",
+  "regression_proof": "parsed-JSON diff 0559f7f7d8..a5356ce91c over the nine files: 7 values changed (6 es, 1 en); triples.json (the audited snapshot) matches the parent bytes for 62/62 keys; 56/62 wave-B values byte-identical at head",
+  "icu_placeholder_parity": "62/62, real intl-messageformat 12.1.3, failures 0",
+  "plural_samples_es": {
+   "0": "0 conversaciones",
+   "1": "1 conversación",
+   "2": "2 conversaciones",
+   "1000000": "1000000 de conversaciones",
+   "1500000": "1500000 conversaciones"
+  },
+  "pairing_guidance_render": {
+   "en": "This device is in no network. Create one with `lop network init`, or join one with `lop network join <token>`.",
+   "es": "Este dispositivo no está en ninguna red. Crea una con `lop network init` o únete a una con `lop network join <token>`.",
+   "backticks": 4,
+   "literal_token": "`lop network join <token>`",
+   "parent_render": "3 backticks, unterminated span (reproduced)"
+  },
+  "gates": {
+   "generate --check": "0",
+   "check-duplicates": "0 (853 files, 0 duplicate keys)",
+   "locale-parity.test.mjs": "44 pass / 0 fail",
+   "context-parity.mjs": "0 (131 allowed gaps, unchanged allowance)",
+   "check-coverage.mjs --allowance-base 0559f7f7d8": "0",
+   "es-activation.test.mjs": "3 pass / 0 fail",
+   "icu-parity (62 keys)": "0 failures"
+  }
+ },
+ "limitations": [
+  "Copy audit only: no build, no rendered frame, no browser or activation-render claim.",
+  "Rendered fit was assessed geometrically from the call sites (wrapping containers, no truncate on the four surfaces), not by capture.",
+  "The 56 unchanged wave-B values inherit the earlier linguistic verdict through byte identity; they were not re-judged line by line."
+ ]
+}

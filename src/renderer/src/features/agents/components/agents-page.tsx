@@ -67,10 +67,15 @@ import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { t } from "@shared/i18n";
+import type { MessageKey } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Bot, Plus, Search, Users } from "lucide-react";
+import { ArrowLeft, Bot, Plus, Search, Sparkles, Users } from "lucide-react";
 import {
+	type ReactNode,
 	Suspense,
 	lazy,
 	useCallback,
@@ -83,14 +88,27 @@ import { useParams, useSearchParams } from "react-router-dom";
 import {
 	ConfigComposer,
 	askForChange,
+	configSeedPrompt,
 	discardSeededConfigBox,
 } from "../config-run/config-composer";
 import { targetKey, useConfigRunStore } from "../config-run/config-run-store";
-import { useConfigRun } from "../config-run/use-config-run";
+import {
+	configSkillRunEnabled,
+	useConfigRun,
+} from "../config-run/use-config-run";
 import {
 	profileEditorIdentity,
 	teamEditorIdentity,
 } from "../definition-editor-identity";
+import { useSkillDetail, useSkillsTab } from "../hooks/use-skills-library";
+import {
+	SKILL_SCOPES,
+	type SkillComposerGate,
+	type SkillScope,
+	filterSkills,
+	scopeSkills,
+	skillComposerGate,
+} from "../skills-library-model";
 import { CLASS_LABEL, classOf } from "../utils/agent-class";
 import { AgentCreate, AgentDetail } from "./agent-detail";
 import {
@@ -102,6 +120,13 @@ import {
 } from "./detail-parts";
 import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
+import {
+	SKILL_SCOPE_LABEL,
+	SkillDetail,
+	SkillsRosterBody,
+	skillSourceWord,
+	useRetryFocus,
+} from "./skills-library";
 import { TeamDetail, memberCountLabel } from "./team-detail";
 
 // Old UUID links remain ordinary chat-agent settings, not reusable profiles.
@@ -129,12 +154,51 @@ const EFFORT_TIER_KEY = /^subagents\.models\.([^.]+)$/;
  */
 const CANONICAL_EFFORT_TIERS: readonly string[] = ["lo", "med", "hi"];
 
-const SCOPE_LABEL: Record<Scope, string> = {
-	all: "All",
-	custom: "Custom",
-	installed: "Installed",
-	builtin: "Built-in",
-};
+/**
+ * The scope segments' WORDS, as catalogue keys rather than copy: a module-level
+ * English map would freeze at import and never follow the language picker, so the
+ * label is resolved through `t()` where the segment renders.
+ */
+/**
+ * Why the Skills tab's dock refuses input (design spec §5.4), as the sentence its
+ * placeholder speaks. The dock is present in EVERY Skills state so the detail
+ * scroller never changes height as the reader arrows between an editable and a
+ * read-only skill.
+ */
+const SKILL_GATE_KEY = {
+	backend: "ui.agents.skills.composer.gate_backend",
+	none: "ui.agents.skills.composer.gate_none",
+	"not-installed": "ui.agents.skills.composer.gate_not_installed",
+	"read-only": "ui.agents.skills.composer.gate_read_only",
+} as const satisfies Record<SkillComposerGate, MessageKey>;
+
+const SCOPE_LABEL = {
+	all: "ui.agents.pages.scope.all",
+	custom: "ui.agents.pages.scope.custom",
+	installed: "ui.agents.pages.scope.installed",
+	builtin: "ui.agents.pages.scope.builtin",
+} as const satisfies Record<Scope, MessageKey>;
+
+/**
+ * The EMPTY-ROSTER sentence per scope, each a whole sentence rather than a label
+ * glued into one.
+ *
+ * WHY NOT "No {label} agents.". The old copy interpolated the segment label and
+ * lowercased it in code (`SCOPE_LABEL[scope].toLowerCase()`) — and `SCOPE_LABEL`
+ * holds KEY IDS, so what rendered was a lowercased id (`no ui.agents.pages.scope.
+ * custom agents.`) in every locale. Translating the label first would not have
+ * been enough either: the lowercasing exists only because English drops the
+ * capital of an adjective sitting mid-sentence, which is a property of English
+ * sentence casing rather than of the label — it mangles caseless scripts and
+ * fights languages that capitalise differently. So each scope owns its sentence
+ * and its translator owns its casing.
+ */
+const EMPTY_BY_SCOPE = {
+	all: "ui.agents.pages.empty.agents",
+	custom: "ui.agents.pages.empty.custom",
+	installed: "ui.agents.pages.empty.installed",
+	builtin: "ui.agents.pages.empty.builtin",
+} as const satisfies Record<Scope, MessageKey>;
 
 /**
  * WHERE "KEEP EDITING" MAY PUT FOCUS BACK, which is never on a control whose focus
@@ -165,9 +229,20 @@ function focusThatActivatesNothing(
 }
 
 export function AgentsPage() {
+	// The page's copy is read through `t()` during render; this subscription is
+	// what makes a language change repaint the mounted page.
+	useI18nLocale();
 	const { agentId } = useParams<{ agentId?: string }>();
 	const [params, setParams] = useSearchParams();
 
+	/*
+	 * THE SKILLS TAB IS A THIRD VALUE OF THE SAME `kind` PARAMETER and, like the
+	 * other two, is read from the URL so Back/Forward and deep links work. It is
+	 * only honoured when core advertises `skill_library` (below): `kind=skill`
+	 * against a backend without it falls back to the Agents tab, so a stale link
+	 * can never land on a tab whose cards the backend cannot fill.
+	 */
+	const wantsSkills = params.get("kind") === "skill";
 	const teamMode =
 		params.get("kind") === "team" || params.get("create") === "team";
 	const creating = params.has("create");
@@ -175,6 +250,13 @@ export function AgentsPage() {
 	const duplicateOf = params.get("duplicate");
 
 	const capabilities = useDesktopCapabilities();
+	// The skill pane's Download needs a hub credential (UX r1 U1).
+	const { isAuthenticated } = useRadientAuth();
+	const skillsOffered = desktopFeatureEnabled(
+		capabilities.data,
+		"skill_library",
+	);
+	const skillMode = wantsSkills && skillsOffered && !creating;
 	const catalogueEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		teamMode ? "team_catalogue" : "profile_catalogue",
@@ -190,7 +272,33 @@ export function AgentsPage() {
 	 */
 	const profiles = useProfiles(catalogueEnabled);
 	const teams = useTeams(catalogueEnabled);
-	const detailEnabled = catalogueEnabled && Boolean(name) && !creating;
+	/*
+	 * THE SKILL READS RUN ONLY WITH THE CAPABILITY. Not "on the Skills tab only":
+	 * the tab's count is part of the strip, so the list is read whenever the tab is
+	 * offered. Without `skill_library` nothing here sends a request.
+	 */
+	const skills = useSkillsTab({
+		enabled: skillsOffered,
+		linksEnabled: desktopFeatureEnabled(capabilities.data, "hub_links"),
+		updatesEnabled: desktopFeatureEnabled(capabilities.data, "hub_updates"),
+	});
+	const listRetryFocus = useRetryFocus(
+		Boolean(skills.library.error),
+		skills.library.isFetching,
+	);
+	const skillDetail = useSkillDetail(
+		skillMode ? params.get("name") : null,
+		skillsOffered,
+	);
+	/*
+	 * NO PROFILE/TEAM DETAIL READ IN SKILL MODE, or on a `kind=skill` link that an
+	 * older core cannot honour. `name` is the open SKILL there, and asking
+	 * `profiles.get` for it is a guaranteed 404 on every open (QA round 1, Q2 / R2).
+	 * `wantsSkills` rather than `skillMode` on purpose: with the capability absent
+	 * the page shows the Agents tab, but the URL's name still is not an agent.
+	 */
+	const detailEnabled =
+		catalogueEnabled && Boolean(name) && !creating && !wantsSkills;
 
 	const profileDetail = useProfileDetail(teamMode ? null : name, detailEnabled);
 	const teamDetail = useTeamDetail(teamMode ? name : null, detailEnabled);
@@ -209,6 +317,22 @@ export function AgentsPage() {
 
 	const [search, setSearch] = useState("");
 	const [scope, setScope] = useState<Scope>("all");
+	/* The Skills tab's own scope: its axis is where a skill comes from (spec §2). */
+	const [skillScope, setSkillScope] = useState<SkillScope>("all");
+	/*
+	 * THE SKILL WRITES AND THE SKILL RUN, EACH BEHIND ITS OWN KEY. `skill_write` is
+	 * the tab's inline actions (Edit, Copy to my skills, Remove); the composer's run
+	 * needs `agents_config_skills` (a core that builds the run's `skill` tool), so
+	 * on an older core the dock is present and says why it cannot be used rather
+	 * than starting a run that would answer "I can't edit files".
+	 */
+	const skillWritesEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"skill_write",
+	);
+	const skillRunEnabled = configSkillRunEnabled(capabilities.data);
+	/** Bumped by "Ask for a change" on a skill, to put the caret in the box. */
+	const [skillAskFocus, setSkillAskFocus] = useState(0);
 	/*
 	 * WHICH PANE SAID IT WAS DIRTY, rather than a bare boolean.
 	 *
@@ -299,7 +423,22 @@ export function AgentsPage() {
 		[teams.data, search],
 	);
 	const rows = teamMode ? teamRows : agentRows;
-	const selected = name ?? null;
+	/*
+	 * The filter matches the TRANSLATED source word, so a reader can type what they
+	 * see. No memo: the page re-renders on a language change (`useI18nLocale`), and
+	 * the filter is a linear pass over a few dozen rows.
+	 */
+	const skillRows = filterSkills(
+		scopeSkills(skills.cards, skillScope),
+		search,
+		skillSourceWord,
+	);
+	/*
+	 * A `kind=skill&name=` link on a core WITHOUT `skill_library` is the Agents tab
+	 * (the capability gate), and the name in it is not an agent: treating it as the
+	 * open record left the pane on a skeleton forever (review round 2, M1).
+	 */
+	const selected = wantsSkills && !skillsOffered ? null : (name ?? null);
 	/*
 	 * THE CLASS SWITCH'S FAILURE SENTENCE LIVES HERE, at the level that survives
 	 * its own refresh (UX round 2, U1). The control re-reads on every failure and
@@ -325,8 +464,10 @@ export function AgentsPage() {
 	const go = useCallback(
 		(next: NavIntent) => {
 			const search = new URLSearchParams();
-			const kind = next.kind ?? (teamMode ? "team" : "agent");
+			const kind =
+				next.kind ?? (skillMode ? "skill" : teamMode ? "team" : "agent");
 			if (kind === "team") search.set("kind", "team");
+			if (kind === "skill") search.set("kind", "skill");
 			if (next.name) search.set("name", next.name);
 			if (next.create !== null && next.create !== undefined)
 				search.set("create", next.create);
@@ -336,7 +477,7 @@ export function AgentsPage() {
 			setPendingNav(null);
 			setParams(search);
 		},
-		[teamMode, setParams],
+		[teamMode, skillMode, setParams],
 	);
 
 	/*
@@ -354,7 +495,7 @@ export function AgentsPage() {
 	 * that remembers to clear it. The panes withdraw their report on unmount too,
 	 * which covers the same window from the other side.
 	 */
-	const paneIdentity = `${teamMode ? "team" : "agent"}:${creating ?? ""}:${selected ?? ""}`;
+	const paneIdentity = `${skillMode ? "skill" : teamMode ? "team" : "agent"}:${creating ?? ""}:${selected ?? ""}`;
 	const reportDirty = useCallback(
 		(dirty: boolean) => setDirtyIdentity(dirty ? paneIdentity : null),
 		[paneIdentity],
@@ -380,9 +521,11 @@ export function AgentsPage() {
 	 * Source/policy state is independent of the editor's unsaved draft.
 	 */
 	const hubPane = (
-		kind: "agent" | "team",
+		kind: "agent" | "team" | "skill",
 		itemName: string,
 		localId?: string,
+		/** Skills only: the copy is on disk (`card.installed`). */
+		installed = true,
 	) => (
 		<>
 			{/* Full inventory keeps healthy policy editing available; legacy servers
@@ -393,14 +536,28 @@ export function AgentsPage() {
 				localId={localId}
 				enabled={desktopFeatureEnabled(capabilities.data, "hub_links")}
 			/>
-			<HubUpdatePanel
-				kind={kind}
-				name={itemName}
-				enabled={
-					desktopFeatureEnabled(capabilities.data, "hub_updates") &&
-					!desktopFeatureEnabled(capabilities.data, "hub_links")
-				}
-			/>
+			{/*
+			 * NOT ON A SKILL THE LINKS PANEL ALREADY SERVES, AND NEVER WITHOUT A COPY
+			 * (#1458 UX r2 U10). `enabled` gates only the card's own fetch: the Skills
+			 * tab's reader and the sidebar fill the same `hub-updates` cache, so the
+			 * card rendered anyway - and after "Discard changes and remove" it still
+			 * said "You changed this too" and offered "Keep mine", which core refuses
+			 * with no local copy to keep. Narrow on purpose: Agents and Teams on a
+			 * links-capable core show this card today from that same shared cache,
+			 * so changing what `enabled` means would change their pane too.
+			 */}
+			{kind === "skill" &&
+			(!installed ||
+				desktopFeatureEnabled(capabilities.data, "hub_links")) ? null : (
+				<HubUpdatePanel
+					kind={kind}
+					name={itemName}
+					enabled={
+						desktopFeatureEnabled(capabilities.data, "hub_updates") &&
+						!desktopFeatureEnabled(capabilities.data, "hub_links")
+					}
+				/>
+			)}
 		</>
 	);
 
@@ -546,11 +703,31 @@ export function AgentsPage() {
 		const state = useConfigRunStore.getState();
 		const about = state.about;
 		if (!about) return;
-		const kind = teamMode ? "team" : "agent";
+		const kind = skillMode ? "skill" : teamMode ? "team" : "agent";
 		if (selected && about.kind === kind && about.name === selected) return;
 		run.setAbout(null);
 		discardSeededConfigBox(about);
-	}, [selected, teamMode, run]);
+	}, [selected, teamMode, skillMode, run]);
+
+	/*
+	 * ON THE SKILLS TAB THE TARGET IS THE OPEN SKILL, AUTOMATICALLY (design spec
+	 * §5.3, the one deliberate difference from Agents). An untargeted Agents box can
+	 * still CREATE an agent; a skill run has no create, so an untargeted skill box
+	 * could do nothing. Opening an eligible skill names it; the effect above clears
+	 * it when the row or the tab changes. Eligibility is core's (`editable`) and the
+	 * capability, through the same gate the dock's placeholder reads.
+	 */
+	const openSkillCard =
+		skillMode && selected
+			? (skills.cards.find((card) => card.name === selected) ?? null)
+			: null;
+	const skillGate = skillComposerGate(skillRunEnabled, openSkillCard);
+	useEffect(() => {
+		if (!skillMode || !selected || skillGate !== null) return;
+		const about = useConfigRunStore.getState().about;
+		if (about?.kind === "skill" && about.name === selected) return;
+		run.setAbout({ kind: "skill", name: selected });
+	}, [skillMode, selected, skillGate, run]);
 
 	/*
 	 * A ROW THAT WAS MARKED IS UNMARKED BY BEING OPENED — the one-time mark the
@@ -559,8 +736,37 @@ export function AgentsPage() {
 	 */
 	useEffect(() => {
 		if (!selected) return;
-		clearMark({ kind: teamMode ? "team" : "agent", name: selected });
-	}, [selected, teamMode, clearMark]);
+		clearMark({
+			kind: skillMode ? "skill" : teamMode ? "team" : "agent",
+			name: selected,
+		});
+	}, [selected, teamMode, skillMode, clearMark]);
+
+	/*
+	 * CLOSING A SKILL GIVES FOCUS BACK TO ITS ROW (QA round 1, Q3). Below 1000 px the
+	 * roster is hidden while a skill is open (the same narrow rule the definitions
+	 * use), so Back / Escape reveals it with focus on <body>. The row that was open
+	 * is the place the reader was; it is found by its test id AFTER the layout has
+	 * shown it again. Skill mode only - the Agents and Teams panes keep their own
+	 * handoff untouched.
+	 */
+	const previousSkill = useRef<string | null>(null);
+	useEffect(() => {
+		const before = previousSkill.current;
+		previousSkill.current = skillMode ? selected : null;
+		if (!skillMode || selected || !before) return;
+		// Matched by comparing the id rather than interpolating the name into a
+		// selector: a skill name may contain a dot, which a selector reads as a class.
+		requestAnimationFrame(() => {
+			// ONLY IF FOCUS HAS NOWHERE ELSE TO BE (review round 2, M2): a browser Back
+			// while the reader types in the search box must not take their caret.
+			const active = document.activeElement;
+			if (active && active !== document.body) return;
+			[...document.querySelectorAll<HTMLElement>("[data-testid]")]
+				.find((node) => node.dataset.testid === `skill-row-${before}`)
+				?.focus();
+		});
+	}, [skillMode, selected]);
 
 	const refreshAll = () => {
 		void profiles.refetch();
@@ -579,7 +785,9 @@ export function AgentsPage() {
 	if (agentId)
 		return (
 			<Suspense
-				fallback={<p className="p-6 text-body">Loading saved agent…</p>}
+				fallback={
+					<p className="p-6 text-body">{t("ui.agents.pages.loading_saved")}</p>
+				}
 			>
 				<LegacyAgentsPage />
 			</Suspense>
@@ -594,7 +802,7 @@ export function AgentsPage() {
 	 * put two composers, two strips and two of every id on screen (M3/D3/U2/Q8).
 	 */
 	const showsEmptyPane =
-		catalogueEnabled && !listError && !creating && !selected;
+		!skillMode && catalogueEnabled && !listError && !creating && !selected;
 
 	const detailLoading = teamMode
 		? teamDetail.isLoading
@@ -632,7 +840,7 @@ export function AgentsPage() {
 				className="panel-top-pad flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
 			>
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
-				<h1 className="pt-4 text-heading">Agents and teams</h1>
+				<h1 className="pt-4 text-heading">{t("ui.agents.pages.heading")}</h1>
 
 				{/*
 				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
@@ -642,41 +850,52 @@ export function AgentsPage() {
 				 */}
 				<div className="space-y-2">
 					<Tabs
-						value={teamMode ? "team" : "agent"}
+						value={skillMode ? "skill" : teamMode ? "team" : "agent"}
 						onValueChange={(next) =>
-							requestGo({ kind: next as "agent" | "team", name: null })
+							requestGo({
+								kind: next as "agent" | "team" | "skill",
+								name: null,
+							})
 						}
 					>
 						<TabsList
-							aria-label="Browse definitions by type"
+							aria-label={t("ui.agents.pages.browse_aria")}
 							className="w-full"
 						>
-							<TabsTrigger
+							<BrowseTab
 								value="agent"
-								className="flex-1"
-								data-testid="agents-tab"
-							>
-								<Bot className="size-3.5" />
-								Agents
-								{profiles.data ? (
-									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-										{profiles.data.length}
-									</span>
-								) : null}
-							</TabsTrigger>
-							<TabsTrigger
+								testId="agents-tab"
+								icon={<Bot className="size-3.5" />}
+								label={t("ui.agents.pages.tab.agents")}
+								count={profiles.data?.length ?? null}
+								compact={skillsOffered}
+							/>
+							<BrowseTab
 								value="team"
-								className="flex-1"
-								data-testid="teams-tab"
-							>
-								<Users className="size-3.5" />
-								Teams
-								{teams.data ? (
-									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-										{teams.data.length}
-									</span>
-								) : null}
-							</TabsTrigger>
+								testId="teams-tab"
+								icon={<Users className="size-3.5" />}
+								label={t("ui.agents.pages.tab.teams")}
+								count={teams.data?.length ?? null}
+								compact={skillsOffered}
+							/>
+							{/*
+							 * THE THIRD TAB, OFFERED ONLY WHEN CORE SAYS IT CAN FILL IT
+							 * (`skill_library`). Absent, the strip is the two-tab strip it
+							 * always was and the page sends no skill request. Same trigger
+							 * as its siblings (`BrowseTab`), so all three fit the 256 px
+							 * column by one rule rather than the new one being the odd one.
+							 */}
+							{skillsOffered ? (
+								<BrowseTab
+									value="skill"
+									testId="skills-tab"
+									noPanel
+									compact
+									icon={<Sparkles className="size-3.5" />}
+									label={t("ui.agents.skills.tab")}
+									count={skills.library.data ? skills.cards.length : null}
+								/>
+							) : null}
 						</TabsList>
 					</Tabs>
 
@@ -688,8 +907,18 @@ export function AgentsPage() {
 						<Input
 							className="ps-8"
 							type="search"
-							aria-label="Search agents and teams"
-							placeholder={teamMode ? "Search teams" : "Search agents"}
+							aria-label={
+								skillMode
+									? t("ui.agents.skills.search_aria")
+									: t("ui.agents.pages.search_aria")
+							}
+							placeholder={
+								skillMode
+									? t("ui.agents.skills.search")
+									: teamMode
+										? t("ui.agents.pages.search.teams")
+										: t("ui.agents.pages.search.agents")
+							}
 							value={search}
 							onChange={(event) => setSearch(event.target.value)}
 						/>
@@ -702,9 +931,11 @@ export function AgentsPage() {
 					 * Teams have no `source` on the wire, so the control is the agents' alone
 					 * rather than a chip row that does nothing.
 					 */}
-					{!teamMode && profiles.data ? (
+					{!teamMode && !skillMode && profiles.data ? (
 						<fieldset className="m-0 min-w-0 border-0 p-0">
-							<legend className="sr-only">Show definitions owned by</legend>
+							<legend className="sr-only">
+								{t("ui.agents.pages.scope_legend")}
+							</legend>
 							{/*
 							 * NO VISIBLE "Showing" LABEL (design spec D10): it cost 24 px of height
 							 * and pushed the segments' right edge in from the tabs' and the search's.
@@ -726,7 +957,39 @@ export function AgentsPage() {
 										onClick={() => setScope(value)}
 										className={cn("flex-1", scope === value && rowCurrent)}
 									>
-										{SCOPE_LABEL[value]}
+										{t(SCOPE_LABEL[value])}
+									</Button>
+								))}
+							</div>
+						</fieldset>
+					) : null}
+					{/*
+					 * THE SKILLS TAB'S SCOPE, THE AGENTS' CONTROL (design spec §2): the same
+					 * `fieldset` + glass well + `aria-pressed` segments in the same place.
+					 * Four segments, not six: Other tool and Project appear under All and
+					 * the search box matches their source word, and a fifth segment would
+					 * not fit the 256 px column. The labels ARE the row's source words.
+					 */}
+					{skillMode && skills.library.data ? (
+						<fieldset className="m-0 min-w-0 border-0 p-0">
+							<legend className="sr-only">
+								{t("ui.agents.skills.scope_legend")}
+							</legend>
+							<div
+								data-glass-well=""
+								className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+							>
+								{SKILL_SCOPES.map((value) => (
+									<Button
+										key={value}
+										variant="ghost"
+										size="sm"
+										aria-pressed={skillScope === value}
+										data-testid={`skills-scope-${value}`}
+										onClick={() => setSkillScope(value)}
+										className={cn("flex-1", skillScope === value && rowCurrent)}
+									>
+										{t(SKILL_SCOPE_LABEL[value])}
 									</Button>
 								))}
 							</div>
@@ -743,17 +1006,30 @@ export function AgentsPage() {
 					data-lo-pane-edge-cues
 					className="min-h-0 flex-1 overflow-y-auto"
 				>
-					{listError ? null : !profiles.data && !teams.data ? (
+					{skillMode ? (
+						<SkillsRosterBody
+							loading={skills.library.isLoading}
+							failed={Boolean(skills.library.error)}
+							cards={skillRows}
+							total={skills.cards.length}
+							search={search}
+							scope={skillScope}
+							selected={selected}
+							join={skills.join}
+							marked={
+								new Map(marks.map((mark) => [targetKey(mark), mark.created]))
+							}
+							onOpen={(rowName) => requestGo({ name: rowName })}
+						/>
+					) : listError ? null : !profiles.data && !teams.data ? (
 						<RosterSkeleton />
 					) : rows.length === 0 ? (
 						<p className="px-1 py-2 text-body-sm text-ink-muted">
 							{search
-								? `Nothing matches “${search}”.`
+								? t("ui.agents.pages.empty.search", { query: search })
 								: teamMode
-									? "No teams yet. Ask for one below, or add one by hand."
-									: scope === "all"
-										? "No agents yet. Ask for one below, or add one by hand."
-										: `No ${SCOPE_LABEL[scope].toLowerCase()} agents.`}
+									? t("ui.agents.pages.empty.teams")
+									: t(EMPTY_BY_SCOPE[scope])}
 						</p>
 					) : (
 						<Roster
@@ -781,7 +1057,10 @@ export function AgentsPage() {
 				 */}
 				<Button
 					variant="ghost"
-					className="w-full justify-start"
+					// `hidden` (display:none) on the Skills tab: there is nothing to add by
+					// hand until U2, and a class rather than a conditional keeps this block
+					// byte-identical to the Agents/Teams one it shares.
+					className={cn("w-full justify-start", skillMode && "hidden")}
 					disabled={!catalogueEnabled}
 					onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
 				>
@@ -822,7 +1101,7 @@ export function AgentsPage() {
 							onClick={() => requestGo({ name: null })}
 						>
 							<ArrowLeft className="size-4" />
-							Back to the list
+							{t("ui.agents.pages.back_to_list")}
 						</Button>
 					</div>
 				) : null}
@@ -912,7 +1191,122 @@ export function AgentsPage() {
 						 */
 						<div className={CHAT_COLUMN_CONTAINER}>
 							<div className={CHAT_MEASURE}>
-								{!catalogueEnabled ? (
+								{skillMode ? (
+									/*
+									 * THE SKILLS PANE: a failed list read, a prompt, or the open
+									 * skill. No composer is docked below it (U3), and no create
+									 * form exists (U2), so the ladder is shorter than the
+									 * definitions' and shares none of their dirty-draft state.
+									 */
+									skills.library.error ? (
+										<div ref={listRetryFocus.holder}>
+											<PaneError
+												title={t("ui.agents.skills.error.title")}
+												what={
+													skills.library.error instanceof Error &&
+													skills.library.error.message
+														? skills.library.error.message
+														: t("ui.agents.skills.error.what_fallback")
+												}
+												meaning={t("ui.agents.skills.error.meaning")}
+												onRetry={() => {
+													listRetryFocus.onPress();
+													void skills.library.refetch();
+												}}
+												retrying={skills.library.isFetching}
+												retryLabel={t("ui.common.actions.retry")}
+												retryingLabel={t("ui.agents.skills.retrying")}
+											/>
+										</div>
+									) : selected ? (
+										<SkillDetail
+											key={selected}
+											name={selected}
+											card={openSkillCard}
+											join={skills.join}
+											detail={skillDetail}
+											onRetry={() => void skillDetail.refetch()}
+											writesEnabled={skillWritesEnabled}
+											askEnabled={skillRunEnabled}
+											onDirtyChange={reportDirty}
+											/*
+											 * THE AGENTS' HUB PANEL, for a hub skill only (spec §3.4):
+											 * Subscribe / Auto-push, Check now, Preview incoming changes and
+											 * Preview publish, each with its own eligibility. Matched by the
+											 * link's local name, as the agent pane matches by its own.
+											 */
+											belowHeader={
+												openSkillCard?.source === "hub"
+													? hubPane(
+															"skill",
+															selected,
+															undefined,
+															openSkillCard.installed,
+														)
+													: undefined
+											}
+											onAsk={(skillName) => {
+												askForChange(
+													run,
+													{ kind: "skill", name: skillName },
+													configSeedPrompt({ kind: "skill", name: skillName }),
+												);
+												setSkillAskFocus((count) => count + 1);
+											}}
+											hubSignedIn={isAuthenticated}
+											downloadEnabled={desktopFeatureEnabled(
+												capabilities.data,
+												"hub_skills",
+											)}
+											onRemoved={(skillName, stays) => {
+												/*
+												 * A HUB COPY'S ROW STAYS, AS "NOT INSTALLED" (UX r1 U5): the link
+												 * survives the removal, so the pane stays on it - its Download is
+												 * the obvious way back - and focus goes to the pane's heading
+												 * (the menu that asked has closed).
+												 */
+												if (stays) {
+													requestAnimationFrame(() =>
+														document
+															.querySelector<HTMLElement>(
+																'[data-testid="skill-detail"] h2',
+															)
+															?.focus(),
+													);
+													return;
+												}
+												/*
+												 * FOCUS GOES TO THE NEXT ROW (spec §3.2): the closing handoff
+												 * below focuses the row that was open, which is gone, so the
+												 * neighbour that took its place is named instead.
+												 */
+												const index = skillRows.findIndex(
+													(card) => card.name === skillName,
+												);
+												previousSkill.current =
+													skillRows[index + 1]?.name ??
+													skillRows[index - 1]?.name ??
+													null;
+												go({ name: null });
+											}}
+										/>
+									) : skills.library.isLoading ||
+										skills.cards.length === 0 ? null : (
+										/*
+										 * NOTHING while the list is loading or empty (design D4): "Select
+										 * a skill" invites a choice among rows that are not there.
+										 */
+										<p
+											className="text-body-sm text-ink-muted"
+											data-testid="skills-select-prompt"
+										>
+											{/* Still true without `skill_write`, so it stays there. */}
+											{skillWritesEnabled
+												? t("ui.agents.skills.select_prompt_editable")
+												: t("ui.agents.skills.select_prompt")}
+										</p>
+									)
+								) : !catalogueEnabled ? (
 									/*
 									 * THREE STATES, THREE TITLES. While the capabilities read is in flight
 									 * the page used to shout "needs a newer backend" over a body that said
@@ -1118,12 +1512,12 @@ export function AgentsPage() {
 					<div
 						className="flex flex-wrap items-center gap-2 border-hairline border-t bg-surface px-4 py-3"
 						role="alertdialog"
-						aria-label="Discard your unsaved changes?"
+						aria-label={t("ui.agents.detail.action.discard_question")}
 					>
 						<span className="text-body-sm text-ink">
 							{teamMode
-								? "Discard your unsaved changes to this team?"
-								: "Discard your unsaved changes to this agent?"}
+								? t("ui.agents.pages.discard_bar.team")
+								: t("ui.agents.pages.discard_bar.agent")}
 						</span>
 						<Button
 							variant="danger"
@@ -1134,10 +1528,10 @@ export function AgentsPage() {
 								go(pendingNav);
 							}}
 						>
-							Discard changes
+							{t("ui.agents.detail.action.discard_changes")}
 						</Button>
 						<Button ref={keepBarRef} variant="ghost" onClick={dismissBar}>
-							Keep editing
+							{t("ui.agents.detail.action.keep_editing")}
 						</Button>
 					</div>
 				) : null}
@@ -1161,10 +1555,27 @@ export function AgentsPage() {
 					<div className="shrink-0 bg-canvas">
 						<ConfigComposer
 							run={run}
-							about={run.about}
+							/*
+							 * ON THE SKILLS TAB THE BOX ONLY EVER NAMES A SKILL: an Agents target
+							 * left in the store is cleared by the selection effect, and this keeps
+							 * a frame between the two from naming it here.
+							 */
+							about={
+								skillMode
+									? run.about?.kind === "skill"
+										? run.about
+										: null
+									: run.about
+							}
 							onClearAbout={() => run.setAbout(null)}
+							skill={skillMode}
+							focusToken={skillMode ? skillAskFocus : 0}
 							blockedReason={
-								editDirty ? "Finish or cancel your edit first." : null
+								editDirty
+									? "Finish or cancel your edit first."
+									: skillMode && skillGate !== null
+										? t(SKILL_GATE_KEY[skillGate])
+										: null
 							}
 						/>
 					</div>
@@ -1174,9 +1585,79 @@ export function AgentsPage() {
 	);
 }
 
+/**
+ * One tab of the browse strip: icon, label and count in the 256 px list column.
+ *
+ * TWO STRIPS, ONE COMPONENT. With two tabs (a core without `skill_library`) each is
+ * an equal half (`flex-1`, 122 px) and carries icon + label + count exactly as it
+ * always did. With three (`compact`) there is no room for icon or count, and an
+ * equal third (80 px) clipped the longest label ("Habilida…", "Compét…") while its
+ * neighbours had spare room (design D3). So the compact tabs size to their LABEL
+ * (`flex-auto`) and short labels hand their slack to the long one; the pill keeps
+ * 8 px of inline padding. The icon is not drawn and the count is `sr-only` - never
+ * `display:none` - so the accessible name and `title` keep label AND count.
+ *
+ * WHY A PROP AND NOT A CONTAINER QUERY (the first remediation used one). A
+ * `container-type: inline-size` element has no intrinsic inline size, so under
+ * `flex-auto` it fell back to an equal share and defeated the sizing above; which
+ * layout applies is a fact about HOW MANY TABS there are, which the page knows.
+ *
+ * `min-w-0` + a truncating label remain as the last resort: the strip must never
+ * overflow into the content pane (QA Q1), whatever a locale's word is. Widths are
+ * a function of the labels only, so switching tabs moves nothing.
+ */
+function BrowseTab({
+	value,
+	testId,
+	icon,
+	label,
+	count,
+	compact,
+	noPanel = false,
+}: {
+	value: string;
+	testId: string;
+	icon: ReactNode;
+	label: string;
+	count: number | null;
+	compact: boolean;
+	/**
+	 * Radix points every trigger's `aria-controls` at a `TabsContent` this page does
+	 * not render (the Agents and Teams tabs already do; that is pre-existing and left
+	 * alone). A tab that is NEW must not add another dangling reference, so it opts
+	 * out the way the Hub page's tabs do: an explicit `undefined` wins over Radix's.
+	 */
+	noPanel?: boolean;
+}) {
+	return (
+		<TabsTrigger
+			value={value}
+			data-testid={testId}
+			{...(noPanel ? { "aria-controls": undefined } : {})}
+			title={count === null ? label : `${label} ${count}`}
+			className={cn("min-w-0", compact ? "flex-auto px-2" : "flex-1")}
+		>
+			{compact ? null : icon}
+			<span className="min-w-0 truncate" data-testid={`${testId}-label`}>
+				{label}
+			</span>
+			{count === null ? null : (
+				<span
+					className={cn(
+						"min-w-[2ch] font-normal text-ink-dim tabular-nums",
+						compact && "sr-only",
+					)}
+				>
+					{count}
+				</span>
+			)}
+		</TabsTrigger>
+	);
+}
+
 /** Where the page can navigate to: one view of the same route. */
 type NavIntent = {
-	kind?: "agent" | "team";
+	kind?: "agent" | "team" | "skill";
 	name?: string | null;
 	create?: "agent" | "team" | null;
 	/** The name a "Duplicate as new agent" form starts from. */
@@ -1453,7 +1934,7 @@ function Roster({
 									 * not move.
 									 */
 									<span className="min-w-0 flex-1 truncate text-ink-dim">
-										No description
+										{t("ui.agents.detail.no_description")}
 									</span>
 								)}
 							</span>
