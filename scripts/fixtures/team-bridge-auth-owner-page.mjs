@@ -541,10 +541,14 @@ async function mount({
 							   the answer was lost. A replay with the same client_ref
 							   must return that original message, not a second one. */
 							if (fixture.postFailsAfterLanding) {
+								/* The same append-with-monotonic-seq path as the success
+								   case: a store that reset here could not show a second
+								   message even if a replay created one (QA round 2). */
+								const previous = fixture.messages.get(ownerKey) ?? [];
 								const landed = {
-									id: `msg_${owner}`,
+									id: `msg_${owner}_${previous.length + 1}`,
 									conversation_id: request.conversation_id,
-									seq: 1,
+									seq: previous.length + 1,
 									sender: person(owner),
 									body: request.body,
 									origin: "human",
@@ -555,7 +559,7 @@ async function mount({
 									JSON.stringify([ownerKey, request.client_ref]),
 									landed,
 								);
-								fixture.messages.set(ownerKey, [landed]);
+								fixture.messages.set(ownerKey, [...previous, landed]);
 							}
 							return { status: 503, body: { detail: "transport refused" } };
 						}
@@ -708,7 +712,13 @@ async function mount({
 		render,
 		/* The journal the page actually uses, so a test can assert on its lanes
 		 * rather than inferring them from the DOM. */
-		journal: ui.teamBridgeJournalForTests(client),
+		/* Guarded: the accessor is exported only for the opt-in first-send suite,
+		 * so an unconditional call made every OTHER consumer of this fixture throw
+		 * at mount (QA round 2). */
+		journal:
+			process.env.TEAM_BRIDGE_FIRST_SEND_FIXTURE === "1"
+				? ui.teamBridgeJournalForTests(client)
+				: undefined,
 		async navigate(path) {
 			assert.ok(
 				navigation && navigate,

@@ -325,7 +325,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onRetry && (
 			<Button
 				variant="primary"
-				className="h-auto min-h-6 shrink-0 px-2 text-[12px]"
+				className="h-auto min-h-6 whitespace-normal px-2 text-[12px]"
 				onClick={row.onRetry}
 			>
 				{t("ui.common.actions.retry")}
@@ -334,7 +334,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onReturnToDraft && (
 			<Button
 				variant="ghost"
-				className="h-auto min-h-6 shrink-0 px-2 text-[12px] text-ink-muted hover:text-ink"
+				className="h-auto min-h-6 whitespace-normal px-2 text-[12px] text-ink-muted hover:text-ink"
 				onClick={row.onReturnToDraft}
 			>
 				{t("ui.teamBridge.message.return_to_draft")}
@@ -343,7 +343,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onDiscard && (
 			<Button
 				variant="ghost"
-				className="h-auto min-h-6 shrink-0 px-2 text-[12px] text-danger hover:text-danger"
+				className="h-auto min-h-6 whitespace-normal px-2 text-[12px] text-danger hover:text-danger active:text-danger"
 				onClick={row.onDiscard}
 			>
 				{t("ui.teamBridge.message.discard")}
