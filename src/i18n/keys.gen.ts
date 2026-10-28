@@ -6963,6 +6963,7 @@ export type MessageParams = {
 	"ui.notifications.bulk.review_asks": undefined;
 	"ui.notifications.bulk.select_error": undefined;
 	"ui.notifications.bulk.update_required": undefined;
+	"ui.notifications.bulk_updates.new_items": undefined;
 	"ui.notifications.bulk_updates.read": { count: number };
 	"ui.notifications.bulk_updates.unread": { count: number };
 	"ui.notifications.action.mark_all_read": undefined;

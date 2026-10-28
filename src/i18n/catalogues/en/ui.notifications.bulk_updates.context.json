@@ -14,5 +14,10 @@
 		"placeholders": {
 			"count": "integer number of eligible selected updates; ICU plural"
 		}
+	},
+	"ui.notifications.bulk_updates.new_items": {
+		"role": "status",
+		"context": "A live line in the frozen-selection bar, shown when a new or newly revised notification or an unobserved pending ask is visible after the selection gesture. New items stay visible and unchecked; the frozen count still describes the server snapshot. Never imply the new ask was hidden, dismissed, or answered. One documented round-trip membership edge is not resolved by this copy.",
+		"tone": "calm and concise"
 	}
 }

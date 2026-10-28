@@ -1,4 +1,5 @@
 {
 	"ui.notifications.bulk_updates.read": "{count, plural, one {Marquer # mise à jour comme lue} other {Marquer # mises à jour comme lues}}",
-	"ui.notifications.bulk_updates.unread": "{count, plural, one {Marquer # mise à jour comme non lue} other {Marquer # mises à jour comme non lues}}"
+	"ui.notifications.bulk_updates.unread": "{count, plural, one {Marquer # mise à jour comme non lue} other {Marquer # mises à jour comme non lues}}",
+	"ui.notifications.bulk_updates.new_items": "Les nouveaux éléments arrivés depuis votre sélection ne sont pas inclus."
 }

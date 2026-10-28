@@ -1,4 +1,5 @@
 {
 	"ui.notifications.bulk_updates.read": "{count, plural, one {# अपडेट को पढ़ा हुआ चिह्नित करें} other {# अपडेट को पढ़ा हुआ चिह्नित करें}}",
-	"ui.notifications.bulk_updates.unread": "{count, plural, one {# अपडेट को बिना पढ़ा चिह्नित करें} other {# अपडेट को बिना पढ़ा चिह्नित करें}}"
+	"ui.notifications.bulk_updates.unread": "{count, plural, one {# अपडेट को बिना पढ़ा चिह्नित करें} other {# अपडेट को बिना पढ़ा चिह्नित करें}}",
+	"ui.notifications.bulk_updates.new_items": "आपके चयन के बाद आए नए आइटम इसमें शामिल नहीं हैं।"
 }
