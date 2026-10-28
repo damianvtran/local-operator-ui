@@ -1,0 +1,66 @@
+{
+ "receipt": "i18n/receipts/wa-a81c00c-20261027-hi.json",
+ "receipt_sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de",
+ "derived": {
+  "ui.chat": {
+   "agent": "i18n-auditor",
+   "instance": "wa-hi-3acece16f468",
+   "model": "radient/auto",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   },
+   "source_sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+   "target_sha256": "849a6cd3093ca30986b9d85d347479859314ef99d490f91eeea98ed6639b4ebb",
+   "receipt_sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de"
+  },
+  "ui.chat.header": {
+   "agent": "i18n-auditor",
+   "instance": "wa-hi-3acece16f468",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+   "target_sha256": "e4ddad4a97cb8412fdd34e6d287b0e2176bb177cc4b9b9b4cc8ef5b08e8ae76a",
+   "receipt_sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de"
+  },
+  "ui.chat.response_actions": {
+   "agent": "i18n-auditor",
+   "instance": "wa-hi-3acece16f468",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "8c23ba6a5b509c13d878c05aed0454026a6960566b043f5e983008dee93bcb18",
+   "target_sha256": "5de763b8d3a5bf9e9c395931e4d150d76a7b7efab4cb8a3ea3f438c37176d55b",
+   "receipt_sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de"
+  },
+  "ui.chat.sidebar": {
+   "agent": "i18n-auditor",
+   "instance": "wa-hi-3acece16f468",
+   "model": "radient/auto",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+   "target_sha256": "5aed52ab4d42e21d5ed21114900313e49e4a459bd94e4bcbff494a25080b5c81",
+   "receipt_sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de"
+  }
+ }
+}

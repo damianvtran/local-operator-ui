@@ -108,7 +108,7 @@ import type {
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
-import { CHAT_REGION_LABEL } from "../chat-regions";
+import { chatRegionLabel } from "../chat-regions";
 import {
 	MarkdownRenderer,
 	type MarkdownStyleProps,
@@ -6816,7 +6816,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					data-lo-dom-window={domWindow.enabled ? "on" : "off"}
 					data-lo-dom-window-reason={domWindow.reason}
 					data-lo-dom-pinned={domWindow.pinned}
-					aria-label={CHAT_REGION_LABEL.transcript}
+					aria-label={chatRegionLabel("transcript")}
 					// Only the `windowed` branch renders that id, so the description has to
 					// track the branch rather than the looser "history exists" condition it
 					// was derived from: `hasMore` with no hidden rows yields `idle`, whose

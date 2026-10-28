@@ -19,6 +19,7 @@
  * `entry.ts`. Nothing else in this module reads a clock.
  */
 
+import { formatTime, t } from "@shared/i18n";
 import type {
 	Checkpoint,
 	CheckpointManifest,
@@ -26,8 +27,15 @@ import type {
 	CheckpointOutcome,
 } from "../../../../../shared/desktop-contract";
 
-/** The card's line while a completion's name is still being generated. */
-export const CHECKPOINT_GENERATING_NAME = "Generating name…";
+/**
+ * The card's line while a completion's name is still being generated.
+ *
+ * A function for the same reason as the labels below: the line is resolved
+ * where it is rendered, so a language change under a live window reaches it.
+ */
+export function checkpointGeneratingName(): string {
+	return t("ui.chat.checkpoint.generating_name");
+}
 
 /**
  * One mark's visual state, as the rail derives it (dsh ladder, 2026-09-29).
@@ -101,23 +109,21 @@ export function checkpointMarkState(options: {
  * The rail's structural identity for one checkpoint: "Turn N of M".
  *
  * ONE formatter on purpose (issue #680's vocabulary item, design D3): the
- * card's lead line carries this string and the tick's accessible name is built
- * from it ("Jump to turn N of M", name appended after a comma) - a second
- * spelling in either place is how the two surfaces drift apart. A ready name
- * rides the identity line after a dot (a label on the turn, not a replacement)
- * and the summary stays the secondary line.
+ * card's lead line carries this string and each tick's accessible name states
+ * the same turn identity in its own sentence - a second spelling of the DIGITS
+ * in either place is how the two surfaces drift apart, so every form below is
+ * fed the same `turn`/`total` arguments at the same call.
+ *
+ * "Turn N of M" IS A SENTENCE FRAGMENT for each locale to spell, not a
+ * concatenation assembled here: the noun and its word order belong to the
+ * catalogue (the tick's sentence embeds the same numbers rather than a
+ * lowercased copy of this string, which cannot be done safely across
+ * languages). A ready name rides the identity line after a dot (a label on the
+ * turn, not a replacement) and the summary stays the secondary line.
  */
 export function checkpointTurnLabel(turn: number, turnCount: number): string {
-	return `Turn ${turn} of ${turnCount}`;
+	return t("ui.chat.checkpoint.turn", { turn, total: turnCount });
 }
-
-/**
- * The same label in sentence position ("turn N of M"). A transform rather than
- * a second formatter, so the tick's accessible name and the card's lead line
- * can never disagree about the digits.
- */
-const inSentence = (label: string): string =>
-	label.charAt(0).toLowerCase() + label.slice(1);
 
 /**
  * The card's lead line, visibly and to assistive tech: the structural identity
@@ -194,24 +200,24 @@ export const CHECKPOINT_OUTCOME_LABELS: Record<CheckpointOutcome, string> = {
 };
 
 /**
- * The clock a user checkpoint's label carries, e.g. "3:42 PM".
+ * The clock a user checkpoint's label carries, e.g. "3:42 PM" in an English
+ * locale — or "15:42" where the reader's locale spells a 24-hour clock.
  *
  * `ts` is epoch seconds (see the header) and the conversion to milliseconds
- * happens exactly here. 12-hour with an AM/PM marker by request — the same
- * `h:mm a` shape `formatMessageDateTime` uses for a message seen today, so
- * the rail and the transcript do not disagree about what a time looks like.
- * A malformed or zero `ts` yields `""` rather than "12:00 AM", so a label
- * built from it simply omits the time half instead of lying about it.
+ * happens exactly here. THE SHAPE IS THE LOCALE'S, not a pattern chosen here:
+ * this asks `formatTime` (`@shared/i18n`) for the hour and minute the active
+ * locale spells. Hand-assembling `h:mm AM/PM` shipped an English meridiem into
+ * the accessible name of every non-English session (QA round 1, Q1) — the
+ * catalogue's `jump_user` note already promised a locale-formatted clock, and
+ * now it is one. A malformed or zero `ts` yields `""` rather than "12:00 AM",
+ * so a label built from it simply omits the time half instead of lying about
+ * it.
  */
 export function checkpointClockLabel(ts: number): string {
 	if (!Number.isFinite(ts) || ts <= 0) return "";
 	const date = new Date(ts * 1000);
 	if (Number.isNaN(date.getTime())) return "";
-	const hours = date.getHours();
-	const minutes = date.getMinutes().toString().padStart(2, "0");
-	const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-	const meridiem = hours < 12 ? "AM" : "PM";
-	return `${hour12}:${minutes} ${meridiem}`;
+	return formatTime(date, { hour: "numeric", minute: "2-digit" });
 }
 
 /**
@@ -227,16 +233,31 @@ export function checkpointAriaLabel(
 	checkpoint: Checkpoint,
 	turnCount: number,
 ): string {
-	const position = inSentence(checkpointTurnLabel(checkpoint.turn, turnCount));
 	if (checkpoint.kind === "user") {
 		const clock = checkpointClockLabel(checkpoint.ts);
 		return clock
-			? `Jump to your message in ${position}, ${clock}`
-			: `Jump to your message in ${position}`;
+			? t("ui.chat.checkpoint.jump_user", {
+					turn: checkpoint.turn,
+					total: turnCount,
+					clock,
+				})
+			: t("ui.chat.checkpoint.jump_user_no_clock", {
+					turn: checkpoint.turn,
+					total: turnCount,
+				});
 	}
 	const name =
 		checkpoint.naming?.state === "ready" ? checkpoint.naming.name?.trim() : "";
-	return name ? `Jump to ${position}, ${name}` : `Jump to ${position}`;
+	return name
+		? t("ui.chat.checkpoint.jump_agent", {
+				turn: checkpoint.turn,
+				total: turnCount,
+				name,
+			})
+		: t("ui.chat.checkpoint.jump_agent_unnamed", {
+				turn: checkpoint.turn,
+				total: turnCount,
+			});
 }
 
 /**

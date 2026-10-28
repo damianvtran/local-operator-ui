@@ -19,7 +19,7 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "@features/chat/chat-measure";
-import { CHAT_REGION_LABEL } from "@features/chat/chat-regions";
+import { chatRegionLabel } from "@features/chat/chat-regions";
 import { AttachmentsPreview } from "@features/chat/components/attachments-preview";
 import { AudioRecordingIndicator } from "@features/chat/components/audio-recording-indicator";
 import { ComposerStatusRow } from "@features/chat/components/composer-status-row";
@@ -8071,7 +8071,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * (the refusal notice replaces the box).
 				 */
 				data-chat-region="composer"
-				aria-label={CHAT_REGION_LABEL.composer}
+				aria-label={chatRegionLabel("composer")}
 				tabIndex={-1}
 				className="w-full"
 			>

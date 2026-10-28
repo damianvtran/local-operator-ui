@@ -1,0 +1,68 @@
+{
+ "heads": {
+  "audited": "80ee119bbd1084ee873994a1f39db0c085c62083",
+  "previous_round": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+  "wave_a_source": "6216167f4464bd607a6831e9e636820c0d463816"
+ },
+ "method": "git -C ~/local-operator-ui show <rev>:<path> piped through json.load on both heads; per-namespace `git diff --stat` corroborates the single changed line",
+ "vi_files": {
+  "ui.chat": {
+   "path": "src/i18n/catalogues/vi/ui.chat.json",
+   "sha256_previous_round": "f817fcf199c0bd8b92b5e1a4294135fb2f04e4514441a15d895340e4f7887e01",
+   "sha256_audited_head": "008ac443d140f40f0de80165ccb014348123fe2084089eb4de0bd2240ce00bae",
+   "keys_previous": 133,
+   "keys_audited_head": 133,
+   "keys_added": [],
+   "keys_dropped": [],
+   "values_changed": [
+    "ui.chat.region.conversation"
+   ]
+  },
+  "ui.chat.header": {
+   "path": "src/i18n/catalogues/vi/ui.chat.header.json",
+   "sha256_previous_round": "43eedd65728fd38484116e745c05430e9c771def2674e68df4ed8c83eda1db9a",
+   "sha256_audited_head": "43eedd65728fd38484116e745c05430e9c771def2674e68df4ed8c83eda1db9a",
+   "keys_previous": 17,
+   "keys_audited_head": 17,
+   "keys_added": [],
+   "keys_dropped": [],
+   "values_changed": []
+  },
+  "ui.chat.response_actions": {
+   "path": "src/i18n/catalogues/vi/ui.chat.response_actions.json",
+   "sha256_previous_round": "01df25b03593593f7984679b638b70185343025a03fc10f48987ab40ca1c3291",
+   "sha256_audited_head": "01df25b03593593f7984679b638b70185343025a03fc10f48987ab40ca1c3291",
+   "keys_previous": 5,
+   "keys_audited_head": 5,
+   "keys_added": [],
+   "keys_dropped": [],
+   "values_changed": []
+  },
+  "ui.chat.sidebar": {
+   "path": "src/i18n/catalogues/vi/ui.chat.sidebar.json",
+   "sha256_previous_round": "a61f68e6cf27329937640e12f3d115c1a700e617ae3dbbbfc12ef644681afe6b",
+   "sha256_audited_head": "a61f68e6cf27329937640e12f3d115c1a700e617ae3dbbbfc12ef644681afe6b",
+   "keys_previous": 60,
+   "keys_audited_head": 60,
+   "keys_added": [],
+   "keys_dropped": [],
+   "values_changed": []
+  }
+ },
+ "en_files_unchanged": {
+  "ui.chat": true,
+  "ui.chat.header": true,
+  "ui.chat.response_actions": true,
+  "ui.chat.sidebar": true
+ },
+ "wave_a_keys_byte_identical": 37,
+ "wave_a_keys_changed": [
+  "ui.chat.region.conversation"
+ ],
+ "changed_values": {
+  "ui.chat.region.conversation": {
+   "from": "Cuộc trò chuyện",
+   "to": "Khung trò chuyện"
+  }
+ }
+}

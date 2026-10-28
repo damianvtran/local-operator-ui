@@ -55,15 +55,31 @@ const bundle = await build({
 		{
 			name: "find-transport-fixture",
 			setup(builder) {
-				// Only the network is faked, as `use-thread-search.test.mjs` does.
+				/*
+				 * ONLY `desktopResult` IS REPLACED, NOT THE MODULE. The stub carries the
+				 * real module's whole surface and overrides one export, because
+				 * `desktop-api.ts` is not only the transport: it also owns
+				 * `DesktopControlError` and `isDeadlineExceeded`, which `backend-error.ts`
+				 * imports. A one-export stub is a claim about the bundle's import graph -
+				 * it holds only while nothing else in the graph reads the module - and
+				 * that stopped being true when `chat-regions.ts` gained `t()`: the i18n
+				 * runtime reaches `desktop-hooks.ts`, then `backend-error.ts`, and the
+				 * build failed on a missing export with no product defect behind it. A
+				 * star re-export keeps the error classes this bundle sees identical to
+				 * the ones the app throws, and the explicit export shadows the star, so
+				 * the transport function stays faked - as `use-thread-search.test.mjs`
+				 * fakes it.
+				 */
+				const realTransport = `${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`;
 				builder.onResolve({ filter: /desktop-api$/ }, () => ({
 					path: "transport",
 					namespace: "find-fixture",
 				}));
 				builder.onLoad({ filter: /.*/, namespace: "find-fixture" }, () => ({
-					contents:
-						"export const desktopResult = (request) => globalThis.__findRequest(request);",
+					contents: `export * from ${JSON.stringify(realTransport)};
+						export const desktopResult = (request) => globalThis.__findRequest(request);`,
 					loader: "js",
+					resolveDir: process.cwd(),
 				}));
 			},
 		},

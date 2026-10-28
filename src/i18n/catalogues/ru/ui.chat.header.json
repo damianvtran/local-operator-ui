@@ -10,5 +10,10 @@
 	"ui.chat.header.open_run_details": "Открыть сведения",
 	"ui.chat.header.transcript_display": "Вид транскрипта",
 	"ui.chat.header.new_chat": "Новый чат",
-	"ui.chat.header.new_chat_with": "Новый чат с {target}"
+	"ui.chat.header.new_chat_with": "Новый чат с {target}",
+	"ui.chat.header.archive_conversation": "Архивировать разговор",
+	"ui.chat.header.cancel_rename": "Отменить переименование",
+	"ui.chat.header.rename_conversation": "Переименовать разговор",
+	"ui.chat.header.restore_conversation": "Восстановить разговор",
+	"ui.chat.header.saving_conversation_name": "Сохранение названия разговора"
 }

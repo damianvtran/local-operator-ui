@@ -66,6 +66,7 @@ import { useTeams } from "@shared/api/local-operator/profile-hooks";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { Spinner } from "@shared/components/common/spinner";
 import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
@@ -216,7 +217,6 @@ type IdentityControlProps = {
 	sessionId: string;
 	/** Loads the panel's rows, lazily on first open. */
 	enabled: boolean;
-	triggerLabel: string;
 	/**
 	 * The bound team's acceptance rule for THIS control's slot, or `null` when
 	 * there is none (always, for the team control; for the agent control until a
@@ -265,7 +265,6 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	onPick,
 	sessionId,
 	enabled,
-	triggerLabel,
 	constraint,
 	flagged,
 	recents,
@@ -456,6 +455,36 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	 * always implies - the flag itself requires a known manager.
 	 */
 	const cueSentence = constraint?.caption ?? null;
+	/*
+	 * THE CHIP'S ACCESSIBLE NAME, one WHOLE sentence per state (design D6's
+	 * clause split, kept): the role and the visible label lead, then either the
+	 * action or the runtime's closure reason. Each state is its own catalogue
+	 * message rather than a sentence assembled from translated fragments - the
+	 * role noun, its article and the word order are the locale's, and "Switch
+	 * agent" cannot be built from "Agent" in every language. `label` is the
+	 * chip's visible text (a name, or the no-agent/no-team phrase), so voice
+	 * control keeps matching the control.
+	 */
+	const identitySentence =
+		closedReason !== null
+			? /* A closed control offers no "Switch": the name states the role and
+				 * the speaker, and the reason is its own clause. */
+				kind === "team"
+				? t("ui.chat.header_identity.aria_team_closed", {
+						label,
+						reason: closedReason,
+					})
+				: t("ui.chat.header_identity.aria_agent_closed", {
+						label,
+						reason: closedReason,
+					})
+			: assigned
+				? kind === "team"
+					? t("ui.chat.header_identity.aria_team_switch", { label })
+					: t("ui.chat.header_identity.aria_agent_switch", { label })
+				: kind === "team"
+					? t("ui.chat.header_identity.aria_team_assign", { label })
+					: t("ui.chat.header_identity.aria_agent_assign", { label });
 
 	return (
 		/*
@@ -512,19 +541,11 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * round 1, D6/NIT-1): read aloud, "Switch agent Local Operator Dev
 					 * is led by..." ran the action into the rule as one noun phrase.
 					 */
-					aria-label={
-						closedReason !== null
-							? /* A closed control offers no "Switch": the name states the
-								 * role and the speaker, and the reason is its own clause. */
-								`${triggerLabel}: ${label}. ${closedReason}`
-							: `${triggerLabel}: ${label}. ${
-									assigned
-										? `Switch ${kind === "team" ? "team" : "agent"}`
-										: kind === "team"
-											? "Assign a team"
-											: "Assign an agent"
-								}${flagged && cueSentence ? `. ${cueSentence}` : ""}`
-					}
+					aria-label={`${identitySentence}${
+						closedReason === null && flagged && cueSentence
+							? `. ${cueSentence}`
+							: ""
+					}`}
 					title={
 						closedReason !== null
 							? /*
@@ -552,8 +573,8 @@ const IdentityControl: FC<IdentityControlProps> = ({
 										 */
 										`${label}${labelWon ? ` (${current})` : ""}`
 									: kind === "team"
-										? "Assign a team"
-										: "Assign an agent"
+										? t("ui.chat.header_identity.assign_team")
+										: t("ui.chat.header_identity.assign_agent")
 					}
 				>
 					{kind === "team" && assigned && (
@@ -964,7 +985,6 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 		>
 			<IdentityControl
 				kind="agent"
-				triggerLabel="Agent"
 				label={view.agentLabel}
 				current={view.agentValue}
 				busy={agentCommand.busy}
@@ -981,7 +1001,6 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 			/>
 			<IdentityControl
 				kind="team"
-				triggerLabel="Team"
 				label={view.teamLabel}
 				current={view.teamValue}
 				busy={teamCommand.busy}
