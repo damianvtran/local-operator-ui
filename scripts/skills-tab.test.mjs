@@ -3304,11 +3304,11 @@ test("U1/U2: a not-installed hub skill offers Download, says Download, and claim
  * Core answers `hub.skillPull` with a status that names the remedy
  * (`_raise_skill_refusal` in `desktop_hub.py`), and the pane used to answer every
  * one of them with "Try Download again later" - advice that cannot work for a
- * skill the hub has delisted, a machine with no hub sign-in, a link that moved
- * under the pane, or a hub copy the hub itself refused. Each case mounts the real
- * page signed in, presses the real Download and reads the real alert; the status
- * is the only thing that differs, which is what makes "the sentence is chosen by
- * status" checkable here rather than asserted on the helper alone.
+ * skill the hub has delisted, a machine with no hub sign-in, or a hub copy the
+ * hub itself refused. Each case mounts the real page signed in, presses the real
+ * Download and reads the real alert; the status (and, for a 409, the code) is the
+ * only thing that differs, which is what makes "the sentence is chosen by the
+ * refusal" checkable here rather than asserted on the helper alone.
  */
 const refusedPullWorld = (status, detail) => {
 	const base = absentWorld();
@@ -3380,10 +3380,40 @@ test("U11: a 401 Download refusal says the sign-in was refused, not that waiting
 	await teardown(view);
 });
 
-test("U11: a 409 Download refusal says the copy was refused, not that waiting helps", async () => {
+test("U11: a 409 policy-revision-changed says to press again, because the link re-reads", async () => {
 	const { view, alert } = await refusedDownload(409, {
 		code: "policy-revision-changed",
 		message: "the link's policy revision changed",
+	});
+	// A local CAS loss, not a hub refusal: the settle re-reads the link, so the
+	// next press works and the sentence must say so (review r1 M1).
+	assert.equal(
+		refusalBody(alert),
+		"Agent Hub couldn't send this skill, so nothing was installed. Try Download again later.",
+	);
+	await teardown(view);
+});
+
+test("U11: a code-less 409 (an update already running here) says to press again", async () => {
+	// Core's `HubBusy` refusal, verbatim: `_refusal(409, str(busy))` with no code,
+	// because a body is only typed when it carries a category (`desktop_hub.py`).
+	const { view, alert } = await refusedDownload(409, {
+		message:
+			"another hub update is running (the update runner or a second `lop` process); try again shortly",
+	});
+	assert.equal(
+		refusalBody(alert),
+		"Agent Hub couldn't send this skill, so nothing was installed. Try Download again later.",
+	);
+	await teardown(view);
+});
+
+test("U11: a bundle-* 409 keeps the refusal sentence, because waiting cannot clear it", async () => {
+	// The control for the split: a 409 that is about the copy itself must NOT take
+	// the retry sentence just because its siblings do.
+	const { view, alert } = await refusedDownload(409, {
+		code: "bundle-local-changes",
+		message: "this machine's copy has unpublished changes",
 	});
 	assert.equal(
 		refusalBody(alert),
@@ -3404,7 +3434,7 @@ test("U11: a 422 Download refusal says the copy was refused, not that waiting he
 	await teardown(view);
 });
 
-test("U11: a 429 Download refusal names the busy hub, the one retryable answer", async () => {
+test("U11: a 429 still reads as a busy hub, though core folds one into a 502 today", async () => {
 	const { view, alert } = await refusedDownload(429, {
 		message: "the hub is rate limiting this account",
 	});

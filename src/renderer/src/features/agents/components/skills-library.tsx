@@ -623,17 +623,18 @@ const READ_ONLY_NO_COPY_BODY = {
  * WHAT THIS REPLACES: one sentence for every failure, which told the reader
  * "Try Download again later" whatever core had answered. Core refuses this
  * download with a status that names a different remedy - the skill is gone from
- * the hub (404), this machine holds no hub sign-in (401), the link moved under
- * the pane (409), the hub's own copy was refused (422) - and none of those is
- * fixed by pressing again. The old copy promised that it was.
+ * the hub (404), this machine holds no hub sign-in (401), the link's policy CAS
+ * was lost (409), the hub's own copy was refused (422) - and most of those are
+ * not fixed by pressing again. The old copy promised that they were.
  *
  * THE LADDER IS THE AGENT PULL'S (`pullRefusalMessage`), for the reason that
  * function exists: one status, one sentence, so two download surfaces cannot
  * word one fact two ways, and a status whose meaning the pull path already knows
  * reuses its key instead of inventing a second spelling that would then need
- * every locale translated and audited again. Only the retryable end keeps this
- * pane's own sentence: a 5xx, and a failure that never produced a status at all,
- * are the cases where pressing Download again is what helps.
+ * every locale translated and audited again. The retry sentence is this pane's
+ * own, and it covers everything that does clear by waiting or pressing: a 5xx, a
+ * failure that never produced a status at all, a 429, and the 409s that clear on
+ * their own (see the branch below).
  *
  * @param error - The refusal `hub.skillPull` threw
  * @param skillName - The skill the user asked for, quoted in the sentence
@@ -652,11 +653,28 @@ export function skillDownloadRefusalMessage(
 		return t("ui.agents.publication.pull.not_found", { subject });
 	if (status === 401 || status === 403)
 		return t("ui.agents.publication.pull.sign_in_refused", { subject });
-	if (status === 409 || status === 422)
-		// ONE SENTENCE FOR BOTH: each is a refusal of THIS hub copy - the link moved,
-		// or the copy failed the hub's own rules - and the fact the reader can act on
-		// is the same one. Nothing was installed, and pressing again is not the fix.
+	if (status === 409) {
+		/*
+		 * A 409 IS THREE FACTS, NOT ONE (agent review r1 M1). Core sends the
+		 * `policy-revision-changed` CAS loss, the `bundle-*` state refusals, and -
+		 * with NO code at all, because `_refusal` only types a body when it has a
+		 * category - `HubBusy` when this machine's own update lease is held
+		 * (`desktop_hub.py`'s `except svc.HubBusy`, whose message says the request is
+		 * safe to repeat). Two of those clear by themselves: the link re-reads when
+		 * the mutation settles, and the lease is released when the other run ends,
+		 * so pressing again is exactly the fix and the refusal itself says "try again
+		 * shortly". A `bundle-*` refusal is about the copy and cannot clear that way.
+		 */
+		const code = refusalCode(error);
+		return code?.startsWith("bundle-")
+			? t("ui.agents.publication.pull.refused_download", { subject })
+			: t("ui.agents.skills.error.download_failed_body");
+	}
+	if (status === 422)
 		return t("ui.agents.publication.pull.refused_download", { subject });
+	// Kept for robustness rather than because this route produces one: core turns a
+	// hub 429 into `hub-upstream`, so the pane sees the 502 below instead (agent
+	// review r1 m1). A 429 that did arrive is the busy sentence either way.
 	if (status === 429) return t("ui.agents.publication.pull.busy", { subject });
 	return t("ui.agents.skills.error.download_failed_body");
 }
