@@ -1,5 +1,10 @@
 # S6d evidence: approvals corner popup by default, grants kept reachable
 
+**Current remediation evidence: [round-2/README.md](round-2/README.md).** Its frames prove
+**card + approvals controller in producer-bound rig, NOT a whole-app artifact**. The older
+app/card frames and counts below are historical initial/round-1 evidence; they are not an
+updated whole-app smoke or a byte-compatibility carryover claim for the round-2 build.
+
 Everything here was captured **headless** (`--window-mode=headless`, scratch HOME/config/log, private
 `--user-data-dir`, mock keychain, `CMUX_*`/`LOP_*` stripped, every process group reaped by exact pid).
 No window was ever shown. Frames are CDP `Page.captureScreenshot` of the renderer or of the card

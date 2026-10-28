@@ -161,8 +161,36 @@ html[data-opaque="1"] #approvals-card {
  * The last decision keeps a breathing space above the hairline; a button whose
  * border touches the divider reads as the footer's own control (round-2 nit).
  */
+/* Only explanatory text may shrink at the native height cap. Decision buttons
+ * retain their intrinsic height; the footer is a separate flex item, so it
+ * cannot paint over denial even when a translation needs more space (D2-1). */
 #approvals-request {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
 	padding-bottom: 6px;
+}
+
+.card-context {
+	/* Keep the requested origin and expiry readable; let the explanatory gloss
+	 * spend its spare space first. At extreme sizes the body still scrolls,
+	 * independently of the footer, rather than covering a decision. */
+	flex: 0 0 auto;
+	min-height: 2.9em;
+	overflow-y: auto;
+}
+
+#approvals-list {
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.card-brand,
+.card-header,
+.card-primary,
+.card-secondary {
+	flex-shrink: 0;
 }
 
 /*
@@ -223,7 +251,12 @@ html[data-opaque="1"] #approvals-card {
 
 .card-gloss {
 	margin: 4px 0 0;
+	/* The document measures this basis at the real width, but it is NOT a
+	 * minimum: translated glosses scroll inside the remaining space at the cap.
+	 * Hover changes the text, never the basis or the decision target geometry. */
+	flex: 0 1 auto;
 	min-height: 1.4em;
+	overflow-y: auto;
 	color: var(--lo-ink-dim);
 	font-size: 11px;
 	line-height: 1.4;
@@ -257,36 +290,14 @@ html[data-opaque="1"] #approvals-card {
 	cursor: default;
 }
 
-/*
- * THE FOOTER STICKS INSIDE THE SCROLLER. It is a child of `.card-body`, so it
- * shares the body's content width (including the scrollbar gutter) and cannot
- * be 15px wider than the rows above it (D7). The hairline and the top scrim
- * mark the scroll boundary so content is not read as cut mid-glyph (D6).
- */
+/* A sibling of the scrollable content, not sticky over it. This takes the
+ * footer out of the decision paint area at the 480-DIP native ceiling. */
 .card-footer {
-	/*
-	 * PINNED AT THE BOTTOM OF A SHORT VIEW, STICKY IN A LONG ONE. `margin-top:
-	 * auto` in the flex body puts the footer at the card's foot when the list is
-	 * short (D12: it used to sit at the end of the 148px list, leaving an empty
-	 * band below it), and `position: sticky` keeps it at the scrollport's foot
-	 * when the request scrolls.
-	 */
-	position: sticky;
-	bottom: 0;
-	margin: auto -12px 0;
+	flex-shrink: 0;
+	margin-top: auto;
 	padding: 6px 12px 10px;
 	border-top: 1px solid var(--lo-hairline);
 	background: var(--lo-elevated);
-}
-
-/*
- * The scrim is a scroll-boundary cue, not decoration: the body only gets the
- * class when its content actually overflows, so a short list's empty ground is
- * not painted grey (D13).
- */
-.card-body.is-scrollable .card-footer {
-	box-shadow: 0 -10px 14px -8px
-		color-mix(in srgb, var(--lo-scrim) 80%, transparent);
 }
 
 .card-review {

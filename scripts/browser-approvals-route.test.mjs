@@ -663,9 +663,12 @@ test("U2: closing the dialog (Escape or Close) from the toolbar or the page menu
 	handle.unmount();
 });
 
-test("U4: with the card available a polite status announces a new request, and does not announce when the count falls to zero", async () => {
+test("U4: with the card available a polite status announces arrivals only", async (t) => {
 	const host = freshContainer();
 	const handle = mount(host, {});
+	// Discriminating controls intentionally fail mid-flow; still release the
+	// mounted surface and its timers so a failure cannot outlive this test.
+	t.after(() => handle.unmount());
 	await flush();
 	const region = () => q('[data-tour-tag="browser-approvals-announcer"]');
 	assert.ok(region(), "the live region is mounted in the enabled build");
@@ -681,10 +684,26 @@ test("U4: with the card available a polite status announces a new request, and d
 		"Approvals, 2 waiting",
 		"a second request announces",
 	);
+	handle.setPending([pending("a")]);
+	await flush();
+	assert.equal(
+		region().textContent,
+		"",
+		"2 -> 1 is silent, not another arrival",
+	);
+	handle.setPending([pending("a"), pending("c")]);
+	await flush();
+	assert.equal(
+		region().textContent,
+		"Approvals, 2 waiting",
+		"a later arrival is still announced",
+	);
+	handle.setPending([pending("a")]);
+	await flush();
+	assert.equal(region().textContent, "", "second decrease is silent too");
 	handle.setPending([]);
 	await flush();
 	assert.equal(region().textContent, "", "falling to zero is silent");
-	handle.unmount();
 });
 
 test("U4: in the fallback build the band carries the live region and the announcer is absent", async () => {

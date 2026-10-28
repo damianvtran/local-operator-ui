@@ -1170,6 +1170,12 @@ export class ApprovalsOverlayController {
 					 * return the provisional 96 DIP view's ceiling forever: a
 					 * circular size that never reaches the card's real height.
 					 */
+					// The document owns its intrinsic text measurement. Pull it here,
+					// after paint, over the existing host/model path (no resize IPC).
+					if (window.__approvalsCard?.measure) {
+						resolve(window.__approvalsCard.measure());
+						return;
+					}
 					const previous = el.style.maxHeight;
 					el.style.maxHeight = 'none';
 					const height = el.getBoundingClientRect().height;

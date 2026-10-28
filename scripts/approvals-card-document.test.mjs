@@ -183,3 +183,48 @@ test("D-2: a very long requester label is clipped in the headline and kept whole
 	assert.equal(node.textContent, "Short title");
 	assert.equal(node.title, "");
 });
+
+// R2-1: an explicit focus model is consumed once, not replayed by the arming
+// timer. Exercise the actual Review-all action while that timer is outstanding.
+test("R2-1: ending the inert window preserves focus in Review all", async () => {
+	const { dom, doc, push } = mount();
+	push(modelOf(1, [req("a"), req("b")]));
+	push(modelOf(2, [req("b")]));
+	push(modelOf(3, [req("b")], { focus: true }));
+	assert.equal(doc.activeElement.id, "approvals-card");
+	click(dom, doc.getElementById("approvals-review"));
+	assert.equal(doc.activeElement.id, "approvals-back");
+	await sleep(820);
+	assert.equal(
+		doc.activeElement.id,
+		"approvals-back",
+		"timer cannot replay model.focus",
+	);
+});
+
+test("Q2-1: footer is outside the scrollable body and the host can pull intrinsic measurement", () => {
+	const { dom, doc, push } = mount();
+	push(modelOf(1, [req("a")]));
+	assert.equal(
+		doc.querySelector(".card-footer").parentElement.id,
+		"approvals-card",
+	);
+	assert.equal(doc.querySelector(".card-body .card-footer"), null);
+	assert.equal(typeof dom.window.__approvalsCard.measure, "function");
+	dom.window.__approvalsCard.measure();
+	assert.equal(doc.getElementById("approvals-gloss").style.minHeight, "");
+});
+
+test("R2-1: re-arming does not replace a focused Review-all row", async () => {
+	const { dom, doc, push } = mount();
+	push(modelOf(1, [req("a"), req("b")]));
+	push(modelOf(2, [req("b")], { focus: true }));
+	click(dom, doc.getElementById("approvals-review"));
+	const row = doc.querySelector("#approvals-rows button");
+	row.focus();
+	await sleep(820);
+	assert.ok(
+		doc.activeElement === row,
+		"the timer leaves the focused row intact",
+	);
+});

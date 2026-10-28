@@ -1240,6 +1240,10 @@ test("D1: a stale-action error line is measured again, not only pushed", async (
 		"the read is a timer task after the apply, so the error line has painted",
 	);
 	controller.dispose("test");
+	assert.ok(
+		measured[0].includes("window.__approvalsCard.measure()"),
+		"the same after-paint read pulls intrinsic document measurement without another IPC channel",
+	);
 });
 
 test("D1: the unavailable error line is measured again as well", async () => {

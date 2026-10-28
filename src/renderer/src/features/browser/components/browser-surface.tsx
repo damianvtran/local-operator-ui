@@ -741,10 +741,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * `aria-hidden` and the card document is a separate native view, so nothing in
 	 * the app renderer told a screen-reader user that an agent was waiting. This
 	 * visually hidden status says it with the existing toolbar-control sentence (no
-	 * new copy). It speaks on a count that GROWS, and when the count falls but
-	 * something still waits (the number the user must now act on changed); falling
-	 * to zero clears it silently, because an answer or an expiry is not news and the
-	 * user just caused or does not need it. The region is always mounted, empty
+	 * new copy). Only an increase is an arrival: decreases clear the status without
+	 * replacing it with another positive count. The toolbar still carries the live
+	 * count; announcing 2 -> 1 here would repeat a dismissal as new work (Q2-2).
+	 * The region is always mounted, empty
 	 * first: a live region inserted already holding text is not reliably announced.
 	 */
 	const [approvalsAnnouncement, setApprovalsAnnouncement] = useState("");
@@ -754,7 +754,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		lastAnnouncedCount.current = queue.count;
 		if (!nativeApprovalsCard?.available || queue.count === previous) return;
 		setApprovalsAnnouncement(
-			queue.count > 0
+			queue.count > previous
 				? t("ui.browser.browser_url_bar.approvals_waiting", {
 						count: queue.count,
 					})

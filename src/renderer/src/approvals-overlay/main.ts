@@ -39,6 +39,8 @@ interface ApprovalsCardApi {
 
 interface ApprovalsCardBridge {
 	setModel(model: ApprovalsCardModel): void;
+	/** Host-only pull through executeJavaScript; not a renderer IPC channel. */
+	measure(): number;
 }
 
 declare global {
@@ -168,19 +170,24 @@ function action(
  * the "Don't allow" sentence wraps to two lines where the others take one. Nothing
  * re-measures on a hover, so the card grew inside a native view that stayed put:
  * the footer covered the lowest decision (measured: overdraw 9) and every button
- * slid 15 px under the pointer, so a click landed in the gap. The line is sized
- * to the tallest sentence it can show, at the width it will show them (locale and
- * card width both change the wrap), so hovering moves nothing and the host's
- * measurement already contains the worst case.
+ * slid 15 px under the pointer, so a click landed in the gap. The host re-measures
+ * the tallest sentence at the real width after paint.
+ * It becomes a SHRINKABLE flex basis, never a hard minimum: at the native cap
+ * the gloss scrolls internally rather than pushing denial underneath the footer.
+ * Hover changes only text, not this basis, so the decision targets stay put.
  */
 let glossTexts: string[] = [];
 function reserveGloss(): void {
 	if (!glossNode) return;
-	glossNode.style.minHeight = "";
+	glossNode.style.flexBasis = "";
+	glossNode.style.flexShrink = "0";
 	// A hidden view or the provisional zero-width child reports a height that is
 	// not the card's: reserve nothing there; the next render, view switch or
 	// resize does it at the real width.
-	if (glossNode.getBoundingClientRect().width <= 0) return;
+	if (glossNode.getBoundingClientRect().width <= 0) {
+		glossNode.style.flexShrink = "";
+		return;
+	}
 	const current = glossNode.textContent;
 	let tallest = 0;
 	for (const text of glossTexts) {
@@ -188,7 +195,8 @@ function reserveGloss(): void {
 		tallest = Math.max(tallest, glossNode.getBoundingClientRect().height);
 	}
 	glossNode.textContent = current;
-	if (tallest > 0) glossNode.style.minHeight = `${Math.ceil(tallest)}px`;
+	if (tallest > 0) glossNode.style.flexBasis = `${Math.ceil(tallest)}px`;
+	glossNode.style.flexShrink = "";
 }
 
 function dismiss(): void {
@@ -335,6 +343,20 @@ function setView(view: "request" | "list"): void {
 	setTimeout(syncScrim, 0);
 }
 
+/** Refresh only inert/expired state, without replacing the focused DOM nodes. */
+function syncDecisionAvailability(): void {
+	if (!model) return;
+	const request = shownRequest();
+	const disabled =
+		model.busy ||
+		isInert() ||
+		(request ? (minutesLeft(request.expiresAt) ?? 1) <= 0 : true);
+	if (allowOnceNode) allowOnceNode.disabled = disabled;
+	for (const button of secondaryNode?.querySelectorAll("button") ?? []) {
+		button.disabled = disabled;
+	}
+}
+
 function render(): void {
 	if (!model) return;
 	/* A CONTROLLER PICK REPLACES THE LOCAL SELECTION. `selectedEntryId` is only
@@ -352,7 +374,9 @@ function render(): void {
 			if (inertTimer) clearTimeout(inertTimer);
 			inertTimer = setTimeout(() => {
 				inertTimer = null;
-				render();
+				// Re-arming is not a repaint: replacing list rows here also drops
+				// focus even if model.focus has already been consumed (R2-1).
+				syncDecisionAvailability();
 			}, INERT_MS + 20);
 		}
 		lastEntryId = model.request.entryId;
@@ -443,13 +467,7 @@ function render(): void {
 	}
 	renderRows(model.pending);
 	setView(localView);
-	const disabled =
-		model.busy ||
-		isInert() ||
-		(request ? (minutesLeft(request.expiresAt) ?? 1) <= 0 : true);
-	for (const button of secondaryNode?.querySelectorAll("button") ?? []) {
-		button.disabled = disabled;
-	}
+	syncDecisionAvailability();
 	card?.setAttribute("aria-busy", model.busy ? "true" : "false");
 	if (errorNode) {
 		errorNode.hidden = model.error === null;
@@ -462,13 +480,25 @@ function render(): void {
 					? t("ui.browser.browser_surface.browser_unavailable")
 					: "";
 	}
-	if (model.focus) card?.focus();
 	// After the view switch and the model paint; a timer, not rAF, because the
 	// card's window is hidden and runs no animation frames.
 	setTimeout(syncScrim, 0);
 }
 
 window.__approvalsCard = {
+	measure(): number {
+		if (!card) return 0;
+		// Recompute intrinsic text sizes AFTER the model and stylesheet paint,
+		// with no provisional viewport clamp. The host rounds/clamps this result
+		// and resizes the child. At that final ceiling only context/gloss can
+		// shrink; decision targets and the non-overlapping footer cannot (D2-1).
+		const previous = card.style.maxHeight;
+		card.style.maxHeight = "none";
+		reserveGloss();
+		const height = card.getBoundingClientRect().height;
+		card.style.maxHeight = previous;
+		return height;
+	},
 	setModel(next: ApprovalsCardModel): void {
 		model = next;
 		// A selected row that left the queue must not keep the request view on a
@@ -501,6 +531,9 @@ window.__approvalsCard = {
 			closeNode.onclick = dismiss;
 		}
 		render();
+		// Focus is a one-shot command on receipt, not retained render state. The
+		// inert-window timer must not take focus back from Review all or Back.
+		if (next.focus) card?.focus();
 	},
 };
 

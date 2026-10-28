@@ -41,16 +41,20 @@ if (!OUT || OUT.startsWith("--")) throw new Error("--out required");
 // the D1 reproduction are taken from `origin/main`'s controller without
 // touching this tree's. The card DOCUMENT (out/renderer) is unchanged by S6d.
 const FRAMES = process.argv.includes("--frames");
+// Round-2 regression fixture: ordinary requester, longer authority and broad
+// grant; the original short fixture did not reach the translated height cap.
+const REVIEW_FIXTURE = process.argv.includes("--review-fixture");
+const LOCALE = process.argv.includes("--locale")
+	? process.argv[process.argv.indexOf("--locale") + 1]
+	: "fr";
 const CONTROLLER_ARG = process.argv.indexOf("--controller");
 const CONTROLLER =
 	CONTROLLER_ARG >= 0
 		? resolve(process.argv[CONTROLLER_ARG + 1])
 		: join(ROOT, "src/main/browser/approvals-overlay.ts");
 mkdirSync(OUT, { recursive: true });
-// No HOME override: Electron resolves its profile from NSHomeDirectory on
-// macOS, and a scratch HOME is what made the child view fail in the round-2
-// investigation. The private --user-data-dir below is the isolation that
-// matters; the mock-keychain switch (applied in the fixture) keeps the keychain out.
+// Private HOME/config as well as userData: the latter alone does not isolate
+// every client. The mock-keychain switch prevents scratch-HOME keychain prompts.
 
 const MAIN = join(OUT, "s6b-main.mjs");
 const FIXTURE = join(OUT, "fixture.html");
@@ -68,6 +72,8 @@ import { app, BrowserWindow, WebContentsView, webContents } from "electron";
 import { writeFileSync } from "node:fs";
 import { ApprovalsOverlayController } from ${JSON.stringify(CONTROLLER)};
 const FRAMES = ${FRAMES};
+const REVIEW_FIXTURE = ${REVIEW_FIXTURE};
+const LOCALE = ${JSON.stringify(LOCALE)};
 
 const out = ${JSON.stringify(OUT)};
 const cardUrl = ${JSON.stringify(`file://${CARD}`)};
@@ -184,6 +190,9 @@ app.whenReady().then(async () => {
         lowestDecisionBottom: lowest,
         overdraw: +Math.max(0, lowest - footerTop).toFixed(2),
         bodyOverflow: body.scrollHeight - body.clientHeight,
+        gloss: (() => { const g = document.getElementById('approvals-gloss'); return { allocated: g.clientHeight, content: g.scrollHeight, basis: g.style.flexBasis, minimum: g.style.minHeight }; })(),
+        footerOutsideBody: footer.parentElement === card,
+        intrinsicHeight: window.__approvalsCard?.measure?.() ?? null,
         insideCard: rects.every((r) => r.top >= 0 && r.bottom <= c.height),
         rects,
       };
@@ -231,15 +240,15 @@ app.whenReady().then(async () => {
   // through the renderer-pushed requesterLabels map.
   const entry = (index) => ({
     entryId: "entry-" + index,
-    origin: "https://example" + index + ".test",
+    origin: REVIEW_FIXTURE && index === 0 ? "https://docs.example-company.test" : "https://example" + index + ".test",
     displayAuthority: "example" + index + ".test",
     requester: "session:entry-" + index,
     requesterSessionId: "entry-" + index,
     expiresAt: Date.now() + 9 * 60000,
-    ...(index === 0 ? { broad: { scope: "domain", key: "example0.test" } } : {}),
+    ...(index === 0 ? { broad: { scope: "domain", key: REVIEW_FIXTURE ? "example-company.test" : "example0.test" } } : {}),
   });
   const requesterLabels = {
-    "entry-0": "Fix the login flow",
+    "entry-0": REVIEW_FIXTURE ? "Fix the login flow on the staging dashboard" : "Fix the login flow",
     "entry-1": "Draft a release note",
   };
   const entries = [entry(0), entry(1)];
@@ -257,7 +266,7 @@ app.whenReady().then(async () => {
   const pageBefore = { bounds: page.getBounds(), visible: page.getVisible(), viewport: pageViewport, probe: await page.webContents.executeJavaScript("window.__probe()") };
   const focusBefore = webContents.getFocusedWebContents()?.id ?? null;
   controller.onLayout({ presented: true, contentRect: pageRect, revision: 1 });
-  controller.setModel({ entries, locale: "fr", dir: "ltr", theme: THEME, requesterLabels });
+  controller.setModel({ entries, locale: LOCALE, dir: "ltr", theme: THEME, requesterLabels });
   const autoSettled = await settle((f) => f.ready && f.visible, "auto-present");
   // A content-driven card grows after the model paints; the focus proof must be
   // read once the height has stopped changing, not on the first visible frame.
@@ -301,7 +310,7 @@ app.whenReady().then(async () => {
   record("A1-auto-present-unfocused", Boolean(autoSettled && autoDoc && !factsAtAuto.explicitOpen && focusTargets.length === 0 && pageAfterAuto.probe.focusEvents === pageBefore.probe.focusEvents && pageAfterAuto.probe.blurEvents === pageBefore.probe.blurEvents && pageAfterAuto.probe.activeElement === pageBefore.probe.activeElement && JSON.stringify(pageAfterAuto.bounds) === JSON.stringify(pageBefore.bounds) && pageAfterAuto.visible === pageBefore.visible && focusAfterAuto === focusBefore), { autoSettled, facts: factsAtAuto, pageBefore, pageAfterAuto, focusBefore, focusAfterAuto, focusTargets: [...focusTargets], doc: autoDoc });
 
   // I6 — shield toggle: the explicit open/close path the renderer's shield calls.
-  controller.open({ focus: true, locale: "fr", dir: "ltr", theme: THEME });
+  controller.open({ focus: true, locale: LOCALE, dir: "ltr", theme: THEME });
   const opened = await settle((f) => f.visible && f.explicitOpen, "explicit open");
   const openDoc = opened ? await readCard() : null;
   const openFocus = [...focusTargets];
@@ -488,12 +497,12 @@ app.whenReady().then(async () => {
     // D-2 frame: a 98-character conversation title under the stale line, the case
     // that reached the 480 DIP cap at 264 before the headline was bounded.
     const longEntries = entries.map((entry, index) => index === 0 ? { ...entry } : entry);
-    controller.setModel({ entries: longEntries, locale: "fr", dir: "ltr", theme: THEME, requesterLabels: { ...requesterLabels, [entries[0].requesterSessionId]: "Refactor the quarterly reconciliation pipeline so that every ledger adjustment is traceable to a source" } });
+    controller.setModel({ entries: longEntries, locale: LOCALE, dir: "ltr", theme: THEME, requesterLabels: { ...requesterLabels, [entries[0].requesterSessionId]: "Refactor the quarterly reconciliation pipeline so that every ledger adjustment is traceable to a source" } });
     await currentCard().webContents.executeJavaScript("window.approvalsCard.decide({ seq: 999999, entryId: 'entry-0', decision: 'once' })");
     const d2 = await readD1Settled(true);
     record("D2-long-requester-keeps-decisions-visible", Boolean(d2.errorVisible && d2.overdraw === 0 && d2.bodyOverflow <= 0 && d2.insideCard), d2);
     await shoot("long-requester-stale-error");
-    controller.setModel({ entries, locale: "fr", dir: "ltr", theme: THEME, requesterLabels });
+    controller.setModel({ entries, locale: LOCALE, dir: "ltr", theme: THEME, requesterLabels });
     await readD1Settled(false);
     // The stale line through the PRODUCT path (a dropped card action), not a
     // host-supplied error: dropAction is the path D1 is about.
@@ -560,11 +569,46 @@ app.whenReady().then(async () => {
     writeFileSync(out + "/s6b-cdp-capture-error.txt", String(error));
   }
 
+  // Actual hover-then-centre clicks, not just elementFromPoint. Run last so a
+  // successful denial cannot disturb the earlier no-decision/Escape proofs.
+  for (const error of [null, "stale"]) {
+    controller.setModel({ entries, error, locale: LOCALE, dir: "ltr", requesterLabels });
+    controller.open({ focus: false });
+    await readD1Settled(Boolean(error));
+    await sleep(850);
+    const target = await currentCard().webContents.executeJavaScript("(() => { const b = [...document.querySelectorAll('#approvals-secondary button')].pop(); const r = b.getBoundingClientRect(); return { x: Math.round(r.x + r.width/2), y: Math.round(r.y + r.height/2), text: b.textContent }; })()");
+    const before = responded.length;
+    currentCard().webContents.sendInputEvent({ type: "mouseMove", x: target.x, y: target.y });
+    await sleep(100);
+    const geometry = await readD1();
+    currentCard().webContents.sendInputEvent({ type: "mouseDown", x: target.x, y: target.y, button: "left", clickCount: 1 });
+    currentCard().webContents.sendInputEvent({ type: "mouseUp", x: target.x, y: target.y, button: "left", clickCount: 1 });
+    await sleep(150);
+    record("Q2-hover-centre-deny-" + (error ?? "normal"), responded.length === before + 1 && responded.at(-1)?.decision === "deny" && geometry.overdraw === 0, { target, geometry, response: responded.at(-1), countBefore: before, countAfter: responded.length });
+  }
+
+  // R2-1 on the real compiled document. This is local DOM focus, not an OS
+  // focus claim. Do it after the host action proofs; no decision is submitted.
+  const timerFocus = await currentCard().webContents.executeJavaScript(\`(async () => {
+    const a = { entryId: 'focus-a', origin: 'https://a.example', requester: 'a', expiresAt: Date.now()+600000, broadKey: null };
+    const b = { ...a, entryId: 'focus-b', origin: 'https://b.example' };
+    const m = { v:1, seq:1, locale: document.documentElement.lang, dir:'ltr', theme:'light', palette:document.documentElement.dataset.theme, view:'request', focus:false, count:2, busy:false, request:a, pending:[a,b], error:null };
+    window.__approvalsCard.setModel(m);
+    window.__approvalsCard.setModel({ ...m, seq:2, request:b, pending:[b], count:1, focus:true });
+    document.getElementById('approvals-review').click();
+    const before = document.activeElement.id;
+    await new Promise(r => setTimeout(r,820));
+    return { before, after:document.activeElement.id };
+  })()\`);
+  record("R2-focus-not-replayed-after-inert-window", timerFocus.before === 'approvals-back' && timerFocus.after === 'approvals-back', timerFocus);
+
   writeFileSync(
     out + "/s6b-facts.json",
     JSON.stringify({
       width: WIDTH,
       theme: THEME,
+      locale: LOCALE,
+      reviewFixture: REVIEW_FIXTURE,
       facts: controller.facts(),
       rows,
       autoPresent: { pageBefore, pageAfterAuto, focusBefore, focusAfterAuto, focusTargets: [...focusTargets], doc: autoDoc, factsAtAuto },
@@ -589,8 +633,12 @@ await build({
 	outfile: MAIN,
 	external: ["electron"],
 });
+for (const directory of ["home", "config"])
+	mkdirSync(join(OUT, directory), { recursive: true });
 const env = withNotificationsOff({
 	...process.env,
+	HOME: join(OUT, "home"),
+	LOCAL_OPERATOR_CONFIG_DIR: join(OUT, "config"),
 });
 for (const key of Object.keys(env))
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
@@ -610,6 +658,7 @@ const child = spawn(
 		// a hidden document and its absence avoids the GL init path that wedged the
 		// child view in the round-2 investigation.
 		"--disable-gpu",
+		"--window-mode=headless",
 	],
 	{
 		env,

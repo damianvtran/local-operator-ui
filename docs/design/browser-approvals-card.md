@@ -68,11 +68,14 @@ the page.
   browser keys. No new English key was added: a new key would require an
   audited translation in every shipped locale, and the card is not allowed to
   ship unaudited copy.
-- The footer is sticky inside the scrolling body and shares that body's content
-  width; the scroll boundary is marked by a hairline and a scrim that is
-  **painted only while the body actually overflows** (D13 — an always-on shadow
-  greyed the empty ground of a short list), and the failure line lives there so
-  it is never below the 480 ceiling (D5/D6/D7). The close control is on the app's 28px ladder
+- The footer is a non-shrinking sibling of the content body, separated by a
+  hairline; it never paints on top of a decision. The host pulls the document's
+  intrinsic measurement after model paint through the existing executeJavaScript
+  path, then rounds/clamps and resizes the child. At the 480-DIP ceiling the
+  measured gloss basis can shrink and scroll internally; it is not a minimum
+  height. Hover changes only its text, so button targets do not move. The requested
+  origin and expiry retain their space, and pathological taller content remains
+  scrollable above—not behind—the footer (round-2 Q2-1/D2-1). The close control is on the app's 28px ladder
   (D8); disabled states are colour treatments, not `opacity: .6` (D4 — the
   light disabled primary measured 2.53:1 under opacity; `ink-dim` on
   `elevated` is 6.14:1).
@@ -231,8 +234,11 @@ the full lane.
   card that was already showing a request (withdrawn, expired, dismissed), the document disables every
   decision and refuses `decide` until the window ends, then re-enables itself with no new push. A user's own
   Review-all selection and a first paint after a hide are not swaps. No channel and no host validation changed.
-- **The gloss line reserves the tallest sentence (Q1)**, so hover and focus never move the decisions or
-  re-open the D1 overlap. Measured by probe rows `Q1-hover-focus-keeps-decisions-in-place-*`.
+- **Historical round-1 gloss reservation (Q1):** it fixed hover movement but its hard minimum
+  regressed denial clipping at the native cap in French, Spanish and Russian. Round 2 replaces that
+  minimum with after-paint intrinsic measurement and a shrinkable, internally scrolling gloss basis;
+  the footer is outside the content body. See the round-2 evidence for the longer-authority fixture,
+  rather than generalizing the earlier short-fixture results.
 - **The requester headline is bounded to 48 characters (D-2)**, full label in the tooltip, so a long
   conversation title cannot push the decisions past the 480 DIP cap.
 - Still **not measured**: native composite/transparency, ring hit routing and VoiceOver. A live region in the
