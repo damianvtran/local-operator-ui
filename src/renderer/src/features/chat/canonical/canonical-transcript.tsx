@@ -44,6 +44,11 @@
  */
 
 import {
+	FlagLine,
+	FlagLinesProvider,
+	useFlaggedItem,
+} from "@features/notifications/components/flag-line";
+import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
@@ -103,7 +108,7 @@ import type {
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
-import { CHAT_REGION_LABEL } from "../chat-regions";
+import { chatRegionLabel } from "../chat-regions";
 import {
 	MarkdownRenderer,
 	type MarkdownStyleProps,
@@ -1769,6 +1774,10 @@ const AssistantRow = memo(function AssistantRow({
 						 * block instead of per row.
 						 */
 						linkify
+						// A new message's identity for the link evidence's one re-check,
+						// so a report worded exactly like an earlier message still
+						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).
+						documentId={record.id}
 					/>
 				)}
 				{record.stopReason === "aborted" && (
@@ -2125,6 +2134,21 @@ const ToolRow = memo(function ToolRow({
 	/** The pane's interrupt press, for the card's Cancel; absent = no control. */
 	onInterruptTurn?: () => void;
 }) {
+	/*
+	 * A `notify` CALL THE REEL KNOWS IS ITS FLAG LINE (notifications design
+	 * § 17.2): the item's title and read state, and the anchor the in-view
+	 * reader measures. Looked up by the call id, which is the item's
+	 * `anchor_id`; unknown to the reel (older core, items not loaded, another
+	 * tool) means the ordinary row below, exactly as before.
+	 */
+	const flagged = useFlaggedItem(record.toolCallId);
+	if (flagged !== null && record.toolName === "notify") {
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<FlagLine item={flagged} />
+			</MessageContainer>
+		);
+	}
 	/*
 	 * THE IMAGE-GEN CARD IS THE ROW for a call in the detection set. It owns
 	 * the whole lifecycle - the progress while unsettled, the artifact and its
@@ -6563,7 +6587,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		});
 	};
 
-	return (
+	const transcriptColumn = (
 		/*
 		 * The pane COLUMN, and the scroll box is one child of it.
 		 *
@@ -6792,7 +6816,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					data-lo-dom-window={domWindow.enabled ? "on" : "off"}
 					data-lo-dom-window-reason={domWindow.reason}
 					data-lo-dom-pinned={domWindow.pinned}
-					aria-label={CHAT_REGION_LABEL.transcript}
+					aria-label={chatRegionLabel("transcript")}
 					// Only the `windowed` branch renders that id, so the description has to
 					// track the branch rather than the looser "history exists" condition it
 					// was derived from: `hasMore` with no hidden rows yields `idle`, whose
@@ -7376,5 +7400,17 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				/>
 			)}
 		</div>
+	);
+	/*
+	 * THE FLAG LINES' DATA AND IN-VIEW READER are provided around the whole
+	 * column (notifications contract § 6.4): one read of this conversation's
+	 * items and one input listener per transcript, not per row. Without
+	 * `features.notifications` the provider supplies nothing and every row
+	 * renders exactly as before.
+	 */
+	return (
+		<FlagLinesProvider sessionId={sessionId}>
+			{transcriptColumn}
+		</FlagLinesProvider>
 	);
 };

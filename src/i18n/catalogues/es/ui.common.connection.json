@@ -35,5 +35,10 @@
 	"ui.common.connection.backend.card_governed": "No se pudieron cargar tus ajustes: otro programa gestiona el servidor de Local Operator de este equipo, así que esta página no puede leerlos ni cambiarlos.",
 	"ui.common.connection.backend.card_pre_handshake": "No se pudieron cargar tus ajustes: el servidor con el que se comunica esta app es anterior al handshake de emparejamiento, así que esta página no puede leerlos.",
 	"ui.common.connection.backend.card_credential_refused": "No se pudieron cargar tus ajustes: el servidor rechazó la credencial de esta app, así que esta página no puede leerlos.",
-	"ui.common.connection.backend.card_unpaired": "No se pudieron cargar tus ajustes: esta app no está emparejada con el servidor en ejecución, así que esta página no puede leerlos."
+	"ui.common.connection.backend.card_unpaired": "No se pudieron cargar tus ajustes: esta app no está emparejada con el servidor en ejecución, así que esta página no puede leerlos.",
+	"ui.common.connection.session_loss.frame_too_large": "Las actualizaciones de esta conversación eran demasiado grandes para mostrarlas — vuelve a conectarte para reintentarlo.",
+	"ui.common.connection.session_loss.history_unreadable": "No se pudo cargar el historial de esta conversación — vuelve a conectarte para reintentarlo.",
+	"ui.common.connection.session_loss.lost": "Se perdió la conexión con esta conversación — vuelve a conectarte para seguir leyendo.",
+	"ui.common.connection.session_loss.not_paired": "Esta app no está emparejada con el servidor de Local Operator, así que esta conversación aún no se puede leer.",
+	"ui.common.connection.session_loss.server_down": "El servidor de Local Operator no está en ejecución — vuelve a conectarte cuando vuelva, o reinicia la app si sigue caído."
 }

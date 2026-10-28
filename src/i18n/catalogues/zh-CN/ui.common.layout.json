@@ -5,5 +5,7 @@
 	"ui.common.layout.sidebar_header.create_a_new_agent": "创建新智能体",
 	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "从ZIP文件导入智能体",
 	"ui.common.layout.sidebar_header.import_agent": "导入智能体",
-	"ui.common.layout.sidebar_header.new_agent": "新建智能体"
+	"ui.common.layout.sidebar_header.new_agent": "新建智能体",
+	"ui.common.layout.toasts.dismiss": "关闭此通知",
+	"ui.common.layout.toasts.notifications": "通知"
 }

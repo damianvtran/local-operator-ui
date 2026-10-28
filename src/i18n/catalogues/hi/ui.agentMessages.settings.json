@@ -85,5 +85,10 @@
 	"ui.agentMessages.settings.error.no_changes": "कोई सेटिंग नहीं बदली गई। मौजूदा स्थिति जाँचने के लिए फिर कोशिश करें।",
 	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, one {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में है। उसे पाने के लिए उस बातचीत में एक संदेश भेजें।} other {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में हैं। उन्हें पाने के लिए उस बातचीत में एक संदेश भेजें।}}",
 	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": "{count, plural, one {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में है। उसे पाने के लिए साइडबार में वह बातचीत खोजें और उसमें एक संदेश भेजें।} other {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में हैं। उन्हें पाने के लिए साइडबार में वह बातचीत खोजें और उसमें एक संदेश भेजें।}}",
-	"ui.agentMessages.settings.hold.open": "चीफ़ ऑफ़ स्टाफ को संदेश भेजें"
+	"ui.agentMessages.settings.hold.open": "चीफ़ ऑफ़ स्टाफ को संदेश भेजें",
+	"ui.agentMessages.settings.default_on.b_title": "Team Bridge का सेटअप अभी नहीं हुआ है",
+	"ui.agentMessages.settings.default_on.b_body": "आपका संगठन तैयार होते ही Team Bridge आपके लिए अपने-आप चालू हो जाएगा। चालू होने पर कुछ भी नहीं भेजा जाता।",
+	"ui.agentMessages.settings.default_on.e_body": "इस खाते के लिए Team Bridge बंद है। नीचे सहमति का पाठ पढ़ें, फिर इसे वापस चाहें तो दोबारा चालू करें।",
+	"ui.agentMessages.settings.action.turn_on_again": "फिर चालू करें",
+	"ui.agentMessages.settings.consent.via_default_on": "डिफ़ॉल्ट रूप से चालू"
 }

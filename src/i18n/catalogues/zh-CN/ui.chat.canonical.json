@@ -58,5 +58,13 @@
 	"ui.chat.canonical.older_history.windowed.short_gesture": "向上滚动加载更早",
 	"ui.chat.canonical.older_history.unproven.short": "更早内容未加载",
 	"ui.chat.canonical.older_history.unproven.long": "更早的历史记录未加载",
-	"ui.chat.canonical.older_history.conversation_start": "对话开始"
+	"ui.chat.canonical.older_history.conversation_start": "对话开始",
+	"ui.chat.canonical.placeholder.loading": "正在加载对话……",
+	"ui.chat.canonical.placeholder.region_label": "正在加载对话",
+	"ui.chat.canonical.tool_row.generic_verb.running": "正在调用",
+	"ui.chat.canonical.tool_row.generic_verb.settled": "已调用",
+	"ui.chat.canonical.tool_row.outcome.failed": "失败",
+	"ui.chat.canonical.tool_row.outcome.interrupted": "已中断",
+	"ui.chat.canonical.tool_row.outcome.never_ran": "未运行",
+	"ui.chat.canonical.tool_row.outcome.succeeded": "成功"
 }

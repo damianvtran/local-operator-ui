@@ -308,6 +308,17 @@ jobs:
     # failed to do the job.
     env:
       NOTARIZE: 'true'
+      # THE HEAP CEILING `publish.yml` ALREADY CARRIES, for the same build. On
+      # Node 22's default ~2 GB heap, electron-vite's renderer pass of v0.44.1's
+      # candidate (086b23ab21) hit a heap OOM, exit 134, on both attempts of run
+      # 40453982763: job 122044767291 "Reached heap limit" at ~1975 MB, job
+      # 122060955559 "Ineffective mark-compacts" at ~1947 MB. `exact-update` was
+      # then skipped, leaving the update path unverified. The cause is not proven
+      # (renderer growth or runner variance); publish.yml built the same candidate
+      # with this value (run 40438563145). It is a ceiling inside the ~7 GB runner.
+      # Job level so both passes and later build steps inherit it; not workflow
+      # level, because `exact-update` builds nothing.
+      NODE_OPTIONS: '--max-old-space-size=4096'
     # THE ENVIRONMENT NO LONGER GATES ON A HUMAN, and that is deliberate: the
     # operator asked for releases that need no human input, and a required reviewer
     # is exactly that input. What remains is the environment's **branch policy**

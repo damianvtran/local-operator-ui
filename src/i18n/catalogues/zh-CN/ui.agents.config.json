@@ -10,6 +10,7 @@
 	"ui.agents.config.composer.label": "请求更改智能体或团队",
 	"ui.agents.config.definitions": "{count, plural, other {#个定义}}",
 	"ui.agents.config.error.stop_refused": "停止未生效——本次运行仍在继续。",
+	"ui.agents.config.error.turn_failed": "模型未响应此请求。",
 	"ui.agents.config.examples.add_twice": "向release-crew添加两个coder",
 	"ui.agents.config.examples.reads_code": "一个只读代码的审阅者",
 	"ui.agents.config.examples.team_shipping": "一个叫shipping的团队，含一名管理者和两名coder",
@@ -19,6 +20,7 @@
 	"ui.agents.config.result.changed": "已更改",
 	"ui.agents.config.result.configured": "已配置",
 	"ui.agents.config.result.created": "已创建",
+	"ui.agents.config.state.did_not_finish": "未能完成",
 	"ui.agents.config.state.sending": "正在发送……",
 	"ui.agents.config.state.stopping": "正在停止……",
 	"ui.agents.config.status.attached": "另一个配置运行已在进行中，因此此页面已接入该运行。你的请求未发送，仍保留在输入框中。",
@@ -29,5 +31,8 @@
 	"ui.agents.config.summary.no_changes": "本次运行仅作出回复，未更改任何智能体或团队。",
 	"ui.agents.config.summary.nothing_else": "本次运行未更改其他内容。",
 	"ui.agents.config.summary.updated": "已更新{name}",
-	"ui.agents.config.summary.you_asked": "你的请求：{topic}"
+	"ui.agents.config.summary.you_asked": "你的请求：{topic}",
+	"ui.agents.config.banner.unavailable": "无法连接后端，因此输入框暂时不可用。",
+	"ui.agents.config.disabled_gate": "通过对话配置智能体",
+	"ui.agents.config.run_details_region": "运行详情"
 }

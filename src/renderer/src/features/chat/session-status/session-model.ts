@@ -33,6 +33,7 @@
  * is what makes the segment's presence informative.
  */
 
+import { t } from "@shared/i18n";
 import type {
 	CanonicalEffectiveAccessState,
 	CanonicalFrontendState,
@@ -1018,11 +1019,13 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 		? readings[effectiveState]
 		: [
 				legacyUnavailable
-					? `${label} is temporarily unavailable`
-					: `Not signed in to ${label}`,
+					? t("ui.chat.session_status.temporarily_unavailable", { label })
+					: t("ui.chat.session_status.not_signed_in", { label }),
 				legacyUnavailable
-					? "Your saved sign-in is still present. Try again later or choose another model."
-					: `This session runs ${label} without a working sign-in, so it cannot answer until you connect it.`,
+					? t("ui.chat.session_status.temporarily_unavailable_description")
+					: t("ui.chat.session_status.not_signed_in_description", {
+							label,
+						}),
 			];
 	const context: string[] = [];
 	if (effectiveState && access.observedAt !== undefined) {

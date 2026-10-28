@@ -187,8 +187,28 @@ export function askRailLabels(
 	scope: AskScope,
 	count: number,
 	cap: string | null,
+	/*
+	 * This conversation's unread notification updates (decisions D9, design
+	 * § 18): the door's badge counts them beside the asks, so its accessible
+	 * name must say both ("…, 1 waiting, 1 unread update"). Zero, or a backend
+	 * without `features.notifications`, is exactly the pre-feature name.
+	 */
+	updates = 0,
 ): { tooltip: string; aria: string } {
 	const chord = capClause(cap);
+	if (updates > 0) {
+		return {
+			tooltip: askRailToggleLabel({ open, scope, count, cap }),
+			aria: t("ui.notifications.rail.aria_with_updates", {
+				chord,
+				subject: askScopeSubject(scope),
+				count,
+				countText: String(count),
+				updates,
+				updatesText: String(updates),
+			}),
+		};
+	}
 	return {
 		tooltip: askRailToggleLabel({ open, scope, count, cap }),
 		aria:

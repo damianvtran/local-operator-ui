@@ -85,5 +85,10 @@
 	"ui.agentMessages.settings.error.no_changes": "No se cambió ningún ajuste. Inténtalo de nuevo para comprobar el estado actual.",
 	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, one {{count} mensaje está esperando a tu jefa de gabinete. Basta con escribirle una vez en su conversación para recibirlo.} many {{count} de mensajes están esperando a tu jefa de gabinete. Basta con escribirle una vez en su conversación para recibirlos.} other {{count} mensajes están esperando a tu jefa de gabinete. Basta con escribirle una vez en su conversación para recibirlos.}}",
 	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": "{count, plural, one {{count} mensaje está esperando a tu jefa de gabinete. Busca su conversación en la barra lateral y escríbele una vez para recibirlo.} many {{count} de mensajes están esperando a tu jefa de gabinete. Busca su conversación en la barra lateral y escríbele una vez para recibirlos.} other {{count} mensajes están esperando a tu jefa de gabinete. Busca su conversación en la barra lateral y escríbele una vez para recibirlos.}}",
-	"ui.agentMessages.settings.hold.open": "Escribir a tu jefa de gabinete"
+	"ui.agentMessages.settings.hold.open": "Escribir a tu jefa de gabinete",
+	"ui.agentMessages.settings.default_on.b_title": "Team Bridge aún no está configurado",
+	"ui.agentMessages.settings.default_on.b_body": "Team Bridge se activará automáticamente para ti cuando tu organización esté lista. No se envía nada al activarse.",
+	"ui.agentMessages.settings.default_on.e_body": "Team Bridge está desactivado para esta cuenta. Lee el texto de consentimiento de abajo y vuelve a activarlo si quieres recuperarlo.",
+	"ui.agentMessages.settings.action.turn_on_again": "Volver a activar",
+	"ui.agentMessages.settings.consent.via_default_on": "Activado de forma predeterminada"
 }

@@ -1,0 +1,92 @@
+{
+  "audit_id": "teambridge-pr1441-audit-dedc59c2f981",
+  "date": "2026-10-27",
+  "locale": "hi",
+  "namespace": "ui.teamBridge",
+  "source_commit": "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823",
+  "translator": {
+    "agent": "translator",
+    "role_label": "Local Operator task subagent (translator record: 'same session as implementer')",
+    "model": "anthropic/claude-sonnet-5-5",
+    "record": "i18n-1441-translations.json (coordinating session 17cd3e74c66f scratchpad)",
+    "commits": [
+      "ef8bcb5a03e09b41338152c22af0435924fb0e76",
+      "02eb623ac357c93eb762ab2eb37ca4ddcbaf8823"
+    ],
+    "fallback": "none recorded"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-27",
+      "result": "clean",
+      "instance": "dedc59c2f981",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/dedc59c2f981.json",
+      "receipt_sha256": "306d0b64d4df0e667aba7c3e2964640089c74d66c2df3970d9f6ba2537f84333"
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "95dd73cc4f3daa03970a3e6c3962b52f9b99390bf3b6047d32a75ff6f70ba100"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+      "sha256": "e29ffc9595c1260daa9094cfaea6792da5e3317f9482b7b1a3c9257b125a3811"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "9ea81e66412a50e9fd071b53a78fb186f0895e028cdfa7a95fc6ac8d2667c844"
+    }
+  },
+  "audited": [
+    {
+      "key": "ui.teamBridge.chief.unnamed",
+      "en": "{person}’s chief of staff",
+      "target": "{person} का चीफ़ ऑफ़ स्टाफ़",
+      "verdict": "PASS all locales. Each reuses the namespace's settled chief-of-staff term (ui.teamBridge.chief.fallback: Cheffe de cabinet / Jefe de gabinete / 首席助理 / Координатор / Chánh văn phòng / چیف آف اسٹاف / चीफ़ ऑफ़ स्टाफ़; vi also matches the vi guide). fr and ru use the parenthesised '{term} ({person})' shape of ui.teamBridge.chief.label, which avoids de/d’ elision (fr) and declining arbitrary names into the genitive (ru); it names the owner once, so it does not repeat the person. es/zh-CN/vi/ur/hi use the natural possessive. ur/hi use masculine कا/کا to agree with the loan noun. {person} kept once in every locale; no bidi controls in ur (the render layer isolates)."
+    },
+    {
+      "key": "ui.teamBridge.member.active_count",
+      "en": "{count, plural, one {{count} active member} other {{count} active members}}",
+      "target": "{count, plural, one {{count} सक्रिय सदस्य} other {{count} सक्रिय सदस्य}}",
+      "verdict": "PASS (vi after A1). fr/es extend member.count with the agreeing adjective (actif/activo) and keep the 'many' + 'de' branch. ru: one/few/many/other agree (активный участник / активных участника / активных участников / активного участника for fractions). zh-CN: other only, classifier 名; 有效成员 means members whose membership is in force, and avoids 活跃 (activity). ur فعال رکن/ارکان and hi सक्रिय सदस्य are the standard 'active member' (membership standing) phrases. vi was 'đang hoạt động' (online-presence sense, against the context's 'not online presence'); fixed at 02eb623ac3 to 'đã tham gia' (joined), which also pairs with the invited line."
+    },
+    {
+      "key": "ui.teamBridge.member.invited_count",
+      "en": "{count, plural, one {{count} invited} other {{count} invited}}",
+      "target": "{count, plural, one {{count} आमंत्रित} other {{count} आमंत्रित}}",
+      "verdict": "PASS (zh-CN, vi after A2/A3). fr invité / d’invités / invités and es invitado(s): compact substantive fragment, masculine generic, many branch with de. ru: substantivised participle, one приглашённый / few+many приглашённых / other приглашённого (correct for counted adjectival nouns). ur مدعو and hi आमंत्रित are invariant. zh-CN was '名已邀请' (classifier + active verb, 'who invited'); fixed to '名受邀成员'. vi was 'người được mời' ('person', but invitees may be agents); fixed to 'đã được mời'."
+    }
+  ],
+  "resolved_findings": [],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "independence": "Independent auditor (reviewer role). This run wrote none of the audited strings and edited no catalogue byte; remediation commits were authored by a separate translator subagent. This run wrote only this receipt, the per-locale evidence records, and (via ledger-assemble.mjs) the ledger rows.",
+  "limitations": [
+    "No rendered frame, pseudo-localization or RTL layout inspection (this auditor session has no browser tool). ur bidi safety was judged from the strings: no manual controls, plus the render layer's FSI/PDI isolation and dir handling (src/i18n/direction.ts, use-document-direction.ts).",
+    "No second independent audit.",
+    "Inherited keys were not re-read (byte identity to already-audited rows)."
+  ],
+  "named_receipt": {
+    "path": "i18n/receipts/teambridge-pr1441-audit-dedc59c2f981.json",
+    "sha256": "306d0b64d4df0e667aba7c3e2964640089c74d66c2df3970d9f6ba2537f84333"
+  }
+}

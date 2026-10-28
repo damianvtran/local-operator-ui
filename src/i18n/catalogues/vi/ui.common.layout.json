@@ -5,5 +5,7 @@
 	"ui.common.layout.sidebar_header.import_agent": "Nhập tác nhân",
 	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "Nhập tác nhân từ tệp ZIP",
 	"ui.common.layout.sidebar_header.new_agent": "Tác nhân mới",
-	"ui.common.layout.sidebar_header.search_agents": "Tìm tác nhân"
+	"ui.common.layout.sidebar_header.search_agents": "Tìm tác nhân",
+	"ui.common.layout.toasts.dismiss": "Đóng thông báo",
+	"ui.common.layout.toasts.notifications": "Thông báo"
 }

@@ -7,9 +7,16 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * SAME enum control and `In effect:` note as the settings row, because both
  * render `SettingControl` for the same registry row - the settings page stays
  * the canonical editor and this is not a second implementation of it. Neither
- * is it a second write path: the save calls the same `settings.edit` op and
- * the same `renegotiateLanguage` seam the row does, so the capabilities
- * chain, the store, and the note move identically whichever door was used.
+ * is it a second write path: a pick calls `saveImmediateLanguageValue`, the
+ * row's exact write, so the same `settings.edit` op, the same optimistic cache
+ * precondition and the same `renegotiateLanguage` seam run whichever door was
+ * used.
+ *
+ * COMMIT ON PICK, NOT ON SAVE. A pick writes immediately, exactly as the row
+ * does; there is no draft and no Save step, so closing the dialog cannot drop
+ * a language the picker already showed. That is the fix for the v0.42.7 defect
+ * where a reader picked fr, closed the dialog, and the app stayed English with
+ * zero settings writes in the backend log.
  *
  * APPLY-FORWARD-ONLY. Nothing here touches the transcript: a language change
  * re-renders the surfaces being composed (labels, formatters, the note), and
@@ -17,11 +24,13 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * That is the proposal's rule, and it falls out of the seam rather than being
  * enforced here - `t()` and the formatters read the store at render time.
  *
- * SELF-INITIATED CHANGES CONFIRM IN PLACE: the Save button becomes `Saved`
- * once the write lands, and the note under the picker moves when the
- * capabilities answer returns. No toast fires for this app's own write - the
- * own-write window in `language-writes.ts` is what keeps the external-change
- * announcement (`locale-sync.ts`) for changes that came from somewhere else.
+ * SELF-INITIATED CHANGES CONFIRM IN PLACE: the footer says `Saved` once the
+ * write lands, and the note under the picker moves when the capabilities
+ * answer returns. No info toast fires for this app's own write - the own-write
+ * window in `language-writes.ts` is what keeps the external-change
+ * announcement (`locale-sync.ts`) for changes that came from somewhere else. A
+ * FAILED write reports in place while the dialog is open, and leaves through
+ * the app's error toast if the reader had already closed it.
  */
 
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
@@ -46,6 +55,7 @@ import {
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { LANGUAGE_SETTING_KEY, t } from "@shared/i18n";
 import { renegotiateLanguage } from "@shared/i18n/language-writes";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Languages } from "lucide-react";
@@ -66,12 +76,13 @@ import { SettingsSection } from "./settings-section";
 /**
  * The dialog's write, as a function.
  *
- * EXPORTED because it IS the seam under test: clicking Save calls exactly
- * this, and the jsdom suite (like the settings row's, and for the same
- * reason - Radix's portal listbox commits to no synthetic event jsdom can
- * produce) proves the op and the renegotiation here rather than through a
- * pointer dance the library ignores. One write path either way: the settings
- * row calls the same `renegotiateLanguage` after the same op.
+ * EXPORTED because it IS the seam under test: the dialog's pick reaches it
+ * through `saveImmediateLanguageValue`, and the jsdom suites (like the
+ * settings row's, and for the same reason - Radix's portal listbox commits to
+ * no synthetic event jsdom can produce) prove the op and the renegotiation
+ * here rather than through a pointer dance the library ignores. One write path
+ * either way: the settings row calls the same `renegotiateLanguage` after the
+ * same op.
  */
 export async function saveLanguageValue(options: {
 	value: string;
@@ -362,66 +373,88 @@ export const LanguageDialog: FC = () => {
 	 */
 	const setting = wireSetting ? presentSetting(wireSetting) : undefined;
 
-	const [draft, setDraft] = useState<string | null>(null);
-	const [saving, setSaving] = useState(false);
+	const [pending, setPending] = useState(false);
 	const [saved, setSaved] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const [rejected, setRejected] = useState<{
+		value: string;
+		message: string;
+	} | null>(null);
+	const [readbackUnknown, setReadbackUnknown] = useState(false);
+	const writing = useRef(false);
 
 	/*
-	 * The re-seed contract (round-1 R1-2). The draft follows the SERVER while
-	 * it is clean, and a fresh OPEN always starts clean - so an external
-	 * change (or a write from the settings row, or the TUI) can never leave a
-	 * stale value sitting here as a phantom dirty edit that Save would write
-	 * back over the change. `lastServer` is what marks clean: a draft equal to
-	 * the value it was seeded from is the server's, not the user's.
-	 */
-	const lastServer = useRef<string | null>(null);
-	useEffect(() => {
-		if (open) setDraft(null);
-	}, [open]);
-	useEffect(() => {
-		if (!open || !setting) return;
-		const value = String(setting.value ?? "");
-		if (draft === null || draft === lastServer.current) setDraft(value);
-		lastServer.current = value;
-	}, [open, setting, draft]);
-	/*
 	 * A fresh OPEN clears the transient states. Deliberately keyed on `open`
-	 * alone: keyed on `setting` too, the post-save refetch (a new array, a new
-	 * row object) would re-run it a moment after every save and wipe the
+	 * alone: keyed on `setting` too, the post-write refetch (a new array, a new
+	 * row object) would re-run it a moment after every write and wipe the
 	 * `Saved` confirmation - which is the write's only feedback (round 1, D2),
-	 * so it has to stay up until the next open or edit.
+	 * so it has to stay up until the next open or pick.
 	 */
 	useEffect(() => {
 		if (!open) return;
 		setSaved(false);
-		setError(null);
+		setRejected(null);
 	}, [open]);
 
-	const value = draft ?? String(setting?.value ?? "");
-	const dirty = Boolean(setting) && value !== String(setting?.value ?? "");
-	const saveDisabled = !setting || !dirty || saving;
-
-	const save = async () => {
-		if (!setting || !dirty) return;
-		setSaving(true);
-		setError(null);
+	/*
+	 * A pick IS the write ("commit on selection"), through the settings row's
+	 * exact path: `saveImmediateLanguageValue` writes the same key, moves the
+	 * same optimistic cache, refetches the readback and renegotiates through
+	 * `renegotiateLanguage`. Nothing here is a draft, so a close has nothing to
+	 * discard. The guard mirrors the row's: one write in flight at a time, and
+	 * no new pick while the last write's readback is unknown.
+	 */
+	const value = String(setting?.value ?? "");
+	const save = async (next: string) => {
+		if (
+			!setting ||
+			writing.current ||
+			readbackUnknown ||
+			!setting.choices.some((choice) => choice.value === next)
+		)
+			return;
+		writing.current = true;
+		setPending(true);
+		setRejected(null);
+		setSaved(false);
 		try {
-			await saveLanguageValue({ value, queryClient });
-			setSaved(true);
-			setDraft(null);
-			await settingsQuery.refetch();
+			const outcome = await saveImmediateLanguageValue({
+				value: next,
+				queryClient,
+			});
+			setReadbackUnknown(outcome === "readback-unknown");
+			setSaved(outcome === "confirmed");
 		} catch (cause) {
-			setError(
-				cause instanceof Error
-					? cause.message
-					: t(
-							"ui.settings.configuration.language_dialog.the_language_could_not_be_saved",
-						),
-			);
+			/*
+			 * No sentence for the non-`Error` arm. `write_error` already opens with
+			 * "The language was not saved", so passing a translated "could not be
+			 * saved" as its `{message}` rendered the same claim twice (R1-5); the
+			 * General row this dialog mirrors passes "" for the same arm.
+			 */
+			const message = cause instanceof Error ? cause.message : "";
+			setRejected({ value: next, message });
+			/*
+			 * The reader may already have closed the dialog - the pick committed
+			 * at selection, so closing is legitimate. There is no surface left to
+			 * render the refusal in, and a failed write must not look like a quiet
+			 * close: it leaves through the app's error toast instead.
+			 */
+			if (!useLanguageDialogStore.getState().open) {
+				showErrorToast(
+					t("ui.settings.language.general.write_error", { message }),
+				);
+			}
 		} finally {
-			setSaving(false);
+			writing.current = false;
+			setPending(false);
 		}
+	};
+	const retryRead = async () => {
+		const [settingsAnswer, capabilityAnswer] = await Promise.all([
+			settingsQuery.refetch(),
+			capabilities.refetch(),
+		]);
+		if (!settingsAnswer.isError && !capabilityAnswer.isError)
+			setReadbackUnknown(false);
 	};
 
 	/*
@@ -445,7 +478,18 @@ export const LanguageDialog: FC = () => {
 	const refused = answered && !enabled;
 	const capabilitiesFault =
 		capabilities.error && !capabilities.data ? capabilities.error : null;
-	const loadError = capabilitiesFault ?? settingsQuery.error;
+	/*
+	 * A failed REFETCH is not a failed LOAD - the rule the block above states,
+	 * applied to the readback (QA round 1, Q1). `saveImmediateLanguageValue`
+	 * re-reads this same query key, so a readback that fails after a confirmed
+	 * write leaves `settingsQuery.error` set while the answer it was checking is
+	 * still in `data`. Reading that as `loadError` replaced the picker with "the
+	 * server is not responding" - false for a server that had just answered the
+	 * write - and hid the readback warning that says what actually happened. The
+	 * General row draws the same line: its `coldError` requires `!settings.data`.
+	 */
+	const loadError =
+		capabilitiesFault ?? (settingsQuery.data ? null : settingsQuery.error);
 	const pendingCapabilities = !answered && !loadError;
 	const { sentence: pairingSentence, remedy } = pairingCardCopy(
 		pairingCause ?? null,
@@ -551,7 +595,7 @@ export const LanguageDialog: FC = () => {
 							<SettingControl
 								setting={setting}
 								value={value}
-								disabled={saving}
+								disabled={pending || readbackUnknown}
 								helpId={settingHelpId(LANGUAGE_SETTING_KEY)}
 								/*
 								 * THE DIALOG'S OWN SPELLING, not the canonical one. This picker can
@@ -564,45 +608,96 @@ export const LanguageDialog: FC = () => {
 									LANGUAGE_SETTING_KEY,
 									DIALOG_EFFECTIVE_SURFACE,
 								)}
+								/*
+								 * A PICK IS THE WRITE (the row's contract; see the state block).
+								 * There is no draft to close over and no Save to forget: the
+								 * picker's value is the backend's, and this fires when it moves.
+								 */
 								onValueChange={(next) => {
-									setSaved(false);
-									setDraft(next);
+									void save(next);
 								}}
 							/>
 						</div>
-						{error && <p className="text-meta text-danger">{error}</p>}
 						{/*
-						 * min-h-8 pins the footer to the `md` Button's own
-						 * height, so the Save -> `Saved` swap no longer
-						 * shrinks it and the dialog stops re-centring 6px
-						 * when the confirmation appears (round-2 D7).
+						 * The write's own outcome, in place. A failed write states that the
+						 * previous setting stands (the row's sentence) and offers the write
+						 * again; an unknown readback refuses new picks until a read succeeds,
+						 * because the picker must never claim a state nobody checked.
+						 */}
+						{rejected && (
+							<Alert variant="danger">
+								<div className="flex flex-col gap-2">
+									<p role="alert">
+										{t("ui.settings.language.general.write_error", {
+											message: rejected.message,
+										})}
+									</p>
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={pending || settingsQuery.isFetching}
+										onClick={() => {
+											void save(rejected.value);
+										}}
+									>
+										{t("ui.settings.language.dialog.retry")}
+									</Button>
+								</div>
+							</Alert>
+						)}
+						{readbackUnknown && (
+							<Alert variant="danger">
+								<div className="flex flex-col gap-2">
+									<p role="alert">
+										{t("ui.settings.language.general.readback_error")}
+									</p>
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={
+											pending ||
+											settingsQuery.isFetching ||
+											capabilities.isFetching
+										}
+										onClick={() => {
+											void retryRead();
+										}}
+									>
+										{t("ui.settings.language.dialog.retry")}
+									</Button>
+								</div>
+							</Alert>
+						)}
+						{/*
+						 * min-h-8 pins the footer to one line, so the pending -> `Saved`
+						 * swap does not re-centre the dialog (round-2 D7). Commit-on-pick
+						 * leaves an ACTION-free footer: it carries the write's status, and
+						 * there is nothing for the reader to press after a pick.
 						 */}
 						<div className="flex min-h-8 items-center justify-end">
-							{saved && !dirty ? (
+							{pending ? (
+								<output
+									aria-live="polite"
+									className="text-body-sm text-ink-muted"
+								>
+									{t("ui.settings.language.general.pending")}
+								</output>
+							) : saved ? (
 								/*
-								 * In-place confirmation in NORMAL ink (round-1 D2):
-								 * the disabled button rendered it at 2.37:1, and it is
-								 * the write's only feedback. A status line with a check
-								 * reads at body ink and is announced.
+								 * In-place confirmation in NORMAL ink (round-1 D2): the
+								 * disabled button rendered it at 2.37:1, and it is the
+								 * write's only feedback. A status line with a check reads at
+								 * body ink and is announced.
 								 */
 								<output
-									data-language-save=""
+									data-language-status=""
+									aria-live="polite"
 									className="inline-flex items-center gap-1.5 text-body-sm text-ink"
 								>
 									<Check aria-hidden="true" className="size-3.5" />
 									{t("ui.settings.language.dialog.saved")}
 								</output>
-							) : (
-								<Button
-									onClick={save}
-									disabled={saveDisabled}
-									data-language-save=""
-								>
-									{saving
-										? `${t("ui.settings.language.dialog.save")}...`
-										: t("ui.settings.language.dialog.save")}
-								</Button>
-							)}
+							) : null}
 						</div>
 					</>
 				) : (

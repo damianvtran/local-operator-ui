@@ -19,7 +19,7 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "@features/chat/chat-measure";
-import { CHAT_REGION_LABEL } from "@features/chat/chat-regions";
+import { chatRegionLabel } from "@features/chat/chat-regions";
 import { AttachmentsPreview } from "@features/chat/components/attachments-preview";
 import { AudioRecordingIndicator } from "@features/chat/components/audio-recording-indicator";
 import { ComposerStatusRow } from "@features/chat/components/composer-status-row";
@@ -6471,6 +6471,46 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			el.style.height = `${el.scrollHeight}px`;
 		}, [newMessage, textareaRef, isRecording, isTranscribing]);
 
+		/*
+		 * A HOST-GATED EMPTY BOX FITS ITS SENTENCE (#1458 design r1 D3 / UX U9).
+		 * When a host refuses input (`hostNotice.blocksInput`) and the box is empty,
+		 * the placeholder IS the explanation of why it is dead - and the measure
+		 * above runs only on a VALUE change, so a gate sentence that arrived after
+		 * mount (capabilities, a selection) or a pane that narrowed kept the old
+		 * one-line height: at 800 px the Skills gate read "Update Local Operator /
+		 * to change skills by", with a scrollbar thumb in a read-only box.
+		 * Chromium counts an overflowing placeholder in `scrollHeight` (that thumb
+		 * is the proof), so the same measure is re-run whenever the placeholder or
+		 * the box's width changes, up to the same `max-h`. Chat passes no
+		 * `hostNotice`, so its box is untouched.
+		 */
+		const gatedEmpty = Boolean(hostNotice?.blocksInput) && newMessage === "";
+		const fittedPlaceholder = useRef<string | null>(null);
+		useLayoutEffect(() => {
+			const el = textareaRef.current;
+			if (!el || !gatedEmpty) {
+				if (el && fittedPlaceholder.current !== null) el.style.overflowY = "";
+				fittedPlaceholder.current = null;
+				return;
+			}
+			if (fittedPlaceholder.current === el.placeholder) return;
+			fittedPlaceholder.current = el.placeholder;
+			fitGatedBox(el);
+		});
+		useEffect(() => {
+			const el = textareaRef.current;
+			if (!el || !gatedEmpty || typeof ResizeObserver === "undefined") return;
+			let width = el.clientWidth;
+			const observer = new ResizeObserver(() => {
+				// Width only: the height this sets is itself a resize.
+				if (el.clientWidth === width) return;
+				width = el.clientWidth;
+				fitGatedBox(el);
+			});
+			observer.observe(el);
+			return () => observer.disconnect();
+		}, [gatedEmpty, textareaRef]);
+
 		/**
 		 * THE COMPOSER'S OWN INITIATIVE TO TAKE THE CARET: the mount, and every
 		 * moment a refused box becomes writable again (a target is picked, a turn
@@ -6511,10 +6551,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!autoFocus && !dictationEnded) return;
 			if (isInputDisabled || dictating) return;
 			const activeElement = document.activeElement;
+			/*
+			 * A FOCUSED TAB IS NOT A PLACE TO TAKE FOCUS FROM (UX round 1, U2). Radix
+			 * activates a tab on focus, so arrowing along a tab strip can MOUNT this box
+			 * (leaving a tab whose pane had no composer), and the claim below then moved
+			 * the caret out of the strip mid-keystroke: the second arrow press moved a
+			 * text cursor instead of the next tab. Deliberately NARROW - a tab, not
+			 * "anything focused" - so the box still takes focus on an ordinary page
+			 * open, where focus is on <body> or on a control the user did not just
+			 * arrow with.
+			 */
 			const isInputFocused =
 				activeElement &&
 				(activeElement.tagName === "INPUT" ||
-					activeElement.tagName === "TEXTAREA");
+					activeElement.tagName === "TEXTAREA" ||
+					activeElement.getAttribute("role") === "tab");
 			/*
 			 * Not while nothing is connected: the empty chat's headline invites a
 			 * question and the connect card asks for a provider, and autofocus put
@@ -8020,7 +8071,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * (the refusal notice replaces the box).
 				 */
 				data-chat-region="composer"
-				aria-label={CHAT_REGION_LABEL.composer}
+				aria-label={chatRegionLabel("composer")}
 				tabIndex={-1}
 				className="w-full"
 			>
@@ -10602,6 +10653,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 	},
 );
+
+/*
+ * `scrollHeight` is an integer and the laid-out content is not: at 800 px the
+ * fitted box still scrolled by 0.5 px and kept an overlay thumb painted
+ * (QA r2 Q12). The fitted box is read-only and sized to its content, so it
+ * hides overflow; a box at its `max-h` cap still scrolls.
+ */
+function fitGatedBox(el: HTMLTextAreaElement) {
+	el.style.height = "auto";
+	el.style.height = `${Math.ceil(el.scrollHeight)}px`;
+	el.style.overflowY = el.scrollHeight <= el.clientHeight + 1 ? "hidden" : "";
+}
 
 /*
  * THE MEMO BOUNDARY (C1). This component sits under the chat pane, which

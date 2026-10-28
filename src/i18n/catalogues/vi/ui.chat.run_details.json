@@ -80,5 +80,7 @@
 	"ui.chat.run_details.chip.subagents_failed": "{count, plural, other {# tác nhân con thất bại}}",
 	"ui.chat.run_details.chip.attention": "{count, plural, other {# mục cần chú ý}}",
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, other {# máy chủ MCP cần chú ý}}",
-	"ui.chat.run_details.mcp.cold_label": "Không có phiên nào đang chạy — không kiểm tra được trạng thái máy chủ."
+	"ui.chat.run_details.mcp.cold_label": "Không có phiên nào đang chạy — không kiểm tra được trạng thái máy chủ.",
+	"ui.chat.run_details.nothing_in_flight": "Không có gì đang chạy.",
+	"ui.chat.run_details.nothing_to_show_yet": "Chưa có gì để hiển thị."
 }

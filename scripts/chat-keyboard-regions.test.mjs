@@ -59,6 +59,9 @@ const bundle = await build({
 	format: "esm",
 	bundle: true,
 	write: false,
+	/* `chat-regions.ts` names the landmarks through the catalogue
+	 * (`@shared/i18n`), so this bundle needs the app's alias. */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const mod = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`

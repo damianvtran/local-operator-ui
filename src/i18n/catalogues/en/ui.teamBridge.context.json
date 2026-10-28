@@ -1526,5 +1526,254 @@
 			"name": "Display name of the person or agent"
 		},
 		"note": "Opens the named account's profile hover card. Include the account name naturally rather than placing it in a separate fragment."
+	},
+	"ui.teamBridge.invitations.title": {
+		"role": "invitations title",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.count": {
+		"role": "invitations count",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {
+			"count": "number of pending invitations; a positive integer"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Accessible name of the quiet rail count beside 'Invitations'; shown only when at least one is waiting."
+	},
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": {
+		"role": "invitations consent",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The consent statement the owner agrees to by pressing Accept; the key names the participation version it is consent to (bridge_agent_participation_v1), so ANY change to this English text needs a new version and a new key. Keep both facts: from now on the agent can read the conversation's messages AND post there; it is woken only when someone @-mentions it. Do not say 'muted' (the app's Mute level means never notified)."
+	},
+	"ui.teamBridge.invitations.loading": {
+		"role": "invitations loading",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.load_failed": {
+		"role": "invitations load failed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.empty": {
+		"role": "invitations empty",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.agent_line": {
+		"role": "invitations agent line",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {
+			"agent": "the reader's own agent's display name, or the fallback 'Your agent' (agent_fallback)"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. States that the reader's agent is the invitee of this conversation."
+	},
+	"ui.teamBridge.invitations.agent_fallback": {
+		"role": "invitations agent fallback",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Fills {agent} in agent_line only, when the agent has no name; the outcome sentences use accepted_unnamed/declined_unnamed instead. In English it starts agent_line, so it is capitalized; in each locale, capitalize it only if it starts that locale's agent_line."
+	},
+	"ui.teamBridge.invitations.added_by": {
+		"role": "invitations added by",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {
+			"name": "a teammate's display name"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.added_by_you": {
+		"role": "invitations added by you",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.created_by": {
+		"role": "invitations created by",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {
+			"name": "a teammate's display name"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Not the inviter: the server says only who created the conversation, so the copy must not imply this person added the agent."
+	},
+	"ui.teamBridge.invitations.created_by_you": {
+		"role": "invitations created by you",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.accept": {
+		"role": "invitations accept",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.accepting": {
+		"role": "invitations accepting",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.decline": {
+		"role": "invitations decline",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.declining": {
+		"role": "invitations declining",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.accepted": {
+		"role": "invitations accepted",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {
+			"agent": "the reader's own agent's display name, always a display name; the no-name wording is accepted_unnamed"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Accept; same wake rule as the consent statement."
+	},
+	"ui.teamBridge.invitations.accepted_unnamed": {
+		"role": "invitations accepted unnamed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Accept; same wake rule as the consent statement. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence."
+	},
+	"ui.teamBridge.invitations.declined": {
+		"role": "invitations declined",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {
+			"agent": "the reader's own agent's display name, always a display name; the no-name wording is declined_unnamed"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Decline. Neutral on purpose: it must stay true whether or not the agent had already joined from another device."
+	},
+	"ui.teamBridge.invitations.declined_unnamed": {
+		"role": "invitations declined unnamed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Outcome after Decline. Neutral on purpose: it must stay true whether or not the agent had already joined from another device. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence."
+	},
+	"ui.teamBridge.invitations.failed.agent_unavailable": {
+		"role": "invitations agent unavailable",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.failed.already_answered": {
+		"role": "invitations already answered",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server says the invitation is no longer pending (answered on another device or by another session); the list re-reads to show the real state."
+	},
+	"ui.teamBridge.invitations.failed.gone": {
+		"role": "invitations gone",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.failed.runtime_outdated": {
+		"role": "invitations runtime outdated refusal",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server no longer accepts this app's participation version. Shown when the LOCAL runtime cannot bind the consent write to the signed-in account (no owner guard). 'Local Operator' is the runtime's name and is not translated; the thing to update is the runtime, not necessarily the desktop app."
+	},
+	"ui.teamBridge.invitations.failed.outdated": {
+		"role": "invitations outdated",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server no longer accepts this app's participation version."
+	},
+	"ui.teamBridge.invitations.failed.not_available": {
+		"role": "invitations not available",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.failed.sign_in": {
+		"role": "invitations sign in",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.failed.unreachable": {
+		"role": "invitations unreachable",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent."
+	},
+	"ui.teamBridge.invitations.read_only": {
+		"role": "invitations read-only reason",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One sentence; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. Shown under disabled Accept/Decline when the reader's organization is read-only for them, so the disabled buttons have a stated reason."
+	},
+	"ui.teamBridge.invitations.failed.unconfirmed": {
+		"role": "invitations unconfirmed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Accepting never unmutes the agent. The server answered without a recognised reason; the answer may or may not have been recorded."
+	},
+	"ui.teamBridge.chief.unnamed": {
+		"role": "row label composition",
+		"tone": "plain, sentence case",
+		"length": "Short; must fit a 30px rail row.",
+		"placeholders": {
+			"person": "The owning teammate's display name, verbatim."
+		},
+		"note": "Names a teammate's chief of staff when the agent has no name of its own (or its name is the owner's name), e.g. 'Ben Tran’s chief of staff'. The named form is ui.teamBridge.chief.label ('Aida (Ben Tran)'). Must not repeat the person. Shown on the rail (including the reader's own agent), the thread header, the To: picker and the composer placeholder."
+	},
+	"ui.teamBridge.member.active_count": {
+		"role": "thread header membership headline when invitations are pending",
+		"tone": "neutral, compact, sentence fragment",
+		"length": "Short; one line of 11px metadata in the thread header.",
+		"placeholders": {
+			"count": "number of members whose membership is active; a nonnegative integer"
+		},
+		"note": "Replaces ui.teamBridge.member.count only when the conversation has pending invitations, so the headline says outright that the total is active members only, e.g. '1 active member'. ui.teamBridge.member.invited_count ('3 invited') sits on the line beneath it. Counts active membership records, not online presence or permissions. Use every required plural category."
+	},
+	"ui.teamBridge.member.invited_count": {
+		"role": "thread header invited-membership count",
+		"tone": "neutral, compact lowercase status fragment",
+		"length": "Short; one line of 11px metadata beneath the active headline.",
+		"placeholders": {
+			"count": "number of members whose membership is invited (not yet joined); a nonnegative integer"
+		},
+		"note": "Shown beneath ui.teamBridge.member.active_count, e.g. '1 active member' over '3 invited'. Invited members (people or agents) have been added but have not joined, so they are not counted as active. Use idiomatic agreement and every required plural category."
 	}
 }

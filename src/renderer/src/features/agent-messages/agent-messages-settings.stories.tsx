@@ -79,6 +79,7 @@ function fakeApi(
 			allowlist === null ? null : structuredClone(allowlist),
 		updateAllowlist: async () => structuredClone(allowlistResult),
 		localSetting: async () => ({}),
+		dismissOnboarding: async () => ({ onboarding: "seen" as const }),
 	};
 }
 

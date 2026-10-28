@@ -1,0 +1,6 @@
+{
+	"ui.chat.status.credential_refused": "Le serveur en cours d’exécution a refusé l’identifiant de cette application ; la connexion, les paramètres et les commandes slash sont donc indisponibles.",
+	"ui.chat.status.degraded": "Le serveur répond lentement. Vos messages sont mis en file d’attente.",
+	"ui.chat.status.internet_offline": "Cet ordinateur est hors ligne. L’envoi attendra.",
+	"ui.chat.status.unreachable": "Le serveur Local Operator est injoignable. L’envoi attendra."
+}

@@ -1,0 +1,436 @@
+[
+ {
+  "locale": "vi",
+  "namespace": "ui.chat",
+  "source_sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+  "target_sha256": "008ac443d140f40f0de80165ccb014348123fe2084089eb4de0bd2240ce00bae",
+  "translator": {
+   "agent": "i18n-translator",
+   "model": "openai/gpt-6.1-sol",
+   "date": "2026-10-18"
+  },
+  "auditors": [
+   {
+    "agent": "i18n-auditor",
+    "model": "radient/auto",
+    "date": "2026-10-27",
+    "result": "clean",
+    "instance": "wave-a-vi-delta-eb62f05b28e1",
+    "findings": {
+     "blocker": 0,
+     "major": 0,
+     "minor": 0,
+     "nit": 0
+    },
+    "receipt": "i18n/receipts/wave-a-vi-delta-eb62f05b28e1.json",
+    "receipt_sha256": "c729f7c063f99485ba688ff189f611d88a2ded0867909a91f779c8061b485801",
+    "scope": "Wave A vi delta, head 80ee119bbd: 18 wave-A keys re-read; round-1 vi-wa-1 (region.conversation duplicating the sidebar nav name) resolved by the translator's «Khung trò chuyện», accepted after re-reading the pane vocabulary and the hộp thoại ambiguity; other 17 values byte-identical.",
+    "note": "Wave A vi delta, head 80ee119bbd: 18/18 keys; 0 blocker/major/minor/nit; vi-wa-1 resolved. Record i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/record.json"
+   }
+  ],
+  "status": "audited",
+  "superseded": [
+   {
+    "source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+    "target_sha256": "bc899cead09340bf5402ea26900fa201f3902c7a0b66fb2ff4a2c17faff160ff",
+    "auditors": [
+     {
+      "agent": "i18n-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "date": "2026-10-18",
+      "result": "clean",
+      "instance": "6a1c5f8e3d29",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/6a1c5f8e3d29.json",
+      "receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+      "scope": "full namespace; post-remediation verification of round-1 native audit findings",
+      "note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+     }
+    ],
+    "status": "audited"
+   },
+   {
+    "translator": {
+     "agent": "i18n-translator",
+     "model": "openai/gpt-6.1-sol",
+     "date": "2026-10-18"
+    },
+    "auditors": [
+     {
+      "agent": "i18n-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "date": "2026-10-18",
+      "result": "clean",
+      "instance": "6a1c5f8e3d29",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/6a1c5f8e3d29.json",
+      "receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+      "scope": "full namespace; post-remediation verification of round-1 native audit findings",
+      "note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+     }
+    ],
+    "source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+    "status": "audited",
+    "target_sha256": "bc899cead09340bf5402ea26900fa201f3902c7a0b66fb2ff4a2c17faff160ff"
+   },
+   {
+    "source_sha256": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+    "target_sha256": "25181a9ec310def8afc33a352b9ed45890c593e88c1f9fac27211de407b2a88d",
+    "auditors": [
+     {
+      "agent": "translation-auditor",
+      "model": "deepseek/deepseek-flash",
+      "date": "2026-10-24",
+      "result": "clean",
+      "instance": "vi-extract-517c59bfdfe3-r2",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
+      "receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
+      "scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+      "note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+     }
+    ],
+    "status": "audited"
+   },
+   {
+    "source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+    "target_sha256": "ea2ce7175c288fb6926e975ec18fc8e809e86cfe805d253be385c0f9710f98b4",
+    "auditors": [
+     {
+      "agent": "i18n-auditor",
+      "model": "radient/auto",
+      "date": "2026-10-26",
+      "result": "clean-with-findings",
+      "instance": "7165e9bc3822-chat-surfaces-r2",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 1,
+       "nit": 1
+      },
+      "receipt": "i18n/receipts/7165e9bc3822-chat-surfaces-r2.json",
+      "receipt_sha256": "3491037d28c85a3cc1d0bf489c8bb80627f7f860d738db8dcca1ec731784113f"
+     }
+    ],
+    "status": "audited"
+   }
+  ]
+ },
+ {
+  "locale": "vi",
+  "namespace": "ui.chat.header",
+  "source_sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+  "target_sha256": "43eedd65728fd38484116e745c05430e9c771def2674e68df4ed8c83eda1db9a",
+  "translator": {
+   "agent": "i18n-translator",
+   "model": "openai/gpt-6.1-sol",
+   "date": "2026-10-18"
+  },
+  "auditors": [
+   {
+    "agent": "i18n-auditor",
+    "model": "radient/auto",
+    "date": "2026-10-27",
+    "result": "clean",
+    "instance": "wave-a-vi-delta-eb62f05b28e1",
+    "findings": {
+     "blocker": 0,
+     "major": 0,
+     "minor": 0,
+     "nit": 0
+    },
+    "receipt": "i18n/receipts/wave-a-vi-delta-eb62f05b28e1.json",
+    "receipt_sha256": "c729f7c063f99485ba688ff189f611d88a2ded0867909a91f779c8061b485801",
+    "scope": "Wave A vi delta, head 80ee119bbd: 5 wave-A keys re-read; bytes unchanged since a81c00cdda; re-recorded against the current English hash (the English source moved after the older audit).",
+    "note": "Wave A vi delta, head 80ee119bbd: 5/5 keys; 0 blocker/major/minor/nit; bytes unchanged. Record i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/record.json"
+   }
+  ],
+  "status": "audited",
+  "superseded": [
+   {
+    "source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+    "target_sha256": "403864dd874acd8b95d426454d01a7b06bdbdb4fc97ba812b531d35c4521ee9b",
+    "auditors": [
+     {
+      "agent": "i18n-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "date": "2026-10-18",
+      "result": "clean",
+      "instance": "6a1c5f8e3d29",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/6a1c5f8e3d29.json",
+      "receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+      "scope": "full namespace; post-remediation verification of round-1 native audit findings",
+      "note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+     }
+    ],
+    "status": "audited"
+   },
+   {
+    "source_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+    "target_sha256": "bae711b8664e1c3eb08500407c194150908c27151f3d9b504a7905baad11b6d4",
+    "auditors": [
+     {
+      "agent": "translation-auditor",
+      "model": "deepseek/deepseek-flash",
+      "date": "2026-10-25",
+      "result": "clean-with-findings",
+      "instance": "vi-bind-bae711b8664e",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 1,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/vi-bind-bae711b8664e.json",
+      "receipt_sha256": "aa0de8eadd7f75d4cfd4a6f0ef9858546c2cb37f1cc64a55f1ad93cd193dd2ad"
+     }
+    ],
+    "status": "audited"
+   }
+  ]
+ },
+ {
+  "locale": "vi",
+  "namespace": "ui.chat.response_actions",
+  "source_sha256": "8c23ba6a5b509c13d878c05aed0454026a6960566b043f5e983008dee93bcb18",
+  "target_sha256": "01df25b03593593f7984679b638b70185343025a03fc10f48987ab40ca1c3291",
+  "translator": {
+   "agent": "i18n-translator",
+   "model": "openai/gpt-6.1-sol",
+   "date": "2026-10-18"
+  },
+  "auditors": [
+   {
+    "agent": "i18n-auditor",
+    "model": "radient/auto",
+    "date": "2026-10-27",
+    "result": "clean",
+    "instance": "wave-a-vi-delta-eb62f05b28e1",
+    "findings": {
+     "blocker": 0,
+     "major": 0,
+     "minor": 0,
+     "nit": 0
+    },
+    "receipt": "i18n/receipts/wave-a-vi-delta-eb62f05b28e1.json",
+    "receipt_sha256": "c729f7c063f99485ba688ff189f611d88a2ded0867909a91f779c8061b485801",
+    "scope": "Wave A vi delta, head 80ee119bbd: 4 wave-A keys re-read; bytes unchanged since a81c00cdda; answer_label/yours_label remain distinct; re-recorded against the current English hash.",
+    "note": "Wave A vi delta, head 80ee119bbd: 4/4 keys; 0 blocker/major/minor/nit; bytes unchanged. Record i18n/audits/evidence/vi/ui.chat.response_actions/wave-a-vi-delta-20261027/record.json"
+   }
+  ],
+  "status": "audited",
+  "superseded": [
+   {
+    "source_sha256": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+    "target_sha256": "d83eee0e7b7d12bc74367420d9e007c4ff67ba05bb67d35815cc9df4297ab38e",
+    "auditors": [
+     {
+      "agent": "i18n-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "date": "2026-10-18",
+      "result": "clean",
+      "instance": "6a1c5f8e3d29",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/6a1c5f8e3d29.json",
+      "receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+      "scope": "full namespace; post-remediation verification of round-1 native audit findings",
+      "note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+     }
+    ],
+    "status": "audited"
+   }
+  ]
+ },
+ {
+  "locale": "vi",
+  "namespace": "ui.chat.sidebar",
+  "source_sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+  "target_sha256": "a61f68e6cf27329937640e12f3d115c1a700e617ae3dbbbfc12ef644681afe6b",
+  "translator": {
+   "agent": "translator",
+   "model": "openrouter/moonshotai/kimi-k3.1-pro",
+   "date": "2026-10-23"
+  },
+  "auditors": [
+   {
+    "agent": "i18n-auditor",
+    "model": "radient/auto",
+    "date": "2026-10-27",
+    "result": "clean",
+    "instance": "wave-a-vi-delta-eb62f05b28e1",
+    "findings": {
+     "blocker": 0,
+     "major": 0,
+     "minor": 0,
+     "nit": 0
+    },
+    "receipt": "i18n/receipts/wave-a-vi-delta-eb62f05b28e1.json",
+    "receipt_sha256": "c729f7c063f99485ba688ff189f611d88a2ded0867909a91f779c8061b485801",
+    "scope": "Wave A vi delta, head 80ee119bbd: 11 wave-A keys re-read; bytes unchanged since a81c00cdda; re-recorded against the current English hash.",
+    "note": "Wave A vi delta, head 80ee119bbd: 11/11 keys; 0 blocker/major/minor/nit; bytes unchanged. Record i18n/audits/evidence/vi/ui.chat.sidebar/wave-a-vi-delta-20261027/record.json"
+   }
+  ],
+  "status": "audited",
+  "superseded": [
+   {
+    "source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+    "target_sha256": "7a52079c6e7552269734420a0a02fcf7e246a9642e7eac4197e90630639bee75",
+    "auditors": [
+     {
+      "agent": "translation-auditor",
+      "model": "openrouter/moonshotai/kimi-k3.1-pro",
+      "date": "2026-10-23",
+      "result": "clean",
+      "instance": "44b67915fa07-r2",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/44b67915fa07-r2.json",
+      "receipt_sha256": "de32ee2eeda34eeec3d6dba5ca40640f02ed16b035831a6a91de06d8c7c55654",
+      "scope": "independent round-2 scoped remediation audit at current hashes",
+      "note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Presence fit watch retained for rendered QA."
+     },
+     {
+      "agent": "i18n-auditor",
+      "model": "openrouter/moonshotai/kimi-k3.1-pro",
+      "date": "2026-10-23",
+      "result": "clean",
+      "instance": "2016fab9f0bb-r2",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/2016fab9f0bb-r2.json",
+      "receipt_sha256": "133550f8cd8ad8c303d13ae48a9c5cfaa7e42f0a3973bca32989e38c34530e87",
+      "scope": "independent round-2 scoped remediation audit at current hashes",
+      "note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Presence fit watch retained for rendered QA."
+     }
+    ],
+    "status": "audited"
+   },
+   {
+    "translator": {
+     "agent": "translator",
+     "model": "openrouter/moonshotai/kimi-k3.1-pro",
+     "date": "2026-10-23"
+    },
+    "auditors": [
+     {
+      "agent": "translation-auditor",
+      "model": "openrouter/moonshotai/kimi-k3.1-pro",
+      "date": "2026-10-23",
+      "result": "clean",
+      "instance": "44b67915fa07-r2",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/44b67915fa07-r2.json",
+      "receipt_sha256": "de32ee2eeda34eeec3d6dba5ca40640f02ed16b035831a6a91de06d8c7c55654",
+      "scope": "independent round-2 scoped remediation audit at current hashes",
+      "note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Presence fit watch retained for rendered QA."
+     },
+     {
+      "agent": "i18n-auditor",
+      "model": "openrouter/moonshotai/kimi-k3.1-pro",
+      "date": "2026-10-23",
+      "result": "clean",
+      "instance": "2016fab9f0bb-r2",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/2016fab9f0bb-r2.json",
+      "receipt_sha256": "133550f8cd8ad8c303d13ae48a9c5cfaa7e42f0a3973bca32989e38c34530e87",
+      "scope": "independent round-2 scoped remediation audit at current hashes",
+      "note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Presence fit watch retained for rendered QA."
+     }
+    ],
+    "source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+    "status": "audited",
+    "target_sha256": "7a52079c6e7552269734420a0a02fcf7e246a9642e7eac4197e90630639bee75"
+   },
+   {
+    "source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+    "target_sha256": "e27adae002290a4a3ace16ba29569836e1ef91656c67a5e8ada9dd97e5dc6494",
+    "auditors": [
+     {
+      "agent": "translation-auditor",
+      "model": "deepseek/deepseek-flash",
+      "date": "2026-10-24",
+      "result": "clean",
+      "instance": "vi-extract-517c59bfdfe3-r2",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 0,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
+      "receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
+      "scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+      "note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+     }
+    ],
+    "status": "audited"
+   },
+   {
+    "source_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+    "target_sha256": "6e9c1ff48a0b65dc36d041a421abe8421ca9cba4bd93d03f52df8fafd988d294",
+    "auditors": [
+     {
+      "agent": "translation-auditor",
+      "model": "deepseek/deepseek-flash",
+      "date": "2026-10-25",
+      "result": "clean-with-findings",
+      "instance": "vi-bind-6e9c1ff48a0b",
+      "findings": {
+       "blocker": 0,
+       "major": 0,
+       "minor": 1,
+       "nit": 0
+      },
+      "receipt": "i18n/receipts/vi-bind-6e9c1ff48a0b.json",
+      "receipt_sha256": "117312187f28ce98a8cba1ce52e3e2317557a9ddd809d53832ed3add56b39c2b"
+     }
+    ],
+    "status": "audited"
+   }
+  ]
+ }
+]

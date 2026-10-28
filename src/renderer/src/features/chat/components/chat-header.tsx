@@ -911,17 +911,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 */
 							aria-label={
 								renameSaving
-									? "Saving the conversation name"
+									? t("ui.chat.header.saving_conversation_name")
 									: renaming
-										? "Cancel rename"
-										: "Rename conversation"
+										? t("ui.chat.header.cancel_rename")
+										: t("ui.chat.header.rename_conversation")
 							}
 							title={
 								renameSaving
-									? "Saving the conversation name"
+									? t("ui.chat.header.saving_conversation_name")
 									: renaming
-										? "Cancel rename"
-										: "Rename conversation"
+										? t("ui.chat.header.cancel_rename")
+										: t("ui.chat.header.rename_conversation")
 							}
 							/*
 							 * THE BUSY CUE, in the identity trigger's pattern: `aria-busy`
@@ -1422,7 +1422,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										<Archive aria-hidden="true" />
 									)}
 									<span>
-										{archived ? "Restore conversation" : "Archive conversation"}
+										{archived
+											? t("ui.chat.header.restore_conversation")
+											: t("ui.chat.header.archive_conversation")}
 									</span>
 								</DropdownMenuItem>
 							)}

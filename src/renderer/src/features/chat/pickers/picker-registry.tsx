@@ -219,6 +219,16 @@ export type DestinationEntry =
 	| ({
 			kind: "navigate";
 			route: (args: string, sessionId: string) => string;
+			/**
+			 * This route addresses no conversation, so a pane with none (a draft)
+			 * may run it. The `picker` kind's per-row opt-in, for the same reason
+			 * and with the same one reader (`destinationNeedsSession`): without it a
+			 * draft pane would print "needs an open conversation" for `/notifications`,
+			 * a page that has nothing to do with one (contract § 8). Per row rather
+			 * than the whole kind because `/settings`-family routes were never measured
+			 * for it.
+			 */
+			sessionless?: true;
 	  } & ArgsBehavior)
 	| ({
 			kind: "direct";
@@ -616,6 +626,19 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	 */
 	accounts: { kind: "navigate", route: () => "/settings?section=providers" },
 	updates: { kind: "navigate", route: () => "/settings?section=updates" },
+	/*
+	 * `/notifications` OPENS THE PAGE AND SENDS NOTHING (operator brief; contract
+	 * § 8). Core publishes the row with `desktop_destination: "notifications"`
+	 * only from the release that serves the page, so an older core never offers
+	 * the command and an older UI paired with a newer core shows its existing
+	 * unknown-destination note. The dispatcher's navigate branch already answers
+	 * "consumed", which is what keeps the line out of the conversation.
+	 */
+	notifications: {
+		kind: "navigate",
+		route: () => "/notifications",
+		sessionless: true,
+	},
 	mcp: {
 		kind: "picker",
 		component: McpPicker,
@@ -708,6 +731,7 @@ export function destinationNeedsSession(
 	 * the centralisation prevents.
 	 */
 	if (entry.kind === "machine-panel" || entry.kind === "aida") return false;
+	if (entry.kind === "navigate") return entry.sessionless !== true;
 	return !(entry.kind === "picker" && entry.sessionless === true);
 }
 

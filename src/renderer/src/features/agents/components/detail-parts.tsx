@@ -12,6 +12,7 @@
  * exactly the "second way of doing things" this repo treats as a defect.
  */
 
+import { ProjectMarkdown } from "@features/projects/project-markdown";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
@@ -124,11 +125,44 @@ export function ReadBlock({
 	text,
 	empty = "Nothing here yet.",
 	mono = false,
+	showAllLabel,
+	showLessLabel,
+	breakLongTokens = false,
+	markdown = false,
 }: {
 	text: string;
 	empty?: string;
 	/** Machine voice (a packaged prompt shown for comparison), per branding §5. */
 	mono?: boolean;
+	/**
+	 * The expander's words. Unset, the block prints its own catalogue messages
+	 * (below); a caller that needs different words - the Skills tab names its own
+	 * keys - passes them so the block is reused rather than copied.
+	 */
+	showAllLabel?: string;
+	showLessLabel?: string;
+	/**
+	 * Wrap an UNBROKEN token (a minified file, a base64 blob, a long URL) at the
+	 * block's edge. `whitespace-pre-wrap` only breaks at spaces, so such a token
+	 * painted one row thousands of px wide, past the pane with no scroll and no
+	 * "Show all" (QA r3 Q6: a 2,048-char token was 14,746 px wide). Opt-in: the
+	 * agent and team prompts this block also renders keep the wrapping they have.
+	 * The skill body and reference previews are arbitrary files, so they opt in.
+	 */
+	breakLongTokens?: boolean;
+	/**
+	 * Render the text as markdown through `ProjectMarkdown` (the app's one
+	 * non-transcript markdown surface) inside the SAME clamp and "Show all".
+	 *
+	 * WHY A HEIGHT AND NOT `line-clamp`: rendered markdown is a stack of blocks
+	 * (headings, lists, code), and `line-clamp` counts lines of one inline
+	 * formatting context; a `max-height` of ten of the block's own line boxes
+	 * (`10lh`) bounds every shape, and the same `scrollHeight > clientHeight`
+	 * measurement still answers "is anything hidden". The Skills tab's
+	 * instructions opt in (a SKILL.md is markdown written for a model to read);
+	 * the agent and team prompts keep their plain text.
+	 */
+	markdown?: boolean;
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const [overflows, setOverflows] = useState(false);
@@ -136,6 +170,12 @@ export function ReadBlock({
 	/* The expander's two labels are catalogue copy; subscribe so a language switch
 	 * repaints them with the rest of the pane. */
 	useI18nLocale();
+	/* The defaults are catalogue messages, not literals: the agent and team panes
+	 * render this block without labels, and an English default here would be the
+	 * one untranslated string a page still prints (and no ratchet scans default
+	 * values). A caller with its own words still wins. */
+	const showLess = showLessLabel ?? t("ui.agents.detail.read.show_less");
+	const showAll = showAllLabel ?? t("ui.agents.detail.read.show_all");
 
 	/*
 	 * Measured, not assumed from a character count: what overflows depends on the
@@ -184,16 +224,22 @@ export function ReadBlock({
 	}
 
 	return (
-		<div>
+		<div className={cn(breakLongTokens && "min-w-0")}>
 			<div
 				ref={ref}
+				data-break-long-tokens={breakLongTokens ? "true" : undefined}
+				data-read-markdown={markdown ? "true" : undefined}
 				className={cn(
-					"whitespace-pre-wrap text-body text-ink",
-					!expanded && "line-clamp-10",
+					"text-body text-ink",
+					markdown
+						? !expanded && "max-h-[10lh] overflow-hidden"
+						: "whitespace-pre-wrap",
+					!markdown && !expanded && "line-clamp-10",
 					mono && "font-mono text-meta",
+					breakLongTokens && "min-w-0 break-words [overflow-wrap:anywhere]",
 				)}
 			>
-				{text}
+				{markdown ? <ProjectMarkdown>{text}</ProjectMarkdown> : text}
 			</div>
 			{overflows ? (
 				<Button
@@ -206,9 +252,7 @@ export function ReadBlock({
 					aria-expanded={expanded}
 					onClick={() => setExpanded((value) => !value)}
 				>
-					{expanded
-						? t("ui.agents.detail.read.show_less")
-						: t("ui.agents.detail.read.show_all")}
+					{expanded ? showLess : showAll}
 				</Button>
 			) : null}
 		</div>
@@ -661,7 +705,12 @@ export function PaneError({
 	meaning,
 	onRetry,
 	retrying = false,
+	retryLabel = "Retry",
+	retryingLabel = "Retrying…",
 }: {
+	/** The Retry button's words; defaults are the English the older panes print. */
+	retryLabel?: string;
+	retryingLabel?: string;
 	title: string;
 	/** What happened, in one sentence. */
 	what: string;
@@ -676,7 +725,7 @@ export function PaneError({
 			<p className="text-body-sm text-ink">{what}</p>
 			<p className="text-body-sm text-ink-muted">{meaning}</p>
 			<Button variant="secondary" onClick={onRetry} disabled={retrying}>
-				{retrying ? "Retrying…" : "Retry"}
+				{retrying ? retryingLabel : retryLabel}
 			</Button>
 		</div>
 	);

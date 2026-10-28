@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "locale": "zh-CN",
+  "namespace": "ui.notifications",
+  "instance": "audit-zh-cn-6a81bd6cab5c",
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "audit-zh-cn-6a81bd6cab5c",
+    "session": "6a81bd6cab5c",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Host model-switch message: openai/gpt-6.1-sol after provider quota failures; not the requested anthropic/claude-opus-5-5.",
+    "date": "2026-10-25",
+    "independence": "Independent audit-zh-CN agent/context; authored none of the UI tr-zh-CN or L1-core-notify coder translations and made no catalogue/code/ledger edits."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "en_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+  "target_sha256": "591282c0d9ff5418ad8b7937c2527a7cf9e8fd5712f9c3ebd3431574da7697f9",
+  "context_sha256": "3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e",
+  "date": "2026-10-25",
+  "key_count": {
+    "en": 130,
+    "target": 130
+  },
+  "findings": [
+    {
+      "key": "ui.notifications.row.chip.high",
+      "severity": "minor",
+      "current": "重要",
+      "proposed_text": "高",
+      "reason": "The same high-priority value is 高 in filter.priority_high and 高优先级 in row.priority.high; 重要 changes the value name to importance. Use 高 for consistent identification.",
+      "disposition": "unresolved; original translator/coder or design/QA to address"
+    },
+    {
+      "key": "ui.notifications.error.dismiss",
+      "severity": "minor",
+      "current": "无法清除——未做任何更改。请重试。",
+      "proposed_text": "无法清除——未做任何更改。重试。",
+      "reason": "The binding zh-CN guide permits 请 only when English says please; this source says Try again, so the added politeness violates the terse register.",
+      "disposition": "unresolved; original translator/coder or design/QA to address"
+    },
+    {
+      "key": "ui.notifications.error.mark",
+      "severity": "minor",
+      "current": "无法标为已读——未做任何更改。请重试。",
+      "proposed_text": "无法标为已读——未做任何更改。重试。",
+      "reason": "The binding zh-CN guide permits 请 only when English says please; this source says Try again, so the added politeness violates the terse register.",
+      "disposition": "unresolved; original translator/coder or design/QA to address"
+    },
+    {
+      "key": "ui.notifications.time.minutes",
+      "severity": "minor",
+      "current": "{count}分钟",
+      "proposed_text": "{count}分钟",
+      "reason": "Rendered-fit check required: 99m = 3 cells; 99分钟 = 6 cells. This is a compact age/pill with a roughly-English width budget. The Chinese is idiomatic, but static cell expansion is material; retain only after design/QA measures the actual UI at supported widths.",
+      "disposition": "unresolved; original translator/coder or design/QA to address",
+      "proposed_action": "Rendered-fit validation; if the new pill does not fit, shorten to 新增{count}条; do not replace idiomatic minute/hour units with ambiguous abbreviations."
+    },
+    {
+      "key": "ui.notifications.time.hours",
+      "severity": "minor",
+      "current": "{count}小时",
+      "proposed_text": "{count}小时",
+      "reason": "Rendered-fit check required: 99h = 3 cells; 99小时 = 6 cells. This is a compact age/pill with a roughly-English width budget. The Chinese is idiomatic, but static cell expansion is material; retain only after design/QA measures the actual UI at supported widths.",
+      "disposition": "unresolved; original translator/coder or design/QA to address",
+      "proposed_action": "Rendered-fit validation; if the new pill does not fit, shorten to 新增{count}条; do not replace idiomatic minute/hour units with ambiguous abbreviations."
+    },
+    {
+      "key": "ui.notifications.new_pill",
+      "severity": "minor",
+      "current": "{count}条新通知",
+      "proposed_text": "{count}条新通知",
+      "reason": "Rendered-fit check required: 99 new = 6 cells; 99条新通知 = 10 cells. This is a compact age/pill with a roughly-English width budget. The Chinese is idiomatic, but static cell expansion is material; retain only after design/QA measures the actual UI at supported widths.",
+      "disposition": "unresolved; original translator/coder or design/QA to address",
+      "proposed_action": "Rendered-fit validation; if the new pill does not fit, shorten to 新增{count}条; do not replace idiomatic minute/hour units with ambiguous abbreviations."
+    }
+  ],
+  "status": "passed",
+  "result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "mechanical": {
+    "parser": "repository @formatjs/icu-messageformat-parser via scripts/i18n/generate.mjs messageArguments",
+    "keys_parsed_per_locale": 130,
+    "formatted_cases": 780,
+    "negative_controls_passed": 2,
+    "plural_ASTs": 9,
+    "target_CLDR_categories": [
+      "other"
+    ]
+  },
+  "limitations": [
+    "LLM semantic audit, not native-speaker signoff.",
+    "No browser/rendered-fit claim; three static expansion warnings are delegated to later design/QA."
+  ],
+  "translator": {
+    "agent": "tr-zh-CN",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-25"
+  }
+}

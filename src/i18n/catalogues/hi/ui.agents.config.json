@@ -10,6 +10,7 @@
 	"ui.agents.config.composer.label": "एजेंट या टीम में बदलाव के लिए कहें",
 	"ui.agents.config.definitions": "{count, plural, one {# परिभाषा} other {# परिभाषाएँ}}",
 	"ui.agents.config.error.stop_refused": "रोकना लागू नहीं हुआ — रन अभी भी चल रहा है।",
+	"ui.agents.config.error.turn_failed": "मॉडल ने इस अनुरोध का जवाब नहीं दिया।",
 	"ui.agents.config.examples.add_twice": "release-crew में coder को दो बार जोड़ें",
 	"ui.agents.config.examples.reads_code": "ऐसा समीक्षक जो सिर्फ़ कोड पढ़ता है",
 	"ui.agents.config.examples.team_shipping": "shipping नाम की टीम, जिसमें एक मैनेजर और दो coder हैं",
@@ -19,6 +20,7 @@
 	"ui.agents.config.result.changed": "बदला गया",
 	"ui.agents.config.result.configured": "कॉन्फ़िगर किया गया:",
 	"ui.agents.config.result.created": "बनाया गया",
+	"ui.agents.config.state.did_not_finish": "पूरा नहीं हुआ",
 	"ui.agents.config.state.sending": "भेजा जा रहा है…",
 	"ui.agents.config.state.stopping": "रोका जा रहा है…",
 	"ui.agents.config.status.attached": "एक और कॉन्फ़िगरेशन रन पहले से चल रहा था, इसलिए यह पेज उससे जुड़ गया। आपका अनुरोध भेजा नहीं गया — वह अब भी बॉक्स में है।",
@@ -29,5 +31,8 @@
 	"ui.agents.config.summary.no_changes": "रन ने कोई एजेंट या टीम बदले बिना जवाब दिया।",
 	"ui.agents.config.summary.nothing_else": "इस रन से और कुछ नहीं बदला।",
 	"ui.agents.config.summary.updated": "{name} अपडेट किया गया",
-	"ui.agents.config.summary.you_asked": "आपने पूछा: {topic}"
+	"ui.agents.config.summary.you_asked": "आपने पूछा: {topic}",
+	"ui.agents.config.banner.unavailable": "बैकएंड तक नहीं पहुँच सके, इसलिए कम्पोज़र फ़िलहाल उपलब्ध नहीं है।",
+	"ui.agents.config.disabled_gate": "बातचीत के ज़रिए एजेंट कॉन्फ़िगर होते हैं",
+	"ui.agents.config.run_details_region": "रन विवरण"
 }

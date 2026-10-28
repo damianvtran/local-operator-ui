@@ -1,0 +1,34 @@
+{
+  "label": "r2",
+  "session": "5eed1157aa04",
+  "before": [
+    {
+      "text": "report.pdf",
+      "anchor": null
+    },
+    {
+      "text": "data.xlsx",
+      "anchor": null
+    }
+  ],
+  "beforeFrame": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-67189/frames/r2-before-r2.png",
+  "after": [
+    {
+      "text": "report.pdf",
+      "anchor": "report.pdf"
+    },
+    {
+      "text": "data.xlsx",
+      "anchor": "data.xlsx"
+    },
+    {
+      "text": "report.pdf",
+      "anchor": "report.pdf"
+    },
+    {
+      "text": "data.xlsx",
+      "anchor": "data.xlsx"
+    }
+  ],
+  "afterFrame": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-67189/frames/r2-after-r2.png"
+}
