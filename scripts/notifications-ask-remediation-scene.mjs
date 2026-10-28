@@ -69,11 +69,22 @@ export async function createAskFaultProxy({ base, token, accept }) {
 	const attempts = [];
 	const intercepted = [];
 	const sockets = new Set();
+	/*
+	 * WHY A FORWARDED LEDGER EXISTS. The 2026-10-28 hosted run failed with
+	 * `intercepted: []` and `attempts: []`, which is ambiguous between two very
+	 * different defects: the press issued no request at all, or the renderer posted
+	 * past the proxy to core. A row per forwarded non-fixture request (method and
+	 * path only, never a body) separates them: traffic here proves the app is talking
+	 * through this adapter, so an empty `intercepted` then means the gesture itself
+	 * produced nothing. Bounded so a long page load cannot grow it without limit.
+	 */
+	const forwarded = [];
 	const path = `/v1/desktop/sessions/${ASK_SCENE_SESSION}/answers`;
 	/* Pipe, do not collect: the pre-existing scene's SSE must arrive before EOF.
 	 * Preserve request headers (including Host/auth), status, response headers and
 	 * raw bytes. The destination stays pinned to core, never to a client URL. */
 	const forward = (req, res, body) => {
+		if (forwarded.length < 40) forwarded.push(`${req.method} ${req.url}`);
 		const target = new URL(base);
 		const incoming = new URL(req.url, base);
 		target.pathname = incoming.pathname;
@@ -181,6 +192,7 @@ export async function createAskFaultProxy({ base, token, accept }) {
 		apiUrl: `http://127.0.0.1:${server.address().port}`,
 		attempts,
 		intercepted,
+		forwarded,
 		close: async () => {
 			for (const socket of sockets) socket.destroy();
 			await new Promise((resolve) => server.close(resolve));
@@ -211,16 +223,20 @@ export async function prepareAskRemediation({
 	});
 	receipt.intercepted = proxy.intercepted;
 	receipt.attempts = proxy.attempts;
+	receipt.forwarded = proxy.forwarded;
 	return { ...proxy, receipt, item: seeded.item };
 }
 
-async function until(check, message, budget = 15000) {
+async function until(check, message, budget = 15000, diagnostic = null) {
 	const end = Date.now() + budget;
 	do {
 		if (await check()) return;
 		await pause(100);
 	} while (Date.now() < end);
-	throw new Error(message);
+	// Restoration failures otherwise expose only a selector and hide whether the
+	// route changed, reload stalled, or the reel mounted empty.
+	const detail = diagnostic ? await diagnostic() : null;
+	throw new Error(detail ? `${message}: ${JSON.stringify(detail)}` : message);
 }
 
 const cardSelector = `[data-lo-ask-row="${ASK_SCENE_ID}"]`;
@@ -254,15 +270,30 @@ async function reveal(cdp, expression) {
 		"capture target must fit in the viewport",
 	);
 }
+/*
+ * A NATIVE PRESS, NOT A SCRIPTED ONE. `rawKeyDown` is the repository's gesture
+ * convention, and Enter additionally carries `text: "\r"` because that is the field
+ * Blink keys its default action off: a key event WITHOUT text reaches keydown
+ * listeners but does not activate the focused button - the shape the 2026-10-28
+ * hosted run recorded (Send focused, no request, no Retry). Both virtual key codes
+ * travel so macOS and Chromium agree on the physical key.
+ *
+ * Exported so the payload itself is testable without a browser.
+ */
+export function nativeKeyEvent(name, code, modifiers = 0) {
+	return {
+		key: name,
+		code: name,
+		windowsVirtualKeyCode: code,
+		nativeVirtualKeyCode: code,
+		modifiers,
+		...(name === "Enter" ? { text: "\r", unmodifiedText: "\r" } : {}),
+	};
+}
 async function key(cdp, name, code, modifiers = 0) {
-	for (const type of ["keyDown", "keyUp"])
-		await cdp.send("Input.dispatchKeyEvent", {
-			type,
-			key: name,
-			code: name,
-			windowsVirtualKeyCode: code,
-			modifiers,
-		});
+	const event = nativeKeyEvent(name, code, modifiers);
+	for (const type of ["rawKeyDown", "keyUp"])
+		await cdp.send("Input.dispatchKeyEvent", { type, ...event });
 }
 async function typeSecret(cdp, value) {
 	await click(
@@ -301,7 +332,79 @@ const geometry = (cdp) =>
 		`(() => {const pane=document.querySelector('[data-notification-detail]');if(!pane)return null;const r=pane.parentElement.getBoundingClientRect();const bad=[pane.parentElement,pane,...pane.children].filter(el=>el.scrollWidth>el.clientWidth+1||el.getBoundingClientRect().right>innerWidth+1);return {width:innerWidth,left:r.left,right:r.right,overflow:bad.length,dir:document.documentElement.dir,lang:document.documentElement.lang,theme:document.documentElement.dataset.theme};})()`,
 	);
 
-/** Called only after the original positive read proof, before its negative controls. */
+/**
+ * Put the parent scene back where its own negative controls expect it: English,
+ * the saved window bounds, the reel route.
+ *
+ * A restoration failure is REPORTED WITH ITS PROBE, not as a bare selector. The
+ * 2026-10-28 hosted run reported only `original Notifications reel did not return`,
+ * which could equally be a stalled reload, a lost language write or an empty reel;
+ * the probe records the route, the document state and the row count at that moment.
+ */
+export async function restoreNotifications({ cdp, nodeCdp, saved }) {
+	const diagnostic = () =>
+		cdp.evaluate(`(() => ({
+			hash: location.hash,
+			readyState: document.readyState,
+			rows: document.querySelectorAll('[data-notification-row]').length,
+			detail: !!document.querySelector('[data-notification-detail]'),
+			text: document.body?.innerText.slice(0, 400)
+		}))()`);
+	await cdp.evaluate(
+		"window.api.desktop.request({op:'settings.edit',key:'language',value:'en'})",
+	);
+	await nodeCdp.evaluate(
+		`(() => {const e=process.mainModule?.require('electron')??globalThis.require('electron');e.BrowserWindow.getAllWindows()[0].setContentBounds(${JSON.stringify(saved)});})()`,
+	);
+	await cdp.evaluate(
+		"window.location.hash='#/notifications';window.location.reload()",
+	);
+	await until(
+		() => cdp.evaluate("!!document.querySelector('[data-notification-row]')"),
+		"original Notifications reel did not return",
+		15000,
+		diagnostic,
+	);
+	return diagnostic();
+}
+
+/**
+ * Restore the parent scene's conditions, and never let cleanup replace the scene's
+ * own failure. The 2026-10-28 hosted run reported the cleanup message while the
+ * scene had already failed earlier at `fixture failure did not expose Retry`; a
+ * `finally` that throws masks the assertion that matters and costs a review round
+ * its diagnosis. So: the original error always propagates, with cleanup evidence
+ * attached; a cleanup error still fails a scene that otherwise SUCCEEDED, because
+ * the parent's remaining foreground negatives would then run against the wrong
+ * screen - never silently.
+ *
+ * `restore` is a seam so both halves are provable in a unit test, without Electron,
+ * core or a provider.
+ */
+export async function withNotificationsRestore(
+	{ cdp, nodeCdp, saved, receipt },
+	scene,
+	restore = restoreNotifications,
+) {
+	let failure = null;
+	let result;
+	try {
+		result = await scene();
+	} catch (error) {
+		failure = error;
+	}
+	try {
+		receipt.restore = await restore({ cdp, nodeCdp, saved });
+	} catch (error) {
+		if (!failure) throw error;
+		failure.restoreFailure = {
+			message: error.message,
+			diagnostic: receipt.restore ?? null,
+		};
+	}
+	if (failure) throw failure;
+	return result;
+}
 export async function runAskRemediationScene({
 	cdp,
 	nodeCdp,
@@ -327,161 +430,190 @@ export async function runAskRemediationScene({
 		`(() => {const e=process.mainModule?.require('electron')??globalThis.require('electron');return e.BrowserWindow.getAllWindows()[0].getContentBounds();})()`,
 	);
 	try {
-		await navigate();
-		await until(
-			() =>
-				cdp.evaluate(
-					`!!document.querySelector('${cardSelector} input[data-ask-secret]')`,
-				),
-			"secret card did not mount",
-		);
-		await typeSecret(cdp, ORIGINAL);
-		receipt.sendTabs = await tabTo(cdp, buttonExpression("Send answer"));
-		await key(cdp, "Enter", 13);
-		await until(
-			() => cdp.evaluate(`!!(${buttonExpression("Retry")})`),
-			"fixture failure did not expose Retry",
-		);
-		receipt.retryGeometry = await cdp.evaluate(
-			`(() => {const el=${buttonExpression("Retry")}; const r=el.getBoundingClientRect();return {height:r.height,width:r.width,sendDisabled:(${buttonExpression("Send answer")}).disabled};})()`,
-		);
-		assert.ok(
-			receipt.retryGeometry.height >= 24 && receipt.retryGeometry.sendDisabled,
-		);
-		await reveal(cdp, buttonExpression("Retry"));
-		receipt.errorFrames = await capturePair("ask-remediation-error");
-		// Start keyboard traversal from the real masked field, not the global reel.
-		await click(
-			cdp,
-			`document.querySelector('${cardSelector} input[data-ask-secret]')`,
-		);
-		receipt.retryTabs = await tabTo(cdp, buttonExpression("Retry"));
-		await key(cdp, "Enter", 13);
-		await until(
-			() => Promise.resolve(fixture.attempts.length === 2),
-			"unchanged Retry did not send",
-		);
-		await until(
-			() =>
-				cdp.evaluate(
-					`!!(${buttonExpression("Retry")}) && !(${buttonExpression("Retry")}).disabled`,
-				),
-			"second failure not settled",
-		);
-		await typeSecret(cdp, CORRECTED);
-		assert.equal(
-			await cdp.evaluate(`(${buttonExpression("Send answer")}).disabled`),
-			false,
-			"edited secret must re-arm Send",
-		);
-		receipt.correctedTabs = await tabTo(cdp, buttonExpression("Send answer"));
-		await key(cdp, "Enter", 13);
-		await until(
-			() =>
-				cdp.evaluate(
-					`document.querySelector('${cardSelector}')?.getAttribute('data-lo-ask-status')==='answered'`,
-				),
-			"corrected Send not accepted",
-		);
-		assert.equal(fixture.attempts.length, 3);
-		receipt.attempts = fixture.attempts;
-		receipt.intercepted = fixture.intercepted;
-		assert.deepEqual(
-			fixture.intercepted.map((row) => ({
-				askId: row.askId,
-				method: row.method,
-				status: row.status,
-			})),
-			[503, 503, 200].map((status) => ({
-				askId: ASK_SCENE_ID,
-				method: "POST",
-				status,
-			})),
-			"only the three intended synthetic ask requests may be intercepted",
-		);
-		assert.equal(
-			await cdp.evaluate(
-				`document.body.innerText.includes(${JSON.stringify(ORIGINAL)}) || document.body.innerText.includes(${JSON.stringify(CORRECTED)})`,
-			),
-			false,
-			"synthetic secret leaked into visible text",
-		);
-		assert.equal(
-			await cdp.evaluate(
-				`document.querySelector('${cardSelector}')?.textContent.includes('[EDGE_SECRET]')`,
-			),
-			true,
-		);
-		await reveal(cdp, `document.querySelector('${cardSelector}')`);
-		receipt.acceptedFrames = await capturePair("ask-remediation-accepted");
-		assert.equal(receipt.acceptance.record.delivered ?? false, false);
-
-		await nodeCdp.evaluate(
-			`(() => {const e=process.mainModule?.require('electron')??globalThis.require('electron');e.BrowserWindow.getAllWindows()[0].setContentSize(820,900);})()`,
-		);
-		receipt.locales = {};
-		for (const [locale, label, sentence] of [
-			["fr", "Retirée", "Retirée — l’agent n’attend plus de réponse"],
-			["ur", "واپس لیا گیا", "واپس لیا گیا — ایجنٹ کو اب جواب کی ضرورت نہیں"],
-		]) {
-			const result = await cdp.evaluate(
-				`window.api.desktop.request({op:'settings.edit',key:'language',value:${JSON.stringify(locale)}})`,
-			);
-			assert.equal(
-				result.status,
-				200,
-				"actual backend locale setting must be accepted",
-			);
-			await cdp.evaluate("window.location.reload()");
-			const trigger = `Array.from(document.querySelectorAll('[data-lo-ask-settled] button')).find(el => el.textContent.trim().startsWith(${JSON.stringify(label)}))`;
-			await until(
-				() => cdp.evaluate(`!!(${trigger})`),
-				`${locale} withdrawn compact label not rendered`,
-			);
-			await reveal(cdp, trigger);
-			const compact = await capturePair(
-				`ask-remediation-withdrawn-${locale}-compact`,
-			);
-			assert.equal(compact.first.dir || "ltr", locale === "ur" ? "rtl" : "ltr");
-			assert.ok(
-				Math.abs(compact.first.left - 24) <= 1 &&
-					Math.abs(compact.first.width - compact.first.right - 24) <= 1,
-				"narrow pane must keep 24px edge insets",
-			);
-			await click(cdp, trigger);
-			await until(
-				() =>
-					cdp.evaluate(
-						`document.querySelector('[data-notification-detail]')?.textContent.includes(${JSON.stringify(sentence)})`,
+		return await withNotificationsRestore(
+			{ cdp, nodeCdp, saved, receipt },
+			async () => {
+				await navigate();
+				await until(
+					() =>
+						cdp.evaluate(
+							`!!document.querySelector('${cardSelector} input[data-ask-secret]')`,
+						),
+					"secret card did not mount",
+				);
+				await typeSecret(cdp, ORIGINAL);
+				receipt.sendTabs = await tabTo(cdp, buttonExpression("Send answer"));
+				/*
+				 * THE PRESS IS MEASURED, NOT ASSUMED. The hosted run of 2026-10-28 failed
+				 * here with `intercepted: []` and `attempts: []`, i.e. the button was
+				 * reachable by keyboard but nothing was sent. Any future failure at this
+				 * step must say WHICH link broke - the card's state, the button's gate, the
+				 * focused element, and whether the app talked through the proxy at all -
+				 * instead of a bare "Retry did not appear".
+				 */
+				const pressDiagnostic = () =>
+					cdp
+						.evaluate(`(() => ({
+						status: document.querySelector('${cardSelector}')?.getAttribute('data-lo-ask-status') ?? null,
+						sendDisabled: (${buttonExpression("Send answer")})?.disabled ?? null,
+						retry: !!(${buttonExpression("Retry")}),
+						active: document.activeElement?.textContent?.trim().slice(0, 40) ?? null,
+						secretFilled: !!document.querySelector('${cardSelector} input[data-ask-secret]')?.value,
+					}))()`)
+						.then((state) => ({
+							...state,
+							attempts: fixture.attempts.length,
+							intercepted: fixture.intercepted.length,
+							forwarded: fixture.forwarded.length,
+						}));
+				await key(cdp, "Enter", 13);
+				await until(
+					() => cdp.evaluate(`!!(${buttonExpression("Retry")})`),
+					"fixture failure did not expose Retry",
+					15000,
+					() => pressDiagnostic().then((probe) => ({ press: probe })),
+				);
+				receipt.retryGeometry = await cdp.evaluate(
+					`(() => {const el=${buttonExpression("Retry")}; const r=el.getBoundingClientRect();return {height:r.height,width:r.width,sendDisabled:(${buttonExpression("Send answer")}).disabled};})()`,
+				);
+				assert.ok(
+					receipt.retryGeometry.height >= 24 &&
+						receipt.retryGeometry.sendDisabled,
+				);
+				await reveal(cdp, buttonExpression("Retry"));
+				receipt.errorFrames = await capturePair("ask-remediation-error");
+				// Start keyboard traversal from the real masked field, not the global reel.
+				await click(
+					cdp,
+					`document.querySelector('${cardSelector} input[data-ask-secret]')`,
+				);
+				receipt.retryTabs = await tabTo(cdp, buttonExpression("Retry"));
+				await key(cdp, "Enter", 13);
+				await until(
+					() => Promise.resolve(fixture.attempts.length === 2),
+					"unchanged Retry did not send",
+				);
+				await until(
+					() =>
+						cdp.evaluate(
+							`!!(${buttonExpression("Retry")}) && !(${buttonExpression("Retry")}).disabled`,
+						),
+					"second failure not settled",
+				);
+				await typeSecret(cdp, CORRECTED);
+				assert.equal(
+					await cdp.evaluate(`(${buttonExpression("Send answer")}).disabled`),
+					false,
+					"edited secret must re-arm Send",
+				);
+				receipt.correctedTabs = await tabTo(
+					cdp,
+					buttonExpression("Send answer"),
+				);
+				await key(cdp, "Enter", 13);
+				await until(
+					() =>
+						cdp.evaluate(
+							`document.querySelector('${cardSelector}')?.getAttribute('data-lo-ask-status')==='answered'`,
+						),
+					"corrected Send not accepted",
+				);
+				assert.equal(fixture.attempts.length, 3);
+				receipt.attempts = fixture.attempts;
+				receipt.intercepted = fixture.intercepted;
+				assert.deepEqual(
+					fixture.intercepted.map((row) => ({
+						askId: row.askId,
+						method: row.method,
+						status: row.status,
+					})),
+					[503, 503, 200].map((status) => ({
+						askId: ASK_SCENE_ID,
+						method: "POST",
+						status,
+					})),
+					"only the three intended synthetic ask requests may be intercepted",
+				);
+				assert.equal(
+					await cdp.evaluate(
+						`document.body.innerText.includes(${JSON.stringify(ORIGINAL)}) || document.body.innerText.includes(${JSON.stringify(CORRECTED)})`,
 					),
-				`${locale} expanded withdrawn sentence missing`,
-			);
-			await reveal(
-				cdp,
-				"document.querySelector('[data-lo-ask-row=\"a-146c\"]')",
-			);
-			const expanded = await capturePair(
-				`ask-remediation-withdrawn-${locale}-expanded`,
-			);
-			receipt.locales[locale] = { compact, expanded };
-		}
-		receipt.result =
-			"client-retry-and-localized-layout-confirmed-no-agent-delivery";
-		return receipt;
-	} finally {
-		// Restore the original scene's conditions before its off-screen/blur negatives.
-		await cdp.evaluate(
-			"window.api.desktop.request({op:'settings.edit',key:'language',value:'en'})",
+					false,
+					"synthetic secret leaked into visible text",
+				);
+				assert.equal(
+					await cdp.evaluate(
+						`document.querySelector('${cardSelector}')?.textContent.includes('[EDGE_SECRET]')`,
+					),
+					true,
+				);
+				await reveal(cdp, `document.querySelector('${cardSelector}')`);
+				receipt.acceptedFrames = await capturePair("ask-remediation-accepted");
+				assert.equal(receipt.acceptance.record.delivered ?? false, false);
+
+				await nodeCdp.evaluate(
+					`(() => {const e=process.mainModule?.require('electron')??globalThis.require('electron');e.BrowserWindow.getAllWindows()[0].setContentSize(820,900);})()`,
+				);
+				receipt.locales = {};
+				for (const [locale, label, sentence] of [
+					["fr", "Retirée", "Retirée — l’agent n’attend plus de réponse"],
+					[
+						"ur",
+						"واپس لیا گیا",
+						"واپس لیا گیا — ایجنٹ کو اب جواب کی ضرورت نہیں",
+					],
+				]) {
+					const result = await cdp.evaluate(
+						`window.api.desktop.request({op:'settings.edit',key:'language',value:${JSON.stringify(locale)}})`,
+					);
+					assert.equal(
+						result.status,
+						200,
+						"actual backend locale setting must be accepted",
+					);
+					await cdp.evaluate("window.location.reload()");
+					const trigger = `Array.from(document.querySelectorAll('[data-lo-ask-settled] button')).find(el => el.textContent.trim().startsWith(${JSON.stringify(label)}))`;
+					await until(
+						() => cdp.evaluate(`!!(${trigger})`),
+						`${locale} withdrawn compact label not rendered`,
+					);
+					await reveal(cdp, trigger);
+					const compact = await capturePair(
+						`ask-remediation-withdrawn-${locale}-compact`,
+					);
+					assert.equal(
+						compact.first.dir || "ltr",
+						locale === "ur" ? "rtl" : "ltr",
+					);
+					assert.ok(
+						Math.abs(compact.first.left - 24) <= 1 &&
+							Math.abs(compact.first.width - compact.first.right - 24) <= 1,
+						"narrow pane must keep 24px edge insets",
+					);
+					await click(cdp, trigger);
+					await until(
+						() =>
+							cdp.evaluate(
+								`document.querySelector('[data-notification-detail]')?.textContent.includes(${JSON.stringify(sentence)})`,
+							),
+						`${locale} expanded withdrawn sentence missing`,
+					);
+					await reveal(
+						cdp,
+						"document.querySelector('[data-lo-ask-row=\"a-146c\"]')",
+					);
+					const expanded = await capturePair(
+						`ask-remediation-withdrawn-${locale}-expanded`,
+					);
+					receipt.locales[locale] = { compact, expanded };
+				}
+				receipt.result =
+					"client-retry-and-localized-layout-confirmed-no-agent-delivery";
+				return receipt;
+			},
 		);
-		await nodeCdp.evaluate(
-			`(() => {const e=process.mainModule?.require('electron')??globalThis.require('electron');e.BrowserWindow.getAllWindows()[0].setContentBounds(${JSON.stringify(saved)});})()`,
-		);
-		await cdp.evaluate(
-			"window.location.hash='#/notifications';window.location.reload()",
-		);
-		await until(
-			() => cdp.evaluate("!!document.querySelector('[data-notification-row]')"),
-			"original Notifications reel did not return",
-		);
+	} catch (error) {
+		if (error.restoreFailure) receipt.restoreFailure = error.restoreFailure;
+		throw error;
 	}
 }

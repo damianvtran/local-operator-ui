@@ -10,6 +10,8 @@ import {
 	askAcceptPython,
 	askSeedPython,
 	createAskFaultProxy,
+	nativeKeyEvent,
+	withNotificationsRestore,
 } from "./notifications-ask-remediation-scene.mjs";
 
 const ORIGINAL = "synthetic-ci-original-not-a-credential";
@@ -323,3 +325,87 @@ test(
 		}
 	},
 );
+
+/*
+ * THE CLEANUP CONTRACT, exercised rather than described. The 2026-10-28 hosted run
+ * reported only the restoration message (`original Notifications reel did not
+ * return`) because a `finally` threw over the scene's own assertion, and the round
+ * lost the diagnosis it needed. These three cases pin the replacement: the scene's
+ * error wins, cleanup evidence rides along, and a scene that SUCCEEDED still fails
+ * loudly when the parent's screen was not put back.
+ */
+test("a scene failure survives a failed restore, with the probe attached", async () => {
+	const receipt = {};
+	const original = new Error("fixture failure did not expose Retry");
+	await assert.rejects(
+		withNotificationsRestore(
+			{ cdp: null, nodeCdp: null, saved: null, receipt },
+			async () => {
+				throw original;
+			},
+			async () => {
+				throw new Error("original Notifications reel did not return");
+			},
+		),
+		(error) => {
+			assert.equal(
+				error,
+				original,
+				"the scene's own error must be the one thrown",
+			);
+			assert.deepEqual(error.restoreFailure, {
+				message: "original Notifications reel did not return",
+				diagnostic: null,
+			});
+			return true;
+		},
+	);
+});
+
+const RESTORE_FAILURE = /original Notifications reel did not return/;
+
+test("a successful scene still fails when the screen could not be restored", async () => {
+	const receipt = {};
+	await assert.rejects(
+		withNotificationsRestore(
+			{ cdp: null, nodeCdp: null, saved: null, receipt },
+			async () => "scene-value",
+			async () => {
+				throw new Error("original Notifications reel did not return");
+			},
+		),
+		RESTORE_FAILURE,
+	);
+});
+
+test("a successful scene records the restored state and returns its own value", async () => {
+	const receipt = {};
+	const probe = { hash: "#/notifications", rows: 3 };
+	assert.equal(
+		await withNotificationsRestore(
+			{ cdp: null, nodeCdp: null, saved: null, receipt },
+			async () => "scene-value",
+			async () => probe,
+		),
+		"scene-value",
+	);
+	assert.deepEqual(receipt.restore, probe);
+});
+
+/*
+ * THE ACTIVATION PAYLOAD. A focused button is only pressed by a key event that
+ * carries text; without it the keydown reaches listeners and Blink performs no
+ * default action, which is how the 2026-10-28 hosted run reached `Send answer` by
+ * keyboard and sent nothing. Tab must stay text-free, or it would insert a character
+ * into the masked field while the traversal walks past it.
+ */
+test("Enter is dispatched as a text-bearing native press and Tab is not", () => {
+	const enter = nativeKeyEvent("Enter", 13);
+	assert.equal(enter.text, "\r");
+	assert.equal(enter.unmodifiedText, "\r");
+	assert.equal(enter.nativeVirtualKeyCode, 13);
+	assert.equal(enter.windowsVirtualKeyCode, 13);
+	const tab = nativeKeyEvent("Tab", 9);
+	assert.equal("text" in tab, false);
+	assert.equal(tab.nativeVirtualKeyCode, 9);
+});
