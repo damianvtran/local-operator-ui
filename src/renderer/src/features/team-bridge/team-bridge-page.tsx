@@ -41,6 +41,7 @@ import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
+	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
@@ -485,7 +486,7 @@ export type TeamBridgePageViewProps = {
 	/** Membership writes, passed the selected conversation at the point of use. */
 	onAddMembers?: (
 		conversation: TeamBridgeConversation,
-		members: Parameters<typeof TeamBridgeApi.addMembers>[0]["members"],
+		members: TeamBridgeMemberInput[],
 	) => Promise<unknown>;
 	onRemoveMember?: (
 		conversation: TeamBridgeConversation,
@@ -1964,6 +1965,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{shown &&
 										!previewSelected &&
 										!readOnly &&
+										onAddMembers &&
 										canInviteMembers(shown, selfAccountId) && (
 											<Button
 												type="button"
@@ -1984,7 +1986,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											conversation={shown}
 											onNotifyChange={onNotifyChange}
 											onAddMembers={
-												canInviteMembers(shown, selfAccountId)
+												onAddMembers && canInviteMembers(shown, selfAccountId)
 													? () => {
 															setMemberActionFailed(false);
 															setMembersOpen(true);

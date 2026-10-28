@@ -143,7 +143,7 @@ export function TeamBridgeAddMembersView({
 				className="max-h-[min(780px,90dvh)] max-w-2xl overflow-hidden p-0"
 				closeDisabled={pending}
 			>
-				<DialogHeader className="px-6 pt-6">
+				<DialogHeader className="px-6 pt-6 pe-12">
 					<DialogTitle>{t("ui.teamBridge.members.title")}</DialogTitle>
 					<DialogDescription>
 						{t("ui.teamBridge.members.description")}
