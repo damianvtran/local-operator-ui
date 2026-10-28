@@ -95,7 +95,7 @@
 	"ui.teamBridge.chief.fallback": "Chánh văn phòng",
 	"ui.teamBridge.message.sending": "Đang gửi…",
 	"ui.teamBridge.message.failed": "Chưa gửi được",
-	"ui.teamBridge.message.discard": "Bỏ",
+	"ui.teamBridge.message.discard": "Loại bỏ",
 	"ui.teamBridge.people.self_named": "{name} (bạn)",
 	"ui.teamBridge.row.menu": "Thao tác khác cho {name}",
 	"ui.teamBridge.row.start_group": "Bắt đầu trò chuyện nhóm",

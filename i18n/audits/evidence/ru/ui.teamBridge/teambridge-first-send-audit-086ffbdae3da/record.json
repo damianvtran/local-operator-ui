@@ -1,0 +1,116 @@
+{
+	"audit_id": "teambridge-first-send-audit-086ffbdae3da",
+	"date": "2026-10-28",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"source_commit": "22e3345494c6a4745fb875e8f8fd878ac3886d42",
+	"translator": {
+		"agent": "translator",
+		"sending_failed": {
+			"source": "restored verbatim from reverted PR #1334 (385449887a)",
+			"job": "ba609d9142d2",
+			"label": "tb-translate-r1",
+			"audited_by": "tbd-cos-r1-<locale> (session 25f9d77da12f)"
+		},
+		"discard_return_to_draft": {
+			"commits": [
+				"c6ca91341e2382c263fc47316ea5c657feab856e (discard)",
+				"b39a695486bfcda04e7cba24063159484cb9cec1 (return_to_draft)"
+			],
+			"session": "not recorded in the commits or any receipt; the delegating session must supply it",
+			"model": "not recorded"
+		},
+		"method": "LLM translation per the repo contract; this auditor cannot verify the MT-service question for the new keys because no translator transcript was supplied"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "086ffbdae3da-ru",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/086ffbdae3da-ru.json",
+			"receipt_sha256": "ac83b83dd52f9d4a3369d73a82a9cbdfcbeee3dcc78983bbdeb59e4ea67dcddf",
+			"scope": "Team Bridge first-send: 4 message.* keys (sending/failed restored from #1334, discard/return_to_draft new)",
+			"note": "First-send R1 (0 findings). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-first-send-audit-086ffbdae3da/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 086ffbdae3da). It authored none of the audited strings and edited no catalogue byte. sending/failed came from #1334 translator job ba609d9142d2; discard/return_to_draft came from commits c6ca91341e/b39a695486, whose translator session is not recorded. This run wrote only receipts and evidence records.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "a59a9d78936052e8a632cabba6c3d3807f3b58b17da248383a70e58ad2ef82ad"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "737ad4f0bc007c5101e313affa412c4396b3515ae832b4dac3268c51b987417f"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.message.sending": {
+			"en": "Sending…",
+			"target": "Отправка…"
+		},
+		"ui.teamBridge.message.failed": {
+			"en": "Not sent",
+			"target": "Не отправлено"
+		},
+		"ui.teamBridge.message.discard": {
+			"en": "Discard",
+			"target": "Убрать"
+		},
+		"ui.teamBridge.message.return_to_draft": {
+			"en": "Return to draft",
+			"target": "Вернуть в черновик"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.message.sending",
+			"ui.teamBridge.message.failed",
+			"ui.teamBridge.message.discard",
+			"ui.teamBridge.message.return_to_draft"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.drafts.title",
+			"ui.teamBridge.drafts.indicator",
+			"ui.teamBridge.drafts.storage_failed",
+			"ui.teamBridge.attachments.remove",
+			"ui.teamBridge.attachments.error_upload",
+			"ui.teamBridge.compose.remove",
+			"ui.common.actions.retry",
+			"ui.common.errors.chat_start",
+			"ui.agents.detail.action.discard_changes",
+			"ui.notices.chat.drafts_offered_verb"
+		],
+		"english_change": "4 keys added to en (sending, failed, discard, return_to_draft) with 4 context rows; no other en key or context row changed.",
+		"unchanged": "all other 241 target values byte-identical to origin/main (audited under 6d269032fdc7-r3 and earlier); not re-audited"
+	},
+	"notes": "sending/failed byte-identical to #1334 (tbd-cos-r1-ru passed these two; its MAJOR was chief.unnamed only, fixed in r2). 'Не отправлено' is neuter, agreeing with 'сообщение'. 'Убрать' is an infinitive that avoids 'Удалить' (delete), as the context asks, and matches ru 'Убрать' for remove elsewhere. 'Вернуть в черновик' is idiomatic and matches drafts 'Черновик'. No findings.",
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "14c6bbbefa7eddad1b0735f1024a518172a8f1b0f859ef005d5f1130bc57676b",
+			"note": "committed blob at core HEAD dadf192382; working-tree edits not used"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot or pseudo-localization evidence: this role has no browser tool and the task forbade builds/tests (disk ~1.7 GiB free). Translator session/model for discard/return_to_draft unrecorded."
+}

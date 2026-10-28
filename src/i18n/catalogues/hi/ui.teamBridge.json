@@ -243,5 +243,5 @@
 	"ui.teamBridge.invitations.failed.unreachable": "ऐप Radient तक नहीं पहुँच सका। कुछ नहीं बदला गया। फिर कोशिश करें।",
 	"ui.teamBridge.invitations.read_only": "यह संगठन आपके लिए सिर्फ़ पढ़ने के लिए है, इसलिए यहाँ आमंत्रणों का जवाब नहीं दिया जा सकता।",
 	"ui.teamBridge.invitations.failed.unconfirmed": "आपके जवाब की पुष्टि नहीं हुई। फिर कोशिश करें।",
-	"ui.teamBridge.message.return_to_draft": "मसौदे में लौटाएँ"
+	"ui.teamBridge.message.return_to_draft": "ड्राफ़्ट में लौटाएँ"
 }

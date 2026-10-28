@@ -95,7 +95,7 @@
 	"ui.teamBridge.chief.fallback": "Cheffe de cabinet",
 	"ui.teamBridge.message.sending": "Envoi…",
 	"ui.teamBridge.message.failed": "Non envoyé",
-	"ui.teamBridge.message.discard": "Retirer",
+	"ui.teamBridge.message.discard": "Abandonner",
 	"ui.teamBridge.people.self_named": "{name} (vous)",
 	"ui.teamBridge.row.menu": "Plus d’actions pour {name}",
 	"ui.teamBridge.row.start_group": "Démarrer une conversation de groupe",
@@ -243,5 +243,5 @@
 	"ui.teamBridge.invitations.failed.unreachable": "L’application n’a pas pu joindre Radient. Aucune modification n’a été effectuée. Réessayez.",
 	"ui.teamBridge.invitations.read_only": "Cette organisation est en lecture seule pour vous ; les invitations ne peuvent donc pas recevoir de réponse ici.",
 	"ui.teamBridge.invitations.failed.unconfirmed": "Votre réponse n’a pas été confirmée. Réessayez.",
-	"ui.teamBridge.message.return_to_draft": "Remettre au brouillon"
+	"ui.teamBridge.message.return_to_draft": "Remettre en brouillon"
 }

@@ -1,0 +1,135 @@
+{
+	"audit_id": "teambridge-first-send-audit-086ffbdae3da",
+	"date": "2026-10-28",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"source_commit": "22e3345494c6a4745fb875e8f8fd878ac3886d42",
+	"translator": {
+		"agent": "translator",
+		"sending_failed": {
+			"source": "restored verbatim from reverted PR #1334 (385449887a)",
+			"job": "ba609d9142d2",
+			"label": "tb-translate-r1",
+			"audited_by": "tbd-cos-r1-<locale> (session 25f9d77da12f)"
+		},
+		"discard_return_to_draft": {
+			"commits": [
+				"c6ca91341e2382c263fc47316ea5c657feab856e (discard)",
+				"b39a695486bfcda04e7cba24063159484cb9cec1 (return_to_draft)"
+			],
+			"session": "not recorded in the commits or any receipt; the delegating session must supply it",
+			"model": "not recorded"
+		},
+		"method": "LLM translation per the repo contract; this auditor cannot verify the MT-service question for the new keys because no translator transcript was supplied"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean-with-findings",
+			"instance": "086ffbdae3da-fr",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 1
+			},
+			"receipt": "i18n/receipts/086ffbdae3da-fr.json",
+			"receipt_sha256": "c34723902f33d8238d1e38258d0576b40b9c850bbf1abf17438d23d28ca51139",
+			"scope": "Team Bridge first-send: 4 message.* keys (sending/failed restored from #1334, discard/return_to_draft new)",
+			"note": "First-send R1 (2 findings: I-fr-1 MINOR, I-fr-2 NIT). Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-first-send-audit-086ffbdae3da/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 086ffbdae3da). It authored none of the audited strings and edited no catalogue byte. sending/failed came from #1334 translator job ba609d9142d2; discard/return_to_draft came from commits c6ca91341e/b39a695486, whose translator session is not recorded. This run wrote only receipts and evidence records.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "14b8d6d9c33b5b21eb4f52819f328e05fba88766855a1563db86aaa3b37b30a6"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "737ad4f0bc007c5101e313affa412c4396b3515ae832b4dac3268c51b987417f"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.message.sending": {
+			"en": "Sending…",
+			"target": "Envoi…"
+		},
+		"ui.teamBridge.message.failed": {
+			"en": "Not sent",
+			"target": "Non envoyé"
+		},
+		"ui.teamBridge.message.discard": {
+			"en": "Discard",
+			"target": "Retirer"
+		},
+		"ui.teamBridge.message.return_to_draft": {
+			"en": "Return to draft",
+			"target": "Remettre au brouillon"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.message.sending",
+			"ui.teamBridge.message.failed",
+			"ui.teamBridge.message.discard",
+			"ui.teamBridge.message.return_to_draft"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.drafts.title",
+			"ui.teamBridge.drafts.indicator",
+			"ui.teamBridge.drafts.storage_failed",
+			"ui.teamBridge.attachments.remove",
+			"ui.teamBridge.attachments.error_upload",
+			"ui.teamBridge.compose.remove",
+			"ui.common.actions.retry",
+			"ui.common.errors.chat_start",
+			"ui.agents.detail.action.discard_changes",
+			"ui.notices.chat.drafts_offered_verb"
+		],
+		"english_change": "4 keys added to en (sending, failed, discard, return_to_draft) with 4 context rows; no other en key or context row changed.",
+		"unchanged": "all other 241 target values byte-identical to origin/main (audited under 6d269032fdc7-r3 and earlier); not re-audited"
+	},
+	"notes": "sending/failed byte-identical to #1334 (tbd-cos-r1-fr passed). 'Non envoyé' agrees with masculine 'message'; ellipsis U+2026. discard: see I-fr-1. return_to_draft: imperative, not a retry; see I-fr-2.",
+	"findings": [
+		{
+			"id": "I-fr-1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.message.discard",
+			"value": "Retirer",
+			"issue": "'Retirer' is this catalogue's word for Remove (attachments.remove 'Retirer : {label}'), and on a message row French messaging users know it as unsend ('Retirer le message' / 'Retirer pour tout le monde'). The English context says the opposite: this never reached the server and nobody else saw it. The repo's French term for discard is 'Abandonner' (agents.detail.action.discard_changes, pages.discard_bar.*).",
+			"suggestion": "Abandonner",
+			"disposition": "open - optional follow-up; not a gate blocker"
+		},
+		{
+			"id": "I-fr-2",
+			"severity": "NIT",
+			"key": "ui.teamBridge.message.return_to_draft",
+			"value": "Remettre au brouillon",
+			"issue": "The usual French idiom for putting something back into the draft state is 'en brouillon' ('remettre/repasser en brouillon'). 'au brouillon' is understood but less natural.",
+			"suggestion": "Remettre en brouillon",
+			"disposition": "open - optional follow-up"
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_fr": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "49010212a65f0d30d49bf532601bb39ad277be28aef5d476715186cf28525990",
+			"note": "committed blob at core HEAD dadf192382; working-tree edits not used"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot or pseudo-localization evidence: this role has no browser tool and the task forbade builds/tests (disk ~1.7 GiB free). Translator session/model for discard/return_to_draft unrecorded."
+}

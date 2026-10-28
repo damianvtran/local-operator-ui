@@ -1,0 +1,174 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (new-key delta + restored #1334 values, branch fix/team-bridge-optimistic-first-send)",
+	"audit_id": "teambridge-first-send-audit-086ffbdae3da",
+	"date": "2026-10-28",
+	"instance": "086ffbdae3da-ru",
+	"instance_note": "Auditor session 086ffbdae3da with a per-locale suffix (precedent 6d269032fdc7-<locale>). Path checked absent from i18n/receipts and the ledger at this worktree.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header 'Model: anthropic/claude-opus-5-5'.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session 086ffbdae3da). It authored none of the audited strings and edited no catalogue byte. sending/failed came from #1334 translator job ba609d9142d2; discard/return_to_draft came from commits c6ca91341e/b39a695486, whose translator session is not recorded. This run wrote only receipts and evidence records.",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"sending_failed": {
+			"source": "restored verbatim from reverted PR #1334 (385449887a)",
+			"job": "ba609d9142d2",
+			"label": "tb-translate-r1",
+			"audited_by": "tbd-cos-r1-<locale> (session 25f9d77da12f)"
+		},
+		"discard_return_to_draft": {
+			"commits": [
+				"c6ca91341e2382c263fc47316ea5c657feab856e (discard)",
+				"b39a695486bfcda04e7cba24063159484cb9cec1 (return_to_draft)"
+			],
+			"session": "not recorded in the commits or any receipt; the delegating session must supply it",
+			"model": "not recorded"
+		},
+		"method": "LLM translation per the repo contract; this auditor cannot verify the MT-service question for the new keys because no translator transcript was supplied"
+	},
+	"integration": {
+		"pr": null,
+		"pr_note": "`gh pr list --head fix/team-bridge-optimistic-first-send --state all` returned [] at audit time; no PR open yet",
+		"branch": "fix/team-bridge-optimistic-first-send",
+		"reviewed_head": "22e3345494c6a4745fb875e8f8fd878ac3886d42",
+		"main_at_audit": "3332dfe562869eeb08399cb663a868d0f13dc535",
+		"worktree": "~/local-operator-ui/.worktrees/tb-first-send",
+		"previous_audit": {
+			"instance": "6d269032fdc7-r3-ru",
+			"receipt": "i18n/receipts/6d269032fdc7-r3-ru.json",
+			"receipt_sha256": "f1e445f0d28d5ae49a4356a8bc92a92ed7c8cba39e80aba8e8d88e2c1528a847",
+			"note": "row bytes at origin/main; ledger-assemble moves it to superseded because the en and target hashes changed"
+		},
+		"restored_from": {
+			"commit": "385449887a3b9d0a4b3155e690797eeb90ef827c",
+			"reverted_by": "4e4815b40f",
+			"prior_receipt": "tbd-cos-r1-ru + tbd-cos-r2-ru",
+			"note": "the prior receipts were deleted by the revert and are not on main; this audit re-judges sending/failed on their merits against the current context rows (failed's note now names ui.common.actions.retry - same meaning)"
+		}
+	},
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.message.sending",
+			"ui.teamBridge.message.failed",
+			"ui.teamBridge.message.discard",
+			"ui.teamBridge.message.return_to_draft"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.drafts.title",
+			"ui.teamBridge.drafts.indicator",
+			"ui.teamBridge.drafts.storage_failed",
+			"ui.teamBridge.attachments.remove",
+			"ui.teamBridge.attachments.error_upload",
+			"ui.teamBridge.compose.remove",
+			"ui.common.actions.retry",
+			"ui.common.errors.chat_start",
+			"ui.agents.detail.action.discard_changes",
+			"ui.notices.chat.drafts_offered_verb"
+		],
+		"english_change": "4 keys added to en (sending, failed, discard, return_to_draft) with 4 context rows; no other en key or context row changed.",
+		"unchanged": "all other 241 target values byte-identical to origin/main (audited under 6d269032fdc7-r3 and earlier); not re-audited"
+	},
+	"sha256": {
+		"en": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+		"ru": "a59a9d78936052e8a632cabba6c3d3807f3b58b17da248383a70e58ad2ef82ad"
+	},
+	"context_sha256": "737ad4f0bc007c5101e313affa412c4396b3515ae832b4dac3268c51b987417f",
+	"english": {
+		"ui.teamBridge.message.sending": {
+			"value": "Sending…",
+			"context_note": "Shown beside a message the reader just sent while the server has not confirmed it yet.",
+			"length": "One or two words; sits beside a message's time.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.message.failed": {
+			"value": "Not sent",
+			"context_note": "Shown in the danger colour on a message that could not be sent, immediately before the shared Retry control (ui.common.actions.retry). The message stays in the thread.",
+			"length": "One or two words; sits before the shared Retry control.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.message.discard": {
+			"value": "Discard",
+			"context_note": "Removes that failed message from this device's thread. The server never accepted it, so this is not a server-side deletion and no other reader ever saw it, which is why the label says discard rather than delete. Sits beside ui.teamBridge.message.failed and the shared Retry control (ui.common.actions.retry).",
+			"length": "One word.",
+			"placeholders": {}
+		},
+		"ui.teamBridge.message.return_to_draft": {
+			"value": "Return to draft",
+			"context_note": "Puts the failed message's text and images back in the composer that authored them and removes the row, so the person can edit and send it again. It is not a retry: the next send is a new attempt. Sits beside ui.common.actions.retry and ui.teamBridge.message.discard on a row labelled ui.teamBridge.message.failed.",
+			"length": "Three words.",
+			"placeholders": {}
+		}
+	},
+	"audited_strings": {
+		"ui.teamBridge.message.sending": "Отправка…",
+		"ui.teamBridge.message.failed": "Не отправлено",
+		"ui.teamBridge.message.discard": "Убрать",
+		"ui.teamBridge.message.return_to_draft": "Вернуть в черновик"
+	},
+	"checks": {
+		"placeholders": "none in English; none in target",
+		"bidi_controls": "none (whole file scanned)",
+		"nfc": "all 4 values NFC",
+		"restored_values": "sending and failed byte-identical to 385449887a",
+		"fit": "judged by string length only (inline 12px row: status + Retry + Return to draft + Discard, flex-wrap)",
+		"render": "not rendered"
+	},
+	"notes": "sending/failed byte-identical to #1334 (tbd-cos-r1-ru passed these two; its MAJOR was chief.unnamed only, fixed in r2). 'Не отправлено' is neuter, agreeing with 'сообщение'. 'Убрать' is an infinitive that avoids 'Удалить' (delete), as the context asks, and matches ru 'Убрать' for remove elsewhere. 'Вернуть в черновик' is idiomatic and matches drafts 'Черновик'. No findings.",
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "14c6bbbefa7eddad1b0735f1024a518172a8f1b0f859ef005d5f1130bc57676b",
+			"note": "committed blob at core HEAD dadf192382; working-tree edits not used"
+		}
+	},
+	"execution": [
+		{
+			"command": "git rev-parse HEAD origin/main",
+			"result": "head 22e3345494c6a4745fb875e8f8fd878ac3886d42; origin/main 3332dfe562869eeb08399cb663a868d0f13dc535. HEAD moved 1cfe6d4c58 -> 22e3345494 during the audit; that commit touches only scripts/fixtures/team-bridge-auth-owner-page.mjs."
+		},
+		{
+			"command": "git diff origin/main -- src/i18n/catalogues src/i18n/keys.gen.ts",
+			"result": "8 catalogues each add exactly the 4 message.* keys (+ trailing comma on invitations.failed.unconfirmed); en context adds 4 rows; keys.gen.ts adds 4 parameterless keys. Python check: every other key/value byte-identical to origin/main, 245 keys per locale."
+		},
+		{
+			"command": "python3 compare sending/failed vs git show 385449887a:src/i18n/catalogues/<locale>/ui.teamBridge.json",
+			"result": "all 7 targets (and en): sending and failed identical to #1334; discard/return_to_draft absent in #1334 (new)."
+		},
+		{
+			"command": "git show 385449887a:i18n/receipts/tbd-cos-r1-<locale>.json (+ tbd-cos-r2-ru)",
+			"result": "#1334 semantic audit session 25f9d77da12f: es fr hi ur vi zhcn passed 0 findings; ru r1 changes_requested only on chief.unnamed, r2 passed. Receipts deleted by revert 4e4815b40f; none on origin/main."
+		},
+		{
+			"command": "python3 scan for U+200E/200F/202A-202E/2066-2069/061C/200B-200D/FEFF + NFC",
+			"result": "0 controls in any of the 8 files; all 32 in-scope values NFC."
+		},
+		{
+			"command": "git -C ~/local-operator show HEAD:i18n/glossary.md / HEAD:i18n/style-guides/<locale>.md | shasum -a 256",
+			"result": "committed blobs at core HEAD dadf192382 hashed; core working tree carries staged uncommitted fr/ru/ur style-guide edits from another session, not used."
+		},
+		{
+			"command": "shasum -a 256 src/i18n/catalogues/{en,<locale>}/ui.teamBridge.json src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"result": "values recorded under sha256 / files"
+		}
+	],
+	"audit_notes_not_execution_log": "notes, checks and findings are this auditor's linguistic judgement, not command output",
+	"limitations": "No rendered-fit, screenshot or pseudo-localization evidence: this role has no browser tool and the task forbade builds/tests (disk ~1.7 GiB free). Translator session/model for discard/return_to_draft unrecorded.",
+	"evidence_record": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-first-send-audit-086ffbdae3da/record.json"
+}

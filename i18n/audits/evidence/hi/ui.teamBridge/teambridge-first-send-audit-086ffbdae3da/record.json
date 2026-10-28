@@ -1,0 +1,126 @@
+{
+	"audit_id": "teambridge-first-send-audit-086ffbdae3da",
+	"date": "2026-10-28",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"source_commit": "22e3345494c6a4745fb875e8f8fd878ac3886d42",
+	"translator": {
+		"agent": "translator",
+		"sending_failed": {
+			"source": "restored verbatim from reverted PR #1334 (385449887a)",
+			"job": "ba609d9142d2",
+			"label": "tb-translate-r1",
+			"audited_by": "tbd-cos-r1-<locale> (session 25f9d77da12f)"
+		},
+		"discard_return_to_draft": {
+			"commits": [
+				"c6ca91341e2382c263fc47316ea5c657feab856e (discard)",
+				"b39a695486bfcda04e7cba24063159484cb9cec1 (return_to_draft)"
+			],
+			"session": "not recorded in the commits or any receipt; the delegating session must supply it",
+			"model": "not recorded"
+		},
+		"method": "LLM translation per the repo contract; this auditor cannot verify the MT-service question for the new keys because no translator transcript was supplied"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean-with-findings",
+			"instance": "086ffbdae3da-hi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/086ffbdae3da-hi.json",
+			"receipt_sha256": "ce9089877f4aa6663e084d13bf0eed42c446986c8925b0328827f5f247204ac9",
+			"scope": "Team Bridge first-send: 4 message.* keys (sending/failed restored from #1334, discard/return_to_draft new)",
+			"note": "First-send R1 (1 findings: I-hi-1 MINOR). Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-first-send-audit-086ffbdae3da/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 086ffbdae3da). It authored none of the audited strings and edited no catalogue byte. sending/failed came from #1334 translator job ba609d9142d2; discard/return_to_draft came from commits c6ca91341e/b39a695486, whose translator session is not recorded. This run wrote only receipts and evidence records.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "92410a6adb461d308b6be00447064d424a7ecace035c321cb1e94558a6285b58"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "737ad4f0bc007c5101e313affa412c4396b3515ae832b4dac3268c51b987417f"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.message.sending": {
+			"en": "Sending…",
+			"target": "भेजा जा रहा है…"
+		},
+		"ui.teamBridge.message.failed": {
+			"en": "Not sent",
+			"target": "भेजा नहीं गया"
+		},
+		"ui.teamBridge.message.discard": {
+			"en": "Discard",
+			"target": "हटाएँ"
+		},
+		"ui.teamBridge.message.return_to_draft": {
+			"en": "Return to draft",
+			"target": "मसौदे में लौटाएँ"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.message.sending",
+			"ui.teamBridge.message.failed",
+			"ui.teamBridge.message.discard",
+			"ui.teamBridge.message.return_to_draft"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.drafts.title",
+			"ui.teamBridge.drafts.indicator",
+			"ui.teamBridge.drafts.storage_failed",
+			"ui.teamBridge.attachments.remove",
+			"ui.teamBridge.attachments.error_upload",
+			"ui.teamBridge.compose.remove",
+			"ui.common.actions.retry",
+			"ui.common.errors.chat_start",
+			"ui.agents.detail.action.discard_changes",
+			"ui.notices.chat.drafts_offered_verb"
+		],
+		"english_change": "4 keys added to en (sending, failed, discard, return_to_draft) with 4 context rows; no other en key or context row changed.",
+		"unchanged": "all other 241 target values byte-identical to origin/main (audited under 6d269032fdc7-r3 and earlier); not re-audited"
+	},
+	"notes": "sending/failed byte-identical to #1334 (tbd-cos-r1-hi passed). 'हटाएँ' is the guide's polite imperative. The hi catalogue also uses it for Delete, but nothing beside this row is a delete. return_to_draft: see I-hi-1.",
+	"findings": [
+		{
+			"id": "I-hi-1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.message.return_to_draft",
+			"value": "मसौदे में लौटाएँ",
+			"issue": "Inconsistent terminology. Every other hi string for 'draft' uses the loan ड्राफ़्ट: 13 occurrences across the hi catalogues, including this namespace's drafts.title, drafts.indicator and drafts.storage_failed, plus ui.common.errors.chat_start. मसौदे appears only in this key. The hi style guide says to keep the living English loan rather than a native form. A reader sees ड्राफ़्ट on the Drafts view and मसौदे on this button.",
+			"suggestion": "ड्राफ़्ट में लौटाएँ",
+			"disposition": "open - recommended before merge; not a gate blocker"
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_hi": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+			"note": "committed blob at core HEAD dadf192382; working-tree edits not used"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot or pseudo-localization evidence: this role has no browser tool and the task forbade builds/tests (disk ~1.7 GiB free). Translator session/model for discard/return_to_draft unrecorded."
+}

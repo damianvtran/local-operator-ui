@@ -1,0 +1,126 @@
+{
+	"audit_id": "teambridge-first-send-audit-086ffbdae3da",
+	"date": "2026-10-28",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"source_commit": "22e3345494c6a4745fb875e8f8fd878ac3886d42",
+	"translator": {
+		"agent": "translator",
+		"sending_failed": {
+			"source": "restored verbatim from reverted PR #1334 (385449887a)",
+			"job": "ba609d9142d2",
+			"label": "tb-translate-r1",
+			"audited_by": "tbd-cos-r1-<locale> (session 25f9d77da12f)"
+		},
+		"discard_return_to_draft": {
+			"commits": [
+				"c6ca91341e2382c263fc47316ea5c657feab856e (discard)",
+				"b39a695486bfcda04e7cba24063159484cb9cec1 (return_to_draft)"
+			],
+			"session": "not recorded in the commits or any receipt; the delegating session must supply it",
+			"model": "not recorded"
+		},
+		"method": "LLM translation per the repo contract; this auditor cannot verify the MT-service question for the new keys because no translator transcript was supplied"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean-with-findings",
+			"instance": "086ffbdae3da-vi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			},
+			"receipt": "i18n/receipts/086ffbdae3da-vi.json",
+			"receipt_sha256": "8025fc1d2b0779f3b0c757288fab073fb8c2dea06582b09fd37951dca9e0e34b",
+			"scope": "Team Bridge first-send: 4 message.* keys (sending/failed restored from #1334, discard/return_to_draft new)",
+			"note": "First-send R1 (1 findings: I-vi-1 NIT). Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-first-send-audit-086ffbdae3da/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 086ffbdae3da). It authored none of the audited strings and edited no catalogue byte. sending/failed came from #1334 translator job ba609d9142d2; discard/return_to_draft came from commits c6ca91341e/b39a695486, whose translator session is not recorded. This run wrote only receipts and evidence records.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+			"sha256": "c95a14844996d4c7b102028fe7e85c88135e352c63b6f5bf9159110292443a18"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "737ad4f0bc007c5101e313affa412c4396b3515ae832b4dac3268c51b987417f"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.message.sending": {
+			"en": "Sending…",
+			"target": "Đang gửi…"
+		},
+		"ui.teamBridge.message.failed": {
+			"en": "Not sent",
+			"target": "Chưa gửi được"
+		},
+		"ui.teamBridge.message.discard": {
+			"en": "Discard",
+			"target": "Bỏ"
+		},
+		"ui.teamBridge.message.return_to_draft": {
+			"en": "Return to draft",
+			"target": "Đưa lại vào bản nháp"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.message.sending",
+			"ui.teamBridge.message.failed",
+			"ui.teamBridge.message.discard",
+			"ui.teamBridge.message.return_to_draft"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.drafts.title",
+			"ui.teamBridge.drafts.indicator",
+			"ui.teamBridge.drafts.storage_failed",
+			"ui.teamBridge.attachments.remove",
+			"ui.teamBridge.attachments.error_upload",
+			"ui.teamBridge.compose.remove",
+			"ui.common.actions.retry",
+			"ui.common.errors.chat_start",
+			"ui.agents.detail.action.discard_changes",
+			"ui.notices.chat.drafts_offered_verb"
+		],
+		"english_change": "4 keys added to en (sending, failed, discard, return_to_draft) with 4 context rows; no other en key or context row changed.",
+		"unchanged": "all other 241 target values byte-identical to origin/main (audited under 6d269032fdc7-r3 and earlier); not re-audited"
+	},
+	"notes": "sending/failed byte-identical to #1334 (tbd-cos-r1-vi passed). 'Chưa gửi được' is consistent with composer.error. 'Đưa lại vào bản nháp' matches the drafts 'bản nháp' term and is not a retry. Text is NFC precomposed. discard: see I-vi-1.",
+	"findings": [
+		{
+			"id": "I-vi-1",
+			"severity": "NIT",
+			"key": "ui.teamBridge.message.discard",
+			"value": "Bỏ",
+			"issue": "A bare one-syllable 'Bỏ' is very terse as a standalone button. Elsewhere this catalogue always gives 'Bỏ' an object ('Bỏ thay đổi', 'Bỏ {name}', 'Bỏ chọn'). It is understandable beside 'Chưa gửi được', but 'Loại bỏ' (one lexical verb, still one word in the context's sense) reads as a complete action label.",
+			"suggestion": "Loại bỏ",
+			"disposition": "open - optional follow-up"
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_vi": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+			"note": "committed blob at core HEAD dadf192382; working-tree edits not used"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot or pseudo-localization evidence: this role has no browser tool and the task forbade builds/tests (disk ~1.7 GiB free). Translator session/model for discard/return_to_draft unrecorded."
+}
