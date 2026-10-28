@@ -24,5 +24,7 @@
 	"ui.chat.asks.settled_heading": "Решённые",
 	"ui.chat.asks.close_asks": "Закрыть панель запросов",
 	"ui.chat.asks.all_asks": "Все запросы",
-	"ui.chat.asks.conversation_asks": "Запросы этого разговора"
+	"ui.chat.asks.conversation_asks": "Запросы этого разговора",
+	"ui.chat.asks.status.withdrawn": "Отозвано — агенту больше не нужен ответ",
+	"ui.chat.asks.status.withdrawn_label": "Отозвано"
 }

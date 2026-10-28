@@ -3014,6 +3014,8 @@ export type MessageParams = {
 	"ui.chat.asks.other_label": undefined;
 	"ui.chat.asks.send_answer": undefined;
 	"ui.chat.asks.settled_heading": undefined;
+	"ui.chat.asks.status.withdrawn": undefined;
+	"ui.chat.asks.status.withdrawn_label": undefined;
 	"ui.chat.asks.update_answer": undefined;
 	"ui.chat.asks.urgent": undefined;
 	"ui.chat.attachments.copy_path": undefined;

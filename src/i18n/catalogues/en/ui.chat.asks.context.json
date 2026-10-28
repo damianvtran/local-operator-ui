@@ -99,5 +99,19 @@
 	"ui.chat.asks.settled_heading": "Heading over the settled (resolved) half of the ask list.",
 	"ui.chat.asks.close_asks": "Tooltip and accessible name of the control that closes the asks drawer.",
 	"ui.chat.asks.all_asks": "Accessible name of the asks drawer when it shows every session's asks.",
-	"ui.chat.asks.conversation_asks": "Accessible name of the asks drawer when it shows the open conversation's asks."
+	"ui.chat.asks.conversation_asks": "Accessible name of the asks drawer when it shows the open conversation's asks.",
+	"ui.chat.asks.status.withdrawn": {
+		"role": "Status sentence on a settled ask card",
+		"tone": "Factual, sentence case; not an error or a request for action",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The agent withdrew its own question because it no longer needs an answer. This is terminal, not waiting, not user-declined, and not user-dismissed. The sentence and compact badge are separate keys: do not rely on English punctuation to extract the badge."
+	},
+	"ui.chat.asks.status.withdrawn_label": {
+		"role": "Compact status badge on a collapsed settled ask row",
+		"tone": "Factual, sentence case; not an error or a request for action",
+		"length": "One short status label",
+		"placeholders": {},
+		"note": "The agent withdrew its own question because it no longer needs an answer. This is terminal, not waiting, not user-declined, and not user-dismissed. The sentence and compact badge are separate keys: do not rely on English punctuation to extract the badge."
+	}
 }

@@ -60,6 +60,7 @@ import {
 	DesktopControlError,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
@@ -1636,8 +1637,10 @@ export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
 	declined: "Declined — the agent was told",
 	dismissed: "Dismissed — no reply was sent",
 	expired: "Expired — this ask is too old to answer; ask the agent again",
-	/* Core's own sentence (`relay.asks.status.withdrawn`), so the surfaces agree. */
-	withdrawn: "Withdrawn — the agent no longer needs an answer",
+	/* Resolve on read, not module load: an open pane follows language changes. */
+	get withdrawn() {
+		return t("ui.chat.asks.status.withdrawn");
+	},
 	unknown: "Waiting on an answer",
 };
 
@@ -1674,6 +1677,8 @@ export const ASK_LATE_UNDELIVERED_TEXT = "Answered late — not yet delivered";
  * about the agent's day.
  */
 export const askStatusWord = (status: AskStatus | "unknown"): string => {
+	/* Localized punctuation is not an English delimiter: keep the compact label keyed. */
+	if (status === "withdrawn") return t("ui.chat.asks.status.withdrawn_label");
 	const copy = ASK_STATUS_COPY[status];
 	const cut = copy.indexOf(" — ");
 	return cut === -1 ? copy : copy.slice(0, cut);

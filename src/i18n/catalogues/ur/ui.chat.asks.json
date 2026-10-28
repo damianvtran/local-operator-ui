@@ -24,5 +24,7 @@
 	"ui.chat.asks.settled_heading": "طے شدہ",
 	"ui.chat.asks.close_asks": "سوالات بند کریں",
 	"ui.chat.asks.all_asks": "تمام سوالات",
-	"ui.chat.asks.conversation_asks": "اس گفتگو کے سوالات"
+	"ui.chat.asks.conversation_asks": "اس گفتگو کے سوالات",
+	"ui.chat.asks.status.withdrawn": "واپس لیا گیا — ایجنٹ کو اب جواب کی ضرورت نہیں",
+	"ui.chat.asks.status.withdrawn_label": "واپس لیا گیا"
 }

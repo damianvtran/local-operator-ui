@@ -24,5 +24,7 @@
 	"ui.chat.asks.settled_heading": "Đã xử lý",
 	"ui.chat.asks.close_asks": "Đóng bảng câu hỏi",
 	"ui.chat.asks.all_asks": "Tất cả câu hỏi",
-	"ui.chat.asks.conversation_asks": "Câu hỏi của cuộc trò chuyện này"
+	"ui.chat.asks.conversation_asks": "Câu hỏi của cuộc trò chuyện này",
+	"ui.chat.asks.status.withdrawn": "Đã rút lại — tác nhân không còn cần câu trả lời",
+	"ui.chat.asks.status.withdrawn_label": "Đã rút lại"
 }

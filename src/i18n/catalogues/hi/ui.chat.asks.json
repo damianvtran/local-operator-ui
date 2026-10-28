@@ -24,5 +24,7 @@
 	"ui.chat.asks.settled_heading": "निपटे हुए",
 	"ui.chat.asks.close_asks": "सवाल बंद करें",
 	"ui.chat.asks.all_asks": "सभी सवाल",
-	"ui.chat.asks.conversation_asks": "इस बातचीत के सवाल"
+	"ui.chat.asks.conversation_asks": "इस बातचीत के सवाल",
+	"ui.chat.asks.status.withdrawn": "वापस लिया गया — एजेंट को अब उत्तर नहीं चाहिए",
+	"ui.chat.asks.status.withdrawn_label": "वापस लिया गया"
 }

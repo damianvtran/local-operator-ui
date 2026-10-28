@@ -31,7 +31,8 @@ const pageBundle = await build({
 			'export { notificationKeys } from "./src/renderer/src/features/notifications/notifications-api";',
 			'export { NotificationDetail } from "./src/renderer/src/features/notifications/components/notification-detail";',
 			'export { FleetAskDrawer } from "./src/renderer/src/features/chat/components/asks/fleet-ask-drawer";',
-			'export { askQueueView } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { askQueueView, ASK_STATUS_COPY, askStatusWord } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { setLocale } from "./src/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -1101,7 +1102,34 @@ test(
 				.find((text) => text.includes("A withdrawn question?"));
 			assert.ok(row.startsWith("Withdrawn"), `it wears Withdrawn (${row})`);
 			assert.ok(!page.pane().textContent.includes("Waiting on an answer"));
+			/* Read after mount: neither the map nor the badge may freeze English at import. */
+			for (const [locale, label] of Object.entries({
+				fr: "Retiré",
+				es: "Retirado",
+				"zh-CN": "已撤回",
+				ru: "Отозвано",
+				vi: "Đã rút lại",
+				ur: "واپس لیا گیا",
+				hi: "वापस लिया गया",
+			})) {
+				await act(async () => PAGE.setLocale(locale));
+				assert.equal(PAGE.askStatusWord("withdrawn"), label);
+				assert.ok(PAGE.ASK_STATUS_COPY.withdrawn.startsWith(label));
+				assert.ok(
+					await page.settle(() =>
+						page
+							.settledRows()
+							.some(
+								(text) =>
+									text.startsWith(label) &&
+									text.includes("A withdrawn question?"),
+							),
+					),
+					`the mounted Settled row follows ${locale}`,
+				);
+			}
 		} finally {
+			await act(async () => PAGE.setLocale("en"));
 			await page.unmount();
 		}
 	},
