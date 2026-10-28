@@ -298,6 +298,7 @@ export const FleetAskDrawer = ({
 				askId,
 				kind: "answered",
 				answers,
+				questions: (rows ?? []).find((row) => row.ask_id === askId)?.questions,
 				send: () =>
 					answerQueuedAsk(
 						{ taskId: askId, answers, sessionId, lock },
@@ -323,6 +324,7 @@ export const FleetAskDrawer = ({
 				askId,
 				kind: "changed",
 				answers,
+				questions: (rows ?? []).find((row) => row.ask_id === askId)?.questions,
 				send: () =>
 					reviseQueuedAsk(
 						{ taskId: askId, answers, sessionId, lock },

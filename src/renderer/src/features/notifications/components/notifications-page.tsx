@@ -1341,7 +1341,12 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 						data-glass-region="panel"
 						className={cn(
 							"flex min-h-0 min-w-0 flex-1 flex-col rounded-md bg-surface",
-							narrow ? "mx-3 mb-3 w-auto" : "me-6 mb-6",
+							/*
+							 * NARROW TAKES THE HEADER'S 24 PX ON BOTH SIDES (design round 1,
+							 * D3): a 12 px inset made the card wider than the filter row above
+							 * it, and its text lined up with nothing there.
+							 */
+							narrow ? "mx-6 mb-6 w-auto" : "me-6 mb-6",
 						)}
 					>
 						{showDetail && openItem ? (

@@ -30,6 +30,8 @@ const pageBundle = await build({
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
 			'export { notificationKeys } from "./src/renderer/src/features/notifications/notifications-api";',
 			'export { NotificationDetail } from "./src/renderer/src/features/notifications/components/notification-detail";',
+			'export { FleetAskDrawer } from "./src/renderer/src/features/chat/components/asks/fleet-ask-drawer";',
+			'export { askQueueView } from "./src/renderer/src/features/chat/ask-queue";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -74,9 +76,13 @@ const pageBundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(pageBundlePath, pageBundle.outputFiles[0].text);
-const PAGE = await import(pageBundlePath.href);
-await unlink(pageBundlePath);
 
+/*
+ * React Query is loaded BEFORE the DOM globals, as it was when the bundle was: it
+ * decides `isServer` from `window` at module load, and loaded after it would arm
+ * five-minute gc timers and the asks poll, holding this file's event loop open.
+ */
+await import("@tanstack/react-query");
 const { JSDOM } = await import("jsdom");
 const dom = new JSDOM("<!doctype html>", {
 	url: "http://localhost/",
@@ -149,6 +155,13 @@ after(() => {
 	window.close();
 });
 
+/*
+ * AFTER the DOM globals, not before: react-dom decides at module load whether the
+ * `input` event exists (`canUseDOM`), and loaded first it never wires `onChange` for
+ * an <input> - typing into the masked secret field would change nothing.
+ */
+const PAGE = await import(pageBundlePath.href);
+await unlink(pageBundlePath);
 const { createRoot } = await import("react-dom/client");
 const { act, createElement: h } = await import("react");
 const { MemoryRouter, Route, Routes } = await import("react-router-dom");
@@ -226,8 +239,21 @@ const NOTE = {
  * `answer` decides the `sessions.answer` reply per call (a function of the call count),
  * so a failure-then-success sequence is one mount.
  */
-async function mount({ openId, answer = () => ({ status: 200 }) } = {}) {
+async function mount({
+	openId,
+	answer = () => ({ status: 200 }),
+	/** Edit the seeded asks (a secret question, a timed-out ask, a withdrawn one). */
+	seed = () => {},
+	/**
+	 * Freeze `asks.list` at its FIRST answer, the window the overlay paints in - the
+	 * aggregate poll has not landed yet. This is where a secret leaked (R1-1).
+	 */
+	holdAggregate = false,
+} = {}) {
 	const asks = [askRow("a-1111", QUESTION_A), askRow("a-2222", QUESTION_B)];
+	seed(asks);
+	let firstAggregate = null;
+	const reads = { aggregate: 0 };
 	const posts = [];
 	window.api = {
 		desktop: {
@@ -316,9 +342,17 @@ async function mount({ openId, answer = () => ({ status: 200 }) } = {}) {
 							body: { result: { changed: [], skipped: [] } },
 						};
 					case "asks.list":
+						reads.aggregate += 1;
+						if (holdAggregate) firstAggregate ??= structuredClone(asks);
 						return {
 							status: 200,
-							body: { result: { asks: structuredClone(asks) } },
+							body: {
+								result: {
+									asks: holdAggregate
+										? structuredClone(firstAggregate)
+										: structuredClone(asks),
+								},
+							},
 						};
 					case "sessions.answer": {
 						posts.push(request);
@@ -335,7 +369,15 @@ async function mount({ openId, answer = () => ({ status: 200 }) } = {}) {
 							ask.dismissed_reason = request.dismiss.reason ?? request.dismiss;
 						} else {
 							ask.status = "answered";
-							ask.answers = request.answers;
+							/* Core's rule: a secret cell is stored as its KEY NAME, never the value. */
+							ask.answers = Object.fromEntries(
+								Object.entries(request.answers).map(([id, cell]) => [
+									id,
+									ask.questions.find((q) => q.id === id)?.secret
+										? [`[${id.toUpperCase()}]`]
+										: cell,
+								]),
+							);
 						}
 						return {
 							status: 200,
@@ -410,11 +452,14 @@ async function mount({ openId, answer = () => ({ status: 200 }) } = {}) {
 		);
 	const unmount = async () => {
 		await act(async () => root.unmount());
+		/* The aggregate polls; a client left holding it keeps the file's event loop open. */
+		client.clear();
 		container.remove();
 	};
 	return {
 		container,
 		client,
+		reads,
 		pane,
 		card,
 		filterText,
@@ -748,6 +793,376 @@ test(
 			assert.ok(
 				scroller.querySelector(".lo-markdown pre"),
 				"the fenced command is a pre block",
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+/*
+ * ROUND 1 REMEDIATION. R1-1: a typed SECRET answer must never be painted, held in
+ * state or recorded - in the pane OR the fleet drawer - between accept and the next
+ * aggregate read. The aggregate is frozen at its first answer so the overlay is the
+ * only thing that could paint the answer.
+ */
+const SECRET_VALUE = "sk-live-9f2c4e1a7b3d";
+const secretSeed = (asks) => {
+	asks[0].questions = [
+		{ id: "edge_key", question: "Paste the edge key", secret: true },
+	];
+};
+
+/** Every string a React fiber holds in state for the subtree, as one blob. */
+const stateBlob = (root) => {
+	const seen = new Set();
+	const parts = [];
+	const walk = (value, depth) => {
+		if (depth > 7 || value === null || value === undefined) return;
+		if (typeof value === "string") {
+			parts.push(value);
+			return;
+		}
+		if (typeof value !== "object" || seen.has(value)) return;
+		if (value instanceof window.Node) return;
+		seen.add(value);
+		for (const key of Object.keys(value)) {
+			if (
+				key === "_owner" ||
+				key === "return" ||
+				key === "child" ||
+				key === "sibling"
+			)
+				continue;
+			try {
+				walk(value[key], depth + 1);
+			} catch {
+				/* a getter that throws is not state */
+			}
+		}
+	};
+	/*
+	 * The node's fiber may be the STALE half of React's double buffer (it keeps the
+	 * fiber it was created with); the live state is on whichever half the root's
+	 * `current` tree reaches.
+	 */
+	const isCurrent = (fiber) => {
+		let top = fiber;
+		while (top.return) top = top.return;
+		return top.stateNode?.current === top;
+	};
+	const visit = (node) => {
+		const fiberKey = Object.keys(node).find((key) =>
+			key.startsWith("__reactFiber$"),
+		);
+		let start = fiberKey ? node[fiberKey] : null;
+		if (start && !isCurrent(start) && start.alternate) start = start.alternate;
+		for (let fiber = start; fiber; fiber = fiber.return) {
+			for (
+				let hook = fiber.memoizedState;
+				hook && typeof hook === "object";
+				hook = hook.next
+			) {
+				walk(hook.memoizedState, 0);
+				if (!("next" in hook)) break;
+			}
+		}
+	};
+	for (const node of root.querySelectorAll("*")) visit(node);
+	return parts.join("\n");
+};
+
+/** Type into a secret field the way a reader does: React's value setter, then `input`. */
+const typeSecret = async (scope) => {
+	const field = scope.querySelector("input[data-ask-secret]");
+	assert.ok(field, "the secret question has a field");
+	const setter = Object.getOwnPropertyDescriptor(
+		field instanceof window.HTMLTextAreaElement
+			? window.HTMLTextAreaElement.prototype
+			: window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(field, SECRET_VALUE);
+		field.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+};
+
+test(
+	"R1-1 pane: after accept, no DOM node, state or record holds a typed secret",
+	BOUNDED,
+	async () => {
+		const page = await openOnA({ seed: secretSeed, holdAggregate: true });
+		try {
+			/* Let the first aggregate read land, so the card is not re-keyed mid-typing. */
+			await page.settle(() => page.reads.aggregate > 0);
+			await page.settle(() => false, 100);
+			await typeSecret(page.card("a-1111"));
+			let send = page.buttonIn(page.card("a-1111"), "Send answer");
+			await page.settle(
+				() => !page.buttonIn(page.card("a-1111"), "Send answer")?.disabled,
+				1_500,
+			);
+			const field = page.card("a-1111").querySelector("input[data-ask-secret]");
+			send = page.buttonIn(page.card("a-1111"), "Send answer");
+			assert.ok(
+				send && !send.disabled,
+				`Send answer is live after typing (field=${field?.value?.length}, send=${send?.disabled})`,
+			);
+			await page.press(send);
+			assert.ok(
+				await page.settle(
+					() =>
+						page.card("a-1111")?.getAttribute("data-lo-ask-status") ===
+						"answered",
+				),
+				`the secret ask settled in place (posts=${page.posts.length}, status=${page.card("a-1111")?.getAttribute("data-lo-ask-status")})`,
+			);
+			assert.equal(
+				page.posts[0].answers.edge_key[0],
+				SECRET_VALUE,
+				"the value WAS sent",
+			);
+			assert.ok(
+				!page.container.innerHTML.includes(SECRET_VALUE),
+				"no DOM node holds the value",
+			);
+			assert.ok(
+				!stateBlob(page.container).includes(SECRET_VALUE),
+				"no React state holds the value",
+			);
+			assert.ok(
+				page.card("a-1111").textContent.includes("[EDGE_KEY]"),
+				"the masked key form is painted",
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"R1-1 drawer: the fleet drawer's overlay never holds a typed secret either",
+	BOUNDED,
+	async () => {
+		const asks = [askRow("a-1111", QUESTION_A)];
+		secretSeed(asks);
+		const posts = [];
+		let frozen = null;
+		window.api = {
+			desktop: {
+				request: async (request) => {
+					if (request.op === "capabilities")
+						return {
+							status: 200,
+							body: {
+								result: {
+									desktop_contract: 1,
+									desktop_available: true,
+									desktop_auth: "bearer",
+									features: {},
+								},
+							},
+						};
+					if (request.op === "asks.list") {
+						frozen ??= structuredClone(asks);
+						return {
+							status: 200,
+							body: { result: { asks: structuredClone(frozen) } },
+						};
+					}
+					if (request.op === "sessions.answer") {
+						posts.push(request);
+						return { status: 200, body: { result: { status: "accepted" } } };
+					}
+					return {
+						status: 404,
+						body: { detail: `test bridge: ${request.op}` },
+					};
+				},
+			},
+		};
+		const container = window.document.createElement("div");
+		window.document.body.append(container);
+		const client = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		const root = createRoot(container);
+		try {
+			await act(async () => {
+				root.render(
+					h(
+						MemoryRouter,
+						null,
+						h(
+							QueryClientProvider,
+							{ client },
+							h(PAGE.FleetAskDrawer, { onClose: () => {} }),
+						),
+					),
+				);
+			});
+			const card = () => container.querySelector('[data-lo-ask-row="a-1111"]');
+			for (let at = 0; at < 200 && !card(); at += 1)
+				await act(
+					async () => new Promise((resolve) => setTimeout(resolve, 15)),
+				);
+			assert.ok(card(), "the drawer drew the secret ask");
+			await typeSecret(card());
+			const send = [...card().querySelectorAll("button")].find(
+				(node) => node.textContent.trim() === "Send answer",
+			);
+			await act(async () => {
+				send.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+			});
+			for (let at = 0; at < 200 && posts.length === 0; at += 1)
+				await act(
+					async () => new Promise((resolve) => setTimeout(resolve, 15)),
+				);
+			await act(async () => new Promise((resolve) => setTimeout(resolve, 100)));
+			assert.equal(
+				posts[0]?.answers.edge_key[0],
+				SECRET_VALUE,
+				"the value WAS sent",
+			);
+			assert.ok(
+				!container.innerHTML.includes(SECRET_VALUE),
+				"no DOM node holds the value",
+			);
+			assert.ok(
+				!stateBlob(container).includes(SECRET_VALUE),
+				"no React state holds the value",
+			);
+		} finally {
+			await act(async () => root.unmount());
+			client.clear();
+			container.remove();
+		}
+	},
+);
+
+test(
+	"R1-2 the overlay applies over a timed_out ask, not only an open one",
+	BOUNDED,
+	() => {
+		/*
+		 * `timed_out` is outstanding and still takes a dismissal (and core accepts a late
+		 * answer), so an accepted act on it must paint at once exactly as on `open`. The
+		 * view is what both the pane and the drawer render, so it is asserted directly.
+		 */
+		const lapsed = { ...askRow("a-1111", QUESTION_A), status: "timed_out" };
+		const outcome = {
+			sending: false,
+			refused: null,
+			settled: { status: "dismissed", at: Date.now(), reason: "moot" },
+		};
+		const view = PAGE.askQueueView(
+			{ asks: [lapsed], asks_open: 1 },
+			{ "a-1111": outcome },
+		);
+		const row = view.rows.find((entry) => entry.ask.ask_id === "a-1111");
+		assert.equal(
+			row.status,
+			"dismissed",
+			"the accepted dismissal paints over timed_out",
+		);
+		const untouched = PAGE.askQueueView({ asks: [lapsed], asks_open: 1 }, {});
+		assert.equal(
+			untouched.rows.find((entry) => entry.ask.ask_id === "a-1111").status,
+			"timed_out",
+			"without a record the wire's status stands",
+		);
+	},
+);
+
+test(
+	"Q-2 a withdrawn ask reads Withdrawn under Settled, never Waiting on an answer",
+	BOUNDED,
+	async () => {
+		const page = await openOnA({
+			seed: (asks) => {
+				asks.push({
+					...askRow("a-3333", "A withdrawn question?"),
+					status: "withdrawn",
+				});
+			},
+		});
+		try {
+			assert.ok(
+				await page.settle(() =>
+					page
+						.settledRows()
+						.some((row) => row.includes("A withdrawn question?")),
+				),
+				`the withdrawn ask is filed under Settled (${JSON.stringify(page.settledRows())})`,
+			);
+			const row = page
+				.settledRows()
+				.find((text) => text.includes("A withdrawn question?"));
+			assert.ok(row.startsWith("Withdrawn"), `it wears Withdrawn (${row})`);
+			assert.ok(!page.pane().textContent.includes("Waiting on an answer"));
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"D2 after a transport failure Retry is the one next action",
+	BOUNDED,
+	async () => {
+		const page = await openOnA({
+			answer: (call) =>
+				call === 1 ? { status: 503, detail: "offline" } : { status: 200 },
+		});
+		try {
+			await chooseFirstOption(page);
+			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+			assert.ok(
+				await page.settle(() =>
+					page.card("a-1111")?.querySelector("[data-lo-ask-refused] button"),
+				),
+			);
+			const send = page.buttonIn(page.card("a-1111"), "Send answer");
+			assert.ok(
+				send.disabled,
+				"Send answer is disabled while Retry would send the same answer",
+			);
+			/* An edit is a different answer: Send answer re-arms for it. */
+			const other = page
+				.card("a-1111")
+				.querySelectorAll("[data-ask-option]")[1];
+			await page.press(other);
+			assert.ok(
+				await page.settle(
+					() => !page.buttonIn(page.card("a-1111"), "Send answer").disabled,
+				),
+				"Send answer re-arms after the answer is edited",
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"R1-3 an accepted answer nudges the asks.list read once",
+	BOUNDED,
+	async () => {
+		const page = await openOnA();
+		try {
+			await page.settle(() => page.reads.aggregate > 0);
+			const before = page.reads.aggregate;
+			await chooseFirstOption(page);
+			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+			assert.ok(
+				await page.settle(() => page.reads.aggregate > before, 2_000),
+				`asks.list was read again after accept (${before} -> ${page.reads.aggregate})`,
+			);
+			await page.settle(() => false, 600);
+			assert.ok(
+				page.reads.aggregate - before <= 2,
+				`no loop (${page.reads.aggregate - before} extra reads)`,
 			);
 		} finally {
 			await page.unmount();

@@ -93,7 +93,13 @@ export type AskStatus =
 	| "timed_out"
 	| "late"
 	| "dismissed"
-	| "expired";
+	| "expired"
+	/*
+	 * The agent took the ask back itself (core `asks/store.py` STATUS_WITHDRAWN). Read
+	 * as unknown before (QA round 1, Q-2), it drew `Waiting on an answer` under Settled
+	 * - an open-sounding badge on a closed ask.
+	 */
+	| "withdrawn";
 
 /** Unknown statuses are their own case, never silently coerced into `open`. */
 export const isKnownAskStatus = (status: string): status is AskStatus =>
@@ -103,7 +109,8 @@ export const isKnownAskStatus = (status: string): status is AskStatus =>
 	status === "timed_out" ||
 	status === "late" ||
 	status === "dismissed" ||
-	status === "expired";
+	status === "expired" ||
+	status === "withdrawn";
 
 /**
  * The session's asks, or `null` when this backend does not publish them.
@@ -1242,6 +1249,39 @@ export type AskOutcome = {
 };
 
 /**
+ * The answer map a surface may PAINT for an ask it just answered.
+ *
+ * A secret question's cell in the map a surface SENDS is the value the user typed;
+ * the owner replaces it with the credential store's key name before it is ever
+ * recorded (`asks/queue.py::_guard_secret_cells` accepts nothing else). So a local
+ * record of the answer has to take the same shape the wire will: the key name, in
+ * the `[KEY]` form the settled card already draws for a wire row, spelled the way
+ * core's `_credential_key_shape` spells it (letters and digits kept, every other
+ * run folded to `_`, upper-cased). An empty cell (a skipped secret) stays empty.
+ */
+/** Core's key-shape separator run (`_credential_key_shape`): any non-alphanumeric. */
+const KEY_SEPARATOR = /[^A-Za-z0-9]+/;
+
+export const askPaintableAnswers = (
+	questions: readonly { id: string; secret?: boolean }[],
+	answers: Record<string, string[]>,
+): Record<string, string[]> => {
+	const secret = new Set(
+		questions.filter((question) => question.secret === true).map((q) => q.id),
+	);
+	const out: Record<string, string[]> = {};
+	for (const [id, cell] of Object.entries(answers)) {
+		if (!secret.has(id)) {
+			out[id] = [...cell];
+			continue;
+		}
+		const key = id.split(KEY_SEPARATOR).filter(Boolean).join("_").toUpperCase();
+		out[id] = cell.length === 0 ? [] : [`[${key}]`];
+	}
+	return out;
+};
+
+/**
  * The ask as the owner has accepted it, when this surface knows more than the frame.
  *
  * Returns the frame's own object untouched unless the wire still reads `open` and a
@@ -1253,7 +1293,12 @@ export const askWithLocalSettle = (
 	outcome: AskOutcome | undefined,
 ): PendingAsk => {
 	const settled = outcome?.settled;
-	if (settled === undefined || ask.status !== "open") return ask;
+	/*
+	 * Every status a door is still offered on, not only `open` (agent review round 1,
+	 * R1-2): a `timed_out` ask takes a late answer, decline or dismissal too, and its
+	 * card went stale exactly the way an open one did.
+	 */
+	if (settled === undefined || !OPEN_STATUSES.has(ask.status)) return ask;
 	if (settled.status === "dismissed")
 		return {
 			...ask,
@@ -1591,6 +1636,8 @@ export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
 	declined: "Declined — the agent was told",
 	dismissed: "Dismissed — no reply was sent",
 	expired: "Expired — this ask is too old to answer; ask the agent again",
+	/* Core's own sentence (`relay.asks.status.withdrawn`), so the surfaces agree. */
+	withdrawn: "Withdrawn — the agent no longer needs an answer",
 	unknown: "Waiting on an answer",
 };
 

@@ -25,7 +25,7 @@ import { askQueueView } from "@features/chat/ask-queue";
  * actions disabled, rather than the pane closing under the reader.
  */
 import { AskPanel } from "@features/chat/components/asks/ask-panel";
-import { useFleetAsks } from "@features/chat/fleet-asks";
+import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "@features/chat/fleet-asks";
 import { useAskOutcomes } from "@features/chat/use-ask-outcomes";
 import { ProjectMarkdown } from "@features/projects/project-markdown";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
@@ -36,6 +36,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { formatNumber, formatTime, t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
@@ -538,8 +539,19 @@ const DetailAsks: FC<{
 	nowMs: number;
 	onSettled: () => void;
 }> = ({ sessionId, asks, nowMs, onSettled }) => {
+	const { client } = useOptionalQueryClient();
 	const { lock, outcomes, answering, run } = useAskOutcomes({
-		onAccepted: onSettled,
+		onAccepted: () => {
+			onSettled();
+			/*
+			 * NUDGE THE AGGREGATE, ONCE (agent review round 1, R1-3). The server's own
+			 * row - with `delivered`, which moves the card from `Answered — delivering`
+			 * to Settled - reaches this pane through `asks.list`, polled every 10 s.
+			 * One invalidation per accepted act brings that read forward; it is the
+			 * shared key's existing query, so no new loop starts.
+			 */
+			void client?.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
+		},
 	});
 	const [drafts, setDrafts] = useState<Record<string, AskDraft>>(EMPTY_DRAFTS);
 	const fleet = useFleetAsks().rows;
@@ -577,6 +589,7 @@ const DetailAsks: FC<{
 					askId: ask.ask_id,
 					kind: "answered",
 					answers,
+					questions: ask.questions,
 					send: () =>
 						answerQueuedAsk(
 							{ taskId: ask.ask_id, answers, sessionId, lock },

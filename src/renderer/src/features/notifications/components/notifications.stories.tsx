@@ -1,3 +1,4 @@
+import { askPaintableAnswers } from "@features/chat/ask-queue";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -366,7 +367,15 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 							.reason as never;
 					} else {
 						row.status = "answered";
-						row.answers = request.answers as Record<string, string[]>;
+						/*
+						 * Stored as core stores it: a secret question's cell becomes its KEY
+						 * NAME (`asks/queue.py::_guard_secret_cells`), so the stub never hands
+						 * a typed value back for the pane to paint.
+						 */
+						row.answers = askPaintableAnswers(
+							row.questions,
+							request.answers as Record<string, string[]>,
+						);
 					}
 				}
 			}
@@ -619,7 +628,7 @@ const waitFor = async (done: () => boolean, budgetMs = 6_000) => {
 const NO_LONGER_NEEDED = /no longer needed/i;
 const driveAsk =
 	(
-		door: "answer" | "decline" | "dismiss",
+		door: "answer" | "secret" | "decline" | "dismiss",
 		claimed: (root: Element) => boolean,
 	) =>
 	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
@@ -635,7 +644,31 @@ const driveAsk =
 			root.dataset.captureFailed = "true";
 			return;
 		}
-		if (door === "answer") {
+		if (door === "secret") {
+			/*
+			 * After the first reads land: a value typed into the field the pane drew from
+			 * the detail read alone is lost when the aggregate read re-renders the card.
+			 */
+			await new Promise((resolve) => setTimeout(resolve, 1_500));
+			/*
+			 * Typed the way a reader types (the native setter, then `input`), so the
+			 * frame shows what the pane paints after an accepted SECRET answer: the
+			 * masked key form, never the value (agent review round 1, R1-1).
+			 */
+			const field = card()?.querySelector<HTMLInputElement>(
+				"input[data-ask-secret]",
+			);
+			const setter = Object.getOwnPropertyDescriptor(
+				HTMLInputElement.prototype,
+				"value",
+			)?.set;
+			if (field && setter) {
+				setter.call(field, "sk-story-not-a-real-value");
+				field.dispatchEvent(new Event("input", { bubbles: true }));
+			}
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			button("Send answer")?.click();
+		} else if (door === "answer") {
 			(
 				card()?.querySelector("[data-ask-option]") as HTMLElement | null
 			)?.click();
@@ -682,6 +715,37 @@ export const AskPaneAnswered: Story = {
 				.querySelector(`[data-lo-ask-row="${TWIN_A.ask_id}"]`)
 				?.getAttribute("data-lo-ask-status") === "answered",
 	),
+};
+/** A SECRET question answered: the card names the key, never the typed value (R1-1). */
+export const AskPaneSecretAnswered: Story = {
+	render: () =>
+		page(
+			{
+				...twinState(),
+				asks: [
+					{
+						...structuredClone(TWIN_A),
+						questions: [
+							{
+								id: "edge_secret",
+								question:
+									"Paste the rotated RADIENT_EDGE_SECRET so the worker can update the edge.",
+								secret: true,
+							},
+						],
+					},
+					structuredClone(TWIN_B),
+				],
+			},
+			ASK_PANE,
+		),
+	play: driveAsk("secret", (root) => {
+		const card = root.querySelector(`[data-lo-ask-row="${TWIN_A.ask_id}"]`);
+		return (
+			card?.getAttribute("data-lo-ask-status") === "answered" &&
+			!card.textContent?.includes("sk-story-not-a-real-value")
+		);
+	}),
 };
 /** Delivered: ask A files under Settled, naming its question and its answer. */
 export const AskPaneDelivered: Story = {

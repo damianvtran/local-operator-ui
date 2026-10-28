@@ -31,10 +31,12 @@
  * `AskOutcome` shape, not this hook.
  */
 import { useCallback, useRef, useState } from "react";
+import type { PendingAskQuestion } from "../../../../shared/desktop-session-contract";
 import { type AnswerOutcome, createSendLock } from "./ask-answer";
 import {
 	type AskDismissReason,
 	type AskOutcome,
+	askPaintableAnswers,
 	askRefusalIsOwner,
 	askRefusalSentence,
 } from "./ask-queue";
@@ -47,8 +49,14 @@ export type AskAct = {
 	kind: AskActKind;
 	/** The request itself, behind the caller's lock (`answerQueuedAsk` and siblings). */
 	send: () => Promise<AnswerOutcome>;
-	/** The map an answer or change carried: what the settled card prints. */
+	/**
+	 * The map an answer or change carried. NEVER painted as is: a SECRET question's
+	 * cell holds the typed value here (only core swaps it for a key name), so the
+	 * record keeps `askPaintableAnswers(questions, answers)` instead.
+	 */
 	answers?: Record<string, string[]>;
+	/** The ask's questions, so the record can tell which cells are secret. */
+	questions?: readonly PendingAskQuestion[];
 	/** The reason a dismissal carried. */
 	reason?: AskDismissReason;
 };
@@ -137,9 +145,23 @@ export const useAskOutcomes = ({
 									settled: {
 										status: act.kind,
 										at: now(),
+										/*
+										 * A SECRET'S TYPED VALUE NEVER REACHES STATE (agent review
+										 * round 1, R1-1). The overlay paints this map on the settled
+										 * card, and the first cut copied it verbatim, so the value a
+										 * user typed into a secret field was drawn in clear until the
+										 * next read replaced the row. The record keeps the masked key
+										 * form core itself returns; the typed value lived only in
+										 * `act.send`'s closure, which leaves state with `retry` below.
+										 */
 										...(act.answers === undefined
 											? {}
-											: { answers: act.answers }),
+											: {
+													answers: askPaintableAnswers(
+														act.questions ?? [],
+														act.answers,
+													),
+												}),
 										...(act.reason === undefined ? {} : { reason: act.reason }),
 									},
 								},

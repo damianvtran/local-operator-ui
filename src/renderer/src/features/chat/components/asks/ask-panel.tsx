@@ -254,6 +254,7 @@ const askStatusMark = (
 		case "declined":
 		case "dismissed":
 		case "expired":
+		case "withdrawn":
 			return { Icon: X, className: "text-ink-muted" };
 		default:
 			return { Icon: HelpCircle, className: "text-accent" };
@@ -845,7 +846,33 @@ const AskRow = ({
 	// answer body (the backend substitutes the key name) without ever being
 	// renderable state.
 	const [secrets, setSecrets] = useState<AskSecrets>({});
+	/*
+	 * A TYPED SECRET OUTLIVES ITS SEND ONLY WHILE IT MAY BE SENT AGAIN (agent review
+	 * round 1, R1-1). The field keeps it through a failure so Retry and an edit both
+	 * have it; once the owner ACCEPTS, nothing on this surface needs the value, and a
+	 * row that stays mounted as a settled card would otherwise hold it in state for as
+	 * long as the pane is open. Cleared on the accepted record, not on the press.
+	 */
+	const accepted =
+		outcome?.settled !== undefined ||
+		(status !== "open" && status !== "timed_out");
+	useEffect(() => {
+		if (accepted)
+			setSecrets((current) =>
+				Object.keys(current).length === 0 ? current : {},
+			);
+	}, [accepted]);
 	const busy = answering || Boolean(outcome?.sending);
+	/*
+	 * Retry is the one next action while it would send THIS draft (design round 1,
+	 * D2). The draft the failure happened on is kept by identity: every edit gives
+	 * the cell a new object, so an edit re-arms Send answer for the new answer.
+	 */
+	const failedDraft = useRef<AskDraft | null>(null);
+	const retryArmed = outcome?.retry !== undefined;
+	if (retryArmed && failedDraft.current === null) failedDraft.current = draft;
+	if (!retryArmed) failedDraft.current = null;
+	const retryPending = retryArmed && failedDraft.current === draft;
 	const disabled = busy || !canAnswer;
 	const ready = useMemo(
 		() => askAnswerMap(ask, draft, secrets) !== null,
@@ -1413,7 +1440,7 @@ const AskRow = ({
 							type="button"
 							disabled={busy}
 							onClick={outcome.retry}
-							className="rounded-md border border-control px-2 py-0.5 text-ink text-xs hover:bg-sunken"
+							className="min-h-6 rounded-md border border-control px-2 py-1 text-ink text-xs hover:bg-sunken"
 						>
 							{t("ui.common.actions.retry")}
 						</button>
@@ -1474,9 +1501,17 @@ const AskRow = ({
 			) : null}
 			{(canAnswer || canDecline) && !dismissOpen ? (
 				<div className="flex items-center gap-2">
+					{/*
+					 * ONE NEXT ACTION AFTER A TRANSPORT FAILURE (design round 1, D2). While
+					 * a retryable failure stands, Retry beside the sentence sends exactly
+					 * this answer, and a filled Send answer below it was a second primary
+					 * for the same act. Send answer is DISABLED (not hidden, so the row does
+					 * not reflow under the pointer) until the reader edits the answer, which
+					 * makes it a different act than the one Retry repeats.
+					 */}
 					<button
 						type="button"
-						disabled={disabled || !ready}
+						disabled={disabled || !ready || retryPending}
 						onClick={sendAnswer}
 						className={cn(
 							"rounded-md px-3 py-1.5 text-sm",
@@ -1487,7 +1522,7 @@ const AskRow = ({
 							 * becomes enabled was also its quietest element (design round 1,
 							 * D7).
 							 */
-							disabled || !ready
+							disabled || !ready || retryPending
 								? "border border-hairline bg-surface text-ink-dim"
 								: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
 						)}
@@ -2149,6 +2184,34 @@ export const AskPanel = ({
 	 * on #1116, U1): a card that lapses under the reader collapses IN ITS OWN SLOT into
 	 * exactly the row it will be under Settled on the next mount, so the two cannot drift.
 	 */
+	/*
+	 * THE ANSWER RIDES ON THE ONE-LINE ROW (operator report on the Notifications pane):
+	 * one conversation can hold two near-identical asks, and a settled history of
+	 * `Answered · <question>` rows told the reader WHICH question was settled but not
+	 * WITH WHAT - so an answered ask could be mistaken for its open twin. Each answered
+	 * question's recorded values follow the question, in the muted step and clamped to
+	 * two lines (the expanded card keeps the full text). A secret question's cell is a
+	 * key name, never shown here.
+	 */
+	const settledAnswerLine = (presentation: (typeof view.rows)[number]) => {
+		const answered = askSettledAnswers(presentation.ask)
+			.filter(
+				(entry) =>
+					presentation.ask.questions.find((q) => q.id === entry.id)?.secret !==
+					true,
+			)
+			.flatMap((entry) => entry.answers)
+			.filter((value) => value.trim() !== "");
+		return answered.length === 0 ? null : (
+			<span
+				data-lo-ask-settled-answer=""
+				className="line-clamp-2 min-w-0 whitespace-normal break-words text-ink-muted text-meta"
+			>
+				{answered.join(", ")}
+			</span>
+		);
+	};
+
 	const collapsedRow = (
 		presentation: (typeof view.rows)[number],
 		/*
@@ -2225,38 +2288,19 @@ export const AskPanel = ({
 							 * tooltip instead of on the row. `break-words` so a long
 							 * unbroken token cannot push the row wider than the pane.
 							 */}
-							<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
-								{question}
+							{/*
+							 * THE ANSWER SITS IN THE QUESTION'S COLUMN (design round 1, D1): as a
+							 * sibling of the chip row it started under the chevron, so a stack of
+							 * settled rows scanned chip, question, then an answer jutting left.
+							 */}
+							<span className="flex min-w-0 flex-col gap-0.5">
+								<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
+									{question}
+								</span>
+								{settledAnswerLine(presentation)}
 							</span>
 						</span>
-						{(() => {
-							/*
-							 * THE ANSWER RIDES ON THE ONE-LINE ROW (operator report on the
-							 * Notifications pane): one conversation can hold two near-identical
-							 * asks, and a settled history of `Answered · <question>` rows told
-							 * the reader WHICH question was settled but not WITH WHAT - so an
-							 * answered ask could be mistaken for its open twin. Each answered
-							 * question's recorded values follow the question, in the muted step
-							 * and clamped to two lines (the expanded card keeps the full text).
-							 * A secret question's cell is a key name, never shown here.
-							 */
-							const answered = askSettledAnswers(presentation.ask)
-								.filter(
-									(entry) =>
-										presentation.ask.questions.find((q) => q.id === entry.id)
-											?.secret !== true,
-								)
-								.flatMap((entry) => entry.answers)
-								.filter((value) => value.trim() !== "");
-							return answered.length === 0 ? null : (
-								<span
-									data-lo-ask-settled-answer=""
-									className="line-clamp-2 min-w-0 whitespace-normal break-words text-ink-muted text-meta"
-								>
-									{answered.join(", ")}
-								</span>
-							);
-						})()}
+
 						{refusal === null ? null : (
 							/*
 							 * The danger band and no mark, for the reason the card's own

@@ -605,6 +605,7 @@ export const STORIES = [
 	["notifications-page--ask-pane-pending", 1280, 1100],
 	["notifications-page--ask-pane-sending", 1280, 1100],
 	["notifications-page--ask-pane-answered", 1280, 1100],
+	["notifications-page--ask-pane-secret-answered", 1280, 1100],
 	["notifications-page--ask-pane-delivered", 1280, 1100],
 	["notifications-page--ask-pane-declined", 1280, 1100],
 	["notifications-page--ask-pane-dismissed", 1280, 1100],
