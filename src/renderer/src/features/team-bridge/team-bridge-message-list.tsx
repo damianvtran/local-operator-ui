@@ -381,19 +381,21 @@ const MessageRow: FC<{
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
 }> = ({ reactionContext, ...props }) =>
-	(reactionContext || props.sendRow) && props.message.body !== null ? (
+	/*
+	 * THE WRAPPER MOUNTS ONLY WITH A REAL REACTION CONTEXT (thread-gate suite).
+	 *
+	 * A journal row used to reserve it with an inert placeholder so the ACK could
+	 * not remount the image tile. The gate suite is right and I was wrong: while
+	 * the reaction surface is held, "a placeholder context" still means reaction
+	 * state is mounted for a build the runtime cannot serve, and the suite's name
+	 * is a claim about what mounts. So the reservation is gone. When reactions
+	 * ship, a journal row's ACK may remount this subtree; that is the moment to
+	 * re-measure it, with the surface on.
+	 */
+	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
-			key={`${reactionContext?.accountId ?? props.accountId ?? ""}:${props.sendRow?.clientRef ?? props.message.id}`}
-			// A new target has no reaction context until its conversation exists.
-			// Reserve the same wrapper now so that create receipt cannot remount
-			// a journal image later; the placeholder context is always inert.
-			reactionContext={
-				reactionContext ?? {
-					accountId: props.accountId ?? "",
-					tenantId: props.tenantId ?? "",
-					disabled: true,
-				}
-			}
+			key={`${reactionContext.accountId}:${props.sendRow?.clientRef ?? props.message.id}`}
+			reactionContext={reactionContext}
 			{...props}
 		/>
 	) : (
@@ -469,8 +471,8 @@ const MessageRowView: FC<MessageRowProps> = ({
 	   toolbar button and the "N replies" summary both read, so the affordance
 	   does not render rather than rendering inert. */
 	const canReply =
-		(!sendRow || sendRow.state === "confirmed") &&
 		TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD &&
+		(!sendRow || sendRow.state === "confirmed") &&
 		onReply !== undefined &&
 		!message.thread_root_id;
 	const agent = message.sender.kind === "agent";

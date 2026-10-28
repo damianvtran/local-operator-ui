@@ -3072,7 +3072,9 @@ const TeamBridgeOwnedPage: FC<{
 	const sendTenant = selected?.tenant_id ?? scope;
 	const sendContext = {
 		accountId: accountId ?? "",
-		tenantId: sendTenant,
+		// The guard below already refused the account-wide sentinel; brand it here,
+		// where the compiler can see the check that makes it a real tenant.
+		tenantId: asTeamBridgeTenantId(sendTenant),
 		targetKey: outboxTargetKey(target),
 		conversationId: selected?.id,
 		input,

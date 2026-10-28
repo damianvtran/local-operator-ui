@@ -130,6 +130,9 @@ const chipState = (
 	uploadHeld: async () => [],
 	readyIds: () => [],
 	markExpired: () => {},
+	/* The composer can take a failed send's images back; a story fixture that
+	 * cannot is a state the real component can never be in. */
+	restore: () => {},
 	clearSent: () => {},
 	detachForSend: () => [...chips],
 	busy: chips.some((c) => c.status === "uploading" || c.status === "preparing"),

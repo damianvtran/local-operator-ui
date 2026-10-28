@@ -12,6 +12,7 @@ import {
 	type TeamBridgeMessagePage,
 	teamBridgeConversationSchema,
 } from "../../../../shared/team-bridge-contract";
+import type { TeamBridgeTenantId } from "../../../../shared/team-bridge-contract";
 import {
 	draftAttachment,
 	isAttachmentNotFound,
@@ -74,7 +75,12 @@ export function outboxTargetKey(target: TeamBridgeTarget | null): string {
 
 type SendContext = {
 	accountId: string;
-	tenantId: string;
+	/**
+	 * A real tenant id, never the account-wide sentinel: the cache keys are
+	 * typed by `TeamBridgeScope` and a send that could not name its tenant would
+	 * have to be spread across every organization's cache.
+	 */
+	tenantId: TeamBridgeTenantId;
 	targetKey: string;
 	conversationId?: string;
 	input: NonNullable<ReturnType<typeof draftCreateInput>> | null;
