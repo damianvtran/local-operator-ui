@@ -170,7 +170,7 @@
 		"tone": "plain"
 	},
 	"ui.agents.skills.detail.download_signed_out": {
-		"note": "Under a disabled Download button when the reader is not signed in to Agent Hub. Names the place and the act. Keep Agent Hub in Latin.",
+		"note": "Under a disabled Download button when the reader is not signed in. Names the account (Radient) and where it lives (Settings), because there is no Agent Hub sign-in to find. Keep Radient and Settings in Latin.",
 		"role": "header note",
 		"tone": "plain"
 	},
@@ -345,7 +345,7 @@
 		"tone": "plain"
 	},
 	"ui.agents.skills.error.download_failed_body": {
-		"note": "Under 'That did not download', whatever the hub's reason. Says nothing was installed and the next step; 'Download' is the button's own label. Keep Agent Hub in Latin.",
+		"note": "Under 'That did not download' for a pull the hub could not complete: a 5xx, or a failure that produced no status at all. Says nothing was installed and offers the retry; 'Download' is the button's own label. Refusals with their own remedy use the agent pull keys instead. Keep Agent Hub in Latin.",
 		"role": "alert body",
 		"tone": "plain, helpful"
 	},

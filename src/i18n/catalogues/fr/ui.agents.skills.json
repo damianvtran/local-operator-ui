@@ -33,7 +33,7 @@
 	"ui.agents.skills.detail.body_not_installed": "Vous êtes abonné à cette compétence, mais elle n’est pas installée sur cet appareil : il n’y a donc pas de SKILL.md à afficher.",
 	"ui.agents.skills.detail.body_truncated": "Ce fichier fait {size}. Seul le début est affiché.",
 	"ui.agents.skills.detail.body_unavailable": "Les instructions n’ont pas pu être lues.",
-	"ui.agents.skills.detail.download_signed_out": "Connectez-vous au Hub des agents pour télécharger cette compétence.",
+	"ui.agents.skills.detail.download_signed_out": "Connectez-vous à Radient dans les paramètres pour télécharger cette compétence.",
 	"ui.agents.skills.detail.edit_by_asking": "Cette compétence a des fichiers de référence ; elle ne peut donc pas être modifiée ici. Utilisez « Demander une modification ».",
 	"ui.agents.skills.detail.edit_by_asking_truncated": "Ce fichier est trop volumineux pour être modifié ici. Utilisez « Demander une modification ».",
 	"ui.agents.skills.detail.edit_off_files": "Cette compétence a des fichiers de référence ; elle ne peut donc pas encore être modifiée ici.",

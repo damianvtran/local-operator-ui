@@ -33,7 +33,7 @@
 	"ui.agents.skills.detail.body_not_installed": "Вы подписаны на этот навык, но он не установлен на этом устройстве, поэтому показывать SKILL.md нечего.",
 	"ui.agents.skills.detail.body_truncated": "Размер файла — {size}. Показана только первая часть.",
 	"ui.agents.skills.detail.body_unavailable": "Не удалось прочитать инструкции.",
-	"ui.agents.skills.detail.download_signed_out": "Войдите в Хаб агентов, чтобы загрузить этот навык.",
+	"ui.agents.skills.detail.download_signed_out": "Войдите в Radient в настройках, чтобы загрузить этот навык.",
 	"ui.agents.skills.detail.edit_by_asking": "У этого навыка есть справочные файлы, поэтому здесь его нельзя редактировать. Используйте «Запросить изменение».",
 	"ui.agents.skills.detail.edit_by_asking_truncated": "Этот файл слишком велик для редактирования здесь. Используйте «Запросить изменение».",
 	"ui.agents.skills.detail.edit_off_files": "У этого навыка есть справочные файлы, поэтому здесь его пока нельзя редактировать.",

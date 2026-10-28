@@ -33,7 +33,7 @@
 	"ui.agents.skills.detail.body_not_installed": "Esta habilidad está suscrita, pero no instalada en este dispositivo, así que no hay SKILL.md que mostrar.",
 	"ui.agents.skills.detail.body_truncated": "Este archivo pesa {size}. Solo se muestra la primera parte.",
 	"ui.agents.skills.detail.body_unavailable": "No se pudieron leer las instrucciones.",
-	"ui.agents.skills.detail.download_signed_out": "Inicia sesión en el Hub de agentes para descargar esta habilidad.",
+	"ui.agents.skills.detail.download_signed_out": "Inicia sesión en Radient en Ajustes para descargar esta habilidad.",
 	"ui.agents.skills.detail.edit_by_asking": "Esta habilidad tiene archivos de referencia, así que no se puede editar aquí. Usa “Pedir un cambio”.",
 	"ui.agents.skills.detail.edit_by_asking_truncated": "Este archivo es demasiado grande para editarlo aquí. Usa “Pedir un cambio”.",
 	"ui.agents.skills.detail.edit_off_files": "Esta habilidad tiene archivos de referencia, así que todavía no se puede editar aquí.",

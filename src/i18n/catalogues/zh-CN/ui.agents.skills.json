@@ -33,7 +33,7 @@
 	"ui.agents.skills.detail.body_not_installed": "已订阅此技能，但尚未安装在这台设备上，因此没有可显示的SKILL.md。",
 	"ui.agents.skills.detail.body_truncated": "此文件大小为{size}，仅显示前面部分。",
 	"ui.agents.skills.detail.body_unavailable": "无法读取指令。",
-	"ui.agents.skills.detail.download_signed_out": "登录智能体中心即可下载此技能。",
+	"ui.agents.skills.detail.download_signed_out": "在“设置”中登录Radient即可下载此技能。",
 	"ui.agents.skills.detail.edit_by_asking": "此技能包含参考文件，无法在此编辑。请使用“请求更改”。",
 	"ui.agents.skills.detail.edit_by_asking_truncated": "此文件过大，无法在此编辑。请使用“请求更改”。",
 	"ui.agents.skills.detail.edit_off_files": "此技能包含参考文件，暂时无法在此编辑。",
