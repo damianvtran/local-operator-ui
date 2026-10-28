@@ -118,6 +118,7 @@ import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
@@ -216,6 +217,7 @@ import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
 import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
+import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
@@ -314,6 +316,7 @@ import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
 import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
+import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
@@ -412,6 +415,7 @@ import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
 import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
+import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
@@ -510,6 +514,7 @@ import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
+import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
@@ -608,6 +613,7 @@ import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
 import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
+import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
@@ -706,6 +712,7 @@ import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
 import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
+import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
@@ -804,6 +811,7 @@ import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
 import zhCNUiSettingsUpdates from "./catalogues/zh-CN/ui.settings.updates.json";
 import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
 import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
+import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
@@ -905,6 +913,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsUpdates,
 	...enUiShell,
 	...enUiShellRail,
+	...enUiTeamBridgeArchive,
 	...enUiTeamBridge,
 };
 
@@ -1011,6 +1020,7 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsUpdates,
 		...esUiShell,
 		...esUiShellRail,
+		...esUiTeamBridgeArchive,
 		...esUiTeamBridge,
 	},
 	fr: {
@@ -1111,6 +1121,7 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsUpdates,
 		...frUiShell,
 		...frUiShellRail,
+		...frUiTeamBridgeArchive,
 		...frUiTeamBridge,
 	},
 	hi: {
@@ -1211,6 +1222,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsUpdates,
 		...hiUiShell,
 		...hiUiShellRail,
+		...hiUiTeamBridgeArchive,
 		...hiUiTeamBridge,
 	},
 	ru: {
@@ -1311,6 +1323,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsUpdates,
 		...ruUiShell,
 		...ruUiShellRail,
+		...ruUiTeamBridgeArchive,
 		...ruUiTeamBridge,
 	},
 	ur: {
@@ -1411,6 +1424,7 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsUpdates,
 		...urUiShell,
 		...urUiShellRail,
+		...urUiTeamBridgeArchive,
 		...urUiTeamBridge,
 	},
 	vi: {
@@ -1511,6 +1525,7 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsUpdates,
 		...viUiShell,
 		...viUiShellRail,
+		...viUiTeamBridgeArchive,
 		...viUiTeamBridge,
 	},
 	"zh-CN": {
@@ -1611,6 +1626,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSettingsUpdates,
 		...zhCNUiShell,
 		...zhCNUiShellRail,
+		...zhCNUiTeamBridgeArchive,
 		...zhCNUiTeamBridge,
 	},
 };
@@ -8658,6 +8674,36 @@ export type MessageParams = {
 		count: number;
 		countText: string;
 	};
+	"ui.teamBridge.archive.banner.by_on": { name: string; date: string };
+	"ui.teamBridge.archive.banner.delete": undefined;
+	"ui.teamBridge.archive.banner.on": { date: string };
+	"ui.teamBridge.archive.banner.plain": undefined;
+	"ui.teamBridge.archive.banner.unarchive": undefined;
+	"ui.teamBridge.archive.banner.unarchive_error": undefined;
+	"ui.teamBridge.archive.composer.note": undefined;
+	"ui.teamBridge.archive.confirm.body": undefined;
+	"ui.teamBridge.archive.confirm.confirm": undefined;
+	"ui.teamBridge.archive.confirm.error": undefined;
+	"ui.teamBridge.archive.confirm.title": { name: string };
+	"ui.teamBridge.archive.delete.body": undefined;
+	"ui.teamBridge.archive.delete.confirm": undefined;
+	"ui.teamBridge.archive.delete.confirm_label": { name: string };
+	"ui.teamBridge.archive.delete.error": undefined;
+	"ui.teamBridge.archive.delete.not_found": undefined;
+	"ui.teamBridge.archive.delete.title": { name: string };
+	"ui.teamBridge.archive.list.empty": undefined;
+	"ui.teamBridge.archive.list.error": undefined;
+	"ui.teamBridge.archive.list.load_more": undefined;
+	"ui.teamBridge.archive.list.load_more_error": undefined;
+	"ui.teamBridge.archive.list.loading": undefined;
+	"ui.teamBridge.archive.list.meta_by_on": { name: string; date: string };
+	"ui.teamBridge.archive.list.meta_on": { date: string };
+	"ui.teamBridge.archive.menu.archive": undefined;
+	"ui.teamBridge.archive.section.archived": undefined;
+	"ui.teamBridge.archive.section.menu": undefined;
+	"ui.teamBridge.archive.thread.empty": undefined;
+	"ui.teamBridge.archive.thread.forbidden": undefined;
+	"ui.teamBridge.archive.toast.archive_failed": { name: string };
 	"ui.teamBridge.actions.label": undefined;
 	"ui.teamBridge.attachments.add": undefined;
 	"ui.teamBridge.attachments.error_account_changed": undefined;
@@ -8690,6 +8736,7 @@ export type MessageParams = {
 	"ui.teamBridge.builtin.humans_topic": undefined;
 	"ui.teamBridge.chief.fallback": undefined;
 	"ui.teamBridge.chief.label": { agent: string; person: string };
+	"ui.teamBridge.chief.unnamed": { person: string };
 	"ui.teamBridge.compose.empty": undefined;
 	"ui.teamBridge.compose.label": undefined;
 	"ui.teamBridge.compose.new": undefined;
@@ -8726,7 +8773,9 @@ export type MessageParams = {
 	"ui.teamBridge.list.loading": undefined;
 	"ui.teamBridge.list.retry": undefined;
 	"ui.teamBridge.list.untitled": undefined;
+	"ui.teamBridge.member.active_count": { count: number };
 	"ui.teamBridge.member.count": { count: number };
+	"ui.teamBridge.member.invited_count": { count: number };
 	"ui.teamBridge.menu.label": undefined;
 	"ui.teamBridge.menu.mute": undefined;
 	"ui.teamBridge.menu.unmute": undefined;
