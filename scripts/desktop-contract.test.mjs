@@ -3701,6 +3701,7 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 	const replies = jobsCancelEndpoint(
 		jobsCancelSchema.parse({
 			op: "team_bridge.messages.replies",
+			expected_account_id: "acc_a",
 			conversation_id: "bcv_abc12345",
 			message_id: "bcmsg_root0001",
 			tenant_id: "tnt_2",
@@ -3711,23 +3712,32 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 	assert.equal(replies.method, "GET");
 	assert.equal(
 		replies.path,
-		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies?tenant_id=tnt_2&limit=50&after_seq=7",
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies?tenant_id=tnt_2&expected_account_id=acc_a&limit=50&after_seq=7",
 	);
-	const bare = jobsCancelEndpoint({
-		op: "team_bridge.messages.replies",
-		conversation_id: "bcv_abc12345",
-		message_id: "bcmsg_root0001",
-	});
-	assert.equal(
-		bare.path,
-		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies",
-	);
+	// The owner receipt is REQUIRED on a thread read: the runtime refuses one
+	// without it, so the schema refuses it first (no unguarded thread read).
+	for (const missing of ["expected_account_id", "tenant_id"]) {
+		const request = {
+			op: "team_bridge.messages.replies",
+			expected_account_id: "acc_a",
+			conversation_id: "bcv_abc12345",
+			message_id: "bcmsg_root0001",
+			tenant_id: "tnt_2",
+		};
+		delete request[missing];
+		assert.throws(
+			() => jobsCancelSchema.parse(request),
+			`a thread read without ${missing} is refused`,
+		);
+	}
 	// The union is strict: a timeline cursor is not a thread cursor.
 	assert.throws(() =>
 		jobsCancelSchema.parse({
 			op: "team_bridge.messages.replies",
+			expected_account_id: "acc_a",
 			conversation_id: "bcv_abc12345",
 			message_id: "bcmsg_root0001",
+			tenant_id: "tnt_2",
 			before_seq: 3,
 		}),
 	);
@@ -3753,4 +3763,45 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 		body: "hi",
 	});
 	assert.equal("thread_root_id" in plain.body, false);
+});
+
+test("team_bridge reactions: the owner receipt rides the PUT body and the DELETE query", () => {
+	/*
+	 * The reaction routes REQUIRE the captured-owner receipt (local-operator
+	 * `team_bridge_reactions`); before this, the mapper sent only a tenant, which
+	 * would have bypassed the atomic owner guard every other private write uses.
+	 */
+	const base = {
+		op: "team_bridge.reactions.toggle",
+		expected_account_id: "acc_a",
+		conversation_id: "bcv_abc12345",
+		message_id: "bcmsg_abcdef12",
+		tenant_id: "tnt_2",
+		emoji: "\u{1F44D}",
+	};
+	const path =
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_abcdef12/reactions/%F0%9F%91%8D";
+	const add = jobsCancelEndpoint(
+		jobsCancelSchema.parse({ ...base, active: true }),
+	);
+	assert.equal(add.method, "PUT");
+	assert.equal(add.path, path);
+	assert.deepEqual(add.body, {
+		expected_account_id: "acc_a",
+		tenant_id: "tnt_2",
+	});
+	const remove = jobsCancelEndpoint(
+		jobsCancelSchema.parse({ ...base, active: false }),
+	);
+	assert.equal(remove.method, "DELETE");
+	assert.equal(remove.path, `${path}?tenant_id=tnt_2&expected_account_id=acc_a`);
+	assert.equal(remove.body, undefined);
+	for (const missing of ["expected_account_id", "tenant_id"]) {
+		const request = { ...base, active: true };
+		delete request[missing];
+		assert.throws(
+			() => jobsCancelSchema.parse(request),
+			`a reaction without ${missing} is refused`,
+		);
+	}
 });
