@@ -138,8 +138,10 @@ export type HubLinkAction =
 
 /**
  * Every intentional press gets a receipt ID; transport replay keeps that same
- * request. Confirmation cannot silently ask for a new proposal and publish it:
- * it sends ONLY the immutable receipt the user just viewed and acknowledged.
+ * request. Only the PUSH confirmation carries a receipt: it sends the immutable
+ * proposal receipt the user just viewed and acknowledged. Check, apply and retry
+ * are item-addressed writes (`kind` + `name`/`local_id`) and core recomputes
+ * their merge when the request lands - there is no pull receipt to send.
  */
 export function useHubLinkActions(
 	link: Pick<HubLink, "link_id" | "kind" | "local_id" | "name">,

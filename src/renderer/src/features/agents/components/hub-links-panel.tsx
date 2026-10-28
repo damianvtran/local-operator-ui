@@ -3,7 +3,6 @@ import { usableOrgs } from "@features/agent-hub/org-access";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	type HubLinkAction,
-	type HubPullPreview,
 	type HubPushPreview,
 	isDirectionalReport,
 	useHubLinkActions,
@@ -19,6 +18,7 @@ import {
 	linksForLocalItem,
 } from "@shared/api/local-operator/hub-links";
 import { HubMutationUpgradeRequired } from "@shared/api/local-operator/hub-mutation-safety";
+import type { HubMergeReport } from "@shared/api/local-operator/hub-updates";
 import { Alert, AlertTitle } from "@shared/components/ui/alert";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
@@ -88,10 +88,26 @@ export function HubLinkGroup({
 	const [publishPreview, setPublishPreview] = useState<HubPushPreview | null>(
 		null,
 	);
-	const [incomingPreview, setIncomingPreview] = useState<HubPullPreview | null>(
-		null,
-	);
-	const [incomingReports, setIncomingReports] = useState<string | null>(null);
+	/*
+	 * THE INCOMING PREVIEW IS THE DRY-RUN'S OWN REPORTS.
+	 *
+	 * Core's `/updates/apply` answers `{reports, status}` and NO `preview`
+	 * member (`desktop_hub.py`), and its report rows carry no `link_id` or
+	 * `direction` (`report.py` `ItemMergeReport.to_json`). The panel therefore
+	 * cannot read a `HubPullPreview` from that answer - the type has no producer
+	 * on this route - so the dialog is built from the one report for this row.
+	 *
+	 * The honest limit: core RECOMPUTES the merge when the real apply arrives
+	 * (the route re-checks the item), so what is shown is advisory, not a
+	 * receipt. The dialog says so; it must never claim to apply exactly this.
+	 */
+	const [incomingReports, setIncomingReports] = useState<
+		HubMergeReport[] | null
+	>(null);
+	/** The merge preference the reader picked while previewing, applied on Pull. */
+	const [incomingPrefer, setIncomingPrefer] = useState<
+		"local" | "remote" | undefined
+	>(undefined);
 	const [acknowledgedBaseline, setAcknowledgedBaseline] = useState(false);
 	const [previewChanged, setPreviewChanged] = useState(false);
 	const safeActionRef = useRef<HTMLButtonElement>(null);
@@ -99,12 +115,20 @@ export function HubLinkGroup({
 	const busy = actions.isPending || isBusy(link);
 	// Known-ness is the provenance literal; only `adopt-unknown` is unknown.
 	const unknownBaseline = !baselineIsKnown(link.baseline_state);
+	/**
+	 * A dry run's `would-merge` is the ONLY outcome that means pressing Pull
+	 * would change something (`report.py` `ItemOutcome`): `up-to-date`,
+	 * `unchanged` and an `unavailable` row all leave the copy alone, so those
+	 * are stated inline instead of opening a modal over nothing.
+	 */
+	const incomingDelta =
+		incomingReports?.some((report) => report.outcome === "would-merge") ??
+		false;
 
-	const activePreview = publishPreview ?? incomingPreview;
+	const activePreview = publishPreview;
 	useEffect(() => {
 		if (activePreview && !hubPreviewIsCurrent(activePreview, link)) {
 			setPublishPreview(null);
-			setIncomingPreview(null);
 			setPreviewChanged(true);
 		}
 	}, [link, activePreview]);
@@ -116,7 +140,6 @@ export function HubLinkGroup({
 		const timer = setTimeout(
 			() => {
 				setPublishPreview(null);
-				setIncomingPreview(null);
 				setPreviewChanged(true);
 			},
 			Math.max(0, Math.min(remaining, 2_147_483_647)),
@@ -134,16 +157,22 @@ export function HubLinkGroup({
 						response.preview?.direction === "push" ? response.preview : null,
 					);
 				else if (input.action === "apply" && input.preview) {
-					const incoming =
-						response.preview?.direction === "pull" ? response.preview : null;
-					setIncomingPreview(incoming);
-					setIncomingReports(JSON.stringify(response.reports, null, 2));
-					setAcknowledgedBaseline(
-						incoming?.choices.acknowledge_unknown_baseline ?? false,
+					/*
+					 * One row's dry-run reports. Matched on `local_id` (the exact
+					 * identity this row was addressed by), never on a name: a name
+					 * arm can answer for two rows, and showing another item's merge
+					 * under this row would be a lie about what Pull would do.
+					 */
+					setIncomingReports(
+						(response.reports ?? []).filter(
+							(report) => report.local_id === link.local_id,
+						),
 					);
+					setIncomingPrefer(input.prefer);
+					setAcknowledgedBaseline(false);
 				} else {
 					setPublishPreview(null);
-					setIncomingPreview(null);
+					setIncomingReports(null);
 				}
 			},
 			onError: (error) => {
@@ -156,7 +185,7 @@ export function HubLinkGroup({
 					].includes(error.code ?? "")
 				) {
 					setPublishPreview(null);
-					setIncomingPreview(null);
+					setIncomingReports(null);
 					setPreviewChanged(true);
 				}
 			},
@@ -165,7 +194,7 @@ export function HubLinkGroup({
 	const close = () => {
 		if (!actions.isPending) {
 			setPublishPreview(null);
-			setIncomingPreview(null);
+			setIncomingReports(null);
 		}
 	};
 	const directionLabel = (direction: "pull" | "push") =>
@@ -356,8 +385,15 @@ export function HubLinkGroup({
 						})}
 					</output>
 				))}
+			{incomingReports && !incomingDelta && (
+				<output className="text-meta text-ink-muted">
+					{t("ui.hub.links.incoming_nothing", {
+						outcome: incomingReports[0]?.outcome ?? "unavailable",
+					})}
+				</output>
+			)}
 			<Dialog
-				open={publishPreview !== null || incomingPreview !== null}
+				open={publishPreview !== null || incomingDelta}
 				onOpenChange={(open) => {
 					if (!open) close();
 				}}
@@ -380,14 +416,37 @@ export function HubLinkGroup({
 								: t("ui.hub.links.preview_pull")}
 						</DialogTitle>
 						<DialogDescription>
-							{publishPreview || !unknownBaseline
+							{publishPreview
 								? t("ui.hub.subscriptions.enable_safety")
-								: t("ui.hub.links.unknown_baseline")}
+								: unknownBaseline
+									? t("ui.hub.links.unknown_baseline")
+									: t("ui.hub.links.preview_recomputed")}
 						</DialogDescription>
 					</DialogHeader>
-					<pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap break-words rounded-md bg-sunken p-3 text-mono-sm text-ink">
-						{JSON.stringify(activePreview?.proposal, null, 2)}
-					</pre>
+					{incomingReports ? (
+						<ul className="flex flex-col gap-1" data-incoming-reports>
+							{incomingReports.map((report, index) => (
+								<li
+									key={`${report.local_id}-${index}`}
+									className="text-body-sm text-ink"
+								>
+									{t("ui.hub.links.incoming_outcome", {
+										item: displayName?.trim() || link.name,
+										outcome: report.outcome,
+									})}
+									{report.message ? (
+										<span className="block break-words text-meta text-ink-muted">
+											{report.message}
+										</span>
+									) : null}
+								</li>
+							))}
+						</ul>
+					) : (
+						<pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap break-words rounded-md bg-sunken p-3 text-mono-sm text-ink">
+							{JSON.stringify(activePreview?.proposal, null, 2)}
+						</pre>
+					)}
 					{activePreview?.warnings.length ? (
 						<div>
 							<h4 className="text-body-sm text-ink">
@@ -408,12 +467,12 @@ export function HubLinkGroup({
 							{hubReasonText(activePreview.reason)}
 						</p>
 					)}
-					{incomingPreview && incomingReports && (
+					{incomingReports && (
 						<pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words bg-sunken p-3 text-mono-sm text-ink">
-							{incomingReports}
+							{JSON.stringify(incomingReports, null, 2)}
 						</pre>
 					)}
-					{incomingPreview && unknownBaseline && (
+					{incomingReports && unknownBaseline && (
 						<label
 							htmlFor={ackId}
 							className="flex items-start gap-2 text-body-sm text-ink"
@@ -476,7 +535,8 @@ export function HubLinkGroup({
 											!actions.canWrite ||
 											(unknownBaseline && !acknowledgedBaseline)
 										}
-										onClick={() =>
+										onClick={() => {
+											setIncomingPrefer(prefer);
 											run({
 												action: "apply",
 												linkId: link.link_id,
@@ -484,8 +544,8 @@ export function HubLinkGroup({
 												prefer,
 												acknowledgeUnknownBaseline:
 													unknownBaseline && acknowledgedBaseline,
-											})
-										}
+											});
+										}}
 									>
 										{t(
 											prefer === "local"
@@ -498,23 +558,18 @@ export function HubLinkGroup({
 									disabled={
 										actions.isPending ||
 										!actions.canWrite ||
-										!incomingPreview ||
-										!hubPreviewMatches(incomingPreview, link) ||
-										incomingPreview.choices.acknowledge_unknown_baseline !==
-											acknowledgedBaseline ||
-										incomingPreview.choices.replace !== null ||
-										incomingPreview.choices.confirm_replace
+										!incomingDelta ||
+										(unknownBaseline && !acknowledgedBaseline)
 									}
-									onClick={() => {
-										if (!incomingPreview) return;
+									onClick={() =>
 										run({
 											action: "apply",
 											linkId: link.link_id,
-											prefer: incomingPreview.choices.prefer ?? undefined,
+											prefer: incomingPrefer,
 											acknowledgeUnknownBaseline:
-												incomingPreview.choices.acknowledge_unknown_baseline,
-										});
-									}}
+												unknownBaseline && acknowledgedBaseline,
+										})
+									}
 								>
 									{t("ui.hub.subscriptions.pull")}
 								</Button>
