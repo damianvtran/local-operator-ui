@@ -7,7 +7,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
-import { Badge, countLabel } from "@shared/components/ui/badge";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
@@ -1444,10 +1444,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								{t("ui.teamBridge.invitations.title")}
 							</span>
 							{invitations.length > 0 && (
-								<Badge
-									variant="attentionQuiet"
-									shape="pill"
-									size="count"
+								/* Pending invitations wait on the reader's answer: an
+								   attention count, so the shared accent badge (2026-10-28). */
+								<AttentionBadge
+									count={invitations.length}
 									/* ONE BADGE COLUMN (design round 1, D3): nav rows sit
 									   8px further in than conversation rows (px-3 vs px-1),
 									   so the count pulls back out to their x=276 edge. */
@@ -1455,9 +1455,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									aria-label={t("ui.teamBridge.invitations.count", {
 										count: invitations.length,
 									})}
-								>
-									{countLabel(invitations.length, 99)}
-								</Badge>
+								/>
 							)}
 						</button>
 					)}
