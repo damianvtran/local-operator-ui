@@ -1550,10 +1550,34 @@
 		"tone": "Plain, concise product language; preserve placeholders exactly.",
 		"note": "Beside the Attachments heading when the list could only be built from the messages loaded so far (older backend or another device's conversation), so it may not be complete."
 	},
+	"ui.canvas.files.attachmentsPartialReason": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Hover text on the \"May be incomplete\" caption beside the Attachments heading: explains the list was built only from the messages loaded so far. One short sentence; no action is offered here."
+	},
+	"ui.canvas.files.attachmentsError": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Inline banner in the Canvas Files view when the attachment list could not be read; a Retry button follows it on the same line, so keep it short (about 30 characters) and do not include \"retry\" yourself."
+	},
+	"ui.canvas.files.attachmentsErrorReason": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Hover text on the \"Couldn't load attachments\" banner. \"Backend\" is the local Local Operator process the app talks to, not a remote server: use the catalogue's existing term for backend. \"Try again\" points at the Retry button beside the banner."
+	},
 	"ui.canvas.files.attachmentImage": {
 		"role": "label",
 		"tone": "Plain, concise product language; preserve placeholders exactly.",
 		"note": "Name for a pasted screenshot/picture that has no file name."
+	},
+	"ui.canvas.files.attachmentTooltip": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Hover text on an attached file or pasted picture in the Attachments section: its name, a short content fingerprint, then who added it and where it is kept. Keep the two \" · \" separators and the order name, fingerprint, sentence.",
+		"placeholders": {
+			"name": "File name or the localized picture name (attachmentImage); shown verbatim",
+			"digest": "First characters of the saved copy's content hash, lowercase hex, e.g. 3f9a2c1b; never translate or reformat"
+		}
 	},
 	"ui.canvas.files.attachmentRetained": {
 		"role": "status",
@@ -1564,6 +1588,11 @@
 		"role": "status",
 		"tone": "Plain, concise product language; preserve placeholders exactly.",
 		"note": "Row meta: the attached file is gone from its original path AND the app's saved copy is gone too; nothing can be opened."
+	},
+	"ui.canvas.files.attachmentGoneRecovery": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Second line of the error toast shown when the person opens an attachment whose original file AND the app's saved copy are both gone. Tells them what to do next: the row's menu still has the Copy path item (ui.chat.attachments.copy_path), so name that control with the catalogue's own label and menu term. One or two short sentences."
 	},
 	"ui.canvas.files.attachmentMeta": {
 		"role": "meta line",

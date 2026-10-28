@@ -107,14 +107,26 @@ function documentFor(item: UserAttachment, sessionId: string): CanvasDocument {
 }
 
 /**
+ * Which copy is left, or "" while the origin file is still in place. Kept
+ * apart from `attachmentNote` so a renderer can tell a one-run status sentence
+ * from the size/date pair, which must be two directional runs (an Urdu date
+ * isolated together with "286 KB" resolves LTR and reads mirrored).
+ */
+export function attachmentStatus(item: UserAttachment): string {
+	if (item.availability === "retained")
+		return t("ui.canvas.files.attachmentRetained");
+	if (item.availability === "gone") return t("ui.canvas.files.attachmentGone");
+	return "";
+}
+
+/**
  * The meta line: what is left of the file, else its size and when it was sent.
  * Two block-free strings rather than a concatenated sentence (`" · "` is
  * English punctuation; the ICU message owns the separator per locale).
  */
 export function attachmentNote(item: UserAttachment): string {
-	if (item.availability === "retained")
-		return t("ui.canvas.files.attachmentRetained");
-	if (item.availability === "gone") return t("ui.canvas.files.attachmentGone");
+	const status = attachmentStatus(item);
+	if (status) return status;
 	const when = item.ts
 		? formatDate(item.ts, { month: "short", day: "numeric" })
 		: "";
@@ -147,6 +159,7 @@ export function attachmentFinderItems(
 				digest:
 					item.digest && item.availability !== "gone" ? item.digest : null,
 				note: attachmentNote(item),
+				status: attachmentStatus(item),
 				size: sizeLabel(item.bytes ?? undefined) ?? "",
 				when: item.ts
 					? formatDate(item.ts, { month: "short", day: "numeric" })

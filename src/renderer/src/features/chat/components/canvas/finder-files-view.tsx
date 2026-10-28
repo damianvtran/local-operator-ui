@@ -1350,10 +1350,14 @@ function FinderEntry({
 									tiled && item.attachment ? "min-w-0 truncate" : "shrink-0",
 								)}
 							>
-								{tiled && item.attachment ? (
+								{item.attachment && (tiled || !item.attachment.status) ? (
+									/* Size and date as two runs with the separator in markup, on
+									 * tiles AND list rows: one `<bdi>` around "286 KB · 27 اکتوبر"
+									 * resolves LTR from "KB" and mirrors the Urdu date. A list
+									 * row's retained/gone sentence stays one run (below). */
 									<>
 										<bdi>{item.attachment.size}</bdi>
-										{item.attachment.when ? (
+										{item.attachment.size && item.attachment.when ? (
 											<span aria-hidden="true"> · </span>
 										) : null}
 										<bdi>{item.attachment.when}</bdi>

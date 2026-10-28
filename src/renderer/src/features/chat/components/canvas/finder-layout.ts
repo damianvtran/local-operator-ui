@@ -84,6 +84,11 @@ export type FinderItem = {
 		key: string;
 		digest: string | null;
 		note: string;
+		/**
+		 * The retained/gone sentence, or "" when `note` is the size/date pair:
+		 * a row renders `size` and `when` as separate runs only when this is "".
+		 */
+		status: string;
 		/** Separate directional runs so RTL never reorders size and date. */
 		size: string;
 		when: string;

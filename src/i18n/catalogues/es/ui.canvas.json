@@ -350,7 +350,7 @@
 	"ui.canvas.files.attachmentsPartial": "Puede estar incompleto",
 	"ui.canvas.files.attachmentsPartialReason": "Creado a partir de los mensajes cargados hasta ahora.",
 	"ui.canvas.files.attachmentsError": "No se pudieron cargar los adjuntos",
-	"ui.canvas.files.attachmentsErrorReason": "El servidor no pudo comprobar la lista de adjuntos. Inténtalo de nuevo.",
+	"ui.canvas.files.attachmentsErrorReason": "El backend no pudo comprobar la lista de adjuntos. Inténtalo de nuevo.",
 	"ui.canvas.files.attachmentTooltip": "{name} · {digest} · Adjuntado por ti, guardado en esta sesión",
 	"ui.canvas.files.attachmentGoneRecovery": "Movido o eliminado, y no queda ninguna copia guardada. Copia la ruta desde el menú si quieres buscarlo.",
 	"ui.canvas.files.attachmentImage": "Imagen adjunta",

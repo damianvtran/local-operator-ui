@@ -352,7 +352,7 @@
 	"ui.canvas.files.attachmentsError": "منسلکات لوڈ نہیں ہو سکے",
 	"ui.canvas.files.attachmentsErrorReason": "بیک اینڈ منسلکات کی فہرست کی جانچ نہیں کر سکا۔ دوبارہ کوشش کریں۔",
 	"ui.canvas.files.attachmentTooltip": "{name} · {digest} · آپ کی منسلک کردہ، اس سیشن میں محفوظ",
-	"ui.canvas.files.attachmentGoneRecovery": "منتقل یا حذف شدہ، اور کوئی محفوظ شدہ نقل باقی نہیں۔ تلاش کے لیے مینیو سے راستہ کاپی کریں۔",
+	"ui.canvas.files.attachmentGoneRecovery": "منتقل یا حذف شدہ، اور کوئی محفوظ شدہ نقل باقی نہیں۔ تلاش کے لیے مینو سے راستہ نقل کریں۔",
 	"ui.canvas.files.attachmentImage": "منسلک تصویر",
 	"ui.canvas.files.attachmentRetained": "منتقل یا حذف شدہ · محفوظ شدہ نقل باقی ہے",
 	"ui.canvas.files.attachmentGone": "منتقل یا حذف شدہ · کوئی محفوظ شدہ نقل نہیں",

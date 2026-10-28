@@ -203,6 +203,13 @@ test("the three missing states are told apart", () => {
 		"copy path keeps the record",
 	);
 	assert.equal(row("g").attachment.digest, null, "nothing to materialise");
+	// A non-empty status keeps the list row on one sentence run, never the
+	// size/date pair.
+	assert.equal(
+		row("r").attachment.status,
+		"Moved or deleted · saved copy kept",
+	);
+	assert.equal(row("g").attachment.status, "Moved or deleted · no saved copy");
 });
 
 test("attachments own their digests: agent rows drop the duplicate and the count counts once", () => {
@@ -257,6 +264,13 @@ test("Attachments is pinned first, files as rows, pictures in the Images tile gr
 	);
 	const pdf = attachments.find((item) => item.row.media !== "image");
 	assert.equal(pdf.attachment.note, "293 KB · Oct 27", "size and when");
+	// An empty status is what makes a list row render size and date as two
+	// directional runs instead of one `<bdi>` that mirrors an RTL date.
+	assert.equal(pdf.attachment.status, "", "an in-place file has no status");
+	assert.deepEqual(
+		[pdf.attachment.size, pdf.attachment.when],
+		["293 KB", "Oct 27"],
+	);
 });
 
 test("a pasted picture with a materialiser gets the path actions; a bare blob does not", () => {
