@@ -310,6 +310,14 @@ const SCANNED_LIMIT = 4096;
 /**
  * True exactly once per distinct document per session: the caller is the first
  * scan of it, so its cached negatives are worth asking again.
+ *
+ * `document` is an IDENTITY, not merely text (round 3, review R3-3b): the
+ * transcript passes the record id with the content, so a later message whose
+ * text is byte-identical to an earlier one is still a new document and still
+ * re-checks once, while a virtualized remount of the same record is not. A
+ * surface with no record id falls back to the text alone, and a byte-identical
+ * second document there is the accepted false negative recorded beside the
+ * plain-until-known one in `markdown-renderer.tsx`.
  */
 export const claimFirstScan = (document: string): boolean => {
 	if (scannedDocuments.has(document)) return false;
@@ -440,7 +448,25 @@ const notifyProbes = (landed: readonly string[]): void => {
  * A failed chunk clears its entries here (`finally`), so the next asker retries
  * rather than inheriting a permanently in-flight token.
  */
-const inFlightProbes = new Set<string>();
+const inFlightProbes = new Map<string, Promise<void>>();
+
+/**
+ * Whether an answer CHANGES what the session knew (round 3, review R3-1).
+ *
+ * Only a change is announced to `subscribeProbes`: a re-check that comes back
+ * "still missing" is the common case (`/health`, `/new`, a not-yet-created
+ * `~/out/`), and announcing it re-rendered EVERY mounted row naming that
+ * spelling on every new message that named it - 101 rows on the 101st message,
+ * 5,151 re-renders over the session, each a full react-markdown parse. A row's
+ * render reads only `exists` (`evidenceFor`) and the toolbar reads `isFile`,
+ * so those two are what "changed" means; the asking row still repaints itself
+ * from its own `.then`.
+ */
+const answerChanged = (
+	prior: ProbedTarget | undefined,
+	next: NonNullable<ProbedTarget>,
+): boolean =>
+	!prior || prior.exists !== next.exists || prior.isFile !== next.isFile;
 
 /**
  * Ask about many targets in `maxBatch`-sized sequential chunks.
@@ -463,12 +489,24 @@ const inFlightProbes = new Set<string>();
  * `recheckMissing` asks again about spellings cached as MISSING (never about
  * an "exists", which stays cached as before); the in-flight set still dedupes
  * it. Only a document's first scan passes it (`claimFirstScan`).
+ *
+ * A RE-CHECK IS NEVER SPENT WITHOUT AN ASK (round 3, review R3-3a). A spelling
+ * already in flight when a new document re-checks it was asked BEFORE that
+ * document existed - possibly before the tool wrote the file - so its answer
+ * may be the stale "missing" the re-check exists to replace. Skipping it (the
+ * round-2 dedupe) consumed the document's one re-check with nothing sent:
+ * with 50 ms of probe latency both rows stayed plain while the file existed.
+ * Such a spelling now waits for that flight and, if it landed missing, is
+ * asked once more. That second pass does not defer again: any flight it meets
+ * started after this document mounted, so its answer is already fresh for it,
+ * and twenty documents waiting on one flight still cost one extra ask.
  */
 export async function probeTargets(
 	targets: readonly string[],
 	ask: ProbeFunction | undefined,
 	maxBatch: number,
 	recheckMissing = false,
+	deferInFlight = recheckMissing,
 ): Promise<void> {
 	/*
 	 * No bridge is not an error: Storybook and browser development have none, and
@@ -480,15 +518,44 @@ export async function probeTargets(
 	const size = maxBatch > 0 ? Math.floor(maxBatch) : 1;
 	const seen = new Set<string>();
 	const wanted: string[] = [];
+	const stale: string[] = [];
+	const flights = new Set<Promise<void>>();
 	for (const target of targets) {
-		if (inFlightProbes.has(target)) continue;
-		const known = probeCache.get(target);
-		if (known && (known.exists || !recheckMissing)) continue;
 		if (seen.has(target)) continue;
 		seen.add(target);
+		const flight = inFlightProbes.get(target);
+		if (flight) {
+			if (deferInFlight) {
+				stale.push(target);
+				flights.add(flight);
+			}
+			continue;
+		}
+		const known = probeCache.get(target);
+		if (known && (known.exists || !recheckMissing)) continue;
 		wanted.push(target);
 	}
-	for (const target of wanted) inFlightProbes.add(target);
+	if (wanted.length > 0) {
+		const flight = askInChunks(wanted, ask, size);
+		for (const target of wanted) inFlightProbes.set(target, flight);
+		await flight;
+	}
+	if (stale.length === 0) return;
+	await Promise.all(flights);
+	await probeTargets(stale, ask, maxBatch, true, false);
+}
+
+/**
+ * The asking half of `probeTargets`: `wanted` in sequential chunks, each
+ * chunk's answers cached and the CHANGED ones announced as they land. It never
+ * rejects - a throwing chunk is warned about and left uncached - because its
+ * promise is what a deferred re-check awaits (`inFlightProbes`).
+ */
+async function askInChunks(
+	wanted: readonly string[],
+	ask: ProbeFunction,
+	size: number,
+): Promise<void> {
 	let warned = false;
 	for (let at = 0; at < wanted.length; at += size) {
 		const chunk = wanted.slice(at, at + size);
@@ -508,7 +575,8 @@ export async function probeTargets(
 				 * rather than reading a lie.
 				 */
 				if (answer.error !== undefined) return;
-				probeCache.set(target, {
+				const prior = probeCache.get(target);
+				const next: NonNullable<ProbedTarget> = {
 					exists: answer.exists,
 					isFile: answer.isFile,
 					/*
@@ -521,8 +589,9 @@ export async function probeTargets(
 					resolved: answer.resolved ?? target,
 					sizeBytes: answer.sizeBytes ?? null,
 					mtimeMs: answer.mtimeMs ?? null,
-				});
-				landed.push(target);
+				};
+				probeCache.set(target, next);
+				if (answerChanged(prior, next)) landed.push(target);
 			});
 			if (landed.length > 0) notifyProbes(landed);
 		} catch (error) {

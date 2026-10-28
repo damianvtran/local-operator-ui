@@ -1483,13 +1483,47 @@ const BLOCK_OPENER =
  * if that opens a quote, the whole run is quoted and the listing is refused on
  * both surfaces. Non-quoted continuations stay admitted, so a paragraph that
  * merely wraps before its introducer still resolves as it always did.
+ *
+ * ONLY A QUOTE IS A LAZY PARENT (round 3, review R3-2). An ATX heading is one
+ * line and can never be continued: the line after `## Deliverables` opens a new
+ * paragraph, which IS a sibling of the list below it. Treating the heading like
+ * a quote linked nothing under the most common report shape an agent writes
+ * (`## Deliverables` / `Files are in ~/out/:` / items), so a heading - like
+ * every other block opener - ends the walk as "not a continuation".
+ *
+ * A LIST ITEM IS NOT MODELLED AS A LAZY PARENT (round 3, review R3-5):
+ * `- item` / `Files in ~/out/:` / `- a.pdf` folds the introducer into the
+ * item on the transcript (no link) while this walker stops at the marker and
+ * admits it (one extra panel tile). That disagreement predates this function
+ * and is the documented panel-only over-admission, not a parity claim.
  */
+/** The `>` markers (and the one optional space after each) opening a quote line. */
+const QUOTE_MARKERS = /^\s*(?:>[ \t]?)+/;
+
+/**
+ * Inside a quote, the openers that end a paragraph and can never be continued:
+ * an ATX heading, a fence, a thematic break.
+ */
+const UNCONTINUABLE_OPENER =
+	/^\s*(?:#{1,6}(?:[ \t]|$)|`{3}|~{3}|(?:(?:[-*_])[ \t]*){3,}$)/;
+
+/**
+ * True when a quote line holds PARAGRAPH text, the only thing a following
+ * unquoted line can lazily continue: `> Intro` yes; `>` (blank), `> ## Notes`,
+ * `> ---` or `> ```` no - after those the quote has closed and the bare line
+ * opens a paragraph of its own, outside it.
+ */
+const quotesParagraphText = (line: string): boolean => {
+	const content = line.replace(QUOTE_MARKERS, "");
+	return content.trim() !== "" && !UNCONTINUABLE_OPENER.test(content);
+};
+
 const continuesParagraph = (lines: readonly string[], at: number): boolean => {
 	let cursor = at;
 	while (cursor >= 0) {
 		const line = (lines[cursor] ?? "").replace(CARRIAGE_RETURN, "");
 		if (line.trim() === "") return false;
-		if (QUOTE_OR_HEADING.test(line.trimStart())) return true;
+		if (QUOTE_MARKERS.test(line)) return quotesParagraphText(line);
 		if (BLOCK_OPENER.test(line)) return false;
 		cursor -= 1;
 	}
@@ -1505,6 +1539,11 @@ const LEADING_CODE_SPAN = /^`([^`]+)`(.*)$/;
  * unwrapped (`` `X.docx` — note `` reads as `X.docx — note`, the head being the
  * code span's own value - the shape the transcript walker sees as an
  * `inlineCode` node followed by a `text` node).
+ *
+ * Character references are decoded in PROSE only (round 3, review R3-4): a
+ * code span's content is literal in markdown - `` `a&amp;b.pdf` `` is the
+ * `inlineCode` value `a&amp;b.pdf` - so only the annotation after a leading
+ * span is decoded, and a whole code span is never touched.
  */
 const itemText = (content: string): { text: string; code: boolean } => {
 	const trimmed = content.trim();
@@ -1513,9 +1552,9 @@ const itemText = (content: string): { text: string; code: boolean } => {
 	const leading = LEADING_CODE_SPAN.exec(trimmed);
 	if (leading) {
 		return {
-			text: decodeCharacterReferences(
-				`${leading[1] ?? ""}${(leading[2] ?? "").replace(MARKDOWN_ESCAPE, "$1")}`,
-			),
+			text: `${leading[1] ?? ""}${decodeCharacterReferences(
+				(leading[2] ?? "").replace(MARKDOWN_ESCAPE, "$1"),
+			)}`,
 			code: true,
 		};
 	}
@@ -1555,8 +1594,9 @@ const itemText = (content: string): { text: string; code: boolean } => {
  * policy admits only whitespace-free known-extension names, so the worst
  * disagreement is one tile the transcript would not link.
  *
- * LAZY BLOCKQUOTE CONTINUATION IS REFUSED IN BOTH WALKERS (round 2, review
- * R2-2). CommonMark lets a quote's paragraph continue without its `>` marker
+ * LAZY BLOCKQUOTE CONTINUATION - and only that lazy shape - IS REFUSED IN
+ * BOTH WALKERS (round 2, review R2-2; narrowed in round 3, R3-5: lazy
+ * continuation after a LIST ITEM is not modelled, see `continuesParagraph`). CommonMark lets a quote's paragraph continue without its `>` marker
  * (`> Intro` / `Files in ~/out/:` / `- a.pdf`), and the mdast folds those
  * lines into the quote: its paragraph is not a sibling of the list, so the
  * transcript walker never sees an introducer. The line walker matches that

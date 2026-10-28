@@ -150,3 +150,22 @@ The renderer scan this PR extends (`mentioned-files.ts`) is the fallback for
 older daemons. It has no oracle, so it admits only a whitespace-free
 known-extension listed name. `scripts/link-targets.test.mjs` covers it
 (`extractMentionedPaths`), but no frame here does.
+
+## Round 3 (review R3-1..R3-5)
+
+- **Only a changed answer re-renders.** A re-check that comes back "still
+  missing" no longer notifies `subscribeProbes`. Re-renders over a chain of
+  messages naming the missing `/health`, counted with `React.Profiler` through
+  the real `MarkdownRenderer` in jsdom: 101 messages gave 5,151 at 12f1e462d0
+  and 102 after the fix; 51 messages gave 1,326 and 52.
+- **A re-check is never spent without an ask.** A new document's re-check that
+  meets an in-flight ask waits for it, then asks once more. The transcript keys
+  the claim on `record.id` plus the text, so a byte-identical later message
+  still re-checks.
+- **A heading does not swallow the introducer.** Only a quote line holding
+  paragraph text is a lazy-continuation parent. `## Deliverables` straight
+  above `Files are in ~/out/:` links again on both walkers.
+- **A code span is literal.** Character references are decoded in an item's
+  prose annotation only, never inside its leading code span.
+- **Parity claim, narrowed.** Lazy continuation after a list item is still not
+  modelled: the panel may show a tile the transcript does not link.

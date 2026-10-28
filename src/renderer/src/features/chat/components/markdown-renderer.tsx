@@ -116,6 +116,15 @@ type MarkdownRendererProps = {
 	 * a second flag - the four citation pipelines below carry it and say why.
 	 */
 	credentialCitations?: boolean;
+	/**
+	 * The identity of the message this text belongs to - the transcript's
+	 * `record.id` - so the link evidence can tell a NEW message from a remount of
+	 * an old one when their text is byte-identical (round 3, review R3-3b): a
+	 * report repeating the pre-tool message word for word is still the event that
+	 * says its cached negatives may have moved. Optional: a surface without one
+	 * keys on the text alone (see `claimFirstScan`).
+	 */
+	documentId?: string;
 };
 
 const LANGUAGE_REGEX = /language-(\w+)/;
@@ -626,7 +635,11 @@ const useMathPipeline = (
  * accepted false negative of plain-until-known, recorded on the pull request
  * rather than discovered by a reader.
  */
-const useLinkEvidence = (content: string, linkify: boolean): void => {
+const useLinkEvidence = (
+	content: string,
+	linkify: boolean,
+	documentId?: string,
+): void => {
 	const [, setTick] = useState(0); // the state is the re-render, not a value
 	useEffect(() => {
 		if (!linkify) return; // a streaming row is parsed but not linkified
@@ -642,7 +655,9 @@ const useLinkEvidence = (content: string, linkify: boolean): void => {
 			suspects,
 			window.api?.probeFiles,
 			MAX_PROBE_PATHS,
-			claimFirstScan(content),
+			claimFirstScan(
+				documentId === undefined ? content : `${documentId}\u0000${content}`,
+			),
 		).then(() => {
 			/*
 			 * An answer that landed before this effect subscribed - another row, or
@@ -658,7 +673,7 @@ const useLinkEvidence = (content: string, linkify: boolean): void => {
 			live = false;
 			stop();
 		};
-	}, [content, linkify]);
+	}, [content, linkify, documentId]);
 };
 
 /**
@@ -686,6 +701,7 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		className,
 		linkify = true,
 		credentialCitations = false,
+		documentId,
 	}) => {
 		const trimmed = useMemo(() => content.trim(), [content]);
 		const { remarkPlugins, rehypePlugins } = useMathPipeline(
@@ -698,7 +714,7 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		 * The pre-scan runs on the SAME string the parse does, so the suspects and the
 		 * tokens the plugin will meet cannot drift on a leading newline.
 		 */
-		useLinkEvidence(trimmed, linkify);
+		useLinkEvidence(trimmed, linkify, documentId);
 
 		return (
 			<div className={cn("lo-markdown", className)} style={style}>

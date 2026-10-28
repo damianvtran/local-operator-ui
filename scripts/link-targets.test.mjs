@@ -1681,6 +1681,22 @@ test("R2-5: an entity-encoded listed name is asked about DECODED, as the mdast r
 	assert.deepEqual(panelPaths(text), ["~/out/a&b.pdf", "~/out/c.pdf"]);
 });
 
+test("R3-4: a leading code span is NOT decoded; only the annotation after it is", async () => {
+	/*
+	 * A code span's content is literal: `` `a&amp;b.pdf` `` is the inlineCode
+	 * value `a&amp;b.pdf`, so the pre-scan must ask about THAT spelling or the
+	 * transcript's token stays unknown and plain (round 2 decoded it, so the
+	 * pre-scan asked about `a&b.pdf` and the item stopped linking).
+	 */
+	const text = "Files in `~/out/`:\n- `a&amp;b.pdf` — the report &amp; notes";
+	assert.deepEqual(listedSuspects(text), ["~/out/a&amp;b.pdf"]);
+	await diskFor(text, ["~/out/a&amp;b.pdf"]);
+	assert.deepEqual(
+		nonDirectoryLinks(text, "~/out").map((link) => link.url),
+		["~/out/a&amp;b.pdf"],
+	);
+});
+
 /*
  * ROUND 1 (review F1 / QA Q1): a WHOLE-item listed name took no evidence, so a
  * change summary, a note and a deliverable that was never written all linked.
@@ -1853,6 +1869,38 @@ const PARITY = [
 		"lazy blockquote continuation, longer",
 		"> Intro\nmore prose\nFiles in ~/out/:\n- a.pdf",
 		[],
+	],
+	/*
+	 * ROUND 3 (review R3-2): an ATX heading is one line and cannot be lazily
+	 * continued, so the introducer straight under it opens its OWN paragraph,
+	 * a sibling of the list - the most common report shape an agent writes.
+	 */
+	[
+		"heading straight above the introducer",
+		"## Deliverables\nFiles are in ~/out/:\n- report.pdf\n- data.pdf",
+		["~/out/report.pdf", "~/out/data.pdf"],
+	],
+	[
+		"heading straight above a code-span introducer",
+		"### Files\nSaved to `/tmp/out/`:\n- a.pdf\n- b.pdf",
+		["/tmp/out/a.pdf", "/tmp/out/b.pdf"],
+	],
+	/* ...while a quote's PARAGRAPH under that heading still folds the line in. */
+	[
+		"heading, then a lazy blockquote continuation",
+		"## Deliverables\n> Intro\nFiles are in ~/out/:\n- report.pdf",
+		[],
+	],
+	/* A quoted heading or break closes the quote: nothing to continue. */
+	[
+		"quoted heading straight above the introducer",
+		"> ## Notes\nFiles are in ~/out/:\n- report.pdf",
+		["~/out/report.pdf"],
+	],
+	[
+		"quoted thematic break straight above the introducer",
+		"> ---\nFiles are in ~/out/:\n- report.pdf",
+		["~/out/report.pdf"],
 	],
 	/* An ordinary wrapped paragraph is NOT a quote: still admitted by both. */
 	[

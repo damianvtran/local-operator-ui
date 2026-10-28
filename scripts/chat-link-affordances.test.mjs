@@ -873,6 +873,113 @@ test("R2-1: message A lists files that do not exist yet; after they are written,
 	rmSync(dir, { recursive: true, force: true });
 });
 
+/** `probeFiles` answered by the real disk, recording every batch it was asked. */
+const diskProbe = (asked) => async (paths) => {
+	asked.push([...paths]);
+	return paths.map((input) => {
+		const exists = existsSync(input);
+		return {
+			input,
+			resolved: input,
+			exists,
+			isFile: exists,
+			sizeBytes: null,
+			mtimeMs: null,
+		};
+	});
+};
+
+test("R3-1: a chain of messages naming one MISSING path re-renders no earlier row", async () => {
+	/*
+	 * THE RE-RENDER STORM, counted in renders rather than asks. Every new
+	 * message re-asks the negatives it names (R2-1), and at round 2's head the
+	 * landing "still missing" was announced to every subscriber - so each
+	 * mounted row naming `/health` re-parsed on every later message: 101
+	 * messages cost 5,151 re-renders. A `React.Profiler` around each row
+	 * counts its UPDATE commits; each row element is created ONCE and reused,
+	 * so React bails out of a row nothing inside changed and only the
+	 * evidence hook's own state bump can commit one.
+	 */
+	const asked = [];
+	frame.window.api = { ...frame.window.api, probeFiles: diskProbe(asked) };
+	const updates = [];
+	const rows = [];
+	const N = 21;
+	for (let k = 0; k < N; k += 1) {
+		updates.push(0);
+		rows.push(
+			React.createElement(
+				React.Profiler,
+				{
+					key: `m${k}`,
+					id: `m${k}`,
+					onRender: (_id, phase) => {
+						if (phase === "update") updates[k] += 1;
+					},
+				},
+				React.createElement(MarkdownRenderer, {
+					content: `Step ${k}: I updated the handler behind /api/v1/users and the /health check.`,
+				}),
+			),
+		);
+		const before = [...updates];
+		await frame.render(React.createElement(React.Fragment, null, ...rows));
+		assert.deepEqual(
+			updates.slice(0, k),
+			before.slice(0, k),
+			`message ${k} re-rendered no earlier row`,
+		);
+	}
+	assert.equal(asked.length, N, "each new message still re-asked once (R2-1)");
+	/*
+	 * Only each row's OWN landing commits it: the first row's answer is new
+	 * information (absent -> missing), so it ticks through both the
+	 * subscription and its own `.then`; every later re-check lands unchanged
+	 * and ticks only the asking row. Linear in the session, never quadratic.
+	 */
+	const total = updates.reduce((sum, count) => sum + count, 0);
+	assert.ok(total <= N + 1, `re-renders over ${N} messages: ${total}`);
+});
+
+test("R3-3b: a later message byte-identical to an earlier one still re-checks", async () => {
+	/*
+	 * Keyed on text alone, the second record's first scan was not a first
+	 * scan: identical text had already been claimed, so it asked nothing and
+	 * both rows stayed plain though the file existed. The transcript now keys
+	 * the claim on `record.id` with the text, through the real
+	 * `CanonicalTranscript` wiring.
+	 */
+	const dir = mkdtempSync(join(tmpdir(), "r3-3b-"));
+	const text = `Files are in \`${dir}/\`:\n- a.pdf`;
+	const asked = [];
+	const transcriptOf = (...ids) => ({
+		records: [
+			record("u1", "user", "Write it."),
+			...ids.map((id) => record(id, "assistant", text)),
+		],
+		index: new Map([["u1", 0], ...ids.map((id, at) => [id, at + 1])]),
+	});
+	const linked = () =>
+		anchorsWithTarget(frame.document, `${dir}/a.pdf`).map((anchor) =>
+			anchor.closest("[data-record-id]")?.getAttribute("data-record-id"),
+		);
+	await mountTranscript({
+		transcript: transcriptOf("a1"),
+		probeFiles: diskProbe(asked),
+	});
+	assert.deepEqual(linked(), [], "a1 paints before the file exists");
+	const afterA = asked.length;
+
+	writeFileSync(join(dir, "a.pdf"), "%PDF-1.4\n");
+	await mountTranscript({
+		transcript: transcriptOf("a1", "a2"),
+		probeFiles: diskProbe(asked),
+	});
+	assert.ok(asked.length > afterA, "the identical second message re-asked");
+	assert.deepEqual(linked(), ["a1", "a2"]);
+	rmSync(dir, { recursive: true, force: true });
+});
+
 test("with no probe bridge the ambiguous tokens stay prose and nothing throws", async () => {
 	/*
 	 * Storybook and browser development have no preload, so `window.api` is absent
@@ -946,8 +1053,10 @@ test("a streaming row scans and asks nothing at all", async () => {
 
 /** Mount the transcript with the fixture, and stub every box it measures. */
 async function mountTranscript(options = {}) {
-	const { transcript = TRANSCRIPT, ...apiOptions } = options;
+	const { transcript = TRANSCRIPT, probeFiles, ...apiOptions } = options;
 	stubApi(frame.window, apiOptions);
+	// A test that needs the REAL disk (review R3-3b) hands its own probe.
+	if (probeFiles) frame.window.api = { ...frame.window.api, probeFiles };
 	/*
 	 * The layout stubs go in BEFORE the mount: the toolbar's buttons carry Radix
 	 * tooltips, which position themselves on mount, and a zero-sized reference
