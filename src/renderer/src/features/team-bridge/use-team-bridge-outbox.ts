@@ -11,11 +11,24 @@ import {
 	type TeamBridgeMessagePage,
 	teamBridgeConversationSchema,
 } from "../../../../shared/team-bridge-contract";
-import { draftAttachment, isAttachmentNotFound, isStagedExpired } from "./team-bridge-attachments-model";
+import {
+	draftAttachment,
+	isAttachmentNotFound,
+	isStagedExpired,
+} from "./team-bridge-attachments-model";
 import { teamBridgeKeys } from "./team-bridge-keys";
-import { type TeamBridgeTarget, draftCreateInput, recipientKey } from "./team-bridge-model";
+import {
+	type TeamBridgeTarget,
+	type draftCreateInput,
+	recipientKey,
+} from "./team-bridge-model";
 import { bridgeOwnerCurrent } from "./team-bridge-owner";
-import { TeamBridgeSendJournal, type TeamBridgeSendAuthority, type TeamBridgeSendEffects, type TeamBridgeSendRow } from "./team-bridge-send-journal";
+import {
+	type TeamBridgeSendAuthority,
+	type TeamBridgeSendEffects,
+	TeamBridgeSendJournal,
+	type TeamBridgeSendRow,
+} from "./team-bridge-send-journal";
 import type { TeamBridgeLocalRowPresentation } from "./team-bridge-send-presentation";
 import type { AttachmentChip } from "./use-team-bridge-attachments";
 
@@ -25,11 +38,16 @@ import type { AttachmentChip } from "./use-team-bridge-attachments";
  * #1334 was reverted by #1353 because pending private bodies crossed accounts.
  * This adapter fences dispatch, every awaited step, and every cache settlement
  * against live auth AND the captured epoch, independently of mounted views. */
-const journals = new WeakMap<QueryClient, TeamBridgeSendJournal<AttachmentChip[]>>();
+const journals = new WeakMap<
+	QueryClient,
+	TeamBridgeSendJournal<AttachmentChip[]>
+>();
 function journalFor(client: QueryClient) {
 	let journal = journals.get(client);
 	if (!journal) {
-		journal = new TeamBridgeSendJournal<AttachmentChip[]>({ now: () => performance.now() });
+		journal = new TeamBridgeSendJournal<AttachmentChip[]>({
+			now: () => performance.now(),
+		});
 		journals.set(client, journal);
 	}
 	return journal;
@@ -38,14 +56,18 @@ function journalFor(client: QueryClient) {
 /** Isolated mounted fixtures reuse the shipped QueryClient singleton. Its cache
  * clear is intentionally NOT an application outbox reset (navigation/auth must
  * not lose unsent work), so fixtures explicitly end their own account journal. */
-export function resetTeamBridgeOutboxAccountForTests(client: QueryClient, accountId: string): void {
+export function resetTeamBridgeOutboxAccountForTests(
+	client: QueryClient,
+	accountId: string,
+): void {
 	journals.get(client)?.clearAccount(accountId, { receipts: true });
 }
 
 export function outboxTargetKey(target: TeamBridgeTarget | null): string {
 	if (!target) return "none";
 	if (target.type === "conversation") return `conversation:${target.id}`;
-	if (target.type === "compose") return `compose:${target.recipients.map(recipientKey).sort().join(",")}`;
+	if (target.type === "compose")
+		return `compose:${target.recipients.map(recipientKey).sort().join(",")}`;
 	return `${target.type}:${target.accountId}`;
 }
 
@@ -121,7 +143,11 @@ function revokeConfirmedPreviews(accountId: string) {
 export function useTeamBridgeOutbox(accountId: string | undefined) {
 	const client = useQueryClient();
 	const journal = journalFor(client);
-	useSyncExternalStore(journal.subscribe, journal.getRevision, journal.getRevision);
+	useSyncExternalStore(
+		journal.subscribe,
+		journal.getRevision,
+		journal.getRevision,
+	);
 	// Owner replacement is a lifetime boundary for PRIVATE rows, not a view
 	// boundary: drafts already erases a replaced account's stored bodies, and
 	// this erases the outgoing rows and pictures in the same transition. The
@@ -146,8 +172,12 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 		let revoked = false;
 		const isCurrent = () => {
 			const live = observedRadientAuthority(client);
-			return !revoked && live.epoch === captured.epoch &&
-				live.accountId === context.accountId && bridgeOwnerCurrent(client, context.accountId);
+			return (
+				!revoked &&
+				live.epoch === captured.epoch &&
+				live.accountId === context.accountId &&
+				bridgeOwnerCurrent(client, context.accountId)
+			);
 		};
 		const assertCurrent = () => {
 			if (!isCurrent()) throw new Error("Team Bridge send authority changed");
@@ -165,10 +195,12 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 				if (remembered) {
 					// Scheduling may have created the group before this send. Resolve
 					// its full receipt rather than creating a second group.
-					if (remembered.tenantId !== context.tenantId) throw new Error("Team Bridge receipt tenant changed");
+					if (remembered.tenantId !== context.tenantId)
+						throw new Error("Team Bridge receipt tenant changed");
 					return TeamBridgeApi.getConversation(remembered.id, context.tenantId);
 				}
-				if (!context.input) throw new Error("Team Bridge send has no recipients");
+				if (!context.input)
+					throw new Error("Team Bridge send has no recipients");
 				return TeamBridgeApi.startConversation({
 					...context.input,
 					tenantId: context.tenantId,
@@ -178,15 +210,23 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 			onCreated: (receipt) => {
 				assertCurrent();
 				const conversation = teamBridgeConversationSchema.parse(receipt);
-				context.remembered.set(context.receiptKey, { id: conversation.id, tenantId: conversation.tenant_id });
+				context.remembered.set(context.receiptKey, {
+					id: conversation.id,
+					tenantId: conversation.tenant_id,
+				});
 				// Seed the active owner-qualified list directly. A list round trip is
 				// never a prerequisite to posting, rendering, or accepting the next send.
 				client.setQueryData<TeamBridgeConversationList>(
 					teamBridgeKeys.conversations(context.tenantId, context.accountId),
-					(old) => ({ ...old, conversations: [
-						...(old?.conversations ?? []).filter((row) => row.id !== conversation.id),
-						conversation,
-					] }),
+					(old) => ({
+						...old,
+						conversations: [
+							...(old?.conversations ?? []).filter(
+								(row) => row.id !== conversation.id,
+							),
+							conversation,
+						],
+					}),
 				);
 			},
 			stage: async (conversation, row) => {
@@ -195,8 +235,14 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 				for (const chip of row.attachments) {
 					assertCurrent();
 					if (chip.attachment && !isStagedExpired(chip.attachment)) continue;
-					if (!chip.prepared) throw new Error("Team Bridge image bytes unavailable");
-					const uploaded = await TeamBridgeApi.uploadAttachment(context.tenantId, conversation.id, chip.prepared.bytes, context.accountId);
+					if (!chip.prepared)
+						throw new Error("Team Bridge image bytes unavailable");
+					const uploaded = await TeamBridgeApi.uploadAttachment(
+						context.tenantId,
+						conversation.id,
+						chip.prepared.bytes,
+						context.accountId,
+					);
 					assertCurrent();
 					chip.attachment = draftAttachment(uploaded, conversation.id);
 				}
@@ -210,7 +256,9 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 						body: row.body,
 						tenantId: context.tenantId,
 						expectedAccountId: context.accountId,
-						attachmentIds: row.attachments.flatMap((chip) => chip.attachment ? [chip.attachment.id] : []),
+						attachmentIds: row.attachments.flatMap((chip) =>
+							chip.attachment ? [chip.attachment.id] : [],
+						),
 					});
 				} catch (error) {
 					assertCurrent();
@@ -233,82 +281,145 @@ export function useTeamBridgeOutbox(accountId: string | undefined) {
 						chip.previewUrl ? [chip.previewUrl] : [],
 					),
 				);
-				const key = teamBridgeKeys.messages(row.conversationId, context.tenantId, context.accountId);
+				const key = teamBridgeKeys.messages(
+					row.conversationId,
+					context.tenantId,
+					context.accountId,
+				);
 				if (row.serverMessage) {
 					const message = row.serverMessage;
 					client.setQueryData<TeamBridgeMessagePage>(key, (old) => ({
 						...old,
-						messages: [...(old?.messages ?? []).filter((item) => item.id !== message.id), message],
+						messages: [
+							...(old?.messages ?? []).filter((item) => item.id !== message.id),
+							message,
+						],
 					}));
 				}
 				// Background owner-qualified invalidations. No mutation promise waits
 				// for history/sidebar/badge reads; each query independently fences its
 				// response before admitting it to the current owner's cache.
 				void client.invalidateQueries({ queryKey: key });
-				void client.invalidateQueries({ queryKey: teamBridgeKeys.conversations(context.tenantId, context.accountId) });
-				void client.invalidateQueries({ queryKey: teamBridgeKeys.unread(context.tenantId, context.accountId) });
+				void client.invalidateQueries({
+					queryKey: teamBridgeKeys.conversations(
+						context.tenantId,
+						context.accountId,
+					),
+				});
+				void client.invalidateQueries({
+					queryKey: teamBridgeKeys.unread(context.tenantId, context.accountId),
+				});
 			},
 			onSettled: unsubscribe,
 		};
 		return { authority, effects, unsubscribe };
 	};
 
-	const enqueue = (context: SendContext, body: string, clientRef: string, chips: readonly AttachmentChip[], sender: TeamBridgeMessage["sender"]) => {
-		if (accountId !== context.accountId) throw new Error("Team Bridge outbox owner changed");
+	const enqueue = (
+		context: SendContext,
+		body: string,
+		clientRef: string,
+		chips: readonly AttachmentChip[],
+		sender: TeamBridgeMessage["sender"],
+	) => {
+		if (accountId !== context.accountId)
+			throw new Error("Team Bridge outbox owner changed");
 		const attempt = capture(context);
 		try {
-			journal.enqueue({
-				authority: attempt.authority, targetKey: context.targetKey,
-				conversationId: context.conversationId, clientRef, body, sender,
-				attachments: chips.map((chip) => ({ ...chip })),
-			}, attempt.effects);
+			journal.enqueue(
+				{
+					authority: attempt.authority,
+					targetKey: context.targetKey,
+					conversationId: context.conversationId,
+					clientRef,
+					body,
+					sender,
+					attachments: chips.map((chip) => ({ ...chip })),
+				},
+				attempt.effects,
+			);
 		} catch (error) {
 			attempt.unsubscribe();
 			throw error;
 		}
 	};
 
-	const presentation = (row: TeamBridgeSendRow<AttachmentChip[]>, context: SendContext): TeamBridgeLocalRowPresentation => ({
+	const presentation = (
+		row: TeamBridgeSendRow<AttachmentChip[]>,
+		context: SendContext,
+	): TeamBridgeLocalRowPresentation => ({
 		clientRef: row.clientRef,
-		state: row.state === "failed" || row.state === "confirmed" ? row.state : "pending",
+		state:
+			row.state === "failed" || row.state === "confirmed"
+				? row.state
+				: "pending",
 		previewUrls:
 			row.state === "confirmed" &&
 			!keepsConfirmedPreview(row.accountId, row.clientRef)
 				? undefined
 				: row.attachments.map((chip) => chip.previewUrl),
 		onRetry: () => {
-			if (accountId !== row.accountId || context.tenantId !== row.tenantId) return;
+			if (accountId !== row.accountId || context.tenantId !== row.tenantId)
+				return;
 			const attempt = capture(context);
 			try {
-				if (!journal.retry(row.clientRef, attempt.authority, attempt.effects)) attempt.unsubscribe();
+				if (!journal.retry(row.clientRef, attempt.authority, attempt.effects))
+					attempt.unsubscribe();
 			} catch {
 				attempt.unsubscribe();
 				// A revoked click is not a new send: retain the failed row and bytes.
 			}
 		},
 		onDiscard: () => {
-			if (accountId !== row.accountId || !bridgeOwnerCurrent(client, row.accountId)) return;
+			if (
+				accountId !== row.accountId ||
+				!bridgeOwnerCurrent(client, row.accountId)
+			)
+				return;
 			if (journal.discard(row.clientRef, row.accountId, row.tenantId))
-				for (const chip of row.attachments) if (chip.previewUrl) revokeBlobUrl(chip.previewUrl);
+				for (const chip of row.attachments)
+					if (chip.previewUrl) revokeBlobUrl(chip.previewUrl);
 		},
 	});
 
 	return {
-		journal, enqueue,
-		conversation: (tenantId: string, targetKey: string): TeamBridgeConversation | null => {
+		journal,
+		enqueue,
+		conversation: (
+			tenantId: string,
+			targetKey: string,
+		): TeamBridgeConversation | null => {
 			if (!accountId) return null;
 			const receipt = journal.getConversation(accountId, tenantId, targetKey);
 			const parsed = teamBridgeConversationSchema.safeParse(receipt);
 			return parsed.success ? parsed.data : null;
 		},
-		project: (context: SendContext, canonical: readonly TeamBridgeMessage[]) => {
-			if (accountId !== context.accountId) return { messages: [], sendRows: new Map<string, TeamBridgeLocalRowPresentation>() };
-			const items = journal.project(accountId, context.tenantId, context.targetKey, context.conversationId, canonical);
+		project: (
+			context: SendContext,
+			canonical: readonly TeamBridgeMessage[],
+		) => {
+			if (accountId !== context.accountId)
+				return {
+					messages: [],
+					sendRows: new Map<string, TeamBridgeLocalRowPresentation>(),
+				};
+			const items = journal.project(
+				accountId,
+				context.tenantId,
+				context.targetKey,
+				context.conversationId,
+				canonical,
+			);
 			const sendRows = new Map<string, TeamBridgeLocalRowPresentation>();
 			const messages = items.map(({ message, row }) => {
 				if (!row) return message;
 				sendRows.set(message.id, presentation(row, context));
-				return { ...message, attachments: row.attachments.length ? row.attachments.map(descriptor) : message.attachments };
+				return {
+					...message,
+					attachments: row.attachments.length
+						? row.attachments.map(descriptor)
+						: message.attachments,
+				};
 			});
 			return { messages, sendRows };
 		},

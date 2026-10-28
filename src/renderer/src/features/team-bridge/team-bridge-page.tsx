@@ -76,7 +76,6 @@ import {
 	railInvitationsEntryShown,
 } from "./team-bridge-invitations-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
-import type { TeamBridgeLocalRowPresentation } from "./team-bridge-send-presentation";
 import {
 	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -142,6 +141,7 @@ import {
 	scheduleTeamBridgeDraft,
 	scheduledTargetAfterSuccess,
 } from "./team-bridge-scheduling";
+import type { TeamBridgeLocalRowPresentation } from "./team-bridge-send-presentation";
 import {
 	TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD,
 	teamBridgeThreadsAvailable,
@@ -170,12 +170,12 @@ import {
 	useTeamBridgeUnread,
 	useUnarchiveTeamBridgeConversation,
 } from "./use-team-bridge";
-import { outboxTargetKey, useTeamBridgeOutbox } from "./use-team-bridge-outbox";
 import {
 	type AttachmentChip,
 	useTeamBridgeAttachments,
 } from "./use-team-bridge-attachments";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
+import { outboxTargetKey, useTeamBridgeOutbox } from "./use-team-bridge-outbox";
 
 /**
  * The Team Bridge page: a Slack-shaped rail, a thread and a composer.
@@ -907,7 +907,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		? sections.directs
 		: unmatchedDirects(sections.directs, people, chiefs, selfAccountId);
 
-	const selected = resolvedConversation ?? targetConversation(target, selectable, selfAccountId);
+	const selected =
+		resolvedConversation ??
+		targetConversation(target, selectable, selfAccountId);
 	const previewSelected = selected !== null && isPreviewConversation(selected);
 	const selectedOrganizationName = selected
 		? conversationOrganizationName(selected, organizations)
@@ -1059,7 +1061,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// A draft adopting its real conversation is the SAME displayed stream. Keep
 	// the viewport and arrival lifetime keyed to the user's selection, not a
 	// server id that is absent on the first frame.
-	const timelineArrivalKey = JSON.stringify([selfAccountId, draftTenant, target]);
+	const timelineArrivalKey = JSON.stringify([
+		selfAccountId,
+		draftTenant,
+		target,
+	]);
 	/*
 	 * AN EMPTY CONVERSATION IS OPEN WHILE IT IS ON SCREEN, AND ONLY THEN
 	 * (review round 1, A3). This branch renders the empty paragraph instead of
@@ -2839,11 +2845,12 @@ const TeamBridgeOwnedPage: FC<{
 	 * sat over "No messages yet. Say hello.", which contradicted the confirm's
 	 * promise that members keep read access.
 	 */
-	const selected = targetConversation(
-		target,
-		selectableConversations(visibleConversations, archivedRows),
-		selfAccountId,
-	) ?? outbox.conversation(scope, outboxTargetKey(target));
+	const selected =
+		targetConversation(
+			target,
+			selectableConversations(visibleConversations, archivedRows),
+			selfAccountId,
+		) ?? outbox.conversation(scope, outboxTargetKey(target));
 	const previewSelected = selected !== null && isPreviewConversation(selected);
 	// Every thread read and write names the SELECTED conversation's tenant, not
 	// the rail scope, so a merged-view row can never be read under another org.
@@ -2922,7 +2929,9 @@ const TeamBridgeOwnedPage: FC<{
 	// Scheduling and immediate sends share already-created receipts. The outbox's
 	// per-target in-flight promise coalesces rapid sends before that receipt exists.
 	const receiptOwner = accountId ?? "unresolved-owner";
-	const receiptMap = receipts.get(receiptOwner) ?? new Map<string, { id: string; tenantId: string | undefined }>();
+	const receiptMap =
+		receipts.get(receiptOwner) ??
+		new Map<string, { id: string; tenantId: string | undefined }>();
 	receipts.set(receiptOwner, receiptMap);
 	const createdForDraft = { current: receiptMap };
 	const targetRef = useRef(target);
@@ -2939,9 +2948,10 @@ const TeamBridgeOwnedPage: FC<{
 		remembered: receiptMap,
 		receiptKey: `${sendTenant}|${input?.kind ?? "existing"}|${recipients.map(recipientKey).sort().join(",")}`,
 	};
-	const projected = accountId && target && sendTenant !== TEAM_BRIDGE_ALL_SCOPE
-		? outbox.project(sendContext, messages.data?.messages ?? [])
-		: { messages: messages.data?.messages ?? [], sendRows: undefined };
+	const projected =
+		accountId && target && sendTenant !== TEAM_BRIDGE_ALL_SCOPE
+			? outbox.project(sendContext, messages.data?.messages ?? [])
+			: { messages: messages.data?.messages ?? [], sendRows: undefined };
 
 	/*
 	 * A COMPOSE DRAFT BECOMES ITS NEW GROUP once the create lands, as before, so
@@ -2965,11 +2975,33 @@ const TeamBridgeOwnedPage: FC<{
 	// replaces its slot rather than sorting the thread by its newly assigned seq.
 	useLayoutEffect(() => {
 		if (accountId && target && sendTenant !== TEAM_BRIDGE_ALL_SCOPE)
-			outbox.journal.observe(accountId, sendTenant, outboxTargetKey(target), selected?.id, messages.data?.messages ?? []);
-	}, [accountId, sendTenant, target, selected?.id, messages.data, outbox.journal]);
+			outbox.journal.observe(
+				accountId,
+				sendTenant,
+				outboxTargetKey(target),
+				selected?.id,
+				messages.data?.messages ?? [],
+			);
+	}, [
+		accountId,
+		sendTenant,
+		target,
+		selected?.id,
+		messages.data,
+		outbox.journal,
+	]);
 
-	const sendBody: TeamBridgePageViewProps["onSend"] = (body, clientRef, attachments) => {
-		if (!isCurrentOwner() || !accountId || sendTenant === TEAM_BRIDGE_ALL_SCOPE || (!selected && !input))
+	const sendBody: TeamBridgePageViewProps["onSend"] = (
+		body,
+		clientRef,
+		attachments,
+	) => {
+		if (
+			!isCurrentOwner() ||
+			!accountId ||
+			sendTenant === TEAM_BRIDGE_ALL_SCOPE ||
+			(!selected && !input)
+		)
 			throw new Error("Team Bridge write authority or destination unavailable");
 		// Synchronous journal append, then return: the view clears/focuses in this
 		// event. Create, staging and POST are serialized off the critical path for

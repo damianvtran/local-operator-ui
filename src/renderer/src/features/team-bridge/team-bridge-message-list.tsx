@@ -2,7 +2,13 @@ import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, UserRound } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useState,
+} from "react";
 import type { FC } from "react";
 import type {
 	TeamBridgeDirectoryMember,
@@ -201,7 +207,11 @@ export const TeamBridgeMessageList: FC<{
 				: messages,
 		[messages, sendRows],
 	);
-	const arriving = useArrivingRows(arrivalKey, arrivalMessages, arrivalsEnabled);
+	const arriving = useArrivingRows(
+		arrivalKey,
+		arrivalMessages,
+		arrivalsEnabled,
+	);
 	const items = threadItems(messages, new Date(), sendRows !== undefined);
 	return (
 		<ol className="mt-auto flex flex-col pt-4 pb-2">
@@ -275,13 +285,13 @@ const DayDivider: FC<{
  * the row around the inline retry/discard targets. */
 const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 	<span className="inline-flex min-h-6 flex-wrap items-baseline gap-x-2 text-[12px] text-ink-muted">
-		<span role="status">
+		<output>
 			{row.state === "failed"
 				? t("ui.teamBridge.message.failed")
 				: row.state === "pending"
 					? t("ui.teamBridge.message.sending")
 					: null}
-		</span>
+		</output>
 		{row.state === "failed" && row.onRetry && (
 			<button
 				type="button"
