@@ -9096,6 +9096,7 @@ export type MessageParams = {
 	"ui.teamBridge.thread.intro_group": { names: string };
 	"ui.teamBridge.thread.intro_person": { name: string };
 	"ui.teamBridge.thread.loading": undefined;
+	"ui.teamBridge.thread.not_available": undefined;
 	"ui.teamBridge.thread.today": undefined;
 	"ui.teamBridge.thread.withheld": undefined;
 	"ui.teamBridge.thread.yesterday": undefined;

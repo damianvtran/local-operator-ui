@@ -14,6 +14,7 @@
 	"ui.teamBridge.thread.loading": "正在加载消息",
 	"ui.teamBridge.thread.error": "无法加载消息。",
 	"ui.teamBridge.thread.empty": "还没有消息。打个招呼吧。",
+	"ui.teamBridge.thread.not_available": "你无法打开此对话。你可能不是对话成员，也可能该对话已归档。",
 	"ui.teamBridge.composer.placeholder": "给此对话发消息",
 	"ui.teamBridge.composer.send": "发送",
 	"ui.teamBridge.composer.hint": "按Enter发送，按Shift+Enter换行。",

@@ -14,6 +14,7 @@
 	"ui.teamBridge.thread.loading": "Chargement des messages",
 	"ui.teamBridge.thread.error": "Les messages n’ont pas pu être chargés.",
 	"ui.teamBridge.thread.empty": "Aucun message pour l’instant. Dites bonjour.",
+	"ui.teamBridge.thread.not_available": "Cette conversation ne vous est pas accessible. Il se peut que vous n’en soyez pas membre ou qu’elle ait été archivée.",
 	"ui.teamBridge.composer.placeholder": "Écrire dans cette conversation",
 	"ui.teamBridge.composer.send": "Envoyer",
 	"ui.teamBridge.composer.hint": "Entrée pour envoyer, Maj+Entrée pour un saut de ligne.",

@@ -2016,6 +2016,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									<p className="px-5 py-8 text-[13px] text-ink-muted">
 										{t("ui.teamBridge.scope.thread_unknown")}
 									</p>
+								) : target?.type === "conversation" &&
+									shown === null &&
+									listState === "ready" ? (
+									/*
+									 * An addressed conversation id that is NOT in the caller's own list.
+									 * This is not an empty thread. The list only carries conversations the
+									 * CALLER participates in, so the honest answers are "not a member" and
+									 * "archived" — and rendering the draft intro here told a reader "this is
+									 * the beginning of your direct message history" about a DM of six
+									 * messages (team-bridge report, 2026-10-28). Say the plain fact and leave
+									 * the composer closed: `canCompose` is already false for this target.
+									 */
+									<p className="px-5 py-8 text-[13px] text-ink-muted">
+										{t("ui.teamBridge.thread.not_available")}
+									</p>
 								) : shown === null ? (
 									/*
 									 * No thread yet: an addressed, empty draft, introduced the way

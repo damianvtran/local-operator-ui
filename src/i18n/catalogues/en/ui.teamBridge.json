@@ -14,6 +14,7 @@
 	"ui.teamBridge.thread.loading": "Loading messages",
 	"ui.teamBridge.thread.error": "Messages could not be loaded.",
 	"ui.teamBridge.thread.empty": "No messages yet. Say hello.",
+	"ui.teamBridge.thread.not_available": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
 	"ui.teamBridge.composer.placeholder": "Message this conversation",
 	"ui.teamBridge.composer.send": "Send",
 	"ui.teamBridge.composer.hint": "Enter to send, Shift+Enter for a new line.",
