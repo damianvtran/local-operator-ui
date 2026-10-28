@@ -18,6 +18,7 @@
  * the mapping in both directions is the whole file.
  */
 
+import { t } from "@shared/i18n";
 import {
 	type DaemonPairing,
 	type DaemonPairingCause,
@@ -85,13 +86,20 @@ export type ChatStatusDisplay = {
  * mistake `serverBannerCopy` was written to end. The state machine the app reads
  * distinguishes the two (`connectivityIssue`), so the strip must too.
  */
-export const CHAT_STATUS_COPY = {
-	unreachable: "Can't reach the Local Operator server. Sending will wait.",
-	"credential-refused":
-		"The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.",
-	degraded: "The server is answering slowly. Your messages are queued.",
-	"internet-offline": "This machine is offline. Sending will wait.",
+/* Each root cause's sentence is read from the catalogue AT CALL TIME, so this
+ * table is a function rather than a const: a module-level object would freeze the
+ * locale the process started in, and a language switch would leave the strip
+ * speaking the old one until something else repainted it. */
+const CHAT_STATUS_KEY = {
+	unreachable: "ui.chat.status.unreachable",
+	"credential-refused": "ui.chat.status.credential_refused",
+	degraded: "ui.chat.status.degraded",
+	"internet-offline": "ui.chat.status.internet_offline",
 } as const satisfies Record<ChatStatusKind, string>;
+
+/** The one sentence per root cause, in the active locale. */
+export const chatStatusCopy = (kind: ChatStatusKind): string =>
+	t(CHAT_STATUS_KEY[kind]);
 
 /**
  * The shape `serverBannerCopy` reads, filled from the record this module is
@@ -213,7 +221,7 @@ export function chatStatusDisplay(
 			cause: "credential-refused",
 			role: "alert",
 			wash: "danger-wash",
-			title: CHAT_STATUS_COPY["credential-refused"],
+			title: chatStatusCopy("credential-refused"),
 			detail: serverBannerCopy(snapshotOf(server))?.detail ?? null,
 			/*
 			 * RETRY, NOT `Sign in`, and this is a departure from §F2's table that the
@@ -226,7 +234,7 @@ export function chatStatusDisplay(
 			 * reader WHY their credential was refused.
 			 */
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: t("ui.common.actions.retry"),
 			dot: "danger",
 		};
 	}
@@ -243,10 +251,10 @@ export function chatStatusDisplay(
 			kind: "internet-offline",
 			role: "status",
 			wash: "warning-wash",
-			title: CHAT_STATUS_COPY["internet-offline"],
+			title: chatStatusCopy("internet-offline"),
 			detail: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: t("ui.common.actions.retry"),
 			dot: "warning",
 		};
 	}
@@ -275,10 +283,10 @@ export function chatStatusDisplay(
 			kind: "degraded",
 			role: "status",
 			wash: "warning-wash",
-			title: CHAT_STATUS_COPY.degraded,
+			title: chatStatusCopy("degraded"),
 			detail: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: t("ui.common.actions.retry"),
 			dot: "warning",
 		};
 	}
@@ -323,12 +331,12 @@ export function chatStatusDisplay(
 			kind: "unreachable",
 			role: "alert",
 			wash: "danger-wash",
-			title: CHAT_STATUS_COPY.unreachable,
+			title: chatStatusCopy("unreachable"),
 			detail: server
 				? (serverBannerCopy(snapshotOf(server))?.detail ?? null)
 				: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: t("ui.common.actions.retry"),
 			dot: "danger",
 		};
 	}

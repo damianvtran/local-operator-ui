@@ -43,6 +43,8 @@ const bundle = await build({
 	// with react held external.
 	alias: {
 		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+		"@shared/i18n/use-locale": "./src/renderer/src/shared/i18n/use-locale.ts",
 		"@features": "./src/renderer/src/features",
 	},
 	mainFields: ["module", "main"],

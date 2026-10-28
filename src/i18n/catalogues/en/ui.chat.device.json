@@ -12,5 +12,16 @@
 	"ui.chat.device.sentence.moving": "Moving this conversation to {name}.",
 	"ui.chat.device.sentence.remote": "This conversation runs on {name}. Click to recall it here or move it on.",
 	"ui.chat.device.sentence.remote_did_not_answer": "This conversation runs on {name}, which did not answer the last read.",
-	"ui.chat.device.sentence.remote_did_not_answer_reason": "This conversation runs on {name}, which did not answer the last read ({reason})."
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "This conversation runs on {name}, which did not answer the last read ({reason}).",
+	"ui.chat.device.fact.this_device": "this device",
+	"ui.chat.device.footer.move_deletes_copy": "The copy on this device is deleted when the move commits.",
+	"ui.chat.device.label.this_device": "This device",
+	"ui.chat.device.notice.move_hold_detail": "handing off · it continues there; this cannot be stopped from here",
+	"ui.chat.device.picker.heading.move": "Move this conversation to",
+	"ui.chat.device.picker.heading.start": "Start the conversation on",
+	"ui.chat.device.row.conversations": "{count, plural, one {{count, number, ::group-off} conversation} other {{count, number, ::group-off} conversations}}",
+	"ui.chat.device.row.not_here_why": "the conversation is not here to move; recall it here first",
+	"ui.chat.device.sentence.mesh_read_failure": "The device list could not be read, so this is what the last answer holds.",
+	"ui.chat.device.sentence.move_in_flight": "This conversation is moving to {name}. It continues there; nothing sent from here would be delivered.",
+	"ui.chat.device.sentence.pairing_guidance": "This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'`."
 }

@@ -28,5 +28,8 @@
 	"ui.agents.config.summary.no_changes": "本次运行仅作出回复，未更改任何智能体或团队。",
 	"ui.agents.config.summary.nothing_else": "本次运行未更改其他内容。",
 	"ui.agents.config.summary.updated": "已更新{name}",
-	"ui.agents.config.summary.you_asked": "你的请求：{topic}"
+	"ui.agents.config.summary.you_asked": "你的请求：{topic}",
+	"ui.agents.config.banner.unavailable": "无法连接后端，因此输入框暂时不可用。",
+	"ui.agents.config.disabled_gate": "通过对话配置智能体",
+	"ui.agents.config.run_details_region": "运行详情"
 }

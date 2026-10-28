@@ -54,6 +54,10 @@ const IDENTICAL_OK = new Map([
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
 	],
 	[
+		"fr:ui.teamBridge.invitations.title",
+		"Shared UI term: the French noun is spelled identically (« Invitations »); scoped to fr so other locales still translate it",
+	],
+	[
 		"ui.notifications.row.chip.repeat",
 		// `×{count}`: the repeat chip on a collapsed reel row (notifications design
 		// section 4). A multiplication sign and a placeholder, no words; its context
@@ -1304,6 +1308,14 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.hub.teams.brief.trigger",
 		"French noun « brief » has the same spelling; the namespace's long forms are « Brief de collaboration » / « Brief de projet » and its aria is « Voir le brief de {name} »",
+	],
+	[
+		"fr:ui.chat.pickers.slash.phase.arguments",
+		"French command-line term « Arguments » has the same spelling; it labels the slash command's argument phase",
+	],
+	[
+		"fr:ui.common.layout.toasts.notifications",
+		"French plural « Notifications » has the same spelling; the toast region's own accessible name",
 	],
 ]);
 

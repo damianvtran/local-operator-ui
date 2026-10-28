@@ -28,5 +28,8 @@
 	"ui.agents.config.summary.no_changes": "रन ने कोई एजेंट या टीम बदले बिना जवाब दिया।",
 	"ui.agents.config.summary.nothing_else": "इस रन से और कुछ नहीं बदला।",
 	"ui.agents.config.summary.updated": "{name} अपडेट किया गया",
-	"ui.agents.config.summary.you_asked": "आपने पूछा: {topic}"
+	"ui.agents.config.summary.you_asked": "आपने पूछा: {topic}",
+	"ui.agents.config.banner.unavailable": "बैकएंड तक नहीं पहुँच सके, इसलिए कम्पोज़र फ़िलहाल उपलब्ध नहीं है।",
+	"ui.agents.config.disabled_gate": "बातचीत के ज़रिए एजेंट कॉन्फ़िगर होते हैं",
+	"ui.agents.config.run_details_region": "रन विवरण"
 }

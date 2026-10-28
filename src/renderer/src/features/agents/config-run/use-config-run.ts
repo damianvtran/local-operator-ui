@@ -1025,7 +1025,7 @@ export function useConfigRun(): ConfigRunHandle {
 		: capabilities.isLoading
 			? "Connecting to the backend…"
 			: capabilities.error
-				? "The backend could not be reached, so the composer is unavailable for now."
+				? t("ui.agents.config.banner.unavailable")
 				: "Ask for a change needs a newer backend. Update Local Operator to configure agents by conversation.";
 
 	return {

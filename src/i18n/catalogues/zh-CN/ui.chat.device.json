@@ -8,9 +8,20 @@
 	"ui.chat.device.sentence.draft_here": "新对话在此设备上创建。点击可选择其他设备。",
 	"ui.chat.device.sentence.gone": "此对话已移至{name}。此处的副本已删除。点击可将其带回此处。",
 	"ui.chat.device.sentence.gone_did_not_answer": "此对话已移至{name}，但该设备未响应上次读取。此处的副本已删除。点击可将其带回此处。",
-	"ui.chat.device.sentence.local": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后召回。",
+	"ui.chat.device.sentence.local": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。",
 	"ui.chat.device.sentence.moving": "正在将此对话移至{name}。",
 	"ui.chat.device.sentence.remote": "此对话在{name}上运行。点击可将其移回此处，或继续迁移。",
 	"ui.chat.device.sentence.remote_did_not_answer": "此对话在{name}上运行，但该设备未响应上次读取。",
-	"ui.chat.device.sentence.remote_did_not_answer_reason": "此对话在{name}上运行，但该设备未响应上次读取（{reason}）。"
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "此对话在{name}上运行，但该设备未响应上次读取（{reason}）。",
+	"ui.chat.device.fact.this_device": "此设备",
+	"ui.chat.device.footer.move_deletes_copy": "迁移完成后，此设备上的副本将被删除。",
+	"ui.chat.device.label.this_device": "此设备",
+	"ui.chat.device.notice.move_hold_detail": "移交中 · 对话将在该设备上继续；无法从此处中止",
+	"ui.chat.device.picker.heading.move": "将此对话迁移到哪个设备",
+	"ui.chat.device.picker.heading.start": "在哪个设备上开始对话",
+	"ui.chat.device.row.conversations": "{count, plural, other {{count, number, ::group-off}个对话}}",
+	"ui.chat.device.row.not_here_why": "对话不在此处，无法迁移；先将其移回此处",
+	"ui.chat.device.sentence.mesh_read_failure": "无法读取设备列表，以下内容来自上次应答。",
+	"ui.chat.device.sentence.move_in_flight": "此对话正在迁移至{name}，并将在该设备上继续；从此处发送的任何内容都不会送达。",
+	"ui.chat.device.sentence.pairing_guidance": "此设备未加入任何网络。使用`lop network init`创建网络，或使用`lop network join '<token>'`加入。"
 }

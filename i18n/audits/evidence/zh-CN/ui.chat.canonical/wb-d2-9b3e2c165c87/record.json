@@ -1,0 +1,91 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-record",
+	"audit_kind": "independent-delta-audit-of-the-wave-b-remediation-head",
+	"batch": "wave-b",
+	"round": "R2 (remediation delta)",
+	"audit_id": "wb-d2-9b3e2c165c87",
+	"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+	"locale": "zh-CN",
+	"namespace": "ui.chat.canonical",
+	"audit_date": "2026-10-27",
+	"head": "a5356ce91c",
+	"head_full": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+	"parent_full": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+	"key_count": 68,
+	"wave_b_keys": 8,
+	"changed_keys": [],
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "9b3e2c165c87",
+		"model": "radient/auto",
+		"model_provenance": {
+			"route": "radient/auto",
+			"route_source": "the harness system prompt of this session ('Model: radient/auto')",
+			"fallback_used": false,
+			"fallback_chain": [],
+			"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/9b3e2c165c87/transcript.jsonl, 264 events, types message/custom only); the phrase occurs only inside prompt text that quotes the guidance itself. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports.",
+			"disclosure": "Every judgement below was made in this session under the recorded route; no model change was requested or observed."
+		},
+		"independent_from_translator_session": true,
+		"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/9b3e2c165c87/transcript.jsonl, 264 events, types message/custom only); the phrase occurs only inside prompt text that quotes the guidance itself. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports."
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"model_note": "router alias recorded by the coordinator for the reply lane; the upstream model is not exposed to the auditor. Disclosed rather than guessed.",
+		"date": "2026-10-27"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+			"sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+			"sha256": "ea13112039dfed41998801904ccc88531f87452a7e3d7138ab09a5f48f9e65b2"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+			"sha256": "b1a3c93999622d6f2538e9252e8e17a4109f3c612525e3891f48f3db2fe0ffbc"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/wb-d2-9b3e2c165c87/audit.log",
+			"sha256": "25b1e176ec345ef4b531d9886a34f32aaff4d311be9fd89b1a26b30f569c0d34"
+		},
+		{
+			"path": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+			"sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d"
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean",
+		"unresolved_blocker_major_count": 0,
+		"severity_counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		},
+		"finding_ids": [],
+		"independent_of_translator": true
+	},
+	"delta": {
+		"changed_keys": [],
+		"unchanged_wave_b_values": 8,
+		"note": "Parsed-JSON diff 0559f7f7d8 -> a5356ce91c proves this file's other values are byte-identical to the audited bytes (delta-diff.log); the changed values are audited in audit.log §1-2."
+	},
+	"resolutions": [],
+	"findings": [],
+	"next_action": "None: no finding in this namespace.",
+	"limitations": [
+		"No browser or rendered frame was available, so no pixel, truncation or overflow claim is made; widths are codepoint cell counts, not measurements.",
+		"No native-speaker sign-off is claimed; the audit is an independent agent read of the locale against its own shipped catalogue, the glossary and the style guide.",
+		"Pre-existing keys in the nine files were read as terminology evidence, not re-audited, except where a finding names one (ZH-WBD-1).",
+		"The English copy was read as the source, not audited as English; the one English change (the closed code span) was verified only for what it does to both locales through the formatter.",
+		"The upstream model behind the radient/auto route is not exposed to this session; the recorded route is the harness's own."
+	]
+}

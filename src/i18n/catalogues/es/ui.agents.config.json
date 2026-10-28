@@ -28,5 +28,8 @@
 	"ui.agents.config.summary.no_changes": "La ejecución respondió sin cambiar ningún agente ni equipo.",
 	"ui.agents.config.summary.nothing_else": "Esta ejecución no cambió nada más.",
 	"ui.agents.config.summary.updated": "Actualizado {name}",
-	"ui.agents.config.summary.you_asked": "Pediste: {topic}"
+	"ui.agents.config.summary.you_asked": "Pediste: {topic}",
+	"ui.agents.config.banner.unavailable": "No se pudo contactar con el backend, así que el cuadro de mensaje no está disponible por ahora.",
+	"ui.agents.config.disabled_gate": "Los agentes se configuran por conversación",
+	"ui.agents.config.run_details_region": "Detalles de ejecución"
 }

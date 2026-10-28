@@ -18,6 +18,15 @@ import { z } from "zod";
 
 const id = z.string().min(1).max(128);
 
+/**
+ * The code a renderer write carries when this runtime cannot bind it to its
+ * owner (`teamBridgeWriteOwner`: no `team_bridge_conversation_owner_guard`).
+ * A retry cannot change that answer, so callers map it to "update the app"
+ * rather than to a retryable failure (D5 review round 1, R7).
+ */
+export const TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE =
+	"team_bridge_owner_guard_unavailable";
+
 export const teamBridgeParticipantSchema = z
 	.object({
 		account_id: id,

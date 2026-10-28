@@ -28,5 +28,8 @@
 	"ui.agents.config.summary.no_changes": "رن نے کسی ایجنٹ یا ٹیم کو بدلے بغیر جواب دیا۔",
 	"ui.agents.config.summary.nothing_else": "اس رن نے اور کچھ نہیں بدلا۔",
 	"ui.agents.config.summary.updated": "اپ ڈیٹ کیا گیا {name}",
-	"ui.agents.config.summary.you_asked": "آپ کی درخواست: {topic}"
+	"ui.agents.config.summary.you_asked": "آپ کی درخواست: {topic}",
+	"ui.agents.config.banner.unavailable": "بیک اینڈ تک رسائی نہیں ہو سکی، اس لیے کمپوزر فی الحال دستیاب نہیں ہے۔",
+	"ui.agents.config.disabled_gate": "ایجنٹس کی ترتیب گفتگو کے ذریعے ہوتی ہے",
+	"ui.agents.config.run_details_region": "رن کی تفصیلات"
 }
