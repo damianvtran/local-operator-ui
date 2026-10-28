@@ -1201,6 +1201,33 @@ jobs:
           VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
           VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
 
+          # THE HEAP CEILING `publish.yml` ALREADY CARRIES, for the same build.
+          # `npm pack` runs the prepack script (`pnpm run build:npm` ->
+          # `electron-vite build`), and on Node 22's default ~2 GB heap the renderer
+          # pass aborts on macos-latest: run 40628162002 (8c5c5b23, 2026-10-28
+          # 03:41Z), job 122634096939, logged `7694 modules transformed`, then
+          # `rendering chunks...` and `Mark-Compact 1961.6 (2075.3) -> 1930.9
+          # (2050.0) MB`, `FATAL ERROR: Ineffective mark-compacts near heap limit
+          # Allocation failed - JavaScript heap out of memory`, `Abort trap: 6` on
+          # `npm pack`, exit 134. Same signature in runs 40625952174 (a22fd4bf, job
+          # 122625611670) and 40567859580 (cbc7ddbe, job 122430145666), on Node
+          # 22.23.4 and 22.23.3 respectively.
+          #
+          # The cause is not proven: the last green main run of this same job
+          # (40594559669, 1a707a36) packed a 36.3 MB unpacked tarball through this
+          # same path, so either the renderer's growth erodes the default heap's
+          # headroom or the runner draw varies. 4096 MB is a CEILING, not an
+          # allocation: it sits inside the ~7 GB macOS runner and only stops the
+          # default limit aborting a build that would otherwise fit.
+          #
+          # Bound on this step, not the job, because only this step builds: the npx
+          # launch and asks-regression steps below run the packed app and keep a
+          # user's environment. The ubuntu leg shares the step and stays under the
+          # default 2 GB (job 122634096771 succeeded in that run), so the ceiling
+          # only widens headroom there. This workflow sets no other NODE_OPTIONS
+          # for this to overwrite.
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
         # npm pack triggers the prepack script, which builds the npm-channel
         # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
         # here: it would emit bytecode that prepack then overwrites, which is
