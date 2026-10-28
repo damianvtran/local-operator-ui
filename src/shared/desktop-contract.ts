@@ -4691,7 +4691,7 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message:
-						"A hub action addresses one item by name or local id, never both",
+						"A hub action addresses one item by name or local id, never both", // i18n: ignore request-schema diagnostic
 					path: ["localId"],
 				});
 				return;
@@ -4720,7 +4720,7 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message:
-						"Confirming a source requires its exact stated destination and the unknown-baseline acknowledgement, addressed by name, with no preference",
+						"Confirming a source requires its exact stated destination and the unknown-baseline acknowledgement, addressed by name, with no preference", // i18n: ignore request-schema diagnostic
 					path: ["hubSource"],
 				});
 				return;

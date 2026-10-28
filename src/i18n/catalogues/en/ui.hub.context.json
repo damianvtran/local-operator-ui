@@ -918,5 +918,20 @@
 		"role": "status",
 		"tone": "plain; explains a refusal without blaming the reader",
 		"note": "Older-core name addressing only: two loaded rows share a display name case-insensitively, and core's name arm matches every one of them, so a direct apply/retry would write both. No placeholders; the item's detail view is where the fix is."
+	},
+	"ui.hub.links.incoming_needs_review": {
+		"role": "status",
+		"tone": "plain, precise; a conflict is a decision, not an error",
+		"note": "Shown in the incoming preview dialog for a needs-review dry run: a field conflict or an unacknowledged unknown baseline. No placeholders; core's own message follows per report, and the prefer choices and the acknowledgement sit below this line."
+	},
+	"ui.hub.links.incoming_unknown_baseline": {
+		"role": "status",
+		"tone": "plain; explains an unknown baseline without naming a CLI flag",
+		"note": "Replaces core's unknown-baseline message, which names the CLI option --accept-unknown-baseline (merge.py) and means nothing in the desktop window. The control it describes is the dialogue's acknowledgement checkbox."
+	},
+	"ui.hub.links.incoming_failed": {
+		"role": "status",
+		"tone": "plain; states a failure without promising a next step",
+		"note": "Inline sentence for a dry run that could not finish (unavailable/failed/skipped). {outcome} is core's stable vocabulary and is not translated; core's own message is shown beneath it verbatim."
 	}
 }

@@ -5690,8 +5690,11 @@ export type MessageParams = {
 		autoPush: string;
 	};
 	"ui.hub.links.hub_id": { address: string };
+	"ui.hub.links.incoming_failed": { outcome: string };
+	"ui.hub.links.incoming_needs_review": undefined;
 	"ui.hub.links.incoming_nothing": { outcome: string };
 	"ui.hub.links.incoming_outcome": { item: string; outcome: string };
+	"ui.hub.links.incoming_unknown_baseline": undefined;
 	"ui.hub.links.last_success": { time: string };
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
