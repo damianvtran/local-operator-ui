@@ -42,6 +42,7 @@ import {
 	useEffect,
 	useMemo,
 	useRef,
+	useState,
 	useSyncExternalStore,
 } from "react";
 import type {
@@ -60,6 +61,7 @@ import {
 } from "./notification-operations";
 import {
 	applyConfirmedToWindow,
+	dismissPlan,
 	editFactsForWrite,
 	isNewerNotification,
 	mergeWindowForReel,
@@ -226,6 +228,7 @@ export function useNotificationsList(
 	useNotificationsFeedInvalidation();
 	const { client } = useOptionalQueryClient();
 	const facts = useNotificationsFacts(state, enabled);
+	const [windowResetAt, setWindowResetAt] = useState(0);
 	const answer = useInfiniteQuery({
 		queryKey: notificationKeys.list(state),
 		enabled,
@@ -285,6 +288,9 @@ export function useNotificationsList(
 			facts.dataUpdatedAt as number,
 		),
 		newerCount: merged?.newerCount ?? 0,
+		// Only an explicit page-one reset moves the viewport; pagination and facts
+		// updates keep the operator's deep scroll position.
+		windowResetAt,
 		/** Back to top: page one again, with fresh facts, so the pill clears. */
 		/*
 		 * BACK TO TOP RESETS PAGE ONE (code round 8, Q13). Invalidating the window key
@@ -292,6 +298,7 @@ export function useNotificationsList(
 		 * one with fresh facts - and the pill's count is cleared with them.
 		 */
 		resetToTop: () => {
+			setWindowResetAt((at) => at + 1);
 			void client?.resetQueries({ queryKey: notificationKeys.list(state) });
 			return facts.refetch();
 		},
@@ -1516,7 +1523,7 @@ export async function previewNotificationSelection(
  * fetched: compact counts cannot identify which individual revisions skipped.
  */
 
-export function useNotificationBulkState() {
+export function useNotificationBulkState(onResetWindows?: () => void) {
 	const { client } = useOptionalQueryClient();
 	const operations = useRef(
 		new Map<
@@ -1564,9 +1571,10 @@ export function useNotificationBulkState() {
 	 */
 	const resetWindows = useCallback(() => {
 		if (!client) return;
-		void client.resetQueries({ queryKey: notificationKeys.listRoot });
+		if (onResetWindows) onResetWindows();
+		else void client.resetQueries({ queryKey: notificationKeys.listRoot });
 		void client.resetQueries({ queryKey: notificationKeys.sessionsRoot });
-	}, [client]);
+	}, [client, onResetWindows]);
 	const apply = useCallback(
 		async (
 			verb: "read" | "unread" | "dismiss",
@@ -1625,13 +1633,23 @@ export function useNotificationBulkState() {
 		): Promise<{
 			receipts: NotificationBulkReceipt[];
 			pending: number;
+			skippedAsks: number;
 			error?: unknown;
 		}> => {
 			operations.current.clear();
+			/*
+			 * The caller's button check belongs to an earlier render. Filter the actual
+			 * frozen array at this last client boundary too, so an ask that arrived after
+			 * that check can never be sent to notifications.dismiss. Keep the caller's
+			 * requested 500-item batch boundaries; removing asks only shrinks a batch.
+			 */
+			const plan = verb === "dismiss" ? dismissPlan(items) : null;
+			const targets = plan?.dismissable ?? items;
+			const skippedAsks = plan?.asksStaying ?? 0;
 			const receipts: NotificationBulkReceipt[] = [];
 			const reconciliation = reconcileIds(visibleIds);
-			for (let offset = 0; offset < items.length; offset += 500) {
-				const batch = items.slice(offset, offset + 500);
+			for (let offset = 0; offset < targets.length; offset += 500) {
+				const batch = targets.slice(offset, offset + 500);
 				const intent = await beginOptimisticWrite(
 					client,
 					verb,
@@ -1660,10 +1678,15 @@ export function useNotificationBulkState() {
 					receipts.push(receipt);
 				} catch (error) {
 					intent?.();
-					return { receipts, pending: items.length - offset, error };
+					return {
+						receipts,
+						pending: targets.length - offset,
+						skippedAsks,
+						error,
+					};
 				}
 			}
-			return { receipts, pending: 0 };
+			return { receipts, pending: 0, skippedAsks };
 		},
 		[client, reconcileIds, resetWindows],
 	);

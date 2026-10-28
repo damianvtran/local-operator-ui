@@ -307,7 +307,11 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		| null
 	>(null);
 	const previewGeneration = useRef(0);
-	const bulkActions = useNotificationBulkState();
+	const bulkActions = useNotificationBulkState(() => {
+		// A v1 receipt has no row payload: reuse the list's one reset path so both
+		// its cursor pages and the operator's viewport return to page one.
+		void list.resetToTop();
+	});
 	const lastBulkUndo = useRef<{ tokens: string[]; at: number } | null>(null);
 	const [anchorId, setAnchorId] = useState<string | null>(null);
 	const [focusId, setFocusId] = useState<string | null>(null);
@@ -400,6 +404,23 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	useEffect(() => {
 		if (list.isSuccess && !list.isFetching) setLastGoodAt(list.dataUpdatedAt);
 	}, [list.isSuccess, list.isFetching, list.dataUpdatedAt]);
+
+	const previousWindowReset = useRef(0);
+	useEffect(() => {
+		if (
+			!list.windowResetAt ||
+			list.windowResetAt === previousWindowReset.current
+		)
+			return;
+		previousWindowReset.current = list.windowResetAt;
+		/*
+		 * resetQueries drops the deep cursor pages, but the browser retains the
+		 * scroll port's numeric offset. Move it with the new page-one window;
+		 * facts-only refreshes deliberately do not change this timestamp.
+		 */
+		if (listRef.current) listRef.current.scrollTop = 0;
+		setIsAtTop(true);
+	}, [list.windowResetAt]);
 
 	const loaded = list.data;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: confirmedReadVersion is the invalidation signal for the ref-held token map; its identity never changes
@@ -1155,6 +1176,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 									),
 								],
 								pending: 0,
+								skippedAsks: 0,
 							};
 				const receipt = {
 					changed_count: outcome.receipts.reduce(
@@ -1184,29 +1206,38 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 							}
 						: null;
 				lastBulkUndo.current = undo;
-				const message =
-					outcome.pending > 0
-						? operationText({
-								changed: receipt.changed_count,
-								skipped: receipt.skipped_count,
-								pending: outcome.pending,
-							})
-						: receipt.skipped_count > 0
-							? t("ui.notifications.bulk.partial", {
-									changed: formatNumber(receipt.changed_count),
-									skipped: formatNumber(receipt.skipped_count),
+				const message = (() => {
+					if (outcome.pending > 0)
+						return operationText({
+							changed: receipt.changed_count,
+							skipped: receipt.skipped_count,
+							pending: outcome.pending,
+						});
+					if (receipt.skipped_count > 0)
+						return t("ui.notifications.bulk.partial", {
+							changed: formatNumber(receipt.changed_count),
+							skipped: formatNumber(receipt.skipped_count),
+						});
+					const completed =
+						verb === "dismiss"
+							? t("ui.notifications.toast.dismissed", {
+									count: receipt.changed_count,
 								})
-							: verb === "dismiss"
-								? t("ui.notifications.toast.dismissed", {
-										count: receipt.changed_count,
+							: verb === "read"
+								? t("ui.notifications.toast.marked_read", {
+										count: formatNumber(receipt.changed_count),
 									})
-								: verb === "read"
-									? t("ui.notifications.toast.marked_read", {
-											count: formatNumber(receipt.changed_count),
-										})
-									: t("ui.notifications.toast.marked_unread", {
-											count: formatNumber(receipt.changed_count),
-										});
+								: t("ui.notifications.toast.marked_unread", {
+										count: formatNumber(receipt.changed_count),
+									});
+					// Client-filtered asks have no server receipt, so retain that skip in the
+					// same wording as the pre-existing non-bulk dismiss path.
+					return outcome.skippedAsks > 0
+						? `${completed}. ${t("ui.notifications.select.asks_stay", {
+								count: outcome.skippedAsks,
+							})}`
+						: completed;
+				})();
 				showInfoToast(message, {
 					duration: UNDO_WINDOW_MS,
 					action: undo
@@ -2300,7 +2331,13 @@ const Toolbar: FC<ToolbarProps> = ({
 							className="basis-full text-meta text-ink-muted"
 							data-notifications-new-outside-selection=""
 						>
-							{t("ui.notifications.bulk_updates.new_items")}
+							{/*
+							 * The count is the frozen server snapshot, while an ask that arrived
+							 * afterward remains visibly unchecked. Reuse the shipped notices to
+							 * explain both facts without adding catalogue copy during the audit.
+							 */}
+							{t("ui.notifications.bulk_updates.new_items")}{" "}
+							{t("ui.notifications.ask.stays")}
 						</p>
 					)}
 				</>

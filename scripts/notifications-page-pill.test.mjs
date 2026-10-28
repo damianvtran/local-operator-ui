@@ -30,7 +30,7 @@ const pageBundle = await build({
 		contents: [
 			'export { NotificationsPage } from "./src/renderer/src/features/notifications/components/notifications-page";',
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
-			'export { notificationKeys } from "./src/renderer/src/features/notifications/notifications-api";',
+			'export { notificationKeys, useNotificationBulkState } from "./src/renderer/src/features/notifications/notifications-api";',
 			'export { NotificationDetail } from "./src/renderer/src/features/notifications/components/notification-detail";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -332,6 +332,8 @@ async function mount(options = {}) {
  */
 const BOUNDED = { timeout: 30_000 };
 const ANY_DIGIT = /\d/;
+const LATE_ASK_SCOPE_NOTICE =
+	/New items since you selected aren’t included\. Asks stay until they're answered\./;
 
 /** Scroll to the bottom `pages` times, waiting for each page to land. */
 async function scrollDeep(page, pages) {
@@ -634,6 +636,77 @@ test(
 );
 
 test(
+	"R4: Cmd/Ctrl+A follows the real focused control, not a synthetic grid target",
+	BOUNDED,
+	async () => {
+		const page = await mount({
+			bulk: true,
+			state: "all",
+			items: [row(1), row(2)],
+		});
+		const chord = async (target, modifier) => {
+			await act(async () => {
+				target.focus();
+				target.dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						key: "a",
+						bubbles: true,
+						[modifier]: true,
+					}),
+				);
+			});
+		};
+		const clear = async () => {
+			const button = [...page.container.querySelectorAll("button")].find(
+				(node) => node.textContent.includes("Clear selection"),
+			);
+			if (button) await click(button);
+		};
+		try {
+			assert.ok(await page.settle(() => page.rows().length === 2));
+			const header = page.container.querySelector(
+				"[data-notifications-select-all]",
+			);
+			await chord(header, "metaKey");
+			assert.equal(selectedRows(page).length, 0, "header is outside the grid");
+			assert.equal(document.activeElement, header);
+
+			const rowCheckbox = page.container.querySelector(
+				'[data-notification-row] [role="checkbox"]',
+			);
+			await chord(rowCheckbox, "ctrlKey");
+			assert.ok(
+				await page.settle(() => selectedRows(page).length === 2),
+				"a row checkbox bubbles the chord to its containing grid",
+			);
+
+			const bulkControl = page.container.querySelector(
+				'[data-notifications-bulk-read="read"]',
+			);
+			await chord(bulkControl, "metaKey");
+			assert.equal(
+				selectedRows(page).length,
+				2,
+				"the bulk bar neither clears nor expands the selection",
+			);
+			assert.equal(document.activeElement, bulkControl);
+
+			await clear();
+			const outside = document.createElement("button");
+			document.body.append(outside);
+			try {
+				await chord(outside, "ctrlKey");
+				assert.equal(selectedRows(page).length, 0, "outside focus is inert");
+			} finally {
+				outside.remove();
+			}
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
 	"bulk select-all is one snapshot for 650 items, unchecking preserves off-page rows, Undo restores",
 	BOUNDED,
 	async () => {
@@ -709,6 +782,70 @@ test(
 				page.fixture.requests.filter((request) => request.verb === "undo")
 					.length,
 				1,
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"R3: a v1 explicit bulk write resets a deep window to page one and drops retained selection",
+	BOUNDED,
+	async () => {
+		const rows = Array.from({ length: 250 }, (_, i) => row(250 - i));
+		const page = await mount({ bulk: true, state: "all", items: rows });
+		try {
+			assert.ok(await page.settle(() => page.rows().length === 100));
+			page.instrument();
+			await scrollDeep(page, 1);
+			assert.equal(page.rows().length, 200);
+			assert.ok(page.grid().scrollTop > 0);
+
+			/* Focus and select a row only present in the deep scroll window. */
+			const deepRow = [
+				...page.container.querySelectorAll("[data-notification-row]"),
+			].at(-1);
+			await click(deepRow.querySelector('[role="checkbox"]'));
+			await act(async () => deepRow.focus());
+			assert.equal(selectedRows(page).length, 1);
+			assert.ok(page.grid().contains(document.activeElement));
+
+			/* A facts/SSE arrival races the mutation's resetQueries settlement. */
+			await act(async () => {
+				page.fixture.arrive(row(251));
+				await page.client.invalidateQueries({
+					queryKey: PAGE.notificationKeys.factsRoot,
+				});
+			});
+			await click(
+				page.container.querySelector("[data-notifications-bulk-dismiss]"),
+			);
+			assert.ok(
+				await page.settle(
+					() => rows.filter((item) => item.dismissed).length === 1,
+				),
+			);
+			assert.ok(
+				await page.settle(() => page.rows().length === 100),
+				"the old multi-page window is discarded rather than refetched deep",
+			);
+			assert.equal(page.grid().scrollTop, 0, "page one starts at the top");
+			assert.equal(selectedRows(page).length, 0, "selection is not retained");
+			assert.equal(
+				page.container.querySelector("[data-notifications-toolbar]").dataset
+					.notificationsToolbar,
+				"filters",
+			);
+			assert.equal(
+				document.activeElement,
+				document.querySelector("[data-notifications-select-all]"),
+				"focus returns to a surviving list control",
+			);
+			assert.equal(
+				page.rows()[0],
+				"n_row0251",
+				"the concurrent arrival is present in the fresh page-one facts",
 			);
 		} finally {
 			await page.unmount();
@@ -1003,6 +1140,65 @@ test(
 );
 
 test(
+	"R1: the explicit-item dismiss boundary refuses a late ask and reports it skipped",
+	BOUNDED,
+	async () => {
+		/*
+		 * Call the mutation boundary directly: the button's earlier dismissPlan cannot
+		 * protect a frozen item array when an ask arrives after that render/check.
+		 */
+		const update = row(1);
+		const lateAsk = {
+			...row(2),
+			id: "ask:aaaaaaaaaaa1:after-check",
+			source: "ask",
+			priority: "high",
+			ask: { status: "open" },
+		};
+		const page = await mount({ bulk: true, state: "all", items: [update] });
+		const container = window.document.createElement("div");
+		window.document.body.append(container);
+		const root = createRoot(container);
+		const actions = { current: null };
+		const Harness = () => {
+			actions.current = PAGE.useNotificationBulkState();
+			return null;
+		};
+		try {
+			await act(async () =>
+				root.render(
+					h(QueryClientProvider, { client: page.client }, h(Harness)),
+				),
+			);
+			let outcome;
+			await act(async () => {
+				outcome = await actions.current.applyItems(
+					"dismiss",
+					[update, lateAsk],
+					2,
+				);
+			});
+			const writes = page.fixture.requests.filter(
+				(request) => request.op === "notifications.dismiss",
+			);
+			assert.equal(writes.length, 1);
+			assert.deepEqual(
+				writes[0].target.items.map((token) => token.id),
+				[update.id],
+				"a pending ask never reaches notifications.dismiss",
+			);
+			assert.equal(outcome.skippedAsks, 1, "the local skip stays visible");
+			assert.equal(update.dismissed, true);
+			assert.equal(lateAsk.dismissed, false);
+		} finally {
+			await act(async () => root.unmount());
+			container.remove();
+			await page.unmount();
+		}
+	},
+);
+
+test(
 	"small visible dismiss needs no confirmation and partial selection uses sequence-guarded receipt",
 	BOUNDED,
 	async () => {
@@ -1100,11 +1296,14 @@ test(
 				...page.container.querySelectorAll("[data-notification-row]"),
 			].find((row) => row.dataset.notificationRow === arriving.id);
 			assert.equal(later.getAttribute("aria-selected"), "false");
-			assert.ok(
-				page.container.querySelector(
-					"[data-notifications-new-outside-selection]",
-				),
-				"visible late asks get an explicit scope notice",
+			const scopeNotice = page.container.querySelector(
+				"[data-notifications-new-outside-selection]",
+			);
+			assert.ok(scopeNotice, "visible late asks get an explicit scope notice");
+			assert.match(
+				scopeNotice.textContent,
+				LATE_ASK_SCOPE_NOTICE,
+				"the frozen count's unchecked late ask is explained inline",
 			);
 			assert.equal(
 				later.querySelector('[role="checkbox"]').getAttribute("data-state"),
