@@ -48,6 +48,28 @@ dom.window.Element.prototype.setPointerCapture ??= () => {};
 dom.window.Element.prototype.releasePointerCapture ??= () => {};
 globalThis.getComputedStyle = dom.window.getComputedStyle;
 dom.window.HTMLElement.prototype.scrollIntoView = () => {};
+/* jsdom implements no blob registry, and the composer's image preview IS a blob
+ * URL (production behaviour, not a fixture convenience). This is the browser
+ * edge: an opaque, unique string per object, revoked on request, and the <img>
+ * src the assertions read. It decodes nothing, so nothing here can claim a
+ * pixel was drawn. */
+let blobSerial = 0;
+const liveObjectUrls = new Set();
+const createObjectURL = () => {
+	const url = `blob:http://localhost/fixture-${++blobSerial}`;
+	liveObjectUrls.add(url);
+	return url;
+};
+const revokeObjectURL = (url) => {
+	liveObjectUrls.delete(url);
+};
+/* Both classes: the renderer resolves `URL` from the global scope, which under
+ * Node is Node's own URL, not jsdom's. */
+for (const target of [dom.window.URL, globalThis.URL])
+	if (target) {
+		target.createObjectURL ??= createObjectURL;
+		target.revokeObjectURL ??= revokeObjectURL;
+	}
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
 after(() => dom.window.close());
