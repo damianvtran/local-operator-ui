@@ -738,9 +738,18 @@ async function main() {
 		 * plus real dispatched input, and the receipt is read from the store - no
 		 * verb, no bridge, no capture helper.
 		 */
+		/*
+		 * THE APP MUST BE LAUNCHED AT THE ASK PROXY, NOT AT `base`. launchApp's
+		 * per-call apiUrl overrides prepareDriverContext's binding and rewrites the
+		 * scratch .env (renderer-driver.mjs launchApp), so `apiUrl: base` here would
+		 * send every answer straight to core: the proxy would intercept nothing and
+		 * core would receive the synthetic secret markers. The proxy is transparent
+		 * for every other route (SSE included), so the foreground proofs below still
+		 * run against the real core through it.
+		 */
 		const handle = await api.launchApp({
 			armed: false,
-			apiUrl: base,
+			apiUrl: askFixture.apiUrl,
 			tag: "notifications-native",
 			logName: "notifications-native.log",
 			windowMode: "normal",

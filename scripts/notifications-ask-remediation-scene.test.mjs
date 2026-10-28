@@ -139,6 +139,30 @@ test("hosted seed and acceptance use real pinned queue APIs, never mark delivery
 	assert.ok(parent.includes('RUNNER_ENVIRONMENT !== "github-hosted"'));
 });
 
+const LAUNCH_APP_CALL = /api\.launchApp\(\{([\s\S]*?)\}\)/g;
+const LAUNCH_API_URL = /apiUrl:\s*([^,\n]+)/;
+
+/*
+ * launchApp's per-call apiUrl wins over prepareDriverContext's binding, so a
+ * launch at `base` silently bypasses the fault proxy (round-3 P1). Every
+ * launchApp in the parent scene must take the proxy URL once askFixture exists.
+ */
+test("the native scene launches the app at the ask proxy, never directly at core", () => {
+	const parent = readFileSync(
+		new URL("./notifications-app-scene.mjs", import.meta.url),
+		"utf8",
+	);
+	const fixtureAt = parent.indexOf("askFixture = await prepareAskRemediation");
+	assert.ok(fixtureAt > 0, "the scene must prepare the ask fixture");
+	const launches = [...parent.matchAll(LAUNCH_APP_CALL)];
+	assert.ok(launches.length > 0, "the scene must launch the app");
+	for (const launch of launches) {
+		assert.ok(launch.index > fixtureAt, "launch precedes the ask fixture");
+		const apiUrl = launch[1].match(LAUNCH_API_URL);
+		assert.equal(apiUrl?.[1].trim(), "askFixture.apiUrl");
+	}
+});
+
 // A held-open upstream proves streaming, rather than passing by buffering a short body.
 test(
 	"non-fixture SSE reaches the app before EOF, ordered and byte-identical",
