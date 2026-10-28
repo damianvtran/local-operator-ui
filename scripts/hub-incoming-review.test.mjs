@@ -46,6 +46,8 @@ const LABELS = {
 		"No baseline was recorded for this copy, so every field counts as changed. Tick the acknowledgement, then pull again.",
 	"ui.hub.links.incoming_failed": "The preview could not finish ({outcome}).",
 	"ui.hub.links.name_ambiguous": "Another item has the same name.",
+	"ui.hub.links.legacy_retry_unverified":
+		"This backend cannot safely select this item by name. Update Local Operator before retrying.",
 	"ui.hub.links.preview_recomputed":
 		"Core recomputes this merge when you apply",
 	"ui.hub.links.incoming_outcome": "Preview for {item}: {outcome}",
@@ -639,7 +641,10 @@ test("an ambiguous display name refuses a direct sidebar write on an older core"
 		0,
 		"no write left for an address that would hit two rows",
 	);
-	assert.match(document.body.textContent, /Another item has the same name/);
+	assert.match(
+		document.body.textContent,
+		/This backend cannot safely select this item by name/,
+	);
 });
 
 test("an unambiguous name still writes directly (the guard is narrow)", async () => {
@@ -647,6 +652,10 @@ test("an unambiguous name still writes directly (the guard is narrow)", async ()
 	globalThis.__hubPreviewTest.answer = () => answerOf([report({})]);
 	await mountPanel(app.HubLinkSidebarMark, {
 		link,
+		// Legacy name addressing requires the REGISTRY name. The display label
+		// is not an address; omitting this must fail closed (and is tested
+		// separately in the popover's ambiguity matrix).
+		itemName: "Coder",
 		displayName: "Coder",
 		itemsById: false,
 		nameAmbiguous: false,
@@ -664,5 +673,29 @@ test("an unambiguous name still writes directly (the guard is narrow)", async ()
 		globalThis.__hubPreviewTest.records.length,
 		1,
 		"an unambiguous name still writes directly",
+	);
+	// The legacy address carries the registry name, never the link id, label or
+	// direction: core's name arm matches this exact normalized string.
+	assert.deepEqual(
+		globalThis.__hubPreviewTest.records.map(
+			({ op, kind, name, localId, linkId, direction }) => ({
+				op,
+				kind,
+				name,
+				localId,
+				linkId,
+				direction,
+			}),
+		),
+		[
+			{
+				op: "hub.apply",
+				kind: "agent",
+				name: "Coder",
+				localId: undefined,
+				linkId: undefined,
+				direction: undefined,
+			},
+		],
 	);
 });
