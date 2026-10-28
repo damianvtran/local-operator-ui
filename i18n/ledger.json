@@ -44193,29 +44193,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "0b1665cb62e709e79b0521736a54e15505c09c48e7e038dfa7dca49e8df3105a",
+			"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+			"target_sha256": "e8e35ef3645eed9442b08e885b45e6184af3b8a954ecaf9d75a41c0453b22bef",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
 					"result": "clean-with-findings",
-					"instance": "aa44e837c157-es",
+					"instance": "bf41e95b4e1e-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/aa44e837c157-es.json",
-					"receipt_sha256": "b464fe2c50a578f05ecc5126cefd110681c8006ace33ad5b06eb13ede18e0a24",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/bf41e95b4e1e-es.json",
+					"receipt_sha256": "f4d7f3bfc706791ac8365ea9b43ccec2b5e177c513a18d17cc5f1e27082d1d54",
+					"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
 				}
 			],
 			"status": "audited",
@@ -44242,35 +44243,59 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "0b1665cb62e709e79b0521736a54e15505c09c48e7e038dfa7dca49e8df3105a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "aa44e837c157-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/aa44e837c157-es.json",
+							"receipt_sha256": "b464fe2c50a578f05ecc5126cefd110681c8006ace33ad5b06eb13ede18e0a24",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "10da40e409f90f48a54d11bee7d276a3d5db45b5d5eb0266d6a8740b2a33dcba",
+			"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+			"target_sha256": "4152d32be0a8c3cf6237f8ccf557daeab7b4524458839d70b4a6439547111f0d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
 					"result": "clean-with-findings",
-					"instance": "aa44e837c157-fr",
+					"instance": "bf41e95b4e1e-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/aa44e837c157-fr.json",
-					"receipt_sha256": "e575c67f481ff37b6d9db56d01fccac4db0b57c928376dce6c8f9d18b2acdbb7",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/bf41e95b4e1e-fr.json",
+					"receipt_sha256": "95252e099da0ee01e7e1c4ee21592e47fd8b4772c041c02bfee85a089696142e",
+					"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
 				}
 			],
 			"status": "audited",
@@ -44297,35 +44322,59 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "10da40e409f90f48a54d11bee7d276a3d5db45b5d5eb0266d6a8740b2a33dcba",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "aa44e837c157-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/aa44e837c157-fr.json",
+							"receipt_sha256": "e575c67f481ff37b6d9db56d01fccac4db0b57c928376dce6c8f9d18b2acdbb7",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "b7d5de0a257a77f179ee8263904ee98aebdfa0694116add294db06db810fdf22",
+			"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+			"target_sha256": "cfad248a323fb8224842f5e64bf75f5f63c63039945eb979cd2fd7fb3e314487",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "aa44e837c157-hi",
+					"result": "clean-with-findings",
+					"instance": "bf41e95b4e1e-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/aa44e837c157-hi.json",
-					"receipt_sha256": "28e05583352f83bda1ed1a604d4745e36d5272720469349ffdd4f94b5c821bda",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/bf41e95b4e1e-hi.json",
+					"receipt_sha256": "cb37843a72513369b9ca190ce1c1f931ec66751e19bb6ffaf56536afefa663d0",
+					"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
 				}
 			],
 			"status": "audited",
@@ -44352,35 +44401,59 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "b7d5de0a257a77f179ee8263904ee98aebdfa0694116add294db06db810fdf22",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "aa44e837c157-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aa44e837c157-hi.json",
+							"receipt_sha256": "28e05583352f83bda1ed1a604d4745e36d5272720469349ffdd4f94b5c821bda",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "035650b8de6e28f015025e6bafac1b26a216c994d40510aa4c8ef793fd440406",
+			"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+			"target_sha256": "1fe7a69d1ba81a5820a7160407e0398dca1c8a3492149ecb24a45b41e52933f6",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean-with-findings",
-					"instance": "aa44e837c157-ru",
+					"result": "clean",
+					"instance": "bf41e95b4e1e-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/aa44e837c157-ru.json",
-					"receipt_sha256": "00f76c11005665a2cd025183e8a5eb6bc8108f492e6664f0483d6f029696390a",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/bf41e95b4e1e-ru.json",
+					"receipt_sha256": "9774770e1d2ffc2f288292c03edf3d576d0623194e0e6b160c99dba0c3ea0e38",
+					"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
 				}
 			],
 			"status": "audited",
@@ -44407,35 +44480,59 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "035650b8de6e28f015025e6bafac1b26a216c994d40510aa4c8ef793fd440406",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "aa44e837c157-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/aa44e837c157-ru.json",
+							"receipt_sha256": "00f76c11005665a2cd025183e8a5eb6bc8108f492e6664f0483d6f029696390a",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "649a84deb6782ac4fb5a116be1aadab466164476b35f635b41b4169fdc888154",
+			"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+			"target_sha256": "ff32c069fbe9bf9e8ca92a6c6ff2cb3af67416b4130913598928f1ee2249ef09",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "aa44e837c157-ur",
+					"result": "clean-with-findings",
+					"instance": "bf41e95b4e1e-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/aa44e837c157-ur.json",
-					"receipt_sha256": "b5137825f1b3a85fc2520eca9486ccbcb1b218cd6fbce001742f50a1d18c1d61",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/bf41e95b4e1e-ur.json",
+					"receipt_sha256": "5c0aa83e162c0efbb90202e2429431347abd0b40d313ac70f858e06112976b6c",
+					"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
 				}
 			],
 			"status": "audited",
@@ -44462,35 +44559,59 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "649a84deb6782ac4fb5a116be1aadab466164476b35f635b41b4169fdc888154",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "aa44e837c157-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aa44e837c157-ur.json",
+							"receipt_sha256": "b5137825f1b3a85fc2520eca9486ccbcb1b218cd6fbce001742f50a1d18c1d61",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "ed0213689558d775e37e0c05483930c06f5011d15648d42ab09411f23c1d6116",
+			"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+			"target_sha256": "1df75090d7b826addc827aa5754d0fd626b0b9506d58927ae9a1d18e38622f44",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "aa44e837c157-vi",
+					"result": "clean-with-findings",
+					"instance": "bf41e95b4e1e-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/aa44e837c157-vi.json",
-					"receipt_sha256": "d0225ebfe77a9ff17bce55bea69848fb306abf9089327865a4addd9d5ebbcce4",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/bf41e95b4e1e-vi.json",
+					"receipt_sha256": "9067c8fce86fa41710a87c01083b830d60698d65845c3c7ad54bd23d46d68b3e",
+					"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
 				}
 			],
 			"status": "audited",
@@ -44517,35 +44638,59 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "ed0213689558d775e37e0c05483930c06f5011d15648d42ab09411f23c1d6116",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "aa44e837c157-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aa44e837c157-vi.json",
+							"receipt_sha256": "d0225ebfe77a9ff17bce55bea69848fb306abf9089327865a4addd9d5ebbcce4",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agents.skills",
-			"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
-			"target_sha256": "588988fb0ffda6a24f751822cdb657518897daca7eb2f687f49483d5bc0b7124",
+			"source_sha256": "d99db662fcc91745a58d2e0f23b05b08169be0d208da21bd2518245fee4e60e9",
+			"target_sha256": "31f0041e805dcb9702173c67457b76113e5f16a6166afbf575c5bc841dd2a4a5",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-10-26"
+				"date": "2026-10-26",
+				"note": "The 51 keys #1458 added were translated by agent coder (lopdev team, translator step) on anthropic/claude-opus-5-5 in 58d893da06, 2026-10-27; the 47 carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "aa44e837c157-zh-cn",
+					"result": "clean-with-findings",
+					"instance": "bf41e95b4e1e-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/aa44e837c157-zh-cn.json",
-					"receipt_sha256": "94af4597def7393dbbf918a21f8322680a401dcdbd5334fb271e3e2d39a30638",
-					"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
+					"receipt": "i18n/receipts/bf41e95b4e1e-zh-cn.json",
+					"receipt_sha256": "8bea1c7db5b1b72efb053a67f187c0372e7b0abad6ee4704d4b2efde18423188",
+					"scope": "ui.agents.skills, 98 keys (51 new in #1458), head 58d893da06; new keys translated by agent coder on anthropic/claude-opus-5-5; auditor ran on anthropic/claude-opus-5-5 (same model, not model-independent)"
 				}
 			],
 			"status": "audited",
@@ -44569,6 +44714,29 @@
 							"receipt": "i18n/receipts/17d1ca9bf58a-zh-cn.json",
 							"receipt_sha256": "65fad9073cb4aca07817164f5a8b1f29784ac0b81d16c2fe5d7388efacd3dadd",
 							"scope": "ui.agents.skills, 53 keys, head f0af61b5d5; auditor agent translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c6f415db6ac41ac7e177255cff9076237a736cb13067ad4ed5a42bed0ec3df14",
+					"target_sha256": "588988fb0ffda6a24f751822cdb657518897daca7eb2f687f49483d5bc0b7124",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "aa44e837c157-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aa44e837c157-zh-cn.json",
+							"receipt_sha256": "94af4597def7393dbbf918a21f8322680a401dcdbd5334fb271e3e2d39a30638",
+							"scope": "ui.agents.skills, 54 keys, head dabd636f46; re-audit after hub.update_failed added, 53 keys byte-identical to f7245429b0; auditor translation-auditor ran on anthropic/claude-sonnet-5-5 after fallback from deepseek/deepseek-flash (not model-independent)"
 						}
 					],
 					"status": "audited"

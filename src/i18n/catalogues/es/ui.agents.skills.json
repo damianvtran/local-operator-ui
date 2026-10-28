@@ -16,7 +16,7 @@
 	"ui.agents.skills.badge.updated": "Actualizada",
 	"ui.agents.skills.composer.about": "Sobre la habilidad {name}",
 	"ui.agents.skills.composer.changed_below": "Las instrucciones que se muestran son la nueva versión.",
-	"ui.agents.skills.composer.gate_backend": "Actualiza Local Operator para cambiar habilidades pidiéndolo.",
+	"ui.agents.skills.composer.gate_backend": "Actualiza Local Operator para pedir cambios en las habilidades.",
 	"ui.agents.skills.composer.gate_none": "Abre una de tus habilidades para pedir un cambio.",
 	"ui.agents.skills.composer.gate_not_installed": "Instala esta habilidad para cambiarla.",
 	"ui.agents.skills.composer.gate_read_only": "Aquí esta habilidad es de solo lectura.",

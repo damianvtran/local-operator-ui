@@ -86,7 +86,7 @@
 	"ui.agents.skills.source.project": "Dự án",
 	"ui.agents.skills.source.unknown": "Nguồn không rõ",
 	"ui.agents.skills.state.following": "Đang nhận cập nhật",
-	"ui.agents.skills.state.hub_unknown": "Không rõ trạng thái hub",
+	"ui.agents.skills.state.hub_unknown": "Không rõ trạng thái trung tâm",
 	"ui.agents.skills.state.not_installed": "Chưa cài",
 	"ui.agents.skills.state.read_only": "Chỉ đọc",
 	"ui.agents.skills.state.updates_off": "Đã tắt cập nhật",
