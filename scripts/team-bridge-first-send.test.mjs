@@ -908,12 +908,11 @@ test("an account change drops the departing account's rows and pictures", async 
 		/* The row lives in the CONVERSATION's lane, not the person lane (review
 		 * round 2, F1c): asserting a lane that never held it passed with the purge
 		 * deleted. Prove it was there, then prove it is gone. */
-		const lane = ["acct_a", "org_shared", "conversation:bcv_shared"];
-		assert.equal(
-			app.journal.rowsFor(...lane).length,
-			1,
-			"A's row is in its lane before the switch",
-		);
+		/* A plain .mjs test: pass the lane's parts explicitly, no TypeScript tuple. */
+		const rowsInLane = () =>
+			app.journal.rowsFor("acct_a", "org_shared", "conversation:bcv_shared")
+				.length;
+		assert.equal(rowsInLane(), 1, "A's row is in its lane before the switch");
 
 		await app.changeAuth("acct_b");
 		const gate = app.fixture.postGate;
@@ -921,11 +920,7 @@ test("an account change drops the departing account's rows and pictures", async 
 		await act(async () => gate.resolve());
 		await delay();
 
-		assert.equal(
-			app.journal.rowsFor(...lane).length,
-			0,
-			"A's rows are gone once B owns the surface",
-		);
+		assert.equal(rowsInLane(), 0, "A's rows are gone once B owns the surface");
 		assert.equal(app.host.querySelectorAll("[data-send-state]").length, 0);
 		assertNoForeignCarry(app, body);
 	} finally {
