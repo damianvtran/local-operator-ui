@@ -1,13 +1,21 @@
+import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
 import {
 	HubLinkPolicyControls,
+	hubLinkSourceLabel,
 	hubLinkSourceName,
 } from "@features/agents/components/hub-link-policy-controls";
 import { hubLinkView } from "@features/agents/hub-link-adapter";
-import { hubReasonText } from "@features/agents/hub-link-copy";
+import {
+	hubFailureReasonText,
+	hubLinkFailureText,
+	hubReasonText,
+} from "@features/agents/hub-link-copy";
 import { hubLinkMark } from "@features/agents/hub-link-view";
 import { useHubLinkActions } from "@shared/api/local-operator/hub-link-actions";
+import { hubLinksKey } from "@shared/api/local-operator/hub-link-hooks";
 import type { HubLink } from "@shared/api/local-operator/hub-links";
 import { HubMutationUpgradeRequired } from "@shared/api/local-operator/hub-mutation-safety";
+import { Button } from "@shared/components/ui/button";
 import {
 	Popover,
 	PopoverAnchor,
@@ -17,6 +25,7 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	Check,
 	CircleAlert,
@@ -46,6 +55,14 @@ const INK = {
 };
 
 /**
+ * How far the policy popover is kept from the window's edges, in px - the same
+ * 8px step the sidebar's row flyout and the tag popover clamp to. Without it
+ * Radix keeps the panel only flush with the viewport, and a mark near the foot
+ * of the sidebar drew a panel that ran off the bottom of the window.
+ */
+const POPOVER_COLLISION_PADDING = 8;
+
+/**
  * One fixed 24px slot, including healthy links. Primary update/retry behavior is
  * preserved, while right-click/Shift+F10 always exposes independent policies.
  * The policy popover is a dialog, not a fake menu: real labelled switches remain
@@ -55,15 +72,45 @@ export function HubLinkSidebarMark({
 	link,
 	staged,
 	onDetail,
-}: { link: HubLink; staged: boolean; onDetail: () => void }) {
+	itemName,
+	displayName,
+	itemsById = false,
+}: {
+	link: HubLink;
+	staged: boolean;
+	onDetail: () => void;
+	/**
+	 * The item's REGISTRY name (an agent's or team's `name`), the address core's
+	 * released item routes match. Not the label: a team drawn as "Radient
+	 * Development" is addressed as `radientdev`.
+	 */
+	itemName?: string;
+	/**
+	 * What the row is CALLED (a team's label, else its name). Required for a
+	 * readable sentence: core falls back to the item's local id for an agent or
+	 * team link row's `name`, so `link.name` reads as a UUID.
+	 */
+	displayName?: string;
+	/** `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
+	itemsById?: boolean;
+}) {
 	useI18nLocale();
+	const client = useQueryClient();
 	const actions = useHubLinkActions(link.link_id);
 	const [open, setOpen] = useState(false);
 	const [consentOpen, setConsentOpen] = useState(false);
 	const button = useRef<HTMLButtonElement>(null);
 	const titleId = useId();
 	const descriptionId = useId();
-	const source = hubLinkSourceName(link);
+	const item = displayName?.trim() ? displayName : link.name;
+	/*
+	 * An org link's row carries the organization's name only when core recorded
+	 * one; otherwise the signed-in account's own memberships name it. The read is
+	 * the shared, cached memberships query, issued only for a row that needs it.
+	 */
+	const needsOrganization = link.visibility === "org" && !link.tenant_name;
+	const memberships = useMembershipsQuery({ enabled: needsOrganization });
+	const source = hubLinkSourceLabel(link, memberships.memberships);
 	const mark = hubLinkMark(hubLinkView(link));
 	const Glyph = actions.isPending ? LoaderCircle : ICON[mark.kind];
 	const direction = t(
@@ -71,35 +118,81 @@ export function HubLinkSidebarMark({
 			? "ui.hub.links.direction_pull"
 			: "ui.hub.links.direction_push",
 	);
-	const policies = t("ui.hub.links.healthy", {
-		item: link.name,
-		source,
-		subscribe: t(
-			link.policy.subscribe
+	const onOff = (value: boolean) =>
+		t(
+			value
 				? "ui.hub.subscriptions.configured_on"
 				: "ui.hub.subscriptions.configured_off",
-		),
-		autoPush: t(
-			link.policy.auto_push
-				? "ui.hub.subscriptions.configured_on"
-				: "ui.hub.subscriptions.configured_off",
-		),
-	});
+		);
+	/*
+	 * Every sentence has a twin written WITHOUT a destination. An unknown source
+	 * used to be the literal "Source unavailable" interpolated into each one
+	 * ("Retry Incoming update for <id> at Source unavailable"); the source line in
+	 * the popover says once, plainly, that it could not be identified.
+	 */
+	const policies = source
+		? t("ui.hub.links.healthy", {
+				item,
+				source,
+				subscribe: onOff(link.policy.subscribe),
+				autoPush: onOff(link.policy.auto_push),
+			})
+		: t("ui.hub.links.healthy_unsourced", {
+				item,
+				subscribe: onOff(link.policy.subscribe),
+				autoPush: onOff(link.policy.auto_push),
+			});
 	const actionLabel =
 		mark.kind === "available"
-			? t("ui.hub.links.available", { item: link.name, source })
+			? source
+				? t("ui.hub.links.available", { item, source })
+				: t("ui.hub.links.available_unsourced", { item })
 			: mark.kind === "failed"
-				? t("ui.hub.links.failed", { direction, item: link.name, source })
+				? source
+					? t("ui.hub.links.failed", { direction, item, source })
+					: t("ui.hub.links.failed_unsourced", { direction, item })
 				: mark.kind === "busy"
-					? t("ui.hub.links.busy", { direction, item: link.name, source })
+					? source
+						? t("ui.hub.links.busy", { direction, item, source })
+						: t("ui.hub.links.busy_unsourced", { direction, item })
 					: mark.kind === "applied"
-						? t(
-								mark.direction === "pull"
-									? "ui.hub.links.updated"
-									: "ui.hub.links.published",
-								{ item: link.name, source },
-							)
+						? mark.direction === "pull"
+							? source
+								? t("ui.hub.links.updated", { item, source })
+								: t("ui.hub.links.updated_unsourced", { item })
+							: source
+								? t("ui.hub.links.published", { item, source })
+								: t("ui.hub.links.published_unsourced", { item })
 						: policies;
+	/*
+	 * A FAILED INCOMING UPDATE is retried through the item route core serves:
+	 * `/v1/desktop/hub/updates/retry` takes `kind` + one item address. The old
+	 * `{link_id, direction}` body is not a member of that route (core answered
+	 * 422 "invalid fields"), which is why the popover only ever said the update
+	 * "did not complete". `local_id` is exact and needs `hub_items_by_id`; an
+	 * older core gets the registry name, the address it has always taken.
+	 */
+	const pullFailed =
+		link.pull.state === "failed" ||
+		(link.pull.state === "retry-wait" && link.pull.error_class !== null);
+	const retryIncoming = () =>
+		actions.mutate(
+			{
+				action: "retryItem",
+				linkId: link.link_id,
+				kind: link.kind,
+				address: itemsById
+					? { localId: link.local_id }
+					: { name: itemName?.trim() ? itemName : link.name },
+			},
+			{ onError: () => setOpen(true) },
+		);
+	const retryFailed =
+		actions.error !== null && actions.variables?.action === "retryItem";
+	const refetchSource = () => {
+		void memberships.refetch();
+		void client.invalidateQueries({ queryKey: hubLinksKey });
+	};
 	const description = `${actionLabel} ${policies}${link.policy.auto_push && link.eligibility.reason ? ` ${t("ui.hub.subscriptions.effective_paused", { reason: hubReasonText(link.eligibility.reason) })}` : ""}`;
 	return (
 		<Popover
@@ -160,6 +253,10 @@ export function HubLinkSidebarMark({
 								onDetail();
 								return;
 							}
+							if (mark.action === "retry" && mark.direction === "pull") {
+								retryIncoming();
+								return;
+							}
 							actions.mutate(
 								mark.action === "apply"
 									? { action: "apply", linkId: link.link_id }
@@ -186,11 +283,20 @@ export function HubLinkSidebarMark({
 					</button>
 				</PopoverAnchor>
 			</Tooltip>
+			{/*
+			 * Kept inside the window: Radix flips the side and shifts along it when
+			 * the panel would cross an edge (8px clear), and the available-size
+			 * variables Radix measures cap the box so a long body scrolls inside the
+			 * panel instead of running off the bottom of the screen.
+			 */}
 			<PopoverContent
 				side="right"
 				align="start"
+				avoidCollisions
+				collisionPadding={POPOVER_COLLISION_PADDING}
 				aria-labelledby={titleId}
-				className="max-w-[calc(100vw-2rem)]"
+				data-hub-link-popover={link.link_id}
+				className="max-h-[var(--radix-popover-content-available-height)] max-w-[min(20rem,var(--radix-popover-content-available-width))] overflow-y-auto"
 				onInteractOutside={(event) => {
 					if (consentOpen) event.preventDefault();
 				}}
@@ -199,23 +305,89 @@ export function HubLinkSidebarMark({
 					button.current?.focus();
 				}}
 			>
-				<h4 id={titleId} className="mb-3 break-words text-body-sm text-ink">
-					{t("ui.hub.subscriptions.policy_menu", { item: link.name, source })}
+				<h4 id={titleId} className="break-words text-body-sm text-ink">
+					{t("ui.hub.links.policy_title", { item })}
 				</h4>
+				{source ? (
+					<p
+						className="mb-3 break-words text-meta text-ink-muted"
+						data-hub-link-source=""
+					>
+						{source}
+					</p>
+				) : (
+					<div
+						className="mb-3 flex items-start justify-between gap-3"
+						data-hub-link-source-unresolved=""
+					>
+						<p className="min-w-0 text-meta text-ink-muted">
+							{t("ui.hub.links.source_unresolved")}
+						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={memberships.isFetching}
+							onClick={refetchSource}
+						>
+							{t("ui.hub.links.retry")}
+						</Button>
+					</div>
+				)}
+				{pullFailed && (
+					<div
+						className="mb-3 flex flex-col gap-2 rounded-md border border-hairline p-3"
+						data-hub-link-incoming-failed=""
+					>
+						<p className="text-body-sm text-ink">
+							{t("ui.hub.links.incoming_failed")}
+						</p>
+						<p className="text-meta text-ink-muted">
+							{hubFailureReasonText(link.pull)}
+						</p>
+						{retryFailed && (
+							<p role="alert" className="text-meta text-danger">
+								{hubLinkFailureText(
+									actions.error,
+									t("ui.hub.links.retry_failed"),
+									HubMutationUpgradeRequired,
+								)}
+							</p>
+						)}
+						<div>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={actions.isPending || !actions.canWrite}
+								onClick={retryIncoming}
+							>
+								{t(
+									actions.isPending
+										? "ui.hub.links.retrying"
+										: "ui.hub.links.retry",
+								)}
+							</Button>
+						</div>
+					</div>
+				)}
 				<HubLinkPolicyControls
 					key={link.link_id}
 					link={link}
+					item={item}
+					source={source}
 					onConsentChange={setConsentOpen}
 				/>
-				{actions.error && (
+				{actions.error && !retryFailed && (
 					<p role="alert" className="mt-3 text-meta text-danger">
-						{actions.error instanceof HubMutationUpgradeRequired
-							? actions.error.message
-							: t("ui.hub.links.action_failed", {
-									direction,
-									item: link.name,
-									source,
-								})}
+						{hubLinkFailureText(
+							actions.error,
+							source
+								? t("ui.hub.links.action_failed", { direction, item, source })
+								: t("ui.hub.links.action_failed_unsourced", {
+										direction,
+										item,
+									}),
+							HubMutationUpgradeRequired,
+						)}
 					</p>
 				)}
 			</PopoverContent>

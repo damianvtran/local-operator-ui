@@ -1219,6 +1219,15 @@ export function projectTagRule(tag: string): string | null {
 const hubItemKind = z.enum(["agent", "team", "skill"]);
 
 /*
+ * ONE ROW's local identity (`HubLink.local_id`): the registry id of an agent or
+ * team, or a skill link's id. Mirrors core's `LocalId` in
+ * local_operator/server/routes/desktop_hub.py (1..128 chars, not blank). Sent only
+ * when the backend advertises `hub_items_by_id`; an older core refuses the field
+ * (its request models are `extra="forbid"`).
+ */
+const hubLocalId = z.string().min(1).max(128).regex(/\S/);
+
+/*
  * The sidebar customisation resource's wire schema (design contract § 2, § 4).
  *
  * `SIDEBAR_DESTINATION_IDS` is the one allow-list shared with the control DTOs
@@ -1546,6 +1555,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			direction: z.enum(["pull", "push"]).optional(),
 			kind: hubItemKind.optional(),
 			name: profileName.optional(),
+			localId: hubLocalId.optional(),
 		})
 		.strict(),
 	z
@@ -4649,13 +4659,23 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 			request.op === "hub.retry"
 		) {
 			const hasLink = request.linkId !== undefined;
+			/*
+			 * The retry arm's item address: `kind` + EXACTLY ONE of `name` |
+			 * `localId` (core `_one_address`: never both, and an id needs its kind).
+			 * Core's retry route has no `link_id` member, so that arm is kept only
+			 * for the shape older callers send and is never the sidebar's.
+			 */
+			const localId = request.op === "hub.retry" ? request.localId : undefined;
 			const hasLegacy =
-				request.kind !== undefined || request.name !== undefined;
+				request.kind !== undefined ||
+				request.name !== undefined ||
+				localId !== undefined;
 			if (
 				(hasLink && hasLegacy) ||
+				(request.name !== undefined && localId !== undefined) ||
 				(request.op !== "hub.check" &&
 					!hasLink &&
-					(!request.kind || !request.name)) ||
+					(!request.kind || (!request.name && !localId))) ||
 				(request.op === "hub.retry" && hasLink && !request.direction) ||
 				(request.direction === "push" && !hasLink)
 			) {
@@ -8031,6 +8051,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.direction ? { direction: request.direction } : {}),
 					...(request.kind ? { kind: request.kind } : {}),
 					...(request.name ? { name: request.name } : {}),
+					...(request.localId ? { local_id: request.localId } : {}),
 				},
 			};
 		case "hub.push":

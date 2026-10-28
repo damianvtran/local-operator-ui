@@ -80,6 +80,20 @@ export type HubLinkAction =
 			confirmApply?: true;
 	  }
 	| { action: "retry"; linkId: string; direction: HubLinkDirection }
+	/*
+	 * A failed INCOMING update, retried through the route core actually serves.
+	 * `/v1/desktop/hub/updates/retry` takes `kind` + one item address and has no
+	 * `link_id`/`direction` member (`HubRetry`, extra="forbid"), so the `retry`
+	 * arm above is refused with a 422. `localId` is the exact address and is sent
+	 * only when the backend advertises `hub_items_by_id`; otherwise the item's
+	 * registry `name` is the released address.
+	 */
+	| {
+			action: "retryItem";
+			linkId: string;
+			kind: HubLinkKind;
+			address: { localId: string } | { name: string };
+	  }
 	| { action: "preview"; linkId: string }
 	| { action: "confirm"; linkId: string; previewReceipt: string };
 
@@ -136,6 +150,13 @@ export function useHubLinkActions(linkId: string) {
 							linkId: input.linkId,
 							direction: input.direction,
 						});
+					case "retryItem":
+						return desktopResult<HubLinkActionResponse>({
+							op: "hub.retry",
+							requestId,
+							kind: input.kind,
+							...input.address,
+						});
 					case "preview":
 						return desktopResult<HubLinkActionResponse>({
 							op: "hub.push",
@@ -157,9 +178,11 @@ export function useHubLinkActions(linkId: string) {
 				}
 			}, safety.snapshot),
 		onSuccess: (response) => {
-			client.setQueryData(hubLinksKey, response.links);
+			// The item retry route answers `{reports, status}` with no inventory;
+			// `onSettled` refetches it, so only an answer that carries one writes it.
+			if (response.links) client.setQueryData(hubLinksKey, response.links);
 			client.setQueryData(["desktop", "hub-updates"], response.status);
-			if (response.reports.some((report) => report.applied)) {
+			if (response.reports?.some((report) => report.applied)) {
 				for (const key of ["profiles", "teams", "skills"])
 					void client.invalidateQueries({ queryKey: ["desktop", key] });
 			}

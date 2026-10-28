@@ -30,6 +30,55 @@ export function hubLinkSourceName(link: HubLink): string {
 }
 
 /**
+ * The destination as a noun phrase a SENTENCE can carry ("Acme private hub",
+ * "Public hub"), or `null` when it cannot be named.
+ *
+ * WHY a second resolver beside `hubLinkSourceName`: that one is a list label
+ * ("Acme · Private") and falls back to the literal "Source unavailable", which
+ * the sidebar policy popover then spliced into every sentence ("Receive updates
+ * from Source unavailable"). Here an unknown source is `null`, so a caller
+ * picks a sentence written WITHOUT a source instead of interpolating a
+ * placeholder.
+ *
+ * The organization's name comes from the link row's persisted `tenant_name`
+ * first, then from the signed-in account's own memberships matched by
+ * `tenant_id` - core only knows names it has stored (`hub.tenant_names`), so an
+ * org link published before that record was written reads `null` on the wire
+ * even though the account is a member. A membership is display metadata here,
+ * never authority: the auto-push gate (`hubAutoPushGate`) still reads only the
+ * row's own `tenant_name`, exactly as core does.
+ */
+export function hubLinkSourceLabel(
+	link: Pick<HubLink, "visibility" | "tenant_id" | "tenant_name">,
+	memberships: readonly { tenant_id: string; tenant_name: string }[] = [],
+): string | null {
+	if (link.visibility === "public")
+		return t("ui.hub.links.source_label_public");
+	const organization =
+		link.tenant_name ||
+		memberships.find((row) => row.tenant_id === link.tenant_id)?.tenant_name;
+	return organization
+		? t("ui.hub.links.source_label_org", { organization })
+		: null;
+}
+
+/**
+ * The auto-push refusal as one sentence that says what it means and what to do.
+ *
+ * `unsupported-precondition` is core's answer both when the server never
+ * attested revision-safe writes and when the link has no recorded remote
+ * revision to compare against (`_eligibility` in core's hub_sync service). The
+ * shared reason text ("This destination has not verified revision-safe
+ * publication.") names an internal guarantee and offers no next step, so in the
+ * auto-push context it is replaced; every other reason keeps its shared text.
+ */
+export function hubAutoPushUnavailableText(reason: string | null): string {
+	if (!reason || reason.split("/")[0] === "unsupported-precondition")
+		return t("ui.hub.subscriptions.auto_push_unverified");
+	return hubReasonText(reason);
+}
+
+/**
  * Policy is a confirmed service fact, independent in each direction. These rows
  * never optimistically flip an ON state, infer a source from the active hub view,
  * or turn a public future-write acknowledgement into declassification consent.
@@ -38,12 +87,30 @@ export function hubLinkSourceName(link: HubLink): string {
 export function HubLinkPolicyControls({
 	link,
 	onConsentChange,
-}: { link: HubLink; onConsentChange?: (open: boolean) => void }) {
+	item,
+	source: resolvedSource,
+}: {
+	link: HubLink;
+	onConsentChange?: (open: boolean) => void;
+	/**
+	 * The item's DISPLAY name. An agent/team link row's `name` is its local id
+	 * (core falls back to it when no alias is recorded), so a caller that knows
+	 * the label passes it; otherwise the row's name is all there is.
+	 */
+	item?: string;
+	/**
+	 * The caller's resolved destination phrase (`hubLinkSourceLabel`), `null`
+	 * when it could not be named. Omitted, it is resolved from the row alone.
+	 */
+	source?: string | null;
+}) {
 	useI18nLocale();
 	const write = useHubLinkPolicy();
 	const id = useId();
 	const cancelRef = useRef<HTMLButtonElement>(null);
-	const source = hubLinkSourceName(link);
+	const source =
+		resolvedSource !== undefined ? resolvedSource : hubLinkSourceLabel(link);
+	const itemName = item?.trim() ? item : link.name;
 	const [changedSetting, setChangedSetting] = useState<
 		"subscribe" | "auto_push"
 	>("subscribe");
@@ -84,9 +151,7 @@ export function HubLinkPolicyControls({
 	// The line follows EFFECTIVE state, not the carve-out: a configured-ON link the
 	// service cannot run stays "paused" even though its OFF->ON path is reachable.
 	const line = hubAutoPushLine(link);
-	const unavailableReason = link.eligibility.reason
-		? hubReasonText(link.eligibility.reason)
-		: t("ui.hub.subscriptions.unsupported");
+	const unavailableReason = hubAutoPushUnavailableText(link.eligibility.reason);
 	const label = t(
 		changedSetting === "subscribe"
 			? "ui.hub.subscriptions.subscribe"
@@ -108,19 +173,29 @@ export function HubLinkPolicyControls({
 						{t("ui.hub.subscriptions.subscribe")}
 					</label>
 					<p className="text-meta text-ink-muted">
-						{t(
-							write.canWrite
-								? "ui.hub.subscriptions.subscribe_description"
-								: "ui.hub.subscriptions.subscribe_description_blocked",
-							{ source },
-						)}
+						{source
+							? t(
+									write.canWrite
+										? "ui.hub.subscriptions.subscribe_description"
+										: "ui.hub.subscriptions.subscribe_description_blocked",
+									{ source },
+								)
+							: t(
+									write.canWrite
+										? "ui.hub.subscriptions.subscribe_description_unsourced"
+										: "ui.hub.subscriptions.subscribe_description_blocked_unsourced",
+								)}
 					</p>
 				</div>
 				<Switch
 					id={`${id}-subscribe`}
 					checked={link.policy.subscribe}
 					disabled={write.isPending || !write.canWrite}
-					aria-label={`${t("ui.hub.subscriptions.subscribe")}: ${source}`}
+					aria-label={
+						source
+							? `${t("ui.hub.subscriptions.subscribe")}: ${source}`
+							: t("ui.hub.subscriptions.subscribe")
+					}
 					onCheckedChange={(value) => save({ subscribe: value }, "subscribe")}
 				/>
 			</div>
@@ -140,33 +215,53 @@ export function HubLinkPolicyControls({
 						{t("ui.hub.subscriptions.auto_push")}
 					</label>
 					<p className="text-meta text-ink-muted">
-						{t("ui.hub.subscriptions.auto_push_description", { source })}
+						{source
+							? t("ui.hub.subscriptions.auto_push_description", { source })
+							: t("ui.hub.subscriptions.auto_push_description_unsourced")}
 					</p>
 				</div>
-				<Switch
-					id={`${id}-push`}
-					// Point at the line only while it renders; a dangling idref is worse
-					// than none. The aria-label stays the name; this adds the reason.
-					aria-describedby={line !== "none" ? `${id}-push-line` : undefined}
-					checked={link.policy.auto_push}
-					disabled={
-						write.isPending ||
-						!write.canWrite ||
-						(!link.policy.auto_push && unavailable)
-					}
-					aria-label={`${t("ui.hub.subscriptions.auto_push")}: ${source}`}
-					onCheckedChange={(value) => {
-						if (!value) save({ auto_push: false }, "auto_push");
-						else if (!unavailable) {
-							onConsentChange?.(true);
-							setConsent({
-								linkId: link.link_id,
-								revision: link.policy.revision,
-								source,
-							});
+				{/*
+				 * A disabled switch takes no pointer events, so the reason rides a
+				 * wrapper's native tooltip as well as the visible line below it
+				 * (`aria-describedby`): the person who hovers the dead control learns
+				 * why without having to find the sentence underneath.
+				 */}
+				<span
+					className="inline-flex shrink-0"
+					data-hub-auto-push-reason={line !== "none" ? "" : undefined}
+					title={line === "unavailable" ? unavailableReason : undefined}
+				>
+					<Switch
+						id={`${id}-push`}
+						// Point at the line only while it renders; a dangling idref is worse
+						// than none. The aria-label stays the name; this adds the reason.
+						aria-describedby={line !== "none" ? `${id}-push-line` : undefined}
+						checked={link.policy.auto_push}
+						disabled={
+							write.isPending ||
+							!write.canWrite ||
+							(!link.policy.auto_push && unavailable)
 						}
-					}}
-				/>
+						aria-label={
+							source
+								? `${t("ui.hub.subscriptions.auto_push")}: ${source}`
+								: t("ui.hub.subscriptions.auto_push")
+						}
+						onCheckedChange={(value) => {
+							if (!value) save({ auto_push: false }, "auto_push");
+							// No named destination, no consent: the dialog states WHERE
+							// future changes go, so it cannot open on an unnamed source.
+							else if (!unavailable && source) {
+								onConsentChange?.(true);
+								setConsent({
+									linkId: link.link_id,
+									revision: link.policy.revision,
+									source,
+								});
+							}
+						}}
+					/>
+				</span>
 			</div>
 			{line !== "none" && (
 				<p id={`${id}-push-line`} className="text-meta text-warning">
@@ -179,7 +274,9 @@ export function HubLinkPolicyControls({
 			)}
 			{write.isPending && (
 				<output className="text-meta text-ink-muted">
-					{t("ui.hub.subscriptions.saving", { setting: label, source })}
+					{source
+						? t("ui.hub.subscriptions.saving", { setting: label, source })
+						: t("ui.hub.subscriptions.saving_unsourced", { setting: label })}
 				</output>
 			)}
 			{write.error && (
@@ -189,14 +286,18 @@ export function HubLinkPolicyControls({
 						: write.error instanceof DesktopControlError &&
 								write.error.code === "policy-revision-changed"
 							? t("ui.hub.subscriptions.policy_changed")
-							: t("ui.hub.subscriptions.save_failed", {
-									setting: label,
-									source,
-								})}
+							: source
+								? t("ui.hub.subscriptions.save_failed", {
+										setting: label,
+										source,
+									})
+								: t("ui.hub.subscriptions.save_failed_unsourced", {
+										setting: label,
+									})}
 				</p>
 			)}
 			<Dialog
-				open={consent !== null}
+				open={consent !== null && source !== null}
 				onOpenChange={(open) => {
 					if (!open && !write.isPending) closeConsent();
 				}}
@@ -213,14 +314,14 @@ export function HubLinkPolicyControls({
 				>
 					<DialogHeader>
 						<DialogTitle>
-							{t("ui.hub.subscriptions.enable_title", { source })}
+							{t("ui.hub.subscriptions.enable_title", { source: source ?? "" })}
 						</DialogTitle>
 						<DialogDescription>
 							{link.visibility === "public"
-								? t("ui.hub.subscriptions.enable_public", { item: link.name })
+								? t("ui.hub.subscriptions.enable_public", { item: itemName })
 								: t("ui.hub.subscriptions.enable_private", {
-										item: link.name,
-										organization: link.tenant_name ?? source,
+										item: itemName,
+										organization: link.tenant_name ?? source ?? "",
 									})}
 						</DialogDescription>
 					</DialogHeader>
@@ -242,7 +343,7 @@ export function HubLinkPolicyControls({
 						<p role="alert" className="text-body-sm text-danger">
 							{t("ui.hub.subscriptions.save_failed", {
 								setting: label,
-								source,
+								source: source ?? "",
 							})}
 						</p>
 					)}

@@ -1458,6 +1458,15 @@ export function ChatSidebar({
 	);
 	const hubItems = hubItemIndex(hubUpdates.data);
 	const fullHubLinks = desktopFeatureEnabled(capabilities.data, "hub_links");
+	/*
+	 * Whether the hub item routes take `local_id` (core's exact address). Without
+	 * it a link mark's retry falls back to the registry name, the only address an
+	 * older core accepts.
+	 */
+	const hubItemsById = desktopFeatureEnabled(
+		capabilities.data,
+		"hub_items_by_id",
+	);
 	const hubLinks = useHubLinks(ready && fullHubLinks);
 	const hub = useHubActions();
 	// Whether the backend tracks any hub-linked item at all: the check control is
@@ -7177,6 +7186,9 @@ export function ChatSidebar({
 							link={linkedOrigin}
 							staged={staged}
 							onDetail={() => openHubDetail(kind, name)}
+							itemName={name}
+							displayName={displayName}
+							itemsById={hubItemsById}
 						/>
 					)}
 					{aggregateOrigins && (

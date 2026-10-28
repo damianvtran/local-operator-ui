@@ -326,6 +326,13 @@ export type DesktopFeature =
 	/** Full linked inventory and revision-checked independent policy controls. */
 	| "hub_links"
 	/**
+	 * The hub item routes (check/apply/retry) take `kind` + `local_id`, the exact
+	 * registry address, beside the released display-name arm. An older core
+	 * refuses the field (`extra="forbid"`), so a caller sends it only when this
+	 * is advertised.
+	 */
+	| "hub_items_by_id"
+	/**
 	 * Complete initial Skills adapter v1: remote public/org reads (including
 	 * org_skills.list/org_skill.get proxy), local pull/install, and initial
 	 * publish preview/confirm with receipt reconciliation. Older daemons may
