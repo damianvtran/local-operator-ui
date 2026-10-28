@@ -14,6 +14,11 @@ import { build } from "esbuild";
  * (`segmentsOf`) for both families — which is why this file bundles the
  * mirror's own totality helper and not a happy-path stub of it.
  *
+ * The trigger is `skillMentions` now, so an INLINE mention paints resolved —
+ * the rule the harness's inline change moved to. The cases below pin that
+ * against the same resolver the submit path calls, not against a second
+ * leading-only reading.
+ *
  * Bundled rather than imported because the modules are TypeScript in the
  * renderer tree; the modules under test are the REAL ones.
  */
@@ -87,13 +92,13 @@ const runs = (draft, over = {}) =>
 	});
 
 /* ------------------------------------------------------------------ */
-/* Resolved: leading + settled case-insensitive member                 */
+/* Resolved: every mention the trigger accepts, wherever it sits       */
 /* ------------------------------------------------------------------ */
 
-test("a leading $name that names a settled skill paints the resolver extent", () => {
+test("a resolved $name paints on its own token, inline included", () => {
 	assert.deepEqual(runs("$research"), [{ start: 0, end: 9, kind: "skill" }]);
-	// Case-insensitive membership is the resolver's rule (`invoke.py:151-162`);
-	// the ink must claim exactly what Enter will fire.
+	// Case-insensitive membership is the resolver's leading rule; the ink must
+	// claim exactly what Enter will fire.
 	assert.deepEqual(runs("$Research"), [{ start: 0, end: 9, kind: "skill" }]);
 	assert.deepEqual(runs("$RESEARCH"), [{ start: 0, end: 9, kind: "skill" }]);
 	// Hidden skills fire when named explicitly (issue #664's contract), so the
@@ -101,46 +106,78 @@ test("a leading $name that names a settled skill paints the resolver extent", ()
 	assert.deepEqual(runs("$secret-ritual"), [
 		{ start: 0, end: 14, kind: "skill" },
 	]);
-	// The resolved state has NO whole-draft gate: the token is a verdict the
-	// moment it is leading, and this is the primary case (a request follows).
-	assert.deepEqual(runs("$research fix this"), [
+	// INLINE is the change: the trigger reads the whole message, so a token in
+	// the middle of a sentence is painted where it sits.
+	assert.deepEqual(runs("fix this $research"), [
+		{ start: 9, end: 18, kind: "skill" },
+	]);
+	assert.deepEqual(runs("/team delivery $research"), [
+		{ start: 15, end: 24, kind: "skill" },
+	]);
+	// Every line, and every mention: a message may name several skills, in text
+	// order.
+	assert.deepEqual(runs("line one\n$research"), [
+		{ start: 9, end: 18, kind: "skill" },
+	]);
+	assert.deepEqual(runs("compare $research and $release-notes"), [
+		{ start: 8, end: 17, kind: "skill" },
+		{ start: 22, end: 36, kind: "skill" },
+	]);
+	// Dedupe by resolved name, first-seen: one body, one painted span.
+	assert.deepEqual(runs("$research and $Research"), [
 		{ start: 0, end: 9, kind: "skill" },
 	]);
-	assert.deepEqual(runs("  $research fix this"), [
-		{ start: 2, end: 11, kind: "skill" },
-	]);
-	// Leading is whitespace-only before the token, on any line — blank lines
-	// before it are not content.
-	assert.deepEqual(runs("\n\n$research fix"), [
-		{ start: 2, end: 11, kind: "skill" },
+});
+
+test("a token the send will not attach is not painted", () => {
+	/*
+	 * The block shapes submit's idempotence rules create: a name inside a block
+	 * will not attach (skipSpans), and a name the block already carries will not
+	 * attach a second time. The ink reads the PLAN, so neither is painted
+	 * resolved — a claim the send would not honour.
+	 */
+	const block = [
+		"<operator-skills>",
+		"",
+		"The user invoked the following skills directly. Follow them for this request. Their reference files, if any, are listed at the end of each body and are read with `skill://<name>/<path>`.",
+		"",
+		'<skill name="research">',
+		"the body quotes $research",
+		"</skill>",
+		"",
+		"</operator-skills>",
+	].join("\n");
+	assert.deepEqual(runs(block), []);
+	assert.deepEqual(runs(`$research fix\n\n${block}`), []);
+	// A name the block does not carry still paints, before it.
+	assert.deepEqual(runs(`$release-notes and $research\n\n${block}`), [
+		{ start: 0, end: 14, kind: "skill" },
 	]);
 });
 
 test("the extent is the RESOLVER's name class, so the corners read exactly as the submit will", () => {
-	/*
-	 * `$research,` FIRES: the comma is outside the name class, so
-	 * `parseSkillInvocation` reads `research` and the invocation is attempted —
-	 * the ink covers exactly that span and leaves the comma prose. Under-promise
-	 * in neither direction, which is why the extent is the resolver's and not the
-	 * picker's to-whitespace word (architect plan §3(b); UX u6).
-	 */
+	// `$research,` FIRES: the comma is outside the name class, so the ink
+	// covers exactly the name and leaves the comma prose.
 	assert.deepEqual(runs("$research, fix this"), [
 		{ start: 0, end: 9, kind: "skill" },
 	]);
 	/*
-	 * `$research.` DOES NOT FIRE: the dot is INSIDE the class, the parse reads
-	 * `research.`, misses the vocabulary and sends prose — so the ink is the
-	 * inert step over the whole extent, dot included ("the dot is part of the
-	 * typo"). Pinned so a later "fix" cannot silently flip the honesty call.
+	 * `$research.` ALSO FIRES now: the dot is inside the raw name class, but the
+	 * resolver trims trailing `.`/`-`/`_` back to a discovered name, so the send
+	 * expands `research` and the dot stays prose. The ink follows the trigger.
 	 */
-	assert.deepEqual(runs("$research."), [
-		{ start: 0, end: 10, kind: "skill-unknown" },
-	]);
-	// Greedy on purpose: `$research_extra` parses the name `research_extra` and
-	// does NOT fall back to `research` — the ink mirrors the swallow.
-	assert.deepEqual(runs("$research_extra"), [
-		{ start: 0, end: 15, kind: "skill-unknown" },
-	]);
+	assert.deepEqual(runs("$research."), [{ start: 0, end: 9, kind: "skill" }]);
+	// A run that cannot be trimmed back to a name is unresolved: inert when it
+	// is the whole draft, nothing otherwise.
+	assert.deepEqual(
+		skillHighlightRuns({
+			draft: "$research_extra",
+			vocabulary: VOCABULARY,
+			settled: true,
+			picking: false,
+		}),
+		[{ start: 0, end: 15, kind: "skill-unknown" }],
+	);
 });
 
 test("a resolved token paints THROUGH the open list; an unresolved one waits for closure", () => {
@@ -152,14 +189,19 @@ test("a resolved token paints THROUGH the open list; an unresolved one waits for
 	assert.deepEqual(runs("$research fix this", { picking: true }), [
 		{ start: 0, end: 9, kind: "skill" },
 	]);
+	assert.deepEqual(runs("fix this $research", { picking: true }), [
+		{ start: 9, end: 18, kind: "skill" },
+	]);
 	// An unresolved token under the open list is a prefix in progress, not a
 	// typo (the slash `picking` suppression): NO ink, so the miss line and the
 	// dim can never talk over each other.
 	assert.deepEqual(runs("$zzz", { picking: true }), []);
 	assert.deepEqual(runs("$res", { picking: true }), []);
+	assert.deepEqual(runs("fix this $zzz", { picking: true }), []);
 	// Escape closes the list, and THEN the inert step arrives — the captured
 	// pair the UX walk names (`$zzz` open, `$zzz` after Escape).
 	assert.deepEqual(runs("$zzz"), [{ start: 0, end: 4, kind: "skill-unknown" }]);
+	assert.deepEqual(runs("$res"), [{ start: 0, end: 4, kind: "skill-unknown" }]);
 });
 
 /* ------------------------------------------------------------------ */
@@ -217,37 +259,34 @@ test("the inert step needs the word to BE the whole draft and to carry lowercase
 	assert.deepEqual(runs("$zzz\n"), [
 		{ start: 0, end: 4, kind: "skill-unknown" },
 	]);
-	// Text after it: the token could be a sentence in progress — no ink.
+	// Text around it: the token could be a sentence in progress — no ink.
 	assert.deepEqual(runs("$zzz fix this"), []);
 	assert.deepEqual(runs("$zzz fix"), []);
-	assert.deepEqual(runs("$res fix this"), []);
+	assert.deepEqual(runs("fix this $zzz"), []);
 	// Lowercase evidence is the picker's own `hasLowercaseEvidence` rule — the
 	// one gate that keeps money and shell out.
 	assert.deepEqual(runs("$5"), []);
 	assert.deepEqual(runs("$PATH"), []);
 	assert.deepEqual(runs("$ZZZ"), []);
+	// An inline UPPERCASE token has no evidence either, even when a lower-case
+	// skill by that name exists: `$RESEARCH` mid-sentence stays prose (and the
+	// submit agrees), unlike the leading legacy spelling.
+	assert.deepEqual(runs("fix $RESEARCH"), []);
+	assert.deepEqual(runs("$RESEARCH"), [{ start: 0, end: 9, kind: "skill" }]);
 });
 
-test("money, shell, glue, inline and slash-claimed tokens stay neutral", () => {
+test("money, shell, glue and bare sigils stay neutral", () => {
 	// Glued to a word: `$` is punctuation inside it, never a sigil.
 	assert.deepEqual(runs("costs$5"), []);
 	assert.deepEqual(runs("a$b"), []);
-	// Inline in ANY state: only the anchored leading token fires on submit
-	// (`skill-invocation.ts:83-108`), so no ink claims an inline token — the
-	// accept gesture's reassembly is what makes one leading.
-	assert.deepEqual(runs("fix this $research"), []);
-	assert.deepEqual(runs("fix this $research", { picking: true }), []);
-	assert.deepEqual(runs("fix this $zzz"), []);
+	assert.deepEqual(runs("`$research`"), []);
+	assert.deepEqual(runs("$$research"), []);
 	// A bare `$` and a `$-foo` have no name to judge: the list may open, the ink
 	// has nothing to claim. (Money/shell stay neutral by the evidence gate.)
 	assert.deepEqual(runs("$"), []);
 	assert.deepEqual(runs("$-foo"), []);
-	// A recognised command claims the rest of its line, and the desktop keeps
-	// that claim TOTAL (`skill-token.ts:25-35`): `/model $5` and the relaxed-TUI
-	// shape `/team delivery $research` are both prose here — and structurally so,
-	// because neither `$` is leading.
+	// A slash command's money argument stays prose.
 	assert.deepEqual(runs("/model $5"), []);
-	assert.deepEqual(runs("/team delivery $research"), []);
 });
 
 /* ------------------------------------------------------------------ */
@@ -329,6 +368,7 @@ test("a mixed draft's segments keep every character (the mirror's totality)", ()
 	for (const draft of [
 		"$research fix this",
 		"  $research and some prose",
+		"fix this $research and $release-notes",
 		"$zzz",
 		"$zzz\ntrailing lines stay painted",
 		"plain prose with no runs at all",

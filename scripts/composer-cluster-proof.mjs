@@ -23,7 +23,7 @@
  *     exactly what the before frames show.
  *   - `skill-*` (issue #664, and the v2 sessionless contract): the `$` list and
  *     the `$` INK. On a tree without the feature the list never opens, so the
- *     accept case clicks nothing (the draft survives, un-reassembled) and the
+ *     accept case clicks nothing (the draft survives, un-completed) and the
  *     send case's Enter submits the RAW text — the `[data-sent]` strip carries
  *     both halves byte for byte. The v2 rows add: a bare `$` on a DRAFT pane
  *     (the sessionless read), the leading-filter rows (`$res` = 2, `$resea` =
@@ -197,8 +197,8 @@ const CASES = [
 		],
 	},
 	{
-		name: "skill-accepted-reassembles",
-		why: "Accepting the row: the token moves to the FRONT with the surviving draft as its request (`fix this $res` → `$research fix this `), staged for send. The click is used here so the before tree — which has no list to click — simply leaves the draft alone; the keyboard accept is the unit suites' (the accept write is `skillCompletionFor`, executed there).",
+		name: "skill-accepted-in-place",
+		why: "Accepting the row: the token is replaced WHERE IT SITS (`fix this $res` → `fix this $research `), because the submit trigger reads the whole message now and moving the token would be an edit nobody asked for. The click is used here so the before tree — which has no list to click — simply leaves the draft alone; the keyboard accept is the unit suites' (the accept write is `skillCompletionFor`, executed there).",
 		drive: async () => {
 			await clearDraft();
 			await send("Input.insertText", { text: "fix this $res" });
@@ -207,7 +207,7 @@ const CASES = [
 			await sleep(400);
 			return { state: await evaluate(READ_STATE) };
 		},
-		expect: (state) => [["draft", state.draft, "$research fix this "]],
+		expect: (state) => [["draft", state.draft, "fix this $research "]],
 	},
 	{
 		name: "skill-send-expands",
@@ -224,22 +224,15 @@ const CASES = [
 		},
 		expect: (state) => [
 			[
-				"the payload is the skill expansion",
+				"the payload is the user's text plus the skill block",
 				String(state.sent).startsWith(
-					"The user invoked the `research` skill directly.",
+					"fix this $research \n\n<operator-skills>",
 				),
 				true,
 			],
 			[
-				"the typed line rides the attribute",
-				String(state.sent).includes(
-					'<skill name="research" invocation="$research fix this">',
-				),
-				true,
-			],
-			[
-				"the request is the last line",
-				String(state.sent).endsWith("fix this"),
+				"the block carries the skill's body element",
+				String(state.sent).includes('<skill name="research">\n'),
 				true,
 			],
 			["the box retired the send", state.draft, ""],
@@ -469,17 +462,15 @@ const CASES = [
 		},
 		expect: (state) => [
 			[
-				"the payload is the skill expansion",
+				"the payload is the user's text plus the skill block",
 				String(state.sent).startsWith(
-					"The user invoked the `research` skill directly.",
+					"$research fix this\n\n<operator-skills>",
 				),
 				true,
 			],
 			[
-				"the typed line rides the attribute",
-				String(state.sent).includes(
-					'<skill name="research" invocation="$research fix this">',
-				),
+				"the block carries the skill's body element",
+				String(state.sent).includes('<skill name="research">\n'),
 				true,
 			],
 		],
