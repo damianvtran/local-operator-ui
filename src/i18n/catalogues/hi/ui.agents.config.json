@@ -10,6 +10,7 @@
 	"ui.agents.config.composer.label": "एजेंट या टीम में बदलाव के लिए कहें",
 	"ui.agents.config.definitions": "{count, plural, one {# परिभाषा} other {# परिभाषाएँ}}",
 	"ui.agents.config.error.stop_refused": "रोकना लागू नहीं हुआ — रन अभी भी चल रहा है।",
+	"ui.agents.config.error.turn_failed": "मॉडल ने इस अनुरोध का जवाब नहीं दिया।",
 	"ui.agents.config.examples.add_twice": "release-crew में coder को दो बार जोड़ें",
 	"ui.agents.config.examples.reads_code": "ऐसा समीक्षक जो सिर्फ़ कोड पढ़ता है",
 	"ui.agents.config.examples.team_shipping": "shipping नाम की टीम, जिसमें एक मैनेजर और दो coder हैं",

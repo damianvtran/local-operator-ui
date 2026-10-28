@@ -67,6 +67,7 @@
 	"ui.agents.skills.empty.search": "Không có kỹ năng nào khớp với “{query}”.",
 	"ui.agents.skills.error.detail_meaning": "Có thể kỹ năng đã bị xóa, hoặc backend đã từ chối thao tác đọc.",
 	"ui.agents.skills.error.detail_title": "Không đọc được “{name}”",
+	"ui.agents.skills.error.download_failed_title": "Lần tải xuống này không thành công",
 	"ui.agents.skills.error.meaning": "Không mất gì cả. Thao tác đọc không thành công nên danh sách có thể chỉ đã cũ.",
 	"ui.agents.skills.error.title": "Không đọc được danh sách kỹ năng",
 	"ui.agents.skills.error.what_fallback": "Yêu cầu chưa hoàn tất.",

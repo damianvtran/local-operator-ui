@@ -10,6 +10,7 @@
 	"ui.agents.config.composer.label": "Yêu cầu thay đổi tác nhân hoặc nhóm",
 	"ui.agents.config.definitions": "{count, plural, other {# định nghĩa}}",
 	"ui.agents.config.error.stop_refused": "Lệnh dừng chưa có hiệu lực — lần chạy vẫn đang tiếp tục.",
+	"ui.agents.config.error.turn_failed": "Mô hình không phản hồi yêu cầu này.",
 	"ui.agents.config.examples.add_twice": "Thêm coder hai lần vào release-crew",
 	"ui.agents.config.examples.reads_code": "Một reviewer chỉ đọc mã",
 	"ui.agents.config.examples.team_shipping": "Một nhóm tên shipping với một quản lý và hai coder",

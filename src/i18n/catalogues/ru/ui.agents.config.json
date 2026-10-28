@@ -10,6 +10,7 @@
 	"ui.agents.config.composer.label": "Запросить изменение агента или команды",
 	"ui.agents.config.definitions": "{count, plural, one {# определение} few {# определения} many {# определений} other {# определения}}",
 	"ui.agents.config.error.stop_refused": "Остановка не сработала — запуск продолжается.",
+	"ui.agents.config.error.turn_failed": "Модель не ответила на этот запрос.",
 	"ui.agents.config.examples.add_twice": "Добавьте агента coder дважды в release-crew",
 	"ui.agents.config.examples.reads_code": "Ревьюер, который только читает код",
 	"ui.agents.config.examples.team_shipping": "Команда shipping с менеджером и двумя агентами coder",

@@ -67,6 +67,7 @@
 	"ui.agents.skills.empty.search": "Ninguna habilidad coincide con “{query}”.",
 	"ui.agents.skills.error.detail_meaning": "Puede que la habilidad se haya eliminado o que el backend haya rechazado la lectura.",
 	"ui.agents.skills.error.detail_title": "No se pudo leer “{name}”",
+	"ui.agents.skills.error.download_failed_title": "No se descargó",
 	"ui.agents.skills.error.meaning": "No se ha perdido nada. Falló una lectura, así que la lista puede estar desactualizada.",
 	"ui.agents.skills.error.title": "No se pudieron leer las habilidades",
 	"ui.agents.skills.error.what_fallback": "La solicitud no se completó.",

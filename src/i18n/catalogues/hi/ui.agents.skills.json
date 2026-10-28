@@ -67,6 +67,7 @@
 	"ui.agents.skills.empty.search": "“{query}” से कोई कौशल मेल नहीं खाता।",
 	"ui.agents.skills.error.detail_meaning": "हो सकता है कौशल हटा दिया गया हो, या बैकएंड ने पढ़ने से मना कर दिया हो।",
 	"ui.agents.skills.error.detail_title": "“{name}” पढ़ा नहीं जा सका",
+	"ui.agents.skills.error.download_failed_title": "डाउनलोड नहीं हो सका",
 	"ui.agents.skills.error.meaning": "कुछ खोया नहीं है। पढ़ना विफल हुआ, इसलिए सूची शायद पुरानी है।",
 	"ui.agents.skills.error.title": "कौशल पढ़े नहीं जा सके",
 	"ui.agents.skills.error.what_fallback": "अनुरोध पूरा नहीं हुआ।",

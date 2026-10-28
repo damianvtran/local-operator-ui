@@ -67,6 +67,7 @@
 	"ui.agents.skills.empty.search": "Aucune compétence ne correspond à « {query} ».",
 	"ui.agents.skills.error.detail_meaning": "La compétence a peut-être été supprimée, ou le backend a refusé la lecture.",
 	"ui.agents.skills.error.detail_title": "Impossible de lire « {name} »",
+	"ui.agents.skills.error.download_failed_title": "Le téléchargement n’a pas abouti",
 	"ui.agents.skills.error.meaning": "Rien n’est perdu. Une lecture a échoué ; la liste est peut-être simplement obsolète.",
 	"ui.agents.skills.error.title": "Impossible de lire les compétences",
 	"ui.agents.skills.error.what_fallback": "La requête n’a pas abouti.",

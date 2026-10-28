@@ -10,6 +10,7 @@
 	"ui.agents.config.composer.label": "请求更改智能体或团队",
 	"ui.agents.config.definitions": "{count, plural, other {#个定义}}",
 	"ui.agents.config.error.stop_refused": "停止未生效——本次运行仍在继续。",
+	"ui.agents.config.error.turn_failed": "模型未响应此请求。",
 	"ui.agents.config.examples.add_twice": "向release-crew添加两个coder",
 	"ui.agents.config.examples.reads_code": "一个只读代码的审阅者",
 	"ui.agents.config.examples.team_shipping": "一个叫shipping的团队，含一名管理者和两名coder",
