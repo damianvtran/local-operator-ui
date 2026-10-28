@@ -975,6 +975,103 @@ test(
 );
 
 test(
+	"U4: native focus fixup lag cannot strand a removed row's keyboard position",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		const activeElement = Object.getOwnPropertyDescriptor(
+			window.Document.prototype,
+			"activeElement",
+		);
+		let detached = null;
+		try {
+			await page.settle(() => page.rowIds().length === 5);
+			const first = page.q(
+				'[data-drawer-update="n_row7"] [data-row-action="read"]',
+			);
+			await act(async () => first.focus());
+			detached = first;
+			/* Model the hosted Chromium state: the removed row's action remains
+			 * activeElement after its DOM node is disconnected. The existing keyboard
+			 * test only models JSDOM's immediate BODY reset, which passed at the
+			 * failing native head. */
+			Object.defineProperty(document, "activeElement", {
+				configurable: true,
+				get: () => detached ?? activeElement.get.call(document),
+			});
+			await page.click(
+				'[data-drawer-update="n_row7"] [data-row-action="read"]',
+			);
+			await flush();
+			assert.equal(
+				first.isConnected,
+				false,
+				"negative control: row was removed",
+			);
+			detached = null;
+			assert.equal(
+				document.activeElement.closest("[data-drawer-update]")?.dataset
+					.drawerUpdate,
+				"n_row6",
+			);
+		} finally {
+			detached = null;
+			Reflect.deleteProperty(document, "activeElement");
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+test(
+	"U4: pointer removal hands focus to next, previous, then the empty heading",
+	BOUNDED,
+	async () => {
+		for (const direction of ["rtl", "ltr"]) {
+			document.documentElement.dir = direction;
+			const page = await mount({ items: [row(1), row(2), row(3)] });
+			try {
+				await page.settle(() => page.rowIds().length === 3);
+				const first = page.q(
+					'[data-drawer-update="n_row3"] [data-row-action="read"]',
+				);
+				await act(async () => first.focus());
+				await page.click(
+					'[data-drawer-update="n_row3"] [data-row-action="read"]',
+				);
+				await flush();
+				assert.equal(
+					document.activeElement.closest("[data-drawer-update]")?.dataset
+						.drawerUpdate,
+					"n_row2",
+					`${direction}: next row owns focus after pointer removal`,
+				);
+				const last = page.q(
+					'[data-drawer-update="n_row1"] [data-row-action="read"]',
+				);
+				await act(async () => last.focus());
+				await page.click(
+					'[data-drawer-update="n_row1"] [data-row-action="read"]',
+				);
+				await flush();
+				assert.equal(
+					document.activeElement.closest("[data-drawer-update]")?.dataset
+						.drawerUpdate,
+					"n_row2",
+					`${direction}: previous row owns focus when no next row remains`,
+				);
+				await page.click("[data-drawer-mark-all-read]");
+				await flush();
+				assert.equal(document.activeElement.dataset.drawerEmpty, "unread");
+			} finally {
+				await page.unmount();
+				page.client.clear();
+			}
+		}
+	},
+);
+
+test(
 	"U2/U4: roving radio arrows; disappearing focused row hands off to next row then empty heading",
 	BOUNDED,
 	async () => {

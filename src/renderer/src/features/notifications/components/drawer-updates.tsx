@@ -35,6 +35,7 @@ import {
 	type KeyboardEvent,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -300,16 +301,23 @@ export const DrawerUpdates: FC<{
 	const shown = view === "unread" ? unread : read;
 	const listElement = useRef<HTMLDivElement>(null);
 	const focusedRow = useRef<{ id: string; index: number } | null>(null);
-	useEffect(() => {
+	const focusedElement = useRef<HTMLElement | null>(null);
+	useLayoutEffect(() => {
 		const focused = focusedRow.current;
 		if (!focused || shown.some((item) => item.id === focused.id)) return;
 		focusedRow.current = null;
-		// Only recover focus lost by row removal; never steal focus from the toast
-		// Undo or a different panel the operator deliberately moved to.
-		if (document.activeElement !== document.body) return;
+		/* Chromium can keep the removed action as activeElement through the
+		 * commit's focus notification. Re-focus now, synchronously, or a later
+		 * focus event on that detached action clears the row position we saved. */
+		const active = document.activeElement;
+		const removedOwnedFocus =
+			focusedElement.current !== null &&
+			!focusedElement.current.isConnected &&
+			focusedElement.current === active;
+		if (active !== document.body && !removedOwnedFocus) return;
 		const next = shown[Math.min(focused.index, shown.length - 1)];
 		const selector = next
-			? `[data-drawer-update="${CSS.escape(next.id)}"] button`
+			? `[data-drawer-update="${CSS.escape(next.id)}"] [data-row-action="read"]`
 			: "[data-drawer-empty], [data-drawer-load-more]";
 		listElement.current?.querySelector<HTMLElement>(selector)?.focus();
 	}, [shown]);
@@ -474,6 +482,10 @@ export const DrawerUpdates: FC<{
 					const row = (event.target as HTMLElement).closest<HTMLElement>(
 						"[data-drawer-update]",
 					);
+					/* Do not let a focus notification from a detached action erase the
+					 * position saved while that action was connected. */
+					if (row && !row.isConnected) return;
+					focusedElement.current = row ? (event.target as HTMLElement) : null;
 					focusedRow.current = row?.dataset.drawerUpdate
 						? {
 								id: row.dataset.drawerUpdate,
