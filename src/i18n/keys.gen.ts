@@ -117,9 +117,11 @@ import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
+import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
+import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
 import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
@@ -912,9 +914,11 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsSpeech,
 	...enUiSettingsUpdates,
 	...enUiShell,
+	...enUiShellMenubar,
 	...enUiShellRail,
 	...enUiTeamBridgeArchive,
 	...enUiTeamBridge,
+	...enUiUpdatesPanel,
 };
 
 /** The client's own messages per locale; `en` is `bundledEnglish` itself. */
@@ -8675,6 +8679,19 @@ export type MessageParams = {
 	"ui.shell.user_profile_sidebar.settings": undefined;
 	"ui.shell.user_profile_sidebar.sign_out": undefined;
 	"ui.shell.user_profile_sidebar.user": undefined;
+	"ui.shell.menubar.about": { name: string };
+	"ui.shell.menubar.actual_size": undefined;
+	"ui.shell.menubar.close_tab_or_window": undefined;
+	"ui.shell.menubar.edit": undefined;
+	"ui.shell.menubar.file": undefined;
+	"ui.shell.menubar.force_reload": undefined;
+	"ui.shell.menubar.learn_more": undefined;
+	"ui.shell.menubar.new_browser_tab": undefined;
+	"ui.shell.menubar.reload": undefined;
+	"ui.shell.menubar.view": undefined;
+	"ui.shell.menubar.window": undefined;
+	"ui.shell.menubar.zoom_in": undefined;
+	"ui.shell.menubar.zoom_out": undefined;
 	"ui.shell.rail.ask.aria": { chord: string; subject: string };
 	"ui.shell.rail.ask.aria_count": {
 		chord: string;
@@ -9007,6 +9024,57 @@ export type MessageParams = {
 	"ui.teamBridge.thread.withheld": undefined;
 	"ui.teamBridge.thread.yesterday": undefined;
 	"ui.teamBridge.unread.count": { count: number };
+	"ui.updates.panel.artifact.damaged.message": undefined;
+	"ui.updates.panel.artifact.damaged.message_version": { version: string };
+	"ui.updates.panel.artifact.metadata_missing.message": undefined;
+	"ui.updates.panel.artifact.metadata_missing.message_version": {
+		version: string;
+	};
+	"ui.updates.panel.artifact.mismatch.message": undefined;
+	"ui.updates.panel.artifact.mismatch.message_version": { version: string };
+	"ui.updates.panel.artifact.missing_on_disk.message": undefined;
+	"ui.updates.panel.artifact.missing_on_disk.message_version": {
+		version: string;
+	};
+	"ui.updates.panel.artifact.not_this_app.message": undefined;
+	"ui.updates.panel.artifact.not_this_app.message_version": { version: string };
+	"ui.updates.panel.artifact.remedy": undefined;
+	"ui.updates.panel.artifact.unreadable.message": undefined;
+	"ui.updates.panel.artifact.unreadable.message_version": { version: string };
+	"ui.updates.panel.disk.message": undefined;
+	"ui.updates.panel.disk.message_version": { version: string };
+	"ui.updates.panel.disk.remedy": { size: string };
+	"ui.updates.panel.dismiss.not_now": undefined;
+	"ui.updates.panel.failure.cancelled.message": {
+		target: string;
+		running: string;
+	};
+	"ui.updates.panel.failure.cancelled.remedy": undefined;
+	"ui.updates.panel.failure.unfinished.message": {
+		target: string;
+		running: string;
+	};
+	"ui.updates.panel.failure.unfinished.remedy": undefined;
+	"ui.updates.panel.launch.check.message": undefined;
+	"ui.updates.panel.launch.check.message_version": { version: string };
+	"ui.updates.panel.launch.heading": undefined;
+	"ui.updates.panel.launch.keep.message": undefined;
+	"ui.updates.panel.launch.keep.message_version": { version: string };
+	"ui.updates.panel.launch.open.message": undefined;
+	"ui.updates.panel.launch.open.message_version": { version: string };
+	"ui.updates.panel.seal.remedy": undefined;
+	"ui.updates.panel.seal.startup.heading": undefined;
+	"ui.updates.panel.seal.startup.message": undefined;
+	"ui.updates.panel.seal.update.message": undefined;
+	"ui.updates.panel.seal.update.message_version": { version: string };
+	"ui.updates.panel.server.behind.remedy": undefined;
+	"ui.updates.panel.server.norestart.remedy": undefined;
+	"ui.updates.panel.server.rebuild.remedy": undefined;
+	"ui.updates.panel.service.check_unavailable.message": undefined;
+	"ui.updates.panel.service.no_backend.message": undefined;
+	"ui.updates.panel.service.no_server.message": undefined;
+	"ui.updates.panel.service.restart.message": undefined;
+	"ui.updates.panel.service.restart.message_version": { version: string };
 };
 
 export type MessageKey = keyof MessageParams;

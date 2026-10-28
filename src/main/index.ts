@@ -18,7 +18,7 @@ import {
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
-import { LANGUAGE_SETTING_KEY } from "../i18n/locale";
+import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
 import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
@@ -59,6 +59,7 @@ import {
 	groundWithGlass,
 	windowGlassArgument,
 } from "../shared/window-glass";
+import { applicationMenuLabels } from "./application-menu-labels";
 import { uploadAttachment } from "./attachment-upload";
 import {
 	BackendInstaller,
@@ -560,17 +561,25 @@ function configureAboutPanel(): void {
 function createApplicationMenu(): void {
 	// Check if we're in development mode
 	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
+	/*
+	 * Resolved per BUILD, not once at import: the labels live in the catalogue and
+	 * the main process's locale follows the backend (see `main-locale.ts`), so a
+	 * menu built before the backend answers must be rebuilt when it does. A
+	 * module-scope constant here would freeze the first language for the life of
+	 * the process.
+	 */
+	const labels = applicationMenuLabels();
 
 	// Define zoom functions
 
 	// Create menu template
 	const template: Electron.MenuItemConstructorOptions[] = [
 		{
-			label: "File",
+			label: labels.file,
 			submenu: [{ role: "quit" }],
 		},
 		{
-			label: "Edit",
+			label: labels.edit,
 			submenu: [
 				{ role: "undo" },
 				{ role: "redo" },
@@ -584,11 +593,11 @@ function createApplicationMenu(): void {
 			],
 		},
 		{
-			label: "View",
+			label: labels.view,
 			submenu: [
 				{
 					id: "app-new-tab",
-					label: "New Browser Tab",
+					label: labels.newBrowserTab,
 					accelerator: "CmdOrCtrl+T",
 					/*
 					 * THE NATIVE ACCELERATOR ROUTE FOR CMD+T, which had no menu item at all.
@@ -608,7 +617,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-reload",
-					label: "Reload",
+					label: labels.reload,
 					accelerator: "CmdOrCtrl+R",
 					click: (_item, target) =>
 						runBrowserMenuAction(
@@ -620,7 +629,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-force-reload",
-					label: "Force Reload",
+					label: labels.forceReload,
 					accelerator: "CmdOrCtrl+Shift+R",
 					click: (_item, target) =>
 						runBrowserMenuAction(
@@ -633,7 +642,7 @@ function createApplicationMenu(): void {
 				{ type: "separator" as const },
 				{
 					id: "app-actual-size",
-					label: "Actual Size",
+					label: labels.actualSize,
 					accelerator: "CmdOrCtrl+0",
 					click: (
 						_item: Electron.MenuItem,
@@ -646,7 +655,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-zoom-in",
-					label: "Zoom In",
+					label: labels.zoomIn,
 					accelerator: "CmdOrCtrl+Plus", // On macOS, this often requires Shift as well (Cmd+Shift+=)
 					click: (
 						_item: Electron.MenuItem,
@@ -661,7 +670,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-zoom-out",
-					label: "Zoom Out",
+					label: labels.zoomOut,
 					accelerator: "CmdOrCtrl+-",
 					click: (
 						_item: Electron.MenuItem,
@@ -679,7 +688,7 @@ function createApplicationMenu(): void {
 			],
 		},
 		{
-			label: "Window",
+			label: labels.window,
 			submenu: [
 				{ role: "minimize" },
 				{ role: "zoom" },
@@ -705,7 +714,7 @@ function createApplicationMenu(): void {
 								// browser TAB while the browser has focus and the WINDOW elsewhere,
 								// and a menu label cannot follow focus that lives in a page view
 								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
-								label: "Close Tab or Window",
+								label: labels.closeTabOrWindow,
 								accelerator: "CmdOrCtrl+W",
 								click: (_item, target) =>
 									runBrowserMenuAction(
@@ -725,7 +734,7 @@ function createApplicationMenu(): void {
 								// browser TAB while the browser has focus and the WINDOW elsewhere,
 								// and a menu label cannot follow focus that lives in a page view
 								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
-								label: "Close Tab or Window",
+								label: labels.closeTabOrWindow,
 								accelerator: "CmdOrCtrl+W",
 								click: (_item, target) =>
 									runBrowserMenuAction(
@@ -742,7 +751,7 @@ function createApplicationMenu(): void {
 			role: "help",
 			submenu: [
 				{
-					label: "Learn More",
+					label: labels.learnMore,
 					click: async () => {
 						await shell.openExternal("https://local-operator.com");
 					},
@@ -753,7 +762,10 @@ function createApplicationMenu(): void {
 
 	// Add developer tools option only in development mode
 	if (isDev) {
-		const viewMenu = template.find((menu) => menu.label === "View");
+		// Compared against the RESOLVED label rather than the word it used to be
+		// spelled with: the template now carries a catalogue value, and a literal
+		// here would silently stop matching once the locale moved.
+		const viewMenu = template.find((menu) => menu.label === labels.view);
 		if (viewMenu?.submenu && Array.isArray(viewMenu.submenu)) {
 			viewMenu.submenu.push(
 				{ type: "separator" as const },
@@ -776,7 +788,7 @@ function createApplicationMenu(): void {
 				 * phrasing and takes the name from `app.name` the way the role did.
 				 */
 				{
-					label: `About ${app.name}`,
+					label: labels.about(app.name),
 					click: () => {
 						if (resolveAboutPanelAction(windowLaunch.mode) === "suppress") {
 							// A line rather than silence: an action that nothing reached and a
@@ -2368,6 +2380,18 @@ app
 		 */
 		configureAboutPanel();
 		createApplicationMenu();
+		/*
+		 * REBUILD THE MENU WHEN THE LANGUAGE MOVES. Electron installs one menu object
+		 * for the whole app, so a label resolved at build time keeps that language
+		 * until the template is rebuilt. `subscribeLocale` fires only on a real
+		 * CHANGE (`src/i18n/locale.ts` notifies nothing for a repeated identical
+		 * answer), so a re-read that agrees does not rebuild the menu under a click.
+		 *
+		 * The trigger is the main process's own locale mirror, which is the same
+		 * value `t()` renders here: a subscription to anything else would rebuild the
+		 * menu in a language the next label lookup does not agree with.
+		 */
+		subscribeLocale(createApplicationMenu);
 
 		/*
 		 * A headless run does not outlive the process that launched it.
