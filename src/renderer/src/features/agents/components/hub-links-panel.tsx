@@ -115,15 +115,36 @@ export function HubLinkGroup({
 	const busy = actions.isPending || isBusy(link);
 	// Known-ness is the provenance literal; only `adopt-unknown` is unknown.
 	const unknownBaseline = !baselineIsKnown(link.baseline_state);
-	/**
-	 * A dry run's `would-merge` is the ONLY outcome that means pressing Pull
-	 * would change something (`report.py` `ItemOutcome`): `up-to-date`,
-	 * `unchanged` and an `unavailable` row all leave the copy alone, so those
-	 * are stated inline instead of opening a modal over nothing.
+	/*
+	 * A dry run answers one of three classes, and they are NOT "changed" and
+	 * "everything else" (`report.py` `ItemOutcome`, measured over the wire by
+	 * review round 3):
+	 *
+	 *   - `would-merge`          - Pull would write.
+	 *   - `needs-review`         - there IS something to merge, but core needs a
+	 *                              decision: a conflict (`merge-refused`) or an
+	 *                              unknown baseline (`model-unavailable`, which
+	 *                              is EVERY unknown-baseline dry run without the
+	 *                              acknowledgement - `merge.py` returns
+	 *                              `needs-review`, never `would-merge`). The
+	 *                              prefer buttons and the acknowledgement live
+	 *                              in the dialog, so this class MUST open it.
+	 *   - `up-to-date`/`unchanged` - a genuine no-op: state it inline.
+	 *
+	 * A failure class (`unavailable`, `failed`, `skipped`) is stated inline as
+	 * a failure with core's own `message`; it is not "nothing to pull" either.
+	 * `refused` never reaches here: the route answers 422 for a single item.
 	 */
-	const incomingDelta =
-		incomingReports?.some((report) => report.outcome === "would-merge") ??
-		false;
+	const incomingOutcomes = new Set(
+		(incomingReports ?? []).map((report) => report.outcome),
+	);
+	const incomingDelta = incomingOutcomes.has("would-merge");
+	const incomingNeedsReview = incomingOutcomes.has("needs-review");
+	const incomingActionable = incomingDelta || incomingNeedsReview;
+	const incomingFailure =
+		incomingReports?.find((report) =>
+			["failed", "skipped", "unavailable"].includes(report.outcome),
+		) ?? null;
 
 	const activePreview = publishPreview;
 	useEffect(() => {
@@ -169,7 +190,9 @@ export function HubLinkGroup({
 						),
 					);
 					setIncomingPrefer(input.prefer);
-					setAcknowledgedBaseline(false);
+					/* The re-preview that follows a tick keeps the tick: resetting it
+					 * here would make the acknowledgement impossible to leave on. */
+					setAcknowledgedBaseline(input.acknowledgeUnknownBaseline === true);
 				} else {
 					setPublishPreview(null);
 					setIncomingReports(null);
@@ -385,15 +408,29 @@ export function HubLinkGroup({
 						})}
 					</output>
 				))}
-			{incomingReports && !incomingDelta && (
+			{incomingReports && !incomingActionable && !incomingFailure && (
 				<output className="text-meta text-ink-muted">
 					{t("ui.hub.links.incoming_nothing", {
-						outcome: incomingReports[0]?.outcome ?? "unavailable",
+						outcome: incomingReports[0]?.outcome ?? "up-to-date",
 					})}
 				</output>
 			)}
+			{incomingFailure && (
+				<div role="alert" className="flex flex-col gap-0.5">
+					<p className="text-body-sm text-danger">
+						{t("ui.hub.links.incoming_failed", {
+							outcome: incomingFailure.outcome,
+						})}
+					</p>
+					{incomingFailure.message && (
+						<p className="break-words text-meta text-ink-muted">
+							{incomingFailure.message}
+						</p>
+					)}
+				</div>
+			)}
 			<Dialog
-				open={publishPreview !== null || incomingDelta}
+				open={publishPreview !== null || incomingActionable}
 				onOpenChange={(open) => {
 					if (!open) close();
 				}}
@@ -418,30 +455,48 @@ export function HubLinkGroup({
 						<DialogDescription>
 							{publishPreview
 								? t("ui.hub.subscriptions.enable_safety")
-								: unknownBaseline
-									? t("ui.hub.links.unknown_baseline")
-									: t("ui.hub.links.preview_recomputed")}
+								: t("ui.hub.links.preview_recomputed")}
 						</DialogDescription>
+						{!publishPreview && unknownBaseline && (
+							<p className="text-body-sm text-warning">
+								{t("ui.hub.links.unknown_baseline")}
+							</p>
+						)}
 					</DialogHeader>
 					{incomingReports ? (
-						<ul className="flex flex-col gap-1" data-incoming-reports>
-							{incomingReports.map((report, index) => (
-								<li
-									key={`${report.local_id}-${index}`}
-									className="text-body-sm text-ink"
-								>
-									{t("ui.hub.links.incoming_outcome", {
-										item: displayName?.trim() || link.name,
-										outcome: report.outcome,
-									})}
-									{report.message ? (
-										<span className="block break-words text-meta text-ink-muted">
-											{report.message}
-										</span>
-									) : null}
-								</li>
-							))}
-						</ul>
+						<>
+							{incomingNeedsReview && (
+								<p className="text-body-sm text-ink" data-needs-review>
+									{t("ui.hub.links.incoming_needs_review")}
+								</p>
+							)}
+							<ul className="flex flex-col gap-1" data-incoming-reports>
+								{incomingReports.map((report, index) => (
+									<li
+										key={`${report.local_id}-${index}`}
+										className="text-body-sm text-ink"
+									>
+										{t("ui.hub.links.incoming_outcome", {
+											item: displayName?.trim() || link.name,
+											outcome: report.outcome,
+										})}
+										{/*
+										 * Core's unknown-baseline message names the CLI flag
+										 * (`--accept-unknown-baseline`, `merge.py`), which means
+										 * nothing in this window: the control it describes is the
+										 * checkbox below. Everything else is core-authored and shown
+										 * verbatim; React escapes it.
+										 */}
+										{unknownBaseline &&
+										report.error_class === "model-unavailable"
+											? t("ui.hub.links.incoming_unknown_baseline")
+											: report.message
+												? report.message
+												: null}
+									</li>
+								))}
+							</ul>
+						</>
 					) : (
 						<pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap break-words rounded-md bg-sunken p-3 text-mono-sm text-ink">
 							{JSON.stringify(activePreview?.proposal, null, 2)}
@@ -467,11 +522,11 @@ export function HubLinkGroup({
 							{hubReasonText(activePreview.reason)}
 						</p>
 					)}
-					{incomingReports && (
-						<pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words bg-sunken p-3 text-mono-sm text-ink">
-							{JSON.stringify(incomingReports, null, 2)}
-						</pre>
-					)}
+					{/*
+					 * No raw report dump: it duplicated the list above and printed
+					 * core's machine words — including the CLI flag its
+					 * unknown-baseline message names — as if they were copy.
+					 */}
 					{incomingReports && unknownBaseline && (
 						<label
 							htmlFor={ackId}
@@ -480,9 +535,20 @@ export function HubLinkGroup({
 							<Checkbox
 								id={ackId}
 								checked={acknowledgedBaseline}
-								onCheckedChange={(checked) =>
-									setAcknowledgedBaseline(checked === true)
-								}
+								onCheckedChange={(checked) => {
+									const next = checked === true;
+									setAcknowledgedBaseline(next);
+									/* The acknowledgement changes what core is allowed to
+									 * do, so the preview is re-asked: Pull must never ride a
+									 * report produced without the value it would send. */
+									run({
+										action: "apply",
+										linkId: link.link_id,
+										preview: true,
+										prefer: incomingPrefer,
+										acknowledgeUnknownBaseline: next,
+									});
+								}}
 							/>
 							{t("ui.hub.links.acknowledge_baseline")}
 						</label>
@@ -536,7 +602,9 @@ export function HubLinkGroup({
 											(unknownBaseline && !acknowledgedBaseline)
 										}
 										onClick={() => {
-											setIncomingPrefer(prefer);
+											/* `incomingPrefer` is set by the ANSWER, never by
+											 * the press: a failed re-preview must not leave Pull
+											 * sending a preference no shown preview used. */
 											run({
 												action: "apply",
 												linkId: link.link_id,

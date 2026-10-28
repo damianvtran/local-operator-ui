@@ -182,5 +182,8 @@
 	"ui.hub.skills.public_hub": "Public hub",
 	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} skill} other {{count, number, ::group-off} skills}}",
 	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} skill shared with {organization}} other {{count, number, ::group-off} skills shared with {organization}}}",
-	"ui.hub.skills.inventory_unknown": "Link state unavailable."
+	"ui.hub.skills.inventory_unknown": "Link state unavailable.",
+	"ui.hub.links.incoming_needs_review": "The hub and your copy both changed this item. Choose which side to keep, then pull again.",
+	"ui.hub.links.incoming_unknown_baseline": "No baseline was recorded for this copy, so every field counts as changed. Tick the acknowledgement, then pull again.",
+	"ui.hub.links.incoming_failed": "The preview could not finish ({outcome})."
 }
