@@ -340,8 +340,19 @@ export async function readAppSignature(
 			"--verbose=4",
 			bundlePath,
 		]);
-		base.bundleIdentifier = parseBundleIdentifier(verbose.stdout);
-		base.teamIdentifier = parseTeamIdentifier(verbose.stdout);
+		/*
+		 * `codesign -d` writes its report to STDERR and leaves stdout empty (measured
+		 * 2026-10-28 on the shipped 0.45.1: 1142 bytes on stderr, 0 on stdout).
+		 * Parsing stdout alone made every real signature read as `no bundle id`,
+		 * which short-circuited the gate before it could name the real blocker
+		 * (no keychain-access-groups entitlement). stderr is read first; stdout is
+		 * kept as a fallback so a codesign that reports there still parses. The
+		 * entitlement read below is the opposite case and stays on stdout: `-`
+		 * directs the plist there.
+		 */
+		const report = verbose.stderr.trim() ? verbose.stderr : verbose.stdout;
+		base.bundleIdentifier = parseBundleIdentifier(report);
+		base.teamIdentifier = parseTeamIdentifier(report);
 	} catch (error) {
 		return { ...base, unreadable: `codesign -dv failed: ${messageOf(error)}` };
 	}
