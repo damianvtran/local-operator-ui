@@ -4,13 +4,13 @@ import { TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD } from "../../../../shared/
 /**
  * The renderer half of the reactions hold.
  *
- * WHY THIS IS A BUILD HOLD, NOT A CAPABILITY GATE. The shipped runtime serves no
- * reaction route (its OpenAPI schema carries none; a reaction GET answers 404),
- * and the old reaction path has NOT been reviewed for account/retry safety. A
- * backend advertising `team_bridge_reactions` must not be able to wake it up:
- * a capability appearing is not a release. The constant lives beside the
- * threads one in `team-bridge-notify.ts`, and enabling reactions is a deliberate
- * flip in a release that carries the verified fix.
+ * WHY A BUILD SWITCH AS WELL AS A CAPABILITY GATE. The old reaction path carried
+ * only a tenant, never the captured-owner receipt, so it was held closed whatever
+ * a runtime advertised: a capability appearing is not a release. The switch is
+ * now `true` because the fix ships on both sides (the runtime advertises
+ * `team_bridge_reactions` only with receipt-REQUIRED reaction routes; the
+ * renderer sends the owner captured at the click). The constant lives beside
+ * the threads one in `team-bridge-notify.ts` and stays the kill switch.
  *
  * FAIL CLOSED. The surface mounts only when the constant is true AND the
  * capability answers exactly `enabled`; `unknown` (no answer yet, or the read
@@ -22,9 +22,8 @@ export { TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD };
  * May the reaction chips, react button and picker mount?
  *
  * `state` is `desktopFeatureState(capabilities.data, "team_bridge_reactions")`.
- * `shipped` exists ONLY so the return-path test can prove the capability half:
- * no production call site passes it, and it defaults to the module constant,
- * which is what closes the surface today.
+ * `shipped` exists ONLY so tests can prove each half independently: no
+ * production call site passes it, and it defaults to the module constant.
  */
 export function teamBridgeReactionsAvailable(
 	state: DesktopFeatureState | null | undefined,

@@ -308,40 +308,59 @@ export function parseTeamBridgeNotifyRequest(
 }
 
 /**
- * THE HOLD: the thread surface does not ship in this build, whatever a runtime
- * advertises.
+ * THE THREADS BUILD SWITCH: the thread surface SHIPS in this build; the
+ * runtime's `team_bridge_threads` capability decides the rest.
  *
- * HERE, IN THE SHARED MODULE, because the hold has to close BOTH sides of the
- * notification path: main parks a banner's click target (including a thread
- * root) and the renderer turns it back into a route. A constant the renderer
- * alone read would leave `?thread=` on the path and would leave the banner
- * preview reading thread replies, which are the cache/retry paths carrying the
- * reported cross-account isolation defects inherited from #1304. A runtime
- * advertising the route is not clearance: the backend cannot know which client
- * build is talking to it, and a client built before the fix would reactivate
- * those defects the moment the runtime that serves threads ships
- * (local-operator PR #2757).
+ * HERE, IN THE SHARED MODULE, because it closes BOTH sides of the notification
+ * path: main parks a banner's click target (including a thread root) and the
+ * renderer turns it back into a route.
  *
- * Returning the feature is flipping this to `true` and letting the capability
- * key (`team_bridge_threads`) decide the rest - not a cleanup.
+ * WHY IT WAS HELD, AND WHAT LIFTED IT. The thread read/cache/retry paths
+ * carried cross-account isolation defects inherited from #1304 (the surface was
+ * reverted in #1353; #1360 fenced private state at auth transitions but left
+ * the dormant thread paths out). Flipping this was conditioned on fixing those
+ * prerequisites, not on a runtime advertising a route, and this build carries
+ * both halves:
+ * - RUNTIME: local-operator advertises `team_bridge_threads` only alongside a
+ *   replies read that REQUIRES `expected_account_id` + `tenant_id` and refuses a
+ *   mismatched bearer with 409 `account_mismatch` before any hub request.
+ * - RENDERER: thread pages are keyed by signed-in account + tenant + credential
+ *   epoch, every read and retry is fenced on that owner, a reply carries the
+ *   receipt, and every foreign owner's pages are cancelled and removed at each
+ *   auth transition (`team-bridge-thread-cache.ts`).
+ *
+ * STILL FAIL CLOSED BELOW THIS LINE. `teamBridgeThreadsAvailable` mounts the
+ * surface only when the capability answers exactly `enabled`, so an older core
+ * (no key), a below-version or an unpaired runtime shows no thread control,
+ * and `teamBridgePlaneOwner` (team-bridge-api) refuses to send any thread
+ * request to a runtime without the key. Setting this back to `false` is the
+ * kill switch if a regression is found.
  */
-export const TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false;
+export const TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = true;
 
 /**
- * THE REACTIONS HOLD: the reaction affordances do not ship in this build,
- * whatever a runtime advertises.
+ * THE REACTIONS BUILD SWITCH: the reaction affordances SHIP in this build; the
+ * runtime's `team_bridge_reactions` capability decides the rest.
  *
- * The shipped runtime serves no reaction route at all (its OpenAPI schema
- * carries none; a reaction GET answers 404), and the old reaction path has NOT
- * been reviewed for account/retry safety. A backend advertising a
- * `team_bridge_reactions` capability must therefore never wake it up: enabling
- * reactions is a DELIBERATE flip of this constant in a release that carries the
- * verified fix, never an automatic consequence of a capability appearing.
+ * WHY IT WAS HELD, AND WHAT LIFTED IT. The shipped runtime once served no
+ * reaction route, and the old reaction path had never been reviewed for
+ * account/retry safety: it carried only a tenant, so enabling it would have
+ * bypassed the atomic owner guard every other private write uses. This build
+ * carries the reviewed fix:
+ * - RUNTIME: local-operator advertises `team_bridge_reactions` only alongside
+ *   reaction PUT/DELETE routes that REQUIRE `expected_account_id` + `tenant_id`
+ *   and refuse a mismatched bearer with 409 `account_mismatch`.
+ * - RENDERER: every toggle carries the owner captured at the click, and a
+ *   toggle settling after the page's auth remount writes nothing
+ *   (`useTeamBridgeReactionState`).
  *
- * Kept beside the threads constant because the two holds share one shape: the
- * build constant dominates, and the capability only narrows further.
+ * Kept beside the threads switch because the two share one shape: this constant
+ * is the kill switch, and the capability only narrows further.
+ * `teamBridgeReactionsAvailable` mounts nothing unless the key answers exactly
+ * `enabled`, and `teamBridgePlaneOwner` sends no reaction request to a runtime
+ * without it.
  */
-export const TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD = false;
+export const TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD = true;
 
 /**
  * The in-app path a click lands on.
@@ -352,10 +371,11 @@ export const TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD = false;
  * so a later refetch cannot yank the reader back to a conversation they moved
  * away from.
  *
- * NO THREAD PARAMETER WHILE THE HOLD IS ON. The click still lands on the
- * conversation, which is the notification's other half; the thread lane is not
- * routable in this build, and a parameter the page would have to ignore is a
- * navigable target one refactor away from mounting the held pane.
+ * THE THREAD PARAMETER FOLLOWS THE BUILD SWITCH. With threads shipped, a reply
+ * banner lands on its thread; the page still mounts the pane only when the
+ * runtime's `team_bridge_threads` capability answers `enabled`, so an older
+ * core opens the conversation and ignores `thread`. With the switch off the
+ * parameter is never written, so no navigable target can mount a held pane.
  */
 export function teamBridgeOpenPath(target: TeamBridgeOpenTarget): string {
 	const query = new URLSearchParams({

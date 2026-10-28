@@ -260,27 +260,22 @@ export type DesktopFeature =
 	 * ASKED about separately because a daemon can serve conversations without
 	 * serving threads.
 	 *
-	 * AND THE ANSWER IS NOT ENOUGH HERE. The UI holds this surface closed in
-	 * the build itself (`team-bridge-thread-gate.ts`): the runtime advertising
-	 * the route is not clearance for the cache/retry isolation defects the
-	 * thread paths inherited from #1304, because the backend cannot know which
-	 * client build is talking to it. The key is asked anyway - the capability
-	 * half is the plumbing the feature returns on - but absent, `unknown`,
-	 * `below-version` and `unpaired` all leave the surface hidden, and so does
-	 * `enabled` until the constant is flipped.
+	 * The runtime advertises it only with a replies read that REQUIRES the
+	 * captured-owner receipt (local-operator), which is the condition the UI's
+	 * build hold waited for (`team-bridge-thread-gate.ts`). Absent, `unknown`,
+	 * `below-version` and `unpaired` all leave the surface hidden and send no
+	 * thread request (`teamBridgePlaneOwner`).
 	 */
 	| "team_bridge_threads"
 	/**
 	 * The reaction plane: a message's reaction chips, the toolbar's react button
 	 * and the emoji picker behind it.
 	 *
-	 * ITS OWN KEY because the shipped runtime serves no reaction path at all (the
-	 * OpenAPI schema carries none; a reaction GET answers 404), while the
-	 * conversation page around it works. The key is SCAFFOLDING for the return:
-	 * the build holds reactions closed regardless
-	 * (`TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD`), because the old reaction
-	 * path is not reviewed for account/retry safety and a backend advertising a
-	 * capability must never wake it up. See `team-bridge-reaction-gate.ts`.
+	 * ITS OWN KEY because a runtime can serve conversations without reactions.
+	 * The runtime advertises it only with reaction routes that REQUIRE the
+	 * captured-owner receipt; absent, `unknown`, `below-version` and `unpaired`
+	 * show no reaction control and send no reaction request. See
+	 * `team-bridge-reaction-gate.ts`.
 	 */
 	| "team_bridge_reactions"
 	| "auth"
