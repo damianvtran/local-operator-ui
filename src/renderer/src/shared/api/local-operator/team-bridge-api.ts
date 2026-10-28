@@ -90,6 +90,47 @@ export async function teamBridgeWriteOwner(
 	return { expected_account_id: accountId, tenant_id: tenantId };
 }
 
+/**
+ * The receipt for the THREAD and REACTION planes, and the last fail-closed gate
+ * before their wire.
+ *
+ * WHY A SECOND HELPER rather than `teamBridgeWriteOwner`. That one asks for
+ * `team_bridge_conversation_owner_guard`, whose runtime accepts a receipt-less
+ * call for legacy clients. The thread read and the reaction routes were held
+ * closed in this app until the runtime REQUIRED the receipt on them, and the
+ * runtime says so by advertising `team_bridge_threads` / `team_bridge_reactions`
+ * (local-operator: "advertise only with the guarded routes"). So this asks for
+ * the plane's OWN key: a runtime without it (older core, below version, or
+ * nothing paired) gets NO request on that plane - not a guarded one, not an
+ * unguarded one - and the caller sees `TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE`.
+ *
+ * WHY HERE AS WELL AS AT THE PAGE. The page already withholds the controls
+ * unless the capability answers `enabled`, but the API is the one choke point
+ * every caller passes through (the thread pane, the reaction hook, and the
+ * banner preview in `use-team-bridge-notifications.ts`, which has no page). A
+ * gate that depends on every caller remembering is not a gate.
+ *
+ * The capabilities read is the local daemon's, the same per-call read
+ * `teamBridgeWriteOwner` makes; it never reaches the hub.
+ */
+export async function teamBridgePlaneOwner(
+	plane: "team_bridge_threads" | "team_bridge_reactions",
+	accountId: string | undefined,
+	tenantId: string | undefined,
+) {
+	if (!accountId || !tenantId)
+		throw new Error("Team Bridge owner and tenant required");
+	const capabilities = await desktopResult<{
+		features?: Record<string, number>;
+	}>({ op: "capabilities" });
+	if ((capabilities.features?.[plane] ?? 0) < 1)
+		throw Object.assign(
+			new Error("Team Bridge runtime owner guard unavailable"),
+			{ code: TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE },
+		);
+	return { expected_account_id: accountId, tenant_id: tenantId };
+}
+
 export const TeamBridgeApi = {
 	async scheduledList(tenantId: string) {
 		return teamBridgeScheduledListSchema.parse(
@@ -137,20 +178,33 @@ export const TeamBridgeApi = {
 			scheduled_id: scheduledId,
 		});
 	},
+	/**
+	 * Set or clear the signed-in person's reaction.
+	 *
+	 * `owner` is the CAPTURED author: the account and the message's tenant at the
+	 * moment the person clicked, never re-read here. The runtime compares that
+	 * account against the exact bearer it dispatches with, so a click (or retry)
+	 * captured as A that settles after a switch to B is refused rather than
+	 * reacting as B.
+	 */
 	async react(
 		conversationId: string,
 		messageId: string,
 		emoji: string,
 		active: boolean,
-		tenantId?: string,
+		owner: { accountId: string; tenantId: string },
 	) {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.reactions.toggle",
+			...(await teamBridgePlaneOwner(
+				"team_bridge_reactions",
+				owner.accountId,
+				owner.tenantId,
+			)),
 			conversation_id: conversationId,
 			message_id: messageId,
 			emoji,
 			active,
-			...(tenantId ? { tenant_id: tenantId } : {}),
 		});
 		return teamBridgeReactionsSchema.parse(answer);
 	},
@@ -248,17 +302,34 @@ export const TeamBridgeApi = {
 		return teamBridgeMessagePageSchema.parse(answer);
 	},
 
-	/** One thread: the root with its rollup and its replies, oldest-first. */
+	/**
+	 * One thread: the root with its rollup and its replies, oldest-first.
+	 *
+	 * `expectedAccountId` and `tenantId` are REQUIRED: the account that
+	 * commissioned the read and the thread's own tenant. The runtime refuses the
+	 * read if the machine is signed in as someone else by the time it dispatches,
+	 * which is the hub-side half of the thread cache's isolation (the renderer
+	 * half is the owner-and-epoch-keyed cache in `team-bridge-thread-pane.tsx`).
+	 */
 	async listReplies(
 		conversationId: string,
 		rootId: string,
-		options: { tenantId?: string; limit?: number; afterSeq?: number } = {},
+		options: {
+			expectedAccountId: string;
+			tenantId: string;
+			limit?: number;
+			afterSeq?: number;
+		},
 	): Promise<TeamBridgeThreadPage> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.messages.replies",
+			...(await teamBridgePlaneOwner(
+				"team_bridge_threads",
+				options.expectedAccountId,
+				options.tenantId,
+			)),
 			conversation_id: conversationId,
 			message_id: rootId,
-			...(options.tenantId ? { tenant_id: options.tenantId } : {}),
 			...(options.limit === undefined ? {} : { limit: options.limit }),
 			...(options.afterSeq === undefined
 				? {}
@@ -283,11 +354,17 @@ export const TeamBridgeApi = {
 	): Promise<unknown> {
 		return desktopResult<unknown>({
 			op: "team_bridge.messages.send",
-			// Threads retain the renderer fence, but are not advertised by the
-			// conversation-owner capability until their runtime feature adopts it.
-			...(!input.threadRootId
-				? await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)
+			// EVERY send carries the captured-owner receipt, a thread reply included.
+			// A reply also needs the threads plane itself: on a runtime that does not
+			// advertise `team_bridge_threads` no reply is sent at all.
+			...(input.threadRootId
+				? await teamBridgePlaneOwner(
+						"team_bridge_threads",
+						input.expectedAccountId,
+						input.tenantId,
+					)
 				: {}),
+			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
 			conversation_id: conversationId,
 			client_ref: input.clientRef,
 			body: input.body,

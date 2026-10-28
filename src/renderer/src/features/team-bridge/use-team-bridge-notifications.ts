@@ -193,12 +193,14 @@ async function deliverTeamBridgeBanner(
 	let senderLabel = candidate.senderLabel;
 	let preview: string | null = null;
 	/*
-	 * NO THREAD READ WHILE THE HOLD IS ON. A reply banner would otherwise address
-	 * `listReplies` for its preview, which is one of the thread paths carrying
-	 * the reported #1304 cross-account isolation defects. Treated as an ordinary
-	 * message instead: the timeline read below excludes replies, so a held reply
-	 * banner degrades to its metadata (or is skipped) rather than touching the
-	 * thread cache, and the click target carries no thread root either.
+	 * THE THREAD READ IS OWNER-GUARDED. A reply banner addresses `listReplies` for
+	 * its preview with the account this delivery was commissioned for
+	 * (`selfAccountId`, checked against the live authority just below) as the
+	 * REQUIRED receipt, so the runtime refuses the read if the machine signed in
+	 * as someone else in between. The read writes no query cache (it is a direct
+	 * call), and `stillCurrent()` is re-checked before anything it returned is
+	 * shown. With the hold constant false (an older build of this file), a reply
+	 * banner degrades to the timeline read, which excludes replies.
 	 */
 	const authority = observedRadientAuthority(client);
 	if (authority.accountId !== selfAccountId) return;
@@ -213,6 +215,7 @@ async function deliverTeamBridgeBanner(
 		const newest = threadId
 			? assertThreadPage(
 					await TeamBridgeApi.listReplies(candidate.conversationId, threadId, {
+						expectedAccountId: selfAccountId,
 						tenantId: candidate.tenantId,
 						afterSeq: candidate.seq,
 						limit: 1,

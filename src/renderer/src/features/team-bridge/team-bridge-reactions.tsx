@@ -29,7 +29,9 @@ type Props = {
 	conversationId: string;
 	messageId: string;
 	accountId: string;
-	tenantId?: string;
+	/* REQUIRED: the message's own tenant is half of the captured-owner receipt
+	   every toggle carries. */
+	tenantId: string;
 	reactions?: TeamBridgeReaction[];
 	disabled?: boolean;
 	defaultOpen?: boolean;
@@ -60,15 +62,32 @@ export function useTeamBridgeReactionState({
 	/*
 	 * THE HOLD, INSIDE THE HOOK. Hooks run unconditionally (a conditional hook
 	 * would break every caller), but while the constant is false this returns an
-	 * INERT state and `choose` is a no-op: no reaction state is projected from
-	 * the message and no toggle can be issued. The shipped runtime serves no
-	 * reaction route, and the old path is not reviewed for account/retry safety.
+	 * INERT state and `choose` is a no-op. The constant is now true (the runtime
+	 * requires the owner receipt on both reaction routes); the page still withholds
+	 * the whole reaction context unless `team_bridge_reactions` answers `enabled`.
 	 */
 	const held = !TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD;
 	const [rows, setRows] = useState(held ? EMPTY_REACTIONS : reactions);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState(false);
 	const busy = useRef(false);
+	/*
+	 * THE ACCOUNT FENCE. Every reaction row lives under the page's
+	 * `key={account.token}` remount (team-bridge-page.tsx), so an auth transition
+	 * UNMOUNTS this hook. A toggle in flight across that transition is refused by
+	 * the runtime when its captured account no longer matches the bearer, and if
+	 * it settles anyway (it raced ahead of the switch) nothing it returned may land
+	 * anywhere: not in rows (A's summary painted into B's tree), and not in the
+	 * per-account recent-emoji store. `live` is that fence; it is a ref, not a
+	 * query-client epoch read, so the hook stays mountable without a provider.
+	 */
+	const live = useRef(true);
+	useEffect(() => {
+		live.current = true;
+		return () => {
+			live.current = false;
+		};
+	}, []);
 	const record = useReactionPreferences((s) => s.record);
 	useEffect(() => {
 		if (!busy.current && !held) setRows(reactions);
@@ -77,6 +96,9 @@ export function useTeamBridgeReactionState({
 		if (held || busy.current || disabled) return;
 		const previous = rows;
 		const active = !rows.some((r) => r.emoji === emoji && r.reacted_by_me);
+		// Captured at the click, never re-read: a retry is a NEW click under
+		// whatever owner is mounted then, not a replay of this one.
+		const owner = { accountId, tenantId };
 		busy.current = true;
 		setPending(true);
 		setError(false);
@@ -87,16 +109,18 @@ export function useTeamBridgeReactionState({
 				messageId,
 				emoji,
 				active,
-				tenantId,
+				owner,
 			);
+			if (!live.current) return;
 			setRows(answer.reactions);
-			if (active) record(accountId, emoji);
+			if (active) record(owner.accountId, emoji);
 		} catch {
+			if (!live.current) return;
 			setRows(previous);
 			setError(true);
 		} finally {
 			busy.current = false;
-			setPending(false);
+			if (live.current) setPending(false);
 		}
 	};
 	return {
