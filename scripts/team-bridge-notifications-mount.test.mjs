@@ -602,11 +602,8 @@ test("a zero-total org's first message before the conversation list resolves sti
 /**
  * Deferred real transport edges reproduce R1-2 through the mounted hook.
  *
- * THE REPLIES ARM IS NOT A TRANSPORT HERE ANY MORE. The build holds the thread
- * surface closed, so a reply candidate is delivered from the TIMELINE read
- * instead of `listReplies` (see `use-team-bridge-notifications.ts` and
- * `team-bridge-thread-gate.ts`). The history arm below keeps the race matrix;
- * the held reply path has its own test after it.
+ * The history arm keeps the pending-change race matrix; the reply path's
+ * enrichment and owner screening have their own matrix after it.
  */
 for (const pending of ["history", "directory"]) {
 	for (const disable of ["setting", "capability", "mute", "none"]) {
@@ -752,111 +749,154 @@ for (const pending of ["history", "directory"]) {
 }
 
 /*
- * A REPLY CANDIDATE ON THE HELD BUILD. The same fixture the reply-enrichment
- * matrix used to drive `listReplies` with: a conversation whose newest seq is a
- * thread reply. The hold routes it through the timeline read, which excludes
- * replies, so the banner carries no preview and no thread root - and the click
- * path lands on the conversation. The adversarial thread-page scenarios that
- * suite screened (wrong root/conversation, later seq, read failure) are
- * unreachable while the hold is on because no thread read is issued at all.
+ * REPLY ENRICHMENT, RESTORED WITH THE THREADS SURFACE. A reply banner reads its
+ * preview from the thread (`listReplies`), with the delivery's own account as
+ * the REQUIRED owner receipt (`expectedAccountId`), so a runtime signed in as
+ * someone else refuses it. No fallback may reuse a different reply's body or
+ * treat unvalidated cross-scope data as a sender; a refused or failed read
+ * (`owner-refused`, `read-failed`) still raises the metadata-only banner.
  */
-test("a reply candidate reads the timeline, never the thread, and opens the conversation", async () => {
-	resetFixture();
-	const root = {
-		id: "bcmsg_root",
-		conversation_id: "bcv_reply",
-		seq: 1,
-		sender: {
-			account_id: "acct_bob",
-			kind: "human",
-			display_label: "Root sender",
-		},
-		body: "Root-only history",
-	};
-	fixture.messages = { messages: [root] };
-	fixture.thread = {
-		root: { ...root },
-		replies: [
-			{
-				...root,
-				id: "bcmsg_reply",
-				seq: 2,
-				thread_root_id: root.id,
-				body: "Private reply **preview**",
+for (const scenario of [
+	"known",
+	"self",
+	"wrong-root",
+	"wrong-conversation",
+	"wrong-reply-root",
+	"later-seq",
+	"read-failed",
+	"owner-refused",
+]) {
+	test(`reply enrichment screens ${scenario} without leaking a preview`, async () => {
+		resetFixture();
+		const root = {
+			id: "bcmsg_root",
+			conversation_id: "bcv_reply",
+			seq: 1,
+			sender: {
+				account_id: "acct_bob",
+				kind: "human",
+				display_label: "Root sender",
 			},
-		],
-	};
-	const org = {
-		tenant_id: "tnt_reply",
-		tenant_name: "Reply Org",
-		unread: 0,
-		eligible: true,
-	};
-	fixture.account = { total: 0, organizations: [org] };
-	fixture.conversations = {
-		conversations: [
-			{
-				...conversation("bcv_reply", "tnt_reply"),
-				latest_seq: 2,
-				last_thread_root_id: root.id,
-				last_sender_label: "Member",
-			},
-		],
-	};
-	fixture.directoryMembers = [
-		{
-			account_id: "acct_bob",
-			display_label: "Directory Bob",
-			email: "bob@example.test",
-		},
-	];
-	const mounted = await mount();
-	try {
-		await until(
-			() =>
-				fixture.calls.conversations > 0 &&
-				fixture.calls.unread.includes("account"),
-			"seed reads",
-		);
-		await settle();
-		fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
-		fixture.tenants.tnt_reply = {
-			total: 1,
-			conversations: [
-				{ ...notifyRow("bcv_reply", 2), unread_count: 1, last_read_seq: 1 },
+			body: "Root-only history",
+		};
+		fixture.messages = { messages: [root] };
+		fixture.thread = {
+			root: { ...root },
+			replies: [
+				{
+					...root,
+					id: "bcmsg_reply",
+					seq: 2,
+					thread_root_id: root.id,
+					body: "Private reply **preview**",
+				},
 			],
 		};
-		await act(async () =>
-			mounted.client.invalidateQueries({
-				queryKey: api.teamBridgeKeys.unreadPrefix,
-			}),
-		);
-		await until(
-			() => mounted.notifications.length === 1,
-			"the metadata banner",
-		);
-		await until(
-			() => fixture.calls.history.length === 1,
-			"the timeline fallback",
-		);
-		await settle();
-		assert.deepEqual(fixture.calls.replies, [], "no thread read while held");
-		assert.deepEqual(fixture.calls.history, [
-			{ id: "bcv_reply", tenantId: "tnt_reply", limit: 1 },
-		]);
-		const banner = mounted.notifications[0];
-		assert.equal(banner.threadId, undefined, "no thread target on the click");
-		assert.equal(banner.seq, 2);
-		assert.equal(banner.tenantId, "tnt_reply");
-		assert.doesNotMatch(banner.body, /Private reply|Root-only history/);
-		assert.equal(
-			api.teamBridgeOpenPath(banner),
-			"/team-bridge?tenant=tnt_reply&conversation=bcv_reply",
-		);
-	} finally {
-		await mounted.teardown();
-	}
-});
+		const reply = fixture.thread.replies[0];
+		if (scenario === "self")
+			reply.sender = { ...reply.sender, account_id: "acct_alice" };
+		if (scenario === "wrong-root") fixture.thread.root.id = "bcmsg_foreign";
+		if (scenario === "wrong-conversation")
+			reply.conversation_id = "bcv_foreign";
+		if (scenario === "wrong-reply-root") reply.thread_root_id = "bcmsg_foreign";
+		if (scenario === "later-seq") reply.seq = 3;
+		if (scenario === "read-failed")
+			fixture.thread = new Error("reply endpoint unavailable");
+		if (scenario === "owner-refused")
+			fixture.thread = Object.assign(new Error("account_mismatch"), {
+				code: "account_mismatch",
+			});
+		const org = {
+			tenant_id: "tnt_reply",
+			tenant_name: "Reply Org",
+			unread: 0,
+			eligible: true,
+		};
+		fixture.account = { total: 0, organizations: [org] };
+		fixture.conversations = {
+			conversations: [
+				{
+					...conversation("bcv_reply", "tnt_reply"),
+					latest_seq: 2,
+					last_thread_root_id: root.id,
+					last_sender_label: "Member",
+				},
+			],
+		};
+		fixture.directoryMembers = [
+			{
+				account_id: "acct_bob",
+				display_label: "Directory Bob",
+				email: "bob@example.test",
+			},
+		];
+		const mounted = await mount();
+		try {
+			await until(
+				() =>
+					fixture.calls.conversations > 0 &&
+					fixture.calls.unread.includes("account"),
+				"seed reads",
+			);
+			await settle();
+			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+			fixture.tenants.tnt_reply = {
+				total: 1,
+				conversations: [
+					{ ...notifyRow("bcv_reply", 2), unread_count: 1, last_read_seq: 1 },
+				],
+			};
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			if (scenario === "known") {
+				await until(
+					() => mounted.notifications.length === 1,
+					"enriched reply banner",
+				);
+				// Assert the visible symptom before transport bookkeeping, so the old
+				// root-only reader reproduces the lost name/preview directly.
+				assert.equal(mounted.notifications[0].title, "Directory Bob");
+				assert.equal(mounted.notifications[0].body, "Private reply preview");
+			}
+			await until(
+				() => fixture.calls.replies.length === 1,
+				"one bounded reply read",
+			);
+			await settle();
+			assert.deepEqual(fixture.calls.replies, [
+				{
+					id: "bcv_reply",
+					rootId: "bcmsg_root",
+					expectedAccountId: "acct_alice",
+					tenantId: "tnt_reply",
+					afterSeq: 2,
+					limit: 1,
+				},
+			]);
+			assert.equal(fixture.calls.history.length, 0);
+			assert.equal(
+				fixture.calls.directory.length,
+				scenario === "known" ? 1 : 0,
+			);
+			assert.equal(mounted.notifications.length, scenario === "self" ? 0 : 1);
+			if (scenario !== "self") {
+				const banner = mounted.notifications[0];
+				if (scenario !== "known") {
+					assert.equal(banner.title, "Conversation bcv_reply");
+					assert.doesNotMatch(banner.body, /Private reply|Root-only history/);
+				}
+				assert.equal(banner.seq, 2);
+				assert.equal(banner.tenantId, "tnt_reply");
+				assert.equal(banner.threadId, "bcmsg_root");
+			}
+		} finally {
+			await mounted.teardown();
+		}
+	});
+}
 
 const clickTarget = (owner = { accountId: "acct_alice", epoch: 0 }) => ({
 	owner,
