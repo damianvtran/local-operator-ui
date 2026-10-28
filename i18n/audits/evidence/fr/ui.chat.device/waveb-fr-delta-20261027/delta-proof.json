@@ -1,0 +1,113 @@
+{
+ "repo": "/Users/damian/local-operator-ui",
+ "audited_head": "0559f7f7d8",
+ "head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "wave_b_base": "59ec56f686",
+ "wave_b_key_count": 62,
+ "wave_b_by_namespace": {
+  "ui.chat.device": 11,
+  "ui.chat.pickers": 18,
+  "ui.chat.canonical": 8,
+  "ui.chat": 9,
+  "ui.chat.status": 4,
+  "ui.chat.run_details": 2,
+  "ui.common.connection": 5,
+  "ui.common.layout": 2,
+  "ui.agents.config": 3
+ },
+ "changed_values": [
+  {
+   "locale": "en",
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.sentence.pairing_guidance",
+   "old": "This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'.",
+   "new": "This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'`.",
+   "in_wave_b": true
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.row.not_here_why",
+   "old": "la conversation n’est pas ici ; rappelez-la ici d’abord",
+   "new": "la conversation n’est pas ici ; rappelez-la ici avant de la déplacer",
+   "in_wave_b": true
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.sentence.mesh_read_failure",
+   "old": "La liste des appareils n’a pas pu être lue — l’affichage reprend donc la dernière réponse.",
+   "new": "La liste des appareils n’a pas pu être lue ; l’affichage reprend donc la dernière réponse.",
+   "in_wave_b": true
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.sentence.pairing_guidance",
+   "old": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '<token>'.",
+   "new": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '<token>'`.",
+   "in_wave_b": true
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "old": "Entrée exige d’abord une ligne choisie : ↓ puis Entrée · Tab complète cette ligne.",
+   "new": "Entrée a besoin d’une ligne choisie : ↓ puis Entrée · Tab complète cette ligne.",
+   "in_wave_b": true
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.generic_verb.running",
+   "old": "Appel en cours de",
+   "new": "Appel en cours :",
+   "in_wave_b": true
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.generic_verb.settled",
+   "old": "Appel de",
+   "new": "Appel :",
+   "in_wave_b": true
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+   "old": "Contexte : rien n’a encore été mesuré. La fenêtre se remplit au fil de la conversation.",
+   "new": "Contexte : rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation.",
+   "in_wave_b": true
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.nothing_measured_yet",
+   "old": "Rien n’a encore été mesuré. La fenêtre se remplit au fil de la conversation.",
+   "new": "Rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation.",
+   "in_wave_b": true
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.common.connection",
+   "key": "ui.common.connection.session_loss.server_down",
+   "old": "Le serveur Local Operator n’est pas en cours d’exécution — rétablissez la connexion une fois qu’il est de retour, ou redémarrez l’application s’il reste arrêté.",
+   "new": "Le serveur Local Operator n’est pas démarré — rétablissez la connexion une fois qu’il est de retour, ou redémarrez l’application s’il reste arrêté.",
+   "in_wave_b": true
+  }
+ ],
+ "changed_value_count": 10,
+ "regression_checked": 124,
+ "regression_all_identical": true,
+ "carried_identical_count": 114,
+ "typography_problems": [
+  {
+   "key": "ui.chat.device.row.conversations",
+   "value": "{count, plural, one {{count, number, ::group-off} conversation} many {{count, number, ::group-off} de conversations} other {{count, number, ::group-off} conversations}}",
+   "findings": [
+    "plain space before [':', ':', ':']"
+   ]
+  }
+ ]
+}

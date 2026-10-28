@@ -693,8 +693,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat",
-			"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
-			"target_sha256": "4937072e3526f94fe91b7e930eed83ac938dd7c42342a5a47a21b075fed0c4a5",
+			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+			"target_sha256": "fe15211c61778c618bb83093e3ed59b4e36f0afcd3ec9f576019b3c5c34e44ff",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -704,17 +704,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "41f2961e15d5",
+					"instance": "8bbe685ce56d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/41f2961e15d5.json",
-					"receipt_sha256": "c72d3d6f0d8a74ea595d698c3459730b7df21f4a270bbdf15cf7dd0c5ce18f97"
+					"receipt": "i18n/receipts/8bbe685ce56d.json",
+					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.chat/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
 				}
 			],
 			"status": "audited",
@@ -792,6 +794,28 @@
 							"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+					"target_sha256": "4937072e3526f94fe91b7e930eed83ac938dd7c42342a5a47a21b075fed0c4a5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "41f2961e15d5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/41f2961e15d5.json",
+							"receipt_sha256": "c72d3d6f0d8a74ea595d698c3459730b7df21f4a270bbdf15cf7dd0c5ce18f97"
 						}
 					],
 					"status": "audited"
@@ -1033,8 +1057,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
-			"target_sha256": "c37e3318c2fdfbbe853136957fdb7ef5b81b5094016dbf305f1b34a1007a12d7",
+			"source_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+			"target_sha256": "2400791e8d09be36634efeff3f5a781f6b1e1cbf4dd32588ed62fe732c8800b5",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -1044,17 +1068,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "41f2961e15d5",
+					"instance": "8bbe685ce56d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/41f2961e15d5.json",
-					"receipt_sha256": "c72d3d6f0d8a74ea595d698c3459730b7df21f4a270bbdf15cf7dd0c5ce18f97"
+					"receipt": "i18n/receipts/8bbe685ce56d.json",
+					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.chat.canonical/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
 				}
 			],
 			"status": "audited",
@@ -1120,6 +1146,28 @@
 							"receipt_sha256": "36d23fc76bafb5df33ce2d7da400aae26bea82d78f05946389a122a59546d467",
 							"scope": "round-3 independent re-audit: the full namespace at f0e395ef28, read against en and the context sidecars; re-binds the row to current bytes after main's completion waves",
 							"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded in the immutable receipt, not churned."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+					"target_sha256": "c37e3318c2fdfbbe853136957fdb7ef5b81b5094016dbf305f1b34a1007a12d7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "41f2961e15d5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/41f2961e15d5.json",
+							"receipt_sha256": "c72d3d6f0d8a74ea595d698c3459730b7df21f4a270bbdf15cf7dd0c5ce18f97"
 						}
 					],
 					"status": "audited"
@@ -1319,8 +1367,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.device",
-			"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
-			"target_sha256": "7d52e6d1826544836d4c9c0e37bba2edfc05b153c2a993b2cf745b88c40dd946",
+			"source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+			"target_sha256": "7942950281a19dfd9277f5a7de0ef67da95cfd6513e709e327073049ed3a91e3",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -1328,24 +1376,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "es-extract-a815d841bd5d-r2",
+					"instance": "8bbe685ce56d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/es-extract-a815d841bd5d-r2.json",
-					"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/8bbe685ce56d.json",
+					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.chat.device/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+					"target_sha256": "7d52e6d1826544836d4c9c0e37bba2edfc05b153c2a993b2cf745b88c40dd946",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "es-extract-a815d841bd5d-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/es-extract-a815d841bd5d-r2.json",
+							"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -1575,8 +1649,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
-			"target_sha256": "e37e6e89b517212a4209eafa765ee829108384334d8c99363f4cea7a772c9071",
+			"source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+			"target_sha256": "33a92db2a4e9e42f3657e597d36626f33a84805ba8669511764f0e30cbcfebf0",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -1584,19 +1658,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "3ac75cca27a3",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "8bbe685ce56d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3ac75cca27a3.json",
-					"receipt_sha256": "2257b30cca565c081f02b5d321046ce96fb65d70edf10caafc2197caa4be8728"
+					"receipt": "i18n/receipts/8bbe685ce56d.json",
+					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.chat.pickers/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
 				}
 			],
 			"status": "audited",
@@ -1641,6 +1717,28 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+					"target_sha256": "e37e6e89b517212a4209eafa765ee829108384334d8c99363f4cea7a772c9071",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "3ac75cca27a3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3ac75cca27a3.json",
+							"receipt_sha256": "2257b30cca565c081f02b5d321046ce96fb65d70edf10caafc2197caa4be8728"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -1678,8 +1776,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.run_details",
-			"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
-			"target_sha256": "f52290c0fcc471ed7d8d31b7ff06c4d3d198b2619fed5777a8910a88670f6381",
+			"source_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+			"target_sha256": "fa74b44d526b7310b0e71d9691de08e176f87adabc790a080005692b040d491a",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -1689,17 +1787,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "41f2961e15d5",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "8bbe685ce56d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/41f2961e15d5.json",
-					"receipt_sha256": "c72d3d6f0d8a74ea595d698c3459730b7df21f4a270bbdf15cf7dd0c5ce18f97"
+					"receipt": "i18n/receipts/8bbe685ce56d.json",
+					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.chat.run_details/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
 				}
 			],
 			"status": "audited",
@@ -1741,6 +1841,28 @@
 							"receipt_sha256": "78299d508ae83b78f6ce64bc631d0233c7e289b71b3aa2db2fc0461b2ed18296",
 							"scope": "second independent high-visibility round-1 audit at current hashes",
 							"note": "Independent second pass; MINOR/NIT findings retained in immutable receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+					"target_sha256": "f52290c0fcc471ed7d8d31b7ff06c4d3d198b2619fed5777a8910a88670f6381",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "41f2961e15d5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/41f2961e15d5.json",
+							"receipt_sha256": "c72d3d6f0d8a74ea595d698c3459730b7df21f4a270bbdf15cf7dd0c5ce18f97"
 						}
 					],
 					"status": "audited"
@@ -2437,8 +2559,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.connection",
-			"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-			"target_sha256": "1d2ba13affe531c60633999f0f5b5853f7cb9fe5f61b8ea37bc2f6abab52c3a8",
+			"source_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+			"target_sha256": "0e178122c83f31137e682ac9cfea9f8cbc9895e0365b7dd8643a724fc3699213",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2446,19 +2568,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "9a6273e11154",
+					"instance": "8bbe685ce56d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9a6273e11154.json",
-					"receipt_sha256": "8a3c92eaaa3444b1fbb51d621f3299e4874474cc300fc4d4a3407b0d247c9522"
+					"receipt": "i18n/receipts/8bbe685ce56d.json",
+					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.common.connection/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
 				}
 			],
 			"status": "audited",
@@ -2482,6 +2606,28 @@
 							"receipt": "i18n/receipts/ea3629c2a645.json",
 							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
 							"scope": "Full semantic read; exhaustive mechanical checks."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+					"target_sha256": "1d2ba13affe531c60633999f0f5b5853f7cb9fe5f61b8ea37bc2f6abab52c3a8",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "9a6273e11154",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9a6273e11154.json",
+							"receipt_sha256": "8a3c92eaaa3444b1fbb51d621f3299e4874474cc300fc4d4a3407b0d247c9522"
 						}
 					],
 					"status": "audited"
@@ -2725,8 +2871,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.layout",
-			"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
-			"target_sha256": "11b18a217b443e8656692185a36782ea9be508b4e2b26942f39dd51515eb72f9",
+			"source_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+			"target_sha256": "7ee0d233bdc06cf44232dd0b235dbdfd072804afa2edcdeab3b02ac9c357a412",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -2734,20 +2880,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "es-layout-mac-removal-r2-11b18a217b44",
+					"instance": "8bbe685ce56d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/es-layout-mac-removal-r2-11b18a217b44.json",
-					"receipt_sha256": "16f5fe07286abf72d256f68439155bd1f16a46fb0184e5d423e515d229690b71",
-					"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
+					"receipt": "i18n/receipts/8bbe685ce56d.json",
+					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.common.layout/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
 				}
 			],
 			"status": "audited",
@@ -2775,6 +2922,29 @@
 							},
 							"receipt": "i18n/receipts/3ac75cca27a3.json",
 							"receipt_sha256": "2257b30cca565c081f02b5d321046ce96fb65d70edf10caafc2197caa4be8728"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+					"target_sha256": "11b18a217b443e8656692185a36782ea9be508b4e2b26942f39dd51515eb72f9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "es-layout-mac-removal-r2-11b18a217b44",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/es-layout-mac-removal-r2-11b18a217b44.json",
+							"receipt_sha256": "16f5fe07286abf72d256f68439155bd1f16a46fb0184e5d423e515d229690b71",
+							"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
 						}
 					],
 					"status": "audited"
@@ -6512,8 +6682,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat",
-			"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
-			"target_sha256": "a21edf2bdb3a3903f917072ac0eb3c32c2625289fa05dad7de5e53a830c23faa",
+			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+			"target_sha256": "e9b9512ea3310705de0ca91dc87a644a8aa742ab59a72f04e8216ae01bb256dd",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6523,17 +6693,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "a5485b421686",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "c3a8965266e3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/a5485b421686.json",
-					"receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
+					"receipt": "i18n/receipts/c3a8965266e3.json",
+					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+					"note": "See i18n/audits/evidence/fr/ui.chat/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
 				}
 			],
 			"status": "audited",
@@ -6611,6 +6783,28 @@
 							"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+					"target_sha256": "a21edf2bdb3a3903f917072ac0eb3c32c2625289fa05dad7de5e53a830c23faa",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "a5485b421686",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a5485b421686.json",
+							"receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
 						}
 					],
 					"status": "audited"
@@ -6876,8 +7070,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
-			"target_sha256": "68101aba7ce7c7073321ec95478af53c680361eef6db7a1031ce41a125160b8f",
+			"source_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+			"target_sha256": "8a5e69118ce5bc3432aaa493b2d0d01e7fc3199670083a79cb129ad379567885",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -6887,17 +7081,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "a5485b421686",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "c3a8965266e3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/a5485b421686.json",
-					"receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
+					"receipt": "i18n/receipts/c3a8965266e3.json",
+					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+					"note": "See i18n/audits/evidence/fr/ui.chat.canonical/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
 				}
 			],
 			"status": "audited",
@@ -6961,6 +7157,28 @@
 							},
 							"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
 							"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+					"target_sha256": "68101aba7ce7c7073321ec95478af53c680361eef6db7a1031ce41a125160b8f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "a5485b421686",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/a5485b421686.json",
+							"receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
 						}
 					],
 					"status": "audited"
@@ -7183,8 +7401,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.device",
-			"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
-			"target_sha256": "a8125151c300799fb731f67dd760f07925b02d17c3ced18d315afa78f1ec5d2d",
+			"source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+			"target_sha256": "6fa28c31e2cd37f80f0756b3b3e6690f040d5965941bf73f045601973408dd68",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -7192,24 +7410,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean-with-findings",
-					"instance": "fr-extract-da12aa6ade20-r2",
+					"instance": "c3a8965266e3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
-					"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/c3a8965266e3.json",
+					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+					"note": "See i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+					"target_sha256": "a8125151c300799fb731f67dd760f07925b02d17c3ced18d315afa78f1ec5d2d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "fr-extract-da12aa6ade20-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+							"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -7465,8 +7709,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
-			"target_sha256": "2f084a6a1d24dc40d48d1e4146709d2fdb044ab516543aff9518f077a70f33d9",
+			"source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+			"target_sha256": "0f4194326dabd0e12992e7270afd32c44ab45776cec8a1fcc9b083146ff60a71",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -7474,19 +7718,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-27",
 					"result": "clean-with-findings",
-					"instance": "d94011de0dc0",
+					"instance": "c3a8965266e3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 5
+						"minor": 0,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/d94011de0dc0.json",
-					"receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+					"receipt": "i18n/receipts/c3a8965266e3.json",
+					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+					"note": "See i18n/audits/evidence/fr/ui.chat.pickers/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
 				}
 			],
 			"status": "audited",
@@ -7531,6 +7777,28 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+					"target_sha256": "2f084a6a1d24dc40d48d1e4146709d2fdb044ab516543aff9518f077a70f33d9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "d94011de0dc0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 5
+							},
+							"receipt": "i18n/receipts/d94011de0dc0.json",
+							"receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -7568,8 +7836,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.run_details",
-			"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
-			"target_sha256": "278cc8c477c9cc2ecf28fe9cdab69377ccb2f1713e799c11bd83ed952628a4aa",
+			"source_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+			"target_sha256": "fd5bb71bbb7691760c92b9339e3aa032c34519b0a453600447923ce679e42f94",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -7579,17 +7847,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "a5485b421686",
+					"instance": "c3a8965266e3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a5485b421686.json",
-					"receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
+					"receipt": "i18n/receipts/c3a8965266e3.json",
+					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+					"note": "See i18n/audits/evidence/fr/ui.chat.run_details/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
 				}
 			],
 			"status": "audited",
@@ -7631,6 +7901,28 @@
 							"receipt_sha256": "f95dc9abf31bbbd57ced92b73756af6a10337693c44b7ab1026fc3b83b9b1359",
 							"scope": "second independent high-visibility round-1 audit at current hashes",
 							"note": "Independent audit; findings retained in immutable receipt. Second high-visibility pass recorded on this row."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+					"target_sha256": "278cc8c477c9cc2ecf28fe9cdab69377ccb2f1713e799c11bd83ed952628a4aa",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a5485b421686",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a5485b421686.json",
+							"receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
 						}
 					],
 					"status": "audited"
@@ -8329,8 +8621,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.connection",
-			"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-			"target_sha256": "9531dbd77c4462d9b1ef23d707f54cd33a1b1d74943d51fef7cd514580a3eb5c",
+			"source_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+			"target_sha256": "33de6a26e72133786f9cab668c16341262cece961ca130e95ca2c6e733c6d51b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -8338,19 +8630,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "d94011de0dc0",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "c3a8965266e3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
-					"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+					"receipt": "i18n/receipts/c3a8965266e3.json",
+					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+					"note": "See i18n/audits/evidence/fr/ui.common.connection/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
 				}
 			],
 			"status": "audited",
@@ -8375,6 +8669,28 @@
 							"receipt_sha256": "384b9a6c0380589c8f2b2dad6f1e929275d213c813d99b564438f82337297c7d",
 							"scope": "Chunk D at 1516984ec99ae09e635b0cb58c4f2e747de1483c; full 206 new keys plus prior408 full coverage retained with typography-only delta.",
 							"note": "Actual automatic quota-fallback model verified; same resumed auditor, not second independent auditor. Nonblocking minors retained as deferred."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+					"target_sha256": "9531dbd77c4462d9b1ef23d707f54cd33a1b1d74943d51fef7cd514580a3eb5c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "d94011de0dc0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
+							"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
 						}
 					],
 					"status": "audited"
@@ -8620,8 +8936,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.layout",
-			"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
-			"target_sha256": "18dc2a80958773f32f2bdefbb93a079a53ee020911f501a590aefbf2c41e347b",
+			"source_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+			"target_sha256": "4bdcbbee0ea92a6fb65e901d0f7839f6bca6748e3f6603fc306de53efc74ca46",
 			"translator": {
 				"agent": "translator",
 				"model": "radient/auto",
@@ -8629,20 +8945,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "fr-layout-mac-removal-r2-18dc2a809587",
+					"instance": "c3a8965266e3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fr-layout-mac-removal-r2-18dc2a809587.json",
-					"receipt_sha256": "496fbdee7251848e4de30e750067d08501d263fdb7855f1939587bc7614b27be",
-					"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
+					"receipt": "i18n/receipts/c3a8965266e3.json",
+					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+					"note": "See i18n/audits/evidence/fr/ui.common.layout/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
 				}
 			],
 			"status": "audited",
@@ -8670,6 +8987,29 @@
 							},
 							"receipt": "i18n/receipts/d94011de0dc0.json",
 							"receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+					"target_sha256": "18dc2a80958773f32f2bdefbb93a079a53ee020911f501a590aefbf2c41e347b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "fr-layout-mac-removal-r2-18dc2a809587",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fr-layout-mac-removal-r2-18dc2a809587.json",
+							"receipt_sha256": "496fbdee7251848e4de30e750067d08501d263fdb7855f1939587bc7614b27be",
+							"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
 						}
 					],
 					"status": "audited"
@@ -12794,8 +13134,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat",
-			"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
-			"target_sha256": "27e9651711db634d6199f409e85754068a584cb1fb686aed402d0fa2346bdb43",
+			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+			"target_sha256": "2c5d82df782e1451017cc234eb4f6fec82be4d7c73a0110c98bab5bc967044ca",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -12805,17 +13145,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "a478f43b9cae",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "8f4aa3fba6ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/a478f43b9cae.json",
-					"receipt_sha256": "c21214cfa6621207c118011f5c7390b6b668cfe2bf9ce3e70c5bac5074300d7f"
+					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
 				}
 			],
 			"status": "audited",
@@ -12893,6 +13235,28 @@
 							"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+					"target_sha256": "27e9651711db634d6199f409e85754068a584cb1fb686aed402d0fa2346bdb43",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "a478f43b9cae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a478f43b9cae.json",
+							"receipt_sha256": "c21214cfa6621207c118011f5c7390b6b668cfe2bf9ce3e70c5bac5074300d7f"
 						}
 					],
 					"status": "audited"
@@ -13158,8 +13522,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
-			"target_sha256": "e6183d9af90e08bf1dde35ab6759c83e428e355a7dbb52a2408b0a0133bb4c5d",
+			"source_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+			"target_sha256": "2d1c8aae11fe236f19badb3ba86208c901b2dfc57cb06c0bf23a43bc0e975555",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -13169,17 +13533,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "a478f43b9cae",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "8f4aa3fba6ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/a478f43b9cae.json",
-					"receipt_sha256": "c21214cfa6621207c118011f5c7390b6b668cfe2bf9ce3e70c5bac5074300d7f"
+					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat.canonical; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat.canonical/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
 				}
 			],
 			"status": "audited",
@@ -13243,6 +13609,28 @@
 							},
 							"receipt": "i18n/receipts/24dd9a889ea4.json",
 							"receipt_sha256": "bfbce4999f571404925db5de2b3811c80f3146e86f2b597cf45780a7e6ce392a"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+					"target_sha256": "e6183d9af90e08bf1dde35ab6759c83e428e355a7dbb52a2408b0a0133bb4c5d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "a478f43b9cae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a478f43b9cae.json",
+							"receipt_sha256": "c21214cfa6621207c118011f5c7390b6b668cfe2bf9ce3e70c5bac5074300d7f"
 						}
 					],
 					"status": "audited"
@@ -13443,8 +13831,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.device",
-			"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
-			"target_sha256": "78a8a76817f7d5c9f7619b8da1944c738c3e252008b8ed7371229c5ea63b3806",
+			"source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+			"target_sha256": "c4ac8e0f0f2cfed113aa50908d32addcd8d879c4d59def32cf7d11f64156244e",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -13452,24 +13840,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "hi-extract-a51f5b96d24e-r2",
+					"instance": "8f4aa3fba6ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/hi-extract-a51f5b96d24e-r2.json",
-					"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat.device; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat.device/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+					"target_sha256": "78a8a76817f7d5c9f7619b8da1944c738c3e252008b8ed7371229c5ea63b3806",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "hi-extract-a51f5b96d24e-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-extract-a51f5b96d24e-r2.json",
+							"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -13725,8 +14139,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
-			"target_sha256": "f718644b2e0d279388e04a65ea063e76c571b508b9d1e6ac5e7e5d452d1e6189",
+			"source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+			"target_sha256": "08357c40cafa8fe5298658adc952f4c6fe030330b1aa5ce23b622ba90e023673",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -13734,19 +14148,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "dab47dfc690a",
+					"instance": "8f4aa3fba6ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/dab47dfc690a.json",
-					"receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871"
+					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat.pickers; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat.pickers/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
 				}
 			],
 			"status": "audited",
@@ -13791,6 +14207,28 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+					"target_sha256": "f718644b2e0d279388e04a65ea063e76c571b508b9d1e6ac5e7e5d452d1e6189",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "dab47dfc690a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/dab47dfc690a.json",
+							"receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -13829,8 +14267,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.run_details",
-			"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
-			"target_sha256": "7b858f514e2cc9d76da5aaa26ff840513a43f2bf1eb127b128318a3fd9f650ca",
+			"source_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+			"target_sha256": "795b794d52dd5475314444b45d0dcdd2a10463eb277aa251508e48bb59ad7c2b",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -13840,17 +14278,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "a478f43b9cae",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "8f4aa3fba6ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a478f43b9cae.json",
-					"receipt_sha256": "c21214cfa6621207c118011f5c7390b6b668cfe2bf9ce3e70c5bac5074300d7f"
+					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat.run_details; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat.run_details/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
 				}
 			],
 			"status": "audited",
@@ -13892,6 +14332,28 @@
 							"receipt_sha256": "c6e61df47cf544064b455f85d91c05c31e5cb84e3ea6ff0035dea15e14f4d90b",
 							"scope": "independent round-2 scoped remediation audit at current hashes",
 							"note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Rendered-fit watches remain explicit."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+					"target_sha256": "7b858f514e2cc9d76da5aaa26ff840513a43f2bf1eb127b128318a3fd9f650ca",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "a478f43b9cae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a478f43b9cae.json",
+							"receipt_sha256": "c21214cfa6621207c118011f5c7390b6b668cfe2bf9ce3e70c5bac5074300d7f"
 						}
 					],
 					"status": "audited"
@@ -14625,8 +15087,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.connection",
-			"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-			"target_sha256": "9ee2b150fc735ab6830983422c1ec29b1e21da33ad2ae16a38b3d0a1fc09c085",
+			"source_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+			"target_sha256": "53570762dc08ed06e1e67dd72ba686627d38215b81702d899af630e0e499f145",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14634,19 +15096,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "dab47dfc690a",
+					"instance": "8f4aa3fba6ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
-					"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
+					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.common.connection; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.common.connection/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
 				}
 			],
 			"status": "audited",
@@ -14671,6 +15135,28 @@
 							"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
 							"scope": "hi ui.common.connection vs en source — round 1 independent full pass, 10 keys",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+					"target_sha256": "9ee2b150fc735ab6830983422c1ec29b1e21da33ad2ae16a38b3d0a1fc09c085",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "dab47dfc690a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
+							"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
 						}
 					],
 					"status": "audited"
@@ -14916,8 +15402,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.layout",
-			"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
-			"target_sha256": "79a31ceba8349d49afb1abcb14ad67fd6022a6cd6facc4635514809e2f88bf4f",
+			"source_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+			"target_sha256": "5efd48e932f5baea09722821019505f8a6d2bc9adf844fcc4a93a189d2608cc7",
 			"translator": {
 				"agent": "translator",
 				"model": "radient/auto",
@@ -14925,20 +15411,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "hi-layout-mac-removal-r2-79a31ceba834",
+					"instance": "8f4aa3fba6ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/hi-layout-mac-removal-r2-79a31ceba834.json",
-					"receipt_sha256": "129496538086d612e6a8f650ca33ca9059744aec1cb01f6cb2367f6a2cf1646a",
-					"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
+					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.common.layout; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.common.layout/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
 				}
 			],
 			"status": "audited",
@@ -14966,6 +15453,29 @@
 							},
 							"receipt": "i18n/receipts/dab47dfc690a.json",
 							"receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+					"target_sha256": "79a31ceba8349d49afb1abcb14ad67fd6022a6cd6facc4635514809e2f88bf4f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "hi-layout-mac-removal-r2-79a31ceba834",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-layout-mac-removal-r2-79a31ceba834.json",
+							"receipt_sha256": "129496538086d612e6a8f650ca33ca9059744aec1cb01f6cb2367f6a2cf1646a",
+							"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
 						}
 					],
 					"status": "audited"
@@ -18791,8 +19301,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat",
-			"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
-			"target_sha256": "0d9127303efe19b968db579b5fae3fd62103f5ad7276e0775c2de8dd62fca9d9",
+			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+			"target_sha256": "13902f3586f2b5785d63ab6dc31253893960ec86f0730188f37475f3dd446234",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -18803,17 +19313,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "r2-44322c0b8b28",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "99a6b1da62c4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/r2-44322c0b8b28.json",
-					"receipt_sha256": "9269b212100eb87dde8471aaf8c8c80211682ac6fb4178ec93c0d2ce959fc379"
+					"receipt": "i18n/receipts/99a6b1da62c4.json",
+					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.chat/wave-b-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -18892,6 +19404,28 @@
 							"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+					"target_sha256": "0d9127303efe19b968db579b5fae3fd62103f5ad7276e0775c2de8dd62fca9d9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "r2-44322c0b8b28",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/r2-44322c0b8b28.json",
+							"receipt_sha256": "9269b212100eb87dde8471aaf8c8c80211682ac6fb4178ec93c0d2ce959fc379"
 						}
 					],
 					"status": "audited"
@@ -19133,8 +19667,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
-			"target_sha256": "48efc0477738bcab1c01997a9907341fbeab4810711464c1f0432c9ca6a712fd",
+			"source_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+			"target_sha256": "61d7b8bd8557978ed46e9787af4b02c1ec083cf098993a9d13a29889940340aa",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -19144,17 +19678,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "r2-44322c0b8b28",
+					"instance": "99a6b1da62c4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/r2-44322c0b8b28.json",
-					"receipt_sha256": "9269b212100eb87dde8471aaf8c8c80211682ac6fb4178ec93c0d2ce959fc379"
+					"receipt": "i18n/receipts/99a6b1da62c4.json",
+					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.chat.canonical/wave-b-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -19218,6 +19754,28 @@
 							},
 							"receipt": "i18n/receipts/0f5238900a89-surfaces.json",
 							"receipt_sha256": "3722292d0c55a75acffb3672a3c2d4334e763855e9ab3a9f4bfe4cf88733b32d"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+					"target_sha256": "48efc0477738bcab1c01997a9907341fbeab4810711464c1f0432c9ca6a712fd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "r2-44322c0b8b28",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/r2-44322c0b8b28.json",
+							"receipt_sha256": "9269b212100eb87dde8471aaf8c8c80211682ac6fb4178ec93c0d2ce959fc379"
 						}
 					],
 					"status": "audited"
@@ -19443,8 +20001,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.device",
-			"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
-			"target_sha256": "a034ec695656b5a3e5195f21b768776784f7d6b44a4f6922fc78a6dac7592e25",
+			"source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+			"target_sha256": "f07dc132a7453e5c67fafcaca1af98d4daf6e429dc67466688d6c3681638d32f",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -19452,24 +20010,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "ru-extract-0244d275e02a-r2",
+					"instance": "99a6b1da62c4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ru-extract-0244d275e02a-r2.json",
-					"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/99a6b1da62c4.json",
+					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.chat.device/wave-b-delta-20261027/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+					"target_sha256": "a034ec695656b5a3e5195f21b768776784f7d6b44a4f6922fc78a6dac7592e25",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "ru-extract-0244d275e02a-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ru-extract-0244d275e02a-r2.json",
+							"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -19704,8 +20288,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
-			"target_sha256": "dd80dac3989f831dd0f5d30bb3b6996250e58d578be54073f92f71ad337c6c58",
+			"source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+			"target_sha256": "797ab14787fc2a55d545b469a92da5d337809d2b3093e96b530e335c7137d047",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -19713,21 +20297,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "aef2ad9d3193",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "99a6b1da62c4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aef2ad9d3193.json",
-					"receipt_sha256": "aef375fa9dccf3081a65682cf17b680513167eebc9f9396f06344237be340fe3",
-					"scope": "ONLY ui.chat.pickers at 3f983092b2: the round-3 findings R3-RU-PICKERS-01..11 and their direct neighbours. All 720 keys were checked mechanically (key set, ICU parse, arguments, skeletons, tags, plural/select arms); the 13 changed values and the keys they compose with were re-read semantically. Catalogue audit only; no rendered frame beyond the SSR pager strings, no native-speaker sign-off and no design/QA approval are claimed.",
-					"note": "Round-4 scoped re-audit; residuals R4-RU-PICKERS-01 (minor, fractional other arm) and R4-RU-PICKERS-02 (deferred, source-level composition)."
+					"receipt": "i18n/receipts/99a6b1da62c4.json",
+					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.chat.pickers/wave-b-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -19772,6 +20356,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+					"target_sha256": "dd80dac3989f831dd0f5d30bb3b6996250e58d578be54073f92f71ad337c6c58",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "aef2ad9d3193",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aef2ad9d3193.json",
+							"receipt_sha256": "aef375fa9dccf3081a65682cf17b680513167eebc9f9396f06344237be340fe3",
+							"scope": "ONLY ui.chat.pickers at 3f983092b2: the round-3 findings R3-RU-PICKERS-01..11 and their direct neighbours. All 720 keys were checked mechanically (key set, ICU parse, arguments, skeletons, tags, plural/select arms); the 13 changed values and the keys they compose with were re-read semantically. Catalogue audit only; no rendered frame beyond the SSR pager strings, no native-speaker sign-off and no design/QA approval are claimed.",
+							"note": "Round-4 scoped re-audit; residuals R4-RU-PICKERS-01 (minor, fractional other arm) and R4-RU-PICKERS-02 (deferred, source-level composition)."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -19809,8 +20417,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.run_details",
-			"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
-			"target_sha256": "7f60bcb4400b22d2134a8fa86488887ef4c8dcb429b3bae863f0735d34161fe7",
+			"source_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+			"target_sha256": "833160793af79bdc69cd155b4d15dc3dde3c1cfb1cc3f903fdd3eefd5b70a9b5",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -19820,17 +20428,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "r3-d94b940967c1",
+					"instance": "99a6b1da62c4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/r3-d94b940967c1.json",
-					"receipt_sha256": "f35c77d096be6aea7c63e7ab47508aef72344f3f94c4d1ae08b6b58f8300a3ab"
+					"receipt": "i18n/receipts/99a6b1da62c4.json",
+					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.chat.run_details/wave-b-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -19872,6 +20482,28 @@
 							"receipt_sha256": "bf0d0c9d8f9113e45b0678474516126665d09e2ad56c8f9416956a36bf822256",
 							"scope": "independent round-1 audit of namespaces unchanged by remediation",
 							"note": "Two independent audits at current bytes; remediation round used for changed namespaces. Findings/deferrals retained in receipts."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+					"target_sha256": "7f60bcb4400b22d2134a8fa86488887ef4c8dcb429b3bae863f0735d34161fe7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "r3-d94b940967c1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/r3-d94b940967c1.json",
+							"receipt_sha256": "f35c77d096be6aea7c63e7ab47508aef72344f3f94c4d1ae08b6b58f8300a3ab"
 						}
 					],
 					"status": "audited"
@@ -20611,8 +21243,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.connection",
-			"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-			"target_sha256": "7241feb46bb1c172ead3bda903fc9828635ba0b1a77cd65a2b3cbf81ba4e73f0",
+			"source_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+			"target_sha256": "b9afb4e95e90b6fff71b968baaadcaffb77e640fc4d94e7b098527153f6c0004",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -20620,20 +21252,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "23463a773a32-surfaces",
+					"instance": "99a6b1da62c4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/23463a773a32-surfaces.json",
-					"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
-					"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+					"receipt": "i18n/receipts/99a6b1da62c4.json",
+					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.common.connection/wave-b-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -20657,6 +21290,29 @@
 								"minor": 0,
 								"nit": 0
 							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+					"target_sha256": "7241feb46bb1c172ead3bda903fc9828635ba0b1a77cd65a2b3cbf81ba4e73f0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "23463a773a32-surfaces",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23463a773a32-surfaces.json",
+							"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
+							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
 						}
 					],
 					"status": "audited"
@@ -20901,8 +21557,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.layout",
-			"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
-			"target_sha256": "9b1e73c64483cf7bf2332c5acd4f5b82bd131473b745136b5756db113189be3b",
+			"source_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+			"target_sha256": "008705e2cbe7bd8314cf8f88a38c249072720aa95e9f9cab56781c34f87221bc",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -20910,20 +21566,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "ru-layout-mac-removal-r2-9b1e73c64483",
+					"instance": "99a6b1da62c4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ru-layout-mac-removal-r2-9b1e73c64483.json",
-					"receipt_sha256": "709c6a244f8a058585b6627f04bd4400e7a06595a47693c6fb46c341631a97bc",
-					"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
+					"receipt": "i18n/receipts/99a6b1da62c4.json",
+					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.common.layout/wave-b-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -20952,6 +21609,29 @@
 							"receipt": "i18n/receipts/23463a773a32-canvas.json",
 							"receipt_sha256": "d5e7cddbe80bae8dbee4ade1a2a8c28d75f5608c27e9270bd7a9800abd7b696a",
 							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+					"target_sha256": "9b1e73c64483cf7bf2332c5acd4f5b82bd131473b745136b5756db113189be3b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "ru-layout-mac-removal-r2-9b1e73c64483",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ru-layout-mac-removal-r2-9b1e73c64483.json",
+							"receipt_sha256": "709c6a244f8a058585b6627f04bd4400e7a06595a47693c6fb46c341631a97bc",
+							"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
 						}
 					],
 					"status": "audited"
@@ -24702,8 +25382,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat",
-			"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
-			"target_sha256": "4739504b6a02d0d750f6b3f7198567b477aba36776f461b91c0e21a3d512d394",
+			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+			"target_sha256": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -24713,17 +25393,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "2111e1255685",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "c89cee263ac2-waveb-delta-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2111e1255685.json",
-					"receipt_sha256": "e54050299987ad2cea7ac7ee268235838d406cbe0d43be108406cf2ec0996e2a"
+					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+					"note": "No finding: 9 wave-B values, none changed (file byte-identical to the audited base). Record i18n/audits/evidence/ur/ui.chat/waveb-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -24801,6 +25483,28 @@
 							"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+					"target_sha256": "4739504b6a02d0d750f6b3f7198567b477aba36776f461b91c0e21a3d512d394",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "2111e1255685",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2111e1255685.json",
+							"receipt_sha256": "e54050299987ad2cea7ac7ee268235838d406cbe0d43be108406cf2ec0996e2a"
 						}
 					],
 					"status": "audited"
@@ -25066,8 +25770,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
-			"target_sha256": "fc2952c842d7db3241a61833a0d966bbd8cbdf48f9c067d0c5dd6f813813b15e",
+			"source_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+			"target_sha256": "5bf58414f7bbd78921fb1671a4032dd66e8b45159c236d4cf072b8b2c4d273d9",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -25077,17 +25781,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "2111e1255685",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "c89cee263ac2-waveb-delta-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/2111e1255685.json",
-					"receipt_sha256": "e54050299987ad2cea7ac7ee268235838d406cbe0d43be108406cf2ec0996e2a"
+					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+					"note": "1 nit UR-WBD-03 (generic_verb nominal form vs sidecar hint, no value change): 8 wave-B values, 2 changed, 6 byte-identical. Record i18n/audits/evidence/ur/ui.chat.canonical/waveb-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -25152,6 +25858,28 @@
 							"receipt": "i18n/receipts/9f7efaeab2ef.json",
 							"receipt_sha256": "5edbb39ba01647e949691762cddd7f782edede82c439c81dc7d740e19eb1e9fc",
 							"scope": "Every key this batch adds to the ur catalogue for its namespaces: the diff against merge-base 40462495827dfb0e1bfacb8643da805912493a5b. Each namespace block records keys_audited (delta) and file_keys (whole file)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+					"target_sha256": "fc2952c842d7db3241a61833a0d966bbd8cbdf48f9c067d0c5dd6f813813b15e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "2111e1255685",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2111e1255685.json",
+							"receipt_sha256": "e54050299987ad2cea7ac7ee268235838d406cbe0d43be108406cf2ec0996e2a"
 						}
 					],
 					"status": "audited"
@@ -25376,8 +26104,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.device",
-			"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
-			"target_sha256": "9b33549c6af41911f599f77a7d6b648b398ce153256dcc3cac388b3fe26456ad",
+			"source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+			"target_sha256": "7c46f933a3f32d8145f5484c1fda47f42d58c5cde505ba40b419b989f00aa64e",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -25385,24 +26113,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "ur-extract-d082bd9595-r2",
+					"instance": "c89cee263ac2-waveb-delta-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ur-extract-d082bd9595-r2.json",
-					"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+					"note": "No finding: 11 wave-B values, none changed; en pairing_guidance span closed here, ur renders 4 balanced backticks with a literal <token>. Record i18n/audits/evidence/ur/ui.chat.device/waveb-delta-20261027/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+					"target_sha256": "9b33549c6af41911f599f77a7d6b648b398ce153256dcc3cac388b3fe26456ad",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "ur-extract-d082bd9595-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ur-extract-d082bd9595-r2.json",
+							"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -25634,8 +26388,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
-			"target_sha256": "c2c219f979a0de875543f109f5485cbb7e2db360e1cad95f0b61389fde009adf",
+			"source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+			"target_sha256": "4772ed26451c1118c927a0aec722428eb88f3cd3f26c80dfae183ec2b14af0c1",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -25643,21 +26397,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean-with-findings",
-					"instance": "aef2ad9d3193-ur",
+					"instance": "181144042069-waveb-urnib",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/aef2ad9d3193-ur.json",
-					"receipt_sha256": "761ef6187f5c0629540bbde90b19e53d23f123b419191e43cbd0fcc89f3ae52e",
-					"scope": "ONLY ui.chat.pickers at 3f983092b2: the round-3 findings R3-UR-PICKERS-01..06 and their direct neighbours. All 720 keys were checked mechanically (key set, ICU parse, arguments, skeletons, tags, plural/select arms); the 7 changed values and the keys they compose with were re-read semantically. Catalogue audit only; no rendered RTL frame, no native-speaker sign-off and no design/QA approval are claimed.",
-					"note": "Round-4 scoped re-audit; residual R4-UR-PICKERS-01 (nit, «» quote pair in the provider-listing sentence)."
+					"receipt": "i18n/receipts/181144042069-waveb-urnib.json",
+					"receipt_sha256": "9bfb16ae654920be5943a0bd5fa0dc9b6153ac6d448d37d4304a681a96007650",
+					"scope": "Independent nib delta re-audit of the coordinator's UR-WBD-01 one-value amendment: ui.chat.pickers.slash.enter_needs_a_pick now ends U+06D4; audited against the English value, its context sidecar and the component that paints it, with the other eight namespaces proved unchanged by sha256. Catalogue-level, no rendered frame.",
+					"note": "UR-WBD-01 minor RESOLVED; receipt keeps it in findings with state resolved, so ledger-rules counts it; no open blocker/major/minor/nit. Record: i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -25702,6 +26456,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+					"target_sha256": "c2c219f979a0de875543f109f5485cbb7e2db360e1cad95f0b61389fde009adf",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "aef2ad9d3193-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/aef2ad9d3193-ur.json",
+							"receipt_sha256": "761ef6187f5c0629540bbde90b19e53d23f123b419191e43cbd0fcc89f3ae52e",
+							"scope": "ONLY ui.chat.pickers at 3f983092b2: the round-3 findings R3-UR-PICKERS-01..06 and their direct neighbours. All 720 keys were checked mechanically (key set, ICU parse, arguments, skeletons, tags, plural/select arms); the 7 changed values and the keys they compose with were re-read semantically. Catalogue audit only; no rendered RTL frame, no native-speaker sign-off and no design/QA approval are claimed.",
+							"note": "Round-4 scoped re-audit; residual R4-UR-PICKERS-01 (nit, «» quote pair in the provider-listing sentence)."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -25740,8 +26518,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.run_details",
-			"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
-			"target_sha256": "68d3762ebcb5e775f40a917cb5794fd4ec06106fbdb000a52536a51f73872f0e",
+			"source_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+			"target_sha256": "ddce087907e8e07db42bf819cef78c133e66a6f5f02edee98bc503cb0d5d7061",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -25751,17 +26529,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "2111e1255685",
+					"instance": "c89cee263ac2-waveb-delta-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2111e1255685.json",
-					"receipt_sha256": "e54050299987ad2cea7ac7ee268235838d406cbe0d43be108406cf2ec0996e2a"
+					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+					"note": "No finding: 2 wave-B values, none changed (file byte-identical to the audited base). Record i18n/audits/evidence/ur/ui.chat.run_details/waveb-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -25803,6 +26583,28 @@
 							"receipt_sha256": "feea54fdf8a3f6046e1e90a195224aa509b498c00d6568f2989754c03b82efa8",
 							"scope": "independent round-1 audit of namespaces unchanged by remediation",
 							"note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Fit watches retained for rendered RTL QA."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+					"target_sha256": "68d3762ebcb5e775f40a917cb5794fd4ec06106fbdb000a52536a51f73872f0e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "2111e1255685",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2111e1255685.json",
+							"receipt_sha256": "e54050299987ad2cea7ac7ee268235838d406cbe0d43be108406cf2ec0996e2a"
 						}
 					],
 					"status": "audited"
@@ -26523,8 +27325,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.connection",
-			"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-			"target_sha256": "5d22e34fa23f0fa4d212f842269dbfc74372958212a9e85d43efd662c07dd45a",
+			"source_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+			"target_sha256": "455e6f80179c80af412138d3edcd3780b610a10273a2cbcdb7e631cb2fa353ae",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -26532,20 +27334,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "21fe6c635cf3",
+					"instance": "c89cee263ac2-waveb-delta-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
-					"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
-					"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+					"note": "No finding: 5 wave-B values, 1 changed (server_down), 4 byte-identical. Record i18n/audits/evidence/ur/ui.common.connection/waveb-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -26594,6 +27397,29 @@
 							"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
 							"scope": "Post-review remediation delta: review round-1 findings M1/N1/N2/N5 at the final bytes.",
 							"note": "Agent-review round 1 findings fixed; independent post-review audit zero findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+					"target_sha256": "5d22e34fa23f0fa4d212f842269dbfc74372958212a9e85d43efd662c07dd45a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "21fe6c635cf3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
+							"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
+							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
 						}
 					],
 					"status": "audited"
@@ -26865,8 +27691,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.layout",
-			"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
-			"target_sha256": "212a6e075e18de28942340c2b7fac59f65e5eab317bc9b374158ab33cd4cc68b",
+			"source_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+			"target_sha256": "145bc93d2724ea34181b9c14f2c5847c28896a5d131c16b487ecfbc10c5587e1",
 			"translator": {
 				"agent": "translator",
 				"model": "radient/auto",
@@ -26874,20 +27700,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "ur-layout-mac-removal-r2-212a6e075e18",
+					"instance": "c89cee263ac2-waveb-delta-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ur-layout-mac-removal-r2-212a6e075e18.json",
-					"receipt_sha256": "9d916ec6bb5676a60d8b21ecbed3e3947013f530aa98dd4f8e829321a7fd2dad",
-					"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
+					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+					"note": "No finding: 2 wave-B values, 1 changed (toasts.dismiss), 1 byte-identical. Record i18n/audits/evidence/ur/ui.common.layout/waveb-delta-20261027/record.json"
 				}
 			],
 			"status": "audited",
@@ -26916,6 +27743,29 @@
 							"receipt": "i18n/receipts/21fe6c635cf3.json",
 							"receipt_sha256": "3719777f6a0ad81c384b6152f2a44dd20f9f645e6555ae08b7d3c959e39d64c0",
 							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+					"target_sha256": "212a6e075e18de28942340c2b7fac59f65e5eab317bc9b374158ab33cd4cc68b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "ur-layout-mac-removal-r2-212a6e075e18",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ur-layout-mac-removal-r2-212a6e075e18.json",
+							"receipt_sha256": "9d916ec6bb5676a60d8b21ecbed3e3947013f530aa98dd4f8e829321a7fd2dad",
+							"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
 						}
 					],
 					"status": "audited"
@@ -30597,8 +31447,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat",
-			"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
-			"target_sha256": "ea2ce7175c288fb6926e975ec18fc8e809e86cfe805d253be385c0f9710f98b4",
+			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+			"target_sha256": "f4ce605d35572644f664c2c4510f82b26feba094572bcd60dcc193ec9dbc3902",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -30608,17 +31458,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "7165e9bc3822-chat-surfaces-r2",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "70d334e903c9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7165e9bc3822-chat-surfaces-r2.json",
-					"receipt_sha256": "3491037d28c85a3cc1d0bf489c8bb80627f7f860d738db8dcca1ec731784113f"
+					"receipt": "i18n/receipts/70d334e903c9.json",
+					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+					"note": "Delta audit record: i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
 				}
 			],
 			"status": "audited",
@@ -30696,6 +31548,28 @@
 							"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+					"target_sha256": "ea2ce7175c288fb6926e975ec18fc8e809e86cfe805d253be385c0f9710f98b4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "7165e9bc3822-chat-surfaces-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/7165e9bc3822-chat-surfaces-r2.json",
+							"receipt_sha256": "3491037d28c85a3cc1d0bf489c8bb80627f7f860d738db8dcca1ec731784113f"
 						}
 					],
 					"status": "audited"
@@ -30937,8 +31811,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
-			"target_sha256": "9b90d72f2ac9e7753229c1af7d19a044baa5d28c9f3ee82330fcecdfbe68fff1",
+			"source_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+			"target_sha256": "4ab62e770e9956769ccfea3ddf9f69c544f2a30fbe0c2b811272d39d6aa8d522",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -30948,17 +31822,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "7165e9bc3822-chat-surfaces-r2",
+					"instance": "70d334e903c9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7165e9bc3822-chat-surfaces-r2.json",
-					"receipt_sha256": "3491037d28c85a3cc1d0bf489c8bb80627f7f860d738db8dcca1ec731784113f"
+					"receipt": "i18n/receipts/70d334e903c9.json",
+					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+					"note": "Delta audit record: i18n/audits/evidence/vi/ui.chat.canonical/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
 				}
 			],
 			"status": "audited",
@@ -31022,6 +31898,28 @@
 							},
 							"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
 							"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+					"target_sha256": "9b90d72f2ac9e7753229c1af7d19a044baa5d28c9f3ee82330fcecdfbe68fff1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "7165e9bc3822-chat-surfaces-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7165e9bc3822-chat-surfaces-r2.json",
+							"receipt_sha256": "3491037d28c85a3cc1d0bf489c8bb80627f7f860d738db8dcca1ec731784113f"
 						}
 					],
 					"status": "audited"
@@ -31247,8 +32145,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.device",
-			"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
-			"target_sha256": "088bf95185b071bfc3705ba9988cc90dfb4ef6fdfa5c1c90514a34c514cf705d",
+			"source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+			"target_sha256": "01cc5865d7e2c7449ea8b22c25f41edb968b6e59a3bf9f998095d59409cb6392",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -31256,24 +32154,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "vi-extract-517c59bfdfe3-r2",
+					"instance": "70d334e903c9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
-					"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/70d334e903c9.json",
+					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+					"note": "Delta audit record: i18n/audits/evidence/vi/ui.chat.device/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+					"target_sha256": "088bf95185b071bfc3705ba9988cc90dfb4ef6fdfa5c1c90514a34c514cf705d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "vi-extract-517c59bfdfe3-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
+							"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -31505,8 +32429,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
-			"target_sha256": "3288771c3b535338b64a40efd75c487a215a9e3bad15ea3a556758ff49c30a48",
+			"source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+			"target_sha256": "93336b32e493b673e9a5c25e37eb5d07f2e4f531f0106ad8963cca6723457e4a",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -31514,19 +32438,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "b928c7f0c96d",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "70d334e903c9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 5,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/b928c7f0c96d.json",
-					"receipt_sha256": "fa09631a6ef82d9b05796a237dfc2542b700a7dcbe952ee1dfcd2638787c6bc2"
+					"receipt": "i18n/receipts/70d334e903c9.json",
+					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+					"note": "Delta audit record: i18n/audits/evidence/vi/ui.chat.pickers/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
 				}
 			],
 			"status": "audited",
@@ -31571,6 +32497,28 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+					"target_sha256": "3288771c3b535338b64a40efd75c487a215a9e3bad15ea3a556758ff49c30a48",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "b928c7f0c96d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/b928c7f0c96d.json",
+							"receipt_sha256": "fa09631a6ef82d9b05796a237dfc2542b700a7dcbe952ee1dfcd2638787c6bc2"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -31609,8 +32557,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.run_details",
-			"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
-			"target_sha256": "760cbb88bffcb11f5d0e3b9d323de2da2e0a6ed79f1cc554378f573b49dd8453",
+			"source_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+			"target_sha256": "989012056e73915fd71d06cb960669325cc6a24a31da3f4a8142aa2aa32ba9ba",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -31620,17 +32568,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "7165e9bc3822-chat-surfaces-r2",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "70d334e903c9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7165e9bc3822-chat-surfaces-r2.json",
-					"receipt_sha256": "3491037d28c85a3cc1d0bf489c8bb80627f7f860d738db8dcca1ec731784113f"
+					"receipt": "i18n/receipts/70d334e903c9.json",
+					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+					"note": "Delta audit record: i18n/audits/evidence/vi/ui.chat.run_details/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
 				}
 			],
 			"status": "audited",
@@ -31672,6 +32622,28 @@
 							"receipt_sha256": "da1da2419f5293c1100694a5ca9a17c0cd82dc5d1769e017780a5b76f69cf95e",
 							"scope": "independent round-1 audit of namespaces unchanged by remediation",
 							"note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Presence fit watch retained for rendered QA."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+					"target_sha256": "760cbb88bffcb11f5d0e3b9d323de2da2e0a6ed79f1cc554378f573b49dd8453",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "7165e9bc3822-chat-surfaces-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7165e9bc3822-chat-surfaces-r2.json",
+							"receipt_sha256": "3491037d28c85a3cc1d0bf489c8bb80627f7f860d738db8dcca1ec731784113f"
 						}
 					],
 					"status": "audited"
@@ -32388,8 +33360,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.connection",
-			"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-			"target_sha256": "a7e425416d31ba6dfc598eb47436b2fe49ca67e3792655ca5c02823da5a9bb1d",
+			"source_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+			"target_sha256": "0a2d635126d7c5f78171f4bb8ab5c03a12cb8d499d073839307f563ec2772db4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -32397,19 +33369,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "b928c7f0c96d",
+					"instance": "70d334e903c9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
-					"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
+					"receipt": "i18n/receipts/70d334e903c9.json",
+					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+					"note": "Delta audit record: i18n/audits/evidence/vi/ui.common.connection/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
 				}
 			],
 			"status": "audited",
@@ -32458,6 +33432,28 @@
 							"receipt_sha256": "a5f87f1046eea756842edd78800c26aa4aa09d5fad11621d1862584360c537e1",
 							"scope": "review round 2: R2-1 hosting-term split, plus the prompt glossary correction",
 							"note": "Independent audit of the changed bytes. English 'hosting provider' = nhà cung cấp dịch vụ mô hình; 'model provider' = nhà cung cấp mô hình; English 'prompt' stays 'prompt' per the programme glossary. All roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+					"target_sha256": "a7e425416d31ba6dfc598eb47436b2fe49ca67e3792655ca5c02823da5a9bb1d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "b928c7f0c96d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
+							"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
 						}
 					],
 					"status": "audited"
@@ -32703,8 +33699,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.layout",
-			"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
-			"target_sha256": "f219394a79ef63502c87e853a7b642cbe46a5b56f9a5b26ce833b72d46f7d16c",
+			"source_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+			"target_sha256": "f15b1cd09fefe247ae5172e12345a3a26aa25f14554cbd8f90b24e209686662f",
 			"translator": {
 				"agent": "translator",
 				"model": "radient/auto",
@@ -32712,20 +33708,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "vi-layout-mac-removal-r2-f219394a79ef",
+					"instance": "70d334e903c9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/vi-layout-mac-removal-r2-f219394a79ef.json",
-					"receipt_sha256": "84f9b5e3e2b83e4857ff72556d138d50b880148035c3cc9d180a45b559d7f696",
-					"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
+					"receipt": "i18n/receipts/70d334e903c9.json",
+					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+					"note": "Delta audit record: i18n/audits/evidence/vi/ui.common.layout/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
 				}
 			],
 			"status": "audited",
@@ -32753,6 +33750,29 @@
 							},
 							"receipt": "i18n/receipts/b928c7f0c96d.json",
 							"receipt_sha256": "fa09631a6ef82d9b05796a237dfc2542b700a7dcbe952ee1dfcd2638787c6bc2"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+					"target_sha256": "f219394a79ef63502c87e853a7b642cbe46a5b56f9a5b26ce833b72d46f7d16c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "vi-layout-mac-removal-r2-f219394a79ef",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/vi-layout-mac-removal-r2-f219394a79ef.json",
+							"receipt_sha256": "84f9b5e3e2b83e4857ff72556d138d50b880148035c3cc9d180a45b559d7f696",
+							"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
 						}
 					],
 					"status": "audited"
@@ -36950,8 +37970,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat",
-			"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
-			"target_sha256": "67b4b59a6ef55a99cd9a2aa9b56407a0ffdb05542ff6184620e4a193ed51316a",
+			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+			"target_sha256": "76bdcfd3abb2d67ecc49d87b078bd5a2d367b03d760c0a0ca20db59ebebd4a10",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -36961,17 +37981,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "a0562714a28f-r2",
+					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a0562714a28f-r2.json",
-					"receipt_sha256": "90f8cb79b30c51cba9f8f66b83fb815574cf5ca76982c996e2711bb8d3afef9b"
+					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+					"scope": "Wave B delta R2: 9 wave-B keys; 2 changed values (ZH-WB-2, ZH-WB-4) re-audited and resolved.",
+					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.chat/wb-d2-9b3e2c165c87/record.json"
 				}
 			],
 			"status": "audited",
@@ -37049,6 +38071,28 @@
 							"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+					"target_sha256": "67b4b59a6ef55a99cd9a2aa9b56407a0ffdb05542ff6184620e4a193ed51316a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a0562714a28f-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a0562714a28f-r2.json",
+							"receipt_sha256": "90f8cb79b30c51cba9f8f66b83fb815574cf5ca76982c996e2711bb8d3afef9b"
 						}
 					],
 					"status": "audited"
@@ -37290,8 +38334,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
-			"target_sha256": "2a7ae7a84372c96701069055ab624ef491fab7565d27246b3e3ad57809e94ee8",
+			"source_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+			"target_sha256": "b1a3c93999622d6f2538e9252e8e17a4109f3c612525e3891f48f3db2fe0ffbc",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -37301,17 +38345,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "a0562714a28f-r2",
+					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a0562714a28f-r2.json",
-					"receipt_sha256": "90f8cb79b30c51cba9f8f66b83fb815574cf5ca76982c996e2711bb8d3afef9b"
+					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+					"scope": "Wave B delta R2: 8 wave-B keys re-read; file byte-identical to the 0559f7f7d8 bytes the earlier audit passed.",
+					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.chat.canonical/wb-d2-9b3e2c165c87/record.json"
 				}
 			],
 			"status": "audited",
@@ -37375,6 +38421,28 @@
 							},
 							"receipt": "i18n/receipts/93ed237d2e46-surfaces.json",
 							"receipt_sha256": "0fa9b091389fed3a1dacb9df3d0da857fa0b67d2a15e4fb4f61010a5350e4d6e"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+					"target_sha256": "2a7ae7a84372c96701069055ab624ef491fab7565d27246b3e3ad57809e94ee8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a0562714a28f-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a0562714a28f-r2.json",
+							"receipt_sha256": "90f8cb79b30c51cba9f8f66b83fb815574cf5ca76982c996e2711bb8d3afef9b"
 						}
 					],
 					"status": "audited"
@@ -37601,8 +38669,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.device",
-			"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
-			"target_sha256": "0dbaa05e826b2b02841ea3ea1404ca660c16450128a536cda3e1a68c6cde30ad",
+			"source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+			"target_sha256": "ef39c17d6fbc2a5f65661e8c97d8b2bab1657bfa0a2527359f1a0f348a7435d1",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -37610,24 +38678,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "zh-cn-extract-734dc4749c3d-r2",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "wb-zh-cn-nib-20261027-ca81be025b12",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
-					"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/wb-zh-cn-nib-20261027-ca81be025b12.json",
+					"receipt_sha256": "2fc47d14bf2518575a297a3d092103a508e3603781f2d27e397e236452f58a3c",
+					"scope": "Independent nib delta re-audit of the coordinator's ZH-WBD-1 one-value amendment: ui.chat.device.sentence.local 或稍后召回 -> 或稍后移回此处, read against the English source, the context sidecar, the other recall controls in the locale and the call site; no rendered frame.",
+					"note": "Coordinator amendment re-audited independently; 0 blocker/major/minor/nit. Record: i18n/audits/evidence/zh-CN/ui.chat.device/wb-nib-ca81be025b12/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+					"target_sha256": "0dbaa05e826b2b02841ea3ea1404ca660c16450128a536cda3e1a68c6cde30ad",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "zh-cn-extract-734dc4749c3d-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
+							"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
@@ -37859,8 +38953,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
-			"target_sha256": "7f3bebf417d8112b08b39cc91f771e599865134b81ff02047732c4e81e38cd5f",
+			"source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+			"target_sha256": "78a402c9ac97417bd365fd98157390500c37c857bba179aaf0e83907ddd19028",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -37868,19 +38962,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "93ed237d2e46",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 5,
-						"nit": 2
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/93ed237d2e46.json",
-					"receipt_sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0"
+					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+					"scope": "Wave B delta R2: 18 wave-B keys re-read; file byte-identical to the 0559f7f7d8 bytes the earlier audit passed.",
+					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.chat.pickers/wb-d2-9b3e2c165c87/record.json"
 				}
 			],
 			"status": "audited",
@@ -37925,6 +39021,28 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+					"target_sha256": "7f3bebf417d8112b08b39cc91f771e599865134b81ff02047732c4e81e38cd5f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "93ed237d2e46",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/93ed237d2e46.json",
+							"receipt_sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -37962,8 +39080,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.run_details",
-			"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
-			"target_sha256": "23389e87f6e8908bfe59b1bff4e47fea195d89658a1fb4a95fe90153b6cf5f44",
+			"source_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+			"target_sha256": "0eb302844b1110be4748e72b361d126f865f208e3b02591e3b0b0d9a34a5b0b0",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -37973,17 +39091,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "a0562714a28f-r2",
+					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a0562714a28f-r2.json",
-					"receipt_sha256": "90f8cb79b30c51cba9f8f66b83fb815574cf5ca76982c996e2711bb8d3afef9b"
+					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+					"scope": "Wave B delta R2: 2 wave-B keys; nothing_in_flight re-audited (ZH-WB-3 resolved with an accepted wording deviation).",
+					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.chat.run_details/wb-d2-9b3e2c165c87/record.json"
 				}
 			],
 			"status": "audited",
@@ -38025,6 +39145,28 @@
 							"receipt_sha256": "7b94ffaa900e21e96ced7b5e46ca55c14f1553140dec21935d5da5d56a616bdc",
 							"scope": "second independent high-visibility round-1 audit at current hashes",
 							"note": "Independent audit; findings retained in immutable receipt. Second high-visibility pass recorded on this row."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+					"target_sha256": "23389e87f6e8908bfe59b1bff4e47fea195d89658a1fb4a95fe90153b6cf5f44",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a0562714a28f-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a0562714a28f-r2.json",
+							"receipt_sha256": "90f8cb79b30c51cba9f8f66b83fb815574cf5ca76982c996e2711bb8d3afef9b"
 						}
 					],
 					"status": "audited"
@@ -38798,8 +39940,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.connection",
-			"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
-			"target_sha256": "df77d05f36a1f970d26b14e2ab11ca3900ec9cc482502dbb656cf0f0978ae033",
+			"source_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+			"target_sha256": "b0a06d159014c977b4c6a58295564bd26eb70781fe512d39a1c6dbdbcb3ebf72",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -38808,19 +39950,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
-					"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
+					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+					"scope": "Wave B delta R2: 5 wave-B keys re-read; file byte-identical to the 0559f7f7d8 bytes the earlier audit passed.",
+					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.common.connection/wb-d2-9b3e2c165c87/record.json"
 				}
 			],
 			"status": "audited",
@@ -38869,6 +40013,28 @@
 							"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
 							"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
 							"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+					"target_sha256": "df77d05f36a1f970d26b14e2ab11ca3900ec9cc482502dbb656cf0f0978ae033",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
+							"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
 						}
 					],
 					"status": "audited"
@@ -39140,8 +40306,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.layout",
-			"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
-			"target_sha256": "624ad6806694ae82302898beca4af37c5c820f64964b90ab2420ed01e8a5c9ac",
+			"source_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+			"target_sha256": "376260aa48e706b0a4bb9ab5ef3ca73bf97052cdc0eae1429b99b893591873b0",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -39149,20 +40315,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "zh-cn-layout-mac-removal-r2-624ad6806694",
+					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/zh-cn-layout-mac-removal-r2-624ad6806694.json",
-					"receipt_sha256": "39a398be547f4541ffd84c173f2f56002244535ddaadbdb4f73f1bf4f5ad61e9",
-					"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
+					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+					"scope": "Wave B delta R2: 2 wave-B keys re-read; file byte-identical to the 0559f7f7d8 bytes the earlier audit passed.",
+					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.common.layout/wb-d2-9b3e2c165c87/record.json"
 				}
 			],
 			"status": "audited",
@@ -39190,6 +40357,29 @@
 							},
 							"receipt": "i18n/receipts/93ed237d2e46.json",
 							"receipt_sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+					"target_sha256": "624ad6806694ae82302898beca4af37c5c820f64964b90ab2420ed01e8a5c9ac",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "zh-cn-layout-mac-removal-r2-624ad6806694",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/zh-cn-layout-mac-removal-r2-624ad6806694.json",
+							"receipt_sha256": "39a398be547f4541ffd84c173f2f56002244535ddaadbdb4f73f1bf4f5ad61e9",
+							"scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
 						}
 					],
 					"status": "audited"
@@ -42951,8 +44141,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.config",
-			"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
-			"target_sha256": "0ac764e2ba0562e3d786a07a68b8007b1f62effaef765d302f32c81de2801287",
+			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+			"target_sha256": "8b05e223c55ebb8bda68482e449a21d498463bfcf0251a249910314d314a7d9e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -42962,20 +44152,46 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "caa0f0b9574d",
+					"instance": "c3a8965266e3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/caa0f0b9574d.json",
-					"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+					"receipt": "i18n/receipts/c3a8965266e3.json",
+					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+					"note": "See i18n/audits/evidence/fr/ui.agents.config/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+					"target_sha256": "0ac764e2ba0562e3d786a07a68b8007b1f62effaef765d302f32c81de2801287",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "caa0f0b9574d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/caa0f0b9574d.json",
+							"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -43183,8 +44399,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agents.config",
-			"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
-			"target_sha256": "f50a99883456c26fac53ae4f4db52453f14282d8389e943149e18c9711d55e47",
+			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+			"target_sha256": "324b974eeaa30043a54a621822fc441c21ee38a8b37dd5a7e1cd7cb9e62a3339",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -43194,20 +44410,46 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "c6732d07a0de",
+					"instance": "8bbe685ce56d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6732d07a0de.json",
-					"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+					"receipt": "i18n/receipts/8bbe685ce56d.json",
+					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.agents.config/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+					"target_sha256": "f50a99883456c26fac53ae4f4db52453f14282d8389e943149e18c9711d55e47",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "c6732d07a0de",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6732d07a0de.json",
+							"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -43440,8 +44682,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.config",
-			"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
-			"target_sha256": "8f9fbebe156c89773d1316782390d0021e2c7a845d2c4249f49726738d9e2e07",
+			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+			"target_sha256": "3d60a66713eaf3102dd80ffa63d23956d15156fd9dfabb2a754d0c0585a99b5a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -43451,20 +44693,46 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "cec82e80ef07",
+					"instance": "99a6b1da62c4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cec82e80ef07.json",
-					"receipt_sha256": "014943d97be0008d208fcaff5700cba5a9d074859fb499fb501725fb58a910fa"
+					"receipt": "i18n/receipts/99a6b1da62c4.json",
+					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.agents.config/wave-b-delta-20261027/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+					"target_sha256": "8f9fbebe156c89773d1316782390d0021e2c7a845d2c4249f49726738d9e2e07",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "cec82e80ef07",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cec82e80ef07.json",
+							"receipt_sha256": "014943d97be0008d208fcaff5700cba5a9d074859fb499fb501725fb58a910fa"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -43672,8 +44940,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.config",
-			"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
-			"target_sha256": "e8725c47645a022feeabd445cf63af137e8b40ebbb0607f26e5560812af8f6d6",
+			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+			"target_sha256": "01aaf0de576d734c89052e13b1cfbb220c8b683472013dfb7e52232c71ebc1a4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -43683,20 +44951,46 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "3d1e9640e5ae",
+					"instance": "70d334e903c9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3d1e9640e5ae.json",
-					"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+					"receipt": "i18n/receipts/70d334e903c9.json",
+					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+					"note": "Delta audit record: i18n/audits/evidence/vi/ui.agents.config/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+					"target_sha256": "e8725c47645a022feeabd445cf63af137e8b40ebbb0607f26e5560812af8f6d6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "3d1e9640e5ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3d1e9640e5ae.json",
+							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -43904,8 +45198,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.config",
-			"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
-			"target_sha256": "15243f4d0ef6462afe7a48095d61586f1db77b1aa848a3dc9e0bd1f054ceaad9",
+			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+			"target_sha256": "2aad3f3b28c4108838834908f42b8742b4ee0e733b20a59e246a72e98d4ca4da",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -43915,20 +45209,46 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "9f3c2137fe40",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "8f4aa3fba6ed",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/9f3c2137fe40.json",
-					"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.agents.config; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.agents.config/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+					"target_sha256": "15243f4d0ef6462afe7a48095d61586f1db77b1aa848a3dc9e0bd1f054ceaad9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "9f3c2137fe40",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/9f3c2137fe40.json",
+							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -44136,8 +45456,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agents.config",
-			"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
-			"target_sha256": "71209a18fdf664b46b98cd9c10235ad372c93d84b7f43256c1f30b93e85b185f",
+			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+			"target_sha256": "417340255f620bb552045cf68cb3bbb0121d13d08111941b46cf7515a4137286",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -44147,20 +45467,46 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "fa696f7f3dff",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/fa696f7f3dff.json",
-					"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+					"scope": "Wave B delta R2: 3 wave-B keys re-read; file byte-identical to the 0559f7f7d8 bytes the earlier audit passed.",
+					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.agents.config/wb-d2-9b3e2c165c87/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+					"target_sha256": "71209a18fdf664b46b98cd9c10235ad372c93d84b7f43256c1f30b93e85b185f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "fa696f7f3dff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/fa696f7f3dff.json",
+							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
@@ -44368,8 +45714,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.config",
-			"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
-			"target_sha256": "3a3e725dd03ae22e255666779bf6e40612b33be62f6117896d2a0186e980d53b",
+			"source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+			"target_sha256": "35c369946919f4d93ae1ddc7e79a97196666632f8c727eccca12a8bf53be2a1c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -44379,20 +45725,46 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-26",
+					"date": "2026-10-27",
 					"result": "clean",
-					"instance": "2ae1e9eafd56",
+					"instance": "c89cee263ac2-waveb-delta-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2ae1e9eafd56.json",
-					"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+					"note": "No finding: 3 wave-B values, none changed (file byte-identical to the audited base). Record i18n/audits/evidence/ur/ui.agents.config/waveb-delta-20261027/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+					"target_sha256": "3a3e725dd03ae22e255666779bf6e40612b33be62f6117896d2a0186e980d53b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "2ae1e9eafd56",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2ae1e9eafd56.json",
+							"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -45572,6 +46944,37 @@
 			]
 		},
 		{
+			"locale": "fr",
+			"namespace": "ui.chat.status",
+			"source_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+			"target_sha256": "7fab4b75620d10beb7f59e23cd341402bd9bb8884adccbafbfda5add75a1cd00",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "c3a8965266e3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c3a8965266e3.json",
+					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+					"note": "See i18n/audits/evidence/fr/ui.chat.status/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+				}
+			],
+			"status": "audited"
+		},
+		{
 			"locale": "es",
 			"namespace": "ui.teamBridge.archive",
 			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
@@ -45628,6 +47031,37 @@
 					"reason": "Same bytes, re-bound: #1442 reused instance dedc59c2f981 and its copy at i18n/receipts/dedc59c2f981.json won the merge, so this entry's receipt_sha256 (58cf48c787f9...) now names i18n/receipts/teambridge-pr1438-audit-dedc59c2f981.json. Kept as history; the current audit is fe54982cb1b7-archive-<locale> (byte-identity binding)."
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.status",
+			"source_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+			"target_sha256": "a4afaf09a82a6f7802a1350ccbe2cc98cc82afb9b11d7e91bc80d57975b84421",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "8bbe685ce56d",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8bbe685ce56d.json",
+					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.chat.status/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "zh-CN",
@@ -45688,6 +47122,37 @@
 			]
 		},
 		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.status",
+			"source_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+			"target_sha256": "7fc957cfa3e777bd6d59fb7398b946637c3bca799a52f9008caddd4cd567d86e",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+					"scope": "Wave B delta R2: all 4 keys of the new namespace; 2 changed values (ZH-WB-5) re-audited and resolved.",
+					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.chat.status/wb-d2-9b3e2c165c87/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge.archive",
 			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
@@ -45744,6 +47209,37 @@
 					"reason": "Same bytes, re-bound: #1442 reused instance dedc59c2f981 and its copy at i18n/receipts/dedc59c2f981.json won the merge, so this entry's receipt_sha256 (58cf48c787f9...) now names i18n/receipts/teambridge-pr1438-audit-dedc59c2f981.json. Kept as history; the current audit is fe54982cb1b7-archive-<locale> (byte-identity binding)."
 				}
 			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.status",
+			"source_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+			"target_sha256": "0ea601ffd6de50d7cd07abe00cc3fdcd59d5a977b0b4330367033cbd1cb5f374",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "99a6b1da62c4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/99a6b1da62c4.json",
+					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.chat.status/wave-b-delta-20261027/record.json"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "vi",
@@ -45804,6 +47300,37 @@
 			]
 		},
 		{
+			"locale": "vi",
+			"namespace": "ui.chat.status",
+			"source_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+			"target_sha256": "3bd4883db5e8dd53e17263d74a69796c068d6035f4f5513e4444e0fe5d15fce7",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "70d334e903c9",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/70d334e903c9.json",
+					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+					"note": "Delta audit record: i18n/audits/evidence/vi/ui.chat.status/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
+				}
+			],
+			"status": "audited"
+		},
+		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge.archive",
 			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
@@ -45862,6 +47389,37 @@
 			]
 		},
 		{
+			"locale": "ur",
+			"namespace": "ui.chat.status",
+			"source_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+			"target_sha256": "77138a3d3fe8d02576f05a79346e92d6f71536669d477cda7501398faaf08bfa",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean-with-findings",
+					"instance": "c89cee263ac2-waveb-delta-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+					"note": "1 nit UR-WBD-02 (degraded wording alternative): 4 wave-B values, 3 changed, 1 byte-identical; first ledger entry for this namespace. Record i18n/audits/evidence/ur/ui.chat.status/waveb-delta-20261027/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge.archive",
 			"source_sha256": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
@@ -45918,6 +47476,37 @@
 					"reason": "Same bytes, re-bound: #1442 reused instance dedc59c2f981 and its copy at i18n/receipts/dedc59c2f981.json won the merge, so this entry's receipt_sha256 (58cf48c787f9...) now names i18n/receipts/teambridge-pr1438-audit-dedc59c2f981.json. Kept as history; the current audit is fe54982cb1b7-archive-<locale> (byte-identity binding)."
 				}
 			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.status",
+			"source_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+			"target_sha256": "9ea7bfb48b3d870d48f9716f4791255ed3fc4d2c29a5e77d4ed973af0827a071",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-27"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-27",
+					"result": "clean",
+					"instance": "8f4aa3fba6ed",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat.status; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat.status/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

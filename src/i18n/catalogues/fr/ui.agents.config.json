@@ -26,5 +26,8 @@
 	"ui.agents.config.summary.no_changes": "L’exécution a répondu sans modifier aucun agent ni aucune équipe.",
 	"ui.agents.config.summary.nothing_else": "Cette exécution n’a rien modifié d’autre.",
 	"ui.agents.config.summary.updated": "Modification de {name}",
-	"ui.agents.config.summary.you_asked": "Vous avez demandé : {topic}"
+	"ui.agents.config.summary.you_asked": "Vous avez demandé : {topic}",
+	"ui.agents.config.banner.unavailable": "Le backend est injoignable ; la zone de saisie est donc indisponible pour le moment.",
+	"ui.agents.config.disabled_gate": "Configuration des agents par conversation",
+	"ui.agents.config.run_details_region": "Détails de l’exécution"
 }

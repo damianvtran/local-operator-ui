@@ -80,5 +80,7 @@
 	"ui.chat.run_details.chip.subagents_failed": "{count, plural, one {# उप-एजेंट विफल} other {# उप-एजेंट विफल}}",
 	"ui.chat.run_details.chip.attention": "{count, plural, one {# को ध्यान चाहिए} other {# को ध्यान चाहिए}}",
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, one {# MCP सर्वर को ध्यान चाहिए} other {# MCP सर्वरों को ध्यान चाहिए}}",
-	"ui.chat.run_details.mcp.cold_label": "कोई सत्र नहीं चल रहा — सर्वर की स्थिति जाँची नहीं जा सकती।"
+	"ui.chat.run_details.mcp.cold_label": "कोई सत्र नहीं चल रहा — सर्वर की स्थिति जाँची नहीं जा सकती।",
+	"ui.chat.run_details.nothing_in_flight": "अभी कुछ नहीं चल रहा।",
+	"ui.chat.run_details.nothing_to_show_yet": "अभी दिखाने के लिए कुछ नहीं।"
 }

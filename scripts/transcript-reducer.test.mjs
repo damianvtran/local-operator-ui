@@ -17,6 +17,10 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 });
 const reducer = await import(
@@ -7931,6 +7935,10 @@ const devBundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 	define: { "import.meta.env": '{"DEV":true}' },
 });

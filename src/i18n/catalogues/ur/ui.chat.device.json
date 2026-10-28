@@ -12,5 +12,16 @@
 	"ui.chat.device.sentence.moving": "یہ گفتگو {name} پر منتقل ہو رہی ہے۔",
 	"ui.chat.device.sentence.remote": "یہ گفتگو {name} پر چلتی ہے۔ اسے یہاں واپس لانے یا آگے منتقل کرنے کے لیے کلک کریں۔",
 	"ui.chat.device.sentence.remote_did_not_answer": "یہ گفتگو {name} پر چلتی ہے، جس نے آخری پڑھنے کی درخواست کا جواب نہیں دیا۔",
-	"ui.chat.device.sentence.remote_did_not_answer_reason": "یہ گفتگو {name} پر چلتی ہے، جس نے آخری پڑھنے کی درخواست کا جواب نہیں دیا ({reason})۔"
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "یہ گفتگو {name} پر چلتی ہے، جس نے آخری پڑھنے کی درخواست کا جواب نہیں دیا ({reason})۔",
+	"ui.chat.device.fact.this_device": "یہ ڈیوائس",
+	"ui.chat.device.footer.move_deletes_copy": "منتقلی مکمل ہونے پر اس ڈیوائس کی کاپی حذف ہو جاتی ہے۔",
+	"ui.chat.device.label.this_device": "یہ ڈیوائس",
+	"ui.chat.device.notice.move_hold_detail": "حوالے کیا جا رہا ہے · وہیں جاری رہے گی؛ یہاں سے اسے روکا نہیں جا سکتا",
+	"ui.chat.device.picker.heading.move": "اس گفتگو کو کہاں منتقل کریں",
+	"ui.chat.device.picker.heading.start": "گفتگو کہاں شروع کریں",
+	"ui.chat.device.row.conversations": "{count, plural, one {{count, number, ::group-off} گفتگو} other {{count, number, ::group-off} گفتگوئیں}}",
+	"ui.chat.device.row.not_here_why": "منتقلی کے لیے گفتگو یہاں موجود نہیں؛ پہلے اسے یہاں واپس لائیں",
+	"ui.chat.device.sentence.mesh_read_failure": "ڈیوائسز کی فہرست پڑھی نہیں جا سکی، اس لیے یہاں وہی دکھایا گیا ہے جو آخری جواب میں تھا۔",
+	"ui.chat.device.sentence.move_in_flight": "یہ گفتگو {name} پر منتقل ہو رہی ہے۔ وہیں جاری رہے گی؛ یہاں سے بھیجا گیا کچھ بھی نہیں پہنچے گا۔",
+	"ui.chat.device.sentence.pairing_guidance": "یہ ڈیوائس کسی نیٹ ورک میں نہیں ہے۔ `lop network init` سے ایک بنائیں، یا `lop network join '<token>'` سے کسی نیٹ ورک میں شامل ہوں۔"
 }

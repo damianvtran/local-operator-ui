@@ -243,6 +243,7 @@ const flagged = (state: TranscriptState): TranscriptState =>
 
 /** The failure notice the terminal frame carries, so exactly one Reconnect shows. */
 const FAILURE: SessionFailureNotice = {
+	kind: "lost",
 	statement:
 		"Lost the connection to this conversation — reconnect to keep reading.",
 	action: "reconnect",

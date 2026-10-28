@@ -35,5 +35,10 @@
 	"ui.common.connection.backend.card_governed": "Your settings could not be loaded: another program is managing this machine's Local Operator server, so this page cannot read or change them here.",
 	"ui.common.connection.backend.card_pre_handshake": "Your settings could not be loaded: the server this app is talking to is older than the pairing handshake, so this page cannot read them from it.",
 	"ui.common.connection.backend.card_credential_refused": "Your settings could not be loaded: the server refused this app's credential, so this page cannot read them from it.",
-	"ui.common.connection.backend.card_unpaired": "Your settings could not be loaded: this app is not paired with the running server, so this page cannot read them from it."
+	"ui.common.connection.backend.card_unpaired": "Your settings could not be loaded: this app is not paired with the running server, so this page cannot read them from it.",
+	"ui.common.connection.session_loss.frame_too_large": "This conversation's updates were too large to display — reconnect to try again.",
+	"ui.common.connection.session_loss.history_unreadable": "Could not load this conversation's history — reconnect to try again.",
+	"ui.common.connection.session_loss.lost": "Lost the connection to this conversation — reconnect to keep reading.",
+	"ui.common.connection.session_loss.not_paired": "This app is not paired with the Local Operator server, so this conversation cannot be read yet.",
+	"ui.common.connection.session_loss.server_down": "The Local Operator server is not running — reconnect once it is back, or restart the app if it stays down."
 }

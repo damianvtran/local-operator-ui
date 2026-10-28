@@ -35,5 +35,10 @@
 	"ui.common.connection.backend.card_governed": "آپ کی ترتیبات لوڈ نہیں ہو سکیں: اس مشین کا Local Operator سرور کوئی دوسرا پروگرام چلا رہا ہے، اس لیے یہ صفحہ یہاں سے انھیں نہیں پڑھ یا بدل سکتا۔",
 	"ui.common.connection.backend.card_pre_handshake": "آپ کی ترتیبات لوڈ نہیں ہو سکیں: اس ایپ سے جڑا سرور پیئرنگ ہینڈ شیک سے پرانا ہے، اس لیے یہ صفحہ انھیں اس سے نہیں پڑھ سکتا۔",
 	"ui.common.connection.backend.card_credential_refused": "آپ کی ترتیبات لوڈ نہیں ہو سکیں: سرور نے اس ایپ کی اسناد مسترد کر دیں، اس لیے یہ صفحہ انھیں اس سے نہیں پڑھ سکتا۔",
-	"ui.common.connection.backend.card_unpaired": "آپ کی ترتیبات لوڈ نہیں ہو سکیں: یہ ایپ چلتے سرور سے جوڑی نہیں گئی، اس لیے یہ صفحہ انھیں اس سے نہیں پڑھ سکتا۔"
+	"ui.common.connection.backend.card_unpaired": "آپ کی ترتیبات لوڈ نہیں ہو سکیں: یہ ایپ چلتے سرور سے جوڑی نہیں گئی، اس لیے یہ صفحہ انھیں اس سے نہیں پڑھ سکتا۔",
+	"ui.common.connection.session_loss.frame_too_large": "اس گفتگو کی اپ ڈیٹس دکھانے کے لیے بہت بڑی تھیں — دوبارہ منسلک ہو کر کوشش کریں۔",
+	"ui.common.connection.session_loss.history_unreadable": "اس گفتگو کی تاریخ لوڈ نہیں ہو سکی — دوبارہ منسلک ہو کر کوشش کریں۔",
+	"ui.common.connection.session_loss.lost": "اس گفتگو سے رابطہ ٹوٹ گیا — پڑھتے رہنے کے لیے دوبارہ منسلک کریں۔",
+	"ui.common.connection.session_loss.not_paired": "یہ ایپ Local Operator سرور سے جوڑی نہیں گئی، اس لیے یہ گفتگو ابھی پڑھی نہیں جا سکتی۔",
+	"ui.common.connection.session_loss.server_down": "Local Operator سرور نہیں چل رہا — اس کے واپس آنے پر دوبارہ منسلک کریں، یا اگر وہ بند ہی رہے تو ایپ دوبارہ شروع کریں۔"
 }

@@ -1,3 +1,4 @@
+import { subscribeLocale } from "../../../../i18n/locale";
 import { t } from "../../../../i18n/messages";
 /**
  * Canonical desktop session stream consumption.
@@ -126,14 +127,21 @@ import type {
 } from "../../../../shared/desktop-session-contract";
 import {
 	DESKTOP_STREAM_DETAIL,
-	HISTORY_UNREADABLE,
 	type SessionFailureNotice,
-	streamFailureNotice,
 } from "../../../../shared/desktop-stream-notice";
 import {
 	type LoadOlderOutcome,
 	createOlderLoader,
 } from "../../features/chat/canonical/load-older";
+/* The sentences are the renderer's: the shared module keeps the machine
+ * vocabulary and the classification (the copy it used to hold pulled every
+ * catalogue into the preload bundle). `noticeFor` is the re-resolution door a
+ * holder of a notice needs when the language changes under it. */
+import {
+	historyUnreadable,
+	noticeFor,
+	streamFailureNotice,
+} from "../../features/chat/canonical/session-failure-notice";
 /* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
@@ -2698,6 +2706,42 @@ export function useCanonicalSessionStream(
 		[],
 	);
 	/*
+	 * THE VIEW IS A CALLER THAT HOLDS A NOTICE, SO IT RE-WORDS IT WHEN THE
+	 * LANGUAGE CHANGES (agent review round 1, M2). `session-failure-notice.ts`
+	 * resolves copy at call time - rather than freezing it into module constants -
+	 * precisely so the sentence a reader sees can follow the language they read.
+	 * The view stores the notice for as long as the failure is terminal (until a
+	 * retry succeeds or the panel remounts), so a switch made while the notice is
+	 * on screen used to leave the old language there: measured as stored English
+	 * after `setLocale("fr")`. Re-resolving from the notice's OWN `kind` and
+	 * committing the result keeps the one sentence authority intact; nothing here
+	 * knows the copy.
+	 *
+	 * WHY THE STORE'S LISTENER RATHER THAN `useI18nLocale()`: this hook is bundled
+	 * by dozens of component harnesses whose `react` stand-ins implement only the
+	 * five hooks the hook itself used. `useSyncExternalStore` is not one of them,
+	 * and widening every shim to add one subscription would be a larger change
+	 * than the bug. `subscribeLocale` is the store's own published seam (the same
+	 * one `console-mirror.tsx` uses), and `commitView` returning the SAME state
+	 * when the resolution has not changed makes a mount, or a locale the notice
+	 * already speaks, cost no render.
+	 */
+	useEffect(() => {
+		return subscribeLocale(() => {
+			commitView((current) => {
+				const { failure } = current;
+				// A notice built without a `kind` (a component fixture, a story) has
+				// nothing to re-resolve from and is left exactly as it was.
+				if (!failure?.kind) return current;
+				const next = noticeFor(failure.kind);
+				return next.statement === failure.statement &&
+					next.action === failure.action
+					? current
+					: { ...current, failure: next };
+			});
+		});
+	}, [commitView]);
+	/*
 	 * Which session the transcript IN `view` belongs to, so the reset effect
 	 * below can tell another session's rows from this one's own seeded echo.
 	 *
@@ -3706,7 +3750,7 @@ export function useCanonicalSessionStream(
 					commitView((state) => ({
 						...state,
 						status: "unavailable",
-						failure: HISTORY_UNREADABLE,
+						failure: historyUnreadable(),
 						heldFrontend: null,
 						// The read gave up, so the banner's press has no answer coming.
 						...(state.liveUpdatesReloading
