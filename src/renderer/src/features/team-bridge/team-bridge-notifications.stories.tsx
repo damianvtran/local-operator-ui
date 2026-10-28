@@ -143,7 +143,12 @@ function createFixture(scenario: Scenario) {
 					desktop_contract: 1,
 					desktop_available: true,
 					desktop_auth: "bearer",
-					features: { settings: 1, team_bridge_conversations: 1 },
+					features: {
+						settings: 1,
+						team_bridge_conversations: 1,
+						// The reply read requires the threads plane (team-bridge-api).
+						team_bridge_threads: 1,
+					},
 				});
 			case "settings.list":
 				return ok({
@@ -186,13 +191,14 @@ function createFixture(scenario: Scenario) {
 			case "team_bridge.messages.replies": {
 				if (
 					request.tenant_id !== tenant ||
+					request.expected_account_id !== "acct_self" ||
 					request.conversation_id !== conversationId ||
 					request.message_id !== rootId ||
 					request.after_seq !== 2 ||
 					request.limit !== 1
 				) {
 					throw new Error(
-						"Reply enrichment lost its bounded tenant/root/sequence scope",
+						"Reply enrichment lost its owner receipt or its bounded tenant/root/sequence scope",
 					);
 				}
 				update({ stage: "Waiting for the reply read", repliesPending: true });

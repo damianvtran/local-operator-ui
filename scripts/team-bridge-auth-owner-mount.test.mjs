@@ -286,18 +286,130 @@ test("auth completion revokes private rendering before the new account read answ
 	}
 });
 
-test("old runtime refuses covered private writes before dispatch and holds stay closed", async () => {
+/*
+ * OLD CORE + NEW UI. The build switches are on, so the runtime's capabilities
+ * decide. A core that predates the guarded thread/reaction routes advertises
+ * neither key: the page must mount NO reply or react control, and the API must
+ * send NO thread or reaction request even when called directly (a banner, a
+ * story or a future caller does not go through the page).
+ */
+const THREAD_OR_REACTION = new Set([
+	"team_bridge.messages.replies",
+	"team_bridge.reactions.toggle",
+]);
+const planeCalls = (app) =>
+	app.fixture.calls.filter(
+		(call) =>
+			THREAD_OR_REACTION.has(call.op) ||
+			(call.op === "team_bridge.messages.send" && call.thread_root_id),
+	);
+test("old core (no thread/reaction keys): no controls and no thread or reaction request", async () => {
 	const app = await mount();
 	try {
+		app.fixture.threads = 0;
+		app.fixture.reactions = 0;
+		await act(async () =>
+			app.client.invalidateQueries({ queryKey: ["desktop", "capabilities"] }),
+		);
 		await readyA(app);
+		await selectConversation(app);
+		await delay();
 		assert.equal(
 			app.host.querySelector('button[aria-label="Reply in thread"]'),
 			null,
+			"no reply control on an old core",
 		);
 		assert.equal(
 			app.host.querySelector('button[aria-label="Add reaction"]'),
 			null,
+			"no react control on an old core",
 		);
+		assert.equal(app.host.querySelector('[data-reaction-layout="chips"]'), null);
+		// Direct API calls are refused before dispatch, and say why.
+		for (const call of [
+			() =>
+				ui.TeamBridgeApi.react("bcv_shared", "msg_private_A", "\u{1F44D}", true, {
+					accountId: "acct_a",
+					tenantId: "org_shared",
+				}),
+			() =>
+				ui.TeamBridgeApi.listReplies("bcv_shared", "msg_private_A", {
+					expectedAccountId: "acct_a",
+					tenantId: "org_shared",
+				}),
+			() =>
+				ui.TeamBridgeApi.send("bcv_shared", {
+					body: "reply on an old core",
+					clientRef: "old-core-reply",
+					tenantId: "org_shared",
+					expectedAccountId: "acct_a",
+					threadRootId: "msg_private_A",
+				}),
+		])
+			await assert.rejects(call, (error) => {
+				assert.equal(error.code, ui.TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE);
+				return true;
+			});
+		assert.deepEqual(planeCalls(app), [], "zero thread/reaction requests");
+	} finally {
+		await app.close();
+	}
+});
+
+test("matched current core: react adds and removes with the owner receipt, and a stale receipt is refused", async () => {
+	const app = await mount();
+	try {
+		await readyA(app);
+		await selectConversation(app);
+		await until(
+			() => app.host.querySelector('button[aria-label="Add reaction"]'),
+			"the toolbar's react control on a current core",
+		);
+		assert.ok(
+			app.host.querySelector('button[aria-label="Reply in thread"]'),
+			"the toolbar's reply control on a current core",
+		);
+		const owner = { accountId: "acct_a", tenantId: "org_shared" };
+		const added = await ui.TeamBridgeApi.react(
+			"bcv_shared",
+			"msg_private_A",
+			"\u{1F44D}",
+			true,
+			owner,
+		);
+		assert.equal(added.reactions[0].reacted_by_me, true);
+		const removed = await ui.TeamBridgeApi.react(
+			"bcv_shared",
+			"msg_private_A",
+			"\u{1F44D}",
+			false,
+			owner,
+		);
+		assert.deepEqual(removed.reactions, []);
+		const toggles = app.fixture.calls.filter(
+			(call) => call.op === "team_bridge.reactions.toggle",
+		);
+		assert.deepEqual(
+			toggles.map((c) => [c.active, c.expected_account_id, c.tenant_id]),
+			[
+				[true, "acct_a", "org_shared"],
+				[false, "acct_a", "org_shared"],
+			],
+		);
+		// A receipt captured as A, dispatched after the machine became B.
+		await app.changeAuth("acct_b");
+		await assert.rejects(() =>
+			ui.TeamBridgeApi.react("bcv_shared", "msg_private_A", "\u{1F44D}", true, owner),
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+test("old runtime refuses covered private writes before dispatch", async () => {
+	const app = await mount();
+	try {
+		await readyA(app);
 		app.fixture.ownerGuard = 0;
 		app.fixture.refuse = false;
 		const before = app.fixture.calls.filter(
@@ -380,8 +492,21 @@ for (const [op, fields, location] of [
 	// Irreversible: it must be refused before dispatch if the signed-in account
 	// is not the one that captured the screen the person confirmed on.
 	["conversations.delete", { conversation_id: "conv" }, "query"],
+	// The thread read and the reactions: REQUIRED receipts (team_bridge_threads,
+	// team_bridge_reactions), PUT in the body and DELETE/GET in the query.
+	[
+		"reactions.toggle",
+		{ conversation_id: "conv", message_id: "msg", emoji: "x", active: true },
+		"body",
+	],
+	[
+		"reactions.toggle",
+		{ conversation_id: "conv", message_id: "msg", emoji: "x", active: false },
+		"query",
+	],
+	["messages.replies", { conversation_id: "conv", message_id: "msg" }, "query"],
 ]) {
-	test(`conversation owner guard ${op} ${fields.action ?? ""} uses ${location} with explicit target tenant`, () => {
+	test(`conversation owner guard ${op} ${fields.action ?? (fields.active === undefined ? "" : fields.active ? "add" : "remove")} uses ${location} with explicit target tenant`, () => {
 		const input = {
 			op: `team_bridge.${op}`,
 			...fields,

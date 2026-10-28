@@ -68,6 +68,7 @@ const bundle = await build({
  export {queryClient} from './src/renderer/src/shared/api/query-client';
  export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api';
  export {desktopRequestSchema, desktopEndpoint} from './src/shared/desktop-contract';
+ export {TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE} from './src/shared/team-bridge-contract';
  export function AuthPrincipal(){const auth=useRadientUserQuery();const nav=useTeamBridgeNavItem(true);return React.createElement(React.Fragment,null,React.createElement('output',{'data-auth-principal':auth.user?.account?.id??'unresolved'},auth.user?.account?.id??'unresolved'),React.createElement('output',{'data-nav-attention':true},String(nav?.attention??0)));}
  export {recorded as toasts} from 'sonner';
  export {TeamBridgePage} from './src/renderer/src/features/team-bridge/team-bridge-page';
@@ -230,6 +231,11 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 		enabled: true,
 		readOnly: false,
 		ownerGuard: 1,
+		/* The thread/reaction PLANES the runtime advertises. 1 is a current core
+		   (receipt-required replies and reaction routes); 0 is an OLDER core, which
+		   must get no thread/reaction control and no thread/reaction request. */
+		threads: 1,
+		reactions: 1,
 		authGate: null,
 		statusGate: null,
 		historyGate: null,
@@ -264,8 +270,8 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 							features: {
 								radient: 1,
 								team_bridge_conversations: 1,
-								team_bridge_threads: 1,
-								team_bridge_reactions: 1,
+								team_bridge_threads: fixture.threads,
+								team_bridge_reactions: fixture.reactions,
 								team_bridge_conversation_owner_guard: fixture.ownerGuard,
 							},
 						});
@@ -406,6 +412,35 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 							messages: fixture.messages.get(ownerKey) ?? [],
 							has_more: false,
 						});
+					case "team_bridge.reactions.toggle": {
+						/* The runtime's atomic owner guard, as a fixture: a receipt naming
+						   anyone but the account this request dispatches as is refused
+						   with the core's coded 409 and changes nothing. */
+						if (request.expected_account_id !== owner)
+							return {
+								status: 409,
+								body: {
+									detail: {
+										code: "account_mismatch",
+										message: "signed-in account changed",
+									},
+								},
+							};
+						const rows = fixture.messages.get(ownerKey) ?? [];
+						const row = rows.find((m) => m.id === request.message_id);
+						const reactions = request.active
+							? [
+									{
+										emoji: request.emoji,
+										count: 1,
+										reacted_by_me: true,
+										sample_labels: [owner],
+									},
+								]
+							: [];
+						if (row) row.reactions = reactions;
+						return reply({ message_id: request.message_id, reactions });
+					}
 					case "team_bridge.conversations.create":
 						if (fixture.createGate) await fixture.createGate.promise;
 						return reply({
