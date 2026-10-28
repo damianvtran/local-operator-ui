@@ -679,6 +679,17 @@ test("bulk transport reuses the existing route and preserves filters, fences and
 	assert.equal(query.get("session_id"), SESSION);
 	assert.equal(query.get("preview"), "true");
 	const id = "n_abcdefghijklmnop";
+	// Core #3103: a recount with exclusions is the PATCH body form only; 500 IDs in
+	// a GET URL are refused by h11, so the list schema must not admit them at all.
+	assert.equal(
+		ops.desktopRequestSchema.safeParse({
+			op: "notifications.list",
+			preview: true,
+			selectionToken: "frozen-token",
+			excludedIds: [id],
+		}).success,
+		false,
+	);
 	const request = ops.desktopRequestSchema.parse({
 		op: "notifications.dismiss",
 		verb: "dismiss",

@@ -4551,8 +4551,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("notifications.list"),
 			preview: z.literal(true).optional(),
 			includeAskReads: z.boolean().optional(),
-			selectionToken: z.string().min(1).max(512).optional(),
-			excludedIds: z.array(notificationId).max(500).optional(),
+			// No selection_token/excluded_ids here: core's recount WITH exclusions
+			// is the PATCH body form ({op:"preview"}); 500 IDs in a GET URL exceed
+			// h11's request-line limit. The page recounts exclusions locally.
 			countSessionIds: z.array(sessionId).max(50).optional(),
 			kind: z.enum(["all", "asks", "updates"]).optional(),
 			bulkPriority: z.enum(["any", "high", "normal_up"]).optional(),
@@ -10054,10 +10055,6 @@ export function desktopEndpoint(request: DesktopRequest): {
 			const query = new URLSearchParams();
 			if (request.preview) query.set("preview", "true");
 			if (request.includeAskReads) query.set("include_ask_reads", "true");
-			if (request.selectionToken)
-				query.set("selection_token", request.selectionToken);
-			for (const id of request.excludedIds ?? [])
-				query.append("excluded_ids", id);
 			for (const id of request.countSessionIds ?? [])
 				query.append("count_session_ids", id);
 			if (request.kind) query.set("kind", request.kind);
