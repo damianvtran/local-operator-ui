@@ -1,0 +1,35 @@
+{
+  "scope": "card + approvals controller in producer-bound rig, NOT a whole-app artifact",
+  "head": "46d9b6651a50c7a4d0ba3b0253f18be3ceb40db7",
+  "sourceTestPatchSha256": "d2db3e748ace7ac5268cea03c0a8250240eecb4b4fe41b4dbba5851d625a4ff2",
+  "sourceManifestMatchesBuild": true,
+  "nativeMatrix": {
+    "cells": 16,
+    "pass": 304,
+    "fail": 0,
+    "blocked": 16
+  },
+  "resourceBounds": {
+    "successfulTargetBuild": {
+      "heapMiB": 1536,
+      "groupCapMiB": 3000,
+      "seconds": 3.1,
+      "peakRSS": "not sampled; cap is not a peak measurement"
+    },
+    "nativeCell": {
+      "heapMiB": 1536,
+      "groupCapMiB": 3000,
+      "timeoutSeconds": 180,
+      "peakRSS": "not recorded"
+    },
+    "diskAvailableKiBBeforeTarget": 10670292,
+    "diskAvailableKiBAfterMatrix": 13252808,
+    "postMatrixMemoryPressureFreePercent": 50
+  },
+  "teardown": "Each probe reaps its own detached Electron process group by exact PID; final ps found no rig-root processes. No global process kills.",
+  "scopeLimits": [
+    "No updated whole-app smoke. Toolbar/badge/dialog/dock frames from prior rounds remain historical, not carried forward as current compiled-app evidence.",
+    "Announcer and focus state source tests use the actual document/BrowserSurface modules, not the whole native app.",
+    "Native composite, ring hit routing, OS-level focus and VoiceOver remain unmeasured."
+  ]
+}

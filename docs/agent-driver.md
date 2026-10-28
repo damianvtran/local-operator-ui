@@ -473,6 +473,33 @@ S2 matrix on the current head as its regression surface and adds the focus, IME
 and accessibility rows; `docs/design/browser-address-overlay.md` holds what those
 rows do and do not establish.
 
+## The approvals card's kill switch (S6d)
+
+The native approvals card is a **product surface and on by default**. Exactly
+`LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE=1` restores the DOM dock and
+band for that launch; an absent value or any other value (`0`, `true`, empty)
+leaves the card on. The old opt-in (`..._OVERLAY_S6A=1`) is gone and is ignored.
+The switch is read once in the browser host (`approvalsOverlayEnabled`), so a
+disabled launch creates **no card controller and no `WebContentsView` child at
+all**; it is not a hidden view. A rig that measures the dock (the narrow-panel
+proof) must therefore set the switch, or the dock is not mounted.
+
+Fallback rules: the child is opaque on non-darwin (the opaque-square fallback),
+and if the child cannot be created, fails to load, or its renderer process goes
+away after construction, the host latches the card off and pushes
+`approvalsCard.available: false`, which mounts the dock and band again.
+
+Routes with the card available: the toolbar Approvals control opens the card
+(explicit open, may focus; a second press closes it) while a request is pending,
+and opens the **Approvals dialog** (grants, revoke, revoke all, forget this
+site, clear browsing data) when nothing is pending; the page menu's Approvals
+item always opens the dialog. The dialog is a `BaseDialog`, so the overlay policy
+hides the page view and the card while it is up. The dock component and the
+consent band are not mounted while the card is available.
+
+The card is **not** claimed at native-composite, ring-hit-routing or VoiceOver
+parity (see `docs/design/browser-approvals-card.md`, BLOCKED list).
+
 ## Isolation: what the run cannot reach
 
 A driver run happens on the operator's desktop, next to his real app. Every path
