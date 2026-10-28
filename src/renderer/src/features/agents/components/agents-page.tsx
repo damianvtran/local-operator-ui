@@ -524,6 +524,8 @@ export function AgentsPage() {
 		kind: "agent" | "team" | "skill",
 		itemName: string,
 		localId?: string,
+		/** Skills only: the copy is on disk (`card.installed`). */
+		installed = true,
 	) => (
 		<>
 			{/* Full inventory keeps healthy policy editing available; legacy servers
@@ -534,14 +536,28 @@ export function AgentsPage() {
 				localId={localId}
 				enabled={desktopFeatureEnabled(capabilities.data, "hub_links")}
 			/>
-			<HubUpdatePanel
-				kind={kind}
-				name={itemName}
-				enabled={
-					desktopFeatureEnabled(capabilities.data, "hub_updates") &&
-					!desktopFeatureEnabled(capabilities.data, "hub_links")
-				}
-			/>
+			{/*
+			 * NOT ON A SKILL THE LINKS PANEL ALREADY SERVES, AND NEVER WITHOUT A COPY
+			 * (#1458 UX r2 U10). `enabled` gates only the card's own fetch: the Skills
+			 * tab's reader and the sidebar fill the same `hub-updates` cache, so the
+			 * card rendered anyway - and after "Discard changes and remove" it still
+			 * said "You changed this too" and offered "Keep mine", which core refuses
+			 * with no local copy to keep. Narrow on purpose: Agents and Teams on a
+			 * links-capable core show this card today from that same shared cache,
+			 * so changing what `enabled` means would change their pane too.
+			 */}
+			{kind === "skill" &&
+			(!installed ||
+				desktopFeatureEnabled(capabilities.data, "hub_links")) ? null : (
+				<HubUpdatePanel
+					kind={kind}
+					name={itemName}
+					enabled={
+						desktopFeatureEnabled(capabilities.data, "hub_updates") &&
+						!desktopFeatureEnabled(capabilities.data, "hub_links")
+					}
+				/>
+			)}
 		</>
 	);
 
@@ -1221,7 +1237,12 @@ export function AgentsPage() {
 											 */
 											belowHeader={
 												openSkillCard?.source === "hub"
-													? hubPane("skill", selected)
+													? hubPane(
+															"skill",
+															selected,
+															undefined,
+															openSkillCard.installed,
+														)
 													: undefined
 											}
 											onAsk={(skillName) => {

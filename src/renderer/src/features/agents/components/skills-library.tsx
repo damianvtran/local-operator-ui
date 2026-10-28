@@ -924,8 +924,15 @@ export function SkillDetail({
 				}),
 			);
 			requestAnimationFrame(() => headingRef.current?.focus());
-		} catch (caught) {
-			setFailure(userFacingMessage(caught, t("ui.hub.skills.pull_failed")));
+		} catch {
+			/*
+			 * A KEYED SENTENCE, NOT CORE'S FRAGMENT (#1458 design r2 D12): the refusal
+			 * text is a lowercase log line ("the hub could not serve this skill")
+			 * with no next step, and these alerts have no technical-detail slot to
+			 * put it in. What the reader needs is the same whatever core's reason:
+			 * nothing was installed, and Download can be pressed again.
+			 */
+			setFailure(t("ui.agents.skills.error.download_failed_body"));
 		} finally {
 			downloading.current = false;
 		}
@@ -1133,7 +1140,7 @@ export function SkillDetail({
 						className="text-meta text-ink-muted"
 						data-testid="skill-download-reason"
 					>
-						{t("ui.hub.status.no_credential")}
+						{t("ui.agents.skills.detail.download_signed_out")}
 					</p>
 				) : null}
 				{readOnlyAlert && known ? (

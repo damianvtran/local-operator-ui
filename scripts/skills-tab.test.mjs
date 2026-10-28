@@ -413,7 +413,16 @@ const installBridge = (world) => {
 					case "aida.status":
 						return { status: 200, body: { result: { enabled: false } } };
 					case "profiles.list":
-						return { status: 200, body: { result: { profiles: [] } } };
+						return {
+							status: 200,
+							body: { result: { profiles: world.profiles ?? [] } },
+						};
+					case "profiles.get":
+						if (!world.profileDetail)
+							throw new Error(
+								`unexpected desktop op in this test: ${request.op}`,
+							);
+						return { status: 200, body: { result: world.profileDetail } };
 					case "teams.list":
 						return { status: 200, body: { result: { teams: [] } } };
 					case "settings.list":
@@ -3230,14 +3239,20 @@ test("U1/U2: a not-installed hub skill offers Download, says Download, and claim
 	assert.equal(download.disabled, true);
 	assert.match(
 		text(q(view.container, '[data-testid="skill-download-reason"]')),
-		/Sign in to the hub/,
+		/^Sign in to Agent Hub to download this skill\.$/,
 	);
 	assert.match(
 		text(q(view.container, '[data-testid="skill-meta"]')),
 		/Not installed/,
 	);
-	assert.equal(q(view.container, '[data-testid="skill-modified"]'), null);
-	assert.equal(q(view.container, '[data-testid="skill-hub-local-note"]'), null);
+	assert.equal(
+		q(view.container, '[data-testid="skill-modified"]') === null,
+		true,
+	);
+	assert.equal(
+		q(view.container, '[data-testid="skill-hub-local-note"]') === null,
+		true,
+	);
 	assert.equal(
 		rowOf(view.container, "hub-absent").getAttribute("data-skill-state"),
 		"not-installed",
@@ -3269,7 +3284,7 @@ test("Q6: without skill_write the read-only alerts never suggest copying", async
 	);
 	const alert = text(q(view.container, '[data-testid="skill-read-only"]'));
 	assert.equal(/[Cc]opy/.test(alert), false, `no copy promise: ${alert}`);
-	assert.equal(q(view.container, '[data-testid="skill-copy"]'), null);
+	assert.equal(q(view.container, '[data-testid="skill-copy"]') === null, true);
 	await teardown(view);
 });
 
@@ -3325,7 +3340,7 @@ test("U7: on a core without the skill run, a skill with reference files says why
 		text(q(view.container, '[data-testid="skill-edit-reason"]')),
 		"This skill has reference files, so it can't be edited here yet.",
 	);
-	assert.equal(q(view.container, '[data-testid="skill-ask"]'), null);
+	assert.equal(q(view.container, '[data-testid="skill-ask"]') === null, true);
 	await teardown(view);
 });
 
@@ -3533,7 +3548,10 @@ test("Q8: a hub copy saved inline reads Modified through the links refetch, unti
 	assert.ok(
 		await settle(() => editButton(view) !== null && !editButton(view).disabled),
 	);
-	assert.equal(q(view.container, '[data-testid="skill-modified"]'), null);
+	assert.equal(
+		q(view.container, '[data-testid="skill-modified"]') === null,
+		true,
+	);
 	await press(editButton(view));
 	const area = q(editForm(view), "textarea");
 	await typeArea(area, `${area.value} edited`);
@@ -3561,6 +3579,109 @@ test("Q8: a hub copy saved inline reads Modified through the links refetch, unti
 			}),
 		),
 		false,
+	);
+	await teardown(view);
+});
+
+/* ===== #1458 UX r2 U10: no legacy update card on a skill without a copy ===== */
+
+const reviewItem = (kind, name) => ({
+	kind,
+	name,
+	state: "available",
+	classification: "both-changed",
+	error_class: "merge-refused",
+});
+
+test("U10: a removed hub skill with a both-changed item in the shared cache shows no update card", async () => {
+	const view = await mount(
+		"/agents?kind=skill&name=hub-absent",
+		absentWorld({ updates: [reviewItem("skill", "hub-absent")] }),
+	);
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-download"]') !== null,
+		),
+	);
+	// The Skills tab's own reader has filled the shared cache by now.
+	await settle(() => false, 300);
+	// PRIMITIVES ONLY: a failing assert on a DOM node is formatted whole, which
+	// the memory guard has killed at 19 GB.
+	assert.equal(
+		document.querySelector('[data-testid="hub-update-panel"]') === null,
+		true,
+		"no 'You changed this too' card over a copy that is gone",
+	);
+	assert.equal(/Keep mine/.test(text(view.container)), false);
+	await teardown(view);
+});
+
+test("U10: an installed hub skill on a links-capable core leaves review to the Links panel", async () => {
+	const world = detailWorld([
+		skill({ name: "hub-modified", source: "hub", link_id: "LM" }),
+	]);
+	const view = await mount("/agents?kind=skill&name=hub-modified", {
+		...world,
+		links: [
+			linkRow({
+				link_id: "LM",
+				name: "hub-modified",
+				local_id: "hub-modified",
+				push: BOTH_CHANGED,
+				pull: { ...BOTH_CHANGED, classification: null },
+			}),
+		],
+		updates: [reviewItem("skill", "hub-modified")],
+	});
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-meta"]') !== null,
+		),
+	);
+	await settle(() => false, 300);
+	assert.equal(
+		document.querySelector('[data-testid="hub-update-panel"]') === null,
+		true,
+	);
+	await teardown(view);
+});
+
+test("U10 control: the Agents pane still shows its update card from the same shared cache", async () => {
+	const agent = {
+		name: "hub-agent",
+		kind: "role",
+		source: "installed",
+		agent_id: null,
+		description: "An agent from the hub.",
+		instructions: "Do the thing.",
+		tools: null,
+		effort: null,
+		delegate: false,
+	};
+	const view = await mount("/agents?name=hub-agent", {
+		features: WITH_SKILLS,
+		profiles: [agent],
+		profileDetail: agent,
+		skills: { skills: [] },
+		updates: [reviewItem("agent", "hub-agent")],
+	});
+	/*
+	 * On a links-capable core the card's own fetch is off; another reader (the
+	 * sidebar, the Skills tab's hook) fills the shared `hub-updates` cache and the
+	 * agent pane draws its card from it - the Agents behaviour U10's narrow fix
+	 * deliberately leaves alone. The op log proves another reader asked.
+	 */
+	assert.equal(
+		view.ops.includes("hub.updates"),
+		true,
+		"the shared cache was filled",
+	);
+	assert.ok(
+		await settle(
+			() => document.querySelector('[data-testid="hub-update-panel"]') !== null,
+			2_000,
+		),
+		"the agent pane's card is unchanged",
 	);
 	await teardown(view);
 });

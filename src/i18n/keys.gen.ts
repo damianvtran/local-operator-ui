@@ -2167,6 +2167,7 @@ export type MessageParams = {
 	"ui.agents.skills.detail.body_not_installed": undefined;
 	"ui.agents.skills.detail.body_truncated": { size: string };
 	"ui.agents.skills.detail.body_unavailable": undefined;
+	"ui.agents.skills.detail.download_signed_out": undefined;
 	"ui.agents.skills.detail.edit_by_asking": undefined;
 	"ui.agents.skills.detail.edit_by_asking_truncated": undefined;
 	"ui.agents.skills.detail.edit_off_files": undefined;
@@ -2204,6 +2205,7 @@ export type MessageParams = {
 	"ui.agents.skills.empty.search": { query: string };
 	"ui.agents.skills.error.detail_meaning": undefined;
 	"ui.agents.skills.error.detail_title": { name: string };
+	"ui.agents.skills.error.download_failed_body": undefined;
 	"ui.agents.skills.error.download_failed_title": undefined;
 	"ui.agents.skills.error.meaning": undefined;
 	"ui.agents.skills.error.title": undefined;

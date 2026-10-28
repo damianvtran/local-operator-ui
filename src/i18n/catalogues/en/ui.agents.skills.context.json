@@ -169,6 +169,11 @@
 		"role": "empty body explanation",
 		"tone": "plain"
 	},
+	"ui.agents.skills.detail.download_signed_out": {
+		"note": "Under a disabled Download button when the reader is not signed in to Agent Hub. Names the place and the act. Keep Agent Hub in Latin.",
+		"role": "header note",
+		"tone": "plain"
+	},
 	"ui.agents.skills.detail.edit_by_asking": {
 		"note": "Beside the action buttons, says why there is no Edit and names the 'Ask for a change' button, quoted by its own label.",
 		"role": "header note",
@@ -338,6 +343,11 @@
 		"note": "{name} is the skill's identifier, shown between curly quotes.",
 		"role": "heading of the details-read failure",
 		"tone": "plain"
+	},
+	"ui.agents.skills.error.download_failed_body": {
+		"note": "Under 'That did not download', whatever the hub's reason. Says nothing was installed and the next step; 'Download' is the button's own label. Keep Agent Hub in Latin.",
+		"role": "alert body",
+		"tone": "plain, helpful"
 	},
 	"ui.agents.skills.error.download_failed_title": {
 		"note": "Title of the danger alert when Download of a hub skill was refused or failed; the server's sentence is shown under it. Pairs with the 'Download' button label.",
