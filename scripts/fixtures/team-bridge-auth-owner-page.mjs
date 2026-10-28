@@ -59,6 +59,10 @@ const role = readFileSync(
 	"utf8",
 ).match(/export const rowCurrent =\s*("[^"]+")/)?.[1];
 assert.ok(role);
+// A separate, pinned source rollback leaves the auth-owner RED control unchanged.
+// It compiles historical source in memory; neither checkout nor dependencies move.
+const firstSendBaseline = process.env.TEAM_BRIDGE_FIRST_SEND_BASELINE;
+const sourceVariant = { baseline: firstSendBaseline ?? null, files: [] };
 const bundle = await build({
 	stdin: {
 		contents: `import React from 'react';
@@ -74,7 +78,10 @@ const bundle = await build({
  export {teamBridgeKeys} from './src/renderer/src/features/team-bridge/use-team-bridge';
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
- export {MemoryRouter} from 'react-router-dom';`,
+ export {MemoryRouter} from 'react-router-dom';
+ import {useNavigate,useLocation} from 'react-router-dom';
+ export function FixtureRoute({onNavigate,children}){const navigate=useNavigate();const location=useLocation();React.useLayoutEffect(()=>onNavigate(navigate),[navigate,onNavigate]);return React.createElement(React.Fragment,null,React.createElement('output',{'data-fixture-location':location.pathname+location.search}),location.pathname==='/team-bridge'?children:React.createElement('output',{'data-fixture-away':true}));}
+ ${process.env.TEAM_BRIDGE_FIRST_SEND_FIXTURE === "1" ? "export {resetTeamBridgeOutboxAccountForTests} from './src/renderer/src/features/team-bridge/use-team-bridge-outbox';" : ""}`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -90,6 +97,22 @@ const bundle = await build({
 			setup(b) {
 				// Exact, isolated RED control: compile only changed source files from the
 				// original release ref; never replace files in this or another worktree.
+				if (firstSendBaseline) {
+					assert.equal(firstSendBaseline, "8e415fbab9");
+					assert.equal(process.env.TEAM_BRIDGE_AUTH_BASELINE, undefined);
+					const git = (...args) => execFileSync("git", args, { encoding: "utf8" });
+					const directory = "src/renderer/src/features/team-bridge";
+					const baseFiles = new Set(git("ls-tree", "-r", "--name-only", firstSendBaseline, "--", directory).trim().split("\n"));
+					const changed = git("diff", "--name-only", firstSendBaseline, "--", directory).trim().split("\n").filter((path) => baseFiles.has(path));
+					const baseline = new Map(changed.map((path) => [path, git("show", `${firstSendBaseline}:${path}`)]));
+					b.onLoad({ filter: SOURCE }, ({ path }) => {
+						const name = relative(process.cwd(), path);
+						const contents = baseline.get(name);
+						if (contents === undefined) return;
+						sourceVariant.files.push(name);
+						return { contents, loader: path.endsWith(".tsx") ? "tsx" : "ts" };
+					});
+				}
 				const baselineRef = process.env.TEAM_BRIDGE_AUTH_BASELINE;
 				if (baselineRef) {
 					assert.equal(baselineRef, "39164868fc15bd7971a1df625ef99e53c209e08f");
@@ -215,7 +238,15 @@ function deferred() {
 	});
 	return { promise, resolve };
 }
-async function mount({ empty = false, lifecycle = null } = {}) {
+async function mount({
+	empty = false,
+	lifecycle = null,
+	intercept = null,
+	media = null,
+	attachments = null,
+	navigation = false,
+	cleanup = null,
+} = {}) {
 	localStorage.clear();
 	const fixture = {
 		account: "acct_a",
@@ -249,6 +280,13 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 	};
 	window.api = {
 		desktop: {
+			// Binary IPC stays a separate edge, including its real renderer parser.
+			...(media ? { media: (request, bytes) => {
+				const owner = fixture.account;
+				const tenant = fixture.tenant;
+				fixture.calls.push({ owner, tenant, ...request });
+				return media(request, bytes, { owner, tenant, fixture });
+			} } : {}),
 			request: async (request) => {
 				// The fake server captures ownership at dispatch, just as an authenticated
 				// request does. A late A reply must not silently become B's server history.
@@ -257,6 +295,12 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 				const generation = fixture.generation;
 				const ownerKey = JSON.stringify([owner, tenant]);
 				fixture.calls.push({ owner, tenant, ...request });
+				// Opt-in transport only: keep auth, parsers, QueryClient and the default
+				// security scenarios intact. Undefined delegates to the original server.
+				if (intercept) {
+					const answer = await intercept(request, { owner, tenant, generation, fixture });
+					if (answer !== undefined) return answer;
+				}
 				switch (request.op) {
 					case "capabilities":
 						return reply({
@@ -309,6 +353,7 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 								session: "present",
 							},
 							status: {
+								...(attachments ? { attachments } : {}),
 								tenants: [
 									{
 										tenant_id: "org_shared",
@@ -452,6 +497,11 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 		.getQueryCache()
 		.subscribe((event) => ownedQueries.add(event.query));
 	const frames = [];
+	let navigate;
+	const receiveNavigate = (value) => { navigate = value; };
+	const page = () => navigation
+		? React.createElement(ui.FixtureRoute, { onNavigate: receiveNavigate }, React.createElement(ui.TeamBridgePage))
+		: React.createElement(ui.TeamBridgePage);
 	const render = () =>
 		root.render(
 			React.createElement(
@@ -489,6 +539,11 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 									nav: host.querySelector("[data-nav-attention]")?.textContent,
 									text: host.textContent,
 									draft: host.querySelector("textarea")?.value ?? "",
+									...(navigation ? {
+										location: host.querySelector("[data-fixture-location]")?.getAttribute("data-fixture-location"),
+										images: [...host.querySelectorAll("img")].map((image) => image.getAttribute("src")),
+										cache: JSON.stringify(client.getQueryCache().getAll().map((query) => ({ key: query.queryKey, data: query.state.data }))),
+									} : {}),
 								});
 							},
 						},
@@ -496,7 +551,7 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 							React.Fragment,
 							null,
 							React.createElement(ui.AuthPrincipal),
-							React.createElement(ui.TeamBridgePage),
+							page(),
 						),
 					),
 				),
@@ -516,6 +571,11 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 		client,
 		frames,
 		render,
+		async navigate(path) {
+			assert.ok(navigation && navigate, "mount with navigation:true for actual route unmount/remount");
+			await act(async () => navigate(path));
+			await delay();
+		},
 		async changeAuth(accountId) {
 			fixture.account = accountId;
 			fixture.generation = accountId === "acct_a" ? "A" : "B";
@@ -527,6 +587,7 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 		},
 		async close() {
 			await act(async () => root.unmount());
+			await cleanup?.(client, fixture);
 			fixture.authGate?.resolve();
 			fixture.statusGate?.resolve();
 			fixture.historyGate?.resolve();
@@ -576,4 +637,4 @@ async function send(host) {
 	await act(async () => button.click());
 }
 
-export { mount, ui, type, send, until, delay, deferred };
+export { mount, ui, type, send, until, delay, deferred, sourceVariant };
