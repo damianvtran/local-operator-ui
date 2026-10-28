@@ -1,0 +1,553 @@
+{
+  "at": "2026-10-28T15:21:24.398Z",
+  "mode": "default",
+  "appRoot": "~/local-operator-ui/.worktrees/s6d",
+  "scratch": "~/.local-operator/sessions/5c634cee0bec/scratchpad/s6d-capture-LykmiV",
+  "head": "6d6970cc6f93f248a6398d6e905fbb4f6e7a6b15",
+  "cells": [
+    {
+      "label": "w1160-dark",
+      "width": 1160,
+      "theme": "localOperatorDark",
+      "emptyGrants": [],
+      "route": "toolbar",
+      "afterEmptyOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "populatedGrants": [
+        "deny:https://denied.example",
+        "origin:https://granted-once.example",
+        "session:https://granted-session.example"
+      ],
+      "afterPopulatedOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "contentBeforePending": {
+        "x": 260,
+        "y": 106,
+        "width": 900,
+        "height": 794
+      },
+      "contentAfterPending": {
+        "x": 260,
+        "y": 106,
+        "width": 900,
+        "height": 794
+      },
+      "pendingSelectors": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "badge": "{\"toolbar\":\"2\",\"folded\":null}",
+      "approvalsCard": {
+        "available": true,
+        "open": false,
+        "visible": false
+      },
+      "routePending": "toolbar",
+      "afterPendingOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "cardAfterPendingOpen": {
+        "available": true,
+        "open": true,
+        "visible": false
+      }
+    },
+    {
+      "label": "w1160-light",
+      "width": 1160,
+      "theme": "localOperatorLight",
+      "emptyGrants": [],
+      "route": "toolbar",
+      "afterEmptyOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "populatedGrants": [
+        "deny:https://denied.example",
+        "origin:https://granted-once.example",
+        "session:https://granted-session.example"
+      ],
+      "afterPopulatedOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "contentBeforePending": {
+        "x": 260,
+        "y": 106,
+        "width": 900,
+        "height": 794
+      },
+      "contentAfterPending": {
+        "x": 260,
+        "y": 106,
+        "width": 900,
+        "height": 794
+      },
+      "pendingSelectors": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "badge": "{\"toolbar\":\"2\",\"folded\":null}",
+      "approvalsCard": {
+        "available": true,
+        "open": false,
+        "visible": false
+      },
+      "routePending": "toolbar",
+      "afterPendingOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "cardAfterPendingOpen": {
+        "available": true,
+        "open": true,
+        "visible": false
+      }
+    },
+    {
+      "label": "w600-dark",
+      "width": 600,
+      "theme": "localOperatorDark",
+      "emptyGrants": [],
+      "route": "toolbar",
+      "afterEmptyOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "populatedGrants": [
+        "deny:https://denied.example",
+        "origin:https://granted-once.example",
+        "session:https://granted-session.example"
+      ],
+      "afterPopulatedOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "contentBeforePending": {
+        "x": 120,
+        "y": 106,
+        "width": 480,
+        "height": 794
+      },
+      "contentAfterPending": {
+        "x": 120,
+        "y": 106,
+        "width": 480,
+        "height": 794
+      },
+      "pendingSelectors": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "badge": "{\"toolbar\":\"2\",\"folded\":null}",
+      "approvalsCard": {
+        "available": true,
+        "open": false,
+        "visible": false
+      },
+      "routePending": "toolbar",
+      "afterPendingOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "cardAfterPendingOpen": {
+        "available": true,
+        "open": true,
+        "visible": false
+      }
+    },
+    {
+      "label": "w600-light",
+      "width": 600,
+      "theme": "localOperatorLight",
+      "emptyGrants": [],
+      "route": "toolbar",
+      "afterEmptyOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "populatedGrants": [
+        "deny:https://denied.example",
+        "origin:https://granted-once.example",
+        "session:https://granted-session.example"
+      ],
+      "afterPopulatedOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "contentBeforePending": {
+        "x": 120,
+        "y": 106,
+        "width": 480,
+        "height": 794
+      },
+      "contentAfterPending": {
+        "x": 120,
+        "y": 106,
+        "width": 480,
+        "height": 794
+      },
+      "pendingSelectors": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "badge": "{\"toolbar\":\"2\",\"folded\":null}",
+      "approvalsCard": {
+        "available": true,
+        "open": false,
+        "visible": false
+      },
+      "routePending": "toolbar",
+      "afterPendingOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "cardAfterPendingOpen": {
+        "available": true,
+        "open": true,
+        "visible": false
+      }
+    },
+    {
+      "label": "w264-dark",
+      "width": 264,
+      "theme": "localOperatorDark",
+      "emptyGrants": [],
+      "route": "menu",
+      "afterEmptyOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "populatedGrants": [
+        "deny:https://denied.example",
+        "origin:https://granted-once.example",
+        "session:https://granted-session.example"
+      ],
+      "afterPopulatedOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "contentBeforePending": {
+        "x": 0,
+        "y": 106,
+        "width": 264,
+        "height": 794
+      },
+      "contentAfterPending": {
+        "x": 0,
+        "y": 106,
+        "width": 264,
+        "height": 794
+      },
+      "pendingSelectors": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "badge": "{\"toolbar\":null,\"folded\":\"2\"}",
+      "approvalsCard": {
+        "available": true,
+        "open": false,
+        "visible": false
+      },
+      "routePending": "menu",
+      "afterPendingOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "cardAfterPendingOpen": {
+        "available": true,
+        "open": false,
+        "visible": false
+      }
+    },
+    {
+      "label": "w264-light",
+      "width": 264,
+      "theme": "localOperatorLight",
+      "emptyGrants": [],
+      "route": "menu",
+      "afterEmptyOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "populatedGrants": [
+        "deny:https://denied.example",
+        "origin:https://granted-once.example",
+        "session:https://granted-session.example"
+      ],
+      "afterPopulatedOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "contentBeforePending": {
+        "x": 0,
+        "y": 106,
+        "width": 264,
+        "height": 794
+      },
+      "contentAfterPending": {
+        "x": 0,
+        "y": 106,
+        "width": 264,
+        "height": 794
+      },
+      "pendingSelectors": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "badge": "{\"toolbar\":null,\"folded\":\"2\"}",
+      "approvalsCard": {
+        "available": true,
+        "open": false,
+        "visible": false
+      },
+      "routePending": "menu",
+      "afterPendingOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "cardAfterPendingOpen": {
+        "available": true,
+        "open": false,
+        "visible": false
+      }
+    }
+  ],
+  "actions": {
+    "grantsStart": [
+      "deny:https://denied.example",
+      "origin:http://127.0.0.1:45873",
+      "session:https://second.example",
+      "session:https://third.example"
+    ],
+    "cookiesBeforeForget": [
+      "s6d_probe@127.0.0.1"
+    ],
+    "afterForget": [
+      "deny:https://denied.example",
+      "session:https://second.example",
+      "session:https://third.example"
+    ],
+    "cookiesAfterForget": [],
+    "afterRevokeOne": [
+      "deny:https://denied.example",
+      "session:https://third.example"
+    ],
+    "cookiesBeforeClear": [
+      "s6d_probe2@127.0.0.1"
+    ],
+    "grantsBeforeClear": [
+      "deny:https://denied.example",
+      "session:https://third.example"
+    ],
+    "cookiesAfterClear": [],
+    "grantsAfterClear": [
+      "deny:https://denied.example",
+      "session:https://third.example"
+    ],
+    "afterRevokeAll": []
+  },
+  "trace": [
+    {
+      "label": "FRAME",
+      "value": "w1160-dark-toolbar-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-dark-approvals-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-dark-approvals-populated"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-dark-toolbar-badge"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-dark-page-with-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-dark-after-approvals-click-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-light-toolbar-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-light-approvals-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-light-approvals-populated"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-light-toolbar-badge"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-light-page-with-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w1160-light-after-approvals-click-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-dark-toolbar-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-dark-approvals-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-dark-approvals-populated"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-dark-toolbar-badge"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-dark-page-with-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-dark-after-approvals-click-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-light-toolbar-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-light-approvals-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-light-approvals-populated"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-light-toolbar-badge"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-light-page-with-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w600-light-after-approvals-click-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-dark-toolbar-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-dark-approvals-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-dark-approvals-populated"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-dark-toolbar-badge"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-dark-page-with-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-dark-after-approvals-click-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-light-toolbar-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-light-approvals-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-light-approvals-populated"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-light-toolbar-badge"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-light-page-with-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w264-light-after-approvals-click-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "actions-after-revoke-all"
+    }
+  ]
+}

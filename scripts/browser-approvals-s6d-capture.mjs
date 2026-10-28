@@ -86,9 +86,6 @@ let siteServer = null;
 function say(line) {
 	console.log(line);
 }
-function record(id, pass, detail, blocked = false) {
-	return { id, status: blocked ? "BLOCKED" : pass ? "PASS" : "FAIL", detail };
-}
 
 async function freePort(start) {
 	for (let port = start; port < start + 200; port += 1) {
@@ -415,7 +412,6 @@ async function setTheme(renderer, themeName) {
 const MODE = BEFORE ? "before" : KILL ? "kill" : "default";
 const FRAMES_DIR = join(OUT, "frames");
 mkdirSync(FRAMES_DIR, { recursive: true });
-const rows = [];
 const trace = [];
 const note = (label, value) => {
 	trace.push({ label, value });
@@ -456,10 +452,6 @@ const grantsOf = async (renderer) =>
 	(await projection(renderer)).approvals
 		.map((row) => `${row.scope}:${row.origin}`)
 		.sort();
-const countTags = (renderer, tags) =>
-	renderer.eval(
-		`JSON.stringify(Object.fromEntries(${JSON.stringify(tags)}.map((tag) => [tag, document.querySelectorAll('[data-tour-tag="' + tag + '"]').length])))`,
-	);
 const dockSelectors = (renderer) =>
 	renderer.eval(`JSON.stringify({
 		dataDockLayout: document.querySelectorAll('[data-dock-layout]').length,
@@ -826,12 +818,21 @@ async function runProof() {
 	for (const [label, width, theme] of [
 		["w1160-dark", 1160, "localOperatorDark"],
 		["w1160-light", 1160, "localOperatorLight"],
+		// 600 is the app window's real minimum width (WINDOW_MIN_WIDTH); the
+		// Approvals DIALOG is a viewport-level BaseDialog with a 320px floor, so its
+		// frames are only honest at or above it. A 264 window is a rig override of
+		// that minimum (it stands in for a 264px browser PANE row), which is valid
+		// for the toolbar fold and the menu route but clips any dialog.
+		["w600-dark", 600, "localOperatorDark"],
+		["w600-light", 600, "localOperatorLight"],
 		["w264-dark", 264, "localOperatorDark"],
 		["w264-light", 264, "localOperatorLight"],
 	]) {
 		cells.push(await cell(proof, label, width, theme));
 	}
-	const act = MODE === "before" ? null : await actions(proof);
+	// The dialog actions exist only in the card build; the dock (kill) and origin/main
+	// (before) have no Approvals dialog to press.
+	const act = MODE === "default" ? await actions(proof) : null;
 	return { cells, act };
 }
 
