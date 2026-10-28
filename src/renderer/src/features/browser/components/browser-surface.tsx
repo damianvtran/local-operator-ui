@@ -57,6 +57,7 @@ import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserNewTab } from "./browser-new-tab";
 import { BrowserPageMenu } from "./browser-page-menu";
+import { BrowserPasskeyNotice } from "./browser-passkey-notice";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import {
 	type AddressDismissIntent,
@@ -1222,6 +1223,19 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						? t("ui.browser.browser_surface.on_the_agent_s_tab")
 						: t("ui.browser.browser_surface.on_another_tab");
 				}}
+			/>
+			{/* A page is waiting for a passkey this browser cannot provide. Under the
+			    transfer row and above the consent band: it is the active tab's own fact
+			    (main scopes it to that tab), and it must not displace a consent request,
+			    which is the more urgent thing a user can be asked. */}
+			<BrowserPasskeyNotice
+				notice={chrome.state?.passkeyNotice}
+				onOpen={(notice) =>
+					void chrome.openPasskeyNotice(notice.tabId, notice.at)
+				}
+				onDismiss={(notice) =>
+					void chrome.dismissPasskeyNotice(notice.tabId, notice.at)
+				}
 			/>
 			{/* The band renders while there is anything to say: a live request, or a
 			    resolved row the user is still reading (spec 3.4's bounded memory). One

@@ -61,6 +61,18 @@ export interface RegisterBrowserIpcOptions {
 	 * condition `authorize` already refuses.
 	 */
 	webauthn: () => WebauthnChooser | null;
+	/**
+	 * The passkey notice's two user actions. Both take the notice's `at` as its
+	 * identity and return a boolean/outcome; neither takes a URL (the open reads the
+	 * tab's own URL in main) - see `passkey-notice.ts`.
+	 */
+	passkeyNotice?: {
+		dismiss: (tabId: number, at: number) => boolean;
+		openInSystemBrowser: (
+			tabId: number,
+			at: number,
+		) => Promise<{ ok: true } | { ok: false; reason: string }>;
+	};
 	/** The clear-data affordances (design 5.4). Injected so this module does not
 	 * depend on the session object. */
 	clearData: (what: ClearWhat) => Promise<void>;
@@ -163,6 +175,8 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-webauthn-respond",
 	"browser-webauthn-pending",
 	"browser-reveal-downloads",
+	"browser-passkey-notice-dismiss",
+	"browser-passkey-notice-open",
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
 	"browser-retry",
@@ -489,6 +503,37 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		// the truth in both cases.
 		return options.webauthn()?.pendingRequests() ?? [];
 	});
+
+	/*
+	 * The passkey notice's actions. Sender-checked like every channel here; the
+	 * renderer names a tab and the notice's `at` and nothing else, so there is no
+	 * URL or origin for it to retarget (the open reads the tab's own URL in main).
+	 */
+	ipcMain.handle(
+		"browser-passkey-notice-dismiss",
+		(event, tabId: unknown, at: unknown) => {
+			authorize(event);
+			return (
+				options.passkeyNotice?.dismiss(
+					numberOrThrow(tabId, "tabId"),
+					numberOrThrow(at, "at"),
+				) ?? false
+			);
+		},
+	);
+	ipcMain.handle(
+		"browser-passkey-notice-open",
+		async (event, tabId: unknown, at: unknown) => {
+			authorize(event);
+			if (!options.passkeyNotice) {
+				return { ok: false, reason: "the passkey notice is not available" };
+			}
+			return options.passkeyNotice.openInSystemBrowser(
+				numberOrThrow(tabId, "tabId"),
+				numberOrThrow(at, "at"),
+			);
+		},
+	);
 
 	ipcMain.handle(
 		"browser-consent-respond",

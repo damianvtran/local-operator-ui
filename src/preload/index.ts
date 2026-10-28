@@ -1107,6 +1107,16 @@ const api = {
 		 * one IT used, so no path from this side ever reaches `shell.openPath`. */
 		revealDownloads: (): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reveal-downloads"),
+		/**
+		 * The passkey notice's two actions (docs/design/browser-challenges-and-passkeys.md
+		 * 3.6). Each names a tab and the notice's `at` and nothing else: the URL the open
+		 * hands to the system browser is read by main from the tab itself, so this bridge
+		 * carries no URL a caller could retarget.
+		 */
+		dismissPasskeyNotice: (tabId: number, at: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-notice-dismiss", tabId, at),
+		openPasskeyNotice: (tabId: number, at: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-notice-open", tabId, at),
 		/** The recovery click on the `unavailable` state (design round 1, D1a).
 		 * No argument: the host restarts the same window's browser, so there is
 		 * nothing for a caller to retarget. */

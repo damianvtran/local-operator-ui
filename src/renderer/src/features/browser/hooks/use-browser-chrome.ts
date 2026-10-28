@@ -7,6 +7,7 @@ import type {
 	AddressHistoryResponse,
 } from "../../../../../shared/browser-address-history";
 import type { BrowserAvailability } from "../../../../../shared/browser-availability";
+import type { PasskeyNoticeView } from "../../../../../shared/browser-passkey-notice";
 import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
 import {
 	browserBridge as bridge,
@@ -173,6 +174,10 @@ export interface BrowserChromeState {
 	 * then simply never renders, which is the honest degrade for a build that cannot
 	 * transfer anything. */
 	transfers?: TransferActivityView;
+	/** The active tab's "a page is waiting for a passkey this browser cannot
+	 * provide" notice, or null. Main's facts only (origin, owner); see
+	 * `src/shared/browser-passkey-notice.ts`. Optional for a host that predates it. */
+	passkeyNotice?: PasskeyNoticeView | null;
 	/** Null while the active tab's last navigation succeeded, is still loading, or
 	 * has no document yet. */
 	navFailure: LoadFailureView | null;
@@ -471,6 +476,11 @@ export interface BrowserChrome {
 	 * and the message is what a toast has to say.
 	 */
 	revealDownloads: () => Promise<void>;
+	/** Dismiss the passkey notice. Main ignores a stale `at`. */
+	dismissPasskeyNotice: (tabId: number, at: number) => Promise<void>;
+	/** Open the notice's page in the system browser. Reports its own refusal, for
+	 * the reason `revealDownloads` does: the door answers instead of throwing. */
+	openPasskeyNotice: (tabId: number, at: number) => Promise<void>;
 }
 
 export interface BrowserProjection {
@@ -880,6 +890,19 @@ export function useBrowserChrome(): BrowserChrome {
 			revokeAllApprovals: () => runVoid(() => api?.revokeAllApprovals()),
 			forgetSite: (origin) => runVoid(() => api?.forgetSite(origin)),
 			clearData: (what) => runVoid(() => api?.clearData(what)),
+			dismissPasskeyNotice: (tabId, at) =>
+				runVoid(() => api?.dismissPasskeyNotice(tabId, at)),
+			openPasskeyNotice: (tabId, at) =>
+				runVoid(async () => {
+					const answer = await api?.openPasskeyNotice(tabId, at);
+					if (answer && answer.ok === false) {
+						showErrorToast(
+							t("ui.browser.use_browser_chrome.passkey_open_failed", {
+								reason: answer.reason,
+							}),
+						);
+					}
+				}),
 			revealDownloads: () =>
 				runVoid(async () => {
 					const answer = await api?.revealDownloads();
