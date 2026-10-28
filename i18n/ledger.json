@@ -5260,8 +5260,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "fafac4e8eb9c693dddad7137ae6d99ee3beefe0dc795d8b49441e3ae36c78a1e",
+			"source_sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4",
+			"target_sha256": "e159be9f1a17eb1b1f6991d465892c8c2417a5d7be4709f10345b19881848616",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -5272,25 +5272,34 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				}
+				},
+				"delta_key_sources": [
+					{
+						"key": "ui.teamBridge.thread.not_available",
+						"agent": "i18n-translator",
+						"job": "64be94d56ced",
+						"model": "not supplied",
+						"date": "2026-10-28"
+					}
+				]
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-es",
+					"instance": "b393dc8cd01c-notavail-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-es.json",
-					"receipt_sha256": "f9c9e3027119add0b52c70e384644c5fa033d1adb93dac73c28ed662d263fd1e",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/b393dc8cd01c-notavail-es.json",
+					"receipt_sha256": "ae5b55c48f412ea111c1c42f670d01d6c3d16fe62b0f8641bc60719298e4ccf2",
+					"scope": "Single-key delta ui.teamBridge.thread.not_available at a975a0b4ec; rest byte-identical to 6d269032fdc7-r3-es.",
+					"note": "Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-not-available-audit-b393dc8cd01c/record.json"
 				}
 			],
 			"status": "audited",
@@ -6078,6 +6087,31 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "fafac4e8eb9c693dddad7137ae6d99ee3beefe0dc795d8b49441e3ae36c78a1e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-es.json",
+							"receipt_sha256": "f9c9e3027119add0b52c70e384644c5fa033d1adb93dac73c28ed662d263fd1e",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+						}
+					],
+					"status": "audited",
+					"reason": "Superseded by the ui.teamBridge.thread.not_available delta audit b393dc8cd01c-notavail-es (bytes otherwise identical; this audit is carried in scope.inherited_byte_identical)."
 				}
 			]
 		},
@@ -11733,8 +11767,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "b75cfe24f3983e1047ee6dfeb82285c36a766fcdf4cebf05dcbf5871e2b1f986",
+			"source_sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4",
+			"target_sha256": "cc20cd16d3b41fba6ddeb2af9c800e0800e49d6e18a1640793d2fc2b938a27da",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -11746,25 +11780,34 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				}
+				},
+				"delta_key_sources": [
+					{
+						"key": "ui.teamBridge.thread.not_available",
+						"agent": "i18n-translator",
+						"job": "64be94d56ced",
+						"model": "not supplied",
+						"date": "2026-10-28"
+					}
+				]
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-fr",
+					"instance": "b393dc8cd01c-notavail-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-fr.json",
-					"receipt_sha256": "eeac8625243665b9eee570ab2647e4dd0a1ef34cc10167d1c898aadb9114710c",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/b393dc8cd01c-notavail-fr.json",
+					"receipt_sha256": "075672edc65ca9750ef4ce870ffc90a742c5a81d152868e06da7279f3f30b319",
+					"scope": "Single-key delta ui.teamBridge.thread.not_available at a975a0b4ec; rest byte-identical to 6d269032fdc7-r3-fr.",
+					"note": "Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-not-available-audit-b393dc8cd01c/record.json"
 				}
 			],
 			"status": "audited",
@@ -12576,6 +12619,31 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "b75cfe24f3983e1047ee6dfeb82285c36a766fcdf4cebf05dcbf5871e2b1f986",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-fr.json",
+							"receipt_sha256": "eeac8625243665b9eee570ab2647e4dd0a1ef34cc10167d1c898aadb9114710c",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+						}
+					],
+					"status": "audited",
+					"reason": "Superseded by the ui.teamBridge.thread.not_available delta audit b393dc8cd01c-notavail-fr (bytes otherwise identical; this audit is carried in scope.inherited_byte_identical)."
 				}
 			]
 		},
@@ -18137,8 +18205,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "6fc8d10b0ec69f1897b7594afc2b2d99558a474da62e111fe2464224b433ff73",
+			"source_sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4",
+			"target_sha256": "b852b2d1e4948eb8197576ce067b261da46fd3aa026ed75a2c8b552f1bd42ec4",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18149,25 +18217,34 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				}
+				},
+				"delta_key_sources": [
+					{
+						"key": "ui.teamBridge.thread.not_available",
+						"agent": "i18n-translator",
+						"job": "64be94d56ced",
+						"model": "not supplied",
+						"date": "2026-10-28"
+					}
+				]
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-hi",
+					"instance": "b393dc8cd01c-notavail-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-hi.json",
-					"receipt_sha256": "783da201c8fd41e61871f9bfdae39591152bb557f63187fdf934de3cbc6bd233",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/b393dc8cd01c-notavail-hi.json",
+					"receipt_sha256": "cab134f5a7204202d177119f0dfe07d5836435916e2ff12a04b7d6b595330f66",
+					"scope": "Single-key delta ui.teamBridge.thread.not_available at a975a0b4ec; rest byte-identical to 6d269032fdc7-r3-hi.",
+					"note": "Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-not-available-audit-b393dc8cd01c/record.json"
 				}
 			],
 			"status": "audited",
@@ -18902,6 +18979,31 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "6fc8d10b0ec69f1897b7594afc2b2d99558a474da62e111fe2464224b433ff73",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-hi.json",
+							"receipt_sha256": "783da201c8fd41e61871f9bfdae39591152bb557f63187fdf934de3cbc6bd233",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+						}
+					],
+					"status": "audited",
+					"reason": "Superseded by the ui.teamBridge.thread.not_available delta audit b393dc8cd01c-notavail-hi (bytes otherwise identical; this audit is carried in scope.inherited_byte_identical)."
 				}
 			]
 		},
@@ -24240,8 +24342,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "13c4ae135e70247bfe6926bb8590273ab29636be1f3e5478aabb943e78432535",
+			"source_sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4",
+			"target_sha256": "5a00be5b41801b252d1121a7512cc960d64a8fa3471fe1065b7d5f5e128fb7ae",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -24253,25 +24355,34 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				}
+				},
+				"delta_key_sources": [
+					{
+						"key": "ui.teamBridge.thread.not_available",
+						"agent": "i18n-translator",
+						"job": "64be94d56ced",
+						"model": "not supplied",
+						"date": "2026-10-28"
+					}
+				]
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-ru",
+					"instance": "b393dc8cd01c-notavail-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-ru.json",
-					"receipt_sha256": "f1e445f0d28d5ae49a4356a8bc92a92ed7c8cba39e80aba8e8d88e2c1528a847",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/b393dc8cd01c-notavail-ru.json",
+					"receipt_sha256": "712da1efcdbabbc6a2a885a769b28fa32e1548fd11646927129409743ce59fa1",
+					"scope": "Single-key delta ui.teamBridge.thread.not_available at a975a0b4ec; rest byte-identical to 6d269032fdc7-r3-ru.",
+					"note": "Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-not-available-audit-b393dc8cd01c/record.json"
 				}
 			],
 			"status": "audited",
@@ -25037,6 +25148,31 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "13c4ae135e70247bfe6926bb8590273ab29636be1f3e5478aabb943e78432535",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-ru.json",
+							"receipt_sha256": "f1e445f0d28d5ae49a4356a8bc92a92ed7c8cba39e80aba8e8d88e2c1528a847",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+						}
+					],
+					"status": "audited",
+					"reason": "Superseded by the ui.teamBridge.thread.not_available delta audit b393dc8cd01c-notavail-ru (bytes otherwise identical; this audit is carried in scope.inherited_byte_identical)."
 				}
 			]
 		},
@@ -30454,8 +30590,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "c2e9318791713d1dae5f94443c353541f8a625834608e24bdf76d4f140b19599",
+			"source_sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4",
+			"target_sha256": "82163e7baabdebf5eb4fbd0e176c70c60111abdf63df195ae1c18c97688a405d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -30466,25 +30602,34 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				}
+				},
+				"delta_key_sources": [
+					{
+						"key": "ui.teamBridge.thread.not_available",
+						"agent": "i18n-translator",
+						"job": "64be94d56ced",
+						"model": "not supplied",
+						"date": "2026-10-28"
+					}
+				]
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-ur",
+					"instance": "b393dc8cd01c-notavail-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-ur.json",
-					"receipt_sha256": "5782d67121ac0c2186d0d14e60f59da7310ca7b57f005f73180cd0f106d24a1b",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/b393dc8cd01c-notavail-ur.json",
+					"receipt_sha256": "c4545ab2705426d8cca04d9ab8882226ad228ecae0fb53b1d5a4b4e82bde54de",
+					"scope": "Single-key delta ui.teamBridge.thread.not_available at a975a0b4ec; rest byte-identical to 6d269032fdc7-r3-ur.",
+					"note": "Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-not-available-audit-b393dc8cd01c/record.json"
 				}
 			],
 			"status": "audited",
@@ -31219,6 +31364,31 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "c2e9318791713d1dae5f94443c353541f8a625834608e24bdf76d4f140b19599",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-ur.json",
+							"receipt_sha256": "5782d67121ac0c2186d0d14e60f59da7310ca7b57f005f73180cd0f106d24a1b",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+						}
+					],
+					"status": "audited",
+					"reason": "Superseded by the ui.teamBridge.thread.not_available delta audit b393dc8cd01c-notavail-ur (bytes otherwise identical; this audit is carried in scope.inherited_byte_identical)."
 				}
 			]
 		},
@@ -36837,8 +37007,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "538c492eed7dcebfd3ac0d74914bbcb8c010adfd978849b6f82f1cc91d058a06",
+			"source_sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4",
+			"target_sha256": "76a8c7ddb95746f185e671a55302bff6eabf7063e0d310fe5557756819c9aef9",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -36849,25 +37019,34 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				}
+				},
+				"delta_key_sources": [
+					{
+						"key": "ui.teamBridge.thread.not_available",
+						"agent": "i18n-translator",
+						"job": "64be94d56ced",
+						"model": "not supplied",
+						"date": "2026-10-28"
+					}
+				]
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-vi",
+					"instance": "b393dc8cd01c-notavail-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-vi.json",
-					"receipt_sha256": "71faf1200f76f5a10e3062170178a1fcda4754e909de58c2e96c8710884ab9c9",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/b393dc8cd01c-notavail-vi.json",
+					"receipt_sha256": "79e99b42ec050d5b57260970323212c0f1cea4075a8ab5a78676a6feb5911abb",
+					"scope": "Single-key delta ui.teamBridge.thread.not_available at a975a0b4ec; rest byte-identical to 6d269032fdc7-r3-vi.",
+					"note": "Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-not-available-audit-b393dc8cd01c/record.json"
 				}
 			],
 			"status": "audited",
@@ -37633,6 +37812,31 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "538c492eed7dcebfd3ac0d74914bbcb8c010adfd978849b6f82f1cc91d058a06",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-vi.json",
+							"receipt_sha256": "71faf1200f76f5a10e3062170178a1fcda4754e909de58c2e96c8710884ab9c9",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+						}
+					],
+					"status": "audited",
+					"reason": "Superseded by the ui.teamBridge.thread.not_available delta audit b393dc8cd01c-notavail-vi (bytes otherwise identical; this audit is carried in scope.inherited_byte_identical)."
 				}
 			]
 		},
@@ -43844,8 +44048,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
-			"target_sha256": "e614104042ec5b3ba8cb6a63073c063791c34b4f0237175dae214f783974386d",
+			"source_sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4",
+			"target_sha256": "531242bf93f46e35e6fbb56653cfb11369d3e780d78e9b5baca77b12d5778a95",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -43856,25 +44060,34 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				}
+				},
+				"delta_key_sources": [
+					{
+						"key": "ui.teamBridge.thread.not_available",
+						"agent": "i18n-translator",
+						"job": "64be94d56ced",
+						"model": "not supplied",
+						"date": "2026-10-28"
+					}
+				]
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "6d269032fdc7-r3-zh-cn",
+					"instance": "b393dc8cd01c-notavail-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6d269032fdc7-r3-zh-cn.json",
-					"receipt_sha256": "9b28b45e43516ecad130ba4261e111abc4317ebd8862281ef3607fe5d87d0b58",
-					"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
-					"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+					"receipt": "i18n/receipts/b393dc8cd01c-notavail-zh-cn.json",
+					"receipt_sha256": "9b0c68a1386ce6a5db7734e5de0b58d4d4ef2b5b4bb72254c5f69ffbf4266883",
+					"scope": "Single-key delta ui.teamBridge.thread.not_available at a975a0b4ec; rest byte-identical to 6d269032fdc7-r3-zh-cn.",
+					"note": "Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-not-available-audit-b393dc8cd01c/record.json"
 				}
 			],
 			"status": "audited",
@@ -44662,6 +44875,31 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c",
+					"target_sha256": "e614104042ec5b3ba8cb6a63073c063791c34b4f0237175dae214f783974386d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "6d269032fdc7-r3-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6d269032fdc7-r3-zh-cn.json",
+							"receipt_sha256": "9b28b45e43516ecad130ba4261e111abc4317ebd8862281ef3607fe5d87d0b58",
+							"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+							"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+						}
+					],
+					"status": "audited",
+					"reason": "Superseded by the ui.teamBridge.thread.not_available delta audit b393dc8cd01c-notavail-zh-cn (bytes otherwise identical; this audit is carried in scope.inherited_byte_identical)."
 				}
 			]
 		},
@@ -49628,6 +49866,230 @@
 					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
 					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat.status; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
 					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat.status/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+			"target_sha256": "600eca2119f9911e8febed0361c9848e20a2f48f044ff5d15ea172a1d9923ef8",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "not supplied",
+				"date": "2026-10-28",
+				"job": "64be94d56ced"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "b393dc8cd01c-owneraudit-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-fr.json",
+					"receipt_sha256": "28520ed68f57c86d954265b4c6f63c2f65d69563f4acc928e80c1382184b06a8",
+					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+					"note": "Fixed by auditor: I18N-fr-1. Evidence: i18n/audits/evidence/fr/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+			"target_sha256": "c3d8f1b791c8b698e8b5566e5c4dbd95b0ed9874cfb1b4972a74f2417733d6d3",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "not supplied",
+				"date": "2026-10-28",
+				"job": "64be94d56ced"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "b393dc8cd01c-owneraudit-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-es.json",
+					"receipt_sha256": "3eec3bf1a12e6f1e71f487f3c52f6aef2400e1df12c0514d577cc55a8833ed6e",
+					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+					"note": "Open: I18N-es-1. Evidence: i18n/audits/evidence/es/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+			"target_sha256": "0f6a5b9d22594310fbab993d6c5455db553b59f1a2693fb51db560ef6fb691c9",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "not supplied",
+				"date": "2026-10-28",
+				"job": "64be94d56ced"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "b393dc8cd01c-owneraudit-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-zh-cn.json",
+					"receipt_sha256": "2021c577824c772bbd793b4450cac3f48f93280e168fbace8f3fd42ad500901d",
+					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+					"note": "Fixed by auditor: I18N-zh-CN-1, I18N-zh-CN-2. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+			"target_sha256": "24dd4e793a22eb93651a041d926d63d60e664e44739c2c9a558ff49fd2cd1cd2",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "not supplied",
+				"date": "2026-10-28",
+				"job": "64be94d56ced"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "b393dc8cd01c-owneraudit-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-ru.json",
+					"receipt_sha256": "9dec2e6069593f4489787bd8a9791544744ace645b85427d2ddd8abceacbbbf6",
+					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+					"note": "Open: I18N-ru-4. Fixed by auditor: I18N-ru-1, I18N-ru-2, I18N-ru-3. Evidence: i18n/audits/evidence/ru/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+			"target_sha256": "05d794b62073872aee2614d54b3a58f49319c33da164f188801b30f7600c27ce",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "not supplied",
+				"date": "2026-10-28",
+				"job": "64be94d56ced"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "b393dc8cd01c-owneraudit-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-vi.json",
+					"receipt_sha256": "9f5c57892ac8fd9a5356cfbeecf3e5c814d92f9b194fccb66a57f48b79354893",
+					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+					"note": "Fixed by auditor: I18N-vi-1, I18N-vi-2, I18N-vi-3, I18N-vi-4, I18N-vi-5. Evidence: i18n/audits/evidence/vi/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+			"target_sha256": "8e330a5e59bddcbd896ca8f1a46482ed2d2f87007eadbbf20cc7a44a175f44b9",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "not supplied",
+				"date": "2026-10-28",
+				"job": "64be94d56ced"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "b393dc8cd01c-owneraudit-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-ur.json",
+					"receipt_sha256": "cb8d96d577277a39a09b000c634ca49b8f0010f1194a3d43a13bd040b8af71a8",
+					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+					"note": "Fixed by auditor: I18N-ur-1, I18N-ur-2, I18N-ur-3. Evidence: i18n/audits/evidence/ur/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+			"target_sha256": "eec5f2b5be9a88348e741bbdc04c2e9844c035dd7de4e8938b84ccbced081a69",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "not supplied",
+				"date": "2026-10-28",
+				"job": "64be94d56ced"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "b393dc8cd01c-owneraudit-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-hi.json",
+					"receipt_sha256": "57105c29401bcd38edcde2692620b678ecab091826147f129ad4e5845756a4bc",
+					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+					"note": "Fixed by auditor: I18N-hi-1, I18N-hi-2. Evidence: i18n/audits/evidence/hi/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
 				}
 			],
 			"status": "audited"
