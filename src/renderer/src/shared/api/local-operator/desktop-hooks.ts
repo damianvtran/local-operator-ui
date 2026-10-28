@@ -326,10 +326,12 @@ export type DesktopFeature =
 	/** Full linked inventory and revision-checked independent policy controls. */
 	| "hub_links"
 	/**
-	 * The hub item routes (check/apply/retry) take `kind` + `local_id`, the exact
-	 * registry address, beside the released display-name arm. An older core
-	 * refuses the field (`extra="forbid"`), so a caller sends it only when this
-	 * is advertised.
+	 * `local_id` addressing on the hub check/apply/retry routes (core
+	 * `desktop_hub.py`, `LocalId`). ITS OWN KEY because the three request models
+	 * inherit `extra="forbid"`: an older core answers 422 to a body carrying
+	 * `local_id`, so a renderer must ASK before sending it and fall back to the
+	 * released `name` arm. A bump of `hub_links` could not answer that, since the
+	 * inventory is served perfectly well by a core without the field.
 	 */
 	| "hub_items_by_id"
 	/**

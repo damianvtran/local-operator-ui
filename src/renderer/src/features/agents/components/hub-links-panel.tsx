@@ -3,8 +3,8 @@ import { usableOrgs } from "@features/agent-hub/org-access";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	type HubLinkAction,
-	type HubPullPreview,
 	type HubPushPreview,
+	isDirectionalReport,
 	useHubLinkActions,
 	useHubSourceResolution,
 } from "@shared/api/local-operator/hub-link-actions";
@@ -18,6 +18,7 @@ import {
 	linksForLocalItem,
 } from "@shared/api/local-operator/hub-links";
 import { HubMutationUpgradeRequired } from "@shared/api/local-operator/hub-mutation-safety";
+import type { HubMergeReport } from "@shared/api/local-operator/hub-updates";
 import { Alert, AlertTitle } from "@shared/components/ui/alert";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
@@ -38,7 +39,11 @@ import { cn } from "@shared/lib/utils";
 import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { hubLinkView } from "../hub-link-adapter";
-import { hubDirectionStateText, hubReasonText } from "../hub-link-copy";
+import {
+	hubActionFailureText,
+	hubDirectionStateText,
+	hubReasonText,
+} from "../hub-link-copy";
 import { hubPreviewIsCurrent, hubPreviewMatches } from "../hub-preview-binding";
 import {
 	HubLinkPolicyControls,
@@ -65,18 +70,44 @@ const isBusy = (link: HubLink) =>
  * replaced with a proposal the user has not seen. Core does the final fresh-byte
  * validation/CAS. The UI cannot certify that from its cached inventory.
  */
-export function HubLinkGroup({ link }: { link: HubLink }) {
+export function HubLinkGroup({
+	link,
+	displayName,
+	itemsById,
+}: {
+	link: HubLink;
+	/** The local item's DISPLAY name (an agent/team row's `name` is its id). */
+	displayName?: string;
+	/** `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
+	itemsById: boolean;
+}) {
 	useI18nLocale();
-	const actions = useHubLinkActions(link.link_id);
+	const actions = useHubLinkActions(link, { displayName, itemsById });
 	const source = hubLinkSourceName(link);
 	const view = hubLinkView(link);
 	const [publishPreview, setPublishPreview] = useState<HubPushPreview | null>(
 		null,
 	);
-	const [incomingPreview, setIncomingPreview] = useState<HubPullPreview | null>(
-		null,
-	);
-	const [incomingReports, setIncomingReports] = useState<string | null>(null);
+	/*
+	 * THE INCOMING PREVIEW IS THE DRY-RUN'S OWN REPORTS.
+	 *
+	 * Core's `/updates/apply` answers `{reports, status}` and NO `preview`
+	 * member (`desktop_hub.py`), and its report rows carry no `link_id` or
+	 * `direction` (`report.py` `ItemMergeReport.to_json`). The panel therefore
+	 * cannot read a `HubPullPreview` from that answer - the type has no producer
+	 * on this route - so the dialog is built from the one report for this row.
+	 *
+	 * The honest limit: core RECOMPUTES the merge when the real apply arrives
+	 * (the route re-checks the item), so what is shown is advisory, not a
+	 * receipt. The dialog says so; it must never claim to apply exactly this.
+	 */
+	const [incomingReports, setIncomingReports] = useState<
+		HubMergeReport[] | null
+	>(null);
+	/** The merge preference the reader picked while previewing, applied on Pull. */
+	const [incomingPrefer, setIncomingPrefer] = useState<
+		"local" | "remote" | undefined
+	>(undefined);
 	const [acknowledgedBaseline, setAcknowledgedBaseline] = useState(false);
 	const [previewChanged, setPreviewChanged] = useState(false);
 	const safeActionRef = useRef<HTMLButtonElement>(null);
@@ -84,12 +115,41 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 	const busy = actions.isPending || isBusy(link);
 	// Known-ness is the provenance literal; only `adopt-unknown` is unknown.
 	const unknownBaseline = !baselineIsKnown(link.baseline_state);
+	/*
+	 * A dry run answers one of three classes, and they are NOT "changed" and
+	 * "everything else" (`report.py` `ItemOutcome`, measured over the wire by
+	 * review round 3):
+	 *
+	 *   - `would-merge`          - Pull would write.
+	 *   - `needs-review`         - there IS something to merge, but core needs a
+	 *                              decision: a conflict (`merge-refused`) or an
+	 *                              unknown baseline (`model-unavailable`, which
+	 *                              is EVERY unknown-baseline dry run without the
+	 *                              acknowledgement - `merge.py` returns
+	 *                              `needs-review`, never `would-merge`). The
+	 *                              prefer buttons and the acknowledgement live
+	 *                              in the dialog, so this class MUST open it.
+	 *   - `up-to-date`/`unchanged` - a genuine no-op: state it inline.
+	 *
+	 * A failure class (`unavailable`, `failed`, `skipped`) is stated inline as
+	 * a failure with core's own `message`; it is not "nothing to pull" either.
+	 * `refused` never reaches here: the route answers 422 for a single item.
+	 */
+	const incomingOutcomes = new Set(
+		(incomingReports ?? []).map((report) => report.outcome),
+	);
+	const incomingDelta = incomingOutcomes.has("would-merge");
+	const incomingNeedsReview = incomingOutcomes.has("needs-review");
+	const incomingActionable = incomingDelta || incomingNeedsReview;
+	const incomingFailure =
+		incomingReports?.find((report) =>
+			["failed", "skipped", "unavailable"].includes(report.outcome),
+		) ?? null;
 
-	const activePreview = publishPreview ?? incomingPreview;
+	const activePreview = publishPreview;
 	useEffect(() => {
 		if (activePreview && !hubPreviewIsCurrent(activePreview, link)) {
 			setPublishPreview(null);
-			setIncomingPreview(null);
 			setPreviewChanged(true);
 		}
 	}, [link, activePreview]);
@@ -101,7 +161,6 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 		const timer = setTimeout(
 			() => {
 				setPublishPreview(null);
-				setIncomingPreview(null);
 				setPreviewChanged(true);
 			},
 			Math.max(0, Math.min(remaining, 2_147_483_647)),
@@ -119,16 +178,24 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 						response.preview?.direction === "push" ? response.preview : null,
 					);
 				else if (input.action === "apply" && input.preview) {
-					const incoming =
-						response.preview?.direction === "pull" ? response.preview : null;
-					setIncomingPreview(incoming);
-					setIncomingReports(JSON.stringify(response.reports, null, 2));
-					setAcknowledgedBaseline(
-						incoming?.choices.acknowledge_unknown_baseline ?? false,
+					/*
+					 * One row's dry-run reports. Matched on `local_id` (the exact
+					 * identity this row was addressed by), never on a name: a name
+					 * arm can answer for two rows, and showing another item's merge
+					 * under this row would be a lie about what Pull would do.
+					 */
+					setIncomingReports(
+						(response.reports ?? []).filter(
+							(report) => report.local_id === link.local_id,
+						),
 					);
+					setIncomingPrefer(input.prefer);
+					/* The re-preview that follows a tick keeps the tick: resetting it
+					 * here would make the acknowledgement impossible to leave on. */
+					setAcknowledgedBaseline(input.acknowledgeUnknownBaseline === true);
 				} else {
 					setPublishPreview(null);
-					setIncomingPreview(null);
+					setIncomingReports(null);
 				}
 			},
 			onError: (error) => {
@@ -141,7 +208,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 					].includes(error.code ?? "")
 				) {
 					setPublishPreview(null);
-					setIncomingPreview(null);
+					setIncomingReports(null);
 					setPreviewChanged(true);
 				}
 			},
@@ -150,7 +217,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 	const close = () => {
 		if (!actions.isPending) {
 			setPublishPreview(null);
-			setIncomingPreview(null);
+			setIncomingReports(null);
 		}
 	};
 	const directionLabel = (direction: "pull" | "push") =>
@@ -313,7 +380,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 				<p role="alert" className="text-body-sm text-danger">
 					{actions.error instanceof HubMutationUpgradeRequired
 						? actions.error.message
-						: t("ui.hub.links.action_failed", {
+						: hubActionFailureText(actions.variables?.action, {
 								direction: directionLabel(
 									actions.variables?.action === "preview" ||
 										actions.variables?.action === "confirm"
@@ -326,6 +393,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 				</p>
 			)}
 			{actions.data?.reports
+				.filter(isDirectionalReport)
 				.filter((report) => report.link_id === link.link_id)
 				.map((report, index) => (
 					<output
@@ -340,8 +408,29 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 						})}
 					</output>
 				))}
+			{incomingReports && !incomingActionable && !incomingFailure && (
+				<output className="text-meta text-ink-muted">
+					{t("ui.hub.links.incoming_nothing", {
+						outcome: incomingReports[0]?.outcome ?? "up-to-date",
+					})}
+				</output>
+			)}
+			{incomingFailure && (
+				<div role="alert" className="flex flex-col gap-0.5">
+					<p className="text-body-sm text-danger">
+						{t("ui.hub.links.incoming_failed", {
+							outcome: incomingFailure.outcome,
+						})}
+					</p>
+					{incomingFailure.message && (
+						<p className="break-words text-meta text-ink-muted">
+							{incomingFailure.message}
+						</p>
+					)}
+				</div>
+			)}
 			<Dialog
-				open={publishPreview !== null || incomingPreview !== null}
+				open={publishPreview !== null || incomingActionable}
 				onOpenChange={(open) => {
 					if (!open) close();
 				}}
@@ -364,14 +453,55 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 								: t("ui.hub.links.preview_pull")}
 						</DialogTitle>
 						<DialogDescription>
-							{publishPreview || !unknownBaseline
+							{publishPreview
 								? t("ui.hub.subscriptions.enable_safety")
-								: t("ui.hub.links.unknown_baseline")}
+								: t("ui.hub.links.preview_recomputed")}
 						</DialogDescription>
+						{!publishPreview && unknownBaseline && (
+							<p className="text-body-sm text-warning">
+								{t("ui.hub.links.unknown_baseline")}
+							</p>
+						)}
 					</DialogHeader>
-					<pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap break-words rounded-md bg-sunken p-3 text-mono-sm text-ink">
-						{JSON.stringify(activePreview?.proposal, null, 2)}
-					</pre>
+					{incomingReports ? (
+						<>
+							{incomingNeedsReview && (
+								<p className="text-body-sm text-ink" data-needs-review>
+									{t("ui.hub.links.incoming_needs_review")}
+								</p>
+							)}
+							<ul className="flex flex-col gap-1" data-incoming-reports>
+								{incomingReports.map((report, index) => (
+									<li
+										key={`${report.local_id}-${index}`}
+										className="text-body-sm text-ink"
+									>
+										{t("ui.hub.links.incoming_outcome", {
+											item: displayName?.trim() || link.name,
+											outcome: report.outcome,
+										})}
+										{/*
+										 * Core's unknown-baseline message names the CLI flag
+										 * (`--accept-unknown-baseline`, `merge.py`), which means
+										 * nothing in this window: the control it describes is the
+										 * checkbox below. Everything else is core-authored and shown
+										 * verbatim; React escapes it.
+										 */}
+										{unknownBaseline &&
+										report.error_class === "model-unavailable"
+											? t("ui.hub.links.incoming_unknown_baseline")
+											: report.message
+												? report.message
+												: null}
+									</li>
+								))}
+							</ul>
+						</>
+					) : (
+						<pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap break-words rounded-md bg-sunken p-3 text-mono-sm text-ink">
+							{JSON.stringify(activePreview?.proposal, null, 2)}
+						</pre>
+					)}
 					{activePreview?.warnings.length ? (
 						<div>
 							<h4 className="text-body-sm text-ink">
@@ -392,12 +522,12 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 							{hubReasonText(activePreview.reason)}
 						</p>
 					)}
-					{incomingPreview && incomingReports && (
-						<pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words bg-sunken p-3 text-mono-sm text-ink">
-							{incomingReports}
-						</pre>
-					)}
-					{incomingPreview && unknownBaseline && (
+					{/*
+					 * No raw report dump: it duplicated the list above and printed
+					 * core's machine words — including the CLI flag its
+					 * unknown-baseline message names — as if they were copy.
+					 */}
+					{incomingReports && unknownBaseline && (
 						<label
 							htmlFor={ackId}
 							className="flex items-start gap-2 text-body-sm text-ink"
@@ -405,9 +535,20 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 							<Checkbox
 								id={ackId}
 								checked={acknowledgedBaseline}
-								onCheckedChange={(checked) =>
-									setAcknowledgedBaseline(checked === true)
-								}
+								onCheckedChange={(checked) => {
+									const next = checked === true;
+									setAcknowledgedBaseline(next);
+									/* The acknowledgement changes what core is allowed to
+									 * do, so the preview is re-asked: Pull must never ride a
+									 * report produced without the value it would send. */
+									run({
+										action: "apply",
+										linkId: link.link_id,
+										preview: true,
+										prefer: incomingPrefer,
+										acknowledgeUnknownBaseline: next,
+									});
+								}}
 							/>
 							{t("ui.hub.links.acknowledge_baseline")}
 						</label>
@@ -416,7 +557,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 						<p role="alert" className="text-body-sm text-danger">
 							{actions.error instanceof HubMutationUpgradeRequired
 								? actions.error.message
-								: t("ui.hub.links.action_failed", {
+								: hubActionFailureText(actions.variables?.action, {
 										direction: directionLabel(publishPreview ? "push" : "pull"),
 										item: link.name,
 										source,
@@ -460,7 +601,10 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 											!actions.canWrite ||
 											(unknownBaseline && !acknowledgedBaseline)
 										}
-										onClick={() =>
+										onClick={() => {
+											/* `incomingPrefer` is set by the ANSWER, never by
+											 * the press: a failed re-preview must not leave Pull
+											 * sending a preference no shown preview used. */
 											run({
 												action: "apply",
 												linkId: link.link_id,
@@ -468,8 +612,8 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 												prefer,
 												acknowledgeUnknownBaseline:
 													unknownBaseline && acknowledgedBaseline,
-											})
-										}
+											});
+										}}
 									>
 										{t(
 											prefer === "local"
@@ -482,25 +626,18 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 									disabled={
 										actions.isPending ||
 										!actions.canWrite ||
-										!incomingPreview ||
-										!hubPreviewMatches(incomingPreview, link) ||
-										incomingPreview.choices.acknowledge_unknown_baseline !==
-											acknowledgedBaseline ||
-										incomingPreview.choices.replace !== null ||
-										incomingPreview.choices.confirm_replace
+										!incomingDelta ||
+										(unknownBaseline && !acknowledgedBaseline)
 									}
-									onClick={() => {
-										if (!incomingPreview) return;
+									onClick={() =>
 										run({
 											action: "apply",
 											linkId: link.link_id,
-											previewReceipt: incomingPreview.preview_receipt,
-											confirmApply: true,
-											prefer: incomingPreview.choices.prefer ?? undefined,
+											prefer: incomingPrefer,
 											acknowledgeUnknownBaseline:
-												incomingPreview.choices.acknowledge_unknown_baseline,
-										});
-									}}
+												unknownBaseline && acknowledgedBaseline,
+										})
+									}
 								>
 									{t("ui.hub.subscriptions.pull")}
 								</Button>
@@ -818,7 +955,15 @@ export function HubLinksPanel({
 	kind,
 	name,
 	localId,
-}: { enabled: boolean; kind?: HubLinkKind; name?: string; localId?: string }) {
+	itemsById = false,
+}: {
+	enabled: boolean;
+	kind?: HubLinkKind;
+	name?: string;
+	localId?: string;
+	/** The caller's `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
+	itemsById?: boolean;
+}) {
 	useI18nLocale();
 	const inventory = useHubLinks(enabled);
 	/*
@@ -1042,7 +1187,12 @@ export function HubLinksPanel({
 				>
 					<div className="divide-y divide-hairline">
 						{rows.map((link) => (
-							<HubLinkGroup key={link.link_id} link={link} />
+							<HubLinkGroup
+								key={link.link_id}
+								link={link}
+								displayName={name}
+								itemsById={itemsById}
+							/>
 						))}
 					</div>
 					{inventory.error && inventory.data && (

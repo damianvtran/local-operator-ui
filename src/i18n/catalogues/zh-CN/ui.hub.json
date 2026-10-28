@@ -59,6 +59,11 @@
 	"ui.hub.links.direction_pull": "传入更新",
 	"ui.hub.links.direction_push": "向外发布",
 	"ui.hub.links.action_failed": "{item}与{source}之间的{direction}未完成。请查看状态后再重试。",
+	"ui.hub.links.preview_recomputed": "应用时后端会重新计算此次合并，因此自本次预览后发生的更改将按当时的实际内容合并，而非按此处显示的内容。",
+	"ui.hub.links.incoming_outcome": "{item}的预览：{outcome}",
+	"ui.hub.links.incoming_nothing": "没有可拉取的内容：此项状态为{outcome}。",
+	"ui.hub.links.name_ambiguous": "另一项与此项同名，此后端无法区分两者。应用前打开此项查看其关联。",
+	"ui.hub.links.check_failed": "{item}在{source}的检查未完成。请查看状态后再重试。",
 	"ui.hub.links.preview_warnings": "审核提示",
 	"ui.hub.links.action_result": "{item}与{source}之间的{direction}：{outcome}",
 	"ui.hub.links.preview_pull": "预览传入更改",
@@ -189,7 +194,6 @@
 	"ui.hub.links.updated_unsourced": "已更新{item}",
 	"ui.hub.links.published_unsourced": "已发布{item}",
 	"ui.hub.links.action_failed_unsourced": "{item}的{direction}未完成。请查看状态后再重试。",
-	"ui.hub.links.incoming_failed": "上次传入更新未完成。",
 	"ui.hub.links.incoming_failed_no_reason": "未记录原因。",
 	"ui.hub.links.retrying": "正在重试……",
 	"ui.hub.links.retry_failed": "重试未完成。请再试一次。",
@@ -200,5 +204,6 @@
 	"ui.hub.subscriptions.saving_unsourced": "正在保存“{setting}”设置……",
 	"ui.hub.subscriptions.save_failed_unsourced": "无法保存“{setting}”设置，请重试。",
 	"ui.hub.links.incoming_failed_reason": "原因：{reason}",
-	"ui.hub.links.sign_in_required": "请在“设置”中登录Radient，然后重试。"
+	"ui.hub.links.sign_in_required": "请在“设置”中登录Radient，然后重试。",
+	"ui.hub.links.incoming_update_failed": "上次传入更新未完成。"
 }

@@ -5680,6 +5680,7 @@ export type MessageParams = {
 	"ui.hub.links.available_unsourced": { item: string };
 	"ui.hub.links.busy": { direction: string; item: string; source: string };
 	"ui.hub.links.busy_unsourced": { direction: string; item: string };
+	"ui.hub.links.check_failed": { item: string; source: string };
 	"ui.hub.links.confirm_publish": undefined;
 	"ui.hub.links.direction_pull": undefined;
 	"ui.hub.links.direction_push": undefined;
@@ -5698,10 +5699,16 @@ export type MessageParams = {
 		autoPush: string;
 	};
 	"ui.hub.links.hub_id": { address: string };
-	"ui.hub.links.incoming_failed": undefined;
+	"ui.hub.links.incoming_failed": { outcome: string };
 	"ui.hub.links.incoming_failed_no_reason": undefined;
 	"ui.hub.links.incoming_failed_reason": { reason: string };
+	"ui.hub.links.incoming_needs_review": undefined;
+	"ui.hub.links.incoming_nothing": { outcome: string };
+	"ui.hub.links.incoming_outcome": { item: string; outcome: string };
+	"ui.hub.links.incoming_unknown_baseline": undefined;
+	"ui.hub.links.incoming_update_failed": undefined;
 	"ui.hub.links.last_success": { time: string };
+	"ui.hub.links.legacy_retry_unverified": undefined;
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
 	"ui.hub.links.loading": undefined;
@@ -5712,6 +5719,7 @@ export type MessageParams = {
 	"ui.hub.links.mark_healthy": undefined;
 	"ui.hub.links.mark_review": undefined;
 	"ui.hub.links.mixed": undefined;
+	"ui.hub.links.name_ambiguous": undefined;
 	"ui.hub.links.policy_title": { item: string };
 	"ui.hub.links.prefer_local": undefined;
 	"ui.hub.links.prefer_remote": undefined;
@@ -5719,6 +5727,7 @@ export type MessageParams = {
 	"ui.hub.links.preview_expired": undefined;
 	"ui.hub.links.preview_payload": { source: string };
 	"ui.hub.links.preview_pull": undefined;
+	"ui.hub.links.preview_recomputed": undefined;
 	"ui.hub.links.preview_warnings": undefined;
 	"ui.hub.links.publication_pending": undefined;
 	"ui.hub.links.published": { item: string; source: string };
@@ -5845,6 +5854,7 @@ export type MessageParams = {
 	"ui.hub.subscriptions.auto_push": undefined;
 	"ui.hub.subscriptions.auto_push_description": { source: string };
 	"ui.hub.subscriptions.auto_push_description_unsourced": undefined;
+	"ui.hub.subscriptions.auto_push_source_unknown": undefined;
 	"ui.hub.subscriptions.auto_push_unverified": undefined;
 	"ui.hub.subscriptions.cancel": undefined;
 	"ui.hub.subscriptions.check": undefined;

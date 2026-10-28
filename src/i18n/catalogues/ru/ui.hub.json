@@ -4,6 +4,11 @@
 	"ui.hub.conflict.title": "Это изменилось, пока вы редактировали",
 	"ui.hub.links.acknowledge_baseline": "Я сравнил обе версии и понимаю, что предыдущая основа неизвестна.",
 	"ui.hub.links.action_failed": "Не удалось завершить действие: {direction} для {item} в {source}. Проверьте статус перед повторной попыткой.",
+	"ui.hub.links.preview_recomputed": "При применении бэкенд заново рассчитывает это объединение, поэтому всё, что изменилось после этого предпросмотра, объединится так, как будет на тот момент, а не так, как выглядит здесь.",
+	"ui.hub.links.incoming_outcome": "Предпросмотр для {item}: {outcome}",
+	"ui.hub.links.incoming_nothing": "Загружать нечего: состояние этого элемента — {outcome}.",
+	"ui.hub.links.name_ambiguous": "У другого элемента такое же имя, и этот бэкенд не может их различить. Откройте элемент и проверьте его связь перед применением.",
+	"ui.hub.links.check_failed": "Проверка {item} в {source} не завершилась. Проверьте статус перед повторной попыткой.",
 	"ui.hub.links.action_result": "{direction} для {item} в {source}: {outcome}",
 	"ui.hub.links.actual_model": "Использованная модель: {model}",
 	"ui.hub.links.aggregate_mark": "{count, plural, one {{count, number, ::group-off} связь} few {{count, number, ::group-off} связи} many {{count, number, ::group-off} связей} other {{count, number, ::group-off} связи}}; {state}",
@@ -189,7 +194,6 @@
 	"ui.hub.links.updated_unsourced": "{item} обновлён",
 	"ui.hub.links.published_unsourced": "{item} опубликован",
 	"ui.hub.links.action_failed_unsourced": "Не удалось завершить действие: {direction} для {item}. Проверьте статус перед повторной попыткой.",
-	"ui.hub.links.incoming_failed": "Последнее входящее обновление не завершилось.",
 	"ui.hub.links.incoming_failed_no_reason": "Причина не записана.",
 	"ui.hub.links.retrying": "Повторная попытка…",
 	"ui.hub.links.retry_failed": "Повторная попытка не завершилась. Повторите попытку.",
@@ -200,5 +204,6 @@
 	"ui.hub.subscriptions.saving_unsourced": "Сохранение настройки {setting}…",
 	"ui.hub.subscriptions.save_failed_unsourced": "Не удалось сохранить настройку {setting}. Повторите попытку.",
 	"ui.hub.links.incoming_failed_reason": "Причина: {reason}",
-	"ui.hub.links.sign_in_required": "Войдите в Radient в настройках, затем повторите попытку."
+	"ui.hub.links.sign_in_required": "Войдите в Radient в настройках, затем повторите попытку.",
+	"ui.hub.links.incoming_update_failed": "Последнее входящее обновление не завершилось."
 }

@@ -1,7 +1,5 @@
-import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
 import {
 	HubLinkPolicyControls,
-	hubLinkSourceLabel,
 	hubLinkSourceName,
 } from "@features/agents/components/hub-link-policy-controls";
 import { hubLinkView } from "@features/agents/hub-link-adapter";
@@ -10,6 +8,7 @@ import {
 	hubLinkFailureText,
 	hubReasonText,
 } from "@features/agents/hub-link-copy";
+import { useHubLinkSource } from "@features/agents/hub-link-source";
 import { hubLinkMark } from "@features/agents/hub-link-view";
 import { useHubLinkActions } from "@shared/api/local-operator/hub-link-actions";
 import { hubLinksKey } from "@shared/api/local-operator/hub-link-hooks";
@@ -75,6 +74,7 @@ export function HubLinkSidebarMark({
 	itemName,
 	displayName,
 	itemsById = false,
+	nameAmbiguous = true,
 }: {
 	link: HubLink;
 	staged: boolean;
@@ -93,24 +93,22 @@ export function HubLinkSidebarMark({
 	displayName?: string;
 	/** `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
 	itemsById?: boolean;
+	/** Legacy writes require a proved unique registry name; absence fails closed. */
+	nameAmbiguous?: boolean;
 }) {
 	useI18nLocale();
 	const client = useQueryClient();
-	const actions = useHubLinkActions(link.link_id);
+	const actions = useHubLinkActions(link, { displayName: itemName, itemsById });
 	const [open, setOpen] = useState(false);
 	const [consentOpen, setConsentOpen] = useState(false);
 	const button = useRef<HTMLButtonElement>(null);
 	const titleId = useId();
 	const descriptionId = useId();
 	const item = displayName?.trim() ? displayName : link.name;
-	/*
-	 * An org link's row carries the organization's name only when core recorded
-	 * one; otherwise the signed-in account's own memberships name it. The read is
-	 * the shared, cached memberships query, issued only for a row that needs it.
-	 */
-	const needsOrganization = link.visibility === "org" && !link.tenant_name;
-	const memberships = useMembershipsQuery({ enabled: needsOrganization });
-	const source = hubLinkSourceLabel(link, memberships.memberships);
+	const { source, memberships, mayReadMemberships } = useHubLinkSource(link);
+
+	const legacyWriteBlocked = !itemsById && (nameAmbiguous || !itemName?.trim());
+
 	const mark = hubLinkMark(hubLinkView(link));
 	const Glyph = actions.isPending ? LoaderCircle : ICON[mark.kind];
 	const direction = t(
@@ -175,22 +173,26 @@ export function HubLinkSidebarMark({
 	const pullFailed =
 		link.pull.state === "failed" ||
 		(link.pull.state === "retry-wait" && link.pull.error_class !== null);
-	const retryIncoming = () =>
+	const retryIncoming = () => {
+		// Guard the callback as well as the disabled control: mark-click and the
+		// popover action share this path and must never fan out by legacy name.
+		if (legacyWriteBlocked || !actions.canWrite || actions.isPending) {
+			setOpen(true);
+			return;
+		}
 		actions.mutate(
 			{
-				action: "retryItem",
+				action: "retry",
 				linkId: link.link_id,
-				kind: link.kind,
-				address: itemsById
-					? { localId: link.local_id }
-					: { name: itemName?.trim() ? itemName : link.name },
+				direction: "pull",
 			},
 			{ onError: () => setOpen(true) },
 		);
+	};
 	const retryFailed =
-		actions.error !== null && actions.variables?.action === "retryItem";
+		actions.error !== null && actions.variables?.action === "retry";
 	const refetchSource = () => {
-		void memberships.refetch();
+		if (mayReadMemberships) void memberships.refetch();
 		void client.invalidateQueries({ queryKey: hubLinksKey });
 	};
 	const description = `${actionLabel} ${policies}${link.policy.auto_push && link.eligibility.reason ? ` ${t("ui.hub.subscriptions.effective_paused", { reason: hubReasonText(link.eligibility.reason) })}` : ""}`;
@@ -210,7 +212,7 @@ export function HubLinkSidebarMark({
 						data-testid={`hub-mark-${link.kind}-${link.name}`}
 						aria-label={actionLabel}
 						aria-disabled={
-							(!actions.canWrite &&
+							((!actions.canWrite || legacyWriteBlocked) &&
 								(mark.action === "apply" || mark.action === "retry")) ||
 							undefined
 						}
@@ -243,7 +245,7 @@ export function HubLinkSidebarMark({
 							if (
 								actions.isPending ||
 								mark.action === "policy" ||
-								(!actions.canWrite &&
+								((!actions.canWrite || legacyWriteBlocked) &&
 									(mark.action === "apply" || mark.action === "retry"))
 							) {
 								setOpen(true);
@@ -333,13 +335,21 @@ export function HubLinkSidebarMark({
 						</Button>
 					</div>
 				)}
+				{legacyWriteBlocked && (
+					<output
+						data-hub-legacy-blocked=""
+						className="mb-3 text-meta text-warning"
+					>
+						{t("ui.hub.links.legacy_retry_unverified")}
+					</output>
+				)}
 				{pullFailed && (
 					<div
 						className="mb-3 flex flex-col gap-2 rounded-md border border-hairline p-3"
 						data-hub-link-incoming-failed=""
 					>
 						<p className="text-body-sm text-ink">
-							{t("ui.hub.links.incoming_failed")}
+							{t("ui.hub.links.incoming_update_failed")}
 						</p>
 						<p className="text-meta text-ink-muted">
 							{hubFailureReasonText(link.pull)}
@@ -357,7 +367,9 @@ export function HubLinkSidebarMark({
 							<Button
 								variant="outline"
 								size="sm"
-								disabled={actions.isPending || !actions.canWrite}
+								disabled={
+									actions.isPending || !actions.canWrite || legacyWriteBlocked
+								}
 								onClick={retryIncoming}
 							>
 								{t(

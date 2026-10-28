@@ -19,6 +19,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useEffect, useId, useRef, useState } from "react";
 import { hubReasonText } from "../hub-link-copy";
+import { useHubLinkSource } from "../hub-link-source";
 import { hubAutoPushGate, hubAutoPushLine } from "../hub-link-view";
 
 /** Resolve at invocation so a locale refresh does not freeze imported copy. */
@@ -27,39 +28,6 @@ export function hubLinkSourceName(link: HubLink): string {
 	return link.tenant_name
 		? t("ui.hub.links.source_private", { organization: link.tenant_name })
 		: t("ui.hub.links.source_unavailable");
-}
-
-/**
- * The destination as a noun phrase a SENTENCE can carry ("Acme private hub",
- * "Public hub"), or `null` when it cannot be named.
- *
- * WHY a second resolver beside `hubLinkSourceName`: that one is a list label
- * ("Acme · Private") and falls back to the literal "Source unavailable", which
- * the sidebar policy popover then spliced into every sentence ("Receive updates
- * from Source unavailable"). Here an unknown source is `null`, so a caller
- * picks a sentence written WITHOUT a source instead of interpolating a
- * placeholder.
- *
- * The organization's name comes from the link row's persisted `tenant_name`
- * first, then from the signed-in account's own memberships matched by
- * `tenant_id` - core only knows names it has stored (`hub.tenant_names`), so an
- * org link published before that record was written reads `null` on the wire
- * even though the account is a member. A membership is display metadata here,
- * never authority: the auto-push gate (`hubAutoPushGate`) still reads only the
- * row's own `tenant_name`, exactly as core does.
- */
-export function hubLinkSourceLabel(
-	link: Pick<HubLink, "visibility" | "tenant_id" | "tenant_name">,
-	memberships: readonly { tenant_id: string; tenant_name: string }[] = [],
-): string | null {
-	if (link.visibility === "public")
-		return t("ui.hub.links.source_label_public");
-	const organization =
-		link.tenant_name ||
-		memberships.find((row) => row.tenant_id === link.tenant_id)?.tenant_name;
-	return organization
-		? t("ui.hub.links.source_label_org", { organization })
-		: null;
 }
 
 /**
@@ -108,8 +76,12 @@ export function HubLinkPolicyControls({
 	const write = useHubLinkPolicy();
 	const id = useId();
 	const cancelRef = useRef<HTMLButtonElement>(null);
+	const ownSource = useHubLinkSource(link, resolvedSource === undefined);
 	const source =
-		resolvedSource !== undefined ? resolvedSource : hubLinkSourceLabel(link);
+		resolvedSource !== undefined ? resolvedSource : ownSource.source;
+	// Shared controls also appear outside the sidebar. Resolve their source via
+	// the same account boundary rather than leaving a live but inert switch.
+	const organization = ownSource.organization;
 	const itemName = item?.trim() ? item : link.name;
 	const [changedSetting, setChangedSetting] = useState<
 		"subscribe" | "auto_push"
@@ -147,11 +119,15 @@ export function HubLinkPolicyControls({
 	};
 	// Core's own rule, shared with the guard test: a public no-grant link is
 	// "requires consent", not "unavailable" (see hubAutoPushGate).
-	const { unavailable } = hubAutoPushGate(link);
+	const { unavailable: coreUnavailable } = hubAutoPushGate(link);
+	const unavailable = coreUnavailable || source === null;
 	// The line follows EFFECTIVE state, not the carve-out: a configured-ON link the
 	// service cannot run stays "paused" even though its OFF->ON path is reachable.
-	const line = hubAutoPushLine(link);
-	const unavailableReason = hubAutoPushUnavailableText(link.eligibility.reason);
+	const line = source === null ? "unavailable" : hubAutoPushLine(link);
+	const unavailableReason =
+		source === null
+			? t("ui.hub.subscriptions.auto_push_source_unknown")
+			: hubAutoPushUnavailableText(link.eligibility.reason);
 	const label = t(
 		changedSetting === "subscribe"
 			? "ui.hub.subscriptions.subscribe"
@@ -321,7 +297,7 @@ export function HubLinkPolicyControls({
 								? t("ui.hub.subscriptions.enable_public", { item: itemName })
 								: t("ui.hub.subscriptions.enable_private", {
 										item: itemName,
-										organization: link.tenant_name ?? source ?? "",
+										organization: organization ?? source ?? "",
 									})}
 						</DialogDescription>
 					</DialogHeader>

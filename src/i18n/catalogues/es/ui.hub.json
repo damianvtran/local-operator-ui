@@ -59,6 +59,11 @@
 	"ui.hub.links.direction_pull": "Actualización entrante",
 	"ui.hub.links.direction_push": "Publicación saliente",
 	"ui.hub.links.action_failed": "La {direction} de {item} en {source} no se completó. Revisa su estado antes de volver a intentarlo.",
+	"ui.hub.links.preview_recomputed": "El backend vuelve a calcular esta fusión cuando aplicas, así que lo que haya cambiado desde esta vista previa se fusionará tal como esté en ese momento, no como se ve aquí.",
+	"ui.hub.links.incoming_outcome": "Vista previa de {item}: {outcome}",
+	"ui.hub.links.incoming_nothing": "No hay nada de lo que hacer pull: el estado de este elemento es {outcome}.",
+	"ui.hub.links.name_ambiguous": "Otro elemento tiene el mismo nombre y este backend no puede distinguirlos. Abre el elemento para revisar su enlace antes de aplicar.",
+	"ui.hub.links.check_failed": "La comprobación de {item} en {source} no se completó. Revisa su estado antes de volver a intentarlo.",
 	"ui.hub.links.preview_warnings": "Notas de revisión",
 	"ui.hub.links.action_result": "{direction} de {item} en {source}: {outcome}",
 	"ui.hub.links.preview_pull": "Previsualizar los cambios entrantes",
@@ -189,7 +194,6 @@
 	"ui.hub.links.updated_unsourced": "Se actualizó {item}",
 	"ui.hub.links.published_unsourced": "Se publicó {item}",
 	"ui.hub.links.action_failed_unsourced": "La {direction} de {item} no se completó. Revisa su estado antes de volver a intentarlo.",
-	"ui.hub.links.incoming_failed": "La última actualización entrante no se completó.",
 	"ui.hub.links.incoming_failed_no_reason": "No se registró ningún motivo.",
 	"ui.hub.links.retrying": "Reintentando…",
 	"ui.hub.links.retry_failed": "El reintento no se completó. Inténtalo de nuevo.",
@@ -200,5 +204,6 @@
 	"ui.hub.subscriptions.saving_unsourced": "Guardando {setting}…",
 	"ui.hub.subscriptions.save_failed_unsourced": "No se pudo guardar {setting}. Inténtalo de nuevo.",
 	"ui.hub.links.incoming_failed_reason": "Motivo: {reason}",
-	"ui.hub.links.sign_in_required": "Inicia sesión en Radient en Ajustes y vuelve a intentarlo."
+	"ui.hub.links.sign_in_required": "Inicia sesión en Radient en Ajustes y vuelve a intentarlo.",
+	"ui.hub.links.incoming_update_failed": "La última actualización entrante no se completó."
 }

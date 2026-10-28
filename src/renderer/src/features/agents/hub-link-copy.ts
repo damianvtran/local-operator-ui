@@ -1,3 +1,4 @@
+import type { HubLinkAction } from "@shared/api/local-operator/hub-link-actions";
 import type { HubDirectionStatus } from "@shared/api/local-operator/hub-links";
 import { t } from "@shared/i18n";
 
@@ -120,6 +121,32 @@ export function hubDirectionStateText(status: HubDirectionStatus): string {
 			// reason text (`hubReasonText`) where one exists.
 			return t("ui.hub.status.other_error");
 	}
+}
+
+/**
+ * The sentence for a failed link action, by the action that failed.
+ *
+ * Q13 (QA round 3 on local-operator-ui #1458): every surface funnelled a failed
+ * CHECK into `ui.hub.links.action_failed`, whose sentence names a PULL or a
+ * PUSH - so a refused check told the reader an incoming update "did not
+ * complete" when no update had been attempted. A check is neither direction:
+ * it asks the hub what changed and applies nothing, so it gets its own
+ * sentence rather than borrowing one that asserts work that never ran.
+ */
+export function hubActionFailureText(
+	action: HubLinkAction["action"] | undefined,
+	context: { item: string; source: string; direction: string },
+): string {
+	if (action === "check")
+		return t("ui.hub.links.check_failed", {
+			item: context.item,
+			source: context.source,
+		});
+	return t("ui.hub.links.action_failed", {
+		direction: context.direction,
+		item: context.item,
+		source: context.source,
+	});
 }
 
 /*

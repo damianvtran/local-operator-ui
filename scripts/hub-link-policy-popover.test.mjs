@@ -4,7 +4,8 @@
  * Switch / Button / Tooltip and the real TanStack queries above them. Only the
  * two edges are stubbed: the desktop transport (`desktopResult`, recorded and
  * answered from fixtures shaped like core's `/v1/desktop/hub/links` row) and the
- * memberships hook (`useMembershipsQuery`).
+ * remote membership API and sign-in edge. The production account-keyed
+ * membership query and authority observer are not mocked.
  *
  * WHY: the operator's screenshot showed the team's UUID as its name, "Source
  * unavailable" spliced into every sentence, a failed incoming update with no
@@ -54,29 +55,27 @@ const radientStub = new URL(
 	`./_hub-popover-radient-${process.pid}.mjs`,
 	import.meta.url,
 );
+// Stub only the remote membership read. The production account-keyed hook,
+// authority observer, and stale-response rejection all run unchanged.
 await writeFile(
 	radientStub,
-	/*
-	 * The memberships HOOK, as a real TanStack query over a recorded read. The
-	 * shipped hook's sign-in/account gating has its own suites; here only the
-	 * popover's use of it is under test (enabled only when the row lacks a name,
-	 * refetched by Retry).
-	 */
-	`import { useQuery } from "@tanstack/react-query";
-	export const membershipKeys = { all: ["memberships"] };
-	export const useMembershipsQuery = ({ enabled = true } = {}) => {
-		const query = useQuery({
-			queryKey: ["memberships", "fixture"],
-			queryFn: async () => {
-				const s = globalThis.__hubPopoverTest;
-				s.membershipCalls += 1;
-				return { memberships: s.memberships };
-			},
-			enabled,
-			retry: false,
-		});
-		return { ...query, memberships: query.data?.memberships ?? [] };
-	};`,
+	`export async function listMemberships() {
+ const s = globalThis.__hubPopoverTest; s.membershipCalls++;
+ if (s.membershipAnswer) return s.membershipAnswer();
+ return { result: { memberships: s.memberships } };
+}`,
+);
+const authStub = new URL(
+	`./_hub-popover-auth-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(
+	authStub,
+	`import {useQuery} from '@tanstack/react-query';
+ export function useRadientAuth() {
+ const q = useQuery({queryKey:['radient-user','user'],enabled:false,queryFn:async()=>null});
+ return {isAuthenticated:Boolean(q.data?.account?.id)};
+ }`,
 );
 const configStub = new URL(
 	`./_hub-popover-config-${process.pid}.mjs`,
@@ -93,6 +92,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { HubLinkSidebarMark } from "./src/renderer/src/features/chat/components/hub-link-sidebar-mark.tsx";
+			export {beginRadientAuthorityTransition,beginRadientAuthoritySignOut,settleRadientAuthority,radientAuthorityEpoch} from "./src/renderer/src/shared/hooks/radient-account-authority.ts";
+			export {hubRegistryNameCounts} from "./src/renderer/src/shared/api/local-operator/hub-link-actions.ts";
 			export { hubLinksKey } from "./src/renderer/src/shared/api/local-operator/hub-link-hooks.ts";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desk${"top"}-contract.ts";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desk${"top"}-api.ts";
@@ -117,6 +118,9 @@ const bundle = await build({
 		{
 			name: "edges",
 			setup(b) {
+				b.onResolve({ filter: /^@shared\/hooks\/use-radient-auth$/ }, () => ({
+					path: authStub.pathname,
+				}));
 				// The transport, only where the hub hooks import it: everything else
 				// (error classes, userFacingMessage) is the real module.
 				b.onResolve({ filter: /\/desktop-api$/ }, (args) =>
@@ -124,18 +128,15 @@ const bundle = await build({
 						? { path: transportStub.pathname }
 						: undefined,
 				);
-				b.onResolve(
-					{ filter: /^@features\/agent-hub\/hooks\/use-memberships-query$/ },
-					() => ({
-						path: radientStub.pathname,
-					}),
-				);
+				b.onResolve({ filter: /^@shared\/api\/radient\/agents-api$/ }, () => ({
+					path: radientStub.pathname,
+				}));
 			},
 		},
 	],
 	write: false,
 });
-for (const stub of [transportStub, radientStub, configStub])
+for (const stub of [transportStub, radientStub, authStub, configStub])
 	await unlink(stub).catch(() => {});
 const mountPath = new URL(
 	`./_hub-popover-mount-${process.pid}.mjs`,
@@ -352,10 +353,20 @@ const healthy = (over = {}) =>
 const pause = (ms = 10) => new Promise((r) => setTimeout(r, ms));
 
 /** Mount one mark, open its policy popover, and return handles. */
-async function mountOpen(link, { itemsById = true, memberships = [] } = {}) {
+async function mountOpen(
+	link,
+	{
+		itemsById = true,
+		memberships = [],
+		account = "account-A",
+		nameAmbiguous = false,
+		membershipAnswer = null,
+	} = {},
+) {
 	const dom = installDom();
 	state.records = [];
 	state.memberships = memberships;
+	state.membershipAnswer = membershipAnswer;
 	state.membershipCalls = 0;
 	state.answer = null;
 	const client = new app.QueryClient({
@@ -369,6 +380,10 @@ async function mountOpen(link, { itemsById = true, memberships = [] } = {}) {
 			mutations: { retry: false, gcTime: Number.POSITIVE_INFINITY },
 		},
 	});
+	client.setQueryData(
+		["radient-user", "user"],
+		account ? { account: { id: account } } : null,
+	);
 	client.setQueryData(app.hubLinksKey, { links: [link], unresolved: [] });
 	const root = createRoot(document.getElementById("root"));
 	const render = (l) =>
@@ -387,6 +402,7 @@ async function mountOpen(link, { itemsById = true, memberships = [] } = {}) {
 							itemName: "synthdev",
 							displayName: "Synthetic Development",
 							itemsById,
+							nameAmbiguous,
 						}),
 					),
 				),
@@ -417,7 +433,13 @@ async function mountOpen(link, { itemsById = true, memberships = [] } = {}) {
 		text: () => panel().textContent,
 		buttons: () => [...panel().querySelectorAll("button")],
 		close: async () => {
-			await act(async () => root.unmount());
+			// Cancel the production membership query before disposing its
+			// observers; otherwise an in-flight read schedules GC after clear.
+			await act(async () => {
+				await client.cancelQueries();
+				root.unmount();
+				await pause();
+			});
 			client.clear();
 			dom.window.close();
 		},
@@ -428,7 +450,9 @@ const UUID = new RegExp(TEAM_ID);
 const SPLICED = /Source unavailable/;
 
 test("healthy org link: display name, organization source, no UUID, auto-push enabled", async () => {
-	const ui = await mountOpen(healthy());
+	const ui = await mountOpen(healthy(), {
+		memberships: [{ tenant_id: TENANT, tenant_name: "Acme", status: "active" }],
+	});
 	try {
 		const title = ui.panel().querySelector("h4").textContent;
 		assert.equal(title, "Link policies for Synthetic Development");
@@ -665,7 +689,9 @@ test("a refused retry says so in the failure block, and only there", async () =>
 });
 
 test("auto-push gated by unverified revision-safe publication: switch disabled with the reason", async () => {
-	const ui = await mountOpen(row({ tenant_name: "Acme", pull: dir() }));
+	const ui = await mountOpen(row({ tenant_name: "Acme", pull: dir() }), {
+		memberships: [{ tenant_id: TENANT, tenant_name: "Acme", status: "active" }],
+	});
 	try {
 		const push = ui
 			.panel()
@@ -804,6 +830,212 @@ test("core's stored human-readable reason (core #3095) is rendered, framed", asy
 			box.textContent,
 			/Reason: could not reach the hub: the connection timed out/,
 		);
+	} finally {
+		await ui.close();
+	}
+});
+
+// Persisted metadata is not permission: exercise the REAL account-keyed query,
+// including disabled cached reads and a response arriving after its owner left.
+test("R1 persisted org label is hidden for nonmember, pending member, signed-out and loading account", async () => {
+	for (const options of [
+		{ memberships: [] },
+		{
+			memberships: [
+				{
+					tenant_id: "other-tenant",
+					tenant_name: "Elsewhere",
+					status: "active",
+				},
+			],
+		},
+		{
+			memberships: [
+				{ tenant_id: TENANT, tenant_name: "Acme", status: "pending" },
+			],
+		},
+		{
+			memberships: [
+				{ tenant_id: TENANT, tenant_name: "Acme", status: "disabled" },
+			],
+		},
+		{
+			account: null,
+			memberships: [
+				{ tenant_id: TENANT, tenant_name: "Acme", status: "active" },
+			],
+		},
+		{ membershipAnswer: () => new Promise(() => {}) },
+	]) {
+		const ui = await mountOpen(healthy(), options);
+		try {
+			assert.equal(
+				ui.panel().querySelector("[data-hub-link-source]") === null,
+				true,
+			);
+			assert.doesNotMatch(ui.text(), /Acme/);
+			assert.doesNotMatch(
+				document.querySelector("[data-hub-mark]").getAttribute("aria-label"),
+				/Acme/,
+			);
+			if (options.account === null) assert.equal(state.membershipCalls, 0);
+			else
+				assert(
+					state.membershipCalls > 0,
+					"persisted name must not disable membership lookup",
+				);
+		} finally {
+			await ui.close();
+		}
+	}
+});
+
+test("R1 account switch/sign-out drops prior cached membership; late response cannot restore it", async () => {
+	const member = {
+		tenant_id: TENANT,
+		tenant_name: "Current Acme",
+		status: "active",
+	};
+	const ui = await mountOpen(healthy(), { memberships: [member] });
+	try {
+		assert.match(ui.text(), /Current Acme private hub/);
+		assert(
+			ui.client.getQueryData(["memberships", "account", "account-A"]),
+			"production account-keyed cache",
+		);
+		let finishB;
+		state.membershipAnswer = () =>
+			new Promise((resolve) => {
+				finishB = resolve;
+			});
+		await act(async () => {
+			ui.client.setQueryData(["radient-user", "user"], {
+				account: { id: "account-B" },
+			});
+			await pause(30);
+		});
+		await act(async () => pause(30));
+		assert.equal(
+			ui.panel().querySelector("[data-hub-link-source]") === null,
+			true,
+			"B loading never shows A",
+		);
+		await act(async () => {
+			ui.client.setQueryData(["radient-user", "user"], null);
+			await pause(30);
+		});
+		await act(async () => {
+			finishB({ result: { memberships: [member] } });
+			await pause(30);
+		});
+		assert.equal(
+			ui.panel().querySelector("[data-hub-link-source]") === null,
+			true,
+			"late B response after sign-out is discarded",
+		);
+		assert.doesNotMatch(ui.text(), /Acme/);
+		assert(
+			ui.client.getQueryData(["memberships", "account", "account-A"]),
+			"negative control retains A cache",
+		);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("R2 legacy ambiguity blocks BOTH primary mark press and in-popover Retry", async () => {
+	for (const itemsById of [false, true]) {
+		const registry = [{ name: " SynthDev " }, { name: "synthdev" }];
+		const counts = app.hubRegistryNameCounts(registry);
+		assert.equal(
+			counts.get("synthdev"),
+			2,
+			"core trim/lower name normalization",
+		);
+		const ui = await mountOpen(row(), {
+			itemsById,
+			nameAmbiguous: (counts.get("synthdev") ?? 0) !== 1,
+		});
+		try {
+			const retry = ui
+				.panel()
+				.querySelector("[data-hub-link-incoming-failed] button");
+			if (!itemsById) {
+				assert.equal(retry.disabled, true);
+				assert.match(
+					ui.panel().querySelector("[data-hub-legacy-blocked]").textContent,
+					/Update Local Operator/,
+				);
+			} else
+				assert.equal(
+					retry.disabled,
+					false,
+					"exact id unaffected by duplicate names",
+				);
+			await act(async () => {
+				retry.click();
+				await pause(30);
+			});
+			await act(async () => {
+				document.querySelector("[data-hub-mark]").click();
+				await pause(30);
+			});
+			const writes = state.records.filter((r) => r.op === "hub.retry");
+			if (!itemsById)
+				assert.equal(
+					writes.length,
+					0,
+					"neither entry point writes multiple items",
+				);
+			else {
+				assert(writes.length > 0);
+				for (const write of writes) {
+					assert.equal(write.localId, TEAM_ID);
+					assert.equal(write.name, undefined);
+				}
+			}
+		} finally {
+			await ui.close();
+		}
+	}
+});
+
+test("R1 pending authority/sign-out hides private label even with old user and membership caches retained", async () => {
+	const ui = await mountOpen(healthy(), {
+		memberships: [{ tenant_id: TENANT, tenant_name: "Acme", status: "active" }],
+	});
+	try {
+		assert.match(ui.text(), /Acme private hub/);
+		await act(async () => {
+			app.beginRadientAuthorityTransition(ui.client);
+			await pause(30);
+		});
+		assert.equal(
+			ui.panel().querySelector("[data-hub-link-source]") === null,
+			true,
+		);
+		assert(
+			ui.client.getQueryData(["radient-user", "user"]).account.id ===
+				"account-A",
+		);
+		await act(async () => {
+			app.settleRadientAuthority(
+				ui.client,
+				app.radientAuthorityEpoch(ui.client),
+				"account-A",
+			);
+			await pause(30);
+		});
+		assert.match(ui.text(), /Acme private hub/);
+		await act(async () => {
+			app.beginRadientAuthoritySignOut(ui.client);
+			await pause(30);
+		});
+		assert.equal(
+			ui.panel().querySelector("[data-hub-link-source]") === null,
+			true,
+		);
+		assert(ui.client.getQueryData(["memberships", "account", "account-A"]));
 	} finally {
 		await ui.close();
 	}

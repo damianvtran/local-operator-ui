@@ -59,6 +59,11 @@
 	"ui.hub.links.direction_pull": "Mise à jour entrante",
 	"ui.hub.links.direction_push": "Publication sortante",
 	"ui.hub.links.action_failed": "La {direction} pour {item} sur {source} ne s’est pas terminée. Vérifiez son statut avant de réessayer.",
+	"ui.hub.links.preview_recomputed": "Le backend recalcule cette fusion lorsque vous appliquez : ce qui a changé depuis cet aperçu sera fusionné tel qu’il sera à ce moment-là, pas tel qu’il apparaît ici.",
+	"ui.hub.links.incoming_outcome": "Aperçu de {item} : {outcome}",
+	"ui.hub.links.incoming_nothing": "Aucun pull à faire : l’état de cet élément est {outcome}.",
+	"ui.hub.links.name_ambiguous": "Un autre élément porte le même nom et ce backend ne peut pas les distinguer. Ouvrez l’élément pour vérifier son lien avant d’appliquer.",
+	"ui.hub.links.check_failed": "La vérification de {item} sur {source} ne s’est pas terminée. Vérifiez son statut avant de réessayer.",
 	"ui.hub.links.preview_warnings": "Notes de vérification",
 	"ui.hub.links.action_result": "{direction} pour {item} sur {source} : {outcome}",
 	"ui.hub.links.preview_pull": "Aperçu des modifications entrantes",
@@ -189,7 +194,6 @@
 	"ui.hub.links.updated_unsourced": "{item} mis à jour",
 	"ui.hub.links.published_unsourced": "{item} publié",
 	"ui.hub.links.action_failed_unsourced": "La {direction} pour {item} ne s’est pas terminée. Vérifiez son statut avant de réessayer.",
-	"ui.hub.links.incoming_failed": "La dernière mise à jour entrante ne s’est pas terminée.",
 	"ui.hub.links.incoming_failed_no_reason": "Aucune raison n’a été enregistrée.",
 	"ui.hub.links.retrying": "Nouvelle tentative…",
 	"ui.hub.links.retry_failed": "La nouvelle tentative n’a pas abouti. Réessayez.",
@@ -200,5 +204,6 @@
 	"ui.hub.subscriptions.saving_unsourced": "Enregistrement de {setting}…",
 	"ui.hub.subscriptions.save_failed_unsourced": "Impossible d’enregistrer {setting}. Réessayez.",
 	"ui.hub.links.incoming_failed_reason": "Raison : {reason}",
-	"ui.hub.links.sign_in_required": "Connectez-vous à Radient dans les paramètres, puis réessayez."
+	"ui.hub.links.sign_in_required": "Connectez-vous à Radient dans les paramètres, puis réessayez.",
+	"ui.hub.links.incoming_update_failed": "La dernière mise à jour entrante ne s’est pas terminée."
 }

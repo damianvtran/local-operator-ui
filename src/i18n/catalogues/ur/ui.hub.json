@@ -59,6 +59,11 @@
 	"ui.hub.links.direction_pull": "آنے والی اپ ڈیٹ",
 	"ui.hub.links.direction_push": "باہر جانے والی اشاعت",
 	"ui.hub.links.action_failed": "{source} میں {item} کے لیے {direction} مکمل نہیں ہوا۔ دوبارہ کوشش سے پہلے اس کی حالت دیکھیں۔",
+	"ui.hub.links.preview_recomputed": "لاگو کرتے وقت بیک اینڈ یہ merge دوبارہ بناتا ہے، اس لیے اس پیش منظر کے بعد ہونے والی تبدیلیاں اُس وقت کی حالت کے مطابق merge ہوں گی، نہ کہ جیسا یہاں دکھایا گیا ہے۔",
+	"ui.hub.links.incoming_outcome": "{item} کا پیش منظر، {outcome}",
+	"ui.hub.links.incoming_nothing": "pull کرنے کے لیے کچھ نہیں: اس آئٹم کی حالت {outcome} ہے۔",
+	"ui.hub.links.name_ambiguous": "کسی دوسرے آئٹم کا بھی یہی نام ہے اور یہ بیک اینڈ ان میں فرق نہیں کر سکتا۔ لاگو کرنے سے پہلے آئٹم کھول کر اس کا ربط دیکھیں۔",
+	"ui.hub.links.check_failed": "{source} میں {item} کی جانچ مکمل نہیں ہوئی۔ دوبارہ کوشش سے پہلے اس کی حالت دیکھیں۔",
 	"ui.hub.links.preview_warnings": "جائزے کے نوٹس",
 	"ui.hub.links.action_result": "{source} میں {item} کے لیے {direction}، {outcome}",
 	"ui.hub.links.preview_pull": "آنے والی تبدیلیوں کا پیش منظر",
@@ -189,7 +194,6 @@
 	"ui.hub.links.updated_unsourced": "{item} اپ ڈیٹ ہو گیا",
 	"ui.hub.links.published_unsourced": "{item} شائع کر دیا گیا",
 	"ui.hub.links.action_failed_unsourced": "{item} کے لیے {direction} مکمل نہیں ہوا۔ دوبارہ کوشش سے پہلے اس کی حالت دیکھیں۔",
-	"ui.hub.links.incoming_failed": "آخری آنے والی اپ ڈیٹ مکمل نہیں ہو سکی۔",
 	"ui.hub.links.incoming_failed_no_reason": "کوئی وجہ محفوظ نہیں ہوئی۔",
 	"ui.hub.links.retrying": "دوبارہ کوشش جاری…",
 	"ui.hub.links.retry_failed": "دوبارہ کوشش مکمل نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
@@ -200,5 +204,6 @@
 	"ui.hub.subscriptions.saving_unsourced": "{setting} محفوظ ہو رہی ہے…",
 	"ui.hub.subscriptions.save_failed_unsourced": "{setting} محفوظ نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
 	"ui.hub.links.incoming_failed_reason": "وجہ: {reason}",
-	"ui.hub.links.sign_in_required": "ترتیبات میں Radient میں سائن ان کریں، پھر دوبارہ کوشش کریں۔"
+	"ui.hub.links.sign_in_required": "ترتیبات میں Radient میں سائن ان کریں، پھر دوبارہ کوشش کریں۔",
+	"ui.hub.links.incoming_update_failed": "آخری آنے والی اپ ڈیٹ مکمل نہیں ہو سکی۔"
 }
