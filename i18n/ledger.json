@@ -898,7 +898,7 @@
 			"locale": "es",
 			"namespace": "ui.chat.asks",
 			"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
-			"target_sha256": "b490c3e45c378410baef305c651261d01d3464e4e2f84a7241f3d21c53a894e2",
+			"target_sha256": "b5867c678c7540ead654177adf2fcf2516b12b017691f126dd046dfc0c782f02",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -909,17 +909,17 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "8bb03406c9fd-1466-es",
+					"result": "clean",
+					"instance": "8bb03406c9fd-1466-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/8bb03406c9fd-1466-es.json",
-					"receipt_sha256": "edad1d4ba2023b515c0bd41e1eaad35c5476f94a77722b46a690f3cf0ed54edd",
-					"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
+					"receipt": "i18n/receipts/8bb03406c9fd-1466-r2-es.json",
+					"receipt_sha256": "1f4463b7a4f9c32b360f60cc44d980c80dc5d059335175692489dcba0b0c96b2",
+					"scope": "PR #1466 round-2 re-audit at 0944e1b5eb: status.withdrawn + withdrawn_label after the round-1 finding was fixed as recommended; other 26 values unchanged."
 				}
 			],
 			"status": "audited",
@@ -1013,6 +1013,29 @@
 							},
 							"receipt": "i18n/receipts/41f2961e15d5.json",
 							"receipt_sha256": "c72d3d6f0d8a74ea595d698c3459730b7df21f4a270bbdf15cf7dd0c5ce18f97"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "b490c3e45c378410baef305c651261d01d3464e4e2f84a7241f3d21c53a894e2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "8bb03406c9fd-1466-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-es.json",
+							"receipt_sha256": "edad1d4ba2023b515c0bd41e1eaad35c5476f94a77722b46a690f3cf0ed54edd",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
 						}
 					],
 					"status": "audited"
@@ -7006,7 +7029,7 @@
 			"locale": "fr",
 			"namespace": "ui.chat.asks",
 			"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
-			"target_sha256": "fc177d47e8c5b19d7e4d52ea5a5df5e127fc9b508657ce05e0b653c0bef812a8",
+			"target_sha256": "f7d6867103ce22e62079b2a8bac8bf199fd9af11505a3e13b65c52448502968b",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -7017,17 +7040,17 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "8bb03406c9fd-1466-fr",
+					"result": "clean",
+					"instance": "8bb03406c9fd-1466-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/8bb03406c9fd-1466-fr.json",
-					"receipt_sha256": "8772bc7eee484441dc9d1cf2915d289ad0ef490b66e5d8574517a03419a8997d",
-					"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
+					"receipt": "i18n/receipts/8bb03406c9fd-1466-r2-fr.json",
+					"receipt_sha256": "6e787af21fa6dec8d2639778ce905f3ea96bab18f79d19727125882fa609ed7b",
+					"scope": "PR #1466 round-2 re-audit at 0944e1b5eb: status.withdrawn + withdrawn_label after the round-1 finding was fixed as recommended; other 26 values unchanged."
 				}
 			],
 			"status": "audited",
@@ -7121,6 +7144,29 @@
 							},
 							"receipt": "i18n/receipts/a5485b421686.json",
 							"receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "fc177d47e8c5b19d7e4d52ea5a5df5e127fc9b508657ce05e0b653c0bef812a8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "8bb03406c9fd-1466-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-fr.json",
+							"receipt_sha256": "8772bc7eee484441dc9d1cf2915d289ad0ef490b66e5d8574517a03419a8997d",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
 						}
 					],
 					"status": "audited"
@@ -13578,7 +13624,7 @@
 			"locale": "hi",
 			"namespace": "ui.chat.asks",
 			"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
-			"target_sha256": "78f9d5c7d65210797c704727b69d9fa963e43c6743071d6d911f09b49ccf354e",
+			"target_sha256": "154adba6d497db44ca49bf5a22b6e6c485a35d529c410b127a92f8966ac63697",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -13589,17 +13635,17 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "8bb03406c9fd-1466-hi",
+					"result": "clean",
+					"instance": "8bb03406c9fd-1466-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/8bb03406c9fd-1466-hi.json",
-					"receipt_sha256": "04b0e265f823da10c7ce4b1d2a92f415b058e4128ffbadd14290cad8d22d44b8",
-					"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
+					"receipt": "i18n/receipts/8bb03406c9fd-1466-r2-hi.json",
+					"receipt_sha256": "76c067d2c301732f892516e40699c9327ab02adb4a909bef8210a6a815e4f809",
+					"scope": "PR #1466 round-2 re-audit at 0944e1b5eb: status.withdrawn + withdrawn_label after the round-1 finding was fixed as recommended; other 26 values unchanged."
 				}
 			],
 			"status": "audited",
@@ -13693,6 +13739,29 @@
 							},
 							"receipt": "i18n/receipts/a478f43b9cae.json",
 							"receipt_sha256": "c21214cfa6621207c118011f5c7390b6b668cfe2bf9ce3e70c5bac5074300d7f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "78f9d5c7d65210797c704727b69d9fa963e43c6743071d6d911f09b49ccf354e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "8bb03406c9fd-1466-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-hi.json",
+							"receipt_sha256": "04b0e265f823da10c7ce4b1d2a92f415b058e4128ffbadd14290cad8d22d44b8",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
 						}
 					],
 					"status": "audited"
