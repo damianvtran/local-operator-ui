@@ -617,6 +617,50 @@ const READ_ONLY_NO_COPY_BODY = {
 	project: "ui.agents.skills.alert.project_body_no_copy",
 } as const satisfies Record<string, MessageKey>;
 
+/**
+ * The sentence a refused Download shows, from the refusal's status (UX r3 U11).
+ *
+ * WHAT THIS REPLACES: one sentence for every failure, which told the reader
+ * "Try Download again later" whatever core had answered. Core refuses this
+ * download with a status that names a different remedy - the skill is gone from
+ * the hub (404), this machine holds no hub sign-in (401), the link moved under
+ * the pane (409), the hub's own copy was refused (422) - and none of those is
+ * fixed by pressing again. The old copy promised that it was.
+ *
+ * THE LADDER IS THE AGENT PULL'S (`pullRefusalMessage`), for the reason that
+ * function exists: one status, one sentence, so two download surfaces cannot
+ * word one fact two ways, and a status whose meaning the pull path already knows
+ * reuses its key instead of inventing a second spelling that would then need
+ * every locale translated and audited again. Only the retryable end keeps this
+ * pane's own sentence: a 5xx, and a failure that never produced a status at all,
+ * are the cases where pressing Download again is what helps.
+ *
+ * @param error - The refusal `hub.skillPull` threw
+ * @param skillName - The skill the user asked for, quoted in the sentence
+ */
+export function skillDownloadRefusalMessage(
+	error: unknown,
+	skillName: string,
+): string {
+	// The link's name, never the pane's display fallback: this refusal is about
+	// the copy the reader asked for, so the sentence must quote what they pressed.
+	const subject = t("ui.agents.publication.subject.name", {
+		name: skillName.trim(),
+	});
+	const status = refusalStatus(error);
+	if (status === 404)
+		return t("ui.agents.publication.pull.not_found", { subject });
+	if (status === 401 || status === 403)
+		return t("ui.agents.publication.pull.sign_in_refused", { subject });
+	if (status === 409 || status === 422)
+		// ONE SENTENCE FOR BOTH: each is a refusal of THIS hub copy - the link moved,
+		// or the copy failed the hub's own rules - and the fact the reader can act on
+		// is the same one. Nothing was installed, and pressing again is not the fix.
+		return t("ui.agents.publication.pull.refused_download", { subject });
+	if (status === 429) return t("ui.agents.publication.pull.busy", { subject });
+	return t("ui.agents.skills.error.download_failed_body");
+}
+
 /** The draft an inline edit holds: the two fields the pane shows. */
 type SkillDraft = { description: string; instructions: string };
 
@@ -624,6 +668,19 @@ type SkillDraft = { description: string; instructions: string };
 function refusalCode(caught: unknown): string | null {
 	const code = (caught as { code?: unknown } | null)?.code;
 	return typeof code === "string" ? code : null;
+}
+
+/**
+ * A refusal's HTTP status, read off the transport's error (never its prose).
+ *
+ * THE STATUS AND NOT THE CODE: core maps every skill refusal to one status in
+ * `_raise_skill_refusal` (`desktop_hub.py`), and the 401 it sends for a missing
+ * credential carries NO code at all - so a ladder keyed on `code` would fall
+ * through on exactly the refusal whose remedy differs most.
+ */
+function refusalStatus(caught: unknown): number | null {
+	const status = (caught as { status?: unknown } | null)?.status;
+	return typeof status === "number" ? status : null;
 }
 
 /**
@@ -924,15 +981,16 @@ export function SkillDetail({
 				}),
 			);
 			requestAnimationFrame(() => headingRef.current?.focus());
-		} catch {
+		} catch (caught) {
 			/*
-			 * A KEYED SENTENCE, NOT CORE'S FRAGMENT (#1458 design r2 D12): the refusal
-			 * text is a lowercase log line ("the hub could not serve this skill")
-			 * with no next step, and these alerts have no technical-detail slot to
-			 * put it in. What the reader needs is the same whatever core's reason:
-			 * nothing was installed, and Download can be pressed again.
+			 * A KEYED SENTENCE BY STATUS (#1458 design r2 D12, UX r3 U11), not core's
+			 * fragment: the refusal text is a lowercase log line ("the hub could not
+			 * serve this skill") with no next step, and these alerts have no
+			 * technical-detail slot to put it in. What the reader needs is the one that
+			 * matches the status, because the next step is what differs between them -
+			 * see `skillDownloadRefusalMessage`.
 			 */
-			setFailure(t("ui.agents.skills.error.download_failed_body"));
+			setFailure(skillDownloadRefusalMessage(caught, absentLink.name));
 		} finally {
 			downloading.current = false;
 		}
