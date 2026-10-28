@@ -135,11 +135,18 @@ type Props = {
 	 * The person's attachments, already projected (`attachment-items.ts`) and
 	 * pinned above the agent's files. `complete: false` = only loaded rows were
 	 * available, which the section header says rather than hides.
+	 *
+	 * `capable` = the backend serves `session_attachments` (the materialise
+	 * route). Without it an attachment row offers NO materialise-backed action:
+	 * on an older backend the route 404s, so Open file / Open folder / Copy file
+	 * path would each be a menu entry that can only fail (agent review round 2,
+	 * R2-1 - the same gate the transcript's pictures and sent-file card use).
 	 */
 	attachments?: {
 		items: FinderItem[];
 		complete: boolean;
 		state: "loading" | "ready" | "error";
+		capable: boolean;
 		retry: () => void;
 	};
 };
@@ -148,6 +155,7 @@ const NO_ATTACHMENTS = {
 	items: [] as FinderItem[],
 	complete: true,
 	state: "ready" as const,
+	capable: false,
 	retry: () => {},
 };
 
@@ -944,17 +952,30 @@ export function FinderFilesView({
 											)}
 										</span>
 										{section.id === ATTACHMENTS_SECTION &&
-											!attachments.complete && (
-												/* A caption, never a control: this markup sits INSIDE the
-												 * section's fold button, and a nested button is invalid
-												 * HTML. The retry for a failed read is the banner below. */
+											/*
+											 * THREE STATES, THREE CAPTIONS (agent review round 2, R2-3).
+											 * `complete` alone cannot tell them apart: a first read in
+											 * flight is not complete either, and a failed read is not
+											 * "partial" - it is reported by the banner above, so it
+											 * gets no caption. Only a SETTLED list built from loaded
+											 * rows (older backend, unsupported arm) says it may be
+											 * incomplete. A caption, never a control: this markup sits
+											 * INSIDE the section's fold button, and a nested button is
+											 * invalid HTML.
+											 */
+											(attachments.state === "loading" ? (
+												<span className={cn("text-meta text-ink-dim")}>
+													{t("ui.canvas.files.loading")}
+												</span>
+											) : attachments.state === "ready" &&
+												!attachments.complete ? (
 												<span
 													title={t("ui.canvas.files.attachmentsPartialReason")}
 													className={cn("text-meta text-ink-dim")}
 												>
 													{t("ui.canvas.files.attachmentsPartial")}
 												</span>
-											)}
+											) : null)}
 									</button>
 								</h3>
 								<ul
@@ -1019,8 +1040,13 @@ export function FinderFilesView({
 																		) ?? null;
 																	setLightbox(item.row.document.id);
 																}}
-																materialise={() =>
-																	materialise(item.row.document)
+																materialise={
+																	// R2-1: an attachment's copy-out needs the
+																	// capable backend; without it the row gets no
+																	// resolver, so no path entry is offered at all.
+																	item.attachment && !attachments.capable
+																		? undefined
+																		: () => materialise(item.row.document)
 																}
 															/>
 														))}
@@ -1098,7 +1124,8 @@ function FinderEntry({
 	onKeyDown: (event: KeyboardEvent) => void;
 	onOpen: () => void;
 	onExpand: () => void;
-	materialise: () => Promise<string>;
+	/** Absent = nothing can copy this row's bytes out; see `attachments.capable`. */
+	materialise?: () => Promise<string>;
 }) {
 	useI18nLocale();
 	const doc = item.row.document;
@@ -1111,7 +1138,7 @@ function FinderEntry({
 	const rowControl = useRef<HTMLButtonElement | null>(null);
 	const tiled = band.kind === "tiles" || band.kind === "video";
 	const height = tiled ? band.height - 32 : band.kind === "highlight" ? 40 : 28;
-	const tooltip = doc.artifact
+	const identity = doc.artifact
 		? item.attachment
 			? t("ui.canvas.files.attachmentTooltip", {
 					name: doc.title,
@@ -1119,6 +1146,15 @@ function FinderEntry({
 				})
 			: artifactTooltip({ ...doc.artifact, title: doc.title })
 		: doc.path;
+	/*
+	 * A moved or deleted attachment's tooltip SAYS SO (agent review round 2,
+	 * R2-2): the identity line alone reads as a present file. Two whole messages
+	 * on two lines, never one sentence joined in code, so each locale keeps its
+	 * own punctuation.
+	 */
+	const tooltip = item.attachment?.status
+		? `${identity}\n${item.attachment.status}`
+		: identity;
 	const sort = useUiPreferencesStore((state) => state.finderFiles.sort);
 	const timestamp = sort === "created" ? item.created : item.modified;
 	const dateMetric =
@@ -1350,11 +1386,13 @@ function FinderEntry({
 									tiled && item.attachment ? "min-w-0 truncate" : "shrink-0",
 								)}
 							>
-								{item.attachment && (tiled || !item.attachment.status) ? (
+								{item.attachment && !item.attachment.status ? (
 									/* Size and date as two runs with the separator in markup, on
 									 * tiles AND list rows: one `<bdi>` around "286 KB · 27 اکتوبر"
-									 * resolves LTR from "KB" and mirrors the Urdu date. A list
-									 * row's retained/gone sentence stays one run (below). */
+									 * resolves LTR from "KB" and mirrors the Urdu date. A
+									 * retained/gone attachment shows its STATUS sentence instead,
+									 * on tiles too (R2-2: a moved picture must not read as
+									 * present); one run, below, truncated on a tile. */
 									<>
 										<bdi>{item.attachment.size}</bdi>
 										{item.attachment.size && item.attachment.when ? (

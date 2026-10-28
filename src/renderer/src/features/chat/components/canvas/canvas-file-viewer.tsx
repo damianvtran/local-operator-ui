@@ -356,6 +356,14 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		(item) => item.row.artifact?.digest,
 		ownedDigests,
 	);
+	/*
+	 * The ONE capability bit every attachment action keys off
+	 * (`session_attachments`, read by `useUserAttachments`), the same one the
+	 * transcript's pictures and sent-file card gate on. Absent state (a story, a
+	 * standalone render) is NOT capable: offering an action that 404s is the
+	 * defect round 1's F1 and round 2's R2-1 named.
+	 */
+	const attachmentsCapable = attachments?.capable ?? false;
 	const materialise = async (document: CanvasDocument): Promise<string> => {
 		/*
 		 * A USER ATTACHMENT copies out through its own route: the file index does
@@ -363,6 +371,10 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		 * here serves both the row's path actions and the canvas open below.
 		 */
 		if (document.id.startsWith(ATTACHMENT_ID_PREFIX) && document.artifact) {
+			// Fail closed: no row offers this on an older backend (R2-1), and a
+			// caller that slips through must not reach a route that cannot answer.
+			if (!attachmentsCapable)
+				throw new Error("Backend cannot materialise attachments");
 			if (!sessionId) throw new Error("No session for the attachment");
 			return materialiseUserAttachment(sessionId, document.artifact.digest);
 		}
@@ -390,11 +402,16 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				items: attachmentItems,
 				complete: (attachments?.complete ?? true) && !attachments?.truncated,
 				state: attachments?.state ?? "ready",
+				capable: attachmentsCapable,
 				retry: attachments?.retry ?? (() => {}),
 			}}
 			onOpen={(document) => {
 				if (
 					document.artifact &&
+					// An attachment on an older backend has no copy-out route: it
+					// opens by digest in the artifact-aware viewer instead (R2-1).
+					(attachmentsCapable ||
+						!document.id.startsWith(ATTACHMENT_ID_PREFIX)) &&
 					document.type !== "image" &&
 					document.type !== "video" &&
 					// Audio is digest-backed too: materialising here loses its shared

@@ -210,12 +210,20 @@ export const SentFileCard: FC<{
 				: undefined,
 		[missing, storedGone, digest, sessionId],
 	);
+	/*
+	 * WHAT THE COPY CONTROL CLAIMS TO COPY (agent review round 2, R2-4). With a
+	 * materialiser the missing card copies a real-named file, which IS a file
+	 * path. Without one (older backend, child view) the only value left is the
+	 * store's own `<digest>.bin` - a path no app opens - so the control says it
+	 * copies the SAVED COPY's path, never "the file path".
+	 */
+	const savedCopyOnly = missing && !resolveActionPath;
 	const copyLabel = (done: boolean): string =>
-		missing
+		savedCopyOnly
 			? t(
 					done
-						? "ui.chat.attachments.path_copied"
-						: "ui.chat.attachments.copy_path",
+						? "ui.chat.attachments.saved_path_copied"
+						: "ui.chat.attachments.copy_saved_path",
 				)
 			: t(
 					done
@@ -251,7 +259,16 @@ export const SentFileCard: FC<{
 	 */
 	const actionPath =
 		missing && !storedGone ? document.storedPath : document.path;
-	const showActions = !remote && placementKnown && Boolean(actionPath);
+	/*
+	 * The menu's "Copy file path" would hand over the `<digest>.bin` when no
+	 * materialiser can name the retained copy, so the missing-with-copy card
+	 * keeps only its labelled inline control there (R2-4).
+	 */
+	const showActions =
+		!remote &&
+		placementKnown &&
+		Boolean(actionPath) &&
+		!(savedCopyOnly && !storedGone);
 	return (
 		<div
 			className={cn(
