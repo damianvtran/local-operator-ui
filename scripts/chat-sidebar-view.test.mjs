@@ -1681,18 +1681,21 @@ test("the pin's label is the subject and the state is aria-pressed", () => {
 	/*
 	 * THE LABEL IS THE CATALOGUE'S (i18n wave A), so what the pin pins is the
 	 * key, its ARGUMENT and the composed English - not the sentence a literal
-	 * used to spell. The subject is `{ name }`, the key is the action's own
-	 * (`ui.chat.sidebar.entity.pin`; the `unpin` key belongs to the trigger's
-	 * label while the row is already pinned), and the composed message must
-	 * still read `Pin "<name>"` or the reader loses the object of the action.
+	 * used to spell. The subject is `{ name }`, and each state asks for its own
+	 * key: `entity.pin` while the row is unpinned, `entity.unpin` while it is
+	 * already pinned (QA round 1, Q2: a control that unpins must not be announced
+	 * as "Pin …" while `aria-pressed` says it is pressed). The composed messages
+	 * are checked below, because either one must still read `Pin "<name>"` /
+	 * `Unpin "<name>"` or the reader loses the object of the action.
+	 *
 	 * The shape is matched loosely across whitespace because the formatter owns
 	 * the line breaks here, the same reason `chat-sidebar-selection` matches its
 	 * keyed anchor by the expression's opening lines.
 	 */
 	assert.match(
 		control,
-		/aria-label=\{\s*t\("ui\.chat\.sidebar\.entity\.pin",\s*\{\s*name\s*\}\)\s*\}/,
-		"the pin's label no longer names the agent it pins",
+		/aria-label=\{\s*t\(\s*pinnedAgent\s*\?\s*"ui\.chat\.sidebar\.entity\.unpin"\s*:\s*"ui\.chat\.sidebar\.entity\.pin",\s*\{\s*name\s*\},?\s*\)/,
+		"the pin's accessible name no longer names the agent AND flips with the state",
 	);
 	assert.match(
 		control,

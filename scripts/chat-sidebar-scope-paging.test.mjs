@@ -1564,6 +1564,20 @@ test("the Show-more control names its group, joins the arrow-key idiom, and is f
 		"the press records where the reader was, so the answer can put them there",
 	);
 	assert.ok(
+		SIDEBAR_SRC.includes("data-entity-key={key}"),
+		"the group's disclosure carries its catalogue key, so the hand-back can find it",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes(
+			'`[data-disclosure][data-entity-key="${CSS.escape(pending.key)}"]`',
+		),
+		"the group is found by that key, so localized copy never enters the selector (review round 1, M4)",
+	);
+	assert.ok(
+		!SIDEBAR_SRC.includes("[data-disclosure][aria-label="),
+		"the disclosure's accessible name drifted back into being a lookup key",
+	);
+	assert.ok(
 		SIDEBAR_SRC.includes("target?.focus()"),
 		"and the answer moves focus somewhere deterministic",
 	);
@@ -1782,14 +1796,12 @@ test("the round-2 code paths are pinned in source", () => {
 		"the press's recovery looks in the region the group is drawn in (U2 = F1)",
 	);
 	assert.ok(
-		SIDEBAR_SRC.includes(
-			'groupRow?.querySelector<HTMLElement>("[data-disclosure]")',
-		),
+		SIDEBAR_SRC.includes("groupDisclosure ??"),
 		"and its fallback is the group's own control, which exists at exhaustion",
 	);
 	assert.ok(
 		DISCLOSURE_LABEL_RE.test(SIDEBAR_SRC),
-		"the group is matched by its disclosure's label, not by name-plus-badge text",
+		"the disclosure's name stays the catalogue's - it is copy the reader hears, never a lookup key (review round 1, M4)",
 	);
 	// All THREE refusal sites wear the one treatment: clamped sentence, Retry on its own
 	// line. Counted rather than eyeballed, because round 1 fixed one of them and the

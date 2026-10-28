@@ -2905,34 +2905,25 @@ export function ChatSidebar({
 						)
 						.find((el) => el !== null) ?? null);
 		/*
-		 * AND THE GROUP IS FOUND BY ITS DISCLOSURE'S LABEL, not by the text of its name
-		 * button (round 2, U2): that button's content is the name CONCATENATED with the badge
-		 * (`minervadev49`), so a text match could never resolve - which is why the fallback the
-		 * round-1 comment described did not exist in practice. The disclosure carries
-		 * `Expand <name> chats` / `Collapse <name> chats`, the label the control's own
-		 * consumers already use, so this matches the same element the press does.
-		 *
-		 * THE TWO LABELS ARE RESOLVED HERE RATHER THAN SPELLED. They are catalogue
-		 * copy, so the selector has to ask the catalogue for the same sentence the
-		 * control renders - a literal would match in English only and lose the group
-		 * in every other language.
+		 * THE GROUP IS NOW FOUND BY AN IDENTIFIER, NOT BY ITS LABEL. Matching on the
+		 * disclosure's accessible name worked only while the selector and the control
+		 * composed it from the same name, and they did not: the disclosure renders
+		 * `displayName` (a team's catalogue label when it has one) while the pending
+		 * record carries the slug, so a labelled team never resolved and the hand-back
+		 * left focus where it was (review round 1, M4). Localized copy never belongs
+		 * in a selector anyway. The disclosure now carries `data-entity-key`, the
+		 * group's own `catalogueScopeKey` (`kind:name`, the same string the pending
+		 * record stores), so the lookup cannot drift from the label again. (Reading
+		 * the name button's text was already ruled out in round 2: its content is the
+		 * name CONCATENATED with the badge, so a text match could never resolve.)
 		 */
 		const entityRoot = entityPanelRef.current;
-		const expandLabel = t("ui.chat.sidebar.entity.expand_chats", {
-			name: pending.name,
-		});
-		const collapseLabel = t("ui.chat.sidebar.entity.collapse_chats", {
-			name: pending.name,
-		});
-		const groupRow =
+		const groupDisclosure =
 			entityRoot === null
 				? null
-				: ([...entityRoot.querySelectorAll<HTMLElement>("[data-entity]")].find(
-						(group) =>
-							group.querySelector(
-								`[data-disclosure][aria-label="${expandLabel}"], [data-disclosure][aria-label="${collapseLabel}"]`,
-							) !== null,
-					) ?? null);
+				: entityRoot.querySelector<HTMLElement>(
+						`[data-disclosure][data-entity-key="${CSS.escape(pending.key)}"]`,
+					);
 		/*
 		 * THE FALLBACK IS THE GROUP'S DISCLOSURE, which exists whether or not the group has
 		 * rows - so it resolves at exhaustion too, where the press unmounts the control it was
@@ -2943,7 +2934,7 @@ export function ChatSidebar({
 		const target =
 			row?.querySelector<HTMLElement>("[data-chat-row]") ??
 			row ??
-			groupRow?.querySelector<HTMLElement>("[data-disclosure]") ??
+			groupDisclosure ??
 			null;
 		target?.focus();
 	}, [catalogueScopes]);
@@ -6949,6 +6940,16 @@ export function ChatSidebar({
 					<button
 						type="button"
 						data-disclosure
+						/*
+						 * THE GROUP'S OWN IDENTIFIER on the control the hand-back returns to
+						 * (review round 1, M4). The selector used to compose a lookup from the
+						 * disclosure's accessible name with the SLUG, while the control renders
+						 * `displayName` (a team's catalogue label when it has one) - so a labelled
+						 * team never resolved. `catalogueScopeKey` is `kind:name`, the same string
+						 * the pending record stores, so the lookup is independent of copy and of
+						 * which name the row draws.
+						 */
+						data-entity-key={key}
 						aria-label={
 							open
 								? t("ui.chat.sidebar.entity.collapse_chats", {
@@ -7121,6 +7122,13 @@ export function ChatSidebar({
 					 * `!staged` exactly like the two 24px controls beside it), never a
 					 * menu ground: `chat-sidebar-selection.test.mjs` counts every
 					 * `hover:bg-*` in the panel and this control is one of them.
+					 *
+					 * THE ACCESSIBLE NAME FLIPS WITH THE STATE, as the tooltip does (QA
+					 * round 1, Q2): the label asked for `entity.pin` in both states, so a
+					 * reader on an already-pinned row heard "Pin “X”" while
+					 * `aria-pressed` said it was pressed. Each state asks for its own key
+					 * now; `entity.unpin` is the sibling the tooltip already uses, so no
+					 * new copy was needed.
 					 */}
 					{kind === "agent" && (
 						<Tooltip
@@ -7146,7 +7154,12 @@ export function ChatSidebar({
 									"group-focus-within:opacity-100 group-focus-within:duration-fast",
 								)}
 								aria-pressed={pinnedAgent}
-								aria-label={t("ui.chat.sidebar.entity.pin", { name })}
+								aria-label={t(
+									pinnedAgent
+										? "ui.chat.sidebar.entity.unpin"
+										: "ui.chat.sidebar.entity.pin",
+									{ name },
+								)}
 								onClick={() =>
 									setChatSidebarView(togglePinnedAgent(sidebarView, pinKey))
 								}

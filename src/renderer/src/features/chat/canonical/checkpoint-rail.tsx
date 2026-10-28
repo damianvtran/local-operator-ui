@@ -1,4 +1,5 @@
 import { Popover, PopoverAnchor, PopoverContent } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, CircleAlert, CircleDot, CircleSlash } from "lucide-react";
 import type {
@@ -428,6 +429,17 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	activeId = null,
 }) => {
 	dbgRailRenders.count += 1;
+	/*
+	 * THE RAIL SUBSCRIBES TO THE LOCALE ITSELF (review round 1, M3). Every label
+	 * it paints is resolved at render time (`checkpointAriaLabel`,
+	 * `checkpointTurnLabel`, `checkpointLeadLabel`), so a language change must
+	 * re-render it — but the component is `memo`ised below and its props are
+	 * stable across a locale change, so the parent's own subscription (in
+	 * `CanonicalTranscriptPane`) stops at this boundary: without this line the
+	 * rail keeps the previous language until it remounts. The bare call is the
+	 * subscription; it returns a value this component does not otherwise need.
+	 */
+	useI18nLocale();
 	const cardElementId = useId();
 	const [previewId, setPreviewId] = useState<string | null>(null);
 	const [openCardId, setOpenCardId] = useState<string | null>(null);

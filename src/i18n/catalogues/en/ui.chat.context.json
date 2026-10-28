@@ -413,7 +413,7 @@
 		"role": "the structural identity of one turn in the conversation, shown on the run-details rail",
 		"tone": "noun phrase, sentence case, no trailing punctuation",
 		"length": "Four words.",
-		"note": "Also used inside the rail tick's accessible name, where its first character is lowercased to sit in sentence position — keep the wording a noun phrase that survives that transform. Both numbers are ordinal-safe counts of turns, not messages.",
+		"note": "Also restated inside the rail tick's accessible name, but not by embedding this message: `jump_agent` / `jump_user` carry {turn} and {total} in their own sentences, so the word order and the turn noun are each message's own — write a noun phrase here and do not assume it will sit inside a longer sentence. Both numbers are ordinal-safe counts of turns, not messages.",
 		"placeholders": {
 			"turn": "the turn's 1-based position in the conversation",
 			"total": "the number of turns in the conversation"
@@ -511,7 +511,7 @@
 		"role": "accessible name of the header agent chip while the runtime has closed the seat",
 		"tone": "role and state, then the reason, separated by periods",
 		"length": "Up to a sentence; the reason is backend prose.",
-		"note": "{reason} is the runtime's own closure sentence, served in English by the backend; it is passed through unchanged rather than paraphrased.",
+		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — core's docstring names this UI as keying on the exact words, so it is a cross-repo contract, NOT backend text: never translate or paraphrase it.",
 		"placeholders": {
 			"label": "the attached agent's own display name",
 			"reason": "the runtime-served closure sentence"
@@ -539,7 +539,7 @@
 		"role": "accessible name of the header team chip while the runtime has closed the seat",
 		"tone": "role and state, then the reason, separated by periods",
 		"length": "Up to a sentence; the reason is backend prose.",
-		"note": "{reason} is the runtime's own closure sentence, served in English by the backend; it is passed through unchanged.",
+		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — a cross-repo contract, not backend text: passed through unchanged, never translated.",
 		"placeholders": {
 			"label": "the attached team's own display name",
 			"reason": "the runtime-served closure sentence"

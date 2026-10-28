@@ -19,7 +19,7 @@
  * `entry.ts`. Nothing else in this module reads a clock.
  */
 
-import { t } from "@shared/i18n";
+import { formatTime, t } from "@shared/i18n";
 import type {
 	Checkpoint,
 	CheckpointManifest,
@@ -200,24 +200,24 @@ export const CHECKPOINT_OUTCOME_LABELS: Record<CheckpointOutcome, string> = {
 };
 
 /**
- * The clock a user checkpoint's label carries, e.g. "3:42 PM".
+ * The clock a user checkpoint's label carries, e.g. "3:42 PM" in an English
+ * locale — or "15:42" where the reader's locale spells a 24-hour clock.
  *
  * `ts` is epoch seconds (see the header) and the conversion to milliseconds
- * happens exactly here. 12-hour with an AM/PM marker by request — the same
- * `h:mm a` shape `formatMessageDateTime` uses for a message seen today, so
- * the rail and the transcript do not disagree about what a time looks like.
- * A malformed or zero `ts` yields `""` rather than "12:00 AM", so a label
- * built from it simply omits the time half instead of lying about it.
+ * happens exactly here. THE SHAPE IS THE LOCALE'S, not a pattern chosen here:
+ * this asks `formatTime` (`@shared/i18n`) for the hour and minute the active
+ * locale spells. Hand-assembling `h:mm AM/PM` shipped an English meridiem into
+ * the accessible name of every non-English session (QA round 1, Q1) — the
+ * catalogue's `jump_user` note already promised a locale-formatted clock, and
+ * now it is one. A malformed or zero `ts` yields `""` rather than "12:00 AM",
+ * so a label built from it simply omits the time half instead of lying about
+ * it.
  */
 export function checkpointClockLabel(ts: number): string {
 	if (!Number.isFinite(ts) || ts <= 0) return "";
 	const date = new Date(ts * 1000);
 	if (Number.isNaN(date.getTime())) return "";
-	const hours = date.getHours();
-	const minutes = date.getMinutes().toString().padStart(2, "0");
-	const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-	const meridiem = hours < 12 ? "AM" : "PM";
-	return `${hour12}:${minutes} ${meridiem}`;
+	return formatTime(date, { hour: "numeric", minute: "2-digit" });
 }
 
 /**
