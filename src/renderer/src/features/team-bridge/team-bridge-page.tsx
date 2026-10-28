@@ -1105,6 +1105,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const pendingSend = useRef<{ body: string; clientRef: string } | null>(
 		draftJournal?.pending ?? null,
 	);
+	const draftRef = useRef(draft);
+	draftRef.current = draft;
 	/*
 	 * RETURN TO DRAFT (operator, 2026-10-28). A failed send's text and images go
 	 * back into the composer that authored them, and the row leaves the thread.
@@ -1135,8 +1137,6 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * this view's return-to-draft, which only the composer can perform. The
 	 * handler reads the CURRENT box through a ref, so a keystroke cannot
 	 * rebuild every row's actions. */
-	const draftRef = useRef(draft);
-	draftRef.current = draft;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `returnToDraft` reads the live draft through `draftRef` and the live strip through `images`; only the row data and the container's handler can change what a row offers.
 	const decoratedSendRows = useMemo(() => {
 		if (!sendRows || !onTakeBackSend) return sendRows;
