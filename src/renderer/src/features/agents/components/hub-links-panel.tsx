@@ -199,6 +199,13 @@ export function HubLinkGroup({
 				}
 			},
 			onError: (error) => {
+				/*
+				 * A REFUSED preview shows nothing of the previous answer: its
+				 * inline result described a request that is no longer the latest,
+				 * so keeping it under the new alert would state two outcomes for
+				 * one press (QA round 3, Q8).
+				 */
+				if (input.action === "apply" && input.preview) setIncomingReports(null);
 				if (
 					error instanceof DesktopControlError &&
 					[
@@ -422,11 +429,15 @@ export function HubLinkGroup({
 							outcome: incomingFailure.outcome,
 						})}
 					</p>
-					{incomingFailure.message && (
-						<p className="break-words text-meta text-ink-muted">
-							{incomingFailure.message}
-						</p>
-					)}
+					{/*
+					 * NEVER core's raw message here: on a hub outage it carries the
+					 * endpoint URL and the raw response body (QA round 3, Q9). The
+					 * class maps to the same sentence the row's own status uses,
+					 * which names the situation without developer detail.
+					 */}
+					<p className="break-words text-meta text-ink-muted">
+						{hubReasonText(incomingFailure.error_class)}
+					</p>
 				</div>
 			)}
 			<Dialog
@@ -481,14 +492,18 @@ export function HubLinkGroup({
 											outcome: report.outcome,
 										})}
 										{/*
-										 * Core's unknown-baseline message names the CLI flag
+										 * Core's unknown-baseline refusal names the CLI flag
 										 * (`--accept-unknown-baseline`, `merge.py`), which means
 										 * nothing in this window: the control it describes is the
-										 * checkbox below. Everything else is core-authored and shown
-										 * verbatim; React escapes it.
+										 * checkbox below. The discriminator is the TICK, not the
+										 * error class: core reports an unacknowledged unknown
+										 * baseline as `model-unavailable` on some rows and
+										 * `merge-refused` on others, and keeps `model-unavailable`
+										 * for a REAL conflict once the tick is on (QA round 3, Q7,
+										 * both directions). Before the tick, the checkbox sentence;
+										 * after it, core's own words.
 										 */}
-										{unknownBaseline &&
-										report.error_class === "model-unavailable"
+										{unknownBaseline && !acknowledgedBaseline
 											? t("ui.hub.links.incoming_unknown_baseline")
 											: report.message
 												? report.message
