@@ -289,6 +289,11 @@
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
 	},
+	"ui.hub.links.check_failed": {
+		"role": "status",
+		"tone": "plain, precise; a check changes nothing, so this sentence must not imply an incoming update was attempted",
+		"note": "The sentence for a CHECK that did not finish (QA round 3 on #1458, Q13). A check asks the hub what changed and applies nothing, so it is neither the incoming nor the outgoing direction: it must not borrow action_failed's {direction}. Placeholders {item} and {source} are the escaped display label and the verified hub source address; there is deliberately no {direction}. Keep the second sentence: the row's own status is where the reason appears."
+	},
 	"ui.hub.links.action_failed": {
 		"role": "status",
 		"tone": "plain, precise; safety statements must not weaken or promise success",

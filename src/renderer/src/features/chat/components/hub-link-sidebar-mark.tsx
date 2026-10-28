@@ -3,7 +3,10 @@ import {
 	hubLinkSourceName,
 } from "@features/agents/components/hub-link-policy-controls";
 import { hubLinkView } from "@features/agents/hub-link-adapter";
-import { hubReasonText } from "@features/agents/hub-link-copy";
+import {
+	hubActionFailureText,
+	hubReasonText,
+} from "@features/agents/hub-link-copy";
 import { hubLinkMark } from "@features/agents/hub-link-view";
 import { useHubLinkActions } from "@shared/api/local-operator/hub-link-actions";
 import type { HubLink } from "@shared/api/local-operator/hub-links";
@@ -57,7 +60,7 @@ export function HubLinkSidebarMark({
 	onDetail,
 }: { link: HubLink; staged: boolean; onDetail: () => void }) {
 	useI18nLocale();
-	const actions = useHubLinkActions(link.link_id);
+	const actions = useHubLinkActions(link);
 	const [open, setOpen] = useState(false);
 	const [consentOpen, setConsentOpen] = useState(false);
 	const button = useRef<HTMLButtonElement>(null);
@@ -211,7 +214,7 @@ export function HubLinkSidebarMark({
 					<p role="alert" className="mt-3 text-meta text-danger">
 						{actions.error instanceof HubMutationUpgradeRequired
 							? actions.error.message
-							: t("ui.hub.links.action_failed", {
+							: hubActionFailureText(actions.variables?.action, {
 									direction,
 									item: link.name,
 									source,

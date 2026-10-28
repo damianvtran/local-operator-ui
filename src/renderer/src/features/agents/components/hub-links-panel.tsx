@@ -5,6 +5,7 @@ import {
 	type HubLinkAction,
 	type HubPullPreview,
 	type HubPushPreview,
+	isDirectionalReport,
 	useHubLinkActions,
 	useHubSourceResolution,
 } from "@shared/api/local-operator/hub-link-actions";
@@ -38,7 +39,11 @@ import { cn } from "@shared/lib/utils";
 import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { hubLinkView } from "../hub-link-adapter";
-import { hubDirectionStateText, hubReasonText } from "../hub-link-copy";
+import {
+	hubActionFailureText,
+	hubDirectionStateText,
+	hubReasonText,
+} from "../hub-link-copy";
 import { hubPreviewIsCurrent, hubPreviewMatches } from "../hub-preview-binding";
 import {
 	HubLinkPolicyControls,
@@ -67,7 +72,7 @@ const isBusy = (link: HubLink) =>
  */
 export function HubLinkGroup({ link }: { link: HubLink }) {
 	useI18nLocale();
-	const actions = useHubLinkActions(link.link_id);
+	const actions = useHubLinkActions(link);
 	const source = hubLinkSourceName(link);
 	const view = hubLinkView(link);
 	const [publishPreview, setPublishPreview] = useState<HubPushPreview | null>(
@@ -313,7 +318,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 				<p role="alert" className="text-body-sm text-danger">
 					{actions.error instanceof HubMutationUpgradeRequired
 						? actions.error.message
-						: t("ui.hub.links.action_failed", {
+						: hubActionFailureText(actions.variables?.action, {
 								direction: directionLabel(
 									actions.variables?.action === "preview" ||
 										actions.variables?.action === "confirm"
@@ -326,6 +331,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 				</p>
 			)}
 			{actions.data?.reports
+				.filter(isDirectionalReport)
 				.filter((report) => report.link_id === link.link_id)
 				.map((report, index) => (
 					<output
@@ -416,7 +422,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 						<p role="alert" className="text-body-sm text-danger">
 							{actions.error instanceof HubMutationUpgradeRequired
 								? actions.error.message
-								: t("ui.hub.links.action_failed", {
+								: hubActionFailureText(actions.variables?.action, {
 										direction: directionLabel(publishPreview ? "push" : "pull"),
 										item: link.name,
 										source,

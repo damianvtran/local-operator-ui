@@ -1493,12 +1493,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			confirmPublicEgress: z.boolean().optional(),
 		})
 		.strict(),
+	/*
+	 * A CHECK IS NOT ADDRESSED BY `link_id` (QA round 3 on #1458, Q13). Core's
+	 * `/v1/desktop/hub/updates/check` takes `HubCheck` (core
+	 * `local_operator/server/routes/desktop_hub.py`), whose members are
+	 * `request_id`, `kind` and `name` ONLY, and whose base `Input` forbids extra
+	 * fields - so the `link_id`/`direction` pair this schema used to allow made
+	 * every per-link check a 422 before any work ran. A check is scoped to ONE
+	 * item by its local identity (`kind` + `name`), which is what the link row
+	 * carries; there is no per-link route and no direction on this wire.
+	 */
 	z
 		.object({
 			op: z.literal("hub.check"),
 			requestId,
-			linkId: z.string().min(1).max(256).optional(),
-			direction: z.enum(["pull", "push"]).optional(),
 			kind: hubItemKind.optional(),
 			name: profileName.optional(),
 		})
@@ -4673,19 +4681,13 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		}
 		// Stable links and legacy name selectors are mutually exclusive. Never
 		// let one surface's active organization/name override a scoped origin.
-		if (
-			request.op === "hub.check" ||
-			request.op === "hub.apply" ||
-			request.op === "hub.retry"
-		) {
+		if (request.op === "hub.apply" || request.op === "hub.retry") {
 			const hasLink = request.linkId !== undefined;
 			const hasLegacy =
 				request.kind !== undefined || request.name !== undefined;
 			if (
 				(hasLink && hasLegacy) ||
-				(request.op !== "hub.check" &&
-					!hasLink &&
-					(!request.kind || !request.name)) ||
+				(!hasLink && (!request.kind || !request.name)) ||
 				(request.op === "hub.retry" && hasLink && !request.direction) ||
 				(request.direction === "push" && !hasLink)
 			) {
@@ -7998,8 +8000,6 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					...(request.linkId ? { link_id: request.linkId } : {}),
-					...(request.direction ? { direction: request.direction } : {}),
 					...(request.kind ? { kind: request.kind } : {}),
 					...(request.name ? { name: request.name } : {}),
 				},
