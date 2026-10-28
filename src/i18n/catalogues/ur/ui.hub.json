@@ -59,6 +59,7 @@
 	"ui.hub.links.direction_pull": "آنے والی اپ ڈیٹ",
 	"ui.hub.links.direction_push": "باہر جانے والی اشاعت",
 	"ui.hub.links.action_failed": "{source} میں {item} کے لیے {direction} مکمل نہیں ہوا۔ دوبارہ کوشش سے پہلے اس کی حالت دیکھیں۔",
+	"ui.hub.links.check_failed": "{source} میں {item} کی جانچ مکمل نہیں ہوئی۔ دوبارہ کوشش سے پہلے اس کی حالت دیکھیں۔",
 	"ui.hub.links.preview_warnings": "جائزے کے نوٹس",
 	"ui.hub.links.action_result": "{source} میں {item} کے لیے {direction}، {outcome}",
 	"ui.hub.links.preview_pull": "آنے والی تبدیلیوں کا پیش منظر",

@@ -4,6 +4,7 @@
 	"ui.hub.conflict.title": "Это изменилось, пока вы редактировали",
 	"ui.hub.links.acknowledge_baseline": "Я сравнил обе версии и понимаю, что предыдущая основа неизвестна.",
 	"ui.hub.links.action_failed": "Не удалось завершить действие: {direction} для {item} в {source}. Проверьте статус перед повторной попыткой.",
+	"ui.hub.links.check_failed": "Проверка {item} в {source} не завершилась. Проверьте статус перед повторной попыткой.",
 	"ui.hub.links.action_result": "{direction} для {item} в {source}: {outcome}",
 	"ui.hub.links.actual_model": "Использованная модель: {model}",
 	"ui.hub.links.aggregate_mark": "{count, plural, one {{count, number, ::group-off} связь} few {{count, number, ::group-off} связи} many {{count, number, ::group-off} связей} other {{count, number, ::group-off} связи}}; {state}",
