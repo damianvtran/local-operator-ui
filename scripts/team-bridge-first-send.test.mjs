@@ -963,3 +963,36 @@ test("the failed row offers Retry, Return to draft and Discard, in that order", 
 		await app.close();
 	}
 });
+
+test("Enter sends and Shift+Enter does not", async () => {
+	const app = await mount({ cleanup });
+	try {
+		app.fixture.refuse = true;
+		await type(app.host, "a line");
+		const field = app.host.querySelector("textarea");
+		const key = (shiftKey) =>
+			new window.KeyboardEvent("keydown", {
+				key: "Enter",
+				shiftKey,
+				bubbles: true,
+				cancelable: true,
+			});
+
+		/* Shift+Enter is the newline people reach for in every chat field. The
+		 * composer must let it through untouched - no post, no draft cleared -
+		 * which is what makes a multi-paragraph message possible at all. */
+		await act(async () => {
+			field.dispatchEvent(key(true));
+		});
+		assert.equal(posts(app.fixture).length, 0, "Shift+Enter sends nothing");
+		assert.equal(field.value, "a line", "and it leaves the draft alone");
+
+		await act(async () => {
+			field.dispatchEvent(key(false));
+		});
+		assert.equal(posts(app.fixture).length, 1, "Enter sends");
+	} finally {
+		app.fixture.refuse = false;
+		await app.close();
+	}
+});
