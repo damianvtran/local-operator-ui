@@ -224,20 +224,8 @@ const LEADING_BLANK_LINES = /^(?:[ \t]*\r?\n)*/;
 const INDENTED = /^[ \t]+\S/;
 const BLANK = /^[ \t]*$/;
 const LINE_BREAK = /\r?\n/;
-/**
- * What makes a description unsafe as a PLAIN YAML scalar, so it is quoted
- * instead: a line break, a leading indicator character, trailing space, a
- * `: ` or ` #` inside (a mapping or a comment), a trailing colon, or a word YAML
- * would read as a boolean, null or number.
- */
-const YAML_UNSAFE: readonly RegExp[] = [
-	/[\n\r]/,
-	/^[\s\-?:,[\]{}#&*!|>'"%@`]/,
-	/\s$/,
-	/: |\s#/,
-	/:$/,
-	/^(true|false|null|yes|no|on|off|~|[-+]?[0-9][0-9_.eE+-]*)$/i,
-];
+/** A line break, KEPT by `split` so each line's own separator survives (m2). */
+const LINE_BREAK_KEPT = /(\r?\n)/;
 
 export function splitFrontMatter(body: string): SkillMdParts {
 	const match = FRONT_MATTER.exec(body);
@@ -304,14 +292,24 @@ export function otherFrontMatter(meta: string | null): string | null {
 }
 
 /**
- * A YAML scalar for a one-field write. Plain when it is unambiguous, otherwise
- * double-quoted - which is JSON's string syntax, a valid YAML double-quoted
- * scalar, so escapes (a newline, a quote) round-trip through core's parser.
+ * A YAML scalar for a one-field write: ALWAYS double-quoted (review r1 m1).
+ *
+ * A plain scalar is only a string when no implicit type claims it, and core
+ * parses with PyYAML's YAML 1.1 resolver, which reads `0x1F` and `1:30` as
+ * ints, `.5` and `.inf` as floats, `2026-10-27T10:00:00` as a timestamp and
+ * `yes` / `off` / `~` as booleans or null - each of which core then refuses as a
+ * non-string description. A denylist of those shapes was already wrong once, so
+ * nothing is left to a resolver: a double-quoted scalar is a string by
+ * definition. JSON's string syntax is a valid YAML double-quoted scalar (its
+ * escapes `\n`, `\"`, `\\`, `\uXXXX` are YAML escapes), so a newline or a quote
+ * round-trips.
+ *
+ * Quoting does not break the byte-preservation promise: that promise is about
+ * the keys and lines the edit did NOT touch, and an UNCHANGED description is
+ * never re-serialised (`rebuildSkillMd` with `description: null`).
  */
 function yamlScalar(value: string): string {
-	const plain =
-		value.length > 0 && !YAML_UNSAFE.some((pattern) => pattern.test(value));
-	return plain ? value : JSON.stringify(value);
+	return JSON.stringify(value);
 }
 
 /**
@@ -334,21 +332,40 @@ export function rebuildSkillMd(
 	if (parts.meta === null) {
 		// No front matter at all and no new description: the file stays bare.
 		if (description === null) return instructions;
-		return `---\nname: ${yamlScalar(name)}\ndescription: ${yamlScalar(description.trim())}\n---\n\n${instructions}`;
+		// The new block follows the body's own line ending, so a CRLF file stays CRLF.
+		const eol = instructions.includes("\r\n") ? "\r\n" : "\n";
+		return `---${eol}name: ${yamlScalar(name)}${eol}description: ${yamlScalar(description.trim())}${eol}---${eol}${eol}${instructions}`;
 	}
 	if (description === null)
 		// `head + meta + tail` is the original block byte for byte (an empty block's
 		// `tail` already starts at its closing fence).
 		return `${parts.head}${parts.meta}${parts.tail}${parts.gap}${instructions}`;
 	const line = `description: ${yamlScalar(description.trim())}`;
-	const lines = parts.meta === "" ? [] : parts.meta.split(LINE_BREAK);
+	/*
+	 * EACH LINE KEEPS ITS OWN SEPARATOR (review r1 m2). Re-joining with "\n"
+	 * turned a CRLF file into a mixed one and changed the bytes of `name:` - a
+	 * key this edit never touched. `seps[i]` is the break AFTER `lines[i]`.
+	 */
+	const eol = parts.head.endsWith("\r\n") ? "\r\n" : "\n";
+	const tokens = parts.meta === "" ? [] : parts.meta.split(LINE_BREAK_KEPT);
+	const lines = tokens.filter((_, index) => index % 2 === 0);
+	const seps = tokens.filter((_, index) => index % 2 === 1);
 	const block = keyBlock(lines, "description");
-	if (block) lines.splice(block[0], block[1] - block[0], line);
-	else lines.push(line);
-	// An EMPTY meta matched without the newline before the closing fence, so the
-	// rebuilt one supplies it.
-	const meta = lines.join("\n");
-	const tail = parts.meta === "" ? `\n${parts.tail}` : parts.tail;
+	if (block) {
+		const [start, end] = block;
+		lines.splice(start, end - start, line);
+		// The replaced block's inner breaks go; the break after its LAST line stays.
+		seps.splice(start, Math.max(0, end - 1 - start));
+	} else {
+		if (lines.length > 0) seps.push(eol);
+		lines.push(line);
+	}
+	const meta = lines
+		.map((text, index) => text + (index < seps.length ? seps[index] : ""))
+		.join("");
+	// An EMPTY meta matched without the break before the closing fence, so the
+	// rebuilt one supplies it, in the file's own line ending.
+	const tail = parts.meta === "" ? `${eol}${parts.tail}` : parts.tail;
 	return `${parts.head}${meta}${tail}${parts.gap}${instructions}`;
 }
 

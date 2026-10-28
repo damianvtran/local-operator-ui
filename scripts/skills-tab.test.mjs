@@ -266,6 +266,9 @@ const SHIMMED_GLOBALS = [
 	"IntersectionObserver",
 	"DOMParser",
 	"XMLSerializer",
+	// Radix's focus scope walks a TreeWalker with NodeFilter when a menu or a
+	// dialog opens (the Remove double-confirm, review r1 m3).
+	"NodeFilter",
 ];
 /*
  * NO REAL NETWORK. A hub skill's pane now mounts the agents' `HubLinksPanel`,
@@ -445,6 +448,18 @@ const installBridge = (world) => {
 						if (answer?.status) return answer;
 						return { status: 200, body: { result: { data: answer } } };
 					}
+					case "skills.create":
+					case "skills.update":
+					case "skills.remove": {
+						// Only a world that opts in (`write`) accepts a write, so every
+						// other case keeps proving the tab sends none (review r1 m3).
+						if (!world.write)
+							throw new Error(
+								`unexpected desktop op in this test: ${request.op}`,
+							);
+						const answer = await world.write(request);
+						return answer ?? { status: 200, body: { result: {} } };
+					}
 					default:
 						throw new Error(
 							`unexpected desktop op in this test: ${request.op}`,
@@ -456,6 +471,14 @@ const installBridge = (world) => {
 	return ops;
 };
 
+/*
+ * EVERY MOUNTED VIEW, so a case whose assert throws before its own `teardown`
+ * cannot leave a live React root (and its query timers) holding the file open
+ * until the runner's timeout - which turned one failed assert into a 300 s hang
+ * with no verdict printed. The file's `after` hook tears down what is left.
+ */
+const mounted = new Set();
+
 const mount = async (path, world) => {
 	const ops = installBridge(world);
 	const container = document.createElement("div");
@@ -466,6 +489,9 @@ const mount = async (path, world) => {
 	const client = new QueryClient({
 		defaultOptions: {
 			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+			// The write paths (review r1 m3) run mutations, whose own 5-minute gc
+			// timer held the file open the same way.
+			mutations: { gcTime: Number.POSITIVE_INFINITY },
 		},
 	});
 	const root = createRoot(container);
@@ -486,7 +512,9 @@ const mount = async (path, world) => {
 			),
 		);
 	});
-	return { container, root, ops, client };
+	const view = { container, root, ops, client };
+	mounted.add(view);
+	return view;
 };
 
 const settle = async (done, budgetMs = 4_000) => {
@@ -526,6 +554,7 @@ const typeInto = async (input, value) => {
 	});
 };
 const teardown = async (view) => {
+	if (!mounted.delete(view)) return;
 	await act(async () => view.root.unmount());
 	view.container.remove();
 	/*
@@ -2064,15 +2093,82 @@ test("SKILL.md rebuild: only the description line moves; everything else is byte
 		next,
 		"---\nname: demo\ndescription: \"New: words\"\nlicense: MIT\nx-extra: 'keep'\n---\n\nNew body",
 	);
-	// A plain-safe description stays plain.
+	// A rewritten description is ALWAYS double-quoted (review r1 m1).
 	assert.match(
 		rebuildSkillMd(original, "demo", "Plain words", "b"),
-		/\ndescription: Plain words\n/,
+		/\ndescription: "Plain words"\n/,
 	);
 	// A bare file gains the minimal front matter core's validation needs.
 	assert.equal(
 		rebuildSkillMd("just body", "demo", "D", "just body"),
-		"---\nname: demo\ndescription: D\n---\n\njust body",
+		'---\nname: "demo"\ndescription: "D"\n---\n\njust body',
+	);
+});
+
+/*
+ * m1: every shape PyYAML's YAML 1.1 resolver (core's `parse_frontmatter`) reads
+ * as a NON-string when plain - int, sexagesimal int, float, inf, timestamp,
+ * bool, null - plus a mapping indicator and an embedded quote. Measured against
+ * the repo's PyYAML for the PR thread; here the contract is that each is written
+ * as a JSON/YAML double-quoted scalar that decodes back to the exact text.
+ */
+test("SKILL.md rebuild: a description YAML would resolve to a non-string is quoted", () => {
+	const { rebuildSkillMd } = PAGE.model;
+	const original = "---\nname: demo\ndescription: Old\n---\n\nBody";
+	for (const value of [
+		"0x1F",
+		"1:30",
+		".5",
+		".inf",
+		"2026-10-27T10:00:00",
+		"2026-10-27",
+		"yes",
+		"No",
+		"on",
+		"OFF",
+		"null",
+		"~",
+		"true",
+		"12",
+		"a: b",
+		'say "hi" # not a comment',
+		"- list?",
+	]) {
+		const written = rebuildSkillMd(original, "demo", value, "Body");
+		const line = /\ndescription: (.*)\n/.exec(written)?.[1];
+		assert.equal(line?.startsWith('"'), true, `${value} is quoted`);
+		assert.equal(JSON.parse(line), value, `${value} round-trips`);
+	}
+});
+
+/* m2: CRLF in, CRLF out, and the untouched lines keep their bytes. */
+test("SKILL.md rebuild: a CRLF file keeps its line endings and its untouched lines", () => {
+	const { rebuildSkillMd, splitFrontMatter } = PAGE.model;
+	const crlf =
+		"---\r\nname: x\r\ndescription: >\r\n  Old\r\n  folded\r\nlicense: MIT\r\n---\r\n\r\nBody\r\nmore\r\n";
+	const text = splitFrontMatter(crlf).text;
+	assert.equal(
+		rebuildSkillMd(crlf, "x", null, text),
+		crlf,
+		"unchanged: same bytes",
+	);
+	const next = rebuildSkillMd(crlf, "x", "New", text);
+	assert.equal(
+		next,
+		'---\r\nname: x\r\ndescription: "New"\r\nlicense: MIT\r\n---\r\n\r\nBody\r\nmore\r\n',
+	);
+	assert.equal(/[^\r]\n/.test(next), false, "no bare LF anywhere");
+	// A description ADDED to a CRLF block (none before) uses CRLF too.
+	assert.equal(
+		rebuildSkillMd("---\r\nname: x\r\n---\r\nB", "x", "D", "B"),
+		'---\r\nname: x\r\ndescription: "D"\r\n---\r\nB',
+	);
+	// An LF file stays LF.
+	assert.equal(
+		/\r/.test(
+			rebuildSkillMd("---\nname: x\ndescription: y\n---\nB", "x", "z", "B"),
+		),
+		false,
 	);
 });
 
@@ -2128,8 +2224,11 @@ test("composer gate: the skill run needs agents_config_skills AND skill_library 
 		team_catalogue: 1,
 	};
 	assert.equal(PAGE.configRunEnabled(caps(base)), true);
+	// `skill_library` IS present here, so the only missing conjunct is
+	// `agents_config_skills`: this assertion fails if that conjunct is dropped
+	// (review r1 m4 - it used to pass on `skill_library` alone).
 	assert.equal(
-		PAGE.configSkillRunEnabled(caps(base)),
+		PAGE.configSkillRunEnabled(caps({ ...base, skill_library: 1 })),
 		false,
 		"older core: no skill tool",
 	);
@@ -2562,7 +2661,402 @@ test("scope segments: All / Local / Agent Hub / Built-in filter by source, with 
 	await teardown(view);
 });
 
-after(() => {
+/* ===================== review r1: the write paths, mounted (B1, m3) --- */
+
+/**
+ * A skill on "disk" that the list and the detail read answer from SEPARATELY,
+ * as core does, with a hold on the detail so a case can land the list first.
+ * `write` simulates core's update/remove/create: compare-and-set on the
+ * fingerprint, and an update REPLACES THE WHOLE FILE SET - the property that
+ * turns a wrong base into a deleted reference file.
+ */
+const diskWorld = (over = {}) => {
+	const disk = {
+		name: "d-local",
+		source: "local",
+		description: "Old",
+		fp: "a".repeat(64),
+		body: "Body A",
+		files: [],
+		...over,
+	};
+	const hold = { gate: null, release: null };
+	const writes = [];
+	const row = () =>
+		skill({
+			name: disk.name,
+			source: disk.source,
+			description: disk.description,
+			fingerprint: disk.fp,
+			link_id: disk.source === "hub" ? "link-1" : null,
+			editable: disk.editable ?? true,
+		});
+	const file = () =>
+		`---\nname: ${disk.name}\ndescription: ${disk.description}\n---\n\n${disk.body}`;
+	const world = {
+		features: SKILL_RUN,
+		links:
+			disk.source === "hub"
+				? [linkRow({ name: disk.name, local_id: disk.name })]
+				: [],
+		skills: async (request) => {
+			if (!request.name) return { skills: [row()] };
+			if (hold.gate) await hold.gate;
+			const body = file();
+			return {
+				skills: [row()],
+				detail: null,
+				skill_detail: {
+					...row(),
+					body,
+					body_in_detail: false,
+					body_length: body.length,
+					body_truncated: false,
+					files: disk.files,
+					files_total: disk.files.length,
+					files_truncated: false,
+				},
+			};
+		},
+		write: async (request) => {
+			writes.push(request);
+			if (world.refuse) return world.refuse(request);
+			if (request.op === "skills.update") {
+				if (request.expectedFingerprint !== disk.fp)
+					return {
+						status: 409,
+						body: { detail: { code: "skill_stale", message: "stale" } },
+					};
+				const content = request.files.find(
+					(f) => f.path === "SKILL.md",
+				).content;
+				disk.body = content.replace(/^---[\s\S]*?\n---\n\n/, "");
+				disk.files = request.files
+					.filter((f) => f.path !== "SKILL.md")
+					.map((f) => ({ path: f.path, size: f.content.length }));
+				disk.fp = "c".repeat(64);
+			}
+			return { status: 200, body: { result: {} } };
+		},
+	};
+	const holdDetail = () => {
+		hold.gate = new Promise((resolve) => {
+			hold.release = () => {
+				hold.gate = null;
+				resolve();
+			};
+		});
+	};
+	return { disk, world, writes, holdDetail, hold };
+};
+
+const editButton = (view) => q(view.container, '[data-testid="skill-edit"]');
+const editForm = (view) =>
+	q(view.container, '[data-testid="skill-detail"] form');
+const typeArea = async (area, value) => {
+	await act(async () => {
+		Object.getOwnPropertyDescriptor(
+			window.HTMLTextAreaElement.prototype,
+			"value",
+		).set.call(area, value);
+		area.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+};
+const submit = async (form) => {
+	await act(async () => {
+		form.dispatchEvent(
+			new window.Event("submit", { bubbles: true, cancelable: true }),
+		);
+	});
+};
+/** Refetch the library (list AND detail), and wait until both have been asked. */
+const refetchSkills = async (view) => {
+	const before = view.ops.filter((op) => op.startsWith("skills.list")).length;
+	await act(async () => {
+		void view.client.invalidateQueries({
+			queryKey: ["desktop", "skills", "library"],
+		});
+	});
+	return settle(
+		() =>
+			view.ops.filter((op) => op.startsWith("skills.list")).length >=
+			before + 2,
+	);
+};
+
+test("B1: a list read that lands BEFORE the detail cannot make Edit save old bytes over a run's change", async () => {
+	const rig = diskWorld();
+	const view = await mount("/agents?kind=skill&name=d-local", rig.world);
+	assert.ok(await settle(() => editButton(view) !== null), "Edit offered at A");
+	// A run rewrites the body (A -> B). The list answers; the detail is held.
+	rig.disk.body = "Body B";
+	rig.disk.fp = "b".repeat(64);
+	rig.holdDetail();
+	assert.ok(await refetchSkills(view));
+	await settle(() => false, 150);
+	const offeredMidFetch = editButton(view) !== null;
+	if (offeredMidFetch) await press(editButton(view));
+	rig.hold.release();
+	await settle(() => false, 200);
+	if (!editForm(view)) {
+		assert.ok(await settle(() => editButton(view) !== null));
+		await press(editButton(view));
+	}
+	const area = q(editForm(view), "textarea");
+	await typeArea(area, `${area.value} edited`);
+	await submit(editForm(view));
+	await settle(
+		() =>
+			rig.writes.length > 0 ||
+			q(view.container, '[data-testid="skill-conflict"]'),
+	);
+	assert.equal(
+		offeredMidFetch,
+		false,
+		"Edit is not offered while the detail is fetching",
+	);
+	assert.equal(
+		rig.disk.body.includes("Body B"),
+		true,
+		`the run's change survives (disk body: ${JSON.stringify(rig.disk.body)})`,
+	);
+	await teardown(view);
+});
+
+test("B1: a reference file a run added is never deleted by an Edit opened over the old file set", async () => {
+	const rig = diskWorld();
+	const view = await mount("/agents?kind=skill&name=d-local", rig.world);
+	assert.ok(await settle(() => editButton(view) !== null));
+	// The run adds a reference file; the list lands first, the detail later.
+	rig.disk.files = [
+		{
+			path: "references/a.md",
+			size: 3,
+			preview: "ref",
+			preview_truncated: false,
+		},
+	];
+	rig.disk.fp = "b".repeat(64);
+	rig.holdDetail();
+	assert.ok(await refetchSkills(view));
+	await settle(() => false, 150);
+	if (editButton(view)) await press(editButton(view));
+	rig.hold.release();
+	await settle(() => false, 300);
+	if (editForm(view)) {
+		const area = q(editForm(view), "textarea");
+		await typeArea(area, `${area.value} edited`);
+		await submit(editForm(view));
+		await settle(() => rig.writes.length > 0, 600);
+	}
+	assert.equal(rig.disk.files.length, 1, "references/a.md is still there");
+	assert.equal(
+		rig.writes.filter((w) => w.op === "skills.update").length,
+		0,
+		"no whole-file-set PUT was sent for a skill with reference files",
+	);
+	// And the settled pane now offers asking, not Edit.
+	assert.equal(editButton(view), null);
+	assert.equal(
+		q(view.container, '[data-testid="skill-detail"]').getAttribute(
+			"data-skill-editability",
+		),
+		"ask",
+	);
+	await teardown(view);
+});
+
+test("B1: the detail moving AFTER Edit opened refuses the save locally and keeps the draft", async () => {
+	const rig = diskWorld();
+	const view = await mount("/agents?kind=skill&name=d-local", rig.world);
+	assert.ok(await settle(() => editButton(view) !== null));
+	await press(editButton(view));
+	const area = q(editForm(view), "textarea");
+	await typeArea(area, "Body A edited");
+	rig.disk.files = [
+		{
+			path: "references/a.md",
+			size: 3,
+			preview: "ref",
+			preview_truncated: false,
+		},
+	];
+	rig.disk.fp = "b".repeat(64);
+	assert.ok(await refetchSkills(view));
+	await settle(() => false, 200);
+	await submit(editForm(view));
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-conflict"]') !== null,
+		),
+		"the conflict alert shows",
+	);
+	assert.equal(rig.writes.length, 0, "nothing was sent");
+	assert.equal(
+		q(editForm(view), "textarea").value,
+		"Body A edited",
+		"the draft is kept",
+	);
+	assert.equal(rig.disk.files.length, 1);
+	await teardown(view);
+});
+
+test("m3: Save sends skills.update with SKILL.md only; skill_stale keeps the draft", async () => {
+	const rig = diskWorld();
+	rig.world.refuse = (request) =>
+		request.op === "skills.update"
+			? {
+					status: 409,
+					body: { detail: { code: "skill_stale", message: "stale" } },
+				}
+			: undefined;
+	const view = await mount("/agents?kind=skill&name=d-local", rig.world);
+	assert.ok(await settle(() => editButton(view) !== null));
+	await press(editButton(view));
+	await typeArea(q(editForm(view), "textarea"), "Body A edited");
+	await submit(editForm(view));
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-conflict"]') !== null,
+		),
+	);
+	const [sent] = rig.writes;
+	assert.equal(rig.writes.length, 1);
+	assert.equal(sent.op, "skills.update");
+	assert.equal(sent.name, "d-local");
+	assert.equal(
+		sent.expectedFingerprint,
+		"a".repeat(64),
+		"CAS = the detail read's fingerprint at Edit",
+	);
+	assert.deepEqual(
+		sent.files.map((f) => f.path),
+		["SKILL.md"],
+	);
+	assert.equal(
+		sent.files[0].content,
+		"---\nname: d-local\ndescription: Old\n---\n\nBody A edited",
+	);
+	assert.equal(
+		q(editForm(view), "textarea").value,
+		"Body A edited",
+		"the draft is kept",
+	);
+	await teardown(view);
+});
+
+test("m3: a successful Save writes, closes the form and re-reads", async () => {
+	const rig = diskWorld();
+	const view = await mount("/agents?kind=skill&name=d-local", rig.world);
+	assert.ok(await settle(() => editButton(view) !== null));
+	const readsBefore = view.ops.filter((op) =>
+		op.startsWith("skills.list"),
+	).length;
+	await press(editButton(view));
+	await typeArea(q(editForm(view), "textarea"), "Body A edited");
+	await submit(editForm(view));
+	assert.ok(await settle(() => editForm(view) === null), "the form closed");
+	assert.equal(rig.disk.body, "Body A edited");
+	assert.ok(
+		await settle(
+			() =>
+				view.ops.filter((op) => op.startsWith("skills.list")).length >
+				readsBefore,
+		),
+		"the library is re-read",
+	);
+	await teardown(view);
+});
+
+test("m3: Copy to my skills sends skills.create with copy_from = the same name", async () => {
+	const rig = diskWorld({
+		name: "b-builtin",
+		source: "builtin",
+		editable: false,
+	});
+	const view = await mount("/agents?kind=skill&name=b-builtin", rig.world);
+	assert.ok(
+		await settle(
+			() => q(view.container, '[data-testid="skill-copy"]') !== null,
+		),
+	);
+	await press(q(view.container, '[data-testid="skill-copy"]'));
+	assert.ok(await settle(() => rig.writes.length === 1));
+	assert.equal(rig.writes[0].op, "skills.create");
+	assert.equal(rig.writes[0].name, "b-builtin");
+	assert.equal(rig.writes[0].copyFrom, "b-builtin");
+	await teardown(view);
+});
+
+test("m3: Remove asks, and only the SECOND dialog sends discard_local_changes", async () => {
+	const rig = diskWorld({ name: "h-hub", source: "hub" });
+	rig.world.refuse = (request) =>
+		request.op === "skills.remove" && !request.discardLocalChanges
+			? {
+					status: 409,
+					body: {
+						detail: {
+							code: "skill_local_changes_unpublished",
+							message: "unpublished",
+						},
+					},
+				}
+			: undefined;
+	const view = await mount("/agents?kind=skill&name=h-hub", rig.world);
+	try {
+		assert.ok(
+			await settle(
+				() => q(view.container, '[data-testid="skill-more"]') !== null,
+			),
+		);
+		const trigger = q(view.container, '[data-testid="skill-more"]');
+		// Focus + Enter opens a Radix menu in jsdom (the browser-page-menu-focus
+		// precedent); jsdom has no PointerEvent for the pointer path.
+		await act(async () => trigger.focus());
+		await act(async () => {
+			trigger.dispatchEvent(
+				new window.KeyboardEvent("keydown", { bubbles: true, key: "Enter" }),
+			);
+		});
+		assert.ok(
+			await settle(() => document.querySelector('[role="menuitem"]') !== null),
+			"the menu opened",
+		);
+		await press(document.querySelector('[role="menuitem"]'));
+		const confirm = () =>
+			document.querySelector('[data-testid="skill-remove-confirm"]');
+		assert.ok(await settle(() => confirm() !== null), "the first dialog asks");
+		assert.equal(rig.writes.length, 0, "nothing is sent before the confirm");
+		await press(confirm());
+		assert.ok(
+			await settle(() =>
+				/unpublished changes/.test(
+					text(document.querySelector('[role="dialog"]')),
+				),
+			),
+			"the second dialog names what would be lost",
+		);
+		assert.deepEqual(
+			rig.writes.map((w) => [w.op, w.discardLocalChanges]),
+			[["skills.remove", false]],
+		);
+		await press(confirm());
+		assert.ok(await settle(() => rig.writes.length === 2));
+		assert.deepEqual(
+			rig.writes.map((w) => [w.op, w.discardLocalChanges]),
+			[
+				["skills.remove", false],
+				["skills.remove", true],
+			],
+		);
+	} finally {
+		// A failed assert must not leave the page mounted: it holds the file open.
+		await teardown(view);
+	}
+});
+
+after(async () => {
+	for (const view of [...mounted]) await teardown(view);
 	window.close();
 	for (const [key, descriptor] of originals) {
 		if (descriptor) Object.defineProperty(globalThis, key, descriptor);

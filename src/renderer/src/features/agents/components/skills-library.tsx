@@ -618,8 +618,11 @@ export function SkillDetail({
 	const parts = body === null ? null : splitFrontMatter(body);
 
 	/* ---- inline edit: the agent pane's machine, for SKILL.md-only skills ---- */
+	// The draft seeds from the DETAIL read when it is there - the same read the
+	// body and the CAS fingerprint come from (B1) - and from the list row only
+	// before it lands (read mode).
 	const seed = (): SkillDraft => ({
-		description: card?.description ?? "",
+		description: (wire ? wire.description : card?.description) ?? "",
 		instructions: parts?.text ?? "",
 	});
 	const [editing, setEditing] = useState(false);
@@ -627,14 +630,24 @@ export function SkillDetail({
 	const [draft, setDraft] = useState<SkillDraft>(seed);
 	const [confirmDiscard, setConfirmDiscard] = useState(false);
 	const [conflict, setConflict] = useState(false);
-	/** The fingerprint this edit was opened against: the save's compare-and-set. */
-	const editBase = useRef<string | null>(null);
+	/*
+	 * WHAT THIS EDIT WAS OPENED AGAINST, ALL FROM ONE DETAIL READ (review r1 B1).
+	 * The compare-and-set fingerprint, the bytes the save rebuilds from and the
+	 * file set that made Edit eligible must describe the SAME version of the
+	 * skill. The list row and the detail read refetch independently (staleTime,
+	 * window focus, every run settle), so taking the fingerprint from the list
+	 * while the body came from the detail let a save carry a NEWER fingerprint
+	 * than the bytes it was built from: core's CAS accepted it, and a run's edit
+	 * was overwritten or a reference file deleted (the PUT replaces the whole file
+	 * set). Captured once at Edit, never refreshed while the form is open.
+	 */
+	const editBase = useRef<{ fingerprint: string; body: string } | null>(null);
 	const [failure, setFailure] = useState<string | null>(null);
 	const [removing, setRemoving] = useState<"ask" | "unpublished" | null>(null);
 	const dirty =
 		draft.description !== base.description ||
 		draft.instructions !== base.instructions;
-	const seedKey = `${card?.description ?? ""}\u0000${parts?.text ?? ""}`;
+	const seedKey = `${(wire ? wire.description : card?.description) ?? ""}\u0000${parts?.text ?? ""}`;
 	/*
 	 * A RE-SEED HAPPENS ONLY WHEN THE DRAFT IS CLEAN (the agent pane's rule): a run
 	 * that changed this skill must not swap text under a draft being typed. A
@@ -643,7 +656,9 @@ export function SkillDetail({
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `seedKey` is the content the seed reads; `seed` is a fresh closure every render.
 	useEffect(() => {
-		if (editing && dirty) return;
+		// While the form is open its base is the snapshot taken at Edit, never a
+		// later read: a refetch must not move the text under the CAS fingerprint.
+		if (editing) return;
 		const next = seed();
 		setBase(next);
 		setDraft(next);
@@ -700,7 +715,17 @@ export function SkillDetail({
 	const localPath = joined?.link?.local_path ?? null;
 	const known = Boolean(wire) && !detail.isLoading;
 	const editability = skillEditability(card, wire);
-	const canEdit = writesEnabled && editability.kind === "edit" && body !== null;
+	/*
+	 * ONLY WHILE THE DETAIL READ IS SETTLED (B1): during a refetch the detail on
+	 * screen may be about to change its file set or fingerprint, and Edit must
+	 * snapshot a read that is not already on its way out.
+	 */
+	const canEdit =
+		writesEnabled &&
+		editability.kind === "edit" &&
+		body !== null &&
+		Boolean(wire?.fingerprint) &&
+		!detail.isFetching;
 	const canAsk =
 		askEnabled &&
 		(editability.kind === "edit" || editability.kind === "ask") &&
@@ -720,18 +745,31 @@ export function SkillDetail({
 			: null;
 
 	const save = async () => {
-		if (writes.update.isPending || body === null) return;
+		const opened = editBase.current;
+		if (writes.update.isPending || opened === null) return;
 		if (!dirty) {
 			cancel();
 			return;
 		}
-		const fingerprint = editBase.current ?? card.fingerprint;
-		if (!fingerprint) return;
+		/*
+		 * REFUSED HERE WHEN THE DETAIL HAS MOVED SINCE EDIT (B1), the draft kept:
+		 * a newer fingerprint, or a skill that is no longer SKILL.md-only (a run
+		 * added a reference file), means the bytes this save rebuilds from are not
+		 * what is on disk, and the whole-file-set PUT would delete what was added.
+		 * Core's CAS is the second line, for a move this read has not seen yet.
+		 */
+		if (
+			wire?.fingerprint !== opened.fingerprint ||
+			skillEditability(card, wire).kind !== "edit"
+		) {
+			setConflict(true);
+			return;
+		}
 		setFailure(null);
 		try {
 			await writes.update.mutateAsync({
 				name: card.name,
-				expectedFingerprint: fingerprint,
+				expectedFingerprint: opened.fingerprint,
 				/*
 				 * The ORIGINAL file with only what changed: the description line when the
 				 * description moved (every other front-matter key byte for byte), and
@@ -739,7 +777,7 @@ export function SkillDetail({
 				 * own bytes, folded or quoted, rather than being re-serialised.
 				 */
 				skillMd: rebuildSkillMd(
-					body,
+					opened.body,
 					card.name,
 					draft.description === base.description ? null : draft.description,
 					draft.instructions,
@@ -861,11 +899,16 @@ export function SkillDetail({
 							linked={linked}
 							copying={writes.copy.isPending}
 							onEdit={() => {
+								// `canEdit` guarantees a settled detail with a body and a
+								// fingerprint; the snapshot and the seed are that one read.
+								if (body === null || !wire?.fingerprint) return;
+								editBase.current = { fingerprint: wire.fingerprint, body };
+								const opened = seed();
+								setBase(opened);
+								setDraft(opened);
 								setEditing(true);
 								setFailure(null);
 								setConflict(false);
-								// The CAS base is the fingerprint at Edit, held across refetches.
-								editBase.current = card.fingerprint;
 							}}
 							onAsk={() => onAsk?.(card.name)}
 							onCopy={() => void copy()}
