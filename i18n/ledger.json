@@ -3885,8 +3885,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.hub",
-			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
-			"target_sha256": "cd6afd28a967652b3bcfbcd3ad74b9bddd7315f205db99a0d89df1b88f3152c4",
+			"source_sha256": "6d1675960e3fc9246da8ac4e85bbd850ae498de1679c62bb3a3541ac320f57f0",
+			"target_sha256": "650678afb78aed5f15cb0823457c078e441f121a181254c0f2f7b28c1cb23a7e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3895,20 +3895,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "5f812edd42ff",
+					"instance": "a26b945b2ee1-hub-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5f812edd42ff.json",
-					"receipt_sha256": "3a1ffb990fd1248720619159192dbfea2e6e04b5446bc1116fae5cdd86d7f2d6",
-					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
-					"note": "code-review remediation adds one key: the inventory-unknown sentence"
+					"receipt": "i18n/receipts/a26b945b2ee1-hub-es.json",
+					"receipt_sha256": "3bf8d2c329b4e03a2da25f05ee9d7eccb38c1f08e63edfe9182bf3a6a140b818",
+					"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -4026,6 +4025,30 @@
 							"receipt_sha256": "429e91c2a914db5e06c520950d9a870a6dae0964a1398d540948e18ce9266061",
 							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
 							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+					"target_sha256": "cd6afd28a967652b3bcfbcd3ad74b9bddd7315f205db99a0d89df1b88f3152c4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "5f812edd42ff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5f812edd42ff.json",
+							"receipt_sha256": "3a1ffb990fd1248720619159192dbfea2e6e04b5446bc1116fae5cdd86d7f2d6",
+							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+							"note": "code-review remediation adds one key: the inventory-unknown sentence"
 						}
 					],
 					"status": "audited"
@@ -10272,8 +10295,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.hub",
-			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
-			"target_sha256": "3b4468571ff86d11cb6b89fd500b16fe10a5a6bf16edf52209099f32d6911f25",
+			"source_sha256": "6d1675960e3fc9246da8ac4e85bbd850ae498de1679c62bb3a3541ac320f57f0",
+			"target_sha256": "9bd71302f6db4b9a37afc17d09cf28fcb0c3c48a23b0e92ef1167aa920c63087",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -10283,20 +10306,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "be259bf73124",
+					"instance": "a26b945b2ee1-hub-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/be259bf73124.json",
-					"receipt_sha256": "234956077766ed3003b05d76eadbbf65345ec631c9d5009a361914488505aa4c",
-					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
-					"note": "code-review remediation adds one key: the inventory-unknown sentence"
+					"receipt": "i18n/receipts/a26b945b2ee1-hub-fr.json",
+					"receipt_sha256": "1a0fc72a68a72a30c5c21bf331d5b0486dcb23aed8aaf0d27ef82eba17cd15e6",
+					"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"superseded": [
@@ -10437,6 +10459,30 @@
 							"receipt_sha256": "81c741e18befd0caf26cdf8dcad56b31f7c3568c6cb4ccd4242a1098d06eb3d1",
 							"scope": "19 ui.hub.skills keys at this target hash (round 8)",
 							"note": "19 ui.hub.skills keys authored for the Skills surface; round-8 audit of this target hash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+					"target_sha256": "3b4468571ff86d11cb6b89fd500b16fe10a5a6bf16edf52209099f32d6911f25",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "be259bf73124",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/be259bf73124.json",
+							"receipt_sha256": "234956077766ed3003b05d76eadbbf65345ec631c9d5009a361914488505aa4c",
+							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+							"note": "code-review remediation adds one key: the inventory-unknown sentence"
 						}
 					],
 					"status": "audited"
@@ -17013,8 +17059,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.hub",
-			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
-			"target_sha256": "aa61b5934cb462d7352f73482aebce308bd8be96f9ebb88f2617f29be24814de",
+			"source_sha256": "6d1675960e3fc9246da8ac4e85bbd850ae498de1679c62bb3a3541ac320f57f0",
+			"target_sha256": "41efd8609b9d0f7af52e05d1a53617cbb875fcb95194b3479f08fbfc1baa4288",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -17023,20 +17069,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "d8ab81def06b",
+					"instance": "a26b945b2ee1-hub-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d8ab81def06b.json",
-					"receipt_sha256": "d96d3513f36abae7371970fae4cf1a418f5b33c9dca537d00187231ff00e2d32",
-					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
-					"note": "code-review remediation adds one key: the inventory-unknown sentence"
+					"receipt": "i18n/receipts/a26b945b2ee1-hub-hi.json",
+					"receipt_sha256": "de1490e27a1b9f5c38a29470b86c7b31101a7b356f62d72297b42dd08e03dfb9",
+					"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -17155,6 +17200,30 @@
 							"receipt_sha256": "14e0910d87962e1dbad8a8656d4eb71f4c41c50d3893da0c8ca856ae27245579",
 							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
 							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+					"target_sha256": "aa61b5934cb462d7352f73482aebce308bd8be96f9ebb88f2617f29be24814de",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "d8ab81def06b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d8ab81def06b.json",
+							"receipt_sha256": "d96d3513f36abae7371970fae4cf1a418f5b33c9dca537d00187231ff00e2d32",
+							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+							"note": "code-review remediation adds one key: the inventory-unknown sentence"
 						}
 					],
 					"status": "audited"
@@ -23437,8 +23506,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.hub",
-			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
-			"target_sha256": "49160a7e7266158ebe263af30b817fb25d96b492b5d840013a2617be0ee7ba20",
+			"source_sha256": "6d1675960e3fc9246da8ac4e85bbd850ae498de1679c62bb3a3541ac320f57f0",
+			"target_sha256": "6bf884ebd77b5095ee75a84b7385d2fb5b58b9560e1ef2b43311623db02fb764",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -23447,20 +23516,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "cb327f018b5b",
+					"instance": "a26b945b2ee1-hub-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cb327f018b5b.json",
-					"receipt_sha256": "fd3fa95bf63d39686e5e0c3656183183f0ffc11c00d20ab0a49cf4d65d75d94f",
-					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
-					"note": "code-review remediation adds one key: the inventory-unknown sentence"
+					"receipt": "i18n/receipts/a26b945b2ee1-hub-ru.json",
+					"receipt_sha256": "e8b265dc5b807f03d10bf95ea90f36c45f3d151887b75ac3fef11cca2c1c9c5e",
+					"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -23578,6 +23646,30 @@
 							"receipt_sha256": "c25b85d274373a9b0c821d672c283530c47b13a6a4cef1ecb42ed85802a44e11",
 							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
 							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+					"target_sha256": "49160a7e7266158ebe263af30b817fb25d96b492b5d840013a2617be0ee7ba20",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "cb327f018b5b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cb327f018b5b.json",
+							"receipt_sha256": "fd3fa95bf63d39686e5e0c3656183183f0ffc11c00d20ab0a49cf4d65d75d94f",
+							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+							"note": "code-review remediation adds one key: the inventory-unknown sentence"
 						}
 					],
 					"status": "audited"
@@ -29827,8 +29919,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.hub",
-			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
-			"target_sha256": "45ff89868535a9caee5000136af22f3fc2ed269b138edc556a10b9dbd76d6eb0",
+			"source_sha256": "6d1675960e3fc9246da8ac4e85bbd850ae498de1679c62bb3a3541ac320f57f0",
+			"target_sha256": "65170559968e12cf604afcc3713c52921021c493582252e58e8ddb1676341eae",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -29837,20 +29929,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "b0117933f937",
+					"instance": "a26b945b2ee1-hub-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b0117933f937.json",
-					"receipt_sha256": "f5fd75ae6d7e1e6c58f40420e0279ccb87f64dad174dfb300d8d07eafe115ffa",
-					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
-					"note": "code-review remediation adds one key: the inventory-unknown sentence"
+					"receipt": "i18n/receipts/a26b945b2ee1-hub-ur.json",
+					"receipt_sha256": "3adb66d4273ee0b6a72de7299fa3f3cdc089fe1fd7c02c294959dba81f1f2b0b",
+					"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -29993,6 +30084,30 @@
 							"receipt_sha256": "b315d8a1fca768b19ec1fa69f679f0e7b0cf993ee602c801027f5e91d9f499b3",
 							"scope": "19 ui.hub.skills keys at this target hash (round 8)",
 							"note": "19 ui.hub.skills keys authored for the Skills surface; round-8 audit of this target hash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+					"target_sha256": "45ff89868535a9caee5000136af22f3fc2ed269b138edc556a10b9dbd76d6eb0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "b0117933f937",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b0117933f937.json",
+							"receipt_sha256": "f5fd75ae6d7e1e6c58f40420e0279ccb87f64dad174dfb300d8d07eafe115ffa",
+							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+							"note": "code-review remediation adds one key: the inventory-unknown sentence"
 						}
 					],
 					"status": "audited"
@@ -36197,8 +36312,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.hub",
-			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
-			"target_sha256": "c26ede863ce664b9afaf4b1b7f04126df9fe52106bd67e89b527e2a166fe92b9",
+			"source_sha256": "6d1675960e3fc9246da8ac4e85bbd850ae498de1679c62bb3a3541ac320f57f0",
+			"target_sha256": "5c1ee869b48224857c985742847914f965c022c77094aebee4c53b1d8117eb71",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -36207,20 +36322,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
-					"result": "clean",
-					"instance": "372335612650",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "a26b945b2ee1-hub-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/372335612650.json",
-					"receipt_sha256": "094d90db0e6535b66b38bc6996e6f85dfff685226dcfd6d7ffb7a46a5bc006e2",
-					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
-					"note": "code-review remediation adds one key: the inventory-unknown sentence"
+					"receipt": "i18n/receipts/a26b945b2ee1-hub-vi.json",
+					"receipt_sha256": "b4ef70b192355e4619642bb7789b183f96d1bfe8654c44b9278e2e3ac6336da2",
+					"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -36339,6 +36453,30 @@
 							"receipt_sha256": "ce7cd4b1ec24006007a2b362e91ab40c6b99dfe1b50179b7e0898cb7416334cd",
 							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
 							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+					"target_sha256": "c26ede863ce664b9afaf4b1b7f04126df9fe52106bd67e89b527e2a166fe92b9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "372335612650",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/372335612650.json",
+							"receipt_sha256": "094d90db0e6535b66b38bc6996e6f85dfff685226dcfd6d7ffb7a46a5bc006e2",
+							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+							"note": "code-review remediation adds one key: the inventory-unknown sentence"
 						}
 					],
 					"status": "audited"
@@ -43135,8 +43273,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.hub",
-			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
-			"target_sha256": "9c5ca40b0112d0fa6110fcae39abe7ec967a59b177d38150d8b9bf698334f216",
+			"source_sha256": "6d1675960e3fc9246da8ac4e85bbd850ae498de1679c62bb3a3541ac320f57f0",
+			"target_sha256": "988e5362767892cd97b6d0c2d43d5408254c0e84d9d5be2ea80f26a7b1020ccc",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -43146,20 +43284,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "c535013a12e4",
+					"instance": "a26b945b2ee1-hub-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c535013a12e4.json",
-					"receipt_sha256": "6455af2fbee0a614b81a316f917a9e838031b745663e505678e0db98dba734cd",
-					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
-					"note": "code-review remediation adds one key: the inventory-unknown sentence"
+					"receipt": "i18n/receipts/a26b945b2ee1-hub-zh-cn.json",
+					"receipt_sha256": "fdf12298f5b82eed5972e46d02241cf289a797825fa2743100a78aca134d6eb1",
+					"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 				}
 			],
 			"status": "audited",
@@ -43302,6 +43439,30 @@
 							"receipt_sha256": "7641c24301da24a85c5c3da247b81c31f686c5724eac20a6617df666b731d7a3",
 							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
 							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+					"target_sha256": "9c5ca40b0112d0fa6110fcae39abe7ec967a59b177d38150d8b9bf698334f216",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "c535013a12e4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c535013a12e4.json",
+							"receipt_sha256": "6455af2fbee0a614b81a316f917a9e838031b745663e505678e0db98dba734cd",
+							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+							"note": "code-review remediation adds one key: the inventory-unknown sentence"
 						}
 					],
 					"status": "audited"
