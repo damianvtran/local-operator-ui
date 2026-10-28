@@ -24,6 +24,7 @@ import {
 	MailPlus,
 	Pencil,
 	Plus,
+	UserPlus,
 	Users,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
@@ -66,6 +67,7 @@ import {
 	isAttachmentNotFound,
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
+import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
@@ -78,6 +80,7 @@ import {
 	railInvitationsEntryShown,
 } from "./team-bridge-invitations-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
+import { canAdministerMembers } from "./team-bridge-members-model";
 import {
 	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -156,6 +159,7 @@ import {
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
+	useAddTeamBridgeMembers,
 	useArchiveTeamBridgeConversation,
 	useArchivedTeamBridgeConversations,
 	useCreateTeamBridgeConversation,
@@ -171,6 +175,7 @@ import {
 	useTeamBridgeMessages,
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
+	useRemoveTeamBridgeMember,
 	useUnarchiveTeamBridgeConversation,
 } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
@@ -474,6 +479,18 @@ export type TeamBridgePageViewProps = {
 	notifyFailed?: boolean;
 	onJoin?: () => void;
 	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/** Membership writes, passed the selected conversation at the point of use. */
+	onAddMembers?: (
+		conversation: TeamBridgeConversation,
+		members: Parameters<typeof TeamBridgeApi.addMembers>[0]["members"],
+	) => Promise<unknown>;
+	onRemoveMember?: (
+		conversation: TeamBridgeConversation,
+		accountId: string,
+	) => Promise<unknown>;
+	memberMutationKey?: string | null;
+	/** Story/test seed only: opens membership administration on mount. */
+	initialMembersOpen?: boolean;
 	/**
 	 * ARCHIVE / PERMANENT DELETE. Each is optional so a mount that does not wire
 	 * them (a story, an older container) simply draws none of the controls.
@@ -607,6 +624,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	notifyFailed = false,
 	onJoin,
 	onNotifyChange,
+	onAddMembers,
+	onRemoveMember,
+	memberMutationKey = null,
+	initialMembersOpen = false,
 	onArchive,
 	onUnarchive,
 	onDelete,
@@ -657,6 +678,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		kind: "archive" | "delete";
 		conversationId: string;
 	} | null>(initialDialog ?? null);
+	const [membersOpen, setMembersOpen] = useState(initialMembersOpen);
+	const [memberActionFailed, setMemberActionFailed] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
 		null,
@@ -1935,10 +1958,33 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									</span>
 								)}
 								<div className="ms-auto flex items-center gap-1">
+									{shown && !previewSelected && !readOnly && canAdministerMembers(shown) && (
+										<Button
+											type="button"
+											size="icon-sm"
+											variant="ghost"
+											aria-label={t("ui.teamBridge.members.menu")}
+											title={t("ui.teamBridge.members.menu")}
+											onClick={() => {
+												setMemberActionFailed(false);
+												setMembersOpen(true);
+											}}
+										>
+											<UserPlus size={16} aria-hidden="true" />
+										</Button>
+									)}
 									{shown && !previewSelected && !readOnly && onNotifyChange && (
 										<TeamBridgeConversationMenu
 											conversation={shown}
 											onNotifyChange={onNotifyChange}
+											onAddMembers={
+												canAdministerMembers(shown)
+													? () => {
+															setMemberActionFailed(false);
+															setMembersOpen(true);
+														}
+													: undefined
+											}
 											onArchive={
 												onArchive && canArchiveConversation(shown)
 													? () =>
@@ -2518,6 +2564,38 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					/>
 				);
 			})()}
+			{shown && (
+				<TeamBridgeAddMembersView
+					open={membersOpen}
+					conversation={shown}
+					people={shown ? rosterFor(shown.tenant_id) : []}
+					selfAccountId={selfAccountId}
+					peopleState={mergedView ? "ready" : peopleState}
+					canAdminister={!readOnly && canAdministerMembers(shown)}
+					mutationError={memberActionFailed}
+					pendingKey={memberMutationKey}
+					onClose={() => {
+						if (memberMutationKey) return;
+						setMembersOpen(false);
+						setMemberActionFailed(false);
+					}}
+					onRetryPeople={onRetryPeople}
+					onAdd={(members) => {
+						if (!onAddMembers || readOnly || !canAdministerMembers(shown)) return;
+						setMemberActionFailed(false);
+						void onAddMembers(shown, members).catch(() => {
+							setMemberActionFailed(true);
+						});
+					}}
+					onRemove={(accountId) => {
+						if (!onRemoveMember || readOnly || !canAdministerMembers(shown)) return;
+						setMemberActionFailed(false);
+						void onRemoveMember(shown, accountId).catch(() => {
+							setMemberActionFailed(true);
+						});
+					}}
+				/>
+			)}
 		</div>
 	);
 };
@@ -2831,6 +2909,8 @@ const TeamBridgeOwnedPage: FC<{
 		selected?.id ?? "",
 		selected?.tenant_id,
 	);
+	const addMembers = useAddTeamBridgeMembers();
+	const removeMember = useRemoveTeamBridgeMember();
 	const create = useCreateTeamBridgeConversation(
 		mergedView ? undefined : scope,
 		isCurrentOwner,
@@ -3216,6 +3296,33 @@ const TeamBridgeOwnedPage: FC<{
 						notify: next,
 					});
 				}}
+				onAddMembers={(conversation, members) => {
+					if (!isCurrentOwner() || !canAdministerMembers(conversation))
+						return Promise.reject(new Error("Team Bridge write authority changed"));
+					return addMembers.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						members,
+						key: "add",
+					});
+				}}
+				onRemoveMember={(conversation, memberAccountId) => {
+					if (!isCurrentOwner() || !canAdministerMembers(conversation))
+						return Promise.reject(new Error("Team Bridge write authority changed"));
+					return removeMember.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						accountId: memberAccountId,
+						key: `remove:${memberAccountId}`,
+					});
+				}}
+				memberMutationKey={
+					addMembers.isPending
+						? "add"
+						: removeMember.isPending
+							? (removeMember.variables?.key ?? "remove")
+							: null
+				}
 				onTarget={(next) => {
 					setThreadLink(null);
 					setChannelFormOpen(false);

@@ -45,6 +45,7 @@ import type {
 	TeamBridgeConversationList,
 	TeamBridgeDirectory,
 	TeamBridgeDirectoryMember,
+	TeamBridgeMemberInput,
 	TeamBridgeMessagePage,
 	TeamBridgeNotify,
 	TeamBridgeReadState,
@@ -791,6 +792,111 @@ export function useMarkTeamBridgeRead(
 		tenantId,
 	}));
 }
+export type TeamBridgeMemberMutationVariables = {
+	conversationId: string;
+	tenantId: string;
+	key: string;
+};
+
+export type TeamBridgeAddMembersVariables = TeamBridgeMemberMutationVariables & {
+	members: TeamBridgeMemberInput[];
+};
+
+export type TeamBridgeRemoveMemberVariables = TeamBridgeMemberMutationVariables & {
+	accountId: string;
+};
+
+/**
+ * Invite without optimistic activation. The response's member states replace
+ * every cached copy of the conversation; a later refetch reconciles any other
+ * members' changes. An invited agent never becomes active in this write path.
+ */
+export function useAddTeamBridgeMembers(): UseMutationResult<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeAddMembersVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		TeamBridgeConversation,
+		Error,
+		CapturedBridgeMutation<TeamBridgeAddMembersVariables, BridgeWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			return TeamBridgeApi.addMembers({
+				conversationId: input.conversationId,
+				tenantId: input.tenantId,
+				expectedAccountId: target.accountId,
+				members: input.members,
+			});
+		},
+		onSuccess: async (updated, { target }) => {
+			if (!target.isCurrent()) return;
+			replaceCachedConversation(client, target.accountId, updated);
+			await client.invalidateQueries({ queryKey: teamBridgeKeys.conversationsPrefix });
+		},
+	});
+	return bindBridgeMutation(mutation, () => ({ ...owner, conversationId: "", tenantId: undefined }));
+}
+
+/** Remove only the named member; no optimistic departure is fabricated. */
+export function useRemoveTeamBridgeMember(): UseMutationResult<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeRemoveMemberVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		TeamBridgeConversation,
+		Error,
+		CapturedBridgeMutation<TeamBridgeRemoveMemberVariables, BridgeWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			return TeamBridgeApi.removeMember({
+				conversationId: input.conversationId,
+				tenantId: input.tenantId,
+				expectedAccountId: target.accountId,
+				accountId: input.accountId,
+			});
+		},
+		onSuccess: async (updated, { target }) => {
+			if (!target.isCurrent()) return;
+			replaceCachedConversation(client, target.accountId, updated);
+			await client.invalidateQueries({ queryKey: teamBridgeKeys.conversationsPrefix });
+		},
+	});
+	return bindBridgeMutation(mutation, () => ({ ...owner, conversationId: "", tenantId: undefined }));
+}
+
+/** Keep live and merged lists in the same membership state after a write. */
+function replaceCachedConversation(
+	client: QueryClient,
+	accountId: string | undefined,
+	updated: TeamBridgeConversation,
+): void {
+	const owned = {
+		queryKey: teamBridgeKeys.conversationsPrefix,
+		predicate: (query: { queryKey: QueryKey }) =>
+			query.queryKey.at(-1) === accountId && query.queryKey.at(-2) === "account",
+	};
+	client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+		page === undefined
+			? page
+			: {
+					...page,
+					conversations: page.conversations.map((conversation) =>
+						conversation.id === updated.id && conversation.tenant_id === updated.tenant_id
+							? updated
+							: conversation,
+					),
+				},
+	);
+}
+
 export function useCreateTeamBridgeConversation(
 	tenantId?: string,
 	isCurrent: () => boolean = () => true,
