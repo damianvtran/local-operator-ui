@@ -619,6 +619,10 @@ test("tenant navigation keeps the original scoped send and renders nothing under
 		sendSynchronously(app.host);
 		assert.ok(pendingRow(app.host));
 
+		/* A TENANT SWITCH IS A REMOUNT, not a re-read of one page's search
+		 * string: the route leaves and comes back with the other organization,
+		 * exactly as the rail's scope switcher and a notification link do. */
+		await app.navigate("/inbox");
 		app.fixture.tenant = "org_other";
 		await app.navigate("/team-bridge?tenant=org_other");
 		await until(
@@ -643,6 +647,7 @@ test("tenant navigation keeps the original scoped send and renders nothing under
 		);
 		assert.equal(app.host.textContent.includes(body), false);
 
+		await app.navigate("/inbox");
 		app.fixture.tenant = "org_shared";
 		await app.navigate("/team-bridge?tenant=org_shared&conversation=bcv_shared");
 		await until(
