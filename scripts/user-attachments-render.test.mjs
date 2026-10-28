@@ -160,6 +160,8 @@ after(() => dom.window.close());
 
 const RETAINED = /Moved or deleted · saved copy kept/;
 const SAVED_COPY = /Saved copy/;
+const MOVED_NAME = /Moved Contract\.pdf/;
+const WHITESPACE = /\s+/;
 const ARTIFACT_PATH = /^artifact:/;
 const ENV_BODY = /DEBUG=1/;
 const REFUSED_HINT = /Looks like a secret, so file actions are off/;
@@ -993,4 +995,96 @@ test("U11: Retry shows the loading line while in flight, and the error again if 
 	assert.ok(container.textContent.includes("Couldn't load attachments"));
 	await act(async () => root.unmount());
 	container.remove();
+});
+
+/*
+ * Design R2 D8/D9, in the rendered DOM. jsdom does no layout, so these pin the
+ * CONTRACT the real-app geometry follows: the tile's thumbnail box gives back
+ * the second caption line the band added (D8), and a moved row's status note
+ * is the element that shrinks, capped, with the full sentence in the tooltip
+ * (D9). The real-browser frames at 400/440/560 are the measurement.
+ */
+test("D8: an attachment tile's thumbnail gives back the second caption line", async () => {
+	const pictures = Array.from({ length: 6 }, (_, at) => ({
+		...movedPicture,
+		message_id: `m-${at}`,
+		attachment: `${SHOT.slice(0, -2)}${String(at).padStart(2, "0")}`,
+	}));
+	const view = api.mergeUserAttachments(
+		{ state: "ready", items: pictures },
+		[],
+	);
+	const { container, unmount } = await mount(viewer(attachmentsState(view)));
+	const tiles = [
+		...container.querySelectorAll(`[data-file-id^="attachment:"]`),
+	];
+	assert.ok(tiles.length >= 4, `tiles rendered (${tiles.length})`);
+	for (const tile of tiles) {
+		const band = Number.parseFloat(tile.closest("li").style.height);
+		const button = tile.querySelector(":scope > button");
+		const thumb = button.querySelector(":scope > span");
+		const thumbHeight = Number.parseFloat(thumb.style.height);
+		// band = thumbnail + one-line caption budget (32) + the second line (18).
+		assert.equal(
+			band - thumbHeight,
+			50,
+			`band ${band}, thumbnail ${thumbHeight}`,
+		);
+	}
+	// Two rows of tiles are stacked at exactly the band height.
+	const tops = [
+		...new Set(tiles.map((tile) => tile.closest("li").style.top)),
+	].map(Number.parseFloat);
+	assert.ok(tops.length >= 2, "two tile rows");
+	assert.equal(
+		tops[1] - tops[0],
+		Number.parseFloat(tiles[0].closest("li").style.height),
+	);
+	await unmount();
+});
+
+test("D9: a moved row's status note shrinks (capped), the name keeps its space, the tooltip has it all", async () => {
+	const moved = {
+		...sensitive({ materialisable: true }),
+		filename: "Moved Contract.pdf",
+		mime_type: "application/pdf",
+		path: "/Users/x/Downloads/Moved Contract.pdf",
+		exists: false,
+	};
+	const view = api.mergeUserAttachments({ state: "ready", items: [moved] }, []);
+	const { container, unmount } = await mount(viewer(attachmentsState(view)));
+	const row = container.querySelector(`[data-file-id^="attachment:"]`);
+	const button = row.querySelector("button[title]");
+	const line = button.querySelector(":scope > span:nth-of-type(2) > span");
+	const [name, note] = line.children;
+	assert.match(name.textContent, MOVED_NAME);
+	assert.match(note.textContent, RETAINED);
+	const noteClasses = note.className.split(WHITESPACE);
+	for (const required of ["min-w-0", "shrink", "truncate", "max-w-[50%]"])
+		assert.ok(
+			noteClasses.includes(required),
+			`note has ${required}: ${note.className}`,
+		);
+	assert.ok(
+		!noteClasses.includes("shrink-0"),
+		"the note no longer refuses to shrink",
+	);
+	assert.ok(name.className.includes("flex-1"), "the name takes the rest");
+	assert.match(
+		button.getAttribute("title"),
+		RETAINED,
+		"full sentence in the tooltip",
+	);
+	// Control: a present row keeps its fixed size/date run (it never squeezes).
+	const present = api.mergeUserAttachments(
+		{ state: "ready", items: [{ ...moved, exists: true }] },
+		[],
+	);
+	const second = await mount(viewer(attachmentsState(present)));
+	const presentNote = second.container
+		.querySelector(`[data-file-id^="attachment:"] button[title]`)
+		.querySelector(":scope > span:nth-of-type(2) > span").children[1];
+	assert.ok(presentNote.className.split(WHITESPACE).includes("shrink-0"));
+	await second.unmount();
+	await unmount();
 });
