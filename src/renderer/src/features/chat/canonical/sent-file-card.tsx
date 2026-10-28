@@ -172,6 +172,11 @@ export const SentFileCard: FC<{
 	 * - not Open file / Open folder / Copy file path from the menu, nor the
 	 * inline copy controls - because acting on the origin is the same reach the
 	 * copy was refused for. The caller also withholds `sessionId`.
+	 *
+	 * It keeps the same reserved space as a `withheld` card (QA R7 Q6, design's
+	 * call on review R7-4): every send is pending before it is judged, so a
+	 * refusal that dropped the reserve moved the bubble ~50 px sideways when
+	 * the verdict landed. Pending and refused share one geometry.
 	 */
 	refused?: boolean;
 	/**
@@ -309,15 +314,18 @@ export const SentFileCard: FC<{
 		placementKnown &&
 		Boolean(actionPath) &&
 		!(savedCopyOnly && !storedGone);
-	// Neither refused nor allowed yet: hold the actions' space (see `withheld`).
+	/*
+	 * No actions, yet: withheld (not judged) or refused. Both hold the actions'
+	 * space (see `withheld` and `refused`), so no verdict moves the card.
+	 */
 	const gated = refused || withheld;
 	return (
 		<div
 			className={cn(
 				"group relative flex max-w-[32rem] items-start gap-2.5 py-1",
-				// Withheld: the space the actions will take once judged (no shift).
+				// Gated: the space the actions take on an allowed card (no shift).
 				(showActions ||
-					(withheld && !remote && placementKnown && Boolean(actionPath))) &&
+					(gated && !remote && placementKnown && Boolean(actionPath))) &&
 					"pe-7",
 			)}
 			data-document-id={document.id}
@@ -377,7 +385,7 @@ export const SentFileCard: FC<{
 								onCopy={copyPath}
 							/>
 						)}
-						{!missing && withheld && copyTarget && <CopyControlSpace />}
+						{!missing && gated && copyTarget && <CopyControlSpace />}
 					</span>
 				)}
 				{missing && (
@@ -444,7 +452,7 @@ export const SentFileCard: FC<{
 								onCopy={copyPath}
 							/>
 						)}
-						{withheld && <CopyControlSpace />}
+						{gated && <CopyControlSpace />}
 					</span>
 				)}
 			</div>

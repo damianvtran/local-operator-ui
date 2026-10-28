@@ -390,8 +390,13 @@ export type AttachmentRefusals = {
 	paths: ReadonlySet<string>;
 	/** The view's `AttachmentVerdicts`: what an UNJUDGED block gets. */
 	verdicts: AttachmentVerdicts;
-	/** `${messageId}:${kind}` the inventory judged at least one row of (Q3b). */
-	judged: ReadonlySet<string>;
+	/**
+	 * `${messageId}:${kind}` -> how many rows of it the inventory judged (Q3b).
+	 * A COUNT, not membership (review R7-1): a listing cut at its item cap
+	 * mid-message, or one that skipped a malformed block, judged only part of
+	 * the slot, and "judged one row" must not allow the rows it never saw.
+	 */
+	judged: ReadonlyMap<string, number>;
 };
 
 /** One stable "nothing refused", so a memoised row's prop compares equal. */
@@ -400,7 +405,7 @@ export const NO_REFUSALS: AttachmentRefusals = {
 	slots: new Map(),
 	paths: new Set(),
 	verdicts: "none",
-	judged: new Set(),
+	judged: new Map(),
 };
 
 /** One stable "nothing judged yet": every block is withheld (Q3). */
@@ -414,7 +419,7 @@ export function attachmentRefusals(
 	if (verdicts === "pending") return ALL_PENDING;
 	const digests = new Set<string>();
 	const paths = new Set<string>();
-	const judged = new Set<string>();
+	const judged = new Map<string, number>();
 	const rows = new Map<string, { index: number; refused: boolean }[]>();
 	for (const item of view.items) {
 		// Only rows the inventory itself judged: a loaded row (no `index`, even
@@ -422,11 +427,11 @@ export function attachmentRefusals(
 		// its own to place, and must not shift the positions.
 		if (typeof item.materialisable !== "boolean" || item.index === undefined)
 			continue;
-		judged.add(`${item.messageId}:${item.kind}`);
+		const slot = `${item.messageId}:${item.kind}`;
+		judged.set(slot, (judged.get(slot) ?? 0) + 1);
 		const refused = item.materialisable === false;
 		if (refused && item.digest) digests.add(item.digest);
 		if (refused && item.path) paths.add(item.path);
-		const slot = `${item.messageId}:${item.kind}`;
 		const list = rows.get(slot) ?? [];
 		list.push({ index: item.index, refused });
 		rows.set(slot, list);
@@ -482,9 +487,19 @@ export function refusalVerdict(
 		if (slot.length !== block.count) return false;
 		if (slot[block.position]) return false;
 	}
-	// Q3b: a send made after the listing was read is unjudged until the
-	// re-read lands, which judges its slot and clears this.
-	if (refusals.verdicts === "ready" && !refusals.judged.has(key))
+	/*
+	 * Q3b: a send made after the listing was read is unjudged until the
+	 * re-read lands, which judges its slot and clears this. R7-1: so is a slot
+	 * the listing judged only PART of (cut at its cap, a skipped block) - which
+	 * of the record's blocks went unseen cannot be told from a count, so the
+	 * whole slot waits rather than guessing the unseen one is the allowed one.
+	 * A slot entirely past the listing's cap is never judged by any re-read,
+	 * so it stays pending for good: fail-closed, and accepted as such.
+	 */
+	if (
+		refusals.verdicts === "ready" &&
+		(refusals.judged.get(key) ?? 0) < block.count
+	)
 		return "pending";
 	return null;
 }

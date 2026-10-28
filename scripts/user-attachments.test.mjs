@@ -717,3 +717,126 @@ test("Q5: a refused row with no saved copy says why it is inert, not that it mov
 	// Control: the original really is missing - the gone sentence is true.
 	assert.equal(note({ exists: false }), "Moved or deleted · no saved copy");
 });
+
+/*
+ * PR #1452 round 7 (review R7-1): "judged" is a count per message + kind, not
+ * membership. A listing cut at its item cap mid-message (or one that skipped
+ * a malformed block) judged only part of a slot, and the unjudged block -
+ * here `id_rsa` at position 1 - must stay pending, never fall to allowed.
+ */
+test("R7-1: a listing cut mid-message keeps the unjudged blocks pending", () => {
+	const digest = (index) => `${index}`.repeat(32);
+	const doc = (index, filename, path) => ({
+		id: `u7:doc:${index}`,
+		attachment: digest(index),
+		filename,
+		mimeType: "text/plain",
+		path,
+		storedPath: null,
+		bytes: 200,
+	});
+	const record = userRecord("u7", 1793117300000, {
+		documents: [
+			doc(0, "notes.txt", "/Users/x/notes.txt"),
+			doc(1, "id_rsa", "/Users/x/.ssh/id_rsa"),
+		],
+	});
+	const wire = (index, filename, path) => ({
+		...pdfWire,
+		message_id: "u7",
+		index,
+		attachment: digest(index),
+		filename,
+		path,
+		materialisable: true,
+	});
+	const block = (position, path) => ({
+		messageId: "u7",
+		kind: "document",
+		position,
+		count: 2,
+		digest: digest(position),
+		path,
+	});
+	// The cap fell after position 0: only `notes.txt` was judged.
+	const cut = mergeUserAttachments(
+		{
+			state: "ready",
+			truncated: true,
+			items: [wire(0, "notes.txt", "/Users/x/notes.txt")],
+		},
+		[record],
+		true,
+	);
+	const refusals = api.attachmentRefusals(cut);
+	assert.equal(
+		api.refusalVerdict(refusals, block(1, "/Users/x/.ssh/id_rsa")),
+		"pending",
+		"the unjudged id_rsa is withheld",
+	);
+	assert.equal(
+		api.refusalVerdict(refusals, block(0, "/Users/x/notes.txt")),
+		"pending",
+		"which block went unseen cannot be told from a count: the slot waits",
+	);
+	const canvasRow = cut.items.find((item) => item.filename === "id_rsa");
+	assert.equal(canvasRow.materialisable, "pending");
+	// Control: the full listing judges both, and an allowed slot clears.
+	const whole = api.attachmentRefusals(
+		mergeUserAttachments(
+			{
+				state: "ready",
+				items: [
+					wire(0, "notes.txt", "/Users/x/notes.txt"),
+					wire(1, "id_rsa", "/Users/x/.ssh/id_rsa"),
+				],
+			},
+			[record],
+			true,
+		),
+	);
+	assert.equal(
+		api.refusalVerdict(whole, block(1, "/Users/x/.ssh/id_rsa")),
+		null,
+	);
+});
+
+test("R7-2: a refused row's tooltip states the refusal once", () => {
+	const refused = {
+		...pdfWire,
+		filename: "server.pem",
+		path: "/Users/x/proj/server.pem",
+		exists: true,
+		stored: false,
+		materialisable: false,
+	};
+	const REASON = "Looks like a secret, so file actions are off";
+	const lines = (over) => {
+		const [row] = attachmentFinderItems(
+			mergeUserAttachments(
+				{ state: "ready", items: [{ ...refused, ...over }] },
+				[],
+			).items,
+			"abcdef123456",
+		);
+		return api
+			.attachmentTooltipText("server.pem", row.attachment.status, true)
+			.split("\n");
+	};
+	// No saved copy, origin present / an inline paste: the status IS the reason.
+	assert.deepEqual(lines({}), ["server.pem", REASON]);
+	assert.deepEqual(lines({ path: null, exists: null }), ["server.pem", REASON]);
+	// Control: a really moved refused row keeps both facts, once each.
+	assert.deepEqual(lines({ exists: false }), [
+		"server.pem",
+		"Moved or deleted · no saved copy",
+		REASON,
+	]);
+	// Control: a refused row with its copy kept has no status line of its own.
+	assert.deepEqual(lines({ stored: true }), ["server.pem", REASON]);
+	// Control: an allowed row says nothing about secrets.
+	assert.deepEqual(
+		api.attachmentTooltipText("a.pdf", "", false),
+		["a.pdf"].join("\n"),
+	);
+});

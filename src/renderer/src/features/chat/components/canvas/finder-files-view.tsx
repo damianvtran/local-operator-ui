@@ -55,6 +55,7 @@ import {
 import { revealLocalTarget } from "../../utils/link-open";
 import { viewerFor } from "../../utils/viewer-routing";
 import { ImageActionsMenu, imageMenuActions } from "../image-actions-menu";
+import { attachmentTooltipText } from "./attachment-items";
 import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
 import {
@@ -1248,20 +1249,15 @@ function FinderEntry({
 		: doc.path;
 	/*
 	 * A moved or deleted attachment's tooltip SAYS SO (agent review round 2,
-	 * R2-2): the identity line alone reads as a present file. Two whole messages
-	 * on two lines, never one sentence joined in code, so each locale keeps its
-	 * own punctuation.
+	 * R2-2): the identity line alone reads as a present file. A refused row
+	 * has no actions, and silence beside a sibling that has them read as a
+	 * glitch (UX R2 U13): the tooltip says why, once (R7-2).
 	 */
-	const statusLine = item.attachment?.status
-		? `${identity}\n${item.attachment.status}`
-		: identity;
-	/*
-	 * A refused row has no actions, and silence beside a sibling that has them
-	 * read as a glitch (UX R2 U13): the tooltip says why, as its own line.
-	 */
-	const tooltip = refused
-		? `${statusLine}\n${t("ui.canvas.files.attachmentRefused")}`
-		: statusLine;
+	const tooltip = attachmentTooltipText(
+		identity,
+		item.attachment?.status,
+		refused,
+	);
 	/*
 	 * THE CONTEXT-MENU KEY ON A REFUSED ROW SAYS WHY (UX R3 U18). A native
 	 * `title` never shows on keyboard focus, and the refused row has no menu, so

@@ -118,6 +118,7 @@ const bundled = await build({
  export { CanvasFileViewer } from "./src/renderer/src/features/chat/components/canvas/canvas-file-viewer";
  export { SentFileCard } from "./src/renderer/src/features/chat/canonical/sent-file-card";
  export { mergeUserAttachments, attachmentRefusals } from "./src/renderer/src/features/chat/canonical/user-attachments";
+ export { useUserAttachments } from "./src/renderer/src/features/chat/canonical/use-user-attachments";
  export { toast } from "sonner";
  export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
  export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
@@ -1796,4 +1797,161 @@ test("R6-2: a keyboard Retry that succeeds leaves no armed refocus for a later f
 	await act(async () => root.unmount());
 	container.remove();
 	composer.remove();
+});
+
+/*
+ * PR #1452 round 7 (QA R7 Q6, design's call on review R7-4): a REFUSED card
+ * keeps the reserve a pending one holds, so the verdict landing moves nothing.
+ */
+test("Q6: pending and refused cards share one geometry (the reserve stays)", async () => {
+	const pending = await transcriptOffer({ listing: "loading" });
+	const refused = await transcriptOffer({
+		inventory: transcriptInventory({ materialisable: false }),
+	});
+	const allowed = await transcriptOffer({
+		inventory: transcriptInventory({ materialisable: true }),
+	});
+	noPathAction(refused, "refused");
+	assert.deepEqual(
+		[pending.reserved, refused.reserved, allowed.reserved],
+		[true, true, true],
+		"no verdict changes the card's end padding",
+	);
+	// The inline copy control's slot is held too (no path-line shift).
+	assert.ok(
+		!refused.cardButtons.some((label) => FILE_PATH_CONTROL.test(label)),
+		`no copy control on the refused card (got ${JSON.stringify(refused.cardButtons)})`,
+	);
+});
+
+/*
+ * PR #1452 round 7 (review R7-3): the echo turning durable re-reads the
+ * inventory ONCE - the echo's own read can land before the journal holds the
+ * row - with no polling, and never a second request beside one in flight.
+ */
+test("R7-3: a durable echo triggers exactly one re-read, deduped against an in-flight read", async () => {
+	const sent = (over = {}) => ({
+		kind: "user",
+		id: "u-echo",
+		ts: 1793117300000,
+		text: "",
+		images: [],
+		documents: [
+			{
+				id: "u-echo:doc:0",
+				attachment: KEY,
+				filename: "notes.txt",
+				mimeType: "text/plain",
+				path: "/Users/x/notes.txt",
+				storedPath: null,
+				bytes: 20,
+			},
+		],
+		...over,
+	});
+	const original = window.api.desktop.request;
+	let reads = 0;
+	let release = null;
+	let hold = false;
+	window.api.desktop.request = async (request) => {
+		if (request.op !== "sessions.userAttachments") return original(request);
+		reads += 1;
+		if (hold)
+			await new Promise((resolve) => {
+				release = resolve;
+			});
+		return { status: 200, body: { result: { state: "ready", items: [] } } };
+	};
+	const client = new api.QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+				staleTime: Number.POSITIVE_INFINITY,
+				gcTime: Number.POSITIVE_INFINITY,
+			},
+		},
+	});
+	client.setQueryData(api.desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { session_attachments: 1 },
+	});
+	const Probe = ({ records }) => {
+		api.useUserAttachments(SESSION, records);
+		return null;
+	};
+	const settle = () =>
+		act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+	const echo = [sent({ local: true, provisional: true })];
+	const { unmount, rerender } = await (async () => {
+		const container = document.createElement("div");
+		document.body.append(container);
+		const root = createRoot(container);
+		const render = (records) =>
+			act(async () =>
+				root.render(
+					h(api.QueryClientProvider, { client }, h(Probe, { records })),
+				),
+			);
+		await render(echo);
+		return {
+			rerender: render,
+			unmount: async () => {
+				await act(async () => root.unmount());
+				container.remove();
+			},
+		};
+	})();
+	try {
+		await settle();
+		assert.equal(reads, 1, "the echo's own read");
+		// The live `message_start` clears `local` only: still an echo.
+		await rerender([sent({ provisional: true })]);
+		await settle();
+		assert.equal(reads, 1, "a delivered echo is not durable yet");
+		// The durable row (same id, same digest) lands: ONE re-read.
+		await rerender([sent()]);
+		await settle();
+		assert.equal(reads, 2, "the echo turning durable re-reads once");
+		// Later renders of the same durable row ask for nothing (no polling).
+		await rerender([sent()]);
+		await settle();
+		await settle();
+		assert.equal(reads, 2, "no further reads without a new transition");
+		// Dedupe: a second send turns durable WHILE a read is in flight. The
+		// read started before the row was durable, so exactly one trailing
+		// read follows it - never a concurrent second request.
+		hold = true;
+		const second = (over = {}) =>
+			sent({
+				id: "u-echo-2",
+				documents: [
+					{
+						...sent().documents[0],
+						id: "u-echo-2:doc:0",
+						attachment: ENV_DIGEST,
+					},
+				],
+				...over,
+			});
+		await rerender([sent(), second({ local: true, provisional: true })]);
+		await settle();
+		assert.equal(reads, 3, "the new send's own read is in flight");
+		await rerender([sent(), second()]);
+		await settle();
+		assert.equal(reads, 3, "no concurrent request beside the in-flight read");
+		hold = false;
+		await act(async () => release());
+		await settle();
+		assert.equal(
+			reads,
+			4,
+			"one trailing re-read once the in-flight read lands",
+		);
+		await settle();
+		assert.equal(reads, 4, "and nothing after it");
+	} finally {
+		window.api.desktop.request = original;
+		await unmount();
+		client.clear();
+	}
 });

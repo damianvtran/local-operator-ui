@@ -10,6 +10,10 @@
  * loaded rows gain an attachment: the live row paints at once from the records
  * (requirement: a new send appears without reload), and the re-read then adds
  * the facts only the backend has (digest, origin/retained-copy existence).
+ * And ONCE more when a sent message's echo turns durable (review R7-3): the
+ * read the echo triggered can land before the journal holds the row, and a
+ * just-sent file stays withheld (QA R6 Q3b) until the next read - which was
+ * the end of the turn, possibly a long one. One read per transition, no poll.
  *
  * CAPABILITY ABSENT is the only door to loaded-row aggregation, and that view
  * says `complete: false` - never an empty "nothing attached" claim. A capable
@@ -20,7 +24,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TranscriptRecord } from "./transcript-reducer";
 import {
 	type UserAttachmentsListing,
@@ -67,6 +71,35 @@ export function useUserAttachments(
 	const sourceKey = `${sessionId ?? "draft"}:${capable}`;
 	const [retryCount, setRetryCount] = useState(0);
 	/*
+	 * ECHO -> DURABLE (review R7-3). The echo's record and its durable twin
+	 * share id and digest, so `signature` does not move when the journal row
+	 * lands; the transition is read from the record's own `local` /
+	 * `provisional` flags instead (both clear only on the owner-stamped row).
+	 * `\n`-joined ids of the messages that carry an attachment, per state.
+	 */
+	const { echoIds, durableIds } = useMemo(() => {
+		const attached = new Set(local.map((item) => item.messageId));
+		const echo: string[] = [];
+		const durable: string[] = [];
+		for (const record of records ?? []) {
+			if (record.kind !== "user" || !attached.has(record.id)) continue;
+			(record.local || record.provisional ? echo : durable).push(record.id);
+		}
+		return { echoIds: echo.join("\n"), durableIds: durable.join("\n") };
+	}, [records, local]);
+	const [durableTick, setDurableTick] = useState(0);
+	const seenEchoes = useRef<ReadonlySet<string>>(new Set());
+	/*
+	 * The read in flight, and the durable ids it was started with: a read that
+	 * began after a row turned durable already covers it, so the transition
+	 * asks for nothing more. One begun BEFORE queues exactly one trailing read
+	 * rather than a concurrent second request (deduped against the in-flight).
+	 */
+	const inFlight = useRef<{ durable: ReadonlySet<string> } | null>(null);
+	const rereadQueued = useRef(false);
+	const durableNow = useRef(durableIds);
+	durableNow.current = durableIds;
+	/*
 	 * A retry is a visible state change (UX R2 U11): the failed listing goes
 	 * back to `loading` the moment it is pressed, so the banner can show the
 	 * loading line and a second failure arrives as a NEW `error`, not as the
@@ -84,12 +117,24 @@ export function useUserAttachments(
 		void signature;
 		void revisionHint;
 		void retryCount;
+		void durableTick;
 		if (!known || !enabled) return;
 		if (!sessionId || !capable) {
 			setListing({ key: sourceKey, value: null, state: "ready" });
 			return;
 		}
 		let live = true;
+		const read = { durable: new Set(durableNow.current.split("\n")) };
+		inFlight.current = read;
+		// This read starts after every transition so far: it is the re-read.
+		rereadQueued.current = false;
+		const settle = () => {
+			if (inFlight.current !== read) return;
+			inFlight.current = null;
+			if (!rereadQueued.current) return;
+			rereadQueued.current = false;
+			setDurableTick((tick) => tick + 1);
+		};
 		void desktopRequest({ op: "sessions.userAttachments", sessionId })
 			.then((response) => {
 				if (!live) return;
@@ -103,9 +148,15 @@ export function useUserAttachments(
 			})
 			.catch(() => {
 				if (live) setListing({ key: sourceKey, value: null, state: "error" });
+			})
+			// After the listing is set, so a queued re-read never cancels (via
+			// this effect's cleanup) the response it follows.
+			.finally(() => {
+				if (live) settle();
 			});
 		return () => {
 			live = false;
+			if (inFlight.current === read) inFlight.current = null;
 		};
 	}, [
 		known,
@@ -116,7 +167,28 @@ export function useUserAttachments(
 		signature,
 		revisionHint,
 		retryCount,
+		durableTick,
 	]);
+	/*
+	 * Declared AFTER the read effect: when the same commit both moved
+	 * `signature` and settled an echo, the read that commit started is already
+	 * recorded and covers the transition, so no second read is asked for.
+	 */
+	useEffect(() => {
+		const was = seenEchoes.current;
+		seenEchoes.current = new Set(echoIds ? echoIds.split("\n") : []);
+		if (!was.size) return;
+		const settled = durableIds.split("\n").filter((id) => id && was.has(id));
+		// Nothing to re-read where no listing is read at all.
+		if (!settled.length || !known || !enabled || !sessionId || !capable) return;
+		const reading = inFlight.current;
+		if (reading) {
+			if (!settled.every((id) => reading.durable.has(id)))
+				rereadQueued.current = true;
+			return;
+		}
+		setDurableTick((tick) => tick + 1);
+	}, [echoIds, durableIds, known, enabled, sessionId, capable]);
 	// A previous session's listing never paints under the new one.
 	const owned = listing.key === sourceKey ? listing : null;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `signature` stands for `records`' attachment content.

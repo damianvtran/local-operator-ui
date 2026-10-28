@@ -169,6 +169,28 @@ export function attachmentStatus(item: UserAttachment): string {
 }
 
 /**
+ * A canvas attachment row's tooltip, one whole message per line: identity,
+ * then the status sentence, then - on a refused row - why it has no actions
+ * (UX R2 U13). Separate lines, never a sentence joined in code, so each locale
+ * keeps its own punctuation.
+ *
+ * The refusal line is skipped when the status line already IS that sentence
+ * (review R7-2 / QA R7 Q7): a refused row with no saved copy takes the refusal
+ * as its status (QA R6 Q5), and the tooltip said it twice.
+ */
+export function attachmentTooltipText(
+	identity: string,
+	status: string | null | undefined,
+	refused: boolean,
+): string {
+	const lines = [identity];
+	if (status) lines.push(status);
+	const reason = t("ui.canvas.files.attachmentRefused");
+	if (refused && status !== reason) lines.push(reason);
+	return lines.join("\n");
+}
+
+/**
  * The meta line: what is left of the file, else its size and when it was sent.
  * Two block-free strings rather than a concatenated sentence (`" · "` is
  * English punctuation; the ICU message owns the separator per locale).
