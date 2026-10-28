@@ -36,7 +36,10 @@ export const ipcMain = {
  removeListener: () => {} };
 export const session = { fromPartition: () => f().session };
 export class WebContentsView {
- constructor() {
+ constructor(options) {
+  // R1: a card child whose construction throws (the native boundary refusing a
+  // sandboxed view). Only the approvals card carries its own preload.
+  if (f().failCardChild && String(options?.webPreferences?.preload ?? '').includes('browser-approvals-overlay')) throw new Error('synthetic card child construction failure');
   const wc = new EventEmitter();
   Object.assign(wc, { id: ++f().id, session: f().session,
    isDestroyed: () => !!wc.destroyed, isLoading: () => false, getURL: () => wc.url || 'about:blank', getTitle: () => '',
@@ -339,6 +342,40 @@ test("the disable switch makes an ordinary launch create no card child at all", 
 			senderFrame: f.window.webContents.mainFrame,
 		});
 		assert.equal(projection.approvalsCard.available, false);
+	} finally {
+		await stopBrowserHost();
+		if (previous === undefined) {
+			delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+		} else {
+			process.env[APPROVALS_OVERLAY_DISABLE_ENV] = previous;
+		}
+	}
+});
+
+test("a card child that throws while it is being constructed leaves the host running on the dock and band (R1)", async () => {
+	const previous = process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	const f = fixture(false);
+	f.failCardChild = true;
+	try {
+		// Before the fix this rejected with "Cannot access 'notifyChanged' before
+		// initialization": the controller's failure push ran inside its own
+		// constructor, ahead of the host's `notifyChanged` declaration.
+		await startBrowserHost({
+			...options(f),
+			approvalsOverlay: overlayOptions(),
+		});
+		assert.equal(cardChildren(f).length, 0, "no card child exists");
+		const projection = f.handlers.get("browser-state")({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		});
+		assert.equal(
+			projection.approvalsCard.available,
+			false,
+			"the renderer is told the card is gone, so it mounts the dock and band",
+		);
+		assert.equal(projection.approvalsCard.open, false);
 	} finally {
 		await stopBrowserHost();
 		if (previous === undefined) {

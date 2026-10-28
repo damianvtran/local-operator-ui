@@ -251,6 +251,16 @@ export class ApprovalsOverlayController {
 	private visible: boolean;
 	private failedReason: string | null;
 	private disposed: boolean;
+	/**
+	 * True only while the constructor runs. A child that fails synchronously
+	 * (`session.fromPartition`, `new WebContentsView` throwing) reaches `fail()`
+	 * before the host has finished building: its `onChanged` closes over
+	 * `notifyChanged`, which is declared AFTER the controller in the host, so
+	 * calling it here is a temporal-dead-zone throw that stopped the whole browser
+	 * host (R1). Nothing was told `available: true` yet, so there is nothing to push:
+	 * the host's first projection reads `state()` and sees `available: false`.
+	 */
+	private constructing: boolean;
 	private naturalHeight: number;
 	private layout: ApprovalsOverlayLayout;
 	private bounds: ApprovalsCardBounds | null;
@@ -285,6 +295,7 @@ export class ApprovalsOverlayController {
 		this.visible = false;
 		this.failedReason = null;
 		this.disposed = false;
+		this.constructing = false;
 		this.naturalHeight = APPROVALS_CARD_MIN_HEIGHT;
 		this.layout = {
 			presented: false,
@@ -333,7 +344,12 @@ export class ApprovalsOverlayController {
 		 * construction (before any page exists) keeps the auto-present path from
 		 * moving focus when the card is later shown.
 		 */
-		this.ensureChild();
+		this.constructing = true;
+		try {
+			this.ensureChild();
+		} finally {
+			this.constructing = false;
+		}
 	}
 
 	/**
@@ -636,6 +652,10 @@ export class ApprovalsOverlayController {
 		this.disposed = true;
 		this.visible = false;
 		this.ready = false;
+		// A dead card is not an open one: `state().open` must read false after a
+		// crash, as `fail()` promises the renderer (Q2).
+		this.explicitOpen = false;
+		this.pendingFocus = false;
 		ipcMain.removeListener(
 			APPROVALS_CARD_DISMISS_CHANNEL,
 			this.onDismissAction,
@@ -1260,6 +1280,6 @@ export class ApprovalsOverlayController {
 		 * (S6d, M1). The shield's `open` is also now false, so the push is what
 		 * returns the Approvals control to the dock/dialog route.
 		 */
-		this.onChanged?.();
+		if (!this.constructing) this.onChanged?.();
 	}
 }
