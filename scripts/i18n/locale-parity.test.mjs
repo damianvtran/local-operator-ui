@@ -1277,16 +1277,13 @@ const IDENTICAL_OK = new Map([
 		"es:ui.agents.skills.source.local",
 		"Spanish « Local » has the same spelling; the identical cognate is already shipped in es ui.providers.provider_labels.local (exempted above) and the audit receipts for ui.agents.skills (17d1ca9bf58a-es, aa44e837c157-es) pass it with no finding on this key",
 	],
-	// The Skills roster's short scope segments (#1458, i18n audit fit finding):
-	// the same words as the two source labels exempted beside them, in the same
-	// locales, so neither row silences a stub in another language.
-	[
-		"es:ui.agents.skills.scope.local",
-		"Spanish « Local » has the same spelling; byte-identical to es:ui.agents.skills.source.local (exempted here), the row word this segment selects; pending the #1458 delta audit for the scope keys",
-	],
+	// The Skills roster's short scope segment (#1458, i18n audit fit finding):
+	// the same word as the ur source label exempted beside it, so this row
+	// silences no stub in another language. es needs no row: its delta audit
+	// (32ed16b45687-es) pluralised the segment to « Locales », which differs.
 	[
 		"ur:ui.agents.skills.scope.hub",
-		"Product name (Agent Hub), kept in Latin; byte-identical to ur:ui.agents.skills.source.hub (exempted here) and ur:ui.hub.pages.header.title; pending the #1458 delta audit for the scope keys",
+		"Product name (Agent Hub), kept in Latin; byte-identical to ur:ui.agents.skills.source.hub (exempted here) and ur:ui.hub.pages.header.title; the #1458 scope-key delta audit (32ed16b45687-ur) passes it clean",
 	],
 	[
 		"ur:ui.agents.skills.source.hub",
