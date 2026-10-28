@@ -54,7 +54,9 @@ growth whose viewport did not follow rebuilds the child at the new bounds.
 
 `app/after/` is this head, card on (product default). `app/before/` is `origin/main` with its old
 `..._OVERLAY_S6A=1` opt-in. `app/kill-switch/` is this head with `..._OVERLAY_DISABLE=1`.
-Widths: `w1160` (the row measures 900), `w600` (the app window's real minimum), `w264` (a rig
+Widths: `w1160` (the row measures 900), `w800` (the app window's real minimum, `WINDOW_MIN_WIDTH` in
+`src/main/window-mode.ts`; the 600 floor in `index.ts` belongs to the auth popup), `w600` (a rig-lowered
+stress width), `w264` (a rig
 override of that minimum, standing for a 264px browser pane row; the toolbar folds into the menu).
 
 | file | what it shows |
@@ -67,8 +69,12 @@ override of that minimum, standing for a 264px browser pane row; the toolbar fol
 | `app/before/*` | origin/main, card enabled by env: the same two-pending state, and the toolbar with no dialog to open |
 | `app/kill-switch/*` | the DOM band and the dock, pushing the page down, which is what the card replaces |
 
-A headless window does not present the native page view, so the card child never auto-presents in
-these runs and **no renderer frame contains the native card**. The card's own frames are in `card/`.
+In THIS rig's tab state (a blank or just-opened tab) a headless window does not present the native page
+view, so the card child did not auto-present and **no renderer frame here contains the native card**. That
+is a property of this rig's page state, not of headless Electron: the round-1 UX review observed the card
+present headless once the tab was on a real page (page view visible, card child at its corner bounds), so
+"never presents headless" is NOT claimed. What is still not captured is the composite over a live page.
+The card's own frames are in `card/`.
 
 ## Absence and presence of the dock route (real built renderer)
 
@@ -101,6 +107,25 @@ attended check of all three, or an explicit owner-named limitation in the releas
 - **VoiceOver** across the card's second document.
 - Also not measured: the Approvals dialog's 264px rendering inside a real 264px pane. At a 264px
   window the dialog (a viewport-level `BaseDialog` with a 320px floor) is clipped; the app's real
-  minimum window width is 600, where it fits. The 264 frames are a rig override, not a shipped state.
+  minimum window width is 800 (`WINDOW_MIN_WIDTH`), where it fits (`app/after/w800-*`). The 600 and 264
+  frames are rig overrides of that minimum, not shipped states.
 - Not captured as renderer frames: the native card over the page (above) and the card's explicit-open
   focus handoff inside a focused window (the probe asserts it through the host's gated helper).
+
+## Round 1 remediation frames and probe rows
+
+Re-captured at this head (`electron-vite build` of the head, then the same rigs as above).
+
+| file | what it shows |
+| --- | --- |
+| `card/after-{264,900}-{dark,light}-hover-dont-allow.png` | Q1: the two-line "Don't allow" gloss showing while hovered; the four decisions sit where the normal frame has them and the footer clears the last one |
+| `card/after-{264,900}-{dark,light}-long-requester-stale-error.png` | D-2: a 98-character conversation title under the stale line; the headline is clipped with an ellipsis (full text in the tooltip) and all four decisions are above the footer |
+| `app/after/w800-*-approvals-{populated,empty}.png` | D-5: the dialog at the real minimum window width; opens on the dialog itself with no ring on a destructive button (D-1) |
+| `probe/q1-control-reservation-disabled-900-dark.json` | the negative control: the same probe with the gloss reservation switched off, FAIL (overdraw 9.17 / 8.57, buttons moved, 8 and 4 hover/focus clicks missing their button) |
+
+Probe rows added to `browser-approvals-s6b-probe.mjs`, all PASS in the four cells (264/900 x dark/light):
+`Q1-hover-focus-keeps-decisions-in-place-normal`, `...-stale` (no decision moves on hover or focus of any of
+the five buttons, overdraw 0, `elementFromPoint` at the pre-hover centre is still that button) and
+`D2-long-requester-keeps-decisions-visible` (overdraw 0, body overflow 0, card 452.77 at 264 / 403.17 at 900).
+`capture-default.json` carries `focusOnOpen` per cell: the dialog element (`role: dialog`), inside the dialog,
+in all eight cells.

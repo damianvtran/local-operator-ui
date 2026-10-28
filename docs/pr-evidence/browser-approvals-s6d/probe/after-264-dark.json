@@ -4,12 +4,12 @@
   "facts": {
     "pending": 2,
     "requestEntryId": "entry-1",
-    "seq": 10,
+    "seq": 15,
     "explicitOpen": true,
     "actions": {
       "dismissed": 1,
       "decided": 1,
-      "dropped": 2
+      "dropped": 3
     },
     "presented": true,
     "contentRect": {
@@ -24,23 +24,23 @@
     "bounds": {
       "view": {
         "x": 0,
-        "y": 340,
+        "y": 324,
         "width": 264,
-        "height": 380
+        "height": 396
       },
       "card": {
         "x": 8,
-        "y": 348,
+        "y": 332,
         "width": 248,
-        "height": 364
+        "height": 380
       },
       "width": 248,
-      "height": 364,
+      "height": 380,
       "pad": 8
     },
     "childIndex": 1,
     "childCount": 2,
-    "childWebContentsId": 5,
+    "childWebContentsId": 6,
     "focusedWebContentsId": null,
     "documentUrl": "file://~/local-operator-ui/.worktrees/s6d/out/renderer/browser-approvals-overlay.html",
     "opaque": false
@@ -49,29 +49,29 @@
     "Q2-decisions-above-fold": {
       "status": "PASS",
       "detail": {
-        "cardHeight": 396,
-        "cardRectHeight": 397.765625,
-        "footerTop": 352,
+        "cardHeight": 412,
+        "cardRectHeight": 413.96875,
+        "footerTop": 368,
         "decisions": [
           {
             "text": "Autoriser jusqu’à la fermeture de l’application",
-            "top": 199,
-            "bottom": 243
+            "top": 215,
+            "bottom": 259
           },
           {
             "text": "Toujours autoriser ce site",
-            "top": 249,
-            "bottom": 277
+            "top": 265,
+            "bottom": 294
           },
           {
             "text": "Autoriser tout example0.test",
-            "top": 283,
-            "bottom": 312
+            "top": 300,
+            "bottom": 328
           },
           {
             "text": "Ne pas autoriser",
-            "top": 318,
-            "bottom": 346
+            "top": 334,
+            "bottom": 362
           }
         ]
       }
@@ -103,18 +103,18 @@
           "bounds": {
             "view": {
               "x": 0,
-              "y": 306,
+              "y": 290,
               "width": 264,
-              "height": 414
+              "height": 430
             },
             "card": {
               "x": 8,
-              "y": 314,
+              "y": 298,
               "width": 248,
-              "height": 398
+              "height": 414
             },
             "width": 248,
-            "height": 398,
+            "height": 414,
             "pad": 8
           },
           "childIndex": 1,
@@ -176,9 +176,9 @@
           "theme": "localOperatorDark",
           "card": {
             "x": 8,
-            "y": 8.234375,
+            "y": 8.03125,
             "width": 248,
-            "height": 397.765625
+            "height": 413.96875
           },
           "origin": "https://example0.test",
           "requester": "Fix the login flow",
@@ -189,7 +189,7 @@
             "text": "Autoriser une fois",
             "disabled": false,
             "x": 132,
-            "y": 150.2265625
+            "y": 150.0234375
           },
           "buttons": [
             {
@@ -243,30 +243,30 @@
               "disabled": false
             }
           ],
-          "cardHeight": 396,
-          "cardRectHeight": 397.765625,
+          "cardHeight": 412,
+          "cardRectHeight": 413.96875,
           "footerHeight": 45,
-          "footerTop": 352,
+          "footerTop": 368,
           "decisionRects": [
             {
               "text": "Autoriser jusqu’à la fermeture de l’application",
-              "top": 199,
-              "bottom": 243
+              "top": 215,
+              "bottom": 259
             },
             {
               "text": "Toujours autoriser ce site",
-              "top": 249,
-              "bottom": 277
+              "top": 265,
+              "bottom": 294
             },
             {
               "text": "Autoriser tout example0.test",
-              "top": 283,
-              "bottom": 312
+              "top": 300,
+              "bottom": 328
             },
             {
               "text": "Ne pas autoriser",
-              "top": 318,
-              "bottom": 346
+              "top": 334,
+              "bottom": 362
             }
           ]
         }
@@ -291,9 +291,9 @@
           "theme": "localOperatorDark",
           "card": {
             "x": 8,
-            "y": 8.234375,
+            "y": 8.03125,
             "width": 248,
-            "height": 397.765625
+            "height": 413.96875
           },
           "origin": "https://example0.test",
           "requester": "Fix the login flow",
@@ -304,7 +304,7 @@
             "text": "Autoriser une fois",
             "disabled": false,
             "x": 132,
-            "y": 150.2265625
+            "y": 150.0234375
           },
           "buttons": [
             {
@@ -358,30 +358,30 @@
               "disabled": false
             }
           ],
-          "cardHeight": 396,
-          "cardRectHeight": 397.765625,
+          "cardHeight": 412,
+          "cardRectHeight": 413.96875,
           "footerHeight": 45,
-          "footerTop": 352,
+          "footerTop": 368,
           "decisionRects": [
             {
               "text": "Autoriser jusqu’à la fermeture de l’application",
-              "top": 199,
-              "bottom": 243
+              "top": 215,
+              "bottom": 259
             },
             {
               "text": "Toujours autoriser ce site",
-              "top": 249,
-              "bottom": 277
+              "top": 265,
+              "bottom": 294
             },
             {
               "text": "Autoriser tout example0.test",
-              "top": 283,
-              "bottom": 312
+              "top": 300,
+              "bottom": 328
             },
             {
               "text": "Ne pas autoriser",
-              "top": 318,
-              "bottom": 346
+              "top": 334,
+              "bottom": 362
             }
           ]
         }
@@ -517,10 +517,10 @@
       "detail": {
         "errorVisible": true,
         "errorText": "Expirée — l’agent doit redemander",
-        "cardHeight": 419.16,
-        "innerHeight": 436,
-        "footerTop": 351.77,
-        "lowestDecisionBottom": 345.77,
+        "cardHeight": 435.37,
+        "innerHeight": 452,
+        "footerTop": 367.97,
+        "lowestDecisionBottom": 361.97,
         "overdraw": 0,
         "bodyOverflow": 0,
         "insideCard": true,
@@ -532,31 +532,31 @@
           },
           {
             "text": "Autoriser jusqu’à la fermeture de l’application",
-            "top": 198.79,
-            "bottom": 243.18
+            "top": 214.99,
+            "bottom": 259.38
           },
           {
             "text": "Toujours autoriser ce site",
-            "top": 249.18,
-            "bottom": 277.38
+            "top": 265.38,
+            "bottom": 293.58
           },
           {
             "text": "Autoriser tout example0.test",
-            "top": 283.38,
-            "bottom": 311.57
+            "top": 299.58,
+            "bottom": 327.77
           },
           {
             "text": "Ne pas autoriser",
-            "top": 317.57,
-            "bottom": 345.77
+            "top": 333.77,
+            "bottom": 361.97
           }
         ],
-        "nativeCardHeight": 420,
+        "nativeCardHeight": 436,
         "nativeViewBounds": {
           "x": 0,
-          "y": 284,
+          "y": 268,
           "width": 264,
-          "height": 436
+          "height": 452
         }
       }
     },
@@ -565,10 +565,10 @@
       "detail": {
         "errorVisible": true,
         "errorText": "Navigateur indisponible",
-        "cardHeight": 419.16,
-        "innerHeight": 436,
-        "footerTop": 351.77,
-        "lowestDecisionBottom": 345.77,
+        "cardHeight": 435.37,
+        "innerHeight": 452,
+        "footerTop": 367.97,
+        "lowestDecisionBottom": 361.97,
         "overdraw": 0,
         "bodyOverflow": 0,
         "insideCard": true,
@@ -580,26 +580,26 @@
           },
           {
             "text": "Autoriser jusqu’à la fermeture de l’application",
-            "top": 198.79,
-            "bottom": 243.18
+            "top": 214.99,
+            "bottom": 259.38
           },
           {
             "text": "Toujours autoriser ce site",
-            "top": 249.18,
-            "bottom": 277.38
+            "top": 265.38,
+            "bottom": 293.58
           },
           {
             "text": "Autoriser tout example0.test",
-            "top": 283.38,
-            "bottom": 311.57
+            "top": 299.58,
+            "bottom": 327.77
           },
           {
             "text": "Ne pas autoriser",
-            "top": 317.57,
-            "bottom": 345.77
+            "top": 333.77,
+            "bottom": 361.97
           }
         ],
-        "nativeCardHeight": 420
+        "nativeCardHeight": 436
       }
     },
     "D1-normal-keeps-decisions-visible": {
@@ -607,10 +607,10 @@
       "detail": {
         "errorVisible": false,
         "errorText": "",
-        "cardHeight": 397.77,
-        "innerHeight": 414,
-        "footerTop": 351.77,
-        "lowestDecisionBottom": 345.77,
+        "cardHeight": 413.97,
+        "innerHeight": 430,
+        "footerTop": 367.97,
+        "lowestDecisionBottom": 361.97,
         "overdraw": 0,
         "bodyOverflow": 0,
         "insideCard": true,
@@ -622,26 +622,151 @@
           },
           {
             "text": "Autoriser jusqu’à la fermeture de l’application",
-            "top": 198.79,
-            "bottom": 243.18
+            "top": 214.99,
+            "bottom": 259.38
           },
           {
             "text": "Toujours autoriser ce site",
-            "top": 249.18,
-            "bottom": 277.38
+            "top": 265.38,
+            "bottom": 293.58
           },
           {
             "text": "Autoriser tout example0.test",
-            "top": 283.38,
-            "bottom": 311.57
+            "top": 299.58,
+            "bottom": 327.77
           },
           {
             "text": "Ne pas autoriser",
-            "top": 317.57,
-            "bottom": 345.77
+            "top": 333.77,
+            "bottom": 361.97
           }
         ],
-        "nativeCardHeight": 398
+        "nativeCardHeight": 414
+      }
+    },
+    "Q1-hover-focus-keeps-decisions-in-place-normal": {
+      "status": "PASS",
+      "detail": {
+        "idle": [
+          [
+            136.02,
+            164.02
+          ],
+          [
+            223.02,
+            267.41
+          ],
+          [
+            273.41,
+            301.61
+          ],
+          [
+            307.61,
+            335.8
+          ],
+          [
+            341.8,
+            370
+          ]
+        ],
+        "moved": [],
+        "overdrawMax": 0,
+        "hitMiss": [],
+        "glossHeights": [
+          47,
+          47,
+          47,
+          47,
+          47,
+          47,
+          47,
+          47,
+          47,
+          47
+        ]
+      }
+    },
+    "Q1-hover-focus-keeps-decisions-in-place-stale": {
+      "status": "PASS",
+      "detail": {
+        "idle": [
+          [
+            136.63,
+            164.63
+          ],
+          [
+            223.63,
+            268.02
+          ],
+          [
+            274.02,
+            302.21
+          ],
+          [
+            308.21,
+            336.41
+          ],
+          [
+            342.41,
+            370.6
+          ]
+        ],
+        "moved": [],
+        "overdrawMax": 0,
+        "hitMiss": [],
+        "glossHeights": [
+          47,
+          47,
+          47,
+          47,
+          47,
+          47,
+          47,
+          47,
+          47,
+          47
+        ]
+      }
+    },
+    "D2-long-requester-keeps-decisions-visible": {
+      "status": "PASS",
+      "detail": {
+        "errorVisible": true,
+        "errorText": "Expirée — l’agent doit redemander",
+        "cardHeight": 452.77,
+        "innerHeight": 469,
+        "footerTop": 385.37,
+        "lowestDecisionBottom": 379.37,
+        "overdraw": 0,
+        "bodyOverflow": 0,
+        "insideCard": true,
+        "rects": [
+          {
+            "text": "Autoriser une fois",
+            "top": 145.39,
+            "bottom": 173.39
+          },
+          {
+            "text": "Autoriser jusqu’à la fermeture de l’application",
+            "top": 232.39,
+            "bottom": 276.78
+          },
+          {
+            "text": "Toujours autoriser ce site",
+            "top": 282.78,
+            "bottom": 310.98
+          },
+          {
+            "text": "Autoriser tout example0.test",
+            "top": 316.98,
+            "bottom": 345.17
+          },
+          {
+            "text": "Ne pas autoriser",
+            "top": 351.17,
+            "bottom": 379.37
+          }
+        ]
       }
     },
     "I4-escape": {
@@ -651,15 +776,15 @@
         "requestEntryId": "entry-1",
         "dismissedEntry": "entry-0",
         "afterEscapeDoc": {
-          "active": "",
+          "active": "approvals-review",
           "lang": "fr",
           "dir": "ltr",
           "theme": "localOperatorDark",
           "card": {
             "x": 8,
-            "y": 42.4296875,
+            "y": 42.2265625,
             "width": 248,
-            "height": 363.5703125
+            "height": 379.7734375
           },
           "origin": "https://example1.test",
           "requester": "Draft a release note",
@@ -668,9 +793,9 @@
           "close": "Fermer",
           "allowOnce": {
             "text": "Autoriser une fois",
-            "disabled": false,
+            "disabled": true,
             "x": 132,
-            "y": 184.421875
+            "y": 184.21875
           },
           "buttons": [
             {
@@ -681,22 +806,22 @@
             {
               "id": "approvals-allow-once",
               "text": "Autoriser une fois",
-              "disabled": false
+              "disabled": true
             },
             {
               "id": "",
               "text": "Autoriser jusqu’à la fermeture de l’application",
-              "disabled": false
+              "disabled": true
             },
             {
               "id": "",
               "text": "Toujours autoriser ce site",
-              "disabled": false
+              "disabled": true
             },
             {
               "id": "",
               "text": "Ne pas autoriser",
-              "disabled": false
+              "disabled": true
             },
             {
               "id": "",
@@ -719,25 +844,25 @@
               "disabled": false
             }
           ],
-          "cardHeight": 362,
-          "cardRectHeight": 363.5703125,
+          "cardHeight": 378,
+          "cardRectHeight": 379.7734375,
           "footerHeight": 45,
-          "footerTop": 318,
+          "footerTop": 334,
           "decisionRects": [
             {
               "text": "Autoriser jusqu’à la fermeture de l’application",
-              "top": 199,
-              "bottom": 243
+              "top": 215,
+              "bottom": 259
             },
             {
               "text": "Toujours autoriser ce site",
-              "top": 249,
-              "bottom": 277
+              "top": 265,
+              "bottom": 294
             },
             {
               "text": "Ne pas autoriser",
-              "top": 283,
-              "bottom": 312
+              "top": 300,
+              "bottom": 328
             }
           ]
         },
@@ -747,7 +872,7 @@
           "displayAuthority": "example1.test",
           "requester": "session:entry-1",
           "requesterSessionId": "entry-1",
-          "expiresAt": 1793200826986
+          "expiresAt": 1793207403877
         },
         "renderedNext": true,
         "responded": [
@@ -759,7 +884,7 @@
         "actions": {
           "dismissed": 1,
           "decided": 1,
-          "dropped": 2
+          "dropped": 3
         }
       }
     },
@@ -769,18 +894,18 @@
         "bounds": {
           "view": {
             "x": 0,
-            "y": 340,
+            "y": 324,
             "width": 264,
-            "height": 380
+            "height": 396
           },
           "card": {
             "x": 8,
-            "y": 348,
+            "y": 332,
             "width": 248,
-            "height": 364
+            "height": 380
           },
           "width": 248,
-          "height": 364,
+          "height": 380,
           "pad": 8
         }
       }
@@ -847,9 +972,9 @@
       "theme": "localOperatorDark",
       "card": {
         "x": 8,
-        "y": 8.234375,
+        "y": 8.03125,
         "width": 248,
-        "height": 397.765625
+        "height": 413.96875
       },
       "origin": "https://example0.test",
       "requester": "Fix the login flow",
@@ -860,7 +985,7 @@
         "text": "Autoriser une fois",
         "disabled": false,
         "x": 132,
-        "y": 150.2265625
+        "y": 150.0234375
       },
       "buttons": [
         {
@@ -914,30 +1039,30 @@
           "disabled": false
         }
       ],
-      "cardHeight": 396,
-      "cardRectHeight": 397.765625,
+      "cardHeight": 412,
+      "cardRectHeight": 413.96875,
       "footerHeight": 45,
-      "footerTop": 352,
+      "footerTop": 368,
       "decisionRects": [
         {
           "text": "Autoriser jusqu’à la fermeture de l’application",
-          "top": 199,
-          "bottom": 243
+          "top": 215,
+          "bottom": 259
         },
         {
           "text": "Toujours autoriser ce site",
-          "top": 249,
-          "bottom": 277
+          "top": 265,
+          "bottom": 294
         },
         {
           "text": "Autoriser tout example0.test",
-          "top": 283,
-          "bottom": 312
+          "top": 300,
+          "bottom": 328
         },
         {
           "text": "Ne pas autoriser",
-          "top": 318,
-          "bottom": 346
+          "top": 334,
+          "bottom": 362
         }
       ]
     },
@@ -964,18 +1089,18 @@
       "bounds": {
         "view": {
           "x": 0,
-          "y": 306,
+          "y": 290,
           "width": 264,
-          "height": 414
+          "height": 430
         },
         "card": {
           "x": 8,
-          "y": 314,
+          "y": 298,
           "width": 248,
-          "height": 398
+          "height": 414
         },
         "width": 248,
-        "height": 398,
+        "height": 414,
         "pad": 8
       },
       "childIndex": 1,

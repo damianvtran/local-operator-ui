@@ -109,6 +109,11 @@ export const BrowserApprovalsDialog: FC<BrowserApprovalsDialogProps> = ({
 			maxWidth="xs"
 			fullWidth
 			dialogProps={{
+				// The container is focused only to anchor the screen-reader start and the
+				// Tab order; a ring around the whole panel is noise (the first control gets
+				// its own ring on Tab), and it showed in the frames when the dialog was
+				// opened without a prior pointer event.
+				className: "outline-none focus-visible:outline-none",
 				/*
 				 * OPEN ON THE DIALOG, NEVER ON A DESTRUCTIVE CONTROL (D-1 / U1). Radix's
 				 * default focuses the first tabbable in the body, which is "Revoke" or

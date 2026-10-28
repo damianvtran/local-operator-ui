@@ -1,9 +1,9 @@
 {
-  "at": "2026-10-28T15:21:24.398Z",
+  "at": "2026-10-28T17:06:02.192Z",
   "mode": "default",
   "appRoot": "~/local-operator-ui/.worktrees/s6d",
-  "scratch": "~/.local-operator/sessions/5c634cee0bec/scratchpad/s6d-capture-LykmiV",
-  "head": "6d6970cc6f93f248a6398d6e905fbb4f6e7a6b15",
+  "scratch": "~/.local-operator/sessions/5c634cee0bec/scratchpad/s6d-capture-zii90c",
+  "head": "c446cb4c711119581877f46955bd609b69d355e5",
   "cells": [
     {
       "label": "w1160-dark",
@@ -27,6 +27,13 @@
         "dockTitle": 0,
         "consentBar": 0,
         "dialog": 1
+      },
+      "focusOnOpen": {
+        "tag": "DIV",
+        "role": "dialog",
+        "tourTag": null,
+        "text": "Approvals2 sites approvedApprovals are k",
+        "insideDialog": true
       },
       "contentBeforePending": {
         "x": 260,
@@ -88,6 +95,13 @@
         "consentBar": 0,
         "dialog": 1
       },
+      "focusOnOpen": {
+        "tag": "DIV",
+        "role": "dialog",
+        "tourTag": null,
+        "text": "Approvals2 sites approvedApprovals are k",
+        "insideDialog": true
+      },
       "contentBeforePending": {
         "x": 260,
         "y": 106,
@@ -98,6 +112,140 @@
         "x": 260,
         "y": 106,
         "width": 900,
+        "height": 794
+      },
+      "pendingSelectors": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "badge": "{\"toolbar\":\"2\",\"folded\":null}",
+      "approvalsCard": {
+        "available": true,
+        "open": false,
+        "visible": false
+      },
+      "routePending": "toolbar",
+      "afterPendingOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "cardAfterPendingOpen": {
+        "available": true,
+        "open": true,
+        "visible": false
+      }
+    },
+    {
+      "label": "w800-dark",
+      "width": 800,
+      "theme": "localOperatorDark",
+      "emptyGrants": [],
+      "route": "toolbar",
+      "afterEmptyOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "populatedGrants": [
+        "deny:https://denied.example",
+        "origin:https://granted-once.example",
+        "session:https://granted-session.example"
+      ],
+      "afterPopulatedOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "focusOnOpen": {
+        "tag": "DIV",
+        "role": "dialog",
+        "tourTag": null,
+        "text": "Approvals2 sites approvedApprovals are k",
+        "insideDialog": true
+      },
+      "contentBeforePending": {
+        "x": 260,
+        "y": 106,
+        "width": 540,
+        "height": 794
+      },
+      "contentAfterPending": {
+        "x": 260,
+        "y": 106,
+        "width": 540,
+        "height": 794
+      },
+      "pendingSelectors": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "badge": "{\"toolbar\":\"2\",\"folded\":null}",
+      "approvalsCard": {
+        "available": true,
+        "open": false,
+        "visible": false
+      },
+      "routePending": "toolbar",
+      "afterPendingOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 0
+      },
+      "cardAfterPendingOpen": {
+        "available": true,
+        "open": true,
+        "visible": false
+      }
+    },
+    {
+      "label": "w800-light",
+      "width": 800,
+      "theme": "localOperatorLight",
+      "emptyGrants": [],
+      "route": "toolbar",
+      "afterEmptyOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "populatedGrants": [
+        "deny:https://denied.example",
+        "origin:https://granted-once.example",
+        "session:https://granted-session.example"
+      ],
+      "afterPopulatedOpen": {
+        "dataDockLayout": 0,
+        "dockTitle": 0,
+        "consentBar": 0,
+        "dialog": 1
+      },
+      "focusOnOpen": {
+        "tag": "DIV",
+        "role": "dialog",
+        "tourTag": null,
+        "text": "Approvals2 sites approvedApprovals are k",
+        "insideDialog": true
+      },
+      "contentBeforePending": {
+        "x": 260,
+        "y": 106,
+        "width": 540,
+        "height": 794
+      },
+      "contentAfterPending": {
+        "x": 260,
+        "y": 106,
+        "width": 540,
         "height": 794
       },
       "pendingSelectors": {
@@ -147,6 +295,13 @@
         "dockTitle": 0,
         "consentBar": 0,
         "dialog": 1
+      },
+      "focusOnOpen": {
+        "tag": "DIV",
+        "role": "dialog",
+        "tourTag": null,
+        "text": "Approvals2 sites approvedApprovals are k",
+        "insideDialog": true
       },
       "contentBeforePending": {
         "x": 120,
@@ -208,6 +363,13 @@
         "consentBar": 0,
         "dialog": 1
       },
+      "focusOnOpen": {
+        "tag": "DIV",
+        "role": "dialog",
+        "tourTag": null,
+        "text": "Approvals2 sites approvedApprovals are k",
+        "insideDialog": true
+      },
       "contentBeforePending": {
         "x": 120,
         "y": 106,
@@ -268,6 +430,13 @@
         "consentBar": 0,
         "dialog": 1
       },
+      "focusOnOpen": {
+        "tag": "DIV",
+        "role": "dialog",
+        "tourTag": null,
+        "text": "Approvals2 sites approvedApprovals are k",
+        "insideDialog": true
+      },
       "contentBeforePending": {
         "x": 0,
         "y": 106,
@@ -327,6 +496,13 @@
         "dockTitle": 0,
         "consentBar": 0,
         "dialog": 1
+      },
+      "focusOnOpen": {
+        "tag": "DIV",
+        "role": "dialog",
+        "tourTag": null,
+        "text": "Approvals2 sites approvedApprovals are k",
+        "insideDialog": true
       },
       "contentBeforePending": {
         "x": 0,
@@ -448,6 +624,54 @@
     {
       "label": "FRAME",
       "value": "w1160-light-after-approvals-click-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-dark-toolbar-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-dark-approvals-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-dark-approvals-populated"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-dark-toolbar-badge"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-dark-page-with-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-dark-after-approvals-click-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-light-toolbar-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-light-approvals-empty"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-light-approvals-populated"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-light-toolbar-badge"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-light-page-with-pending"
+    },
+    {
+      "label": "FRAME",
+      "value": "w800-light-after-approvals-click-pending"
     },
     {
       "label": "FRAME",

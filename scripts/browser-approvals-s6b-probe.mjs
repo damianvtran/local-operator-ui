@@ -479,6 +479,22 @@ app.whenReady().then(async () => {
       }
     };
     await shoot("normal-request");
+    // Q1 frame: the two-line "Don't allow" gloss showing while hovered. The
+    // decisions must sit exactly where the normal frame has them.
+    await currentCard().webContents.executeJavaScript("(() => { const b = [...document.querySelectorAll('#approvals-secondary button')].pop(); b.dispatchEvent(new MouseEvent('mouseenter')); return b.textContent; })()");
+    await sleep(150);
+    await shoot("hover-dont-allow");
+    await currentCard().webContents.executeJavaScript("document.getElementById('approvals-gloss').textContent = ''; 0");
+    // D-2 frame: a 98-character conversation title under the stale line, the case
+    // that reached the 480 DIP cap at 264 before the headline was bounded.
+    const longEntries = entries.map((entry, index) => index === 0 ? { ...entry } : entry);
+    controller.setModel({ entries: longEntries, locale: "fr", dir: "ltr", theme: THEME, requesterLabels: { ...requesterLabels, [entries[0].requesterSessionId]: "Refactor the quarterly reconciliation pipeline so that every ledger adjustment is traceable to a source" } });
+    await currentCard().webContents.executeJavaScript("window.approvalsCard.decide({ seq: 999999, entryId: 'entry-0', decision: 'once' })");
+    const d2 = await readD1Settled(true);
+    record("D2-long-requester-keeps-decisions-visible", Boolean(d2.errorVisible && d2.overdraw === 0 && d2.bodyOverflow <= 0 && d2.insideCard), d2);
+    await shoot("long-requester-stale-error");
+    controller.setModel({ entries, locale: "fr", dir: "ltr", theme: THEME, requesterLabels });
+    await readD1Settled(false);
     // The stale line through the PRODUCT path (a dropped card action), not a
     // host-supplied error: dropAction is the path D1 is about.
     await currentCard().webContents.executeJavaScript("window.approvalsCard.decide({ seq: 999999, entryId: 'entry-0', decision: 'once' })");

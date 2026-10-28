@@ -619,6 +619,14 @@ async function cell(proof, label, width, theme) {
 	await openApprovalsRoute(renderer);
 	await sleep(700);
 	out.afterPopulatedOpen = JSON.parse(await dockSelectors(renderer));
+	// D-1 / U1: what holds keyboard focus the moment the dialog is open. It must be
+	// the dialog (or Close), never Revoke / Forget / Clear.
+	out.focusOnOpen = JSON.parse(
+		await renderer.eval(`JSON.stringify((() => {
+			const el = document.activeElement;
+			return { tag: el?.tagName ?? null, role: el?.getAttribute("role") ?? null, tourTag: el?.getAttribute("data-tour-tag") ?? null, text: (el?.textContent ?? "").slice(0, 40), insideDialog: Boolean(el?.closest('[role="dialog"]')) };
+		})())`),
+	);
 	await shoot(renderer, `${label}-approvals-populated`);
 	if (out.afterPopulatedOpen.dialog) await closeDialog(renderer);
 	else if (out.afterPopulatedOpen.dataDockLayout) {
@@ -818,11 +826,14 @@ async function runProof() {
 	for (const [label, width, theme] of [
 		["w1160-dark", 1160, "localOperatorDark"],
 		["w1160-light", 1160, "localOperatorLight"],
-		// 600 is the app window's real minimum width (WINDOW_MIN_WIDTH); the
-		// Approvals DIALOG is a viewport-level BaseDialog with a 320px floor, so its
-		// frames are only honest at or above it. A 264 window is a rig override of
-		// that minimum (it stands in for a 264px browser PANE row), which is valid
-		// for the toolbar fold and the menu route but clips any dialog.
+		// 800 is the app window's real minimum width (WINDOW_MIN_WIDTH in
+		// src/main/window-mode.ts; the 600 floor in index.ts belongs to the auth
+		// popup). 600 and 264 are RIG OVERRIDES of that minimum (the rig lowers it
+		// with setMinimumSize): 600 is a stress width, 264 stands in for a 264px
+		// browser PANE row, which is valid for the toolbar fold and the menu route
+		// but clips the viewport-level dialog's 320px floor.
+		["w800-dark", 800, "localOperatorDark"],
+		["w800-light", 800, "localOperatorLight"],
 		["w600-dark", 600, "localOperatorDark"],
 		["w600-light", 600, "localOperatorLight"],
 		["w264-dark", 264, "localOperatorDark"],
