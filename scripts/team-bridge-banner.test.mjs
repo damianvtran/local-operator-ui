@@ -425,10 +425,11 @@ test("a focused window is quiet only for the conversation on screen", () => {
 	}
 });
 
-test("the thread hook stays off the held open path", () => {
-	// Main still parks the id it was handed (the click target is a fact), but
-	// this build does not route a thread - see
-	// `TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD` in `team-bridge-notify.ts`.
+test("a reply banner's click routes to its thread", () => {
+	// Main parks the id it was handed, and with threads shipped
+	// (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD`) the route carries it. The page
+	// mounts the pane only when the runtime advertises `team_bridge_threads`, so
+	// an older core lands on the conversation and ignores the parameter.
 	const h = harness();
 	try {
 		h.notifier.notify(request({ threadId: "bms_root1" }));
@@ -442,7 +443,7 @@ test("the thread hook stays off the held open path", () => {
 		});
 		assert.equal(
 			contract.teamBridgeOpenPath(target),
-			"/team-bridge?tenant=tnt_1&conversation=bcv_abc123",
+			"/team-bridge?tenant=tnt_1&conversation=bcv_abc123&thread=bms_root1",
 		);
 		assert.equal(h.signals.length, 1);
 	} finally {
