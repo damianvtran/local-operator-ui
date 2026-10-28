@@ -537,7 +537,7 @@ test("the mounted hook addresses by local_id, and by display name without the ca
 		});
 		assert.equal(retry.op, "hub.retry");
 		assert.equal(retry.name, DISPLAY);
-		assert.equal(retry.local_id, undefined);
+		assert.equal(retry.localId, undefined);
 		assert.equal(retry.linkId, undefined);
 		assert.equal(retry.direction, undefined);
 		assert.equal(coreHubApplyRefusal(api.desktopEndpoint(retry).body), null);

@@ -60,6 +60,7 @@ export function HubLinkSidebarMark({
 	onDetail,
 	displayName,
 	itemsById = false,
+	nameAmbiguous = false,
 }: {
 	link: HubLink;
 	staged: boolean;
@@ -68,6 +69,13 @@ export function HubLinkSidebarMark({
 	displayName?: string;
 	/** `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
 	itemsById?: boolean;
+	/**
+	 * An older core has no id arm, so this press would address by name - and
+	 * another loaded row carries the same name, case-insensitively (`check.py`
+	 * compares `str(name).strip().lower()`). The press would merge BOTH rows,
+	 * so it opens the menu with the reason instead of writing.
+	 */
+	nameAmbiguous?: boolean;
 }) {
 	useI18nLocale();
 	const actions = useHubLinkActions(link, { displayName, itemsById });
@@ -78,6 +86,11 @@ export function HubLinkSidebarMark({
 	const descriptionId = useId();
 	const source = hubLinkSourceName(link);
 	const mark = hubLinkMark(hubLinkView(link));
+	/** A direct write this core cannot aim: the name matches more than one row. */
+	const ambiguousWrite =
+		!itemsById &&
+		nameAmbiguous &&
+		(mark.action === "apply" || mark.action === "retry");
 	const Glyph = actions.isPending ? LoaderCircle : ICON[mark.kind];
 	const direction = t(
 		mark.direction === "pull"
@@ -163,6 +176,7 @@ export function HubLinkSidebarMark({
 							if (
 								actions.isPending ||
 								mark.action === "policy" ||
+								ambiguousWrite ||
 								(!actions.canWrite &&
 									(mark.action === "apply" || mark.action === "retry"))
 							) {
@@ -220,6 +234,11 @@ export function HubLinkSidebarMark({
 					link={link}
 					onConsentChange={setConsentOpen}
 				/>
+				{ambiguousWrite && (
+					<output className="mt-3 text-meta text-warning">
+						{t("ui.hub.links.name_ambiguous")}
+					</output>
+				)}
 				{actions.error && (
 					<p role="alert" className="mt-3 text-meta text-danger">
 						{actions.error instanceof HubMutationUpgradeRequired
