@@ -585,6 +585,13 @@ export const teamBridgeScheduledMessageSchema = z
 		send_at: z.string().datetime({ offset: true }),
 		status: z.enum(["scheduled", "sending"]),
 		created_at: z.string().datetime({ offset: true }),
+		/*
+		 * The hub's edit counter (agent-server #223); absent from an older hub.
+		 * `null` is accepted and means "unknown", like absence: a legacy row can
+		 * carry an explicit null, and refusing the whole list over it would hide
+		 * every schedule.
+		 */
+		version: z.number().int().nonnegative().nullish(),
 		/* Reserved images; descriptors only (not bound to a message, so no bytes). */
 		attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
 		/*
