@@ -245,7 +245,12 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 							: "invisible group-hover/row:visible group-focus-within/row:visible",
 					)}
 					onClick={(event) => event.stopPropagation()}
-					onKeyDown={(event) => event.stopPropagation()}
+					onKeyDown={(event) => {
+						// Activation belongs to the checkbox; list chords (especially
+						// Cmd/Ctrl+A after a pointer click) must still reach the grid.
+						if (event.key === " " || event.key === "Enter")
+							event.stopPropagation();
+					}}
 				>
 					<Checkbox
 						checked={picked}
@@ -283,6 +288,7 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 			>
 				<div className="flex min-w-0 items-center gap-1.5">
 					<span
+						data-notification-title=""
 						className={cn(
 							"min-w-0 truncate text-body-sm",
 							unread ? "font-semibold text-ink" : "text-ink-muted",

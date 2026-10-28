@@ -37,7 +37,13 @@ import {
 	useMutation,
 	useQuery,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useSyncExternalStore,
+} from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -45,6 +51,13 @@ import type {
 	DesktopNotificationsList,
 	DesktopNotificationsWriteResult,
 } from "../../../../shared/desktop-control-contract";
+import {
+	type FrozenNotificationSelection,
+	type NotificationSelectionPreview,
+	inverseNotificationVerb,
+	notificationSelectionScope,
+	selectedBySnapshot,
+} from "./notification-operations";
 import {
 	applyConfirmedToWindow,
 	editFactsForWrite,
@@ -1441,4 +1454,249 @@ export async function readSessionDismissCounts(
 		seen.add(next);
 		cursor = next;
 	}
+}
+
+/** Compact receipts keep a select-all over a large result one HTTP write. */
+export type NotificationBulkReceipt = {
+	changed_count: number;
+	skipped_count: number;
+	skipped_ask_count: number;
+	operation_token: string;
+	through_seq: number;
+	high_water: number;
+	counts_high_water?: number;
+	selection_version?: 1 | 2;
+	changed_update_count?: number;
+	changed_ask_count?: number;
+	waiting_unread_delta?: number;
+	reconciliation?: {
+		items: DesktopNotificationItem[];
+		absent_ids: string[];
+		high_water: number;
+	};
+	unread_delta: number;
+	session_counts: Record<
+		string,
+		{ changed_count: number; unread_delta: number }
+	>;
+	unread_count: number;
+	waiting_count: number;
+	waiting_unread_count: number;
+};
+
+export async function previewNotificationSelection(
+	filters: FrozenNotificationSelection["filters"],
+	state: "unread" | "all",
+	countSessionIds: string[] = [],
+	includeAskReads = false,
+): Promise<NotificationSelectionPreview> {
+	const result = await desktopResult<{
+		selection: NotificationSelectionPreview;
+	}>({
+		op: "notifications.list",
+		preview: true,
+		state,
+		kind: filters.kind,
+		bulkPriority: filters.priority,
+		countSessionIds,
+		...(includeAskReads ? { includeAskReads: true } : {}),
+		...(filters.from ? { sessionId: filters.from } : {}),
+	});
+	return result.selection;
+}
+
+/**
+ * The same optimistic cache edit as individual writes. A frozen scope is a
+ * server token rather than a client-side page walk; the adapter only projects
+ * the rows already cached, never manufactures off-page notification bodies.
+ * On a partial receipt the projection is withdrawn and authoritative facts are
+ * fetched: compact counts cannot identify which individual revisions skipped.
+ */
+
+export function useNotificationBulkState() {
+	const { client } = useOptionalQueryClient();
+	const operations = useRef(
+		new Map<
+			string,
+			{
+				verb: "read" | "unread" | "dismiss";
+				receipt: NotificationBulkReceipt;
+				reconcileIds: string[];
+				canReconcile: boolean;
+			}
+		>(),
+	);
+	const activeSessionIds = useCallback(
+		() =>
+			client
+				? client
+						.getQueryCache()
+						.findAll({
+							queryKey: notificationKeys.sessionUnread(null).slice(0, -1),
+						})
+						.filter((query) => query.isActive())
+						.map((query) => String(query.queryKey[3]))
+						.slice(0, 50)
+				: [],
+		[client],
+	);
+	const reconcileIds = useCallback(
+		(visible: string[]) => {
+			const cached = client ? [...cachedRows(client).keys()] : [];
+			// The explicit viewport IDs come first: a deep-scroll row must not be
+			// crowded out by hundreds of cached rows above it. Never send all IDs in
+			// the server result; these are bounded READ metadata, not selection.
+			return [...new Set([...visible, ...cached])].slice(0, 500);
+		},
+		[client],
+	);
+	const apply = useCallback(
+		async (
+			verb: "read" | "unread" | "dismiss",
+			selection: FrozenNotificationSelection,
+			visibleIds: string[] = [],
+		): Promise<NotificationBulkReceipt> => {
+			operations.current.clear();
+			const rows = client
+				? [...cachedRows(client).values()].filter((item) =>
+						selectedBySnapshot(item, selection),
+					)
+				: [];
+			const intent = await beginOptimisticWrite(
+				client,
+				verb,
+				tokensOf(rows),
+				notificationSelectionScope(selection, verb),
+			);
+			const reconciliation = reconcileIds(visibleIds);
+			try {
+				const target = {
+					selectionToken: selection.preview.token,
+					excludedIds: [...selection.excluded.keys()],
+					...(selection.preview.selection_version === 2
+						? { reconcileIds: reconciliation }
+						: {}),
+				};
+				const receipt = await desktopResult<NotificationBulkReceipt>(
+					verb === "dismiss"
+						? { op: "notifications.dismiss", verb, target }
+						: { op: "notifications.read", verb, target },
+				);
+				intent?.settleCompact(receipt);
+				operations.current.set(receipt.operation_token, {
+					verb,
+					receipt,
+					reconcileIds: reconciliation,
+					canReconcile: selection.preview.selection_version === 2,
+				});
+				return receipt;
+			} catch (error) {
+				intent?.();
+				throw error;
+			}
+		},
+		[client, reconcileIds],
+	);
+	const applyItems = useCallback(
+		async (
+			verb: "read" | "unread" | "dismiss",
+			items: DesktopNotificationItem[],
+			throughSeq: number,
+			v2 = false,
+			visibleIds: string[] = [],
+		): Promise<{
+			receipts: NotificationBulkReceipt[];
+			pending: number;
+			error?: unknown;
+		}> => {
+			operations.current.clear();
+			const receipts: NotificationBulkReceipt[] = [];
+			const reconciliation = reconcileIds(visibleIds);
+			for (let offset = 0; offset < items.length; offset += 500) {
+				const batch = items.slice(offset, offset + 500);
+				const intent = await beginOptimisticWrite(
+					client,
+					verb,
+					tokensOf(batch),
+				);
+				try {
+					const target = {
+						items: tokensOf(batch),
+						throughSeq,
+						receipt: true as const,
+						...(v2 ? { reconcileIds: reconciliation } : {}),
+					};
+					const receipt = await desktopResult<NotificationBulkReceipt>(
+						verb === "dismiss"
+							? { op: "notifications.dismiss", verb, target }
+							: { op: "notifications.read", verb, target },
+					);
+					intent?.settleCompact(receipt);
+					operations.current.set(receipt.operation_token, {
+						verb,
+						receipt,
+						reconcileIds: reconciliation,
+						canReconcile: v2,
+					});
+					receipts.push(receipt);
+				} catch (error) {
+					intent?.();
+					return { receipts, pending: items.length - offset, error };
+				}
+			}
+			return { receipts, pending: 0 };
+		},
+		[client, reconcileIds],
+	);
+	const undo = useCallback(
+		async (operationToken: string) => {
+			const original = operations.current.get(operationToken);
+			if (!original) throw new Error("No retained notification operation");
+			const { receipt: before } = original;
+			const sessionUnreadDeltas = Object.fromEntries(
+				Object.entries(before.session_counts).map(([id, counts]) => [
+					id,
+					-counts.unread_delta,
+				]),
+			);
+			// Compact counts do not prove which individual rows the journal changed.
+			// A NEW aggregate intent is safe; guessed per-row inverses are not. Rows
+			// return from authoritative reconciliation in the same Undo response.
+			const intent = await beginOptimisticWrite(
+				client,
+				inverseNotificationVerb(original.verb),
+				[],
+				{
+					throughSeq: before.counts_high_water ?? before.high_water,
+					unreadDelta:
+						before.counts_high_water === undefined ? 0 : -before.unread_delta,
+					waitingUnreadDelta:
+						before.counts_high_water === undefined
+							? 0
+							: -(before.waiting_unread_delta ?? 0),
+					sessionUnreadDeltas:
+						before.counts_high_water === undefined ? {} : sessionUnreadDeltas,
+				},
+			);
+			try {
+				const receipt = await desktopResult<NotificationBulkReceipt>({
+					op: "notifications.read",
+					verb: "undo",
+					target: {
+						operationToken,
+						...(original.canReconcile
+							? { reconcileIds: original.reconcileIds }
+							: {}),
+					},
+				});
+				intent?.settleCompact(receipt);
+				return receipt;
+			} catch (error) {
+				intent?.();
+				throw error;
+			}
+		},
+		[client],
+	);
+	return { apply, applyItems, undo, activeSessionIds };
 }

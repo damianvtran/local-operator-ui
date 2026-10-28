@@ -76,8 +76,6 @@ const pageBundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(pageBundlePath, pageBundle.outputFiles[0].text);
-const PAGE = await import(pageBundlePath.href);
-await unlink(pageBundlePath);
 
 const { JSDOM } = await import("jsdom");
 const dom = new JSDOM("<!doctype html>", {
@@ -102,6 +100,7 @@ const shims = {
 	requestAnimationFrame: (callback) => setTimeout(callback, 0),
 	cancelAnimationFrame: (id) => clearTimeout(id),
 	IS_REACT_ACT_ENVIRONMENT: true,
+	CSS: { escape: (value) => value },
 	ResizeObserver: NoopObserver,
 	IntersectionObserver: NoopObserver,
 	matchMedia: (query) => ({
@@ -118,6 +117,7 @@ const shims = {
 for (const key of [
 	"Element",
 	"Node",
+	"NodeFilter",
 	"HTMLElement",
 	"HTMLButtonElement",
 	"HTMLDivElement",
@@ -144,6 +144,11 @@ for (const [key, value] of Object.entries(shims)) {
 }
 window.matchMedia ??= shims.matchMedia;
 window.CSS ??= { escape: (value) => value };
+// Radix chooses its layout-effect/portal path at module initialization. Import
+// the renderer AFTER the browser globals exist, otherwise dialogs never mount
+// and a confirmation test silently exercises a server-render-only component.
+const PAGE = await import(pageBundlePath.href);
+await unlink(pageBundlePath);
 after(() => {
 	for (const [key, descriptor] of originals)
 		if (descriptor) Object.defineProperty(globalThis, key, descriptor);
@@ -178,9 +183,11 @@ const row = (index) => ({
 });
 
 /** Mount the shipped page over a fresh fixture; the console's errors are collected. */
-async function mount() {
-	const items = Array.from({ length: TOTAL }, (_, at) => row(TOTAL - at));
-	const fixture = PAGE.createNotificationFixture(items, []);
+async function mount(options = {}) {
+	const items =
+		options.items ?? Array.from({ length: TOTAL }, (_, at) => row(TOTAL - at));
+	const fixture = PAGE.createNotificationFixture(items, options.waiting ?? []);
+	localStorage.setItem("notifications-read-state", options.state ?? "unread");
 	window.api = {
 		desktop: {
 			request: async (request) => {
@@ -192,7 +199,11 @@ async function mount() {
 								desktop_contract: 1,
 								desktop_available: true,
 								desktop_auth: "bearer",
-								features: { notifications: 1 },
+								features: {
+									notifications: 1,
+									...(options.bulk ? { notification_bulk_selection: 1 } : {}),
+									...(options.askRead ? { notification_bulk_ask_read: 1 } : {}),
+								},
 							},
 						},
 					};
@@ -224,14 +235,19 @@ async function mount() {
 	const container = window.document.createElement("div");
 	window.document.body.append(container);
 	const client = new QueryClient({
-		defaultOptions: { queries: { retry: false } },
+		// This fixture owns explicit disposal; browser-mode mutation GC timers are
+		// otherwise still live for five minutes after the test has unmounted.
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+			mutations: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
 	});
 	const root = createRoot(container);
 	await act(async () => {
 		root.render(
 			h(
 				MemoryRouter,
-				{ initialEntries: ["/notifications"] },
+				{ initialEntries: [options.path ?? "/notifications"] },
 				h(
 					QueryClientProvider,
 					{ client },
@@ -291,10 +307,12 @@ async function mount() {
 	};
 	const unmount = async () => {
 		await act(async () => root.unmount());
+		client.clear();
 		container.remove();
 		console.error = originalError;
 	};
 	return {
+		container,
 		client,
 		fixture,
 		rows,
@@ -490,7 +508,12 @@ test(
 		window.document.body.append(container);
 		const root = createRoot(container);
 		const client = new QueryClient({
-			defaultOptions: { queries: { retry: false } },
+			// This fixture owns explicit disposal; browser-mode mutation GC timers are
+			// otherwise still live for five minutes after the test has unmounted.
+			defaultOptions: {
+				queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+				mutations: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+			},
 		});
 		const calls = [];
 		const item = row(7);
@@ -561,6 +584,424 @@ test(
 		} finally {
 			await act(async () => root.unmount());
 			container.remove();
+		}
+	},
+);
+
+const selectedRows = (page) => [
+	...page.container.querySelectorAll(
+		'[data-notification-row][aria-selected="true"]',
+	),
+];
+const click = async (node, options = {}) => {
+	assert.ok(node, "the control exists");
+	await act(async () =>
+		node.dispatchEvent(
+			new window.MouseEvent("click", { bubbles: true, ...options }),
+		),
+	);
+};
+
+test(
+	"bulk selection: header starts unchecked, row Shift-click selects a range",
+	BOUNDED,
+	async () => {
+		const page = await mount({ bulk: true, state: "all" });
+		try {
+			assert.ok(await page.settle(() => page.rows().length === 100));
+			const header = page.container.querySelector(
+				"[data-notifications-select-all]",
+			);
+			assert.equal(header.getAttribute("data-state"), "unchecked");
+			const rows = [
+				...page.container.querySelectorAll("[data-notification-row]"),
+			];
+			await click(rows[1].querySelector('[role="checkbox"]'));
+			assert.equal(header.getAttribute("data-state"), "indeterminate");
+			await click(rows[4].querySelector('[role="checkbox"]'), {
+				shiftKey: true,
+			});
+			assert.equal(selectedRows(page).length, 4);
+			assert.equal(
+				page.container.querySelector("[data-notifications-toolbar]").dataset
+					.notificationsToolbar,
+				"selection",
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"bulk select-all is one snapshot for 650 items, unchecking preserves off-page rows, Undo restores",
+	BOUNDED,
+	async () => {
+		const rows = Array.from({ length: 650 }, (_, i) => row(650 - i));
+		const page = await mount({ bulk: true, state: "all", items: rows });
+		try {
+			assert.ok(await page.settle(() => page.rows().length === 100));
+			await click(
+				page.container.querySelector("[data-notifications-select-all]"),
+			);
+			assert.ok(
+				await page.settle(() =>
+					page.container.textContent.includes("650 selected"),
+				),
+			);
+			assert.equal(selectedRows(page).length, 100);
+			await click(
+				page.container.querySelector(
+					'[data-notification-row] [role="checkbox"]',
+				),
+			);
+			assert.ok(page.container.textContent.includes("649 selected"));
+			assert.equal(
+				page.container
+					.querySelector("[data-notifications-select-all]")
+					.getAttribute("data-state"),
+				"indeterminate",
+			);
+			await click(
+				page.container.querySelector("[data-notifications-bulk-dismiss]"),
+			);
+			assert.ok(
+				await page.settle(() =>
+					document.querySelector("[data-notifications-confirm-view]"),
+				),
+				JSON.stringify({
+					errors: page.errors,
+					toolbar: page.container.querySelector("[data-notifications-toolbar]")
+						?.textContent,
+					dialogs: document.querySelectorAll('[role="dialog"]').length,
+					writes: page.fixture.requests.filter(
+						(request) => request.op === "notifications.dismiss",
+					),
+				}),
+			);
+			await click(document.querySelector("[data-notifications-confirm-view]"));
+			assert.ok(
+				await page.settle(
+					() => rows.filter((row) => row.dismissed).length === 649,
+				),
+			);
+			const writes = page.fixture.requests.filter(
+				(request) => request.op === "notifications.dismiss",
+			);
+			assert.equal(
+				writes.length,
+				1,
+				"one filtered PATCH, never a per-row loop",
+			);
+			assert.equal(writes[0].target.excludedIds.length, 1);
+			assert.ok(await page.settle(() => page.rows().length === 1));
+			await act(async () =>
+				page.grid().dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						key: "z",
+						ctrlKey: true,
+						bubbles: true,
+					}),
+				),
+			);
+			assert.ok(await page.settle(() => rows.every((row) => !row.dismissed)));
+			assert.equal(
+				page.fixture.requests.filter((request) => request.verb === "undo")
+					.length,
+				1,
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"Cmd+A selects the filtered result, including unloaded matches; old core never silently selects a page",
+	BOUNDED,
+	async () => {
+		const items = Array.from({ length: 650 }, (_, i) => row(650 - i));
+		for (let i = 550; i < 650; i++)
+			items[i].session = { id: "bbbbbbbbbbb2", title: "Other" };
+		const page = await mount({
+			bulk: true,
+			items,
+			path: "/notifications?from=aaaaaaaaaaa1",
+		});
+		try {
+			assert.ok(await page.settle(() => page.rows().length > 0));
+			await act(async () =>
+				page.grid().dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						key: "a",
+						metaKey: true,
+						bubbles: true,
+					}),
+				),
+			);
+			assert.ok(
+				await page.settle(() =>
+					page.container.textContent.includes("550 selected"),
+				),
+			);
+			const preview = page.fixture.requests.find((request) => request.preview);
+			assert.equal(preview.sessionId, "aaaaaaaaaaa1");
+		} finally {
+			await page.unmount();
+		}
+		const older = await mount({ bulk: false });
+		try {
+			assert.ok(await older.settle(() => older.rows().length === 100));
+			assert.equal(
+				older.container.querySelector("[data-notifications-select-all]")
+					.disabled,
+				true,
+			);
+			await act(async () =>
+				older.grid().dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						key: "a",
+						ctrlKey: true,
+						bubbles: true,
+					}),
+				),
+			);
+			assert.equal(
+				older.fixture.requests.filter((request) => request.preview).length,
+				0,
+			);
+			assert.equal(selectedRows(older).length, 0);
+		} finally {
+			await older.unmount();
+		}
+	},
+);
+
+test(
+	"mixed asks require confirmation and review is not settlement; ask-only frozen read is visibly unavailable",
+	BOUNDED,
+	async () => {
+		const waiting = [1, 2].map((index) => ({
+			...row(index),
+			id: `ask:aaaaaaaaaaa1:question-${index}`,
+			source: "ask",
+			priority: "high",
+			ask: { status: "open" },
+		}));
+		const page = await mount({
+			bulk: true,
+			state: "all",
+			items: [row(10), row(11), row(12)],
+			waiting,
+		});
+		try {
+			assert.ok(await page.settle(() => page.rows().length === 5));
+			await click(
+				page.container.querySelector("[data-notifications-select-all]"),
+			);
+			assert.ok(
+				await page.settle(() =>
+					page.container.textContent.includes("5 selected"),
+				),
+			);
+			assert.equal(
+				page.container.querySelector("[data-notifications-asks-stay]").dataset
+					.notificationsAsksStay,
+				"2",
+			);
+			assert.match(
+				page.container.querySelector('[data-notifications-bulk-read="read"]')
+					.textContent,
+				/3 updates/,
+			);
+			await click(
+				page.container.querySelector("[data-notifications-bulk-dismiss]"),
+			);
+			assert.ok(
+				await page.settle(() =>
+					document.querySelector("[data-notifications-confirm-view]"),
+				),
+			);
+			assert.equal(
+				page.fixture.requests.filter(
+					(request) => request.op === "notifications.dismiss",
+				).length,
+				0,
+			);
+			const review = [
+				...document.querySelectorAll('[role="dialog"] button'),
+			].find((button) => button.textContent.includes("Review unanswered asks"));
+			await click(review);
+			assert.ok(await page.settle(() => page.rows().length === 2));
+			assert.equal(page.fixture.counts().waiting_count, 2);
+			assert.equal(
+				page.fixture.requests.filter(
+					(request) => request.op === "sessions.answer",
+				).length,
+				0,
+			);
+			await click(
+				page.container.querySelector("[data-notifications-select-all]"),
+			);
+			assert.ok(
+				await page.settle(() =>
+					page.container.textContent.includes("2 selected"),
+				),
+			);
+			assert.equal(
+				page.container.querySelector('[data-notifications-bulk-read="read"]')
+					.disabled,
+				true,
+			);
+			assert.equal(
+				page.container.querySelector('[data-notifications-bulk-read="unread"]')
+					.disabled,
+				true,
+			);
+			await click(
+				[...page.container.querySelectorAll("button")].find((button) =>
+					button.textContent.includes("Clear selection"),
+				),
+			);
+			await click(
+				page.container.querySelector(
+					'[data-notification-row] [role="checkbox"]',
+				),
+			);
+			assert.equal(
+				page.container.querySelector('[data-notifications-bulk-read="read"]')
+					.disabled,
+				false,
+			);
+			await click(
+				page.container.querySelector('[data-notifications-bulk-read="read"]'),
+			);
+			assert.ok(await page.settle(() => waiting.some((ask) => ask.read)));
+			assert.equal(
+				page.fixture.counts().waiting_count,
+				2,
+				"read never settles an ask",
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"small visible dismiss needs no confirmation and partial selection uses sequence-guarded receipt",
+	BOUNDED,
+	async () => {
+		const items = [row(1), row(2), row(3)];
+		const page = await mount({ bulk: true, state: "all", items });
+		try {
+			assert.ok(await page.settle(() => page.rows().length === 3));
+			await click(
+				page.container.querySelector(
+					'[data-notification-row] [role="checkbox"]',
+				),
+			);
+			await click(
+				page.container.querySelector("[data-notifications-bulk-dismiss]"),
+			);
+			assert.ok(
+				await page.settle(
+					() => items.filter((item) => item.dismissed).length === 1,
+				),
+			);
+			assert.equal(
+				document.querySelector("[data-notifications-confirm-view]"),
+				null,
+			);
+			const write = page.fixture.requests.find(
+				(request) => request.op === "notifications.dismiss",
+			);
+			assert.equal(write.target.receipt, true);
+			assert.equal(write.target.throughSeq, 3);
+			assert.equal(write.target.items.length, 1);
+			await act(async () =>
+				page.grid().dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						key: "z",
+						ctrlKey: true,
+						bubbles: true,
+					}),
+				),
+			);
+			assert.ok(
+				await page.settle(() => items.every((item) => !item.dismissed)),
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"an ask arriving after the frozen gesture is never auto-checked",
+	BOUNDED,
+	async () => {
+		const waiting = [
+			{
+				...row(1),
+				id: "ask:aaaaaaaaaaa1:original",
+				source: "ask",
+				priority: "high",
+				seq: 0,
+				ask: { status: "open" },
+			},
+		];
+		const page = await mount({
+			bulk: true,
+			askRead: true,
+			state: "all",
+			items: [row(2)],
+			waiting,
+		});
+		try {
+			assert.ok(await page.settle(() => page.rows().length === 2));
+			await click(
+				page.container.querySelector("[data-notifications-select-all]"),
+			);
+			assert.ok(
+				await page.settle(() =>
+					page.container.textContent.includes("2 selected"),
+				),
+			);
+			const preview = page.fixture.requests.find((request) => request.preview);
+			assert.equal(preview.includeAskReads, true);
+			const arriving = {
+				...waiting[0],
+				id: "ask:aaaaaaaaaaa1:later",
+				title: "A later ask",
+			};
+			await act(async () => {
+				page.fixture.arriveAsk(arriving);
+				await page.client.invalidateQueries({
+					queryKey: PAGE.notificationKeys.factsRoot,
+				});
+			});
+			assert.ok(await page.settle(() => page.rows().length === 3));
+			const later = [
+				...page.container.querySelectorAll("[data-notification-row]"),
+			].find((row) => row.dataset.notificationRow === arriving.id);
+			assert.equal(later.getAttribute("aria-selected"), "false");
+			assert.ok(
+				page.container.querySelector(
+					"[data-notifications-new-outside-selection]",
+				),
+				"visible late asks get an explicit scope notice",
+			);
+			assert.equal(
+				later.querySelector('[role="checkbox"]').getAttribute("data-state"),
+				"unchecked",
+			);
+			assert.ok(
+				page.container.textContent.includes("2 selected"),
+				"bar count remains server snapshot count",
+			);
+		} finally {
+			await page.unmount();
 		}
 	},
 );

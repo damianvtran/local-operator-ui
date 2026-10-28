@@ -58,6 +58,7 @@ const {
 	SupplementFrameMounts,
 	supplementMountUrl,
 	guardForegroundReceipts,
+	desktopEndpoint,
 	rememberPickedDirectory,
 	withRememberedDirectory,
 	requestDesktopMediaOutcome,
@@ -3753,4 +3754,57 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 		body: "hi",
 	});
 	assert.equal("thread_root_id" in plain.body, false);
+});
+
+test("notification journal Undo is foreground-gated before any network request", async () => {
+	// A journal may restore read state, not only a dismissed flag. It therefore
+	// rides the existing read IPC operation even for a dismissal-only gesture.
+	const request = desktopRequestSchema.parse({
+		op: "notifications.read",
+		verb: "undo",
+		target: { operationToken: "fixture-journal" },
+	});
+	const calls = [];
+	const state = { visible: false, minimized: false, focused: false };
+	const guarded = guardForegroundReceipts(
+		() => ({
+			isDestroyed: () => false,
+			isVisible: () => state.visible,
+			isMinimized: () => state.minimized,
+			isFocused: () => state.focused,
+		}),
+		async (input) => {
+			calls.push(input);
+			return { status: 200, body: { result: {} } };
+		},
+	);
+	for (const background of [
+		{ visible: false, minimized: false, focused: true },
+		{ visible: true, minimized: true, focused: true },
+		{ visible: true, minimized: false, focused: false },
+	]) {
+		Object.assign(state, background);
+		await assert.rejects(
+			() => guarded(request),
+			(error) => error.message.includes("foreground"),
+		);
+	}
+	assert.equal(calls.length, 0, "background Undo must never reach transport");
+	assert.equal(
+		desktopRequestSchema.safeParse({ ...request, op: "notifications.dismiss" })
+			.success,
+		false,
+		"the unguarded IPC operation cannot carry a journal Undo",
+	);
+	Object.assign(state, { visible: true, minimized: false, focused: true });
+	await guarded(request);
+	assert.equal(
+		calls.length,
+		1,
+		"mock native state positive; NOT real native foreground evidence",
+	);
+	assert.deepEqual(desktopEndpoint(request).body, {
+		op: "undo",
+		operation_token: "fixture-journal",
+	});
 });
