@@ -31,7 +31,7 @@ const bundle = await build({
 			'export { DrawerUpdates, DrawerTabs, useSessionUnreadUpdates } from "./src/renderer/src/features/notifications/components/drawer-updates";',
 			'export { NotificationsPage } from "./src/renderer/src/features/notifications/components/notifications-page";',
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
-			'export { notificationKeys, useNotificationsCount } from "./src/renderer/src/features/notifications/notifications-api";',
+			'export { notificationKeys, useNotificationReadState, useNotificationsCount } from "./src/renderer/src/features/notifications/notifications-api";',
 			'export { badgeCountOf } from "./src/renderer/src/features/notifications/notifications-model";',
 			/*
 			 * Sonner paints through a portal on its own schedule, so the receipt is read
@@ -182,6 +182,30 @@ const row = (index) => ({
 });
 
 /** The tab strip, the list and the sidebar badge figure, as one screen shows them. */
+/**
+ * Another surface (the bulk lane's shape) writing through the shared read-state API
+ * with rows it rendered itself: the drawer must follow on the click, with no
+ * second read-state path between them.
+ */
+const ReadStateProbe = () => {
+	const readState = DRAWER.useNotificationReadState();
+	return h(
+		"button",
+		{
+			type: "button",
+			"data-probe-mark-read": "",
+			onClick: () =>
+				void readState
+					.markRead([
+						{ id: "n_row5", revision: 1 },
+						{ id: "n_row4", revision: 1 },
+					])
+					.catch(() => {}),
+		},
+		"probe",
+	);
+};
+
 /** The Notifications page instead of the drawer: same transport, same cache. */
 let screenKind = "drawer";
 const PageScreen = () => h(DRAWER.NotificationsPage, { nowMs: NOW });
@@ -205,6 +229,7 @@ const Screen = () => {
 			sessionless: false,
 		}),
 		h(DRAWER.DrawerUpdates, { sessionId: SESSION, nowMs: NOW }),
+		h(ReadStateProbe),
 	);
 };
 
@@ -621,6 +646,37 @@ test(
 			);
 		} finally {
 			screenKind = "drawer";
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"a write through useNotificationReadState from another surface moves the drawer on the click",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		try {
+			await page.settle(
+				() => page.rowIds().length === 5 && page.tabCount() === "5",
+			);
+			const release = page.hold();
+			await page.click("[data-probe-mark-read]");
+			await flush();
+			assert.deepEqual(
+				page.rowIds(),
+				["n_row7", "n_row6", "n_row3"],
+				"both rows left Unread",
+			);
+			assert.equal(page.badge(), "3");
+			assert.equal(page.tabCount(), "3");
+			await release();
+			assert.ok(
+				await page.settle(
+					() => page.badge() === "3" && page.rowIds().length === 3,
+				),
+			);
+		} finally {
 			await page.unmount();
 		}
 	},

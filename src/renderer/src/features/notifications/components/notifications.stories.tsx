@@ -22,7 +22,11 @@ import { createNotificationFixture } from "../notifications-fixture";
  * The clock is pinned (`NOW`) so the time column and the time groups do not
  * churn between captures.
  */
-import { DrawerTabs, DrawerUpdates } from "./drawer-updates";
+import {
+	DrawerTabs,
+	DrawerUpdates,
+	useSessionUnreadUpdates,
+} from "./drawer-updates";
 import { FlagLine, FlagLinesProvider } from "./flag-line";
 import { OperationProgressLine } from "./operation-progress-line";
 import "../../../styles/index.css";
@@ -775,7 +779,12 @@ const Drawer = ({
 	useDocumentDirection();
 	const [current, setCurrent] = useState<"asks" | "updates" | "all">(tab);
 	const [rows, setRows] = useState<PendingAsk[]>([ASK]);
-	const updates = fixture.counts().unread_count;
+	/*
+	 * The product's own count (chat-content reads this hook), not a snapshot of the
+	 * fixture at render: a snapshot stayed put while a mark-read moved everything
+	 * else, which is the drift the drawer's evidence has to show is gone.
+	 */
+	const updates = useSessionUnreadUpdates("aaaaaaaaaaa1", true);
 	return (
 		<LocaleDirectionProvider>
 			<div className="flex h-[560px] w-[404px] shrink-0 bg-canvas">

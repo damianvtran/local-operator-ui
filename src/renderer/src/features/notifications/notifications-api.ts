@@ -37,7 +37,7 @@ import {
 	useMutation,
 	useQuery,
 } from "@tanstack/react-query";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -618,6 +618,48 @@ export function useNotificationsWrite() {
 			applyConfirmedWrite(client, variables.verb, result.changed);
 		},
 	});
+}
+
+/**
+ * THE SHARED READ-STATE API: the one door any surface uses to change read or
+ * dismissed state, so every list, count and the sidebar badge agree on the click.
+ *
+ *     const readState = useNotificationReadState();
+ *     readState.markRead(rows);   readState.markUnread(rows);
+ *     readState.dismiss(rows);    readState.restore(rows);
+ *
+ * Each takes the rows AS RENDERED (id + revision: core refuses a write naming an
+ * older revision, so a row revised since the render is never cleared by it) and
+ * returns the mutation's promise of the server's receipt, whose `changed` ids are
+ * what an Undo should invert. Behaviour, all inherited from `useNotificationsWrite`:
+ *
+ *  - OPTIMISTIC: rows, page-one facts, the per-conversation unread count and the
+ *    badge move before the server answers (`beginOptimisticWrite`);
+ *  - EXACT ROLLBACK on refusal: the inverse over only the rows this call flipped,
+ *    never a cache snapshot, so a concurrent write's edit survives;
+ *  - CONFIRMED RECONCILIATION: the receipt's `changed` ids are written into every
+ *    cached window and facts answer (`applyConfirmedWrite`); a later refetch then
+ *    carries the server's state, and `mergeWindowForReel` keeps the newest revision.
+ *
+ * Scoped sweeps ("everything through seq N") are not here: their reach is the
+ * server's walk, which cannot be applied optimistically - the reel's
+ * `applyNotificationOperation` ledger owns those.
+ */
+export function useNotificationReadState() {
+	const write = useNotificationsWrite();
+	return useMemo(() => {
+		const run =
+			(verb: NotificationsVerb) =>
+			(rows: readonly Pick<DesktopNotificationItem, "id" | "revision">[]) =>
+				write.mutateAsync({ verb, target: { items: tokensOf(rows) } });
+		return {
+			markRead: run("read"),
+			markUnread: run("unread"),
+			dismiss: run("dismiss"),
+			restore: run("undismiss"),
+			isPending: write.isPending,
+		};
+	}, [write.mutateAsync, write.isPending]);
 }
 
 /**
