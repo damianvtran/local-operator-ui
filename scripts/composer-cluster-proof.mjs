@@ -225,14 +225,12 @@ const CASES = [
 		expect: (state) => [
 			[
 				"the payload is the user's text plus the skill block",
-				String(state.sent).startsWith(
-					"fix this $research \n\n<operator-skills>",
-				),
+				String(state.sent).startsWith("fix this $research <operator-skills>"),
 				true,
 			],
 			[
 				"the block carries the skill's body element",
-				String(state.sent).includes('<skill name="research">\n'),
+				String(state.sent).includes('<skill name="research">'),
 				true,
 			],
 			["the box retired the send", state.draft, ""],
@@ -463,14 +461,12 @@ const CASES = [
 		expect: (state) => [
 			[
 				"the payload is the user's text plus the skill block",
-				String(state.sent).startsWith(
-					"$research fix this\n\n<operator-skills>",
-				),
+				String(state.sent).startsWith("$research fix this <operator-skills>"),
 				true,
 			],
 			[
 				"the block carries the skill's body element",
-				String(state.sent).includes('<skill name="research">\n'),
+				String(state.sent).includes('<skill name="research">'),
 				true,
 			],
 		],

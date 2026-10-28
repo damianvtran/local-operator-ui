@@ -64,7 +64,7 @@ const WEIGHT_UTILITY =
 const MERGE_SITE =
 	/const composerRuns = useMemo\( \(\) => \[\.\.\.slashRuns, \.\.\.skillRuns\], \[slashRuns, skillRuns\], \);/;
 const SKILL_RUNS_CALL =
-	/skillHighlightRuns\(\{ draft: newMessage, vocabulary: skills\.vocabulary, settled: skills\.settled, picking: skills\.open, \}\)/;
+	/skillHighlightRuns\(\{ draft: newMessage, vocabulary: skills\.vocabulary, settled: skills\.settled, picking: skills\.open, expands: planForDraft\(newMessage, caret\)\.kind === "send", \}\)/;
 const MIRROR_RUNS = /runs=\{composerRuns\}/;
 const HIGHLIGHT_SWITCH =
 	/const highlighting = highlightPaints\(composerRuns\);/;
@@ -88,6 +88,7 @@ const runs = (draft, over = {}) =>
 		vocabulary: VOCABULARY,
 		settled: true,
 		picking: false,
+		expands: true,
 		...over,
 	});
 
@@ -175,6 +176,7 @@ test("the extent is the RESOLVER's name class, so the corners read exactly as th
 			vocabulary: VOCABULARY,
 			settled: true,
 			picking: false,
+			expands: true,
 		}),
 		[{ start: 0, end: 15, kind: "skill-unknown" }],
 	);
@@ -231,6 +233,7 @@ test("no ink at all while the vocabulary is loading, absent or errored", () => {
 			vocabulary: empty,
 			settled: true,
 			picking: false,
+			expands: true,
 		}),
 		[{ start: 0, end: 9, kind: "skill-unknown" }],
 	);
@@ -240,6 +243,7 @@ test("no ink at all while the vocabulary is loading, absent or errored", () => {
 			vocabulary: empty,
 			settled: true,
 			picking: false,
+			expands: true,
 		}),
 		[{ start: 0, end: 4, kind: "skill-unknown" }],
 	);
@@ -287,6 +291,39 @@ test("money, shell, glue and bare sigils stay neutral", () => {
 	assert.deepEqual(runs("$-foo"), []);
 	// A slash command's money argument stays prose.
 	assert.deepEqual(runs("/model $5"), []);
+});
+
+/* ------------------------------------------------------------------ */
+/* The surface gate: only a draft Enter SENDS expands a skill          */
+/* ------------------------------------------------------------------ */
+
+test("a draft Enter dispatches as a slash command paints no skill ink", () => {
+	/*
+	 * M1's rule, executed: the desktop never sends a slash line as a prompt, so
+	 * every token on one is neutral — resolved or not, leading or inline. The
+	 * caller reads `expands` from the same planner Enter uses; this file only
+	 * honours it.
+	 */
+	for (const draft of [
+		"/team delivery $research",
+		"/goal ship $release-notes this week",
+		"/agent reviewer $research the diff",
+		"/compact hello $research",
+		"/model $5",
+		"$research",
+		"$zzz",
+	]) {
+		assert.deepEqual(
+			runs(draft, { expands: false }),
+			[],
+			`${JSON.stringify(draft)} paints nothing on a command surface`,
+		);
+	}
+	// A leading slash word the planner treats as prose still sends, so it still
+	// paints — the same line with the gate on.
+	assert.deepEqual(runs("/tmp/notes fix $research"), [
+		{ start: 15, end: 24, kind: "skill" },
+	]);
 });
 
 /* ------------------------------------------------------------------ */

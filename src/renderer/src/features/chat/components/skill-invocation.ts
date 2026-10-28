@@ -31,6 +31,14 @@
  * `skillBodyHasContent` / `renderSkillInvocation` keep that read (and the
  * fixture that writes it) working. New sends never build it.
  *
+ * ACCEPTED CONSEQUENCE: a `$` is boundary-read anywhere in the message now, so
+ * a PASTED document that quotes `$name` mid-text fires that skill when sent.
+ * The TUI has the same trigger and relies on collapsed paste chips to keep the
+ * text visible; the desktop's paste path has no such chip, so the ink is where
+ * the user sees it before Enter and the attached body is the accepted cost.
+ * Nothing else is at risk: `$100`, `$PATH` and a glued `costs$5` are prose by
+ * the grammar, and a typo paints inert rather than firing.
+ *
  * Pure and I/O-free: the caller supplies each body it read from `skills.list`.
  */
 
@@ -500,6 +508,11 @@ export function skillBodyHasContent(body: string | null | undefined): boolean {
  * replay scanner matches. A GLOBAL regex rather than a plain `replace`:
  * Python's `str.replace` is replace-ALL, and a single-replacement JS spelling
  * would leave every later occurrence raw.
+ *
+ * @internal Legacy writer plumbing. The app sends `renderSkillBlock`; this and
+ * `renderSkillInvocation` exist so the legacy READ half is pinned against the
+ * writer that produced it (`skill-row.test.mjs`, `skill-seal-fixture.mjs`).
+ * New code must not build the legacy shape.
  */
 export function escapeSkillAttribute(value: string): string {
 	return value
@@ -539,6 +552,8 @@ export function unescapeSkillAttribute(value: string): string {
  * reads; no new send builds it (`renderSkillBlock` is the writer now), but the
  * shape is kept here so the read half and the scene fixture are pinned against
  * the writer that produced them rather than against a literal only.
+ *
+ * @internal See {@link escapeSkillAttribute}: fixture and test plumbing only.
  */
 export function renderSkillInvocation(
 	invocation: SkillInvocation,

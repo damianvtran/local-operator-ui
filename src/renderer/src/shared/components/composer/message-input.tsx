@@ -4329,14 +4329,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * THE `$skill` INK, merged AFTER the plan gate above rather than through it —
 		 * and the order is load-bearing, not tidiness. A `$research fix this` draft
 		 * goes to the model on Enter (`plan.kind` is `send`), so `runsMatchingPlan`
-		 * blanks every run of it: a skill run merged before the gate would blank
-		 * exactly the primary case this tint exists for. The merge below appends the
-		 * `$` runs to the gated slash runs, and the two families cannot overlap by
-		 * construction — a paintable skill token must be LEADING (whitespace-only
-		 * before it), while a slash run needs its `/` word before anything a claim
-		 * could leave it, so at most one family can hold the draft's first token.
+		 * blanks every run of it: a skill run merged before that gate would blank
+		 * exactly the primary case this tint exists for.
 		 *
-		 * The four inputs are the ones `skill-highlight.ts` judges on: the draft, the
+		 * THE SURFACE GATE IS THE PLAN Enter USES (`planForDraft`), because a skill
+		 * only expands on a draft that reaches the send seam. `/team delivery
+		 * $research` dispatches a command and the argument is admitted by the
+		 * backend; no skill attaches, so no ink claims one. A leading slash word the
+		 * planner treats as prose still paints — Enter sends it, and the seam
+		 * expands it. `skill-highlight.ts` carries the whole surface argument.
+		 *
+		 * The rest are the inputs `skill-highlight.ts` judges on: the draft, the
 		 * vocabulary the popup reads (one vocabulary, no second request), whether
 		 * that answer is settled, and whether the list is open on the token — which
 		 * suppresses the UNRESOLVED ink only (a resolved name paints through, see
@@ -4349,8 +4352,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				vocabulary: skills.vocabulary,
 				settled: skills.settled,
 				picking: skills.open,
+				expands: planForDraft(newMessage, caret).kind === "send",
 			});
-		}, [newMessage, composing, skills.vocabulary, skills.settled, skills.open]);
+		}, [
+			newMessage,
+			caret,
+			composing,
+			skills.vocabulary,
+			skills.settled,
+			skills.open,
+			planForDraft,
+		]);
 		const composerRuns = useMemo(
 			() => [...slashRuns, ...skillRuns],
 			[slashRuns, skillRuns],
@@ -5433,12 +5445,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		/*
 		 * THE `$skill` ACCEPT (issue #664) — the one gesture whose whole output is a
-		 * STAGED DRAFT. Accepting a row writes `$name ` plus the surviving draft
-		 * (the pure `skillCompletionFor`, the TUI's own `_complete_skill`
-		 * arithmetic) and stops there: neither Tab nor Enter ever submits for a
-		 * skill row, because a completed `$skill ` is the opening of a prompt the
-		 * user is still writing. What the NEXT Enter sends is the expanded payload,
-		 * built in `onSubmit` to match `invoke.py` character-for-character.
+		 * STAGED DRAFT. Accepting a row replaces the token's OWN SPAN with `$name `
+		 * (the pure `skillCompletionFor`, the TUI's own `_skill_span_replacement`
+		 * arithmetic) and stops there: nothing outside the token moves, and neither
+		 * Tab nor Enter ever submits for a skill row, because a completed `$skill `
+		 * is the opening of a prompt the user is still writing. What the NEXT Enter
+		 * sends is the expanded payload, built in `onSubmit` to match `invoke.py`
+		 * character-for-character.
 		 *
 		 * The refusal covers this popup's click too — the same MAJOR-2 rule the two
 		 * sibling popups carry. `readOnly` cannot close this path here either,

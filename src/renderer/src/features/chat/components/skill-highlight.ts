@@ -47,15 +47,27 @@
  *   context (`costs$5`, `a$b`), which the boundary rule never returns as a
  *   token at all.
  *
- * WHAT IS DELIBERATELY NOT HERE: a slash claim. The desktop's picker suppresses
- * the `$` list whenever a slash context is live at the caret
- * (`skill-picker.tsx`), but that is a property of the CARET, not of the text —
- * the TUI's own scan region has no desktop equivalent because the desktop's
- * slash arguments live in dialogs rather than composer text. The submit-side
- * trigger reads the whole message with no slash exemption
- * (`local_operator/sigils.py` has none either), so the ink must not invent one:
- * painting `/team delivery $research` resolved is honest, because Enter does
- * expand it.
+ * THE SURFACE RULE, AND WHY IT IS NOT THE TUI'S. `planSkillMentions` decides
+ * WHAT fires; `expands` decides WHERE a fire is possible on this host, and the
+ * two are separate because the hosts differ. Enter on `/team delivery
+ * $research` hands the argument to `sessions.command`; the backend admits the
+ * receipt's request itself, and the composer's submit seam — the only place
+ * that expands a skill — never runs. The TUI closes that split with
+ * `command_picker.skill_scan_region` plus `SKILL_SUBMIT_COMMANDS`: it expands
+ * the argument tail of `/team`, `/agent`, `/goal` and `/aida` as its own
+ * prompt. The desktop cannot port that faithfully. `/goal`'s argument is ALSO
+ * the stored goal text, so appending a block would mutate a durable operand;
+ * `/team` and `/agent` are admitted from a receipt the renderer does not
+ * compose; `/aida` sends through a branch with no skill plan. Expanding a
+ * command OPERAND is not the same act as expanding the message the composer
+ * sends, so the honest fallback is: no ink on a draft Enter dispatches as a
+ * command. The caller supplies `expands` from the same slash planner Enter
+ * uses, so the paint and the key cannot disagree.
+ *
+ * A leading slash word that is NOT a dispatchable command is prose on the
+ * desktop — the planner answers `send` and the text reaches the submit seam —
+ * so its mentions still paint, exactly as the TUI's `skill_scan_region`
+ * returns the whole buffer for the same shape.
  *
  * Pure and I/O-free, like its sibling: the whole rule is executable in
  * `scripts/skill-highlight.test.mjs` on the code the app ships.
@@ -82,6 +94,12 @@ export type SkillHighlightArgs = {
 	 * ink only; a resolved token paints through it.
 	 */
 	picking: boolean;
+	/**
+	 * Whether Enter SENDS this draft as a message — the one surface on this
+	 * host where a `$name` expands. Read from the same slash planner the Enter
+	 * key reads; a draft that dispatches a command paints no skill ink.
+	 */
+	expands: boolean;
 };
 
 export function skillHighlightRuns({
@@ -89,10 +107,12 @@ export function skillHighlightRuns({
 	vocabulary,
 	settled,
 	picking,
+	expands,
 }: SkillHighlightArgs): SlashHighlightRun[] {
 	// Loading, no vocabulary yet, or errored: no claims at all, and no dim
-	// flash while the read is in flight.
-	if (!settled) return [];
+	// flash while the read is in flight. `expands` is the surface gate: a
+	// slash command's line never reaches the seam that expands a skill.
+	if (!settled || !expands) return [];
 	/*
 	 * The PLAN, not the raw mentions: a token inside a block that arrived with
 	 * the draft will not attach at submit, and a name the block already carries
