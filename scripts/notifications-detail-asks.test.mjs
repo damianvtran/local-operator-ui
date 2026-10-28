@@ -242,6 +242,7 @@ const NOTE = {
  */
 async function mount({
 	openId,
+	surface = "pane",
 	answer = () => ({ status: 200 }),
 	/** Edit the seeded asks (a secret question, a timed-out ask, a withdrawn one). */
 	seed = () => {},
@@ -408,19 +409,24 @@ async function mount({
 				h(
 					QueryClientProvider,
 					{ client },
-					h(
-						Routes,
-						null,
-						h(Route, {
-							path: "/notifications/:notificationId",
-							element: h(PAGE.NotificationsPage, { nowMs: NOW }),
-						}),
-					),
+					surface === "fleet"
+						? h(PAGE.FleetAskDrawer, { onClose: () => {} })
+						: h(
+								Routes,
+								null,
+								h(Route, {
+									path: "/notifications/:notificationId",
+									element: h(PAGE.NotificationsPage, { nowMs: NOW }),
+								}),
+							),
 				),
 			),
 		);
 	});
-	const pane = () => container.querySelector("[data-notification-detail]");
+	const pane = () =>
+		surface === "fleet"
+			? container
+			: container.querySelector("[data-notification-detail]");
 	const card = (askId) =>
 		pane()?.querySelector(`[data-lo-ask-row="${askId}"]`) ?? null;
 	const filterText = () =>
@@ -874,7 +880,7 @@ const stateBlob = (root) => {
 };
 
 /** Type into a secret field the way a reader does: React's value setter, then `input`. */
-const typeSecret = async (scope) => {
+const typeSecret = async (scope, value = SECRET_VALUE) => {
 	const field = scope.querySelector("input[data-ask-secret]");
 	assert.ok(field, "the secret question has a field");
 	const setter = Object.getOwnPropertyDescriptor(
@@ -884,7 +890,7 @@ const typeSecret = async (scope) => {
 		"value",
 	).set;
 	await act(async () => {
-		setter.call(field, SECRET_VALUE);
+		setter.call(field, value);
 		field.dispatchEvent(new window.Event("input", { bubbles: true }));
 	});
 };
@@ -1197,3 +1203,156 @@ test(
 		}
 	},
 );
+
+/* R2-1/U1: edits carry only a revision; Retry intentionally keeps its original request. */
+for (const surface of ["pane", "fleet"]) {
+	for (const mixed of [false, true]) {
+		test(
+			`R2-1 ${surface}: ${mixed ? "mixed" : "secret-only"} retry keeps original; an edit sends the new secret`,
+			BOUNDED,
+			async () => {
+				const original = "synthetic-original-for-retry";
+				const edited = "synthetic-corrected-for-new-send";
+				const page = await openOnA({
+					surface,
+					holdAggregate: true,
+					seed: (asks) => {
+						const ordinary = asks[0].questions;
+						secretSeed(asks);
+						if (mixed) asks[0].questions.push(...ordinary);
+					},
+					answer: (call) =>
+						call <= 2 ? { status: 503, detail: "offline" } : { status: 200 },
+				});
+				try {
+					await page.settle(() => page.reads.aggregate > 0);
+					await typeSecret(page.card("a-1111"), original);
+					if (mixed) await chooseFirstOption(page);
+					await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+					assert.ok(
+						await page.settle(() =>
+							page.buttonIn(page.card("a-1111"), "Retry"),
+						),
+					);
+					assert.ok(page.buttonIn(page.card("a-1111"), "Send answer").disabled);
+					await page.press(page.buttonIn(page.card("a-1111"), "Retry"));
+					assert.ok(
+						await page.settle(
+							() =>
+								page.posts.length === 2 &&
+								page.buttonIn(page.card("a-1111"), "Retry"),
+						),
+					);
+					assert.equal(
+						page.posts[1].answers.edge_key[0],
+						original,
+						"unchanged Retry repeats original",
+					);
+					assert.ok(
+						page.buttonIn(page.card("a-1111"), "Send answer").disabled,
+						"new failed attempt resets revision baseline",
+					);
+					await typeSecret(page.card("a-1111"), edited);
+					assert.equal(
+						page.buttonIn(page.card("a-1111"), "Send answer").disabled,
+						false,
+						"secret edit re-arms a NEW Send answer",
+					);
+					await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+					assert.ok(
+						await page.settle(
+							() =>
+								page.card("a-1111")?.getAttribute("data-lo-ask-status") ===
+								"answered",
+						),
+					);
+					assert.equal(page.posts.length, 3);
+					assert.equal(
+						page.posts[2].answers.edge_key[0],
+						edited,
+						"new send carries current secret, not retry snapshot",
+					);
+					if (mixed)
+						assert.deepEqual(
+							page.posts[2].answers.q1,
+							page.posts[0].answers.q1,
+							"ordinary choice survives secret correction",
+						);
+					assert.equal(page.buttonIn(page.card("a-1111"), "Retry"), null);
+					for (const value of [original, edited]) {
+						assert.ok(
+							!page.container.innerHTML.includes(value),
+							"no secret in settled DOM",
+						);
+						assert.ok(
+							!stateBlob(page.container).includes(value),
+							"no secret in current hook state after acceptance",
+						);
+					}
+				} finally {
+					await page.unmount();
+				}
+			},
+		);
+	}
+	test(
+		`R2-1 ${surface}: failed secret retry stays with its ask; closing clears the form`,
+		BOUNDED,
+		async () => {
+			const seed = (asks) => {
+				for (const ask of asks)
+					ask.questions = [
+						{ id: "edge_key", question: ask.ask_id, secret: true },
+					];
+			};
+			let page = await openOnA({
+				surface,
+				seed,
+				holdAggregate: true,
+				answer: (call) => (call === 1 ? { status: 503 } : { status: 200 }),
+			});
+			try {
+				await page.settle(() => page.reads.aggregate > 0);
+				await typeSecret(page.card("a-1111"), "synthetic-failed-ask-a");
+				await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+				assert.ok(
+					await page.settle(() => page.buttonIn(page.card("a-1111"), "Retry")),
+				);
+				assert.equal(
+					page.buttonIn(page.card("a-2222"), "Retry"),
+					null,
+					"another ask never inherits the retry closure",
+				);
+				await typeSecret(page.card("a-2222"), "synthetic-answer-ask-b");
+				await page.press(page.buttonIn(page.card("a-2222"), "Send answer"));
+				assert.ok(await page.settle(() => page.posts.length === 2));
+				assert.equal(page.posts[1].askId, "a-2222");
+				assert.equal(
+					page.posts[1].answers.edge_key[0],
+					"synthetic-answer-ask-b",
+				);
+			} finally {
+				await page.unmount();
+			}
+			/* Close/cancel the surface, then reopen it: outcomes and secret fields are mount-local. */
+			page = await openOnA({ surface, seed, holdAggregate: true });
+			try {
+				assert.equal(page.buttonIn(page.card("a-1111"), "Retry"), null);
+				assert.equal(
+					page.card("a-1111").querySelector("input[data-ask-secret]").value,
+					"",
+				);
+				assert.ok(
+					!stateBlob(page.container).includes("synthetic-failed-ask-a"),
+				);
+				assert.equal(
+					page.posts.length,
+					0,
+					"reopening did not replay the old request",
+				);
+			} finally {
+				await page.unmount();
+			}
+		},
+	);
+}

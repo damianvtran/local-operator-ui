@@ -864,15 +864,24 @@ const AskRow = ({
 	}, [accepted]);
 	const busy = answering || Boolean(outcome?.sending);
 	/*
-	 * Retry is the one next action while it would send THIS draft (design round 1,
-	 * D2). The draft the failure happened on is kept by identity: every edit gives
-	 * the cell a new object, so an edit re-arms Send answer for the new answer.
+	 * Count edits, not values (R2-1/U1). Secret fields deliberately live outside
+	 * `draft`; comparing only that object's identity left Send disabled after a
+	 * secret edit, while Retry still held the original request. Both field paths
+	 * advance this non-sensitive revision. Never snapshot plaintext to compare it.
+	 * The baseline belongs to ONE retry outcome: a new failed attempt takes a new
+	 * baseline, and sending/acceptance removes it. AskRow is keyed by ask id.
 	 */
-	const failedDraft = useRef<AskDraft | null>(null);
-	const retryArmed = outcome?.retry !== undefined;
-	if (retryArmed && failedDraft.current === null) failedDraft.current = draft;
-	if (!retryArmed) failedDraft.current = null;
-	const retryPending = retryArmed && failedDraft.current === draft;
+	const [editRevision, setEditRevision] = useState(0);
+	const failedRevision = useRef<{
+		retry: NonNullable<AskOutcome["retry"]>;
+		revision: number;
+	} | null>(null);
+	const retry = outcome?.retry;
+	if (retry === undefined) failedRevision.current = null;
+	else if (failedRevision.current?.retry !== retry)
+		failedRevision.current = { retry, revision: editRevision };
+	const retryPending =
+		retry !== undefined && failedRevision.current?.revision === editRevision;
 	const disabled = busy || !canAnswer;
 	const ready = useMemo(
 		() => askAnswerMap(ask, draft, secrets) !== null,
@@ -1359,12 +1368,14 @@ const AskRow = ({
 								editRecorded,
 							)}
 							disabled={fieldDisabled}
-							onCell={(cell) =>
-								writeDraft((current) => ({ ...current, [question.id]: cell }))
-							}
-							onSecret={(value) =>
-								setSecrets((current) => ({ ...current, [question.id]: value }))
-							}
+							onCell={(cell) => {
+								setEditRevision((revision) => revision + 1);
+								writeDraft((current) => ({ ...current, [question.id]: cell }));
+							}}
+							onSecret={(value) => {
+								setEditRevision((revision) => revision + 1);
+								setSecrets((current) => ({ ...current, [question.id]: value }));
+							}}
 							onAdvance={advanceFrom}
 							focusOtherRef={focusOtherRef}
 						/>

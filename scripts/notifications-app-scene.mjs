@@ -45,6 +45,10 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	prepareAskRemediation,
+	runAskRemediationScene,
+} from "./notifications-ask-remediation-scene.mjs";
 import { pythonChildEnv } from "./python-child-env.mjs";
 
 const OUT = resolve("artifacts/notifications-native");
@@ -680,7 +684,11 @@ async function main() {
 
 	let cdp = null;
 	let nodeCdp = null;
+	let askFixture = null;
 	const receipt = {
+		sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], {
+			encoding: "utf8",
+		}).trim(),
 		coreRef: process.env.LOCAL_OPERATOR_CORE_REF,
 		scene: "notifications",
 		backend: base,
@@ -713,7 +721,15 @@ async function main() {
 		);
 
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = token;
-		const _context = api.prepareDriverContext({ apiUrl: base });
+		/* The ask delta uses the same isolated backend and app. Its loopback adapter
+		 * controls only synthetic answer faults; all ordinary routes stay real. */
+		askFixture = await prepareAskRemediation({
+			base,
+			config,
+			token,
+			coreStore,
+		});
+		const _context = api.prepareDriverContext({ apiUrl: askFixture.apiUrl });
 		/*
 		 * NOT ARMED. The renderer dev driver refuses to arm in a "normal" window
 		 * (`resolveDevDriverArming`, dev-driver.ts:205-209), and this scene needs a
@@ -861,6 +877,16 @@ async function main() {
 		assert.ok(!isRead(raced), "the raced revision was read");
 		await screenshot(cdp, "notifications-native-after");
 
+		// #1466 disjoint ask helper: keep adjacent to #1471's drawer helper, before
+		// the unchanged off-screen/blur negatives. It restores locale/size/route.
+		receipt.askRemediation = askFixture.receipt;
+		await runAskRemediationScene({
+			cdp,
+			nodeCdp,
+			fixture: askFixture,
+			screenshot,
+		});
+
 		/*
 		 * NEGATIVE CONTROL: THE SAME GESTURE AIMED AT A ROW THAT IS NOT ON SCREEN.
 		 *
@@ -980,6 +1006,7 @@ async function main() {
 		 * hook threw `ENOTEMPTY` - a cleanup error standing in place of the scene's
 		 * own failure.
 		 */
+		await askFixture?.close();
 		backend.kill("SIGTERM");
 		await exited(backend, 5_000);
 		if (backend.exitCode === null && backend.signalCode === null) {
