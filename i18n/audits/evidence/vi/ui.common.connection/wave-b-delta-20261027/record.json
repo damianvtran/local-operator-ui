@@ -1,0 +1,113 @@
+{
+ "schema": 1,
+ "audit_id": "wave-b-delta-20261027",
+ "locale": "vi",
+ "namespace": "ui.common.connection",
+ "audit_date": "2026-10-27",
+ "key_count": 5,
+ "keys_in_file": 42,
+ "source_commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "previous_commit": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "previous_audited_commit": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "scope": "Wave-B delta: all 5 wave-B keys of `ui.common.connection` read at a5356ce91c. No wave-B value changed in this namespace. The remaining 5 values are byte-identical (per-value sha256) to the bytes the earlier independent audit read at 0559f7f7d8; every non-wave-B value in the file, the key set and the key order are also unchanged. Pre-existing keys outside wave B are not re-certified by this record.",
+ "status": "passed",
+ "result": "clean",
+ "keys_read": 5,
+ "keys_changed": [],
+ "keys_verified_byte_identical": 5,
+ "translator": {
+  "note": "The catalogue bytes under audit were written by the wave-B translator lane (commits 0559f7f7d8 and a5356ce91c); this auditor wrote and edited none of them. For the new `ui.chat.status` row the coordinator supplied translator agent i18n-translator, model radient/auto, date 2026-10-27; no other translator session id was supplied, so none is invented."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "70d334e903c9",
+  "team": "lopdev",
+  "model": "radient/auto",
+  "actual_model_source": "harness system prompt, 2026-10-27: `Model: radient/auto`; the served sub-model behind that route is not exposed to this session",
+  "fallback": "none observed",
+  "independent_from_translator_session": true,
+  "instance": "70d334e903c9"
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.common.connection.json",
+   "sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+   "cross_check": "git show a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb:src/i18n/catalogues/en/ui.common.connection.json sha256 = 0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.common.connection.context.json",
+   "sha256": "99f458fecbeae8ea58c45f171d7ccbc465cc9a717255553aaadc3c1927f875ae",
+   "cross_check": "git show a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb:src/i18n/catalogues/en/ui.common.connection.context.json sha256 = 99f458fecbeae8ea58c45f171d7ccbc465cc9a717255553aaadc3c1927f875ae"
+  },
+  "vi": {
+   "path": "src/i18n/catalogues/vi/ui.common.connection.json",
+   "sha256": "0a2d635126d7c5f78171f4bb8ab5c03a12cb8d499d073839307f563ec2772db4",
+   "cross_check": "git show a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb:src/i18n/catalogues/vi/ui.common.connection.json sha256 = 0a2d635126d7c5f78171f4bb8ab5c03a12cb8d499d073839307f563ec2772db4"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/receipts/70d334e903c9.json",
+   "sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+   "role": "ledger-backed receipt covering all nine namespaces at the new head"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/audit.log",
+   "sha256": "5a7fd697a18a934df5d17bafeba8aab6e343137e02084c225d9aa8ccd8552673",
+   "role": "actual execution log of the delta audit, gates and formatter runs"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/delta.txt",
+   "sha256": "90a058e1e105ad369a75b8e5e0ce214ca314dcacab49ff235bfe38b2ea0472bd",
+   "role": "parsed-JSON per-value delta of the nine wave-B namespace files (vi and en) between 0559f7f7d8 and a5356ce91c"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/regression.json",
+   "sha256": "82318065ef080bc046516d05619d515898b7fb76fb309a0257cedb98f120ef24",
+   "role": "per-value sha256 for all 62 wave-B values: changed vs byte-identical to the audited bytes, with width/NFC/bidi readings"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/icu-parity.json",
+   "sha256": "739eb0655332cc26d90cf7f6e20094bb80d9fa7882031f7290c1b50108448b7b",
+   "role": "62-key ICU/placeholder/select/tag/backtick parity and rendered strings, intl-messageformat 12.1.3"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/scope-keys.json",
+   "sha256": "f5f2e48d3c1744e071b064bfc2b8f7bd58883bd4d4fe177b36b07d8c91ada8d4",
+   "role": "copy of the wave-b-keys.json scope manifest audited (62 keys)"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/ledger-proof.log",
+   "sha256": "ef877c839bed1f5819e1c1cc379b2c3ebcde9721416c759a384eae892ae3b367",
+   "role": "actual assembly and ledger-check output in a throwaway tree"
+  }
+ ],
+ "record_path": "i18n/audits/evidence/vi/ui.common.connection/wave-b-delta-20261027/record.json",
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [],
+  "verified_head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+  "recheck_condition": "The verdict is bound to the en/context/vi sha256 above: any change to those bytes needs a fresh receipt. A change confined to another locale's file does not touch this row."
+ },
+ "findings": [],
+ "adjudications": [],
+ "observations": [],
+ "regression": {
+  "wave_b_values": 5,
+  "changed": 0,
+  "byte_identical": 5,
+  "non_wave_b_values_changed": 0,
+  "key_order_changed": false,
+  "key_set_changed": false
+ },
+ "independence": {
+  "authored_translation": false,
+  "written_amendments": false,
+  "repo_edits": false,
+  "catalogue_edits": false,
+  "translator_receipt_read": false,
+  "mt_service_used": false,
+  "note": "This delta audit wrote none of the reviewed copy or amendments and edited no catalogue, key, context sidecar or ledger row. It read the English source, context sidecars, the vi style guide and glossary, renderer call sites, the existing vi catalogue, and the earlier independent audit's findings. No translation API, SDK or MT service was used."
+ }
+}

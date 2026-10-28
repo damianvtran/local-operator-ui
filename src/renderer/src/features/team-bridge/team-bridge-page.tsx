@@ -7,6 +7,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
+import { Badge, countLabel } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
@@ -20,6 +21,7 @@ import {
 	Bot,
 	Clock,
 	Hash,
+	MailPlus,
 	Pencil,
 	Plus,
 	Users,
@@ -70,6 +72,11 @@ import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { draftTargetKey } from "./team-bridge-drafts";
 import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
+import { TeamBridgeInvitations } from "./team-bridge-invitations";
+import {
+	pendingAgentInvitations,
+	railInvitationsEntryShown,
+} from "./team-bridge-invitations-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
 	type ChiefLabels,
@@ -642,7 +649,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 }) => {
 	const locale = useI18nLocale();
 	const [quickView, setQuickView] = useState<
-		"drafts" | "scheduled" | "archived" | null
+		"drafts" | "scheduled" | "invitations" | "archived" | null
 	>(initialQuickView ?? null);
 	/* The confirm dialogs name the conversation they were opened for, not "the
 	   selected one": the selection can change under an open dialog. */
@@ -653,6 +660,22 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const [deleting, setDeleting] = useState(false);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
 		null,
+	);
+	/*
+	 * Pending invitations for the reader's own agent, derived from the list the
+	 * rail already holds (no second read). The rail entry exists only while this
+	 * is non-empty or the view is open, so a reader with nothing to answer sees
+	 * no new row at all.
+	 */
+	const invitations = pendingAgentInvitations(conversations, selfAccountId);
+	/* Held while the pointer is over the rail (review round 1, N1), so the
+	   entry appearing or leaving never moves the list under a pending click. */
+	const [pointerInRail, setPointerInRail] = useState(false);
+	const invitationsEntry = useRef(false);
+	invitationsEntry.current = railInvitationsEntryShown(
+		invitationsEntry.current,
+		invitations.length > 0 || quickView === "invitations",
+		pointerInRail,
 	);
 	const [scheduleOpen, setScheduleOpen] = useState(false);
 	const [scheduling, setScheduling] = useState(false);
@@ -943,7 +966,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * thread open made the Drafts/Scheduled buttons change nothing visible
 	 * (review round 4, R4-02).
 	 */
-	const openQuickView = (next: "drafts" | "scheduled" | "archived") => {
+	const openQuickView = (
+		next: "drafts" | "scheduled" | "invitations" | "archived",
+	) => {
 		if (threadSelection) {
 			setThreadSelection(null);
 			onCloseThread?.();
@@ -1344,6 +1369,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				   on the canvas ground the selected row measured 1.06:1 on `paper`
 				   (design round 1, D2). */
 				className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"
+				onPointerEnter={() => setPointerInRail(true)}
+				onPointerLeave={() => setPointerInRail(false)}
 			>
 				<h1 className="sr-only">{t("ui.teamBridge.page.title")}</h1>
 				<header className="flex h-11 shrink-0 items-center gap-2 px-3">
@@ -1405,6 +1432,35 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						<Clock size={14} aria-hidden="true" />
 						{t("ui.teamBridge.schedule.list")}
 					</button>
+					{invitationsEntry.current && (
+						<button
+							type="button"
+							aria-current={quickView === "invitations" ? "page" : undefined}
+							onClick={() => openQuickView("invitations")}
+							className="flex h-[30px] items-center gap-2 rounded-md px-2 text-sm text-ink-muted hover:bg-row-hover"
+						>
+							<MailPlus size={14} aria-hidden="true" />
+							<span className="min-w-0 flex-1 truncate text-start">
+								{t("ui.teamBridge.invitations.title")}
+							</span>
+							{invitations.length > 0 && (
+								<Badge
+									variant="attentionQuiet"
+									shape="pill"
+									size="count"
+									/* ONE BADGE COLUMN (design round 1, D3): nav rows sit
+									   8px further in than conversation rows (px-3 vs px-1),
+									   so the count pulls back out to their x=276 edge. */
+									className="-me-2 shrink-0"
+									aria-label={t("ui.teamBridge.invitations.count", {
+										count: invitations.length,
+									})}
+								>
+									{countLabel(invitations.length, 99)}
+								</Badge>
+							)}
+						</button>
+					)}
 					{/* DESIGN ROUND 1, D3: the Channels "..." is hover-only, so in a resting
 					    rail the Archived view did not exist. This is its resting door, drawn
 					    only for a reader who has something to look for (an administrator, or
@@ -1670,7 +1726,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				)}
 			>
 				{notice}
-				{quickView === "scheduled" && selfAccountId ? (
+				{quickView === "invitations" ? (
+					<TeamBridgeInvitations
+						invitations={invitations}
+						listState={listState}
+						onRetry={onRetry}
+						readOnly={readOnly}
+						organizationNames={
+							mergedView
+								? Object.fromEntries(
+										organizations.map((row) => [row.tenantId, row.name]),
+									)
+								: undefined
+						}
+					/>
+				) : quickView === "scheduled" && selfAccountId ? (
 					<TeamBridgeScheduledList
 						accountId={selfAccountId}
 						organizationNames={Object.fromEntries(

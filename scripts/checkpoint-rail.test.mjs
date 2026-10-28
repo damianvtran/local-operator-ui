@@ -29,7 +29,7 @@ import React, { act } from "react";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { CheckpointRail, CHECKPOINT_CARD_OPEN_DELAY_MS, CHECKPOINT_CARD_CLOSE_DELAY_MS, CHECKPOINT_RAIL_LABEL, checkpointRailWindow, checkpointRailMarkTop, checkpointRailContentHeight, checkpointRailRevealScrollTop, RAIL_PITCH_PX, RAIL_TRACK_PAD_PX, RAIL_PORT_MAX_PX } from "./src/renderer/src/features/chat/canonical/checkpoint-rail";',
+			'export { CheckpointRail, CHECKPOINT_CARD_OPEN_DELAY_MS, CHECKPOINT_CARD_CLOSE_DELAY_MS, CHECKPOINT_RAIL_LABEL, checkpointRailWindow, checkpointRailMarkTop, checkpointRailContentHeight, checkpointRailRevealScrollTop, RAIL_PITCH_PX, RAIL_TRACK_PAD_PX, RAIL_PORT_MAX_PX } from "./src/renderer/src/features/chat/canonical/checkpoint-rail"; export { setLocale } from "./src/i18n";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -81,6 +81,7 @@ const {
 	RAIL_PITCH_PX,
 	RAIL_TRACK_PAD_PX,
 	RAIL_PORT_MAX_PX,
+	setLocale,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 const { createRoot } = await import("react-dom/client");
@@ -428,6 +429,46 @@ test("ticks render from the manifest, in order, at the fixed pitch", async () =>
 		);
 	} finally {
 		await rail.close();
+	}
+});
+
+test("the memoised rail repaints on a live locale change (review round 1, M3)", async () => {
+	/*
+	 * THE RAIL RESOLVES ITS LABELS AT RENDER TIME and every one of them is
+	 * catalogue copy, so a language switch has to reach it. It is `memo`ised, and
+	 * its props do not change when the locale does: the parent's subscription
+	 * stops at that boundary unless the rail reads the store itself
+	 * (`useI18nLocale`, the subscription `chat-header` and `chat-sidebar` carry).
+	 * Without it this case fails with the English name still on the tick - the
+	 * defect M3 names, where the reader switches language and the rail keeps the
+	 * old one until it remounts.
+	 */
+	const checkpoints = [
+		completion({
+			id: "c1",
+			turn: 3,
+			naming: { state: "pending", name: null, summary: null },
+		}),
+	];
+	const rail = await mountRail({ checkpoints });
+	try {
+		assert.equal(
+			rail.tick("c1").getAttribute("aria-label"),
+			"Jump to turn 3 of 3",
+			"the English label is the baseline this case switches away from",
+		);
+		await act(async () => {
+			setLocale("fr");
+		});
+		await rail.flush();
+		assert.equal(
+			rail.tick("c1").getAttribute("aria-label"),
+			"Aller au tour 3 sur 3",
+			"the rail kept its language after the locale changed",
+		);
+	} finally {
+		await rail.close();
+		setLocale("en");
 	}
 });
 

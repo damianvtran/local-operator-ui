@@ -1,0 +1,79 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session 1f3211deab61, delta audit of the #1458 run-failure and download-failure keys; not the PR coder, the translator of f82003d72a or any previous auditor)",
+ "agent": "translation-auditor (lopdev coder-role session 1f3211deab61, delta audit of the #1458 run-failure and download-failure keys; not the PR coder, the translator of f82003d72a or any previous auditor)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read, measurement and verdict in this receipt ran on anthropic/claude-opus-5-5; no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (1f3211deab61) from the PR coder that wrote the English keys in a8859ad7e7, from the translator that wrote these values in f82003d72a (agent coder, translator step for delta 3, model openrouter/deepseek/deepseek-v4.1-flash-1017 after disclosed fallbacks), and from every earlier auditor (04d9540e57e6, bf41e95b4e1e, 32ed16b45687 and the ui.agents.config auditors). The translator's commit message was not used as reasoning; verdicts were rebuilt from the English source, the en context files, the sibling keys and the locale style guide. CROSS-FAMILY: the translator ran on a DeepSeek model and this auditor on anthropic/claude-opus-5-5, so this delta audit is model-family independent as well as agent-instance independent (the ledger rule is agent-instance independence).",
+ "instance": "1f3211deab61-vi",
+ "session": "1f3211deab61",
+ "locale": "vi",
+ "branch": "feat/skills-tab-redesign",
+ "head": "f82003d72aa26387b06aa7ca33f95bcd4a111db5",
+ "pr": "damianvtran/local-operator-ui#1458",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "Delta audit of the two keys a8859ad7e7 added (ui.agents.config.error.turn_failed, ui.agents.skills.error.download_failed_title) as translated in f82003d72a. Carried keys are byte-identical to the rows audited in e80029d240: each ledger target_sha256 equals the e80029d240 blob and git diff e80029d240..f82003d72a changes exactly the delta key in each catalogue, so earlier findings stand.",
+ "inputs_sha256": {
+  "en_context (ui.agents.config.context.json)": "7a8466e3b233d1e1399996a65fd178243d81e314fcfcc94c2d61606cfbdc4648",
+  "en_context (ui.agents.skills.context.json)": "a1f18390220f31f61adc24f9238d756dbdf0adba924ef5a27979bf2c95500317",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/vi.md)": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+ },
+ "verified": [
+  "key sets equal en in both namespaces; the two delta values carry no placeholders/ICU (en has none), no bidi/zero-width/BOM characters, no edge or double spaces; all NFC",
+  "carried keys byte-identical to the last audited rows: each ledger target_sha256 (rows from e80029d240) equals the e80029d240 blob, git diff e80029d240..f82003d72a on each catalogue is exactly +1 line naming the delta key, and the parsed catalogue minus the delta key equals the e80029d240 catalogue key-for-key in order; earlier findings stand",
+  "turn_failed: «Mô hình không phản hồi yêu cầu này.» — 'mô hình' per glossary, 'yêu cầu' matches status.attached; plain past-neutral statement, no pronoun (style guide), nothing reads as refused (no 'từ chối').",
+  "turn_failed with its title: under ui.agents.config.state.did_not_finish «Không hoàn tất» the line adds what failed (the model's answer) without repeating the title or contradicting it; the line is the fallback only when the incident carried no message (use-config-run.ts:312), resolved at call time in the current locale",
+  "download_failed_title: «Lần tải xuống này không thành công» — mirrors save_failed_title «Lần lưu này không thành công»; 'tải xuống' equals the button ui.hub.skills.download «Tải xuống»; NFC. Length: see nit.",
+  "download_failed_title width (approx., PIL on /System/Library/Fonts/SFNS.ttf, 13 px wght 500 = AlertTitle font-medium text-body-sm; NOT a rendered frame): 220.0 px vs en 140.0 px; AlertTitle wraps, never truncates"
+ ],
+ "namespaces": {
+  "ui.agents.config": {
+   "namespace": "ui.agents.config",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 30,
+   "delta_keys_audited": [
+    "ui.agents.config.error.turn_failed"
+   ],
+   "sha256": {
+    "vi": "7f45d62d7ff0d539f1a88b1e360acfcc47a1e0cca5be0d1f4ce42b4729ae228e",
+    "en": "a13e851f4e1bf5ed8933ac30ed2797a25ad48e714482fbb78d3b9ebe2efc4146"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.config.json",
+    "target": "src/i18n/catalogues/vi/ui.agents.config.json",
+    "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+   },
+   "findings": []
+  },
+  "ui.agents.skills": {
+   "namespace": "ui.agents.skills",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 112,
+   "delta_keys_audited": [
+    "ui.agents.skills.error.download_failed_title"
+   ],
+   "sha256": {
+    "vi": "7ce8d47986704875c8c55a57f586e6dea8666d9d68ae84a70627bf5fddaabfe2",
+    "en": "265fc96aa792e8ecd0d01811ff40d43d9149ad40891ca9926d725abddea75f8d"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.skills.json",
+    "target": "src/i18n/catalogues/vi/ui.agents.skills.json",
+    "context": "src/i18n/catalogues/en/ui.agents.skills.context.json"
+   },
+   "findings": [
+    {
+     "severity": "nit",
+     "key": "ui.agents.skills.error.download_failed_title",
+     "summary": "« Lần tải xuống này không thành công » is 34 chars against en 21 (approx. 220 px vs en 140 px at 13 px/500). The vi style guide says tighten. « Không tải xuống được » (approx. 136 px) is shorter and idiomatic, but it would break the audited pair with save_failed_title « Lần lưu này không thành công », and the alert renders both titles in one slot (skills-library.tsx:1167-1172). AlertTitle is a wrapping <p>, not truncated, in a full-width alert, so the long form cannot clip. Pair consistency wins; recorded, left unchanged.",
+     "resolution": "not changed - recorded"
+    }
+   ]
+  }
+ }
+}

@@ -12,6 +12,7 @@
  * exactly the "second way of doing things" this repo treats as a defect.
  */
 
+import { ProjectMarkdown } from "@features/projects/project-markdown";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
@@ -127,6 +128,7 @@ export function ReadBlock({
 	showAllLabel = "Show all",
 	showLessLabel = "Show less",
 	breakLongTokens = false,
+	markdown = false,
 }: {
 	text: string;
 	empty?: string;
@@ -148,6 +150,19 @@ export function ReadBlock({
 	 * The skill body and reference previews are arbitrary files, so they opt in.
 	 */
 	breakLongTokens?: boolean;
+	/**
+	 * Render the text as markdown through `ProjectMarkdown` (the app's one
+	 * non-transcript markdown surface) inside the SAME clamp and "Show all".
+	 *
+	 * WHY A HEIGHT AND NOT `line-clamp`: rendered markdown is a stack of blocks
+	 * (headings, lists, code), and `line-clamp` counts lines of one inline
+	 * formatting context; a `max-height` of ten of the block's own line boxes
+	 * (`10lh`) bounds every shape, and the same `scrollHeight > clientHeight`
+	 * measurement still answers "is anything hidden". The Skills tab's
+	 * instructions opt in (a SKILL.md is markdown written for a model to read);
+	 * the agent and team prompts keep their plain text.
+	 */
+	markdown?: boolean;
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const [overflows, setOverflows] = useState(false);
@@ -204,14 +219,18 @@ export function ReadBlock({
 			<div
 				ref={ref}
 				data-break-long-tokens={breakLongTokens ? "true" : undefined}
+				data-read-markdown={markdown ? "true" : undefined}
 				className={cn(
-					"whitespace-pre-wrap text-body text-ink",
-					!expanded && "line-clamp-10",
+					"text-body text-ink",
+					markdown
+						? !expanded && "max-h-[10lh] overflow-hidden"
+						: "whitespace-pre-wrap",
+					!markdown && !expanded && "line-clamp-10",
 					mono && "font-mono text-meta",
 					breakLongTokens && "min-w-0 break-words [overflow-wrap:anywhere]",
 				)}
 			>
-				{text}
+				{markdown ? <ProjectMarkdown>{text}</ProjectMarkdown> : text}
 			</div>
 			{overflows ? (
 				<Button

@@ -83,7 +83,8 @@ const bundle = await build({
 		contents: [
 			'export { useConfigRun } from "../src/renderer/src/features/agents/config-run/use-config-run";',
 			'export { useConfigRunStore } from "../src/renderer/src/features/agents/config-run/config-run-store";',
-			'export { pushTranscriptDelta } from "./agents-config-probe-stubs.mjs";',
+			'export { pushTranscriptDelta, setStream } from "./agents-config-probe-stubs.mjs";',
+			'export { turnFailure, typedTopic, requestReached } from "../src/renderer/src/features/agents/config-run/use-config-run";',
 			'export { calls as probeCalls } from "./agents-config-probe-api-stub.mjs";',
 			'export { createRoot } from "react-dom/client";',
 		].join("\n"),
@@ -120,6 +121,10 @@ const {
 	useConfigRun,
 	useConfigRunStore,
 	pushTranscriptDelta,
+	setStream,
+	turnFailure,
+	typedTopic,
+	requestReached,
 	probeCalls,
 	createRoot,
 } = await import(bundlePath.href);
@@ -128,8 +133,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const probes = () =>
 	probeCalls.filter((call) => call.op === "sessions.get").length;
 
+/** The latest handle, so a case can press Retry the way the strip does. */
+let latestHandle = null;
 function Harness() {
-	useConfigRun();
+	latestHandle = useConfigRun();
 	return null;
 }
 
@@ -203,5 +210,263 @@ test("the probe answers a burst of deltas once, not once per burst", async () =>
 		);
 	} finally {
 		await act(async () => root.unmount());
+	}
+});
+
+/* ============ #1458 UX r1 U3 / QA Q4: a run whose turn DIED is a failure --- */
+
+/*
+ * The stream shapes are the transcript reducer's own: a `session_incident`
+ * projects to `{kind: "custom", level: "error", headline}` (customRow), and a
+ * provider-flagged final row to `{kind: "assistant", error: true}`.
+ */
+const userRow = { kind: "user", id: "u1", ts: 1, text: "Change it" };
+const incident = {
+	kind: "custom",
+	id: "i1",
+	ts: 2,
+	customType: "session_incident",
+	level: "error",
+	headline: "The model provider returned an error (HTTP 500).",
+};
+
+test("turnFailure: an incident after the request is a failure; a later answer clears it", () => {
+	assert.equal(
+		turnFailure([userRow, incident]),
+		"The model provider returned an error (HTTP 500).",
+	);
+	assert.equal(
+		turnFailure([userRow, { kind: "assistant", text: "", error: true }]),
+		"The model did not answer this request.",
+	);
+	// A recovered answer after the incident is the run's real answer.
+	assert.equal(
+		turnFailure([userRow, incident, { kind: "assistant", text: "Done." }]),
+		null,
+	);
+	// An OLD incident before this request's user row is not this turn's verdict.
+	assert.equal(
+		turnFailure([incident, userRow, { kind: "assistant", text: "Done." }]),
+		null,
+	);
+	// An info-tier custom row (model switch, MCP note) never fails a turn.
+	assert.equal(
+		turnFailure([
+			userRow,
+			{ ...incident, level: "info" },
+			{ kind: "assistant", text: "ok" },
+		]),
+		null,
+	);
+	// A record kind whose own `error` is a STRING (supplement rows) is not read.
+	assert.equal(
+		turnFailure([
+			userRow,
+			{ kind: "supplement", error: "x" },
+			{ kind: "assistant", text: "ok" },
+		]),
+		null,
+	);
+	assert.equal(requestReached([userRow], 0), true);
+	assert.equal(requestReached([userRow, incident], 2), false);
+	assert.equal(requestReached([userRow, incident, userRow], 2), true);
+});
+
+test("a run whose model failed settles as a FAILURE with Retry, not 'Finished without changing anything'", async () => {
+	setStream({
+		transcript: { records: [] },
+		frontend: { streaming: true },
+		turnsCompleted: 0,
+	});
+	const root = await mount();
+	try {
+		await act(async () => {
+			setStream({
+				transcript: { records: [userRow, incident] },
+				frontend: { streaming: false },
+				turnsCompleted: 1,
+			});
+		});
+		let state = useConfigRunStore.getState();
+		for (let i = 0; i < 40 && state.status === "running"; i += 1) {
+			await act(async () => sleep(25));
+			state = useConfigRunStore.getState();
+		}
+		assert.equal(
+			state.status,
+			"error",
+			`settled as ${state.status}, not a failure`,
+		);
+		assert.equal(state.turnFailed, true);
+		assert.equal(
+			state.error,
+			"The model provider returned an error (HTTP 500).",
+		);
+		// Retryable: the request was never answered, so the same body may be re-sent.
+		assert.equal(state.unsent, true);
+		assert.equal(
+			state.answer,
+			"",
+			"the incident is not stored as the run's answer",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		useConfigRunStore.getState().dismiss();
+		setStream({
+			transcript: { records: [] },
+			frontend: { streaming: true },
+			turnsCompleted: 0,
+		});
+	}
+});
+
+/* ============ #1458 UX r1 U6: "You asked:" says what was typed --------------- */
+
+test("typedTopic drops the seed Ask for a change wrote, and nothing the operator typed", () => {
+	const about = { kind: "skill", name: "qa-notes" };
+	/*
+	 * `configSeedPrompt`'s shape, restated: importing config-composer here bundles
+	 * the whole composer (katex fonts and all). skills-tab.test.mjs pins the
+	 * composer's seed to this same literal.
+	 */
+	const configSeedPrompt = (target) =>
+		`Change the ${target.kind} ${target.name}: `;
+	assert.equal(
+		typedTopic(`${configSeedPrompt(about)}tighten step 2`, about),
+		"tighten step 2",
+	);
+	assert.equal(typedTopic("  tighten step 2 ", about), "tighten step 2");
+	// A seed with nothing after it is all the operator sent: keep it.
+	assert.equal(
+		typedTopic(configSeedPrompt(about), about),
+		"Change the skill qa-notes:",
+	);
+	// Another target's seed is the operator's words here.
+	assert.equal(
+		typedTopic(`${configSeedPrompt({ kind: "skill", name: "other" })}x`, about),
+		"Change the skill other: x",
+	);
+	assert.equal(typedTopic("x", null), "x");
+});
+
+/* ===== #1458 review r3 M1 = QA r2 Q7: Retry waits for ITS turn to run ====== */
+
+test("Retry does not settle on its own user row before the retried turn runs", async () => {
+	setStream({
+		transcript: { records: [] },
+		frontend: { streaming: true },
+		turnsCompleted: 0,
+	});
+	const root = await mount();
+	try {
+		// The first turn dies on a provider incident: one completed turn.
+		await act(async () => {
+			setStream({
+				transcript: { records: [userRow, incident] },
+				frontend: { streaming: false },
+				turnsCompleted: 1,
+			});
+		});
+		for (
+			let i = 0;
+			i < 40 && useConfigRunStore.getState().status === "running";
+			i += 1
+		)
+			await act(async () => sleep(25));
+		assert.equal(useConfigRunStore.getState().status, "error");
+		await act(async () => {
+			await latestHandle.retry();
+		});
+		assert.equal(useConfigRunStore.getState().status, "running");
+		/*
+		 * CORE'S ORDER: the retried prompt's user row lands BEFORE `streaming=true`
+		 * (AgentStartEvent waits on the inbox drain and system-block prep), and the
+		 * turn count still says 1 from the dead turn. A fresh `frontend` object is
+		 * what re-runs the settle effect in that window (review r3 P6c).
+		 */
+		await act(async () => {
+			setStream({
+				transcript: { records: [userRow, incident, { ...userRow, id: "u2" }] },
+				frontend: { streaming: false },
+				turnsCompleted: 1,
+			});
+		});
+		await act(async () => sleep(120));
+		assert.equal(
+			useConfigRunStore.getState().status,
+			"running",
+			"settled before the retried turn ran",
+		);
+		// The retried turn runs and finishes: NOW it settles, on its answer.
+		await act(async () => {
+			setStream({
+				transcript: {
+					records: [
+						userRow,
+						incident,
+						{ ...userRow, id: "u2" },
+						{ kind: "assistant", id: "a2", ts: 5, text: "Edited it." },
+					],
+				},
+				frontend: { streaming: false },
+				turnsCompleted: 2,
+			});
+		});
+		for (
+			let i = 0;
+			i < 40 && useConfigRunStore.getState().status === "running";
+			i += 1
+		)
+			await act(async () => sleep(25));
+		const state = useConfigRunStore.getState();
+		assert.equal(state.status, "done");
+		assert.equal(state.answer, "Edited it.");
+	} finally {
+		await act(async () => root.unmount());
+		useConfigRunStore.getState().dismiss();
+		setStream({
+			transcript: { records: [] },
+			frontend: { streaming: true },
+			turnsCompleted: 0,
+		});
+	}
+});
+
+test("a first send still settles on its first completed turn", async () => {
+	setStream({
+		transcript: { records: [] },
+		frontend: { streaming: true },
+		turnsCompleted: 0,
+	});
+	const root = await mount();
+	try {
+		await act(async () => {
+			setStream({
+				transcript: {
+					records: [
+						userRow,
+						{ kind: "assistant", id: "a1", ts: 2, text: "Done." },
+					],
+				},
+				frontend: { streaming: false },
+				turnsCompleted: 1,
+			});
+		});
+		for (
+			let i = 0;
+			i < 40 && useConfigRunStore.getState().status === "running";
+			i += 1
+		)
+			await act(async () => sleep(25));
+		assert.equal(useConfigRunStore.getState().status, "done");
+		assert.equal(useConfigRunStore.getState().answer, "Done.");
+	} finally {
+		await act(async () => root.unmount());
+		useConfigRunStore.getState().dismiss();
+		setStream({
+			transcript: { records: [] },
+			frontend: { streaming: true },
+			turnsCompleted: 0,
+		});
 	}
 });

@@ -47,5 +47,16 @@
 	"ui.chat.sidebar.search.unavailable": "Conversation search is unavailable, so these are name matches.",
 	"ui.chat.sidebar.section.current_chat": "Current chat",
 	"ui.chat.sidebar.teams.create": "Create team",
-	"ui.chat.sidebar.teams.loading": "Loading teams…"
+	"ui.chat.sidebar.teams.loading": "Loading teams…",
+	"ui.chat.sidebar.entity.collapse_chats": "Collapse {name} chats",
+	"ui.chat.sidebar.entity.expand_chats": "Expand {name} chats",
+	"ui.chat.sidebar.entity.manage": "Manage {name}",
+	"ui.chat.sidebar.entity.pin": "Pin “{name}”",
+	"ui.chat.sidebar.entity.unpin": "Unpin “{name}”",
+	"ui.chat.sidebar.row_menu.archive": "Archive conversation",
+	"ui.chat.sidebar.row_menu.pin": "Pin conversation",
+	"ui.chat.sidebar.row_menu.unarchive": "Unarchive conversation",
+	"ui.chat.sidebar.row_menu.unpin": "Unpin conversation",
+	"ui.chat.sidebar.pins.pin_label": "Pin “{title}”",
+	"ui.chat.sidebar.pins.unpin_label": "Unpin “{title}”"
 }

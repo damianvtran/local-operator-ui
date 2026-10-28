@@ -34,11 +34,15 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/* The model resolves its chip copy through the renderer's i18n door
+	 * (`@shared/i18n`), so the bundle needs the same alias the app's tsconfig
+	 * carries - the pattern the other chat-model suites already use. */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const {
 	DEFAULT_TEAM_MANAGER,
-	NO_AGENT_LABEL,
-	NO_TEAM_LABEL,
+	noAgentLabel,
+	noTeamLabel,
 	effectiveIdentityPublished,
 	headerIdentityAgentFlagged,
 	headerIdentityControlsShown,
@@ -173,9 +177,9 @@ test("nothing bound reads the two assign affordances, with no value to mark", ()
 		teams: TEAMS,
 	});
 	assert.equal(view.teamValue, null);
-	assert.equal(view.teamLabel, NO_TEAM_LABEL);
+	assert.equal(view.teamLabel, noTeamLabel());
 	assert.equal(view.agentValue, null);
-	assert.equal(view.agentLabel, NO_AGENT_LABEL);
+	assert.equal(view.agentLabel, noAgentLabel());
 });
 
 test("no team means no manager: the agent control does not borrow one from the catalogue", () => {
@@ -187,7 +191,7 @@ test("no team means no manager: the agent control does not borrow one from the c
 		teams: TEAMS,
 	});
 	assert.equal(view.agentValue, null);
-	assert.equal(view.agentLabel, NO_AGENT_LABEL);
+	assert.equal(view.agentLabel, noAgentLabel());
 });
 
 test("the current marking is the label's own value, including the implicit manager", () => {

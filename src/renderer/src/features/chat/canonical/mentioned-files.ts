@@ -108,6 +108,7 @@ import {
 	PLACEHOLDER_MARKERS,
 	TRAILING_PUNCTUATION,
 	WHITESPACE,
+	listedTargetsIn,
 	normalizeCandidate,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
@@ -224,8 +225,18 @@ function scanFileUrls(text: string): string[] {
  * `https://example.com/a/b.png` as `/a/b.png`.
  */
 function scanProse(text: string): string[] {
-	return targetsIn(text, MENTION_POLICY)
+	/*
+	 * The directory-anchored listing (`link-grammar.ts`, `listedTargetsIn`) is a
+	 * second span producer over the same text: bare names listed under a
+	 * `<directory>:` line, resolved against it. Merged by offset so the panel's
+	 * first-mention order is still document order.
+	 */
+	return [
+		...targetsIn(text, MENTION_POLICY),
+		...listedTargetsIn(text, MENTION_POLICY),
+	]
 		.filter((found) => found.kind === "path")
+		.sort((a, b) => a.start - b.start)
 		.map((found) => found.target);
 }
 

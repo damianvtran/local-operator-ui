@@ -1,0 +1,6 @@
+{
+	"ui.chat.status.credential_refused": "Máy chủ đang chạy từ chối thông tin xác thực của ứng dụng, nên đăng nhập, cài đặt và lệnh gạch chéo không khả dụng.",
+	"ui.chat.status.degraded": "Máy chủ đang trả lời chậm. Tin nhắn của bạn đang nằm trong hàng đợi.",
+	"ui.chat.status.internet_offline": "Máy này đang ngoại tuyến. Tin nhắn sẽ chờ gửi.",
+	"ui.chat.status.unreachable": "Không kết nối được với máy chủ Local Operator. Tin nhắn sẽ chờ gửi."
+}

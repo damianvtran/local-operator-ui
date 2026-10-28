@@ -417,6 +417,33 @@ type Story = StoryObj<typeof meta>;
 
 export const PopulatedDirectMessage: Story = {};
 
+/*
+ * The rail's Invitations entry (D5) beside the unread counts: the reader's own
+ * agent is invited to the channel, so the entry shows its quiet count in the
+ * SAME badge column as the conversation rows (design round 1, D3).
+ */
+export const InvitationWaiting: Story = {
+	args: {
+		conversations: [
+			dm,
+			{
+				...channel,
+				members: [
+					...channel.members,
+					{
+						account_id: self,
+						kind: "agent",
+						display_label: "Robo Damian",
+						role: "member",
+						state: "invited",
+					},
+				],
+			},
+			group,
+		],
+	},
+};
+
 /**
  * The row's real hover FILL, beside the borderless human and agent plates.
  * Synthetic mouse events cannot set the browser's trusted :hover state, so this

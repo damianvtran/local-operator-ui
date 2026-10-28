@@ -573,7 +573,9 @@ test("every editor still reports scoped dirty state without replacing the draft"
 	const page = read(
 		"src/renderer/src/features/agents/components/agents-page.tsx",
 	);
-	assert.equal((page.match(/onDirtyChange=\{reportDirty\}/g) ?? []).length, 4);
+	// Five editors: agent, team (edit and create), agent create, and the Skills
+	// tab's inline SKILL.md edit.
+	assert.equal((page.match(/onDirtyChange=\{reportDirty\}/g) ?? []).length, 5);
 	assert.match(
 		page,
 		/dirtyIdentity !== null && dirtyIdentity === paneIdentity/,

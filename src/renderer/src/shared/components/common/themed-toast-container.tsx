@@ -15,6 +15,7 @@
  * component now renders once and never re-renders on a theme change.
  */
 
+import { t } from "@shared/i18n";
 import type { CSSProperties, FC } from "react";
 import { Toaster, type ToasterProps, toast } from "sonner";
 import type { TextDirection } from "../../../../../i18n/direction";
@@ -80,9 +81,18 @@ export const ThemedToastContainer: FC<Pick<ToasterProps, "duration">> = ({
 			duration={duration}
 			position={direction === "rtl" ? "bottom-left" : "bottom-right"}
 			dir={direction}
+			/*
+			 * SONNER'S OWN DEFAULTS ARE ENGLISH COPY ("Notifications", "Close toast"),
+			 * drawn on every toast and never visible to a translator. They are passed in
+			 * through `t()` instead, so the region and its close control follow the
+			 * interface language. The container composes its own name with the toast
+			 * hotkey after this string.
+			 */
+			containerAriaLabel={t("ui.common.layout.toasts.notifications")}
 			toastOptions={{
 				style: toastThemeFor(direction),
 				closeButton: true,
+				closeButtonAriaLabel: t("ui.common.layout.toasts.dismiss"),
 			}}
 		/>
 	);

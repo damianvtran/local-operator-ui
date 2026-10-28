@@ -107,8 +107,8 @@ const bundle = await build({
 				ROW_ARRIVAL_RECENT_MS,
 			} from "./src/renderer/src/features/chat/canonical/message-actions-row";
 			export {
-				ANSWER_ACTIONS_LABEL,
-				USER_ACTIONS_LABEL,
+				answerActionsLabel,
+				userActionsLabel,
 				COPY_FEEDBACK_MS,
 			} from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { SPEECH_MAX_CHARS } from "@shared/lib/speech-clip";
@@ -517,7 +517,7 @@ test("the row fades at rest, with the reveal and the touch rule in its classes",
 	const { row, button, unmount } = await mount({ speechConfigured: false });
 	const rowEl = row();
 	assert.equal(rowEl.getAttribute("role"), "toolbar");
-	assert.equal(rowEl.getAttribute("aria-label"), mod.ANSWER_ACTIONS_LABEL);
+	assert.equal(rowEl.getAttribute("aria-label"), mod.answerActionsLabel());
 	for (const className of REVEAL_TOKENS) {
 		assert.ok(
 			rowEl.classList.contains(className),
@@ -1167,10 +1167,10 @@ test("a user row offers Copy alone, fades like the answer row, and copies the us
 	const rowEl = row();
 	assert.equal(
 		rowEl.getAttribute("aria-label"),
-		"Your message actions",
+		mod.userActionsLabel(),
 		"the possessive names whose message the toolbar acts on (copy round 1, C6)",
 	);
-	assert.equal(rowEl.getAttribute("aria-label"), mod.USER_ACTIONS_LABEL);
+	assert.equal(rowEl.getAttribute("aria-label"), mod.userActionsLabel());
 	assert.equal(rowEl.getAttribute("data-lo-answer-actions"), null);
 	for (const className of REVEAL_TOKENS) {
 		assert.ok(

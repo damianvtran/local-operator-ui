@@ -92,5 +92,19 @@
 	"ui.chat.run_details.chip.subagents_failed": "Chip tooltip clause counting failed subagents.",
 	"ui.chat.run_details.chip.attention": "Attention clause with no named subject, e.g. '1 needs attention'.",
 	"ui.chat.run_details.chip.mcp_attention": "Attention clause naming MCP servers; 'MCP' is the protocol name and stays as is.",
-	"ui.chat.run_details.mcp.cold_label": "One line for the whole MCP section when no session is running, so nothing was checked."
+	"ui.chat.run_details.mcp.cold_label": "One line for the whole MCP section when no session is running, so nothing was checked.",
+	"ui.chat.run_details.nothing_in_flight": {
+		"role": "the quiet line on the run details panel when no section is drawing",
+		"tone": "statement, sentence case, trailing period",
+		"length": "Three words.",
+		"note": "Drawn only when there is no section to show, so it must not read as an empty-state heading with an action. The panel is describing a run that has nothing in flight right now.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.nothing_to_show_yet": {
+		"role": "the quiet line on the run details panel when a run has asked for something the panel cannot draw yet",
+		"tone": "statement, sentence case, trailing period",
+		"length": "Four words.",
+		"note": "The other arm of the same block: the run HAS requested details, but none of them has anything to show. Distinct from `Nothing in flight.`, which is a run that asked for nothing at all.",
+		"placeholders": {}
+	}
 }

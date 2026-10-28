@@ -18,6 +18,7 @@
  * a value-level cycle out of a type-only dependency. Anything with the same
  * shape satisfies it, and the component's own rows are assignable to it.
  */
+import { t } from "@shared/i18n";
 import { sessionIdPattern } from "../../../../../shared/desktop-contract";
 import type { FastModeState } from "../session-status/session-model";
 import { ARGUMENT_SOURCE_LABEL, mcpInServerSlot } from "./slash-argument-rows";
@@ -842,9 +843,10 @@ export function phaseLabel(
 	 */
 	argument = "",
 ): string {
-	if (phase === "command") return "Commands";
-	if (!source) return "Arguments";
-	if (source === "mcp" && !mcpInServerSlot(argument)) return "Commands";
+	if (phase === "command") return t("ui.chat.pickers.commands.title");
+	if (!source) return t("ui.chat.pickers.slash.phase.arguments");
+	if (source === "mcp" && !mcpInServerSlot(argument))
+		return t("ui.chat.pickers.commands.title");
 	return ARGUMENT_SOURCE_LABEL[source];
 }
 
@@ -1196,8 +1198,7 @@ export type EnterFooterInput = {
  * row (`↓ then Enter runs /analytics`): `↓` moves the highlight OFF that row, so
  * naming it would be the same class of untruth this change removes.
  */
-const ENTER_NEEDS_A_PICK =
-	"Enter needs a row you pick: ↓ then Enter · Tab completes this row.";
+const enterNeedsAPick = () => t("ui.chat.pickers.slash.enter_needs_a_pick");
 
 export function enterFooter(input: EnterFooterInput): string | null {
 	// No row to act on: the empty state's own copy names the route it offers
@@ -1257,7 +1258,7 @@ export function enterFooter(input: EnterFooterInput): string | null {
 		 * restating the matcher's reason (UX round 1, U1-U3).
 		 */
 		if (input.prefix.length === 0 || input.prefix.length <= input.query.length)
-			return ENTER_NEEDS_A_PICK;
+			return enterNeedsAPick();
 		return `Enter completes to ${input.prefix}.`;
 	}
 	if (input.nameThenMessage) return "Enter chooses this name.";
@@ -1342,20 +1343,30 @@ export function clickFooter(input: ClickFooterInput): string | null {
 				hoists: input.hoists,
 			})
 		)
-			return `Click stages /${input.label}.`;
+			return t("ui.chat.pickers.slash.click.stages", { label: input.label });
 		return input.runs
-			? `Click runs /${input.label}.`
-			: `Click completes /${input.label}.`;
+			? t("ui.chat.pickers.slash.click.runs", { label: input.label })
+			: t("ui.chat.pickers.slash.click.completes_label", {
+					label: input.label,
+				});
 	}
-	if (input.nameThenMessage) return "Click chooses this name.";
+	if (input.nameThenMessage)
+		return t("ui.chat.pickers.slash.click.chooses_name");
 	if (input.actionClickText) return input.actionClickText;
-	if (!input.runs) return "Click completes this value.";
-	if (input.connect) return `Click connects ${input.connect}.`;
+	if (!input.runs) return t("ui.chat.pickers.slash.click.completes_value");
+	if (input.connect)
+		return t("ui.chat.pickers.slash.click.connects", {
+			name: input.connect,
+		});
 	const command = input.command ? `/${input.command}` : "";
-	if (!command) return "Click runs the command.";
+	if (!command) return t("ui.chat.pickers.slash.click.runs_command");
+	/*
+	 * The value slot carries its own leading space because ICU has no way to
+	 * conditionally emit one, and the sentence must not end in a space when the
+	 * argument takes none — the pre-extraction template had the same rule.
+	 */
 	const value = input.value ? ` ${input.value}` : "";
-	// Build from non-empty parts so an empty value never leaves a blank slot.
-	return `Click runs ${command}${value}.`;
+	return t("ui.chat.pickers.slash.click.runs_with_value", { command, value });
 }
 
 /**
