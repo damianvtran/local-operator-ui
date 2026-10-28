@@ -693,8 +693,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat",
-			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
-			"target_sha256": "fe15211c61778c618bb83093e3ed59b4e36f0afcd3ec9f576019b3c5c34e44ff",
+			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+			"target_sha256": "b9b27923ee3fed6e9b4b91b4c6f4ebe77fb1d4b0ade1db3b9b4ad8a782e7b9be",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -704,19 +704,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "8bbe685ce56d",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "union-es-20261028-4c367c3b6e41",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/8bbe685ce56d.json",
-					"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
-					"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
-					"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.chat/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
+					"receipt": "i18n/receipts/union-es-20261028-4c367c3b6e41.json",
+					"receipt_sha256": "f18d15d6ecb48d17c31f3fe78b28518cbf64a3700076d58cdfd2355d65e7dfaa",
+					"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/es/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt 949ac6eec574 read (80ee119bbd), the 9 wave-B keys equal the bytes receipt 8bbe685ce56d read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology."
 				}
 			],
 			"status": "audited",
@@ -816,6 +815,30 @@
 							},
 							"receipt": "i18n/receipts/41f2961e15d5.json",
 							"receipt_sha256": "c72d3d6f0d8a74ea595d698c3459730b7df21f4a270bbdf15cf7dd0c5ce18f97"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+					"target_sha256": "fe15211c61778c618bb83093e3ed59b4e36f0afcd3ec9f576019b3c5c34e44ff",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "8bbe685ce56d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bbe685ce56d.json",
+							"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+							"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
+							"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.chat/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
 						}
 					],
 					"status": "audited"
@@ -6755,8 +6778,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat",
-			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
-			"target_sha256": "e9b9512ea3310705de0ca91dc87a644a8aa742ab59a72f04e8216ae01bb256dd",
+			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+			"target_sha256": "a0f70787c5faddb059246b07ed5266374945d6a2da0279ba5d0dae89efdcbe6d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6766,19 +6789,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-27",
+					"date": "2026-10-28",
 					"result": "clean",
-					"instance": "c3a8965266e3",
+					"instance": "union-chat-fr-b3efc4d36922",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c3a8965266e3.json",
-					"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
-					"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
-					"note": "See i18n/audits/evidence/fr/ui.chat/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+					"receipt": "i18n/receipts/union-chat-fr-b3efc4d36922.json",
+					"receipt_sha256": "4f4527c430afd20d8076e290565eb8d94a500e82d9c9ed8191c7f732c76f642d",
+					"scope": "Union delta audit of fr/ui.chat at c5e19ecec8, the merge of i18n-wave-a with main 1d631be71f (which carries wave B). The union has 142 keys: 115 base keys, 18 wave-A keys and 9 wave-B keys, pairwise disjoint. Delta proof: every one of the 27 wave values is byte-identical to the bytes its wave audit bound, and every base value is byte-identical to main pre-union (1d631be71f) and to the wave-A branch base (6216167f4464). On top of the per-wave verdicts this audit read the union as one file for cross-wave consistency: term collisions between the A keys and the B keys and the base copy, register/punctuation conventions, ICU placeholder parity and CLDR categories with a real intl-messageformat render of all 142 messages, NFC, bidi controls, backtick spans, English-fallback identity and width hints. Catalogue-level audit: no rendered frame, no browser, no native-speaker sign-off claimed."
 				}
 			],
 			"status": "audited",
@@ -6878,6 +6900,30 @@
 							},
 							"receipt": "i18n/receipts/a5485b421686.json",
 							"receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+					"target_sha256": "e9b9512ea3310705de0ca91dc87a644a8aa742ab59a72f04e8216ae01bb256dd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "c3a8965266e3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c3a8965266e3.json",
+							"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+							"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+							"note": "See i18n/audits/evidence/fr/ui.chat/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
 						}
 					],
 					"status": "audited"
@@ -13280,8 +13326,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat",
-			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
-			"target_sha256": "2c5d82df782e1451017cc234eb4f6fec82be4d7c73a0110c98bab5bc967044ca",
+			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+			"target_sha256": "917ad047d210bdeb028965e6b84b1f71dbc9fb325faa58c44d6205bf112136e3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13291,19 +13337,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "8f4aa3fba6ed",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "union-hi-20261028-d22645c370a9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 3,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/8f4aa3fba6ed.json",
-					"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
-					"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
-					"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
+					"receipt": "i18n/receipts/union-hi-20261028-d22645c370a9.json",
+					"receipt_sha256": "d2d4feb47fceb3b9739e47ca00ce9d5f4040b62cb8071ff6db151dc618f02b1e",
+					"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/hi/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove by parsed-JSON and raw-line comparison that the 18 wave-A keys equal the bytes receipt wa-hi-3acece16f468 read (a81c00cdda; byte-identical at 80ee119bbd), the 9 wave-B keys equal the bytes receipt 8f4aa3fba6ed read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (6216167f44); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology.",
+					"note": "hi/ui.chat union: passed, 0 blocker/major, 3 minor/3 nit; 115 base + 18 wave A + 9 wave B bytes unchanged by parsed+raw-line proof at c5e19ecec8; record i18n/audits/evidence/hi/ui.chat/union-hi-20261028-d22645c370a9/record.json"
 				}
 			],
 			"status": "audited",
@@ -13403,6 +13449,30 @@
 							},
 							"receipt": "i18n/receipts/a478f43b9cae.json",
 							"receipt_sha256": "c21214cfa6621207c118011f5c7390b6b668cfe2bf9ce3e70c5bac5074300d7f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+					"target_sha256": "2c5d82df782e1451017cc234eb4f6fec82be4d7c73a0110c98bab5bc967044ca",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "8f4aa3fba6ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8f4aa3fba6ed.json",
+							"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
+							"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
+							"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
 						}
 					],
 					"status": "audited"
@@ -19517,8 +19587,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat",
-			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
-			"target_sha256": "13902f3586f2b5785d63ab6dc31253893960ec86f0730188f37475f3dd446234",
+			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+			"target_sha256": "44a0ebe560ad94c5632f7c0f1d357f84ae0924913e05af11e2a368f37f597216",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -19529,19 +19599,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-27",
-					"result": "clean-with-findings",
-					"instance": "99a6b1da62c4",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "d98c0de792b7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/99a6b1da62c4.json",
-					"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
-					"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
-					"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.chat/wave-b-delta-20261027/record.json"
+					"receipt": "i18n/receipts/d98c0de792b7.json",
+					"receipt_sha256": "34ac69ec20902f4bb6d436e61f4b2f379b114580b5d97c2206823f3ac17dd8db",
+					"scope": "Union of src/i18n/catalogues/ru/ui.chat.json at c5e19ecec8 (merge of origin/main 1d631be71f carrying wave B): 142 keys = 115 base + the 18 wave-A keys audited at 80ee119bbd + the 9 wave-B keys audited at a5356ce91c. Parsed-JSON proof: all 18 wave-A values byte-identical to the wave-A audited bytes, all 9 wave-B values byte-identical to the wave-B audited bytes, all 124 pre-union origin/main values unchanged, the A and B key sets disjoint. Because the two waves were audited separately, this audit also read the union as one file: terms, register, template shape, punctuation and terminal stops across the A and B families and against the 115 precedents; placeholder/select parity and real IntlMessageFormat renders of all 142 values; ru plural categories for every plural; NFC, bidi and typography; width hints. Gates: generate --check, locale-parity, check-coverage, context-parity, check-duplicates, ledger-check (the expected 7 stale ui.chat rows), and the repository's own catalogue-union-parity tool."
 				}
 			],
 			"status": "audited",
@@ -19642,6 +19711,30 @@
 							},
 							"receipt": "i18n/receipts/r2-44322c0b8b28.json",
 							"receipt_sha256": "9269b212100eb87dde8471aaf8c8c80211682ac6fb4178ec93c0d2ce959fc379"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+					"target_sha256": "13902f3586f2b5785d63ab6dc31253893960ec86f0730188f37475f3dd446234",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean-with-findings",
+							"instance": "99a6b1da62c4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/99a6b1da62c4.json",
+							"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+							"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
+							"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.chat/wave-b-delta-20261027/record.json"
 						}
 					],
 					"status": "audited"
@@ -25671,8 +25764,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat",
-			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
-			"target_sha256": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+			"target_sha256": "e71815d9b12e38a2b327a551bd105b58937a613963119edae0db169dad1b7ea6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -25682,19 +25775,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "c89cee263ac2-waveb-delta-ur",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "union-ur-20261028-fc773f54ac28",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
-					"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
-					"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
-					"note": "No finding: 9 wave-B values, none changed (file byte-identical to the audited base). Record i18n/audits/evidence/ur/ui.chat/waveb-delta-20261027/record.json"
+					"receipt": "i18n/receipts/union-ur-20261028-fc773f54ac28.json",
+					"receipt_sha256": "63e210f7ab50c606f924863f972b40a7073838a9cc35662681fa24f6f17ceb2a",
+					"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/ur/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt 59ea19dc68ac read (80ee119bbd), the 9 wave-B keys equal the bytes receipt c89cee263ac2 read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, ICU placeholder and CLDR parity with real renders, Urdu typography, RTL/bidi reordering, fit and terminology."
 				}
 			],
 			"status": "audited",
@@ -25794,6 +25886,30 @@
 							},
 							"receipt": "i18n/receipts/2111e1255685.json",
 							"receipt_sha256": "e54050299987ad2cea7ac7ee268235838d406cbe0d43be108406cf2ec0996e2a"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+					"target_sha256": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "c89cee263ac2-waveb-delta-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+							"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+							"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
+							"note": "No finding: 9 wave-B values, none changed (file byte-identical to the audited base). Record i18n/audits/evidence/ur/ui.chat/waveb-delta-20261027/record.json"
 						}
 					],
 					"status": "audited"
@@ -31806,8 +31922,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat",
-			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
-			"target_sha256": "f4ce605d35572644f664c2c4510f82b26feba094572bcd60dcc193ec9dbc3902",
+			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+			"target_sha256": "ea73edb23f1b3ba4b37541becb415f74cd1cb68898644da86470272605b6bb54",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -31817,19 +31933,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "70d334e903c9",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "union-vi-20261028-61bc743db02b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/70d334e903c9.json",
-					"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
-					"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
-					"note": "Delta audit record: i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
+					"receipt": "i18n/receipts/union-vi-20261028-61bc743db02b.json",
+					"receipt_sha256": "bccc925fb428e15c89f63ddc650b8e92a86a9c8a6cee80bb0f871484ecd7f9a2",
+					"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/vi/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt wave-a-vi-delta-eb62f05b28e1 read (80ee119bbd), the 9 wave-B keys equal the bytes receipt 70d334e903c9 read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology.",
+					"note": "vi/ui.chat union: passed, 0 blocker/major, 1 minor + 2 nit; union = 115 base + 18 wave A + 9 wave B unchanged by parsed+raw-line proof at c5e19ecec8; record i18n/audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/record.json"
 				}
 			],
 			"status": "audited",
@@ -31929,6 +32045,30 @@
 							},
 							"receipt": "i18n/receipts/7165e9bc3822-chat-surfaces-r2.json",
 							"receipt_sha256": "3491037d28c85a3cc1d0bf489c8bb80627f7f860d738db8dcca1ec731784113f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+					"target_sha256": "f4ce605d35572644f664c2c4510f82b26feba094572bcd60dcc193ec9dbc3902",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "70d334e903c9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/70d334e903c9.json",
+							"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
+							"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
+							"note": "Delta audit record: i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
 						}
 					],
 					"status": "audited"
@@ -38402,8 +38542,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat",
-			"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
-			"target_sha256": "76bdcfd3abb2d67ecc49d87b078bd5a2d367b03d760c0a0ca20db59ebebd4a10",
+			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+			"target_sha256": "ff84b9261a33af1a59c6e90fcc031a9953896938c5c83494a23058c34cfb3f05",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -38413,19 +38553,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-27",
-					"result": "clean",
-					"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "union-ui-chat-zhcn-20261028-5f78447ee172",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
-					"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
-					"scope": "Wave B delta R2: 9 wave-B keys; 2 changed values (ZH-WB-2, ZH-WB-4) re-audited and resolved.",
-					"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.chat/wb-d2-9b3e2c165c87/record.json"
+					"receipt": "i18n/receipts/union-ui-chat-zhcn-20261028-5f78447ee172.json",
+					"receipt_sha256": "472aa11ef67b36fcc76c086b6da0fa3a1f147f252618b723def1f7d0ab874bb3",
+					"scope": "All 142 keys read for cross-wave consistency; the 27 wave values re-read in full against English, the en sidecar and the call sites; the 115 base values proven byte-identical to origin/main pre-union bytes and not re-litigated semantically (their own earlier audits cover them)."
 				}
 			],
 			"status": "audited",
@@ -38525,6 +38664,30 @@
 							},
 							"receipt": "i18n/receipts/a0562714a28f-r2.json",
 							"receipt_sha256": "90f8cb79b30c51cba9f8f66b83fb815574cf5ca76982c996e2711bb8d3afef9b"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+					"target_sha256": "76bdcfd3abb2d67ecc49d87b078bd5a2d367b03d760c0a0ca20db59ebebd4a10",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-27",
+							"result": "clean",
+							"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+							"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+							"scope": "Wave B delta R2: 9 wave-B keys; 2 changed values (ZH-WB-2, ZH-WB-4) re-audited and resolved.",
+							"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.chat/wb-d2-9b3e2c165c87/record.json"
 						}
 					],
 					"status": "audited"
