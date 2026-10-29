@@ -17,6 +17,7 @@ import * as inputActions from "./actions/input";
 import * as networkActions from "./actions/network";
 import * as pageActions from "./actions/page";
 import * as queryActions from "./actions/query";
+import * as recordingActions from "./actions/recording";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import { collectAddressHistory, mergeAddressHistory } from "./address-history";
@@ -91,6 +92,13 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	// review refused (M2).
 	"download",
 	"upload",
+	// `record_start` captures PIXELS of the current document, which is the same
+	// class of data `screenshot` gates, so it is authorized against that document
+	// on entry and again on the result (D8). `record_stop` reveals nothing new —
+	// it ends a capture the current document already authorized and writes bytes
+	// whose destination was approved at start — so it is deliberately NOT in this
+	// set. NEITHER is a NAVIGATING_ACTION: a recording does not drive the page.
+	"record_start",
 ]);
 
 /**
@@ -202,6 +210,12 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"network_stop",
 	"network_read",
 	"network_clear",
+	// Both recording verbs are TAB-scoped: a recording is the tab's own capture,
+	// and the finalize reads a stream that belongs to that tab's session. The
+	// stop can hold the lane for up to 45 s while it drains, which is the same
+	// bargain `download` already makes (D7).
+	"record_start",
+	"record_stop",
 ]);
 
 /**
@@ -726,6 +740,10 @@ export class BrowserHost implements BrowserActionContext {
 				return networkActions.networkRead(this, params, requestId);
 			case "network_clear":
 				return networkActions.networkClear(this, params, requestId);
+			case "record_start":
+				return recordingActions.recordStart(this, params, requestId);
+			case "record_stop":
+				return recordingActions.recordStop(this, params, requestId);
 			case "request_access":
 				return this.approvals.requestAccess(
 					params.url,

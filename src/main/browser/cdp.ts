@@ -1,4 +1,5 @@
 import { stopNetworkCapture } from "./actions/network";
+import { abortRecording } from "./actions/recording";
 import { BrowserHostError } from "./errors";
 import {
 	hasLogCapture,
@@ -312,7 +313,10 @@ export class CdpPool {
 			attachment.detachedReason = reason || "detached";
 			// Child sessions die with the page's (measured: "No target available").
 			this.frames.delete(contents.id);
-			stopNetworkCapture(contents.id);
+			// The detach EVENT is the one boundary where the tab survives: DevTools has
+			// taken it, so a later `record_stop` can still be answered with why its
+			// clip is gone (D7's tombstone).
+			this.dropCaptures(contents.id, reason || "detached");
 			this.options.log?.(
 				`[browser] debugger detached from view ${contents.id}: ${reason}`,
 			);
@@ -561,6 +565,25 @@ export class CdpPool {
 		);
 	}
 
+	/**
+	 * End every capture this view owns, in one place.
+	 *
+	 * WHY ONE HELPER. The log ring, the network buffer and a recording all die at
+	 * the same four debugger boundaries (`forget`, `detach`, the detach EVENT, and
+	 * `close` through `detach`), and each was hand-listed at each site. That is how
+	 * a fourth capture drifts: one boundary is missed, and a stale subscription or
+	 * a running encoder outlives the attachment that fed it. The detach event
+	 * passes `detachedReason`, which is what turns an abort into the tombstone a
+	 * later `record_stop` reads.
+	 */
+	private dropCaptures(webContentsId: number, detachedReason?: string): void {
+		stopLogCapture(webContentsId);
+		stopNetworkCapture(webContentsId);
+		abortRecording(webContentsId, detachedReason ?? "detached", {
+			tombstone: detachedReason !== undefined,
+		});
+	}
+
 	/** Drop the attachment record and its log buffer, without talking to the view.
 	 * Used when the view is already gone. */
 	forget(webContentsId: number): void {
@@ -569,8 +592,7 @@ export class CdpPool {
 		this.attachments.delete(webContentsId);
 		this.subscribers.delete(webContentsId);
 		this.frames.delete(webContentsId);
-		stopLogCapture(webContentsId);
-		stopNetworkCapture(webContentsId);
+		this.dropCaptures(webContentsId);
 	}
 
 	/** Detach cleanly: release the debugger session and the log buffer. */
@@ -580,8 +602,7 @@ export class CdpPool {
 		this.attachments.delete(webContentsId);
 		this.subscribers.delete(webContentsId);
 		this.frames.delete(webContentsId);
-		stopLogCapture(webContentsId);
-		stopNetworkCapture(webContentsId);
+		this.dropCaptures(webContentsId);
 		if (!attachment) return;
 		try {
 			if (attachment.contents.debugger.isAttached()) {
