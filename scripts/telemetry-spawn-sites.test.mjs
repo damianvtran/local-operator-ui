@@ -251,6 +251,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-approvals-first-paint-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots a standalone Electron fixture headless to measure the approvals card's first paint in the user's palette; the build carries the live PostHog key, so this launch needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-tab-menu-native-proof.mjs",
 		"spawn",
 		1,
