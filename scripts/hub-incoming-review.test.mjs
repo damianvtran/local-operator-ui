@@ -43,14 +43,21 @@ const LABELS = {
 	"ui.hub.links.incoming_needs_review":
 		"The hub and your copy both changed this item. Choose which side to keep, then pull again.",
 	"ui.hub.links.incoming_unknown_baseline":
-		"No baseline was recorded for this copy, so every field counts as changed. Tick the acknowledgement, then pull again.",
+		"No baseline was recorded for this copy, so every field counts as changed. Tick the acknowledgement.",
+	"ui.hub.status.other_error": "Something else went wrong.",
+	"ui.hub.status.transport_error": "Could not reach the hub.",
 	"ui.hub.links.incoming_failed": "The preview could not finish ({outcome}).",
 	"ui.hub.links.name_ambiguous": "Another item has the same name.",
-	"ui.hub.links.legacy_retry_unverified":
-		"This backend cannot safely select this item by name. Update Local Operator before retrying.",
 	"ui.hub.links.preview_recomputed":
 		"Core recomputes this merge when you apply",
-	"ui.hub.links.incoming_outcome": "Preview for {item}: {outcome}",
+	"ui.hub.links.outcome_would_merge": "would merge",
+	"ui.hub.links.outcome_needs_review": "needs review",
+	"ui.hub.links.outcome_up_to_date": "up to date",
+	"ui.hub.links.outcome_unchanged": "unchanged",
+	"ui.hub.links.outcome_failed": "failed",
+	"ui.hub.links.outcome_skipped": "skipped",
+	"ui.hub.links.outcome_unavailable": "unavailable",
+	"ui.hub.links.incoming_outcome": "Preview for {item}: {outcome}.",
 	"ui.hub.links.incoming_nothing": "Nothing to pull: this item is {outcome}.",
 	"ui.hub.subscriptions.pull": "Pull now",
 	"ui.hub.subscriptions.check": "Check now",
@@ -595,7 +602,7 @@ test("an unknown baseline opens the dialog, the acknowledgement re-previews, and
 	assert.equal(applyBody.dry_run, undefined);
 });
 
-test("an unavailable row is stated as a failure with core's message, not as nothing to pull", async () => {
+test("an unavailable row is stated as a failure with a keyed reason, not as nothing to pull", async () => {
 	await mount();
 	globalThis.__hubPreviewTest.answer = () => answerOf([UNAVAILABLE]);
 	await mountPanel(app.HubLinkGroup, {
@@ -610,8 +617,12 @@ test("an unavailable row is stated as a failure with core's message, not as noth
 	assert.equal(document.querySelector('[data-dialog="open"]'), null);
 	const text = document.body.textContent;
 	assert.match(text, /The preview could not finish \(unavailable\)/);
-	assert.match(text, /the hub no longer lists this item/);
-	assert.doesNotMatch(text, /Nothing to pull/);
+	assert.match(text, /Something else went wrong\./);
+	/* QA round 3, Q9: the raw message is developer detail (endpoint URL and
+	 * response body on a hub outage) and never reaches the panel. */
+	assert.doesNotMatch(text, /the hub no longer lists this item/);
+	assert.doesNotMatch(text, /http:\/\//);
+	assert.doesNotMatch(text, /Response Body/);
 });
 
 test("an ambiguous display name refuses a direct sidebar write on an older core", async () => {
@@ -641,10 +652,7 @@ test("an ambiguous display name refuses a direct sidebar write on an older core"
 		0,
 		"no write left for an address that would hit two rows",
 	);
-	assert.match(
-		document.body.textContent,
-		/This backend cannot safely select this item by name/,
-	);
+	assert.match(document.body.textContent, /Another item has the same name/);
 });
 
 test("an unambiguous name still writes directly (the guard is narrow)", async () => {
@@ -652,10 +660,10 @@ test("an unambiguous name still writes directly (the guard is narrow)", async ()
 	globalThis.__hubPreviewTest.answer = () => answerOf([report({})]);
 	await mountPanel(app.HubLinkSidebarMark, {
 		link,
-		// Legacy name addressing requires the REGISTRY name. The display label
-		// is not an address; omitting this must fail closed (and is tested
-		// separately in the popover's ambiguity matrix).
-		itemName: "Coder",
+		/* `itemName` is the wire address on a core without `hub_items_by_id`, so an
+		 * "unambiguous name" case must supply one - without it the guard fails
+		 * closed by design (the mark would otherwise address by link id). */
+		itemName: "coder",
 		displayName: "Coder",
 		itemsById: false,
 		nameAmbiguous: false,
@@ -674,28 +682,90 @@ test("an unambiguous name still writes directly (the guard is narrow)", async ()
 		1,
 		"an unambiguous name still writes directly",
 	);
-	// The legacy address carries the registry name, never the link id, label or
-	// direction: core's name arm matches this exact normalized string.
-	assert.deepEqual(
-		globalThis.__hubPreviewTest.records.map(
-			({ op, kind, name, localId, linkId, direction }) => ({
-				op,
-				kind,
-				name,
-				localId,
-				linkId,
-				direction,
+});
+
+test("an unacknowledged unknown baseline never shows core's CLI sentence (Q7 T1)", async () => {
+	await mount();
+	/* Core's inverse case: unknown baseline, NO conflict, answered as
+	 * `merge-refused` — the class-based swap missed exactly this. */
+	globalThis.__hubPreviewTest.answer = () =>
+		answerOf([
+			report({
+				outcome: "needs-review",
+				error_class: "merge-refused",
+				message:
+					"the baseline is unknown (no record). Re-run with --accept-unknown-baseline to merge anyway",
 			}),
-		),
-		[
-			{
-				op: "hub.apply",
-				kind: "agent",
-				name: "Coder",
-				localId: undefined,
-				linkId: undefined,
-				direction: undefined,
-			},
-		],
+		]);
+	await mountPanel(app.HubLinkGroup, {
+		link: unknownLink,
+		displayName: "Coder",
+		itemsById: true,
+	});
+	await actAsync(() => button("Preview incoming changes").click());
+	await settle();
+	const text = document.body.textContent;
+	assert.match(text, /No baseline was recorded for this copy/);
+	assert.doesNotMatch(text, /--accept-unknown-baseline/);
+});
+
+test("after the acknowledgement a real conflict keeps core's message (Q7 T5)", async () => {
+	await mount();
+	globalThis.__hubPreviewTest.answer = (request) => {
+		if (!isDryRun(request)) return answerOf([report({ outcome: "merged" })]);
+		/* Core keeps `model-unavailable` even for a conflict once the tick is on. */
+		return answerOf([
+			request.acknowledgeUnknownBaseline === true
+				? report({
+						outcome: "needs-review",
+						error_class: "model-unavailable",
+						message: "the hub and your copy both changed the same text",
+					})
+				: UNKNOWN_BASELINE,
+		]);
+	};
+	await mountPanel(app.HubLinkGroup, {
+		link: unknownLink,
+		displayName: "Coder",
+		itemsById: true,
+	});
+	await actAsync(() => button("Preview incoming changes").click());
+	await settle();
+	await actAsync(() =>
+		document.querySelector('input[type="checkbox"]').click(),
+	);
+	await settle();
+	const text = document.body.textContent;
+	assert.match(text, /the hub and your copy both changed the same text/);
+	/* The checkbox is ticked, so the sentence telling the reader to tick it
+	 * would be false. */
+	assert.doesNotMatch(text, /Tick the acknowledgement/);
+	assert.ok(button("Pull now").disabled, "a conflict still blocks Pull");
+});
+
+test("a preview refused by HTTP clears the previous inline result (Q8)", async () => {
+	await mount();
+	let call = 0;
+	globalThis.__hubPreviewTest.answer = () => {
+		call += 1;
+		if (call === 1) return answerOf([UNAVAILABLE]);
+		throw new Error("backend refused the preview");
+	};
+	await mountPanel(app.HubLinkGroup, {
+		link,
+		displayName: "Coder",
+		itemsById: true,
+	});
+	await actAsync(() => button("Preview incoming changes").click());
+	await settle();
+	assert.match(document.body.textContent, /The preview could not finish/);
+
+	await actAsync(() => button("Preview incoming changes").click());
+	await settle();
+	const text = document.body.textContent;
+	assert.doesNotMatch(text, /The preview could not finish/);
+	assert.ok(
+		document.querySelector('[role="alert"]'),
+		"only the new alert states the refusal",
 	);
 });

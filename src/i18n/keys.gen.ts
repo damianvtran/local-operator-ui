@@ -5938,7 +5938,6 @@ export type MessageParams = {
 	"ui.hub.links.confirm_publish": undefined;
 	"ui.hub.links.direction_pull": undefined;
 	"ui.hub.links.direction_push": undefined;
-	"ui.hub.links.empty": undefined;
 	"ui.hub.links.failed": { direction: string; item: string; source: string };
 	"ui.hub.links.failed_unsourced": { direction: string; item: string };
 	"ui.hub.links.healthy": {
@@ -5974,6 +5973,13 @@ export type MessageParams = {
 	"ui.hub.links.mark_review": undefined;
 	"ui.hub.links.mixed": undefined;
 	"ui.hub.links.name_ambiguous": undefined;
+	"ui.hub.links.outcome_failed": undefined;
+	"ui.hub.links.outcome_needs_review": undefined;
+	"ui.hub.links.outcome_skipped": undefined;
+	"ui.hub.links.outcome_unavailable": undefined;
+	"ui.hub.links.outcome_unchanged": undefined;
+	"ui.hub.links.outcome_up_to_date": undefined;
+	"ui.hub.links.outcome_would_merge": undefined;
 	"ui.hub.links.policy_title": { item: string };
 	"ui.hub.links.prefer_local": undefined;
 	"ui.hub.links.prefer_remote": undefined;

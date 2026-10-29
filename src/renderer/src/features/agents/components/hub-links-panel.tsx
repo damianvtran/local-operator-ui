@@ -42,6 +42,7 @@ import { hubLinkView } from "../hub-link-adapter";
 import {
 	hubActionFailureText,
 	hubDirectionStateText,
+	hubOutcomeText,
 	hubReasonText,
 } from "../hub-link-copy";
 import { hubPreviewIsCurrent, hubPreviewMatches } from "../hub-preview-binding";
@@ -199,6 +200,13 @@ export function HubLinkGroup({
 				}
 			},
 			onError: (error) => {
+				/*
+				 * A REFUSED preview shows nothing of the previous answer: its
+				 * inline result described a request that is no longer the latest,
+				 * so keeping it under the new alert would state two outcomes for
+				 * one press (QA round 3, Q8).
+				 */
+				if (input.action === "apply" && input.preview) setIncomingReports(null);
 				if (
 					error instanceof DesktopControlError &&
 					[
@@ -392,41 +400,66 @@ export function HubLinkGroup({
 							})}
 				</p>
 			)}
-			{actions.data?.reports
-				.filter(isDirectionalReport)
-				.filter((report) => report.link_id === link.link_id)
-				.map((report, index) => (
-					<output
-						key={`${report.operation_id ?? report.direction}-${index}`}
-						className="text-meta text-ink-muted"
-					>
-						{t("ui.hub.links.action_result", {
-							direction: directionLabel(report.direction),
-							item: link.name,
-							source,
-							outcome: report.outcome,
-						})}
-					</output>
-				))}
+			{/*
+			 * Design D8: a RETRY result restated the row below it. The post-mutation
+			 * refetch has already written the new state sentence under these same
+			 * controls, so the second line was one outcome told twice. A CHECK or a PULL
+			 * keeps its line: its answer is not a state this row can render on its own.
+			 */}
+			{actions.variables?.action !== "retry" &&
+				actions.data?.reports
+					.filter(isDirectionalReport)
+					.filter((report) => report.link_id === link.link_id)
+					.map((report, index) => (
+						<output
+							key={`${report.operation_id ?? report.direction}-${index}`}
+							className="text-meta text-ink-muted"
+						>
+							{t("ui.hub.links.action_result", {
+								direction: directionLabel(report.direction),
+								item: link.name,
+								source,
+								/*
+								 * Design D10: the same defect class D1 fixed one string over. `outcome` is
+								 * core's `ItemOutcome` enum (`report.py`), so interpolating it raw put
+								 * "would-merge" in front of a reader - and in a locale it left the one
+								 * word this app does translate in English. `hubOutcomeText` is the word
+								 * for the class, degrading to the raw token only for a class this build
+								 * has never seen.
+								 */
+								outcome: hubOutcomeText(report.outcome),
+							})}
+						</output>
+					))}
 			{incomingReports && !incomingActionable && !incomingFailure && (
 				<output className="text-meta text-ink-muted">
 					{t("ui.hub.links.incoming_nothing", {
-						outcome: incomingReports[0]?.outcome ?? "up-to-date",
+						outcome: hubOutcomeText(
+							incomingReports[0]?.outcome ?? "up-to-date",
+						),
 					})}
 				</output>
 			)}
 			{incomingFailure && (
 				<div role="alert" className="flex flex-col gap-0.5">
 					<p className="text-body-sm text-danger">
+						{/*
+						 * Design D10, the second string in this dialog: the failure sentence ran
+						 * the raw `ItemFailure` outcome in, so a locale could not translate it.
+						 */}
 						{t("ui.hub.links.incoming_failed", {
-							outcome: incomingFailure.outcome,
+							outcome: hubOutcomeText(incomingFailure.outcome),
 						})}
 					</p>
-					{incomingFailure.message && (
-						<p className="break-words text-meta text-ink-muted">
-							{incomingFailure.message}
-						</p>
-					)}
+					{/*
+					 * NEVER core's raw message here: on a hub outage it carries the endpoint
+					 * URL and the raw response body (QA round 3, Q9). The class maps to the
+					 * same sentence the row's own status uses, which names the situation
+					 * without developer detail.
+					 */}
+					<p className="break-words text-meta text-ink-muted">
+						{hubReasonText(incomingFailure.error_class)}
+					</p>
 				</div>
 			)}
 			<Dialog
@@ -474,25 +507,36 @@ export function HubLinkGroup({
 								{incomingReports.map((report, index) => (
 									<li
 										key={`${report.local_id}-${index}`}
-										className="text-body-sm text-ink"
+										/* Design D1: the conclusion and its explanation rank separately - see
+										 * the two lines below. */
+										className="flex flex-col gap-0.5"
 									>
-										{t("ui.hub.links.incoming_outcome", {
-											item: displayName?.trim() || link.name,
-											outcome: report.outcome,
-										})}
+										<p className="text-body-sm text-ink">
+											{t("ui.hub.links.incoming_outcome", {
+												item: displayName?.trim() || link.name,
+												outcome: hubOutcomeText(report.outcome),
+											})}
+										</p>
 										{/*
-										 * Core's unknown-baseline message names the CLI flag
+										 * Core's unknown-baseline refusal names the CLI flag
 										 * (`--accept-unknown-baseline`, `merge.py`), which means
 										 * nothing in this window: the control it describes is the
-										 * checkbox below. Everything else is core-authored and shown
-										 * verbatim; React escapes it.
+										 * checkbox below. The discriminator is the TICK, not the
+										 * error class: core reports an unacknowledged unknown
+										 * baseline as `model-unavailable` on some rows and
+										 * `merge-refused` on others, and keeps `model-unavailable`
+										 * for a REAL conflict once the tick is on (QA round 3, Q7,
+										 * both directions). Before the tick, the checkbox sentence;
+										 * after it, core's own words.
 										 */}
-										{unknownBaseline &&
-										report.error_class === "model-unavailable"
-											? t("ui.hub.links.incoming_unknown_baseline")
-											: report.message
-												? report.message
-												: null}
+										{(unknownBaseline && !acknowledgedBaseline) ||
+										report.message ? (
+											<p className="text-meta text-ink-muted">
+												{unknownBaseline && !acknowledgedBaseline
+													? t("ui.hub.links.incoming_unknown_baseline")
+													: report.message}
+											</p>
+										) : null}
 									</li>
 								))}
 							</ul>

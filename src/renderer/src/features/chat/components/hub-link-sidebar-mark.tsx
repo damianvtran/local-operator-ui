@@ -389,7 +389,20 @@ export function HubLinkSidebarMark({
 						data-hub-legacy-blocked=""
 						className="mb-3 text-meta text-warning"
 					>
-						{t("ui.hub.links.legacy_retry_unverified")}
+						{/*
+						 * One block, two refusals, each naming its own fix. On an old core a
+						 * duplicated name and a missing registry name are the same press being
+						 * unaddressable, but they read differently: the collision is a decision
+						 * the reader makes in the item's own view (rounded in from main), while
+						 * the upgrade is what actually lifts the restriction. When both hold,
+						 * both are stated - a notice that hid one of them would leave either
+						 * the cause or the remedy unspoken.
+						 */}
+						{nameAmbiguous && (
+							<span className="block">{t("ui.hub.links.name_ambiguous")}</span>
+						)}
+						{(!itemName?.trim() || nameAmbiguous) &&
+							t("ui.hub.links.legacy_retry_unverified")}
 					</output>
 				)}
 				{/*

@@ -4875,8 +4875,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.hub",
-			"source_sha256": "9f7d4aa7f935406da05227f6b689a49933e02678d75e051bd518dd2571042401",
-			"target_sha256": "7e5072723fb8920d0749212ace3b928256a2bd2801e998ffee8f08085ad8bd62",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "fa629f8bea201bd32ecd5a979a3fa8c38a1802eb142a50d63039353e898c180f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -4888,15 +4888,15 @@
 					"model": "kimi/k3.1-pro",
 					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "audit-1470-es-uihub-20261029a",
+					"instance": "audit-1461-es-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/audit-1470-es-uihub-20261029a.json",
-					"receipt_sha256": "24468acd0a2f3775c5d5ea41f92e189af9d4ddf6af7f3ca2358e359c40cb9cb3"
+					"receipt": "i18n/receipts/audit-1461-es-uihub-20261029a.json",
+					"receipt_sha256": "b3dd95d468097d3380ba9a46eca24ffbf5ac7dd4e7db058450f2b4d57f784054"
 				}
 			],
 			"status": "audited",
@@ -12737,8 +12737,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.hub",
-			"source_sha256": "9f7d4aa7f935406da05227f6b689a49933e02678d75e051bd518dd2571042401",
-			"target_sha256": "2e50780780f8e62e2b4ab4dcf8e5e10b2860a6838ca79b6472456f6499df24a4",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "3072f5ee4401aa982d8f0e18575900a7cd5fc43624c0c974ac63e968fba7f466",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -12750,16 +12750,16 @@
 					"agent": "i18n-auditor",
 					"model": "kimi/k3.1-pro",
 					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "audit-1470-fr-uihub-20261029a",
+					"result": "clean-with-findings",
+					"instance": "audit-fr-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/audit-1470-fr-uihub-20261029a.json",
-					"receipt_sha256": "7f13a0e481b6cafeee3c4ebc080f6dd7b1679d170891347c1abf8d1eb62be437"
+					"receipt": "i18n/receipts/audit-fr-uihub-20261029a.json",
+					"receipt_sha256": "a79701e145f270cee845ea5ff19b1f131a16f4e4e45c2ee21bdbb1b403197f31"
 				}
 			],
 			"superseded": [
@@ -20929,8 +20929,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.hub",
-			"source_sha256": "9f7d4aa7f935406da05227f6b689a49933e02678d75e051bd518dd2571042401",
-			"target_sha256": "479705b15b62085c9a216fd6d06d1e1932d8e557872b8275211c2f948a64f447",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "99cec8945de2d4a0f7e5db841ded53399f7b79d52e8f0bc51b0691440e468549",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20942,15 +20942,15 @@
 					"model": "kimi/k3.1-pro",
 					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "audit-1470b-hi-uihub-20261029",
+					"instance": "audit-1461-hi-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/audit-1470b-hi-uihub-20261029.json",
-					"receipt_sha256": "3832784c7ba4189f5f4f5420d69e851002f46827845cc4a63b6e77c5d2eae7f1"
+					"receipt": "i18n/receipts/audit-1461-hi-uihub-20261029a.json",
+					"receipt_sha256": "241d9c45e67739e200cc48f6e0a3dcee7fcaf8dac1d7d19beb937acc42882295"
 				}
 			],
 			"status": "audited",
@@ -28826,8 +28826,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.hub",
-			"source_sha256": "9f7d4aa7f935406da05227f6b689a49933e02678d75e051bd518dd2571042401",
-			"target_sha256": "08d2b66fa0d077ebc8e5ff59708899d0b128c51356d63d4b5ec00f2db095069c",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "ad72d96550882043869f3d842326b825148654302f0f09eb64c3339dd813a2fb",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -28839,15 +28839,15 @@
 					"model": "kimi/k3.1-pro",
 					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "audit-1470-ru-uihub-20261029a",
+					"instance": "audit-1461-ru-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/audit-1470-ru-uihub-20261029a.json",
-					"receipt_sha256": "9f8ea80dc353554e3b22f8576c1d4fa9dab46ea91dcf788851782ce91484da53"
+					"receipt": "i18n/receipts/audit-1461-ru-uihub-20261029a.json",
+					"receipt_sha256": "3f3199f3f8b71a8d85a96841f94148be8714f1483eb857ac502116bfcb5017bc"
 				}
 			],
 			"status": "audited",
@@ -36668,8 +36668,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.hub",
-			"source_sha256": "9f7d4aa7f935406da05227f6b689a49933e02678d75e051bd518dd2571042401",
-			"target_sha256": "00897906f1398b29103891b77a3748ff86488f781673a3970c66f7d733e6aa6f",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "b31916b99da5d0d5d22cb8928be9494baaf5c5d095fccfee553d6cd94ec4c2d8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -36681,15 +36681,15 @@
 					"model": "kimi/k3.1-pro",
 					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "audit-1470b-ur-uihub-20261029",
+					"instance": "audit-1461-ur-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/audit-1470b-ur-uihub-20261029.json",
-					"receipt_sha256": "950120d2e0325945e6af36e06c3988c4e5f8ddceb37e575b83c7013341bd7711"
+					"receipt": "i18n/receipts/audit-1461-ur-uihub-20261029a.json",
+					"receipt_sha256": "adeeb5d1dbab28230eb381d08ce05977658f7aeecbec3b1f6d8fe81cc68bcc1e"
 				}
 			],
 			"status": "audited",
@@ -44643,8 +44643,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.hub",
-			"source_sha256": "9f7d4aa7f935406da05227f6b689a49933e02678d75e051bd518dd2571042401",
-			"target_sha256": "56381acb23e4cb3bcc35393a534fa6c18dce4b09debdb9a59adb73d3e59175aa",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "81eb5b832f6db2a9a88213dd307d1dcdc957a45bbc71e8b38ffa22697fbf9f46",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -44656,15 +44656,15 @@
 					"model": "kimi/k3.1-pro",
 					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "audit-1470-vi-uihub-20261029a",
+					"instance": "audit-1461-vi-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/audit-1470-vi-uihub-20261029a.json",
-					"receipt_sha256": "d2a3d20362eb75ac66916f164308ec584845c92a9f652ef79cea7849cbb28774"
+					"receipt": "i18n/receipts/audit-1461-vi-uihub-20261029a.json",
+					"receipt_sha256": "a31dbcbdf52a5c081c8b00d00fd4c3b006796bbb6c9a18f041b07515497c53b2"
 				}
 			],
 			"status": "audited",
@@ -53252,8 +53252,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.hub",
-			"source_sha256": "9f7d4aa7f935406da05227f6b689a49933e02678d75e051bd518dd2571042401",
-			"target_sha256": "1eb5cb7768100ad15e098e64718911ec945a9657e4e2b3247ab6f102c3ac489b",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "81d356c1f6904b030cbd701fa34c4abe37a54f59be7801bc39c183887cb8676c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -53266,15 +53266,15 @@
 					"model": "kimi/k3.1-pro",
 					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "audit-1470b-zhcn-uihub-20261029",
+					"instance": "audit-1461-zhcn-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/audit-1470b-zhcn-uihub-20261029.json",
-					"receipt_sha256": "d3c4dac7e3b2473a1ba537823b8d489d07ac22490733d77c4e4ab9ab391fe0cd"
+					"receipt": "i18n/receipts/audit-1461-zhcn-uihub-20261029a.json",
+					"receipt_sha256": "64339138bed17a817b20654bd007eb6415ea57ea33d0ab266dba0f6f98cf9281"
 				}
 			],
 			"status": "audited",

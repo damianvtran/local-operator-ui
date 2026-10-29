@@ -88,6 +88,43 @@ export function hubFailureReasonText(status: HubDirectionStatus): string {
 	);
 }
 
+/**
+ * The WORD for one of core's `ItemOutcome` values (`report.py`), where a sentence
+ * would otherwise interpolate the raw token.
+ *
+ * Design D1 (round 1): the incoming preview ran the machine token straight into
+ * a sentence - "Preview for Coder: would-merge" - and then into the report's own
+ * message with no separator, so a reader had to parse a hyphenated enum and then
+ * find where the English started. A class this app can name gets its own
+ * translated word; the sentence around it terminates (see the catalogue value)
+ * and core's message is a separate line.
+ *
+ * An UNKNOWN class degrades to the raw token rather than to invented copy: a
+ * class this build has never seen must stay visible and legible as data, and
+ * guessing a meaning for it would be a claim the app cannot support (the same
+ * rule `hubReasonText` applies by degrading to a cause-neutral sentence).
+ */
+export function hubOutcomeText(outcome: string): string {
+	switch (outcome) {
+		case "would-merge":
+			return t("ui.hub.links.outcome_would_merge");
+		case "needs-review":
+			return t("ui.hub.links.outcome_needs_review");
+		case "up-to-date":
+			return t("ui.hub.links.outcome_up_to_date");
+		case "unchanged":
+			return t("ui.hub.links.outcome_unchanged");
+		case "failed":
+			return t("ui.hub.links.outcome_failed");
+		case "skipped":
+			return t("ui.hub.links.outcome_skipped");
+		case "unavailable":
+			return t("ui.hub.links.outcome_unavailable");
+		default:
+			return outcome;
+	}
+}
+
 export function hubDirectionStateText(status: HubDirectionStatus): string {
 	switch (status.state) {
 		case "idle":
