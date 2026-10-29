@@ -91,7 +91,48 @@ allow/deny. It changes only presentation: `background-tab` may never foreground 
 (§2.4). `window.open` calls from script arrive with Electron's `default`/`new-window`
 shapes; all that matters is that nothing here distinguishes "the user clicked" from
 "script ran", because Electron exposes no gesture signal on this handler (accepted; see
-§6).
+§6). The opener test below is not a gesture signal: it separates links from sign-in
+popups, not clicks from scripts.
+
+**Routing: tab or window (amended 2026-10-29).** The table above decides *whether* a popup
+is admitted. A second decision, `routePopup` in `popups.ts`, decides *what it becomes*, and it
+runs in `did-create-window` because the answer needs the child, which does not exist yet in
+the open handler: **does the new page have an opener (`child.webContents.opener`)?**
+
+| trigger (measured, Electron 44.3.0) | `disposition` | opener | becomes |
+|---|---|---|---|
+| `<a target=_blank>`, with or without `rel=noopener` | `foreground-tab` | none | **tab** |
+| `<a target=_blank>` inside an iframe | `foreground-tab` | none | **tab** |
+| `window.open(url, n, "noopener")` | `foreground-tab` | none | **tab** |
+| `<a target=_blank rel=opener>` | `foreground-tab` | set | window |
+| `window.open(url)`, `window.open(url, n, "width=..")`, MSAL's `about:blank` first | `foreground-tab` / `new-window` | set | window |
+| `<form method=post target=_blank>` | `foreground-tab` + `postBody` | none | window (replaying the body into a new view was measured flaky: POST 1/1/0 over three runs) |
+
+Why the opener and not `disposition`, `features` or the URL: a bare `window.open(url)` and an
+anchor click are both `foreground-tab`; `rel=noopener` anchors arrive with empty `features`;
+and a URL allowlist is the thing §1 rejects. A flow that needs `window.opener` or
+`postMessage` has an opener or it cannot work, and `noopener` makes `window.open` return
+`null`, so the page cannot poll the child either. An opener-less popup therefore cannot be a
+sign-in popup that depends on its opener (§0), and the cost of guessing wrong is lopsided:
+an opener-bearing popup treated as a tab breaks MSAL silently (the failure this document
+exists to remove), while an opener-less one treated as a window is an OS window `tabs` never
+lists. The test is therefore the opener.
+
+An ordinary link becomes a **tab owned like its opener**: an agent's tab yields an agent tab
+in the same session (never activated, so the tab the operator is looking at does not move —
+`ui-browser-tab.md` 11.4), a user's tab yields a user tab that comes to the front only when
+the opener was the active tab and the request was not `background-tab`. It is never presented
+as a window. The opening session may adopt it with `open tab=<handle>` (`TabRecord.openedBy`,
+read by `sessionMayAdopt`); another session may not. Bounds: an agent's tab may spawn
+`MAX_POPUP_CHILDREN_PER_VIEW` link tabs and the agent-tab cap (`MAX_AGENT_TABS`) still
+applies; user tabs are uncapped as everywhere else. Scheme and window-cap refusals are
+unchanged. The log line names the route: `opener=yes|no route=tab|window`.
+
+Not verified: that Gmail's links are opener-less (inferred from its `google.com/url?q=`
+redirect anchors), real MSAL/Google sign-in through the new routing, modifier-click in the
+`did-create-window` path (the `createWindow` path gave no guest), `window.close()` from an
+opener-less tab, and origin consent on a page-opened tab (authorization applies when the
+agent acts, per `host.ts`).
 
 ### 1.2 The fate of the blocked-popup notice
 
@@ -270,12 +311,16 @@ belongs to the browser profile, never the app's renderer.
 
 ### 2.4 Per-mode show policy, and where the code is allowed to live
 
-| launch mode (plan `show`) | disposition | effective presentation | what actually happens |
-|---|---|---|---|
-| `normal` (`focus`) | `default` / `foreground-tab` / `new-window` / `other` | `focus` | `show()` — activates the app and focuses the popup, as a browser popup does |
-| `normal` | `background-tab` | `inactive` | `showInactive()` — visible, never foregrounded |
-| `inactive` | any | `inactive` | `showInactive()` |
-| `headless` (`never`) | any | `never` | never shown, never focused; the window exists, hidden, drivable/capturable via CDP |
+Applies to a popup that stays a **window** (it has an opener, or it is a form POST); a link
+that became a tab is never presented as a window (§1.1).
+
+| launch mode (plan `show`) | opener tab's owner | disposition | effective presentation | what actually happens |
+|---|---|---|---|---|
+| `normal` (`focus`) | user | `default` / `foreground-tab` / `new-window` / `other` | `focus` | `show()` — activates the app and focuses the popup, as a browser popup does |
+| `normal` | user | `background-tab` | `inactive` | `showInactive()` — visible, never foregrounded |
+| `normal` | **agent** | any | `inactive` | `showInactive()` — an agent drives its tab while the operator works elsewhere; a sign-in window that raised the app over that was logged 12 times in two days. Visible, but it never activates the app or takes focus |
+| `inactive` | any | any | `inactive` | `showInactive()` |
+| `headless` (`never`) | any | any | `never` | never shown, never focused; the window exists, hidden, drivable/capturable via CDP |
 
 Mechanics:
 
@@ -356,8 +401,10 @@ Attached synchronously in `did-create-window`:
 - Track in a per-view `Set`; remove on `closed` (feeds the cap and the cleanup story).
 - `presentPopupWindow(child, effectiveShow, { trigger: "popup-open", report })` (§2.4).
 - No registry, no tab id, no state file, no CDP driver attachment, no `notifyChanged` —
-  the popup is not a tab and must not become one (the e2e proof asserts the tab count
-  stays put: `scripts/browser-host-proof.mjs:896-903`).
+  an opener-bearing popup is not a tab and must not become one (the e2e proof asserts the
+  tab count stays put, and that a `rel=opener` link is not listed). An opener-less popup
+  never reaches `wirePopup`: it is routed to `openPopupAsTab` (§1.1), which destroys the
+  unseen child and loads the URL in a registry tab.
 
 ### 3.2 Cleanup semantics
 
@@ -557,9 +604,16 @@ that is its own small design (see §1.2).
   instead of the system browser — backend/desktop scope, out of this PR.
 - **Not in scope:** custom-scheme redirects (`msauth:`, `ms-appx-web:` …) and any
   system-browser fallback for denied schemes; popups from popups; agent/CDP actions
-  targeting popups (the driver drives views; popups are invisible to it); popup chrome,
+  targeting an opener-bearing popup window (the driver drives views; such popups are
+  invisible to it — opener-less links are tabs and are driven normally); popup chrome,
   tab-strip integration, restore; per-popup consent UI; gesture gating (no signal
   exists — §6.4).
+- **Follow-ups for the tab route (slice 2, not built):** the agent's `click` result still
+  reads "(no navigation)" because it compares the opener's URL, so nothing tells the agent a
+  tab opened — add `opened_tab: <handle>` to the UI click result and a matching line in the
+  harness (`builtin.py`), and widen the `tab` parameter text that says "a tab the USER handed".
+  Form-POST `target=_blank` could adopt the guest through `createWindow` instead of staying a
+  window. Neither is needed to stop a link from opening an unlisted OS window.
 - **Follow-up, cross-repo:** amend §11.6 of `docs/design/ui-browser-tab.md` (lives in
   `~/local-operator`, `:2056-2066`) — it currently mandates deny-all for driven views and
   cites exactly the reasoning this brief supersedes. The PR body should name it so the

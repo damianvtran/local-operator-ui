@@ -84,6 +84,20 @@ export interface TabRecord {
 	/** The session a user tab has been handed to (design 6.3), or null. */
 	handedTo: string | null;
 	/**
+	 * The session whose page opened this tab by a link (`target=_blank`, a
+	 * `noopener` window.open), or null. Set only for an AGENT-owned opener.
+	 *
+	 * WHY it is its own field and not `handedTo`: a hand-over forces
+	 * `owner: "user"` creation, which activates the tab (an agent's tab must
+	 * not — design 11.4), and `handedTo` also drives revocation. This tab was
+	 * never the user's; the ownership ledger's `mayAdopt` reads this so the
+	 * opening session can `open tab=<handle>` it. In memory only, like `nonce`.
+	 */
+	openedBy: string | null;
+	/** The tab whose page opened this one, for the per-opener bound. Null for a
+	 * tab nobody's link opened. */
+	openedByTab: number | null;
+	/**
 	 * The owner this tab had BEFORE its first hand-over — "user" for a tab the
 	 * user opened, "agent" for one an agent did — pinned at that moment and never
 	 * rewritten by later re-hands; null while the tab has never been handed over.
@@ -234,6 +248,22 @@ export function sessionIdOf(identity: string): string {
 			: identity;
 }
 
+/**
+ * Whether `requester` (`session:<id>`) may ADOPT this tab with `open tab=`: the
+ * session the user handed it to, or the session whose page opened it by a link.
+ * An allocated tab is never adoptable (it already belongs to an allocation), and
+ * a tab no session is attached to never is either. One predicate, shared by the
+ * ownership hook in `index.ts` and the tests, so the rule cannot drift.
+ */
+export function sessionMayAdopt(
+	record: Pick<TabRecord, "handedTo" | "openedBy" | "allocationId">,
+	requester: string,
+): boolean {
+	const session = sessionIdOf(requester);
+	if (!session || record.allocationId) return false;
+	return record.handedTo === session || record.openedBy === session;
+}
+
 /** Mint a surface nonce. 16 random bytes hex-encoded: the same 32-character
  * shape and entropy the extension's nonces have, so a redacted handle leaks the
  * same 26 hidden characters either way. */
@@ -250,6 +280,14 @@ export interface CreateTabOptions {
 	/** The row this tab is restored from, when it is one. See `TabRecord`. */
 	restoreRow?: PersistedTab;
 	allocationId?: string;
+	/** A user tab becomes the active one unless this is `false` — a link opened
+	 * in the background (or from a tab nobody is looking at) must not switch the
+	 * tab the user is on. Agent tabs never activate, whatever this says. */
+	activate?: boolean;
+	/** See `TabRecord.openedBy`. */
+	openedBy?: string | null;
+	/** See `TabRecord.openedByTab`. */
+	openedByTab?: number | null;
 }
 
 export class TabRegistry {
@@ -331,6 +369,8 @@ export class TabRegistry {
 			homeSessionId: restored ? null : (options.sessionId ?? null),
 			nonce: restored || options.owner === "user" ? null : mintNonce(),
 			handedTo: null,
+			openedBy: restored ? null : (options.openedBy ?? null),
+			openedByTab: restored ? null : (options.openedByTab ?? null),
 			handedFrom: null,
 			restored,
 			restoreRow: options.restoreRow,
@@ -348,7 +388,8 @@ export class TabRegistry {
 		// created first — on a session with no user tab that is the agent's own, so the
 		// agent's background tab silently became the presented one and every other tab
 		// kept zero layout. The layout pass below reads this to decide presentation.
-		if (record.owner === "user") this.activeTabId = tabId;
+		if (record.owner === "user" && options.activate !== false)
+			this.activeTabId = tabId;
 		this.applyLayout();
 		this.onChanged();
 		return record;
@@ -367,6 +408,15 @@ export class TabRegistry {
 			`this host is already driving ${MAX_AGENT_TABS} agent tabs; close one first`,
 			{ limit: MAX_AGENT_TABS },
 		);
+	}
+
+	/** How many open tabs were spawned by a link on `tabId` — the per-opener
+	 * bound's input (`routePopup`). */
+	openedTabCount(tabId: number): number {
+		let count = 0;
+		for (const record of this.tabs.values())
+			if (record.openedByTab === tabId) count += 1;
+		return count;
 	}
 
 	/** Resolve a tab by its own id. */

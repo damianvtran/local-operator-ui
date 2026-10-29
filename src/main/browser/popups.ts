@@ -48,11 +48,17 @@ export interface PopupRequest {
 	disposition: PopupDisposition;
 }
 
+/** Who owns the tab a popup came from. A hand-over makes a user tab `agent`,
+ * so this is the tab's CURRENT owner, not who created it. */
+export type PopupOpenerOwner = "user" | "agent";
+
 export interface PopupPolicy {
 	/** The launch plan's show policy — the mode this host is running under. */
 	mode: WindowShow;
 	/** The view's live child count, the cap's input (see the constant below). */
 	live: number;
+	/** Who owns the opening tab: selects the presentation of a `normal` launch. */
+	openerOwner: PopupOpenerOwner;
 }
 
 /**
@@ -76,25 +82,32 @@ export type PopupDecision =
 export const MAX_POPUP_CHILDREN_PER_VIEW = 4;
 
 /**
- * The effective presentation for an allowed popup — the §2.4 table, in one
- * place because two callers resolve it: the open handler (for the window
+ * The effective presentation for an allowed popup WINDOW — the §2.4 table, in
+ * one place because two callers resolve it: the open handler (for the window
  * options and its log line) and `did-create-window` (which presents the child).
  *
- * `background-tab` is the one disposition that changes anything: under a
- * `normal` launch it presents without foregrounding, which is what the browser
- * contract says a background tab is. Under `inactive` every disposition is
- * `inactive`, and under `headless` nothing is ever shown — the child still
- * exists for the page's own flow, which is deliberate and does not contradict
- * `canCreateWindowFor`: that rule is about windows holding the OPERATOR's
- * conversation with nobody able to reach them; a driven page's popup belongs
- * to the page, and the proof drives it over CDP while it stays hidden.
+ * Under a `normal` launch two things stop a window from foregrounding:
+ * `background-tab` (what the browser contract says a background tab is) and an
+ * AGENT-OWNED opener. An agent drives its tab while the operator works in
+ * another app, and a sign-in window that raised the app over whatever they were
+ * doing was measured at 12 raises in two days, so it is shown `inactive`:
+ * visible, never activating the app and never taking focus. A user-owned opener
+ * still focuses — the person who clicked is looking at the app. Under
+ * `inactive` every disposition is `inactive`, and under `headless` nothing is
+ * ever shown — the child still exists for the page's own flow, which is
+ * deliberate and does not contradict `canCreateWindowFor`: that rule is about
+ * windows holding the OPERATOR's conversation with nobody able to reach them; a
+ * driven page's popup belongs to the page, and the proof drives it over CDP
+ * while it stays hidden.
  */
 export function effectivePresentation(
 	mode: WindowShow,
 	disposition: PopupDisposition,
+	openerOwner: PopupOpenerOwner,
 ): WindowShow {
 	if (mode === "never") return "never";
 	if (mode === "inactive") return "inactive";
+	if (openerOwner === "agent") return "inactive";
 	return disposition === "background-tab" ? "inactive" : "focus";
 }
 
@@ -131,7 +144,84 @@ export function decidePopup(
 	}
 	return {
 		allow: true,
-		presentation: effectivePresentation(policy.mode, request.disposition),
+		presentation: effectivePresentation(
+			policy.mode,
+			request.disposition,
+			policy.openerOwner,
+		),
+	};
+}
+
+/** What `did-create-window` knows that the open handler cannot: the child
+ * exists by then, so its opener can be read. */
+export interface PopupRouteRequest extends PopupRequest {
+	/** `child.webContents.opener !== null`. Measured on Electron 44.3.0: a plain
+	 * `target=_blank` link (with or without `rel=noopener`), an iframe link and
+	 * `window.open(url, n, "noopener")` all arrive with NO opener; a bare
+	 * `window.open`, a sized `window.open` and `rel=opener` arrive with one. */
+	hasOpener: boolean;
+	/** A `<form method=post target=_blank>`: Electron carries the body itself. */
+	hasPostBody: boolean;
+	/** Whether the opening tab is the active one (only a user tab's link reads it). */
+	openerActive: boolean;
+	/** Tabs this opener has already spawned that are still open. */
+	openedTabs: number;
+}
+
+/**
+ * Where an allowed popup goes (docs/design/browser-oauth-popups.md 1.1).
+ *
+ * - `deny` — `decidePopup` refused it (scheme, cap), or an agent's tab already
+ *   holds `MAX_POPUP_CHILDREN_PER_VIEW` tabs it spawned.
+ * - `tab` — an ordinary link: it has no opener, so nothing can depend on one
+ *   (a flow that needs `window.opener` or `postMessage` has an opener or cannot
+ *   work; `noopener` makes `window.open` return null, so the page cannot poll
+ *   the child either). It becomes a tab owned like its opener and is never
+ *   presented as a window. `activate` is the browser behaviour for a USER tab: a
+ *   link opened from the tab being looked at comes to the front unless it is a
+ *   background-tab request; an agent's tab never activates (design 11.4).
+ * - `window` — an opener-bearing popup (MSAL `loginPopup`, Google `storagerelay`)
+ *   keeps the real child window the opener/postMessage contract needs, and a form
+ *   POST stays here too: replaying a POST body into a new view was measured flaky.
+ *
+ * `about:blank` has an opener by construction (MSAL opens it from script), so
+ * the exact-blank case can never be mistaken for a link.
+ */
+export type PopupRoute =
+	| { route: "deny"; reason: "scheme" | "cap" }
+	| { route: "tab"; owner: PopupOpenerOwner; activate: boolean }
+	| { route: "window"; presentation: WindowShow };
+
+export function routePopup(
+	request: PopupRouteRequest,
+	policy: PopupPolicy,
+): PopupRoute {
+	const decision = decidePopup(request, policy);
+	if (!decision.allow) return { route: "deny", reason: decision.reason };
+	if (
+		request.hasOpener ||
+		request.hasPostBody ||
+		request.url === "about:blank"
+	) {
+		return { route: "window", presentation: decision.presentation };
+	}
+	// The per-opener bound for tabs, for the same reason the window cap exists
+	// (no gesture signal reaches the main process, so a script can spam links) —
+	// but only for an AGENT's tab: user tabs are uncapped by design (6.5) and a
+	// person opening five links from one page is ordinary use.
+	if (
+		policy.openerOwner === "agent" &&
+		request.openedTabs >= MAX_POPUP_CHILDREN_PER_VIEW
+	) {
+		return { route: "deny", reason: "cap" };
+	}
+	return {
+		route: "tab",
+		owner: policy.openerOwner,
+		activate:
+			policy.openerOwner === "user" &&
+			request.openerActive &&
+			request.disposition !== "background-tab",
 	};
 }
 
