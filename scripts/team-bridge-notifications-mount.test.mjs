@@ -608,7 +608,9 @@ test("a zero-total org's first message before the conversation list resolves sti
  * `team-bridge-thread-gate.ts`). The history arm below keeps the race matrix;
  * the held reply path has its own test after it.
  */
-for (const pending of ["history", "directory"]) {
+// Directory is now a synchronous cache join, not a network edge. Keep the
+// live-policy race matrix on history and prove no directory read below.
+for (const pending of ["history"]) {
 	for (const disable of ["setting", "capability", "mute", "none"]) {
 		test(`history: a ${disable} change while ${pending} is pending is rechecked before IPC`, async () => {
 			resetFixture();
@@ -649,6 +651,10 @@ for (const pending of ["history", "directory"]) {
 				release = resolve;
 			});
 			const mounted = await mount();
+			mounted.client.setQueryData(
+				api.teamBridgeKeys.directory("tnt_race", fixture.identity),
+				{ members: fixture.directoryMembers },
+			);
 			try {
 				await until(
 					() =>
@@ -718,7 +724,11 @@ for (const pending of ["history", "directory"]) {
 					"only the enabled negative control may reach IPC",
 				);
 				if (disable === "none") {
-					assert.deepEqual(fixture.calls.directory, ["tnt_race"]);
+					assert.deepEqual(fixture.calls.directory, []);
+					assert.equal(
+						mounted.notifications[0].sender.display_name,
+						"Directory Bob",
+					);
 					assert.equal(mounted.notifications[0].title, "Directory Bob");
 					assert.equal(mounted.notifications[0].body, "fixture message");
 					assert.equal(mounted.notifications[0].tenantId, "tnt_race");

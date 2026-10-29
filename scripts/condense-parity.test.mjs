@@ -136,6 +136,37 @@ test("the fixture pins the model source it came from, and the pin verifies", asy
 	for (const file of derived) readFileSync(join(HERE, "..", file));
 });
 
+test("the pin covers decisions, not generated copy tables", async () => {
+	/*
+	 * THE GENERATED KEY TABLE IS NOT A MODEL SOURCE (2026-10-29).
+	 *
+	 * `src/i18n/keys.gen.ts` is derived from the English catalogues: a list of key
+	 * ids and their parameter types. It was being pinned as a bundled model input,
+	 * which meant every copy edit that touched the table's bytes marked this fixture
+	 * STALE even though nothing the fixture records — no id, count, segment key or
+	 * label kind — had moved. On 2026-10-29 that left `main` red on this suite and
+	 * every branch cut from it inherited the failure, three PRs in one night each
+	 * regenerating the same file to get a green board.
+	 *
+	 * The pin is for DECISIONS. A generated table cannot hold one, and the i18n
+	 * gates already own the copy. This test is the guard against re-adding it: the
+	 * rule lives here rather than only in the generator's filter, because the filter
+	 * is the thing that is easy to delete when the next merge looks stuck.
+	 */
+	const inputs = await bundledSources();
+	assert.ok(
+		!inputs.includes("src/i18n/keys.gen.ts"),
+		"the generated key table must not be a pinned model source",
+	);
+	// And it must not creep back in by another generated spelling.
+	const generated = inputs.filter((input) => input.endsWith(".gen.ts"));
+	assert.deepEqual(
+		generated,
+		[],
+		`generated files must not be pinned: ${generated.join(", ")}`,
+	);
+});
+
 test("every declared source suite contributes shapes to the corpus", () => {
 	const declared = FIXTURE.desktop.sources;
 	assert.ok(

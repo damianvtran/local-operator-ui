@@ -1,0 +1,708 @@
+{
+  "palette": "kanagawaLotus",
+  "commit": "d60e5d5e2edb4c02e2120ef4fc6508a114aae07b",
+  "window": "1200x800",
+  "steps": {
+    "rendererTarget": {
+      "id": "7C3686796BB16ECB999F68310085FFBB",
+      "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/index.html"
+    },
+    "preferencesBefore": {
+      "present": true,
+      "bytes": 1017,
+      "stateKeys": [
+        "finderFiles",
+        "isCommandPaletteOpen",
+        "commandPaletteQuery",
+        "isSidebarCollapsed",
+        "sidebarOverflowExpanded",
+        "showAgentReasoning",
+        "transcriptDisplayMode",
+        "themeName",
+        "rightSlotWidth",
+        "chatSidebarWidth",
+        "chatSidebarRegions",
+        "chatSidebarView",
+        "chatSidebarListHeight",
+        "chatSidebarOrder",
+        "dismissedBuiltinOfferSignature",
+        "rightSlotMemory",
+        "rightSlotLegacySeed",
+        "browserPaneScope",
+        "consoleActiveSurface",
+        "consoleUnseen",
+        "isCreateAgentDialogOpen",
+        "mentionRecents",
+        "profileRecents",
+        "conversationRecents",
+        "shortcutBindings"
+      ],
+      "version": 4
+    },
+    "preferencesSeeded": {
+      "fromBlob": true,
+      "version": 4,
+      "themeName": "kanagawaLotus"
+    },
+    "themeApplied": {
+      "theme": "kanagawaLotus",
+      "dark": false,
+      "bodyBackground": "rgba(0, 0, 0, 0)"
+    },
+    "browserRoute": {
+      "route": true,
+      "pane": false,
+      "content": true,
+      "hash": "#/browser"
+    },
+    "cardTarget": {
+      "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?theme=dark",
+      "id": "23A72257F2C8C5583DC8C8DEBF1CBB1E"
+    },
+    "addressField": {
+      "x": 762,
+      "y": 87,
+      "width": 732,
+      "height": 28,
+      "disabled": false,
+      "readOnly": false,
+      "editing": "false",
+      "value": "127.0.0.1:60164/page"
+    },
+    "addressEditing": {
+      "editing": "true",
+      "focused": true
+    },
+    "typedValue": {
+      "attempt": 1,
+      "typed": "http://127.0.0.1:60382/page"
+    },
+    "pageTarget": {
+      "url": "http://127.0.0.1:60382/page",
+      "id": "86A1319710093A4E59DCDA1B1AA8F899"
+    },
+    "livePage": {
+      "url": "http://127.0.0.1:60382/page",
+      "probe": {
+        "geo": "denied:1",
+        "notifications": "denied"
+      },
+      "size": [
+        940,
+        694
+      ],
+      "dpr": 2,
+      "geoText": "geolocation: denied (1)",
+      "notifyText": "notifications: denied"
+    },
+    "geometry": {
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 940,
+        "height": 694
+      },
+      "dpr": 2,
+      "viewport": [
+        1200,
+        800
+      ]
+    },
+    "browserHost": {
+      "port": 60394,
+      "keys": [
+        "pid",
+        "port",
+        "session_key",
+        "proto",
+        "host",
+        "app_version",
+        "instance_id",
+        "profile_dir",
+        "capabilities",
+        "tabs",
+        "agent_tabs",
+        "console",
+        "console_surfaces",
+        "console_agent_surfaces",
+        "console_live",
+        "console_archived",
+        "console_max_live",
+        "console_host_epoch",
+        "console_started_at",
+        "console_generation",
+        "console_sampled_at",
+        "heartbeat_at",
+        "started_at"
+      ]
+    },
+    "requestAccess": {
+      "status": 200,
+      "body": "{\"id\":\"qa-1488-request-access\",\"ok\":true,\"result\":{\"origin\":\"http://127.0.0.1:60382\",\"state\":\"pending\",\"entry_id\":\"bc68a93a267447e389dcc2084766ced4\",\"authority\":\"127.0.0.1:60382\",\"expires_at\":1793284882628,\"broad\":{\"scope\":\"host\",\"key\":\"127.0.0.1\"}}}"
+    },
+    "presented": {
+      "at": 221,
+      "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+      "theme": "localOperatorDark",
+      "vis": "hidden",
+      "size": [
+        368,
+        112
+      ],
+      "hasCard": true,
+      "text": "",
+      "bg": "rgb(50, 45, 34)"
+    },
+    "firstVisible": {
+      "at": 376,
+      "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "size": [
+        368,
+        383
+      ],
+      "hasCard": true,
+      "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+      "bg": "rgb(242, 236, 188)"
+    },
+    "cardBurst": {
+      "presentedAt": 221,
+      "firstVisibleAt": 376,
+      "firstFrameAt": 221,
+      "frames": 22,
+      "frameThemes": [
+        "localOperatorDark",
+        "kanagawaLotus"
+      ]
+    },
+    "composites": [
+      {
+        "label": "first-presented",
+        "atMs": 394,
+        "sincePresented": 0,
+        "theme": "kanagawaLotus",
+        "vis": "visible",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+      },
+      {
+        "label": "mid-settle",
+        "atMs": 1193,
+        "sincePresented": 794,
+        "theme": "kanagawaLotus",
+        "vis": "visible",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+      },
+      {
+        "label": "settled",
+        "atMs": 2679,
+        "sincePresented": 2277,
+        "theme": "kanagawaLotus",
+        "vis": "visible",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+      }
+    ],
+    "paletteTimeline": {
+      "samples": 23,
+      "withTarget": 23,
+      "errors": 1,
+      "first": {
+        "at": 10,
+        "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+      },
+      "atPresentation": {
+        "at": 221,
+        "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+        "theme": "localOperatorDark",
+        "vis": "hidden",
+        "size": [
+          368,
+          112
+        ],
+        "hasCard": true,
+        "text": "",
+        "bg": "rgb(50, 45, 34)"
+      },
+      "last": {
+        "at": 2986,
+        "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+        "theme": "kanagawaLotus",
+        "vis": "visible",
+        "size": [
+          368,
+          383
+        ],
+        "hasCard": true,
+        "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+        "bg": "rgb(242, 236, 188)"
+      },
+      "themes": [
+        null,
+        "localOperatorDark",
+        "kanagawaLotus"
+      ],
+      "themesAfterPresentation": [
+        "localOperatorDark",
+        "kanagawaLotus"
+      ],
+      "visibilityValues": [
+        null,
+        "hidden",
+        "visible"
+      ],
+      "beforeFirstPaint": [
+        {
+          "at": 10,
+          "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+        },
+        {
+          "at": 221,
+          "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+          "theme": "localOperatorDark",
+          "vis": "hidden",
+          "size": [
+            368,
+            112
+          ],
+          "hasCard": true,
+          "text": "",
+          "bg": "rgb(50, 45, 34)"
+        }
+      ],
+      "firstVisible": {
+        "at": 376,
+        "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+        "theme": "kanagawaLotus",
+        "vis": "visible",
+        "size": [
+          368,
+          383
+        ],
+        "hasCard": true,
+        "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+        "bg": "rgb(242, 236, 188)"
+      },
+      "visibleSamples": 21
+    },
+    "rendererConsole": {
+      "resources": 0
+    },
+    "browserLogTail": [
+      "10:31:22.504 › [browser] address overlay hidden: stale_layout",
+      "10:31:22.509 › [browser] denied a media permission request from http://127.0.0.1:60164/page",
+      "10:31:22.509 › [browser] denied a media permission request from http://127.0.0.1:60164/page",
+      "10:31:22.509 › [browser] denied a web-app-installation permission request from http://127.0.0.1:60164/page",
+      "10:31:22.509 › [browser] denied a geolocation permission request from http://127.0.0.1:60164/page",
+      "10:31:22.511 › [browser] address overlay hidden: navigation",
+      "10:31:22.513 › [browser] address overlay hidden: projection_hidden",
+      "10:31:22.586 › [browser] tab 1 navigated to http://127.0.0.1:60382/page",
+      "10:31:22.589 › [browser] denied a geolocation permission request from http://127.0.0.1:60382/page",
+      "10:31:22.589 › [browser] denied a notifications permission request from http://127.0.0.1:60382/page",
+      "10:31:22.630 › [browser] approvals overlay child released: resize",
+      "10:31:22.634 › [browser] session:qa-1488-synthetic is asking for access to http://127.0.0.1:60382 (1 pending)"
+    ]
+  },
+  "assertions": [
+    {
+      "label": "the app's own theme provider applies the seeded palette",
+      "status": "PASS",
+      "detail": "documentElement data-theme=\"kanagawaLotus\" dark=false"
+    },
+    {
+      "label": "the app's browser route mounts its live content box",
+      "status": "PASS",
+      "detail": "{\"route\":true,\"pane\":false,\"content\":true,\"hash\":\"#/browser\"}"
+    },
+    {
+      "label": "the browser route shows an enabled address field",
+      "status": "PASS",
+      "detail": "{\"x\":762,\"y\":87,\"width\":732,\"height\":28,\"disabled\":false,\"readOnly\":false,\"editing\":\"false\",\"value\":\"127.0.0.1:60164/page\"}"
+    },
+    {
+      "label": "a real loopback page is live inside the app",
+      "status": "PASS",
+      "detail": "url=http://127.0.0.1:60382/page viewport=940,694 dpr=2"
+    },
+    {
+      "label": "the page's permission request reaches the app's policy and is denied",
+      "status": "PASS",
+      "detail": "geolocation result=\"geolocation: denied (1)\" probe={\"geo\":\"denied:1\",\"notifications\":\"denied\"}"
+    },
+    {
+      "label": "the pending access request is queued (request_access answered pending)",
+      "status": "PASS",
+      "detail": "200 {\"id\":\"qa-1488-request-access\",\"ok\":true,\"result\":{\"origin\":\"http://127.0.0.1:60382\",\"state\":\"pending\",\"entry_id\":\"bc68a93a267447e389dcc2084766ced4\",\"authority\":\"127.0.0.1:60382\",\"expires_at\":1793284882628,\"broad\":{\"scope\":\"host\",\"key\":\"127.0.0.1\"}}}"
+    },
+    {
+      "label": "the card is presented (queue count non-zero and the child carries bounds)",
+      "status": "PASS",
+      "detail": "first presented sample at 221 ms after the request"
+    },
+    {
+      "label": "the FIRST VISIBLE card sample already carries the seeded palette",
+      "status": "PASS",
+      "detail": "first visible at 376 ms: theme=\"kanagawaLotus\" size=[368,383] text=\"Local Operator Approvals Close An agent \""
+    },
+    {
+      "label": "every VISIBLE card sample carries the seeded palette",
+      "status": "PASS",
+      "detail": "visible samples=21 themes=[\"kanagawaLotus\"]"
+    },
+    {
+      "label": "no VISIBLE card sample carries localOperatorDark",
+      "status": "PASS",
+      "detail": "default-palette visible samples=0"
+    },
+    {
+      "label": "the document URL the app loaded at presentation carries the seeded palette",
+      "status": "PASS",
+      "detail": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "label": "the presented card document carries the queued entry, not the empty state",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "label": "every composite captured from a VISIBLE card carries the seeded palette",
+      "status": "PASS",
+      "detail": "[[\"first-presented\",\"visible\",\"kanagawaLotus\"],[\"mid-settle\",\"visible\",\"kanagawaLotus\"],[\"settled\",\"visible\",\"kanagawaLotus\"]]"
+    },
+    {
+      "label": "no app process from this run survives teardown",
+      "status": "PASS",
+      "detail": "[]"
+    }
+  ],
+  "frames": [
+    {
+      "file": "card-00.png",
+      "atMs": 221,
+      "sincePresented": 0,
+      "theme": "localOperatorDark",
+      "vis": "hidden",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-01.png",
+      "atMs": 376,
+      "sincePresented": 155,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-02.png",
+      "atMs": 579,
+      "sincePresented": 358,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-03.png",
+      "atMs": 694,
+      "sincePresented": 473,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-04.png",
+      "atMs": 811,
+      "sincePresented": 590,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-05.png",
+      "atMs": 928,
+      "sincePresented": 707,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-06.png",
+      "atMs": 1054,
+      "sincePresented": 833,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-07.png",
+      "atMs": 1170,
+      "sincePresented": 949,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-08.png",
+      "atMs": 1382,
+      "sincePresented": 1161,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-09.png",
+      "atMs": 1495,
+      "sincePresented": 1274,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-10.png",
+      "atMs": 1616,
+      "sincePresented": 1395,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-11.png",
+      "atMs": 1728,
+      "sincePresented": 1507,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-12.png",
+      "atMs": 1844,
+      "sincePresented": 1623,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-13.png",
+      "atMs": 1962,
+      "sincePresented": 1741,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-14.png",
+      "atMs": 2079,
+      "sincePresented": 1858,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-15.png",
+      "atMs": 2194,
+      "sincePresented": 1973,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-16.png",
+      "atMs": 2303,
+      "sincePresented": 2082,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-17.png",
+      "atMs": 2419,
+      "sincePresented": 2198,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-18.png",
+      "atMs": 2537,
+      "sincePresented": 2316,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-19.png",
+      "atMs": 2653,
+      "sincePresented": 2432,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-20.png",
+      "atMs": 2870,
+      "sincePresented": 2649,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "file": "card-21.png",
+      "atMs": 2986,
+      "sincePresented": 2765,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    }
+  ],
+  "startedAt": "2026-10-29T14:31:21.061Z",
+  "pid": 79396,
+  "cdpPort": 9418,
+  "pageUrl": "http://127.0.0.1:60382/page",
+  "cardUrlAtAttach": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?theme=dark",
+  "presentation": {
+    "presentedAt": 221,
+    "firstVisibleAt": 376,
+    "firstFrameAt": 221,
+    "frames": 22,
+    "frameThemes": [
+      "localOperatorDark",
+      "kanagawaLotus"
+    ]
+  },
+  "composites": [
+    {
+      "label": "first-presented",
+      "atMs": 394,
+      "sincePresented": 0,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "label": "mid-settle",
+      "atMs": 1193,
+      "sincePresented": 794,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    },
+    {
+      "label": "settled",
+      "atMs": 2679,
+      "sincePresented": 2277,
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+    }
+  ],
+  "timeline": {
+    "samples": 23,
+    "withTarget": 23,
+    "errors": 1,
+    "first": {
+      "at": 10,
+      "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+    },
+    "atPresentation": {
+      "at": 221,
+      "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+      "theme": "localOperatorDark",
+      "vis": "hidden",
+      "size": [
+        368,
+        112
+      ],
+      "hasCard": true,
+      "text": "",
+      "bg": "rgb(50, 45, 34)"
+    },
+    "last": {
+      "at": 2986,
+      "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "size": [
+        368,
+        383
+      ],
+      "hasCard": true,
+      "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+      "bg": "rgb(242, 236, 188)"
+    },
+    "themes": [
+      null,
+      "localOperatorDark",
+      "kanagawaLotus"
+    ],
+    "themesAfterPresentation": [
+      "localOperatorDark",
+      "kanagawaLotus"
+    ],
+    "visibilityValues": [
+      null,
+      "hidden",
+      "visible"
+    ],
+    "beforeFirstPaint": [
+      {
+        "at": 10,
+        "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+      },
+      {
+        "at": 221,
+        "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+        "theme": "localOperatorDark",
+        "vis": "hidden",
+        "size": [
+          368,
+          112
+        ],
+        "hasCard": true,
+        "text": "",
+        "bg": "rgb(50, 45, 34)"
+      }
+    ],
+    "firstVisible": {
+      "at": 376,
+      "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+      "theme": "kanagawaLotus",
+      "vis": "visible",
+      "size": [
+        368,
+        383
+      ],
+      "hasCard": true,
+      "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+      "bg": "rgb(242, 236, 188)"
+    },
+    "visibleSamples": 21
+  },
+  "browserLog": [
+    "10:31:22.504 › [browser] address overlay hidden: stale_layout",
+    "10:31:22.509 › [browser] denied a media permission request from http://127.0.0.1:60164/page",
+    "10:31:22.509 › [browser] denied a media permission request from http://127.0.0.1:60164/page",
+    "10:31:22.509 › [browser] denied a web-app-installation permission request from http://127.0.0.1:60164/page",
+    "10:31:22.509 › [browser] denied a geolocation permission request from http://127.0.0.1:60164/page",
+    "10:31:22.511 › [browser] address overlay hidden: navigation",
+    "10:31:22.513 › [browser] address overlay hidden: projection_hidden",
+    "10:31:22.586 › [browser] tab 1 navigated to http://127.0.0.1:60382/page",
+    "10:31:22.589 › [browser] denied a geolocation permission request from http://127.0.0.1:60382/page",
+    "10:31:22.589 › [browser] denied a notifications permission request from http://127.0.0.1:60382/page",
+    "10:31:22.630 › [browser] approvals overlay child released: resize",
+    "10:31:22.634 › [browser] session:qa-1488-synthetic is asking for access to http://127.0.0.1:60382 (1 pending)"
+  ],
+  "teardown": {
+    "signal": "SIGTERM",
+    "survivors": []
+  },
+  "finishedAt": "2026-10-29T14:31:26.229Z",
+  "exitCode": 0
+}

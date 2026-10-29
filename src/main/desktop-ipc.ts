@@ -478,6 +478,10 @@ export function registerDesktopIPC(
 			authorizeNotifications(event);
 			return teamBridgeNotifier.notify(input);
 		});
+		ipcMain.handle("team-bridge:directory", (event, input: unknown) => {
+			authorizeNotifications(event);
+			teamBridgeNotifier.syncDirectory(input);
+		});
 		ipcMain.handle("team-bridge:pending-open", (event) => {
 			authorizeNotifications(event);
 			return teamBridgeNotifier.takePendingOpen();
