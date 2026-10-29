@@ -372,7 +372,7 @@ const messagePage = {
 const thread = {
 	root: admitted,
 	replies: [
-		sender(AGENT, "agent", AGENT_LABEL) && {
+		{
 			...own,
 			id: "msg_41_r1",
 			seq: 41,
@@ -482,7 +482,7 @@ function SlotHost({ props, onSlot }) {
 	);
 }
 
-async function mountSlot(props, onSlot) {
+async function mountSlot(props, onSlot, { readOnly = false } = {}) {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -496,7 +496,9 @@ async function mountSlot(props, onSlot) {
 	client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
 		account_id: OWNER,
 		state: "ready",
-		read_only: false,
+		/* Overridable so the read-only-surface arm below can seed the state that
+		 * used to make every audit read throw. */
+		read_only: readOnly,
 		local: { enabled: true, session_id: "sess_1" },
 	});
 	await act(async () =>
@@ -792,18 +794,27 @@ test("unadmitted bodies stay collapsed, admitted and own bodies do not", async (
 	const emptyRow = byText(m.t("ui.ownerAudit.body_unavailable"));
 	const ownRow = byText(own.body);
 
-	/* Collapsed by default: a `<details>` with no `open` attribute, and the
-	 * reveal summary is the only way in. */
-	for (const row of [rejectedRow, emptyRow]) {
-		const details = row.querySelector("details");
-		assert.ok(details, "an unadmitted body is behind a disclosure");
-		assert.equal(details.hasAttribute("open"), false);
-		assert.ok(
-			(details.querySelector("summary")?.textContent ?? "").includes(
-				m.t("ui.ownerAudit.reveal"),
-			),
-		);
-	}
+	/* Collapsed by default, and the reveal summary is the only way in — but ONLY
+	 * when there is text behind it. A disclosure on a row whose body the hub never
+	 * sent lured a press that returned "Message text unavailable.", so that row
+	 * states the absence instead of offering a door (design review round 1, D5). */
+	const details = rejectedRow.querySelector("details");
+	assert.ok(details, "an unadmitted body is behind a disclosure");
+	assert.equal(details.hasAttribute("open"), false);
+	assert.ok(
+		(details.querySelector("summary")?.textContent ?? "").includes(
+			m.t("ui.ownerAudit.reveal"),
+		),
+	);
+	assert.equal(
+		emptyRow.querySelector("details"),
+		null,
+		"a row with no body must not offer a disclosure it cannot honour",
+	);
+	assert.ok(
+		emptyRow.textContent.includes(m.t("ui.ownerAudit.body_unavailable")),
+		"and it must say so in the open",
+	);
 	/* Admitted text and the agent's own text are shown directly. */
 	for (const row of [admittedRow, ownRow]) {
 		assert.equal(row.querySelector("details"), null);
@@ -1116,4 +1127,172 @@ test("the page mounts the section only behind the runtime capability", async () 
 	/* The section is rendered from the slot, and the panel only when it is active. */
 	assert.match(page, RAIL_SITE);
 	assert.match(page, PANEL_SITE);
+});
+
+/*
+ * Agent review round 1, M1 (reproduced): a failed LATER page used to erase the
+ * pages already read. react-query sets `status: "error"` on the whole query when
+ * `fetchNextPage` rejects, even though `data.pages` still holds everything that
+ * loaded, so a 503 on "Load older messages" replaced a loaded transcript — and
+ * the whole rail — with the failure block. The state is now derived from
+ * "is there data", not from "did the last request fail".
+ */
+test("a failed later page keeps what already loaded", async () => {
+	requests = [];
+	let failNext = false;
+	answer = (request) => {
+		if (failNext) return refusal(503, { code: "unavailable" });
+		if (request.op === "team_bridge.owner_audit.conversations")
+			return json(conversationPage);
+		if (request.op === "team_bridge.owner_audit.messages")
+			return json(messagePage);
+		return refusal(404, { code: "conversation_not_found" });
+	};
+	const app = await mountSlot({
+		accountId: OWNER,
+		enabled: true,
+		scopeKey: "scope_a",
+		organizations: [{ tenantId: TENANT, name: "Minerva" }],
+		onSelect: () => {},
+	});
+
+	/* The rail's own "Load more" arm: the first page is on screen, the second
+	 * page fails, and the rows stay. */
+	const rows = [...app.host.querySelectorAll("li > button")];
+	assert.equal(rows.length, 2, "the first page is loaded");
+	const more = BUTTON_TEXT(app.host, m.t("ui.ownerAudit.more"));
+	assert.ok(more, "a page with has_more offers Load more");
+	failNext = true;
+	await click(more);
+	await settleTimes();
+	assert.equal(
+		app.host.querySelectorAll("li > button").length,
+		2,
+		"a failed next page must not erase the rows already shown",
+	);
+	assert.equal(
+		app.host.querySelector('[role="alert"]') === null,
+		true,
+		"and it must not replace them with the failure block",
+	);
+	await app.close();
+
+	/* The panel's arm, same defect one level down. */
+	requests = [];
+	failNext = false;
+	const second = await mountSlot({
+		accountId: OWNER,
+		enabled: true,
+		scopeKey: "scope_a",
+		organizations: [{ tenantId: TENANT, name: "Minerva" }],
+		onSelect: () => {},
+	});
+	await click([...second.host.querySelectorAll("li > button")][0]);
+	await settleTimes();
+	const shownBefore = second.host.querySelectorAll("article").length;
+	assert.ok(shownBefore > 0, "the first page of messages is loaded");
+	const older = BUTTON_TEXT(second.host, m.t("ui.ownerAudit.older"));
+	assert.ok(older, "a message page with has_more offers Load older messages");
+	failNext = true;
+	await click(older);
+	await settleTimes();
+	assert.equal(
+		second.host.querySelectorAll("article").length,
+		shownBefore,
+		"a failed older page must not erase the messages already shown",
+	);
+	await second.close();
+});
+
+/*
+ * Agent review round 1, m1 (reproduced): the audit read was fenced with the
+ * WRITE fence (`bridgeOwnerCurrent` also demands `!status.read_only`). Surface
+ * state F is deliberately readable, so the section appeared and then refused
+ * every read inside it. The read fence is `isReadCurrent`.
+ */
+test("a read-only Team Bridge surface can still be audited", async () => {
+	requests = [];
+	answer = (request) =>
+		request.op === "team_bridge.owner_audit.conversations"
+			? json(conversationPage)
+			: refusal(404, { code: "conversation_not_found" });
+	const app = await mountSlot(
+		{
+			accountId: OWNER,
+			enabled: true,
+			scopeKey: "scope_a",
+			organizations: [{ tenantId: TENANT, name: "Minerva" }],
+			onSelect: () => {},
+		},
+		undefined,
+		{ readOnly: true },
+	);
+	assert.equal(requests.length, 1, "the read is issued on a read-only surface");
+	assert.equal(
+		app.host.querySelectorAll("li > button").length,
+		2,
+		"and its answer is rendered",
+	);
+	assert.equal(app.host.querySelector('[role="alert"]'), null);
+	await app.close();
+});
+
+/*
+ * Design review round 1, D1: the verdict is a channel of its own, not a third
+ * grey field. Asserted as the property that matters rather than as a class name:
+ * the four known verdicts must be told apart by TREATMENT, so their marks must
+ * not share one rendering, and each must carry an edge and a fill of its own.
+ */
+test("each verdict carries its own treatment, not shared grey text", async () => {
+	const view = await renderView(
+		panel({
+			messages: [admitted, rejected, unscreenedEmpty, futureStatus, own],
+		}),
+	);
+	const markOf = (copy) => {
+		const host = [...view.host.querySelectorAll("header *")].find(
+			(node) =>
+				(node.textContent ?? "").trim() === copy && node.children.length === 0,
+		);
+		assert.ok(host, `no element renders ${copy}`);
+		return { element: host, className: host.getAttribute("class") ?? "" };
+	};
+	const marks = [
+		markOf(m.t("ui.ownerAudit.admitted")),
+		markOf(m.t("ui.ownerAudit.rejected")),
+		markOf(m.t("ui.ownerAudit.unknown_status")),
+		markOf(m.t("ui.ownerAudit.own")),
+	];
+	const notScreenedMark = markOf(m.t("ui.ownerAudit.not_screened"));
+	for (const mark of marks) {
+		assert.match(
+			mark.className,
+			/border-/,
+			"a verdict mark must carry an edge, not sit as plain text",
+		);
+	}
+	const [admittedMark, rejectedMark, unknownMark, ownMark] = marks;
+	/* The three screening outcomes are the judgements, and no two may look alike:
+	 * "what did my chief of staff let through" has to be answerable by scanning. */
+	assert.equal(
+		new Set([
+			admittedMark.className,
+			rejectedMark.className,
+			notScreenedMark.className,
+		]).size,
+		3,
+		"admitted, rejected and not-screened must not share a rendering",
+	);
+	/* The agent's own message and an unknown verdict are NOT judgements, so they
+	 * are deliberately neutral — and must never borrow a judgement's treatment. */
+	const neutral = new Set([unknownMark.className, ownMark.className]);
+	assert.equal(
+		neutral.size,
+		1,
+		"an unknown verdict and an own message are both neutral",
+	);
+	assert.equal(neutral.has(admittedMark.className), false);
+	assert.equal(neutral.has(rejectedMark.className), false);
+	assert.equal(neutral.has(notScreenedMark.className), false);
+	await view.close();
 });

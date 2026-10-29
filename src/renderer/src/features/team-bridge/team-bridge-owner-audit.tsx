@@ -1,4 +1,5 @@
 import type { OwnerAuditScope } from "@shared/api/local-operator/team-bridge-owner-audit-api";
+import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -20,6 +21,28 @@ import {
 } from "./use-team-bridge-owner-audit";
 
 type ReadState = "loading" | "error" | "ready";
+
+/**
+ * A FAILED LATER PAGE MUST NOT ERASE WHAT IS ALREADY SHOWN.
+ *
+ * `fetchNextPage` (and a background refetch) that rejects puts the whole query
+ * into `status: "error"` even though its earlier pages are still in `data`, so
+ * deriving the view from `isError` alone replaced a loaded transcript — or the
+ * whole rail — with the failure block when "Load older messages" hit a 503
+ * (agent review round 1, M1: reproduced against these components). `data` is
+ * the fact that a read succeeded; the error state belongs to the reader that
+ * has nothing to show. A failed later page keeps the rows and offers the retry
+ * that failed-page affordance already carries.
+ */
+function readState(query: {
+	isPending: boolean;
+	isError: boolean;
+	data: unknown;
+}): ReadState {
+	if (query.isPending) return "loading";
+	if (query.isError && !query.data) return "error";
+	return "ready";
+}
 const title = (conversation: OwnerAuditConversation) =>
 	ownerAuditTitle(conversation, t("ui.ownerAudit.unnamed"));
 
@@ -121,7 +144,7 @@ function OwnerAuditRail({
 			conversations={conversations}
 			selectedId={selectedId}
 			onSelect={onSelect}
-			state={query.isPending ? "loading" : query.isError ? "error" : "ready"}
+			state={readState(query)}
 			retry={() => void query.refetch()}
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}
@@ -148,6 +171,27 @@ function AuditMessage({
 		not_screened: "ui.ownerAudit.not_screened",
 		unknown: "ui.ownerAudit.unknown_status",
 		own: "ui.ownerAudit.own",
+	} as const;
+	/*
+	 * THE VERDICT NEEDS ITS OWN CHANNEL. It used to be a third grey field beside
+	 * the sender and the timestamp — same size, same ink, no mark — so the one
+	 * question this surface exists to answer ("what did my chief of staff let
+	 * through?") could not be answered by scanning, and the two outcomes that
+	 * matter most looked identical at rest (design review round 1, D1: measured
+	 * 12px/400 with no fill, no edge, no icon).
+	 *
+	 * These are the shipped `Badge` variants and their contrast-audited
+	 * wash/ink pairs, so the mark carries meaning in every palette without a
+	 * new token: admitted is quiet-positive, rejected is the refusal, not
+	 * screened is informational, and the agent's own message and an unknown
+	 * verdict stay neutral rather than borrowing a judgement they do not have.
+	 */
+	const badge = {
+		admitted: "success",
+		rejected: "danger",
+		not_screened: "info",
+		unknown: "neutral",
+		own: "neutral",
 	} as const;
 	const created = new Date(message.created_at);
 	// Never invoke markdown, previews, remote images, attachment loaders or any
@@ -192,9 +236,20 @@ function AuditMessage({
 						)}
 					</time>
 				)}
-				<span>{t(copy[delivery])}</span>
+				<Badge variant={badge[delivery]}>{t(copy[delivery])}</Badge>
 			</header>
-			{collapsed ? (
+			{collapsed && !message.body ? (
+				/*
+				 * A DISCLOSURE MUST NOT PROMISE TEXT IT DOES NOT HAVE. Offering "Show
+				 * message text" on a row whose body the hub never sent lured a click and
+				 * returned "Message text unavailable.", so the two cases were
+				 * indistinguishable before the press (design review round 1, D5). With no
+				 * body there is nothing to collapse: say the absence.
+				 */
+				<p className="mt-2 text-sm text-ink-muted">
+					{t("ui.ownerAudit.body_unavailable")}
+				</p>
+			) : collapsed ? (
 				<details className="mt-2">
 					<summary className="cursor-pointer text-sm text-ink-muted">
 						{t("ui.ownerAudit.reveal")}
@@ -312,18 +367,19 @@ function AuditReplies({
 }) {
 	const query = useOwnerAuditReplies(scope, conversation.id, root.id);
 	if (query.isPending) return <output>{t("ui.ownerAudit.loading")}</output>;
-	if (query.isError) return <AuditFailure retry={() => void query.refetch()} />;
+	if (readState(query) === "error")
+		return <AuditFailure retry={() => void query.refetch()} />;
 	return (
 		<div className="ps-5">
-			{ownerAuditChronology(query.data.pages.map((page) => page.replies)).map(
-				(message) => (
-					<AuditMessage
-						key={message.id}
-						message={message}
-						agentAccountId={conversation.agent.account_id}
-					/>
-				),
-			)}
+			{ownerAuditChronology(
+				query.data?.pages.map((page) => page.replies) ?? [],
+			).map((message) => (
+				<AuditMessage
+					key={message.id}
+					message={message}
+					agentAccountId={conversation.agent.account_id}
+				/>
+			))}
 			{query.hasNextPage && (
 				<Button
 					variant="ghost"
@@ -370,7 +426,7 @@ function OwnerAuditPanel({
 			messages={ownerAuditChronology(
 				query.data?.pages.map((page) => page.messages) ?? [],
 			)}
-			state={query.isPending ? "loading" : query.isError ? "error" : "ready"}
+			state={readState(query)}
 			retry={() => void query.refetch()}
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}

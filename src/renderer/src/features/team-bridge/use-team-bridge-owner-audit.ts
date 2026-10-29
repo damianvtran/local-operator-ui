@@ -13,9 +13,23 @@ function useAuditRead(scope: OwnerAuditScope) {
 	const client = useQueryClient();
 	const owner = useBridgeOwner(scope.accountId);
 	return async <T>(read: () => Promise<T>): Promise<T> => {
-		if (!owner.isCurrent()) throw new Error("Owner audit authority changed");
-		const answer = await readForBridgeOwner(client, scope.accountId, read);
-		if (!owner.isCurrent()) throw new Error("Owner audit authority changed");
+		/*
+		 * THE READ FENCE, NOT THE WRITE ONE. `isCurrent()` is `bridgeOwnerCurrent`,
+		 * which also demands `!status.read_only`: that flag governs WRITING to the
+		 * agent's surface, and surface state F is deliberately readable. Gating a
+		 * read on it rendered the section and then refused every read inside it
+		 * (agent review round 1, m1). `isReadCurrent()` keeps the part this read
+		 * actually needs — the captured account and the credential epoch.
+		 */
+		if (!owner.isReadCurrent())
+			throw new Error("Owner audit authority changed");
+		const answer = (await readForBridgeOwner(
+			client,
+			scope.accountId,
+			read,
+		)) as T;
+		if (!owner.isReadCurrent())
+			throw new Error("Owner audit authority changed");
 		return answer;
 	};
 }

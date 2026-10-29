@@ -2760,6 +2760,12 @@ const TeamBridgeOwnedPage: FC<{
 			: null,
 	);
 	const [channelFormOpen, setChannelFormOpen] = useState(false);
+	/*
+	 * The slot's callbacks are recreated every render, so the deep-link effect
+	 * below reaches the LATEST `clear` through a ref rather than listing an
+	 * unstable function as a dependency (which would either loop or go stale).
+	 */
+	const clearOwnerAudit = useRef<() => void>(() => {});
 	const ownerAudit = useOwnerAuditSurface({
 		accountId,
 		enabled:
@@ -2775,10 +2781,19 @@ const TeamBridgeOwnedPage: FC<{
 		},
 	});
 
+	clearOwnerAudit.current = () => ownerAudit?.clear();
+
 	useEffect(() => {
 		if (!requestedConversation || !requestedTenant) return;
 		scopeChosen.current = true;
 		setScope(asTeamBridgeTenantId(requestedTenant));
+		/*
+		 * A deep link or notification click is a HUMAN target: it must take the
+		 * reader out of the audit panel the same way a rail row or a quick view
+		 * does, or the audit pane keeps the window while the target changes
+		 * underneath it (agent review round 1, m2).
+		 */
+		clearOwnerAudit.current();
 		setTarget({ type: "conversation", id: requestedConversation });
 		setThreadLink(
 			TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
