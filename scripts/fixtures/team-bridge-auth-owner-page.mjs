@@ -228,6 +228,11 @@ function deferred() {
  *                 render, i.e. it primes exactly the cache a previously mounted
  *                 shell watcher would have left behind.
  *   waitReady   - false when the scenario holds the gate open on purpose.
+ *   statusGate  - replaces the fixture's own null status gate, so a caller can
+ *                 hold the eligibility verdict open from before the first render.
+ * The remaining holds are installed on the returned fixture by the scenario that
+ * needs them: `fixture.listGate` (the conversation list) and `fixture.unreadGate`
+ * (the account unread aggregate).
  */
 async function mount({
 	empty = false,
