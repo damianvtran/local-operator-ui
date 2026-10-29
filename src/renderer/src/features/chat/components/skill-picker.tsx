@@ -13,8 +13,8 @@
  * user naming the skill instead of semantic routing guessing it — and the
  * desktop could browse skills (`skills.list`) but not invoke one. The list's
  * rows are the SAME vocabulary that op answers (no hard-coded names, hidden
- * skills included), the accept gesture reassembles the draft exactly as the
- * TUI's picker does, and the SUBMISSION half is `skill-invocation.ts`.
+ * skills included), the accept gesture replaces the token's own span exactly
+ * as the TUI's picker does, and the SUBMISSION half is `skill-invocation.ts`.
  *
  * THE VOCABULARY IS SESSIONLESS (the `skill_catalogue` contract): the read
  * travels with the composer's own FOLDER — the staged cwd on a draft, the

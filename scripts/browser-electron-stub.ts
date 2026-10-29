@@ -1,3 +1,5 @@
+import type { MenuItemConstructorOptions, PopupOptions } from "electron";
+
 /**
  * A stand-in for Electron's `electron` module, for the desktop suite's
  * in-memory bundles.
@@ -15,9 +17,9 @@
  *
  * WHAT IT IS NOT: it is not a fake of Electron. It models the three members the
  * notifier reads (`isSupported`, and a constructed notification's `show` and its
- * `on`/`once` settle listeners)
- * plus the one member the browser IPC module needs to be registrable
- * (`ipcMain.handle`), records what was raised, and does nothing else.
+ * `on`/`once` settle listeners), the one member the browser IPC module needs to
+ * be registrable (`ipcMain.handle`), and the native menu the tab actions channel
+ * builds and pops (`Menu`), records what was raised, and does nothing else.
  * `scripts/*-fixture` files of the same shape are used by the other suites that
  * need one part of an external package.
  *
@@ -99,6 +101,63 @@ export const ipcMain = {
 		ipcMain.listeners.clear();
 	},
 };
+
+/**
+ * `Menu`, as far as the tab actions menu needs it: `buildFromTemplate`, and the
+ * `popup` a built menu is shown with.
+ *
+ * WHY IT IS HERE. The tab actions menu is a NATIVE menu built in main
+ * (`src/main/browser/ipc.ts`), so that module imports `Menu` as a VALUE — the
+ * bundle carries every member a module imports, not only the ones a test
+ * reaches. Modelled are the two calls the shipped code makes: the static
+ * constructor, and `popup`, whose `callback` is the DISMISSAL settlement the
+ * channel answers `null` with. The template is kept as built so a test can fire
+ * an item's own `click` — the handler the shipped builder attached — rather than
+ * a copy of its rule.
+ *
+ * WHAT IT IS NOT: no menu is displayed and no item is chosen for you. `popup`
+ * only records, and `closePopup` runs the recorded callback exactly once, the
+ * way closing a real menu does — leaving a built menu dismissable is what keeps
+ * the click-then-close pair driveable through the channel's own settlement guard
+ * (LOH-13).
+ */
+export class Menu {
+	/** Every menu built, in order, so a test can reach the one under assertion. */
+	static readonly built: Menu[] = [];
+
+	static buildFromTemplate(
+		template: readonly MenuItemConstructorOptions[],
+	): Menu {
+		return new Menu(template);
+	}
+
+	/** Between cases, like the other recorders here. */
+	static reset(): void {
+		Menu.built.length = 0;
+	}
+
+	/** What was popped, so a test can assert the anchor and the owner window. */
+	popupOptions: PopupOptions | null = null;
+
+	constructor(readonly template: readonly MenuItemConstructorOptions[]) {
+		Menu.built.push(this);
+	}
+
+	popup(options: PopupOptions = {}): void {
+		this.popupOptions = options;
+	}
+
+	/**
+	 * The dismissal path. One-shot: a real menu closes once, so a second call has
+	 * no callback left to run.
+	 */
+	closePopup(): void {
+		const callback = this.popupOptions?.callback;
+		this.popupOptions = null;
+		callback?.();
+	}
+}
+
 export class Notification {
 	/** What was raised, most recent last, so a test can assert the copy and the
 	 * COUNT rather than only that something happened. */
