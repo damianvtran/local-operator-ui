@@ -263,21 +263,21 @@ async function bundleModel() {
 					 * manifest, not the copy it renders.
 					 */
 					!input.startsWith("src/i18n/catalogues/") &&
-				/*
-				 * AND NOT THE GENERATED KEY TABLE. `src/i18n/keys.gen.ts` is
-				 * DERIVED from those catalogues — it is a list of key ids and their
-				 * parameter types. Pinning it re-admits copy changes through the back
-				 * door: adding a messenger sentence regenerates the table, the table's
-				 * bytes change, and the fixture goes STALE even though not one id,
-				 * count or label kind the fixture records has moved. That is what left
-				 * `main` red on this suite for hours on 2026-10-29, with every branch
-				 * cut from it inheriting the failure.
-				 *
-				 * The pin exists to catch a change in the model's DECISIONS. A
-				 * generated type table cannot hold a decision; it can only reflect a
-				 * catalogue edit the i18n gates already own.
-				 */
-				!input.endsWith("src/i18n/keys.gen.ts"),
+					/*
+					 * AND NOT THE GENERATED KEY TABLE. `src/i18n/keys.gen.ts` is
+					 * DERIVED from those catalogues — it is a list of key ids and their
+					 * parameter types. Pinning it re-admits copy changes through the back
+					 * door: adding a messenger sentence regenerates the table, the table's
+					 * bytes change, and the fixture goes STALE even though not one id,
+					 * count or label kind the fixture records has moved. That is what left
+					 * `main` red on this suite for hours on 2026-10-29, with every branch
+					 * cut from it inheriting the failure.
+					 *
+					 * The pin exists to catch a change in the model's DECISIONS. A
+					 * generated type table cannot hold a decision; it can only reflect a
+					 * catalogue edit the i18n gates already own.
+					 */
+					!input.endsWith("src/i18n/keys.gen.ts"),
 			)
 			.map((input) => input.replace(/^\.\//, ""))
 			.sort(),
